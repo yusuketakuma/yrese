@@ -93,6 +93,80 @@ describe("createCalculationTrace", () => {
     expect(Object.isFrozen(trace.inputsSummary.ids)).toBe(true);
   });
 
+  it("rejects unsupported input id and date kinds", () => {
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary: {
+          ...inputsSummary,
+          ids: [
+            {
+              kind: "patient_name" as never,
+              id: "patient-001",
+            },
+          ],
+        },
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [claimStep()],
+      }),
+    ).toThrow(/TraceIdRef kind/);
+
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary: {
+          ...inputsSummary,
+          dates: [
+            {
+              kind: "visit_date" as never,
+              value: "2026-07-09",
+            },
+          ],
+        },
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [claimStep()],
+      }),
+    ).toThrow(/TraceDateRef kind/);
+  });
+
+  it("rejects empty input refs and version refs", () => {
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary: {
+          ...inputsSummary,
+          ids: [{ kind: "patient", id: " " }],
+        },
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [claimStep()],
+      }),
+    ).toThrow(/TraceIdRef id/);
+
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary: {
+          ...inputsSummary,
+          masterVersions: [{ masterName: "drug", version: "" }],
+        },
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [claimStep()],
+      }),
+    ).toThrow(/TraceMasterVersionRef version/);
+
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary: {
+          ...inputsSummary,
+          ruleVersions: [{ ruleName: "", version: "draft-001" }],
+        },
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [claimStep()],
+      }),
+    ).toThrow(/TraceRuleVersionRef ruleName/);
+  });
+
   it("accepts immutable CAL-008 optional extension fields without breaking existing steps", () => {
     const roundingEvidence = evidenceId("evidence:official:rounding:v1");
     const trace = createCalculationTrace({
@@ -302,5 +376,25 @@ describe("createLegalTrace", () => {
     expect(trace.humanReviewRequired).toBe(true);
     expect(Object.isFrozen(trace)).toBe(true);
     expect(Object.isFrozen(trace.evidenceRefs)).toBe(true);
+  });
+
+  it("rejects unsupported target types and invalid review flags", () => {
+    expect(() =>
+      createLegalTrace({
+        targetType: "endpoint" as never,
+        targetId: "feature:claim-preview",
+        evidenceRefs: [officialEvidence],
+        humanReviewRequired: true,
+      }),
+    ).toThrow(/targetType/);
+
+    expect(() =>
+      createLegalTrace({
+        targetType: "feature",
+        targetId: "feature:claim-preview",
+        evidenceRefs: [officialEvidence],
+        humanReviewRequired: "yes" as never,
+      }),
+    ).toThrow(/humanReviewRequired/);
   });
 });

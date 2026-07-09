@@ -249,6 +249,46 @@ describe("calculate", () => {
     expect(blocked.trace.warnings).toEqual([invalidStepResultWarning]);
   });
 
+  it("returns BLOCKED with SSOT_UPDATE_REQUIRED when exclusivityGroup evidence sourceType is unsupported", () => {
+    const ruleSet: CalculationRuleSet = {
+      rules: [
+        {
+          ruleId: "rule:exclusive-with-invalid-evidence-source",
+          evidenceRefs: [evidenceRef("EVD-CAL-0001")],
+          effectiveFrom: CalendarDate.fromString("2026-06-01"),
+          apply: () => ({
+            status: "ITEM_CALCULATED",
+            description: "Invalid exclusivity evidence source",
+            affectsClaim: true,
+            output: "itemPoints=1",
+            itemPoints: Points.fromInteger(1),
+            applicationKey: "exclusive-invalid-source",
+            exclusivityGroup: {
+              groupId: "exclusive-group",
+              evidenceRef: {
+                ...evidenceRef("EVD-CAL-0032"),
+                sourceType: "bad-source",
+              },
+            },
+          }) as any,
+        },
+      ],
+    };
+
+    const result = calculate(request(), ruleSet);
+    const blocked = expectBlocked(result);
+
+    expect(blocked.blockers).toEqual([
+      {
+        type: "SSOT_UPDATE_REQUIRED" satisfies BlockerType,
+        detail:
+          "invalid StepResult for ruleId=rule:exclusive-with-invalid-evidence-source: exclusivityGroup.evidenceRef.sourceType must be a supported EvidenceSourceType",
+      },
+    ]);
+    expect(blocked.trace.blockers).toEqual(["SSOT_UPDATE_REQUIRED"]);
+    expect(blocked.trace.warnings).toEqual([invalidStepResultWarning]);
+  });
+
   it("EVD-CAL-0001 calculates dispensing basic fee 1 as 47 points", () => {
     const result = calculate(request(), { rules: [dispensingBasicFee1Rule] });
     const pointsOnly = expectPointsOnly(result, "47");

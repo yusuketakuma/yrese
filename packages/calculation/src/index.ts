@@ -12,6 +12,7 @@ import { CalendarDate } from "@yrese/date-time";
 import { Points, type Yen } from "@yrese/money";
 import {
   createCalculationTrace,
+  isEvidenceSourceType,
   type CalculationInputsSummary,
   type CalculationTrace,
   type CalculationTraceStep,
@@ -396,6 +397,9 @@ function validateEvidenceRefShape(value: unknown, label: string): string | undef
   }
   if (!isNonEmptyString(value.sourceType)) {
     return `${label}.sourceType must be a non-empty string`;
+  }
+  if (!isEvidenceSourceType(value.sourceType)) {
+    return `${label}.sourceType must be a supported EvidenceSourceType`;
   }
   if (!isNonEmptyString(value.title)) {
     return `${label}.title must be a non-empty string`;

@@ -1,13 +1,16 @@
 import type { EvidenceId } from "@yrese/shared-kernel";
 
-export type EvidenceSourceType =
-  | "law"
-  | "notification"
-  | "official_spec"
-  | "master"
-  | "guideline"
-  | "jahis"
-  | "internal_ssot";
+export const EVIDENCE_SOURCE_TYPES = [
+  "law",
+  "notification",
+  "official_spec",
+  "master",
+  "guideline",
+  "jahis",
+  "internal_ssot",
+] as const;
+
+export type EvidenceSourceType = (typeof EVIDENCE_SOURCE_TYPES)[number];
 
 export interface EvidenceRef {
   readonly evidenceId: EvidenceId;
@@ -18,13 +21,36 @@ export interface EvidenceRef {
   readonly url?: never;
 }
 
+export const TRACE_ID_REF_KINDS = [
+  "tenant",
+  "pharmacy",
+  "patient",
+  "prescription",
+  "dispensing",
+  "claim",
+  "device",
+  "event",
+] as const;
+
+export type TraceIdRefKind = (typeof TRACE_ID_REF_KINDS)[number];
+
 export interface TraceIdRef {
-  readonly kind: "tenant" | "pharmacy" | "patient" | "prescription" | "dispensing" | "claim" | "device" | "event";
+  readonly kind: TraceIdRefKind;
   readonly id: string;
 }
 
+export const TRACE_DATE_REF_KINDS = [
+  "prescription_date",
+  "dispensing_date",
+  "reception_date",
+  "claim_month",
+  "service_date",
+] as const;
+
+export type TraceDateRefKind = (typeof TRACE_DATE_REF_KINDS)[number];
+
 export interface TraceDateRef {
-  readonly kind: "prescription_date" | "dispensing_date" | "reception_date" | "claim_month" | "service_date";
+  readonly kind: TraceDateRefKind;
   readonly value: string;
 }
 
@@ -51,7 +77,8 @@ export interface CalculationInputsSummary {
   readonly ruleVersions?: readonly TraceRuleVersionRef[];
 }
 
-export type CalculationTraceStepStatus = "applied" | "suggested" | "excluded" | "blocked";
+export const CALCULATION_TRACE_STEP_STATUSES = ["applied", "suggested", "excluded", "blocked"] as const;
+export type CalculationTraceStepStatus = (typeof CALCULATION_TRACE_STEP_STATUSES)[number];
 
 export interface CalculationTraceRounding {
   readonly method: string;
@@ -84,7 +111,8 @@ export interface CalculationTrace {
   readonly evidenceIds: readonly EvidenceId[];
 }
 
-export type LegalTraceTargetType = "feature" | "screen" | "report" | "data" | "operation";
+export const LEGAL_TRACE_TARGET_TYPES = ["feature", "screen", "report", "data", "operation"] as const;
+export type LegalTraceTargetType = (typeof LEGAL_TRACE_TARGET_TYPES)[number];
 
 export interface LegalTrace {
   readonly targetType: LegalTraceTargetType;
@@ -109,21 +137,32 @@ export interface CreateLegalTraceInput {
   readonly humanReviewRequired: boolean;
 }
 
-const sourceTypes = new Set<EvidenceSourceType>([
-  "law",
-  "notification",
-  "official_spec",
-  "master",
-  "guideline",
-  "jahis",
-  "internal_ssot",
-]);
-const stepStatuses = new Set<CalculationTraceStepStatus>(["applied", "suggested", "excluded", "blocked"]);
+const sourceTypes = new Set<EvidenceSourceType>(EVIDENCE_SOURCE_TYPES);
+const traceIdKinds = new Set<TraceIdRefKind>(TRACE_ID_REF_KINDS);
+const traceDateKinds = new Set<TraceDateRefKind>(TRACE_DATE_REF_KINDS);
+const stepStatuses = new Set<CalculationTraceStepStatus>(CALCULATION_TRACE_STEP_STATUSES);
+const legalTraceTargetTypes = new Set<LegalTraceTargetType>(LEGAL_TRACE_TARGET_TYPES);
 const phiLikeIntermediateValueKeyPattern = /(patient|name|address|phone|tel|email|free_?text|memo)/i;
 
-function assertNonEmptyString(value: string, label: string): void {
+export function isEvidenceSourceType(value: string): value is EvidenceSourceType {
+  return sourceTypes.has(value as EvidenceSourceType);
+}
+
+function assertNonEmptyString(value: unknown, label: string): void {
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new RangeError(`${label} must be a non-empty string`);
+  }
+}
+
+function assertAllowedString<T extends string>(value: unknown, values: ReadonlySet<T>, label: string): asserts value is T {
+  if (typeof value !== "string" || !values.has(value as T)) {
+    throw new RangeError(`${label} is not supported`);
+  }
+}
+
+function assertArray(value: unknown, label: string): void {
+  if (!Array.isArray(value)) {
+    throw new RangeError(`${label} must be an array`);
   }
 }
 
@@ -144,12 +183,50 @@ function freezeEvidenceRef(ref: EvidenceRef): EvidenceRef {
   return Object.freeze({ ...ref });
 }
 
+function freezeTraceIdRef(ref: TraceIdRef): TraceIdRef {
+  assertAllowedString(ref.kind, traceIdKinds, "TraceIdRef kind");
+  assertNonEmptyString(ref.id, "TraceIdRef id");
+
+  return Object.freeze({ ...ref });
+}
+
+function freezeTraceDateRef(ref: TraceDateRef): TraceDateRef {
+  assertAllowedString(ref.kind, traceDateKinds, "TraceDateRef kind");
+  assertNonEmptyString(ref.value, "TraceDateRef value");
+
+  return Object.freeze({ ...ref });
+}
+
+function freezeMasterVersionRef(ref: TraceMasterVersionRef): TraceMasterVersionRef {
+  assertNonEmptyString(ref.masterName, "TraceMasterVersionRef masterName");
+  assertNonEmptyString(ref.version, "TraceMasterVersionRef version");
+
+  return Object.freeze({ ...ref });
+}
+
+function freezeRuleVersionRef(ref: TraceRuleVersionRef): TraceRuleVersionRef {
+  assertNonEmptyString(ref.ruleName, "TraceRuleVersionRef ruleName");
+  assertNonEmptyString(ref.version, "TraceRuleVersionRef version");
+
+  return Object.freeze({ ...ref });
+}
+
 function freezeInputsSummary(summary: CalculationInputsSummary): CalculationInputsSummary {
+  if (typeof summary !== "object" || summary === null) {
+    throw new RangeError("inputsSummary must be an object");
+  }
+  assertArray(summary.ids, "inputsSummary.ids");
+  assertArray(summary.dates, "inputsSummary.dates");
+  assertArray(summary.masterVersions, "inputsSummary.masterVersions");
+  if (summary.ruleVersions !== undefined) {
+    assertArray(summary.ruleVersions, "inputsSummary.ruleVersions");
+  }
+
   return Object.freeze({
-    ids: freezeArray(summary.ids.map((ref) => Object.freeze({ ...ref }))),
-    dates: freezeArray(summary.dates.map((ref) => Object.freeze({ ...ref }))),
-    masterVersions: freezeArray(summary.masterVersions.map((ref) => Object.freeze({ ...ref }))),
-    ruleVersions: freezeArray((summary.ruleVersions ?? []).map((ref) => Object.freeze({ ...ref }))),
+    ids: freezeArray(summary.ids.map(freezeTraceIdRef)),
+    dates: freezeArray(summary.dates.map(freezeTraceDateRef)),
+    masterVersions: freezeArray(summary.masterVersions.map(freezeMasterVersionRef)),
+    ruleVersions: freezeArray((summary.ruleVersions ?? []).map(freezeRuleVersionRef)),
   });
 }
 
@@ -249,7 +326,11 @@ export function createCalculationTrace(input: CreateCalculationTraceInput): Calc
 }
 
 export function createLegalTrace(input: CreateLegalTraceInput): LegalTrace {
+  assertAllowedString(input.targetType, legalTraceTargetTypes, "LegalTrace targetType");
   assertNonEmptyString(input.targetId, "targetId");
+  if (typeof input.humanReviewRequired !== "boolean") {
+    throw new RangeError("LegalTrace humanReviewRequired must be a boolean");
+  }
 
   return Object.freeze({
     targetType: input.targetType,

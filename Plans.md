@@ -318,10 +318,11 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `apps/web/app/patients/patient-search.tsx` または frontend API client adapter。auth SSOT / generated client 方針と整合後に実装。
   - 検証: `pnpm --filter @yrese/web test`, `pnpm --filter @yrese/web typecheck`, production-like env test, `pnpm check:boundaries`, `git diff --check`。
 
-- [ ] WP-4039 @yrese/trace runtime enum/kind guard(codex 提案 SELF-SCAN-20260709-19、fable5 triage待ち)
+- [x] WP-4039 @yrese/trace runtime enum/kind guard(codex 提案 SELF-SCAN-20260709-19、fable5 PLAN_APPROVED。本WPで実装)
   - 発見根拠: `packages/trace/src/index.ts` の `createLegalTrace()` は `targetType` を runtime allow-list で検証していない。また `createCalculationTrace()` の `inputsSummary.ids[].kind` / `dates[].kind` も Object.freeze のみで、型を迂回した不正 kind や空 id/value を保持できる。
   - 目的: calculation_trace / legal_trace が未承認 target/kind や空参照を保持しないよう、TraceIdRef.kind / TraceDateRef.kind / LegalTraceTargetType を正本値から派生した allow-list で fail-closed にする。
   - scope注記: WP-4034 opus4.8 申し送りとして、将来 `calculation` 側で `exclusivityGroup` を使うルールを追加する前に、`validateEvidenceRefShape()` でも `EvidenceSourceType` allow-list 照合を行うこと。現状は `exclusivityGroup` 使用ゼロかつ trace 側で不正 `sourceType` を拒否するため低優先。
+  - 実装: `@yrese/trace` に EvidenceSourceType / TraceIdRef.kind / TraceDateRef.kind / CalculationTraceStepStatus / LegalTraceTargetType の const tuple 正本と runtime allow-list を追加し、入力ID/日付/マスター版/ルール版/legal target を fail-closed 検証。`@yrese/calculation` の `validateEvidenceRefShape()` は trace の `isEvidenceSourceType()` を再利用して exclusivityGroup.evidenceRef.sourceType を SSOT_UPDATE_REQUIRED BLOCKED にする。
   - 想定スコープ: `packages/trace/**`。CAL-008/MOD-004 との整合確認後に実装。
   - 検証: `pnpm --filter @yrese/trace test`, `pnpm --filter @yrese/trace typecheck`, `pnpm check:boundaries`, `git diff --check`。
 
