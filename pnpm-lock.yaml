@@ -10,12 +10,12 @@ importers:
 
   apps/api:
     dependencies:
+      '@yrese/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       fastify:
         specifier: ^5.0.0
         version: 5.10.0
-      zod:
-        specifier: ^4.0.0
-        version: 4.4.3
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
@@ -54,6 +54,19 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.0
         version: 19.2.3(@types/react@19.2.17)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.7(@types/node@24.13.3)(tsx@4.23.0)
+
+  packages/contracts:
+    dependencies:
+      zod:
+        specifier: ^4.0.0
+        version: 4.4.3
+    devDependencies:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3

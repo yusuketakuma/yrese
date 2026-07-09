@@ -1,16 +1,9 @@
 import Fastify, { type FastifyInstance } from 'fastify';
-import { z } from 'zod';
+import { healthResponseSchema, type HealthResponse } from '@yrese/contracts';
+
+export type { HealthResponse } from '@yrese/contracts';
 
 export const apiVersion = '0.0.1';
-
-const healthResponseSchema = z.object({
-  status: z.literal('ok'),
-  service: z.literal('api'),
-  version: z.string().min(1),
-  timestamp: z.string().datetime(),
-});
-
-export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
 export function buildServer(): FastifyInstance {
   const server = Fastify({

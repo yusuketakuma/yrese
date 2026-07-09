@@ -10,8 +10,8 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "fastify": "^5.0.0",
-    "zod": "^4.0.0"
+    "@yrese/contracts": "workspace:*",
+    "fastify": "^5.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
