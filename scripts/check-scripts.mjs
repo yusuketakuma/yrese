@@ -172,6 +172,33 @@ async function testPureCoreRejectsAwsAndDynamoDbImports() {
   );
 }
 
+async function testPureCoreRejectsAwsAndDynamoDbImportsThroughNonStaticForms() {
+  const root = path.join(tempRoot, "pure-core-aws-nonstatic-violation");
+  await writeText(
+    path.join(root, "packages", "trace", "package.json"),
+    JSON.stringify({ name: "@fixture/trace", dependencies: {} }, null, 2),
+  );
+  await writeText(
+    path.join(root, "packages", "trace", "src", "index.ts"),
+    [
+      "const AWS = require('aws-sdk');",
+      "const dynamoClient = import('@aws-sdk/client-dynamodb');",
+      "export * from 'dynamodb-toolbox';",
+      "export const refs = { AWS, dynamoClient };",
+      "",
+    ].join("\n"),
+  );
+
+  const result = runNode("check-boundaries.mjs", [root]);
+  const output = outputOf(result);
+  assert(result.status === 1, "check-boundaries should fail for pure core require/dynamic/export AWS imports");
+  assert(output.includes("pure core package 'trace' must not import AWS SDK"), "non-static AWS SDK import should fail");
+  assert(
+    output.includes("pure core package 'trace' must not import DynamoDB module (dynamodb-toolbox)"),
+    "non-static DynamoDB module export should fail",
+  );
+}
+
 async function testAppAwsImportDoesNotTripPureCoreRule() {
   const root = path.join(tempRoot, "app-aws-import-pass");
   await writeText(
@@ -527,6 +554,7 @@ try {
   await testBoundaryViolationDetection();
   await testBoundaryCleanFixturePasses();
   await testPureCoreRejectsAwsAndDynamoDbImports();
+  await testPureCoreRejectsAwsAndDynamoDbImportsThroughNonStaticForms();
   await testAppAwsImportDoesNotTripPureCoreRule();
   await testDuplicateRegistryConstDetection();
   await testDuplicateContractAndKernelConstDetectionAcrossApps();

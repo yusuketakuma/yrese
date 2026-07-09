@@ -6,6 +6,14 @@
 
 ## 2026-07-10
 
+### WP-6003 pure core AWS boundary non-static import regression coverage
+
+- agmsg で WP-6001 REVIEW_RESULT(CHANGES_REQUIRED、formalize は fable5 側)と WP-6002 の位置づけを再確認。WP-6002 は `c18d50d` で push 済み、inbox は空、monitor bridge は `yrese/codex` alive、worktree clean から再開。
+- self-scan で、WP-6002 の checker 本体は `require()` / dynamic `import()` / `export ... from` も抽出する一方、回帰 fixture は static import 中心であることを確認。純粋コアへの AWS/DynamoDB 混入を non-static 経路でも固定する scripts-only 追補として WP-6003 を追加。
+- 実装: `scripts/check-scripts.mjs` に pure core `trace` fixture を追加し、`require('aws-sdk')`、`import('@aws-sdk/client-dynamodb')`、`export * from 'dynamodb-toolbox'` が `check-boundaries` で拒否されることを固定。アプリ本体・SSOT本文・WP-6001 proposal は変更なし。
+- 台帳: `Plans.md` に WP-6001 / WP-6002 の現状と WP-6003 の完了を追記。
+- 検証: `pnpm test:scripts` PASS、`pnpm check:boundaries` PASS、`pnpm check:secrets` PASS、`git diff --check` PASS。
+
 ### WP-4056 API repository mode explicitness and in-memory startup guard
 
 - fable5 PLAN_APPROVED に基づき、API 起動時の暗黙 in-memory fallback を廃止する方針で実装中。`YRESE_API_REPOSITORY_MODE` を明示 repository mode とし、許可値は `postgres` / `in_memory` のみ。`DATABASE_URL` がある場合は `postgres`、`DATABASE_URL` 不在時は `YRESE_API_REPOSITORY_MODE=in_memory` の明示がある場合だけ in-memory 起動を許可する。

@@ -462,6 +462,21 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `apps/api/src/db/postgres-repositories.integration.test.ts` の type narrowing helper 追加または明示 `throw` 分岐化。実装コード・migration・契約は変更しない。
   - 検証: `pnpm --filter @yrese/api test`、`pnpm --filter @yrese/api typecheck`、`git diff --check`。`TEST_DATABASE_URL` 不在時は当該統合テストが skip されるため、型検査で unreachable/union narrowing が成立することを重視する。
 
+- [x] WP-6001 DynamoDB single-table + FHIR store design proposal(d5d06e0、fable5/opus4.8 REVIEW_RESULT: CHANGES_REQUIRED but formalize by fable5)
+  - 内容: `docs/research/dynamodb_fhir_store_design_proposal.md` を DRAFT(codex 設計提案・fable5 レビュー用・SSOT ではない)として追加。ARC-008 に基づく DynamoDB single-table / FHIR store / append-only audit / adapter 境界 / PostgreSQL 段階移行の素材を提示。
+  - レビュー結果: 設計骨格は健全と評価。DynamoDB transaction 同一 item 制約、監査 append 冪等性、HMAC prefix 検索不可、Provenance 投影化、per-request STS tenant scope 等の必須修正は fable5 が DB/FHIR store SSOT formalize 時に織り込む。proposal は入力記録として残置。
+  - 検証: `pnpm check:secrets`、`pnpm check:boundaries`、`git diff --cached --check`。
+
+- [x] WP-6002 pure core AWS/DynamoDB import boundary guard(c18d50d)
+  - 発見根拠: ARC-008 §6 と WP-6001 proposal §8 は、純粋コア(`packages/calculation`, `money`, `date-time`, `trace`, `audit`, `shared-kernel`, `events`, `contracts`)を persistence-agnostic に保ち、AWS/DynamoDB 結合を adapter 層へ限定する。
+  - 実装: `scripts/check-boundaries.mjs` に純粋コア package からの `aws-sdk` / `@aws-sdk/*` / DynamoDB module import 拒否を追加し、`scripts/check-scripts.mjs` に違反検出と app 層 AWS import 許容の fixture を追加。
+  - 検証: `pnpm test:scripts`、`pnpm check:boundaries`、`pnpm check:secrets`、`git diff --check`。
+
+- [x] WP-6003 pure core AWS boundary non-static import regression coverage(codex 自律スキャン、WP-6002追補)
+  - 発見根拠: WP-6002 の checker 本体は `require()` / dynamic `import()` / `export ... from` も抽出するが、回帰 fixture は static import 中心だった。将来の extractor 変更で CJS/dynamic/re-export 経路だけ抜けると、純粋コアの AWS/DynamoDB 混入を見逃す。
+  - 実装: `scripts/check-scripts.mjs` に pure core `trace` fixture を追加し、`require('aws-sdk')`、`import('@aws-sdk/client-dynamodb')`、`export * from 'dynamodb-toolbox'` が `check-boundaries` で拒否されることを固定。
+  - 検証: `pnpm test:scripts`、`pnpm check:boundaries`、`pnpm check:secrets`、`git diff --check`。
+
 - [x] WP-4012 dependency scan / SBOM CI gate(b0ecf84、addendum 702c2f5)
   - 発見根拠: `.github/workflows/ci.yml` には dependency scan / SBOM 追加TODOが残り、`package.json` にも依存脆弱性・SBOM生成を検査するroot scriptが未定義。
   - 目的: secret scan に加えて、依存脆弱性検知とSBOM生成/検証をCIの機械ゲートにし、security SSOTの「dependency scan / SBOM」予定項目を実装へ進める。
