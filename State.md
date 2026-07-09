@@ -6,6 +6,13 @@
 
 ## 2026-07-10
 
+### WP-2003 audit skeleton ledger closure
+
+- DB-005 commit_request 待ちの interim として、上部一覧に残っていた WP-2003 の未完了表示を再確認。
+- `@yrese/audit` は audit event registry / AuditEvent envelope / targetRef・outcome・businessReason・hash field guard を実装済みで、WP-2003 opus4.8 事後レビューも APPROVED 済み。LOW 指摘の否定テスト補強は WP-4024 で反映済み。
+- `Plans.md` 上部の WP-2003 を完了済みに更新。hash-chain 計算/永続化は既存どおり WP-2009 / WP-5004 に残し、コード・SSOT本文・docs/database には触れていない。
+- 検証: `pnpm --filter @yrese/audit test` PASS(41)、`pnpm --filter @yrese/audit typecheck` PASS、`pnpm check:boundaries` PASS。
+
 ### WP-4037/4038/4041 PatientSearch hardening closure
 
 - DB-005 commit_request 待ちの interim として、SSOT/DB migration/docs/database に触れない patient search backlog の重複状態を再確認。
