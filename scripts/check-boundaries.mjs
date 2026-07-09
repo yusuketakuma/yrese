@@ -6,7 +6,17 @@ const rootDir = path.resolve(process.argv[2] ?? process.cwd());
 const violations = [];
 const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"]);
 const ignoredDirs = new Set([".git", ".next", "coverage", "dist", "node_modules"]);
-const duplicateConstNames = ["SYSTEM_MODES", "PROVISIONAL_STATUSES", "BLOCKER_TYPES"];
+const duplicateConstNames = [
+  "SYSTEM_MODES",
+  "PROVISIONAL_STATUSES",
+  "BLOCKER_TYPES",
+  "PERMISSION_ACTIONS",
+  "PERMISSION_RESOURCES",
+  "ROLE_NAMES",
+  "ERROR_SEVERITIES",
+  "ERROR_DOMAINS",
+  "KERNEL_ERROR_CODES",
+];
 
 function report(message) {
   violations.push(message);

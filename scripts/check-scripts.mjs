@@ -73,6 +73,34 @@ async function testBoundaryCleanFixturePasses() {
   assert(result.status === 0, `check-boundaries should pass for clean fixture: ${outputOf(result)}`);
 }
 
+async function testDuplicateRegistryConstDetection() {
+  const root = path.join(tempRoot, "duplicate-registry");
+  await writeText(
+    path.join(root, "packages", "shared-kernel", "package.json"),
+    JSON.stringify({ name: "@fixture/shared-kernel", dependencies: {} }, null, 2),
+  );
+  await writeText(
+    path.join(root, "packages", "shared-kernel", "src", "permissions.ts"),
+    "export const PERMISSION_RESOURCES = ['patient'] as const;\n",
+  );
+  await writeText(
+    path.join(root, "packages", "feature", "package.json"),
+    JSON.stringify({ name: "@fixture/feature", dependencies: {} }, null, 2),
+  );
+  await writeText(
+    path.join(root, "packages", "feature", "src", "permissions.ts"),
+    "export const PERMISSION_RESOURCES = ['patient'] as const;\n",
+  );
+
+  const result = runNode("check-boundaries.mjs", [root]);
+  const output = outputOf(result);
+  assert(result.status === 1, "check-boundaries should fail for duplicate permission registry const arrays");
+  assert(
+    output.includes("duplicate shared-kernel const array 'PERMISSION_RESOURCES'"),
+    "duplicate registry finding should name PERMISSION_RESOURCES",
+  );
+}
+
 async function testSecretAllowlistAndDetection() {
   const allowRoot = path.join(tempRoot, "secrets-allow");
   await writeText(
@@ -119,6 +147,7 @@ async function testCleanRemovesGeneratedArtifacts() {
 try {
   await testBoundaryViolationDetection();
   await testBoundaryCleanFixturePasses();
+  await testDuplicateRegistryConstDetection();
   await testSecretAllowlistAndDetection();
   await testCleanRemovesGeneratedArtifacts();
 } finally {
