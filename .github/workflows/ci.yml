@@ -48,5 +48,8 @@ jobs:
       - name: Check boundaries
         run: pnpm check:boundaries
 
+      - name: Check calculation purity
+        run: pnpm check:calculation-purity
+
       - name: Check SSOT index
         run: pnpm check:ssot-index

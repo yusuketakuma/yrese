@@ -10,6 +10,7 @@
   "packageManager": "pnpm@10.33.2",
   "scripts": {
     "check:boundaries": "node scripts/check-boundaries.mjs",
+    "check:calculation-purity": "node scripts/check-calculation-purity.mjs",
     "check:deps": "node scripts/check-deps.mjs",
     "check:openapi": "tsx scripts/check-openapi.mjs",
     "check:sbom": "node scripts/check-sbom.mjs",

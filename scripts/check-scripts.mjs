@@ -211,6 +211,60 @@ async function testDuplicateContractsConstDetectionAcrossApps() {
   );
 }
 
+async function testCalculationPurityCleanFixturePasses() {
+  const root = path.join(tempRoot, "calculation-purity-pass");
+  await writeText(
+    path.join(root, "packages", "calculation", "src", "index.ts"),
+    [
+      "export function calculate(input: { readonly points: bigint }) {",
+      "  // Date.now(), new Date(), Math.random(), parseFloat(), and Math.round() are mentioned only in comments.",
+      "  return { points: input.points };",
+      "}",
+      "",
+    ].join("\n"),
+  );
+  await writeText(
+    path.join(root, "packages", "calculation", "src", "calculation.test.ts"),
+    [
+      "it('can use clocks in test-only fixtures', () => {",
+      "  expect(Date.now()).toBeGreaterThan(0);",
+      "  expect(new Date()).toBeInstanceOf(Date);",
+      "});",
+      "",
+    ].join("\n"),
+  );
+
+  const result = runNode("check-calculation-purity.mjs", [root]);
+  assert(result.status === 0, `check-calculation-purity should ignore comments and test files: ${outputOf(result)}`);
+}
+
+async function testCalculationPurityViolationDetection() {
+  const root = path.join(tempRoot, "calculation-purity-violation");
+  await writeText(
+    path.join(root, "packages", "calculation", "src", "index.ts"),
+    [
+      "export function calculate(raw: string) {",
+      "  const startedAt = Date.now();",
+      "  const wallClock = new Date();",
+      "  const jitter = Math.random();",
+      "  const parsed = parseFloat(raw);",
+      "  const rounded = Math.round(parsed);",
+      "  return { startedAt, wallClock, jitter, rounded };",
+      "}",
+      "",
+    ].join("\n"),
+  );
+
+  const result = runNode("check-calculation-purity.mjs", [root]);
+  const output = outputOf(result);
+  assert(result.status === 1, "check-calculation-purity should fail for CAL-010 forbidden patterns");
+  for (const forbidden of ["Date.now()", "new Date()", "Math.random()", "parseFloat()", "Math.round()"]) {
+    assert(output.includes(forbidden), `purity violation output should name ${forbidden}`);
+  }
+  assert(output.includes("comments are ignored"), "purity violation output should document comment handling");
+  assert(output.includes("test/spec files are excluded"), "purity violation output should document test handling");
+}
+
 async function testSecretAllowlistAndDetection() {
   const allowRoot = path.join(tempRoot, "secrets-allow");
   await writeText(
@@ -421,6 +475,8 @@ try {
   await testBoundaryCleanFixturePasses();
   await testDuplicateRegistryConstDetection();
   await testDuplicateContractsConstDetectionAcrossApps();
+  await testCalculationPurityCleanFixturePasses();
+  await testCalculationPurityViolationDetection();
   await testSecretAllowlistAndDetection();
   await testCleanRemovesGeneratedArtifacts();
   await testDependencyAuditWrapper();

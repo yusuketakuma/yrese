@@ -265,10 +265,11 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
 
 - [x] WP-4027 WP-4020 完了の台帳反映(codex 提案 SELF-SCAN-20260709-07。本改版で反映済み)
 
-- [ ] WP-4028 算定パッケージ純粋関数規律の静的検査ゲート(codex 提案 SELF-SCAN-20260709-08)
+- [x] WP-4028 算定パッケージ純粋関数規律の静的検査ゲート(codex 提案 SELF-SCAN-20260709-08。本WPで実装)
   - 発見根拠: CAL-010 が `Date.now` / `new Date(` / `Math.random` / `parseFloat` 等の静的検査を独立WP候補として明記する一方、現行 check-boundaries は import 方向・循環・重複定義のみ。
   - 目的: packages/calculation(将来は money/date-time も)に対する禁止パターン静的検査を CI ゲート化する。CAL-010 APPROVED 後に実装。
-  - 検証: 違反注入 fixture での検出、`pnpm test:scripts`。
+  - 実装: `scripts/check-calculation-purity.mjs` を独立追加し、`packages/calculation` の非テスト source に限定して CAL-010 列挙の `Date.now()` / `new Date()` / `Math.random()` / `parseFloat()` / `Math.round()` を fail-closed 検出する。コメントは検査前に除外し、test/spec file は対象外。root script `check:calculation-purity` と CI に接続し、script regression fixture で違反注入検出・コメント/テスト除外を固定。
+  - 検証: 違反注入 fixture での検出、`pnpm test:scripts`, `pnpm check:calculation-purity`, `pnpm --filter @yrese/calculation test`, `pnpm -r typecheck`, `pnpm check:boundaries`, `git diff --check`。
 
 - [x] WP-4029 患者検索 cursor の contract 層上限(codex 提案 SELF-SCAN-20260709-09。本WPで実装)
   - 発見根拠: `patientSearchQuerySchema` の `cursor: z.string().optional()` に長さ上限がなく、巨大 cursor 文字列を contract 層で拒否できない。
