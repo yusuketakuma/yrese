@@ -161,3 +161,64 @@ body {
   font-weight: 400;
   font-size: 0.85rem;
 }
+
+/* 患者検索(WP-3003) */
+.patient-search-form {
+  margin-bottom: 1rem;
+}
+
+.patient-search-form label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.patient-search-row {
+  display: flex;
+  gap: 0.5rem;
+  max-width: 480px;
+}
+
+.patient-search-row input {
+  flex: 1;
+  font-size: 1.1rem;
+  padding: 0.45rem 0.6rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: 3px;
+}
+
+.patient-search-row button {
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.45rem 1.2rem;
+  border: 1.5px solid var(--color-fg);
+  border-radius: 3px;
+  background: #f0f2f5;
+  cursor: pointer;
+}
+
+.patient-search-error {
+  border: 2px solid #b91c1c;
+  background: var(--color-mode-local-only-bg);
+  padding: 0.6rem 0.9rem;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.patient-search-results {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 900px;
+}
+
+.patient-search-results th,
+.patient-search-results td {
+  border: 1px solid var(--color-border);
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.patient-search-results thead {
+  background: #f0f2f5;
+}

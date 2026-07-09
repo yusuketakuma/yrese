@@ -1,14 +1,14 @@
+import { PatientSearch } from "./patient-search";
+
 /**
- * 患者画面(プレースホルダー)。
- * 患者検索・患者選択(取り違え防止表示付き)。患者検索APIの契約承認後に実装。
+ * 患者検索・患者選択画面(SCR患者検索、API-001 v0.2.0)。
+ * 患者選択後の詳細・受付フローは後続WP(処方入力・受付導線)で接続する。
  */
-export default function Page() {
+export default function PatientsPage() {
   return (
     <>
-      <h2>患者</h2>
-      <p className="placeholder-note">
-        本画面は未実装のプレースホルダーです。患者検索・患者選択(取り違え防止表示付き)。患者検索APIの契約承認後に実装。
-      </p>
+      <h2>患者検索</h2>
+      <PatientSearch />
     </>
   );
 }

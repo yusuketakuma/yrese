@@ -38,6 +38,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@yrese/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@yrese/shared-kernel':
         specifier: workspace:*
         version: link:../../packages/shared-kernel
