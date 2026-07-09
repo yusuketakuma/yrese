@@ -31,6 +31,7 @@
 
 - agmsg 未読なしを確認後、read-only スキャンを継続。`@yrese/trace` の runtime enum/kind guard 補強候補(WP-4039)と、`@yrese/money` constructor 入力型ガード候補(WP-4040)を `Plans.md` へ登録。
 - 既存の WP-4033(rounding mode guard)とは別に、trace の target/kind drift と money constructor の不明瞭 TypeError 化を後続 triage 対象に分離。
+- 追加スキャンで PatientSearch の資格状態表示が PatientHeader より安全含意の弱い文言になっている点を検出し、frontend owner確認待ち候補 WP-4041 として `Plans.md` へ登録。
 
 ### SSOT 第1〜2波 opus4.8 レビュー → 一括 APPROVED(WP-0052/0053)
 
