@@ -6,6 +6,13 @@
 
 ## 2026-07-10
 
+### WP-4037/4038/4041 PatientSearch hardening closure
+
+- DB-005 commit_request 待ちの interim として、SSOT/DB migration/docs/database に触れない patient search backlog の重複状態を再確認。
+- 現行 `apps/web/app/patients/patient-search.tsx` は `createSearchRunner()` の generation guard で stale success / stale failure / stale append を破棄し、`devTenantHeaders()` は development 以外で dev tenant headers を送らない。資格状態表示は `PatientHeader` の `ELIGIBILITY_LABELS` を再利用し、PatientSearch 側の安全文言二重実装はない。
+- `apps/web/app/patients/patient-search.test.tsx` は WP-4037 / WP-4038 / WP-4041 の該当挙動を個別テストで固定済み。`Plans.md` の未完了候補を現行実装で解消済みに更新。コード変更なし。
+- 検証: `pnpm --filter @yrese/web test` PASS(33)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 ### WP-4023 PatientHeader eligibility status type convergence
 
 - DB-005 commit_request 待ちの interim として、既存 backlog のうち SSOT/DB migration に触れない WP-4023 を実施。

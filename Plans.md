@@ -321,17 +321,17 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 実装: `@yrese/contracts` の `errorResponseSchema` を `@yrese/shared-kernel` の `createKernelErrorCodeRegistry()` へ接続し、登録済み `AUTH-0003` / `PAT-0001` のみを契約層で受理。`AUTH-3` / `not-a-code` / `SYSTEM-9999` は fail-closed。新規ローカル enum/const は作らず、既存の contracts -> shared-kernel 依存方針に従う。
   - 検証: 裁定後に `pnpm --filter @yrese/contracts test`, `pnpm --filter @yrese/api test`, `pnpm check:boundaries`, `git diff --check`。
 
-- [ ] WP-4037 PatientSearch stale response/race guard(codex 提案 SELF-SCAN-20260709-17、frontend owner確認待ち)
+- [x] WP-4037 PatientSearch stale response/race guard(codex 提案 SELF-SCAN-20260709-17、WP-3008/SCR-002で解消済み)
   - 発見根拠: `apps/web/app/patients/patient-search.tsx` の `runSearch()` は request id / AbortController / latest query guard を持たず、先に投げた検索の遅延レスポンスが後続検索結果を上書きしうる。患者検索結果は患者取り違え防止UIの入口であり、古い検索結果表示は医療安全上の誤認につながる。
   - 目的: 最新検索だけが state を更新できるようにし、追加読み込み時も対象 query/cursor の整合を保つ。併せて患者検索UIのコンポーネントテストを追加し、stale response を固定する。
-  - 想定スコープ: `apps/web/app/patients/patient-search.tsx`, `apps/web/app/**.test.tsx`。frontend 所有のため Claude/fable5 が owner を決める。
-  - 検証: `pnpm --filter @yrese/web test`, `pnpm --filter @yrese/web typecheck`, `pnpm check:boundaries`, `git diff --check`。
+  - 解消根拠: 現行 `createSearchRunner()` は generation guard により古い成功・失敗・append を破棄し、`apps/web/app/patients/patient-search.test.tsx` は stale success / stale failure / stale append を回帰テストで固定済み。
+  - 検証: `pnpm --filter @yrese/web test` 33 PASS、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
 
-- [ ] WP-4038 PatientSearch dev header production boundary(codex 提案 SELF-SCAN-20260709-18、auth SSOT連動)
+- [x] WP-4038 PatientSearch dev header production boundary(codex 提案 SELF-SCAN-20260709-18、WP-3008/SCR-002で解消済み)
   - 発見根拠: `apps/web/app/patients/patient-search.tsx` は client component 内で常に `x-dev-tenant` / `x-dev-pharmacy` / `x-dev-actor` / `x-dev-scopes` を送信する。バックエンド dev tenant stub は `NODE_ENV=production` で起動拒否されるが、Web 側は production build でも dev header を送る構造のまま。
   - 目的: 本番認証(OIDC等)のSSOT承認前でも、dev-only header が production bundle / production API request の前提にならないよう境界を明確化する。暫定的には dev-only adapter に隔離し、productionでは BLOCKED_SECURITY_REVIEW 表示または認証adapter未実装エラーへ fail-closed にする。
-  - 想定スコープ: `apps/web/app/patients/patient-search.tsx` または frontend API client adapter。auth SSOT / generated client 方針と整合後に実装。
-  - 検証: `pnpm --filter @yrese/web test`, `pnpm --filter @yrese/web typecheck`, production-like env test, `pnpm check:boundaries`, `git diff --check`。
+  - 解消根拠: 現行 `devTenantHeaders()` は `NODE_ENV === "development"` の場合だけ dev tenant headers を返し、production/test/undefined では `{}` を返す。production-like 境界は web test で固定済み。
+  - 検証: `pnpm --filter @yrese/web test` 33 PASS、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
 
 - [x] WP-4039 @yrese/trace runtime enum/kind guard(codex 提案 SELF-SCAN-20260709-19、fable5 PLAN_APPROVED。本WPで実装)
   - 発見根拠: `packages/trace/src/index.ts` の `createLegalTrace()` は `targetType` を runtime allow-list で検証していない。また `createCalculationTrace()` の `inputsSummary.ids[].kind` / `dates[].kind` も Object.freeze のみで、型を迂回した不正 kind や空 id/value を保持できる。
@@ -348,11 +348,11 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `packages/money/**`。
   - 検証: `pnpm --filter @yrese/money test`, `pnpm --filter @yrese/money typecheck`, `pnpm check:boundaries`, `git diff --check`。
 
-- [ ] WP-4041 PatientSearch eligibility safety label alignment(codex 提案 SELF-SCAN-20260709-21、frontend owner確認待ち)
+- [x] WP-4041 PatientSearch eligibility safety label alignment(codex 提案 SELF-SCAN-20260709-21、WP-3008/SCR-002で解消済み)
   - 発見根拠: `apps/web/app/components/patient-header.tsx` は `PENDING_REVERIFY` を「資格再確認待ち(請求前に再確認必須)」、`LOCAL_ONLY_UNVERIFIED` を「ローカル参照のみ(オンライン未確認)」と表示する一方、`apps/web/app/patients/patient-search.tsx` の検索結果表示は「資格再確認待ち」「ローカル参照のみ(未確認)」に留まり、請求前再確認必須・オンライン未確認の安全含意が弱い。
   - 目的: 患者検索結果段階でも外部確認未了状態を弱く見せず、PatientHeader / UIX-001 / status_registry と同じ安全文脈で表示する。WP-4023(型のcontracts一本化)と整合させ、表示文言はfrontend責務として管理する。
-  - 想定スコープ: `apps/web/app/patients/patient-search.tsx`、必要ならweb shell smoke/患者検索UIテスト。frontend 所有のため Claude/fable5 が owner を決める。
-  - 検証: `pnpm --filter @yrese/web test`, `pnpm --filter @yrese/web typecheck`, `pnpm check:boundaries`, `git diff --check`。
+  - 解消根拠: 現行 PatientSearch は `PatientHeader` の `ELIGIBILITY_LABELS` を再利用し、資格状態表示文言の二重実装を持たない。web test は `PENDING_REVERIFY` / `LOCAL_ONLY_UNVERIFIED` が PatientHeader と同一の安全文言で表示されることを固定済み。
+  - 検証: `pnpm --filter @yrese/web test` 33 PASS、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
 
 - [x] WP-4042 /whoami contract and OpenAPI coverage decision(codex 提案 SELF-SCAN-20260709-22、API契約境界。現行実装で解消済み)
   - 発見根拠: `apps/api/src/server.ts` は `/whoami` を実装し、`apps/api/src/server.test.ts` も 200/403 を検証しているが、`@yrese/contracts` に `whoamiResponseSchema` がなく、WP-4019 の `docs/api/openapi.yaml` 生成対象にも含めていない。現状の契約正本は `/health` と API-001 `/patients/search` に限定されている。
