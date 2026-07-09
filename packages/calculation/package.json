@@ -2,7 +2,7 @@
   "name": "@yrese/calculation",
   "version": "0.0.1",
   "private": true,
-  "description": "算定エンジンの純粋関数骨格。点数値・算定ルールは実装せず、根拠trace配線のみを提供する。",
+  "description": "算定エンジンの純粋関数基盤。CAL-004承認済みの初期evidence-backedルールと根拠trace配線を提供する。",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",

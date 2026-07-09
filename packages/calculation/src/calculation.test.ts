@@ -1,6 +1,10 @@
+/**
+ * 原本再照合まで暫定(CAL-004 §6)。
+ * Golden expectations below are derived only from CAL-003 evidence values.
+ */
 import { describe, expect, it } from "vitest";
-import { ClaimMonth, DispensingDate, PrescriptionDate, ReceptionDate } from "@yrese/date-time";
-import { Points, Yen } from "@yrese/money";
+import { CalendarDate, ClaimMonth, DispensingDate, PrescriptionDate, ReceptionDate } from "@yrese/date-time";
+import { Points } from "@yrese/money";
 import { evidenceId } from "@yrese/shared-kernel";
 import {
   dispensingId,
@@ -10,10 +14,26 @@ import {
   tenantId,
   type BlockerType,
 } from "@yrese/shared-kernel";
+import type { EvidenceRef } from "@yrese/trace";
 
-import { calculate, type CalculationRequest, type CalculationRuleSet } from "./index.js";
+import {
+  calculate,
+  calculationRulesV20260601,
+  createOralMedicinePreparationFeeRule,
+  dispensingBasicFee1Rule,
+  dispensingManagementFee2Rule,
+  medicationManagementGuidanceFee3Rule,
+  nightHolidayAdditionRule,
+  requirementsNotVerifiedWarning,
+  type BlockedCalculationResult,
+  type CalculationRequest,
+  type CalculationResult,
+  type CalculationRule,
+  type CalculationRuleSet,
+  type PointsOnlyCopayBlockedCalculationResult,
+} from "./index.js";
 
-function request(): CalculationRequest {
+function request(dispensingDate = "2026-07-02"): CalculationRequest {
   return {
     tenantId: tenantId("tenant-001"),
     pharmacyId: pharmacyId("pharmacy-001"),
@@ -36,30 +56,65 @@ function request(): CalculationRequest {
     },
     dispensing: {
       dispensingId: dispensingId("dispensing-001"),
-      dispensingDate: DispensingDate.fromString("2026-07-02"),
+      dispensingDate: DispensingDate.fromString(dispensingDate),
     },
     receptionDate: ReceptionDate.fromString("2026-07-03"),
     claimMonth: ClaimMonth.fromString("2026-07"),
-    masterVersion: "master-draft-001",
-    calculationRuleVersion: "rules-unapproved-001",
+    masterVersion: "master-CAL-003",
+    calculationRuleVersion: "CAL-004-v0.2.1",
   };
+}
+
+function evidenceRef(id: string): EvidenceRef {
+  return {
+    evidenceId: evidenceId(id),
+    sourceType: "notification",
+    title: "調剤報酬点数表(令和8年告示第69号)別表第三",
+    version: "R8",
+  };
+}
+
+function expectBlocked(result: CalculationResult): BlockedCalculationResult {
+  expect(result.status).toBe("BLOCKED");
+  if (result.status === "BLOCKED") {
+    return result;
+  }
+  throw new Error("expected blocked result");
+}
+
+function expectPointsOnly(
+  result: CalculationResult,
+  expectedPoints: string,
+): PointsOnlyCopayBlockedCalculationResult {
+  expect(result.status).toBe("POINTS_ONLY_COPAY_BLOCKED");
+  if (result.status === "POINTS_ONLY_COPAY_BLOCKED") {
+    expect(result.claimable).toBe(false);
+    expect(result.total.toString()).toBe(expectedPoints);
+    expect(result.warnings).toContain(requirementsNotVerifiedWarning);
+    expect(result.blockers).toEqual([
+      {
+        type: "BLOCKED_REGULATORY_REVIEW" satisfies BlockerType,
+        detail: "Patient copay calculation remains blocked because copay evidence has not been issued.",
+      },
+    ]);
+    expect(result.trace.blockers).toEqual(["BLOCKED_REGULATORY_REVIEW"]);
+    return result;
+  }
+  throw new Error("expected points-only result");
 }
 
 describe("calculate", () => {
   it("always returns BLOCKED for an empty ruleset", () => {
     const result = calculate(request(), { rules: [] });
+    const blocked = expectBlocked(result);
 
-    expect(result.status).toBe("BLOCKED");
-    if (result.status !== "BLOCKED") {
-      throw new Error("expected empty ruleset to be blocked");
-    }
-    expect(result.blockers).toEqual([
+    expect(blocked.blockers).toEqual([
       {
         type: "BLOCKED_REGULATORY_REVIEW" satisfies BlockerType,
         detail: "Calculation rules are not approved. Actual scoring remains blocked until regulatory review completes.",
       },
     ]);
-    expect(result.trace.steps).toEqual([
+    expect(blocked.trace.steps).toEqual([
       {
         stepId: "blocked:regulatory-review",
         description: "Stop calculation because no approved calculation rules are available",
@@ -69,7 +124,7 @@ describe("calculate", () => {
         output: "BLOCKED_REGULATORY_REVIEW",
       },
     ]);
-    expect(result.trace.evidenceIds).toEqual([]);
+    expect(blocked.trace.evidenceIds).toEqual([]);
   });
 
   it("delegates claim-affecting evidence enforcement to trace creation", () => {
@@ -78,13 +133,14 @@ describe("calculate", () => {
         {
           ruleId: "rule:claim-affecting-without-evidence",
           evidenceRefs: [],
+          effectiveFrom: CalendarDate.fromString("2026-06-01"),
           apply: () => ({
-            status: "CALCULATED",
+            status: "ITEM_CALCULATED",
             description: "Claim-affecting placeholder rule without evidence",
             affectsClaim: true,
-            output: "total=0",
-            total: Points.fromInteger(0),
-            patientCopay: Yen.fromInteger(0),
+            output: "itemPoints=0",
+            itemPoints: Points.fromInteger(0),
+            applicationKey: "prescription",
           }),
         },
       ],
@@ -93,69 +149,200 @@ describe("calculate", () => {
     expect(() => calculate(request(), ruleSet)).toThrow(/require at least one evidenceRef/);
   });
 
-  it("blocks multiple calculated rules until aggregation semantics are approved", () => {
-    const ruleSet: CalculationRuleSet = {
+  it("EVD-CAL-0001 calculates dispensing basic fee 1 as 47 points", () => {
+    const result = calculate(request(), { rules: [dispensingBasicFee1Rule] });
+    const pointsOnly = expectPointsOnly(result, "47");
+
+    expect(pointsOnly.trace.evidenceIds).toEqual([evidenceId("EVD-CAL-0001")]);
+  });
+
+  it("EVD-CAL-0021 calculates oral medicine preparation fee as 24 points per application", () => {
+    const result = calculate(request(), { rules: [createOralMedicinePreparationFeeRule("oral-medicine:1")] });
+    const pointsOnly = expectPointsOnly(result, "24");
+
+    expect(pointsOnly.trace.evidenceIds).toEqual([evidenceId("EVD-CAL-0021")]);
+  });
+
+  it("EVD-CAL-0037 calculates dispensing management fee 2 as 10 points", () => {
+    const result = calculate(request(), { rules: [dispensingManagementFee2Rule] });
+    const pointsOnly = expectPointsOnly(result, "10");
+
+    expect(pointsOnly.trace.evidenceIds).toEqual([evidenceId("EVD-CAL-0037")]);
+  });
+
+  it("EVD-CAL-0042 calculates medication management guidance fee 3 as 45 points", () => {
+    const result = calculate(request(), { rules: [medicationManagementGuidanceFee3Rule] });
+    const pointsOnly = expectPointsOnly(result, "45");
+
+    expect(pointsOnly.trace.evidenceIds).toEqual([evidenceId("EVD-CAL-0042")]);
+  });
+
+  it("EVD-CAL-0032 calculates night and holiday addition as 40 points", () => {
+    const result = calculate(request(), { rules: [nightHolidayAdditionRule] });
+    const pointsOnly = expectPointsOnly(result, "40");
+
+    expect(pointsOnly.trace.evidenceIds).toEqual([evidenceId("EVD-CAL-0032")]);
+  });
+
+  it("EVD-CAL-0001+EVD-CAL-0021x2+EVD-CAL-0037 sums to 105 points with claimable false", () => {
+    const result = calculate(request(), {
       rules: [
-        {
-          ruleId: "rule:first-calculated",
-          evidenceRefs: [
-            {
-              evidenceId: evidenceId("evidence:internal:first-calculated"),
-              sourceType: "internal_ssot",
-              title: "First placeholder calculation evidence",
-            },
-          ],
-          apply: () => ({
-            status: "CALCULATED",
-            description: "First placeholder calculated result",
-            affectsClaim: true,
-            output: "total=1",
-            total: Points.fromInteger(1),
-            patientCopay: Yen.fromInteger(1),
-          }),
-        },
-        {
-          ruleId: "rule:second-calculated",
-          evidenceRefs: [
-            {
-              evidenceId: evidenceId("evidence:internal:second-calculated"),
-              sourceType: "internal_ssot",
-              title: "Second placeholder calculation evidence",
-            },
-          ],
-          apply: () => ({
-            status: "CALCULATED",
-            description: "Second placeholder calculated result",
-            affectsClaim: true,
-            output: "total=2",
-            total: Points.fromInteger(2),
-            patientCopay: Yen.fromInteger(2),
-          }),
-        },
+        dispensingBasicFee1Rule,
+        createOralMedicinePreparationFeeRule("oral-medicine:1"),
+        createOralMedicinePreparationFeeRule("oral-medicine:2"),
+        dispensingManagementFee2Rule,
       ],
-    };
+    });
+    const pointsOnly = expectPointsOnly(result, "105");
 
-    const result = calculate(request(), ruleSet);
+    expect(pointsOnly.trace.evidenceIds).toEqual([
+      evidenceId("EVD-CAL-0001"),
+      evidenceId("EVD-CAL-0021"),
+      evidenceId("EVD-CAL-0037"),
+    ]);
+  });
 
-    expect(result.status).toBe("BLOCKED");
-    if (result.status !== "BLOCKED") {
-      throw new Error("expected multiple calculated rules to be blocked");
-    }
-    expect(result.blockers).toEqual([
+  it("EVD-CAL-0001 is BLOCKED before effectiveFrom 2026-06-01", () => {
+    const result = calculate(request("2026-05-31"), { rules: [dispensingBasicFee1Rule] });
+    const blocked = expectBlocked(result);
+
+    expect(blocked.blockers).toEqual([
       {
-        type: "SSOT_UPDATE_REQUIRED" satisfies BlockerType,
-        detail: "aggregation semantics for multiple calculated rules are undefined; define in calculation engine design SSOT",
+        type: "BLOCKED_REGULATORY_REVIEW" satisfies BlockerType,
+        detail: "適用日前: EVD-CAL-0001:dispensing-basic-fee-1 is effective from 2026-06-01",
       },
     ]);
-    expect(result.trace.steps.map((step) => step.stepId)).toEqual([
-      "rule:first-calculated",
-      "rule:second-calculated",
+    expect(blocked.trace.steps[0]?.output).toBe("BLOCKED_REGULATORY_REVIEW:適用日前");
+  });
+
+  it("EVD-CAL-0001 applies on effectiveFrom boundary date 2026-06-01", () => {
+    const result = calculate(request("2026-06-01"), { rules: [dispensingBasicFee1Rule] });
+    const pointsOnly = expectPointsOnly(result, "47");
+
+    expect(pointsOnly.trace.evidenceIds).toEqual([evidenceId("EVD-CAL-0001")]);
+  });
+
+  it("EVD-CAL-0021 allows exactly 3 applications and sums to 72 points", () => {
+    const result = calculate(request(), {
+      rules: [
+        createOralMedicinePreparationFeeRule("oral-medicine:1"),
+        createOralMedicinePreparationFeeRule("oral-medicine:2"),
+        createOralMedicinePreparationFeeRule("oral-medicine:3"),
+      ],
+    });
+    const pointsOnly = expectPointsOnly(result, "72");
+
+    expect(pointsOnly.trace.evidenceIds).toEqual([evidenceId("EVD-CAL-0021")]);
+  });
+
+  it("EVD-CAL-0021 is BLOCKED when max 3 applications is exceeded", () => {
+    const result = calculate(request(), {
+      rules: [
+        createOralMedicinePreparationFeeRule("oral-medicine:1"),
+        createOralMedicinePreparationFeeRule("oral-medicine:2"),
+        createOralMedicinePreparationFeeRule("oral-medicine:3"),
+        createOralMedicinePreparationFeeRule("oral-medicine:4"),
+      ],
+    });
+    const blocked = expectBlocked(result);
+
+    expect(blocked.blockers).toEqual([
+      {
+        type: "BLOCKED_REGULATORY_REVIEW" satisfies BlockerType,
+        detail:
+          "application count exceeds evidence-backed limit for ruleId=EVD-CAL-0021:oral-medicine-preparation-fee; maxApplications=3",
+      },
+    ]);
+  });
+
+  it("EVD-CAL-0021 is BLOCKED for duplicate (ruleId, applicationKey)", () => {
+    const result = calculate(request(), {
+      rules: [
+        createOralMedicinePreparationFeeRule("oral-medicine:1"),
+        createOralMedicinePreparationFeeRule("oral-medicine:1"),
+      ],
+    });
+    const blocked = expectBlocked(result);
+
+    expect(blocked.blockers).toEqual([
+      {
+        type: "BLOCKED_REGULATORY_REVIEW" satisfies BlockerType,
+        detail:
+          "duplicate calculation application detected for ruleId=EVD-CAL-0021:oral-medicine-preparation-fee, applicationKey=oral-medicine:1",
+      },
+    ]);
+  });
+
+  it("blocks duplicate exclusivity group applications when evidence-backed exclusivity is declared", () => {
+    const exclusiveEvidence = evidenceRef("EVD-CAL-0032");
+    const firstRule: CalculationRule = {
+      ruleId: "exclusive:first",
+      evidenceRefs: [exclusiveEvidence],
+      effectiveFrom: CalendarDate.fromString("2026-06-01"),
+      apply: () => ({
+        status: "ITEM_CALCULATED",
+        description: "First exclusive result",
+        affectsClaim: true,
+        output: "itemPoints=1",
+        itemPoints: Points.fromInteger(1),
+        applicationKey: "first",
+        exclusivityGroup: {
+          groupId: "exclusive-group",
+          evidenceRef: exclusiveEvidence,
+        },
+      }),
+    };
+    const secondRule: CalculationRule = {
+      ...firstRule,
+      ruleId: "exclusive:second",
+      apply: () => ({
+        status: "ITEM_CALCULATED",
+        description: "Second exclusive result",
+        affectsClaim: true,
+        output: "itemPoints=1",
+        itemPoints: Points.fromInteger(1),
+        applicationKey: "second",
+        exclusivityGroup: {
+          groupId: "exclusive-group",
+          evidenceRef: exclusiveEvidence,
+        },
+      }),
+    };
+
+    const result = calculate(request(), { rules: [firstRule, secondRule] });
+    const blocked = expectBlocked(result);
+
+    expect(blocked.blockers).toEqual([
+      {
+        type: "BLOCKED_REGULATORY_REVIEW" satisfies BlockerType,
+        detail: "exclusive calculation group applied more than once: exclusive-group",
+      },
+    ]);
+  });
+
+  it("EVD-CAL-0001+EVD-CAL-0021+EVD-CAL-0037+EVD-CAL-0042+EVD-CAL-0032 canonical rules sum to 166 points", () => {
+    const result = calculate(request(), { rules: calculationRulesV20260601 });
+    const pointsOnly = expectPointsOnly(result, "166");
+
+    expect(pointsOnly.trace.evidenceIds).toEqual([
+      evidenceId("EVD-CAL-0001"),
+      evidenceId("EVD-CAL-0021"),
+      evidenceId("EVD-CAL-0037"),
+      evidenceId("EVD-CAL-0042"),
+      evidenceId("EVD-CAL-0032"),
     ]);
   });
 
   it("is deterministic for identical inputs", () => {
-    const first = calculate(request(), { rules: [] });
-    const second = calculate(request(), { rules: [] });
+    const ruleSet = {
+      rules: [
+        dispensingBasicFee1Rule,
+        createOralMedicinePreparationFeeRule("oral-medicine:1"),
+        dispensingManagementFee2Rule,
+      ],
+    };
+    const first = calculate(request(), ruleSet);
+    const second = calculate(request(), ruleSet);
 
     expect(second).toEqual(first);
   });
