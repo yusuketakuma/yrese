@@ -5,14 +5,39 @@
  */
 
 :root {
+  /* 基本色 */
   --color-bg: #ffffff;
   --color-fg: #1a1a1a;
   --color-border: #c0c0c0;
-  --color-mode-normal-bg: #e8f0e8;
-  --color-mode-degraded-bg: #fff3cd;
-  --color-mode-local-only-bg: #f8d7da;
-  --color-provisional-bg: #fff3cd;
-  --focus-ring: 3px solid #1a56db;
+  --color-surface: #f0f2f5;
+  --color-surface-raised: #f5f7fa;
+  --color-accent: #1a56db;
+  --color-danger-border: #b91c1c;
+
+  /* 状態色(WP-3006)— 必ずテキストラベルと併用する補助色。色単独で意味を伝えない */
+  --color-status-ok-bg: #e8f0e8;
+  --color-status-pending-bg: #fff3cd;
+  --color-status-blocked-bg: #f8d7da;
+  --color-status-neutral-bg: #eef1f4;
+
+  /* 旧名称(既存参照互換) */
+  --color-mode-normal-bg: var(--color-status-ok-bg);
+  --color-mode-degraded-bg: var(--color-status-pending-bg);
+  --color-mode-local-only-bg: var(--color-status-blocked-bg);
+  --color-provisional-bg: var(--color-status-pending-bg);
+
+  /* タイポグラフィ */
+  --font-size-sm: 0.85rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.4rem;
+
+  /* 余白 */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+
+  --focus-ring: 3px solid var(--color-accent);
 }
 
 * {
@@ -198,11 +223,93 @@ body {
 }
 
 .patient-search-error {
-  border: 2px solid #b91c1c;
-  background: var(--color-mode-local-only-bg);
+  border: 2px solid var(--color-danger-border);
+  background: var(--color-status-blocked-bg);
   padding: 0.6rem 0.9rem;
   border-radius: 3px;
   font-weight: 600;
+}
+
+/* 共通状態コンポーネント(WP-3006) */
+.status-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border: 1.5px solid var(--color-fg);
+  border-radius: 3px;
+  font-weight: 700;
+  background: var(--color-status-neutral-bg);
+}
+
+.status-badge[data-tone="ok"] {
+  background: var(--color-status-ok-bg);
+}
+
+.status-badge[data-tone="pending"] {
+  background: var(--color-status-pending-bg);
+}
+
+.status-badge[data-tone="blocked"] {
+  background: var(--color-status-blocked-bg);
+}
+
+.blocker-banner {
+  border: 2px solid var(--color-danger-border);
+  border-radius: 4px;
+  background: var(--color-status-blocked-bg);
+  padding: var(--space-2) var(--space-3);
+}
+
+.blocker-banner-title {
+  font-weight: 700;
+  margin: 0 0 var(--space-1);
+}
+
+.blocker-banner-reason,
+.blocker-banner-next-action {
+  margin: 0;
+}
+
+.blocker-banner-next-action {
+  font-weight: 600;
+}
+
+.severity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.severity-list li {
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-fg);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-status-neutral-bg);
+}
+
+.severity-list li[data-severity="BLOCKER"],
+.severity-list li[data-severity="CRITICAL"] {
+  border-left-color: var(--color-danger-border);
+  background: var(--color-status-blocked-bg);
+}
+
+.severity-list li[data-severity="ERROR"],
+.severity-list li[data-severity="WARNING"] {
+  background: var(--color-status-pending-bg);
+}
+
+.severity-label {
+  font-weight: 700;
+  margin-right: var(--space-2);
+}
+
+.empty-state,
+.loading-state {
+  border: 1px dashed var(--color-border);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-raised);
+  color: var(--color-fg);
 }
 
 .patient-search-results {
