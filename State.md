@@ -6,6 +6,11 @@
 
 ## 2026-07-10
 
+### WP-4075 reception patient identity single-source — plan request
+
+- WP-4074 landing後のself-scanで、受付create内部入力が requested `patientId` と `patient.patientId` の二重identityを持ち、in-memory/PostgreSQLとも保存IDとresponse属性を別々の入力から構成することを確認。`patient-requested-001` と別snapshot `patient-other-999` のdirect createが成功し、後者のID/属性を返す再現を得た。cross-tenant auth bypassではないが、faulty/future lookup adapterでwrong-patient表示・保存混在を起こす HIGH medical/data-integrity risk。
+- `WP-4075` として、scoped lookup結果IDのrequest一致をserverでfail-closed検証し、`ReceptionCreateInput` の冗長IDを削除してpatient snapshotの単一identityだけから両repositoryの保存/比較/responseを導出する案をfable5へ送信。contract/OpenAPI/DB migration/schemaは変えず、medical safety/data integrity/privacy reviewを必須とする。承認まではコードを変更しない。
+
 ### WP-4074 patient search cursor authenticity/privacy hardening
 
 - WP-7001 M1 landing後のself-scanで、API-001が不透明・非PHI・tenant/pharmacy/query拘束を要求する患者検索cursorに対し、旧実装が clear tenant/pharmacy + unsalted SHA-256(query) + offset のbase64url JSONであることを確認。cursorをdecodeしてquery候補をoffline照合でき、offsetを999へ改変・再encodeしたcursorも200で受理され空pageを返す再現を得た。既存cross-tenant/pharmacy/query checkは有効でauth bypassではない。
