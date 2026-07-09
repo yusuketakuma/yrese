@@ -6,6 +6,12 @@
 
 ## 2026-07-09(続き)
 
+### WP-4024 — audit runtime guard negative tests
+
+- codex実装。WP-2003 opus4.8 レビューのLOW指摘に対応し、既存のauditランタイムガードを否定テストで固定。
+- `targetRef` 空/制御文字/非snake_case、invalid outcome、malformed `businessReason.code`、missing `correlationId` を追加カバー。実装コード変更なし。
+- 検証: `pnpm --filter @yrese/audit test`(28 tests PASS)、`pnpm --filter @yrese/audit typecheck`、`pnpm check:boundaries`、`git diff --check`。
+
 ### WP-4021 — dev patient search fixture alignment
 
 - codex実装。Web側の既定DEV_HEADERS(`t-dev` / `ph-dev` / `u-dev`)を変更せず、API synthetic fixture に同じdevテナントの非PHI合成患者2件を追加。

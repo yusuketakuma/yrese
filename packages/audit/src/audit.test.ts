@@ -135,6 +135,63 @@ describe("createAuditEvent", () => {
     expect(Object.isFrozen(auditEvent.businessReason)).toBe(true);
   });
 
+  it.each([
+    [{ kind: "", id: "patient-001" }, /targetRef.kind/],
+    [{ kind: "patient", id: "" }, /targetRef.id/],
+    [{ kind: "patient\u0000", id: "patient-001" }, /targetRef.kind/],
+    [{ kind: "patient", id: "patient-001\u001f" }, /targetRef.id/],
+    [{ kind: "patient-record", id: "patient-001" }, /targetRef.kind/],
+  ] as const)("rejects invalid targetRef values: %j", (targetRef, expectedMessage) => {
+    expect(() =>
+      createAuditEvent(
+        baseAuditEvent({
+          targetRef,
+        }),
+      ),
+    ).toThrow(expectedMessage);
+  });
+
+  it("rejects invalid audit outcomes at runtime", () => {
+    expect(() =>
+      createAuditEvent(
+        baseAuditEvent({
+          outcome: "partial" as CreateAuditEventInput["outcome"],
+        }),
+      ),
+    ).toThrow(/outcome/);
+  });
+
+  it.each(["lowercase_reason", "NO", "BAD-CODE", "BAD CODE"] as const)(
+    "rejects malformed businessReason.code %j",
+    (code) => {
+      expect(() =>
+        createAuditEvent(
+          baseAuditEvent({
+            auditEventType: "accounting.payment.refunded",
+            aggregateId: "payment-001",
+            aggregateType: "accounting_payment",
+            targetRef: {
+              kind: "accounting_payment",
+              id: "payment-001",
+            },
+            businessReason: {
+              code,
+            },
+          }),
+        ),
+      ).toThrow(/businessReason.code/);
+    },
+  );
+
+  it("rejects audit events when correlationId is missing at runtime", () => {
+    expect(() =>
+      createAuditEvent({
+        ...baseAuditEvent(),
+        correlationId: undefined,
+      } as unknown as CreateAuditEventInput),
+    ).toThrow();
+  });
+
   it("validates registered reasonCode references and hash-chain fields", () => {
     const deniedAuditEvent = createAuditEvent(
       baseAuditEvent({

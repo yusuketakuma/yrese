@@ -227,10 +227,11 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 検証: payload変更でhash不一致になるテスト、prevHash連鎖テスト、hydrate時の不一致拒否テスト、`pnpm --filter @yrese/audit test`。
   - opus4.8 事後レビュー申し送り(2026-07-09): createAuditEvent は sha256 hex 形式検証のみで entryHash の計算・連続性は未検証。WP-2009 完了まで本番配線で任意ハッシュを供給する呼び出しを作らない(裏付けのない tamper-evidence を提示しない)。
 
-- [ ] WP-4024 audit 実行時ガードの否定テスト補強(opus4.8 レビュー指摘 LOW)
+- [x] WP-4024 audit 実行時ガードの否定テスト補強(opus4.8 レビュー指摘 LOW。本WPで実装)
   - 発見根拠: WP-2003 事後レビューで、assertTargetRef(空/制御文字/非snake_case)、assertOutcome(不正値)、businessReasonCodePattern(小文字/不正コード)、correlationId 欠落の否定テストが未カバーと指摘。ガード自体は実装済みで正しく動作。
   - 目的: 回帰保護のため否定テストを追加する。実装変更は不要。
-  - 検証: `pnpm --filter @yrese/audit test`。
+  - 実装: `targetRef` 空/制御文字/非snake_case、invalid outcome、malformed `businessReason.code`、missing `correlationId` の否定テストを追加。実装コード変更なし。
+  - 検証: `pnpm --filter @yrese/audit test`, `pnpm --filter @yrese/audit typecheck`, `pnpm check:boundaries`, `git diff --check`。
 
 - [x] WP-4027 WP-4020 完了の台帳反映(codex 提案 SELF-SCAN-20260709-07。本改版で反映済み)
 
