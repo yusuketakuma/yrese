@@ -4,14 +4,16 @@
 ssot_id: RCP-003
 title: 領収証再発行・取消・差替ポリシー
 domain: receipt
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.2.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
 source_refs: [構築プロンプト v0.1.8 §0.0.4.3(ReceiptDocument状態), §0.0.4.5]
 depends_on: [RCP-001, RCP-002, ACC-011(accounting_audit_log — WP-0033)]
 impacts: [WP-2202, WP-3101]
@@ -45,6 +47,7 @@ ISSUED → REPLACED(差替 — 後継文書IDを必須記録)
 - 再発行文書は原本の receipt_document_id への参照と再発行回数を持つ。
 - 再発行時の保存項目: 再発行者・再発行日時・reissue_reason・hash(RCP-005 の出力時点保存項目一式)。
 - 原本の交付履歴は保持したまま、再発行の交付履歴を追加する。
+- **反復再発行(opus4.8 指摘反映)**: 2回目以降の再発行は REISSUED→REISSUED の自己ループとして許容する。各回で再発行回数をインクリメントし、回ごとの交付履歴・理由・再発行者を記録する(回数上限は設けないが、異常な反復は監査画面で可視化する)。
 
 ## 3. 取消(CANCELLED)・無効化(VOIDED_WITH_REASON)
 
@@ -65,4 +68,5 @@ ISSUED → REPLACED(差替 — 後継文書IDを必須記録)
 
 ## 6. 変更履歴
 
+- 0.2.0 (2026-07-09): REISSUED→REISSUED 自己ループの明確化(回数・理由・交付履歴を毎回記録)。APPROVED 化。
 - 0.1.0 (2026-07-09): 初版(WP-0034)。

@@ -4,13 +4,15 @@
 ssot_id: ACC-011
 title: 会計監査ログポリシー
 domain: accounting
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.0
+version: 0.2.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
 source_refs: 構築プロンプト v0.1.8 §0.0.4.3, §0.0.4.16
 depends_on: [SEC-007(audit_log_design), MOD-008(audit_event_registry), ACC-001]
 open_questions:
@@ -27,6 +29,7 @@ open_questions:
 | イベント種別候補 | 対象 |
 |---|---|
 | accounting.charge_created | Charge 生成(calculation_trace 参照付き) |
+| accounting.charge_reversed | 誤 Charge の打消し(Reversal — 元 Charge 参照必須。opus4.8 指摘反映) |
 | accounting.payment_received / cancelled / refunded | 入金・取消・返金 |
 | accounting.allocation_created / reversed | 割当・割当取消 |
 | accounting.adjustment_created | 調整(理由必須) |
@@ -44,4 +47,5 @@ open_questions:
 
 ## 4. 変更履歴
 
+- 0.2.0 (2026-07-09): 監査イベント種別に accounting.charge_reversed を追加。APPROVED 化。
 - 0.1.0 (2026-07-09): 初版。

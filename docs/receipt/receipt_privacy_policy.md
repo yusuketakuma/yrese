@@ -4,14 +4,16 @@
 ssot_id: RCP-006
 title: 領収証・明細書プライバシーポリシー
 domain: receipt
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.2.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
 source_refs: [構築プロンプト v0.1.8 §0.0.4.5, SEC-004(privacy_impact_assessment)]
 depends_on: [RCP-001, RCP-004, SEC-004]
 impacts: [WP-2202, WP-3101]
@@ -50,4 +52,5 @@ blockers: []
 
 ## 5. 変更履歴
 
+- 0.2.0 (2026-07-09): opus4.8 レビュー通過(本書への個別指摘なし)に伴う承認化。APPROVED 化。
 - 0.1.0 (2026-07-09): 初版(WP-0034)。

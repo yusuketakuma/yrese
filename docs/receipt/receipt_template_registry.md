@@ -4,13 +4,15 @@
 ssot_id: RCP-005
 title: 領収証・明細書テンプレート版管理
 domain: receipt
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.0
+version: 0.2.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
 source_refs: [構築プロンプト v0.1.8 §0.0.4.5, v0.1.8 §20(帳票・電子保存)]
 depends_on: [RCP-001, RCP-004, REG-003(e-文書法・保存期間は legal_compliance_matrix 参照)]
 impacts: [WP-2202, packages/reports(将来), CAL-008(trace schema)]
@@ -47,4 +49,5 @@ hash / reissue_reason(再発行時) / cancel_reason(取消時)
 
 ## 4. 変更履歴
 
+- 0.2.0 (2026-07-09): opus4.8 レビュー通過(本書への個別指摘なし)に伴う承認化。APPROVED 化。
 - 0.1.0 (2026-07-09): 初版(WP-0034)。

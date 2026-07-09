@@ -4,14 +4,16 @@
 ssot_id: ACC-003
 title: 入金割当ポリシー
 domain: accounting
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.2.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
 source_refs: 構築プロンプト v0.1.8 §0.0.4.3, §0.0.4.4
 depends_on: [ACC-001, ACC-002, ACC-006]
 open_questions:
@@ -39,6 +41,15 @@ open_questions:
 
 - 入金登録・割当は Idempotency-Key を必須とし、LOCAL_ONLY→RECOVERY_SYNC の再送で二重割当しない(ARC-002 / @yrese/events)。
 
-## 5. 変更履歴
+## 5. チャネル跨ぎ二重収納の検出(opus4.8 指摘反映)
 
+Idempotency-Key の一致は「同一操作の再送」しか捕捉できない。**異なる key で同一の実世界入金が二重登録されるケース**(オフライン手入力+オンライン入力の重複、端末跨ぎの二重入力等)に対し、以下の検出契機を設ける。
+
+- **自動フラグ条件**: 同一患者 × 同額 × 近接時間窓(候補: 24時間、実装時に調整可)× 同一債権(または同一受付)への複数 Payment を検出したら、当該債権を `BLOCKED_ACCOUNTING_REVIEW`(二重計上疑い)へ自動遷移させ、人間レビューへ回す。
+- 自動での取消・マージは行わない(誤検知時の会計事実改変を防ぐ — CONFLICT_REQUIRES_HUMAN_REVIEW と同思想)。
+- 検出イベントは AccountingAuditEvent に記録する(ACC-011)。
+
+## 6. 変更履歴
+
+- 0.2.0 (2026-07-09): チャネル跨ぎ二重収納の検出条件を §5 に新設(患者×同額×時間窓×同一債権→BLOCKED_ACCOUNTING_REVIEW 自動フラグ)。APPROVED 化。
 - 0.1.0 (2026-07-09): 初版。
