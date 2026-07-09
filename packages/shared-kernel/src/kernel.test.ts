@@ -8,6 +8,10 @@ import {
   createKernelErrorCodeRegistry,
   PATIENT_SEARCH_INVALID_QUERY_ERROR_CODE,
   PROVISIONAL_STATUSES,
+  RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE,
+  RECEPTION_INVALID_REQUEST_ERROR_CODE,
+  RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE,
+  RECEPTION_STATUSES,
   SYSTEM_MODES,
   allowsClaimFinalization,
   allowsFinalCalculation,
@@ -16,10 +20,12 @@ import {
   isClaimable,
   isPermissionScope,
   isProvisionalStatus,
+  isReceptionStatus,
   isSystemMode,
   isValidErrorCode,
   patientId,
   permissionScope,
+  receptionId,
   tenantId,
 } from "./index.js";
 
@@ -27,6 +33,7 @@ describe("branded ids", () => {
   it("accepts non-empty ids and preserves the value", () => {
     expect(tenantId("t-001")).toBe("t-001");
     expect(patientId("p-123")).toBe("p-123");
+    expect(receptionId("reception-001")).toBe("reception-001");
   });
 
   it.each(["", "   ", "a\u0000b", "a\u001fb"])("rejects invalid id %j", (v) => {
@@ -92,6 +99,14 @@ describe("provisional statuses (v0.2.0 §14)", () => {
   });
 });
 
+describe("reception statuses (API-006)", () => {
+  it("contains the approved reception queue statuses", () => {
+    expect(RECEPTION_STATUSES).toEqual(["WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]);
+    expect(isReceptionStatus("WAITING")).toBe(true);
+    expect(isReceptionStatus("RECEIVED_PROVISIONAL")).toBe(false);
+  });
+});
+
 describe("blocker types (v0.2.0 §0.13 ほか)", () => {
   it("has no duplicates", () => {
     expect(new Set(BLOCKER_TYPES).size).toBe(BLOCKER_TYPES.length);
@@ -142,13 +157,25 @@ describe("error code registry", () => {
       requiresHumanReview: false,
       description: "invalid patient search query",
     });
+    expect(registry.get(RECEPTION_INVALID_REQUEST_ERROR_CODE)).toEqual({
+      code: "RCV-0001",
+      domain: "RECEPTION",
+      severity: "ERROR",
+      affectsClaimability: false,
+      requiresHumanReview: false,
+      description: "invalid reception request",
+    });
+    expect(registry.get(RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE)?.domain).toBe("RECEPTION");
+    expect(registry.get(RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE)?.code).toBe("RCV-0003");
   });
 });
 
 describe("permission scopes", () => {
   it("builds and validates scopes", () => {
     expect(permissionScope("claim", "finalize")).toBe("claim:finalize");
+    expect(permissionScope("reception", "write")).toBe("reception:write");
     expect(isPermissionScope("claim:finalize")).toBe(true);
+    expect(isPermissionScope("reception:read")).toBe(true);
     expect(isPermissionScope("claim:destroy")).toBe(false);
     expect(isPermissionScope("nonsense")).toBe(false);
   });

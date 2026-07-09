@@ -5,6 +5,9 @@ import {
   apiVersion,
   buildServer,
   patientSearchInvalidQueryErrorCode,
+  receptionIdempotencyConflictErrorCode,
+  receptionInvalidRequestErrorCode,
+  receptionPatientNotFoundErrorCode,
   type HealthResponse,
 } from './server.js';
 
@@ -41,6 +44,20 @@ const tenantOneTenantReadHeaders = {
   'x-dev-pharmacy': 'pharmacy-001',
   'x-dev-actor': 'user-001',
   'x-dev-scopes': 'tenant:read',
+} as const;
+
+const tenantOneReceptionReadHeaders = {
+  'x-dev-tenant': 'tenant-001',
+  'x-dev-pharmacy': 'pharmacy-001',
+  'x-dev-actor': 'user-001',
+  'x-dev-scopes': 'reception:read,patient:read',
+} as const;
+
+const tenantOneReceptionWriteHeaders = {
+  'x-dev-tenant': 'tenant-001',
+  'x-dev-pharmacy': 'pharmacy-001',
+  'x-dev-actor': 'user-001',
+  'x-dev-scopes': 'reception:write,patient:read',
 } as const;
 
 const malformedDevIdHeaderCases = [
@@ -430,6 +447,231 @@ describe('buildServer', () => {
     expect(differentQuery.json()).toEqual({
       errorCode: patientSearchInvalidQueryErrorCode,
       message: 'Invalid patient search query',
+    });
+  });
+
+  it('returns the reception queue in acceptedAt and receptionId stable order', async () => {
+    const server = buildServer();
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-09',
+      headers: tenantOneReceptionReadHeaders,
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    const body = response.json();
+    expect(body.date).toBe('2026-07-09');
+    expect(body.entries.map((entry: { receptionId: string }) => entry.receptionId)).toEqual([
+      'reception-syn-001',
+      'reception-syn-002',
+      'reception-syn-003',
+    ]);
+  });
+
+  it('denies /reception/queue when patient read scope is missing', async () => {
+    const server = buildServer();
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-09',
+      headers: {
+        ...tenantOneReceptionReadHeaders,
+        'x-dev-scopes': 'reception:read',
+      },
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      errorCode: 'AUTH-0003',
+      message: 'Forbidden',
+    });
+  });
+
+  it('returns RCV-0001 for invalid reception queue dates', async () => {
+    const server = buildServer();
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-02-31',
+      headers: tenantOneReceptionReadHeaders,
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      errorCode: receptionInvalidRequestErrorCode,
+      message: 'Invalid reception request',
+    });
+  });
+
+  it('creates a reception entry with patient summary and no-store response', async () => {
+    const acceptedAt = new Date('2026-07-09T09:00:00.000Z');
+    const server = buildServer({
+      now: () => acceptedAt,
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-004',
+        idempotencyKey: 'reception-create-001',
+      },
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(201);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({
+      receptionId: 'reception-000004',
+      acceptedAt: acceptedAt.toISOString(),
+      receptionStatus: 'WAITING',
+      prescriptionIntakeType: 'paper',
+      patient: {
+        patientId: 'patient-syn-004',
+      },
+    });
+  });
+
+  it('returns the existing entry for an idempotent reception resend', async () => {
+    const acceptedAt = new Date('2026-07-09T09:05:00.000Z');
+    const server = buildServer({
+      now: () => acceptedAt,
+    });
+    const payload = {
+      patientId: 'patient-syn-005',
+      idempotencyKey: 'reception-create-002',
+    };
+
+    const created = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload,
+    });
+    const resent = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload,
+    });
+
+    await server.close();
+
+    expect(created.statusCode).toBe(201);
+    expect(resent.statusCode).toBe(200);
+    expect(resent.json()).toEqual(created.json());
+  });
+
+  it('returns RCV-0003 when an idempotency key is reused with a different patient', async () => {
+    const server = buildServer({
+      now: () => new Date('2026-07-09T09:10:00.000Z'),
+    });
+
+    const created = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-006',
+        idempotencyKey: 'reception-create-003',
+      },
+    });
+    const conflict = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-007',
+        idempotencyKey: 'reception-create-003',
+      },
+    });
+
+    await server.close();
+
+    expect(created.statusCode).toBe(201);
+    expect(conflict.statusCode).toBe(409);
+    expect(conflict.json()).toEqual({
+      errorCode: receptionIdempotencyConflictErrorCode,
+      message: 'Reception idempotency conflict',
+    });
+  });
+
+  it('returns RCV-0001 for invalid reception create requests', async () => {
+    const server = buildServer();
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-001',
+        idempotencyKey: '   ',
+      },
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      errorCode: receptionInvalidRequestErrorCode,
+      message: 'Invalid reception request',
+    });
+  });
+
+  it('returns RCV-0002 when a reception patient is absent within the tenant and pharmacy', async () => {
+    const server = buildServer();
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-not-found',
+        idempotencyKey: 'reception-create-004',
+      },
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({
+      errorCode: receptionPatientNotFoundErrorCode,
+      message: 'Patient not found for reception',
+    });
+  });
+
+  it('denies /reception when reception write scope is missing', async () => {
+    const server = buildServer();
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: {
+        ...tenantOneReceptionWriteHeaders,
+        'x-dev-scopes': 'patient:read',
+      },
+      payload: {
+        patientId: 'patient-syn-001',
+        idempotencyKey: 'reception-create-005',
+      },
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      errorCode: 'AUTH-0003',
+      message: 'Forbidden',
     });
   });
 });

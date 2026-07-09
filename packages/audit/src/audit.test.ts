@@ -89,6 +89,13 @@ describe("audit event type registry", () => {
     expect(isAuditEventType("breakglass.used")).toBe(true);
     expect(isAuditEventType("breakglass.ended")).toBe(true);
   });
+
+  it("registers reception queue event types", () => {
+    expect(isAuditEventType("reception.created")).toBe(true);
+    expect(isAuditEventType("reception.cancelled")).toBe(true);
+    expect(requiresBusinessReason("reception.created")).toBe(false);
+    expect(requiresBusinessReason("reception.cancelled")).toBe(true);
+  });
 });
 
 describe("createAuditEvent", () => {

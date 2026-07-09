@@ -8,7 +8,7 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.1
+version: 0.1.2
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -20,6 +20,8 @@ depends_on:
 open_questions:
   - エラーコードとUI表示文言(次に何をすべきか)の対応表の管理場所(UIX-001 と連動)
 blockers: []
+change_log:
+  - 0.1.2 (2026-07-09): WP-3009-BE / API-006 v0.2.0 に基づき、RECEPTION domain の prefix を RCV と確定し、受付キュー API 用 RCV-0001/0002/0003 を登録。
 ```
 
 **構造の正本は `@yrese/shared-kernel` error-codes.ts、個別コードの正本は本レジストリである。** コードの新設は本SSOTへの行追加 → レビュー → 実装の順で行い、コード側での無登録コード発行を禁止する。
@@ -38,7 +40,7 @@ blockers: []
 
 ## 3. 採番規約
 
-- domain 短縮プレフィックス: RCPT / PAT / INS / PUBEX / RX / DISP / CALC / CLAIM / RPT / MST / SYNC / EXTAD / AUTH / AUDIT / SYS(【要確認】— 初回コード群登録時に確定)
+- domain 短縮プレフィックス: RCV(RECEPTION) / PAT / INS / PUBEX / RX / DISP / CALC / CLAIM / RPT / MST / SYNC / EXTAD / AUTH / AUDIT / SYS(未登録domainの短縮は初回コード群登録時に確定)
 - 0001〜 連番。欠番の再利用禁止。廃止コードは deprecated として本台帳に残す
 
 ## 4. 登録済みコード
@@ -47,6 +49,9 @@ blockers: []
 |---|---|---|---|---|---|---|
 | AUTH-0003 | AUTH | ERROR | false | false | 権限不足・コンテキスト不在(403)。deny-by-default の一律応答 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / apps/api errorResponseSchema) |
 | PAT-0001 | PATIENT | ERROR | false | false | 患者検索クエリ不正(400)。q/limit/cursor の契約違反や cursor 境界不一致 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-001 patient search) |
+| RCV-0001 | RECEPTION | ERROR | false | false | 受付キューリクエスト不正(400)。date 欠落/形式不正/非実在暦日、patientId 不正、idempotencyKey 欠落/形式不正 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-006 reception queue) |
+| RCV-0002 | RECEPTION | ERROR | false | false | 当該テナント・薬局内で受付対象 patientId が存在しない(404)。テナント越え探索は禁止 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-006 reception queue) |
+| RCV-0003 | RECEPTION | ERROR | false | false | idempotencyKey conflict(同一 key + 異なる patientId)(409)。誤患者の受付エントリを返さず fail-closed | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-006 reception queue) |
 
 (初期セットは `KERNEL_ERROR_CODES` seed として登録済み。今後の拡充は、各ドメイン実装WPの DoR で「使用するエラーコードが本台帳に登録済みであること」を要求することで行う)
 

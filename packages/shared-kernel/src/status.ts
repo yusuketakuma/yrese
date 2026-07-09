@@ -22,6 +22,19 @@ export function isProvisionalStatus(value: string): value is ProvisionalStatus {
 }
 
 /**
+ * 受付キュー専用ステータス。
+ *
+ * MOD-005(status_registry) / API-006(reception_queue_contract)で承認された
+ * キュー管理状態のみ。処方箋ライフサイクル状態や請求可否判定とは混同しない。
+ */
+export const RECEPTION_STATUSES = ["WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
+export type ReceptionStatus = (typeof RECEPTION_STATUSES)[number];
+
+export function isReceptionStatus(value: string): value is ReceptionStatus {
+  return (RECEPTION_STATUSES as readonly string[]).includes(value);
+}
+
+/**
  * 復旧後同期での競合状態。自動補正は禁止(v0.2.0 §16)。
  */
 export const CONFLICT_REQUIRES_HUMAN_REVIEW = "CONFLICT_REQUIRES_HUMAN_REVIEW" as const;

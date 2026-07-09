@@ -8,7 +8,7 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -23,6 +23,8 @@ open_questions:
   - ロール→scope の既定割当表(pharmacist/clerk/admin/support)— auth 設計SSOTと同時に確定
   - break-glass アカウントの scope 表現(SEC-005)
 blockers: []
+change_log:
+  - 0.1.1 (2026-07-09): WP-3009-BE / API-006 v0.2.0 に基づき、受付キュー API 用 resource `reception` を追加(`reception:read` / `reception:write`)。GET/POST は patient:read 併須。
 ```
 
 **現在の正本は `@yrese/shared-kernel` permissions.ts の実装である。** resource / action / role の追加は本SSOT改版 → fable5+opus4.8 レビュー → 実装の順で行う。
@@ -32,9 +34,9 @@ blockers: []
 - scope 形式: `${resource}:${action}`(テンプレートリテラル型 PermissionScope)。permissionScope() で構築、isPermissionScope() で検証
 - **deny-by-default**: apps/api の requirePermission(scope) は tenantContext 不在または scope 不足で 403(AUTH-0003)。UIだけの制御は禁止(API側必須 — 実装済み)
 
-## 2. resource(14種)
+## 2. resource(15種)
 
-patient / insurance / public-expense / prescription / dispensing / calculation / claim / report / master / audit-log / tenant / user / device / sync
+patient / reception / insurance / public-expense / prescription / dispensing / calculation / claim / report / master / audit-log / tenant / user / device / sync
 
 ## 3. action(5種)
 

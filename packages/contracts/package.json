@@ -12,6 +12,7 @@
     "./health": "./src/health.ts",
     "./openapi": "./src/openapi.ts",
     "./patient-search": "./src/patient-search.ts",
+    "./reception-queue": "./src/reception-queue.ts",
     "./whoami": "./src/whoami.ts"
   },
   "scripts": {

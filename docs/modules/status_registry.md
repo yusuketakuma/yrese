@@ -8,12 +8,13 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.2
+version: 0.1.3
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 change_log:
+  - 0.1.3 (2026-07-09): WP-3009-BE / API-006 v0.2.0 に基づき、受付キュー専用 `RECEPTION_STATUSES` 4値(WAITING / IN_PROGRESS / COMPLETED / CANCELLED)を追加。処方箋ライフサイクル状態・請求可否判定とは分離。
   - 0.1.2 (2026-07-09): BLOCKER_TYPES に FHIR/連携境界の2種(BLOCKED_OFFICIAL_ADAPTER_BOUNDARY / BLOCKED_FHIR_CONFORMANCE_REVIEW)を追加(opus4.8 FHIR系レビュー指摘 — PRD-007/DOM-005/006 が定義する停止条件の allow-list 登録)
   - 0.1.1 (2026-07-09): isClaimable を deny-list(fail-open)から allow-list(fail-closed)へ転換(opus4.8 指摘・CAL-007 §3.1、実装 WP-1012)。CLAIMABLE_SAFE_STATUSES への追加は本SSOT改版必須と明記
 source_refs:
@@ -49,6 +50,15 @@ PROVISIONAL_CALCULATION / PENDING_REVERIFY / PENDING_EXTERNAL_SYNC / PENDING_PMH
 - MVP対象外請求: `UNSUPPORTED_CLAIM_STATUSES` = BLOCKED_UNSUPPORTED_CLAIM / MANUAL_REVIEW_REQUIRED / FUTURE_SCOPE_NOT_CLAIMABLE
 - **請求可否の単一判定は `isClaimable(statuses)`**: **allow-list 方式(fail-closed)** — 明示的な `CLAIMABLE_SAFE_STATUSES`(初期値: 空)に含まれないステータスが1つでもあれば false。**未知ステータス=請求不可**。`isClaimable([]) === true`(ステータスなし=ブロック要因なし)。請求データ生成経路はこの関数を必ず通す(迂回実装禁止 — PRD-001)
 - isClaimable は当初 deny-list 方式(未知ステータス=true の fail-open)だったが、opus4.8 レビュー指摘(CAL-007 §3.1)により WP-1012 で fail-closed へ転換。`CLAIMABLE_SAFE_STATUSES` への追加は**本SSOT改版必須**
+
+## 2.1 受付キュー状態(RECEPTION_STATUSES — 4種、API-006)
+
+WAITING / IN_PROGRESS / COMPLETED / CANCELLED
+
+- 受付キューの業務管理状態であり、DOM-004 の処方箋ライフサイクル状態(RECEIVED_PROVISIONAL 等)とは別概念
+- `CANCELLED` はエントリ削除ではなく取消状態として保持する(P-12)。取消理由の記録様式は後続の調剤・会計・監査系 SSOT に委譲
+- 受付状態は請求可否判定 `isClaimable()` に関与しない
+- 値の正本は `@yrese/shared-kernel` の `RECEPTION_STATUSES`
 
 ## 3. BLOCKER 種別(BLOCKER_TYPES — 33種)
 

@@ -7,6 +7,8 @@ export const AUDIT_EVENT_TYPES = [
   "patient.created",
   "patient.updated",
   "patient.deleted",
+  "reception.created",
+  "reception.cancelled",
   "insurance.viewed",
   "insurance.updated",
   "prescription.created",

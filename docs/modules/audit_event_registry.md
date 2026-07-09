@@ -8,7 +8,7 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.2.2
+version: 0.2.3
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -22,6 +22,7 @@ depends_on:
 open_questions:
   - 保存期間(REG-003 の法定根拠確定待ち — SEC-007 と同期)
 change_log:
+  - 0.2.3 (2026-07-09): WP-3009-BE / API-006 v0.2.0 に基づき、受付キュー操作の監査イベント `reception.created` / `reception.cancelled` を追加。`reception.cancelled` は action=cancelled の既存規律により businessReason 必須。
   - 0.2.2 (2026-07-09): WP-4043 実装状態 drift 整備。MOD-008 台帳の実装先を `@yrese/audit` 実装済みとして記録し、旧予定の記述を現行 packages/* 実態へ同期(命名文法・イベント種別・必須属性は不変更)。
   - 0.2.1 (2026-07-09) SEC-008 §4 反映 — breakglass.ended を追加し、businessReasonRequiredEventTypes に breakglass.used を登録。終了イベントは発動イベントと同一 correlationId で紐づける。
   - 0.2.0 (2026-07-09) opus4.8 命名レビュー(CHANGES_REQUIRED)反映 — 文法正式化・会計taxonomy統合(checkout.* supersede)・欠落3種追加・実装時必須2点。命名確定済み、WP-2003 解禁。
@@ -45,6 +46,7 @@ blockers: []
 | 種別(文法準拠) | 対象操作 | outcome必須 | 備考 |
 |---|---|---|---|
 | patient.viewed / patient.created / patient.updated / patient.deleted | 要配慮情報アクセス・CRUD | ○ | viewed は要配慮情報アクセス記録 |
+| reception.created / reception.cancelled | 受付キュー登録・取消 | ○ | API-006。cancelled は businessReason 必須(action 規律) |
 | insurance.viewed / insurance.updated | 保険・公費情報 | ○ | public-expense を含む【要確認 — 分離要否】 |
 | prescription.created / prescription.updated | 処方入力 | ○ | |
 | dispensing.confirmed | 薬剤師確認 | ○ | actor は薬剤師(人間責任の明示) |

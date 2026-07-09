@@ -3,6 +3,7 @@ import { patientSearchResultSchema } from '@yrese/contracts';
 import {
   patientId,
   pharmacyId,
+  type PatientId,
   tenantId,
   type PharmacyId,
   type TenantId,
@@ -27,6 +28,13 @@ export interface PatientSearchPage {
 
 export interface PatientRepository {
   search(input: PatientSearchInput): Promise<PatientSearchPage>;
+  findById(input: PatientLookupInput): Promise<PatientSearchResult | undefined>;
+}
+
+export interface PatientLookupInput {
+  readonly tenantId: TenantId;
+  readonly pharmacyId: PharmacyId;
+  readonly patientId: PatientId;
 }
 
 interface SyntheticPatientRecord extends PatientSearchResult {
@@ -195,6 +203,17 @@ function toSearchResult(record: SyntheticPatientRecord): PatientSearchResult {
 
 export class InMemoryPatientRepository implements PatientRepository {
   constructor(private readonly records: readonly SyntheticPatientRecord[] = syntheticPatients) {}
+
+  async findById(input: PatientLookupInput): Promise<PatientSearchResult | undefined> {
+    const record = this.records.find(
+      (candidate) =>
+        candidate.tenantId === input.tenantId &&
+        candidate.pharmacyId === input.pharmacyId &&
+        candidate.patientId === input.patientId,
+    );
+
+    return record === undefined ? undefined : toSearchResult(record);
+  }
 
   async search(input: PatientSearchInput): Promise<PatientSearchPage> {
     const normalizedQuery = normalizeSearchText(input.q);

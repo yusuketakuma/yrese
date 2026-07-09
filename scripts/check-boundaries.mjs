@@ -9,6 +9,7 @@ const ignoredDirs = new Set([".git", ".next", "coverage", "dist", "node_modules"
 const duplicateConstRules = [
   { constName: "SYSTEM_MODES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
   { constName: "PROVISIONAL_STATUSES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
+  { constName: "RECEPTION_STATUSES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
   { constName: "BLOCKER_TYPES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
   { constName: "PERMISSION_ACTIONS", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
   { constName: "PERMISSION_RESOURCES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },

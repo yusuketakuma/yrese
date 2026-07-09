@@ -92,8 +92,116 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /reception/queue:
+    get:
+      operationId: getReceptionQueue
+      tags:
+        - reception
+      summary: Return the reception queue for one explicit calendar date
+      description: "Requires reception:read and patient:read scopes. The response contains PatientSummary PHI and must use
+        Cache-Control: no-store."
+      x-yrese-ssot: API-006
+      x-yrese-required-scopes:
+        - reception:read
+        - patient:read
+      parameters:
+        - in: query
+          name: date
+          schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          required: true
+      responses:
+        "200":
+          description: Reception queue entries in acceptedAt asc + receptionId asc order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceptionQueueResponse"
+        "400":
+          description: Invalid reception queue query (RCV-0001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden (AUTH-0003)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /reception:
+    post:
+      operationId: createReception
+      tags:
+        - reception
+      summary: Create a reception queue entry
+      description: "Requires reception:write and patient:read scopes. The response contains PatientSummary PHI and must use
+        Cache-Control: no-store."
+      x-yrese-ssot: API-006
+      x-yrese-required-scopes:
+        - reception:write
+        - patient:read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceptionCreateRequest"
+      responses:
+        "200":
+          description: Idempotent resend returned the existing reception entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceptionQueueEntry"
+        "201":
+          description: Reception entry created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceptionQueueEntry"
+        "400":
+          description: Invalid reception create request (RCV-0001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden (AUTH-0003)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Patient not found for reception (RCV-0002)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Idempotency conflict (RCV-0003)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
+    ReceptionCreateRequest:
+      type: object
+      properties:
+        patientId:
+          type: string
+          minLength: 1
+        idempotencyKey:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+        - patientId
+        - idempotencyKey
+      description: Create a reception entry using an opaque idempotency key.
     HealthResponse:
       type: object
       properties:
@@ -133,7 +241,7 @@ components:
           type: array
           items:
             type: string
-            pattern: ^(?:patient|insurance|public-expense|prescription|dispensing|calculation|claim|report|master|audit-log|tenant|user|device|sync):(?:read|write|confirm|finalize|admin)$
+            pattern: ^(?:patient|reception|insurance|public-expense|prescription|dispensing|calculation|claim|report|master|audit-log|tenant|user|device|sync):(?:read|write|confirm|finalize|admin)$
       required:
         - tenantId
         - pharmacyId
@@ -212,3 +320,162 @@ components:
         - results
       additionalProperties: false
       description: Patient search response. Contains PHI and must not be logged in plaintext.
+    ReceptionQueueResponse:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        entries:
+          type: array
+          items:
+            type: object
+            properties:
+              receptionId:
+                type: string
+                minLength: 1
+              patient:
+                type: object
+                properties:
+                  patientId:
+                    type: string
+                    minLength: 1
+                  name:
+                    type: string
+                    minLength: 1
+                  kana:
+                    type: string
+                    minLength: 1
+                  birthDate:
+                    type: string
+                    format: date
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                  sex:
+                    type: string
+                    enum:
+                      - male
+                      - female
+                      - unknown
+                  patientNumber:
+                    type: string
+                    minLength: 1
+                  eligibilityStatus:
+                    type: string
+                    enum:
+                      - VERIFIED
+                      - PENDING_REVERIFY
+                      - LOCAL_ONLY_UNVERIFIED
+                      - NOT_CHECKED
+                  eligibilityCheckedAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                required:
+                  - patientId
+                  - name
+                  - kana
+                  - birthDate
+                  - sex
+                  - patientNumber
+                  - eligibilityStatus
+                additionalProperties: false
+              acceptedAt:
+                type: string
+                format: date-time
+                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+              receptionStatus:
+                type: string
+                enum:
+                  - WAITING
+                  - IN_PROGRESS
+                  - COMPLETED
+                  - CANCELLED
+              prescriptionIntakeType:
+                type: string
+                const: paper
+            required:
+              - receptionId
+              - patient
+              - acceptedAt
+              - receptionStatus
+              - prescriptionIntakeType
+            additionalProperties: false
+      required:
+        - date
+        - entries
+      additionalProperties: false
+      description: "Reception queue response. Contains PHI and must use Cache-Control: no-store."
+    ReceptionQueueEntry:
+      type: object
+      properties:
+        receptionId:
+          type: string
+          minLength: 1
+        patient:
+          type: object
+          properties:
+            patientId:
+              type: string
+              minLength: 1
+            name:
+              type: string
+              minLength: 1
+            kana:
+              type: string
+              minLength: 1
+            birthDate:
+              type: string
+              format: date
+              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+            sex:
+              type: string
+              enum:
+                - male
+                - female
+                - unknown
+            patientNumber:
+              type: string
+              minLength: 1
+            eligibilityStatus:
+              type: string
+              enum:
+                - VERIFIED
+                - PENDING_REVERIFY
+                - LOCAL_ONLY_UNVERIFIED
+                - NOT_CHECKED
+            eligibilityCheckedAt:
+              type: string
+              format: date-time
+              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+          required:
+            - patientId
+            - name
+            - kana
+            - birthDate
+            - sex
+            - patientNumber
+            - eligibilityStatus
+          additionalProperties: false
+        acceptedAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+        receptionStatus:
+          type: string
+          enum:
+            - WAITING
+            - IN_PROGRESS
+            - COMPLETED
+            - CANCELLED
+        prescriptionIntakeType:
+          type: string
+          const: paper
+      required:
+        - receptionId
+        - patient
+        - acceptedAt
+        - receptionStatus
+        - prescriptionIntakeType
+      additionalProperties: false
+      description: Reception queue entry. Contains PatientSummary PHI and must not be logged in plaintext.

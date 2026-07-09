@@ -11,6 +11,7 @@ export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];
 
 export const PERMISSION_RESOURCES = [
   "patient",
+  "reception",
   "insurance",
   "public-expense",
   "prescription",

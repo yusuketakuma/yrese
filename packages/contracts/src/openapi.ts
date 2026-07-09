@@ -5,6 +5,12 @@ import { createDocument, type ZodOpenApiObject } from "zod-openapi";
 import { errorResponseSchema } from "./error.js";
 import { healthResponseSchema } from "./health.js";
 import { patientSearchQuerySchema, patientSearchResponseSchema } from "./patient-search.js";
+import {
+  receptionCreateRequestSchema,
+  receptionQueueQuerySchema,
+  receptionQueueEntrySchema,
+  receptionQueueResponseSchema,
+} from "./reception-queue.js";
 import { whoamiResponseSchema } from "./whoami.js";
 
 const jsonContentType = "application/json";
@@ -32,6 +38,26 @@ const patientSearchResponseOpenApiSchema = patientSearchResponseSchema.meta({
 const whoamiResponseOpenApiSchema = whoamiResponseSchema.meta({
   id: "WhoamiResponse",
   description: "Current tenant context response. PHI-free.",
+});
+
+const receptionQueueQueryOpenApiSchema = receptionQueueQuerySchema.meta({
+  id: "ReceptionQueueQuery",
+  description: "Reception queue query parameters",
+});
+
+const receptionQueueEntryOpenApiSchema = receptionQueueEntrySchema.meta({
+  id: "ReceptionQueueEntry",
+  description: "Reception queue entry. Contains PatientSummary PHI and must not be logged in plaintext.",
+});
+
+const receptionQueueResponseOpenApiSchema = receptionQueueResponseSchema.meta({
+  id: "ReceptionQueueResponse",
+  description: "Reception queue response. Contains PHI and must use Cache-Control: no-store.",
+});
+
+const receptionCreateRequestOpenApiSchema = receptionCreateRequestSchema.meta({
+  id: "ReceptionCreateRequest",
+  description: "Create a reception entry using an opaque idempotency key.",
 });
 
 const openApiDefinition = {
@@ -118,6 +144,115 @@ const openApiDefinition = {
           },
           "403": {
             description: "Forbidden (AUTH-0003)",
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+        },
+      },
+    },
+    "/reception/queue": {
+      get: {
+        operationId: "getReceptionQueue",
+        tags: ["reception"],
+        summary: "Return the reception queue for one explicit calendar date",
+        description:
+          "Requires reception:read and patient:read scopes. The response contains PatientSummary PHI and must use Cache-Control: no-store.",
+        "x-yrese-ssot": "API-006",
+        "x-yrese-required-scopes": ["reception:read", "patient:read"],
+        requestParams: {
+          query: receptionQueueQueryOpenApiSchema,
+        },
+        responses: {
+          "200": {
+            description: "Reception queue entries in acceptedAt asc + receptionId asc order",
+            content: {
+              [jsonContentType]: {
+                schema: receptionQueueResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": {
+            description: "Invalid reception queue query (RCV-0001)",
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+          "403": {
+            description: "Forbidden (AUTH-0003)",
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+        },
+      },
+    },
+    "/reception": {
+      post: {
+        operationId: "createReception",
+        tags: ["reception"],
+        summary: "Create a reception queue entry",
+        description:
+          "Requires reception:write and patient:read scopes. The response contains PatientSummary PHI and must use Cache-Control: no-store.",
+        "x-yrese-ssot": "API-006",
+        "x-yrese-required-scopes": ["reception:write", "patient:read"],
+        requestBody: {
+          required: true,
+          content: {
+            [jsonContentType]: {
+              schema: receptionCreateRequestOpenApiSchema,
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Reception entry created",
+            content: {
+              [jsonContentType]: {
+                schema: receptionQueueEntryOpenApiSchema,
+              },
+            },
+          },
+          "200": {
+            description: "Idempotent resend returned the existing reception entry",
+            content: {
+              [jsonContentType]: {
+                schema: receptionQueueEntryOpenApiSchema,
+              },
+            },
+          },
+          "400": {
+            description: "Invalid reception create request (RCV-0001)",
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+          "403": {
+            description: "Forbidden (AUTH-0003)",
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+          "404": {
+            description: "Patient not found for reception (RCV-0002)",
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+          "409": {
+            description: "Idempotency conflict (RCV-0003)",
             content: {
               [jsonContentType]: {
                 schema: errorResponseOpenApiSchema,
