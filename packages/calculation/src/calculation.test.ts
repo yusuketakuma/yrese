@@ -22,6 +22,7 @@ import {
   createOralMedicinePreparationFeeRule,
   dispensingBasicFee1Rule,
   dispensingManagementFee2Rule,
+  invalidStepResultWarning,
   medicationManagementGuidanceFee3Rule,
   nightHolidayAdditionRule,
   requirementsNotVerifiedWarning,
@@ -147,6 +148,105 @@ describe("calculate", () => {
     };
 
     expect(() => calculate(request(), ruleSet)).toThrow(/require at least one evidenceRef/);
+  });
+
+  it("returns BLOCKED with SSOT_UPDATE_REQUIRED when a rule returns an unsupported StepResult status", () => {
+    const ruleSet: CalculationRuleSet = {
+      rules: [
+        {
+          ruleId: "rule:invalid-step-status",
+          evidenceRefs: [evidenceRef("EVD-CAL-0001")],
+          effectiveFrom: CalendarDate.fromString("2026-06-01"),
+          apply: () => ({ status: "SKIPPED" }) as any,
+        },
+      ],
+    };
+
+    const result = calculate(request(), ruleSet);
+    const blocked = expectBlocked(result);
+
+    expect(blocked.blockers).toEqual([
+      {
+        type: "SSOT_UPDATE_REQUIRED" satisfies BlockerType,
+        detail: "invalid StepResult for ruleId=rule:invalid-step-status: status must be BLOCKED or ITEM_CALCULATED",
+      },
+    ]);
+    expect(blocked.trace.blockers).toEqual(["SSOT_UPDATE_REQUIRED"]);
+    expect(blocked.trace.warnings).toEqual([invalidStepResultWarning]);
+    expect(blocked.trace.steps).toEqual([
+      {
+        stepId: "rule:invalid-step-status:invalid-step-result",
+        description: "Stop calculation because the rule returned a StepResult shape outside the approved SSOT",
+        affectsClaim: false,
+        evidenceRefs: [evidenceRef("EVD-CAL-0001")],
+        inputRefs: [],
+        output: "SSOT_UPDATE_REQUIRED:status must be BLOCKED or ITEM_CALCULATED",
+      },
+    ]);
+  });
+
+  it("returns BLOCKED with SSOT_UPDATE_REQUIRED when an item StepResult is missing applicationKey", () => {
+    const ruleSet: CalculationRuleSet = {
+      rules: [
+        {
+          ruleId: "rule:item-without-application-key",
+          evidenceRefs: [evidenceRef("EVD-CAL-0001")],
+          effectiveFrom: CalendarDate.fromString("2026-06-01"),
+          apply: () =>
+            ({
+              status: "ITEM_CALCULATED",
+              description: "Invalid item result",
+              affectsClaim: true,
+              output: "itemPoints=1",
+              itemPoints: Points.fromInteger(1),
+            }) as any,
+        },
+      ],
+    };
+
+    const result = calculate(request(), ruleSet);
+    const blocked = expectBlocked(result);
+
+    expect(blocked.blockers).toEqual([
+      {
+        type: "SSOT_UPDATE_REQUIRED" satisfies BlockerType,
+        detail:
+          "invalid StepResult for ruleId=rule:item-without-application-key: applicationKey must be a non-empty string",
+      },
+    ]);
+    expect(blocked.trace.blockers).toEqual(["SSOT_UPDATE_REQUIRED"]);
+    expect(blocked.trace.warnings).toEqual([invalidStepResultWarning]);
+  });
+
+  it("returns BLOCKED with SSOT_UPDATE_REQUIRED when a blocked StepResult is missing blocker", () => {
+    const ruleSet: CalculationRuleSet = {
+      rules: [
+        {
+          ruleId: "rule:blocked-without-blocker",
+          evidenceRefs: [evidenceRef("EVD-CAL-0001")],
+          effectiveFrom: CalendarDate.fromString("2026-06-01"),
+          apply: () =>
+            ({
+              status: "BLOCKED",
+              description: "Invalid blocked result",
+              affectsClaim: false,
+              output: "BLOCKED",
+            }) as any,
+        },
+      ],
+    };
+
+    const result = calculate(request(), ruleSet);
+    const blocked = expectBlocked(result);
+
+    expect(blocked.blockers).toEqual([
+      {
+        type: "SSOT_UPDATE_REQUIRED" satisfies BlockerType,
+        detail: "invalid StepResult for ruleId=rule:blocked-without-blocker: blocker must be an object",
+      },
+    ]);
+    expect(blocked.trace.blockers).toEqual(["SSOT_UPDATE_REQUIRED"]);
+    expect(blocked.trace.warnings).toEqual([invalidStepResultWarning]);
   });
 
   it("EVD-CAL-0001 calculates dispensing basic fee 1 as 47 points", () => {

@@ -6,6 +6,13 @@
 
 ## 2026-07-09(続き)
 
+### WP-4034 — calculation StepResult runtime shape guard
+
+- fable5 PLAN_APPROVED 後に codex 実装。`@yrese/calculation` の `rule.apply()` 戻り値に runtime shape guard を追加し、型を迂回した不正 `StepResult` を曖昧な TypeError ではなく `BLOCKED` / `SSOT_UPDATE_REQUIRED` として fail-closed に返すようにした。
+- probe で判明した `{ status: "SKIPPED" } as any` に加え、`ITEM_CALCULATED` の `applicationKey` 欠落、`BLOCKED` の `blocker` 欠落を否定テストで固定。warning は `算定ルール戻り値SSOT不一致(SSOT_UPDATE_REQUIRED)` に統一。
+- 既存の算定ルール、点数値、正常系 trace/golden は変更なし。正常系16本を含む calculation 19テストが PASS。
+- 検証: `pnpm --filter @yrese/calculation test`(19 tests PASS)、`pnpm --filter @yrese/calculation typecheck`、`pnpm -r typecheck`、`pnpm check:boundaries`、`pnpm check:ssot-index`、`git diff --check`。
+
 ### UI/UX 開発計画の起案(ユーザー指示)
 
 - ユーザー指示2件: (1) UI 構築時は The Component Gallery(component.gallery)を活用する(メモリにも保存)、(2) fable5 が UI/UX の今後の開発計画を緻密に立案する

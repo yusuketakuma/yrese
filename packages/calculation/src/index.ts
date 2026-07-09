@@ -6,7 +6,7 @@ import type {
   PrescriptionId,
   TenantId,
 } from "@yrese/shared-kernel";
-import { evidenceId } from "@yrese/shared-kernel";
+import { evidenceId, isBlockerType } from "@yrese/shared-kernel";
 import type { ClaimMonth, DispensingDate, PrescriptionDate, ReceptionDate } from "@yrese/date-time";
 import { CalendarDate } from "@yrese/date-time";
 import { Points, type Yen } from "@yrese/money";
@@ -129,6 +129,7 @@ export type CalculationResult =
   | CalculatedCalculationResult;
 
 export const requirementsNotVerifiedWarning = "算定要件未検証(適用可否は呼び出し側指定)";
+export const invalidStepResultWarning = "算定ルール戻り値SSOT不一致(SSOT_UPDATE_REQUIRED)";
 
 const regulatoryReviewBlocker: CalculationBlocker = Object.freeze({
   type: "BLOCKED_REGULATORY_REVIEW",
@@ -162,6 +163,18 @@ function assertPositiveSafeInteger(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value < 1) {
     throw new RangeError(`${label} must be a positive safe integer`);
   }
+}
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isStringArray(value: unknown): value is readonly string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 function calculationEvidenceRef(id: string): EvidenceRef {
@@ -319,6 +332,136 @@ function createExclusivityBlocker(groupId: string): CalculationBlocker {
   };
 }
 
+function createInvalidStepResultBlocker(ruleId: string, reason: string): CalculationBlocker {
+  return {
+    type: "SSOT_UPDATE_REQUIRED",
+    detail: `invalid StepResult for ruleId=${ruleId}: ${reason}`,
+  };
+}
+
+function invalidStepResultStep(rule: CalculationRule, reason: string): CalculationTraceStep {
+  return {
+    stepId: `${rule.ruleId}:invalid-step-result`,
+    description: "Stop calculation because the rule returned a StepResult shape outside the approved SSOT",
+    affectsClaim: false,
+    evidenceRefs: rule.evidenceRefs,
+    inputRefs: [],
+    output: `SSOT_UPDATE_REQUIRED:${reason}`,
+  };
+}
+
+type StepResultValidation = { readonly ok: true; readonly result: StepResult } | { readonly ok: false; readonly reason: string };
+
+function validateCommonStepTraceOutput(result: Readonly<Record<string, unknown>>): string | undefined {
+  if (!isNonEmptyString(result.description)) {
+    return "description must be a non-empty string";
+  }
+  if (typeof result.affectsClaim !== "boolean") {
+    return "affectsClaim must be a boolean";
+  }
+  if (!isNonEmptyString(result.output)) {
+    return "output must be a non-empty string";
+  }
+  if (result.inputRefs !== undefined && !isStringArray(result.inputRefs)) {
+    return "inputRefs must be a string array";
+  }
+  if (result.warnings !== undefined && !isStringArray(result.warnings)) {
+    return "warnings must be a string array";
+  }
+  return undefined;
+}
+
+function validateBlockerShape(value: unknown): string | undefined {
+  if (!isRecord(value)) {
+    return "blocker must be an object";
+  }
+  if (typeof value.type !== "string" || !isBlockerType(value.type)) {
+    return "blocker.type must be a registered BlockerType";
+  }
+  if (!isNonEmptyString(value.detail)) {
+    return "blocker.detail must be a non-empty string";
+  }
+  return undefined;
+}
+
+function validateEvidenceRefShape(value: unknown, label: string): string | undefined {
+  if (!isRecord(value)) {
+    return `${label} must be an object`;
+  }
+  if ("url" in value) {
+    return `${label}.url must not be present`;
+  }
+  if (!isNonEmptyString(value.evidenceId)) {
+    return `${label}.evidenceId must be a non-empty string`;
+  }
+  if (!isNonEmptyString(value.sourceType)) {
+    return `${label}.sourceType must be a non-empty string`;
+  }
+  if (!isNonEmptyString(value.title)) {
+    return `${label}.title must be a non-empty string`;
+  }
+  if (value.version !== undefined && typeof value.version !== "string") {
+    return `${label}.version must be a string`;
+  }
+  if (value.effectiveFrom !== undefined && typeof value.effectiveFrom !== "string") {
+    return `${label}.effectiveFrom must be a string`;
+  }
+  return undefined;
+}
+
+function validateExclusivityGroupShape(value: unknown): string | undefined {
+  if (!isRecord(value)) {
+    return "exclusivityGroup must be an object";
+  }
+  if (!isNonEmptyString(value.groupId)) {
+    return "exclusivityGroup.groupId must be a non-empty string";
+  }
+  return validateEvidenceRefShape(value.evidenceRef, "exclusivityGroup.evidenceRef");
+}
+
+function validateStepResult(value: unknown): StepResultValidation {
+  if (!isRecord(value)) {
+    return { ok: false, reason: "StepResult must be an object" };
+  }
+
+  if (value.status !== "BLOCKED" && value.status !== "ITEM_CALCULATED") {
+    return { ok: false, reason: "status must be BLOCKED or ITEM_CALCULATED" };
+  }
+
+  const commonFailure = validateCommonStepTraceOutput(value);
+  if (commonFailure !== undefined) {
+    return { ok: false, reason: commonFailure };
+  }
+
+  if (value.status === "BLOCKED") {
+    const blockerFailure = validateBlockerShape(value.blocker);
+    return blockerFailure === undefined
+      ? { ok: true, result: value as unknown as BlockedStepResult }
+      : { ok: false, reason: blockerFailure };
+  }
+
+  if (!(value.itemPoints instanceof Points)) {
+    return { ok: false, reason: "itemPoints must be a Points value" };
+  }
+  if (!isNonEmptyString(value.applicationKey)) {
+    return { ok: false, reason: "applicationKey must be a non-empty string" };
+  }
+  if (
+    value.maxApplications !== undefined &&
+    (typeof value.maxApplications !== "number" || !Number.isSafeInteger(value.maxApplications) || value.maxApplications < 1)
+  ) {
+    return { ok: false, reason: "maxApplications must be a positive safe integer" };
+  }
+  if (value.exclusivityGroup !== undefined) {
+    const exclusivityGroupFailure = validateExclusivityGroupShape(value.exclusivityGroup);
+    if (exclusivityGroupFailure !== undefined) {
+      return { ok: false, reason: exclusivityGroupFailure };
+    }
+  }
+
+  return { ok: true, result: value as unknown as ItemCalculatedStepResult };
+}
+
 function createFixedPointsRule(input: {
   readonly ruleId: string;
   readonly evidenceRef: EvidenceRef;
@@ -428,7 +571,18 @@ export function calculate(request: CalculationRequest, ruleSet: CalculationRuleS
       continue;
     }
 
-    const result = rule.apply(Object.freeze({ request, ruleId: rule.ruleId }));
+    const resultValidation = validateStepResult(rule.apply(Object.freeze({ request, ruleId: rule.ruleId })));
+    if (!resultValidation.ok) {
+      const blocker = createInvalidStepResultBlocker(rule.ruleId, resultValidation.reason);
+      return createBlockedResult(
+        request,
+        [...blockers, blocker],
+        [...steps, invalidStepResultStep(rule, resultValidation.reason)],
+        [...warnings, invalidStepResultWarning],
+      );
+    }
+
+    const result = resultValidation.result;
     steps.push(ruleStep(rule, result));
     warnings.push(...(result.warnings ?? []));
 
