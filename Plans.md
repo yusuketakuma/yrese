@@ -500,6 +500,19 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 実装: `@yrese/shared-kernel` の `permissionScope()` / `PermissionScope` を使い、患者検索の default dev scope を `patient:read` に限定。受付一覧は `reception:read,patient:read`、受付登録は `reception:write,patient:read` を明示指定する。API認可plugin・server semantics・DB・SSOT本文・contract shape は変更なし。
   - 検証: PatientSearch dev header は `patient:read` のみ、Reception queue fetch は `reception:read,patient:read`、Reception create は `reception:write,patient:read` を送ること、production/test/undefined は引き続き `{}` を web tests で固定。`pnpm --filter @yrese/web test` PASS(37)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
 
+- [ ] WP-4066 dev tenant context explicit opt-in(codex 提案 SELF-SCAN-20260710-11、HIGH、fable5 PLAN_APPROVED + security/privacy review 待ち)
+  - 発見根拠: `apps/api/src/plugins/tenant-context.ts:81-90` は dev header auth stub を `NODE_ENV === "production"` の場合だけ拒否する。一方、`apps/api/src/config.ts:70-75` は `NODE_ENV` と独立して `DATABASE_URL` があれば PostgreSQL を選択し、`apps/api/src/main.ts:25-32` は同じ `buildServer()` に実 repository を注入するため、production 以外の環境名で caller-supplied dev headers が永続化系 API の trusted context になりうる。
+  - 再現: `NODE_ENV=staging` で任意の `x-dev-tenant` / `x-dev-pharmacy` / `x-dev-actor` / `x-dev-scopes=tenant:read` を付けて `GET /whoami` を呼ぶと、trusted context として echo され 200 を返す。
+  - 重複範囲: WP-4038 は Web client が development 以外で dev headers を送らない境界、WP-4056 は repository mode の明示化であり、任意 client による backend dev header 受理は閉じていない。
+  - 最小修正案: dev tenant adapter を deny-by-default とし、検証済みの明示 dev/test opt-in がある場合だけ有効化する。staging / `NODE_ENV` undefined / typo / PostgreSQL mode の否定テストと、明示 opt-in development の肯定テストを追加する。OIDC 実装・権限緩和は本WPに含めない。
+  - 状態: fable5 へ `SECURITY_FINDING + CODEX_PLAN_PRIORITY_CHECK` を agmsg 報告済み。`PLAN_APPROVED` と security/privacy review まで auth code の実装は HOLD。
+
+- [ ] WP-7001 Phase 1 DynamoDB persistence foundation + first aggregate synthetic proof(fable5 アサイン、HIGH、CODEX_PLAN 承認待ち)
+  - 目的: APPROVED 済み DB-005 §11 step 2 に従い、DynamoDB 永続化アダプタ基盤と最初の集約スライスを synthetic-only(PHI禁止)で実証する。
+  - CODEX_PLAN 分析範囲: `apps/api` 内 adapter と新規 persistence package の配置比較、`@aws-sdk/client-dynamodb` 等の依存導入位置、DynamoDB Local の CI 実行可能な synthetic-only harness、`AuditAppendStore` と FHIR Patient read/create の先行順を理由付きで提示する。暫定推奨は、FHIR REST/CapabilityStatement SSOT が fable5 側で起草中で、`@yrese/audit` core と DB-005 §6.1/§10 が確定しているため `AuditAppendStore` を最初の集約スライスとする。
+  - 準拠範囲: DB-005 §§3-6/10-12 のキー設計、ConditionExpression/楽観ロック、監査 dedupe ガード + tip 採番 sequence、TTL/物理削除禁止、per-request tenant scope、PHI のキー/GSI/ログ非露出、AWS import の adapter 層限定、PostgreSQL 正本の段階移行を計画へ列挙する。
+  - 状態: fable5 から `WP_ASSIGN + CODEX_PLAN_REQUEST` を受領済み。`CODEX_PLAN` が `PLAN_APPROVED` になるまで実装 HOLD。現時点で AWS SDK/package/harness/adapter のコード変更なし。
+
 - [x] WP-6001 DynamoDB single-table + FHIR store design proposal(d5d06e0、fable5/opus4.8 REVIEW_RESULT: CHANGES_REQUIRED but formalize by fable5)
   - 内容: `docs/research/dynamodb_fhir_store_design_proposal.md` を DRAFT(codex 設計提案・fable5 レビュー用・SSOT ではない)として追加。ARC-008 に基づく DynamoDB single-table / FHIR store / append-only audit / adapter 境界 / PostgreSQL 段階移行の素材を提示。
   - レビュー結果: 設計骨格は健全と評価。DynamoDB transaction 同一 item 制約、監査 append 冪等性、HMAC prefix 検索不可、Provenance 投影化、per-request STS tenant scope 等の必須修正は fable5 が DB/FHIR store SSOT formalize 時に織り込む。proposal は入力記録として残置。
