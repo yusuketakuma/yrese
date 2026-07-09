@@ -11,6 +11,7 @@
   "scripts": {
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
+    "test:scripts": "node scripts/check-scripts.mjs",
     "typecheck": "pnpm -r --parallel typecheck",
     "test": "pnpm -r --parallel test",
     "lint": "pnpm -r --if-present lint",
