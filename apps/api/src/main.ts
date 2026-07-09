@@ -1,4 +1,9 @@
-import { parseApiPort, parseDatabaseUrl, resolveApiRepositoryMode } from './config.js';
+import {
+  parseApiPort,
+  parseDatabaseUrl,
+  resolveApiRepositoryMode,
+  resolveTenantContextMode,
+} from './config.js';
 import { assertMigrationStateAllowsStartup } from './db/migration-runner.js';
 import { loadMigrationFiles } from './db/migrations.js';
 import { PostgresPatientRepository } from './db/patient-repository.js';
@@ -13,9 +18,15 @@ async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServe
     databaseUrl,
     nodeEnv: process.env.NODE_ENV,
   });
+  const tenantContextMode = resolveTenantContextMode({
+    allowDevTenantStub: process.env.YRESE_ALLOW_DEV_TENANT_STUB,
+    nodeEnv: process.env.NODE_ENV,
+    repositoryMode,
+    databaseUrl,
+  });
 
   if (repositoryMode === 'in_memory') {
-    return buildServer();
+    return buildServer({ repositoryMode, tenantContextMode });
   }
 
   if (databaseUrl === undefined) {
@@ -29,6 +40,8 @@ async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServe
     const server = buildServer({
       patientRepository: new PostgresPatientRepository(pool),
       receptionRepository: new PostgresReceptionRepository(pool),
+      repositoryMode,
+      tenantContextMode,
     });
     server.addHook('onClose', async () => {
       await pool.end();

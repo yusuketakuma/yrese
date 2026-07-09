@@ -1,5 +1,9 @@
+import type { TenantContextMode } from './plugins/tenant-context.js';
+
 export const defaultApiPort = 3001;
 export const apiRepositoryModes = ['postgres', 'in_memory'] as const;
+export const devTenantContextConfigurationErrorMessage =
+  'DEV tenant context headers require exact opt-in for an in-memory development or test server';
 
 export type ApiRepositoryMode = (typeof apiRepositoryModes)[number];
 
@@ -83,4 +87,26 @@ export function resolveApiRepositoryMode(input: {
   }
 
   throw new Error('DATABASE_URL is required unless YRESE_API_REPOSITORY_MODE=in_memory is explicit');
+}
+
+export function resolveTenantContextMode(input: {
+  readonly allowDevTenantStub: string | undefined;
+  readonly nodeEnv: string | undefined;
+  readonly repositoryMode: ApiRepositoryMode;
+  readonly databaseUrl: string | undefined;
+}): TenantContextMode {
+  if (input.allowDevTenantStub === undefined || input.allowDevTenantStub === 'false') {
+    return 'disabled';
+  }
+
+  if (
+    input.allowDevTenantStub !== 'true' ||
+    (input.nodeEnv !== 'development' && input.nodeEnv !== 'test') ||
+    input.repositoryMode !== 'in_memory' ||
+    input.databaseUrl !== undefined
+  ) {
+    throw new Error(devTenantContextConfigurationErrorMessage);
+  }
+
+  return 'dev_headers';
 }

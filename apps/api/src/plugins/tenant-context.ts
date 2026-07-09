@@ -24,6 +24,14 @@ import {
 
 export const authorizationErrorCode = AUTH_PERMISSION_DENIED_ERROR_CODE;
 
+export const tenantContextModes = ['disabled', 'dev_headers'] as const;
+
+export type TenantContextMode = (typeof tenantContextModes)[number];
+
+export interface TenantContextPluginOptions {
+  readonly mode: TenantContextMode;
+}
+
 export interface TenantContext {
   readonly tenantId: TenantId;
   readonly pharmacyId: PharmacyId;
@@ -78,17 +86,14 @@ function buildTenantContext(request: FastifyRequest): TenantContext | undefined 
   }
 }
 
-const tenantContextPluginCallback: FastifyPluginCallback = (server, _options, done) => {
-  if (process.env.NODE_ENV === 'production') {
-    done(new Error('DEV tenant context stub is BLOCKED_SECURITY_REVIEW in production'));
-    return;
-  }
-
+const tenantContextPluginCallback: FastifyPluginCallback<TenantContextPluginOptions> = (server, options, done) => {
   server.decorateRequest('tenantContext', undefined);
 
-  server.addHook('preHandler', async (request) => {
-    request.tenantContext = buildTenantContext(request);
-  });
+  if (options.mode === 'dev_headers') {
+    server.addHook('preHandler', async (request) => {
+      request.tenantContext = buildTenantContext(request);
+    });
+  }
 
   done();
 };

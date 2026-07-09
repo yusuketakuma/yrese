@@ -27,7 +27,15 @@ import {
   type TenantId,
 } from '@yrese/shared-kernel';
 
-import { requirePermission, tenantContextPlugin } from './plugins/tenant-context.js';
+import {
+  devTenantContextConfigurationErrorMessage,
+  type ApiRepositoryMode,
+} from './config.js';
+import {
+  requirePermission,
+  tenantContextPlugin,
+  type TenantContextMode,
+} from './plugins/tenant-context.js';
 import { InMemoryPatientRepository, type PatientRepository, type PatientSearchCursor } from './patient-repository.js';
 import { InMemoryReceptionRepository, type ReceptionRepository } from './reception-repository.js';
 
@@ -43,6 +51,8 @@ export interface BuildServerOptions {
   readonly patientRepository?: PatientRepository;
   readonly receptionRepository?: ReceptionRepository;
   readonly now?: () => Date;
+  readonly repositoryMode?: ApiRepositoryMode;
+  readonly tenantContextMode?: TenantContextMode;
 }
 
 interface EncodedPatientSearchCursor {
@@ -142,6 +152,11 @@ function receptionIdempotencyConflictResponse() {
 }
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
+  const tenantContextMode = options.tenantContextMode ?? 'disabled';
+  if (tenantContextMode === 'dev_headers' && options.repositoryMode !== 'in_memory') {
+    throw new Error(devTenantContextConfigurationErrorMessage);
+  }
+
   const patientRepository = options.patientRepository ?? new InMemoryPatientRepository();
   const receptionRepository = options.receptionRepository ?? new InMemoryReceptionRepository();
   const now = options.now ?? (() => new Date());
@@ -149,7 +164,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     logger: false,
   });
 
-  server.register(tenantContextPlugin);
+  server.register(tenantContextPlugin, { mode: tenantContextMode });
 
   server.get('/health', async (): Promise<HealthResponse> => {
     return healthResponseSchema.parse({

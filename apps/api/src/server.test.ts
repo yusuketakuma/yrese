@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PATIENT_SEARCH_CURSOR_MAX_LENGTH } from '@yrese/contracts';
 
+import { devTenantContextConfigurationErrorMessage } from './config.js';
+import type { PatientRepository } from './patient-repository.js';
+import type { ReceptionRepository } from './reception-repository.js';
 import {
   apiVersion,
   buildServer,
@@ -8,8 +11,19 @@ import {
   receptionIdempotencyConflictErrorCode,
   receptionInvalidRequestErrorCode,
   receptionPatientNotFoundErrorCode,
+  type BuildServerOptions,
   type HealthResponse,
 } from './server.js';
+
+function buildDevTestServer(
+  options: Omit<BuildServerOptions, 'repositoryMode' | 'tenantContextMode'> = {},
+) {
+  return buildServer({
+    ...options,
+    repositoryMode: 'in_memory',
+    tenantContextMode: 'dev_headers',
+  });
+}
 
 const tenantOnePatientReadHeaders = {
   'x-dev-tenant': 'tenant-001',
@@ -109,8 +123,61 @@ describe('buildServer', () => {
     });
   });
 
+  it('ignores attacker-controlled dev headers by default before protected repositories run', async () => {
+    const patientSearch = vi.fn<PatientRepository['search']>(async () => ({ results: [] }));
+    const patientFindById = vi.fn<PatientRepository['findById']>(async () => undefined);
+    const receptionList = vi.fn<ReceptionRepository['list']>(async () => []);
+    const receptionCreate = vi.fn<ReceptionRepository['create']>(async () => {
+      throw new Error('repository must not run without an authenticated tenant context');
+    });
+    const server = buildServer({
+      patientRepository: { search: patientSearch, findById: patientFindById },
+      receptionRepository: { list: receptionList, create: receptionCreate },
+    });
+    const attackerHeaders = {
+      'x-dev-tenant': 'attacker-selected-tenant',
+      'x-dev-pharmacy': 'attacker-selected-pharmacy',
+      'x-dev-actor': 'attacker-selected-actor',
+      'x-dev-scopes': 'patient:read,reception:read,reception:write',
+    } as const;
+
+    const patientResponse = await server.inject({
+      method: 'GET',
+      url: '/patients/search?q=synthetic',
+      headers: attackerHeaders,
+    });
+    const queueResponse = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-10',
+      headers: attackerHeaders,
+    });
+    const createResponse = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: attackerHeaders,
+      payload: {
+        patientId: 'patient-attacker-selected',
+        idempotencyKey: 'attacker-selected-key',
+      },
+    });
+
+    await server.close();
+
+    for (const response of [patientResponse, queueResponse, createResponse]) {
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toEqual({
+        errorCode: 'AUTH-0003',
+        message: 'Forbidden',
+      });
+    }
+    expect(patientSearch).not.toHaveBeenCalled();
+    expect(patientFindById).not.toHaveBeenCalled();
+    expect(receptionList).not.toHaveBeenCalled();
+    expect(receptionCreate).not.toHaveBeenCalled();
+  });
+
   it('denies /whoami when tenant scope is missing', async () => {
-    const server = buildServer();
+    const server = buildDevTestServer();
 
     const response = await server.inject({
       method: 'GET',
@@ -133,7 +200,7 @@ describe('buildServer', () => {
   });
 
   it('denies /whoami when tenant scope has extra malformed segments', async () => {
-    const server = buildServer();
+    const server = buildDevTestServer();
 
     const response = await server.inject({
       method: 'GET',
@@ -158,7 +225,7 @@ describe('buildServer', () => {
   it.each(malformedDevIdHeaderCases)(
     'denies /whoami when %s is malformed: %s',
     async (headerName, invalidValue) => {
-      const server = buildServer();
+      const server = buildDevTestServer();
 
       const response = await server.inject({
         method: 'GET',
@@ -180,7 +247,7 @@ describe('buildServer', () => {
   );
 
   it('returns dev tenant context from /whoami when tenant read scope is present', async () => {
-    const server = buildServer();
+    const server = buildDevTestServer();
 
     const response = await server.inject({
       method: 'GET',
@@ -204,21 +271,13 @@ describe('buildServer', () => {
     });
   });
 
-  it('throws during plugin registration in production', async () => {
-    const previousNodeEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'production';
-    const server = buildServer();
-
-    try {
-      await expect(server.ready()).rejects.toThrow(/BLOCKED_SECURITY_REVIEW/);
-      await server.close();
-    } finally {
-      if (previousNodeEnv === undefined) {
-        delete process.env.NODE_ENV;
-      } else {
-        process.env.NODE_ENV = previousNodeEnv;
-      }
-    }
+  it('rejects dev headers unless in-memory repository mode is explicit before server construction', () => {
+    expect(() => buildServer({ tenantContextMode: 'dev_headers' })).toThrowError(
+      new Error(devTenantContextConfigurationErrorMessage),
+    );
+    expect(() =>
+      buildServer({ repositoryMode: 'postgres', tenantContextMode: 'dev_headers' }),
+    ).toThrowError(new Error(devTenantContextConfigurationErrorMessage));
   });
 
   it('denies /patients/search when dev tenant context headers are absent', async () => {
@@ -239,7 +298,7 @@ describe('buildServer', () => {
   });
 
   it('denies /patients/search when patient read scope is missing', async () => {
-    const server = buildServer();
+    const server = buildDevTestServer();
 
     const response = await server.inject({
       method: 'GET',
@@ -264,7 +323,7 @@ describe('buildServer', () => {
   it.each(malformedDevIdHeaderCases)(
     'denies /patients/search when %s is malformed: %s',
     async (headerName, invalidValue) => {
-      const server = buildServer();
+      const server = buildDevTestServer();
 
       const response = await server.inject({
         method: 'GET',
@@ -286,7 +345,7 @@ describe('buildServer', () => {
   );
 
   it('returns synthetic patients for the default development UI tenant headers', async () => {
-    const server = buildServer();
+    const server = buildDevTestServer();
 
     const response = await server.inject({
       method: 'GET',
@@ -316,7 +375,7 @@ describe('buildServer', () => {
     ['/patients/search?q=合成&cursor=not-a-cursor', 'malformed cursor'],
     [`/patients/search?q=合成&cursor=${'x'.repeat(PATIENT_SEARCH_CURSOR_MAX_LENGTH + 1)}`, 'cursor too long'],
   ])('returns PAT-0001 for invalid patient search query: %s (%s)', async (url) => {
-    const server = buildServer();
+    const server = buildDevTestServer();
 
     const response = await server.inject({
       method: 'GET',
@@ -334,7 +393,7 @@ describe('buildServer', () => {
   });
 
   it('returns patient search results with no-store and supports second-page cursor pagination', async () => {
-    const server = buildServer();
+    const server = buildDevTestServer();
 
     const firstPage = await server.inject({
       method: 'GET',
@@ -373,7 +432,7 @@ describe('buildServer', () => {
   });
 
   it('rejects cursor reuse across tenant boundaries', async () => {
-    const server = buildServer();
+    const server = buildDevTestServer();
 
     const firstPage = await server.inject({
       method: 'GET',
@@ -399,7 +458,7 @@ describe('buildServer', () => {
   });
 
   it('rejects cursor reuse across pharmacy boundaries', async () => {
-    const server = buildServer();
+    const server = buildDevTestServer();
 
     const firstPage = await server.inject({
       method: 'GET',
@@ -425,7 +484,7 @@ describe('buildServer', () => {
   });
 
   it('rejects cursor reuse with a different query', async () => {
-    const server = buildServer();
+    const server = buildDevTestServer();
 
     const firstPage = await server.inject({
       method: 'GET',
@@ -451,7 +510,7 @@ describe('buildServer', () => {
   });
 
   it('returns the reception queue in acceptedAt and receptionId stable order', async () => {
-    const server = buildServer();
+    const server = buildDevTestServer();
 
     const response = await server.inject({
       method: 'GET',
@@ -473,7 +532,7 @@ describe('buildServer', () => {
   });
 
   it('denies /reception/queue when patient read scope is missing', async () => {
-    const server = buildServer();
+    const server = buildDevTestServer();
 
     const response = await server.inject({
       method: 'GET',
@@ -494,7 +553,7 @@ describe('buildServer', () => {
   });
 
   it('returns RCV-0001 for invalid reception queue dates', async () => {
-    const server = buildServer();
+    const server = buildDevTestServer();
 
     const response = await server.inject({
       method: 'GET',
@@ -513,7 +572,7 @@ describe('buildServer', () => {
 
   it('creates a reception entry with patient summary and no-store response', async () => {
     const acceptedAt = new Date('2026-07-09T09:00:00.000Z');
-    const server = buildServer({
+    const server = buildDevTestServer({
       now: () => acceptedAt,
     });
 
@@ -544,7 +603,7 @@ describe('buildServer', () => {
 
   it('stores reception queue dates as JST business dates, not UTC dates', async () => {
     const acceptedAt = new Date('2026-07-09T20:00:00.000Z'); // JST 2026-07-10 05:00
-    const server = buildServer({
+    const server = buildDevTestServer({
       now: () => acceptedAt,
     });
 
@@ -584,7 +643,7 @@ describe('buildServer', () => {
 
   it('returns the existing entry for an idempotent reception resend', async () => {
     const acceptedAt = new Date('2026-07-09T09:05:00.000Z');
-    const server = buildServer({
+    const server = buildDevTestServer({
       now: () => acceptedAt,
     });
     const payload = {
@@ -613,7 +672,7 @@ describe('buildServer', () => {
   });
 
   it('returns RCV-0003 when an idempotency key is reused with a different patient', async () => {
-    const server = buildServer({
+    const server = buildDevTestServer({
       now: () => new Date('2026-07-09T09:10:00.000Z'),
     });
 
@@ -647,7 +706,7 @@ describe('buildServer', () => {
   });
 
   it('returns RCV-0001 for invalid reception create requests', async () => {
-    const server = buildServer();
+    const server = buildDevTestServer();
 
     const response = await server.inject({
       method: 'POST',
@@ -669,7 +728,7 @@ describe('buildServer', () => {
   });
 
   it('returns RCV-0002 when a reception patient is absent within the tenant and pharmacy', async () => {
-    const server = buildServer();
+    const server = buildDevTestServer();
 
     const response = await server.inject({
       method: 'POST',
@@ -691,7 +750,7 @@ describe('buildServer', () => {
   });
 
   it('denies /reception when reception write scope is missing', async () => {
-    const server = buildServer();
+    const server = buildDevTestServer();
 
     const response = await server.inject({
       method: 'POST',

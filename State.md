@@ -6,19 +6,19 @@
 
 ## 2026-07-10
 
-### WP-4066 dev tenant context explicit opt-in — security finding / HOLD
+### WP-4066 dev tenant context explicit opt-in — implementation / HIGH review pending
 
-- WP-7001 の計画調査中、`apps/api/src/plugins/tenant-context.ts:81-90` が dev header auth stub を exact `NODE_ENV=production` でしか拒否しない一方、`apps/api/src/config.ts:70-75` は環境名と独立して `DATABASE_URL` から PostgreSQL mode を選び、`apps/api/src/main.ts:25-32` が同じ `buildServer()` へ実 repository を注入する境界不整合を発見。
-- 再現では `NODE_ENV=staging` の `GET /whoami` に任意の `x-dev-tenant` / `x-dev-pharmacy` / `x-dev-actor` / `x-dev-scopes=tenant:read` を付けると、caller-selected context を trusted context として 200 で返した。WP-4038(Web側の送信抑止)と WP-4056(repository mode 明示化)はいずれも backend の任意 header 受理を閉じないため、別の HIGH security/privacy finding として分離。
-- 最小修正案は明示的な dev/test opt-in のみで dev tenant adapter を有効化する deny-by-default 化。staging / undefined / typo / PostgreSQL mode の否定テストと明示 development opt-in の肯定テストを追加し、OIDC 実装や権限緩和は含めない。
-- agmsg で fable5 へ `SECURITY_FINDING + CODEX_PLAN_PRIORITY_CHECK` として報告済み。`Plans.md` に `SELF-SCAN-20260710-11` として登録したが、`PLAN_APPROVED` と security/privacy review までは実装 HOLD。auth/API コードは未変更。
+- fable5 の `PLAN_ADJUSTMENT_APPROVED` に基づき、caller-controlled dev tenant headers を composition root の明示 opt-in なしでは一切 trusted context にしない deny-by-default 境界を実装。tenant context plugin から `process.env` 参照を除去し、常時 `tenantContext=undefined` を decorate、明示 `dev_headers` mode の場合だけ header hook を登録する。
+- config resolver は parsed DB URL / resolved repository mode を受け、flag exact true + environment exact development/test + repository exact in_memory + parsed DB URL absent の全条件でのみ `dev_headers` を返す。absent / exact false は disabled、malformed flag と undefined/staging/Production/typo/production/PostgreSQL/DB URLありは入力値を含まない固定 startup errorで拒否する。
+- `buildServer()` は既定 disabled とし、`dev_headers` + explicit in_memory 以外を Fastify construction 前に拒否。`main.ts` は repository mode と tenant mode を一度ずつ解決して両 repository 経路へ渡し、API dev script は必要な環境変数を明示した。OIDC・audit event・permission semantics・DB操作は変更していない。
+- テストは既存の header/permission security cases を explicit dev helper で維持し、default server に attacker-selected headers を送った患者検索・受付一覧・受付登録が全て403、患者 repository search/findById と受付 repository list/create が全て0 callであることを追加固定。検証: focused config/server 53 tests PASS、API全体65 tests PASS + PostgreSQL integration 3 tests explicit SKIP(`TEST_DATABASE_URL`不在)、`pnpm --filter @yrese/api typecheck` PASS、`pnpm check:boundaries` PASS、`pnpm check:secrets` PASS、`git diff --check` PASS。HIGH risk review前のため未commit・未完了。
 
-### WP-7001 Phase 1 DynamoDB persistence foundation plan request — HOLD
+### WP-7001 Phase 1 DynamoDB persistence foundation — PLAN_APPROVED / implementation HOLD
 
-- fable5 から HIGH risk の `WP_ASSIGN + CODEX_PLAN_REQUEST` を受領。APPROVED 済み DB-005 §11 step 2 に従い、DynamoDB 永続化アダプタ基盤と最初の集約を synthetic-only(PHI禁止)で実証する計画を先に提出する。
-- CODEX_PLAN では `apps/api` adapter と新規 persistence package の配置、AWS SDK 依存の導入位置、DynamoDB Local の CI harness、DB-005 §§3-6/10-12 の不変条件を分析する。最初の集約は、FHIR REST/CapabilityStatement SSOT が並行起草中で `@yrese/audit` core と監査 transaction 設計が確定済みのため、現時点では `AuditAppendStore` を FHIR Patient read/create より先に synthetic proof する案を推奨。
-- 必須制約は adapter 層以外への AWS import 禁止、同一 item の ConditionCheck+Update 禁止、監査 dedupe guard + tip 採番 sequence、TTL/物理削除禁止、per-request tenant scope、PHI のキー/GSI/ログ非露出、PostgreSQL 正本の段階移行維持。実装 HANDOFF は HIGH、監査 adapter は opus4.8 review 必須。
-- agmsg で受領 ACK と調査状況を共有済み。`CODEX_PLAN` が fable5 に `PLAN_APPROVED` されるまで実装 HOLDであり、AWS SDK/package/DynamoDB Local/adapter コードはまだ変更していない。
+- fable5 から WP-7001 `PLAN_APPROVED` を受領。persistence adapter は `apps/api` server-only、AWS SDK import は adapter 層限定、最初の集約は FHIR Patient を推測実装せず synthetic-only `AuditAppendStore` とする計画が承認された。DynamoDB Local harness の限界、trusted context 由来の authority、PHI非露出、HIGH handoff + opus4.8 review の各条件も維持する。
+- decision A/B/C は全て承認済み。A=`SEQ#` zero-pad width 20 / uint64範囲 / overflow事前拒否。B=app-local verification が連番・dedupe・TIP整合を検証し、hash continuity は audit core に委譲。C=同一 eventId + 同一 logical intent は冪等成功、異なる intent は hard conflict。同時に event/dedupe/TIP の tenant-scoped同一PK・別SKと、retry loop 外で一度だけ生成する stable eventId を確認した。
+- 必須制約は adapter 層以外への AWS import 禁止、同一 item の ConditionCheck+Update 禁止、監査 dedupe guard + tip 採番 sequence、TTL/物理削除禁止、per-request tenant scope、PHI のキー/GSI/ログ非露出、PostgreSQL 正本の段階移行維持。`AuditWriteContext` の trusted tenant/pharmacy/user だけから scope を再構成し、caller intent に authority/prevHash/sequence を持たせない。
+- 実装着手条件は (a) WP-4066 landing、かつ (b) fable5 の DB-005 §6/§10 pin 反映通知。現時点は `PLAN_APPROVED / implementation HOLD` であり、AWS SDK/package/DynamoDB Local/adapter コードは未変更。
 
 ### WP-4065 dev tenant header least-privilege split
 

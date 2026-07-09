@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { defaultApiPort, parseApiPort, parseDatabaseUrl, resolveApiRepositoryMode } from './config.js';
+import {
+  defaultApiPort,
+  devTenantContextConfigurationErrorMessage,
+  parseApiPort,
+  parseDatabaseUrl,
+  resolveApiRepositoryMode,
+  resolveTenantContextMode,
+} from './config.js';
 
 describe('parseApiPort', () => {
   it('defaults when PORT is absent or blank', () => {
@@ -123,5 +130,71 @@ describe('resolveApiRepositoryMode', () => {
         nodeEnv: 'development',
       }),
     ).toThrow(/DATABASE_URL/);
+  });
+});
+
+describe('resolveTenantContextMode', () => {
+  it('defaults to disabled when the opt-in flag is absent or exactly false', () => {
+    for (const allowDevTenantStub of [undefined, 'false']) {
+      expect(
+        resolveTenantContextMode({
+          allowDevTenantStub,
+          nodeEnv: 'production',
+          repositoryMode: 'postgres',
+          databaseUrl: 'postgres://synthetic.invalid/yrese',
+        }),
+      ).toBe('disabled');
+    }
+  });
+
+  it('enables dev headers only for exact opt-in in development or test with in-memory storage', () => {
+    for (const nodeEnv of ['development', 'test']) {
+      expect(
+        resolveTenantContextMode({
+          allowDevTenantStub: 'true',
+          nodeEnv,
+          repositoryMode: 'in_memory',
+          databaseUrl: undefined,
+        }),
+      ).toBe('dev_headers');
+    }
+  });
+
+  it('fails with a fixed startup error when the opt-in flag is malformed', () => {
+    for (const allowDevTenantStub of ['', 'TRUE', '1', ' true ', 'false ']) {
+      expect(() =>
+        resolveTenantContextMode({
+          allowDevTenantStub,
+          nodeEnv: 'development',
+          repositoryMode: 'in_memory',
+          databaseUrl: undefined,
+        }),
+      ).toThrowError(new Error(devTenantContextConfigurationErrorMessage));
+    }
+  });
+
+  it('fails with the same fixed startup error for every unsafe enabled combination', () => {
+    const unsafeInputs = [
+      { nodeEnv: undefined, repositoryMode: 'in_memory', databaseUrl: undefined },
+      { nodeEnv: 'staging', repositoryMode: 'in_memory', databaseUrl: undefined },
+      { nodeEnv: 'Production', repositoryMode: 'in_memory', databaseUrl: undefined },
+      { nodeEnv: 'develop', repositoryMode: 'in_memory', databaseUrl: undefined },
+      { nodeEnv: 'production', repositoryMode: 'in_memory', databaseUrl: undefined },
+      { nodeEnv: 'development', repositoryMode: 'postgres', databaseUrl: undefined },
+      {
+        nodeEnv: 'development',
+        repositoryMode: 'in_memory',
+        databaseUrl: 'postgres://synthetic.invalid/yrese',
+      },
+    ] as const;
+
+    for (const input of unsafeInputs) {
+      expect(() =>
+        resolveTenantContextMode({
+          allowDevTenantStub: 'true',
+          ...input,
+        }),
+      ).toThrowError(new Error(devTenantContextConfigurationErrorMessage));
+    }
   });
 });
