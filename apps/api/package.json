@@ -11,7 +11,9 @@
   },
   "dependencies": {
     "@yrese/contracts": "workspace:*",
-    "fastify": "^5.0.0"
+    "@yrese/shared-kernel": "workspace:*",
+    "fastify": "^5.0.0",
+    "fastify-plugin": "^5.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
