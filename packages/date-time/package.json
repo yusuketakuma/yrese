@@ -1,0 +1,21 @@
+{
+  "name": "@yrese/date-time",
+  "version": "0.0.1",
+  "private": true,
+  "description": "診療系日付の明示型。現在時刻への暗黙依存とtimezone変換を避けるwall-clock date基盤。",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.json --outDir dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.0"
+  }
+}
