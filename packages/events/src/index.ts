@@ -81,6 +81,20 @@ function assertPhiEncryptionInvariant(
   }
 }
 
+function assertDeadLetterInvariant(syncStatus: SyncStatus, deadLetterReason?: string): void {
+  if (syncStatus === "dead_letter") {
+    if (deadLetterReason === undefined) {
+      throw new RangeError("deadLetterReason is required when syncStatus is 'dead_letter'");
+    }
+    assertNonEmptyString(deadLetterReason, "deadLetterReason");
+    return;
+  }
+
+  if (deadLetterReason !== undefined) {
+    throw new RangeError("deadLetterReason is only allowed when syncStatus is 'dead_letter'");
+  }
+}
+
 export function createEventEnvelope(input: CreateEventEnvelopeInput): EventEnvelope {
   assertNonEmptyString(input.eventId, "eventId");
   assertNonEmptyString(input.aggregateId, "aggregateId");
@@ -105,9 +119,7 @@ export function createEventEnvelope(input: CreateEventEnvelopeInput): EventEnvel
   assertPayloadHash(input.payloadHash);
   assertPhiEncryptionInvariant(input.phiClassification, input.encryptionStatus);
   assertNonNegativeInteger(input.retryCount, "retryCount");
-  if (input.deadLetterReason !== undefined) {
-    assertNonEmptyString(input.deadLetterReason, "deadLetterReason");
-  }
+  assertDeadLetterInvariant(input.syncStatus, input.deadLetterReason);
 
   return Object.freeze({ ...input });
 }

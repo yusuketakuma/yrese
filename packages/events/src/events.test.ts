@@ -128,14 +128,26 @@ describe("createEventEnvelope", () => {
     ).toThrow(/wallClock/);
   });
 
-  it("validates optional IDs and dead-letter reason when present", () => {
+  it("accepts dead-letter envelopes with a reason", () => {
+    const envelope = createEventEnvelope(
+      baseEnvelope({
+        syncStatus: "dead_letter",
+        deadLetterReason: "retry budget exhausted",
+      }),
+    );
+
+    expect(envelope.syncStatus).toBe("dead_letter");
+    expect(envelope.deadLetterReason).toBe("retry budget exhausted");
+  });
+
+  it("rejects dead-letter envelopes without a non-empty reason", () => {
     expect(() =>
       createEventEnvelope(
         baseEnvelope({
-          deviceId: "" as EventEnvelope["deviceId"],
-        } as Partial<EventEnvelope>),
+          syncStatus: "dead_letter",
+        }),
       ),
-    ).toThrow(/deviceId/);
+    ).toThrow(/deadLetterReason/);
     expect(() =>
       createEventEnvelope(
         baseEnvelope({
@@ -144,5 +156,26 @@ describe("createEventEnvelope", () => {
         }),
       ),
     ).toThrow(/deadLetterReason/);
+  });
+
+  it("rejects dead-letter reasons on non-dead-letter envelopes", () => {
+    expect(() =>
+      createEventEnvelope(
+        baseEnvelope({
+          syncStatus: "failed",
+          deadLetterReason: "not dead-lettered yet",
+        }),
+      ),
+    ).toThrow(/only allowed/);
+  });
+
+  it("validates optional IDs", () => {
+    expect(() =>
+      createEventEnvelope(
+        baseEnvelope({
+          deviceId: "" as EventEnvelope["deviceId"],
+        } as Partial<EventEnvelope>),
+      ),
+    ).toThrow(/deviceId/);
   });
 });

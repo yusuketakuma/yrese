@@ -12,7 +12,7 @@
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "typecheck": "pnpm -r --parallel typecheck",
     "test": "pnpm -r --parallel test",
-    "lint": "pnpm -r --parallel lint",
+    "lint": "pnpm -r --if-present lint",
     "build": "pnpm -r build"
   }
 }

@@ -30,11 +30,8 @@ jobs:
       - name: Test
         run: pnpm -r test
 
-      - name: Build web
-        run: pnpm --filter @yrese/web build
-
-      - name: Build api
-        run: pnpm --filter @yrese/api build
+      - name: Build
+        run: pnpm -r build
 
       - name: Check boundaries
         run: pnpm check:boundaries
