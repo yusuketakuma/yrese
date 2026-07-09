@@ -45,7 +45,11 @@ export function devTenantHeaders(
   };
 }
 
-const SEX_LABELS = { male: "男", female: "女", unknown: "不明" } as const;
+const SEX_LABELS: Record<PatientSearchResult["sex"], string> = {
+  male: "男",
+  female: "女",
+  unknown: "不明",
+};
 
 export type SearchState =
   | { kind: "idle" }

@@ -6,6 +6,13 @@
 
 ## 2026-07-10
 
+### WP-4063 web display label exhaustiveness tightening
+
+- WP-4062 handoff後も agmsg inbox は空。DB runner の高リスク PLAN_REQUEST は承認待ちのため、Web表示型の低リスク self-scan を継続。
+- 性別ラベル(`PatientSearch` / `PatientHeader`)と処方箋受付区分ラベル(`ReceptionDashboard`)が現行値は満たす一方、契約/props union に対する明示的な `Record<..., string>` 網羅性を持っていない点を検出。
+- `SEX_LABELS` を `PatientSearchResult["sex"]` / `PatientHeaderProps["sex"]` に、`PRESCRIPTION_INTAKE_LABELS` を `ReceptionQueueEntry["prescriptionIntakeType"]` に結び、将来の値追加時に typecheck が未対応ラベルを検出できるようにした。表示文言・DOM・契約shapeは不変更。
+- 検証: `pnpm --filter @yrese/web test` PASS(37)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 ### WP-4062 frontend error code registry filtering
 
 - agmsg inbox 空、DB-005/DB設計の Claude 側 dirty 差分(`docs/ssot_index.md` / `docs/database/dynamodb_single_table_design.md`)は触らず、frontend-only self-scan を継続。

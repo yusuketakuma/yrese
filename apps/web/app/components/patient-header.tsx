@@ -41,7 +41,11 @@ export interface PatientHeaderProps {
   readonly eligibilityCheckedAt?: string;
 }
 
-const SEX_LABELS = { male: "男", female: "女", unknown: "不明" } as const;
+const SEX_LABELS: Record<PatientHeaderProps["sex"], string> = {
+  male: "男",
+  female: "女",
+  unknown: "不明",
+};
 
 export function PatientHeader(props: PatientHeaderProps) {
   const verified = props.eligibility === "VERIFIED";

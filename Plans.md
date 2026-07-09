@@ -482,6 +482,12 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 実装: `apps/web/app/components/error-code.ts` に `registeredErrorCodeOrUndefined()` を追加し、shared-kernel registry に存在するコードのみを返すようにした。患者検索と受付ダッシュボードの API error parsing をこの helper に統一し、未登録の形式正しいコードを落とすテストを追加。
   - 検証: `pnpm --filter @yrese/web test` PASS(37)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
 
+- [x] WP-4063 web display label exhaustiveness tightening(codex 提案 SELF-SCAN-20260710-08、本WPで実装)
+  - 発見根拠: `apps/web/app/patients/patient-search.tsx` / `components/patient-header.tsx` の性別ラベルと `apps/web/app/reception-dashboard.tsx` の処方箋受付区分ラベルは、現行値を満たしているが `as const` 推論に依存しており、契約側の union が増えた際に「表示ラベル未追加」を明示的な Record 網羅性として固定していなかった。
+  - 目的: 表示文言や API 契約を変えず、患者検索・患者ヘッダー・受付一覧のラベル定義を契約/props の値集合へ型で結び、将来の値追加時に typecheck で未対応を検出する。
+  - 実装: 性別ラベルを `Record<PatientSearchResult["sex"], string>` / `Record<PatientHeaderProps["sex"], string>`、処方箋受付区分ラベルを `Record<ReceptionQueueEntry["prescriptionIntakeType"], string>` に変更。ランタイム表示は不変更。
+  - 検証: `pnpm --filter @yrese/web test` PASS(37)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 - [x] WP-6001 DynamoDB single-table + FHIR store design proposal(d5d06e0、fable5/opus4.8 REVIEW_RESULT: CHANGES_REQUIRED but formalize by fable5)
   - 内容: `docs/research/dynamodb_fhir_store_design_proposal.md` を DRAFT(codex 設計提案・fable5 レビュー用・SSOT ではない)として追加。ARC-008 に基づく DynamoDB single-table / FHIR store / append-only audit / adapter 境界 / PostgreSQL 段階移行の素材を提示。
   - レビュー結果: 設計骨格は健全と評価。DynamoDB transaction 同一 item 制約、監査 append 冪等性、HMAC prefix 検索不可、Provenance 投影化、per-request STS tenant scope 等の必須修正は fable5 が DB/FHIR store SSOT formalize 時に織り込む。proposal は入力記録として残置。

@@ -33,7 +33,10 @@ export const RECEPTION_STATUS_LABELS: Record<ReceptionStatus, string> = {
   CANCELLED: "取消済み",
 };
 
-const PRESCRIPTION_INTAKE_LABELS = { paper: "紙" } as const;
+const PRESCRIPTION_INTAKE_LABELS: Record<
+  ReceptionQueueEntry["prescriptionIntakeType"],
+  string
+> = { paper: "紙" };
 
 /** API エラーを「何が起きたか+次のアクション」の対として運ぶ(WP-3007 統一様式) */
 export class ReceptionError extends Error {
