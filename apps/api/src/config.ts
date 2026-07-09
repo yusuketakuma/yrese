@@ -9,12 +9,12 @@ export function parseApiPort(value: string | undefined): number {
 
   const normalizedValue = value.trim();
   if (!decimalIntegerPattern.test(normalizedValue)) {
-    return defaultApiPort;
+    throw new RangeError('PORT must be a decimal integer between 1 and 65535');
   }
 
   const port = Number.parseInt(normalizedValue, 10);
   if (!Number.isSafeInteger(port) || port < 1 || port > 65535) {
-    return defaultApiPort;
+    throw new RangeError('PORT must be a decimal integer between 1 and 65535');
   }
 
   return port;

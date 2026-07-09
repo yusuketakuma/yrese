@@ -3,9 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { defaultApiPort, parseApiPort } from './config.js';
 
 describe('parseApiPort', () => {
-  it('defaults when PORT is absent or invalid', () => {
-    for (const value of [undefined, '', '   ', '3001abc', '-1', '0', '65536', '3.1', '+3001']) {
+  it('defaults when PORT is absent or blank', () => {
+    for (const value of [undefined, '', '   ']) {
       expect(parseApiPort(value)).toBe(defaultApiPort);
+    }
+  });
+
+  it('fails fast when PORT is explicitly invalid', () => {
+    for (const value of ['3001abc', '-1', '0', '65536', '3.1', '+3001']) {
+      expect(() => parseApiPort(value)).toThrow(RangeError);
     }
   });
 
