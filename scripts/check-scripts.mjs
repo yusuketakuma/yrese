@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -144,12 +144,101 @@ async function testCleanRemovesGeneratedArtifacts() {
   }
 }
 
+async function testDependencyAuditWrapper() {
+  const root = path.join(tempRoot, "dependency-audit");
+  const vulnerableReportPath = path.join(root, "audit-vulnerable.json");
+  await writeText(
+    vulnerableReportPath,
+    JSON.stringify(
+      {
+        advisories: {
+          "1": {
+            module_name: "example-package",
+            severity: "high",
+            github_advisory_id: "GHSA-example",
+          },
+        },
+        metadata: {
+          vulnerabilities: {
+            info: 0,
+            low: 0,
+            moderate: 0,
+            high: 1,
+            critical: 0,
+          },
+        },
+      },
+      null,
+      2,
+    ),
+  );
+
+  const vulnerableResult = runNode("check-deps.mjs", ["--from-audit-json", vulnerableReportPath]);
+  assert(vulnerableResult.status === 1, "check-deps should fail for high severity vulnerabilities");
+  assert(outputOf(vulnerableResult).includes("example-package"), "check-deps failure should include advisory summary");
+
+  const registryErrorPath = path.join(root, "registry-error.txt");
+  await writeText(registryErrorPath, "ERR_PNPM_META_FETCH_FAIL registry timeout\n");
+  const registryResult = runNode("check-deps.mjs", ["--from-audit-error", registryErrorPath]);
+  assert(registryResult.status === 0, "check-deps should warn-only for registry/network outages");
+  assert(outputOf(registryResult).includes("non-blocking"), "registry outage should be reported as non-blocking");
+}
+
+async function testSbomGenerationFixture() {
+  const root = path.join(tempRoot, "sbom");
+  const listJsonPath = path.join(root, "pnpm-list.json");
+  const outputPath = path.join(root, "sbom.json");
+  await writeText(
+    listJsonPath,
+    JSON.stringify(
+      [
+        {
+          name: "fixture-root",
+          version: "0.0.1",
+          path: root,
+          dependencies: {
+            "left-pad": {
+              version: "1.3.0",
+              path: path.join(root, "node_modules", "left-pad"),
+            },
+          },
+          devDependencies: {
+            "@fixture/internal": {
+              version: "link:packages/internal",
+              path: path.join(root, "packages", "internal"),
+            },
+          },
+        },
+        {
+          name: "@fixture/internal",
+          version: "0.0.2",
+          path: path.join(root, "packages", "internal"),
+        },
+      ],
+      null,
+      2,
+    ),
+  );
+
+  const result = runNode("check-sbom.mjs", ["--from-list-json", listJsonPath, "--output", outputPath]);
+  assert(result.status === 0, `check-sbom should pass for a valid pnpm list fixture: ${outputOf(result)}`);
+  const sbom = JSON.parse(await readFile(outputPath, "utf8"));
+  assert(sbom.bomFormat === "CycloneDX", "check-sbom should emit CycloneDX metadata");
+  assert(sbom.components.length >= 3, "check-sbom should emit workspace and dependency components");
+  assert(
+    sbom.components.some((component) => component.name === "@fixture/internal" && component.version === "0.0.2"),
+    "check-sbom should resolve workspace link versions",
+  );
+}
+
 try {
   await testBoundaryViolationDetection();
   await testBoundaryCleanFixturePasses();
   await testDuplicateRegistryConstDetection();
   await testSecretAllowlistAndDetection();
   await testCleanRemovesGeneratedArtifacts();
+  await testDependencyAuditWrapper();
+  await testSbomGenerationFixture();
 } finally {
   await rm(tempRoot, { force: true, recursive: true });
 }

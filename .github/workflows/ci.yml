@@ -36,8 +36,11 @@ jobs:
       - name: Check secrets
         run: pnpm check:secrets
 
+      - name: Check dependency vulnerabilities
+        run: pnpm check:deps
+
+      - name: Check SBOM
+        run: pnpm check:sbom
+
       - name: Check boundaries
         run: pnpm check:boundaries
-
-      # TODO(WP-4001後続): dependency scan / SBOM などの追加ゲートを
-      # dependency_direction_policy / security SSOT 承認後に追加する
