@@ -10,7 +10,7 @@
 
 - codex実装。`@yrese/trace` の `CalculationTraceStep` に CAL-008 の optional 拡張フィールド(`feeItemCode` / `formula` / `intermediateValues` / `rounding` / `stepStatus` / `resultPoints` / `resultYen`)を追加。
 - 後方互換性を維持し、既存の最小 trace は変更なしで通る。`affectsClaim=true → evidenceRefs>=1` の既存不変条件は維持。`rounding.evidenceId` 必須、intermediateValues string-only/PHI-like key拒否、stepStatus enum検証、nested freeze、rounding evidenceId集約を追加。
-- 検証: `pnpm --filter @yrese/trace test`(11 tests PASS)、`pnpm --filter @yrese/trace typecheck`、`pnpm check:boundaries`、`git diff --check`。
+- 検証: `pnpm --filter @yrese/trace test`(11 tests PASS)、`pnpm --filter @yrese/calculation test`(16 tests PASS)、`pnpm -r typecheck`、`pnpm check:boundaries`、`git diff --check`。
 
 ### WP-4029 — patient search cursor length cap
 
