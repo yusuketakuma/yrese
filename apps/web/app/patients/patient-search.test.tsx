@@ -63,6 +63,26 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     expect(html).not.toContain("data-duplicate-kana");
   });
 
+  it("notes that unloaded pages may contain duplicate kana when a next cursor exists (opus F1)", () => {
+    const withCursor = renderToStaticMarkup(
+      <PatientSearchResults
+        results={[patient({ patientId: "p1", kana: "ヤマダ タロウ" })]}
+        query="テスト"
+        nextCursor="cursor-1"
+      />,
+    );
+    expect(withCursor).toContain("未読込の続きがあります");
+    expect(withCursor).toContain("[情報(INFO)]");
+
+    const withoutCursor = renderToStaticMarkup(
+      <PatientSearchResults
+        results={[patient({ patientId: "p1", kana: "ヤマダ タロウ" })]}
+        query="テスト"
+      />,
+    );
+    expect(withoutCursor).not.toContain("未読込の続きがあります");
+  });
+
   it("duplicateKanaSet detects only exact kana matches", () => {
     const set = duplicateKanaSet([
       patient({ patientId: "p1", kana: "ヤマダ タロウ" }),
@@ -138,6 +158,54 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     await first;
 
     expect(states[states.length - 1]!.kind).toBe("loaded");
+  });
+
+  it("discards a stale append so another query's continuation never mixes in (WP-4037 / opus F3)", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    const emit = (update: (prev: SearchState) => SearchState) => {
+      states.push(update(states[states.length - 1]!));
+    };
+    let resolveAppend!: (page: SearchPage) => void;
+    const fetcher = vi
+      .fn<(q: string, cursor?: string) => Promise<SearchPage>>()
+      // 1回目: query A の初回ページ(即時)
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          results: [patient({ patientId: "a1", kana: "エー イチ" })],
+          nextCursor: "cursor-a",
+        }),
+      )
+      // 2回目: query A の append(遅延 — 後で解決)
+      .mockImplementationOnce(
+        () =>
+          new Promise<SearchPage>((resolve) => {
+            resolveAppend = resolve;
+          }),
+      )
+      // 3回目: query B の初回ページ(即時)
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          results: [patient({ patientId: "b1", kana: "ビー イチ" })],
+        }),
+      );
+
+    const run = createSearchRunner(fetcher, emit);
+    await run("検索A");
+    const appendA = run("検索A", "cursor-a", true); // A の続きが in-flight のまま
+    const searchB = run("検索B");
+    await searchB;
+    // A の append が遅れて到着しても、B の結果へ混ざらず破棄される
+    resolveAppend({
+      results: [patient({ patientId: "a2", kana: "エー ニ" })],
+    });
+    await appendA;
+
+    const last = states[states.length - 1]!;
+    expect(last.kind).toBe("loaded");
+    if (last.kind === "loaded") {
+      expect(last.query).toBe("検索B");
+      expect(last.results.map((p) => p.patientId)).toEqual(["b1"]);
+    }
   });
 
   it("sends dev tenant headers only in development (WP-4038)", () => {

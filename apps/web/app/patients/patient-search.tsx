@@ -213,23 +213,36 @@ export function PatientSearchResults({
   readonly onLoadMore?: () => void;
 }) {
   const duplicates = duplicateKanaSet(results);
+  // 同姓同名判定は「読み込み済みの結果」に対してのみ有効。続きがある間は
+  // 未読込分に同姓同名が存在しうるため、警告の不在を「同姓同名なし」と
+  // 誤読させない(fail-closed の可視化 — opus4.8 医療安全レビュー F1)
+  const notices = [
+    ...(duplicates.size > 0
+      ? [
+          {
+            severity: "WARNING" as const,
+            message:
+              "同姓同名の患者が複数います。生年月日・患者番号で必ず確認してください。",
+          },
+        ]
+      : []),
+    ...(nextCursor !== undefined && results.length > 0
+      ? [
+          {
+            severity: "INFO" as const,
+            message:
+              "未読込の続きがあります。同姓同名の患者が続きに含まれる可能性があるため、続きの読み込みか検索語の絞り込みで確認してください。",
+          },
+        ]
+      : []),
+  ];
   return (
     <>
       <p role="status">
         「{query}」の検索結果: {results.length}件
         {nextCursor !== undefined && "(続きあり)"}
       </p>
-      {duplicates.size > 0 && (
-        <SeverityList
-          items={[
-            {
-              severity: "WARNING",
-              message:
-                "同姓同名の患者が複数います。生年月日・患者番号で必ず確認してください。",
-            },
-          ]}
-        />
-      )}
+      {notices.length > 0 && <SeverityList items={notices} />}
       {results.length > 0 && (
         <table className="patient-search-results">
           <thead>
