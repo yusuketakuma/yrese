@@ -4,15 +4,21 @@ import { describe, expect, it, vi } from "vitest";
 
 (globalThis as { React?: typeof React }).React = React;
 
-import type { PatientSearchResult, ReceptionQueueEntry } from "@yrese/contracts";
+import type {
+  PatientSearchResult,
+  ReceptionQueueEntry,
+  ReceptionQueueResponse,
+} from "@yrese/contracts";
 
 import {
   ReceptionError,
   ReceptionQueueTable,
   ReceptionQueueView,
   createReception,
+  createReceptionQueueRunner,
   fetchReceptionQueue,
   formatAcceptedTime,
+  type QueueState,
   todayAsIsoDate,
 } from "./reception-dashboard";
 
@@ -38,6 +44,13 @@ function entry(over: Partial<ReceptionQueueEntry>): ReceptionQueueEntry {
     prescriptionIntakeType: "paper",
     ...over,
   };
+}
+
+function queueResponse(
+  date: string,
+  entries: readonly ReceptionQueueEntry[] = [],
+): ReceptionQueueResponse {
+  return { date, entries: [...entries] };
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -115,6 +128,73 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     const url = String(fetchImpl.mock.calls[0]![0]);
     expect(url).toContain("/reception/queue?date=2026-07-01");
     expect(response.entries).toEqual([]);
+  });
+
+  it("discards stale queue responses so the last displayed date wins", async () => {
+    const states: QueueState[] = [
+      { kind: "loaded", response: queueResponse("2026-07-08") },
+    ];
+    const emit = (update: (prev: QueueState) => QueueState) => {
+      states.push(update(states[states.length - 1]!));
+    };
+    let resolveFirst!: (response: ReceptionQueueResponse) => void;
+    const fetcher = vi
+      .fn<(targetDate: string) => Promise<ReceptionQueueResponse>>()
+      .mockImplementationOnce(
+        () =>
+          new Promise<ReceptionQueueResponse>((resolve) => {
+            resolveFirst = resolve;
+          }),
+      )
+      .mockImplementationOnce(() =>
+        Promise.resolve(queueResponse("2026-07-10", [entry({ receptionId: "rc-new" })])),
+      );
+
+    const run = createReceptionQueueRunner(fetcher, emit);
+    const first = run("2026-07-09");
+    const second = run("2026-07-10");
+    await second;
+    resolveFirst(queueResponse("2026-07-09", [entry({ receptionId: "rc-old" })]));
+    await first;
+
+    const last = states[states.length - 1]!;
+    expect(last.kind).toBe("loaded");
+    if (last.kind === "loaded") {
+      expect(last.response.date).toBe("2026-07-10");
+      expect(last.response.entries.map((queueEntry) => queueEntry.receptionId)).toEqual([
+        "rc-new",
+      ]);
+    }
+  });
+
+  it("discards stale queue failures so an older error does not mask newer results", async () => {
+    const states: QueueState[] = [
+      { kind: "loaded", response: queueResponse("2026-07-08") },
+    ];
+    const emit = (update: (prev: QueueState) => QueueState) => {
+      states.push(update(states[states.length - 1]!));
+    };
+    let rejectFirst!: (reason: Error) => void;
+    const fetcher = vi
+      .fn<(targetDate: string) => Promise<ReceptionQueueResponse>>()
+      .mockImplementationOnce(
+        () =>
+          new Promise<ReceptionQueueResponse>((_resolve, reject) => {
+            rejectFirst = reject;
+          }),
+      )
+      .mockImplementationOnce(() =>
+        Promise.resolve(queueResponse("2026-07-10", [entry({ receptionId: "rc-new" })])),
+      );
+
+    const run = createReceptionQueueRunner(fetcher, emit);
+    const first = run("2026-07-09");
+    const second = run("2026-07-10");
+    await second;
+    rejectFirst(new Error("stale queue failure"));
+    await first;
+
+    expect(states[states.length - 1]!.kind).toBe("loaded");
   });
 
   it("maps 409 idempotency conflicts to a duplicate-operation notice (RCV-0003)", async () => {

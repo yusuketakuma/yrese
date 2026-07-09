@@ -6,6 +6,13 @@
 
 ## 2026-07-10
 
+### WP-4061 ReceptionDashboard queue stale response guard
+
+- agmsg inbox 空のため、DB/SSOT/docs/database に触れない frontend-only self-scan を継続。
+- `apps/web/app/reception-dashboard.tsx` の受付一覧 `load()` が generation guard を持たず、連続した日付表示で古い応答・古い失敗が後続の日付表示を上書きしうる点を検出。
+- `createReceptionQueueRunner()` を追加し、最新ロードだけが `QueueState` を更新できるようにした。`ReceptionDashboard` は runner を `useRef` で保持し、既存の API 契約・表示構造は変更していない。web test で stale success / stale failure の破棄を固定。
+- 検証: `pnpm --filter @yrese/web test` PASS(36)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 ### WP-4060 ReceptionDashboard acceptedAt clock display JST pin
 
 - agmsg inbox 空、`yrese/codex` monitor alive、`main` は `origin/main` と同期済みから再開。DB-005 関連の `docs/ssot_index.md` / `docs/database/dynamodb_single_table_design.md` は Claude 側 dirty として触らない。

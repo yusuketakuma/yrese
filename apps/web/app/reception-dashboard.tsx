@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   receptionQueueEntrySchema,
@@ -201,6 +201,41 @@ export type QueueState =
   | { kind: "error"; notice: ErrorNoticeProps }
   | { kind: "loaded"; response: ReceptionQueueResponse };
 
+type QueueStateUpdate = (prev: QueueState) => QueueState;
+
+function queueLoadErrorNotice(error: unknown): ErrorNoticeProps {
+  return error instanceof ReceptionError
+    ? error.toNotice()
+    : {
+        message: "受付一覧の処理に失敗しました。",
+        nextAction:
+          "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+      };
+}
+
+export function createReceptionQueueRunner(
+  fetcher: (targetDate: string) => Promise<ReceptionQueueResponse>,
+  emit: (update: QueueStateUpdate) => void,
+): (targetDate: string) => Promise<void> {
+  let generation = 0;
+  return async (targetDate) => {
+    const gen = ++generation;
+    emit(() => ({ kind: "loading" }));
+    try {
+      const response = await fetcher(targetDate);
+      if (gen !== generation) {
+        return;
+      }
+      emit(() => ({ kind: "loaded", response }));
+    } catch (error) {
+      if (gen !== generation) {
+        return;
+      }
+      emit(() => ({ kind: "error", notice: queueLoadErrorNotice(error) }));
+    }
+  };
+}
+
 export function ReceptionQueueView({ state }: { readonly state: QueueState }) {
   if (state.kind === "loading") {
     return <LoadingState label="受付一覧を読み込み中…" />;
@@ -243,25 +278,17 @@ export function ReceptionDashboard() {
   const [registerNotice, setRegisterNotice] = useState<ErrorNoticeProps | null>(null);
   const [registered, setRegistered] = useState<ReceptionQueueEntry | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const loadRunner = useRef<ReturnType<typeof createReceptionQueueRunner> | null>(
+    null,
+  );
 
   const load = useCallback(async (targetDate: string) => {
-    setQueue({ kind: "loading" });
-    try {
-      const response = await fetchReceptionQueue(targetDate);
-      setQueue({ kind: "loaded", response });
-    } catch (error) {
-      setQueue({
-        kind: "error",
-        notice:
-          error instanceof ReceptionError
-            ? error.toNotice()
-            : {
-                message: "受付一覧の処理に失敗しました。",
-                nextAction:
-                  "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
-              },
-      });
+    if (loadRunner.current === null) {
+      loadRunner.current = createReceptionQueueRunner(fetchReceptionQueue, (update) =>
+        setQueue((prev) => update(prev)),
+      );
     }
+    await loadRunner.current(targetDate);
   }, []);
 
   useEffect(() => {
