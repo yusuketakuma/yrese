@@ -93,6 +93,55 @@ describe("createCalculationTrace", () => {
     expect(Object.isFrozen(trace.inputsSummary.ids)).toBe(true);
   });
 
+  it("accepts immutable CAL-008 optional extension fields without breaking existing steps", () => {
+    const roundingEvidence = evidenceId("evidence:official:rounding:v1");
+    const trace = createCalculationTrace({
+      inputsSummary,
+      masterVersion: "2026.04",
+      calculationRuleVersion: "draft-001",
+      steps: [
+        claimStep({
+          feeItemCode: "FEE_DISPENSING_BASIC_1",
+          formula: "fixed(47)",
+          intermediateValues: {
+            points: "47",
+            master_version: "2026.04",
+          },
+          rounding: {
+            method: "none",
+            evidenceId: roundingEvidence,
+          },
+          stepStatus: "applied",
+          resultPoints: "47",
+          resultYen: "470",
+        }),
+      ],
+    });
+
+    expect(trace.steps[0]).toMatchObject({
+      feeItemCode: "FEE_DISPENSING_BASIC_1",
+      formula: "fixed(47)",
+      stepStatus: "applied",
+      resultPoints: "47",
+      resultYen: "470",
+    });
+    expect(trace.steps[0]?.intermediateValues).toEqual({
+      points: "47",
+      master_version: "2026.04",
+    });
+    expect(trace.steps[0]?.rounding).toEqual({
+      method: "none",
+      evidenceId: roundingEvidence,
+    });
+    expect(trace.evidenceIds).toEqual([
+      officialEvidence.evidenceId,
+      masterEvidence.evidenceId,
+      roundingEvidence,
+    ]);
+    expect(Object.isFrozen(trace.steps[0]?.intermediateValues)).toBe(true);
+    expect(Object.isFrozen(trace.steps[0]?.rounding)).toBe(true);
+  });
+
   it("rejects claim-affecting steps without evidence refs", () => {
     expect(() =>
       createCalculationTrace({
@@ -102,6 +151,91 @@ describe("createCalculationTrace", () => {
         steps: [claimStep({ evidenceRefs: [] })],
       }),
     ).toThrow(/require at least one evidenceRef/);
+  });
+
+  it("keeps claim-affecting evidence enforcement for suggested and excluded extension steps", () => {
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary,
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [
+          claimStep({
+            stepStatus: "suggested",
+            evidenceRefs: [],
+          }),
+          claimStep({
+            stepId: "step-002",
+            stepStatus: "excluded",
+            evidenceRefs: [],
+          }),
+        ],
+      }),
+    ).toThrow(/require at least one evidenceRef/);
+  });
+
+  it("rejects rounding without an evidence id", () => {
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary,
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [
+          claimStep({
+            rounding: {
+              method: "round_half_up",
+            },
+          } as unknown as Partial<CalculationTraceStep>),
+        ],
+      }),
+    ).toThrow(/rounding\.evidenceId/);
+  });
+
+  it("rejects unsupported step statuses", () => {
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary,
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [
+          claimStep({
+            stepStatus: "pending" as CalculationTraceStep["stepStatus"],
+          } as unknown as Partial<CalculationTraceStep>),
+        ],
+      }),
+    ).toThrow(/stepStatus/);
+  });
+
+  it("rejects non-string or PHI-like intermediate values", () => {
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary,
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [
+          claimStep({
+            intermediateValues: {
+              points: 47,
+            },
+          } as unknown as Partial<CalculationTraceStep>),
+        ],
+      }),
+    ).toThrow(/intermediateValues values must be strings/);
+
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary,
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [
+          claimStep({
+            intermediateValues: {
+              patient_name: "DO_NOT_CAPTURE",
+            },
+          }),
+        ],
+      }),
+    ).toThrow(/PHI-like/);
   });
 
   it("allows non-claim-affecting steps without evidence refs", () => {

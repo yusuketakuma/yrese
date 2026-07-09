@@ -51,6 +51,13 @@ export interface CalculationInputsSummary {
   readonly ruleVersions?: readonly TraceRuleVersionRef[];
 }
 
+export type CalculationTraceStepStatus = "applied" | "suggested" | "excluded" | "blocked";
+
+export interface CalculationTraceRounding {
+  readonly method: string;
+  readonly evidenceId: EvidenceId;
+}
+
 export interface CalculationTraceStep {
   readonly stepId: string;
   readonly description: string;
@@ -58,6 +65,13 @@ export interface CalculationTraceStep {
   readonly evidenceRefs: readonly EvidenceRef[];
   readonly inputRefs: readonly string[];
   readonly output: string;
+  readonly feeItemCode?: string;
+  readonly formula?: string;
+  readonly intermediateValues?: Readonly<Record<string, string>>;
+  readonly rounding?: CalculationTraceRounding;
+  readonly stepStatus?: CalculationTraceStepStatus;
+  readonly resultPoints?: string;
+  readonly resultYen?: string;
 }
 
 export interface CalculationTrace {
@@ -104,9 +118,11 @@ const sourceTypes = new Set<EvidenceSourceType>([
   "jahis",
   "internal_ssot",
 ]);
+const stepStatuses = new Set<CalculationTraceStepStatus>(["applied", "suggested", "excluded", "blocked"]);
+const phiLikeIntermediateValueKeyPattern = /(patient|name|address|phone|tel|email|free_?text|memo)/i;
 
 function assertNonEmptyString(value: string, label: string): void {
-  if (value.trim().length === 0) {
+  if (typeof value !== "string" || value.trim().length === 0) {
     throw new RangeError(`${label} must be a non-empty string`);
   }
 }
@@ -137,9 +153,54 @@ function freezeInputsSummary(summary: CalculationInputsSummary): CalculationInpu
   });
 }
 
+function freezeIntermediateValues(values: Readonly<Record<string, string>>): Readonly<Record<string, string>> {
+  if (typeof values !== "object" || values === null || Array.isArray(values)) {
+    throw new RangeError("CalculationTraceStep intermediateValues must be a string record");
+  }
+
+  const frozenValues: Record<string, string> = {};
+  for (const [key, value] of Object.entries(values)) {
+    assertNonEmptyString(key, "CalculationTraceStep intermediateValues key");
+    if (phiLikeIntermediateValueKeyPattern.test(key)) {
+      throw new RangeError("CalculationTraceStep intermediateValues must not include PHI-like keys");
+    }
+    if (typeof value !== "string") {
+      throw new RangeError("CalculationTraceStep intermediateValues values must be strings");
+    }
+    frozenValues[key] = value;
+  }
+
+  return Object.freeze(frozenValues);
+}
+
+function freezeRounding(rounding: CalculationTraceRounding): CalculationTraceRounding {
+  assertNonEmptyString(rounding.method, "CalculationTraceStep rounding.method");
+  assertNonEmptyString(rounding.evidenceId, "CalculationTraceStep rounding.evidenceId");
+
+  return Object.freeze({
+    method: rounding.method,
+    evidenceId: rounding.evidenceId,
+  });
+}
+
 function freezeStep(step: CalculationTraceStep): CalculationTraceStep {
   assertNonEmptyString(step.stepId, "CalculationTraceStep stepId");
   assertNonEmptyString(step.description, "CalculationTraceStep description");
+  if (step.feeItemCode !== undefined) {
+    assertNonEmptyString(step.feeItemCode, "CalculationTraceStep feeItemCode");
+  }
+  if (step.formula !== undefined) {
+    assertNonEmptyString(step.formula, "CalculationTraceStep formula");
+  }
+  if (step.resultPoints !== undefined) {
+    assertNonEmptyString(step.resultPoints, "CalculationTraceStep resultPoints");
+  }
+  if (step.resultYen !== undefined) {
+    assertNonEmptyString(step.resultYen, "CalculationTraceStep resultYen");
+  }
+  if (step.stepStatus !== undefined && !stepStatuses.has(step.stepStatus)) {
+    throw new RangeError("CalculationTraceStep stepStatus is not supported");
+  }
 
   const evidenceRefs = freezeArray(step.evidenceRefs.map(freezeEvidenceRef));
   if (step.affectsClaim && evidenceRefs.length === 0) {
@@ -150,6 +211,10 @@ function freezeStep(step: CalculationTraceStep): CalculationTraceStep {
     ...step,
     evidenceRefs,
     inputRefs: freezeArray(step.inputRefs),
+    ...(step.intermediateValues === undefined
+      ? {}
+      : { intermediateValues: freezeIntermediateValues(step.intermediateValues) }),
+    ...(step.rounding === undefined ? {} : { rounding: freezeRounding(step.rounding) }),
   });
 }
 
@@ -158,6 +223,9 @@ function collectEvidenceIds(steps: readonly CalculationTraceStep[]): readonly Ev
   for (const step of steps) {
     for (const ref of step.evidenceRefs) {
       ids.add(ref.evidenceId);
+    }
+    if (step.rounding !== undefined) {
+      ids.add(step.rounding.evidenceId);
     }
   }
   return freezeArray([...ids]);
