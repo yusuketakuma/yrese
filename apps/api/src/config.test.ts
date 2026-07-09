@@ -1,13 +1,29 @@
+import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import {
   defaultApiPort,
   devTenantContextConfigurationErrorMessage,
+  patientSearchCursorHmacConfigurationErrorMessage,
   parseApiPort,
   parseDatabaseUrl,
   resolveApiRepositoryMode,
+  resolvePatientSearchCursorHmacKey,
   resolveTenantContextMode,
 } from './config.js';
+
+function makeNonCanonicalBase64Url(value: string): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  const last = value.at(-1);
+  if (last === undefined) {
+    throw new Error('test value must not be empty');
+  }
+  const index = alphabet.indexOf(last);
+  if (index < 0 || index % 4 !== 0) {
+    throw new Error('test value must have canonical 32-byte base64url tail bits');
+  }
+  return `${value.slice(0, -1)}${alphabet[index + 1]}`;
+}
 
 describe('parseApiPort', () => {
   it('defaults when PORT is absent or blank', () => {
@@ -195,6 +211,86 @@ describe('resolveTenantContextMode', () => {
           ...input,
         }),
       ).toThrowError(new Error(devTenantContextConfigurationErrorMessage));
+    }
+  });
+});
+
+describe('resolvePatientSearchCursorHmacKey', () => {
+  it('decodes an exact canonical unpadded base64url 32-byte configured key', () => {
+    const key = randomBytes(32);
+    const encoded = key.toString('base64url');
+
+    const resolved = resolvePatientSearchCursorHmacKey({
+      configuredKey: encoded,
+      nodeEnv: 'production',
+      repositoryMode: 'postgres',
+    });
+
+    expect(resolved.kind).toBe('configured');
+    if (resolved.kind === 'configured') {
+      expect(Buffer.from(resolved.key)).toEqual(key);
+      expect(resolved.key).not.toBe(key);
+    }
+  });
+
+  it('returns an explicit ephemeral decision only for absent key in exact dev/test in-memory mode', () => {
+    for (const nodeEnv of ['development', 'test']) {
+      expect(
+        resolvePatientSearchCursorHmacKey({
+          configuredKey: undefined,
+          nodeEnv,
+          repositoryMode: 'in_memory',
+        }),
+      ).toEqual({ kind: 'ephemeral' });
+    }
+  });
+
+  it('fails closed when the key is absent outside the explicit ephemeral boundary', () => {
+    const cases = [
+      { nodeEnv: 'production', repositoryMode: 'postgres' },
+      { nodeEnv: 'development', repositoryMode: 'postgres' },
+      { nodeEnv: 'test', repositoryMode: 'postgres' },
+      { nodeEnv: 'staging', repositoryMode: 'postgres' },
+      { nodeEnv: undefined, repositoryMode: 'postgres' },
+      { nodeEnv: 'production', repositoryMode: 'in_memory' },
+      { nodeEnv: 'staging', repositoryMode: 'in_memory' },
+      { nodeEnv: 'Development', repositoryMode: 'in_memory' },
+      { nodeEnv: undefined, repositoryMode: 'in_memory' },
+    ] as const;
+
+    for (const input of cases) {
+      expect(() =>
+        resolvePatientSearchCursorHmacKey({ configuredKey: undefined, ...input }),
+      ).toThrowError(new Error(patientSearchCursorHmacConfigurationErrorMessage));
+    }
+  });
+
+  it('rejects blank, padded, malformed, short, long, and non-canonical configured keys with no echo', () => {
+    const valid = randomBytes(32).toString('base64url');
+    const malformedValues = [
+      '',
+      '   ',
+      `${valid}=`,
+      'not+base64url',
+      randomBytes(31).toString('base64url'),
+      randomBytes(33).toString('base64url'),
+      makeNonCanonicalBase64Url(valid),
+    ];
+
+    for (const configuredKey of malformedValues) {
+      try {
+        resolvePatientSearchCursorHmacKey({
+          configuredKey,
+          nodeEnv: 'development',
+          repositoryMode: 'in_memory',
+        });
+        throw new Error('expected cursor HMAC configuration to fail');
+      } catch (error) {
+        expect(error).toEqual(new Error(patientSearchCursorHmacConfigurationErrorMessage));
+        if (configuredKey.length > 0) {
+          expect((error as Error).message).not.toContain(configuredKey);
+        }
+      }
     }
   });
 });

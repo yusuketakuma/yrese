@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import Fastify, { type FastifyInstance } from 'fastify';
 import {
   errorResponseSchema,
@@ -23,20 +23,24 @@ import {
   RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE,
   patientId,
   permissionScope,
-  type PharmacyId,
-  type TenantId,
 } from '@yrese/shared-kernel';
 
 import {
   devTenantContextConfigurationErrorMessage,
+  patientSearchCursorHmacConfigurationErrorMessage,
   type ApiRepositoryMode,
 } from './config.js';
+import {
+  createPatientSearchCursorCodec,
+  patientSearchCursorHmacKeyByteLength,
+  type PatientSearchCursorCodec,
+} from './patient-search-cursor.js';
 import {
   requirePermission,
   tenantContextPlugin,
   type TenantContextMode,
 } from './plugins/tenant-context.js';
-import { InMemoryPatientRepository, type PatientRepository, type PatientSearchCursor } from './patient-repository.js';
+import { InMemoryPatientRepository, type PatientRepository } from './patient-repository.js';
 import { InMemoryReceptionRepository, type ReceptionRepository } from './reception-repository.js';
 
 export type { HealthResponse } from '@yrese/contracts';
@@ -53,74 +57,7 @@ export interface BuildServerOptions {
   readonly now?: () => Date;
   readonly repositoryMode?: ApiRepositoryMode;
   readonly tenantContextMode?: TenantContextMode;
-}
-
-interface EncodedPatientSearchCursor {
-  readonly t: string;
-  readonly p: string;
-  readonly qh: string;
-  readonly offset: number;
-}
-
-function queryHash(q: string): string {
-  return createHash('sha256').update(q).digest('hex');
-}
-
-function encodePatientSearchCursor(input: {
-  readonly tenantId: TenantId;
-  readonly pharmacyId: PharmacyId;
-  readonly q: string;
-  readonly cursor: PatientSearchCursor;
-}): string {
-  const cursor: EncodedPatientSearchCursor = {
-    t: input.tenantId,
-    p: input.pharmacyId,
-    qh: queryHash(input.q),
-    offset: input.cursor.offset,
-  };
-  return Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url');
-}
-
-function isEncodedPatientSearchCursor(value: unknown): value is EncodedPatientSearchCursor {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-
-  const cursor = value as Partial<EncodedPatientSearchCursor>;
-  const offset = cursor.offset;
-  return (
-    typeof cursor.t === 'string' &&
-    typeof cursor.p === 'string' &&
-    typeof cursor.qh === 'string' &&
-    /^[a-f0-9]{64}$/.test(cursor.qh) &&
-    Number.isSafeInteger(offset) &&
-    offset !== undefined &&
-    offset >= 0
-  );
-}
-
-function decodePatientSearchCursor(input: {
-  readonly value: string;
-  readonly tenantId: TenantId;
-  readonly pharmacyId: PharmacyId;
-  readonly q: string;
-}): PatientSearchCursor | undefined {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(Buffer.from(input.value, 'base64url').toString('utf8'));
-  } catch {
-    return undefined;
-  }
-
-  if (!isEncodedPatientSearchCursor(parsed)) {
-    return undefined;
-  }
-
-  if (parsed.t !== input.tenantId || parsed.p !== input.pharmacyId || parsed.qh !== queryHash(input.q)) {
-    return undefined;
-  }
-
-  return { offset: parsed.offset };
+  readonly patientSearchCursorCodec?: PatientSearchCursorCodec;
 }
 
 function invalidPatientSearchQueryResponse() {
@@ -156,6 +93,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   if (tenantContextMode === 'dev_headers' && options.repositoryMode !== 'in_memory') {
     throw new Error(devTenantContextConfigurationErrorMessage);
   }
+
+  if (options.patientSearchCursorCodec === undefined && options.repositoryMode === 'postgres') {
+    throw new Error(patientSearchCursorHmacConfigurationErrorMessage);
+  }
+  const patientSearchCursorCodec =
+    options.patientSearchCursorCodec ??
+    createPatientSearchCursorCodec(randomBytes(patientSearchCursorHmacKeyByteLength));
 
   const patientRepository = options.patientRepository ?? new InMemoryPatientRepository();
   const receptionRepository = options.receptionRepository ?? new InMemoryReceptionRepository();
@@ -216,12 +160,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       const cursor =
         query.data.cursor === undefined
           ? undefined
-          : decodePatientSearchCursor({
-              value: query.data.cursor,
+          : patientSearchCursorCodec.decode({
               tenantId: tenantContext.tenantId,
               pharmacyId: tenantContext.pharmacyId,
               q: query.data.q,
-            });
+            }, query.data.cursor);
 
       if (query.data.cursor !== undefined && cursor === undefined) {
         return reply.code(400).send(invalidPatientSearchQueryResponse());
@@ -240,12 +183,14 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         ...(page.nextCursor === undefined
           ? {}
           : {
-              nextCursor: encodePatientSearchCursor({
-                tenantId: tenantContext.tenantId,
-                pharmacyId: tenantContext.pharmacyId,
-                q: query.data.q,
-                cursor: page.nextCursor,
-              }),
+              nextCursor: patientSearchCursorCodec.encode(
+                {
+                  tenantId: tenantContext.tenantId,
+                  pharmacyId: tenantContext.pharmacyId,
+                  q: query.data.q,
+                },
+                page.nextCursor,
+              ),
             }),
       });
     },

@@ -1,7 +1,15 @@
+import { createHash, randomBytes } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { PATIENT_SEARCH_CURSOR_MAX_LENGTH } from '@yrese/contracts';
 
-import { devTenantContextConfigurationErrorMessage } from './config.js';
+import {
+  devTenantContextConfigurationErrorMessage,
+  patientSearchCursorHmacConfigurationErrorMessage,
+} from './config.js';
+import {
+  createPatientSearchCursorCodec,
+  patientSearchCursorHmacKeyByteLength,
+} from './patient-search-cursor.js';
 import type { PatientRepository } from './patient-repository.js';
 import type { ReceptionRepository } from './reception-repository.js';
 import {
@@ -19,9 +27,21 @@ function buildDevTestServer(
   options: Omit<BuildServerOptions, 'repositoryMode' | 'tenantContextMode'> = {},
 ) {
   return buildServer({
+    patientSearchCursorCodec: createPatientSearchCursorCodec(
+      randomBytes(patientSearchCursorHmacKeyByteLength),
+    ),
     ...options,
     repositoryMode: 'in_memory',
     tenantContextMode: 'dev_headers',
+  });
+}
+
+function buildDefaultTestServer(options: BuildServerOptions = {}) {
+  return buildServer({
+    patientSearchCursorCodec: createPatientSearchCursorCodec(
+      randomBytes(patientSearchCursorHmacKeyByteLength),
+    ),
+    ...options,
   });
 }
 
@@ -83,7 +103,7 @@ const malformedDevIdHeaderCases = [
 describe('buildServer', () => {
   it('returns health status without PHI or database dependencies', async () => {
     const healthTimestamp = new Date('2026-07-09T10:20:00.000Z');
-    const server = buildServer({
+    const server = buildDefaultTestServer({
       now: () => healthTimestamp,
     });
 
@@ -107,7 +127,7 @@ describe('buildServer', () => {
   });
 
   it('denies /whoami when dev tenant context headers are absent', async () => {
-    const server = buildServer();
+    const server = buildDefaultTestServer();
 
     const response = await server.inject({
       method: 'GET',
@@ -130,7 +150,7 @@ describe('buildServer', () => {
     const receptionCreate = vi.fn<ReceptionRepository['create']>(async () => {
       throw new Error('repository must not run without an authenticated tenant context');
     });
-    const server = buildServer({
+    const server = buildDefaultTestServer({
       patientRepository: { search: patientSearch, findById: patientFindById },
       receptionRepository: { list: receptionList, create: receptionCreate },
     });
@@ -280,8 +300,22 @@ describe('buildServer', () => {
     ).toThrowError(new Error(devTenantContextConfigurationErrorMessage));
   });
 
+  it('requires an injected cursor codec only for postgres and uses an ephemeral non-postgres test seam', async () => {
+    expect(() => buildServer({ repositoryMode: 'postgres' })).toThrowError(
+      new Error(patientSearchCursorHmacConfigurationErrorMessage),
+    );
+
+    const defaultEphemeralServer = buildServer();
+    const inMemoryEphemeralServer = buildServer({
+      repositoryMode: 'in_memory',
+      tenantContextMode: 'dev_headers',
+    });
+    await defaultEphemeralServer.close();
+    await inMemoryEphemeralServer.close();
+  });
+
   it('denies /patients/search when dev tenant context headers are absent', async () => {
-    const server = buildServer();
+    const server = buildDefaultTestServer();
 
     const response = await server.inject({
       method: 'GET',
@@ -429,6 +463,122 @@ describe('buildServer', () => {
       'patient-syn-006',
     ]);
     expect(typeof secondBody.nextCursor).toBe('string');
+  });
+
+  it('keeps cursor scope/query opaque and rejects an authenticated offset mutation', async () => {
+    const cursorKey = randomBytes(patientSearchCursorHmacKeyByteLength);
+    const server = buildDevTestServer({
+      patientSearchCursorCodec: createPatientSearchCursorCodec(cursorKey),
+    });
+    const query = '合成';
+    const firstPage = await server.inject({
+      method: 'GET',
+      url: `/patients/search?q=${encodeURIComponent(query)}&limit=1`,
+      headers: tenantOnePatientReadHeaders,
+    });
+    const cursor = firstPage.json().nextCursor as string;
+    const tokenBody = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as Record<
+      string,
+      unknown
+    >;
+
+    expect(Object.keys(tokenBody)).toEqual(['v', 'o', 'm']);
+    const serializedBody = JSON.stringify(tokenBody);
+    expect(serializedBody).not.toContain(query);
+    expect(serializedBody).not.toContain(tenantOnePatientReadHeaders['x-dev-tenant']);
+    expect(serializedBody).not.toContain(tenantOnePatientReadHeaders['x-dev-pharmacy']);
+    expect(serializedBody).not.toContain(createHash('sha256').update(query).digest('hex'));
+
+    const tamperedCursor = Buffer.from(
+      JSON.stringify({ v: tokenBody.v, o: 999, m: tokenBody.m }),
+      'utf8',
+    ).toString('base64url');
+    const tampered = await server.inject({
+      method: 'GET',
+      url: `/patients/search?q=${encodeURIComponent(query)}&limit=1&cursor=${encodeURIComponent(tamperedCursor)}`,
+      headers: tenantOnePatientReadHeaders,
+    });
+
+    await server.close();
+
+    expect(firstPage.statusCode).toBe(200);
+    expect(tampered.statusCode).toBe(400);
+    expect(tampered.json()).toEqual({
+      errorCode: patientSearchInvalidQueryErrorCode,
+      message: 'Invalid patient search query',
+    });
+  });
+
+  it('accepts a cursor across servers with the same key and rejects it with a different key', async () => {
+    const sharedKey = randomBytes(patientSearchCursorHmacKeyByteLength);
+    const issuer = buildDevTestServer({
+      patientSearchCursorCodec: createPatientSearchCursorCodec(sharedKey),
+    });
+    const sameKeyVerifier = buildDevTestServer({
+      patientSearchCursorCodec: createPatientSearchCursorCodec(sharedKey),
+    });
+    const differentKeyVerifier = buildDevTestServer({
+      patientSearchCursorCodec: createPatientSearchCursorCodec(
+        randomBytes(patientSearchCursorHmacKeyByteLength),
+      ),
+    });
+    const firstPage = await issuer.inject({
+      method: 'GET',
+      url: '/patients/search?q=合成&limit=3',
+      headers: tenantOnePatientReadHeaders,
+    });
+    const cursor = firstPage.json().nextCursor as string;
+
+    const sameKeyPage = await sameKeyVerifier.inject({
+      method: 'GET',
+      url: `/patients/search?q=合成&limit=3&cursor=${encodeURIComponent(cursor)}`,
+      headers: tenantOnePatientReadHeaders,
+    });
+    const differentKeyPage = await differentKeyVerifier.inject({
+      method: 'GET',
+      url: `/patients/search?q=合成&limit=3&cursor=${encodeURIComponent(cursor)}`,
+      headers: tenantOnePatientReadHeaders,
+    });
+
+    await Promise.all([issuer.close(), sameKeyVerifier.close(), differentKeyVerifier.close()]);
+
+    expect(firstPage.statusCode).toBe(200);
+    expect(sameKeyPage.statusCode).toBe(200);
+    expect(
+      sameKeyPage.json().results.map((result: { patientId: string }) => result.patientId),
+    ).toEqual(['patient-syn-004', 'patient-syn-005', 'patient-syn-006']);
+    expect(differentKeyPage.statusCode).toBe(400);
+    expect(differentKeyPage.json()).toEqual({
+      errorCode: patientSearchInvalidQueryErrorCode,
+      message: 'Invalid patient search query',
+    });
+  });
+
+  it('rejects the legacy unsigned patient search cursor without downgrade decoding', async () => {
+    const server = buildDevTestServer();
+    const legacyCursor = Buffer.from(
+      JSON.stringify({
+        t: 'tenant-001',
+        p: 'pharmacy-001',
+        qh: createHash('sha256').update('合成').digest('hex'),
+        offset: 1,
+      }),
+      'utf8',
+    ).toString('base64url');
+
+    const response = await server.inject({
+      method: 'GET',
+      url: `/patients/search?q=合成&limit=1&cursor=${encodeURIComponent(legacyCursor)}`,
+      headers: tenantOnePatientReadHeaders,
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      errorCode: patientSearchInvalidQueryErrorCode,
+      message: 'Invalid patient search query',
+    });
   });
 
   it('rejects cursor reuse across tenant boundaries', async () => {

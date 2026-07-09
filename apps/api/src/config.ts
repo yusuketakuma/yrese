@@ -4,8 +4,19 @@ export const defaultApiPort = 3001;
 export const apiRepositoryModes = ['postgres', 'in_memory'] as const;
 export const devTenantContextConfigurationErrorMessage =
   'DEV tenant context headers require exact opt-in for an in-memory development or test server';
+export const patientSearchCursorHmacConfigurationErrorMessage =
+  'Patient search cursor HMAC key configuration is invalid';
 
 export type ApiRepositoryMode = (typeof apiRepositoryModes)[number];
+
+export type PatientSearchCursorHmacKeyResolution =
+  | {
+      readonly kind: 'configured';
+      readonly key: Uint8Array;
+    }
+  | {
+      readonly kind: 'ephemeral';
+    };
 
 const decimalIntegerPattern = /^(0|[1-9]\d*)$/;
 
@@ -109,4 +120,34 @@ export function resolveTenantContextMode(input: {
   }
 
   return 'dev_headers';
+}
+
+export function resolvePatientSearchCursorHmacKey(input: {
+  readonly configuredKey: string | undefined;
+  readonly nodeEnv: string | undefined;
+  readonly repositoryMode: ApiRepositoryMode;
+}): PatientSearchCursorHmacKeyResolution {
+  if (input.configuredKey === undefined) {
+    if (
+      input.repositoryMode === 'in_memory' &&
+      (input.nodeEnv === 'development' || input.nodeEnv === 'test')
+    ) {
+      return Object.freeze({ kind: 'ephemeral' });
+    }
+    throw new Error(patientSearchCursorHmacConfigurationErrorMessage);
+  }
+
+  if (!/^[A-Za-z0-9_-]{43}$/.test(input.configuredKey)) {
+    throw new Error(patientSearchCursorHmacConfigurationErrorMessage);
+  }
+
+  const key = Buffer.from(input.configuredKey, 'base64url');
+  if (key.byteLength !== 32 || key.toString('base64url') !== input.configuredKey) {
+    throw new Error(patientSearchCursorHmacConfigurationErrorMessage);
+  }
+
+  return Object.freeze({
+    kind: 'configured',
+    key: Buffer.from(key),
+  });
 }

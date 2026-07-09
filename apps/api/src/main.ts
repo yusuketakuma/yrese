@@ -1,7 +1,9 @@
+import { randomBytes } from 'node:crypto';
 import {
   parseApiPort,
   parseDatabaseUrl,
   resolveApiRepositoryMode,
+  resolvePatientSearchCursorHmacKey,
   resolveTenantContextMode,
 } from './config.js';
 import { assertMigrationStateAllowsStartup } from './db/migration-runner.js';
@@ -9,6 +11,10 @@ import { loadMigrationFiles } from './db/migrations.js';
 import { PostgresPatientRepository } from './db/patient-repository.js';
 import { createDbPool } from './db/pool.js';
 import { PostgresReceptionRepository } from './db/reception-repository.js';
+import {
+  createPatientSearchCursorCodec,
+  patientSearchCursorHmacKeyByteLength,
+} from './patient-search-cursor.js';
 import { buildServer } from './server.js';
 
 async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServer>> {
@@ -24,9 +30,19 @@ async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServe
     repositoryMode,
     databaseUrl,
   });
+  const cursorKeyResolution = resolvePatientSearchCursorHmacKey({
+    configuredKey: process.env.YRESE_PATIENT_SEARCH_CURSOR_HMAC_KEY,
+    nodeEnv: process.env.NODE_ENV,
+    repositoryMode,
+  });
+  const patientSearchCursorHmacKey =
+    cursorKeyResolution.kind === 'configured'
+      ? cursorKeyResolution.key
+      : randomBytes(patientSearchCursorHmacKeyByteLength);
+  const patientSearchCursorCodec = createPatientSearchCursorCodec(patientSearchCursorHmacKey);
 
   if (repositoryMode === 'in_memory') {
-    return buildServer({ repositoryMode, tenantContextMode });
+    return buildServer({ repositoryMode, tenantContextMode, patientSearchCursorCodec });
   }
 
   if (databaseUrl === undefined) {
@@ -42,6 +58,7 @@ async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServe
       receptionRepository: new PostgresReceptionRepository(pool),
       repositoryMode,
       tenantContextMode,
+      patientSearchCursorCodec,
     });
     server.addHook('onClose', async () => {
       await pool.end();
