@@ -48,4 +48,6 @@ pnpm monorepo。`apps/*` が実行体、`packages/*` が共通モジュール(ru
 - **evidence 規律**: 算定・請求・帳票ロジックは `docs/calculation/evidence_register.md` の evidence_id 裏付けが必須。点数値や法令要件を推測実装しない — 「根拠不足で止まるコード」が正
 - **fail-closed**: 未知ステータス=請求不可(isClaimable は allow-list)、空ルール算定=BLOCKED、未入金の領収済み表示禁止、会計台帳は append-only
 - **二系統運用**: Claude 側=仕様/SSOT/フロントエンド、Codex 側=バックエンド(agmsg チーム `yrese` で WP_ASSIGN→CODEX_PLAN→実装→WP_HANDOFF→レビュー)。詳細は `docs/agents/`。高リスク領域(算定・請求・監査・会計等)は opus4.8 レビュー必須
+- **コードはシンプルに実装する**: 要求を満たす最小の実装を選び、投機的な抽象化・使われないオプション・「ついでの改善」を入れない(改善は新しい WP として提案する)
+- **二重実装の禁止**: 同じ概念・enum・status・validation・money/date処理を複数箇所に実装しない。実装前に既存の共通パッケージ(`packages/*`)と SSOT を確認し、あるものは再利用、拡張が必要なら共通側を改版する(重複は `check:boundaries` と COMMON_MODULE_DUPLICATION_BLOCKED の対象)
 - コミットメッセージは WP-ID を先頭に(例: `WP-2101b: ...`)。Codex 実装分は `Co-Authored-By: Codex <noreply@openai.com>` を併記
