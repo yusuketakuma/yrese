@@ -439,6 +439,12 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `apps/api/src/db/migrations.ts`、migration loader unit test、必要なら `scripts/check-scripts.mjs` fixture。既存 migration SQL 内容・適用順・checksum 仕様は変更しない。
   - 検証: invalid filename fixture が throw、valid migrations は従来通り version sort + duplicate reject、`pnpm --filter @yrese/api test`、`pnpm check:boundaries`、`git diff --check`。DB migration runner の規律変更なので fable5 PLAN_APPROVED 後に実装。
 
+- [ ] WP-4056 API repository mode explicitness and in-memory startup guard(codex 提案 SELF-SCAN-20260710-01、WP-5003後続)
+  - 発見根拠: `apps/api/src/main.ts` の `buildServerForEnvironment()` は `DATABASE_URL` が未設定の場合に常に `buildServer()` を返し、`apps/api/src/server.ts` は既定で `InMemoryPatientRepository` / `InMemoryReceptionRepository` を使う。WP-5003 でDB実装は追加済みだが、起動時の「DBなしでin-memoryへ落ちる」挙動は明示モードではなく、staging/dev-like環境の設定漏れを合成データAPIとして起動させうる。
+  - 目的: in-memory repository を明示的な dev/test mode のみに限定し、DB永続化が期待される環境では `DATABASE_URL` 不在を fail-closed にする。患者・受付DB化後の運用品質として、暗黙のメモリfallbackを本番/検証環境へ持ち込まない。
+  - 想定スコープ: `apps/api/src/config.ts` に repository mode / runtime mode helper を追加、`apps/api/src/main.ts` の起動分岐を明示化、main起動用の単体テストまたはhelper testを追加。既存 `buildServer()` のテスト注入 seam と in-memory repository 自体は維持する。
+  - 検証: `DATABASE_URL` 不在 + 明示dev/test mode は in-memory 起動可、DB必須modeで `DATABASE_URL` 不在は起動前に throw、`DATABASE_URL` 設定時は migration startup check + PostgreSQL repository 注入、`pnpm --filter @yrese/api test`、`pnpm check:boundaries`、`git diff --check`。本番認証スタブ境界(WP-4038/SEC-006)と混同しないため fable5 PLAN_APPROVED 後に実装。
+
 - [x] WP-4012 dependency scan / SBOM CI gate(b0ecf84、addendum 702c2f5)
   - 発見根拠: `.github/workflows/ci.yml` には dependency scan / SBOM 追加TODOが残り、`package.json` にも依存脆弱性・SBOM生成を検査するroot scriptが未定義。
   - 目的: secret scan に加えて、依存脆弱性検知とSBOM生成/検証をCIの機械ゲートにし、security SSOTの「dependency scan / SBOM」予定項目を実装へ進める。
