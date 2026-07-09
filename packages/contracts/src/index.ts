@@ -14,4 +14,5 @@ export * from "./health.js";
 export * from "./openapi.js";
 export * from "./patient-search.js";
 export * from "./reception-queue.js";
+export * from "./wire-id.js";
 export * from "./whoami.js";

@@ -194,6 +194,7 @@ components:
         patientId:
           type: string
           minLength: 1
+          maxLength: 128
         idempotencyKey:
           type: string
           minLength: 1
@@ -231,12 +232,15 @@ components:
         tenantId:
           type: string
           minLength: 1
+          maxLength: 128
         pharmacyId:
           type: string
           minLength: 1
+          maxLength: 128
         actorId:
           type: string
           minLength: 1
+          maxLength: 128
         scopes:
           type: array
           items:
@@ -274,6 +278,7 @@ components:
               patientId:
                 type: string
                 minLength: 1
+                maxLength: 128
               name:
                 type: string
                 minLength: 1
@@ -335,12 +340,14 @@ components:
               receptionId:
                 type: string
                 minLength: 1
+                maxLength: 128
               patient:
                 type: object
                 properties:
                   patientId:
                     type: string
                     minLength: 1
+                    maxLength: 128
                   name:
                     type: string
                     minLength: 1
@@ -412,12 +419,14 @@ components:
         receptionId:
           type: string
           minLength: 1
+          maxLength: 128
         patient:
           type: object
           properties:
             patientId:
               type: string
               minLength: 1
+              maxLength: 128
             name:
               type: string
               minLength: 1

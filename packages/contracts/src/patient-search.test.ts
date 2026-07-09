@@ -7,6 +7,7 @@ import {
   patientSearchResponseSchema,
   patientSearchResultSchema,
 } from "./patient-search.js";
+import { WIRE_ID_MAX_LENGTH } from "./wire-id.js";
 
 const validResult = {
   patientId: "patient-syn-001",
@@ -55,6 +56,15 @@ describe("patientSearchResultSchema", () => {
     expect(patientSearchResultSchema.parse(validResult)).toEqual(validResult);
   });
 
+  it("accepts existing dev wire patient IDs as plain strings", () => {
+    expect(
+      patientSearchResultSchema.parse({
+        ...validResult,
+        patientId: "patient-dev-001",
+      }).patientId,
+    ).toBe("patient-dev-001");
+  });
+
   it("exports the approved eligibility status values", () => {
     expect(ELIGIBILITY_STATUSES).toEqual([
       "VERIFIED",
@@ -78,6 +88,18 @@ describe("patientSearchResultSchema", () => {
       }),
     ).toThrow();
   });
+
+  it.each(["", "   ", "patient-dev-001\u0000", "x".repeat(WIRE_ID_MAX_LENGTH + 1)])(
+    "rejects invalid patientId wire value %j",
+    (patientId) => {
+      expect(() =>
+        patientSearchResultSchema.parse({
+          ...validResult,
+          patientId,
+        }),
+      ).toThrow();
+    },
+  );
 });
 
 describe("patientSearchResponseSchema", () => {

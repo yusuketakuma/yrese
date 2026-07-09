@@ -8,6 +8,7 @@ import {
   receptionQueueResponseSchema,
   receptionStatusSchema,
 } from "./reception-queue.js";
+import { WIRE_ID_MAX_LENGTH } from "./wire-id.js";
 
 const patientSummary = {
   patientId: "patient-syn-001",
@@ -70,6 +71,18 @@ describe("reception queue schemas", () => {
       }),
     ).toThrow();
   });
+
+  it.each(["", "   ", "reception-syn-001\u0000", "x".repeat(WIRE_ID_MAX_LENGTH + 1)])(
+    "rejects invalid receptionId wire value %j",
+    (receptionId) => {
+      expect(() =>
+        receptionQueueEntrySchema.parse({
+          ...queueEntry,
+          receptionId,
+        }),
+      ).toThrow();
+    },
+  );
 });
 
 describe("receptionCreateRequestSchema", () => {
@@ -87,7 +100,9 @@ describe("receptionCreateRequestSchema", () => {
 
   it.each([
     { patientId: "", idempotencyKey: "key-001" },
+    { patientId: "   ", idempotencyKey: "key-001" },
     { patientId: "patient-syn-001\u0000", idempotencyKey: "key-001" },
+    { patientId: "x".repeat(WIRE_ID_MAX_LENGTH + 1), idempotencyKey: "key-001" },
     { patientId: "patient-syn-001", idempotencyKey: "" },
     { patientId: "patient-syn-001", idempotencyKey: "   " },
     { patientId: "patient-syn-001", idempotencyKey: "key\t001" },

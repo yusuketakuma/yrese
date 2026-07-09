@@ -6,6 +6,8 @@ import {
 } from "@yrese/shared-kernel";
 import { z } from "zod";
 
+import { actorIdWireSchema, pharmacyIdWireSchema, tenantIdWireSchema } from "./wire-id.js";
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -24,9 +26,9 @@ export const whoamiPermissionScopeSchema = z
   });
 
 export const whoamiResponseSchema = z.object({
-  tenantId: z.string().min(1),
-  pharmacyId: z.string().min(1),
-  actorId: z.string().min(1),
+  tenantId: tenantIdWireSchema,
+  pharmacyId: pharmacyIdWireSchema,
+  actorId: actorIdWireSchema,
   scopes: z.array(whoamiPermissionScopeSchema),
 });
 

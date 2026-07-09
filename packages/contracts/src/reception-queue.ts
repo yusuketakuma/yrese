@@ -2,6 +2,7 @@ import { RECEPTION_STATUSES, type ReceptionStatus } from "@yrese/shared-kernel";
 import { z } from "zod";
 
 import { patientSearchResultSchema } from "./patient-search.js";
+import { patientIdWireSchema, receptionIdWireSchema } from "./wire-id.js";
 
 export const RECEPTION_IDEMPOTENCY_KEY_MAX_LENGTH = 128;
 
@@ -15,12 +16,7 @@ export const receptionQueueQuerySchema = z.object({
   date: z.iso.date(),
 });
 
-export const receptionIdSchema = z
-  .string()
-  .min(1)
-  .refine(hasNoControlCharacters, {
-    message: "receptionId must not contain control characters",
-  });
+export const receptionIdSchema = receptionIdWireSchema;
 
 export const receptionStatusSchema = z.enum(RECEPTION_STATUSES);
 
@@ -38,12 +34,7 @@ export const receptionQueueResponseSchema = z.object({
 });
 
 export const receptionCreateRequestSchema = z.object({
-  patientId: z
-    .string()
-    .min(1)
-    .refine(hasNoControlCharacters, {
-      message: "patientId must not contain control characters",
-    }),
+  patientId: patientIdWireSchema,
   idempotencyKey: z
     .string()
     .min(1)

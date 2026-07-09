@@ -6,6 +6,13 @@
 
 ## 2026-07-09(続き)
 
+### WP-4046 API ID wire-field validation policy
+
+- fable5 裁定: wire ID は素の string を維持しつつ、受付系と同じ検証水準(非空・空白のみ拒否・制御文字拒否・妥当な max 長)を全契約で統一。
+- 実装: `@yrese/contracts` に shared-kernel branded ID factory 由来の共通 `wire-id` schema を追加。`patientSearchResultSchema.patientId`、`whoamiResponseSchema.tenantId/pharmacyId/actorId`、受付キューの `receptionId` / `patientId` を同一 helper へ寄せ、contracts ローカルの ID 規則再発明を避けた。
+- API-001 / API-006 / MOD-012 / MOD-001 を改版。OpenAPI には対象 ID field の `maxLength: 128` を generator 経由で反映。wire shape は string のまま変更なし。
+- 検証: `pnpm --filter @yrese/contracts test` 66 tests PASS、`pnpm --filter @yrese/contracts typecheck` PASS、`pnpm --filter @yrese/api test` 40 tests PASS、`pnpm --filter @yrese/api typecheck` PASS、`pnpm check:openapi` PASS、`pnpm check:ssot-index` PASS、`pnpm check:boundaries` PASS、`pnpm -r typecheck` PASS、`git diff --check` PASS。
+
 ### WP-4053 reception business date JST boundary
 
 - fable5 から WP-4053-UI commit_request と WP-4053-API assign を受領。UI側は `todayAsIsoDate()` を `Asia/Tokyo` 固定にする Claude 差分を `49fb867` として commit/push 済み。

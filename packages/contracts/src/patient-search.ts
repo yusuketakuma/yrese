@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { patientIdWireSchema } from "./wire-id.js";
+
 export const ELIGIBILITY_STATUSES = [
   "VERIFIED",
   "PENDING_REVERIFY",
@@ -16,7 +18,7 @@ export const patientSearchQuerySchema = z.object({
 });
 
 export const patientSearchResultSchema = z.object({
-  patientId: z.string().min(1),
+  patientId: patientIdWireSchema,
   name: z.string().min(1),
   kana: z.string().min(1),
   birthDate: z.iso.date(),
