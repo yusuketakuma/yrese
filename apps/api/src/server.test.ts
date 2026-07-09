@@ -21,6 +21,13 @@ const tenantTwoPatientReadHeaders = {
   'x-dev-scopes': 'patient:read',
 } as const;
 
+const otherPharmacyPatientReadHeaders = {
+  'x-dev-tenant': 'tenant-001',
+  'x-dev-pharmacy': 'pharmacy-002',
+  'x-dev-actor': 'user-003',
+  'x-dev-scopes': 'patient:read',
+} as const;
+
 describe('buildServer', () => {
   it('returns health status without PHI or database dependencies', async () => {
     const server = buildServer();
@@ -166,6 +173,29 @@ describe('buildServer', () => {
     });
   });
 
+  it('denies /patients/search when patient read scope is missing', async () => {
+    const server = buildServer();
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/patients/search?q=合成',
+      headers: {
+        'x-dev-tenant': 'tenant-001',
+        'x-dev-pharmacy': 'pharmacy-001',
+        'x-dev-actor': 'user-001',
+        'x-dev-scopes': 'tenant:read',
+      },
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      errorCode: 'AUTH-0003',
+      message: 'Forbidden',
+    });
+  });
+
   it.each([
     ['/patients/search', 'missing q'],
     ['/patients/search?q=', 'blank q'],
@@ -252,6 +282,58 @@ describe('buildServer', () => {
     expect(firstPage.statusCode).toBe(200);
     expect(crossTenant.statusCode).toBe(400);
     expect(crossTenant.json()).toEqual({
+      errorCode: patientSearchInvalidQueryErrorCode,
+      message: 'Invalid patient search query',
+    });
+  });
+
+  it('rejects cursor reuse across pharmacy boundaries', async () => {
+    const server = buildServer();
+
+    const firstPage = await server.inject({
+      method: 'GET',
+      url: '/patients/search?q=合成&limit=3',
+      headers: tenantOnePatientReadHeaders,
+    });
+    const firstBody = firstPage.json();
+
+    const crossPharmacy = await server.inject({
+      method: 'GET',
+      url: `/patients/search?q=合成&limit=3&cursor=${encodeURIComponent(firstBody.nextCursor)}`,
+      headers: otherPharmacyPatientReadHeaders,
+    });
+
+    await server.close();
+
+    expect(firstPage.statusCode).toBe(200);
+    expect(crossPharmacy.statusCode).toBe(400);
+    expect(crossPharmacy.json()).toEqual({
+      errorCode: patientSearchInvalidQueryErrorCode,
+      message: 'Invalid patient search query',
+    });
+  });
+
+  it('rejects cursor reuse with a different query', async () => {
+    const server = buildServer();
+
+    const firstPage = await server.inject({
+      method: 'GET',
+      url: '/patients/search?q=合成&limit=3',
+      headers: tenantOnePatientReadHeaders,
+    });
+    const firstBody = firstPage.json();
+
+    const differentQuery = await server.inject({
+      method: 'GET',
+      url: `/patients/search?q=SYN&limit=3&cursor=${encodeURIComponent(firstBody.nextCursor)}`,
+      headers: tenantOnePatientReadHeaders,
+    });
+
+    await server.close();
+
+    expect(firstPage.statusCode).toBe(200);
+    expect(differentQuery.statusCode).toBe(400);
+    expect(differentQuery.json()).toEqual({
       errorCode: patientSearchInvalidQueryErrorCode,
       message: 'Invalid patient search query',
     });
