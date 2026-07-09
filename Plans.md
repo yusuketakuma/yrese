@@ -183,7 +183,7 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 実施: `apps/web/package.json` の `test` を `vitest run` に変更し、webテスト不在時に成功しないゲートへ戻した。
   - 検証: `pnpm --filter @yrese/web test`, `pnpm --filter @yrese/web typecheck`, `pnpm -r test`, `pnpm check:boundaries`, `git diff --check`。
 
-- [ ] WP-4020 ssot_index 整合性 CI ゲート(次アサイン予定・codex)
+- [x] WP-4020 ssot_index 整合性 CI ゲート(codex実装・claudeレビュー、c06c913。WP-4027 で台帳反映)
   - 発見根拠: WP-0051 で索引未登録の約50文書を検出(索引の手動更新漏れが再発性の欠陥)。
   - 目的: `scripts/check-ssot-index.mjs` を新設し、docs/**/*.md と ssot_index.md の相互一致(索引にない文書・文書にない索引行・status/ssot_id の不一致・ssot_id 重複・frontmatter 欠落)を CI で機械検査する。`pnpm check:ssot-index` として root script + ci.yml に追加。
   - 想定スコープ: `scripts/check-ssot-index.mjs`, `package.json`, `.github/workflows/ci.yml`, `scripts/check-scripts.mjs`(回帰ハーネス登録)。
@@ -223,6 +223,29 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 目的: 監査ログ永続化実装時に、canonical payload から entryHash を生成する作成APIと、保存済みレコードを検証して復元する hydrate/verify API を分離し、任意hexを真正性証跡として扱わない。
   - 想定スコープ: `packages/audit/**`、将来の監査永続化パッケージ/アプリ配線。必要なら SEC-007/MOD-008 改版を fable5 に依頼。
   - 検証: payload変更でhash不一致になるテスト、prevHash連鎖テスト、hydrate時の不一致拒否テスト、`pnpm --filter @yrese/audit test`。
+  - opus4.8 事後レビュー申し送り(2026-07-09): createAuditEvent は sha256 hex 形式検証のみで entryHash の計算・連続性は未検証。WP-2009 完了まで本番配線で任意ハッシュを供給する呼び出しを作らない(裏付けのない tamper-evidence を提示しない)。
+
+- [ ] WP-4024 audit 実行時ガードの否定テスト補強(opus4.8 レビュー指摘 LOW)
+  - 発見根拠: WP-2003 事後レビューで、assertTargetRef(空/制御文字/非snake_case)、assertOutcome(不正値)、businessReasonCodePattern(小文字/不正コード)、correlationId 欠落の否定テストが未カバーと指摘。ガード自体は実装済みで正しく動作。
+  - 目的: 回帰保護のため否定テストを追加する。実装変更は不要。
+  - 検証: `pnpm --filter @yrese/audit test`。
+
+- [x] WP-4027 WP-4020 完了の台帳反映(codex 提案 SELF-SCAN-20260709-07。本改版で反映済み)
+
+- [ ] WP-4028 算定パッケージ純粋関数規律の静的検査ゲート(codex 提案 SELF-SCAN-20260709-08)
+  - 発見根拠: CAL-010 が `Date.now` / `new Date(` / `Math.random` / `parseFloat` 等の静的検査を独立WP候補として明記する一方、現行 check-boundaries は import 方向・循環・重複定義のみ。
+  - 目的: packages/calculation(将来は money/date-time も)に対する禁止パターン静的検査を CI ゲート化する。CAL-010 APPROVED 後に実装。
+  - 検証: 違反注入 fixture での検出、`pnpm test:scripts`。
+
+- [ ] WP-4029 患者検索 cursor の contract 層上限(codex 提案 SELF-SCAN-20260709-09)
+  - 発見根拠: `patientSearchQuerySchema` の `cursor: z.string().optional()` に長さ上限がなく、巨大 cursor 文字列を contract 層で拒否できない。
+  - 目的: cursor に妥当な max 長を設け、fail-closed に契約層で拒否する(API-001 の改版を伴う場合は SSOT 先行)。
+  - 検証: `pnpm --filter @yrese/contracts test`, `pnpm --filter @yrese/api test`。
+
+- [ ] WP-4030 不正 dev ID ヘッダの API 否定テスト補強(codex 提案 SELF-SCAN-20260709-10)
+  - 発見根拠: dev tenant stub は空白・制御文字入り `x-dev-tenant` 等を branded ID factory で拒否する設計だが、API route 経由の否定テストは「ヘッダ欠落・scope不足・malformed scope」までで不正IDヘッダの deny 検証が未カバー。
+  - 目的: 不正IDヘッダ→401/403 の回帰テストを追加する。実装変更は原則不要。
+  - 検証: `pnpm --filter @yrese/api test`。
 
 - [x] WP-4012 dependency scan / SBOM CI gate(b0ecf84、addendum 702c2f5)
   - 発見根拠: `.github/workflows/ci.yml` には dependency scan / SBOM 追加TODOが残り、`package.json` にも依存脆弱性・SBOM生成を検査するroot scriptが未定義。
@@ -388,8 +411,8 @@ v0.2.0の最上位方針:
 - [x] WP-0048 JP Core/FHIR Ready 薬局データ連携基盤戦略: `docs/product/jp_core_fhir_platform_strategy.md` を追加し、電子処方箋対応とJP Core/FHIR準拠を分離。公式ソース台帳 `SRC-FHIR-001..006` を `docs/regulatory/source_registry.md` に追加。WP-0042/WP-0046の上流方針とする。
 - [x] WP-0043 Quality transparency SSOT pack(cc47d59): QUA-007 証明可能性戦略 / QUA-008 公開KPI一般方針(匿名化・同意・悪用リスク5類型)/ QUA-009 返戻率KPI定義(fail-closed 集計)。外部公開の実施は BLOCKED_LEGAL_REVIEW 解除まで BLOCKED。PROPOSED。
 - [x] WP-0051 ssot_index 整合性修復: 索引未登録の約50文書(accounting/calculation/domain/jahis/receipt/api/spec ほか)を検出し、frontmatter からの機械再生成で全148文書を索引化(IDX-001 v0.3.0)。索引は以後手編集しない。恒久ゲートは WP-4020。
-- [ ] WP-0044 Calculation event-sourcing SSOT pack(docs/calculation/またはdocs/architecture/): `calculation_rule_data_architecture.md`, `calculation_pure_function_policy.md`, `calculation_golden_test_source_policy.md`, `event_sourcing_architecture.md`, `projection_recalculation_policy.md`, `claim_finalization_immutability_policy.md`。確定済み請求のimmutabilityと再投影境界を確定。
-- [ ] WP-0045 Always-on architecture SSOT pack(docs/architecture/またはdocs/operations/): `always_on_rececon_architecture.md`, `no_nightly_batch_policy.md`。Cloud Core / Pharmacy Edge Node / LOCAL_ONLY / RECOVERY_SYNC / zero planned downtime の24/365方針を確定。
+- [x] WP-0044 Calculation event-sourcing SSOT pack: CAL-009 versioned rule data / CAL-010 純粋関数規律 / CAL-011 golden test 根拠規律 / ARC-005 ES適用境界(既定は非適用)/ ARC-006 再投影・再算定境界 / ARC-007 確定請求 immutability(append-only、訂正は返戻再請求レーン)。全て PROPOSED。
+- [x] WP-0045 Always-on architecture SSOT pack: ARC-010 24/365アーキテクチャ(Cloud Core / Edge Node、SystemMode対応、zero planned downtime)/ ARC-011 夜間バッチ廃止(月次締めは NORMAL のみの明示業務操作)。SLA/SLO 数値は OPS-009 へ委譲。PROPOSED。
 - [ ] WP-0046 API-first platform SSOT pack(docs/api/またはdocs/integration/): `api_first_dogfooding_policy.md`, `platform_api_architecture.md`, `ph_os_reference_integration.md`, `oss_sdk_and_schema_publication_policy.md`。公開API dogfooding、PH-OSリファレンス連携、OSS公開範囲を確定。
 - [ ] WP-0047 Audit/WORM tenant isolation SSOT(docs/security/またはdocs/architecture/): `audit_worm_and_tenant_isolation_strategy.md`。append-only、tamper-evident、WORM、S3 Object Lock、KMS、RLS検討、break-glass監査を確定。
 

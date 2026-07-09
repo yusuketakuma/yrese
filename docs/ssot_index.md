@@ -18,7 +18,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 **Phase 0 ゲート: 2026-07-09 人間レビュー承認済み(当時97文書)。** ゲート後に追加された文書は各自の status(PROPOSED 等)を保持し、承認は PRC-007 の更新フローに従う。
 本索引は frontmatter からの機械生成である(手編集しない。再生成漏れは索引整合性欠陥として扱う)。
 
-総文書数: 148(本索引を除く)
+総文書数: 156(本索引を除く)
 
 ## docs/accounting/ (11件)
 
@@ -71,22 +71,30 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 |---|---|---|
 | API-001 | [patient_search_contract.md](api/patient_search_contract.md) | APPROVED |
 
-## docs/architecture/ (4件)
+## docs/architecture/ (9件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
+| ARC-010 | [always_on_rececon_architecture.md](architecture/always_on_rececon_architecture.md) | PROPOSED |
+| ARC-007 | [claim_finalization_immutability_policy.md](architecture/claim_finalization_immutability_policy.md) | PROPOSED |
+| ARC-005 | [event_sourcing_architecture.md](architecture/event_sourcing_architecture.md) | PROPOSED |
 | ARC-004 | [legacy_adapter_s3_lambda_policy.md](architecture/legacy_adapter_s3_lambda_policy.md) | PROPOSED |
+| ARC-011 | [no_nightly_batch_policy.md](architecture/no_nightly_batch_policy.md) | PROPOSED |
 | ARC-003 | [nsips_quarantine_architecture.md](architecture/nsips_quarantine_architecture.md) | PROPOSED |
 | ARC-001 | [offline_mode_matrix.md](architecture/offline_mode_matrix.md) | APPROVED |
+| ARC-006 | [projection_recalculation_policy.md](architecture/projection_recalculation_policy.md) | PROPOSED |
 | ARC-002 | [recovery_sync_design.md](architecture/recovery_sync_design.md) | APPROVED |
 
-## docs/calculation/ (8件)
+## docs/calculation/ (11件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
 | CAL-001 | [calculation_coverage_matrix.md](calculation/calculation_coverage_matrix.md) | APPROVED |
 | CAL-005 | [calculation_engine_architecture.md](calculation/calculation_engine_architecture.md) | APPROVED |
 | CAL-004 | [calculation_engine_design.md](calculation/calculation_engine_design.md) | APPROVED |
+| CAL-011 | [calculation_golden_test_source_policy.md](calculation/calculation_golden_test_source_policy.md) | PROPOSED |
+| CAL-010 | [calculation_pure_function_policy.md](calculation/calculation_pure_function_policy.md) | PROPOSED |
+| CAL-009 | [calculation_rule_data_architecture.md](calculation/calculation_rule_data_architecture.md) | PROPOSED |
 | CAL-006 | [calculation_rule_dsl.md](calculation/calculation_rule_dsl.md) | APPROVED |
 | CAL-008 | [calculation_trace_schema.md](calculation/calculation_trace_schema.md) | APPROVED |
 | CAL-007 | [claimability_status_policy.md](calculation/claimability_status_policy.md) | APPROVED |

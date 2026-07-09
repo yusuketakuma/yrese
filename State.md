@@ -13,7 +13,17 @@
 - WP-0043(cc47d59): quality transparency pack — QUA-007/008/009(証明可能性4層・公開KPI前提条件・返戻率 fail-closed 集計)。外部公開実施は BLOCKED_LEGAL_REVIEW 解除まで BLOCKED
 - **WP-0051: ssot_index.md に約50文書が未登録という整合性欠陥を検出**(accounting/calculation/domain/jahis/receipt/api/spec 等が Phase 0 ゲート後の索引更新漏れ)。frontmatter からの機械再生成で全148文書を索引化(IDX-001 v0.3.0)。以後、索引は手編集禁止。CI ゲート化は WP-4020(codex へアサイン予定)
 - codex: WP-0050(AGENTS.md ミラー、8970be8)/ WP-4018(web test gate、b800ab2)APPROVED。自律スキャン提案 WP-4019/4021/4022 をバックログ登録
-- 進行中: WP-2003 audit パッケージの opus4.8 事後レビュー
+- **WP-2003 opus4.8 事後レビュー完了: APPROVED**(audit 17テスト・全10ワークスペース typecheck・boundaries 全て PASS、台帳60種別を MOD-008 と1件ずつ照合し完全一致)。LOW 2件: (1) entryHash の計算・連続性未検証は WP-2009 の範囲 — 完了まで本番配線で任意ハッシュ供給禁止を申し送り、(2) 実行時ガードの否定テスト補強 → WP-4024 として登録
+- 進行中: WP-0044/0045 第2波起草フォーク、codex WP-4020(ssot_index CI ゲート)
+
+### SSOT 第2波(WP-0044/0045)+ codex 横断ゲート群の統合
+
+- WP-0044: calculation event-sourcing pack — CAL-009(versioned rule data、silent 変更禁止)/ CAL-010(純粋関数規律)/ CAL-011(golden test は evidence_id 由来のみ)/ ARC-005(ES は履歴が正本であるべき集約に限定、既定非適用)/ ARC-006(イベントが正本・投影は使い捨て、再算定は新イベント追記)/ ARC-007(確定レセプト append-only、訂正は返戻再請求レーン、確定は NORMAL のみ)。全て PROPOSED
+- WP-0045: always-on pack — ARC-010(Cloud Core / Edge Node 役割分担、SystemMode 5態と shared-kernel 判定関数の整合)/ ARC-011(夜間バッチ廃止、月次締めは明示業務操作)。PROPOSED
+- ssot_index 再生成: 156文書(IDX-001 v0.3.0 系列)。codex の WP-4020 ゲート(`pnpm check:ssot-index`)が未索引8文書を正しく検出→再生成後 PASS を確認
+- codex レビュー3件 APPROVED: WP-4020(c06c913、ssot_index CI ゲート)/ WP-4025(06c3c80、health clock 注入化)/ WP-4026(2c4758c、不正 PORT fail-fast)。api 22テスト PASS で検証
+- 台帳整合(WP-4027): WP-4020 完了反映。codex 提案 WP-4028(純粋関数静的検査)/ WP-4029(cursor 上限)/ WP-4030(不正 dev ヘッダ否定テスト)をバックログ登録
+- 一時保留(ユーザー操作)→「続きを実行」指示で再開
 
 ### WP-4018 — web test gate strictness
 
