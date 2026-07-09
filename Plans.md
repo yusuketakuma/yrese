@@ -352,11 +352,11 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `apps/web/app/patients/patient-search.tsx`、必要ならweb shell smoke/患者検索UIテスト。frontend 所有のため Claude/fable5 が owner を決める。
   - 検証: `pnpm --filter @yrese/web test`, `pnpm --filter @yrese/web typecheck`, `pnpm check:boundaries`, `git diff --check`。
 
-- [ ] WP-4042 /whoami contract and OpenAPI coverage decision(codex 提案 SELF-SCAN-20260709-22、API契約境界)
+- [x] WP-4042 /whoami contract and OpenAPI coverage decision(codex 提案 SELF-SCAN-20260709-22、API契約境界。現行実装で解消済み)
   - 発見根拠: `apps/api/src/server.ts` は `/whoami` を実装し、`apps/api/src/server.test.ts` も 200/403 を検証しているが、`@yrese/contracts` に `whoamiResponseSchema` がなく、WP-4019 の `docs/api/openapi.yaml` 生成対象にも含めていない。現状の契約正本は `/health` と API-001 `/patients/search` に限定されている。
   - 目的: `/whoami` を公開API、内部API、dev-only診断エンドポイントのどの契約境界に置くか fable5 が裁定する。公開または内部APIとして維持する場合は個別契約SSOT、contracts schema、OpenAPI生成対象へ追加する。dev-only診断エンドポイントなら production/API-first dogfooding から除外する方針を文書化する。
-  - 想定スコープ: `docs/api/**`, `packages/contracts/**`, `apps/api/src/server.ts`, `docs/api/openapi.yaml`。API契約SSOT承認後に実装。
-  - 検証: `pnpm --filter @yrese/contracts test`, `pnpm --filter @yrese/api test`, `pnpm generate:openapi`, `pnpm check:openapi`, `pnpm check:boundaries`, `git diff --check`。
+  - 解消根拠: 現行 `@yrese/contracts` は `whoamiResponseSchema` / `WhoamiResponse` を export 済みで、`apps/api/src/server.ts` の `/whoami` は schema parse を通して返す。OpenAPI 生成対象にも `/whoami` と `WhoamiResponse` が含まれ、`docs/api/openapi.yaml` に反映済み。
+  - 検証: `pnpm --filter @yrese/contracts test` 66 PASS、`pnpm check:openapi` PASS、`pnpm --filter @yrese/api exec tsx -e ...server.printRoutes()` で `/whoami` 登録確認、`git diff --check` PASS。
 
 - [x] WP-4043 audit/common-module SSOT implementation-state drift cleanup(codex 提案 SELF-SCAN-20260709-23、SSOT整合)
   - 発見根拠: `packages/audit` は WP-2003 以降で実装済みだが、`docs/modules/common_module_inventory.md` は `packages/audit(仮)` を今後候補のまま、`docs/modules/common_module_boundary.md` は audit event type を「未実装」、`docs/modules/audit_event_registry.md` も「実装状態: 未着手」「将来 packages/audit」と記載している。

@@ -6,6 +6,13 @@
 
 ## 2026-07-10
 
+### WP-4042 /whoami contract and OpenAPI coverage decision closure
+
+- self-scan で WP-4042 の現状を再確認。現行 `@yrese/contracts` は `whoamiResponseSchema` / `WhoamiResponse` を持ち、`packages/contracts/src/index.ts` から export 済み。`apps/api/src/server.ts` の `/whoami` は `whoamiResponseSchema.parse()` を通して返す。
+- `packages/contracts/src/openapi.ts` と generated `docs/api/openapi.yaml` に `/whoami` / `WhoamiResponse` が含まれることを確認。route print でも `/whoami` が登録済み。
+- `Plans.md` の WP-4042 を現行実装で解消済みに更新。コード変更なし。
+- 検証: `pnpm --filter @yrese/contracts test` PASS(66)、`pnpm check:openapi` PASS、`pnpm --filter @yrese/api exec tsx -e ...server.printRoutes()` PASS、`git diff --check` PASS。
+
 ### WP-4059 PostgreSQL reception integration test load-bearing narrowing
 
 - agmsg inbox 空、HEAD=origin/main=`c8ec0df`、worktree clean から再開。Claude へ、返信待ちの間は SSOT/DB migration 方針に触れない test-only WP-4059 を読む旨を通知。
