@@ -149,10 +149,11 @@ export async function createReception(
 }
 
 export function formatAcceptedTime(acceptedAt: string): string {
-  return new Date(acceptedAt).toLocaleTimeString("ja-JP", {
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
     hour: "2-digit",
     minute: "2-digit",
-  });
+  }).format(new Date(acceptedAt));
 }
 
 export function ReceptionQueueTable({

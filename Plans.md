@@ -464,6 +464,12 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 実装: `apps/api/src/db/postgres-repositories.integration.test.ts` に `expectReceptionEntryResult()` helper を追加し、`created` / `existing` 以外は即時 throw する形へ変更。entry 比較から `idempotency_conflict` を許す型上の逃げ道を削除。実装コード・migration・契約は変更なし。
   - 検証: `pnpm --filter @yrese/api typecheck` PASS、`pnpm --filter @yrese/api test` 53 PASS + 3 SKIP、`git diff --check` PASS。`TEST_DATABASE_URL` 不在のため PostgreSQL 統合テスト本体は skip、型検査で helper の union narrowing を確認。
 
+- [x] WP-4060 ReceptionDashboard acceptedAt clock display JST pin(codex 提案 SELF-SCAN-20260710-05、本WPで実装)
+  - 発見根拠: `apps/web/app/reception-dashboard.tsx` の `formatAcceptedTime()` は API の `acceptedAt` UTC instant を `new Date(...).toLocaleTimeString("ja-JP", ...)` で表示しており、実行ホスト/ブラウザ timezone に依存していた。受付業務日付は WP-4053 で JST 固定済みのため、受付時刻も薬局ロケール(MVPでは `Asia/Tokyo`)に固定しないと UTC/非JST環境で表示時刻がずれる。
+  - 目的: 受付ダッシュボードの時刻表示を `Asia/Tokyo` 明示にし、ローカル実行環境の timezone による患者受付順・時刻誤認を避ける。
+  - 実装: `formatAcceptedTime()` を `Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", hour, minute })` へ変更し、UTC 20:15 が JST 05:15 として表示される回帰テストを追加。
+  - 検証: `pnpm --filter @yrese/web test` PASS(34)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 - [x] WP-6001 DynamoDB single-table + FHIR store design proposal(d5d06e0、fable5/opus4.8 REVIEW_RESULT: CHANGES_REQUIRED but formalize by fable5)
   - 内容: `docs/research/dynamodb_fhir_store_design_proposal.md` を DRAFT(codex 設計提案・fable5 レビュー用・SSOT ではない)として追加。ARC-008 に基づく DynamoDB single-table / FHIR store / append-only audit / adapter 境界 / PostgreSQL 段階移行の素材を提示。
   - レビュー結果: 設計骨格は健全と評価。DynamoDB transaction 同一 item 制約、監査 append 冪等性、HMAC prefix 検索不可、Provenance 投影化、per-request STS tenant scope 等の必須修正は fable5 が DB/FHIR store SSOT formalize 時に織り込む。proposal は入力記録として残置。

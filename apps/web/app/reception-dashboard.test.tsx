@@ -78,6 +78,11 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(html).toContain(formatAcceptedTime("2026-07-09T00:15:00.000Z"));
   });
 
+  it("formats acceptedAt as a JST clock time", () => {
+    // 2026-07-09T20:15:00Z = JST 2026-07-10 05:15
+    expect(formatAcceptedTime("2026-07-09T20:15:00.000Z")).toBe("05:15");
+  });
+
   it("shows EmptyState for an empty queue and ErrorNotice for errors", () => {
     const empty = renderToStaticMarkup(
       <ReceptionQueueView

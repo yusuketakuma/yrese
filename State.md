@@ -6,6 +6,13 @@
 
 ## 2026-07-10
 
+### WP-4060 ReceptionDashboard acceptedAt clock display JST pin
+
+- agmsg inbox 空、`yrese/codex` monitor alive、`main` は `origin/main` と同期済みから再開。DB-005 関連の `docs/ssot_index.md` / `docs/database/dynamodb_single_table_design.md` は Claude 側 dirty として触らない。
+- self-scan で `apps/web/app/reception-dashboard.tsx` の受付時刻表示が `acceptedAt` UTC instant をホスト/ブラウザ timezone 依存で表示している点を検出。受付業務日付は WP-4053 で JST 固定済みのため、時刻表示も `Asia/Tokyo` 明示へ寄せた。
+- `formatAcceptedTime()` を `Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo" })` に変更し、UTC 20:15 が JST 05:15 として表示されるテストを追加。契約・DB・SSOT本文は変更なし。
+- 検証: `pnpm --filter @yrese/web test` PASS(34)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 ### WP-2003 audit skeleton ledger closure
 
 - DB-005 commit_request 待ちの interim として、上部一覧に残っていた WP-2003 の未完了表示を再確認。
