@@ -332,6 +332,24 @@ describe("createAuditEvent", () => {
     expect(auditEvent.entryHash).toBe(expectedEntryHash);
   });
 
+  it("normalizes Date-derived wallClock values but rejects timezone-less date strings", () => {
+    const dateAuditEvent = createAuditEvent(
+      baseAuditEvent({
+        wallClock: new Date("2026-07-09T08:59:01.000Z") as unknown as string,
+      }),
+    );
+
+    expect(dateAuditEvent.wallClock).toBe("2026-07-09T08:59:01.000Z");
+    expect(dateAuditEvent.entryHash).toBe(expectedEntryHash);
+    expect(() =>
+      createAuditEvent(
+        baseAuditEvent({
+          wallClock: "2026-07-09",
+        }),
+      ),
+    ).toThrow(/wallClock/);
+  });
+
   it("rejects unsafe integer values during canonicalization", () => {
     const auditEvent = createAuditEvent(baseAuditEvent());
 
