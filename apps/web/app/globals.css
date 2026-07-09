@@ -75,3 +75,52 @@ body {
   padding: 1rem;
   max-width: 1200px;
 }
+
+/* 患者ヘッダー(取り違え防止): 患者文脈のある画面で常時固定表示 */
+.patient-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1.5rem;
+  padding: 0.5rem 1rem;
+  border: 2px solid var(--color-fg);
+  border-radius: 4px;
+  background: #f5f7fa;
+}
+
+.patient-kana {
+  font-size: 0.85rem;
+  display: block;
+}
+
+.patient-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-right: 0.5rem;
+}
+
+.patient-birth {
+  font-size: 1rem;
+}
+
+.patient-eligibility {
+  font-weight: 700;
+  padding: 0.15rem 0.6rem;
+  border: 1.5px solid var(--color-fg);
+  border-radius: 3px;
+  background: var(--color-provisional-bg);
+}
+
+.patient-eligibility[data-status="VERIFIED"] {
+  background: var(--color-mode-normal-bg);
+}
+
+.patient-eligibility[data-status="LOCAL_ONLY_UNVERIFIED"],
+.patient-eligibility[data-status="NOT_CHECKED"] {
+  background: var(--color-mode-local-only-bg);
+}
+
+.patient-eligibility-checked-at {
+  font-weight: 400;
+  font-size: 0.85rem;
+}
