@@ -6,6 +6,12 @@
 
 ## 2026-07-10
 
+### WP-4073 CI PostgreSQL integration fail-open closure
+
+- fable5 の `PLAN_APPROVED` に基づき、CI `check` jobへ official `postgres:16@sha256:be01cf82fc7dbba824acf0a82e150b4b360f3ff93c6631d7844af431e841a95c` disposable serviceを追加。digest provenance は Docker Hub official tag API endpoint `https://hub.docker.com/v2/namespaces/library/repositories/postgres/tags/16` の `digest` fieldを2026-07-10に取得し、OCI index `sha256:be01cf82fc7dbba824acf0a82e150b4b360f3ff93c6631d7844af431e841a95c` を得たもの。合成専用user/password/database、port 5432、`pg_isready` health gateを設定し、`TEST_DATABASE_URL` は Test stepだけへ注入する。interim CI PostgreSQL 16はtest runtime限定で、production Aurora majorは別途SSOT_UPDATE対象として推測・流用しない。
+- test-only `resolveTestDatabaseUrl()` を両PostgreSQL integration fileで共有。missing/blank URLかつ `CI` exact `true` は値を含まない固定errorでmodule load時にfail-closed、local missing/blankは従来どおり明示skip、configured URLは原文を保持する。integration SQL/test semantics、migration、package/lock、prod configは変更していない。
+- 検証: resolver focused 3 tests、local `pnpm --filter @yrese/api test` 70 PASS + PostgreSQL integration 5 expected SKIP、API typecheck、workflow YAML parse/pin/Test-step-only env assertion、`actionlint .github/workflows/ci.yml`、`pnpm test:scripts`、`pnpm check:secrets`、`pnpm check:boundaries`、`git diff --check` はPASS。localはdocker/`TEST_DATABASE_URL`不在のためDB接続・migration適用なし。push後のGitHub CIで pinned image pull成功・API全75 tests PASS・PostgreSQL skip 0を確認することが、最終の独立runtime proofとなる。
+
 ### WP-4070 SBOM component version/link validation fail-closed
 
 - fable5 の `PLAN_APPROVED` に基づき、`scripts/check-sbom.mjs` の missing/blank version `0.0.0` 合成と malformed node silent skip を廃止。workspace root / dependency node / dependency container を plain object、name/version/path を primitive nonblank string として fail-closed 検証する。明示 `0.0.0` と nonblank version 原文は semver/trim 正規化せず維持し、`unsavedDependencies` は承認どおり対象外、既知 pnpm 追加fieldは許容する。

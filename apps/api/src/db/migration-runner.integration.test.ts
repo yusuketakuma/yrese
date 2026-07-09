@@ -4,8 +4,9 @@ import type { Pool } from 'pg';
 import { applyPendingMigrations, assertMigrationStateAllowsStartup, MigrationStateError } from './migration-runner.js';
 import { loadMigrationFiles } from './migrations.js';
 import { createDbPool } from './pool.js';
+import { resolveTestDatabaseUrl } from './test-database-environment.js';
 
-const testDatabaseUrl = process.env.TEST_DATABASE_URL;
+const testDatabaseUrl = resolveTestDatabaseUrl(process.env);
 
 const describePostgres = testDatabaseUrl === undefined ? describe.skip : describe;
 

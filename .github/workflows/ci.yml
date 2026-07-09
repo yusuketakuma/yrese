@@ -9,6 +9,20 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16@sha256:be01cf82fc7dbba824acf0a82e150b4b360f3ff93c6631d7844af431e841a95c
+        env:
+          POSTGRES_DB: yrese_ci
+          POSTGRES_USER: yrese_ci
+          POSTGRES_PASSWORD: yrese_ci_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U yrese_ci -d yrese_ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -29,6 +43,8 @@ jobs:
 
       - name: Test
         run: pnpm -r test
+        env:
+          TEST_DATABASE_URL: postgresql://yrese_ci:yrese_ci_test@127.0.0.1:5432/yrese_ci
 
       - name: Build
         run: pnpm -r build

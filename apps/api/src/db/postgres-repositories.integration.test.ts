@@ -8,9 +8,10 @@ import { loadMigrationFiles } from './migrations.js';
 import { PostgresPatientRepository } from './patient-repository.js';
 import { createDbPool } from './pool.js';
 import { PostgresReceptionRepository } from './reception-repository.js';
+import { resolveTestDatabaseUrl } from './test-database-environment.js';
 import type { ReceptionCreateResult } from '../reception-repository.js';
 
-const testDatabaseUrl = process.env.TEST_DATABASE_URL;
+const testDatabaseUrl = resolveTestDatabaseUrl(process.env);
 
 const describePostgres = testDatabaseUrl === undefined ? describe.skip : describe;
 
