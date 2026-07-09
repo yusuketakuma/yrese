@@ -2,17 +2,25 @@ import { describe, expect, it } from "vitest";
 import { deviceId, eventId, pharmacyId, tenantId, userId } from "@yrese/shared-kernel";
 
 import {
+  AUDIT_GENESIS_PREV_HASH,
   AUDIT_EVENT_TYPES,
+  canonicalizeAuditEventPayload,
+  computeAuditEntryHash,
   createAuditEvent,
   isAuditEventType,
   parseAuditEventType,
   requiresBusinessReason,
+  verifyAuditHashChain,
+  type AuditEvent,
   type CreateAuditEventInput,
 } from "./index.js";
 
 const payloadHash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-const prevHash = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-const entryHash = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+const prevHash = AUDIT_GENESIS_PREV_HASH;
+const tamperedHash = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+const expectedCanonicalAuditJson =
+  '{"actorId":"user-001","aggregateId":"patient-001","aggregateType":"patient","auditEventType":"patient.viewed","correlationId":"correlation-001","deviceId":"device-001","encryptionStatus":"plaintext_forbidden","eventId":"audit-event-001","idempotencyKey":"audit-event-001:1","logicalClock":"1","outcome":"success","payloadHash":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","pharmacyId":"pharmacy-001","phiClassification":"none","retryCount":0,"schemaVersion":1,"sequenceNumber":"1","syncStatus":"pending","targetRef":{"id":"patient-001","kind":"patient"},"tenantId":"tenant-001","wallClock":"2026-07-09T08:59:01.000Z"}';
+const expectedEntryHash = "dcfea14c0e42f227bd98c651f8cedb1e4d86712b71625701f519245660583836";
 
 function baseAuditEvent(overrides: Partial<CreateAuditEventInput> = {}): CreateAuditEventInput {
   return {
@@ -41,7 +49,6 @@ function baseAuditEvent(overrides: Partial<CreateAuditEventInput> = {}): CreateA
     },
     outcome: "success",
     prevHash,
-    entryHash,
     ...overrides,
   };
 }
@@ -263,7 +270,7 @@ describe("createAuditEvent", () => {
     ).toThrow();
   });
 
-  it("validates registered reasonCode references and hash-chain fields", () => {
+  it("validates registered reasonCode references and prevHash fields", () => {
     const deniedAuditEvent = createAuditEvent(
       baseAuditEvent({
         outcome: "denied",
@@ -285,18 +292,144 @@ describe("createAuditEvent", () => {
     expect(() =>
       createAuditEvent(
         baseAuditEvent({
-          prevHash: prevHash.toUpperCase(),
+          prevHash: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
         }),
       ),
     ).toThrow(/prevHash/);
+  });
+
+  it("canonicalizes a fixed audit event deterministically and computes the golden entryHash", () => {
+    const auditEvent = createAuditEvent(baseAuditEvent());
+
+    expect(canonicalizeAuditEventPayload(auditEvent)).toBe(expectedCanonicalAuditJson);
+    expect(
+      computeAuditEntryHash({
+        prevHash: AUDIT_GENESIS_PREV_HASH,
+        canonicalJson: expectedCanonicalAuditJson,
+      }),
+    ).toBe(expectedEntryHash);
+    expect(auditEvent.entryHash).toBe(expectedEntryHash);
+  });
+
+  it("ignores injected entryHash input and recomputes the audit entry hash", () => {
+    const auditEvent = createAuditEvent({
+      ...baseAuditEvent(),
+      entryHash: tamperedHash,
+    } as unknown as CreateAuditEventInput);
+
+    expect(auditEvent.entryHash).toBe(expectedEntryHash);
+  });
+
+  it("normalizes wallClock to UTC ISO milliseconds for hash canonicalization", () => {
+    const auditEvent = createAuditEvent(
+      baseAuditEvent({
+        wallClock: "2026-07-09T17:59:01.000+09:00",
+      }),
+    );
+
+    expect(auditEvent.wallClock).toBe("2026-07-09T08:59:01.000Z");
+    expect(canonicalizeAuditEventPayload(auditEvent)).toBe(expectedCanonicalAuditJson);
+    expect(auditEvent.entryHash).toBe(expectedEntryHash);
+  });
+
+  it("rejects unsafe integer values during canonicalization", () => {
+    const auditEvent = createAuditEvent(baseAuditEvent());
 
     expect(() =>
-      createAuditEvent(
-        baseAuditEvent({
-          entryHash: "abc",
-        }),
-      ),
-    ).toThrow(/entryHash/);
+      canonicalizeAuditEventPayload({
+        ...auditEvent,
+        schemaVersion: Number.MAX_SAFE_INTEGER + 1,
+      }),
+    ).toThrow(/schemaVersion/);
+  });
+
+  it("verifies an empty chain and a single genesis event as continuous", () => {
+    const auditEvent = createAuditEvent(baseAuditEvent());
+
+    expect(verifyAuditHashChain([])).toEqual({
+      ok: true,
+      checkedCount: 0,
+    });
+    expect(verifyAuditHashChain([auditEvent])).toEqual({
+      ok: true,
+      checkedCount: 1,
+      lastEntryHash: expectedEntryHash,
+    });
+  });
+
+  it("verifies linked events through prevHash continuity", () => {
+    const first = createAuditEvent(baseAuditEvent());
+    const second = createAuditEvent(
+      baseAuditEvent({
+        eventId: eventId("audit-event-002"),
+        sequenceNumber: 2n,
+        logicalClock: 2n,
+        idempotencyKey: "audit-event-002:1",
+        prevHash: first.entryHash,
+      }),
+    );
+
+    expect(verifyAuditHashChain([first, second])).toEqual({
+      ok: true,
+      checkedCount: 2,
+      lastEntryHash: second.entryHash,
+    });
+  });
+
+  it("detects reordered events by prevHash continuity rather than sequence alone", () => {
+    const first = createAuditEvent(baseAuditEvent());
+    const second = createAuditEvent(
+      baseAuditEvent({
+        eventId: eventId("audit-event-002"),
+        sequenceNumber: 2n,
+        logicalClock: 2n,
+        idempotencyKey: "audit-event-002:1",
+        prevHash: first.entryHash,
+      }),
+    );
+
+    expect(verifyAuditHashChain([second, first])).toMatchObject({
+      ok: false,
+      breakIndex: 0,
+      reason: "prev_hash_mismatch",
+      expectedPrevHash: AUDIT_GENESIS_PREV_HASH,
+      actualPrevHash: first.entryHash,
+    });
+  });
+
+  it("detects stored payload, prevHash, and entryHash tampering", () => {
+    const auditEvent = createAuditEvent(baseAuditEvent());
+    const payloadTampered = {
+      ...auditEvent,
+      targetRef: {
+        ...auditEvent.targetRef,
+        id: "patient-002",
+      },
+    } satisfies AuditEvent;
+    const prevHashTampered = {
+      ...auditEvent,
+      prevHash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    } satisfies AuditEvent;
+    const entryHashTampered = {
+      ...auditEvent,
+      entryHash: tamperedHash,
+    } satisfies AuditEvent;
+
+    expect(verifyAuditHashChain([payloadTampered])).toMatchObject({
+      ok: false,
+      breakIndex: 0,
+      reason: "entry_hash_mismatch",
+    });
+    expect(verifyAuditHashChain([prevHashTampered])).toMatchObject({
+      ok: false,
+      breakIndex: 0,
+      reason: "prev_hash_mismatch",
+    });
+    expect(verifyAuditHashChain([entryHashTampered])).toMatchObject({
+      ok: false,
+      breakIndex: 0,
+      reason: "entry_hash_mismatch",
+    });
   });
 
   it.each(["phi", "pii", "phi_pii"] as const)(

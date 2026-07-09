@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { EventEnvelope } from "@yrese/events";
 import { createEventEnvelope } from "@yrese/events";
 import { createKernelErrorCodeRegistry, type UserId } from "@yrese/shared-kernel";
@@ -99,9 +100,35 @@ export interface AuditEvent extends EventEnvelope {
   readonly entryHash: string;
 }
 
-export type CreateAuditEventInput = Omit<AuditEvent, "auditEventType"> & {
+export type CreateAuditEventInput = Omit<AuditEvent, "auditEventType" | "entryHash"> & {
   readonly auditEventType: string;
 };
+
+export const AUDIT_GENESIS_PREV_HASH =
+  "0000000000000000000000000000000000000000000000000000000000000000";
+
+export type AuditHashChainBreakReason =
+  | "prev_hash_mismatch"
+  | "entry_hash_mismatch"
+  | "hash_format_invalid";
+
+export type AuditHashChainVerification =
+  | {
+      readonly ok: true;
+      readonly checkedCount: number;
+      readonly lastEntryHash?: string;
+    }
+  | {
+      readonly ok: false;
+      readonly checkedCount: number;
+      readonly breakIndex: number;
+      readonly eventId?: string;
+      readonly reason: AuditHashChainBreakReason;
+      readonly expectedPrevHash?: string;
+      readonly actualPrevHash?: string;
+      readonly expectedEntryHash?: string;
+      readonly actualEntryHash?: string;
+    };
 
 const auditEventTypeSet = new Set<string>(AUDIT_EVENT_TYPES);
 const snakeCaseSegmentPattern = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
@@ -120,6 +147,10 @@ const auditOutcomes = new Set<string>(["success", "denied", "failed"]);
 const kernelErrorCodeRegistry = createKernelErrorCodeRegistry();
 
 function assertNonEmptyString(value: string, label: string): void {
+  if (typeof value !== "string") {
+    throw new TypeError(`${label} must be a string`);
+  }
+
   if (value.trim().length === 0) {
     throw new RangeError(`${label} must be a non-empty string`);
   }
@@ -264,6 +295,141 @@ function freezeBusinessReason(businessReason: AuditBusinessReason): AuditBusines
   });
 }
 
+function normalizeInstant(value: string, label: string): string {
+  assertNonEmptyString(value, label);
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new RangeError(`${label} must be a valid instant`);
+  }
+
+  return date.toISOString();
+}
+
+function canonicalJsonValue(value: unknown, label: string): unknown {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null || typeof value === "boolean" || typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "bigint") {
+    return value.toString(10);
+  }
+
+  if (typeof value === "number") {
+    if (!Number.isSafeInteger(value)) {
+      throw new RangeError(`${label} must be a safe integer`);
+    }
+    return value;
+  }
+
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) {
+      throw new RangeError(`${label} must be a valid Date`);
+    }
+    return value.toISOString();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item, index) => {
+      const canonicalItem = canonicalJsonValue(item, `${label}[${index}]`);
+      if (canonicalItem === undefined) {
+        throw new RangeError(`${label}[${index}] must not be undefined`);
+      }
+      return canonicalItem;
+    });
+  }
+
+  if (typeof value === "object") {
+    const output: Record<string, unknown> = {};
+    for (const key of Object.keys(value).sort()) {
+      const canonicalChild = canonicalJsonValue(
+        (value as Record<string, unknown>)[key],
+        `${label}.${key}`,
+      );
+      if (canonicalChild !== undefined) {
+        output[key] = canonicalChild;
+      }
+    }
+    return output;
+  }
+
+  throw new TypeError(`${label} has an unsupported value type`);
+}
+
+function canonicalJsonString(value: Record<string, unknown>): string {
+  return JSON.stringify(canonicalJsonValue(value, "auditEvent"));
+}
+
+function auditCanonicalPayload(input: CreateAuditEventInput | AuditEvent): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    actorId: input.actorId,
+    aggregateId: input.aggregateId,
+    aggregateType: input.aggregateType,
+    auditEventType: input.auditEventType,
+    correlationId: input.correlationId,
+    encryptionStatus: input.encryptionStatus,
+    eventId: input.eventId,
+    idempotencyKey: input.idempotencyKey,
+    logicalClock: input.logicalClock,
+    outcome: input.outcome,
+    payloadHash: input.payloadHash,
+    pharmacyId: input.pharmacyId,
+    phiClassification: input.phiClassification,
+    retryCount: input.retryCount,
+    schemaVersion: input.schemaVersion,
+    sequenceNumber: input.sequenceNumber,
+    syncStatus: input.syncStatus,
+    targetRef: {
+      id: input.targetRef.id,
+      kind: input.targetRef.kind,
+    },
+    tenantId: input.tenantId,
+    wallClock: normalizeInstant(input.wallClock, "wallClock"),
+  };
+
+  if (input.businessReason !== undefined) {
+    payload.businessReason = {
+      code: input.businessReason.code,
+    };
+  }
+  if (input.causationId !== undefined) {
+    payload.causationId = input.causationId;
+  }
+  if (input.deadLetterReason !== undefined) {
+    payload.deadLetterReason = input.deadLetterReason;
+  }
+  if (input.deviceId !== undefined) {
+    payload.deviceId = input.deviceId;
+  }
+  if (input.reasonCode !== undefined) {
+    payload.reasonCode = input.reasonCode;
+  }
+
+  return payload;
+}
+
+export function canonicalizeAuditEventPayload(input: CreateAuditEventInput | AuditEvent): string {
+  // The audit entry commits to event payload through payloadHash while audit targets stay ID-only.
+  return canonicalJsonString(auditCanonicalPayload(input));
+}
+
+export function computeAuditEntryHash(input: {
+  readonly prevHash: string;
+  readonly canonicalJson: string;
+}): string {
+  assertSha256Hex(input.prevHash, "prevHash");
+  assertNonEmptyString(input.canonicalJson, "canonicalJson");
+
+  return createHash("sha256")
+    .update(input.prevHash, "utf8")
+    .update(input.canonicalJson, "utf8")
+    .digest("hex");
+}
+
 export function createAuditEvent(input: CreateAuditEventInput): AuditEvent {
   assertRegisteredAuditEventType(input.auditEventType);
   assertNonEmptyString(input.actorId, "actorId");
@@ -274,7 +440,6 @@ export function createAuditEvent(input: CreateAuditEventInput): AuditEvent {
   assertReasonCode(input.reasonCode);
   assertBusinessReason(input.auditEventType, input.businessReason);
   assertSha256Hex(input.prevHash, "prevHash");
-  assertSha256Hex(input.entryHash, "entryHash");
 
   const envelopeInput: EventEnvelope = {
     eventId: input.eventId,
@@ -286,7 +451,7 @@ export function createAuditEvent(input: CreateAuditEventInput): AuditEvent {
     actorId: input.actorId,
     sequenceNumber: input.sequenceNumber,
     logicalClock: input.logicalClock,
-    wallClock: input.wallClock,
+    wallClock: normalizeInstant(input.wallClock, "wallClock"),
     idempotencyKey: input.idempotencyKey,
     ...(input.causationId !== undefined ? { causationId: input.causationId } : {}),
     correlationId: input.correlationId,
@@ -300,6 +465,23 @@ export function createAuditEvent(input: CreateAuditEventInput): AuditEvent {
   };
 
   const envelope = createEventEnvelope(envelopeInput);
+  const targetRef = freezeTargetRef(input.targetRef);
+  const businessReason =
+    input.businessReason !== undefined ? freezeBusinessReason(input.businessReason) : undefined;
+  const canonicalInput: CreateAuditEventInput = {
+    ...envelope,
+    actorId: input.actorId,
+    auditEventType: input.auditEventType,
+    targetRef,
+    outcome: input.outcome,
+    ...(input.reasonCode !== undefined ? { reasonCode: input.reasonCode } : {}),
+    ...(businessReason !== undefined ? { businessReason } : {}),
+    prevHash: input.prevHash,
+  };
+  const entryHash = computeAuditEntryHash({
+    prevHash: input.prevHash,
+    canonicalJson: canonicalizeAuditEventPayload(canonicalInput),
+  });
   const auditEvent = {
     eventId: envelope.eventId,
     aggregateId: envelope.aggregateId,
@@ -322,13 +504,87 @@ export function createAuditEvent(input: CreateAuditEventInput): AuditEvent {
     retryCount: envelope.retryCount,
     ...(envelope.deadLetterReason !== undefined ? { deadLetterReason: envelope.deadLetterReason } : {}),
     auditEventType: input.auditEventType,
-    targetRef: freezeTargetRef(input.targetRef),
+    targetRef,
     outcome: input.outcome,
     ...(input.reasonCode !== undefined ? { reasonCode: input.reasonCode } : {}),
-    ...(input.businessReason !== undefined ? { businessReason: freezeBusinessReason(input.businessReason) } : {}),
+    ...(businessReason !== undefined ? { businessReason } : {}),
     prevHash: input.prevHash,
-    entryHash: input.entryHash,
+    entryHash,
   } satisfies AuditEvent;
 
   return Object.freeze(auditEvent);
+}
+
+function hashFormatFailure(
+  events: readonly AuditEvent[],
+  index: number,
+  checkedCount: number,
+): AuditHashChainVerification {
+  const event = events[index];
+  return Object.freeze({
+    ok: false,
+    checkedCount,
+    breakIndex: index,
+    reason: "hash_format_invalid",
+    ...(event !== undefined ? { eventId: event.eventId } : {}),
+  });
+}
+
+export function verifyAuditHashChain(events: readonly AuditEvent[]): AuditHashChainVerification {
+  let expectedPrevHash = AUDIT_GENESIS_PREV_HASH;
+  let checkedCount = 0;
+
+  for (let index = 0; index < events.length; index += 1) {
+    const event = events[index];
+    if (event === undefined) {
+      continue;
+    }
+
+    try {
+      assertSha256Hex(event.prevHash, "prevHash");
+      assertSha256Hex(event.entryHash, "entryHash");
+    } catch {
+      return hashFormatFailure(events, index, checkedCount);
+    }
+
+    if (event.prevHash !== expectedPrevHash) {
+      return Object.freeze({
+        ok: false,
+        checkedCount,
+        breakIndex: index,
+        eventId: event.eventId,
+        reason: "prev_hash_mismatch",
+        expectedPrevHash,
+        actualPrevHash: event.prevHash,
+      });
+    }
+
+    const expectedEntryHash = computeAuditEntryHash({
+      prevHash: event.prevHash,
+      canonicalJson: canonicalizeAuditEventPayload(event),
+    });
+    if (event.entryHash !== expectedEntryHash) {
+      return Object.freeze({
+        ok: false,
+        checkedCount,
+        breakIndex: index,
+        eventId: event.eventId,
+        reason: "entry_hash_mismatch",
+        expectedEntryHash,
+        actualEntryHash: event.entryHash,
+      });
+    }
+
+    checkedCount += 1;
+    expectedPrevHash = event.entryHash;
+  }
+
+  const result: { ok: true; checkedCount: number; lastEntryHash?: string } = {
+    ok: true,
+    checkedCount,
+  };
+  if (checkedCount > 0) {
+    result.lastEntryHash = expectedPrevHash;
+  }
+  return Object.freeze(result);
 }
