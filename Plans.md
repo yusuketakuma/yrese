@@ -439,11 +439,10 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `apps/api/src/db/migrations.ts`、migration loader unit test、必要なら `scripts/check-scripts.mjs` fixture。既存 migration SQL 内容・適用順・checksum 仕様は変更しない。
   - 検証: invalid filename fixture が throw、valid migrations は従来通り version sort + duplicate reject、`pnpm --filter @yrese/api test`、`pnpm check:boundaries`、`git diff --check`。DB migration runner の規律変更なので fable5 PLAN_APPROVED 後に実装。
 
-- [ ] WP-4056 API repository mode explicitness and in-memory startup guard(codex 提案 SELF-SCAN-20260710-01、WP-5003後続)
+- [x] WP-4056 API repository mode explicitness and in-memory startup guard(codex 提案 SELF-SCAN-20260710-01、WP-5003後続。e74b251、fable5 APPROVED)
   - 発見根拠: `apps/api/src/main.ts` の `buildServerForEnvironment()` は `DATABASE_URL` が未設定の場合に常に `buildServer()` を返し、`apps/api/src/server.ts` は既定で `InMemoryPatientRepository` / `InMemoryReceptionRepository` を使う。WP-5003 でDB実装は追加済みだが、起動時の「DBなしでin-memoryへ落ちる」挙動は明示モードではなく、staging/dev-like環境の設定漏れを合成データAPIとして起動させうる。
-  - 目的: in-memory repository を明示的な dev/test mode のみに限定し、DB永続化が期待される環境では `DATABASE_URL` 不在を fail-closed にする。患者・受付DB化後の運用品質として、暗黙のメモリfallbackを本番/検証環境へ持ち込まない。
-  - 想定スコープ: `apps/api/src/config.ts` に repository mode / runtime mode helper を追加、`apps/api/src/main.ts` の起動分岐を明示化、main起動用の単体テストまたはhelper testを追加。既存 `buildServer()` のテスト注入 seam と in-memory repository 自体は維持する。
-  - 検証: `DATABASE_URL` 不在 + 明示dev/test mode は in-memory 起動可、DB必須modeで `DATABASE_URL` 不在は起動前に throw、`DATABASE_URL` 設定時は migration startup check + PostgreSQL repository 注入、`pnpm --filter @yrese/api test`、`pnpm check:boundaries`、`git diff --check`。本番認証スタブ境界(WP-4038/SEC-006)と混同しないため fable5 PLAN_APPROVED 後に実装。
+  - 実装: `YRESE_API_REPOSITORY_MODE` を `postgres` / `in_memory` allow-list にし、`DATABASE_URL` 不在 + mode 未指定、`production + in_memory`、`DATABASE_URL + in_memory`、`postgres + DATABASE_URL 不在`、未知 mode をすべて fail-closed。`DATABASE_URL` 設定時は PostgreSQL repository + migration startup check、明示 `in_memory` のみ既存 `buildServer()` 注入シームを維持。`apps/api` dev script は `YRESE_API_REPOSITORY_MODE=in_memory` を明示。
+  - 検証: `pnpm --filter @yrese/api test` 53 PASS + 3 SKIP、`pnpm --filter @yrese/api typecheck` PASS、`pnpm -r typecheck` PASS、`pnpm check:boundaries` PASS、`pnpm test` PASS、`git diff --check` PASS、`pnpm --filter @yrese/api dev` 起動開始を確認後停止。
 
 - [ ] WP-4057 patient search DB pagination and search index SLO hardening(codex 提案 SELF-SCAN-20260710-02、WP-5003後続)
   - 発見根拠: `PostgresPatientRepository.search()` は `name ILIKE '%query%' OR kana ILIKE '%query%' OR patient_number ILIKE '%query%'` と `LIMIT/OFFSET` で検索している。一方、現行 migration の index は `(tenant_id, pharmacy_id, patient_number)` のみで、先頭ワイルドカードの氏名・カナ検索や大きな offset page を支えにくい。API-001 の cursor は tenant/pharmacy/query 境界拘束済みだが、内部表現は offset であり、大規模薬局・チェーン薬局の患者検索 p95 を悪化させうる。
