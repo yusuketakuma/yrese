@@ -1,0 +1,52 @@
+# daily_cash_closing_policy — 日計・レジ締めポリシー
+
+```yaml
+ssot_id: ACC-007
+title: 日計・レジ締めポリシー
+domain: accounting
+status: PROPOSED
+owner: fable5
+reviewers:
+  - opus4.8
+  - human_review_if_required
+version: 0.1.0
+created_at: 2026-07-09
+updated_at: 2026-07-09
+source_refs: 構築プロンプト v0.1.8 §0.0.4.6
+depends_on: [ACC-001, ACC-003, ACC-008]
+open_questions:
+  - 仕訳データ出力形式・会計システム連携先(派生機能調査 WP-0037 後)
+  - 本部集計の要件(多店舗は Phase 2 以降)
+  - OTC・物販との同時会計境界(POS 境界 ACC-009 と併せて実務レビュー)
+```
+
+## 1. 日計(MVP対象)
+
+日次で以下を集計・保存する(append-only、確定後の再集計は新版として記録):
+
+- 支払方法別集計(ACC-008 の registry 単位)
+- 患者負担金集計
+- 未収発生集計 / 未収入金集計
+- 返金集計
+- 取消・調整集計
+- 会計日報(出力・再出力履歴付き)
+
+## 2. レジ締め(CashDrawerSession)
+
+- レジ現金は CashDrawerSession(開設→取引→締め)で管理する。
+- 締め時に理論残高と実残高を照合し、**現金過不足は隠さず記録**する(過不足の無断調整禁止)。
+- 締め済みセッションへの追記は禁止。訂正は翌営業日の Adjustment として記録する。
+- 締め操作は監査イベント必須(ACC-011)。
+
+## 3. LOCAL_ONLY 時
+
+- 日計・レジ締めはローカルで実行可能(現金業務の継続性)。ただし同期前である旨を日報に明示し、RECOVERY_SYNC 後に確定版を再出力する。
+
+## 4. MVP境界
+
+- 日計・レジ締め・現金過不足・支払方法別集計: **MVP対象**。
+- 仕訳データ出力・本部集計・入金結果リアルタイム連携: 境界設計のみ(Phase 2 以降、WP-0037 の調査で確定)。
+
+## 5. 変更履歴
+
+- 0.1.0 (2026-07-09): 初版。
