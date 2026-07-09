@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { BusinessNav } from "./nav";
 import { SystemModeBadge } from "./system-mode-badge";
 import "./globals.css";
 
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <h1 className="app-title">yrese 調剤レセコン</h1>
           <SystemModeBadge />
         </header>
+        <BusinessNav />
         <main className="app-main">{children}</main>
       </body>
     </html>

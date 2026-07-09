@@ -71,6 +71,43 @@ body {
   background: var(--color-mode-local-only-bg);
 }
 
+.app-nav {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 1rem;
+}
+
+.app-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.app-nav a {
+  display: inline-block;
+  padding: 0.4rem 0.9rem;
+  color: var(--color-fg);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  font-weight: 600;
+}
+
+.app-nav a[aria-current="page"] {
+  border-bottom-color: #1a56db;
+}
+
+.app-nav a:hover {
+  background: #f0f2f5;
+}
+
+.placeholder-note {
+  border: 1px dashed var(--color-border);
+  padding: 0.75rem 1rem;
+  background: #fafafa;
+}
+
 .app-main {
   padding: 1rem;
   max-width: 1200px;
