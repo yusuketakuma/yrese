@@ -63,6 +63,61 @@ describe("createEventEnvelope", () => {
     ).toThrow(/require encryptionStatus 'encrypted'/);
   });
 
+  it("rejects unregistered enum values at runtime", () => {
+    expect(() =>
+      createEventEnvelope(
+        baseEnvelope({
+          syncStatus: "lost" as EventEnvelope["syncStatus"],
+        }),
+      ),
+    ).toThrow(/syncStatus/);
+    expect(() =>
+      createEventEnvelope(
+        baseEnvelope({
+          phiClassification: "bad" as EventEnvelope["phiClassification"],
+          encryptionStatus: "encrypted",
+        }),
+      ),
+    ).toThrow(/phiClassification/);
+    expect(() =>
+      createEventEnvelope(
+        baseEnvelope({
+          encryptionStatus: "plain" as EventEnvelope["encryptionStatus"],
+        }),
+      ),
+    ).toThrow(/encryptionStatus/);
+  });
+
+  it.each([
+    ["eventId", { eventId: "event-\u0000bad" as EventEnvelope["eventId"] }],
+    ["aggregateId", { aggregateId: "claim-\u0000bad" }],
+    ["aggregateType", { aggregateType: "claim\u0000" }],
+    ["tenantId", { tenantId: "tenant-\u0000bad" as EventEnvelope["tenantId"] }],
+    ["pharmacyId", { pharmacyId: "pharmacy-\u0000bad" as EventEnvelope["pharmacyId"] }],
+    ["deviceId", { deviceId: "device-\u0000bad" as NonNullable<EventEnvelope["deviceId"]> }],
+    ["actorId", { actorId: "user-\u0000bad" as NonNullable<EventEnvelope["actorId"]> }],
+    ["idempotencyKey", { idempotencyKey: "claim-001:\u00001" }],
+    ["causationId", { causationId: "event-\u0000bad" as NonNullable<EventEnvelope["causationId"]> }],
+    ["correlationId", { correlationId: "correlation-\u0000bad" as EventEnvelope["correlationId"] }],
+  ])("rejects control characters in %s", (_label, overrides) => {
+    expect(() => createEventEnvelope(baseEnvelope(overrides))).toThrow(/control characters/);
+  });
+
+  it.each([
+    ["eventId", { eventId: " " as EventEnvelope["eventId"] }],
+    ["aggregateId", { aggregateId: " " }],
+    ["aggregateType", { aggregateType: " " }],
+    ["tenantId", { tenantId: " " as EventEnvelope["tenantId"] }],
+    ["pharmacyId", { pharmacyId: " " as EventEnvelope["pharmacyId"] }],
+    ["deviceId", { deviceId: " " as NonNullable<EventEnvelope["deviceId"]> }],
+    ["actorId", { actorId: " " as NonNullable<EventEnvelope["actorId"]> }],
+    ["idempotencyKey", { idempotencyKey: " " }],
+    ["causationId", { causationId: " " as NonNullable<EventEnvelope["causationId"]> }],
+    ["correlationId", { correlationId: " " as EventEnvelope["correlationId"] }],
+  ])("rejects blank %s", (_label, overrides) => {
+    expect(() => createEventEnvelope(baseEnvelope(overrides))).toThrow(/non-empty string/);
+  });
+
   it("rejects invalid payload hash formats", () => {
     expect(() =>
       createEventEnvelope(

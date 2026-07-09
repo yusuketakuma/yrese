@@ -6,6 +6,13 @@
 
 ## 2026-07-09(続き)
 
+### WP-4032 — EventEnvelope ID / enum runtime guard
+
+- fable5 PLAN_APPROVED 後に codex 実装。`@yrese/events` の `SyncStatus` / `PhiClassification` / `EncryptionStatus` を既存 union literal と同じ値の exported const tuple から派生させ、runtime allow-list と型の値源を単一化。
+- `createEventEnvelope()` で eventId / tenantId / pharmacyId / deviceId / actorId / causationId / correlationId / aggregateId / aggregateType / idempotencyKey の空白のみ・制御文字を拒否。`syncStatus='lost'`、`phiClassification='bad'`、`encryptionStatus='plain'` は fail-closed に拒否する否定テストを追加。
+- PHI≠none→encrypted と dead-letter reason の既存不変条件は維持。
+- 検証: `pnpm --filter @yrese/events test`(31 tests PASS)、`pnpm --filter @yrese/events typecheck`、`pnpm -r typecheck`、`pnpm check:boundaries`、`git diff --check`。
+
 ### SSOT 第1〜2波 opus4.8 レビュー → 一括 APPROVED(WP-0052/0053)
 
 - opus4.8 レビュー3系統(doctrine 6 / FHIR 3 / calc・quality 9)完了。BLOCKER 1件(PRD-007 の source_registry 未記録日付)、MAJOR 5件(ARC-010 の OPS-005/009 取り違え、QUA-009 の RCP→CLM 委譲先取り違え、DOM-005 の MOD-009 誤参照、DOM-006 台帳の §7 必須フィールド欠落、新規ブロッカーコード2種の allow-list 未登録)、ほか MINOR 群

@@ -1,8 +1,12 @@
 import type { DeviceId, EventId, PharmacyId, TenantId, UserId } from "@yrese/shared-kernel";
 
-export type PhiClassification = "none" | "phi" | "pii" | "phi_pii";
-export type EncryptionStatus = "plaintext_forbidden" | "encrypted";
-export type SyncStatus = "pending" | "sent" | "acknowledged" | "failed" | "dead_letter";
+export const PHI_CLASSIFICATIONS = ["none", "phi", "pii", "phi_pii"] as const;
+export const ENCRYPTION_STATUSES = ["plaintext_forbidden", "encrypted"] as const;
+export const SYNC_STATUSES = ["pending", "sent", "acknowledged", "failed", "dead_letter"] as const;
+
+export type PhiClassification = (typeof PHI_CLASSIFICATIONS)[number];
+export type EncryptionStatus = (typeof ENCRYPTION_STATUSES)[number];
+export type SyncStatus = (typeof SYNC_STATUSES)[number];
 
 export interface EventEnvelope {
   readonly eventId: EventId;
@@ -32,10 +36,36 @@ export type CreateEventEnvelopeInput = EventEnvelope;
 const sha256HexPattern = /^[a-f0-9]{64}$/;
 const isoInstantPattern =
   /^\d{4,}-((0[1-9])|(1[0-2]))-((0[1-9])|([12]\d)|(3[01]))T(([01]\d)|(2[0-3])):[0-5]\d:[0-5]\d(?:\.\d+)?(Z|[+-](([01]\d)|(2[0-3])):[0-5]\d)$/;
+// eslint-disable-next-line no-control-regex
+const controlCharacterPattern = /[\x00-\x1f\x7f]/;
 
 function assertNonEmptyString(value: string, label: string): void {
+  if (typeof value !== "string") {
+    throw new TypeError(`${label} must be a string`);
+  }
   if (value.trim().length === 0) {
     throw new RangeError(`${label} must be a non-empty string`);
+  }
+}
+
+function assertNoControlChars(value: string, label: string): void {
+  if (controlCharacterPattern.test(value)) {
+    throw new RangeError(`${label} must not contain control characters`);
+  }
+}
+
+function assertSafeIdentifier(value: string, label: string): void {
+  assertNonEmptyString(value, label);
+  assertNoControlChars(value, label);
+}
+
+function assertAllowedString<T extends string>(
+  value: string,
+  allowedValues: readonly T[],
+  label: string,
+): asserts value is T {
+  if (!allowedValues.includes(value as T)) {
+    throw new RangeError(`${label} must be one of: ${allowedValues.join(", ")}`);
   }
 }
 
@@ -86,7 +116,7 @@ function assertDeadLetterInvariant(syncStatus: SyncStatus, deadLetterReason?: st
     if (deadLetterReason === undefined) {
       throw new RangeError("deadLetterReason is required when syncStatus is 'dead_letter'");
     }
-    assertNonEmptyString(deadLetterReason, "deadLetterReason");
+    assertSafeIdentifier(deadLetterReason, "deadLetterReason");
     return;
   }
 
@@ -96,27 +126,30 @@ function assertDeadLetterInvariant(syncStatus: SyncStatus, deadLetterReason?: st
 }
 
 export function createEventEnvelope(input: CreateEventEnvelopeInput): EventEnvelope {
-  assertNonEmptyString(input.eventId, "eventId");
-  assertNonEmptyString(input.aggregateId, "aggregateId");
-  assertNonEmptyString(input.aggregateType, "aggregateType");
-  assertNonEmptyString(input.tenantId, "tenantId");
-  assertNonEmptyString(input.pharmacyId, "pharmacyId");
+  assertSafeIdentifier(input.eventId, "eventId");
+  assertSafeIdentifier(input.aggregateId, "aggregateId");
+  assertSafeIdentifier(input.aggregateType, "aggregateType");
+  assertSafeIdentifier(input.tenantId, "tenantId");
+  assertSafeIdentifier(input.pharmacyId, "pharmacyId");
   if (input.deviceId !== undefined) {
-    assertNonEmptyString(input.deviceId, "deviceId");
+    assertSafeIdentifier(input.deviceId, "deviceId");
   }
   if (input.actorId !== undefined) {
-    assertNonEmptyString(input.actorId, "actorId");
+    assertSafeIdentifier(input.actorId, "actorId");
   }
   assertNonNegativeBigInt(input.sequenceNumber, "sequenceNumber");
   assertNonNegativeBigInt(input.logicalClock, "logicalClock");
   assertWallClock(input.wallClock);
-  assertNonEmptyString(input.idempotencyKey, "idempotencyKey");
+  assertSafeIdentifier(input.idempotencyKey, "idempotencyKey");
   if (input.causationId !== undefined) {
-    assertNonEmptyString(input.causationId, "causationId");
+    assertSafeIdentifier(input.causationId, "causationId");
   }
-  assertNonEmptyString(input.correlationId, "correlationId");
+  assertSafeIdentifier(input.correlationId, "correlationId");
   assertPositiveInteger(input.schemaVersion, "schemaVersion");
   assertPayloadHash(input.payloadHash);
+  assertAllowedString(input.phiClassification, PHI_CLASSIFICATIONS, "phiClassification");
+  assertAllowedString(input.encryptionStatus, ENCRYPTION_STATUSES, "encryptionStatus");
+  assertAllowedString(input.syncStatus, SYNC_STATUSES, "syncStatus");
   assertPhiEncryptionInvariant(input.phiClassification, input.encryptionStatus);
   assertNonNegativeInteger(input.retryCount, "retryCount");
   assertDeadLetterInvariant(input.syncStatus, input.deadLetterReason);
