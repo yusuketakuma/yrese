@@ -38,10 +38,17 @@ export function permissionScope(
 }
 
 export function isPermissionScope(value: string): value is PermissionScope {
-  const [resource, action] = value.split(":");
+  const parts = value.split(":");
+  if (parts.length !== 2) {
+    return false;
+  }
+
+  const [resource, action] = parts;
+  if (resource === undefined || action === undefined) {
+    return false;
+  }
+
   return (
-    resource !== undefined &&
-    action !== undefined &&
     (PERMISSION_RESOURCES as readonly string[]).includes(resource) &&
     (PERMISSION_ACTIONS as readonly string[]).includes(action)
   );
