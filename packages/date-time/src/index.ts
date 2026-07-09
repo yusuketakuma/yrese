@@ -156,14 +156,16 @@ export class CalendarDate {
   }
 }
 
-abstract class CalendarDateWrapper {
+abstract class CalendarDateWrapper<TBrand extends string> {
+  declare private readonly __dateWrapperBrand: TBrand;
+
   protected constructor(readonly date: CalendarDate) {}
 
-  compare(other: CalendarDateWrapper): -1 | 0 | 1 {
+  compare(other: CalendarDateWrapper<TBrand>): -1 | 0 | 1 {
     return this.date.compare(other.date);
   }
 
-  equals(other: CalendarDateWrapper): boolean {
+  equals(other: CalendarDateWrapper<TBrand>): boolean {
     return this.date.equals(other.date);
   }
 
@@ -176,7 +178,7 @@ abstract class CalendarDateWrapper {
   }
 }
 
-export class PrescriptionDate extends CalendarDateWrapper {
+export class PrescriptionDate extends CalendarDateWrapper<"PrescriptionDate"> {
   private constructor(date: CalendarDate) {
     super(date);
   }
@@ -194,7 +196,7 @@ export class PrescriptionDate extends CalendarDateWrapper {
   }
 }
 
-export class DispensingDate extends CalendarDateWrapper {
+export class DispensingDate extends CalendarDateWrapper<"DispensingDate"> {
   private constructor(date: CalendarDate) {
     super(date);
   }
@@ -212,7 +214,7 @@ export class DispensingDate extends CalendarDateWrapper {
   }
 }
 
-export class ReceptionDate extends CalendarDateWrapper {
+export class ReceptionDate extends CalendarDateWrapper<"ReceptionDate"> {
   private constructor(date: CalendarDate) {
     super(date);
   }

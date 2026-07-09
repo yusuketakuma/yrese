@@ -8,7 +8,7 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -23,9 +23,10 @@ depends_on:
   - packages/events(85bd3aa)
   - packages/calculation(d26424d)
 open_questions:
-  - 日付ラッパー3種(処方日/調剤日/受付日)の nominal brand 追加(WP-1004 レビューノート — 算定エンジンが消費する時点で対応)
   - 保険・公費・PMH 関連の共通型(現状 opaque Ref のみ — Phase 1 ドメインSSOT承認後に拡充)
 blockers: []
+change_log:
+  - 0.1.1: WP-4022 で PrescriptionDate / DispensingDate / ReceptionDate を nominal brand 済みに更新し、異種代入・異種 compare を型で禁止。
 ```
 
 **現在の正本は実装コードである。** 本レジストリは実装済み型の索引と変更手順を定める。型の追加・変更は「本SSOT改版 → レビュー(owner表 AGT-009 準拠)→ 実装」の順で行い、コード先行の型追加を禁止する(発見時は `SSOT_UPDATE_REQUIRED`)。
@@ -43,7 +44,7 @@ TenantId / PharmacyId / UserId / PatientId / PrescriptionId / DispensingId / Cla
 | ScaledDecimal | @yrese/money | bigint 係数+scale。string/整数からのみ構築(非整数 number 拒否)。add/subtract/multiply/compare/round/equals |
 | Yen / Points | @yrese/money | 整数(bigint)。ScaledDecimal へ変換可 |
 | CalendarDate | @yrese/date-time | 'YYYY-MM-DD' または {year,month,day} からのみ構築。実カレンダー検証(うるう年含む) |
-| PrescriptionDate / DispensingDate / ReceptionDate | @yrese/date-time | CalendarDate ラッパー(構造的同型 — nominal brand 追加は open_questions) |
+| PrescriptionDate / DispensingDate / ReceptionDate | @yrese/date-time | CalendarDate ラッパー(nominal brand 済み — 異種代入・異種 compare を型で禁止) |
 | ClaimMonth | @yrese/date-time | 'YYYY-MM'。next()/prev()、CalendarDate からの導出 |
 
 ## 3. trace 型(@yrese/trace)

@@ -6,6 +6,13 @@
 
 ## 2026-07-09(続き)
 
+### WP-4022 — date-time clinical wrapper nominal brands
+
+- fable5 PLAN_APPROVED 後に codex 実装。`@yrese/date-time` の PrescriptionDate / DispensingDate / ReceptionDate を nominal brand 化し、異種ラッパーの `compare()` / `equals()` と代入を型で拒否するようにした。
+- 実行時挙動は維持。既存コード調査では本番側に意図的な異種ラッパー比較はなく、旧テスト内の異種比較だけを同種比較+`@ts-expect-error` 型テストへ置換。
+- MOD-004 `shared_type_registry.md` を v0.1.1 へ改版し、日付ラッパー nominal brand の open question を解消済みに移動。
+- 検証: `pnpm --filter @yrese/date-time test`(8 tests PASS)、`pnpm --filter @yrese/date-time typecheck`、`pnpm -r typecheck`、`pnpm check:boundaries`、`pnpm check:ssot-index`、`git diff --check`。
+
 ### WP-4033 — @yrese/money RoundOptions.mode runtime guard
 
 - fable5 PLAN_APPROVED 後に codex 実装。MOD-010 の RoundingMode 7種と一致する `ROUNDING_MODES` const tuple を追加し、`RoundingMode` 型を tuple から派生させて runtime allow-list と型の値源を単一化。

@@ -8,6 +8,20 @@ import {
   ReceptionDate,
 } from "./index.js";
 
+function assertClinicalDateWrappersAreNominal(): void {
+  const prescriptionDate = PrescriptionDate.fromString("2026-07-09");
+  const dispensingDate = DispensingDate.fromString("2026-07-09");
+  const receptionDate = ReceptionDate.fromString("2026-07-09");
+
+  // @ts-expect-error PrescriptionDate must not be comparable to DispensingDate.
+  prescriptionDate.compare(dispensingDate);
+  // @ts-expect-error ReceptionDate must not be assignable to PrescriptionDate.
+  const wrongPrescriptionDate: PrescriptionDate = receptionDate;
+  void wrongPrescriptionDate;
+}
+
+void assertClinicalDateWrappersAreNominal;
+
 describe("CalendarDate", () => {
   it("constructs from YYYY-MM-DD strings and integer parts", () => {
     expect(CalendarDate.fromString("2026-07-09").toString()).toBe("2026-07-09");
@@ -56,7 +70,7 @@ describe("branded clinical date wrappers", () => {
 
     expect(prescriptionDate.toString()).toBe("2026-07-09");
     expect(dispensingDate.toCalendarDate().toString()).toBe("2026-07-10");
-    expect(receptionDate.compare(PrescriptionDate.fromString("2026-07-09"))).toBe(1);
+    expect(receptionDate.compare(ReceptionDate.fromString("2026-07-09"))).toBe(1);
     expect(prescriptionDate.equals(PrescriptionDate.fromString("2026-07-09"))).toBe(true);
   });
 });
