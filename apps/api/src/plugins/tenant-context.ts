@@ -9,6 +9,7 @@
 
 import type { FastifyPluginCallback, FastifyReply, FastifyRequest, preHandlerHookHandler } from 'fastify';
 import fp from 'fastify-plugin';
+import { errorResponseSchema } from '@yrese/contracts';
 import {
   AUTH_PERMISSION_DENIED_ERROR_CODE,
   isPermissionScope,
@@ -97,10 +98,12 @@ export const tenantContextPlugin = fp(tenantContextPluginCallback, {
 });
 
 function sendAuthorizationError(reply: FastifyReply) {
-  return reply.code(403).send({
-    errorCode: authorizationErrorCode,
-    message: 'Forbidden',
-  });
+  return reply.code(403).send(
+    errorResponseSchema.parse({
+      errorCode: authorizationErrorCode,
+      message: 'Forbidden',
+    }),
+  );
 }
 
 export function requirePermission(scope: PermissionScope): preHandlerHookHandler {

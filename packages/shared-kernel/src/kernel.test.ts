@@ -5,6 +5,7 @@ import {
   CONFLICT_REQUIRES_HUMAN_REVIEW,
   ErrorCodeRegistry,
   createKernelErrorCodeRegistry,
+  PATIENT_SEARCH_INVALID_QUERY_ERROR_CODE,
   PROVISIONAL_STATUSES,
   SYSTEM_MODES,
   allowsClaimFinalization,
@@ -120,6 +121,14 @@ describe("error code registry", () => {
       affectsClaimability: false,
       requiresHumanReview: false,
       description: "permission denied (deny-by-default)",
+    });
+    expect(registry.get(PATIENT_SEARCH_INVALID_QUERY_ERROR_CODE)).toEqual({
+      code: "PAT-0001",
+      domain: "PATIENT",
+      severity: "ERROR",
+      affectsClaimability: false,
+      requiresHumanReview: false,
+      description: "invalid patient search query",
     });
   });
 });

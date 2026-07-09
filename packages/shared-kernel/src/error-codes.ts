@@ -84,9 +84,18 @@ export const KERNEL_ERROR_CODES = [
     requiresHumanReview: false,
     description: "permission denied (deny-by-default)",
   },
+  {
+    code: "PAT-0001",
+    domain: "PATIENT",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "invalid patient search query",
+  },
 ] as const satisfies readonly ErrorCodeDef[];
 
 export const AUTH_PERMISSION_DENIED_ERROR_CODE = KERNEL_ERROR_CODES[0].code;
+export const PATIENT_SEARCH_INVALID_QUERY_ERROR_CODE = KERNEL_ERROR_CODES[1].code;
 
 export function createKernelErrorCodeRegistry(): ErrorCodeRegistry {
   const registry = new ErrorCodeRegistry();
