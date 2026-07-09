@@ -138,26 +138,38 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `packages/shared-kernel/src/kernel.test.ts`。
   - 検証: `pnpm --filter @yrese/shared-kernel test`, `git diff --numstat -- packages/shared-kernel/src/kernel.test.ts` が行数差分を表示、`git diff --check`。
 
-- [ ] WP-2007 API PORT environment validation
+- [x] WP-2007 API PORT environment validation(a90df35)
   - 発見根拠: `apps/api/src/main.ts` は `Number.parseInt(process.env.PORT ?? '', 10)` と `Number.isInteger` でportを決めており、`3001abc` のような文字列を3001として受理し、負数・範囲外portもlisten時まで流れる。
   - 目的: 起動設定の入力検証を明示し、未指定は3001、指定時は10進整数文字列かつ1-65535のみ受理する。
   - 想定スコープ: `apps/api/src/main.ts`, 必要なら起動設定helper/test。
   - 検証: `pnpm --filter @yrese/api test`, `pnpm --filter @yrese/api typecheck`。
 
-- [ ] WP-4008 workspace TypeScript/Vitest version alignment
+- [x] WP-4008 workspace TypeScript/Vitest version alignment(a90df35)
   - 発見根拠: `apps/api/package.json` は `typescript:^5.8.0` / `vitest:^3.2.0`、他workspaceは主に `typescript:^5.7.3` / `vitest:^3.0.0` で、同一repo内のtoolchain指定が揺れている。
   - 目的: Phase 0の品質方針に合わせ、workspace全体のTypeScript/Vitest version policyを一元化し、将来の型/テスト挙動差分を避ける。
   - 想定スコープ: `apps/*/package.json`, `packages/*/package.json`, `pnpm-lock.yaml`。
   - 検証: `pnpm install --frozen-lockfile`, `pnpm -r typecheck`, `pnpm -r test`, `pnpm -r build`。
 
-- [ ] WP-4009 CI secret/dependency scan expansion
+- [x] WP-4009 CI secret/dependency scan expansion(a90df35)
   - 発見根拠: `.github/workflows/ci.yml` にはsecret scan追加TODOが残り、security/test strategy系SSOTでもsecret scan / dependency scan / SBOMがPhase 2拡充項目として記録されている。
   - 目的: 既存のtypecheck/test/build/boundaryに加え、secret混入と依存リスクをCIで機械的に検出する。
   - 想定スコープ: `.github/workflows/ci.yml`, `package.json`, 必要なら `scripts/**`。
   - 検証: `pnpm check:boundaries`, 追加scanコマンド、`git diff --check`。
 
-- [ ] WP-4010 workspace generated artifact cleanup command
+- [x] WP-4010 workspace generated artifact cleanup command(a90df35)
   - 発見根拠: `pnpm -r build` 後に `apps/api/dist`, `apps/web/.next`, `packages/*/dist` が残るが、root `package.json` にclean scriptがなく、generated artifact掃除の標準手順がない。
   - 目的: build/test後のローカル状態を再現可能にするため、ignored生成物を安全に削除するrepo標準コマンドを用意する。
   - 想定スコープ: `package.json`, 必要なら `scripts/**`。
   - 検証: `pnpm build`, `pnpm clean`, `git status --short --untracked-files=all` が生成物を表示しないこと、`git diff --check`。
+
+- [ ] WP-4011 repository script regression harness
+  - 発見根拠: `scripts/check-boundaries.mjs`, `scripts/check-secrets.mjs`, `scripts/clean.mjs` はCI品質ゲートとして重要だが、現時点では手動検証のみで、fixtureベースの自動回帰テストがない。
+  - 目的: 一時workspace fixtureで boundary violation / secret finding / allowlist / clean 対象削除を自動検証し、品質ゲート自体の退行を防ぐ。
+  - 想定スコープ: `scripts/**`, `package.json`。
+  - 検証: 追加するscript testコマンド、`pnpm check:boundaries`, `pnpm check:secrets`, `pnpm clean`, `git diff --check`。
+
+- [ ] WP-3005 web shell smoke tests
+  - 発見根拠: `apps/web/package.json` の `test` は `vitest run --passWithNoTests` で、現時点のweb shell/navigation/system-mode badgeには自動テストがない。
+  - 目的: 主要ナビゲーション項目、システムモード表示、placeholder routeの最低限のrender契約を固定し、routing shellの退行を早期検知する。
+  - 想定スコープ: `apps/web/**`。
+  - 検証: `pnpm --filter @yrese/web test`, `pnpm --filter @yrese/web typecheck`。
