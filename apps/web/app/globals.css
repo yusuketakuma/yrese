@@ -155,6 +155,16 @@ body {
   display: block;
 }
 
+/* 同姓同名警告(WP-3008 / P-09)。ラベルが正、背景色は補助 */
+.patient-duplicate-kana-label {
+  font-weight: 700;
+  display: block;
+}
+
+tr[data-duplicate-kana="true"] > td {
+  background: var(--color-status-pending-bg);
+}
+
 .patient-name {
   font-size: 1.4rem;
   font-weight: 700;

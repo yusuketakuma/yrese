@@ -16,7 +16,12 @@ export type EligibilityDisplayStatus =
   | "LOCAL_ONLY_UNVERIFIED"
   | "NOT_CHECKED";
 
-const ELIGIBILITY_LABELS: Record<EligibilityDisplayStatus, string> = {
+/**
+ * 資格確認状態の表示文言の唯一の正(WP-3008 / WP-4041)。
+ * 資格状態を表示する画面はすべて本定義を再利用し、独自文言を定義しない
+ * (安全含意の弱い言い換えを防ぐ)。型の contracts 一本化は WP-4023。
+ */
+export const ELIGIBILITY_LABELS: Record<EligibilityDisplayStatus, string> = {
   VERIFIED: "資格確認済み",
   PENDING_REVERIFY: "資格再確認待ち(請求前に再確認必須)",
   LOCAL_ONLY_UNVERIFIED: "ローカル参照のみ(オンライン未確認)",
