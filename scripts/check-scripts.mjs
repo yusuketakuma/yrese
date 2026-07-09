@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +18,7 @@ function runNode(script, args = [], options = {}) {
   return spawnSync(process.execPath, [scriptPath(script), ...args], {
     cwd: options.cwd ?? repoRoot,
     encoding: "utf8",
+    env: options.env ?? process.env,
   });
 }
 
@@ -390,30 +391,32 @@ async function testCleanRemovesGeneratedArtifacts() {
 
 async function testDependencyAuditWrapper() {
   const root = path.join(tempRoot, "dependency-audit");
-  const vulnerableReportPath = path.join(root, "audit-vulnerable.json");
-  await writeText(
-    vulnerableReportPath,
-    JSON.stringify(
+  const cleanCounts = { info: 0, low: 0, moderate: 0, high: 0, critical: 0 };
+  const auditReport = (counts = cleanCounts, advisories = {}) => ({
+    advisories,
+    metadata: { vulnerabilities: counts },
+  });
+  const writeAuditReport = async (name, report) => {
+    const reportPath = path.join(root, name);
+    await writeText(reportPath, JSON.stringify(report, null, 2));
+    return reportPath;
+  };
+
+  const cleanReportPath = await writeAuditReport("audit-clean.json", auditReport());
+  const cleanResult = runNode("check-deps.mjs", ["--from-audit-json", cleanReportPath]);
+  assert(cleanResult.status === 0, `check-deps should pass for a valid clean report: ${outputOf(cleanResult)}`);
+
+  const vulnerableReportPath = await writeAuditReport(
+    "audit-vulnerable.json",
+    auditReport(
+      { ...cleanCounts, high: 1 },
       {
-        advisories: {
-          "1": {
-            module_name: "example-package",
-            severity: "high",
-            github_advisory_id: "GHSA-example",
-          },
-        },
-        metadata: {
-          vulnerabilities: {
-            info: 0,
-            low: 0,
-            moderate: 0,
-            high: 1,
-            critical: 0,
-          },
+        "1": {
+          module_name: "example-package",
+          severity: "high",
+          github_advisory_id: "GHSA-example",
         },
       },
-      null,
-      2,
     ),
   );
 
@@ -421,11 +424,57 @@ async function testDependencyAuditWrapper() {
   assert(vulnerableResult.status === 1, "check-deps should fail for high severity vulnerabilities");
   assert(outputOf(vulnerableResult).includes("example-package"), "check-deps failure should include advisory summary");
 
+  const criticalReportPath = await writeAuditReport(
+    "audit-critical.json",
+    auditReport({ ...cleanCounts, critical: 1 }),
+  );
+  const criticalResult = runNode("check-deps.mjs", ["--from-audit-json", criticalReportPath]);
+  assert(criticalResult.status === 1, "check-deps should fail for critical severity vulnerabilities");
+
+  const invalidReports = [
+    ["audit-empty.json", {}],
+    ["audit-error-only.json", { error: "audit unavailable" }],
+    ["audit-metadata-missing.json", { advisories: {} }],
+    ["audit-vulnerabilities-missing.json", { advisories: {}, metadata: {} }],
+    ["audit-vulnerabilities-array.json", { advisories: {}, metadata: { vulnerabilities: [] } }],
+    ["audit-string-count.json", auditReport({ ...cleanCounts, moderate: "0" })],
+    ["audit-negative-count.json", auditReport({ ...cleanCounts, low: -1 })],
+    ["audit-missing-count.json", auditReport({ info: 0, low: 0, moderate: 0, high: 0 })],
+    ["audit-fractional-count.json", auditReport({ ...cleanCounts, info: 0.5 })],
+    ["audit-unsafe-count.json", auditReport({ ...cleanCounts, critical: Number.MAX_SAFE_INTEGER + 1 })],
+  ];
+  for (const [name, report] of invalidReports) {
+    const reportPath = await writeAuditReport(name, report);
+    const result = runNode("check-deps.mjs", ["--from-audit-json", reportPath]);
+    assert(result.status === 1, `check-deps should fail closed for invalid report ${name}`);
+  }
+
   const registryErrorPath = path.join(root, "registry-error.txt");
   await writeText(registryErrorPath, "ERR_PNPM_META_FETCH_FAIL registry timeout\n");
   const registryResult = runNode("check-deps.mjs", ["--from-audit-error", registryErrorPath]);
   assert(registryResult.status === 0, "check-deps should warn-only for registry/network outages");
   assert(outputOf(registryResult).includes("non-blocking"), "registry outage should be reported as non-blocking");
+
+  const genericErrorPath = path.join(root, "generic-error.txt");
+  await writeText(genericErrorPath, "registry network socket timeout while validating policy\n");
+  const genericErrorResult = runNode("check-deps.mjs", ["--from-audit-error", genericErrorPath]);
+  assert(genericErrorResult.status === 1, "check-deps should not treat generic network-like words as an outage");
+
+  const fakeBin = path.join(root, "bin");
+  const fakePnpmPath = path.join(fakeBin, "pnpm");
+  await writeText(fakePnpmPath, `#!/bin/sh\nprintf '%s\\n' '${JSON.stringify(auditReport())}'\nexit 23\n`);
+  await chmod(fakePnpmPath, 0o755);
+  const parseableNonzeroResult = runNode("check-deps.mjs", [], {
+    env: { ...process.env, PATH: `${fakeBin}${path.delimiter}${process.env.PATH ?? ""}` },
+  });
+  assert(
+    parseableNonzeroResult.status === 1,
+    "check-deps should fail when pnpm returns parseable clean JSON with a nonzero status",
+  );
+  assert(
+    outputOf(parseableNonzeroResult).includes("nonzero exit status"),
+    "parseable nonzero failure should explain that the audit command failed",
+  );
 }
 
 async function testSbomGenerationFixture() {

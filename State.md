@@ -6,6 +6,12 @@
 
 ## 2026-07-10
 
+### WP-4069 dependency audit report fail-closed validation
+
+- fable5 の `PLAN_APPROVED` に基づき、dependency audit gate の malformed/partial/error-only JSON false-pass と、parseable stdout 時の pnpm nonzero status 見落としを修正。`metadata.vulnerabilities` は plain object、info/low/moderate/high/critical はすべて finite な非負 safe integer を必須とし、error field・欠落・文字列・負数・小数・unsafe integer は fail-closed にした。
+- live command は spawn error・signal・exit status を必ず評価し、検証済み0件かつ status=0 の場合だけ pass とする。registry/network の warn-only は具体的な pnpm/system error code に限定し、generic な `registry` / `network` / `socket` / `timeout` 文言は例外扱いしない。既存 HIGH/CRITICAL threshold と `--from-audit-json` / `--from-audit-error` fixture mode は維持した。
+- `scripts/check-scripts.mjs` は clean、HIGH/CRITICAL、malformed shape/count matrix、明示 outage、generic near miss、偽 `pnpm` の parseable clean JSON + exit 23 を固定。検証: `pnpm test:scripts` PASS、元の `{}` / error-only / invalid-string reproduction は全て exit 1、`pnpm check:deps` PASS(high=0, critical=0)、`pnpm check:secrets` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 ### WP-4067 web API transport fail-closed + same-origin dev routing
 
 - fable5 の `PLAN_APPROVED` に基づき、患者検索・受付一覧・受付登録の API endpoint 解決を `apps/web/app/api-transport.ts` へ集約。明示された HTTP(S) / 安全な root-relative base のみ許可し、production/test/staging/undefined で base が欠落・空・不正なら、設定値・患者検索語・患者IDを含まない固定エラーで `fetch` 前に停止する。

@@ -4,6 +4,16 @@ import { readFile } from "node:fs/promises";
 
 const SEVERITIES = ["info", "low", "moderate", "high", "critical"];
 const DEFAULT_AUDIT_LEVEL = "high";
+const REGISTRY_OR_NETWORK_ERROR_PATTERNS = [
+  /\bERR_PNPM_META_FETCH_FAIL\b/i,
+  /\bERR_PNPM_FETCH(?:_[A-Z0-9]+)*\b/i,
+  /\bENOTFOUND\b/i,
+  /\bECONNRESET\b/i,
+  /\bECONNREFUSED\b/i,
+  /\bEAI_AGAIN\b/i,
+  /\bETIMEDOUT\b/i,
+  /\bESOCKETTIMEDOUT\b/i,
+];
 
 function parseArgs(argv) {
   const args = {
@@ -42,9 +52,31 @@ function thresholdSeverities(auditLevel) {
   return SEVERITIES.slice(SEVERITIES.indexOf(auditLevel));
 }
 
-function countThresholdVulnerabilities(report, auditLevel) {
-  const counts = report?.metadata?.vulnerabilities ?? {};
-  return thresholdSeverities(auditLevel).reduce((sum, severity) => sum + Number(counts[severity] ?? 0), 0);
+function isPlainObject(value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function validateVulnerabilityCounts(report) {
+  if (
+    !isPlainObject(report) ||
+    Object.hasOwn(report, "error") ||
+    !isPlainObject(report.metadata) ||
+    !isPlainObject(report.metadata.vulnerabilities)
+  ) {
+    throw new Error("invalid dependency audit report: expected pnpm vulnerability metadata");
+  }
+
+  const counts = report.metadata.vulnerabilities;
+  for (const severity of SEVERITIES) {
+    if (!Object.hasOwn(counts, severity) || !Number.isSafeInteger(counts[severity]) || counts[severity] < 0) {
+      throw new Error("invalid dependency audit report: vulnerability counts must be non-negative safe integers");
+    }
+  }
+  return counts;
 }
 
 function advisorySummary(report, auditLevel) {
@@ -60,34 +92,27 @@ function advisorySummary(report, auditLevel) {
 }
 
 function isRegistryOrNetworkError(output) {
-  return [
-    "ERR_PNPM_META_FETCH_FAIL",
-    "ERR_PNPM_FETCH",
-    "ENOTFOUND",
-    "ECONNRESET",
-    "ECONNREFUSED",
-    "EAI_AGAIN",
-    "ETIMEDOUT",
-    "ESOCKETTIMEDOUT",
-    "registry",
-    "network",
-    "socket",
-    "timeout",
-  ].some((pattern) => output.toLowerCase().includes(pattern.toLowerCase()));
+  return REGISTRY_OR_NETWORK_ERROR_PATTERNS.some((pattern) => pattern.test(output));
 }
 
-function validateAuditReport(report, auditLevel) {
-  const vulnerableCount = countThresholdVulnerabilities(report, auditLevel);
+function assertNoThresholdVulnerabilities(report, counts, auditLevel) {
+  const vulnerableCount = thresholdSeverities(auditLevel).reduce((sum, severity) => sum + counts[severity], 0);
   if (vulnerableCount > 0) {
     const summaries = advisorySummary(report, auditLevel);
     const details = summaries.length > 0 ? `\n- ${summaries.join("\n- ")}` : "";
     throw new Error(`dependency audit failed: ${vulnerableCount} ${auditLevel}+ vulnerabilit(ies) found${details}`);
   }
-  const counts = report?.metadata?.vulnerabilities ?? {};
+}
+
+function inspectAuditReport(report, auditLevel) {
+  const counts = validateVulnerabilityCounts(report);
+  assertNoThresholdVulnerabilities(report, counts, auditLevel);
+  return counts;
+}
+
+function reportAuditPass(counts, auditLevel) {
   console.log(
-    `Dependency audit passed (${auditLevel}+): high=${Number(counts.high ?? 0)}, critical=${Number(
-      counts.critical ?? 0,
-    )}.`,
+    `Dependency audit passed (${auditLevel}+): high=${counts.high}, critical=${counts.critical}.`,
   );
 }
 
@@ -104,23 +129,48 @@ async function main() {
   }
 
   if (args.fromAuditJson !== undefined) {
-    validateAuditReport(JSON.parse(await readFile(args.fromAuditJson, "utf8")), args.auditLevel);
+    const report = JSON.parse(await readFile(args.fromAuditJson, "utf8"));
+    reportAuditPass(inspectAuditReport(report, args.auditLevel), args.auditLevel);
     return;
   }
 
   const result = runPnpmAudit(args.auditLevel);
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+  if (result.error !== undefined) {
+    throw new Error("dependency audit command failed to execute");
+  }
+  if (result.signal !== null) {
+    throw new Error("dependency audit command terminated by signal");
+  }
+
   let report;
+  let reportShapeError;
   try {
     report = JSON.parse(result.stdout);
   } catch (error) {
-    if (result.status !== 0 && isRegistryOrNetworkError(output)) {
-      console.warn(`Dependency audit registry/network warning (non-blocking): ${output.trim()}`);
-      return;
-    }
-    throw error;
+    reportShapeError = new Error("invalid dependency audit report: pnpm audit did not return JSON", { cause: error });
   }
-  validateAuditReport(report, args.auditLevel);
+  let counts;
+  if (reportShapeError === undefined) {
+    try {
+      counts = validateVulnerabilityCounts(report);
+    } catch (error) {
+      reportShapeError = error;
+    }
+  }
+
+  if (result.status !== 0 && reportShapeError !== undefined && isRegistryOrNetworkError(output)) {
+    console.warn("Dependency audit registry/network warning (non-blocking): recognized transient error code.");
+    return;
+  }
+  if (reportShapeError !== undefined) {
+    throw reportShapeError;
+  }
+  assertNoThresholdVulnerabilities(report, counts, args.auditLevel);
+  if (result.status !== 0) {
+    throw new Error("dependency audit command failed with a nonzero exit status");
+  }
+  reportAuditPass(counts, args.auditLevel);
 }
 
 await main();

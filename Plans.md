@@ -515,6 +515,12 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 実装: `apps/web/app/api-transport.ts` に lazy resolver を追加し、明示 HTTP(S) / 安全な root-relative base のみ許可、production/test/staging/undefined の欠落を fail-closed にした。患者検索・受付一覧・受付登録は resolver を共有。Next rewrite `/_yrese-api/:path* -> http://127.0.0.1:3001/:path*` は `NODE_ENV=development` の場合だけ有効で、production/test/staging では route 自体を公開しない。WP-4066 の backend opt-in と WP-4065 の dev-only least-privilege headers は不変更。
   - 検証: resolver environment matrix、production 設定欠落時の全3操作 zero fetch + PHI/query 非露出、3操作の same-origin URL、rewrite の development-only matrix を追加。`pnpm --filter @yrese/web test` PASS(63)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm --filter @yrese/web build` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
 
+- [x] WP-4069 dependency audit report fail-closed validation(codex 提案 SELF-SCAN-20260710-14、HIGH、fable5 PLAN_APPROVED、実装完了)
+  - 発見根拠: 旧 `scripts/check-deps.mjs` は `metadata.vulnerabilities` と欠落 severity を空/0へ既定化し、count を `Number()` へ強制変換していたため、`{}`・error-only・欠落/不正 count を脆弱性0件として通した。live path も stdout が parse できれば pnpm の nonzero status を無視できた。
+  - 実装: audit report root、`metadata.vulnerabilities`、全5 severity count を検証し、plain object 以外、error field、欠落、文字列、負数、小数、unsafe integer を fail-closed にした。live command は spawn error・signal・status を評価し、妥当な0件 report + status=0 だけを pass とする。warn-only は `ERR_PNPM_META_FETCH_FAIL` / `ERR_PNPM_FETCH*` と具体的な system network code に限定し、generic な registry/network/socket/timeout 文言では例外化しない。
+  - 回帰テスト: clean pass、`{}`、error-only、metadata/vulnerabilities 欠落、array、文字列/負数/欠落/小数/unsafe count、HIGH/CRITICAL、明示 registry outage、generic network-like near miss、偽 `pnpm` の parseable clean JSON + exit 23 を固定した。
+  - 検証: `pnpm test:scripts` PASS、元の3 false-pass reproduction は全て exit 1、`pnpm check:deps` PASS(high=0, critical=0)、`pnpm check:secrets` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 - [ ] WP-7001 Phase 1 DynamoDB persistence foundation + first aggregate synthetic proof(fable5 PLAN_APPROVED、HIGH、実装HOLD)
   - 目的: APPROVED 済み DB-005 §11 step 2 に従い、DynamoDB 永続化アダプタ基盤と最初の集約スライスを synthetic-only(PHI禁止)で実証する。
   - 承認済み計画: persistence adapter は `apps/api` server-only に置き、AWS SDK import を adapter 層へ限定する。最初の集約は、FHIR REST/CapabilityStatement を推測実装せず、DB-005 §6.1/§10 と `@yrese/audit` core が確定済みの synthetic-only `AuditAppendStore` とする。DynamoDB Local harness は CI では接続必須、local では明示 skip 可とし、IAM/STS/KMS/PITR/throughput の証明には使わない。
