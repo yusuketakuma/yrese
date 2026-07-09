@@ -6,6 +6,13 @@
 
 ## 2026-07-10
 
+### WP-4065 dev tenant header least-privilege split plan request
+
+- agmsg inbox 空、monitor は `yrese/codex` alive。Claude 側 dirty の `docs/ssot_index.md` / `docs/database/dynamodb_single_table_design.md` は引き続き温存。
+- self-scan で `apps/web/app/patients/patient-search.tsx` の `devTenantHeaders()` が development 限定ながら全 request に `patient:read,reception:read,reception:write` を送っており、患者検索・受付一覧・受付登録の必要scopeと比べて過剰である点を確認。
+- auth/security 境界に触れるため即実装せず、Claude へ `CODEX_PLAN_REQUEST [risk: HIGH]` を送信。想定は frontend-only で操作別の最小 `x-dev-scopes` に分割し、API認可plugin・DB・SSOT本文・contract shape は変更しない。
+- `Plans.md` に WP-4065 を未完了の承認待ち候補として登録。検証: `git diff --check` のみ(ledger update)。
+
 ### WP-4055 / WP-4058 DB migration runner fail-closed hardening
 
 - fable5 から `WP-4055 + WP-4058(bundle)` の `PLAN_APPROVED` を受領。DB runner 領域のため HIGH risk とし、スコープを `apps/api/src/db/migrations.ts` と focused unit test のみに限定。Claude 側 dirty の `docs/ssot_index.md` / `docs/database/dynamodb_single_table_design.md` は温存。
