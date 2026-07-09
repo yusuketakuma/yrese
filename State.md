@@ -6,6 +6,12 @@
 
 ## 2026-07-09(続き)
 
+### WP-4052 web typecheck prebuild reproducibility
+
+- fable5 裁定: WP-4052 は frontend/tooling 領域として Codex 実装可。clean checkout でも `pnpm --filter @yrese/web typecheck` が単独 PASS することを目的に実施。
+- 実装: `apps/web/package.json` の `typecheck` を `next typegen && tsc --noEmit` へ変更。Next.js 15 の `.next/types` 生成を型検査前に実行し、`apps/web/tsconfig.json` の `.next/types/**/*.ts` include は推奨構成として維持。UIコード、webpack extensionAlias、実行時設定は不変更。
+- 検証: `pnpm clean` で生成物を削除後、`pnpm --filter @yrese/web typecheck` PASS(Next route types 生成確認)、`pnpm -r typecheck` PASS、`pnpm --filter @yrese/web test` 32 tests PASS、`pnpm check:ssot-index` PASS、`pnpm check:boundaries` PASS、`pnpm build` PASS、`git diff --check` PASS。
+
 ### WP-3009 完結・commit/push 運用変更
 
 - WP-3009 SCR-001 受付ダッシュボード実体化が完結。API-006 受付キュー契約 APPROVED(30f09a3) → backend 実装(WP-3009-BE/93aefa1: shared-kernel ReceptionId / RECEPTION_STATUSES / RCV-0001〜0003 / contracts+OpenAPI / apps/api) → frontend 実装(WP-3009-UI/8bdee8a: 受付ダッシュボード UI)の3段を完了。
