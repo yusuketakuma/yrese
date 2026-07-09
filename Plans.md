@@ -476,6 +476,12 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 実装: `createReceptionQueueRunner()` を追加し、runner 内の generation guard で stale success / stale failure を破棄。`ReceptionDashboard` は `useRef` で runner を保持して既存 UI/API 契約を維持する。web test で「最後の日付が勝つ」「古い失敗が新しい結果を error に戻さない」を固定。
   - 検証: `pnpm --filter @yrese/web test` PASS(36)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
 
+- [x] WP-4062 frontend error code registry filtering(codex 提案 SELF-SCAN-20260710-07、本WPで実装)
+  - 発見根拠: `apps/web/app/patients/patient-search.tsx` と `apps/web/app/reception-dashboard.tsx` は API body の `errorCode` を `isValidErrorCode()` の形式チェックだけで `ErrorNotice` へ渡していた。一方、`packages/contracts/src/error.ts` は同じ `errorCode` を shared-kernel の registry 登録済みコードに限定しており、`SYSTEM-9999` のような形式だけ正しい未登録コードをフロントが表示しうる drift があった。
+  - 目的: フロントエンドのエラーコード表示も `error_code_registry` 正本に揃え、未登録コード・異常値の verbatim 表示を防ぐ。登録済みコード(`AUTH-0003` / `RCV-0003` 等)の表示は維持する。
+  - 実装: `apps/web/app/components/error-code.ts` に `registeredErrorCodeOrUndefined()` を追加し、shared-kernel registry に存在するコードのみを返すようにした。患者検索と受付ダッシュボードの API error parsing をこの helper に統一し、未登録の形式正しいコードを落とすテストを追加。
+  - 検証: `pnpm --filter @yrese/web test` PASS(37)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 - [x] WP-6001 DynamoDB single-table + FHIR store design proposal(d5d06e0、fable5/opus4.8 REVIEW_RESULT: CHANGES_REQUIRED but formalize by fable5)
   - 内容: `docs/research/dynamodb_fhir_store_design_proposal.md` を DRAFT(codex 設計提案・fable5 レビュー用・SSOT ではない)として追加。ARC-008 に基づく DynamoDB single-table / FHIR store / append-only audit / adapter 境界 / PostgreSQL 段階移行の素材を提示。
   - レビュー結果: 設計骨格は健全と評価。DynamoDB transaction 同一 item 制約、監査 append 冪等性、HMAC prefix 検索不可、Provenance 投影化、per-request STS tenant scope 等の必須修正は fable5 が DB/FHIR store SSOT formalize 時に織り込む。proposal は入力記録として残置。

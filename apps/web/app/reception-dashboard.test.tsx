@@ -221,7 +221,7 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
   it("does not display unregistered error codes verbatim", async () => {
     const fetchImpl = vi
       .fn()
-      .mockResolvedValue(jsonResponse(400, { errorCode: "<script>alert(1)</script>" }));
+      .mockResolvedValue(jsonResponse(400, { errorCode: "SYSTEM-9999" }));
 
     await expect(createReception("p1", fetchImpl, "key-2")).rejects.toSatisfy(
       (error: unknown) => {

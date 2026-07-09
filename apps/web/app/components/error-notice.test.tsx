@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import RouteError from "../error";
+import { registeredErrorCodeOrUndefined } from "./error-code";
 import { ErrorNotice } from "./error-notice";
 
 (globalThis as { React?: typeof React }).React = React;
@@ -37,6 +38,13 @@ describe("cross-screen error display (WP-3007 / SCR-013)", () => {
     expect(html).not.toContain("エラーコード:");
     expect(html).toContain("[警告(WARNING)]");
     expect(html).toContain("次のアクション: 氏名・カナ・患者番号のいずれかを入力してください。");
+  });
+
+  it("filters API error codes to registered shared-kernel values", () => {
+    expect(registeredErrorCodeOrUndefined("AUTH-0003")).toBe("AUTH-0003");
+    expect(registeredErrorCodeOrUndefined("SYSTEM-9999")).toBeUndefined();
+    expect(registeredErrorCodeOrUndefined("<script>alert(1)</script>")).toBeUndefined();
+    expect(registeredErrorCodeOrUndefined(403)).toBeUndefined();
   });
 
   it("ErrorNotice renders BLOCKER severity with text label", () => {

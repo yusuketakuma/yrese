@@ -6,8 +6,8 @@ import {
   patientSearchResponseSchema,
   type PatientSearchResult,
 } from "@yrese/contracts";
-import { isValidErrorCode } from "@yrese/shared-kernel";
 
+import { registeredErrorCodeOrUndefined } from "../components/error-code";
 import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
 import { ELIGIBILITY_LABELS } from "../components/patient-header";
 import { SeverityList } from "../components/severity-list";
@@ -97,11 +97,8 @@ async function fetchSearch(q: string, cursor?: string): Promise<SearchPage> {
       typeof body === "object" && body !== null && "errorCode" in body
         ? (body as { errorCode: unknown }).errorCode
         : undefined;
-    // registry 形式外のコードは表示しない(異常値の verbatim 出力防止)
-    const errorCode =
-      typeof rawErrorCode === "string" && isValidErrorCode(rawErrorCode)
-        ? rawErrorCode
-        : undefined;
+    // registry 未登録/形式外のコードは表示しない(異常値の verbatim 出力防止)
+    const errorCode = registeredErrorCodeOrUndefined(rawErrorCode);
     if (res.status === 403) {
       throw new SearchError(
         "権限がありません。",

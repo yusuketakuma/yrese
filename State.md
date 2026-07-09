@@ -6,6 +6,13 @@
 
 ## 2026-07-10
 
+### WP-4062 frontend error code registry filtering
+
+- agmsg inbox 空、DB-005/DB設計の Claude 側 dirty 差分(`docs/ssot_index.md` / `docs/database/dynamodb_single_table_design.md`)は触らず、frontend-only self-scan を継続。
+- `apps/web/app/patients/patient-search.tsx` と `apps/web/app/reception-dashboard.tsx` が API body の `errorCode` を形式チェックだけで表示対象にしており、`packages/contracts/src/error.ts` の登録済み registry 制約と drift している点を検出。
+- `apps/web/app/components/error-code.ts` に `registeredErrorCodeOrUndefined()` を追加し、shared-kernel の `createKernelErrorCodeRegistry()` に登録済みのコードだけを `ErrorNotice` へ渡すように統一。患者検索・受付画面の API error parsing を更新し、`SYSTEM-9999` のような未登録コードを表示しないテストを追加。
+- 検証: `pnpm --filter @yrese/web test` PASS(37)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 ### WP-4061 ReceptionDashboard queue stale response guard
 
 - agmsg inbox 空のため、DB/SSOT/docs/database に触れない frontend-only self-scan を継続。

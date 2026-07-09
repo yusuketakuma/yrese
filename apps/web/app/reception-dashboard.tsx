@@ -9,9 +9,9 @@ import {
   type ReceptionQueueResponse,
   type ReceptionStatus,
 } from "@yrese/contracts";
-import { isValidErrorCode } from "@yrese/shared-kernel";
 
 import { EmptyState } from "./components/empty-state";
+import { registeredErrorCodeOrUndefined } from "./components/error-code";
 import { ErrorNotice, type ErrorNoticeProps } from "./components/error-notice";
 import { LoadingState } from "./components/loading-state";
 import { API_BASE, devTenantHeaders } from "./patients/patient-search";
@@ -60,8 +60,8 @@ async function extractErrorCode(res: Response): Promise<string | undefined> {
     typeof body === "object" && body !== null && "errorCode" in body
       ? (body as { errorCode: unknown }).errorCode
       : undefined;
-  // registry 形式外のコードは表示しない(異常値の verbatim 出力防止)
-  return typeof raw === "string" && isValidErrorCode(raw) ? raw : undefined;
+  // registry 未登録/形式外のコードは表示しない(異常値の verbatim 出力防止)
+  return registeredErrorCodeOrUndefined(raw);
 }
 
 export async function fetchReceptionQueue(
