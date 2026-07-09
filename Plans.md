@@ -457,6 +457,12 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `apps/api/src/db/migrations.ts` の default path 解決、migration loader unit test、必要なら root/package script の引数化。WP-4055 の不正filename fail-closedと同じ loader 領域のため、fable5判断で同時実装可。
   - 検証: package cwd と repo root cwd の双方で `loadMigrationFiles()` が root `migrations/` を読むこと、明示 `migrationsDirectory` 引数は従来通り尊重すること、`pnpm --filter @yrese/api test`、`pnpm db:check` は `DATABASE_URL` 不在時に従来通り明示エラー、`git diff --check`。DB migration runner の運用境界なので fable5 PLAN_APPROVED 後に実装。
 
+- [ ] WP-4059 PostgreSQL reception integration test load-bearing narrowing(codex 提案 SELF-SCAN-20260710-04、WP-5003後続)
+  - 発見根拠: `apps/api/src/db/postgres-repositories.integration.test.ts` の受付冪等性テストは `expect(created.kind).toBe('created')` / `expect(resent.kind).toBe('existing')` の直後に `if (created.kind !== 'idempotency_conflict' && resent.kind !== 'idempotency_conflict')` で entry 比較を行っている。実行時 expect が失敗すればテスト全体は落ちるが、型絞りのための条件が本来あり得ない分岐を残しており、今後の編集で idempotency conflict を誤って許すテストに弱化しやすい。
+  - 目的: PostgreSQL repository 統合テストの冪等再送ケースを load-bearing にし、`created` / `existing` 以外の結果では即時 fail する型ガードまたは helper を使う。DB-2 の冪等性保証をテスト上も明確化する。
+  - 想定スコープ: `apps/api/src/db/postgres-repositories.integration.test.ts` の type narrowing helper 追加または明示 `throw` 分岐化。実装コード・migration・契約は変更しない。
+  - 検証: `pnpm --filter @yrese/api test`、`pnpm --filter @yrese/api typecheck`、`git diff --check`。`TEST_DATABASE_URL` 不在時は当該統合テストが skip されるため、型検査で unreachable/union narrowing が成立することを重視する。
+
 - [x] WP-4012 dependency scan / SBOM CI gate(b0ecf84、addendum 702c2f5)
   - 発見根拠: `.github/workflows/ci.yml` には dependency scan / SBOM 追加TODOが残り、`package.json` にも依存脆弱性・SBOM生成を検査するroot scriptが未定義。
   - 目的: secret scan に加えて、依存脆弱性検知とSBOM生成/検証をCIの機械ゲートにし、security SSOTの「dependency scan / SBOM」予定項目を実装へ進める。
