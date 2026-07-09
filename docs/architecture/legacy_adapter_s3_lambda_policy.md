@@ -4,7 +4,9 @@
 ssot_id: ARC-004
 title: NSIPS Legacy Adapter の S3/Lambda 候補構成・確定前提・fail-closed 停止条件
 domain: architecture
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8

@@ -4,7 +4,9 @@
 ssot_id: PRD-009
 title: yrese 4つの戦い(業界閉塞への対抗戦略 各論)
 domain: product
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8

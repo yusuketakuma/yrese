@@ -4,7 +4,9 @@
 ssot_id: CAL-011
 title: 算定 golden test の根拠規律(evidence 裏付けのないテスト値の禁止)
 domain: calculation
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8

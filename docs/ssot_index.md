@@ -75,14 +75,14 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 
 | ssot_id | 文書 | status |
 |---|---|---|
-| ARC-010 | [always_on_rececon_architecture.md](architecture/always_on_rececon_architecture.md) | PROPOSED |
-| ARC-007 | [claim_finalization_immutability_policy.md](architecture/claim_finalization_immutability_policy.md) | PROPOSED |
-| ARC-005 | [event_sourcing_architecture.md](architecture/event_sourcing_architecture.md) | PROPOSED |
-| ARC-004 | [legacy_adapter_s3_lambda_policy.md](architecture/legacy_adapter_s3_lambda_policy.md) | PROPOSED |
-| ARC-011 | [no_nightly_batch_policy.md](architecture/no_nightly_batch_policy.md) | PROPOSED |
-| ARC-003 | [nsips_quarantine_architecture.md](architecture/nsips_quarantine_architecture.md) | PROPOSED |
+| ARC-010 | [always_on_rececon_architecture.md](architecture/always_on_rececon_architecture.md) | APPROVED |
+| ARC-007 | [claim_finalization_immutability_policy.md](architecture/claim_finalization_immutability_policy.md) | APPROVED |
+| ARC-005 | [event_sourcing_architecture.md](architecture/event_sourcing_architecture.md) | APPROVED |
+| ARC-004 | [legacy_adapter_s3_lambda_policy.md](architecture/legacy_adapter_s3_lambda_policy.md) | APPROVED |
+| ARC-011 | [no_nightly_batch_policy.md](architecture/no_nightly_batch_policy.md) | APPROVED |
+| ARC-003 | [nsips_quarantine_architecture.md](architecture/nsips_quarantine_architecture.md) | APPROVED |
 | ARC-001 | [offline_mode_matrix.md](architecture/offline_mode_matrix.md) | APPROVED |
-| ARC-006 | [projection_recalculation_policy.md](architecture/projection_recalculation_policy.md) | PROPOSED |
+| ARC-006 | [projection_recalculation_policy.md](architecture/projection_recalculation_policy.md) | APPROVED |
 | ARC-002 | [recovery_sync_design.md](architecture/recovery_sync_design.md) | APPROVED |
 
 ## docs/calculation/ (11件)
@@ -92,9 +92,9 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 | CAL-001 | [calculation_coverage_matrix.md](calculation/calculation_coverage_matrix.md) | APPROVED |
 | CAL-005 | [calculation_engine_architecture.md](calculation/calculation_engine_architecture.md) | APPROVED |
 | CAL-004 | [calculation_engine_design.md](calculation/calculation_engine_design.md) | APPROVED |
-| CAL-011 | [calculation_golden_test_source_policy.md](calculation/calculation_golden_test_source_policy.md) | PROPOSED |
-| CAL-010 | [calculation_pure_function_policy.md](calculation/calculation_pure_function_policy.md) | PROPOSED |
-| CAL-009 | [calculation_rule_data_architecture.md](calculation/calculation_rule_data_architecture.md) | PROPOSED |
+| CAL-011 | [calculation_golden_test_source_policy.md](calculation/calculation_golden_test_source_policy.md) | APPROVED |
+| CAL-010 | [calculation_pure_function_policy.md](calculation/calculation_pure_function_policy.md) | APPROVED |
+| CAL-009 | [calculation_rule_data_architecture.md](calculation/calculation_rule_data_architecture.md) | APPROVED |
 | CAL-006 | [calculation_rule_dsl.md](calculation/calculation_rule_dsl.md) | APPROVED |
 | CAL-008 | [calculation_trace_schema.md](calculation/calculation_trace_schema.md) | APPROVED |
 | CAL-007 | [claimability_status_policy.md](calculation/claimability_status_policy.md) | APPROVED |
@@ -114,8 +114,8 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 |---|---|---|
 | DOM-001 | [bounded_contexts.md](domain/bounded_contexts.md) | PROPOSED |
 | DOM-002 | [domain_model.md](domain/domain_model.md) | PROPOSED |
-| DOM-006 | [fhir_mapping_registry.md](domain/fhir_mapping_registry.md) | PROPOSED |
-| DOM-005 | [fhir_native_canonical_model.md](domain/fhir_native_canonical_model.md) | PROPOSED |
+| DOM-006 | [fhir_mapping_registry.md](domain/fhir_mapping_registry.md) | APPROVED |
+| DOM-005 | [fhir_native_canonical_model.md](domain/fhir_native_canonical_model.md) | APPROVED |
 | DOM-004 | [state_transition.md](domain/state_transition.md) | PROPOSED |
 | DOM-003 | [ubiquitous_language.md](domain/ubiquitous_language.md) | PROPOSED |
 
@@ -200,28 +200,28 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 
 | ssot_id | 文書 | status |
 |---|---|---|
-| PRD-007 | [jp_core_fhir_platform_strategy.md](product/jp_core_fhir_platform_strategy.md) | PROPOSED |
+| PRD-007 | [jp_core_fhir_platform_strategy.md](product/jp_core_fhir_platform_strategy.md) | APPROVED |
 | PRD-005 | [major_rececon_feature_matrix.md](product/major_rececon_feature_matrix.md) | PROPOSED |
 | PRD-001 | [mvp_scope.md](product/mvp_scope.md) | APPROVED |
 | PRD-002 | [non_mvp_scope.md](product/non_mvp_scope.md) | APPROVED |
 | PRD-006 | [product_concept.md](product/product_concept.md) | APPROVED |
 | PRD-004 | [rececon_feature_benchmark.md](product/rececon_feature_benchmark.md) | PROPOSED |
 | PRD-003 | [risk_register.md](product/risk_register.md) | APPROVED |
-| PRD-009 | [yrese_four_battles_strategy.md](product/yrese_four_battles_strategy.md) | PROPOSED |
-| PRD-008 | [yrese_product_doctrine.md](product/yrese_product_doctrine.md) | PROPOSED |
+| PRD-009 | [yrese_four_battles_strategy.md](product/yrese_four_battles_strategy.md) | APPROVED |
+| PRD-008 | [yrese_product_doctrine.md](product/yrese_product_doctrine.md) | APPROVED |
 
 ## docs/quality/ (9件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
 | QUA-003 | [change_control_policy.md](quality/change_control_policy.md) | APPROVED |
-| QUA-009 | [claim_return_rate_kpi_policy.md](quality/claim_return_rate_kpi_policy.md) | PROPOSED |
+| QUA-009 | [claim_return_rate_kpi_policy.md](quality/claim_return_rate_kpi_policy.md) | APPROVED |
 | QUA-004 | [defect_management_policy.md](quality/defect_management_policy.md) | APPROVED |
 | QUA-005 | [incident_management_policy.md](quality/incident_management_policy.md) | APPROVED |
 | QUA-006 | [post_release_monitoring.md](quality/post_release_monitoring.md) | APPROVED |
-| QUA-008 | [public_quality_kpi_policy.md](quality/public_quality_kpi_policy.md) | PROPOSED |
+| QUA-008 | [public_quality_kpi_policy.md](quality/public_quality_kpi_policy.md) | APPROVED |
 | QUA-001 | [quality_plan.md](quality/quality_plan.md) | APPROVED |
-| QUA-007 | [quality_transparency_strategy.md](quality/quality_transparency_strategy.md) | PROPOSED |
+| QUA-007 | [quality_transparency_strategy.md](quality/quality_transparency_strategy.md) | APPROVED |
 | QUA-002 | [validation_plan.md](quality/validation_plan.md) | APPROVED |
 
 ## docs/receipt/ (6件)

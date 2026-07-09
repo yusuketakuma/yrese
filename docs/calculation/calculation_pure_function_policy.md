@@ -4,7 +4,9 @@
 ssot_id: CAL-010
 title: 算定エンジンの純粋関数規律(決定論・I/O分離・暗黙時刻禁止)
 domain: calculation
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8

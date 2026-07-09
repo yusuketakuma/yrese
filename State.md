@@ -6,6 +6,14 @@
 
 ## 2026-07-09(続き)
 
+### SSOT 第1〜2波 opus4.8 レビュー → 一括 APPROVED(WP-0052/0053)
+
+- opus4.8 レビュー3系統(doctrine 6 / FHIR 3 / calc・quality 9)完了。BLOCKER 1件(PRD-007 の source_registry 未記録日付)、MAJOR 5件(ARC-010 の OPS-005/009 取り違え、QUA-009 の RCP→CLM 委譲先取り違え、DOM-005 の MOD-009 誤参照、DOM-006 台帳の §7 必須フィールド欠落、新規ブロッカーコード2種の allow-list 未登録)、ほか MINOR 群
+- WP-0052: 指摘を11ファイルで是正(各文書 v0.1.1 化、blockers.ts に BLOCKED_OFFICIAL_ADAPTER_BOUNDARY / BLOCKED_FHIR_CONFORMANCE_REVIEW 追加、MOD-005 status_registry 31→33種 v0.1.2)
+- WP-0053: 18文書(PRD-007/008/009、ARC-003〜007/010/011、DOM-005/006、CAL-009〜011、QUA-007〜009)を APPROVED へ昇格(approved_by: opus4.8 review + fable5)。索引再生成、shared-kernel 22テスト・boundaries・ssot-index・全 typecheck PASS
+- codex 並行: WP-4031 APPROVED。WP-4032〜4036 を codex が直接登録(CLAUDE.md/AGENTS.md に直接 commit&push 規定追記 f4ad019 — codex 経由のユーザー指示と報告)
+- 次: WP-4032(events の PHI enum ガード優先)→ WP-4022 を codex へ。Claude 側は第3波(WP-0046/0047)起草へ
+
 ### WP-4031 — CAL-008 trace optional extension fields
 
 - codex実装。`@yrese/trace` の `CalculationTraceStep` に CAL-008 の optional 拡張フィールド(`feeItemCode` / `formula` / `intermediateValues` / `rounding` / `stepStatus` / `resultPoints` / `resultYen`)を追加。

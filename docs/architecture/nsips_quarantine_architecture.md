@@ -4,7 +4,9 @@
 ssot_id: ARC-003
 title: NSIPS 境界隔離(Anti-Corruption Layer)アーキテクチャ
 domain: architecture
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8

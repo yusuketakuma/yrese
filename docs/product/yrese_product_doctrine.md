@@ -4,7 +4,9 @@
 ssot_id: PRD-008
 title: yrese 製品ドクトリン(意思決定原則の製品レベル確定)
 domain: product
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8

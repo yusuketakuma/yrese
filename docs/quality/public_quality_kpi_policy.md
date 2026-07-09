@@ -4,7 +4,9 @@
 ssot_id: QUA-008
 title: 公開品質KPIの一般方針(匿名化・同意・契約・悪用リスク)
 domain: quality
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8

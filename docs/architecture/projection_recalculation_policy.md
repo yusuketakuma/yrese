@@ -4,7 +4,9 @@
 ssot_id: ARC-006
 title: 投影(projection)と再算定の境界(イベントが正本・確定は書き換えない)
 domain: architecture
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8
