@@ -8,7 +8,7 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.2.1
+version: 0.2.2
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -18,9 +18,11 @@ source_refs:
 depends_on:
   - docs/security/audit_log_design.md(SEC-007 — 構造・保全・アクセス制御の正)
   - packages/events(85bd3aa — 基底 EventEnvelope)
+  - packages/audit(WP-2003/73ffd90, WP-2010/4cf702f — AuditEvent registry 実装)
 open_questions:
   - 保存期間(REG-003 の法定根拠確定待ち — SEC-007 と同期)
 change_log:
+  - 0.2.2 (2026-07-09): WP-4043 実装状態 drift 整備。MOD-008 台帳の実装先を `@yrese/audit` 実装済みとして記録し、旧予定の記述を現行 packages/* 実態へ同期(命名文法・イベント種別・必須属性は不変更)。
   - 0.2.1 (2026-07-09) SEC-008 §4 反映 — breakglass.ended を追加し、businessReasonRequiredEventTypes に breakglass.used を登録。終了イベントは発動イベントと同一 correlationId で紐づける。
   - 0.2.0 (2026-07-09) opus4.8 命名レビュー(CHANGES_REQUIRED)反映 — 文法正式化・会計taxonomy統合(checkout.* supersede)・欠落3種追加・実装時必須2点。命名確定済み、WP-2003 解禁。
 blockers: []
@@ -28,7 +30,7 @@ blockers: []
 
 **分担**: SEC-007 = 監査ログの構造・保全・アクセス制御 / 本レジストリ = **イベント種別の台帳**。イベント種別の追加はレジストリ経由のみ — コード内のローカル追加は `COMMON_MODULE_DUPLICATION_BLOCKED`。
 
-**実装状態: 未着手。** 実装は WP-2003(`packages/audit`(仮)+ apps/api 配線)で行い、着手条件は本SSOTの APPROVED。
+**実装状態: `@yrese/audit` に実装済み(WP-2003/73ffd90, WP-2010/4cf702f)。** apps/api 監査ログ永続化・業務配線は未着手であり、SEC-007 の後続WPで扱う。
 
 ## 0. 命名文法(確定 — opus4.8 レビュー 2026-07-09)
 
@@ -84,7 +86,7 @@ ACC-011 の短縮名(charge_created 等)は以下の正規形へ写像する。*
 
 種別名(文法準拠)/ 説明 / 対象 targetRef の kind / outcome(success・denied・failed)/ phiClassification 既定値 / 発火箇所(API・ジョブ・Edge)/ 関連 scope。デバッグログとの分離(§9.6)と PHI 非搭載(targetRef は ID 参照のみ)は SEC-007 の構造規約に従う。
 
-**WP-2003 実装時の必須事項(opus4.8 指摘 0.2.0)**:
+**WP-2003 実装で反映済みの必須事項(opus4.8 指摘 0.2.0)**:
 - `correlationId` を AuditEvent の必須フィールドとする(返金=Reversal+Refund+領収証取消のような複合操作の再構成に必要。EventEnvelope は保持済み — 必須化を骨格実装で強制)。
 - 業務理由フィールド `businessReason`(構造化: 理由コード+自由記述禁止 or マスク済み)を `reasonCode`(error code registry 参照=失敗理由)と**分離**して追加する。取消・無効化・調整・返金イベントでは businessReason 必須。
 - `businessReasonRequiredEventTypes` の初期値は `accounting.adjustment.created` と `breakglass.used`。break-glass 終了イベント(`breakglass.ended`)は SEC-008 §4 に businessReason 必須根拠がないため必須化せず、同一 `correlationId` と必要に応じた `causationId` で発動イベントに紐づける。
@@ -93,5 +95,5 @@ ACC-011 の短縮名(charge_created 等)は以下の正規形へ写像する。*
 
 1. 新規操作の実装WPの DoR で「監査イベント種別が本台帳に存在すること」を要求
 2. 不足時は本SSOT改版 → opus4.8 レビュー(監査は高リスク領域)
-3. 実装(registry モジュールへ追加 — 将来 `packages/audit`)
+3. 実装(registry モジュールへ追加 — 現在 `@yrese/audit` / WP-2003/73ffd90)
 4. 台帳にない種別のイベント発火をテスト・レビューで禁止
