@@ -11,9 +11,12 @@ owner: fable5
 reviewers:
   - opus4.8
   - codex (実装可能性)
-version: 0.1.1
+version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-10
+amended_by: [ARC-008]
+amendment_status: PENDING_REVISION
+amendment_note: "ARC-008(APPROVED 2026-07-10)により改版予約中。方向は ARC-008 が暫定的に優先する。本文の全面改版は Phase 1 の PRC-007 10段フローで実施し本注記を解除する。"
 source_refs:
   - docs/plan/database_construction_plan.md(PLAN-DB-001 §3 横断原則)
 depends_on: [PLAN-DB-001, SEC-006, MOD-010, MOD-011, MOD-004(shared_type_registry), MOD-005(status_registry), DOM-002, DOM-003(ubiquitous_language)]

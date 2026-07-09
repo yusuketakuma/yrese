@@ -7,7 +7,14 @@ const docsDir = path.join(rootDir, "docs");
 const indexPath = path.join(docsDir, "ssot_index.md");
 const indexRelativePath = "docs/ssot_index.md";
 const markdownExtension = ".md";
+// 非SSOT領域: 提案・調査・レビュー用の作業文書(PRC-007 で定義)。SSOT index の追跡対象外とし、
+// ssot_id 必須・index 登録の規律を適用しない(APPROVED SSOT の正本性を汚さないため)。
+const nonSsotDirPrefixes = ["docs/research/"];
 const violations = [];
+
+function isNonSsotDoc(relativePath) {
+  return nonSsotDirPrefixes.some((prefix) => relativePath.startsWith(prefix));
+}
 
 function report(message) {
   violations.push(message);
@@ -187,6 +194,7 @@ async function main() {
       relativePath: toPosix(path.relative(rootDir, filePath)),
     }))
     .filter((file) => file.relativePath !== indexRelativePath)
+    .filter((file) => !isNonSsotDoc(file.relativePath))
     .sort((left, right) => left.relativePath.localeCompare(right.relativePath));
 
   const documentEntries = [];

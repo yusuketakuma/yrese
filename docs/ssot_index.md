@@ -6,9 +6,9 @@ title: SSOT文書索引
 domain: plan
 status: APPROVED
 owner: fable5
-version: 0.3.0
+version: 0.3.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-10
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 ```
@@ -18,7 +18,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 **Phase 0 ゲート: 2026-07-09 人間レビュー承認済み(当時97文書)。** ゲート後に追加された文書は各自の status(PROPOSED 等)を保持し、承認は PRC-007 の更新フローに従う。
 本索引は frontmatter からの機械生成である(手編集しない。再生成漏れは索引整合性欠陥として扱う)。
 
-総文書数: 168(本索引を除く)
+総文書数: 170(本索引を除く)
 
 ## docs/accounting/ (11件)
 
@@ -65,24 +65,26 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 | AGT-016 | [llm_capability_registry.md](agents/llm_capability_registry.md) | APPROVED |
 | AGT-004 | [sol_ultra_mode_execution_policy.md](agents/sol_ultra_mode_execution_policy.md) | APPROVED |
 
-## docs/api/ (6件)
+## docs/api/ (7件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
 | API-002 | [api_first_dogfooding_policy.md](api/api_first_dogfooding_policy.md) | APPROVED |
+| API-007 | [calculation_trace_read_contract.md](api/calculation_trace_read_contract.md) | APPROVED |
 | API-005 | [oss_sdk_and_schema_publication_policy.md](api/oss_sdk_and_schema_publication_policy.md) | APPROVED |
 | API-001 | [patient_search_contract.md](api/patient_search_contract.md) | APPROVED |
 | API-004 | [ph_os_reference_integration.md](api/ph_os_reference_integration.md) | APPROVED |
 | API-003 | [platform_api_architecture.md](api/platform_api_architecture.md) | APPROVED |
 | API-006 | [reception_queue_contract.md](api/reception_queue_contract.md) | APPROVED |
 
-## docs/architecture/ (9件)
+## docs/architecture/ (10件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
 | ARC-010 | [always_on_rececon_architecture.md](architecture/always_on_rececon_architecture.md) | APPROVED |
 | ARC-007 | [claim_finalization_immutability_policy.md](architecture/claim_finalization_immutability_policy.md) | APPROVED |
 | ARC-005 | [event_sourcing_architecture.md](architecture/event_sourcing_architecture.md) | APPROVED |
+| ARC-008 | [fhir_native_phos_aws_platform_direction.md](architecture/fhir_native_phos_aws_platform_direction.md) | APPROVED |
 | ARC-004 | [legacy_adapter_s3_lambda_policy.md](architecture/legacy_adapter_s3_lambda_policy.md) | APPROVED |
 | ARC-011 | [no_nightly_batch_policy.md](architecture/no_nightly_batch_policy.md) | APPROVED |
 | ARC-003 | [nsips_quarantine_architecture.md](architecture/nsips_quarantine_architecture.md) | APPROVED |

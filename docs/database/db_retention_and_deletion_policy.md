@@ -11,9 +11,12 @@ owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required(法令・保存年限)
-version: 0.1.1
+version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-10
+amended_by: [ARC-008]
+amendment_status: PENDING_REVISION
+amendment_note: "ARC-008(APPROVED 2026-07-10)により改版予約中。方向は ARC-008 が暫定的に優先する。本文の全面改版は Phase 1 の PRC-007 10段フローで実施し本注記を解除する。"
 source_refs:
   - docs/plan/database_construction_plan.md(PLAN-DB-001 §2 の 12: アーカイブ・法定保存階層)
 depends_on: [PLAN-DB-001, DB-001, SEC-007(保存階層 open_question), SEC-008, ARC-007(確定請求 immutability), REG-003(法令適合)]
