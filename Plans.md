@@ -192,3 +192,47 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - ブロック理由: `CONTRACT_REVIEW_RESULT` でCONTRACT_CHANGE_REQUEST送信済み。fable5承認または修正版API-001待ち。
   - 想定スコープ: `docs/api/patient_search_contract.md`(契約修正が承認された場合のみ), `packages/contracts/**`, `apps/api/**`。
   - 検証: `pnpm --filter @yrese/contracts test`, `pnpm --filter @yrese/api test`, `pnpm check:boundaries`, `pnpm check:secrets`。
+
+## v0.1.8 レセコンベンチマーク反映(ユーザー提供調査 2026-07-09)
+
+ユーザー提供の主要レセコン調査(MEDIXS / EMシステムズ MAPs・Recepty NEXT / PHC Pharnes / Pharmy Connect / P-CUBE n / GENNAI just / 調剤くんV8)に基づく計画拡張。
+方針決定(fable5): ①各社実装の模倣ではなく公式仕様準拠の**根拠追跡型・決定論的ルールエンジン**として設計する ②**LLM/AIに算定判断をさせない**(補助・候補提示・説明生成のみ可) ③ベンダー公開情報は Priority C(要件抽出の補助のみ、実装根拠禁止) ④MVPは「正確な算定・請求」に加えて入力速度・請求前点検・連携口・オフライン・二重UXまでを競争力条件とする。
+
+### ベンチマーク・スコープSSOT
+
+- [ ] WP-0018 レセコン機能ベンチマークSSOT: docs/product/rececon_feature_benchmark.md(ベンダー別特徴・出典URL付き・Priority C明記)+ docs/product/major_rececon_feature_matrix.md(14分類×ベンダー×MVP反映方針)。ユーザー提供調査を一次入力とし、source_registry へベンダーURL(Priority C)とSSK電子レセプト作成手引きページ(Priority A)を追記
+- [ ] WP-0019 mvp_scope(PRD-001)改版: ベンチマーク由来の必須機能を反映 — 前回Do入力 / OCR受け口 / 電子薬歴連携API(薬歴未記載チェック=薬学管理料整合の請求前点検) / 処方監査システム双方向API / 在庫連携口+現在庫表示 / 請求前点検の拡充(入力漏れ・算定根拠・薬歴未記載・資格確認・公費・レセプト形式) / 二重UX(初心者ガイド+熟練者ショートカット) / リモート診断。後続フェーズ表(AI薬歴・服薬フォロー・本部入力・在庫高度化・経営分析・オンライン服薬指導・多店舗薬歴共有)も正式化。opus4.8+人間レビュー
+
+### 算定エンジンSSOT(CAL-004 の後継拡張群)
+
+- [ ] WP-0020 calculation_engine_architecture.md: 9段パイプライン(入力検証→マスター解決→処方グルーピング→候補抽出→条件評価→点数計算→負担金計算→請求可否判定→出力)+ CalculationInput/Output 型仕様(mode・versions・外部確認状態を明示入力)。CAL-004 を包含・置換
+- [ ] WP-0021 calculation_rule_dsl.md: ルールメタデータ仕様(rule_id / fee_item_code / effective_from・to / law_or_notice_ref / evidence_id / predicate / calculation_formula / exclusion_group / upper_limit / frequency_limit / required_records / required_facility_basis / offline_allowed / requires_human_confirmation / test_case_refs)。コード直書き禁止の根拠
+- [ ] WP-0022 claimability_status_policy.md: 候補抽出と確定算定の分離ステータス(AUTO_CALCULATED / SUGGESTED_REQUIRES_CONFIRMATION / REQUIRES_PHARMACIST_CONFIRMATION / REQUIRES_RECORD / BLOCKED_MISSING_EVIDENCE / BLOCKED_UNSUPPORTED_CLAIM)— shared-kernel status_registry との整合必須
+- [ ] WP-0023 calculation_trace_schema.md: trace拡張仕様(formula / intermediateValues / rounding{method, evidenceId} / status: applied|suggested|excluded|blocked)— @yrese/trace 現行実装からの拡張差分を定義
+- [ ] WP-0024 fee_item_registry.md: 算定項目台帳(候補抽出対象の全項目体系: 調剤基本料〜調剤ベースアップ評価料。CAL-001/CAL-003 と行対応)
+- [ ] WP-0025 drug_fee_policy.md: 薬剤料計算(15円以下1点・10円ごと1点の evidence 化 — EVD-CAL 済み分参照、材料料=価格/10円)+ 計算単位(剤・調剤単位)定義。丸め根拠 evidence_id 必須
+- [ ] WP-0026 prescription_grouping_policy.md: 「剤」判定(内服/内滴/屯服/外用、用法・服用時点・剤形・同一有効成分・日数合算)— PrescriptionGroupResolver の仕様。留意事項通知(P-06)精読が前提の行は BLOCKED 明記
+- [ ] WP-0027 facility_basis_policy.md: 施設基準スナップショット(FacilityBasisSnapshot を請求月単位で固定)・届出情報管理
+- [ ] WP-0028 selected_medical_care_policy.md: 長期収載品選定療養の別建て計算(保険請求分/患者一部負担/選定療養額/消費税/帳票表示/レセプト影響/患者説明履歴の分離)
+- [ ] WP-0029 offline_calculation_policy.md: LOCAL_ONLY 時の仮算定境界(PROVISIONAL_CALCULATION 系、外部確認必要項目の成功扱い禁止)— ARC-001/ARC-002 との整合
+- [ ] WP-0030 calculation_golden_test_plan.md: golden test 体系(evidence 連動・剤パターン・公費組合せ・境界日・逓減)
+
+### 請求・UXSSOT
+
+- [ ] WP-0031 receipt_intermediate_model.md + pre_claim_check_policy.md(docs/claim/): レセプト中間モデル(CLM-002 記録仕様ノート準拠)+ 請求前点検ポリシー(薬歴未記載チェック含む — 電子薬歴連携APIとの責務分界)
+- [ ] WP-0032 rececon_workflow_benchmark.md + fast_input_interaction_policy.md(docs/uiux/): 入力速度ベンチマーク(1画面設計・ファンクションキー/ショートカット・1way入力・処方入力時の現在庫+患者情報+警告同一画面表示)+ 二重UX(ガイド付き/高速入力)設計。UIX-001〜007 との整合
+
+### 実装WP(SSOT承認後に発行)
+
+- [ ] WP-2103 PrescriptionGroupResolver 骨格(packages/calculation/grouping — WP-0026 承認後)
+- [ ] WP-2104 薬剤料計算モジュール(drug-fee — WP-0025 承認後。使用薬剤料 evidence は EVD-CAL 採番済み分から)
+- [ ] WP-2105 候補抽出/確定分離ステータスの shared-kernel 追加(WP-0022 承認後)
+- [ ] WP-2106 選定療養計算モジュール(WP-0028 承認後・選定療養 evidence 発行後)
+- [ ] WP-2107 電子薬歴/監査/在庫連携APIの契約設計(Pharmacy Integration API v0 — API-001 パターン踏襲)
+
+### 実行順序(fable5 判断)
+
+1. WP-0018(ベンチマークSSOT・フォーク)+ WP-0020〜0023(エンジン中核SSOT・フォーク)を並列
+2. WP-0019(mvp_scope改版)は 0018 完了後に fable5 が起案 → opus4.8 → 人間レビュー
+3. WP-0024〜0030 を第2波フォーク、WP-0031/0032 を第3波
+4. 実装WP(2103〜)は各SSOT承認+evidence充足を確認して逐次発行
