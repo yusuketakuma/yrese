@@ -1,0 +1,56 @@
+# common_module_boundary — 共通モジュール境界
+
+```yaml
+ssot_id: MOD-002
+title: 共通モジュール境界
+domain: modules
+status: PROPOSED
+owner: fable5
+reviewers:
+  - opus4.8
+version: 0.1.0
+created_at: 2026-07-09
+updated_at: 2026-07-09
+source_refs:
+  - 構築プロンプト v0.1.7 §0.0.3.3, §0.0.3.4
+depends_on:
+  - docs/modules/common_module_inventory.md(MOD-001)
+open_questions:
+  - UI表示文言モジュールの管理場所(UI/UX SSOTとの整合方法 — packages/ui 新設時に確定)
+blockers: []
+```
+
+## 1. 共通化すべき概念(v0.1.7 §0.0.3.3)と現在の所在
+
+| 概念 | 所在(正本) | 状態 |
+|---|---|---|
+| branded ID types(tenant/pharmacy/patient/prescription/dispensing/claim/event/device/user/evidence/work-package) | `@yrese/shared-kernel` branded-ids.ts | 実装済み |
+| system mode(NORMAL / EXTERNAL_DEGRADED / CLOUD_DEGRADED / LOCAL_ONLY / RECOVERY_SYNC) | `@yrese/shared-kernel` system-mode.ts | 実装済み |
+| 保留系 status(PENDING_* 等6種)+ 請求可否判定 | `@yrese/shared-kernel` status.ts | 実装済み |
+| BLOCKER 種別 | `@yrese/shared-kernel` blockers.ts | 実装済み(31種) |
+| error code / warning code 構造 | `@yrese/shared-kernel` error-codes.ts | 構造実装済み(個別コードは MOD-006 経由) |
+| permission scope / role name | `@yrese/shared-kernel` permissions.ts | 実装済み |
+| 金額・点数・Decimal helper / 丸め呼び出し境界 | `@yrese/money` | 実装済み(政策値は未配線) |
+| 日付・時刻 helper / 請求月・処方日・調剤日・受付日 | `@yrese/date-time` | 実装済み |
+| calculation_trace / legal_trace / evidence_id 型 | `@yrese/trace`(EvidenceId 型は shared-kernel) | 実装済み |
+| sync event envelope / Outbox・Inbox envelope | `@yrese/events` | 実装済み |
+| API DTO schema / validation schema(zod) | `@yrese/contracts` | health のみ実装済み |
+| audit event type | MOD-008 台帳(実装は WP-2003 で `packages/audit` 予定) | 未実装 |
+| feature flag key / generated type / fixtures / mock | 将来モジュール(MOD-001 §2) | 未実装 |
+
+UI表示ラベル・警告文テンプレート・アクセシビリティ文言は共通化してよいが境界を明確にする: **バックエンドは UI 表示文言モジュールへ依存してはならない**。現在の実装(SystemModeBadge の MODE_LABELS、PatientHeader の ELIGIBILITY_LABELS)は apps/web 内にあり、UI/UX SSOT(UIX-001)と整合させる。
+
+## 2. 共通化してはならないもの(v0.1.7 §0.0.3.4)
+
+- React / Next.js 依存コードを backend でも使う共通モジュールへ置くこと
+- DB client / ORM / AWS SDK 依存コードを frontend でも使う共通モジュールへ置くこと
+- UI コンポーネントを backend 共通モジュールへ、backend service を frontend 共通モジュールへ混在させること
+- 公式 Adapter 固有のレコード処理を汎用 shared へ混ぜること
+- 規制・算定・請求ルールを「便利だから」で UI 側へ複製すること
+- 環境変数・secret・credential を共通モジュールへ埋め込むこと
+- 本番個人情報を fixtures へ含めること(MOD-013)
+- generated code の手編集(MOD-014)
+
+## 3. 設計原則
+
+共通モジュールは **runtime-neutral / dependency-light / testable / tree-shakable** を原則とする。実装済み7パッケージはいずれも外部 runtime 依存ゼロ(contracts の zod のみ例外として承認済み)であり、この水準を維持する。新規依存の追加は WP の `CODEX_PLAN` で事前申告し fable5 承認を要する(WP-1003 で decimal.js を追加せず bigint 自前実装とした先例に従う)。
