@@ -6,19 +6,20 @@
 
 ## 2026-07-10
 
-### WP-4066 dev tenant context explicit opt-in — implementation / HIGH review pending
+### WP-4066 dev tenant context explicit opt-in — completed / HIGH review APPROVED
 
 - fable5 の `PLAN_ADJUSTMENT_APPROVED` に基づき、caller-controlled dev tenant headers を composition root の明示 opt-in なしでは一切 trusted context にしない deny-by-default 境界を実装。tenant context plugin から `process.env` 参照を除去し、常時 `tenantContext=undefined` を decorate、明示 `dev_headers` mode の場合だけ header hook を登録する。
 - config resolver は parsed DB URL / resolved repository mode を受け、flag exact true + environment exact development/test + repository exact in_memory + parsed DB URL absent の全条件でのみ `dev_headers` を返す。absent / exact false は disabled、malformed flag と undefined/staging/Production/typo/production/PostgreSQL/DB URLありは入力値を含まない固定 startup errorで拒否する。
 - `buildServer()` は既定 disabled とし、`dev_headers` + explicit in_memory 以外を Fastify construction 前に拒否。`main.ts` は repository mode と tenant mode を一度ずつ解決して両 repository 経路へ渡し、API dev script は必要な環境変数を明示した。OIDC・audit event・permission semantics・DB操作は変更していない。
-- テストは既存の header/permission security cases を explicit dev helper で維持し、default server に attacker-selected headers を送った患者検索・受付一覧・受付登録が全て403、患者 repository search/findById と受付 repository list/create が全て0 callであることを追加固定。検証: focused config/server 53 tests PASS、API全体65 tests PASS + PostgreSQL integration 3 tests explicit SKIP(`TEST_DATABASE_URL`不在)、`pnpm --filter @yrese/api typecheck` PASS、`pnpm check:boundaries` PASS、`pnpm check:secrets` PASS、`git diff --check` PASS。HIGH risk review前のため未commit・未完了。
+- テストは既存の header/permission security cases を explicit dev helper で維持し、default server に attacker-selected headers を送った患者検索・受付一覧・受付登録が全て403、患者 repository search/findById と受付 repository list/create が全て0 callであることを追加固定。検証: focused config/server 53 tests PASS、API全体65 tests PASS + PostgreSQL integration 3 tests expected SKIP(`TEST_DATABASE_URL`不在)、`pnpm --filter @yrese/api typecheck` PASS、`pnpm check:boundaries` PASS、`pnpm check:secrets` PASS、`git diff --check` PASS。
+- commit `137315d` に対する fable5/Opus 4.8 の `REVIEW_RESULT: APPROVED` と GitHub CI green を確認し、WP-4066 を完了。残る外部 deployment black-box verification は deployment gate として維持し、コード完了の blocker とはしない。
 
 ### WP-7001 Phase 1 DynamoDB persistence foundation — PLAN_APPROVED / implementation HOLD
 
 - fable5 から WP-7001 `PLAN_APPROVED` を受領。persistence adapter は `apps/api` server-only、AWS SDK import は adapter 層限定、最初の集約は FHIR Patient を推測実装せず synthetic-only `AuditAppendStore` とする計画が承認された。DynamoDB Local harness の限界、trusted context 由来の authority、PHI非露出、HIGH handoff + opus4.8 review の各条件も維持する。
 - decision A/B/C は全て承認済み。A=`SEQ#` zero-pad width 20 / uint64範囲 / overflow事前拒否。B=app-local verification が連番・dedupe・TIP整合を検証し、hash continuity は audit core に委譲。C=同一 eventId + 同一 logical intent は冪等成功、異なる intent は hard conflict。同時に event/dedupe/TIP の tenant-scoped同一PK・別SKと、retry loop 外で一度だけ生成する stable eventId を確認した。
 - 必須制約は adapter 層以外への AWS import 禁止、同一 item の ConditionCheck+Update 禁止、監査 dedupe guard + tip 採番 sequence、TTL/物理削除禁止、per-request tenant scope、PHI のキー/GSI/ログ非露出、PostgreSQL 正本の段階移行維持。`AuditWriteContext` の trusted tenant/pharmacy/user だけから scope を再構成し、caller intent に authority/prevHash/sequence を持たせない。
-- 実装着手条件は (a) WP-4066 landing、かつ (b) fable5 の DB-005 §6/§10 pin 反映通知。現時点は `PLAN_APPROVED / implementation HOLD` であり、AWS SDK/package/DynamoDB Local/adapter コードは未変更。
+- 実装着手条件の (a) WP-4066 landing は充足済み。残る条件は (b) fable5 の DB-005 §6/§10 pin 反映通知のみ。通知受領までは `PLAN_APPROVED / implementation HOLD` であり、DB-005 pin landing は未確認、AWS SDK/package/DynamoDB Local/adapter コードは未変更。
 
 ### WP-4065 dev tenant header least-privilege split
 
