@@ -6,6 +6,15 @@
 
 ## 2026-07-09(続き)
 
+### SSOT 第1波(WP-0041/0042/0043)+ 索引整合性修復(WP-0051)
+
+- WP-0041(6cd714e): yrese doctrine pack — PRD-008 製品ドクトリン D1〜D7 / PRD-009 4つの戦い / ARC-003 NSIPS隔離ACL / ARC-004 Legacy Adapter S3/Lambda 方針。全て PROPOSED
+- WP-0042(4482e1e): FHIR canonical pack — DOM-005(canonical model ≠ FHIR、facade投影・PHI整合)/ DOM-006(マッピング台帳枠組み、Official Adapter 置換禁止 = BLOCKED_OFFICIAL_ADAPTER_BOUNDARY)。PRD-007 とセットで承認予定
+- WP-0043(cc47d59): quality transparency pack — QUA-007/008/009(証明可能性4層・公開KPI前提条件・返戻率 fail-closed 集計)。外部公開実施は BLOCKED_LEGAL_REVIEW 解除まで BLOCKED
+- **WP-0051: ssot_index.md に約50文書が未登録という整合性欠陥を検出**(accounting/calculation/domain/jahis/receipt/api/spec 等が Phase 0 ゲート後の索引更新漏れ)。frontmatter からの機械再生成で全148文書を索引化(IDX-001 v0.3.0)。以後、索引は手編集禁止。CI ゲート化は WP-4020(codex へアサイン予定)
+- codex: WP-0050(AGENTS.md ミラー、8970be8)/ WP-4018(web test gate、b800ab2)APPROVED。自律スキャン提案 WP-4019/4021/4022 をバックログ登録
+- 進行中: WP-2003 audit パッケージの opus4.8 事後レビュー
+
 ### WP-4018 — web test gate strictness
 
 - `apps/web/package.json` の `test` から `--passWithNoTests` を削除し、webテストが誤って消えた場合に成功扱いにならないようにした。

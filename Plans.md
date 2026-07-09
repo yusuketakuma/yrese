@@ -183,6 +183,29 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 実施: `apps/web/package.json` の `test` を `vitest run` に変更し、webテスト不在時に成功しないゲートへ戻した。
   - 検証: `pnpm --filter @yrese/web test`, `pnpm --filter @yrese/web typecheck`, `pnpm -r test`, `pnpm check:boundaries`, `git diff --check`。
 
+- [ ] WP-4020 ssot_index 整合性 CI ゲート(次アサイン予定・codex)
+  - 発見根拠: WP-0051 で索引未登録の約50文書を検出(索引の手動更新漏れが再発性の欠陥)。
+  - 目的: `scripts/check-ssot-index.mjs` を新設し、docs/**/*.md と ssot_index.md の相互一致(索引にない文書・文書にない索引行・status/ssot_id の不一致・ssot_id 重複・frontmatter 欠落)を CI で機械検査する。`pnpm check:ssot-index` として root script + ci.yml に追加。
+  - 想定スコープ: `scripts/check-ssot-index.mjs`, `package.json`, `.github/workflows/ci.yml`, `scripts/check-scripts.mjs`(回帰ハーネス登録)。
+  - 検証: 正常系 + 意図的な不一致 fixture での検出、`pnpm test:scripts`, `pnpm check:ssot-index`。
+
+- [ ] WP-4019 OpenAPI generation pipeline(バックログ承認済み・codex 提案)
+  - 発見根拠: `packages/contracts/src/index.ts` に TODO(Phase 1): OpenAPI YAML generation pipeline。
+  - 目的: zod 契約(単一正本)から OpenAPI YAML を生成し、契約と API ドキュメントのドリフトを構造的に防ぐ。
+  - 想定スコープ: `packages/contracts/**`、生成物の置き場と CI 検証は計画時に確定。
+
+- [ ] WP-4021 患者検索 dev ヘッダと synthetic fixture の整合(codex 提案 SELF-SCAN-20260709-02)
+  - 発見根拠: `apps/web/app/patients/patient-search.tsx` の DEV_HEADERS(t-dev/ph-dev)と `apps/api/src/patient-repository.ts` の syntheticPatients(tenant-001/pharmacy-001)が不一致で、既定の dev UI 検索が常に0件。
+  - 目的: dev テナント文脈と synthetic fixture のテナントを一致させ、dev 動作確認を実態のあるものにする(本番個人情報は使用しない)。
+
+- [ ] WP-4022 date-time 日付ラッパーの nominal brand 付与(codex 提案 SELF-SCAN-20260709-03)
+  - 発見根拠: 日付ラッパー3種(処方日・調剤日・請求月系)が構造的同型で異種間 compare がコンパイルを通る(shared_type_registry.md の既知課題、独立WP未登録だった)。
+  - 目的: nominal brand を追加し異種日付の比較・代入を型で拒否する。共通モジュール改版のため shared_type_registry.md の改版を伴う。
+
+- [ ] WP-4023 PatientHeader 資格状態型の contracts 一本化(codex 提案 SELF-SCAN-20260709-04)
+  - 発見根拠: `apps/web/app/components/patient-header.tsx` が `EligibilityDisplayStatus` union をローカル定義しており、`packages/contracts/src/patient-search.ts` の `ELIGIBILITY_STATUSES` / `EligibilityStatus`(正本)と二重実装(COMMON_MODULE_DUPLICATION_BLOCKED 対象)。
+  - 目的: PatientHeader の資格状態型を contracts 正本から参照させ、表示ラベルのみ web 側責務として残す。
+
 - [ ] WP-2009 audit hash-chain canonicalization / hydrate split
   - 発見根拠: WP-2003 は assignment 明記どおり `prevHash` / `entryHash` の sha-256 hex 形式検証のみで、entryHash 計算自体は呼び出し側/永続層責務として残した。SEC-007 は最終的に `entryHash = H(prevHash || 正規化ペイロード)` を要求する。
   - 目的: 監査ログ永続化実装時に、canonical payload から entryHash を生成する作成APIと、保存済みレコードを検証して復元する hydrate/verify API を分離し、任意hexを真正性証跡として扱わない。
@@ -348,10 +371,11 @@ v0.2.0の最上位方針:
 
 - [x] WP-0040 v0.2.0構築プロンプト保存: `docs/spec/construction_prompt_v0.2.0.md` を追加。
 - [x] WP-0049 構築プロンプト版統一: `docs/spec/construction_prompt_baseline.md` を0.2.0正本入口へ縮約し、旧版本文・旧版優先順位・旧版見出しを削除。`docs/spec/construction_prompt_v0.2.0.md` に統合方針を集約。
-- [ ] WP-0041 yrese doctrine SSOT pack(docs/product/またはdocs/architecture/): `yrese_product_doctrine.md`, `yrese_four_battles_strategy.md`, `nsips_quarantine_architecture.md`, `legacy_adapter_s3_lambda_policy.md`。NSIPS境界隔離・S3/Lambda候補構成・Legacy Adapter停止条件を確定。
-- [ ] WP-0042 FHIR canonical SSOT pack(docs/domain/またはdocs/adapters/): `fhir_native_canonical_model.md`, `fhir_mapping_registry.md`。Official AdapterをFHIRで勝手に置換しない境界を明文化。
+- [x] WP-0041 yrese doctrine SSOT pack(6cd714e): PRD-008 製品ドクトリン / PRD-009 4つの戦い / ARC-003 NSIPS境界隔離ACL / ARC-004 Legacy Adapter S3/Lambda候補構成。全て PROPOSED(承認は PRC-007 フロー)。
+- [x] WP-0042 FHIR canonical SSOT pack(4482e1e): DOM-005 canonical model ≠ FHIR 方針 / DOM-006 マッピング台帳枠組み(MAP-FHIR-####、APPROVED エントリのみ実装可)。Official Adapter の FHIR 置換は BLOCKED_OFFICIAL_ADAPTER_BOUNDARY。PROPOSED(PRD-007 と合わせて承認)。
 - [x] WP-0048 JP Core/FHIR Ready 薬局データ連携基盤戦略: `docs/product/jp_core_fhir_platform_strategy.md` を追加し、電子処方箋対応とJP Core/FHIR準拠を分離。公式ソース台帳 `SRC-FHIR-001..006` を `docs/regulatory/source_registry.md` に追加。WP-0042/WP-0046の上流方針とする。
-- [ ] WP-0043 Quality transparency SSOT pack(docs/quality/またはdocs/product/): `quality_transparency_strategy.md`, `public_quality_kpi_policy.md`, `claim_return_rate_kpi_policy.md`。公開KPIの匿名化・同意・契約・悪用リスクを整理。
+- [x] WP-0043 Quality transparency SSOT pack(cc47d59): QUA-007 証明可能性戦略 / QUA-008 公開KPI一般方針(匿名化・同意・悪用リスク5類型)/ QUA-009 返戻率KPI定義(fail-closed 集計)。外部公開の実施は BLOCKED_LEGAL_REVIEW 解除まで BLOCKED。PROPOSED。
+- [x] WP-0051 ssot_index 整合性修復: 索引未登録の約50文書(accounting/calculation/domain/jahis/receipt/api/spec ほか)を検出し、frontmatter からの機械再生成で全148文書を索引化(IDX-001 v0.3.0)。索引は以後手編集しない。恒久ゲートは WP-4020。
 - [ ] WP-0044 Calculation event-sourcing SSOT pack(docs/calculation/またはdocs/architecture/): `calculation_rule_data_architecture.md`, `calculation_pure_function_policy.md`, `calculation_golden_test_source_policy.md`, `event_sourcing_architecture.md`, `projection_recalculation_policy.md`, `claim_finalization_immutability_policy.md`。確定済み請求のimmutabilityと再投影境界を確定。
 - [ ] WP-0045 Always-on architecture SSOT pack(docs/architecture/またはdocs/operations/): `always_on_rececon_architecture.md`, `no_nightly_batch_policy.md`。Cloud Core / Pharmacy Edge Node / LOCAL_ONLY / RECOVERY_SYNC / zero planned downtime の24/365方針を確定。
 - [ ] WP-0046 API-first platform SSOT pack(docs/api/またはdocs/integration/): `api_first_dogfooding_policy.md`, `platform_api_architecture.md`, `ph_os_reference_integration.md`, `oss_sdk_and_schema_publication_policy.md`。公開API dogfooding、PH-OSリファレンス連携、OSS公開範囲を確定。

@@ -6,7 +6,7 @@ title: SSOT文書索引
 domain: plan
 status: APPROVED
 owner: fable5
-version: 0.2.0
+version: 0.3.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -15,10 +15,26 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 
 本索引は `docs/**` 配下の全SSOT文書の正式な一覧である。台帳にない文書の参照・実装根拠化を禁止する。
 
-**Phase 0 ゲート: 2026-07-09 人間レビュー承認済み。** 全文書 status APPROVED(以後の改版は PRC-007 の更新フローに従う)。
+**Phase 0 ゲート: 2026-07-09 人間レビュー承認済み(当時97文書)。** ゲート後に追加された文書は各自の status(PROPOSED 等)を保持し、承認は PRC-007 の更新フローに従う。
+本索引は frontmatter からの機械生成である(手編集しない。再生成漏れは索引整合性欠陥として扱う)。
 
-総文書数: 97(本索引を除く)
+総文書数: 148(本索引を除く)
 
+## docs/accounting/ (11件)
+
+| ssot_id | 文書 | status |
+|---|---|---|
+| ACC-011 | [accounting_audit_log_policy.md](accounting/accounting_audit_log_policy.md) | APPROVED |
+| ACC-001 | [accounting_domain_model.md](accounting/accounting_domain_model.md) | APPROVED |
+| ACC-006 | [ar_status_registry.md](accounting/ar_status_registry.md) | APPROVED |
+| ACC-007 | [daily_cash_closing_policy.md](accounting/daily_cash_closing_policy.md) | APPROVED |
+| ACC-010 | [facility_billing_policy.md](accounting/facility_billing_policy.md) | APPROVED |
+| ACC-004 | [partial_payment_policy.md](accounting/partial_payment_policy.md) | APPROVED |
+| ACC-002 | [patient_receivable_policy.md](accounting/patient_receivable_policy.md) | APPROVED |
+| ACC-003 | [payment_allocation_policy.md](accounting/payment_allocation_policy.md) | APPROVED |
+| ACC-008 | [payment_method_registry.md](accounting/payment_method_registry.md) | APPROVED |
+| ACC-009 | [pos_integration_policy.md](accounting/pos_integration_policy.md) | APPROVED |
+| ACC-005 | [refund_adjustment_policy.md](accounting/refund_adjustment_policy.md) | APPROVED |
 
 ## docs/adapters/ (2件)
 
@@ -49,18 +65,32 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 | AGT-016 | [llm_capability_registry.md](agents/llm_capability_registry.md) | APPROVED |
 | AGT-004 | [sol_ultra_mode_execution_policy.md](agents/sol_ultra_mode_execution_policy.md) | APPROVED |
 
-## docs/architecture/ (2件)
+## docs/api/ (1件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
+| API-001 | [patient_search_contract.md](api/patient_search_contract.md) | APPROVED |
+
+## docs/architecture/ (4件)
+
+| ssot_id | 文書 | status |
+|---|---|---|
+| ARC-004 | [legacy_adapter_s3_lambda_policy.md](architecture/legacy_adapter_s3_lambda_policy.md) | PROPOSED |
+| ARC-003 | [nsips_quarantine_architecture.md](architecture/nsips_quarantine_architecture.md) | PROPOSED |
 | ARC-001 | [offline_mode_matrix.md](architecture/offline_mode_matrix.md) | APPROVED |
 | ARC-002 | [recovery_sync_design.md](architecture/recovery_sync_design.md) | APPROVED |
 
-## docs/calculation/ (2件)
+## docs/calculation/ (8件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
 | CAL-001 | [calculation_coverage_matrix.md](calculation/calculation_coverage_matrix.md) | APPROVED |
+| CAL-005 | [calculation_engine_architecture.md](calculation/calculation_engine_architecture.md) | APPROVED |
+| CAL-004 | [calculation_engine_design.md](calculation/calculation_engine_design.md) | APPROVED |
+| CAL-006 | [calculation_rule_dsl.md](calculation/calculation_rule_dsl.md) | APPROVED |
+| CAL-008 | [calculation_trace_schema.md](calculation/calculation_trace_schema.md) | APPROVED |
+| CAL-007 | [claimability_status_policy.md](calculation/claimability_status_policy.md) | APPROVED |
+| CAL-003 | [evidence_register.md](calculation/evidence_register.md) | APPROVED |
 | CAL-002 | [tensuhyo_reading_notes.md](calculation/tensuhyo_reading_notes.md) | APPROVED |
 
 ## docs/claim/ (2件)
@@ -69,6 +99,30 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 |---|---|---|
 | CLM-001 | [claim_scope_matrix.md](claim/claim_scope_matrix.md) | APPROVED |
 | CLM-002 | [record_spec_reading_notes.md](claim/record_spec_reading_notes.md) | APPROVED |
+
+## docs/domain/ (6件)
+
+| ssot_id | 文書 | status |
+|---|---|---|
+| DOM-001 | [bounded_contexts.md](domain/bounded_contexts.md) | PROPOSED |
+| DOM-002 | [domain_model.md](domain/domain_model.md) | PROPOSED |
+| DOM-006 | [fhir_mapping_registry.md](domain/fhir_mapping_registry.md) | PROPOSED |
+| DOM-005 | [fhir_native_canonical_model.md](domain/fhir_native_canonical_model.md) | PROPOSED |
+| DOM-004 | [state_transition.md](domain/state_transition.md) | PROPOSED |
+| DOM-003 | [ubiquitous_language.md](domain/ubiquitous_language.md) | PROPOSED |
+
+## docs/jahis/ (8件)
+
+| ssot_id | 文書 | status |
+|---|---|---|
+| JHS-003 | [jahis_adapter_inventory.md](jahis/jahis_adapter_inventory.md) | PROPOSED |
+| JHS-001 | [jahis_applicability_matrix.md](jahis/jahis_applicability_matrix.md) | PROPOSED |
+| JHS-006 | [jahis_character_encoding_policy.md](jahis/jahis_character_encoding_policy.md) | PROPOSED |
+| JHS-007 | [jahis_code_mapping_policy.md](jahis/jahis_code_mapping_policy.md) | PROPOSED |
+| JHS-005 | [jahis_conformance_test_plan.md](jahis/jahis_conformance_test_plan.md) | PROPOSED |
+| JHS-002 | [jahis_full_support_definition.md](jahis/jahis_full_support_definition.md) | PROPOSED |
+| JHS-008 | [jahis_roundtrip_test_policy.md](jahis/jahis_roundtrip_test_policy.md) | PROPOSED |
+| JHS-004 | [jahis_version_watchlist.md](jahis/jahis_version_watchlist.md) | PROPOSED |
 
 ## docs/masters/ (2件)
 
@@ -134,24 +188,44 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 | PRC-007 | [ssot_governance.md](process/ssot_governance.md) | APPROVED |
 | PRC-002 | [work_package_template.md](process/work_package_template.md) | APPROVED |
 
-## docs/product/ (3件)
+## docs/product/ (9件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
+| PRD-007 | [jp_core_fhir_platform_strategy.md](product/jp_core_fhir_platform_strategy.md) | PROPOSED |
+| PRD-005 | [major_rececon_feature_matrix.md](product/major_rececon_feature_matrix.md) | PROPOSED |
 | PRD-001 | [mvp_scope.md](product/mvp_scope.md) | APPROVED |
 | PRD-002 | [non_mvp_scope.md](product/non_mvp_scope.md) | APPROVED |
+| PRD-006 | [product_concept.md](product/product_concept.md) | APPROVED |
+| PRD-004 | [rececon_feature_benchmark.md](product/rececon_feature_benchmark.md) | PROPOSED |
 | PRD-003 | [risk_register.md](product/risk_register.md) | APPROVED |
+| PRD-009 | [yrese_four_battles_strategy.md](product/yrese_four_battles_strategy.md) | PROPOSED |
+| PRD-008 | [yrese_product_doctrine.md](product/yrese_product_doctrine.md) | PROPOSED |
 
-## docs/quality/ (6件)
+## docs/quality/ (9件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
 | QUA-003 | [change_control_policy.md](quality/change_control_policy.md) | APPROVED |
+| QUA-009 | [claim_return_rate_kpi_policy.md](quality/claim_return_rate_kpi_policy.md) | PROPOSED |
 | QUA-004 | [defect_management_policy.md](quality/defect_management_policy.md) | APPROVED |
 | QUA-005 | [incident_management_policy.md](quality/incident_management_policy.md) | APPROVED |
 | QUA-006 | [post_release_monitoring.md](quality/post_release_monitoring.md) | APPROVED |
+| QUA-008 | [public_quality_kpi_policy.md](quality/public_quality_kpi_policy.md) | PROPOSED |
 | QUA-001 | [quality_plan.md](quality/quality_plan.md) | APPROVED |
+| QUA-007 | [quality_transparency_strategy.md](quality/quality_transparency_strategy.md) | PROPOSED |
 | QUA-002 | [validation_plan.md](quality/validation_plan.md) | APPROVED |
+
+## docs/receipt/ (6件)
+
+| ssot_id | 文書 | status |
+|---|---|---|
+| RCP-001 | [receipt_issuance_policy.md](receipt/receipt_issuance_policy.md) | APPROVED |
+| RCP-002 | [receipt_numbering_policy.md](receipt/receipt_numbering_policy.md) | APPROVED |
+| RCP-006 | [receipt_privacy_policy.md](receipt/receipt_privacy_policy.md) | APPROVED |
+| RCP-003 | [receipt_reissue_cancel_policy.md](receipt/receipt_reissue_cancel_policy.md) | APPROVED |
+| RCP-005 | [receipt_template_registry.md](receipt/receipt_template_registry.md) | APPROVED |
+| RCP-004 | [statement_issuance_policy.md](receipt/statement_issuance_policy.md) | APPROVED |
 
 ## docs/regulatory/ (7件)
 
@@ -183,6 +257,13 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 | SEC-001 | [security_guideline_mapping.md](security/security_guideline_mapping.md) | APPROVED |
 | SEC-006 | [tenant_isolation_design.md](security/tenant_isolation_design.md) | APPROVED |
 | SEC-003 | [threat_model.md](security/threat_model.md) | APPROVED |
+
+## docs/spec/ (2件)
+
+| ssot_id | 文書 | status |
+|---|---|---|
+| SPEC-001 | [construction_prompt_baseline.md](spec/construction_prompt_baseline.md) | APPROVED |
+| SPEC-002 | [construction_prompt_v0.2.0.md](spec/construction_prompt_v0.2.0.md) | APPROVED |
 
 ## docs/testing/ (1件)
 
