@@ -6,6 +6,12 @@
 
 ## 2026-07-10
 
+### WP-4023 PatientHeader eligibility status type convergence
+
+- DB-005 commit_request 待ちの interim として、既存 backlog のうち SSOT/DB migration に触れない WP-4023 を実施。
+- `apps/web/app/components/patient-header.tsx` の `EligibilityDisplayStatus` ローカル union を削除し、`@yrese/contracts` の `EligibilityStatus` alias へ変更。資格状態の値集合は contracts/shared-kernel 正本、表示文言は引き続き web の `ELIGIBILITY_LABELS` が唯一の正。
+- 検証: `pnpm --filter @yrese/web typecheck` PASS、`pnpm --filter @yrese/web test` PASS(33)、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 ### WP-4042 /whoami contract and OpenAPI coverage decision closure
 
 - self-scan で WP-4042 の現状を再確認。現行 `@yrese/contracts` は `whoamiResponseSchema` / `WhoamiResponse` を持ち、`packages/contracts/src/index.ts` から export 済み。`apps/api/src/server.ts` の `/whoami` は `whoamiResponseSchema.parse()` を通して返す。
