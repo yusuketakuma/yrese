@@ -247,6 +247,11 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 目的: 不正IDヘッダ→401/403 の回帰テストを追加する。実装変更は原則不要。
   - 検証: `pnpm --filter @yrese/api test`。
 
+- [ ] WP-4031 @yrese/trace の CAL-008 拡張フィールド実装(codex 提案 SELF-SCAN-20260709-11)
+  - 発見根拠: CAL-008 calculation_trace_schema は APPROVED 済みだが、@yrese/trace は拡張前の CalculationTraceStep 形状のみを公開している。
+  - 目的: CAL-008 定義の後方互換な optional 拡張フィールドと実行時ガードを実装する(affectsClaim=true→evidenceRef 必須の既存不変条件は維持)。
+  - 検証: `pnpm --filter @yrese/trace test`, `pnpm -r typecheck`, `pnpm check:boundaries`。
+
 - [x] WP-4012 dependency scan / SBOM CI gate(b0ecf84、addendum 702c2f5)
   - 発見根拠: `.github/workflows/ci.yml` には dependency scan / SBOM 追加TODOが残り、`package.json` にも依存脆弱性・SBOM生成を検査するroot scriptが未定義。
   - 目的: secret scan に加えて、依存脆弱性検知とSBOM生成/検証をCIの機械ゲートにし、security SSOTの「dependency scan / SBOM」予定項目を実装へ進める。
