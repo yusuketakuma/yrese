@@ -9,7 +9,7 @@ owner: fable5
 reviewers:
   - opus4.8
   - codex (backend実装可能性)
-version: 0.2.0
+version: 0.2.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -74,6 +74,6 @@ PatientSearchResult = {
 
 ## 6. 変更履歴
 
-- 0.2.0 (2026-07-09): WP-4029 追補 — cursor 最大長512文字を契約へ追加し、巨大 cursor は decode 前に `PAT-0001` として拒否する。
+- 0.2.1 (2026-07-09): WP-4029 追補 — cursor 最大長512文字を契約へ追加し、巨大 cursor は decode 前に `PAT-0001` として拒否する。
 - 0.2.0 (2026-07-09): codex 実装可能性レビューの CONTRACT_CHANGE_REQUESTS 4件+non-blocking 3件を反映して承認(契約正本化 / wire は素のstring / エラー網羅+PAT-0001 事前登録 / cursor のテナント境界拘束 / no-store / PHIログ禁止)。
 - 0.1.0 (2026-07-09): 初版起案。

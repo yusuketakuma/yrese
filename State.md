@@ -9,7 +9,7 @@
 ### WP-4029 — patient search cursor length cap
 
 - codex実装。`@yrese/contracts` に `PATIENT_SEARCH_CURSOR_MAX_LENGTH = 512` を追加し、query cursor / response nextCursor の最大長を契約層で固定。
-- API route でも長大 cursor は backend decode 前に 400 `PAT-0001` となることをテストで固定。API-001 文書へ同じ上限を追記。
+- API route でも長大 cursor は backend decode 前に 400 `PAT-0001` となることをテストで固定。API-001 文書へ同じ上限を追記し、fable5承認条件に従い API-001 version を 0.2.1 へ更新。
 - 検証: `pnpm --filter @yrese/contracts test`(21 tests PASS)、`pnpm --filter @yrese/api test`(30 tests PASS)、contracts/api typecheck、`pnpm check:boundaries`、`git diff --check`。
 
 ### WP-4024 — audit runtime guard negative tests
