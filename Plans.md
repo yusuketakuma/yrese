@@ -397,9 +397,10 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `docs/security/security_guideline_mapping.md`, 必要なら `docs/ssot_index.md`。status 不変、version +0.0.1、変更履歴1行。
   - 検証: `rg` による drift 文言確認、`pnpm check:ssot-index`, `git diff --check`。
 
-- [ ] WP-4049 reception contract/common-module implementation-state drift cleanup(codex 提案 SELF-SCAN-20260709-28、fable5 triage待ち)
+- [x] WP-4049 reception contract/common-module implementation-state drift cleanup(codex 提案 SELF-SCAN-20260709-28、fable5正式アサイン。本WPで実装)
   - 発見根拠: WP-3009-BE/93aefa1 で `ReceptionId` / `RECEPTION_STATUSES` / `reception` permission resource / RCV-0001〜0003 / `@yrese/contracts` reception queue schema + OpenAPI が実装済みになった。一方、`docs/modules/common_module_inventory.md` は `@yrese/contracts` を health/error/patients/search/whoami のまま、`docs/modules/validation_schema_policy.md` も同じ契約一覧・テスト先例のまま残っている。件数表記も shared-kernel/contracts/audit/calculation などが最新テスト数とずれ始めている。
   - 目的: 受付キュー実装後の共通モジュールSSOTの実装状態だけを同期し、後続の WP-3009-UI / Integration Hub / contract-first 実装が古い契約一覧・件数を根拠にしないようにする。要件・規律・禁止事項は変更しない。
+  - 実装: MOD-001/002/012 と API-006 を version +0.0.1 し、WP-3009-BE/93aefa1 の ReceptionId / RECEPTION_STATUSES / reception scope / RCV-0001〜0003 / reception queue contracts+OpenAPI+apps/api 実装状態、WP-4028/12f1bb7 の calculation purity gate、現行テスト数(shared-kernel 23 / money 15 / trace 14 / contracts 43 / audit 32 / calculation 20)を同期。要件・規律・wire形状は不変更。
   - 想定スコープ: `docs/modules/common_module_inventory.md`, `docs/modules/common_module_boundary.md`, `docs/modules/validation_schema_policy.md`。必要なら `docs/ssot_index.md`。各文書は status 不変、version +0.0.1、変更履歴1行、根拠は WP-3009-BE/93aefa1。
   - 検証: `rg -n "health / error / patients/search / whoami|ReceptionId|RECEPTION_STATUSES|reception queue|テスト" docs/modules`, `pnpm check:ssot-index`, `git diff --check`。
 

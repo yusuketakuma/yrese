@@ -8,12 +8,13 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.1
+version: 0.1.2
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 change_log:
+  - 0.1.2 (2026-07-09): WP-4049 実装状態 drift 整備。WP-3009-BE/93aefa1 の受付キュー契約・shared-kernel 実装、WP-4028/12f1bb7 の calculation purity gate、最新テスト数を現行 packages/* 実態へ同期(要件・境界は不変更)。
   - 0.1.1 (2026-07-09): WP-4043 実装状態 drift 整備。`@yrese/audit`、`@yrese/contracts`、各実装済み共通モジュールの現行実装状態を packages/* の実態へ同期(要件・境界は不変更)。
 source_refs:
   - 構築プロンプト v0.2.0 §0.0.3.1, §0.0.3.2, §0.0.3.6
@@ -32,16 +33,16 @@ blockers: []
 
 | パッケージ | 内容 | owner(AGT-009準拠) | レビュー | 依存(workspace) | 実装状態 |
 |---|---|---|---|---|---|
-| `@yrese/shared-kernel` | branded ID 11種 / SYSTEM_MODES 5種+ガード3関数 / PROVISIONAL_STATUSES 6種+isClaimable / BLOCKER_TYPES 33種 / ErrorCodeRegistry / PermissionScope+ROLE_NAMES | Codex側Sol | fable5+opus4.8 | なし(依存ゼロ) | 実装済み(WP-1002/9ab039e, WP-1012/41d5113, WP-0052/6f7f91f)テスト15 |
-| `@yrese/money` | ScaledDecimal(bigint係数+scale)/ Yen / Points / RoundingMode 7種 | Codex側Sol | opus4.8(高リスク) | なし | 実装済み(WP-1003/533f89a, WP-4033/ef978d4)テスト12 |
+| `@yrese/shared-kernel` | branded ID 12種(ReceptionId含む) / SYSTEM_MODES 5種+ガード3関数 / PROVISIONAL_STATUSES 6種+isClaimable / RECEPTION_STATUSES 4種 / BLOCKER_TYPES 33種 / ErrorCodeRegistry(seed 5件) / PermissionScope(resource 15種)+ROLE_NAMES | Codex側Sol | fable5+opus4.8 | なし(依存ゼロ) | 実装済み(WP-1002/9ab039e, WP-1012/41d5113, WP-0052/6f7f91f, WP-3009-BE/93aefa1)テスト23 |
+| `@yrese/money` | ScaledDecimal(bigint係数+scale)/ Yen / Points / RoundingMode 7種 | Codex側Sol | opus4.8(高リスク) | なし | 実装済み(WP-1003/533f89a, WP-4033/ef978d4, WP-4040/a30cfc5)テスト15 |
 | `@yrese/date-time` | CalendarDate / PrescriptionDate / DispensingDate / ReceptionDate / ClaimMonth | Codex側Sol | opus4.8(高リスク) | なし | 実装済み(WP-1004/ab234fe, WP-4022/6f04722)テスト8 |
-| `@yrese/trace` | EvidenceRef / CalculationTrace / LegalTrace(affectsClaim→evidenceRefs≥1 強制、CAL-008拡張フィールド) | Codex側Sol | fable5+opus4.8 | shared-kernel | 実装済み(WP-1005/ddc06a1, WP-4031/8d0bf80)テスト11 |
+| `@yrese/trace` | EvidenceRef / CalculationTrace / LegalTrace(affectsClaim→evidenceRefs≥1 強制、CAL-008拡張フィールド、enum/kind runtime guard) | Codex側Sol | fable5+opus4.8 | shared-kernel | 実装済み(WP-1005/ddc06a1, WP-4031/8d0bf80, WP-4039/e3892a5)テスト14 |
 | `@yrese/events` | EventEnvelope(PHI≠none→encrypted 必須、runtime enum/ID guard) | Codex側Sol | opus4.8 | shared-kernel | 実装済み(WP-1006/85bd3aa, WP-4032/d665c06)テスト11 |
-| `@yrese/contracts` | API契約の単一正本(health / error / patients/search / whoami) + OpenAPI 3.1生成 | Codex側Sol(生成・更新) | ClaudeCode側 利用側レビュー | shared-kernel / zod v4 / zod-openapi | 実装済み(WP-1007/7fa369c, WP-2008+2005/bb3d237, WP-4019/3dd1daa, WP-4042/1b1bff5)テスト26 |
-| `@yrese/audit` | AuditEvent registry / grammar / outcome / businessReason / hash fields(EventEnvelope 不変条件継承) | Codex側Sol | fable5+opus4.8 | events / shared-kernel | 実装済み(WP-2003/73ffd90, WP-2010/4cf702f)テスト15 |
-| `@yrese/calculation` | 算定エンジン骨格+初期 evidence-backed ルール(具体ルールは承認済み範囲のみ。空ruleset→BLOCKED、形状不一致→SSOT_UPDATE_REQUIRED) | Codex側Sol | fable5+opus4.8+人間候補 | shared-kernel / money / date-time / trace | 実装済み(WP-2101a/d26424d, WP-2101b/76da0d6, WP-4034/871a2f3)テスト19 |
+| `@yrese/contracts` | API契約の単一正本(health / error / patients/search / whoami / reception queue) + OpenAPI 3.1生成 | Codex側Sol(生成・更新) | ClaudeCode側 利用側レビュー | shared-kernel / zod v4 / zod-openapi | 実装済み(WP-1007/7fa369c, WP-2008+2005/bb3d237, WP-4019/3dd1daa, WP-4042/1b1bff5, WP-3009-BE/93aefa1)テスト43 |
+| `@yrese/audit` | AuditEvent registry / grammar / outcome / businessReason / hash fields(EventEnvelope 不変条件継承、reception.created/cancelled 登録) | Codex側Sol | fable5+opus4.8 | events / shared-kernel | 実装済み(WP-2003/73ffd90, WP-2010/4cf702f, WP-3009-BE/93aefa1)テスト32 |
+| `@yrese/calculation` | 算定エンジン骨格+初期 evidence-backed ルール(具体ルールは承認済み範囲のみ。空ruleset→BLOCKED、形状不一致→SSOT_UPDATE_REQUIRED、pure function static gate) | Codex側Sol | fable5+opus4.8+人間候補 | shared-kernel / money / date-time / trace | 実装済み(WP-2101a/d26424d, WP-2101b/76da0d6, WP-4034/871a2f3, WP-4039/e3892a5, WP-4028/12f1bb7)テスト20 |
 
-補助ツーリング: `scripts/check-boundaries.mjs`(0213ac0)— import 境界 / workspace 循環 / 重複 const 検査。CI 組込済み(`pnpm check:boundaries`)。
+補助ツーリング: `scripts/check-boundaries.mjs`(0213ac0, WP-4035/d1d37a2)— import 境界 / workspace 循環 / 重複 const 検査。`scripts/check-calculation-purity.mjs`(WP-4028/12f1bb7)— CAL-010 の算定純粋性禁止パターン検査。どちらも CI 組込済み。
 
 ## 2. 今後の候補(v0.2.0 §0.0.3.2 — 新設は本台帳の改版+fable5承認後のみ)
 
