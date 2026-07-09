@@ -149,3 +149,30 @@ WP-0014 の公式ドメイン一次確認により、以下を確定・訂正す
 | オン資外部IF仕様書・電子処方箋記録条件仕様 | 【要確認】 | ONS 限定公開 — 人間の ONS 登録手続きが必要(HUMAN_ACTION_REQUIRED) |
 
 evidence_id の正式発行は、各PDFの取得・版・ハッシュ記録後に行う(次ステップ WP-0015)。
+
+---
+
+## ベンチマーク出典(Priority C — 2026-07-09 追記、WP-0018)
+
+用途: 薬局業務要件の抽出補助のみ。**実装根拠・evidence_id の源泉には使用不可**。模倣禁止(PRD-004 冒頭宣言参照)。
+
+| 資料 | 発行主体 | URL | 検証度 |
+|---|---|---|---|
+| MEDIXS クラウドレセコン 製品ページ | 株式会社アクシス(MEDIXS) | https://medixs.jp/product/receipt | 参照のみ |
+| MEDIXS 統合ソリューション | 同上 | https://medixs.jp/ | 参照のみ |
+| MAPs for PHARMACY DX | 株式会社EMシステムズ | https://service.emsystems.co.jp/maps_series/for_pharmacy_dx/ | 参照のみ |
+| MAPs for PHARMACY | 同上 | https://service.emsystems.co.jp/maps_series/for_pharmacy/ | 参照のみ |
+| 薬局向け製品一覧(Recepty NEXT) | 同上 | https://emsystems.co.jp/product/pharmacy.html | 参照のみ |
+| PharnesX-EX | ウィーメックス株式会社(PHC) | https://www.phchd.com/jp/medicom/pharmacies/pharnesx | 参照のみ |
+| PharnesX-MX | 同上 | https://www.phchd.com/jp/medicom/pharmacies/pharnesx-mx | 参照のみ |
+| Pharmy 機能一覧 | モイネットシステム | https://www.moinetsystem.com/system/pharmy-feature | 参照のみ |
+| Pharmy Connect | 同上 | https://www.moinetsystem.com/system/pharmy-connect/ | 参照のみ |
+| P-CUBE n 機能 | 株式会社ユニケソフトウェアリサーチ | https://www.unike.co.jp/product/pharmacy/p-cuben/function/ | 参照のみ |
+| P-CUBE n | 同上 | https://www.unike.co.jp/product/pharmacy/p-cuben/ | 参照のみ |
+| GENNAI just | 株式会社ズー | https://dx.emedical.ne.jp/products/rececom/ | 参照のみ |
+| 調剤くんV8 | ネクストアイティ | https://chouzai-sys.nextit.co.jp/ | 参照のみ |
+
+参考(Priority A — 既存台帳・REG-007 と重複するため参照ポインタのみ):
+SSK「電子レセプトの作成」 https://www.ssk.or.jp/seikyushiharai/iryokikan/iryokikan_02.html /
+SSK「オンライン請求」 https://www.ssk.or.jp/seikyushiharai/iryokikan/index.html
+(記録条件仕様・標準仕様・電子レセプト作成手引きの正式な版管理は evidence_verification_log.md / 本台帳の既存節を正とする)
