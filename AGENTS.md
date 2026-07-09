@@ -50,5 +50,5 @@ pnpm monorepo。`apps/*` が実行体、`packages/*` が共通モジュール(ru
 - **二系統運用**: Claude 側=仕様/SSOT/フロントエンド、Codex 側=バックエンド(agmsg チーム `yrese` で WP_ASSIGN→CODEX_PLAN→実装→WP_HANDOFF→レビュー)。詳細は `docs/agents/`。高リスク領域(算定・請求・監査・会計等)は opus4.8 レビュー必須
 - **コードはシンプルに実装する**: 要求を満たす最小の実装を選び、投機的な抽象化・使われないオプション・「ついでの改善」を入れない(改善は新しい WP として提案する)
 - **二重実装の禁止**: 同じ概念・enum・status・validation・money/date処理を複数箇所に実装しない。実装前に既存の共通パッケージ(`packages/*`)と SSOT を確認し、あるものは再利用、拡張が必要なら共通側を改版する(重複は `check:boundaries` と COMMON_MODULE_DUPLICATION_BLOCKED の対象)
-- **直接 commit & push 可**: Codex と Claude は、ユーザー指示または fable5 / Work Package の範囲内で、必要な検証を実行したうえで直接 commit & push してよい。自分の変更だけを stage し、ユーザーまたは他エージェントの未関係差分は混ぜない。push 後は実行した検証と残リスクを agmsg / State.md / PR本文の該当箇所へ残す
-- コミットメッセージは WP-ID を先頭に(例: `WP-2101b: ...`)。Codex 実装分は `Co-Authored-By: Codex <noreply@openai.com>` を併記
+- **commit & push 実行者**: ユーザー指示(2026-07-09)により、git commit と push は Codex 側が実行する。Claude 側の変更は `[commit_request]` として対象ファイル・commit message・検証結果を Codex へ渡し、Codex が対象ファイルのみを stage して検証後に commit & push する。Claude 側変更の commit には `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>` を併記する
+- コミットメッセージは WP-ID を先頭に(例: `WP-2101b: ...`)。Codex 自身の変更も対象ファイルのみを stage し、ユーザーまたは他エージェントの未関係差分は混ぜない。push 後は実行した検証と残リスクを agmsg / State.md / PR本文の該当箇所へ残す

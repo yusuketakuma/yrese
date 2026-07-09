@@ -6,6 +6,13 @@
 
 ## 2026-07-09(続き)
 
+### WP-3009 完結・commit/push 運用変更
+
+- WP-3009 SCR-001 受付ダッシュボード実体化が完結。API-006 受付キュー契約 APPROVED(30f09a3) → backend 実装(WP-3009-BE/93aefa1: shared-kernel ReceptionId / RECEPTION_STATUSES / RCV-0001〜0003 / contracts+OpenAPI / apps/api) → frontend 実装(WP-3009-UI/8bdee8a: 受付ダッシュボード UI)の3段を完了。
+- WP-4049/911e009 + follow-up 0282410 で、MOD-001/002/012 と API-006 の実装状態を受付キュー実装後の実態へ同期。要件・規律・wire 形状は不変更。fable5 レビュー APPROVED。
+- 検証証跡: web 32 tests / api 39 tests / contracts 43 tests を含む `pnpm -r test` PASS、`pnpm lint` PASS、`pnpm build` PASS、`pnpm -r typecheck` PASS。初回 typecheck は build 前の `.next/types` 未生成で TS6053 失敗したため、WP-4052 として再現性改善候補を Plans.md に登録(f6581cb)。
+- 運用変更(ユーザー指示 2026-07-09 / fable5通知): 以後、git commit と push は Codex 側が実行する。Claude 側の変更は `[commit_request]` として対象ファイル・commit message・検証結果を Codex へ渡し、Codex が対象ファイルのみ stage して検証後に commit & push する。Claude 側変更の commit には `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>` を併記する。
+
 ### データベース構築計画の立案(ユーザー指示)
 
 - ユーザー指示3件: (1)「各種データベースの構築計画立案を開始」、(2) 医療機関・薬剤など他のマスター DB の個別台帳化、(3) 漏れの網羅確認
