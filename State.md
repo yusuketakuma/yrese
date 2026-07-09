@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-07-10
+
+### WP-1101 DOM-001..004 APPROVED 昇格と opus4.8 指摘是正
+
+- Claude側 fable5 から commit_request を受領し、対象7文書のみを stage して `99e84c2` として commit/push。対象は `docs/domain/bounded_contexts.md`、`docs/domain/domain_model.md`、`docs/domain/ubiquitous_language.md`、`docs/domain/state_transition.md`、`docs/modules/shared_type_registry.md`、`docs/modules/status_registry.md`、`docs/ssot_index.md`。
+- DOM-001〜004 を APPROVED へ昇格。DOM-002 に Reception 集約を追加し、branded ID は実装済み12種(ReceptionId含む)へ同期。Reception の冪等性境界は API-006 を正本として再定義しない方針に整理。
+- DOM-001 は C8 Billing の独立維持(ACC-001〜011 が正本)を明記し、C12/C13 の正本参照を補強。DOM-003 は受付用語と DOM-004 状態名(RECEIVED_PROVISIONAL / IMPORTED_PROVISIONAL)を統一。DOM-004 は受付キュー副状態機械(RECEPTION_STATUSES)とライフサイクル状態所有権を追記。
+- MOD-004(shared_type_registry)を 0.1.2 へ、MOD-005(status_registry)を 0.1.4 へ改版し、DOM昇格に伴う共有型・状態台帳のdriftを是正。`docs/ssot_index.md` は168文書で再生成済み。
+- 検証: `git diff --check` PASS、`pnpm check:ssot-index` PASS、`pnpm check:secrets` PASS、`pnpm check:boundaries` PASS、`pnpm check:calculation-purity` PASS、`pnpm test:scripts` PASS、`pnpm check:deps` PASS、`pnpm check:openapi` PASS、`pnpm check:sbom` PASS、`pnpm -r typecheck` PASS、`pnpm -r test` PASS、`pnpm build` PASS、`pnpm lint` PASS。
+
 ## 2026-07-09(続き)
 
 ### WP-5003 患者・受付 Repository DB 実装差し替え
