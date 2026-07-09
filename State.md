@@ -6,6 +6,12 @@
 
 ## 2026-07-09(続き)
 
+### WP-5001 DB設計 SSOT パック
+
+- Claude側 fable5 起草の DB-001〜004 を Codex 側 commit/push 対象として受領。`docs/database/db_schema_design_standards.md`、`db_migration_policy.md`、`db_tenant_isolation_ddl_policy.md`、`db_retention_and_deletion_policy.md` はいずれも PROPOSED。
+- 要旨: DB-001 は tenant/pharmacy 必須・money/date型・enum二重実装禁止、DB-002 は前方一方向+3段適用+明示運用操作、DB-003 はテナント分離DDL/Repository方針(RLS採用はBLOCKED_SECURITY_REVIEWまで候補)、DB-004 は保存期間・削除方針(年限未確定は削除しない側に倒す)。
+- 検証予定: `pnpm check:ssot-index`、`git diff --check`。
+
 ### WP-4052 web typecheck prebuild reproducibility
 
 - fable5 裁定: WP-4052 は frontend/tooling 領域として Codex 実装可。clean checkout でも `pnpm --filter @yrese/web typecheck` が単独 PASS することを目的に実施。

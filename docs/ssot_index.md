@@ -18,7 +18,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 **Phase 0 ゲート: 2026-07-09 人間レビュー承認済み(当時97文書)。** ゲート後に追加された文書は各自の status(PROPOSED 等)を保持し、承認は PRC-007 の更新フローに従う。
 本索引は frontmatter からの機械生成である(手編集しない。再生成漏れは索引整合性欠陥として扱う)。
 
-総文書数: 164(本索引を除く)
+総文書数: 168(本索引を除く)
 
 ## docs/accounting/ (11件)
 
@@ -112,6 +112,15 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 |---|---|---|
 | CLM-001 | [claim_scope_matrix.md](claim/claim_scope_matrix.md) | APPROVED |
 | CLM-002 | [record_spec_reading_notes.md](claim/record_spec_reading_notes.md) | APPROVED |
+
+## docs/database/ (4件)
+
+| ssot_id | 文書 | status |
+|---|---|---|
+| DB-002 | [db_migration_policy.md](database/db_migration_policy.md) | PROPOSED |
+| DB-004 | [db_retention_and_deletion_policy.md](database/db_retention_and_deletion_policy.md) | PROPOSED |
+| DB-001 | [db_schema_design_standards.md](database/db_schema_design_standards.md) | PROPOSED |
+| DB-003 | [db_tenant_isolation_ddl_policy.md](database/db_tenant_isolation_ddl_policy.md) | PROPOSED |
 
 ## docs/domain/ (6件)
 
