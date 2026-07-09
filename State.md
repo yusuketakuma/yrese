@@ -6,6 +6,12 @@
 
 ## 2026-07-09(続き)
 
+### WP-4030 — dev tenant context malformed ID route tests
+
+- codex自律バックログから実施。`apps/api/src/server.test.ts` に `/whoami` と `/patients/search` の不正 dev ID ヘッダ否定テストを追加。
+- 空白 `x-dev-tenant`、制御文字入り `x-dev-pharmacy`、制御文字入り `x-dev-actor` は route 経由で 403 `AUTH-0003` となることを固定。`tenant-context` 実装は既に fail-closed のため変更なし。
+- 検証: `pnpm --filter @yrese/api test`(28 tests PASS)、`pnpm --filter @yrese/api typecheck`、`pnpm check:boundaries`、`git diff --check`。
+
 ### SSOT 第1波(WP-0041/0042/0043)+ 索引整合性修復(WP-0051)
 
 - WP-0041(6cd714e): yrese doctrine pack — PRD-008 製品ドクトリン D1〜D7 / PRD-009 4つの戦い / ARC-003 NSIPS隔離ACL / ARC-004 Legacy Adapter S3/Lambda 方針。全て PROPOSED

@@ -28,6 +28,19 @@ const otherPharmacyPatientReadHeaders = {
   'x-dev-scopes': 'patient:read',
 } as const;
 
+const tenantOneTenantReadHeaders = {
+  'x-dev-tenant': 'tenant-001',
+  'x-dev-pharmacy': 'pharmacy-001',
+  'x-dev-actor': 'user-001',
+  'x-dev-scopes': 'tenant:read',
+} as const;
+
+const malformedDevIdHeaderCases = [
+  ['x-dev-tenant', '   ', 'blank tenant id'],
+  ['x-dev-pharmacy', 'pharmacy-001\t', 'control-character pharmacy id'],
+  ['x-dev-actor', 'user-001\t', 'control-character actor id'],
+] as const;
+
 describe('buildServer', () => {
   it('returns health status without PHI or database dependencies', async () => {
     const healthTimestamp = new Date('2026-07-09T10:20:00.000Z');
@@ -117,6 +130,30 @@ describe('buildServer', () => {
     });
   });
 
+  it.each(malformedDevIdHeaderCases)(
+    'denies /whoami when %s is malformed: %s',
+    async (headerName, invalidValue) => {
+      const server = buildServer();
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/whoami',
+        headers: {
+          ...tenantOneTenantReadHeaders,
+          [headerName]: invalidValue,
+        },
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toEqual({
+        errorCode: 'AUTH-0003',
+        message: 'Forbidden',
+      });
+    },
+  );
+
   it('returns dev tenant context from /whoami when tenant read scope is present', async () => {
     const server = buildServer();
 
@@ -198,6 +235,30 @@ describe('buildServer', () => {
       message: 'Forbidden',
     });
   });
+
+  it.each(malformedDevIdHeaderCases)(
+    'denies /patients/search when %s is malformed: %s',
+    async (headerName, invalidValue) => {
+      const server = buildServer();
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/patients/search?q=合成',
+        headers: {
+          ...tenantOnePatientReadHeaders,
+          [headerName]: invalidValue,
+        },
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toEqual({
+        errorCode: 'AUTH-0003',
+        message: 'Forbidden',
+      });
+    },
+  );
 
   it.each([
     ['/patients/search', 'missing q'],
