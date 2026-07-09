@@ -1,0 +1,7 @@
+# Claude Code / OMC / harness-mem のセッション状態(コミット対象外)
+.claude/
+.omc/
+.harness-mem/
+
+# OS
+.DS_Store
