@@ -132,7 +132,7 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `apps/api/**`。
   - 検証: `pnpm --filter @yrese/api test`, `pnpm --filter @yrese/shared-kernel test`。
 
-- [ ] WP-1011 shared-kernel test fixture control-character hygiene
+- [x] WP-1011 shared-kernel test fixture control-character hygiene(7a74076)
   - 発見根拠: `packages/shared-kernel/src/kernel.test.ts` に実NUL/制御文字を含むfixture文字列があり、`git diff --numstat -- packages/shared-kernel/src/kernel.test.ts` がbinary扱いになる。
   - 目的: runtimeで同じ不正ID入力を検証しつつ、source file上は `String.fromCharCode(0)` 等で表現してdiff/review/toolingをtext扱いに戻す。
   - 想定スコープ: `packages/shared-kernel/src/kernel.test.ts`。
@@ -143,3 +143,15 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 目的: 起動設定の入力検証を明示し、未指定は3001、指定時は10進整数文字列かつ1-65535のみ受理する。
   - 想定スコープ: `apps/api/src/main.ts`, 必要なら起動設定helper/test。
   - 検証: `pnpm --filter @yrese/api test`, `pnpm --filter @yrese/api typecheck`。
+
+- [ ] WP-4008 workspace TypeScript/Vitest version alignment
+  - 発見根拠: `apps/api/package.json` は `typescript:^5.8.0` / `vitest:^3.2.0`、他workspaceは主に `typescript:^5.7.3` / `vitest:^3.0.0` で、同一repo内のtoolchain指定が揺れている。
+  - 目的: Phase 0の品質方針に合わせ、workspace全体のTypeScript/Vitest version policyを一元化し、将来の型/テスト挙動差分を避ける。
+  - 想定スコープ: `apps/*/package.json`, `packages/*/package.json`, `pnpm-lock.yaml`。
+  - 検証: `pnpm install --frozen-lockfile`, `pnpm -r typecheck`, `pnpm -r test`, `pnpm -r build`。
+
+- [ ] WP-4009 CI secret/dependency scan expansion
+  - 発見根拠: `.github/workflows/ci.yml` にはsecret scan追加TODOが残り、security/test strategy系SSOTでもsecret scan / dependency scan / SBOMがPhase 2拡充項目として記録されている。
+  - 目的: 既存のtypecheck/test/build/boundaryに加え、secret混入と依存リスクをCIで機械的に検出する。
+  - 想定スコープ: `.github/workflows/ci.yml`, `package.json`, 必要なら `scripts/**`。
+  - 検証: `pnpm check:boundaries`, 追加scanコマンド、`git diff --check`。
