@@ -288,6 +288,18 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 境界論点: `contracts -> shared-kernel` 依存追加は MOD-003 / API-001 の現行依存グラフに影響するため、(A) contracts が registry を参照する、(B) apps/api 側で shared-kernel registry invariant を強制する、(C) no-dep error-code-format helper を抽出する、のいずれかを fable5 が裁定する。
   - 検証: 裁定後に `pnpm --filter @yrese/contracts test`, `pnpm --filter @yrese/api test`, `pnpm check:boundaries`, `git diff --check`。
 
+- [ ] WP-4037 PatientSearch stale response/race guard(codex 提案 SELF-SCAN-20260709-17、frontend owner確認待ち)
+  - 発見根拠: `apps/web/app/patients/patient-search.tsx` の `runSearch()` は request id / AbortController / latest query guard を持たず、先に投げた検索の遅延レスポンスが後続検索結果を上書きしうる。患者検索結果は患者取り違え防止UIの入口であり、古い検索結果表示は医療安全上の誤認につながる。
+  - 目的: 最新検索だけが state を更新できるようにし、追加読み込み時も対象 query/cursor の整合を保つ。併せて患者検索UIのコンポーネントテストを追加し、stale response を固定する。
+  - 想定スコープ: `apps/web/app/patients/patient-search.tsx`, `apps/web/app/**.test.tsx`。frontend 所有のため Claude/fable5 が owner を決める。
+  - 検証: `pnpm --filter @yrese/web test`, `pnpm --filter @yrese/web typecheck`, `pnpm check:boundaries`, `git diff --check`。
+
+- [ ] WP-4038 PatientSearch dev header production boundary(codex 提案 SELF-SCAN-20260709-18、auth SSOT連動)
+  - 発見根拠: `apps/web/app/patients/patient-search.tsx` は client component 内で常に `x-dev-tenant` / `x-dev-pharmacy` / `x-dev-actor` / `x-dev-scopes` を送信する。バックエンド dev tenant stub は `NODE_ENV=production` で起動拒否されるが、Web 側は production build でも dev header を送る構造のまま。
+  - 目的: 本番認証(OIDC等)のSSOT承認前でも、dev-only header が production bundle / production API request の前提にならないよう境界を明確化する。暫定的には dev-only adapter に隔離し、productionでは BLOCKED_SECURITY_REVIEW 表示または認証adapter未実装エラーへ fail-closed にする。
+  - 想定スコープ: `apps/web/app/patients/patient-search.tsx` または frontend API client adapter。auth SSOT / generated client 方針と整合後に実装。
+  - 検証: `pnpm --filter @yrese/web test`, `pnpm --filter @yrese/web typecheck`, production-like env test, `pnpm check:boundaries`, `git diff --check`。
+
 - [x] WP-4012 dependency scan / SBOM CI gate(b0ecf84、addendum 702c2f5)
   - 発見根拠: `.github/workflows/ci.yml` には dependency scan / SBOM 追加TODOが残り、`package.json` にも依存脆弱性・SBOM生成を検査するroot scriptが未定義。
   - 目的: secret scan に加えて、依存脆弱性検知とSBOM生成/検証をCIの機械ゲートにし、security SSOTの「dependency scan / SBOM」予定項目を実装へ進める。
