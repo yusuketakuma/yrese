@@ -30,7 +30,10 @@ const otherPharmacyPatientReadHeaders = {
 
 describe('buildServer', () => {
   it('returns health status without PHI or database dependencies', async () => {
-    const server = buildServer();
+    const healthTimestamp = new Date('2026-07-09T10:20:00.000Z');
+    const server = buildServer({
+      now: () => healthTimestamp,
+    });
 
     const response = await server.inject({
       method: 'GET',
@@ -47,8 +50,8 @@ describe('buildServer', () => {
       status: 'ok',
       service: 'api',
       version: apiVersion,
+      timestamp: healthTimestamp.toISOString(),
     });
-    expect(Date.parse(body.timestamp)).not.toBeNaN();
   });
 
   it('denies /whoami when dev tenant context headers are absent', async () => {

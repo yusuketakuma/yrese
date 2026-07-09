@@ -25,6 +25,7 @@ export const patientSearchInvalidQueryErrorCode = PATIENT_SEARCH_INVALID_QUERY_E
 
 export interface BuildServerOptions {
   readonly patientRepository?: PatientRepository;
+  readonly now?: () => Date;
 }
 
 interface EncodedPatientSearchCursor {
@@ -104,6 +105,7 @@ function invalidPatientSearchQueryResponse() {
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const patientRepository = options.patientRepository ?? new InMemoryPatientRepository();
+  const now = options.now ?? (() => new Date());
   const server = Fastify({
     logger: false,
   });
@@ -115,7 +117,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       status: 'ok',
       service: 'api',
       version: apiVersion,
-      timestamp: new Date().toISOString(),
+      timestamp: now().toISOString(),
     });
   });
 
