@@ -65,6 +65,29 @@ describe('buildServer', () => {
     });
   });
 
+  it('denies /whoami when tenant scope has extra malformed segments', async () => {
+    const server = buildServer();
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/whoami',
+      headers: {
+        'x-dev-tenant': 'tenant-001',
+        'x-dev-pharmacy': 'pharmacy-001',
+        'x-dev-actor': 'user-001',
+        'x-dev-scopes': 'tenant:read:extra',
+      },
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      errorCode: 'AUTH-0003',
+      message: 'Forbidden',
+    });
+  });
+
   it('returns dev tenant context from /whoami when tenant read scope is present', async () => {
     const server = buildServer();
 

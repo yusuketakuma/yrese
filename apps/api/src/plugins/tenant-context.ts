@@ -10,6 +10,7 @@
 import type { FastifyPluginCallback, FastifyReply, FastifyRequest, preHandlerHookHandler } from 'fastify';
 import fp from 'fastify-plugin';
 import {
+  AUTH_PERMISSION_DENIED_ERROR_CODE,
   isPermissionScope,
   pharmacyId,
   tenantId,
@@ -20,7 +21,7 @@ import {
   type UserId,
 } from '@yrese/shared-kernel';
 
-export const authorizationErrorCode = 'AUTH-0003';
+export const authorizationErrorCode = AUTH_PERMISSION_DENIED_ERROR_CODE;
 
 export interface TenantContext {
   readonly tenantId: TenantId;

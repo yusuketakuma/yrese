@@ -74,3 +74,24 @@ export class ErrorCodeRegistry {
     return [...this.defs.values()];
   }
 }
+
+export const KERNEL_ERROR_CODES = [
+  {
+    code: "AUTH-0003",
+    domain: "AUTH",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "permission denied (deny-by-default)",
+  },
+] as const satisfies readonly ErrorCodeDef[];
+
+export const AUTH_PERMISSION_DENIED_ERROR_CODE = KERNEL_ERROR_CODES[0].code;
+
+export function createKernelErrorCodeRegistry(): ErrorCodeRegistry {
+  const registry = new ErrorCodeRegistry();
+  for (const def of KERNEL_ERROR_CODES) {
+    registry.register(def);
+  }
+  return registry;
+}
