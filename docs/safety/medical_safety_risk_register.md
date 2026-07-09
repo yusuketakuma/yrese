@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §6
+source_refs: 構築プロンプト v0.2.0 §6
 depends_on:
   - docs/plan/phase0_plan.md §4
 impacts:
@@ -31,7 +31,7 @@ blockers:
 
 ## 運用ルール
 
-- severity 原則: **患者安全に直結 = critical、請求事故に直結 = high 以上**(v0.1.7 §10)。
+- severity 原則: **患者安全に直結 = critical、請求事故に直結 = high 以上**(v0.2.0 §10)。
 - probability / detectability は low / medium / high の3段階。現段階はすべて【暫定】。
 - mitigation は UI(画面設計)/ Tech(技術的統制)/ Ops(運用的統制)に分けて記載する。
 - 「実装済み統制」列は現リポジトリに存在する技術的統制のみを記載する(希望的記載の禁止)。

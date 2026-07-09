@@ -14,7 +14,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §3(floating point禁止), §18(算定エンジン必須事項), §0.0.3.3
+  - 構築プロンプト v0.2.0 §3(floating point禁止), §18(算定エンジン必須事項), §0.0.3.3
 depends_on:
   - packages/money(533f89a)
   - docs/calculation/tensuhyo_reading_notes.md(CAL-002 — 一次資料ノート)
@@ -26,7 +26,7 @@ blockers:
   - 丸め政策値の配線は BLOCKED_REGULATORY_REVIEW(evidence_id 発行まで)
 ```
 
-## 1. 絶対規則(v0.1.7 §3, §18)
+## 1. 絶対規則(v0.2.0 §3, §18)
 
 1. **金額・点数・数量・負担金の計算に IEEE-754 floating point を使わない**。正本実装は `@yrese/money`(bigint 係数+scale の ScaledDecimal、整数 bigint の Yen / Points)
 2. 非整数 number からの構築は実行時拒否(fromInteger は safe integer のみ、fromString は10進リテラルのみ)

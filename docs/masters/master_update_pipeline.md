@@ -15,7 +15,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §21
+  - 構築プロンプト v0.2.0 §21
   - docs/regulatory/source_registry.md(マスター配布元)
 depends_on:
   - docs/masters/code_mapping_registry_design.md
@@ -30,12 +30,12 @@ blockers:
   - マスター取込実装は配布元仕様の evidence_id 発行後に WP 発行(RB-003 相当)
 ```
 
-## 1. 原則(v0.1.7 §21)
+## 1. 原則(v0.2.0 §21)
 
 - 自動更新であっても、**請求・算定に影響するマスターは即時本番反映しない**。
 - 失敗時は `PENDING_MASTER_VALIDATION`(@yrese/shared-kernel 実装済み)とし、**旧版マスターで業務継続**する。
 - 処方日・調剤日・請求月に応じて適切なマスター版を選択する(有効開始日・廃止日・経過措置)。
-- マスターは有効日・廃止日・経過措置を必ず持つ(v0.1.7 §3)。
+- マスターは有効日・廃止日・経過措置を必ず持つ(v0.2.0 §3)。
 
 ## 2. 対象マスター
 

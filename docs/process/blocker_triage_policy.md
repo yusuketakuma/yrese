@@ -13,14 +13,14 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §0.13, §42
+source_refs: 構築プロンプト v0.2.0 §0.13, §42
 depends_on:
   - REG-004 regulatory_blockers
 impacts: 全WP・全実装
 open_questions: []
 ```
 
-## 1. 報告形式(v0.1.7 §0.13)
+## 1. 報告形式(v0.2.0 §0.13)
 
 agmsg(または State.md)へ以下の形式で報告する。
 

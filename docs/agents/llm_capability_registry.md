@@ -13,7 +13,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §0.1.3.1
+source_refs: 構築プロンプト v0.2.0 §0.1.3.1
 open_questions:
   - Codex側 actual_model_id(「GPT-5.6 sol max」はユーザー指定呼称。CLI設定上の実モデルIDが未確認)
   - Codex Cloud(並列実行)利用可否・データ送信範囲
@@ -23,7 +23,7 @@ blockers:
 ```
 
 実行環境で確認できない項目は `UNKNOWN` とする。UNKNOWN が高リスク割当に影響する場合は
-`AGENT_CAPABILITY_UNVERIFIED` として停止する(v0.1.7 §0.1.3.1)。
+`AGENT_CAPABILITY_UNVERIFIED` として停止する(v0.2.0 §0.1.3.1)。
 
 ## Claude側
 
@@ -44,7 +44,7 @@ blockers:
 | latency_class | 高知能・低速側 | — |
 | cost_class | 最高 | — |
 | strengths | 計画統合・仕様境界・高リスク判断・レビューゲート | — |
-| prohibited_tasks | 大量CRUD実装・機械的整形の抱え込み | v0.1.7 §0 |
+| prohibited_tasks | 大量CRUD実装・機械的整形の抱え込み | v0.2.0 §0 |
 | allowed_risk_level | R0-R4(R4は停止判断のみ) | — |
 | verified_at / verified_by | 2026-07-09 / fable5(自己検証) | — |
 
@@ -79,7 +79,7 @@ blockers:
 | parallel_execution_capability | UNKNOWN(Codex Cloud未検証) | — |
 | agmsg 連携 | 検証済み(チーム yrese、双方向送受信・WP フロー一巡) | 2026-07-09 実測 |
 | strengths | バックエンド実装・コードベース読解・テスト生成・CI調査 | — |
-| prohibited_tasks | 法令解釈 / 算定・請求の独自判断 / フロントエンドUI変更 / PHI・PII・秘密情報の取り扱い / git commit・push(claude がレビュー後にコミット) | v0.1.7 + 運用取り決め |
+| prohibited_tasks | 法令解釈 / 算定・請求の独自判断 / フロントエンドUI変更 / PHI・PII・秘密情報の取り扱い / git commit・push(claude がレビュー後にコミット) | v0.2.0 + 運用取り決め |
 | allowed_risk_level | R0-R2実装。R3はSSOT凍結+opus4.8レビュー前提 | — |
 | review_required_for | 全成果物(claudeレビュー必須、高リスクはopus4.8追加) | — |
 | verified_at / verified_by | 2026-07-09 / claude(fable5) | — |

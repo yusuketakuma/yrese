@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §9.1 / docs/plan/phase0_plan.md §7
+source_refs: 構築プロンプト v0.2.0 §9.1 / docs/plan/phase0_plan.md §7
 depends_on:
   - MST-002 (code_mapping_registry_design)
   - OPS-002 (legacy_rececon_migration_matrix)
@@ -28,7 +28,7 @@ open_questions:
 
 ## 1. 方針
 
-MVPであっても、新規薬局の空環境だけを前提にしない(v0.1.7 §9.1)。
+MVPであっても、新規薬局の空環境だけを前提にしない(v0.2.0 §9.1)。
 既存レセコン・電子薬歴・POS・監査機器・帳票・請求運用からの移行を第一級のユースケースとして扱う。
 
 移行は以下の5段階で行う。
@@ -49,7 +49,7 @@ MVPであっても、新規薬局の空環境だけを前提にしない(v0.1.7 
 - 移行監査ログ: 移行実行者・日時・件数・差分・承認者を監査ログ(SEC-007)へ記録
 - 移行後レビュー: 薬剤師・請求実務者による標本抽出レビュー
 
-## 3. 禁止事項(v0.1.7 §9.1)
+## 3. 禁止事項(v0.2.0 §9.1)
 
 - 移行元データの意味を推測して取り込むこと
 - コード不明データを自動で請求コードへ割り当てること(必ず CODE_MAPPING_REVIEW_REQUIRED)

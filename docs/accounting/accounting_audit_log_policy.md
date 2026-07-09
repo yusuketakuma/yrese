@@ -13,7 +13,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
-source_refs: 構築プロンプト v0.1.8 §0.0.4.3, §0.0.4.16
+source_refs: 構築プロンプト v0.2.0 §0.0.4.3, §0.0.4.16
 depends_on: [SEC-007(audit_log_design), MOD-008(audit_event_registry), ACC-001]
 open_questions:
   - 会計監査ログの保存期間(REG-003 の法定保存期間と同期【要確認】)

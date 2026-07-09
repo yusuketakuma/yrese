@@ -13,7 +13,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §0.7
+source_refs: 構築プロンプト v0.2.0 §0.7
 open_questions:
   - actual_model_id / ultraモード相当設定の実体
   - Codex Cloud 利用可否・並列実行・データ送信範囲
@@ -49,4 +49,4 @@ blockers:
 
 1. **actual_model_id**: codex CLI の設定確認(`~/.codex/config.toml` 等)は Codex 側の同意を得て実施予定。確認まで R3 実装の単独割当は不可(現行どおり R0-R2 + レビュー必須で運用)
 2. **Codex Cloud**: 利用しない(未検証のため)。利用が必要になった場合は本書を更新し人間レビューを経る
-3. **ultraモード**: 公式機能名ではなく運用モード名として扱う(v0.1.7 §0.7)。実体は codex CLI セッション + 本プロジェクトの実行規律(AGT-004)
+3. **ultraモード**: 公式機能名ではなく運用モード名として扱う(v0.2.0 §0.7)。実体は codex CLI セッション + 本プロジェクトの実行規律(AGT-004)

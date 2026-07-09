@@ -14,7 +14,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §0.0.3.4(generated codeの手編集禁止), §0.0.3.11(drift check), §0.1.6.12(generated filesは生成元と同一WP)
+  - 構築プロンプト v0.2.0 §0.0.3.4(generated codeの手編集禁止), §0.0.3.11(drift check), §0.1.6.12(generated filesは生成元と同一WP)
 depends_on:
   - packages/contracts(7fa369c — 現状は手書きzodが正、生成パイプラインは未導入)
   - docs/modules/validation_schema_policy.md(MOD-012)
@@ -30,12 +30,12 @@ blockers: []
 
 ## 2. 規約(導入時に適用)
 
-1. **生成コードの手編集禁止**(v0.1.7 §0.0.3.4)。手編集が必要になった時点で、それは生成元(スキーマ/テンプレート)の欠陥であり、生成元を修正して再生成する
+1. **生成コードの手編集禁止**(v0.2.0 §0.0.3.4)。手編集が必要になった時点で、それは生成元(スキーマ/テンプレート)の欠陥であり、生成元を修正して再生成する
 2. **生成元と生成物は同一 WP で扱う**(§0.1.6.12)。生成物だけを更新する WP・コミットを禁止する
 3. 生成物には「GENERATED — DO NOT EDIT」ヘッダと生成元・生成コマンド・生成ツール版を記録する
 4. **drift check を CI に置く**: CI 上で再生成し `git diff --exit-code` で差分ゼロを検証。差分検出は `GENERATED_CODE_DRIFT_BLOCKED` としてマージ不可
 5. 生成物はリポジトリにコミットする(ビルド時生成に依存しない — レビュー可能性と再現性のため)
-6. OpenAPI 由来の型を手書きで複製することを禁止(v0.1.7 §0.0.3.12 — 消費側は generated type を import する)
+6. OpenAPI 由来の型を手書きで複製することを禁止(v0.2.0 §0.0.3.12 — 消費側は generated type を import する)
 7. 生成ツールの更新(バージョンアップ)は C3 相当の変更として change_control_policy(QUA-003)に従う
 
 ## 3. 所有

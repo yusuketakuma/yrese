@@ -14,7 +14,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §0.0.3.3, §7(エラー表示原則)
+  - 構築プロンプト v0.2.0 §0.0.3.3, §7(エラー表示原則)
 depends_on:
   - packages/shared-kernel error-codes.ts(KERNEL_ERROR_CODES seed)
 open_questions:
@@ -32,7 +32,7 @@ blockers: []
 - ErrorCodeDef: code / domain / severity / affectsClaimability / requiresHumanReview / description(**PHI禁止**)
 - ErrorCodeRegistry クラス: 形式検証+重複登録拒否
 
-## 2. 医療UIとの関係(v0.1.7 §7)
+## 2. 医療UIとの関係(v0.2.0 §7)
 
 エラーは「何が危険か」「何を確認するか」「請求できるか」を伝える。ErrorCodeDef の affectsClaimability / requiresHumanReview がその機械可読表現であり、UI表示文言そのものは frontend 所有(backend は文言モジュールへ依存しない — MOD-002)。
 

@@ -13,13 +13,13 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §10
+source_refs: 構築プロンプト v0.2.0 §10
 depends_on: [QUA-001, SAF-001, SEC-007, OPS-013]
 ```
 
 ## 目的
 
-欠陥(defect)の分類・優先度・修正・検証・再発防止を統制する(v0.1.7 §10)。
+欠陥(defect)の分類・優先度・修正・検証・再発防止を統制する(v0.2.0 §10)。
 
 ## severity 分類(絶対条件)
 

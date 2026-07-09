@@ -17,7 +17,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 effective_from: 承認後
 effective_to: null
 source_refs:
-  - 構築プロンプト v0.1.7 §0.1.6.5
+  - 構築プロンプト v0.2.0 §0.1.6.5
 depends_on:
   - docs/agents/dual_lane_operating_model.md
 impacts:

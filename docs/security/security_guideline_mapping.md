@@ -15,7 +15,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §34
+  - 構築プロンプト v0.2.0 §34
   - docs/regulatory/evidence_verification_log.md(REG-007: 第7.0版〈令和8年6月〉実在確認)
 depends_on:
   - docs/regulatory/source_registry.md
@@ -31,14 +31,14 @@ blockers:
 
 ## 前提
 
-- 対象ガイドライン: **医療情報システムの安全管理に関するガイドライン 第7.0版(令和8年6月)**。REG-007 で実在を一次確認済み。ただし**本文の全文精読は未了**であり、本表の「GL要求(想定)」列は第6.0版までの公知の構成と v0.1.7 の要求キーワードに基づく骨格である。精読後(WP-0015 後続)に各行を確定し evidence_id を付す。
+- 対象ガイドライン: **医療情報システムの安全管理に関するガイドライン 第7.0版(令和8年6月)**。REG-007 で実在を一次確認済み。ただし**本文の全文精読は未了**であり、本表の「GL要求(想定)」列は第6.0版までの公知の構成と v0.2.0 の要求キーワードに基づく骨格である。精読後(WP-0015 後続)に各行を確定し evidence_id を付す。
 - 本表は「経営管理編/企画管理編/システム運用編」の区分が第7.0版でも維持されているかを含めて【要精読】。
 
 ## 管理策マッピング(骨格)
 
 | # | 管理策カテゴリ | GL要求(想定・【要精読】) | 本システムの設計対応 | 運用対応 | 実装状態 |
 |---|---|---|---|---|---|
-| 1 | アクセス制御 | 利用者識別・最小権限・職種別権限 | RBAC + PermissionScope(`@yrese/shared-kernel` permissions、deny-by-default)。UIとAPI両方で制御(v0.1.7 §7) | 権限台帳・棚卸し手順(Phase 1) | 骨格実装中(WP-2002 tenant-context / requirePermission) |
+| 1 | アクセス制御 | 利用者識別・最小権限・職種別権限 | RBAC + PermissionScope(`@yrese/shared-kernel` permissions、deny-by-default)。UIとAPI両方で制御(v0.2.0 §7) | 権限台帳・棚卸し手順(Phase 1) | 骨格実装中(WP-2002 tenant-context / requirePermission) |
 | 2 | 認証 | 二要素認証の明確化(第7.0版で強化と情報あり【要精読】) | 本番認証(OIDC/mTLS/HPKI 連携)は auth 設計SSOT承認まで BLOCKED_SECURITY_REVIEW。開発スタブは本番起動拒否 | MFA 運用手順(Phase 1) | BLOCKED(設計待ち) |
 | 3 | 監査ログ(証跡) | 操作記録・真正性・保存 | audit_log_design(SEC-007)。tamper-evident、PHI classification 分離 | ログレビュー手順・保存期間管理【要確認】 | 設計中 |
 | 4 | バックアップ | 定期取得・復元試験 | AWS Backup + Edge ローカルバックアップ(暗号化)。PITR | リストア訓練(§36 backup restore test) | 未実装(Phase 2) |

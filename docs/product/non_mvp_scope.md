@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §2, §18, §29 / docs/plan/phase0_plan.md §2.2
+source_refs: 構築プロンプト v0.2.0 §2, §18, §29 / docs/plan/phase0_plan.md §2.2
 depends_on:
   - docs/product/mvp_scope.md
 impacts:
@@ -28,7 +28,7 @@ blockers: []
 
 ## 原則
 
-- 対象外は「実装しない」だけでなく、**対象外を含む処方を検知して請求データ生成前に停止する**ことまでがMVPの責務(v0.1.7 §18)。
+- 対象外は「実装しない」だけでなく、**対象外を含む処方を検知して請求データ生成前に停止する**ことまでがMVPの責務(v0.2.0 §18)。
 - 検知時のステータスは `BLOCKED_UNSUPPORTED_CLAIM` / `MANUAL_REVIEW_REQUIRED` / `FUTURE_SCOPE_NOT_CLAIMABLE`(@yrese/shared-kernel 実装済み)。
 
 ## MVP対象外(将来対応)

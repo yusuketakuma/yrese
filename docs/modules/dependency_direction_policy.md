@@ -14,7 +14,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §0.0.3.5
+  - 構築プロンプト v0.2.0 §0.0.3.5
 depends_on:
   - scripts/check-boundaries.mjs(0213ac0、CI組込済み)
 open_questions:
@@ -23,7 +23,7 @@ open_questions:
 blockers: []
 ```
 
-## 1. ルール(v0.1.7 §0.0.3.5 全文)
+## 1. ルール(v0.2.0 §0.0.3.5 全文)
 
 - `apps/web` は `packages/ui`、`packages/api-client`、`packages/contracts`、`packages/shared-*` に依存してよい
 - `apps/api` は `packages/domain`、`packages/calculation`、`packages/claim`、`packages/masters`、`packages/contracts`、`packages/shared-*` に依存してよい

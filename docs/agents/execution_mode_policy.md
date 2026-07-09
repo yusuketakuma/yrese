@@ -17,7 +17,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 effective_from: 承認後
 effective_to: null
 source_refs:
-  - 構築プロンプト v0.1.7 §0.0.1, §0.1.6.4
+  - 構築プロンプト v0.2.0 §0.0.1, §0.1.6.4
 depends_on:
   - docs/agents/dual_lane_operating_model.md
 impacts:
@@ -60,7 +60,7 @@ blockers: []
 - Codex側で `ultraモード` が使えない場合は `CODEX_ULTRA_MODE_UNAVAILABLE` として停止する
 - 同等モードで代替する場合でも、fable5 が `llm_capability_registry.md` に actual_mode、actual_model_id、権限、制限、代替理由を記録し、**人間レビュー対象**にする
 
-## 4. 実装開始前の必須確認(v0.1.7 §0.0.1)
+## 4. 実装開始前の必須確認(v0.2.0 §0.0.1)
 
 1. Claude側実装セッションが `/ultracode` を使用している
 2. Codex側実装セッションが `ultraモード` を使用している

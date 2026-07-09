@@ -14,7 +14,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §0.0.3.3, §7(UIだけで権限制御せずAPI側でも制御), §9.9
+  - 構築プロンプト v0.2.0 §0.0.3.3, §7(UIだけで権限制御せずAPI側でも制御), §9.9
 depends_on:
   - packages/shared-kernel permissions.ts(9ab039e)
   - apps/api tenant-context(40a2512)
@@ -50,7 +50,7 @@ patient / insurance / public-expense / prescription / dispensing / calculation /
 
 ## 4. role(4種 — 初期セット)
 
-pharmacist / clerk / admin / support(v0.1.7 §9.9 のロール別導線に対応)。ロール→scope 既定割当は auth 設計SSOT(BLOCKED_SECURITY_REVIEW 解除後)で確定する。それまで dev スタブでは scope をヘッダで明示指定する(本番起動拒否は実装済み)。
+pharmacist / clerk / admin / support(v0.2.0 §9.9 のロール別導線に対応)。ロール→scope 既定割当は auth 設計SSOT(BLOCKED_SECURITY_REVIEW 解除後)で確定する。それまで dev スタブでは scope をヘッダで明示指定する(本番起動拒否は実装済み)。
 
 ## 5. 変更手順
 

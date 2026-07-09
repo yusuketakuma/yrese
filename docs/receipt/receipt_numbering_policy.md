@@ -14,9 +14,9 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
-source_refs: [構築プロンプト v0.1.8 §0.0.4.4, §0.0.4.5]
+source_refs: [構築プロンプト v0.2.0 §0.0.4.4, §0.0.4.5]
 depends_on: [RCP-001, ARC-002(recovery_sync_design)]
-impacts: [WP-2202, 共通モジュール(receipt numbering utilities — v0.1.8 §0.0.4.15)]
+impacts: [WP-2202, 共通モジュール(receipt numbering utilities — v0.2.0 §0.0.4.15)]
 open_questions:
   - 番号の法定要件有無【要確認】(法令上の様式要求がなければ本設計は内部統制要件)
   - 年度切替の基準日(暦年 or 会計年度 or 4月)【要確認: 実務レビュー】
@@ -54,7 +54,7 @@ LOCAL_ONLY時:
 
 ## 4. 共通モジュール
 
-- 採番ユーティリティは共通モジュール(receipt numbering utilities)として実装し、frontend/backend での重複実装を禁止する(v0.1.8 §0.0.4.15、MOD-001 台帳へ追加)。
+- 採番ユーティリティは共通モジュール(receipt numbering utilities)として実装し、frontend/backend での重複実装を禁止する(v0.2.0 §0.0.4.15、MOD-001 台帳へ追加)。
 
 ## 5. 変更履歴
 

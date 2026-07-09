@@ -28,7 +28,7 @@ blockers:
 ## 1. 位置づけ
 
 - **現行 @yrese/trace の実装(EvidenceRef / CalculationTrace / CalculationTraceStep / affectsClaim→evidenceRefs≥1 実行時強制 / inputsSummary の型レベルPHI排除 / URL禁止)を正本とする。**本書はその**後方互換の拡張差分**を定義する。
-- calculation_trace は薬剤師・事務・請求担当・監査ログ・レセプト点検・返戻対応の**共通言語**である(説明責任: 「金額の根拠を薬剤師・事務が説明できる」 v0.1.7 §7)。
+- calculation_trace は薬剤師・事務・請求担当・監査ログ・レセプト点検・返戻対応の**共通言語**である(説明責任: 「金額の根拠を薬剤師・事務が説明できる」 v0.2.0 §7)。
 
 ## 2. 拡張差分(現行 CalculationTraceStep への追加フィールド)
 

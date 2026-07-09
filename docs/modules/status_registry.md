@@ -16,7 +16,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 change_log:
   - 0.1.1 (2026-07-09): isClaimable を deny-list(fail-open)から allow-list(fail-closed)へ転換(opus4.8 指摘・CAL-007 §3.1、実装 WP-1012)。CLAIMABLE_SAFE_STATUSES への追加は本SSOT改版必須と明記
 source_refs:
-  - 構築プロンプト v0.1.7 §13, §14, §0.13, §0.0.3.3
+  - 構築プロンプト v0.2.0 §13, §14, §0.13, §0.0.3.3
 depends_on:
   - packages/shared-kernel(9ab039e)
   - docs/architecture/offline_mode_matrix.md(ARC-001)
@@ -39,7 +39,7 @@ NORMAL / EXTERNAL_DEGRADED / CLOUD_DEGRADED / LOCAL_ONLY / RECOVERY_SYNC
 | allowsFinalCalculation | 確定算定を許可するか | LOCAL_ONLY 以外 true(LOCAL_ONLY は仮算定のみ) |
 | allowsClaimFinalization | 請求前点検・月次締め・レセプト確定を許可するか | NORMAL のみ true |
 
-## 2. 保留・仮状態(PROVISIONAL_STATUSES — 6種、v0.1.7 §14)
+## 2. 保留・仮状態(PROVISIONAL_STATUSES — 6種、v0.2.0 §14)
 
 PROVISIONAL_CALCULATION / PENDING_REVERIFY / PENDING_EXTERNAL_SYNC / PENDING_PMH_REVERIFY / LOCAL_ONLY_UNVERIFIED / MANUAL_REVIEW_REQUIRED
 

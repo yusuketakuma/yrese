@@ -13,7 +13,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §0.5, §0.11, §0.1.6.6
+source_refs: 構築プロンプト v0.2.0 §0.5, §0.11, §0.1.6.6
 depends_on:
   - AGT-001 dual_lane_operating_model
   - AGT-015 agent_handoff_protocol
@@ -60,7 +60,7 @@ Claude側自身が実装する場合は 2〜4, 7 を省略し、5→6→8(自己
 | WP-1003 丸め政策値 | 端数処理の政策値をハードコードせず、明示パラメータ+JSDoc(BLOCKED_REGULATORY_REVIEW)で実装 | 「実装はできるが根拠がない」値は API surface として空けておき、evidence_id 確認後に配線する |
 | WP-2101a 空ruleset | 算定エンジン骨格は空ルールセットで必ず BLOCKED を返すことをテストで固定 | 根拠不足を正しく検知して止まる挙動そのものをテスト対象にする |
 
-## 4. 実装者の標準手順(v0.1.7 §0.11)
+## 4. 実装者の標準手順(v0.2.0 §0.11)
 
 1. WP を読む → 2. 変更対象ファイル確認 → 3. 関連SSOT・テスト確認 → 4. 不明点は agmsg で質問 → 5. テスト方針確認 → 6. 必要ならテスト先行 → 7. 最小差分で実装 → 8. 型・lint・unit test → 9. 高リスクは golden/contract/e2e 追加 → 10. ドキュメント更新 → 11. agmsg 完了ハンドオフ → 12. PR/コミット本文をWPに沿って書く
 

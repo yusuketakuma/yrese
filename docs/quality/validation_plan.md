@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §10, §9.7
+source_refs: 構築プロンプト v0.2.0 §10, §9.7
 depends_on:
   - QUA-001 quality_plan
   - TST-001 test_strategy
@@ -47,7 +47,7 @@ L1 が通っても L2/L3 の承認なしに「正しい」と主張しない(画
   → 帳票・レセプト出力時の calculation_trace / legal_trace 保存
 ```
 
-## 3. 妥当性確認イベント(v0.1.7 §9.7 を統合)
+## 3. 妥当性確認イベント(v0.2.0 §9.7 を統合)
 
 - 算定 golden test: 既知処方案件での算定照合(期待値は evidence_id 付きSSOTから。二次サイト数値の転記禁止)
 - レセプト golden test: 記録条件仕様バリデーション+既知請求案件での照合

@@ -4,8 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## プロジェクト
 
-yrese(プロダクト呼称: Fable-Rx)— 日本の保険薬局向け調剤用レセプトコンピューター MVP。
-正式仕様は `docs/spec/construction_prompt_baseline.md`(全バージョン収録、**新しいバージョンほど優先・停止条件は緩和不可**)。現行ベースラインは v0.2.0(`docs/spec/construction_prompt_v0.2.0.md`)。
+yrese — 日本の保険薬局向け調剤用レセプトコンピューター MVP。
+正式仕様は `docs/spec/construction_prompt_v0.2.0.md` のみ。`docs/spec/construction_prompt_baseline.md` は0.2.0正本への入口であり、過去版本文・版一覧・版間優先順位規定は持たない。
 タスク台帳は `Plans.md`、活動ログは `State.md`(コミット単位で更新し、活動単位ごとに commit & push する運用)。
 
 ## コマンド

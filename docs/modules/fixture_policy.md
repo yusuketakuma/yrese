@@ -14,7 +14,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §0.0.3.4(本番個人情報のfixtures混入禁止), §36(本番個人情報をテストに使わない), §0.1.6.14
+  - 構築プロンプト v0.2.0 §0.0.3.4(本番個人情報のfixtures混入禁止), §36(本番個人情報をテストに使わない), §0.1.6.14
 depends_on:
   - docs/testing/test_strategy.md(TST-001)
   - docs/security/privacy_impact_assessment.md(SEC-004)
@@ -26,10 +26,10 @@ blockers: []
 
 ## 1. 絶対規則
 
-1. **本番個人情報・復元可能な医療情報を fixture に含めない**(v0.1.7 §0.0.3.4, §36)。患者氏名・生年月日・保険者番号・公費受給者番号・実処方・実レセプトの実データは、マスキング済みであっても fixture 化しない
+1. **本番個人情報・復元可能な医療情報を fixture に含めない**(v0.2.0 §0.0.3.4, §36)。患者氏名・生年月日・保険者番号・公費受給者番号・実処方・実レセプトの実データは、マスキング済みであっても fixture 化しない
 2. fixture は**合成データのみ**。「合成」とは実在の個人・処方に由来しないことを指す(実データの一部改変は合成ではない)
 3. 秘密情報(API key・証明書・接続先情報)を fixture・モックレスポンスに埋め込まない
-4. fixtures への PHI 混入検査(fixtures PHI scan — v0.1.7 §0.0.3.11)を CI へ追加する【要整備 — packages/fixtures 新設時】
+4. fixtures への PHI 混入検査(fixtures PHI scan — v0.2.0 §0.0.3.11)を CI へ追加する【要整備 — packages/fixtures 新設時】
 
 ## 2. 所有と配置
 
@@ -47,4 +47,4 @@ blockers: []
 
 - ID 類は明確に合成と分かる接頭辞(例: `test-`)を用いる
 - 医薬品コード・保険者番号などの公的コード体系を使う場合は、**実在コードの使用可否を CodeMappingRegistry(MST-002)の review_status に従い判断**する(マスター由来の実在コード自体は個人情報ではないため使用可、ただし患者と紐づく組合せを作らない)
-- training mode / demo data(v0.1.7 §9.9)も本ポリシーに従う(本番個人情報の訓練利用禁止)
+- training mode / demo data(v0.2.0 §9.9)も本ポリシーに従う(本番個人情報の訓練利用禁止)

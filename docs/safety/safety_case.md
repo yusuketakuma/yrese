@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §6, §12(Safety Case 定義)
+source_refs: 構築プロンプト v0.2.0 §6, §12(Safety Case 定義)
 depends_on:
   - docs/safety/medical_safety_risk_register.md
 impacts:
@@ -29,7 +29,7 @@ blockers:
 ## 目的
 
 患者安全・医療安全・請求安全に関するリスク、対策、残余リスク、テスト、レビュー結果を
-主張(Goal)- 論拠(Argument)- 証拠(Evidence)構造で維持する(v0.1.7 §12)。
+主張(Goal)- 論拠(Argument)- 証拠(Evidence)構造で維持する(v0.2.0 §12)。
 本書は Go/No-Go 判定(phase0_plan §8)の必須入力である。
 
 ## 最上位主張

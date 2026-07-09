@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §9.3, §9.8 / docs/plan/phase0_plan.md §8
+source_refs: 構築プロンプト v0.2.0 §9.3, §9.8 / docs/plan/phase0_plan.md §8
 depends_on:
   - UIX-003 (performance_budget)
   - UIX-005 (stability_slo_policy)
@@ -44,7 +44,7 @@ open_questions:
 | 外部 Adapter タイムアウト率 | < 1%(外部側障害を除く) | adapter dashboard |
 
 - SLA(対外契約値)は SLO から安全マージンを取って設定する【要確認 — 経営レビュー】。
-- SLA/SLO 未定義で本番提供することを禁止する(v0.1.7 §9.8)。
+- SLA/SLO 未定義で本番提供することを禁止する(v0.2.0 §9.8)。
 
 ## 3. エラーバジェット運用
 
@@ -53,7 +53,7 @@ open_questions:
 
 ## 4. メンテナンス・通知
 
-- 計画メンテナンス: 薬局営業時間外【要確認】に実施し、7日前通知【候補値】。Blue/Green により原則無停止(v0.1.7 §30)
+- 計画メンテナンス: 薬局営業時間外【要確認】に実施し、7日前通知【候補値】。Blue/Green により原則無停止(v0.2.0 §30)
 - 緊急メンテナンス: 事後説明責任(インシデント報告と紐づけ)
 - 障害通知: OPS-004 §4 のエスカレーション基準に従う
 - SLO 実績はテナント向けに月次で開示する【候補値 — 開示範囲は経営レビュー】

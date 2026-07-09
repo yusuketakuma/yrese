@@ -14,7 +14,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §0.0.3.3, §0.0.3.7
+  - 構築プロンプト v0.2.0 §0.0.3.3, §0.0.3.7
 depends_on:
   - packages/shared-kernel(9ab039e)
   - packages/money(533f89a)

@@ -17,7 +17,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 effective_from: 承認後
 effective_to: null
 source_refs:
-  - 構築プロンプト v0.1.7 §0.1.6.4
+  - 構築プロンプト v0.2.0 §0.1.6.4
   - docs/agents/codex_side_ultra_mode_charter.md
 depends_on:
   - docs/agents/codex_side_ultra_mode_charter.md

@@ -14,7 +14,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §0.0.2.2(Contract-first), §0.0.3.3
+  - 構築プロンプト v0.2.0 §0.0.2.2(Contract-first), §0.0.3.3
 depends_on:
   - packages/contracts(7fa369c)
   - docs/modules/generated_code_policy.md(MOD-014)
@@ -27,7 +27,7 @@ blockers: []
 ## 1. 正本
 
 - **API 契約のバリデーションスキーマは zod v4 で `@yrese/contracts` に置く。これが単一の正本**(実装済み: healthResponseSchema、z.iso.datetime() 使用)
-- backend(apps/api)は contracts のスキーマを import して parse する(実装済み)。frontend は同スキーマ由来の型を使い、**契約に存在しないフィールドを仮定しない**(v0.1.7 §0.0.2.2)
+- backend(apps/api)は contracts のスキーマを import して parse する(実装済み)。frontend は同スキーマ由来の型を使い、**契約に存在しないフィールドを仮定しない**(v0.2.0 §0.0.2.2)
 - 契約変更は `CONTRACT_CHANGE_REQUEST` → fable5 → contracts 更新 → 両側追随(agmsg 合意のみでの変更禁止)
 
 ## 2. 三層の分担

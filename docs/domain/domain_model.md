@@ -12,7 +12,7 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
-source_refs: 構築プロンプト v0.1.7 §12, §17, §18
+source_refs: 構築プロンプト v0.2.0 §12, §17, §18
 depends_on: [DOM-001, PRD-001, SAF-001, MOD-004, MOD-005]
 impacts: [DOM-004]
 open_questions: 本文【要確認】参照

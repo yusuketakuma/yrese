@@ -15,7 +15,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §34
+  - 構築プロンプト v0.2.0 §34
   - 総務省・経済産業省 事業者向け安全管理ガイドライン(第2.0版以降【要確認 — 最新版・発行日の一次確認未了】)
 depends_on:
   - docs/security/security_guideline_mapping.md

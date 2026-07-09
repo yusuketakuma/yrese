@@ -17,7 +17,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 effective_from: 承認後
 effective_to: null
 source_refs:
-  - 構築プロンプト v0.1.7 §0.1.6.6, §0.3, §0.4, §0.5, §0.11, §0.13, §0.15
+  - 構築プロンプト v0.2.0 §0.1.6.6, §0.3, §0.4, §0.5, §0.11, §0.13, §0.15
 depends_on:
   - docs/agents/agmsg_cross_lane_protocol.md
   - docs/agents/agent_review_pairing_policy.md
@@ -58,7 +58,7 @@ blockers: []
 - fable5 以外は DRAFT を READY へ変更してはならない
 - 高リスクWPは opus4.8 レビューなしに READY へ変更してはならない
 
-## 3. 実装者の標準手順(12ステップ、v0.1.7 §0.11)
+## 3. 実装者の標準手順(12ステップ、v0.2.0 §0.11)
 
 1. WPを読む → 2. 変更対象ファイル確認 → 3. 関連仕様・ADR・テスト確認 → 4. 不明点を agmsg で fable5 に質問 → 5. テスト方針を先に確認 → 6. 必要ならテスト先行追加 → 7. 最小差分で実装 → 8. 型・lint・unit test 実行 → 9. (高リスク)golden / contract / e2e test 実行 → 10. ドキュメント更新 → 11. agmsg で完了ハンドオフ → 12. PR本文をWPに沿って作成
 

@@ -14,7 +14,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §0.0.3.3, §0.0.3.4
+  - 構築プロンプト v0.2.0 §0.0.3.3, §0.0.3.4
 depends_on:
   - docs/modules/common_module_inventory.md(MOD-001)
 open_questions:
@@ -22,7 +22,7 @@ open_questions:
 blockers: []
 ```
 
-## 1. 共通化すべき概念(v0.1.7 §0.0.3.3)と現在の所在
+## 1. 共通化すべき概念(v0.2.0 §0.0.3.3)と現在の所在
 
 | 概念 | 所在(正本) | 状態 |
 |---|---|---|
@@ -42,7 +42,7 @@ blockers: []
 
 UI表示ラベル・警告文テンプレート・アクセシビリティ文言は共通化してよいが境界を明確にする: **バックエンドは UI 表示文言モジュールへ依存してはならない**。現在の実装(SystemModeBadge の MODE_LABELS、PatientHeader の ELIGIBILITY_LABELS)は apps/web 内にあり、UI/UX SSOT(UIX-001)と整合させる。
 
-## 2. 共通化してはならないもの(v0.1.7 §0.0.3.4)
+## 2. 共通化してはならないもの(v0.2.0 §0.0.3.4)
 
 - React / Next.js 依存コードを backend でも使う共通モジュールへ置くこと
 - DB client / ORM / AWS SDK 依存コードを frontend でも使う共通モジュールへ置くこと

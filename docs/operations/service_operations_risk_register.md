@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §9.2, §9.8 / docs/plan/phase0_plan.md §8
+source_refs: 構築プロンプト v0.2.0 §9.2, §9.8 / docs/plan/phase0_plan.md §8
 depends_on:
   - PRD-003 (risk_register — プロジェクトリスクの正本)
   - SAF-001 (medical_safety_risk_register — 医療安全リスクの正本)
@@ -50,7 +50,7 @@ open_questions:
 
 ## 3. インシデント運用(概要)
 
-- 定義: 本番障害・請求事故・医療安全インシデント・セキュリティ事象はすべて incident として扱う(v0.1.7 §10)
+- 定義: 本番障害・請求事故・医療安全インシデント・セキュリティ事象はすべて incident として扱う(v0.2.0 §10)
 - 請求事故につながる欠陥は severity high 以上、患者安全は critical(SAF-001 と同期)
 - インシデントは タイムライン(OPS-009)+根本原因+再発防止 を記録し、重大なものは post-mortem を実施
 - 詳細手順は incident_management_policy(WP-0011)で定義

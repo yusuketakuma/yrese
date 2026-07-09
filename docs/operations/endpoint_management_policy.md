@@ -13,7 +13,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §9.4, §35 / docs/plan/phase0_plan.md §8
+source_refs: 構築プロンプト v0.2.0 §9.4, §35 / docs/plan/phase0_plan.md §8
 depends_on:
   - SEC-005 (edge_node_security_design)
   - OPS-007 (device_compatibility_matrix)
@@ -47,7 +47,7 @@ open_questions:
 ## 3. Edge Node の配置・更新
 
 - 設置: 薬局内の施錠可能な場所を推奨(物理アクセス統制 — SEC-005)
-- 更新: 署名付きパッケージ+A/B update+self-test(v0.1.7 §31)。更新失敗時は自動ロールバックし業務継続
+- 更新: 署名付きパッケージ+A/B update+self-test(v0.2.0 §31)。更新失敗時は自動ロールバックし業務継続
 - 監視: Edge health(自己診断・ディスク・同期 backlog)を OPS-009 のダッシュボードへ
 - 予備機: 故障時の代替機復旧手順(ローカルバックアップからのリストア+Cloud 再同期)を Runbook 化(SEC-005 §リストア訓練と同期)
 

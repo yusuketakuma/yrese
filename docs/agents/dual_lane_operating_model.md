@@ -17,7 +17,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 effective_from: 承認後
 effective_to: null
 source_refs:
-  - 構築プロンプト v0.1.7 §0.0.2, §0.1.6.1〜§0.1.6.3, §0.1.6.18
+  - 構築プロンプト v0.2.0 §0.0.2, §0.1.6.1〜§0.1.6.3, §0.1.6.18
   - docs/plan/phase0_plan.md §12
 depends_on: []
 impacts:

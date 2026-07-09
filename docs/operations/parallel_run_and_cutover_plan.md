@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §9.1, §9.7 / docs/plan/phase0_plan.md §7
+source_refs: 構築プロンプト v0.2.0 §9.1, §9.7 / docs/plan/phase0_plan.md §7
 depends_on:
   - OPS-001 (implementation_migration_plan)
   - OPS-012 (go_no_go_checklist)
@@ -32,7 +32,7 @@ open_questions:
 | 全件並行 | 全処方を新旧両システムに入力し全件照合 | 高リスク薬局・初期導入店舗(推奨) |
 | 標本並行 | 代表的な処方パターン(既知処方案件)を新系で再現し照合 | 全件並行の負荷が許容不能な場合(人間レビューで承認) |
 
-照合対象(v0.1.7 §9.7):
+照合対象(v0.2.0 §9.7):
 
 - 既知処方案件での算定照合(点数・患者負担・保険請求・公費請求)
 - 既知請求案件でのレセプト照合(記録内容の一致)

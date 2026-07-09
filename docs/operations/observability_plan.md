@@ -13,7 +13,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §9.6 / docs/plan/phase0_plan.md §8
+source_refs: 構築プロンプト v0.2.0 §9.6 / docs/plan/phase0_plan.md §8
 depends_on:
   - SEC-007 (audit_log_design)
   - SEC-004 (privacy_impact_assessment)
@@ -26,7 +26,7 @@ open_questions:
 
 ## 1. 原則
 
-- 障害調査のために PHI/PII をログへ出さない。同時に、correlation_id の欠落により原因追跡不能な設計も不可(v0.1.7 §9.6)
+- 障害調査のために PHI/PII をログへ出さない。同時に、correlation_id の欠落により原因追跡不能な設計も不可(v0.2.0 §9.6)
 - **監査ログ(SEC-007)とデバッグ/運用ログは分離する**: 保存先・権限・保持期間・改ざん統制が異なる
 - ログは structured logs(JSON)とし、全リクエスト・全同期イベントに correlation_id / causation_id を貫通させる(@yrese/events の EventEnvelope が correlation/causation を必須化済み — 85bd3aa)
 
@@ -34,7 +34,7 @@ open_questions:
 
 必須: timestamp / level / service / correlation_id / causation_id(イベント系)/ tenant_id / pharmacy_id / device_id / actor_id(ある場合)/ event_id(イベント系)/ error_code(エラー時)
 
-禁止(平文出力禁止 — v0.1.7 §9.6): 患者氏名 / 生年月日 / 保険者番号・記号番号 / 公費受給者番号 / 処方内容 / その他 PHI classification ≠ none のペイロード
+禁止(平文出力禁止 — v0.2.0 §9.6): 患者氏名 / 生年月日 / 保険者番号・記号番号 / 公費受給者番号 / 処方内容 / その他 PHI classification ≠ none のペイロード
 
 - redaction: ログ出力層で許可フィールドの allowlist 方式(denylist ではなく)
 - PHI classification: @yrese/events の phiClassification を運用ログ経路にも適用し、phi≠none のペイロードはログ経路に乗せない(ID 参照のみ)
@@ -44,7 +44,7 @@ open_questions:
 - メトリクス: UIX-003 予算対応の操作別 latency(p50/p95/p99)、error rate、二重送信検知数、sync backlog size、queue age、external adapter timeout rate、print failure rate、master distribution lag、claim batch completion time、Edge health、crash-free sessions
 - トレース: リクエスト単位の分散トレース(Cloud Core 内)。Edge→Cloud は correlation_id で接続
 
-## 4. ダッシュボード(9種 — v0.1.7 §9.6)
+## 4. ダッシュボード(9種 — v0.2.0 §9.6)
 
 | # | ダッシュボード | 主要ウィジェット |
 |---|---|---|
@@ -65,7 +65,7 @@ open_questions:
 - P3(劣化傾向・容量予兆): 週次レビュー
 - インシデントタイムライン: correlation_id 起点で自動収集し、インシデント報告(OPS-013 / incident_management_policy)へ添付
 
-## 6. 禁止事項(v0.1.7 §9.6)
+## 6. 禁止事項(v0.2.0 §9.6)
 
 - 患者氏名、保険者番号、公費受給者番号、処方内容等の平文ログ出力
 - 障害調査に必要な correlation_id の欠落

@@ -12,7 +12,7 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
-source_refs: 構築プロンプト v0.1.7 §13-16, §18-19
+source_refs: 構築プロンプト v0.2.0 §13-16, §18-19
 depends_on: [DOM-001, DOM-002, ARC-001, ARC-002, MOD-005]
 open_questions: 本文【要確認】参照
 ```

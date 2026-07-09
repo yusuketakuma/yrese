@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §19 / docs/plan/phase0_plan.md §2.1, §10
+source_refs: 構築プロンプト v0.2.0 §19 / docs/plan/phase0_plan.md §2.1, §10
 depends_on:
   - docs/product/mvp_scope.md
   - docs/calculation/calculation_coverage_matrix.md
@@ -29,7 +29,7 @@ blockers:
   - 工程3〜5, 9, 10 は BLOCKED_REGULATORY_REVIEW(公式仕様未確認)
 ```
 
-## 原則(v0.1.7 §19)
+## 原則(v0.2.0 §19)
 
 - 請求は10工程に分離して設計し、各工程の完了条件を独立に検証する。
 - 公式仕様外のオンライン請求直接送信・画面自動操作・非公式API送信は実装しない。

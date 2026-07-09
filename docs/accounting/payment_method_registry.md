@@ -13,7 +13,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
-source_refs: 構築プロンプト v0.1.8 §0.0.4.3, §0.0.4.6
+source_refs: 構築プロンプト v0.2.0 §0.0.4.3, §0.0.4.6
 depends_on: [ACC-001, ACC-009]
 open_questions:
   - キャッシュレス各方式(クレジット/電子マネー/QR)の決済事業者・端末要件(ACC-009 の接続確定後)

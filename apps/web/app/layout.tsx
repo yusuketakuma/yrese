@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 /**
  * 全画面共通シェル。
- * 医療UI原則(v0.1.7 §7): システムモード・外部確認状態などの重要状態は
+ * 医療UI原則(v0.2.0 §7): システムモード・外部確認状態などの重要状態は
  * すべての業務画面で常時視認できる位置に固定表示する。
  */
 export default function RootLayout({ children }: { children: ReactNode }) {

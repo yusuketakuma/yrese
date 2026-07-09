@@ -13,13 +13,13 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §0.1.6.17
+source_refs: 構築プロンプト v0.2.0 §0.1.6.17
 impacts: 全SSOT・全実装
 open_questions:
   - ssot_index.md の自動生成(lint)導入時期
 ```
 
-## 1. 基本ルール(v0.1.7 §0.1.6.17.1)
+## 1. 基本ルール(v0.2.0 §0.1.6.17.1)
 
 - fable5 が仕様決定したら、必ず該当SSOTを作成または更新する。
 - 実装者は承認済み(APPROVED)SSOTとWPを読んでから実装する。SSOTにない仕様の独自補完を禁止する。
@@ -28,15 +28,15 @@ open_questions:
 - コミット(将来はPR)は `ssot_refs` / `ssot_versions` を記載する。SSOT差分なしに高リスク実装だけが変わる変更を禁止する。
 - agmsg・会話ログ・モデル内部計画はSSOTではない。有益な内容は fable5 がSSOTへ転記してから根拠化する。
 
-## 2. ステータス(v0.1.7 §0.1.6.17.2)
+## 2. ステータス(v0.2.0 §0.1.6.17.2)
 
 `DRAFT`(実装根拠禁止)→ `PROPOSED`(レビュー待ち・実装根拠禁止)→ `APPROVED`(実装根拠可)→ `IMPLEMENTED` → `VERIFIED`。その他: `SUPERSEDED` / `DEPRECATED` / `BLOCKED`(根拠不足・矛盾・法令確認待ち)。
 
 ## 3. 共通メタデータ
 
-v0.1.7 §0.1.6.17.3 の yaml ブロック(ssot_id / title / domain / status / owner / reviewers / version / created_at / updated_at / source_refs / depends_on / impacts / open_questions / blockers 等)を全SSOT冒頭に置く。ssot_id の接頭辞: AGT(agents)/ REG(regulatory)/ SAF(safety)/ PRD(product)/ CAL(calculation)/ CLM(claim)/ ADP(adapters)/ ARC(architecture)/ MST(masters)/ UIX(uiux)/ SEC(security)/ PRC(process)/ QUA(quality)/ TST(testing)/ OPS(operations)/ MOD(modules)/ API(api)。
+v0.2.0 §0.1.6.17.3 の yaml ブロック(ssot_id / title / domain / status / owner / reviewers / version / created_at / updated_at / source_refs / depends_on / impacts / open_questions / blockers 等)を全SSOT冒頭に置く。ssot_id の接頭辞: AGT(agents)/ REG(regulatory)/ SAF(safety)/ PRD(product)/ CAL(calculation)/ CLM(claim)/ ADP(adapters)/ ARC(architecture)/ MST(masters)/ UIX(uiux)/ SEC(security)/ PRC(process)/ QUA(quality)/ TST(testing)/ OPS(operations)/ MOD(modules)/ API(api)。
 
-## 4. 更新フロー(v0.1.7 §0.1.6.17.5 の10段)
+## 4. 更新フロー(v0.2.0 §0.1.6.17.5 の10段)
 
 1. fable5 が仕様決定または仕様差分を検知 → 2. 該当SSOT特定 → 3. 変更理由・根拠・影響範囲・差分を記録 → 4. 高リスクは opus4.8 レビュー → 5. 必要なら HUMAN_REVIEW_REQUIRED → 6. status を APPROVED へ → 7. WPに ssot_refs/versions 記載 → 8. 実装 → 9. コミットでSSOT反映確認 → 10. テスト・レビュー通過後 IMPLEMENTED / VERIFIED へ。
 

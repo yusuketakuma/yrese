@@ -1,7 +1,7 @@
 /**
  * BLOCKER 種別。
  *
- * 根拠: 構築プロンプト v0.1.7 §0.13(ブロッカー処理)、§9.1、§0.0.2.4、§0.0.3.12、§19。
+ * 根拠: 構築プロンプト v0.2.0 §0.13(ブロッカー処理)、§9.1、§0.0.2.4、§0.0.3.12、§19。
  * 仕様不明・根拠不明・レビュー未完了の場合、実装・処理を進めず BLOCKED とする。
  */
 
@@ -54,7 +54,7 @@ export function isBlockerType(value: string): value is BlockerType {
   return (BLOCKER_TYPES as readonly string[]).includes(value);
 }
 
-/** ブロッカー報告(agmsg blockers ルーム投稿と同型。v0.1.7 §0.13) */
+/** ブロッカー報告(agmsg blockers ルーム投稿と同型。v0.2.0 §0.13) */
 export interface BlockerReport {
   readonly blockerType: BlockerType;
   readonly workPackageId: string;

@@ -13,14 +13,14 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §0.3, §0.0.3.8, §0.1.3.7
+source_refs: 構築プロンプト v0.2.0 §0.3, §0.0.3.8, §0.1.3.7
 depends_on:
   - PRC-003 definition_of_ready
 open_questions:
   - agmsg メッセージ長の実用上限(長大なWPは docs/ 参照方式に切替済み — 正式化要否)
 ```
 
-## 1. WP 必須フィールド(v0.1.7 §0.3)
+## 1. WP 必須フィールド(v0.2.0 §0.3)
 
 ```text
 work_package_id:            # WP-XXXX
@@ -51,7 +51,7 @@ Definition of Ready:        # PRC-003 の全項目
 想定失敗: / ロールバック方法: / SSOT更新要否: / PR本文に必ず含めるSSOT参照: / 完了時ハンドオフ:
 ```
 
-## 2. 共通モジュール追加フィールド(v0.1.7 §0.0.3.8)
+## 2. 共通モジュール追加フィールド(v0.2.0 §0.0.3.8)
 
 ```text
 common_module_refs:
@@ -66,7 +66,7 @@ shared_breaking_change_risk:
 common_module_tests_required:
 ```
 
-## 3. 割当メタデータ(v0.1.7 §0.1.3.7)
+## 3. 割当メタデータ(v0.2.0 §0.1.3.7)
 
 risk_level(R0-R4)/ ambiguity_level(A0-A4)/ implementation_size(S0-S4)/ execution_need(E0-E2)/ repetition_level(P0-P4)/ ux_safety_level(U0-U4)、primary_agent_reason / reviewer_agent_reason / prohibited_agents / required_human_review。
 

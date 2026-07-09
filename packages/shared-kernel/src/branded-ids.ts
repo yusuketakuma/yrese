@@ -4,7 +4,7 @@
  * tenant_id / pharmacy_id などの識別子を string の相互代入から守る。
  * 値の実体は string のまま(runtime-neutral / 依存ゼロ)。
  *
- * 根拠: 構築プロンプト v0.1.7 §0.0.3.3(共通化すべき概念 — branded ID types)
+ * 根拠: 構築プロンプト v0.2.0 §0.0.3.3(共通化すべき概念 — branded ID types)
  */
 
 declare const brand: unique symbol;

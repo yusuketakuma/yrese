@@ -34,7 +34,7 @@ describe("branded ids", () => {
   });
 });
 
-describe("system modes (v0.1.7 §13-15)", () => {
+describe("system modes (v0.2.0 §13-15)", () => {
   it("defines exactly the five modes", () => {
     expect(SYSTEM_MODES).toEqual([
       "NORMAL",
@@ -65,7 +65,7 @@ describe("system modes (v0.1.7 §13-15)", () => {
   });
 });
 
-describe("provisional statuses (v0.1.7 §14)", () => {
+describe("provisional statuses (v0.2.0 §14)", () => {
   it("contains the six mandated statuses", () => {
     expect(PROVISIONAL_STATUSES).toHaveLength(6);
     expect(isProvisionalStatus("PENDING_REVERIFY")).toBe(true);
@@ -92,7 +92,7 @@ describe("provisional statuses (v0.1.7 §14)", () => {
   });
 });
 
-describe("blocker types (v0.1.7 §0.13 ほか)", () => {
+describe("blocker types (v0.2.0 §0.13 ほか)", () => {
   it("has no duplicates", () => {
     expect(new Set(BLOCKER_TYPES).size).toBe(BLOCKER_TYPES.length);
   });

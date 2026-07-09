@@ -1,4 +1,4 @@
-# Phase 0 計画案 — 調剤用レセプトコンピューター MVP(構築プロンプト v0.1.7 準拠)
+# Phase 0 計画案 — 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0 準拠)
 
 ```yaml
 ssot_id: PLAN-PHASE0-001
@@ -10,7 +10,7 @@ reviewers:
   - human_review_required
 version: 0.1.0
 created_at: 2026-07-09
-source_refs: 構築プロンプト v0.1.7
+source_refs: 構築プロンプト v0.2.0
 open_questions: 本書「19. 人間レビューが必要な論点」参照
 blockers: 本書「20. 現時点のBLOCKER」参照
 ```

@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §42, docs/plan/phase0_plan.md §20
+source_refs: 構築プロンプト v0.2.0 §42, docs/plan/phase0_plan.md §20
 open_questions:
   - ONSアクセス確保の主体・時期(人間の手続きが必要)
 blockers: 本台帳の全行

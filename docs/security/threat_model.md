@@ -15,7 +15,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §34, §35, §33
+  - 構築プロンプト v0.2.0 §34, §35, §33
 depends_on:
   - docs/adapters/external_system_boundary.md(ADP-002 信頼境界定義)
   - docs/safety/medical_safety_risk_register.md(SAF-001)
@@ -71,7 +71,7 @@ T2 と同一契約(Integration API)。追加: data minimization / PHI classifica
 | Repudiation | 送信済み/未送信の争い | ○ 送信結果・受付結果の保存(§19) | — |
 | Information disclosure | 資格確認結果の過剰保持 | ○ スナップショット最小化 + 保存期間管理【要確認】 | — |
 
-## 必須シナリオ(v0.1.7 指定)
+## 必須シナリオ(v0.2.0 指定)
 
 | # | シナリオ | 主対策 | 参照 |
 |---|---|---|---|

@@ -17,7 +17,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 effective_from: 承認後
 effective_to: null
 source_refs:
-  - 構築プロンプト v0.1.7 §0.0.2.1, §0.1.6.12, §0.9, §0.10, §0.0.3.6
+  - 構築プロンプト v0.2.0 §0.0.2.1, §0.1.6.12, §0.9, §0.10, §0.0.3.6
 depends_on:
   - docs/agents/dual_lane_operating_model.md
 impacts:
@@ -65,7 +65,7 @@ blockers: []
 - contract fixtures / E2E fixtures
 - `infra/**` のうちフロントエンド配信・WAF・認証連携部分
 
-### 共通モジュールの原則owner(v0.1.7 §0.0.3.6)
+### 共通モジュールの原則owner(v0.2.0 §0.0.3.6)
 
 | モジュール | owner | レビュー |
 |---|---|---|

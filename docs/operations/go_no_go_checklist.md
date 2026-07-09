@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §9.7 / docs/plan/phase0_plan.md §8
+source_refs: 構築プロンプト v0.2.0 §9.7 / docs/plan/phase0_plan.md §8
 depends_on:
   - OPS-003 (parallel_run_and_cutover_plan)
   - REG-004 (regulatory_blockers)
@@ -30,7 +30,7 @@ open_questions:
 - 1項目でも No の場合は Go としない(条件付き Go は許可しない — 条件は解消してから再判定)
 - 判定結果・根拠・出席者は監査ログ+議事録として保存する
 
-## 2. チェックリスト(v0.1.7 §9.7)
+## 2. チェックリスト(v0.2.0 §9.7)
 
 ### A. ブロッカー・レビュー
 

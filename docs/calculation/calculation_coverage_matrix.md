@@ -16,7 +16,7 @@ approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 change_log:
   - 2026-07-09 v0.2.0 evidence発行に伴う行status更新(WP-0017)— 16行を EVIDENCE_ISSUED 化(EVD-CAL-0001〜0071、CAL-003 evidence_register 参照)。9行は BLOCKED_REGULATORY_REVIEW 継続。EVIDENCE_ISSUED は点数値の根拠確定のみを意味し、実装可(APPROVED_FOR_IMPLEMENTATION)には解除手順 step 3〜5 が別途必要
-source_refs: 構築プロンプト v0.1.7 §18 / docs/plan/phase0_plan.md §2.1
+source_refs: 構築プロンプト v0.2.0 §18 / docs/plan/phase0_plan.md §2.1
 depends_on:
   - docs/product/mvp_scope.md
   - docs/product/non_mvp_scope.md
@@ -79,6 +79,6 @@ blockers:
 
 ## 実装制約(algo)
 
-- 算定関数は純粋関数(DB・外部API・現在時刻に依存しない)。入力は患者・保険・公費・処方・調剤・施設基準・処方日/調剤日/請求月・マスター版・算定ルール版の明示引数(v0.1.7 §18)。
+- 算定関数は純粋関数(DB・外部API・現在時刻に依存しない)。入力は患者・保険・公費・処方・調剤・施設基準・処方日/調剤日/請求月・マスター版・算定ルール版の明示引数(v0.2.0 §18)。
 - 金額・点数は @yrese/money(bigint)のみ。丸めモード・単位は evidence_id 付きパラメータとして注入。
 - 出力は点数明細+calculation_trace+warnings+blockers+evidence_id一覧。同一入力→同一出力。

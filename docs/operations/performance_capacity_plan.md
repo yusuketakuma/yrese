@@ -13,7 +13,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §9.3 / docs/plan/phase0_plan.md §8
+source_refs: 構築プロンプト v0.2.0 §9.3 / docs/plan/phase0_plan.md §8
 depends_on:
   - UIX-003 (performance_budget)
   - OPS-005 (sla_slo_policy)
@@ -54,7 +54,7 @@ open_questions:
 | マスター改定配布 | 改定マスター全 Edge 配布 | 配布 lag SLO 内・業務影響なし |
 | 容量成長 | 3年分データ蓄積状態での検索・締め処理 | 予算内(劣化率を記録) |
 
-## 4. 禁止事項(v0.1.7 §9.3)
+## 4. 禁止事項(v0.2.0 §9.3)
 
 - 高速化のために算定検証を省略すること
 - 高速化のために監査ログを書かないこと

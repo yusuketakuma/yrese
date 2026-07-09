@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §9.1 / docs/plan/phase0_plan.md §7
+source_refs: 構築プロンプト v0.2.0 §9.1 / docs/plan/phase0_plan.md §7
 depends_on:
   - OPS-001 (implementation_migration_plan)
   - MST-002 (code_mapping_registry_design)

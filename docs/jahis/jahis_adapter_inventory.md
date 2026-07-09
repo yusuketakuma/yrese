@@ -12,13 +12,13 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
-source_refs: [構築プロンプト v0.1.8 §0.0.4.10, REG-007, ADP-001, MST-002, CLM-002]
+source_refs: [構築プロンプト v0.2.0 §0.0.4.10, REG-007, ADP-001, MST-002, CLM-002]
 blockers:
   - 全 Adapter: 仕様本文の正規入手まで実装 BLOCKED(入手経路=JAHIS 会員/購入の要否【要確認: 人間手続き】)
 ```
 
 
-## Adapter 必須要件(v0.1.8 §0.0.4.10 の16項)
+## Adapter 必須要件(v0.2.0 §0.0.4.10 の16項)
 
 全 JAHIS Adapter は以下を備える。
 
@@ -26,7 +26,7 @@ blockers:
 |---|---|---|
 | 1 | 仕様版管理 | Adapter ごとに supportedVersions を宣言、版は evidence_id 付き |
 | 2 | 旧版互換方針 | 読み取りは旧版許容範囲を明示、出力は原則最新版(例外は本台帳に記録) |
-| 3 | CSV/XML/固定長/Shift-JIS等の公式仕様優先 | 独自JSON化しない(v0.1.7 §12 Official Adapter 原則) |
+| 3 | CSV/XML/固定長/Shift-JIS等の公式仕様優先 | 独自JSON化しない(v0.2.0 §12 Official Adapter 原則) |
 | 4 | 文字コード変換 | JHS-006 準拠(Shift-JIS ⇄ UTF-8 境界は Adapter 内に限定) |
 | 5 | 改行コード方針 | 仕様指定(CR/LF等)を Adapter 内で厳密に扱い、内部表現へ持ち込まない |
 | 6 | レコード順検証 | 仕様のレコード順をパース時に検証、違反は取込拒否 |

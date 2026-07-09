@@ -15,7 +15,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §12, §2, §23-28
+  - 構築プロンプト v0.2.0 §12, §2, §23-28
   - docs/plan/phase0_plan.md §9.2, §10
 depends_on:
   - docs/adapters/official_adapter_inventory.md
@@ -27,7 +27,7 @@ open_questions:
   - オンライン請求用端末への受け渡し媒体・手順(公式手順確認後)
 ```
 
-## 1. 構成要素の定義(v0.1.7 §12 準拠)
+## 1. 構成要素の定義(v0.2.0 §12 準拠)
 
 | 要素 | 定義 | 信頼レベル |
 |---|---|---|

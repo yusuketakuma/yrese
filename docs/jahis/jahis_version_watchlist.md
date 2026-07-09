@@ -12,7 +12,7 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
-source_refs: [構築プロンプト v0.1.8 §0.0.4.10, REG-007, ADP-001, MST-002, CLM-002]
+source_refs: [構築プロンプト v0.2.0 §0.0.4.10, REG-007, ADP-001, MST-002, CLM-002]
 ```
 
 

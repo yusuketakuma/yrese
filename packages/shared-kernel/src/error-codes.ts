@@ -1,7 +1,7 @@
 /**
  * エラー/警告コードの型基盤。
  *
- * 根拠: 構築プロンプト v0.1.7 §0.0.3.3(error code / warning code は共通モジュールで管理)。
+ * 根拠: 構築プロンプト v0.2.0 §0.0.3.3(error code / warning code は共通モジュールで管理)。
  * 具体的なコード値の追加は error_code_registry.md SSOT(APPROVED)を根拠とする。
  * ローカル(apps/**)での重複定義は COMMON_MODULE_DUPLICATION_BLOCKED。
  */
@@ -30,7 +30,7 @@ export type ErrorDomain = (typeof ERROR_DOMAINS)[number];
 
 /**
  * エラーコード定義。
- * 医療UIの原則(v0.1.7 §7)に従い、「何が危険か」「何を確認するか」「請求できるか」を
+ * 医療UIの原則(v0.2.0 §7)に従い、「何が危険か」「何を確認するか」「請求できるか」を
  * 表現できる構造を持つ。表示文言そのものは UI 側(frontend)所有であり、ここには置かない。
  */
 export interface ErrorCodeDef {

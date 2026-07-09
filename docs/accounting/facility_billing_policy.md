@@ -14,17 +14,17 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
-source_refs: 構築プロンプト v0.1.8 §0.0.4.7
+source_refs: 構築プロンプト v0.2.0 §0.0.4.7
 depends_on: [ACC-001, ACC-002]
 open_questions:
-  - 施設請求の MVP 実装可否(v0.1.8 の指示どおり fable5 が派生機能調査 WP-0037 後に判断)
+  - 施設請求の MVP 実装可否(v0.2.0 の指示どおり fable5 が派生機能調査 WP-0037 後に判断)
   - 施設請求書の様式・締め日・支払サイトの実務要件(実務レビュー)
   - 訪問調剤・居宅療養管理指導との関係(介護保険連携は非MVP: PRD-002)
 ```
 
 ## 1. 原則: 個人会計と施設請求の分離
 
-- データモデル上、「個人患者会計」(PatientReceivable)と「施設・法人単位請求」(FacilityInvoice / FacilityPayment)を**最初から分離**する(v0.1.8 §0.0.4.7)。
+- データモデル上、「個人患者会計」(PatientReceivable)と「施設・法人単位請求」(FacilityInvoice / FacilityPayment)を**最初から分離**する(v0.2.0 §0.0.4.7)。
 - FacilityInvoice は複数患者の患者負担分を施設単位で月次集約する文書であり、**患者別内訳**(どの患者のどの会計か)を必ず保持する。
 - 施設請求へ集約された患者未収は、個人窓口未収と二重請求にならないよう請求経路フラグで排他する。
 

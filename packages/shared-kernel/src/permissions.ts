@@ -1,7 +1,7 @@
 /**
  * 権限スコープの型基盤。
  *
- * 根拠: 構築プロンプト v0.1.7 §0.0.3.3(permission scope / role name は共通モジュールで管理)、
+ * 根拠: 構築プロンプト v0.2.0 §0.0.3.3(permission scope / role name は共通モジュールで管理)、
  * §7(UIだけで権限制御せず、API側でも制御する)。
  * 具体的なスコープ・ロールの追加は permission_scope_registry.md SSOT(APPROVED)を根拠とする。
  */
@@ -55,7 +55,7 @@ export function isPermissionScope(value: string): value is PermissionScope {
 }
 
 /**
- * 初期ロール名(v0.1.7 §9.9 のロール別導線に対応する最小セット)。
+ * 初期ロール名(v0.2.0 §9.9 のロール別導線に対応する最小セット)。
  * 確定は permission_scope_registry SSOT で行う。
  */
 export const ROLE_NAMES = ["pharmacist", "clerk", "admin", "support"] as const;

@@ -14,14 +14,14 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §7(必ず設計するもの)/ docs/plan/phase0_plan.md §5 / docs/uiux/workflow_map.md
+source_refs: 構築プロンプト v0.2.0 §7(必ず設計するもの)/ docs/plan/phase0_plan.md §5 / docs/uiux/workflow_map.md
 depends_on: [docs/uiux/medical_ui_ux_principles.md]
 open_questions:
   - 権限scopeの粒度(疑義照会・会計の専用scope要否)は permission_scope_registry で確定【要確認】
   - 画面統合の可否(SCR-006/007/008 の1画面化等)は Phase 1 設計で判断
 ```
 
-ux_safety_level: U0=UI影響なし / U1=通常UI / U2=業務導線に影響 / U3=医療安全・請求事故に影響 / U4=患者取り違え・薬剤師確認・外部未確認状態・請求確定に影響(v0.1.7 §0.1.3.2)。
+ux_safety_level: U0=UI影響なし / U1=通常UI / U2=業務導線に影響 / U3=医療安全・請求事故に影響 / U4=患者取り違え・薬剤師確認・外部未確認状態・請求確定に影響(v0.2.0 §0.1.3.2)。
 
 scope は実装済み `@yrese/shared-kernel` permissions.ts(9ab039e)の `resource:action` 形式。**【要確認】付きは registry 未確定の仮割当**。
 
@@ -59,6 +59,6 @@ scope は実装済み `@yrese/shared-kernel` permissions.ts(9ab039e)の `resourc
 
 ## 運用ルール
 
-- U3/U4 画面の実装WPは、fable5 の UX 方針確定+opus4.8 の医療安全レビューを事前に受ける(v0.1.7 §0.1.3.3-7)
+- U3/U4 画面の実装WPは、fable5 の UX 方針確定+opus4.8 の医療安全レビューを事前に受ける(v0.2.0 §0.1.3.3-7)
 - 画面追加・統合は本台帳を更新してから実装する(台帳にない画面の実装禁止)
 - 「実装状態」列は実装WP完了時にコミットハッシュ付きで更新する

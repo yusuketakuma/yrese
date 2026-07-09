@@ -17,7 +17,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 effective_from: 承認後
 effective_to: null
 source_refs:
-  - 構築プロンプト v0.1.7 §0.1.6.18.2, §0.1.3.4
+  - 構築プロンプト v0.2.0 §0.1.6.18.2, §0.1.3.4
 depends_on:
   - docs/agents/agent_routing_policy.md
   - docs/agents/dual_lane_raci_matrix.md

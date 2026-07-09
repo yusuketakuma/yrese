@@ -12,7 +12,7 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
-source_refs: 構築プロンプト v0.1.7 §2, §12, §17
+source_refs: 構築プロンプト v0.2.0 §2, §12, §17
 depends_on: [PRD-001, ADP-002, ARC-001, MOD-001, MOD-003]
 impacts: [DOM-002, DOM-003, DOM-004]
 open_questions: 本文【要確認】参照
@@ -43,7 +43,7 @@ MVP のドメインを、責務・言語・整合性境界が明確な bounded c
 | C13 | テナント・権限 | Identity | テナント・薬局・ユーザー・ロール・PermissionScope、認証境界(本番認証は BLOCKED_SECURITY_REVIEW) | M11 |
 | C14 | 外部連携 | Integration | Official Adapter 6種(ADP-001)と Pharmacy Integration API(M12)。腐敗防止層(ACL)として他コンテキストを外部仕様から隔離 | M3, M12 |
 
-補足: 会計 Billing は v0.1.7 §17 の会計・未収・返金・差額精算に対応するため、指示候補の12個に加えて独立させた(受付/請求と整合性境界が異なるため)。【要確認: opus4.8 レビューで Claim への統合可否を判断】
+補足: 会計 Billing は v0.2.0 §17 の会計・未収・返金・差額精算に対応するため、指示候補の12個に加えて独立させた(受付/請求と整合性境界が異なるため)。【要確認: opus4.8 レビューで Claim への統合可否を判断】
 
 ## 3. 共有カーネル
 

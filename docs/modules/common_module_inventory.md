@@ -14,7 +14,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §0.0.3.1, §0.0.3.2, §0.0.3.6
+  - 構築プロンプト v0.2.0 §0.0.3.1, §0.0.3.2, §0.0.3.6
 depends_on:
   - docs/agents/file_ownership_and_lock_policy.md(AGT-009)
   - docs/modules/dependency_direction_policy.md(MOD-003)
@@ -24,7 +24,7 @@ open_questions:
 blockers: []
 ```
 
-共通モジュールは、SSOTで確定した仕様を型・状態・エラー・金額・日付・監査・権限・API契約・バリデーション・fixtures として再利用可能にした**実装上の統制単位**である(v0.1.7 §0.0.3)。本台帳にない共通モジュールの新設、および台帳記載モジュールと同じ概念のローカル再実装を禁止する(`COMMON_MODULE_DUPLICATION_BLOCKED`)。
+共通モジュールは、SSOTで確定した仕様を型・状態・エラー・金額・日付・監査・権限・API契約・バリデーション・fixtures として再利用可能にした**実装上の統制単位**である(v0.2.0 §0.0.3)。本台帳にない共通モジュールの新設、および台帳記載モジュールと同じ概念のローカル再実装を禁止する(`COMMON_MODULE_DUPLICATION_BLOCKED`)。
 
 ## 1. 実装済み共通モジュール(正本)
 
@@ -40,7 +40,7 @@ blockers: []
 
 補助ツーリング: `scripts/check-boundaries.mjs`(0213ac0)— import 境界 / workspace 循環 / 重複 const 検査。CI 組込済み(`pnpm check:boundaries`)。
 
-## 2. 今後の候補(v0.1.7 §0.0.3.2 — 新設は本台帳の改版+fable5承認後のみ)
+## 2. 今後の候補(v0.2.0 §0.0.3.2 — 新設は本台帳の改版+fable5承認後のみ)
 
 | 候補 | 想定内容 | 新設条件 |
 |---|---|---|
@@ -54,6 +54,6 @@ blockers: []
 
 ## 3. 運用ルール
 
-- 実装前チェック(v0.1.7 §0.0.3.8): 既存モジュールで実現可能か → 拡張か → 新設か → frontend/backend 固有か真に共有か → 依存方向 → bundle/boundary 影響 → 法令・医療安全概念の重複定義がないか
+- 実装前チェック(v0.2.0 §0.0.3.8): 既存モジュールで実現可能か → 拡張か → 新設か → frontend/backend 固有か真に共有か → 依存方向 → bundle/boundary 影響 → 法令・医療安全概念の重複定義がないか
 - 共通モジュールの変更は AGT-009 のロック手順に従う(ClaudeCode側と Codex側の同時編集禁止)
-- breaking change は agmsg 合意のみで実施禁止 — SSOT 改版+レビュー+WP 再発行(v0.1.7 §0.0.3.9)
+- breaking change は agmsg 合意のみで実施禁止 — SSOT 改版+レビュー+WP 再発行(v0.2.0 §0.0.3.9)

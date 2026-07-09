@@ -1,6 +1,6 @@
 # Plans.md — 調剤用レセプトコンピューター MVP タスク計画
 
-構築プロンプト v0.1.7 / `docs/plan/phase0_plan.md` に基づく実行計画。
+構築プロンプト v0.2.0 / `docs/plan/phase0_plan.md` に基づく実行計画。
 運用ルール: 活動単位ごとにコミット&プッシュ。活動ログは `State.md` に記録。
 高リスク領域(R3+)は根拠(evidence_id)未確認のまま実装しない — 「根拠不足を正しく検知して止まるコード」を優先する。
 
@@ -218,7 +218,7 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 目的: `CLAIMABLE_SAFE_STATUSES` allow-list 方式へ転換し、未知ステータス・未承認ステータスは請求不可にする。
   - 解消根拠: `packages/shared-kernel/src/status.ts` / `kernel.test.ts` で実装・回帰テスト固定。全112 tests + boundaries verified。
 
-## v0.1.8 レセコンベンチマーク反映(ユーザー提供調査 2026-07-09)
+## v0.2.0 レセコンベンチマーク反映(ユーザー提供調査 2026-07-09)
 
 ユーザー提供の主要レセコン調査(MEDIXS / EMシステムズ MAPs・Recepty NEXT / PHC Pharnes / Pharmy Connect / P-CUBE n / GENNAI just / 調剤くんV8)に基づく計画拡張。
 方針決定(fable5): ①各社実装の模倣ではなく公式仕様準拠の**根拠追跡型・決定論的ルールエンジン**として設計する ②**LLM/AIに算定判断をさせない**(補助・候補提示・説明生成のみ可) ③ベンダー公開情報は Priority C(要件抽出の補助のみ、実装根拠禁止) ④MVPは「正確な算定・請求」に加えて入力速度・請求前点検・連携口・オフライン・二重UXまでを競争力条件とする。
@@ -262,21 +262,21 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
 3. WP-0024〜0030 を第2波フォーク、WP-0031/0032 を第3波
 4. 実装WP(2103〜)は各SSOT承認+evidence充足を確認して逐次発行
 
-## v0.1.8 ベースライン差分計画(2026-07-09 受理)
+## v0.2.0 統合ベースライン計画(2026-07-09 受理)
 
-v0.1.7 → v0.1.8 の差分を fable5 が棚卸しした結果。既存承認済みSSOT・実装は維持し、新規範囲を追加する。
-ディレクトリは既存規約 docs/<domain>/ を維持(v0.1.8 の docs/ssot/ 表記は本規約へ読み替え、PRC-007 に既録)。
+0.2.0正本へ集約した会計・領収証・Integration Hub・JAHIS・開かれたレセコン・算定エンジン深化の実行計画。既存承認済みSSOT・実装は維持し、0.2.0正本を根拠に不足範囲を追加する。
+ディレクトリは既存規約 docs/<domain>/ を維持し、構築プロンプト上の表記差分は本規約へ読み替える(PRC-007 に既録)。
 
 ### 充足状況マッピング
 
-- §0.0.4.12 ベンチマーク: **一部充足**(PRD-004/005 済み)→ 不足分: ORCA会計思想・POS/セルフレジ製品・API公開性/標準規格対応の観点追加 + derivative_feature_inventory + mvp_feature_prioritization
-- §0.0.4.14 算定エンジン深化: **一部充足**(CAL-005〜008 PROPOSED・opus4.8レビュー中、WP-0024〜0030 計画済み)→ 不足分: calculation_pipeline / canonical_prescription_model / master_resolution_policy / material_fee_policy(fee_item_registry・drug_fee 等は既計画)
-- §0.0.4.1〜0.0.4.7 会計・収納・領収証・日計・POS・施設請求: **全面新規**(Calculation/Claim/Accounting/Receipt/POS の5領域分離、append-only ledger、一部入金MVP必須)
-- §0.0.4.8〜0.0.4.9 Integration Hub モジュール化: **新規**(API-001/contracts の実績を基盤に拡張)
-- §0.0.4.10 JAHISフル対応: **新規**(Applicability Matrix 方式。全標準の無差別実装ではない)
-- §0.0.4.11 開かれたレセコン: **一部充足**(OPS-011 portability / MOD 公開SSOT)→ 不足分: sandbox・SDK・開発者ポータル方針
+- ベンチマーク: **一部充足**(PRD-004/005 済み)→ 不足分: ORCA会計思想・POS/セルフレジ製品・API公開性/標準規格対応の観点追加 + derivative_feature_inventory + mvp_feature_prioritization
+- 算定エンジン深化: **一部充足**(CAL-005〜008 PROPOSED・opus4.8レビュー中、WP-0024〜0030 計画済み)→ 不足分: calculation_pipeline / canonical_prescription_model / master_resolution_policy / material_fee_policy(fee_item_registry・drug_fee 等は既計画)
+- 会計・収納・領収証・日計・POS・施設請求: **全面新規**(Calculation/Claim/Accounting/Receipt/POS の5領域分離、append-only ledger、一部入金MVP必須)
+- Integration Hub モジュール化: **新規**(API-001/contracts の実績を基盤に拡張)
+- JAHISフル対応: **新規**(Applicability Matrix 方式。全標準の無差別実装ではない)
+- 開かれたレセコン: **一部充足**(OPS-011 portability / MOD 公開SSOT)→ 不足分: sandbox・SDK・開発者ポータル方針
 
-### v0.1.8 新停止条件(即時有効)
+### v0.2.0 統合停止条件(即時有効)
 
 - 会計SSOT(17文書)未承認のまま会計・未収・領収証・入金APIを実装しない
 - JAHIS Applicability Matrix / full support definition / conformance test 未整備で「JAHIS対応」を名乗らない(BLOCKED_JAHIS_CONFORMANCE_REVIEW)
@@ -290,10 +290,10 @@ v0.1.7 → v0.1.8 の差分を fable5 が棚卸しした結果。既存承認済
 - [x] WP-0035 JAHIS SSOT 8文書(docs/jahis/: applicability_matrix / full_support_definition / adapter_inventory / version_watchlist / conformance_test_plan / character_encoding_policy / code_mapping_policy / roundtrip_test_policy)(5d73a20、status PROPOSED)
 - [ ] WP-0036 Integration Hub SSOT 11文書(docs/integration/: hub_architecture / partner_registry / data_sharing_module_inventory / data_sharing_policy / api_scope_registry / webhook_event_catalog / idempotency_policy / partner_sandbox / contract_test_policy / data_portability / adapter_registry)
 - [ ] WP-0037 派生機能調査+ベンチマーク拡張(docs/product/: derivative_feature_inventory / mvp_feature_prioritization + PRD-004/005 への ORCA・POS・API公開性観点追記)
-- [ ] WP-0038 mvp_scope(PRD-001)v0.1.8改版: WP-0019 を統合し、一部入金・会計台帳・領収証発行・日計をMVP必須へ、POS/セルフレジ/施設請求は境界設計のみ等を確定 → opus4.8+人間レビュー
+- [ ] WP-0038 mvp_scope(PRD-001)0.2.0統合改版: WP-0019 を統合し、一部入金・会計台帳・領収証発行・日計をMVP必須へ、POS/セルフレジ/施設請求は境界設計のみ等を確定 → opus4.8+人間レビュー
 - [ ] WP-0039 算定エンジン深化 残SSOT(docs/calculation/: calculation_pipeline / canonical_prescription_model / master_resolution_policy / material_fee_policy)— WP-0024〜0030 と統合実行
 
-### 新規実装WP(SSOT承認後に発行、v0.1.8 §0.0.4.15 レーン準拠)
+### 新規実装WP(SSOT承認後に発行、0.2.0実装レーン準拠)
 
 - [!] WP-2201 会計台帳バックエンド(codex — WP-0033 APPROVED まで BLOCKED)
 - [!] WP-2202 領収証ドキュメントバックエンド(codex — WP-0034 APPROVED まで BLOCKED)
@@ -311,8 +311,8 @@ v0.1.7 → v0.1.8 の差分を fable5 が棚卸しした結果。既存承認済
 
 ## v0.2.0 yrese ベースライン受理(ユーザー提供 2026-07-09)
 
-ユーザー提供の「調剤用レセプトコンピューター MVP 構築プロンプト v0.2.0」を受理し、版別ベースラインとして `docs/spec/construction_prompt_v0.2.0.md` に保存した。
-既存 `docs/spec/construction_prompt_baseline.md` の優先規定も `v0.2.0 > v0.1.9 > v0.1.8 > v0.1.7` に更新済み。
+ユーザー提供の「調剤用レセプトコンピューター MVP 構築プロンプト v0.2.0」を受理し、正本として `docs/spec/construction_prompt_v0.2.0.md` に保存した。
+`docs/spec/construction_prompt_baseline.md` は0.2.0正本への入口に縮約し、過去版本文・版一覧・版間優先順位規定は削除済み。
 
 v0.2.0の最上位方針:
 
@@ -345,7 +345,8 @@ v0.2.0の最上位方針:
 
 ### v0.2.0 新規SSOT WP
 
-- [x] WP-0040 v0.2.0構築プロンプト保存: `docs/spec/construction_prompt_v0.2.0.md` を追加し、`docs/spec/construction_prompt_baseline.md` の優先規定と収録バージョン一覧を更新。
+- [x] WP-0040 v0.2.0構築プロンプト保存: `docs/spec/construction_prompt_v0.2.0.md` を追加。
+- [x] WP-0049 構築プロンプト版統一: `docs/spec/construction_prompt_baseline.md` を0.2.0正本入口へ縮約し、旧版本文・旧版優先順位・旧版見出しを削除。`docs/spec/construction_prompt_v0.2.0.md` に統合方針を集約。
 - [ ] WP-0041 yrese doctrine SSOT pack(docs/product/またはdocs/architecture/): `yrese_product_doctrine.md`, `yrese_four_battles_strategy.md`, `nsips_quarantine_architecture.md`, `legacy_adapter_s3_lambda_policy.md`。NSIPS境界隔離・S3/Lambda候補構成・Legacy Adapter停止条件を確定。
 - [ ] WP-0042 FHIR canonical SSOT pack(docs/domain/またはdocs/adapters/): `fhir_native_canonical_model.md`, `fhir_mapping_registry.md`。Official AdapterをFHIRで勝手に置換しない境界を明文化。
 - [x] WP-0048 JP Core/FHIR Ready 薬局データ連携基盤戦略: `docs/product/jp_core_fhir_platform_strategy.md` を追加し、電子処方箋対応とJP Core/FHIR準拠を分離。公式ソース台帳 `SRC-FHIR-001..006` を `docs/regulatory/source_registry.md` に追加。WP-0042/WP-0046の上流方針とする。
@@ -357,7 +358,7 @@ v0.2.0の最上位方針:
 
 ### v0.2.0 既存WPへの影響
 
-- WP-0036 Integration Hub SSOTは、v0.1.9/v0.2.0のOpen Rececon Platform、Partner Sandbox、Contract Test Kit、API-first dogfooding、PH-OSリファレンス連携を統合する。
+- WP-0036 Integration Hub SSOTは、0.2.0正本のOpen Rececon Platform、Partner Sandbox、Contract Test Kit、API-first dogfooding、PH-OSリファレンス連携を統合する。
 - WP-0039 算定エンジン深化は、v0.2.0のversioned rule data / pure function / event re-projection / finalized claim immutabilityを追加前提にする。
 - WP-2203 Integration Hub骨格、WP-2204 JAHIS Adapter、会計/領収証系実装は、上記SSOTがAPPROVEDになるまで該当範囲を拡張実装しない。
 - WP-2009 audit hash-chain canonicalization / hydrate split は、`audit_worm_and_tenant_isolation_strategy.md` とSEC-007/MOD-008改版後に実装へ進める。

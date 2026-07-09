@@ -13,7 +13,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §36, §8.6
+source_refs: 構築プロンプト v0.2.0 §36, §8.6
 depends_on:
   - QUA-001 quality_plan
   - QUA-002 validation_plan
@@ -43,7 +43,7 @@ open_questions:
 | @yrese/api | 5 | /health 契約、deny-by-default 403、本番起動拒否 |
 | scripts/check-boundaries | CI | 依存方向・循環・重複const(違反注入で検出実証済み) |
 
-## 3. テスト種別カタログ(v0.1.7 §36 全種別 → 状態)
+## 3. テスト種別カタログ(v0.2.0 §36 全種別 → 状態)
 
 | 種別 | 状態 / 予定 |
 |---|---|

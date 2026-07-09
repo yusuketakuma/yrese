@@ -13,7 +13,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §8.2, §9.3 / docs/plan/phase0_plan.md §6, §8
+source_refs: 構築プロンプト v0.2.0 §8.2, §9.3 / docs/plan/phase0_plan.md §6, §8
 depends_on: [docs/architecture/offline_mode_matrix.md, docs/architecture/recovery_sync_design.md]
 open_questions:
   - SLO数値は候補値。sla_slo_policy(operations)と統合し Phase 1 実測で確定【要確認】

@@ -14,7 +14,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §32(同期設計の必須項目), §0.0.3.3
+  - 構築プロンプト v0.2.0 §32(同期設計の必須項目), §0.0.3.3
 depends_on:
   - packages/events(85bd3aa)
   - docs/architecture/recovery_sync_design.md(ARC-002)
@@ -27,7 +27,7 @@ blockers: []
 
 **現在の正本は `@yrese/events` の実装である。** EventEnvelope は Cloud Core / Pharmacy Edge Node 間同期(Outbox/Inbox)の共通封筒であり、監査イベント(MOD-008)の基底でもある。変更は本SSOT改版 → opus4.8 レビュー → 実装。
 
-## 1. フィールド(v0.1.7 §32 対応 — 実装済み)
+## 1. フィールド(v0.2.0 §32 対応 — 実装済み)
 
 | フィールド | 型 | 検証(createEventEnvelope) |
 |---|---|---|

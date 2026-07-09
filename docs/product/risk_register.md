@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §4 / docs/plan/phase0_plan.md §15
+source_refs: 構築プロンプト v0.2.0 §4 / docs/plan/phase0_plan.md §15
 depends_on:
   - docs/safety/medical_safety_risk_register.md
 impacts:

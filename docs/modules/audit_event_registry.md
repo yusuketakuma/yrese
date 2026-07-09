@@ -14,7 +14,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §0.0.3.3, §34
+  - 構築プロンプト v0.2.0 §0.0.3.3, §34
 depends_on:
   - docs/security/audit_log_design.md(SEC-007 — 構造・保全・アクセス制御の正)
   - packages/events(85bd3aa — 基底 EventEnvelope)

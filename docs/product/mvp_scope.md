@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §2, §3, §18, §19 / docs/plan/phase0_plan.md §2.1
+source_refs: 構築プロンプト v0.2.0 §2, §3, §18, §19 / docs/plan/phase0_plan.md §2.1
 depends_on:
   - docs/product/non_mvp_scope.md
   - docs/calculation/calculation_coverage_matrix.md
@@ -31,9 +31,9 @@ blockers:
 
 ## 原則
 
-- MVPであっても法令適合性・医療安全・請求正確性から逸脱しない(v0.1.7 §2)。
-- **MVP対象外の算定・請求を含む処方から保険請求データを生成してはならない**(v0.1.7 §18)。
-- 「動くが根拠がないコード」より「根拠不足を正しく検知して止まるコード」を優先する(v0.1.7 §3)。
+- MVPであっても法令適合性・医療安全・請求正確性から逸脱しない(v0.2.0 §2)。
+- **MVP対象外の算定・請求を含む処方から保険請求データを生成してはならない**(v0.2.0 §18)。
+- 「動くが根拠がないコード」より「根拠不足を正しく検知して止まるコード」を優先する(v0.2.0 §3)。
 
 ## MVP対象(phase0_plan §2.1 を正式化)
 

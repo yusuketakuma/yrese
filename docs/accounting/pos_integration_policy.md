@@ -13,14 +13,14 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
-source_refs: 構築プロンプト v0.1.8 §0.0.4.1, §0.0.4.6
+source_refs: 構築プロンプト v0.2.0 §0.0.4.1, §0.0.4.6
 depends_on: [ACC-001, ACC-008, docs/integration/**(WP-0036), ADP-002]
 open_questions:
   - 接続対象POS/セルフレジ/決済端末の製品調査(WP-0037 派生機能調査)
   - OTC・物販との同時会計の境界(レセコン側は保険調剤会計のみか、合算表示か — 実務レビュー)
 ```
 
-## 1. MVP境界(v0.1.8 §0.0.4.6)
+## 1. MVP境界(v0.2.0 §0.0.4.6)
 
 - **外部POS・セルフレジ・キャッシュレス決済との直接接続は MVP 必須にしない**。
 - ただし以下を MVP で設計しておく: API境界、イベント(POSSettlement)、データモデル(ACC-001)、将来接続用 Partner Adapter の登録枠(Integration Hub / adapter_registry)。

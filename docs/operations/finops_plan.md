@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §9.8 / docs/plan/phase0_plan.md §8
+source_refs: 構築プロンプト v0.2.0 §9.8 / docs/plan/phase0_plan.md §8
 depends_on:
   - OPS-005 (sla_slo_policy)
   - OPS-006 (performance_capacity_plan)
@@ -53,7 +53,7 @@ open_questions:
 - 同期イベントのバッチ化・圧縮(正確性・監査性を損なわない範囲)
 - Savings Plans / Reserved は負荷実測後(Phase 2 以降)
 
-## 4. 禁止事項(v0.1.7 §9.8 — 絶対条件)
+## 4. 禁止事項(v0.2.0 §9.8 — 絶対条件)
 
 - SLA/SLO 未定義で本番提供すること
 - **コスト削減のために監査ログ・バックアップ・暗号化を削ること**

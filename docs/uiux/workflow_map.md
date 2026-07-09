@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §7, §13-16 / docs/plan/phase0_plan.md §5, §9.3
+source_refs: 構築プロンプト v0.2.0 §7, §13-16 / docs/plan/phase0_plan.md §5, §9.3
 depends_on: [docs/architecture/offline_mode_matrix.md, docs/architecture/recovery_sync_design.md, docs/product/mvp_scope.md]
 open_questions:
   - 疑義照会・残薬調整の導線分岐の実務詳細(薬剤師レビュー)【要確認】
@@ -85,7 +85,7 @@ open_questions:
 全件解消+承認 → NORMAL 復帰(完了まで月次締め解禁しない — ARC-002 ゲート)
 ```
 
-## 4. ロール別ホーム(v0.1.7 §9.9)
+## 4. ロール別ホーム(v0.2.0 §9.9)
 
 | ロール | ホームで最優先表示 |
 |---|---|

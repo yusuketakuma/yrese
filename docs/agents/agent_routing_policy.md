@@ -17,7 +17,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 effective_from: 承認後
 effective_to: null
 source_refs:
-  - 構築プロンプト v0.1.7 §0.1.3.2, §0.1.3.3, §0.1.3.6, §0.1.6.18.1, §0.1.6.18.3
+  - 構築プロンプト v0.2.0 §0.1.3.2, §0.1.3.3, §0.1.3.6, §0.1.6.18.1, §0.1.6.18.3
 depends_on:
   - docs/agents/dual_lane_operating_model.md
 impacts:
@@ -80,7 +80,7 @@ blockers: []
 9. 算定・請求・Official Adapter・オンライン資格確認・電子処方箋・PMH は、fable5 が仕様境界を決め、opus4.8 が高リスクレビュー、バックエンド実装=Codex側Sol、フロントエンド表示実装=sonnet5
 10. 法令・通知・医療安全の解釈は fable5 + opus4.8 + 人間レビューの対象とし、sonnet5 / haiku4.5 / Codex に単独判断させない
 
-## 4. 全体最適化ルール(v0.1.7 §0.1.6.18.3)
+## 4. 全体最適化ルール(v0.2.0 §0.1.6.18.3)
 
 - fable5 は仕様判断・SSOT・WP・レビューゲートに集中し、実装量を抱え込まない
 - opus4.8 は高リスク設計・レビューに集中し、通常画面実装へ浪費しない

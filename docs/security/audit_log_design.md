@@ -15,7 +15,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §34, §9.6, §20(電子保存)、§0.0.3.3
+  - 構築プロンプト v0.2.0 §34, §9.6, §20(電子保存)、§0.0.3.3
 depends_on:
   - docs/security/privacy_impact_assessment.md(SEC-004)
   - packages/events(EventEnvelope, 85bd3aa)

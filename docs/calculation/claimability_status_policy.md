@@ -38,7 +38,7 @@ blockers:
 |---|---|---|
 | AUTO_CALCULATED | 機械検証可能な要件をすべて満たし自動確定 | 請求可(他項目・全体条件が満たされる場合) |
 | SUGGESTED_REQUIRES_CONFIRMATION | 候補として提示。人の確認で確定 | 確認完了まで**請求不可** |
-| REQUIRES_PHARMACIST_CONFIRMATION | 薬剤師の専門的確認が必須(v0.1.7: 薬剤師の判断を置き換えない) | 薬剤師確認完了まで**請求不可** |
+| REQUIRES_PHARMACIST_CONFIRMATION | 薬剤師の専門的確認が必須(v0.2.0: 薬剤師の判断を置き換えない) | 薬剤師確認完了まで**請求不可** |
 | REQUIRES_RECORD | 必要記録(薬歴等)の存在確認が未了 | 記録確認完了まで**請求不可** |
 | (evidence 不在/失効 — 独立ステータス**新設せず**) | ルールの根拠 evidence が未発行/失効の場合、項目ステータスではなく既存 BLOCKER の **BLOCKED_REGULATORY_REVIEW** を流用し、blocker.detail に「個別ルールの evidence 台帳不在/失効」を明記して制度・承認プロセス起因と区別する(fable5決定) | **請求不可**(実装も禁止 — CAL-004 §5) |
 | BLOCKED_UNSUPPORTED_CLAIM | MVP対象外項目を含む | **請求不可**(shared-kernel 実装済み。請求データ生成前に停止 — PRD-001) |
@@ -61,7 +61,7 @@ blockers:
 
 ### 3.1 isClaimable の fail-closed 化(opus4.8 レビュー反映 — 安全クリティカル)
 
-従来の isClaimable は deny-list 方式であり、未知ステータスを請求可能(true)と判定する fail-open だった(例: `isClaimable(['REQUIRES_RECORD']) === true`)。「未完了を成功に見せない」原則(v0.1.7 §15)に反するため、以下を正式方針とする。
+従来の isClaimable は deny-list 方式であり、未知ステータスを請求可能(true)と判定する fail-open だった(例: `isClaimable(['REQUIRES_RECORD']) === true`)。「未完了を成功に見せない」原則(v0.2.0 §15)に反するため、以下を正式方針とする。
 
 1. **allow-list 方式(fail-closed)へ転換する**(WP-1012 で実装): 明示的な `CLAIMABLE_SAFE_STATUSES`(初期値: **空** — 「付与されていても請求可」と確定した根拠のあるステータスは現存しない)に含まれないステータスが1つでもあれば false。未知ステータス=請求不可。`isClaimable([]) === true`(ステータスなし=ブロック要因なし)は維持。
 2. **原子的 land**: 新ステータスの emit(実装コードでの付与開始)と請求可否判定の対応更新は、**同一WPで原子的に land** する。単独 land は禁止。
@@ -81,7 +81,7 @@ blockers:
   → 未解決のまま月次締めへ進むことは不可(isClaimable 接続)
 ```
 
-- 記録存在確認は**外部システム(電子薬歴)の応答**に依存するため、LOCAL_ONLY / EXTERNAL_DEGRADED では確認完了扱いにしない(PENDING_EXTERNAL_SYNC を併用 — v0.1.7 §15)。
+- 記録存在確認は**外部システム(電子薬歴)の応答**に依存するため、LOCAL_ONLY / EXTERNAL_DEGRADED では確認完了扱いにしない(PENDING_EXTERNAL_SYNC を併用 — v0.2.0 §15)。
 - 「薬歴未記載リスト」は請求前点検画面(SCR請求前点検)の必須表示項目とする(UIX-007 改版時に反映)。
 
 ## 5. 変更履歴

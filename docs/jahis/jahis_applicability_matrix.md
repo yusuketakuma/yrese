@@ -12,7 +12,7 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
-source_refs: [構築プロンプト v0.1.8 §0.0.4.10, REG-007, ADP-001, MST-002, CLM-002]
+source_refs: [構築プロンプト v0.2.0 §0.0.4.10, REG-007, ADP-001, MST-002, CLM-002]
 open_questions:
   - 薬局レセコン電子薬歴連携仕様 Ver.1.1 の一次確認(jahis.jp 検索で未到達)
   - 2Dシンボル Ver.1.11 本文PDFの公開/会員限定の別
@@ -22,7 +22,7 @@ open_questions:
 
 ## 宣言
 
-「JAHISフル対応」とは、**薬局レセコンに該当する JAHIS 制定済標準・技術文書を全て棚卸しし、該当範囲について Official Adapter・テスト・版管理・相互運用性確認を備える**ことである(v0.1.8 §0.0.4.10)。
+「JAHISフル対応」とは、**薬局レセコンに該当する JAHIS 制定済標準・技術文書を全て棚卸しし、該当範囲について Official Adapter・テスト・版管理・相互運用性確認を備える**ことである(v0.2.0 §0.0.4.10)。
 全JAHIS標準の無差別実装ではない。該当性が不明な標準は `JAHIS_APPLICABILITY_REVIEW_REQUIRED` とする。
 
 ## 分類マトリクス(2026-07-09 時点、jahis.jp 一次確認ベース)

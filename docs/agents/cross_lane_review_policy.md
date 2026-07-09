@@ -17,7 +17,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 effective_from: 承認後
 effective_to: null
 source_refs:
-  - 構築プロンプト v0.1.7 §0.1.6.13, §0.1.3.5, §0.12
+  - 構築プロンプト v0.2.0 §0.1.6.13, §0.1.3.5, §0.12
 depends_on:
   - docs/agents/dual_lane_raci_matrix.md
 impacts:
@@ -56,7 +56,7 @@ blockers: []
 | UI領域(例外承認時) | fable5 が医療UI/UX方針との整合性を確認 |
 | migration / sync / performance / CI | Codex側セルフレビュー + Claude側レビュー |
 
-## 4. リスク別レビュー組み合わせ(v0.1.7 §0.1.3.5)
+## 4. リスク別レビュー組み合わせ(v0.2.0 §0.1.3.5)
 
 ### 低リスク(R0〜R1)
 - Implementer: frontend=sonnet5 / backend=Codex側Sol / 軽量検査=haiku4.5

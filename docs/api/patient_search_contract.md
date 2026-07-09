@@ -54,7 +54,7 @@ PatientSearchResult = {
 
 - **契約の正本は @yrese/contracts の zod schema**(PatientSearchQuery / PatientSearchResponse / eligibilityStatus 値集合)。apps/web の PatientHeader は契約由来型へ適合させる(WP-3003)— contracts は apps に依存できないため(MOD-003)。
 - `patientId` は wire 上は schema 検証済みの素の string とする。branded PatientId 化は backend/frontend の内部で行う(contracts → shared-kernel 依存は追加しない)。
-- **検索結果の時点で資格確認状態を可視化**する(v0.1.7 §7: 外部確認未完了状態を隠さない)。
+- **検索結果の時点で資格確認状態を可視化**する(v0.2.0 §7: 外部確認未完了状態を隠さない)。
 - PHI classification: レスポンスは PHI を含む。ログへの平文出力禁止(OPS-009)。correlation_id はヘッダで伝播。
 
 ## 4. エラー
@@ -65,7 +65,7 @@ PatientSearchResult = {
 
 ## 5. 実装規律
 
-- zod schema を @yrese/contracts に置き、frontend は契約外フィールドを仮定しない(v0.1.7 §0.0.2.2)。
+- zod schema を @yrese/contracts に置き、frontend は契約外フィールドを仮定しない(v0.2.0 §0.0.2.2)。
 - 契約変更は CONTRACT_CHANGE_REQUEST 経由。
 - backend 実装(WP-2008)は PatientRepository インターフェース + インメモリ合成データ(MOD-013: PHI混入禁止・fixtures は合成のみ)。DB導入は data_model SSOT 承認後に差し替え。
 - **リポジトリ入力は tenantContext 由来の tenantId + pharmacyId を必須**とし、cursor は不透明・非PHI・(tenant, pharmacy, query) に拘束された値とする。境界不一致の cursor は 400 で安全に拒否し、**ページネーションがテナント/薬局境界を越えられない**ことをテストで固定する。

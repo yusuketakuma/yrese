@@ -15,7 +15,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §13, §14, §15
+  - 構築プロンプト v0.2.0 §13, §14, §15
   - docs/plan/phase0_plan.md §9.3
 depends_on:
   - docs/adapters/external_system_boundary.md
@@ -25,11 +25,11 @@ impacts:
 related_tests:
   - packages/shared-kernel/src/kernel.test.ts(モードガード関数の単体テスト — 実装済み)
 open_questions:
-  - LOCAL_ONLY での操作範囲の最終確定は薬剤師実務レビュー・請求実務レビュー後(v0.1.7 §14)
+  - LOCAL_ONLY での操作範囲の最終確定は薬剤師実務レビュー・請求実務レビュー後(v0.2.0 §14)
   - 災害時モード(オン資公式の障害時運用)との整合は外部IF仕様確認後
 ```
 
-## 1. モード定義(v0.1.7 §13)
+## 1. モード定義(v0.2.0 §13)
 
 | モード | Cloud Core | 外部公的システム | Edge Node | 概要 |
 |---|---|---|---|---|
@@ -78,12 +78,12 @@ open_questions:
 | 27 | 権限変更・ユーザー管理 | ○ | ○ | × | × | ○(Cloud 復旧後) |
 | 28 | 破壊的操作(取消・訂正・返金) | ○(二段階確認) | ○(同左) | △ | △(履歴+復旧後再検証) | ○(履歴必須) |
 
-## 3. LOCAL_ONLY の必須ステータス付与(v0.1.7 §14)
+## 3. LOCAL_ONLY の必須ステータス付与(v0.2.0 §14)
 
 LOCAL_ONLY での計算・帳票・受付には以下のいずれかを必ず付与する(@yrese/shared-kernel PROVISIONAL_STATUSES として実装済み):
 PROVISIONAL_CALCULATION / PENDING_REVERIFY / PENDING_EXTERNAL_SYNC / PENDING_PMH_REVERIFY / LOCAL_ONLY_UNVERIFIED / MANUAL_REVIEW_REQUIRED
 
-## 4. LOCAL_ONLY の絶対禁止事項(v0.1.7 §15 全項目)
+## 4. LOCAL_ONLY の絶対禁止事項(v0.2.0 §15 全項目)
 
 1. 新規オンライン資格確認の成功扱い
 2. 電子処方箋管理サービスからの新規処方情報取得扱い
@@ -105,5 +105,5 @@ PROVISIONAL_CALCULATION / PENDING_REVERIFY / PENDING_EXTERNAL_SYNC / PENDING_PMH
 ## 5. UI 要件
 
 - 全画面にシステムモードを常時表示(実装済み: SystemModeBadge — 色非依存・日本語ラベル)
-- モード遷移時は「できること/できないこと/復旧後に必要なこと」を明示(v0.1.7 §8)
-- PENDING_* を目立たない場所に隠すことを禁止(v0.1.7 §7)
+- モード遷移時は「できること/できないこと/復旧後に必要なこと」を明示(v0.2.0 §8)
+- PENDING_* を目立たない場所に隠すことを禁止(v0.2.0 §7)

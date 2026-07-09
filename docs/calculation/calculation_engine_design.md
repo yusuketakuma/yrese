@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー反映後、fable5承認(人間の包括承認 2026-07-09 の範囲内)
-source_refs: [CAL-001, CAL-002, CAL-003, MOD-010, 構築プロンプト v0.1.7 §18]
+source_refs: [CAL-001, CAL-002, CAL-003, MOD-010, 構築プロンプト v0.2.0 §18]
 depends_on: [CAL-003(evidence_register), MOD-010(money_point_policy)]
 impacts: [packages/calculation, WP-2101b]
 ```

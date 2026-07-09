@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
-source_refs: 構築プロンプト v0.1.8 §0.0.4.3
+source_refs: 構築プロンプト v0.2.0 §0.0.4.3
 depends_on: [ACC-001, ACC-006, RCP-003(領収証再発行・取消), MOD-007(permission_scope_registry — 返金・取消 scope の改版待ち)]
 open_questions:
   - 資格確認結果の遡及変更(保険者変更)時の差額精算の実務手順(請求実務レビュー)

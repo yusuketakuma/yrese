@@ -14,7 +14,7 @@ updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
-  - 構築プロンプト v0.1.7 §3(処方日・調剤日・受付日・請求月・マスター版の明示), §18, §0.0.3.3
+  - 構築プロンプト v0.2.0 §3(処方日・調剤日・受付日・請求月・マスター版の明示), §18, §0.0.3.3
 depends_on:
   - packages/date-time(ab234fe)
   - packages/events(85bd3aa — wallClock)
@@ -29,7 +29,7 @@ blockers: []
 
 - **診療系日付は wall-clock date semantics**(壁時計上の暦日)として扱う。正本実装は `@yrese/date-time` — CalendarDate は 'YYYY-MM-DD' または {year,month,day} からのみ構築し、実カレンダー検証(うるう年含む)を行う
 - **`@yrese/date-time` はタイムゾーン変換を行わない**。日本の薬局業務の暦日は JST の壁時計を前提とし、UTC 変換を挟まない(変換により暦日がずれる事故を構造的に防ぐ)
-- **現在時刻への暗黙依存禁止**(v0.1.7 §18): Date.now() / new Date() を既定値として使う API を共通モジュールに置かない。「今日」を必要とする層(UI・受付処理)が明示的に値を注入する
+- **現在時刻への暗黙依存禁止**(v0.2.0 §18): Date.now() / new Date() を既定値として使う API を共通モジュールに置かない。「今日」を必要とする層(UI・受付処理)が明示的に値を注入する
 
 ## 2. 診療系日付型の使い分け
 

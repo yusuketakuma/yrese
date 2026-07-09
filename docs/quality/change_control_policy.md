@@ -13,7 +13,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §10, §21, §0.1.6.17
+source_refs: 構築プロンプト v0.2.0 §10, §21, §0.1.6.17
 depends_on:
   - PRC-007 ssot_governance
   - MST-001 master_update_pipeline
@@ -35,7 +35,7 @@ open_questions:
 ## 2. 原則
 
 - すべての変更は WP に紐づく。SSOT差分なしの高リスク実装変更を禁止する(PRC-007)。
-- 共通モジュールの breaking change を agmsg 合意だけで入れない — SSOT更新+レビュー後にWP再発行(v0.1.7 §0.0.3.9)。
+- 共通モジュールの breaking change を agmsg 合意だけで入れない — SSOT更新+レビュー後にWP再発行(v0.2.0 §0.0.3.9)。
 - generated code の手編集を禁止する(GENERATED_CODE_DRIFT_BLOCKED)。
 - 請求・算定に影響するマスターは即時本番反映しない(MST-001: 検証→承認→反映→Edge配布→ロールバックポイント)。
 - 変更の rollback 方法を変更前に定義する(migration は expand-migrate-contract)。

@@ -1,7 +1,7 @@
 /**
  * 保留・仮状態ステータス。
  *
- * 根拠: 構築プロンプト v0.1.7 §14(LOCAL_ONLY での必須付与ステータス)、§0.0.3.3。
+ * 根拠: 構築プロンプト v0.2.0 §14(LOCAL_ONLY での必須付与ステータス)、§0.0.3.3。
  * LOCAL_ONLY で生成された計算・帳票・受付には、これらのいずれかを必ず付与する。
  * 外部確認未完了の処理を「成功扱い」に見せることは禁止(§15)。
  */
@@ -22,12 +22,12 @@ export function isProvisionalStatus(value: string): value is ProvisionalStatus {
 }
 
 /**
- * 復旧後同期での競合状態。自動補正は禁止(v0.1.7 §16)。
+ * 復旧後同期での競合状態。自動補正は禁止(v0.2.0 §16)。
  */
 export const CONFLICT_REQUIRES_HUMAN_REVIEW = "CONFLICT_REQUIRES_HUMAN_REVIEW" as const;
 
 /**
- * MVP対象外の算定・請求を含む処方に付与するステータス(v0.1.7 §18)。
+ * MVP対象外の算定・請求を含む処方に付与するステータス(v0.2.0 §18)。
  * これらが付与されたデータから保険請求データを生成してはならない。
  */
 export const UNSUPPORTED_CLAIM_STATUSES = [

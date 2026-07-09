@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
-source_refs: [構築プロンプト v0.1.8 §0.0.4.3(ReceiptDocument状態), §0.0.4.5]
+source_refs: [構築プロンプト v0.2.0 §0.0.4.3(ReceiptDocument状態), §0.0.4.5]
 depends_on: [RCP-001, RCP-002, ACC-011(accounting_audit_log — WP-0033)]
 impacts: [WP-2202, WP-3101]
 open_questions:
@@ -25,7 +25,7 @@ blockers: []
 
 ## 1. 状態遷移
 
-ReceiptDocument の状態は v0.1.8 §0.0.4.3 の6状態のみを使う。
+ReceiptDocument の状態は v0.2.0 §0.0.4.3 の6状態のみを使う。
 
 ```text
 DRAFT → ISSUED
@@ -63,7 +63,7 @@ ISSUED → REPLACED(差替 — 後継文書IDを必須記録)
 ## 5. 監査証跡
 
 - 再発行・取消・差替の全操作は AccountingAuditEvent(操作者・日時・理由・対象文書・関連 Payment)として記録する。
-- 入金取消・返金・再発行時の監査証跡は v0.1.8 §0.0.4.4 の必須要件。
+- 入金取消・返金・再発行時の監査証跡は v0.2.0 §0.0.4.4 の必須要件。
 - 監査証跡の欠落した再発行・取消操作は実装上不可能にする(API 層で強制)。
 
 ## 6. 変更履歴

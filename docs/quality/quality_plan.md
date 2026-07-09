@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §10
+source_refs: 構築プロンプト v0.2.0 §10
 depends_on:
   - REG-005 samd_applicability_assessment
   - TST-001 test_strategy
@@ -25,7 +25,7 @@ open_questions:
   - ISO 14971 / IEC 62366-1 / ISO 13485 / JIS X 8341-3 相当の適用要否(SaMD判定と連動)
 ```
 
-## 1. 必須方針(v0.1.7 §10 全項目)
+## 1. 必須方針(v0.2.0 §10 全項目)
 
 - 要件→設計→実装→テスト→リリースの traceability を持つ(WP・ssot_refs・evidence_id・テストの連鎖で担保)。
 - 高リスク変更は change control board 相当のレビューを通す(QUA-003)。
@@ -62,4 +62,4 @@ open_questions:
 
 - 欠陥は WP と同様に台帳管理し、severity(critical / high / medium / low)と患者安全・請求影響を必須記載する。
 - critical(患者安全)・high(請求事故)は修正完了まで該当機能のリリースを禁止する。
-- defect_management_policy / incident_management_policy / post_release_monitoring の詳細版は Phase 1 で作成する(v0.1.7 §10 の成果物リスト残)。
+- defect_management_policy / incident_management_policy / post_release_monitoring の詳細版は Phase 1 で作成する(v0.2.0 §10 の成果物リスト残)。

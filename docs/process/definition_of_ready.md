@@ -13,14 +13,14 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §0.4
+source_refs: 構築プロンプト v0.2.0 §0.4
 impacts: 全WP
 open_questions: []
 ```
 
 実装開始前に、すべての work package で以下を満たすこと。1項目でも欠ける場合は `BLOCKED_NOT_READY` とし、実装を開始しない。
 
-## チェックリスト(v0.1.7 §0.4 全項目)
+## チェックリスト(v0.2.0 §0.4 全項目)
 
 | # | 項目 | 判定基準 |
 |---|---|---|

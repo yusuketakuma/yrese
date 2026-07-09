@@ -13,7 +13,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §8.1, §9.3 / docs/plan/phase0_plan.md §6, §8
+source_refs: 構築プロンプト v0.2.0 §8.1, §9.3 / docs/plan/phase0_plan.md §6, §8
 depends_on: [docs/uiux/experience_quality_baseline.md]
 open_questions:
   - 全数値は Phase 0 候補値。Phase 1 以降の実測(latency regression test)で調整する
@@ -52,5 +52,5 @@ open_questions:
 ## 3. 運用ルール
 
 - 予算超過は BLOCKED_PERFORMANCE_SLO 相当の品質課題として扱い、リリースゲートで latency regression test により検査する。
-- **高速化のために算定検証・監査ログ・外部確認を省略してはならない**(v0.1.7 §9.3 禁止事項)。
+- **高速化のために算定検証・監査ログ・外部確認を省略してはならない**(v0.2.0 §9.3 禁止事項)。
 - 非同期ジョブは「処理中・同期中・保留中」を曖昧に表示しない(§8.5-5)。進捗・残件数・失敗件数を表示する。

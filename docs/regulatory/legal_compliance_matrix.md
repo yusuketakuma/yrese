@@ -14,7 +14,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.1.7 §5, docs/regulatory/source_registry.md
+source_refs: 構築プロンプト v0.2.0 §5, docs/regulatory/source_registry.md
 open_questions:
   - 各行の条文番号・保存期間の一次確認(e-Gov・通知原文での検証)が未了
   - 介護保険法の薬局影響範囲(居宅療養管理指導等)のMVP要否
@@ -54,4 +54,4 @@ blockers:
 
 ## 高リスク行の扱い
 
-行 1, 2, 3, 5, 6, 8, 12, 13(調剤録・SaMD・請求・電子保存・個人情報・外部公的システム)は v0.1.7 §39 の高リスク領域に該当し、実装前設計レビュー+実装後 opus4.8 レビュー+人間レビュー候補とする。
+行 1, 2, 3, 5, 6, 8, 12, 13(調剤録・SaMD・請求・電子保存・個人情報・外部公的システム)は v0.2.0 §39 の高リスク領域に該当し、実装前設計レビュー+実装後 opus4.8 レビュー+人間レビュー候補とする。
