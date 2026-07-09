@@ -6,6 +6,13 @@
 
 ## 2026-07-09(続き)
 
+### WP-4019 — OpenAPI generation pipeline
+
+- fable5 PLAN_APPROVED 後に codex 実装。`@yrese/contracts` の zod schema を正本として `zod-openapi` で OpenAPI 3.1 YAML を生成する pipeline を追加。
+- 生成物は `docs/api/openapi.yaml` にコミットし、`GENERATED - DO NOT EDIT` / 手編集禁止 / 再生成コマンド / 生成ツール版をヘッダに記録。`pnpm generate:openapi` で生成、`pnpm check:openapi` で再生成ドリフトを `GENERATED_CODE_DRIFT_BLOCKED` として検出する。
+- CI に OpenAPI drift check を追加し、`scripts/check-scripts.mjs` にドリフト検出の回帰テストを追加。MOD-014 `generated_code_policy.md` は v0.1.1 に改版し、OpenAPI は zod schema 正本 + `zod-openapi` 方式へ確定。generated client は未導入として分離。
+- 検証予定: contracts test/typecheck、openapi generate/check、script harness、全体 typecheck/test/build、deps/sbom、boundaries、ssot-index、diff check。
+
 ### WP-4034 — calculation StepResult runtime shape guard
 
 - fable5 PLAN_APPROVED 後に codex 実装。`@yrese/calculation` の `rule.apply()` 戻り値に runtime shape guard を追加し、型を迂回した不正 `StepResult` を曖昧な TypeError ではなく `BLOCKED` / `SSOT_UPDATE_REQUIRED` として fail-closed に返すようにした。

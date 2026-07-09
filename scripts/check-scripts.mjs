@@ -21,6 +21,13 @@ function runNode(script, args = [], options = {}) {
   });
 }
 
+function runTsx(script, args = [], options = {}) {
+  return spawnSync("pnpm", ["exec", "tsx", scriptPath(script), ...args], {
+    cwd: options.cwd ?? repoRoot,
+    encoding: "utf8",
+  });
+}
+
 function assert(condition, message) {
   if (!condition) {
     failures.push(message);
@@ -357,6 +364,17 @@ async function testSsotIndexDetectsDuplicateSsotId() {
   assert(outputOf(result).includes("duplicate PRD-001"), "duplicate finding should name the repeated ssot_id");
 }
 
+async function testOpenApiDriftDetection() {
+  const root = path.join(tempRoot, "openapi-drift");
+  const driftPath = path.join(root, "openapi.yaml");
+  await writeText(driftPath, "# deliberately stale generated artifact\n");
+
+  const result = runTsx("check-openapi.mjs", ["--openapi-file", driftPath]);
+  const output = outputOf(result);
+  assert(result.status === 1, "check-openapi should fail when the generated OpenAPI artifact drifts");
+  assert(output.includes("GENERATED_CODE_DRIFT_BLOCKED"), "OpenAPI drift failure should use the blocker code");
+}
+
 try {
   await testBoundaryViolationDetection();
   await testBoundaryCleanFixturePasses();
@@ -369,6 +387,7 @@ try {
   await testSsotIndexDetectsMissingDocumentRow();
   await testSsotIndexDetectsStatusMismatch();
   await testSsotIndexDetectsDuplicateSsotId();
+  await testOpenApiDriftDetection();
 } finally {
   await rm(tempRoot, { force: true, recursive: true });
 }

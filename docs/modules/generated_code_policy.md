@@ -8,7 +8,7 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -16,17 +16,17 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 source_refs:
   - 構築プロンプト v0.2.0 §0.0.3.4(generated codeの手編集禁止), §0.0.3.11(drift check), §0.1.6.12(generated filesは生成元と同一WP)
 depends_on:
-  - packages/contracts(7fa369c — 現状は手書きzodが正、生成パイプラインは未導入)
+  - packages/contracts(@yrese/contracts zod schema 正本)
   - docs/modules/validation_schema_policy.md(MOD-012)
-open_questions:
-  - OpenAPI 生成方式の選定(zod→OpenAPI 生成 or OpenAPI→型生成のどちらを正にするか)— Phase 1 で確定(現方針候補: zod スキーマを正とし OpenAPI/クライアントを生成)
-  - generated code drift check の CI 実装方式(再生成→git diff 検査)
+open_questions: []
 blockers: []
 ```
 
 ## 1. 現状
 
-生成コードは**まだ存在しない**。API 契約は `@yrese/contracts` の手書き zod スキーマが正本であり(MOD-012)、OpenAPI yaml・generated client の生成パイプラインは Phase 1 で導入する(WP-1007 の TODO 記録)。本SSOTは導入時の規約を先に確定するものである。
+OpenAPI yaml は `@yrese/contracts` の手書き zod スキーマを正本として生成する。生成物は `docs/api/openapi.yaml` にコミットし、`pnpm check:openapi` で再生成ドリフトを CI 検査する。
+
+generated client はまだ存在しない。導入時は本SSOTの同一規律(生成元と生成物を同一WPで扱う、手編集禁止、drift check)を適用する。
 
 ## 2. 規約(導入時に適用)
 
@@ -46,6 +46,11 @@ blockers: []
 
 ## 4. 導入手順(Phase 1)
 
-1. 生成方式の選定(open_questions)→ 本SSOT改版(PROPOSED→APPROVED)
-2. 生成パイプライン実装 WP(drift check CI 同時導入)
-3. 既存 health 契約で試行 → 以降の新規契約は生成必須
+1. OpenAPI: zod schema 正本 → `zod-openapi` → `docs/api/openapi.yaml` として生成(WP-4019)
+2. CI: `pnpm check:openapi` で再生成結果とコミット済み生成物を比較し、差分があれば `GENERATED_CODE_DRIFT_BLOCKED`
+3. generated client: Phase 1以降に別WPで導入。OpenAPI由来型を手書き複製しない
+
+## 5. 変更履歴
+
+- 0.1.1 (2026-07-09): WP-4019 で OpenAPI 生成方式を zod schema 正本 + `zod-openapi` + `docs/api/openapi.yaml` コミット + CI drift check に確定。generated client は未導入として分離。
+- 0.1.0 (2026-07-09): 初版。
