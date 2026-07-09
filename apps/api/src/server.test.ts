@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PATIENT_SEARCH_CURSOR_MAX_LENGTH } from '@yrese/contracts';
 
 import {
   apiVersion,
@@ -296,6 +297,7 @@ describe('buildServer', () => {
     ['/patients/search?q=合成&limit=0', 'limit too low'],
     ['/patients/search?q=合成&limit=51', 'limit too high'],
     ['/patients/search?q=合成&cursor=not-a-cursor', 'malformed cursor'],
+    [`/patients/search?q=合成&cursor=${'x'.repeat(PATIENT_SEARCH_CURSOR_MAX_LENGTH + 1)}`, 'cursor too long'],
   ])('returns PAT-0001 for invalid patient search query: %s (%s)', async (url) => {
     const server = buildServer();
 

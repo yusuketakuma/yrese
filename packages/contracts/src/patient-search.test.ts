@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ELIGIBILITY_STATUSES,
+  PATIENT_SEARCH_CURSOR_MAX_LENGTH,
   patientSearchQuerySchema,
   patientSearchResponseSchema,
   patientSearchResultSchema,
@@ -33,8 +34,19 @@ describe("patientSearchQuerySchema", () => {
     { q: "x".repeat(101) },
     { q: "シケン", limit: 0 },
     { q: "シケン", limit: 51 },
+    { q: "シケン", cursor: "x".repeat(PATIENT_SEARCH_CURSOR_MAX_LENGTH + 1) },
   ])("rejects invalid query %#", (value) => {
     expect(() => patientSearchQuerySchema.parse(value)).toThrow();
+  });
+
+  it("accepts cursors up to the approved opaque cursor length limit", () => {
+    const cursor = "x".repeat(PATIENT_SEARCH_CURSOR_MAX_LENGTH);
+
+    expect(patientSearchQuerySchema.parse({ q: "シケン", cursor })).toEqual({
+      q: "シケン",
+      limit: 20,
+      cursor,
+    });
   });
 });
 
@@ -79,6 +91,15 @@ describe("patientSearchResponseSchema", () => {
       results: [validResult],
       nextCursor: "opaque-cursor",
     });
+  });
+
+  it("rejects oversized response cursors", () => {
+    expect(() =>
+      patientSearchResponseSchema.parse({
+        results: [validResult],
+        nextCursor: "x".repeat(PATIENT_SEARCH_CURSOR_MAX_LENGTH + 1),
+      }),
+    ).toThrow();
   });
 
   it("rejects missing results", () => {

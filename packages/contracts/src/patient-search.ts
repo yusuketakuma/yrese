@@ -7,10 +7,12 @@ export const ELIGIBILITY_STATUSES = [
   "NOT_CHECKED",
 ] as const;
 
+export const PATIENT_SEARCH_CURSOR_MAX_LENGTH = 512;
+
 export const patientSearchQuerySchema = z.object({
   q: z.string().trim().min(1).max(100),
   limit: z.coerce.number().int().min(1).max(50).default(20),
-  cursor: z.string().optional(),
+  cursor: z.string().max(PATIENT_SEARCH_CURSOR_MAX_LENGTH).optional(),
 });
 
 export const patientSearchResultSchema = z.object({
@@ -26,7 +28,7 @@ export const patientSearchResultSchema = z.object({
 
 export const patientSearchResponseSchema = z.object({
   results: z.array(patientSearchResultSchema),
-  nextCursor: z.string().optional(),
+  nextCursor: z.string().max(PATIENT_SEARCH_CURSOR_MAX_LENGTH).optional(),
 });
 
 export type EligibilityStatus = (typeof ELIGIBILITY_STATUSES)[number];
