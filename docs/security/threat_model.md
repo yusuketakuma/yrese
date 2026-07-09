@@ -4,7 +4,7 @@
 ssot_id: SEC-003
 title: 脅威モデル(STRIDE × 信頼境界 T1/T2/T2'/T3)
 domain: security
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,6 +12,8 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
   - 構築プロンプト v0.1.7 §34, §35, §33
 depends_on:

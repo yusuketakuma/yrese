@@ -4,13 +4,15 @@
 ssot_id: REG-006
 title: 人間レビューチェックリスト
 domain: regulatory
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - human_review_required
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: docs/plan/phase0_plan.md §19, 構築プロンプト v0.1.7 §4, §42
 open_questions:
   - 各レビュー担当(薬剤師・請求実務者・法務・経営)の実在アサイン

@@ -4,13 +4,15 @@
 ssot_id: PRC-004
 title: ブランチ・PR運用ポリシー
 domain: process
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.1.7 §0.10, §40, §0.1.6.12
 open_questions:
   - ブランチ運用移行時の CI 必須チェック(branch protection)設定

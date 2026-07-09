@@ -4,13 +4,15 @@
 ssot_id: MOD-013
 title: テストフィクスチャポリシー
 domain: modules
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
   - 構築プロンプト v0.1.7 §0.0.3.4(本番個人情報のfixtures混入禁止), §36(本番個人情報をテストに使わない), §0.1.6.14
 depends_on:

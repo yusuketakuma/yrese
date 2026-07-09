@@ -4,7 +4,7 @@
 ssot_id: PRD-001
 title: MVP対象範囲
 domain: product
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,6 +12,8 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.1.7 §2, §3, §18, §19 / docs/plan/phase0_plan.md §2.1
 depends_on:
   - docs/product/non_mvp_scope.md

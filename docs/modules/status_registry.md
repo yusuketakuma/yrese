@@ -4,13 +4,15 @@
 ssot_id: MOD-005
 title: ステータスレジストリ(システムモード・保留系・BLOCKER)
 domain: modules
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
   - 構築プロンプト v0.1.7 §13, §14, §0.13, §0.0.3.3
 depends_on:

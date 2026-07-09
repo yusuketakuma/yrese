@@ -4,7 +4,7 @@
 ssot_id: REG-002
 title: 仕様版監視台帳(version watchlist)
 domain: regulatory
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,6 +12,8 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.1.7 §4, §10, docs/regulatory/source_registry.md
 open_questions:
   - 監視の自動化手段(公式サイトの更新検知)と担当の確定

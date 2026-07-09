@@ -4,13 +4,15 @@
 ssot_id: OPS-008
 title: 端末・エンドポイント管理ポリシー
 domain: operations
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.1.7 §9.4, §35 / docs/plan/phase0_plan.md §8
 depends_on:
   - SEC-005 (edge_node_security_design)

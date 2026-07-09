@@ -4,7 +4,7 @@
 ssot_id: UIX-001
 title: 医療UI/UX原則
 domain: uiux
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,6 +12,8 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.1.7 §7 / docs/plan/phase0_plan.md §5
 depends_on: [docs/product/mvp_scope.md, docs/architecture/offline_mode_matrix.md]
 impacts: [apps/web/**, docs/uiux/screen_inventory_draft.md]

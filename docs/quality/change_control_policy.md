@@ -4,13 +4,15 @@
 ssot_id: QUA-003
 title: 変更管理ポリシー
 domain: quality
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.1.7 §10, §21, §0.1.6.17
 depends_on:
   - PRC-007 ssot_governance

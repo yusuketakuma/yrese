@@ -4,7 +4,7 @@
 ssot_id: SEC-002
 title: 医療情報を取り扱う情報システム・サービス提供事業者向け安全管理ガイドライン対応マッピング
 domain: security
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,6 +12,8 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
   - 構築プロンプト v0.1.7 §34
   - 総務省・経済産業省 事業者向け安全管理ガイドライン(第2.0版以降【要確認 — 最新版・発行日の一次確認未了】)

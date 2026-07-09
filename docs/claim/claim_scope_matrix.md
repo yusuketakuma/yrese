@@ -4,7 +4,7 @@
 ssot_id: CLM-001
 title: 請求スコープマトリクス(レセプト請求10工程)
 domain: claim
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,6 +12,8 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.1.7 §19 / docs/plan/phase0_plan.md §2.1, §10
 depends_on:
   - docs/product/mvp_scope.md

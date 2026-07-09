@@ -4,7 +4,7 @@
 ssot_id: PLAN-PHASE0-001
 title: Phase 0 計画案
 domain: plan
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - human_review_required

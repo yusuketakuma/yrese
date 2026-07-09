@@ -4,7 +4,7 @@
 ssot_id: CLM-002
 title: オンライン又は光ディスク等による請求に係る記録条件仕様(調剤用)読解ノート
 domain: claim
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8

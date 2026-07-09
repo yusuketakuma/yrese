@@ -4,13 +4,15 @@
 ssot_id: UIX-003
 title: 性能予算(performance budget)
 domain: uiux
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.1.7 §8.1, §9.3 / docs/plan/phase0_plan.md §6, §8
 depends_on: [docs/uiux/experience_quality_baseline.md]
 open_questions:

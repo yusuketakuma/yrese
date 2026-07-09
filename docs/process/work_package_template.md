@@ -4,13 +4,15 @@
 ssot_id: PRC-002
 title: Work Package テンプレート
 domain: process
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.1.7 §0.3, §0.0.3.8, §0.1.3.7
 depends_on:
   - PRC-003 definition_of_ready

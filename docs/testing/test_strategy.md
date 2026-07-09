@@ -4,13 +4,15 @@
 ssot_id: TST-001
 title: テスト戦略
 domain: testing
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.1.7 §36, §8.6
 depends_on:
   - QUA-001 quality_plan

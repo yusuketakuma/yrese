@@ -4,7 +4,7 @@
 ssot_id: SAF-001
 title: 医療安全リスク台帳
 domain: safety
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,6 +12,8 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.1.7 §6
 depends_on:
   - docs/plan/phase0_plan.md §4

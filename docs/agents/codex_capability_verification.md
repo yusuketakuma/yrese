@@ -4,13 +4,15 @@
 ssot_id: AGT-017
 title: Codex側能力検証記録
 domain: agents
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - human_review_if_required
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.1.7 §0.7
 open_questions:
   - actual_model_id / ultraモード相当設定の実体

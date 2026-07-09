@@ -4,7 +4,7 @@
 ssot_id: REG-005
 title: プログラム医療機器該当性評価
 domain: regulatory
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,6 +12,8 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.1.7 §5, 医薬品医療機器等法
 open_questions:
   - 「プログラムの医療機器該当性に関するガイドライン」の最新版・発出年月日の一次確認

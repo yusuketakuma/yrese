@@ -4,7 +4,7 @@
 ssot_id: CAL-002
 title: 別表第三 調剤報酬点数表(令和8年厚生労働省告示第69号)読解ノート
 domain: calculation
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8

@@ -4,7 +4,7 @@
 ssot_id: ADP-002
 title: 外部システム責務分界
 domain: adapters
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,6 +12,8 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
   - 構築プロンプト v0.1.7 §12, §2, §23-28
   - docs/plan/phase0_plan.md §9.2, §10

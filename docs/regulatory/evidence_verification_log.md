@@ -4,7 +4,7 @@
 ssot_id: REG-007
 title: 公式資料検証台帳(evidence_id 発行候補)
 domain: regulatory
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,6 +12,8 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.1.7 §11、docs/regulatory/source_registry.md(REG-001)
 open_questions:
   - ONS限定資料(オン資外部IF仕様書・電子処方箋記録条件仕様)の入手手続き(人間の登録作業が必要)

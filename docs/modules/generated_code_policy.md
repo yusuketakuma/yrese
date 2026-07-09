@@ -4,13 +4,15 @@
 ssot_id: MOD-014
 title: 生成コードポリシー
 domain: modules
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
   - 構築プロンプト v0.1.7 §0.0.3.4(generated codeの手編集禁止), §0.0.3.11(drift check), §0.1.6.12(generated filesは生成元と同一WP)
 depends_on:

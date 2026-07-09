@@ -4,7 +4,7 @@
 ssot_id: UIX-002
 title: 体験品質ベースライン
 domain: uiux
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,6 +12,8 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.1.7 §8 / docs/plan/phase0_plan.md §6
 depends_on: [docs/uiux/medical_ui_ux_principles.md]
 impacts: [docs/uiux/performance_budget.md, docs/uiux/usability_acceptance_criteria.md, docs/uiux/stability_slo_policy.md]

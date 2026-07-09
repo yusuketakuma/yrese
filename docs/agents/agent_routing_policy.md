@@ -4,7 +4,7 @@
 ssot_id: AGT-012
 title: エージェント割当(ルーティング)ポリシー
 domain: agents
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,6 +12,8 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 effective_from: 承認後
 effective_to: null
 source_refs:

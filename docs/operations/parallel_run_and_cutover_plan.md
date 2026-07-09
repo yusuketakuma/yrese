@@ -4,7 +4,7 @@
 ssot_id: OPS-003
 title: 並行稼働・カットオーバー計画
 domain: operations
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,6 +12,8 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.1.7 §9.1, §9.7 / docs/plan/phase0_plan.md §7
 depends_on:
   - OPS-001 (implementation_migration_plan)

@@ -4,13 +4,15 @@
 ssot_id: MOD-011
 title: 日付・時刻ポリシー
 domain: modules
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
   - 構築プロンプト v0.1.7 §3(処方日・調剤日・受付日・請求月・マスター版の明示), §18, §0.0.3.3
 depends_on:

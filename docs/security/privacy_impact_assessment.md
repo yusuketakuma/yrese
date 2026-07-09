@@ -4,7 +4,7 @@
 ssot_id: SEC-004
 title: プライバシー影響評価(PIA)
 domain: security
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,6 +12,8 @@ reviewers:
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs:
   - 構築プロンプト v0.1.7 §34, §9.6
   - 個人情報保護法・医療介護関係事業者向け個人情報ガイダンス(条文・章は【要確認】)

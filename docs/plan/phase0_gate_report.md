@@ -4,13 +4,15 @@
 ssot_id: PLAN-PHASE0-GATE-001
 title: Phase 0 完了ゲート報告
 domain: plan
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - human_review_required
 version: 0.1.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 depends_on: [PLAN-PHASE0-001, IDX-001]
 ```
 
