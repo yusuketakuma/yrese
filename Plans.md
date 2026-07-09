@@ -107,3 +107,15 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 目的: PHIを含まない共通error response schemaを `@yrese/contracts` に追加し、API側がschema parseを通して返す。
   - 想定スコープ: `packages/contracts/**`, `apps/api/**`。
   - 検証: `pnpm --filter @yrese/contracts test`, `pnpm --filter @yrese/api test`, `pnpm check:boundaries`。
+
+- [ ] WP-4006 build artifact hygiene: test files excluded from dist
+  - 発見根拠: `pnpm -r build` 後、`apps/api/dist/server.test.js` や `packages/*/dist/*.test.js` が生成され、runtime/package成果物にtest codeが混入している。
+  - 目的: `tsconfig.build.json` などでbuild出力から `*.test.ts` を除外し、test/typecheckは既存コマンドで維持する。
+  - 想定スコープ: `apps/api/**`, `packages/**` のtsconfig/build script。
+  - 検証: `pnpm -r build`, `find apps packages -path '*/dist/*test*'` が空、`pnpm -r test`, `pnpm -r typecheck`。
+
+- [ ] WP-1010 PermissionScope runtime parser strictness
+  - 発見根拠: `isPermissionScope()` は `value.split(':')` の先頭2要素だけを見るため、`tenant:read:extra` のような余分なsegment付き文字列を許しうる。
+  - 目的: runtime validationを `PermissionScope` 型どおり `resource:action` の2segmentだけに厳格化し、dev stub header由来scopeも過剰受理しない。
+  - 想定スコープ: `packages/shared-kernel/**`。
+  - 検証: `pnpm --filter @yrese/shared-kernel test`, `pnpm --filter @yrese/api test`, `pnpm check:boundaries`。
