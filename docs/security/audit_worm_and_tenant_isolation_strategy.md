@@ -4,16 +4,18 @@
 ssot_id: SEC-008
 title: 監査ログの改竄耐性(WORM)とテナント分離の戦略
 domain: security
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 source_refs:
-  - 構築プロンプト v0.2.0 §34, §20(電子保存)、§9.6
+  - 構築プロンプト v0.2.0 §15(監査ログ・WORM・マルチテナント)
 depends_on:
   - docs/security/audit_log_design.md(SEC-007 — ハッシュチェーンの正本)
   - docs/security/tenant_isolation_design.md(SEC-006)
@@ -61,6 +63,7 @@ blockers:
 ## 4. break-glass(緊急アクセス)
 
 - 緊急時のテナント越え・権限外アクセス(break-glass)を行う場合も、**監査イベント必須**・**businessReason 必須**(MOD-008 の cancel/void 系と同水準)・**事後レビュー必須**とする。
+  この businessReason 必須は現行 MOD-008 registry では breakglass 系イベントに構造強制されていないため、**MOD-008 の businessReasonRequiredEventTypes へ breakglass 系を追加する改版(WP-2010)で fail-closed に強制する**。改版完了までは本規律を運用ルールとして扱い、break-glass の実装自体を開始しない。
 - break-glass 用の恒常的なバックドア権限を作らない。発動は都度・時限とし、発動自体と終了を監査イベントにする。
 - 監査イベントを残せない状態での break-glass は実行しない(fail-closed)。
 
@@ -74,4 +77,5 @@ blockers:
 
 ## 変更履歴
 
+- 0.1.1 (2026-07-09): opus4.8 レビュー反映(source_refs を現行 v0.2.0 の実節 §15 へ修正、break-glass businessReason の構造強制経路を MOD-008 改版 = WP-2010 として明記)。
 - 0.1.0 (2026-07-09): 初版起草(WP-0047)。SEC-007 を正本としたうえで論理/物理の分離、break-glass 監査必須、偽ハッシュ供給禁止を規律化。

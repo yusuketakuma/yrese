@@ -4,14 +4,16 @@
 ssot_id: API-004
 title: PH-OS を公開 API の最初のリファレンス利用者とする方針
 domain: api
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
-source_refs: [構築プロンプト v0.2.0 §17, PRD-006(柱4), PRD-009(戦い4)]
+source_refs: [構築プロンプト v0.2.0 §14(API-first dogfooding / PH-OS / OSS), PRD-006(柱4), PRD-009(戦い4)]
 depends_on: [API-002, API-003]
 impacts: [WP-0036(Integration Hub), API-005]
 ```
@@ -52,4 +54,5 @@ impacts: [WP-0036(Integration Hub), API-005]
 
 ## 変更履歴
 
+- 0.1.1 (2026-07-09): opus4.8 レビュー反映(source_refs を現行 v0.2.0 の実節 §14 へ修正)。
 - 0.1.0 (2026-07-09): 初版起草(WP-0046)。

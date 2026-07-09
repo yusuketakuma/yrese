@@ -4,15 +4,17 @@
 ssot_id: API-003
 title: 公開 API(Open Rececon Platform)の構造方針
 domain: api
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8
   - codex (backend実装可能性)
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
-source_refs: [構築プロンプト v0.2.0 §17, PRD-006(柱4), PRD-007(§4 facade), PRD-009(戦い4)]
+source_refs: [構築プロンプト v0.2.0 §14(API-first)・§5(Open Rececon Platform)・§11(Integration Hub), PRD-006(柱4), PRD-007(§4 facade), PRD-009(戦い4)]
 depends_on: [API-002, PRD-007, DOM-005, DOM-006, SEC-004(PIA), OPS-005(SLA/SLO)]
 impacts: [API-004, API-005, WP-0036(Integration Hub), packages/contracts, apps/api]
 blockers:
@@ -65,4 +67,5 @@ blockers:
 
 ## 変更履歴
 
+- 0.1.1 (2026-07-09): opus4.8 レビュー反映(source_refs を現行 v0.2.0 の実節 §14/§5/§11 へ修正)。
 - 0.1.0 (2026-07-09): 初版起草(WP-0046)。PRD-007 impacts の前方参照を解消。

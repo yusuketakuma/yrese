@@ -69,11 +69,11 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 
 | ssot_id | 文書 | status |
 |---|---|---|
-| API-002 | [api_first_dogfooding_policy.md](api/api_first_dogfooding_policy.md) | PROPOSED |
-| API-005 | [oss_sdk_and_schema_publication_policy.md](api/oss_sdk_and_schema_publication_policy.md) | PROPOSED |
+| API-002 | [api_first_dogfooding_policy.md](api/api_first_dogfooding_policy.md) | APPROVED |
+| API-005 | [oss_sdk_and_schema_publication_policy.md](api/oss_sdk_and_schema_publication_policy.md) | APPROVED |
 | API-001 | [patient_search_contract.md](api/patient_search_contract.md) | APPROVED |
-| API-004 | [ph_os_reference_integration.md](api/ph_os_reference_integration.md) | PROPOSED |
-| API-003 | [platform_api_architecture.md](api/platform_api_architecture.md) | PROPOSED |
+| API-004 | [ph_os_reference_integration.md](api/ph_os_reference_integration.md) | APPROVED |
+| API-003 | [platform_api_architecture.md](api/platform_api_architecture.md) | APPROVED |
 
 ## docs/architecture/ (9件)
 
@@ -264,7 +264,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 | ssot_id | 文書 | status |
 |---|---|---|
 | SEC-007 | [audit_log_design.md](security/audit_log_design.md) | APPROVED |
-| SEC-008 | [audit_worm_and_tenant_isolation_strategy.md](security/audit_worm_and_tenant_isolation_strategy.md) | PROPOSED |
+| SEC-008 | [audit_worm_and_tenant_isolation_strategy.md](security/audit_worm_and_tenant_isolation_strategy.md) | APPROVED |
 | SEC-005 | [edge_node_security_design.md](security/edge_node_security_design.md) | APPROVED |
 | SEC-004 | [privacy_impact_assessment.md](security/privacy_impact_assessment.md) | APPROVED |
 | SEC-002 | [provider_security_guideline_mapping.md](security/provider_security_guideline_mapping.md) | APPROVED |

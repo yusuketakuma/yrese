@@ -4,15 +4,17 @@
 ssot_id: API-002
 title: API-first dogfooding 原則(自社 UI も公開 API と同一契約のみを使う)
 domain: api
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8
   - codex (backend実装可能性)
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
-source_refs: [構築プロンプト v0.2.0 §0.0.2.2, PRD-006(柱4), PRD-008(D6), PRD-009(戦い4)]
+source_refs: [構築プロンプト v0.2.0 §14(API-first dogfooding / PH-OS / OSS), PRD-006(柱4), PRD-008(D6), PRD-009(戦い4)]
 depends_on: [PRD-006, PRD-008, API-001, MOD-003(依存方向)]
 impacts: [API-003, API-004, API-005, packages/contracts, apps/api, apps/web]
 blockers:
@@ -31,7 +33,7 @@ blockers:
 
 1. **単一契約**: API 契約の正本は @yrese/contracts(contract-first、API-001 で実績確立)。
    backend は契約 schema で入出力を検証し、frontend は契約由来型のみを参照する。
-   契約外フィールドの仮定は禁止(v0.2.0 §0.0.2.2)。
+   契約外フィールドの仮定は禁止(v0.2.0 §14)。
 2. **抜け道 API の禁止**: apps/web だけが呼べる非公開エンドポイント、契約に載らない
    隠しパラメータ・隠しフィールドを作らない。内部利用と外部公開で認可 scope が異なることは
    許容するが、**契約形状は同一**とする。
@@ -58,4 +60,5 @@ blockers:
 
 ## 変更履歴
 
+- 0.1.1 (2026-07-09): opus4.8 レビュー反映(source_refs を現行 v0.2.0 の実節 §14 へ修正)。
 - 0.1.0 (2026-07-09): 初版起草(WP-0046)。
