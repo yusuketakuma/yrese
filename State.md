@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-07-09(続き)
+
+### 17:00〜17:10 — マイルストーン: 初の evidence 裏付け算定コード(WP-2101b)
+
+- **Phase 0 ゲート通過**(人間承認)→ 98 SSOT 一括 APPROVED(5fa3f14)
+- WP-0017: evidence 71件正式採番、算定16行 EVIDENCE_ISSUED 化(8cf3f10)
+- CAL-004 算定エンジン設計: fable5起案 → opus4.8 レビュー(APPROVE_WITH_CHANGES)→ 全指摘反映+register照合訂正(EVD-CAL-0021=3剤分まで)で v0.2.1 APPROVED(24adf71)
+- **WP-2101b マージ(76da0d6)**: 5ルール(調剤基本料1=47点/内服薬剤調製料=24点上限3/調剤管理料2=10点/服薬管理指導料3=45点/夜間・休日等加算=40点)、POINTS_ONLY_COPAY_BLOCKED(claimable:false型強制)、適用日ガード(2026-06-01 inclusive)、重複・上限検知、golden 16テスト。opus4.8事後レビュー(APPROVE_WITH_CHANGES→境界通過側テスト2件+canonical golden 166点を追加して解消)
+- copay(一部負担金)は evidence 未発行のため BLOCKED_REGULATORY_REVIEW 維持(点→円換算・負担割合・端数処理の根拠が必要)
+- WP-1101 ドメイン設計SSOT 4文書(PROPOSED、Phase 1ゲート対象)f817dc2
+- codex後続: WP-4011(スクリプト回帰ハーネス)→ WP-4013(重複レジストリスキャン拡充)を発行済み
+
 ## 2026-07-09
 
 ### 16:00〜16:35 — 第4〜5波: Phase 0 文書完成・算定骨格・codex自律スキャン・ゲート報告
