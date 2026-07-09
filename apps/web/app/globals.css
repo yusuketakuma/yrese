@@ -1,0 +1,77 @@
+/*
+ * 医療UI原則(docs/plan/phase0_plan.md §5 / v0.1.7 §7)に基づく最小スタイル。
+ * 装飾・アニメーションより視認性・状態明示を優先する。色だけに依存しない状態表現のため、
+ * 状態バッジは必ずテキストラベルを伴う。
+ */
+
+:root {
+  --color-bg: #ffffff;
+  --color-fg: #1a1a1a;
+  --color-border: #c0c0c0;
+  --color-mode-normal-bg: #e8f0e8;
+  --color-mode-degraded-bg: #fff3cd;
+  --color-mode-local-only-bg: #f8d7da;
+  --color-provisional-bg: #fff3cd;
+  --focus-ring: 3px solid #1a56db;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family:
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "BIZ UDGothic", Meiryo,
+    system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* キーボード操作を第一級とするため、フォーカスは常に明示 */
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.app-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.system-mode-badge {
+  display: inline-block;
+  padding: 0.15rem 0.75rem;
+  border: 1.5px solid var(--color-fg);
+  border-radius: 3px;
+  font-weight: 700;
+  background: var(--color-mode-normal-bg);
+}
+
+.system-mode-badge[data-mode="EXTERNAL_DEGRADED"],
+.system-mode-badge[data-mode="CLOUD_DEGRADED"],
+.system-mode-badge[data-mode="RECOVERY_SYNC"] {
+  background: var(--color-mode-degraded-bg);
+}
+
+.system-mode-badge[data-mode="LOCAL_ONLY"] {
+  background: var(--color-mode-local-only-bg);
+}
+
+.app-main {
+  padding: 1rem;
+  max-width: 1200px;
+}
