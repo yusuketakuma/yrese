@@ -6,6 +6,12 @@
 
 ## 2026-07-10
 
+### WP-4072 SQL secret scan coverage
+
+- fable5 の `PLAN_APPROVED` に基づき、`scripts/check-secrets.mjs` の既存 text extension allow-listへ `.sql` だけを追加。secret pattern、ignored dirs/files、same-line `secret-scan: allow`、findingにpath/line/pattern nameだけを出して値を出さないredacted output contractは変更せず、binary/生成物や未関係拡張子へ対象を広げていない。
+- regression harnessは clean SQL pass、synthetic API-key assignment exit 1、SQL same-line allow pass、findingのrelative path/line/`Generic secret assignment`表示、raw synthetic value非露出を固定。fixtureは合成・非PHIで、real credentialを含まない。
+- 検証: `node --check scripts/check-secrets.mjs` PASS、`node --check scripts/check-scripts.mjs` PASS、`pnpm test:scripts` PASS、`pnpm check:secrets` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。live scanで現行migration `000001` / `000002` / `000003` もclean。独立reviewer 2名から `APPROVED` を受領した。
+
 ### WP-4073 CI PostgreSQL integration fail-open closure
 
 - fable5 の `PLAN_APPROVED` に基づき、CI `check` jobへ official `postgres:16@sha256:be01cf82fc7dbba824acf0a82e150b4b360f3ff93c6631d7844af431e841a95c` disposable serviceを追加。digest provenance は Docker Hub official tag API endpoint `https://hub.docker.com/v2/namespaces/library/repositories/postgres/tags/16` の `digest` fieldを2026-07-10に取得し、OCI index `sha256:be01cf82fc7dbba824acf0a82e150b4b360f3ff93c6631d7844af431e841a95c` を得たもの。合成専用user/password/database、port 5432、`pg_isready` health gateを設定し、`TEST_DATABASE_URL` は Test stepだけへ注入する。interim CI PostgreSQL 16はtest runtime限定で、production Aurora majorは別途SSOT_UPDATE対象として推測・流用しない。

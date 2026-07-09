@@ -362,6 +362,41 @@ async function testSecretAllowlistAndDetection() {
   const leakOutput = outputOf(leakResult);
   assert(leakResult.status === 1, "check-secrets should fail when a fixture contains a synthetic OpenAI key");
   assert(leakOutput.includes("OpenAI API key"), "secret finding should name the detected pattern");
+
+  const cleanSqlRoot = path.join(tempRoot, "secrets-sql-clean");
+  await writeText(
+    path.join(cleanSqlRoot, "migrations", "000004_clean_fixture.sql"),
+    "CREATE TABLE synthetic_fixture (fixture_id TEXT PRIMARY KEY);\n",
+  );
+  const cleanSqlResult = runNode("check-secrets.mjs", [], { cwd: cleanSqlRoot });
+  assert(cleanSqlResult.status === 0, `check-secrets should pass clean SQL: ${outputOf(cleanSqlResult)}`);
+
+  const syntheticSqlSecret = ["Synthetic", "Sql", "Credential", "1234"].join("_");
+  const sqlLeakRoot = path.join(tempRoot, "secrets-sql-leak");
+  const sqlLeakRelativePath = path.join("migrations", "000004_secret_fixture.sql");
+  await writeText(
+    path.join(sqlLeakRoot, sqlLeakRelativePath),
+    `-- Synthetic scanner fixture; not a real credential.\nUPDATE synthetic_fixture SET api_key = '${syntheticSqlSecret}';\n`,
+  );
+  const sqlLeakResult = runNode("check-secrets.mjs", [], { cwd: sqlLeakRoot });
+  const sqlLeakOutput = outputOf(sqlLeakResult);
+  assert(sqlLeakResult.status === 1, "check-secrets should fail for a synthetic SQL API-key assignment");
+  assert(
+    sqlLeakOutput.includes("migrations/000004_secret_fixture.sql:2: Generic secret assignment"),
+    "SQL secret finding should include the relative path, line, and pattern name",
+  );
+  assert(!sqlLeakOutput.includes(syntheticSqlSecret), "SQL secret finding must not expose the raw synthetic value");
+
+  const allowedSqlRoot = path.join(tempRoot, "secrets-sql-allow");
+  await writeText(
+    path.join(allowedSqlRoot, "migrations", "000004_allowed_fixture.sql"),
+    `UPDATE synthetic_fixture SET api_key = '${syntheticSqlSecret}'; -- secret-scan: allow\n`,
+  );
+  const allowedSqlResult = runNode("check-secrets.mjs", [], { cwd: allowedSqlRoot });
+  assert(
+    allowedSqlResult.status === 0,
+    `check-secrets should honor a same-line SQL allow marker: ${outputOf(allowedSqlResult)}`,
+  );
 }
 
 async function testCleanRemovesGeneratedArtifacts() {
