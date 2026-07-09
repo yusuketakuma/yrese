@@ -8,7 +8,7 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -16,9 +16,8 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 source_refs:
   - 構築プロンプト v0.1.7 §0.0.3.3, §7(エラー表示原則)
 depends_on:
-  - packages/shared-kernel error-codes.ts(9ab039e)
+  - packages/shared-kernel error-codes.ts(KERNEL_ERROR_CODES seed)
 open_questions:
-  - AUTH-0003 の ErrorCodeDef 正式登録(現在は apps/api 内の文字列定数 — 下記 §4)
   - エラーコードとUI表示文言(次に何をすべきか)の対応表の管理場所(UIX-001 と連動)
 blockers: []
 ```
@@ -46,9 +45,10 @@ blockers: []
 
 | code | domain | severity | affectsClaimability | requiresHumanReview | 説明 | 状態 |
 |---|---|---|---|---|---|---|
-| AUTH-0003 | AUTH | ERROR | false | false | 権限不足・コンテキスト不在(403)。deny-by-default の一律応答 | 実装済み(apps/api、40a2512)だが ErrorCodeRegistry 未登録【要整備 — WP-2003 前後で登録実装】 |
+| AUTH-0003 | AUTH | ERROR | false | false | 権限不足・コンテキスト不在(403)。deny-by-default の一律応答 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / apps/api errorResponseSchema) |
+| PAT-0001 | PATIENT | ERROR | false | false | 患者検索クエリ不正(400)。q/limit/cursor の契約違反や cursor 境界不一致 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-001 patient search) |
 
-(初期セットの本格登録は、各ドメイン実装WPの DoR で「使用するエラーコードが本台帳に登録済みであること」を要求することで拡充する)
+(初期セットは `KERNEL_ERROR_CODES` seed として登録済み。今後の拡充は、各ドメイン実装WPの DoR で「使用するエラーコードが本台帳に登録済みであること」を要求することで行う)
 
 ## 5. 変更手順
 
