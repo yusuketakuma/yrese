@@ -155,3 +155,9 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 目的: 既存のtypecheck/test/build/boundaryに加え、secret混入と依存リスクをCIで機械的に検出する。
   - 想定スコープ: `.github/workflows/ci.yml`, `package.json`, 必要なら `scripts/**`。
   - 検証: `pnpm check:boundaries`, 追加scanコマンド、`git diff --check`。
+
+- [ ] WP-4010 workspace generated artifact cleanup command
+  - 発見根拠: `pnpm -r build` 後に `apps/api/dist`, `apps/web/.next`, `packages/*/dist` が残るが、root `package.json` にclean scriptがなく、generated artifact掃除の標準手順がない。
+  - 目的: build/test後のローカル状態を再現可能にするため、ignored生成物を安全に削除するrepo標準コマンドを用意する。
+  - 想定スコープ: `package.json`, 必要なら `scripts/**`。
+  - 検証: `pnpm build`, `pnpm clean`, `git status --short --untracked-files=all` が生成物を表示しないこと、`git diff --check`。
