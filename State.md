@@ -6,6 +6,13 @@
 
 ## 2026-07-10
 
+### WP-7001 M1 audit intent fingerprint golden-before-write gate
+
+- fable5 の `PLAN_APPROVED` と DB-005 v0.1.2 APPROVED に基づき、永続化writeより先に必要な M1 だけを `@yrese/audit` へ実装。`AuditAppendIntent` は trusted context の tenant/pharmacy/actor と分離し、authority/chain位置を型とruntime exact-key検証で供給不能にした。fingerprintは context + intent全フィールド(`retryCount`含む)の sorted-key canonical JSON に対する SHA-256で、`fingerprintSchemaVersion=1` はhash入力に含めず別metadataとして返し、未知versionは専用errorでfail-closedに拒否する。
+- strict canonical JSON は UTF-16 key順、object `undefined` omit、`null` preserve、bigint base10、safe integer限定、wallClock UTC millisecond ISO、array順序維持・hole/undefined拒否、cycle/symbol/function/Date/非plain object拒否を固定。outer/context/intent/nestedの未知・symbol・non-enumerable・accessor propertyをdereference前に拒否し、既存 `createAuditEvent` のpure domain validationを再利用して負clock/retry、無効schema/hash/event type/target、PHIをI/O前に停止する。未知event type errorは入力値をechoしない固定文言へ変更し、runtime import cycleも解消した。
+- synthetic-only golden vectorは全optional fieldを含み、canonical JSONがversionを含まないことと hash `2c3a02b9051c29598991a60ebffaa1636e1ac9fdab74af88b4a6e7d164e02745` をbyte固定。既存 `audit.test.ts` は変更せず、canonical JSONとentryHash `dcfea14c0e42f227bd98c651f8cedb1e4d86712b71625701f519245660583836` の不変を46 legacy testsで確認。独立 verifier/security review と read-only Opus最終reviewはいずれも `APPROVED`。
+- 検証: audit 88/88、`pnpm -r typecheck`、`pnpm -r test`、audit build、`pnpm check:boundaries`、`pnpm check:secrets`、`pnpm check:deps`、`pnpm check:sbom`、`pnpm test:scripts`、full build、`git diff --check` がPASS。local PostgreSQL integration 5件は `TEST_DATABASE_URL` 不在でexpected skip、DB操作なし。AWS SDK/package/lock、DynamoDB Local harness、adapter/persistence writeは未変更で後続laneはHOLD。
+
 ### WP-4072 SQL secret scan coverage
 
 - fable5 の `PLAN_APPROVED` に基づき、`scripts/check-secrets.mjs` の既存 text extension allow-listへ `.sql` だけを追加。secret pattern、ignored dirs/files、same-line `secret-scan: allow`、findingにpath/line/pattern nameだけを出して値を出さないredacted output contractは変更せず、binary/生成物や未関係拡張子へ対象を広げていない。

@@ -1,7 +1,24 @@
 import { createHash } from "node:crypto";
 import type { EventEnvelope } from "@yrese/events";
-import { assertIsoInstant, createEventEnvelope } from "@yrese/events";
+import { createEventEnvelope } from "@yrese/events";
 import { createKernelErrorCodeRegistry, type UserId } from "@yrese/shared-kernel";
+
+import { canonicalJsonString, normalizeCanonicalInstant } from "./canonical-json.js";
+import {
+  AUDIT_INTENT_FINGERPRINT_SCHEMA_VERSION,
+  canonicalizeAuditAppendIntentFingerprintInput,
+  type AuditIntentFingerprint,
+  type AuditIntentFingerprintInput,
+} from "./intent-fingerprint.js";
+
+export {
+  AUDIT_INTENT_FINGERPRINT_SCHEMA_VERSION,
+  UnsupportedAuditIntentFingerprintSchemaVersionError,
+  type AuditAppendIntent,
+  type AuditIntentFingerprint,
+  type AuditIntentFingerprintInput,
+  type AuditWriteContext,
+} from "./intent-fingerprint.js";
 
 export const AUDIT_EVENT_TYPES = [
   "patient.viewed",
@@ -215,7 +232,7 @@ function assertRegisteredAuditEventType(value: string): asserts value is AuditEv
   parseAuditEventType(value);
 
   if (!auditEventTypeSet.has(value)) {
-    throw new RangeError(`unknown auditEventType: ${value}`);
+    throw new RangeError("unknown auditEventType");
   }
 }
 
@@ -296,80 +313,7 @@ function freezeBusinessReason(businessReason: AuditBusinessReason): AuditBusines
 }
 
 function normalizeInstant(value: string | Date, label: string): string {
-  if (value instanceof Date) {
-    if (Number.isNaN(value.getTime())) {
-      throw new RangeError(`${label} must be a valid Date`);
-    }
-    return value.toISOString();
-  }
-
-  assertNonEmptyString(value, label);
-  assertIsoInstant(value, label);
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    throw new RangeError(`${label} must be a valid instant`);
-  }
-
-  return date.toISOString();
-}
-
-function canonicalJsonValue(value: unknown, label: string): unknown {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  if (value === null || typeof value === "boolean" || typeof value === "string") {
-    return value;
-  }
-
-  if (typeof value === "bigint") {
-    return value.toString(10);
-  }
-
-  if (typeof value === "number") {
-    if (!Number.isSafeInteger(value)) {
-      throw new RangeError(`${label} must be a safe integer`);
-    }
-    return value;
-  }
-
-  if (value instanceof Date) {
-    if (Number.isNaN(value.getTime())) {
-      throw new RangeError(`${label} must be a valid Date`);
-    }
-    return value.toISOString();
-  }
-
-  if (Array.isArray(value)) {
-    return value.map((item, index) => {
-      const canonicalItem = canonicalJsonValue(item, `${label}[${index}]`);
-      if (canonicalItem === undefined) {
-        throw new RangeError(`${label}[${index}] must not be undefined`);
-      }
-      return canonicalItem;
-    });
-  }
-
-  if (typeof value === "object") {
-    const output: Record<string, unknown> = {};
-    for (const key of Object.keys(value).sort()) {
-      const canonicalChild = canonicalJsonValue(
-        (value as Record<string, unknown>)[key],
-        `${label}.${key}`,
-      );
-      if (canonicalChild !== undefined) {
-        output[key] = canonicalChild;
-      }
-    }
-    return output;
-  }
-
-  throw new TypeError(`${label} has an unsupported value type`);
-}
-
-function canonicalJsonString(value: Record<string, unknown>): string {
-  return JSON.stringify(canonicalJsonValue(value, "auditEvent"));
+  return normalizeCanonicalInstant(value, label);
 }
 
 function auditCanonicalPayload(input: CreateAuditEventInput | AuditEvent): Record<string, unknown> {
@@ -422,7 +366,7 @@ function auditCanonicalPayload(input: CreateAuditEventInput | AuditEvent): Recor
 
 export function canonicalizeAuditEventPayload(input: CreateAuditEventInput | AuditEvent): string {
   // The audit entry commits to event payload through payloadHash while audit targets stay ID-only.
-  return canonicalJsonString(auditCanonicalPayload(input));
+  return canonicalJsonString(auditCanonicalPayload(input), "auditEvent");
 }
 
 export function computeAuditEntryHash(input: {
@@ -521,6 +465,32 @@ export function createAuditEvent(input: CreateAuditEventInput): AuditEvent {
   } satisfies AuditEvent;
 
   return Object.freeze(auditEvent);
+}
+
+function canonicalizeAuditAppendIntentFingerprint(
+  input: AuditIntentFingerprintInput,
+): string {
+  // Exact-key canonicalization runs before dereferencing the input for domain validation.
+  const canonicalJson = canonicalizeAuditAppendIntentFingerprintInput(input);
+  createAuditEvent({
+    ...input.intent,
+    tenantId: input.context.tenantId,
+    pharmacyId: input.context.pharmacyId,
+    actorId: input.context.actorId,
+    sequenceNumber: 1n,
+    prevHash: AUDIT_GENESIS_PREV_HASH,
+  });
+  return canonicalJson;
+}
+
+export function computeAuditAppendIntentFingerprint(
+  input: AuditIntentFingerprintInput,
+): AuditIntentFingerprint {
+  const canonicalJson = canonicalizeAuditAppendIntentFingerprint(input);
+  return Object.freeze({
+    fingerprintSchemaVersion: AUDIT_INTENT_FINGERPRINT_SCHEMA_VERSION,
+    intentFingerprint: createHash("sha256").update(canonicalJson, "utf8").digest("hex"),
+  });
 }
 
 function hashFormatFailure(
