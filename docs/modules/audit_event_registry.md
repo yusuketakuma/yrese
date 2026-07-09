@@ -8,7 +8,7 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.2.0
+version: 0.2.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -21,6 +21,7 @@ depends_on:
 open_questions:
   - 保存期間(REG-003 の法定根拠確定待ち — SEC-007 と同期)
 change_log:
+  - 0.2.1 (2026-07-09) SEC-008 §4 反映 — breakglass.ended を追加し、businessReasonRequiredEventTypes に breakglass.used を登録。終了イベントは発動イベントと同一 correlationId で紐づける。
   - 0.2.0 (2026-07-09) opus4.8 命名レビュー(CHANGES_REQUIRED)反映 — 文法正式化・会計taxonomy統合(checkout.* supersede)・欠落3種追加・実装時必須2点。命名確定済み、WP-2003 解禁。
 blockers: []
 ```
@@ -53,7 +54,7 @@ blockers: []
 | master.approved / master.applied / master.rolled_back | マスター承認・適用・ロールバック | ○ | MST-001 パイプラインと連動 |
 | permission.changed / account.issued / account.suspended | 権限変更・アカウント発行停止 | ○ | |
 | auth.login / auth.logout / auth.failed | 認証 | ○ | failed は連続失敗の検知対象 |
-| breakglass.used | break-glass 使用 | ○ | 事後レビュー必須(SEC-007) |
+| breakglass.used / breakglass.ended | break-glass 発動・終了 | ○ | `breakglass.used` は businessReason 必須。`breakglass.ended` は発動イベントと同一 correlationId で紐づける。事後レビュー必須(SEC-007/SEC-008) |
 | support.session.started / support.session.ended / support.operation | サポートセッションと全操作 | ○ | §9.2 リモートサポート監査 |
 | data.exported / data.returned | エクスポート・データ返却 | ○ | OPS data governance と連動 |
 | config.changed | 設定変更 | ○ | |
@@ -86,6 +87,7 @@ ACC-011 の短縮名(charge_created 等)は以下の正規形へ写像する。*
 **WP-2003 実装時の必須事項(opus4.8 指摘 0.2.0)**:
 - `correlationId` を AuditEvent の必須フィールドとする(返金=Reversal+Refund+領収証取消のような複合操作の再構成に必要。EventEnvelope は保持済み — 必須化を骨格実装で強制)。
 - 業務理由フィールド `businessReason`(構造化: 理由コード+自由記述禁止 or マスク済み)を `reasonCode`(error code registry 参照=失敗理由)と**分離**して追加する。取消・無効化・調整・返金イベントでは businessReason 必須。
+- `businessReasonRequiredEventTypes` の初期値は `accounting.adjustment.created` と `breakglass.used`。break-glass 終了イベント(`breakglass.ended`)は SEC-008 §4 に businessReason 必須根拠がないため必須化せず、同一 `correlationId` と必要に応じた `causationId` で発動イベントに紐づける。
 
 ## 3. 変更手順
 

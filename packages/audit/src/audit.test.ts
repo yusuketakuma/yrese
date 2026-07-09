@@ -84,6 +84,11 @@ describe("audit event type registry", () => {
   it("registers meta-audit event types", () => {
     expect(isAuditEventType("audit.viewed")).toBe(true);
   });
+
+  it("registers break-glass start and end event types", () => {
+    expect(isAuditEventType("breakglass.used")).toBe(true);
+    expect(isAuditEventType("breakglass.ended")).toBe(true);
+  });
 });
 
 describe("createAuditEvent", () => {
@@ -133,6 +138,65 @@ describe("createAuditEvent", () => {
       code: "PATIENT_REQUESTED_REFUND",
     });
     expect(Object.isFrozen(auditEvent.businessReason)).toBe(true);
+  });
+
+  it("requires businessReason for breakglass.used", () => {
+    expect(requiresBusinessReason("breakglass.used")).toBe(true);
+
+    expect(() =>
+      createAuditEvent(
+        baseAuditEvent({
+          auditEventType: "breakglass.used",
+          aggregateId: "breakglass-session-001",
+          aggregateType: "breakglass_session",
+          targetRef: {
+            kind: "breakglass_session",
+            id: "breakglass-session-001",
+          },
+        }),
+      ),
+    ).toThrow(/businessReason/);
+  });
+
+  it("links breakglass.ended to the start event with correlation and causation IDs", () => {
+    expect(requiresBusinessReason("breakglass.ended")).toBe(false);
+
+    const correlationId = eventId("breakglass-correlation-001");
+    const breakglassUsed = createAuditEvent(
+      baseAuditEvent({
+        eventId: eventId("breakglass-used-001"),
+        correlationId,
+        auditEventType: "breakglass.used",
+        aggregateId: "breakglass-session-001",
+        aggregateType: "breakglass_session",
+        targetRef: {
+          kind: "breakglass_session",
+          id: "breakglass-session-001",
+        },
+        businessReason: {
+          code: "EMERGENCY_SUPPORT_ACCESS",
+        },
+      }),
+    );
+
+    const breakglassEnded = createAuditEvent(
+      baseAuditEvent({
+        eventId: eventId("breakglass-ended-001"),
+        correlationId,
+        causationId: breakglassUsed.eventId,
+        auditEventType: "breakglass.ended",
+        aggregateId: "breakglass-session-001",
+        aggregateType: "breakglass_session",
+        targetRef: {
+          kind: "breakglass_session",
+          id: "breakglass-session-001",
+        },
+      }),
+    );
+
+    expect(breakglassEnded.correlationId).toBe(breakglassUsed.correlationId);
+    expect(breakglassEnded.causationId).toBe(breakglassUsed.eventId);
+    expect(breakglassEnded.businessReason).toBeUndefined();
   });
 
   it.each([

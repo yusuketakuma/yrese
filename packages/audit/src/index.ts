@@ -31,6 +31,7 @@ export const AUDIT_EVENT_TYPES = [
   "auth.logout",
   "auth.failed",
   "breakglass.used",
+  "breakglass.ended",
   "support.session.started",
   "support.session.ended",
   "support.operation",
@@ -112,7 +113,7 @@ const businessReasonRequiredActions = new Set([
   "reversed",
   "rolled_back",
 ]);
-const businessReasonRequiredEventTypes = new Set<string>(["accounting.adjustment.created"]);
+const businessReasonRequiredEventTypes = new Set<string>(["accounting.adjustment.created", "breakglass.used"]);
 const auditOutcomes = new Set<string>(["success", "denied", "failed"]);
 const kernelErrorCodeRegistry = createKernelErrorCodeRegistry();
 
