@@ -37,8 +37,16 @@ describe("web shell smoke contracts", () => {
     );
   });
 
+  it("renders the implemented reception dashboard route (WP-3009-UI)", () => {
+    const html = renderToStaticMarkup(<ReceptionDashboard />);
+
+    expect(html).toContain("<h2>受付ダッシュボード</h2>");
+    expect(html).toContain('aria-label="受付ダッシュボード"');
+    expect(html).toContain("受付登録");
+    expect(html).not.toMatch(/未実装|scaffold/);
+  });
+
   it.each([
-    ["受付ダッシュボード", <ReceptionDashboard />],
     ["処方入力", <PrescriptionsPage />],
     ["会計", <CheckoutPage />],
     ["請求前点検", <ClaimCheckPage />],

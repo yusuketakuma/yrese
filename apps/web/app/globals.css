@@ -346,20 +346,24 @@ tr[data-duplicate-kana="true"] > td {
   color: var(--color-fg);
 }
 
-.patient-search-results {
+.patient-search-results,
+.reception-queue {
   border-collapse: collapse;
   width: 100%;
   max-width: 900px;
 }
 
 .patient-search-results th,
-.patient-search-results td {
+.patient-search-results td,
+.reception-queue th,
+.reception-queue td {
   border: 1px solid var(--color-border);
   padding: 0.45rem 0.6rem;
   text-align: left;
   vertical-align: top;
 }
 
-.patient-search-results thead {
+.patient-search-results thead,
+.reception-queue thead {
   background: #f0f2f5;
 }

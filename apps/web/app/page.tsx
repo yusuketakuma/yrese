@@ -1,16 +1,14 @@
+import { ReceptionDashboard } from "./reception-dashboard";
+
 /**
- * 受付ダッシュボード(プレースホルダー)。
- * 画面群は docs/plan/phase0_plan.md §5 の screen_inventory 仮説に基づく。
- * 各画面の実装は該当SSOT(UI/UX・API契約)の APPROVED 後に行う。
+ * 受付ダッシュボード(SCR-001、API-006 v0.2.0)。
+ * 受付キューの表示と受付登録。外部連携状態は SCR-024/025 の実装WPで接続する。
  */
-export default function ReceptionDashboard() {
+export default function ReceptionPage() {
   return (
     <>
       <h2>受付ダッシュボード</h2>
-      <p>
-        本画面は scaffold 段階のプレースホルダーです。患者検索・受付一覧・外部連携状態は
-        API契約(OpenAPI)承認後に実装します。
-      </p>
+      <ReceptionDashboard />
     </>
   );
 }

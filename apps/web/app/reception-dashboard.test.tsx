@@ -1,0 +1,147 @@
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+
+(globalThis as { React?: typeof React }).React = React;
+
+import type { PatientSearchResult, ReceptionQueueEntry } from "@yrese/contracts";
+
+import {
+  ReceptionError,
+  ReceptionQueueTable,
+  ReceptionQueueView,
+  createReception,
+  fetchReceptionQueue,
+  formatAcceptedTime,
+} from "./reception-dashboard";
+
+function patient(over: Partial<PatientSearchResult>): PatientSearchResult {
+  return {
+    patientId: "patient-test-001",
+    name: "合成 太郎",
+    kana: "ゴウセイ タロウ",
+    birthDate: "1990-01-01",
+    sex: "male",
+    patientNumber: "T-0001",
+    eligibilityStatus: "VERIFIED",
+    ...over,
+  };
+}
+
+function entry(over: Partial<ReceptionQueueEntry>): ReceptionQueueEntry {
+  return {
+    receptionId: "rc-test-001",
+    patient: patient({}),
+    acceptedAt: "2026-07-09T00:15:00.000Z",
+    receptionStatus: "WAITING",
+    prescriptionIntakeType: "paper",
+    ...over,
+  };
+}
+
+function jsonResponse(status: number, body: unknown): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(body),
+  } as unknown as Response;
+}
+
+describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
+  it("renders queue rows with text status labels and patient juxtaposition", () => {
+    const html = renderToStaticMarkup(
+      <ReceptionQueueTable
+        entries={[
+          entry({ receptionId: "rc-1", receptionStatus: "WAITING" }),
+          entry({
+            receptionId: "rc-2",
+            receptionStatus: "CANCELLED",
+            patient: patient({ patientId: "p2", patientNumber: "T-0002" }),
+          }),
+        ]}
+      />,
+    );
+
+    // 状態はテキストラベル(色非依存)
+    expect(html).toContain("待機中");
+    expect(html).toContain("取消済み");
+    expect(html).toContain('data-status="WAITING"');
+    // 取り違え防止: カナ・氏名・生年月日・患者番号の並置
+    expect(html).toContain("ゴウセイ タロウ");
+    expect(html).toContain("合成 太郎");
+    expect(html).toContain("1990-01-01");
+    expect(html).toContain("T-0002");
+    // 処方箋区分ラベル
+    expect(html).toContain("紙");
+    // 受付時刻は formatAcceptedTime と同一表記
+    expect(html).toContain(formatAcceptedTime("2026-07-09T00:15:00.000Z"));
+  });
+
+  it("shows EmptyState for an empty queue and ErrorNotice for errors", () => {
+    const empty = renderToStaticMarkup(
+      <ReceptionQueueView
+        state={{ kind: "loaded", response: { date: "2026-07-09", entries: [] } }}
+      />,
+    );
+    expect(empty).toContain("2026-07-09 の受付はまだありません");
+    expect(empty).toContain('role="status"');
+
+    const error = renderToStaticMarkup(
+      <ReceptionQueueView
+        state={{
+          kind: "error",
+          notice: { message: "権限がありません。", nextAction: "管理者に確認してください。" },
+        }}
+      />,
+    );
+    expect(error).toContain('role="alert"');
+    expect(error).toContain("次のアクション:");
+  });
+
+  it("sends the explicit date to the API (no implicit today on the server)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(200, { date: "2026-07-01", entries: [] }),
+    );
+
+    const response = await fetchReceptionQueue("2026-07-01", fetchImpl);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const url = String(fetchImpl.mock.calls[0]![0]);
+    expect(url).toContain("/reception/queue?date=2026-07-01");
+    expect(response.entries).toEqual([]);
+  });
+
+  it("maps 409 idempotency conflicts to a duplicate-operation notice (RCV-0003)", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(409, { errorCode: "RCV-0003", message: "conflict" }));
+
+    await expect(
+      createReception("patient-test-001", fetchImpl, "key-1"),
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ReceptionError);
+      const notice = (error as ReceptionError).toNotice();
+      expect(notice.message).toContain("同じ操作キーが別の患者で再利用されました");
+      expect(notice.nextAction).toContain("受付一覧を更新");
+      expect(notice.errorCode).toBe("RCV-0003");
+      return true;
+    });
+
+    // idempotencyKey がリクエストボディで送られている
+    const init = fetchImpl.mock.calls[0]![1] as RequestInit;
+    expect(String(init.body)).toContain('"idempotencyKey":"key-1"');
+  });
+
+  it("does not display unregistered error codes verbatim", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(400, { errorCode: "<script>alert(1)</script>" }));
+
+    await expect(createReception("p1", fetchImpl, "key-2")).rejects.toSatisfy(
+      (error: unknown) => {
+        expect((error as ReceptionError).errorCode).toBeUndefined();
+        return true;
+      },
+    );
+  });
+});

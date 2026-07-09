@@ -23,7 +23,7 @@ import { SeverityList } from "../components/severity-list";
  * キーボード第一(autoFocus + Enter 送信)。
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:3001";
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:3001";
 
 /**
  * 開発用テナントヘッダ(バックエンドの dev stub と対)。
@@ -41,7 +41,7 @@ export function devTenantHeaders(
     "x-dev-tenant": "t-dev",
     "x-dev-pharmacy": "ph-dev",
     "x-dev-actor": "u-dev",
-    "x-dev-scopes": "patient:read",
+    "x-dev-scopes": "patient:read,reception:read,reception:write",
   };
 }
 
