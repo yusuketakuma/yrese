@@ -220,8 +220,19 @@ export function ReceptionQueueView({ state }: { readonly state: QueueState }) {
   );
 }
 
-function todayAsIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
+/**
+ * 受付業務日付の UI 既定値(JST 固定 — WP-4053)。
+ * toISOString() は UTC 日付になり JST 00:00〜08:59 に前日を返すため使わない。
+ * 業務日付のタイムゾーン規律は MOD-011 改版(WP-4053)が正本。
+ */
+export function todayAsIsoDate(now: Date = new Date()): string {
+  // sv-SE ロケールは YYYY-MM-DD 形式を返す
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
 }
 
 export function ReceptionDashboard() {

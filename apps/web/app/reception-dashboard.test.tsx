@@ -13,6 +13,7 @@ import {
   createReception,
   fetchReceptionQueue,
   formatAcceptedTime,
+  todayAsIsoDate,
 } from "./reception-dashboard";
 
 function patient(over: Partial<PatientSearchResult>): PatientSearchResult {
@@ -143,5 +144,14 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
         return true;
       },
     );
+  });
+});
+
+describe("business date is JST (WP-4053)", () => {
+  it("todayAsIsoDate returns the JST calendar date, not the UTC date", () => {
+    // 2026-07-09T20:00:00Z = JST 2026-07-10 05:00(UTC 日付のままだと前日になる時間帯)
+    expect(todayAsIsoDate(new Date("2026-07-09T20:00:00Z"))).toBe("2026-07-10");
+    // 2026-07-09T02:00:00Z = JST 2026-07-09 11:00(同日)
+    expect(todayAsIsoDate(new Date("2026-07-09T02:00:00Z"))).toBe("2026-07-09");
   });
 });
