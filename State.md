@@ -6,6 +6,12 @@
 
 ## 2026-07-10
 
+### WP-4067 web API transport fail-closed + same-origin dev routing
+
+- fable5 の `PLAN_APPROVED` に基づき、患者検索・受付一覧・受付登録の API endpoint 解決を `apps/web/app/api-transport.ts` へ集約。明示された HTTP(S) / 安全な root-relative base のみ許可し、production/test/staging/undefined で base が欠落・空・不正なら、設定値・患者検索語・患者IDを含まない固定エラーで `fetch` 前に停止する。
+- development の未設定時だけ `/_yrese-api` を同一オリジン base として返し、Next rewrite で `127.0.0.1:3001` へ転送する。rewrite 自体も `NODE_ENV=development` のみ生成し、production/test/staging では internal-loopback proxy route を公開しない。broad CORS、apps/api、WP-4066 auth semantics、WP-4065 dev-only least-privilege headers は変更していない。
+- tests は resolver environment matrix、unsafe base 拒否、production 設定欠落時の患者検索/受付一覧/受付登録の zero fetch、エラーへの query/患者ID 非露出、3操作の same-origin URL、rewrite の development-only matrixを固定。検証: `pnpm --filter @yrese/web test` PASS(63)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm --filter @yrese/web build` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 ### WP-4066 dev tenant context explicit opt-in — completed / HIGH review APPROVED
 
 - fable5 の `PLAN_ADJUSTMENT_APPROVED` に基づき、caller-controlled dev tenant headers を composition root の明示 opt-in なしでは一切 trusted context にしない deny-by-default 境界を実装。tenant context plugin から `process.env` 参照を除去し、常時 `tenantContext=undefined` を decorate、明示 `dev_headers` mode の場合だけ header hook を登録する。

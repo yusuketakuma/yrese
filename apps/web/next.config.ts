@@ -2,6 +2,17 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  async rewrites() {
+    if (process.env.NODE_ENV !== "development") {
+      return [];
+    }
+    return [
+      {
+        source: "/_yrese-api/:path*",
+        destination: "http://127.0.0.1:3001/:path*",
+      },
+    ];
+  },
   // 共通モジュールは TS ソースをそのまま export しているためトランスパイル対象にする
   transpilePackages: ["@yrese/shared-kernel", "@yrese/contracts"],
   webpack: (config) => {

@@ -509,6 +509,12 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - テスト: 既存の header/permission security tests を explicit dev helper へ移し、default server に attacker-selected headers を送っても患者 search/findById・受付 list/create が0 callのまま3 endpointすべて403になる否定テストを追加。config allow-list matrix、focused server/config 53 tests、API全体65 tests + PostgreSQL integration 3 explicit skip、API typecheck、boundaries、secrets、diff check はPASS。
   - レビュー・landing: fable5/Opus 4.8 が commit `137315d` を `REVIEW_RESULT: APPROVED`。API全体65 tests PASS + PostgreSQL integration 3 expected SKIP、GitHub CI green を確認し、commit/push 済み。残る外部 deployment black-box verification は deployment gate であり、コード完了の blocker ではない。
 
+- [x] WP-4067 web API transport fail-closed + same-origin dev routing(codex 提案 SELF-SCAN-20260710-12、fable5 PLAN_APPROVED)
+  - 発見根拠: `apps/web/app/patients/patient-search.tsx` は `NEXT_PUBLIC_API_BASE` 未設定時に `http://localhost:3001` へ送信し、受付画面も同じ値を流用していた。開発時は 3000→3001 の custom dev header request が CORS preflight を要する一方、API に CORS 設定はなく、本番の設定欠落時は患者検索語を end-user の localhost へ送信しうる。
+  - 目的: Web API endpoint 解決を一箇所へ集約し、production で `NEXT_PUBLIC_API_BASE` が欠落・空・不正なら、患者検索語/患者IDを含まない固定エラーで `fetch` 前に停止する。development 既定だけを narrow same-origin Next rewrite に通し、broad CORS や API/auth semantics の変更を避ける。
+  - 実装: `apps/web/app/api-transport.ts` に lazy resolver を追加し、明示 HTTP(S) / 安全な root-relative base のみ許可、production/test/staging/undefined の欠落を fail-closed にした。患者検索・受付一覧・受付登録は resolver を共有。Next rewrite `/_yrese-api/:path* -> http://127.0.0.1:3001/:path*` は `NODE_ENV=development` の場合だけ有効で、production/test/staging では route 自体を公開しない。WP-4066 の backend opt-in と WP-4065 の dev-only least-privilege headers は不変更。
+  - 検証: resolver environment matrix、production 設定欠落時の全3操作 zero fetch + PHI/query 非露出、3操作の same-origin URL、rewrite の development-only matrix を追加。`pnpm --filter @yrese/web test` PASS(63)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm --filter @yrese/web build` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 - [ ] WP-7001 Phase 1 DynamoDB persistence foundation + first aggregate synthetic proof(fable5 PLAN_APPROVED、HIGH、実装HOLD)
   - 目的: APPROVED 済み DB-005 §11 step 2 に従い、DynamoDB 永続化アダプタ基盤と最初の集約スライスを synthetic-only(PHI禁止)で実証する。
   - 承認済み計画: persistence adapter は `apps/api` server-only に置き、AWS SDK import を adapter 層へ限定する。最初の集約は、FHIR REST/CapabilityStatement を推測実装せず、DB-005 §6.1/§10 と `@yrese/audit` core が確定済みの synthetic-only `AuditAppendStore` とする。DynamoDB Local harness は CI では接続必須、local では明示 skip 可とし、IAM/STS/KMS/PITR/throughput の証明には使わない。

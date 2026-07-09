@@ -12,6 +12,7 @@ import { registeredErrorCodeOrUndefined } from "../components/error-code";
 import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
 import { ELIGIBILITY_LABELS } from "../components/patient-header";
 import { SeverityList } from "../components/severity-list";
+import { resolveWebApiUrl } from "../api-transport";
 
 /**
  * 患者検索UI(WP-3003 / WP-3008)。
@@ -24,7 +25,6 @@ import { SeverityList } from "../components/severity-list";
  * キーボード第一(autoFocus + Enter 送信)。
  */
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:3001";
 export const PATIENT_SEARCH_DEV_SCOPES = [
   permissionScope("patient", "read"),
 ] as const satisfies readonly PermissionScope[];
@@ -91,12 +91,17 @@ class SearchError extends Error {
   }
 }
 
-async function fetchSearch(q: string, cursor?: string): Promise<SearchPage> {
+export async function fetchSearch(
+  q: string,
+  cursor?: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<SearchPage> {
   const params = new URLSearchParams({ q });
   if (cursor !== undefined) {
     params.set("cursor", cursor);
   }
-  const res = await fetch(`${API_BASE}/patients/search?${params}`, {
+  const url = resolveWebApiUrl(`/patients/search?${params}`);
+  const res = await fetchImpl(url, {
     headers: devTenantHeaders(),
     cache: "no-store",
   });

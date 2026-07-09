@@ -9,6 +9,7 @@ import {
   createSearchRunner,
   devTenantHeaders,
   duplicateKanaSet,
+  fetchSearch,
   PatientSearchResults,
   PATIENT_SEARCH_DEV_SCOPES,
   type SearchPage,
@@ -31,6 +32,47 @@ function patient(over: Partial<PatientSearchResult>): PatientSearchResult {
 }
 
 describe("patient search hardening (WP-3008 / SCR-002)", () => {
+  it("uses the same-origin development proxy for patient searches (WP-4067)", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ results: [] }),
+    } as unknown as Response);
+
+    try {
+      await fetchSearch("合成", undefined, fetchImpl);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl.mock.calls[0]![0]).toBe(
+      "/_yrese-api/patients/search?q=%E5%90%88%E6%88%90",
+    );
+  });
+
+  it("fails before fetch when the production API base is missing (WP-4067)", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const fetchImpl = vi.fn();
+    const sensitiveQuery = "合成患者-秘密";
+
+    let thrown: unknown;
+    try {
+      await fetchSearch(sensitiveQuery, undefined, fetchImpl);
+    } catch (error) {
+      thrown = error;
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).not.toContain(sensitiveQuery);
+  });
+
   it("warns on duplicate kana and flags each duplicate row (P-09)", () => {
     const results = [
       patient({ patientId: "p1", patientNumber: "T-0001", kana: "ヤマダ タロウ" }),

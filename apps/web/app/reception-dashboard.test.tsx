@@ -66,6 +66,7 @@ async function withNodeEnv<T>(
   run: () => Promise<T>,
 ): Promise<T> {
   vi.stubEnv("NODE_ENV", nodeEnv);
+  vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
   try {
     return await run();
   } finally {
@@ -74,6 +75,35 @@ async function withNodeEnv<T>(
 }
 
 describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
+  it("fails before reception fetches when the production API base is missing (WP-4067)", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const queueFetch = vi.fn();
+    const createFetch = vi.fn();
+    const sensitivePatientId = "patient-secret-001";
+
+    let queueError: unknown;
+    let createError: unknown;
+    try {
+      await fetchReceptionQueue("2026-07-10", queueFetch);
+    } catch (error) {
+      queueError = error;
+    }
+    try {
+      await createReception(sensitivePatientId, createFetch, "key-transport");
+    } catch (error) {
+      createError = error;
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    expect(queueFetch).not.toHaveBeenCalled();
+    expect(createFetch).not.toHaveBeenCalled();
+    expect(queueError).toBeInstanceOf(Error);
+    expect(createError).toBeInstanceOf(Error);
+    expect((createError as Error).message).not.toContain(sensitivePatientId);
+  });
+
   it("renders queue rows with text status labels and patient juxtaposition", () => {
     const html = renderToStaticMarkup(
       <ReceptionQueueTable
@@ -141,7 +171,7 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     const url = String(fetchImpl.mock.calls[0]![0]);
     const init = fetchImpl.mock.calls[0]![1] as RequestInit;
-    expect(url).toContain("/reception/queue?date=2026-07-01");
+    expect(url).toBe("/_yrese-api/reception/queue?date=2026-07-01");
     expect(init.headers).toMatchObject({
       "x-dev-scopes": "reception:read,patient:read",
     });
@@ -235,6 +265,7 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
 
     // idempotencyKey がリクエストボディで送られている
     const init = fetchImpl.mock.calls[0]![1] as RequestInit;
+    expect(fetchImpl.mock.calls[0]![0]).toBe("/_yrese-api/reception");
     expect(init.headers).toMatchObject({
       "x-dev-scopes": "reception:write,patient:read",
     });
@@ -246,12 +277,14 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
       .fn()
       .mockResolvedValue(jsonResponse(400, { errorCode: "SYSTEM-9999" }));
 
-    await expect(createReception("p1", fetchImpl, "key-2")).rejects.toSatisfy(
-      (error: unknown) => {
-        expect((error as ReceptionError).errorCode).toBeUndefined();
-        return true;
-      },
-    );
+    await expect(
+      withNodeEnv("development", () =>
+        createReception("p1", fetchImpl, "key-2"),
+      ),
+    ).rejects.toSatisfy((error: unknown) => {
+      expect((error as ReceptionError).errorCode).toBeUndefined();
+      return true;
+    });
   });
 });
 

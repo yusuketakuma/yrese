@@ -11,11 +11,12 @@ import {
 } from "@yrese/contracts";
 import { permissionScope, type PermissionScope } from "@yrese/shared-kernel";
 
+import { resolveWebApiUrl } from "./api-transport";
 import { EmptyState } from "./components/empty-state";
 import { registeredErrorCodeOrUndefined } from "./components/error-code";
 import { ErrorNotice, type ErrorNoticeProps } from "./components/error-notice";
 import { LoadingState } from "./components/loading-state";
-import { API_BASE, devTenantHeaders } from "./patients/patient-search";
+import { devTenantHeaders } from "./patients/patient-search";
 
 /**
  * 受付ダッシュボード(WP-3009-UI / SCR-001)。
@@ -81,7 +82,8 @@ export async function fetchReceptionQueue(
   fetchImpl: typeof fetch = fetch,
 ): Promise<ReceptionQueueResponse> {
   const params = new URLSearchParams({ date });
-  const res = await fetchImpl(`${API_BASE}/reception/queue?${params}`, {
+  const url = resolveWebApiUrl(`/reception/queue?${params}`);
+  const res = await fetchImpl(url, {
     headers: devTenantHeaders(RECEPTION_QUEUE_DEV_SCOPES),
     cache: "no-store",
   });
@@ -115,7 +117,8 @@ export async function createReception(
   fetchImpl: typeof fetch = fetch,
   idempotencyKey: string = crypto.randomUUID(),
 ): Promise<ReceptionQueueEntry> {
-  const res = await fetchImpl(`${API_BASE}/reception`, {
+  const url = resolveWebApiUrl("/reception");
+  const res = await fetchImpl(url, {
     method: "POST",
     headers: {
       "content-type": "application/json",
