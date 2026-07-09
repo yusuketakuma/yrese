@@ -4,14 +4,16 @@
 ssot_id: CAL-006
 title: 算定ルールDSL(メタデータ・評価順序・バージョン管理)
 domain: calculation
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.2.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認
 source_refs:
   - ユーザー提供レセコン調査(2026-07-09)§5.5
   - CAL-004 v0.2.1 / CAL-005
@@ -78,6 +80,13 @@ blockers:
 
 各段の判定結果は trace step として記録し、**評価しなかった段(BLOCKED)も trace に blocked step として残す**(監査・説明責任)。
 
+### 3.1 評価順序の実装上の注意(opus4.8 レビュー反映)
+
+- **段9(exclusion_group)・段10(upper_limit)・frequency_limit は cross-rule 評価**である。単一ルールの predicate 内では判定不能であり、全候補ルールを可視化した**エンジン集約フェーズ**で評価する(WP-2101b の seenExclusivityGroups / applicationCounts 集約実装が正)。単一ルール内で排他・上限を判定する実装は誤りとして CHANGES_REQUESTED とする。
+- **排他検知は「検知して BLOCKED(fail-safe)」のみ**。低点側の自動選択・択一区分(調剤基本料等)の自動選定は、選定根拠の evidence 発行まで禁止する(未 evidence の算定判断にあたる)。
+- **停止条件**: 第2版 evidence(改定・修正版)を導入する前に、rule への effective_to(上限)ガード実装を必須とする。**effective_to なしでの複数版共存は禁止**(失効ルールの適用継続=誤請求リスク)。
+- 14段は**単一候補ルールに対する論理評価順**である。trigger(段8)を実行効率のため属性チェック(段3〜7)より前倒しする等の実装最適化は、結果不変の範囲で可。
+
 ## 4. 現行実装からの拡張パス
 
 1. 現行 `CalculationRule`(ruleId/evidenceRefs/effectiveFrom/apply)は本DSLの**最小サブセット**として有効。既存5ルールは互換を保ったままメタデータ形式へ移行する。
@@ -87,4 +96,5 @@ blockers:
 
 ## 5. 変更履歴
 
+- 0.2.0 (2026-07-09): opus4.8 レビュー(APPROVE_WITH_CHANGES)反映 — §3.1 追加(cross-rule 集約フェーズ / 排他の自動解決禁止 / effective_to 停止条件 / trigger 前倒し最適化の許容範囲)。承認。
 - 0.1.0 (2026-07-09): 初版。

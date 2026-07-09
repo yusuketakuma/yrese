@@ -4,14 +4,16 @@
 ssot_id: CAL-005
 title: 算定エンジン全体アーキテクチャ(9段パイプライン・目標型・BLOCKED境界)
 domain: calculation
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.2.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認
 source_refs:
   - ユーザー提供レセコン調査(2026-07-09)§4〜§11
   - CAL-004 v0.2.1(第1弾実装セマンティクス)
@@ -79,6 +81,7 @@ type CalculationInput = {
   versions: { masterVersion; calculationRuleVersion; receiptSpecVersion };  // receiptSpecVersion は WP-0031 で追加
   mode: SystemMode;                             // 【未実装】LOCAL_ONLY 時は仮算定のみ(WP-0029)
   externalVerificationStatus: ExternalVerificationSnapshotRef;  // 【未実装】オン資/PMH/電子処方箋の確認状態
+  priorCalculationHistoryRef: PriorCalculationHistoryRef;      // 【BLOCKED: 設計・evidence未】当月既算定履歴スナップショット参照 — frequency_limit(CAL-006 §2)判定用。純関数維持のため履歴は明示入力とする(opus4.8 指摘反映)
 };
 
 type CalculationOutput = CalculationResult      // 現行 3-status union を CAL-007 の候補/確定ステータスで拡張
@@ -107,10 +110,22 @@ packages/calculation/
 
 1. **現在地**: 段1+段4〜6の固定点数サブセット+段8の型強制(WP-2101b、16テスト)
 2. 候補/確定分離ステータス(CAL-007 → WP-2105)
-3. 処方グルーピング骨格(WP-0026 → WP-2103)、薬剤料(WP-0025 → WP-2104 — 使用薬剤料 evidence は EVD-CAL 採番済み)
+3. 処方グルーピング骨格(WP-0026 → WP-2103)、薬剤料(WP-0025 → WP-2104)。**注意: 使用薬剤料の EVD-CAL 採番は点数規定の値のみであり、端数処理(五捨五超入等)の evidence は未発行。「採番済み=実装可」ではなく、薬剤料実装は WP-0025(drug_fee_policy)承認+端数処理 evidence 発行まで BLOCKED**
 4. 乗率・減算・クランプのセマンティクス定義(CAL-004 改版+留意事項通知 evidence)
 5. 負担金(copay evidence 発行後)、選定療養(WP-2106)、レセプト中間モデル接続(WP-0031)
 
-## 7. 変更履歴
+## 7. 層別ステータス用語集(誤判定防止)
 
+ステータス語彙は層別に併存する。層をまたぐ流用・混同を禁止し、**`status !== 'BLOCKED'` 型の否定形成功判定は全層で禁止**する(判定は常にホワイトリスト比較 — CAL-004 §4)。
+
+| 層 | ステータス | 正本 |
+|---|---|---|
+| item level(算定項目) | AUTO_CALCULATED / SUGGESTED_REQUIRES_CONFIRMATION / REQUIRES_PHARMACIST_CONFIRMATION / REQUIRES_RECORD / BLOCKED_UNSUPPORTED_CLAIM(evidence 不在/失効は BLOCKED_REGULATORY_REVIEW blocker で表現) | CAL-007 |
+| result level(算定結果) | BLOCKED / POINTS_ONLY_COPAY_BLOCKED / CALCULATED | CAL-004 §4 / packages/calculation |
+| trace step level | applied / suggested / excluded / blocked | CAL-008 §4 |
+| document level(文書・外部確認) | PROVISIONAL_STATUSES 6種(PENDING_REVERIFY 等) | MOD-005 / shared-kernel |
+
+## 8. 変更履歴
+
+- 0.2.0 (2026-07-09): opus4.8 レビュー(APPROVE_WITH_CHANGES)反映 — priorCalculationHistoryRef 予約スロット追加 / §6 薬剤料の「採番済み」表現を是正(端数 evidence 未発行につき BLOCKED)/ 層別ステータス用語集を追加。承認。
 - 0.1.0 (2026-07-09): 初版(ユーザー提供レセコン調査 §4〜§11 を SSOT 化)。

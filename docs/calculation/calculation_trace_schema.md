@@ -4,14 +4,16 @@
 ssot_id: CAL-008
 title: 算定トレース拡張スキーマ(formula・中間値・丸め根拠・step status)
 domain: calculation
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.2.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
+approved_at: 2026-07-09
+approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認
 source_refs:
   - ユーザー提供レセコン調査(2026-07-09)§8
   - MOD-004(shared_type_registry — 変更手順)
@@ -39,6 +41,8 @@ blockers:
 | stepStatus | 'applied' \| 'suggested' \| 'excluded' \| 'blocked' | 拡張後○ | CAL-007 の候補/確定分離に対応。現行実装は applied/blocked 相当のみ |
 | resultPoints / resultYen | string(bigint文字列) | — | step 単位の結果値。現行 `output`(自由文字列)の構造化後継 |
 
+丸め step の判定は自己完結とする: **step に `rounding` フィールドが存在する場合、`rounding.evidenceId` を必須とする(実行時強制)**。丸めの有無を formula 等の他情報から推定しない(opus4.8 レビュー反映 — 実装が一意になる)。
+
 現行フィールド(stepId / description / affectsClaim / evidenceRefs / inputRefs / output)は**維持**。`output` は resultPoints/resultYen 導入後も人間可読サマリーとして残す。
 
 ## 3. 後方互換の拡張手順(MOD-004 準拠)
@@ -59,4 +63,5 @@ blockers:
 
 ## 5. 変更履歴
 
+- 0.2.0 (2026-07-09): opus4.8 レビュー(APPROVE、軽微)反映 — 丸め step 判定の自己完結ルール(rounding フィールド存在→evidenceId 必須)を明記。承認。
 - 0.1.0 (2026-07-09): 初版。
