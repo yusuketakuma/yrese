@@ -7,6 +7,7 @@ import {
   type EligibilityStatus,
   type PatientSearchResult,
 } from "@yrese/contracts";
+import { isValidErrorCode } from "@yrese/shared-kernel";
 
 import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
 
@@ -87,9 +88,14 @@ async function fetchSearch(
   });
   if (!res.ok) {
     const body: unknown = await res.json().catch(() => null);
-    const errorCode =
+    const rawErrorCode =
       typeof body === "object" && body !== null && "errorCode" in body
-        ? String((body as { errorCode: unknown }).errorCode)
+        ? (body as { errorCode: unknown }).errorCode
+        : undefined;
+    // registry 形式外のコードは表示しない(異常値の verbatim 出力防止)
+    const errorCode =
+      typeof rawErrorCode === "string" && isValidErrorCode(rawErrorCode)
+        ? rawErrorCode
         : undefined;
     if (res.status === 403) {
       throw new SearchError(
