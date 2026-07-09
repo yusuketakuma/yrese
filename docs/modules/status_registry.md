@@ -8,12 +8,13 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.1
+version: 0.1.2
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 change_log:
+  - 0.1.2 (2026-07-09): BLOCKER_TYPES に FHIR/連携境界の2種(BLOCKED_OFFICIAL_ADAPTER_BOUNDARY / BLOCKED_FHIR_CONFORMANCE_REVIEW)を追加(opus4.8 FHIR系レビュー指摘 — PRD-007/DOM-005/006 が定義する停止条件の allow-list 登録)
   - 0.1.1 (2026-07-09): isClaimable を deny-list(fail-open)から allow-list(fail-closed)へ転換(opus4.8 指摘・CAL-007 §3.1、実装 WP-1012)。CLAIMABLE_SAFE_STATUSES への追加は本SSOT改版必須と明記
 source_refs:
   - 構築プロンプト v0.2.0 §13, §14, §0.13, §0.0.3.3
@@ -49,7 +50,7 @@ PROVISIONAL_CALCULATION / PENDING_REVERIFY / PENDING_EXTERNAL_SYNC / PENDING_PMH
 - **請求可否の単一判定は `isClaimable(statuses)`**: **allow-list 方式(fail-closed)** — 明示的な `CLAIMABLE_SAFE_STATUSES`(初期値: 空)に含まれないステータスが1つでもあれば false。**未知ステータス=請求不可**。`isClaimable([]) === true`(ステータスなし=ブロック要因なし)。請求データ生成経路はこの関数を必ず通す(迂回実装禁止 — PRD-001)
 - isClaimable は当初 deny-list 方式(未知ステータス=true の fail-open)だったが、opus4.8 レビュー指摘(CAL-007 §3.1)により WP-1012 で fail-closed へ転換。`CLAIMABLE_SAFE_STATUSES` への追加は**本SSOT改版必須**
 
-## 3. BLOCKER 種別(BLOCKER_TYPES — 31種)
+## 3. BLOCKER 種別(BLOCKER_TYPES — 33種)
 
 実装統率(§0.13): BLOCKED_NOT_READY / BLOCKED_REGULATORY_REVIEW / BLOCKED_LEGAL_REVIEW / BLOCKED_MEDICAL_SAFETY_REVIEW / BLOCKED_OFFICIAL_ADAPTER_SPEC / BLOCKED_CODE_MAPPING_REVIEW / BLOCKED_UNSUPPORTED_CLAIM / BLOCKED_PMH_REVIEW / BLOCKED_NSIPS_LICENSE / BLOCKED_SECURITY_REVIEW / BLOCKED_PERFORMANCE_SLO / BLOCKED_EDGE_SYNC_DESIGN / BLOCKED_UX_SAFETY / CODEX_CAPABILITY_UNVERIFIED / AGMSG_PROTOCOL_UNVERIFIED
 
@@ -64,6 +65,8 @@ PROVISIONAL_CALCULATION / PENDING_REVERIFY / PENDING_EXTERNAL_SYNC / PENDING_PMH
 実行モード(§0.0.1): CLAUDE_ULTRACODE_UNAVAILABLE / CODEX_ULTRA_MODE_UNAVAILABLE
 
 マスター(§21): PENDING_MASTER_VALIDATION / コードマッピング(§22): CODE_MAPPING_REVIEW_REQUIRED / SSOT(§0.1.6.17): SSOT_UPDATE_REQUIRED
+
+FHIR/連携境界(PRD-007、DOM-005/006): BLOCKED_OFFICIAL_ADAPTER_BOUNDARY(Official Adapter[オン資・電子処方箋・オンライン請求・PMH・JAHIS]を FHIR で置換しない)/ BLOCKED_FHIR_CONFORMANCE_REVIEW(conformance 未検証での「JP Core 準拠」訴求禁止)
 
 報告形式は `BlockerReport`(blockerType / workPackageId / blockingQuestion / affectedFiles / risk / recommendedNextStep)— 運用は PRC-006(blocker_triage_policy)。
 

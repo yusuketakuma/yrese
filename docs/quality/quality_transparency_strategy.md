@@ -4,12 +4,14 @@
 ssot_id: QUA-007
 title: 品質の証明可能性戦略(quality transparency)
 domain: quality
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 source_refs: 構築プロンプト v0.2.0 §10、PRD-006 product_concept(柱2「証明可能な品質」)
@@ -18,6 +20,7 @@ depends_on:
   - QUA-001 quality_plan
   - CAL-004 calculation_engine_design
   - CAL-008 trace_schema
+impacts:
   - QUA-008 public_quality_kpi_policy
   - QUA-009 claim_return_rate_kpi_policy
 blockers:
@@ -74,3 +77,8 @@ L1〜L3 は実装済みの規律の再宣言であり、本書はそれらを「
 - 法令レビュー(BLOCKED_LEGAL_REVIEW)完了まで、KPI の**外部公開の実施**は BLOCKED。
   内部集計・定義整備は進めてよい。
 - 定義 SSOT が APPROVED でない KPI の公開は不可(SSOT_UPDATE_REQUIRED)。
+
+## 変更履歴
+
+- 0.1.1 (2026-07-09): opus4.8 レビュー反映(QUA-008/QUA-009 への参照を depends_on から impacts へ移動し循環依存を解消)。
+- 0.1.0 (2026-07-09): 初版起草(WP-0043)。

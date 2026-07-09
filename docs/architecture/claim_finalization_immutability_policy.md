@@ -4,12 +4,14 @@
 ssot_id: ARC-007
 title: 確定済みレセプト・請求の immutability(append-only・訂正レーン分離)
 domain: architecture
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 source_refs:
@@ -32,7 +34,7 @@ blockers:
 
 ## 2. 確定の意味
 
-1. 請求確定は明示的な業務イベント(確定者・確定日時・対象請求月・使用ルールセット版/マスター版の参照を含む)として記録する(ARC-005 の ES 適用対象)。
+1. 請求確定は明示的な業務イベント(確定者・確定日時・対象請求月・使用ルールセット版/マスター版の参照を含む)として記録する(ARC-005 の ES 適用対象)。工程としての請求月締め・請求データロックの定義は CLM-001(工程7・8)が正本であり、本書はその工程に対する**不変性の規律**のみを定める(責務分界)。
 2. 確定は NORMAL モードでのみ許可する(shared-kernel `allowsClaimFinalization` が実装済みの正)。他モードでの確定要求は fail-closed に拒否する。
 3. 確定前の請求前点検で CAL-007 の請求可否判定(isClaimable = allow-list)を通過しないものは確定対象に含めない。
 
@@ -58,4 +60,5 @@ blockers:
 
 ## 変更履歴
 
+- 0.1.1 (2026-07-09): opus4.8 レビュー反映(CLM-001 工程7/8 との責務分界[CLM-001=工程定義、本書=不変性規律]を明記)。
 - 0.1.0 (2026-07-09): 初版起草(WP-0044)。

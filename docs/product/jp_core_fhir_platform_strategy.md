@@ -4,12 +4,14 @@
 ssot_id: PRD-007
 title: JP Core / FHIR Ready 薬局データ連携基盤戦略
 domain: product
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 source_refs:
@@ -28,7 +30,7 @@ impacts:
   - WP-0046
   - docs/domain/fhir_native_canonical_model.md
   - docs/domain/fhir_mapping_registry.md
-  - docs/api/platform_api_architecture.md
+  - docs/api/platform_api_architecture.md(WP-0046 で作成予定 — 前方参照)
 open_questions:
   - JP Core 1.2.0以外に薬局領域で参照すべきJP-CLINS/電子カルテ情報共有サービス向けFHIR記述資料の範囲
   - MedicationDispense等で表現しきれない薬局業務イベントをyrese event / Provenance / AuditEvent / 独自Extensionのどこへ分担するか
@@ -50,7 +52,7 @@ blockers:
 ## 2. 前提: JP Core準拠と電子処方箋対応を混同しない
 
 JP Core準拠は、日本向けFHIRプロファイルに沿ってPatient、Coverage、MedicationRequest、MedicationDispense、MedicationStatement等を扱えるようにすることである。
-JP Core公開履歴では、2025-07-30版のJP Core 1.2.0 / FHIR R4 4.0.1がCurrent Versionとして示され、1.3.0-devは開発版である(SRC-FHIR-002)。
+JP Core公開履歴では、JP Core 1.2.0 / FHIR R4 4.0.1がCurrent Versionとして示され、1.3.0-devは開発版である(SRC-FHIR-002)。
 JP Core 1.2.0には、MedicationRequest、MedicationDispense、MedicationStatement等のMedicationグループプロファイルが含まれる(SRC-FHIR-003)。
 
 電子処方箋対応は、電子処方箋管理サービスとの接続、処方・調剤情報参照、重複投薬等チェック、調剤結果登録、HPKI署名、リフィル処方箋などの制度・運用対応である(SRC-FHIR-004)。
@@ -151,4 +153,5 @@ WP-0046では、JP Core / FHIR facadeをPartner API / Integration Hub / Sandbox 
 
 ## 変更履歴
 
+- 0.1.1 (2026-07-09): opus4.8 レビュー反映(source_registry に記録のない版日付「2025-07-30版」の断定を削除・platform_api_architecture.md が前方参照であることを明記)。
 - 0.1.0 (2026-07-09): ユーザー提供の市場・差別化分析を、公式ソース確認後にPRD-007として整理。

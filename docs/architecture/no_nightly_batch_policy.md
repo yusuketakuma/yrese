@@ -4,11 +4,13 @@
 ssot_id: ARC-011
 title: 夜間バッチ廃止(no nightly batch)方針
 domain: architecture
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 source_refs: [構築プロンプト v0.2.0 §13・§14, PRD-006 柱3, PRD-009 戦い3]
@@ -37,7 +39,7 @@ impacts: [WP-0044 event-sourcing pack, 会計・請求系実装WP, docs/operatio
 | 深夜のマスター更新 | 有効日付き(effectiveFrom)のバージョン切替。事前投入し、適用日到来で新版が参照される(データ停止を伴わない) |
 
 - 重い処理は「業務を止めて流す」のではなく、業務と並行して流せる粒度に分割する。
-- 投影の遅延・失敗は観測対象(OPS-005)とし、失敗時は投影のみ再実行する(正本に触れない)。
+- 投影の遅延・失敗は観測対象(OPS-009)とし、失敗時は投影のみ再実行する(正本に触れない)。
 
 ## 3. 月次請求締めの扱い
 
@@ -63,4 +65,5 @@ impacts: [WP-0044 event-sourcing pack, 会計・請求系実装WP, docs/operatio
 
 ## 変更履歴
 
+- 0.1.1 (2026-07-09): opus4.8 レビュー反映(観測対象の参照を OPS-009 可観測性計画へ訂正)。
 - 0.1.0 (2026-07-09): 初版起草(WP-0045)。

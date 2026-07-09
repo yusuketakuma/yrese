@@ -46,6 +46,9 @@ export const BLOCKER_TYPES = [
   "CODE_MAPPING_REVIEW_REQUIRED",
   // SSOT(§0.1.6.17)
   "SSOT_UPDATE_REQUIRED",
+  // FHIR/連携境界(PRD-007、DOM-005/006)
+  "BLOCKED_OFFICIAL_ADAPTER_BOUNDARY",
+  "BLOCKED_FHIR_CONFORMANCE_REVIEW",
 ] as const;
 
 export type BlockerType = (typeof BLOCKER_TYPES)[number];

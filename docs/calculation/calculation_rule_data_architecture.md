@@ -4,12 +4,14 @@
 ssot_id: CAL-009
 title: 算定ルールデータのバージョン管理アーキテクチャ(ルールはデータ)
 domain: calculation
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 source_refs:
@@ -49,7 +51,7 @@ blockers:
 
 ## 4. canonical ruleset の位置づけ
 
-- `calculationRulesV20260601`(WP-2101b、5ルール・golden 合計166点)は**最初の canonical ruleset** であり、本書の「告示版単位の不変データ」の第1実例である。
+- `calculationRulesV20260601`(WP-2101b、5ルール・golden 合計166点)は**最初の canonical ruleset** であり、本書の「告示版単位の不変データ」の第1実例である。166点は版依存の実例値であり、版差分が生じた場合(P-08 等の再検証結果を含む)は CAL-011 の手順で golden とともに更新される。
 - canonical ruleset はエンジン実装(packages/calculation)と同一パッケージに同居してよいが、**エンジン(評価器)とルールデータの境界を保つ**(CAL-006 §4 の宣言化移行パスに従い、将来はデータとして分離可能な形を維持する)。
 - ルールセットの外部配布(多店舗・マルチテナント配信)は要件が確定するまで設計しない(投機的実装の禁止)。必要になった時点で本書と CAL-006 を改版する。
 
@@ -62,4 +64,5 @@ blockers:
 
 ## 変更履歴
 
+- 0.1.1 (2026-07-09): opus4.8 レビュー反映(golden 合計166点が版依存の実例値であることを注記)。
 - 0.1.0 (2026-07-09): 初版起草(WP-0044)。

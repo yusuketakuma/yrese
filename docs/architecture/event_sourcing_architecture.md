@@ -4,12 +4,14 @@
 ssot_id: ARC-005
 title: イベントソーシングの適用範囲・適用除外・エンベロープ境界
 domain: architecture
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 source_refs:
@@ -40,7 +42,7 @@ blockers:
 
 | 対象(適用) | 根拠 |
 |---|---|
-| 算定・請求ライフサイクル(算定実行・確定・返戻・再請求) | ARC-007 の immutability、QUA-009 の fail-closed 集計 |
+| 算定・請求ライフサイクル(算定実行・確定・返戻・再請求) | ARC-007 の immutability(確定 append-only)と DOM-004 の業務イベント対応が主根拠(QUA-009 の fail-closed 集計は副次的な受益) |
 | 会計台帳(入金・未収金・一部入金・返金・調整) | ACC 系 SSOT の append-only 原則と同一 |
 | 監査イベント | MOD-008(既に append-only。ハッシュ連鎖は SEC-007 改版で確定) |
 
@@ -77,4 +79,5 @@ blockers:
 
 ## 変更履歴
 
+- 0.1.1 (2026-07-09): opus4.8 レビュー反映(算定・請求ライフサイクルへの ES 適用根拠を ARC-007 immutability と DOM-004 業務イベント対応を主とする表現に修正)。
 - 0.1.0 (2026-07-09): 初版起草(WP-0044)。
