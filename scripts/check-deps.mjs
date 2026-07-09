@@ -110,15 +110,17 @@ async function main() {
 
   const result = runPnpmAudit(args.auditLevel);
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+  let report;
   try {
-    validateAuditReport(JSON.parse(result.stdout), args.auditLevel);
+    report = JSON.parse(result.stdout);
   } catch (error) {
-    if (result.status !== 0 && isRegistryOrNetworkError(output) && result.stdout.trim().length === 0) {
+    if (result.status !== 0 && isRegistryOrNetworkError(output)) {
       console.warn(`Dependency audit registry/network warning (non-blocking): ${output.trim()}`);
       return;
     }
     throw error;
   }
+  validateAuditReport(report, args.auditLevel);
 }
 
 await main();
