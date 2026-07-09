@@ -6,6 +6,7 @@ import {
   patientSearchResponseSchema,
   type PatientSearchResult,
 } from "@yrese/contracts";
+import { permissionScope, type PermissionScope } from "@yrese/shared-kernel";
 
 import { registeredErrorCodeOrUndefined } from "../components/error-code";
 import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
@@ -24,6 +25,9 @@ import { SeverityList } from "../components/severity-list";
  */
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:3001";
+export const PATIENT_SEARCH_DEV_SCOPES = [
+  permissionScope("patient", "read"),
+] as const satisfies readonly PermissionScope[];
 
 /**
  * 開発用テナントヘッダ(バックエンドの dev stub と対)。
@@ -32,6 +36,7 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:30
  * 本番認証(OIDC等)は BLOCKED_SECURITY_REVIEW — auth SSOT 承認後に置換する。
  */
 export function devTenantHeaders(
+  scopes: readonly PermissionScope[] = PATIENT_SEARCH_DEV_SCOPES,
   nodeEnv: string | undefined = process.env.NODE_ENV,
 ): Record<string, string> {
   if (nodeEnv !== "development") {
@@ -41,7 +46,7 @@ export function devTenantHeaders(
     "x-dev-tenant": "t-dev",
     "x-dev-pharmacy": "ph-dev",
     "x-dev-actor": "u-dev",
-    "x-dev-scopes": "patient:read,reception:read,reception:write",
+    "x-dev-scopes": scopes.join(","),
   };
 }
 

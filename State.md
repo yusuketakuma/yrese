@@ -6,6 +6,13 @@
 
 ## 2026-07-10
 
+### WP-4065 dev tenant header least-privilege split
+
+- fable5 から `WP-4065(dev tenant header least-privilege split)` の `PLAN_APPROVED` を受領。dev-only・frontend-only だが auth/security hygiene のため `[risk: HIGH]` handoff 対象として扱い、スコープを `apps/web` と focused tests に限定。API認可plugin・DB・SSOT本文・contract shape は変更なし。
+- `devTenantHeaders()` を shared-kernel の `permissionScope()` / `PermissionScope` に結び、既定の患者検索 request は `patient:read` のみを送るように変更。production/test/undefined では引き続き `{}` を返し、本番境界は緩めていない。
+- 受付ダッシュボードは queue fetch を `reception:read,patient:read`、create request を `reception:write,patient:read` に分割。dev stub で過剰権限を前提にした UI 側 permission drift が見えるようにした。
+- focused tests で患者検索・受付一覧・受付登録それぞれの `x-dev-scopes` を固定し、dev-only gating の既存テストも維持。検証: `pnpm --filter @yrese/web test` PASS(37)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 ### WP-4065 dev tenant header least-privilege split plan request
 
 - agmsg inbox 空、monitor は `yrese/codex` alive。Claude 側 dirty の `docs/ssot_index.md` / `docs/database/dynamodb_single_table_design.md` は引き続き温存。

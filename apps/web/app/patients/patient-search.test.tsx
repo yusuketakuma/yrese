@@ -10,6 +10,7 @@ import {
   devTenantHeaders,
   duplicateKanaSet,
   PatientSearchResults,
+  PATIENT_SEARCH_DEV_SCOPES,
   type SearchPage,
   type SearchState,
 } from "./patient-search";
@@ -209,13 +210,17 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
   });
 
   it("sends dev tenant headers only in development (WP-4038)", () => {
-    expect(devTenantHeaders("development")).toMatchObject({
+    expect(devTenantHeaders(PATIENT_SEARCH_DEV_SCOPES, "development")).toMatchObject({
       "x-dev-tenant": "t-dev",
       "x-dev-pharmacy": "ph-dev",
+      "x-dev-scopes": "patient:read",
     });
-    expect(devTenantHeaders("production")).toEqual({});
-    expect(devTenantHeaders("test")).toEqual({});
-    expect(devTenantHeaders(undefined)).toEqual({});
+    expect(devTenantHeaders(undefined, "development")).toMatchObject({
+      "x-dev-scopes": "patient:read",
+    });
+    expect(devTenantHeaders(PATIENT_SEARCH_DEV_SCOPES, "production")).toEqual({});
+    expect(devTenantHeaders(PATIENT_SEARCH_DEV_SCOPES, "test")).toEqual({});
+    expect(devTenantHeaders(PATIENT_SEARCH_DEV_SCOPES, undefined)).toEqual({});
   });
 
   it("renders eligibility labels from the PatientHeader single source (WP-4041)", () => {

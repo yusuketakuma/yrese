@@ -494,11 +494,11 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 実装: `runnerRef` を `null` 初期化し、初回 render 時だけ `createSearchRunner(fetchSearch, setState)` を代入する lazy ref へ変更。通常到達しない未初期化状態は黙殺せず明示例外にした。
   - 検証: `pnpm --filter @yrese/web test` PASS(37)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
 
-- [ ] WP-4065 dev tenant header least-privilege split(codex 提案 SELF-SCAN-20260710-10、auth/security境界のため fable5 PLAN_REQUEST 済み)
+- [x] WP-4065 dev tenant header least-privilege split(codex 提案 SELF-SCAN-20260710-10、fable5 PLAN_APPROVED 後に本WPで実装)
   - 発見根拠: `apps/web/app/patients/patient-search.tsx` の `devTenantHeaders()` は development 限定ではあるが、全 dev UI request へ `patient:read,reception:read,reception:write` を送る。患者検索は `patient:read` のみ、受付一覧は `reception:read + patient:read`、受付登録は `reception:write + patient:read` が必要最小であり、dev stub でも過剰scopeを常態化させると認可境界の確認が鈍る。
   - 目的: development stub の利便性を維持しつつ、画面/操作ごとの必要最小 `x-dev-scopes` だけを送る。production/test/undefined で `{}` を返す WP-4038 の本番境界は維持する。
-  - 想定スコープ: `apps/web/app/patients/patient-search.tsx`、`apps/web/app/reception-dashboard.tsx`、focused web tests のみ。API認可plugin・server semantics・DB・SSOT本文・contract shape は変更しない。
-  - 検証: PatientSearch fetch は `patient:read` のみ、Reception queue fetch は `reception:read,patient:read`、Reception create は `reception:write,patient:read` を送ること、production/test/undefined は引き続き `{}`、`pnpm --filter @yrese/web test`、`pnpm --filter @yrese/web typecheck`、`pnpm check:boundaries`、`git diff --check`。fable5 承認後に実装し、完了時は `[risk: HIGH]` で handoff。
+  - 実装: `@yrese/shared-kernel` の `permissionScope()` / `PermissionScope` を使い、患者検索の default dev scope を `patient:read` に限定。受付一覧は `reception:read,patient:read`、受付登録は `reception:write,patient:read` を明示指定する。API認可plugin・server semantics・DB・SSOT本文・contract shape は変更なし。
+  - 検証: PatientSearch dev header は `patient:read` のみ、Reception queue fetch は `reception:read,patient:read`、Reception create は `reception:write,patient:read` を送ること、production/test/undefined は引き続き `{}` を web tests で固定。`pnpm --filter @yrese/web test` PASS(37)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
 
 - [x] WP-6001 DynamoDB single-table + FHIR store design proposal(d5d06e0、fable5/opus4.8 REVIEW_RESULT: CHANGES_REQUIRED but formalize by fable5)
   - 内容: `docs/research/dynamodb_fhir_store_design_proposal.md` を DRAFT(codex 設計提案・fable5 レビュー用・SSOT ではない)として追加。ARC-008 に基づく DynamoDB single-table / FHIR store / append-only audit / adapter 境界 / PostgreSQL 段階移行の素材を提示。

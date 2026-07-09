@@ -61,6 +61,18 @@ function jsonResponse(status: number, body: unknown): Response {
   } as unknown as Response;
 }
 
+async function withNodeEnv<T>(
+  nodeEnv: string,
+  run: () => Promise<T>,
+): Promise<T> {
+  vi.stubEnv("NODE_ENV", nodeEnv);
+  try {
+    return await run();
+  } finally {
+    vi.unstubAllEnvs();
+  }
+}
+
 describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
   it("renders queue rows with text status labels and patient juxtaposition", () => {
     const html = renderToStaticMarkup(
@@ -122,11 +134,17 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
       jsonResponse(200, { date: "2026-07-01", entries: [] }),
     );
 
-    const response = await fetchReceptionQueue("2026-07-01", fetchImpl);
+    const response = await withNodeEnv("development", () =>
+      fetchReceptionQueue("2026-07-01", fetchImpl),
+    );
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     const url = String(fetchImpl.mock.calls[0]![0]);
+    const init = fetchImpl.mock.calls[0]![1] as RequestInit;
     expect(url).toContain("/reception/queue?date=2026-07-01");
+    expect(init.headers).toMatchObject({
+      "x-dev-scopes": "reception:read,patient:read",
+    });
     expect(response.entries).toEqual([]);
   });
 
@@ -203,7 +221,9 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
       .mockResolvedValue(jsonResponse(409, { errorCode: "RCV-0003", message: "conflict" }));
 
     await expect(
-      createReception("patient-test-001", fetchImpl, "key-1"),
+      withNodeEnv("development", () =>
+        createReception("patient-test-001", fetchImpl, "key-1"),
+      ),
     ).rejects.toSatisfy((error: unknown) => {
       expect(error).toBeInstanceOf(ReceptionError);
       const notice = (error as ReceptionError).toNotice();
@@ -215,6 +235,9 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
 
     // idempotencyKey がリクエストボディで送られている
     const init = fetchImpl.mock.calls[0]![1] as RequestInit;
+    expect(init.headers).toMatchObject({
+      "x-dev-scopes": "reception:write,patient:read",
+    });
     expect(String(init.body)).toContain('"idempotencyKey":"key-1"');
   });
 

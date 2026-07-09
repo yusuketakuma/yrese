@@ -9,6 +9,7 @@ import {
   type ReceptionQueueResponse,
   type ReceptionStatus,
 } from "@yrese/contracts";
+import { permissionScope, type PermissionScope } from "@yrese/shared-kernel";
 
 import { EmptyState } from "./components/empty-state";
 import { registeredErrorCodeOrUndefined } from "./components/error-code";
@@ -37,6 +38,14 @@ const PRESCRIPTION_INTAKE_LABELS: Record<
   ReceptionQueueEntry["prescriptionIntakeType"],
   string
 > = { paper: "紙" };
+const RECEPTION_QUEUE_DEV_SCOPES = [
+  permissionScope("reception", "read"),
+  permissionScope("patient", "read"),
+] as const satisfies readonly PermissionScope[];
+const RECEPTION_CREATE_DEV_SCOPES = [
+  permissionScope("reception", "write"),
+  permissionScope("patient", "read"),
+] as const satisfies readonly PermissionScope[];
 
 /** API エラーを「何が起きたか+次のアクション」の対として運ぶ(WP-3007 統一様式) */
 export class ReceptionError extends Error {
@@ -73,7 +82,7 @@ export async function fetchReceptionQueue(
 ): Promise<ReceptionQueueResponse> {
   const params = new URLSearchParams({ date });
   const res = await fetchImpl(`${API_BASE}/reception/queue?${params}`, {
-    headers: devTenantHeaders(),
+    headers: devTenantHeaders(RECEPTION_QUEUE_DEV_SCOPES),
     cache: "no-store",
   });
   if (!res.ok) {
@@ -108,7 +117,10 @@ export async function createReception(
 ): Promise<ReceptionQueueEntry> {
   const res = await fetchImpl(`${API_BASE}/reception`, {
     method: "POST",
-    headers: { "content-type": "application/json", ...devTenantHeaders() },
+    headers: {
+      "content-type": "application/json",
+      ...devTenantHeaders(RECEPTION_CREATE_DEV_SCOPES),
+    },
     cache: "no-store",
     body: JSON.stringify({ patientId: patientIdValue, idempotencyKey }),
   });
