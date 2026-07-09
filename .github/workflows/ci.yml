@@ -36,5 +36,8 @@ jobs:
       - name: Build api
         run: pnpm --filter @yrese/api build
 
+      - name: Check boundaries
+        run: pnpm check:boundaries
+
       # TODO(WP-4001後続): 依存方向チェック・重複enum/status scan・secret scan を
       # dependency_direction_policy / error_code_registry SSOT 承認後に追加する
