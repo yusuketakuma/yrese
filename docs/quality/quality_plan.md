@@ -9,7 +9,7 @@ owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -23,6 +23,8 @@ blockers:
   - BLOCKED_QUALITY_REGULATORY_REVIEW(規格該当性が未判定の間、品質体系の最終形を確定しない)
 open_questions:
   - ISO 14971 / IEC 62366-1 / ISO 13485 / JIS X 8341-3 相当の適用要否(SaMD判定と連動)
+change_log:
+  - 0.1.1 (2026-07-09): WP-4047 実装状態 drift 整備。CI の secret scan / dependency scan / SBOM を WP-4009/a90df35・WP-4012/b0ecf84+702c2f5 の実態へ同期(品質ゲート要件は不変更)。
 ```
 
 ## 1. 必須方針(v0.2.0 §10 全項目)
@@ -56,7 +58,7 @@ open_questions:
 | 根拠なき算定の遮断 | 稼働中(trace の evidenceRef 必須強制、算定骨格の空ruleset→BLOCKED) |
 | 請求データ生成の遮断 | 稼働中(isClaimable) |
 | golden test | 未着手(evidence_id 発行後、期待値はSSOT由来のみ — TST-001) |
-| security scan / SBOM | 未着手(Phase 1 で CI へ追加) |
+| secret scan / dependency scan / SBOM | 一部稼働中 — `pnpm check:secrets`(WP-4009/a90df35)、`pnpm check:deps` + `pnpm check:sbom`(WP-4012/b0ecf84+702c2f5)をCIで実行。SAST/DAST等の追加 security scan は未着手 |
 
 ## 4. 欠陥管理・インシデント(骨格)
 

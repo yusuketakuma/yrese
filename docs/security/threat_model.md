@@ -9,7 +9,7 @@ owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -27,6 +27,8 @@ open_questions:
   - Edge Node の物理環境前提(サーバールーム有無・盗難リスク水準)は導入薬局プロファイルで再評価
   - DDoS 対策水準(WAF/Shield)の費用対効果(finops と往復)
 blockers: []
+change_log:
+  - 0.1.1 (2026-07-09): WP-4047 実装状態 drift 整備。供給網攻撃対策の dependency scan / SBOM CI 実装状態を WP-4012/b0ecf84+702c2f5 に同期(脅威判断は不変更)。
 ```
 
 ## 信頼境界(ADP-002 より)
@@ -86,4 +88,4 @@ T2 と同一契約(Integration API)。追加: data minimization / PHI classifica
 
 - ランサムウェア対応のオフラインバックアップ要求水準【要精読 — GL7.0】
 - Edge Node の物理封印・改造検知(導入形態確定後)
-- 供給網攻撃(依存パッケージ): SBOM + 依存スキャンを Phase 2 で CI 追加
+- 供給網攻撃(依存パッケージ): dependency scan + SBOM は CI 稼働中(WP-4012/b0ecf84+702c2f5)。署名検証・依存更新運用・追加SAST等は Phase 1 以降で継続検討

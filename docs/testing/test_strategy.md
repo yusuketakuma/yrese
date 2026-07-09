@@ -8,7 +8,7 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -21,6 +21,8 @@ depends_on:
 open_questions:
   - E2E フレームワーク選定(Playwright 想定、Phase 1 で確定)
   - golden test 資産の管理場所(packages/fixtures 想定、fixture_policy と連動)
+change_log:
+  - 0.1.1 (2026-07-09): WP-4047 実装状態 drift 整備。CI ゲートの secret scan / dependency scan / SBOM 実装状態を WP-4009/a90df35・WP-4012/b0ecf84+702c2f5 に同期(テスト戦略要件は不変更)。
 ```
 
 ## 1. 大原則
@@ -62,8 +64,8 @@ UIX-002 の必須テスト14種(§8.6)は上表の該当行に統合済み。
 
 ## 4. CI ゲート
 
-現行: typecheck / unit test / check:boundaries / build(全ワークスペース)。
-追加予定(SSOT承認と実装進行に応じて): duplicate schema scan / fixtures PHI scan / secret scan / dependency scan / SBOM / isolation tests / golden tests / E2E / performance budget。
+現行: typecheck / unit test / build(全ワークスペース) / check:boundaries / check:openapi / check:ssot-index / check:secrets(WP-4009/a90df35) / check:deps(WP-4012/b0ecf84) / check:sbom(WP-4012/b0ecf84+702c2f5)。
+追加予定(SSOT承認と実装進行に応じて): duplicate schema scan / fixtures PHI scan / isolation tests / golden tests / E2E / performance budget。
 
 ## 5. golden test 運用ルール
 

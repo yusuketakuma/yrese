@@ -9,7 +9,7 @@ owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -27,6 +27,8 @@ open_questions:
   - オンライン資格確認で取得する薬剤情報・特定健診情報の保持可否・期間(公式仕様確認後)
   - 匿名加工情報・仮名加工情報の将来利用方針(経営判断・現時点では対象外)
 blockers: []
+change_log:
+  - 0.1.1 (2026-07-09): WP-4047 実装状態 drift 整備。secret/dependency/SBOM CI 実装済み状態と fixtures PHI scan 未実装状態を区別して明記(WP-4009/a90df35、WP-4012/b0ecf84+702c2f5)。
 ```
 
 ## 1. 取り扱う個人情報の類型
@@ -77,4 +79,4 @@ blockers: []
 | テナント越え開示 | 重大 | 低 | SEC-006 + isolation test 必須化 |
 | Edge 盗難による大量漏えい | 重大 | 低〜中 | SEC-005(暗号化・失効) |
 | 過剰保持(資格確認結果等) | 中 | 中 | スナップショット最小化 + 保存期間管理【要確認】 |
-| 訓練・デモでの実データ使用 | 重大 | 低 | 合成データ強制(§9.9)+ fixtures PHI scan(CI 追加予定) |
+| 訓練・デモでの実データ使用 | 重大 | 低 | 合成データ強制(§9.9)+ fixtures PHI scan(CI 追加予定)。secret/dependency/SBOM CI は実装済み(WP-4009/a90df35、WP-4012/b0ecf84+702c2f5)だが、PHI fixture 検査とは別ゲート |

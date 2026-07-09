@@ -9,7 +9,7 @@ owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -23,6 +23,8 @@ open_questions:
   - 事業者向けGLの最新版数・発行日の一次確認(REG-007 の対象外だったため追加調査が必要)
   - リスクマネジメント・情報セキュリティマネジメントシステム(ISMS等)の認証取得要否(経営判断)
 blockers: []
+change_log:
+  - 0.1.1 (2026-07-09): WP-4047 実装状態 drift 整備。開発・運用セキュリティの secret scan / dependency scan / SBOM CI 実装状態を WP-4009/a90df35・WP-4012/b0ecf84+702c2f5 に同期(要求領域・運用要件は不変更)。
 ```
 
 ## 位置づけ
@@ -39,7 +41,7 @@ blockers: []
 | 2 | 医療機関等との責任分界の明確化 | 責務分界SSOT(ADP-002)、SLA/SLO(§9.8) | 契約ひな形整備(人間対応) | 設計中 |
 | 3 | 情報の保管場所・越境の明示 | AWS東京リージョン固定、data_residency 属性(§33) | 契約明記 | 設計方針確定 |
 | 4 | アクセス管理・特権管理 | least privilege IAM、break glass 手順、サポートアクセス監査(§9.2/§9.6) | 特権利用申請・レビュー | 未実装 |
-| 5 | 開発・運用のセキュリティ | secret scan / dependency scan / SBOM / change control(§10) | リリースゲート(release_gate_policy) | CI基盤あり、scan拡充 Phase 2 |
+| 5 | 開発・運用のセキュリティ | secret scan / dependency scan / SBOM / change control(§10) | リリースゲート(release_gate_policy) | CI一部稼働中: `check:secrets`(WP-4009/a90df35)、`check:deps` + `check:sbom`(WP-4012/b0ecf84+702c2f5)。追加SAST/DAST等は未着手 |
 | 6 | 監査ログ・証跡提供 | audit_log_design(SEC-007)。医療機関等が自らの監査に使える形式で提供 | ログ提供手順 | 設計中 |
 | 7 | インシデント対応・通知 | incident_response(Phase 0 後続)、障害通知テンプレート(§9.2) | エスカレーション体制 | 未着手 |
 | 8 | 事業継続・サービス終了時対応 | data_portability_exit_plan(WP-0010)、契約終了時のデータ返却・削除 | 移行支援体制 | 未着手 |
