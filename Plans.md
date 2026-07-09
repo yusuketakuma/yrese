@@ -429,11 +429,13 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 実装: UI側は `todayAsIsoDate()` を `Asia/Tokyo` 固定へ修正(49fb867)。API側は `acceptedAt` からの受付業務日付導出を `Asia/Tokyo` 固定へ統一し、MOD-011(date_time_policy)を v0.1.1 へ改版して UTC日付流用禁止を明記。
   - 検証: `pnpm --filter @yrese/web test`, `pnpm --filter @yrese/web typecheck`, `pnpm --filter @yrese/api test`, `pnpm --filter @yrese/api typecheck`, `pnpm check:ssot-index`, `pnpm check:boundaries`, `git diff --check`。
 
-- [ ] WP-4054 reception idempotency payload fingerprint hardening(codex 提案 SELF-SCAN-20260709-33、WP-5003後続)
+- [!] WP-4054 reception idempotency payload fingerprint hardening(codex 提案 SELF-SCAN-20260709-33、WP-5003後続)
   - 発見根拠: WP-5003 後の `PostgresReceptionRepository.create()` / `InMemoryReceptionRepository.create()` は `(tenantId, pharmacyId, idempotencyKey)` 再送時に `patientId` だけを比較しており、同じ idempotencyKey で患者は同じだが受付時刻・業務日付・将来追加される受付属性が異なる再送を `existing` として扱いうる。現行 `reception_entries` には request fingerprint / payload hash がなく、WP-4051 の「同一key異payloadの409」検証範囲が DB 実装後も未充足。
   - 目的: 受付作成の冪等性を「同一key + 同一要求内容のみ 200(existing)」へ厳格化し、同一key異payloadは 409 `RCV-0003` に fail-closed する。将来の電子処方箋受付・取消・監査配線前に、二重受付防止の境界を患者IDだけへ依存させない。
   - 想定スコープ: `ReceptionCreateInput` の fingerprint 対象定義、`reception_entries` への immutable request fingerprint/hash 追加 migration、in-memory / PostgreSQL repository の同一key異payload判定、API / DB 統合テスト。hash に PHI を直接含めず、監査・ハッシュチェーン(WP-5004)と混同しない。
   - 検証: 同一key同一payload 200(existing)、同一key同一patient別acceptedAt/別業務日付 409、同一key別patient 409、tenant/pharmacy越え分離、`pnpm --filter @yrese/api test`、`pnpm check:boundaries`、`git diff --check`。DB migration を含むため fable5 PLAN_APPROVED 後に着手。
+  - 裁定根拠: `acceptedAt` / 業務日付は server 採番であり fingerprint に含めると正当な再送を409にして key 再発行による二重受付を誘発する。API-006 の payload は `patientId` のみで、その範囲の WP-4051 要件は in-memory / PostgreSQL の両実装で充足済み。
+  - fable5裁定 2026-07-10: API-006 v0.2.0矛盾により本記載のまま無効(`PLAN_INVALID_AS_WRITTEN`)。清算はWP-4076。
 
 - [x] WP-4055 migration filename strictness and skipped-file fail-closed(codex 提案 SELF-SCAN-20260709-34、WP-5002後続。fable5 PLAN_APPROVED、本WPで実装)
   - 発見根拠: `apps/api/src/db/migrations.ts` の `loadMigrationFiles()` は `migrations/` 内のファイルを `parseMigrationFilename(...) !== undefined` で先に filter しており、命名規則に合わない `.sql` / backup / uppercase / typo file を silently skip する。DB-002 の forward-only / immutable migration discipline では、実行対象ディレクトリに置かれた migration-like file の無視は運用事故の入口になりうる。
@@ -566,6 +568,12 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 再現・影響: requested `patient-requested-001` と snapshot `patient-other-999` をdirect createすると `created` で後者のpatientId/属性を返す。faulty/future PatientRepository・adapterが別患者snapshotを返した場合、保存IDと表示属性が混在し、後続GETでDB-authoritative患者へ表示が変わる wrong-patient risk。WP-4054は同一idempotency keyのpayload/acceptedAt conflictで、本二重identity不変条件は未追跡。
   - 実装: scoped `findById` 後に `patient.patientId === requested patientId` をstrict equalityでfail-closed検証し、不一致時はreception repositoryを呼ばず入力ID/患者属性を含まない固定errorをthrowして500へ収束。`ReceptionCreateInput` から冗長 `patientId` を削除し、in-memoryはbranded factoryで検証した `patient.patientId`、PostgreSQLは同じsnapshot IDだけから永続ID/idempotency比較/responseを導出する。SQL text、contract/OpenAPI、DB migration/schema、package/lockは変更していない。
   - テスト・検証: malicious scoped lookupが別ID snapshotを返すrouteでreception create 0 call、500固定error、request/returned ID・name/kana/patientNumber非露出を固定。PostgreSQL integrationはcreated response IDがlookup snapshot IDと一致するassertを追加し、既存valid/idempotency/tenant-pharmacy/JST semanticsを維持。API 87 PASS + PostgreSQL integration 5 expected SKIP、全workspace typecheck/test/build、OpenAPI drift、boundaries、secrets、deps(high=0 / critical=0)、SBOM(231 components)、script harness、diff-checkはPASS。read-only Opus final reviewはmedical safety/data integrity/privacyを確認して `APPROVED`、blocker/HIGH findingなし。`TEST_DATABASE_URL` 不在のためPostgreSQL assertはlocal expected skip、DB操作なし。
+
+- [ ] WP-4076 reception idempotency SSOT-plan contradiction cleanup(codex self-scan、fable5 CHANGES_REQUIRED、ledger-only)
+  - 発見根拠: WP-4054 は server 採番の `acceptedAt` / 導出業務日付を request fingerprint 対象に含める計画だが、APPROVED API-006 v0.2.0 は同一 `(tenantId, pharmacyId, idempotencyKey)` + 同一 `patientId` の再送を200で既存受付返却と定義しており、計画とSSOTが矛盾する。
+  - 必須pin: 同一 key + 同一 `patientId` は200を維持する。fingerprint は将来 API-006 で client field を追加した場合に限り、その client 送信内容だけを対象とし、`acceptedAt` / `receptionId` / 導出 `businessDate` は恒久的に除外する。PHI 生値を hash input / storage / log に含めない。
+  - 実装gate: fingerprint 導入は API-006 の APPROVED 改版と fable5 plan 承認の二重gateを必須とする。
+  - 現時点では code / migration を変更せず、WP-4054 の無効化と後続清算だけを台帳へ記録する。
 
 - [ ] WP-7001 Phase 1 DynamoDB persistence foundation + first aggregate synthetic proof(fable5 PLAN_APPROVED、HIGH、M1完了・後続HOLD)
   - 目的: APPROVED 済み DB-005 §11 step 2 に従い、DynamoDB 永続化アダプタ基盤と最初の集約スライスを synthetic-only(PHI禁止)で実証する。

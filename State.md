@@ -6,6 +6,12 @@
 
 ## 2026-07-10
 
+### WP-4076 reception idempotency SSOT-plan contradiction cleanup
+
+- self-scanで、WP-4054 が server 採番の `acceptedAt` / 導出業務日付を fingerprint 対象にして同一 key + 同一 `patientId` の正当再送を409へ変える計画となっており、APPROVED API-006 v0.2.0 の200既存返却契約と矛盾することを確認した。API-006 payload 範囲の WP-4051 要件は in-memory / PostgreSQL の両実装で充足済み。
+- fable5 read-only裁定 `CHANGES_REQUIRED` に従い、WP-4054 を `PLAN_INVALID_AS_WRITTEN` として無効化し、清算用WP-4076を追加。将来の fingerprint は API-006 APPROVED改版 + fable5 plan承認の二重gate、client送信内容限定、`acceptedAt` / `receptionId` / 導出 `businessDate` 恒久除外、PHI生値のhash input/storage/log禁止を必須pinとした。
+- ledger-only変更。コード・migration・API契約・OpenAPI・package/lockは変更しておらず、`git diff --check` はPASS。stage / commit / push、DB操作、外部送信は行っていない。
+
 ### WP-4075 reception patient identity single-source enforcement
 
 - WP-4074 landing後のself-scanで、受付create内部入力が requested `patientId` と `patient.patientId` の二重identityを持ち、in-memory/PostgreSQLとも保存IDとresponse属性を別々の入力から構成することを確認。`patient-requested-001` と別snapshot `patient-other-999` のdirect createが成功し、後者のID/属性を返す再現を得た。cross-tenant auth bypassではないが、faulty/future lookup adapterでwrong-patient表示・保存混在を起こす HIGH medical/data-integrity risk。
