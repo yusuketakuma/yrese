@@ -4,12 +4,14 @@
 ssot_id: DB-004
 title: データ保存期間・削除方針
 domain: database
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required(法令・保存年限)
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 source_refs:
@@ -34,7 +36,7 @@ blockers:
 |---|---|
 | 業務上の「取消・無効化」 | 論理状態(CANCELLED 等の明示ステータス+履歴保持)。行の物理 DELETE で表現しない(P-12: 履歴の不可視化禁止) |
 | 監査ログ・会計台帳・確定レセプト | **物理削除 API を作らない**(SEC-008 / ARC-007。年限経過後の扱いも法令確定までは保持) |
-| 一時データ(セッション・キャッシュ・Edge 投影) | 派生データ(正本から再構築可能 — ARC-006)に限り、技術的な物理削除を許容 |
+| 一時データ(セッション・キャッシュ・Edge 投影) | Edge 投影・キャッシュは派生データ(正本から再構築可能 — ARC-006)、セッションは非正本・揮発の一時データ。いずれも技術的な物理削除を許容 |
 | dev/test の合成データ | 制約なし(そもそも PHI を含まない — MOD-013) |
 
 ## 3. アーカイブ階層への移動
@@ -60,4 +62,5 @@ blockers:
 
 ## 変更履歴
 
+- 0.1.1 (2026-07-09): opus4.8 レビュー反映(セッションの分類を「非正本・揮発の一時データ」へ文言修正)。
 - 0.1.0 (2026-07-09): 初版起草(WP-5001)。

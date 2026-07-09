@@ -117,10 +117,10 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 
 | ssot_id | 文書 | status |
 |---|---|---|
-| DB-002 | [db_migration_policy.md](database/db_migration_policy.md) | PROPOSED |
-| DB-004 | [db_retention_and_deletion_policy.md](database/db_retention_and_deletion_policy.md) | PROPOSED |
-| DB-001 | [db_schema_design_standards.md](database/db_schema_design_standards.md) | PROPOSED |
-| DB-003 | [db_tenant_isolation_ddl_policy.md](database/db_tenant_isolation_ddl_policy.md) | PROPOSED |
+| DB-002 | [db_migration_policy.md](database/db_migration_policy.md) | APPROVED |
+| DB-004 | [db_retention_and_deletion_policy.md](database/db_retention_and_deletion_policy.md) | APPROVED |
+| DB-001 | [db_schema_design_standards.md](database/db_schema_design_standards.md) | APPROVED |
+| DB-003 | [db_tenant_isolation_ddl_policy.md](database/db_tenant_isolation_ddl_policy.md) | APPROVED |
 
 ## docs/domain/ (6件)
 

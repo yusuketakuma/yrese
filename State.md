@@ -22,9 +22,9 @@
 
 ### WP-5001 DB設計 SSOT パック
 
-- Claude側 fable5 起草の DB-001〜004 を Codex 側 commit/push 対象として受領。`docs/database/db_schema_design_standards.md`、`db_migration_policy.md`、`db_tenant_isolation_ddl_policy.md`、`db_retention_and_deletion_policy.md` はいずれも PROPOSED。
-- 要旨: DB-001 は tenant/pharmacy 必須・money/date型・enum二重実装禁止、DB-002 は前方一方向+3段適用+明示運用操作、DB-003 はテナント分離DDL/Repository方針(RLS採用はBLOCKED_SECURITY_REVIEWまで候補)、DB-004 は保存期間・削除方針(年限未確定は削除しない側に倒す)。
-- 検証予定: `pnpm check:ssot-index`、`git diff --check`。
+- Claude側 fable5 起草の DB-001〜004 を Codex 側 commit/push 対象として受領。初回 PROPOSED commit 後、opus4.8 レビュー反映により `docs/database/db_schema_design_standards.md`、`db_migration_policy.md`、`db_tenant_isolation_ddl_policy.md`、`db_retention_and_deletion_policy.md` は v0.1.1 APPROVED へ昇格。
+- 要旨: DB-001 は tenant/pharmacy 必須・money/date型・enum二重実装禁止・ScaledDecimal scale保持、DB-002 は前方一方向+3段適用+明示運用操作+起動時照合3分類(前方互換な DB 先行は許容 / checksum相違・未適用要求は起動拒否)、DB-003 はテナント分離DDL/Repository方針(通常系接続でテナント越え不可を要件化、RLS採用はBLOCKED_SECURITY_REVIEWまで候補)、DB-004 は保存期間・削除方針(年限未確定は削除しない側に倒す)。
+- 検証: `pnpm check:ssot-index` PASS、`git diff --check` PASS。
 
 ### WP-4052 web typecheck prebuild reproducibility
 
