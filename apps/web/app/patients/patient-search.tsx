@@ -8,6 +8,8 @@ import {
   type PatientSearchResult,
 } from "@yrese/contracts";
 
+import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
+
 /**
  * 患者検索UI(WP-3003)。
  *
@@ -44,13 +46,32 @@ const SEX_LABELS = { male: "男", female: "女", unknown: "不明" } as const;
 type SearchState =
   | { kind: "idle" }
   | { kind: "loading" }
-  | { kind: "error"; message: string }
+  | { kind: "error"; notice: ErrorNoticeProps }
   | {
       kind: "loaded";
       results: PatientSearchResult[];
       nextCursor?: string;
       query: string;
     };
+
+/** API エラーを「何が起きたか+次のアクション」の対として運ぶ(WP-3007 統一様式) */
+class SearchError extends Error {
+  constructor(
+    message: string,
+    readonly nextAction: string,
+    readonly errorCode?: string,
+  ) {
+    super(message);
+  }
+
+  toNotice(): ErrorNoticeProps {
+    return {
+      message: this.message,
+      nextAction: this.nextAction,
+      ...(this.errorCode !== undefined ? { errorCode: this.errorCode } : {}),
+    };
+  }
+}
 
 async function fetchSearch(
   q: string,
@@ -69,14 +90,26 @@ async function fetchSearch(
     const errorCode =
       typeof body === "object" && body !== null && "errorCode" in body
         ? String((body as { errorCode: unknown }).errorCode)
-        : "UNKNOWN";
+        : undefined;
     if (res.status === 403) {
-      throw new Error(`権限がありません(${errorCode})。管理者に確認してください。`);
+      throw new SearchError(
+        "権限がありません。",
+        "管理者に権限(patient:read)の付与状況を確認してください。",
+        errorCode,
+      );
     }
     if (res.status === 400) {
-      throw new Error(`検索条件が不正です(${errorCode})。入力内容を確認してください。`);
+      throw new SearchError(
+        "検索条件が不正です。",
+        "入力内容を確認して再度検索してください。",
+        errorCode,
+      );
     }
-    throw new Error(`検索に失敗しました(HTTP ${res.status})。再試行してください。`);
+    throw new SearchError(
+      `検索に失敗しました(HTTP ${res.status})。`,
+      "再試行してください。解消しない場合は同期状態画面で外部接続状態を確認してください。",
+      errorCode,
+    );
   }
   const parsed = patientSearchResponseSchema.parse(await res.json());
   return {
@@ -92,7 +125,14 @@ export function PatientSearch() {
   const runSearch = useCallback(async (query: string, cursor?: string, append = false) => {
     const trimmed = query.trim();
     if (trimmed.length === 0) {
-      setState({ kind: "error", message: "検索語(氏名・カナ・患者番号)を入力してください。" });
+      setState({
+        kind: "error",
+        notice: {
+          severity: "WARNING",
+          message: "検索語が入力されていません。",
+          nextAction: "氏名・カナ・患者番号のいずれかを入力してください。",
+        },
+      });
       return;
     }
     setState((prev) =>
@@ -112,7 +152,13 @@ export function PatientSearch() {
     } catch (error) {
       setState({
         kind: "error",
-        message: error instanceof Error ? error.message : "検索に失敗しました。",
+        notice:
+          error instanceof SearchError
+            ? error.toNotice()
+            : {
+                message: "検索結果の処理に失敗しました。",
+                nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+              },
       });
     }
   }, []);
@@ -147,11 +193,7 @@ export function PatientSearch() {
 
       {state.kind === "loading" && <p role="status">検索中…</p>}
 
-      {state.kind === "error" && (
-        <p role="alert" className="patient-search-error">
-          {state.message}
-        </p>
-      )}
+      {state.kind === "error" && <ErrorNotice {...state.notice} />}
 
       {state.kind === "loaded" && (
         <>

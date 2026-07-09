@@ -222,12 +222,36 @@ body {
   cursor: pointer;
 }
 
-.patient-search-error {
+/* 画面共通エラー表示領域(WP-3007 / SCR-013) */
+.error-notice {
   border: 2px solid var(--color-danger-border);
   background: var(--color-status-blocked-bg);
-  padding: 0.6rem 0.9rem;
+  padding: var(--space-2) var(--space-3);
   border-radius: 3px;
+}
+
+.error-notice[data-severity="WARNING"],
+.error-notice[data-severity="INFO"] {
+  background: var(--color-status-pending-bg);
+}
+
+.error-notice .severity-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.error-notice-next-action {
+  margin: var(--space-1) 0 0;
   font-weight: 600;
+}
+
+.route-error {
+  padding: var(--space-3);
+}
+
+.route-error-digest {
+  color: var(--color-fg-muted, inherit);
+  font-size: 0.9rem;
 }
 
 /* 共通状態コンポーネント(WP-3006) */
