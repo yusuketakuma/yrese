@@ -10,9 +10,11 @@
   "packageManager": "pnpm@10.33.2",
   "scripts": {
     "check:boundaries": "node scripts/check-boundaries.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
     "typecheck": "pnpm -r --parallel typecheck",
     "test": "pnpm -r --parallel test",
     "lint": "pnpm -r --if-present lint",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "clean": "node scripts/clean.mjs"
   }
 }

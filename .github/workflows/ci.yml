@@ -33,8 +33,11 @@ jobs:
       - name: Build
         run: pnpm -r build
 
+      - name: Check secrets
+        run: pnpm check:secrets
+
       - name: Check boundaries
         run: pnpm check:boundaries
 
-      # TODO(WP-4001後続): 依存方向チェック・重複enum/status scan・secret scan を
-      # dependency_direction_policy / error_code_registry SSOT 承認後に追加する
+      # TODO(WP-4001後続): dependency scan / SBOM などの追加ゲートを
+      # dependency_direction_policy / security SSOT 承認後に追加する
