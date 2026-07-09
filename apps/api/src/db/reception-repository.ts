@@ -1,0 +1,194 @@
+import { randomUUID } from 'node:crypto';
+import type { Pool, PoolClient } from 'pg';
+import { receptionQueueEntrySchema, type ReceptionQueueEntry } from '@yrese/contracts';
+import { receptionId } from '@yrese/shared-kernel';
+
+import {
+  businessDateFromAcceptedAt,
+  type ReceptionCreateInput,
+  type ReceptionCreateResult,
+  type ReceptionListInput,
+  type ReceptionRepository,
+} from '../reception-repository.js';
+import { patientRowToSearchResult } from './patient-repository.js';
+
+interface ReceptionEntryRow {
+  readonly reception_id: string;
+  readonly accepted_at: Date | string;
+  readonly reception_status: string;
+  readonly patient_id: string;
+  readonly name: string;
+  readonly kana: string;
+  readonly birth_date: string;
+  readonly sex: string;
+  readonly patient_number: string;
+  readonly eligibility_status: string;
+  readonly eligibility_checked_at: Date | string | null;
+}
+
+interface IdempotencyRow extends ReceptionEntryRow {
+  readonly stored_patient_id: string;
+}
+
+function instantToIso(value: Date | string): string {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  return new Date(value).toISOString();
+}
+
+function rowToEntry(row: ReceptionEntryRow): ReceptionQueueEntry {
+  return receptionQueueEntrySchema.parse({
+    receptionId: row.reception_id,
+    patient: patientRowToSearchResult(row),
+    acceptedAt: instantToIso(row.accepted_at),
+    receptionStatus: row.reception_status,
+    prescriptionIntakeType: 'paper',
+  });
+}
+
+async function selectByIdempotencyKey(
+  client: PoolClient,
+  input: Pick<ReceptionCreateInput, 'tenantId' | 'pharmacyId' | 'idempotencyKey'>,
+): Promise<IdempotencyRow | undefined> {
+  const result = await client.query<IdempotencyRow>(
+    `SELECT
+       r.patient_id AS stored_patient_id,
+       r.reception_id,
+       r.accepted_at,
+       r.reception_status,
+       p.patient_id,
+       p.name,
+       p.kana,
+       p.birth_date::text AS birth_date,
+       p.sex,
+       p.patient_number,
+       p.eligibility_status,
+       p.eligibility_checked_at
+     FROM reception_entries r
+     INNER JOIN patients p
+       ON p.tenant_id = r.tenant_id
+      AND p.pharmacy_id = r.pharmacy_id
+      AND p.patient_id = r.patient_id
+     WHERE r.tenant_id = $1 AND r.pharmacy_id = $2 AND r.idempotency_key = $3`,
+    [input.tenantId, input.pharmacyId, input.idempotencyKey],
+  );
+  return result.rows[0];
+}
+
+export class PostgresReceptionRepository implements ReceptionRepository {
+  constructor(private readonly pool: Pool) {}
+
+  async list(input: ReceptionListInput): Promise<readonly ReceptionQueueEntry[]> {
+    const result = await this.pool.query<ReceptionEntryRow>(
+      `SELECT
+         r.reception_id,
+         r.accepted_at,
+         r.reception_status,
+         p.patient_id,
+         p.name,
+         p.kana,
+         p.birth_date::text AS birth_date,
+         p.sex,
+         p.patient_number,
+         p.eligibility_status,
+         p.eligibility_checked_at
+       FROM reception_entries r
+       INNER JOIN patients p
+         ON p.tenant_id = r.tenant_id
+        AND p.pharmacy_id = r.pharmacy_id
+        AND p.patient_id = r.patient_id
+       WHERE r.tenant_id = $1 AND r.pharmacy_id = $2 AND r.business_date = $3::date
+       ORDER BY r.accepted_at ASC, r.reception_id ASC`,
+      [input.tenantId, input.pharmacyId, input.date],
+    );
+
+    return result.rows.map(rowToEntry);
+  }
+
+  async create(input: ReceptionCreateInput): Promise<ReceptionCreateResult> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const acceptedAt = input.acceptedAt.toISOString();
+      const businessDate = businessDateFromAcceptedAt(input.acceptedAt);
+      const newReceptionId = receptionId(`reception-${randomUUID()}`);
+      const inserted = await client.query<ReceptionEntryRow>(
+        `INSERT INTO reception_entries (
+           tenant_id,
+           pharmacy_id,
+           reception_id,
+           patient_id,
+           accepted_at,
+           business_date,
+           reception_status,
+           prescription_intake_type,
+           idempotency_key
+         )
+         VALUES ($1, $2, $3, $4, $5, $6::date, 'WAITING', 'paper', $7)
+         ON CONFLICT (tenant_id, pharmacy_id, idempotency_key) DO NOTHING
+         RETURNING
+           reception_id,
+           accepted_at,
+           reception_status,
+           $4::text AS patient_id,
+           $8::text AS name,
+           $9::text AS kana,
+           $10::date::text AS birth_date,
+           $11::text AS sex,
+           $12::text AS patient_number,
+           $13::text AS eligibility_status,
+           $14::timestamptz AS eligibility_checked_at`,
+        [
+          input.tenantId,
+          input.pharmacyId,
+          newReceptionId,
+          input.patientId,
+          acceptedAt,
+          businessDate,
+          input.idempotencyKey,
+          input.patient.name,
+          input.patient.kana,
+          input.patient.birthDate,
+          input.patient.sex,
+          input.patient.patientNumber,
+          input.patient.eligibilityStatus,
+          input.patient.eligibilityCheckedAt ?? null,
+        ],
+      );
+
+      const insertedRow = inserted.rows[0];
+      if (insertedRow !== undefined) {
+        const entry = rowToEntry(insertedRow);
+        await client.query('COMMIT');
+        return {
+          kind: 'created',
+          entry,
+        };
+      }
+
+      const existing = await selectByIdempotencyKey(client, input);
+      if (existing === undefined) {
+        throw new Error('idempotency conflict row was not visible after unique constraint conflict');
+      }
+
+      if (existing.stored_patient_id !== input.patientId) {
+        await client.query('COMMIT');
+        return { kind: 'idempotency_conflict' };
+      }
+
+      const entry = rowToEntry(existing);
+      await client.query('COMMIT');
+      return {
+        kind: 'existing',
+        entry,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+}

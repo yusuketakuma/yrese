@@ -22,6 +22,23 @@ export function isProvisionalStatus(value: string): value is ProvisionalStatus {
 }
 
 /**
+ * 患者の資格確認状態。
+ *
+ * API-001(patient search contract)とDB-001 enum写像で共有する正本。
+ */
+export const ELIGIBILITY_STATUSES = [
+  "VERIFIED",
+  "PENDING_REVERIFY",
+  "LOCAL_ONLY_UNVERIFIED",
+  "NOT_CHECKED",
+] as const;
+export type EligibilityStatus = (typeof ELIGIBILITY_STATUSES)[number];
+
+export function isEligibilityStatus(value: string): value is EligibilityStatus {
+  return (ELIGIBILITY_STATUSES as readonly string[]).includes(value);
+}
+
+/**
  * 受付キュー専用ステータス。
  *
  * MOD-005(status_registry) / API-006(reception_queue_contract)で承認された

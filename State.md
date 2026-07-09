@@ -6,6 +6,14 @@
 
 ## 2026-07-09(続き)
 
+### WP-5003 患者・受付 Repository DB 実装差し替え
+
+- fable5 PLAN_APPROVED に基づき、`docs/domain` と `docs/modules` の MOD-004/005 には触れず実装。`ELIGIBILITY_STATUSES` は contracts ローカル tuple から shared-kernel 正本へ移し、`RECEPTION_STATUSES` と同じくDB CHECK値源として扱う。`scripts/check-boundaries.mjs` / `check-scripts.mjs` も正本移動に合わせて更新。
+- DB migration: `migrations/000002_create_patient_and_reception_tables.sql` を追加。`patients` / `reception_entries` は DB-001 規約どおり tenant_id + pharmacy_id を必須化。`accepted_at` は TIMESTAMPTZ、`business_date` は DATE。`reception_entries` は `(tenant_id, pharmacy_id, idempotency_key)` unique、queue index は `(tenant_id, pharmacy_id, business_date, accepted_at, reception_id)`。監査・会計・イベント系 append-only テーブルは未作成(WP-5004/5005へ分離)。
+- DB Repository: `PostgresPatientRepository` / `PostgresReceptionRepository` を追加。既存 interface は不変、in-memory は既定維持。`DATABASE_URL` 設定時のみ API 起動時の schema check 後に PostgreSQL 実装を注入し、startup check は引き続き自動適用なし。
+- テスト: migration DDL の CHECK 値が shared-kernel tuple と一致すること、PostgreSQL 統合テスト(TEST_DATABASE_URL gate)で patient search/find、tenant/pharmacy不可視、reception create/list、冪等再送 existing、idempotency conflict、JST business_date、accepted_at+reception_id 安定順序を検証するテストを追加。ローカル環境では `TEST_DATABASE_URL`・`docker`・`psql` が不在のため実DB統合は明示 skip。
+- 検証: `pnpm --filter @yrese/api test` 48 PASS + PostgreSQL integration 3 SKIP、`pnpm --filter @yrese/api typecheck` PASS、`pnpm --filter @yrese/contracts test` 66 PASS、`pnpm --filter @yrese/shared-kernel test` 23 PASS、`pnpm -r typecheck` PASS、`pnpm -r test` PASS、`pnpm build` PASS、`pnpm check:openapi` PASS、`pnpm check:ssot-index` PASS、`pnpm check:secrets` PASS、`pnpm check:boundaries` PASS、`pnpm test:scripts` PASS、`pnpm lint` PASS、`pnpm check:deps` PASS、`pnpm check:sbom` PASS、`pnpm check:calculation-purity` PASS、`git diff --check` PASS。
+
 ### WP-5002 開発 PostgreSQL + マイグレーション基盤
 
 - fable5 PLAN_APPROVED に基づき、既製 migration tool ではなく repo-local forward-only SQL runner + `pg` を採用。DB-002 の3分類照合(前方互換な DB 先行は許容 / checksum相違・未適用要求は起動拒否)を直接実装し、起動時は照合のみで自動適用しない方針にした。

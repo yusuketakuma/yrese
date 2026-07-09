@@ -159,7 +159,7 @@ const JAPAN_BUSINESS_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
   day: '2-digit',
 });
 
-function dateFromAcceptedAt(acceptedAt: Date): string {
+export function businessDateFromAcceptedAt(acceptedAt: Date): string {
   const parts = JAPAN_BUSINESS_DATE_FORMATTER.formatToParts(acceptedAt);
   const year = parts.find((part) => part.type === 'year')?.value;
   const month = parts.find((part) => part.type === 'month')?.value;
@@ -222,7 +222,7 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
       patientId: input.patientId,
       patient: input.patient,
       acceptedAt,
-      date: dateFromAcceptedAt(input.acceptedAt),
+      date: businessDateFromAcceptedAt(input.acceptedAt),
       receptionStatus: 'WAITING',
       idempotencyKey: input.idempotencyKey,
     };

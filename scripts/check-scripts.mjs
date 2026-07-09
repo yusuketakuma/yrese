@@ -170,11 +170,19 @@ async function testDuplicateRegistryConstDetection() {
   );
 }
 
-async function testDuplicateContractsConstDetectionAcrossApps() {
+async function testDuplicateContractAndKernelConstDetectionAcrossApps() {
   const root = path.join(tempRoot, "duplicate-contracts");
   await writeText(
+    path.join(root, "packages", "shared-kernel", "package.json"),
+    JSON.stringify({ name: "@fixture/shared-kernel", dependencies: {} }, null, 2),
+  );
+  await writeText(
+    path.join(root, "packages", "shared-kernel", "src", "status.ts"),
+    "export const ELIGIBILITY_STATUSES = ['VERIFIED'] as const;\n",
+  );
+  await writeText(
     path.join(root, "packages", "contracts", "package.json"),
-    JSON.stringify({ name: "@fixture/contracts", dependencies: {} }, null, 2),
+    JSON.stringify({ name: "@fixture/contracts", dependencies: { "@fixture/shared-kernel": "workspace:*" } }, null, 2),
   );
   await writeText(
     path.join(root, "packages", "contracts", "src", "patient-search.ts"),
@@ -200,9 +208,9 @@ async function testDuplicateContractsConstDetectionAcrossApps() {
 
   const result = runNode("check-boundaries.mjs", [root]);
   const output = outputOf(result);
-  assert(result.status === 1, "check-boundaries should fail for apps redefining contracts const values");
+  assert(result.status === 1, "check-boundaries should fail for apps redefining contract/kernel const values");
   assert(
-    output.includes("duplicate contracts const array 'ELIGIBILITY_STATUSES'"),
+    output.includes("duplicate shared-kernel const array 'ELIGIBILITY_STATUSES'"),
     "contracts duplicate finding should name ELIGIBILITY_STATUSES",
   );
   assert(
@@ -473,8 +481,8 @@ async function testOpenApiDriftDetection() {
 try {
   await testBoundaryViolationDetection();
   await testBoundaryCleanFixturePasses();
-  await testDuplicateRegistryConstDetection();
-  await testDuplicateContractsConstDetectionAcrossApps();
+await testDuplicateRegistryConstDetection();
+await testDuplicateContractAndKernelConstDetectionAcrossApps();
   await testCalculationPurityCleanFixturePasses();
   await testCalculationPurityViolationDetection();
   await testSecretAllowlistAndDetection();
