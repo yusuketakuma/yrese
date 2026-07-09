@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { Points, ScaledDecimal, Yen } from "./index.js";
+import { Points, ROUNDING_MODES, ScaledDecimal, Yen, type RoundOptions } from "./index.js";
 
 describe("ScaledDecimal", () => {
   it("constructs from decimal strings without using floating point", () => {
@@ -43,6 +43,15 @@ describe("ScaledDecimal", () => {
   it("rounds only with explicit caller-provided scale and mode", () => {
     const value = ScaledDecimal.fromString("12.345");
 
+    expect(ROUNDING_MODES).toEqual([
+      "toward_zero",
+      "away_from_zero",
+      "half_up",
+      "half_down",
+      "half_even",
+      "floor",
+      "ceiling",
+    ]);
     expect(value.round({ scale: 2, mode: "toward_zero" }).toString()).toBe("12.34");
     expect(value.round({ scale: 2, mode: "away_from_zero" }).toString()).toBe("12.35");
     expect(value.round({ scale: 2, mode: "half_up" }).toString()).toBe("12.35");
@@ -53,6 +62,15 @@ describe("ScaledDecimal", () => {
     expect(ScaledDecimal.fromString("12.345").round({ scale: 2, mode: "half_even" }).toString()).toBe(
       "12.34",
     );
+  });
+
+  it("rejects unregistered or missing rounding modes", () => {
+    const value = ScaledDecimal.fromString("12.345");
+
+    expect(() => value.round({ scale: 2, mode: "invalid_mode" as RoundOptions["mode"] })).toThrow(
+      /mode/,
+    );
+    expect(() => value.round({ scale: 2 } as unknown as RoundOptions)).toThrow(/mode/);
   });
 
   it("rounds negative values consistently for floor and ceiling", () => {

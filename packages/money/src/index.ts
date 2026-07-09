@@ -10,14 +10,17 @@
  * BLOCKED_REGULATORY_REVIEW が解消されていることを呼び出し側で保証する。
  */
 
-export type RoundingMode =
-  | "toward_zero"
-  | "away_from_zero"
-  | "half_up"
-  | "half_down"
-  | "half_even"
-  | "floor"
-  | "ceiling";
+export const ROUNDING_MODES = [
+  "toward_zero",
+  "away_from_zero",
+  "half_up",
+  "half_down",
+  "half_even",
+  "floor",
+  "ceiling",
+] as const;
+
+export type RoundingMode = (typeof ROUNDING_MODES)[number];
 
 export interface RoundOptions {
   readonly scale: number;
@@ -28,6 +31,12 @@ export type IntegerInput = bigint | number | string;
 
 const integerPattern = /^[+-]?\d+$/;
 const decimalPattern = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/;
+
+function assertRoundingMode(value: unknown): asserts value is RoundingMode {
+  if (typeof value !== "string" || !(ROUNDING_MODES as readonly string[]).includes(value)) {
+    throw new RangeError(`mode must be one of: ${ROUNDING_MODES.join(", ")}`);
+  }
+}
 
 function assertSafeScale(scale: number): void {
   if (!Number.isSafeInteger(scale) || scale < 0) {
@@ -192,6 +201,7 @@ export class ScaledDecimal {
 
   round(options: RoundOptions): ScaledDecimal {
     assertSafeScale(options.scale);
+    assertRoundingMode(options.mode);
 
     if (options.scale >= this.scale) {
       return new ScaledDecimal(this.coefficient * pow10(options.scale - this.scale), options.scale);

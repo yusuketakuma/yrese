@@ -6,6 +6,13 @@
 
 ## 2026-07-09(続き)
 
+### WP-4033 — @yrese/money RoundOptions.mode runtime guard
+
+- fable5 PLAN_APPROVED 後に codex 実装。MOD-010 の RoundingMode 7種と一致する `ROUNDING_MODES` const tuple を追加し、`RoundingMode` 型を tuple から派生させて runtime allow-list と型の値源を単一化。
+- `ScaledDecimal.round()` で `options.mode` を明示検証し、`invalid_mode` や `mode` 欠落は `RangeError` で fail-closed。既存の丸め結果・政策値/evidence 規律は変更なし。
+- 既存テストで全 mode の代表値を固定済みであることを確認し、`ROUNDING_MODES` の値順と invalid/missing mode の否定テストを追加。
+- 検証: `pnpm --filter @yrese/money test`(12 tests PASS)、`pnpm --filter @yrese/money typecheck`、`pnpm -r typecheck`、`pnpm check:boundaries`、`git diff --check`。
+
 ### SSOT 第3波(WP-0046/0047)
 
 - WP-0046: API-first platform pack — API-002(dogfooding: 自社 UI も公開 API と同一契約のみ、抜け道 API 禁止)/ API-003(公開 API 共通土台: deny-by-default・テナント境界・バージョニング。数値は BLOCKED_PERFORMANCE_SLO)/ API-004(PH-OS リファレンス連携、特別扱い API 禁止)/ API-005(OSS 公開 allow-list、実公開は BLOCKED_LEGAL_REVIEW + 人間最終承認)。全て PROPOSED
