@@ -6,6 +6,16 @@
 
 ## 2026-07-09
 
+### 16:00〜16:35 — 第4〜5波: Phase 0 文書完成・算定骨格・codex自律スキャン・ゲート報告
+
+- SSOT完成: WP-0008(UI/UX 7)4aa6595 / WP-0009(セキュリティ 7)bcdf89f / WP-0010(運用 14)ff145ae / WP-0011(プロセス・品質 11)008baec / WP-0012(共通モジュール 14)a257598 / WP-0013(ssot_index 97文書+品質3補完+ゲート報告)79edf9a
+- WP-2101a 完了: @yrese/calculation 骨格(空ruleset→BLOCKED、複数CALCULATED→SSOT_UPDATE_REQUIRED ガードをレビュー往復で追加)d26424d
+- WP-0015 完了: 一次資料精読(記録条件仕様R8.6 レコード体系一式+点数表約45項目、人間ダブルチェック待ち)0ef7ab3
+- codex 自律スキャン運用開始(ユーザーがcodex側へ直接指示): バックログ5+2+1件提案 → WP-1008(dead-letter不変条件)/WP-4005(CI全build)/WP-4004(lint整合)5729ea7、WP-1010(**権限スコープ検証の実バグ修正**)/WP-4006(dist衛生)e51f920、WP-2006(認可回帰テスト)/WP-1009(エラーコードシード)b5e4f22 — すべてレビュー承認済み
+- kernel.test.ts のリテラル制御文字混入(codex発見・WP-1011)を修正
+- **Phase 0 ゲート報告を提出(docs/plan/phase0_gate_report.md)— 人間レビュー待ち。新規 WP_ASSIGN は一時停止、codex はバックログ提案のみ継続**
+- 現時点: コミット40件超、テスト66+件全パス、CI グリーン、二系統WPフロー13件完走(CHANGES_REQUESTED 2件はいずれも安全側修正)
+
 ### 15:40〜15:55 — 実装第3波: 契約基盤・境界検査・SSOT量産・公式資料確定
 
 - WP-1007 完了: @yrese/contracts(contract-first の器。health スキーマ移設、zod v4 z.iso.datetime)codex実装・claudeレビュー、7fa369c
