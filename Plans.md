@@ -416,6 +416,12 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: DB構築計画承認後の `apps/api` repository 実装、migration、idempotency tableまたは reception table unique constraint、concurrency tests。現時点では `docs/plan/database_construction_plan.md` に触らない。
   - 検証: 同一key同一payloadの冪等再送、同一key異payloadの409、並行POST競合、プロセス再起動後の重複防止、tenant/pharmacy越え分離、`pnpm --filter @yrese/api test`, migration rollback/diff check。
 
+- [ ] WP-4052 web typecheck prebuild reproducibility(codex 提案 SELF-SCAN-20260709-31、frontend/tooling owner確認待ち)
+  - 発見根拠: clean build 前の全体検証で `pnpm -r typecheck` が `apps/web/.next/types/**/*.ts` の TS6053(file not found)で失敗し、`pnpm build` 後の再実行では PASS した。`apps/web/tsconfig.json` は `.next/types/**/*.ts` を include しているが、`apps/web` の `typecheck` script は `tsc --noEmit` のみで Next 生成型を事前生成しない。
+  - 目的: CI/ローカルの型検査を build 実行順序に依存させず、clean checkout でも `pnpm -r typecheck` が再現可能に通るようにする。医療UI実装の品質ゲートで「build 後なら通る」状態を残さない。
+  - 想定スコープ: `apps/web/package.json`, `apps/web/tsconfig.json`, 必要なら root `package.json` の検証順序。選択肢は Next 型生成を typecheck 前に実行する、または `.next/types` include の扱いを Next 推奨方式へ合わせること。Next/React tooling 変更のため ClaudeCode側 frontend owner または fable5 裁定後に実施。
+  - 検証: clean state で `pnpm --filter @yrese/web typecheck`, `pnpm -r typecheck`, `pnpm --filter @yrese/web test`, `pnpm build`, `git diff --check`。
+
 - [x] WP-4012 dependency scan / SBOM CI gate(b0ecf84、addendum 702c2f5)
   - 発見根拠: `.github/workflows/ci.yml` には dependency scan / SBOM 追加TODOが残り、`package.json` にも依存脆弱性・SBOM生成を検査するroot scriptが未定義。
   - 目的: secret scan に加えて、依存脆弱性検知とSBOM生成/検証をCIの機械ゲートにし、security SSOTの「dependency scan / SBOM」予定項目を実装へ進める。
