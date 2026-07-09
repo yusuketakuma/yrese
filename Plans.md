@@ -456,11 +456,11 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `apps/api/src/db/migrations.ts` の default path 解決、migration loader unit test、必要なら root/package script の引数化。WP-4055 の不正filename fail-closedと同じ loader 領域のため、fable5判断で同時実装可。
   - 検証: package cwd と repo root cwd の双方で `loadMigrationFiles()` が root `migrations/` を読むこと、明示 `migrationsDirectory` 引数は従来通り尊重すること、`pnpm --filter @yrese/api test`、`pnpm db:check` は `DATABASE_URL` 不在時に従来通り明示エラー、`git diff --check`。DB migration runner の運用境界なので fable5 PLAN_APPROVED 後に実装。
 
-- [ ] WP-4059 PostgreSQL reception integration test load-bearing narrowing(codex 提案 SELF-SCAN-20260710-04、WP-5003後続)
+- [x] WP-4059 PostgreSQL reception integration test load-bearing narrowing(codex 提案 SELF-SCAN-20260710-04、WP-5003後続)
   - 発見根拠: `apps/api/src/db/postgres-repositories.integration.test.ts` の受付冪等性テストは `expect(created.kind).toBe('created')` / `expect(resent.kind).toBe('existing')` の直後に `if (created.kind !== 'idempotency_conflict' && resent.kind !== 'idempotency_conflict')` で entry 比較を行っている。実行時 expect が失敗すればテスト全体は落ちるが、型絞りのための条件が本来あり得ない分岐を残しており、今後の編集で idempotency conflict を誤って許すテストに弱化しやすい。
   - 目的: PostgreSQL repository 統合テストの冪等再送ケースを load-bearing にし、`created` / `existing` 以外の結果では即時 fail する型ガードまたは helper を使う。DB-2 の冪等性保証をテスト上も明確化する。
-  - 想定スコープ: `apps/api/src/db/postgres-repositories.integration.test.ts` の type narrowing helper 追加または明示 `throw` 分岐化。実装コード・migration・契約は変更しない。
-  - 検証: `pnpm --filter @yrese/api test`、`pnpm --filter @yrese/api typecheck`、`git diff --check`。`TEST_DATABASE_URL` 不在時は当該統合テストが skip されるため、型検査で unreachable/union narrowing が成立することを重視する。
+  - 実装: `apps/api/src/db/postgres-repositories.integration.test.ts` に `expectReceptionEntryResult()` helper を追加し、`created` / `existing` 以外は即時 throw する形へ変更。entry 比較から `idempotency_conflict` を許す型上の逃げ道を削除。実装コード・migration・契約は変更なし。
+  - 検証: `pnpm --filter @yrese/api typecheck` PASS、`pnpm --filter @yrese/api test` 53 PASS + 3 SKIP、`git diff --check` PASS。`TEST_DATABASE_URL` 不在のため PostgreSQL 統合テスト本体は skip、型検査で helper の union narrowing を確認。
 
 - [x] WP-6001 DynamoDB single-table + FHIR store design proposal(d5d06e0、fable5/opus4.8 REVIEW_RESULT: CHANGES_REQUIRED but formalize by fable5)
   - 内容: `docs/research/dynamodb_fhir_store_design_proposal.md` を DRAFT(codex 設計提案・fable5 レビュー用・SSOT ではない)として追加。ARC-008 に基づく DynamoDB single-table / FHIR store / append-only audit / adapter 境界 / PostgreSQL 段階移行の素材を提示。

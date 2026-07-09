@@ -6,6 +6,13 @@
 
 ## 2026-07-10
 
+### WP-4059 PostgreSQL reception integration test load-bearing narrowing
+
+- agmsg inbox 空、HEAD=origin/main=`c8ec0df`、worktree clean から再開。Claude へ、返信待ちの間は SSOT/DB migration 方針に触れない test-only WP-4059 を読む旨を通知。
+- `apps/api/src/db/postgres-repositories.integration.test.ts` の受付冪等性ケースに `expectReceptionEntryResult()` helper を追加。`created` / `existing` を期待する場面で `idempotency_conflict` や別 kind が返った場合は即時 throw し、entry 比較から型上の逃げ道を削除した。
+- 実装コード・migration・契約・SSOT本文は変更なし。`TEST_DATABASE_URL` 不在時は PostgreSQL 統合テスト本体が skip されるため、型検査で narrowing が成立することを検証の中心にした。
+- 検証: `pnpm --filter @yrese/api typecheck` PASS、`pnpm --filter @yrese/api test` PASS(53 PASS + 3 SKIP)、`git diff --check` PASS。
+
 ### WP-6003 pure core AWS boundary non-static import regression coverage
 
 - agmsg で WP-6001 REVIEW_RESULT(CHANGES_REQUIRED、formalize は fable5 側)と WP-6002 の位置づけを再確認。WP-6002 は `c18d50d` で push 済み、inbox は空、monitor bridge は `yrese/codex` alive、worktree clean から再開。

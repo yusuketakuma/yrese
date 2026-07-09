@@ -8,10 +8,13 @@ import { loadMigrationFiles } from './migrations.js';
 import { PostgresPatientRepository } from './patient-repository.js';
 import { createDbPool } from './pool.js';
 import { PostgresReceptionRepository } from './reception-repository.js';
+import type { ReceptionCreateResult } from '../reception-repository.js';
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 
 const describePostgres = testDatabaseUrl === undefined ? describe.skip : describe;
+
+type ReceptionEntryResult = Extract<ReceptionCreateResult, { readonly entry: unknown }>;
 
 function createTestSchemaName(): string {
   return `yrese_repository_test_${process.pid}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
@@ -81,6 +84,16 @@ async function seedPatient(
       input.eligibilityStatus ?? 'VERIFIED',
     ],
   );
+}
+
+function expectReceptionEntryResult(result: ReceptionCreateResult, expectedKind: ReceptionEntryResult['kind']): ReceptionEntryResult {
+  if (result.kind === 'idempotency_conflict') {
+    throw new Error(`expected ${expectedKind} reception result, got idempotency_conflict`);
+  }
+  if (result.kind !== expectedKind) {
+    throw new Error(`expected ${expectedKind} reception result, got ${result.kind}`);
+  }
+  return result;
 }
 
 describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_URL to run)', () => {
@@ -167,28 +180,30 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
       }
 
       const acceptedAt = new Date('2026-07-09T20:00:00.000Z'); // JST 2026-07-10 05:00
-      const created = await receptionRepository.create({
-        tenantId: tenantId('tenant-001'),
-        pharmacyId: pharmacyId('pharmacy-001'),
-        patientId: patientId('patient-db-001'),
-        patient: firstPatient,
-        idempotencyKey: 'db-idempotency-001',
-        acceptedAt,
-      });
-      expect(created.kind).toBe('created');
+      const created = expectReceptionEntryResult(
+        await receptionRepository.create({
+          tenantId: tenantId('tenant-001'),
+          pharmacyId: pharmacyId('pharmacy-001'),
+          patientId: patientId('patient-db-001'),
+          patient: firstPatient,
+          idempotencyKey: 'db-idempotency-001',
+          acceptedAt,
+        }),
+        'created',
+      );
 
-      const resent = await receptionRepository.create({
-        tenantId: tenantId('tenant-001'),
-        pharmacyId: pharmacyId('pharmacy-001'),
-        patientId: patientId('patient-db-001'),
-        patient: firstPatient,
-        idempotencyKey: 'db-idempotency-001',
-        acceptedAt,
-      });
-      expect(resent.kind).toBe('existing');
-      if (created.kind !== 'idempotency_conflict' && resent.kind !== 'idempotency_conflict') {
-        expect(resent.entry.receptionId).toBe(created.entry.receptionId);
-      }
+      const resent = expectReceptionEntryResult(
+        await receptionRepository.create({
+          tenantId: tenantId('tenant-001'),
+          pharmacyId: pharmacyId('pharmacy-001'),
+          patientId: patientId('patient-db-001'),
+          patient: firstPatient,
+          idempotencyKey: 'db-idempotency-001',
+          acceptedAt,
+        }),
+        'existing',
+      );
+      expect(resent.entry.receptionId).toBe(created.entry.receptionId);
 
       const conflict = await receptionRepository.create({
         tenantId: tenantId('tenant-001'),
@@ -200,15 +215,17 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
       });
       expect(conflict.kind).toBe('idempotency_conflict');
 
-      const secondCreated = await receptionRepository.create({
-        tenantId: tenantId('tenant-001'),
-        pharmacyId: pharmacyId('pharmacy-001'),
-        patientId: patientId('patient-db-002'),
-        patient: secondPatient,
-        idempotencyKey: 'db-idempotency-002',
-        acceptedAt,
-      });
-      expect(secondCreated.kind).toBe('created');
+      const secondCreated = expectReceptionEntryResult(
+        await receptionRepository.create({
+          tenantId: tenantId('tenant-001'),
+          pharmacyId: pharmacyId('pharmacy-001'),
+          patientId: patientId('patient-db-002'),
+          patient: secondPatient,
+          idempotencyKey: 'db-idempotency-002',
+          acceptedAt,
+        }),
+        'created',
+      );
 
       const jstQueue = await receptionRepository.list({
         tenantId: tenantId('tenant-001'),
