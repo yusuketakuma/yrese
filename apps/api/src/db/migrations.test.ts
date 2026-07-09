@@ -97,6 +97,7 @@ describe('loadMigrationFiles', () => {
         expect(migrations.map((migration) => migration.filename)).toEqual([
           '000001_create_schema_migrations.sql',
           '000002_create_patient_and_reception_tables.sql',
+          '000003_add_patient_number_scope_unique.sql',
         ]);
       } finally {
         process.chdir(originalCwd);

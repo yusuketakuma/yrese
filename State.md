@@ -6,6 +6,13 @@
 
 ## 2026-07-10
 
+### WP-4071 patientNumber tenant/pharmacy uniqueness enforcement
+
+- fable5 の `PLAN_APPROVED` に基づき、APPROVED DOM-002 の薬局内患者番号一意性を PostgreSQL に fail-closed で反映。checksum 管理済み `000002_create_patient_and_reception_tables.sql` は SHA-256 `2910b460d2b9733904937093b399784089dbda9a444af75ac5fd498a1ae4b599` のまま変更せず、forward-only `000003_add_patient_number_scope_unique.sql` に named UNIQUE constraint `(tenant_id, pharmacy_id, patient_number)` を追加した。
+- 一意性は保存済み exact 値に限定し、lower/trim/citext 等の正規化、既存重複の自動 cleanup/renumber/merge、DML、既存 `patients_search_idx` の削除は行っていない。既存 index は検索互換性を優先して明示的に保持する。legacy 重複がある環境では constraint 構築が SQLSTATE 23505 で失敗し、migration runner の既存 transaction により constraint/history 書込とも rollback、legacy rows は不変となる。
+- static tests は `000002` checksum、`000003` の loader forward order、exact 3-column constraint、DML/normalization/index drop 不在を固定。disposable schema 専用 integration tests は同一 tenant+pharmacy+exact patientNumber の重複を constraint 名付き SQLSTATE 23505 で拒否し、tenant/pharmacy 越えの同値、case/whitespace variant、scoped search、legacy 重複時の rollback/history/rows不変を固定した。
+- 検証: focused static 10 PASS + PostgreSQL integration 5 SKIP、`pnpm --filter @yrese/api test` 67 PASS + 5 SKIP、`pnpm --filter @yrese/api typecheck` PASS、`pnpm check:boundaries` PASS、`pnpm check:secrets` PASS、`git diff --check` PASS。`TEST_DATABASE_URL` 不在のため PostgreSQL integration は明示 skip。migration 適用や既存/dev/prod DB への DDL/DML は実行していない。
+
 ### WP-4068 event/audit ISO instant calendar validation
 
 - fable5 の `PLAN_APPROVED` に基づき、`@yrese/events` に共有 `assertIsoInstant` を追加。primitive string / non-empty を明示検証し、既存の timezone 必須・任意長 year・offset・fraction の lexical semantics を維持しつつ、文字列から年月日を捕捉して proleptic Gregorian calendar 上の実在日を fail-closed に検証する。任意長 year は全体を数値化せず、400年周期に必要な末尾4桁のみで閏年を判定する。

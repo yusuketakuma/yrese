@@ -143,6 +143,101 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
     });
   });
 
+  it('enforces exact patient-number uniqueness per tenant and pharmacy while preserving scoped search', async () => {
+    await withMigratedSchema(async (pool) => {
+      await seedPatient(pool, {
+        tenantId: 'tenant-unique-001',
+        pharmacyId: 'pharmacy-unique-001',
+        patientId: 'patient-unique-001',
+        name: '合成患者一',
+        kana: 'ゴウセイカンジャイチ',
+        patientNumber: 'EXACT-001',
+      });
+
+      await expect(
+        seedPatient(pool, {
+          tenantId: 'tenant-unique-001',
+          pharmacyId: 'pharmacy-unique-001',
+          patientId: 'patient-unique-duplicate',
+          name: '合成患者重複',
+          kana: 'ゴウセイカンジャチョウフク',
+          patientNumber: 'EXACT-001',
+        }),
+      ).rejects.toMatchObject({
+        code: '23505',
+        constraint: 'patients_tenant_pharmacy_patient_number_unique',
+      });
+
+      await seedPatient(pool, {
+        tenantId: 'tenant-unique-001',
+        pharmacyId: 'pharmacy-unique-002',
+        patientId: 'patient-unique-002',
+        name: '合成患者二',
+        kana: 'ゴウセイカンジャニ',
+        patientNumber: 'EXACT-001',
+      });
+      await seedPatient(pool, {
+        tenantId: 'tenant-unique-002',
+        pharmacyId: 'pharmacy-unique-001',
+        patientId: 'patient-unique-003',
+        name: '合成患者三',
+        kana: 'ゴウセイカンジャサン',
+        patientNumber: 'EXACT-001',
+      });
+
+      const repository = new PostgresPatientRepository(pool);
+      const firstScope = await repository.search({
+        tenantId: tenantId('tenant-unique-001'),
+        pharmacyId: pharmacyId('pharmacy-unique-001'),
+        q: 'EXACT-001',
+        limit: 20,
+      });
+      const otherPharmacy = await repository.search({
+        tenantId: tenantId('tenant-unique-001'),
+        pharmacyId: pharmacyId('pharmacy-unique-002'),
+        q: 'EXACT-001',
+        limit: 20,
+      });
+      const otherTenant = await repository.search({
+        tenantId: tenantId('tenant-unique-002'),
+        pharmacyId: pharmacyId('pharmacy-unique-001'),
+        q: 'EXACT-001',
+        limit: 20,
+      });
+
+      expect(firstScope.results.map((patient) => patient.patientId)).toEqual(['patient-unique-001']);
+      expect(otherPharmacy.results.map((patient) => patient.patientId)).toEqual(['patient-unique-002']);
+      expect(otherTenant.results.map((patient) => patient.patientId)).toEqual(['patient-unique-003']);
+
+      await seedPatient(pool, {
+        tenantId: 'tenant-unique-001',
+        pharmacyId: 'pharmacy-unique-001',
+        patientId: 'patient-unique-case-variant',
+        name: '合成患者大小文字差',
+        kana: 'ゴウセイカンジャダイショウモジサ',
+        patientNumber: 'exact-001',
+      });
+      await seedPatient(pool, {
+        tenantId: 'tenant-unique-001',
+        pharmacyId: 'pharmacy-unique-001',
+        patientId: 'patient-unique-space-variant',
+        name: '合成患者空白差',
+        kana: 'ゴウセイカンジャクウハクサ',
+        patientNumber: ' EXACT-001 ',
+      });
+
+      const exactVariants = await pool.query(
+        `SELECT patient_number
+         FROM patients
+         WHERE tenant_id = 'tenant-unique-001'
+           AND pharmacy_id = 'pharmacy-unique-001'`,
+      );
+      expect(exactVariants.rows.map((row) => row.patient_number).sort()).toEqual(
+        [' EXACT-001 ', 'EXACT-001', 'exact-001'].sort(),
+      );
+    });
+  });
+
   it('creates reception entries with idempotency, tenant isolation, stable order, and JST business dates', async () => {
     await withMigratedSchema(async (pool) => {
       await seedPatient(pool, {

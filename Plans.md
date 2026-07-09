@@ -527,6 +527,12 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 回帰テスト: clean pass、`{}`、error-only、metadata/vulnerabilities 欠落、array、文字列/負数/欠落/小数/unsafe count、HIGH/CRITICAL、明示 registry outage、generic network-like near miss、偽 `pnpm` の parseable clean JSON + exit 23 を固定した。
   - 検証: `pnpm test:scripts` PASS、元の3 false-pass reproduction は全て exit 1、`pnpm check:deps` PASS(high=0, critical=0)、`pnpm check:secrets` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
 
+- [x] WP-4071 patientNumber tenant/pharmacy uniqueness enforcement(codex 提案 SELF-SCAN-20260710-16、fable5 PLAN_APPROVED、HIGH、本WPで実装)
+  - 発見根拠: APPROVED DOM-002 は Patient の `patientNumber` を `(tenant_id, pharmacy_id)` 内で一意とするが、PostgreSQL migration `000002_create_patient_and_reception_tables.sql` は `patient_number NOT NULL` / non-empty CHECK と非一意の検索 index だけを定義し、同一 tenant・pharmacy・patientNumber の重複を許す。
+  - 医療安全影響: 同じ薬局内に同一患者番号の別 Patient が永続化されると、患者検索・受付紐付け・後続の処方/調剤操作で表示上の識別が曖昧になり、別患者を選択して受付・調剤情報を関連付ける wrong-patient risk を生む。
+  - 実装: 適用済み `000002` は checksum `2910b460...b599` のまま不変とし、forward-only `000003_add_patient_number_scope_unique.sql` で exact `(tenant_id, pharmacy_id, patient_number)` named UNIQUE constraint を追加。大文字小文字変換・trim・正規化、既存重複の UPDATE/DELETE/自動統合、既存 `patients_search_idx` の削除は行わない。legacy 重複があれば SQLSTATE 23505 で migration transaction 全体が rollback され、別途承認された運用 remediation を要求する。
+  - テスト・検証: 静的 migration tests は `000003` の forward order、既存 `000002` checksum 不変、exact 3-column uniqueness、DML/normalization/index drop 不在を固定。disposable schema 用 PostgreSQL integration tests は同一 tenant+pharmacy+exact patientNumber の2件目が constraint 名付き SQLSTATE 23505、tenant/pharmacy 越えの同値許可、case/whitespace variant の exact-value 区別、scoped search 維持、legacy 重複時の migration rollback/history/rows不変を固定した。`TEST_DATABASE_URL` 不在のため実DB統合5件は明示 skip、migration の実適用は未実行。focused static 10 PASS + integration 5 SKIP、API全体67 PASS + integration 5 SKIP、API typecheck、`pnpm check:boundaries`、`pnpm check:secrets`、`git diff --check` は PASS。
+
 - [ ] WP-7001 Phase 1 DynamoDB persistence foundation + first aggregate synthetic proof(fable5 PLAN_APPROVED、HIGH、実装HOLD)
   - 目的: APPROVED 済み DB-005 §11 step 2 に従い、DynamoDB 永続化アダプタ基盤と最初の集約スライスを synthetic-only(PHI禁止)で実証する。
   - 承認済み計画: persistence adapter は `apps/api` server-only に置き、AWS SDK import を adapter 層へ限定する。最初の集約は、FHIR REST/CapabilityStatement を推測実装せず、DB-005 §6.1/§10 と `@yrese/audit` core が確定済みの synthetic-only `AuditAppendStore` とする。DynamoDB Local harness は CI では接続必須、local では明示 skip 可とし、IAM/STS/KMS/PITR/throughput の証明には使わない。
