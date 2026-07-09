@@ -6,6 +6,16 @@ const rootDir = path.resolve(process.argv[2] ?? process.cwd());
 const violations = [];
 const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"]);
 const ignoredDirs = new Set([".git", ".next", "coverage", "dist", "node_modules"]);
+const pureCorePackageNames = new Set([
+  "audit",
+  "calculation",
+  "contracts",
+  "date-time",
+  "events",
+  "money",
+  "shared-kernel",
+  "trace",
+]);
 const duplicateConstRules = [
   { constName: "SYSTEM_MODES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
   { constName: "PROVISIONAL_STATUSES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
@@ -135,6 +145,18 @@ function packageNameFromPath(filePath) {
   return match?.[1] ?? null;
 }
 
+function forbiddenPureCoreImportReason(specifier) {
+  if (specifier === "aws-sdk" || specifier.startsWith("@aws-sdk/")) {
+    return "AWS SDK";
+  }
+
+  if (specifier.toLowerCase().includes("dynamodb")) {
+    return "DynamoDB module";
+  }
+
+  return null;
+}
+
 function isTestSourceFile(filePath) {
   const basename = path.basename(filePath);
   return /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(basename);
@@ -146,9 +168,18 @@ async function checkImportBoundaries(packageNameByDir, appPackageNames) {
   const appFiles = await listFiles(path.join(rootDir, "apps"), sourcePredicate);
 
   for (const filePath of packageFiles) {
+    const packageName = packageNameFromPath(filePath);
     const source = await readFile(filePath, "utf8");
     const relative = toPosix(path.relative(rootDir, filePath));
     for (const specifier of extractImportSpecifiers(source)) {
+      const forbiddenPureCoreImport =
+        packageName !== null && pureCorePackageNames.has(packageName)
+          ? forbiddenPureCoreImportReason(specifier)
+          : null;
+      if (forbiddenPureCoreImport !== null) {
+        report(`${relative}: pure core package '${packageName}' must not import ${forbiddenPureCoreImport} (${specifier})`);
+      }
+
       const relativeTarget = resolveRelativeImport(filePath, specifier);
       const importsApps =
         specifier.startsWith("apps/") ||

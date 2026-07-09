@@ -142,6 +142,51 @@ async function testBoundaryCleanFixturePasses() {
   assert(result.status === 0, `check-boundaries should pass for clean fixture: ${outputOf(result)}`);
 }
 
+async function testPureCoreRejectsAwsAndDynamoDbImports() {
+  const root = path.join(tempRoot, "pure-core-aws-violation");
+  await writeText(
+    path.join(root, "packages", "audit", "package.json"),
+    JSON.stringify({ name: "@fixture/audit", dependencies: {} }, null, 2),
+  );
+  await writeText(
+    path.join(root, "packages", "audit", "src", "index.ts"),
+    [
+      "import AWS from 'aws-sdk';",
+      "import { DynamoDBClient } from '@aws-sdk/client-dynamodb';",
+      "import { Table } from 'dynamodb-toolbox';",
+      "export const sdk = { AWS, DynamoDBClient, Table };",
+      "",
+    ].join("\n"),
+  );
+
+  const result = runNode("check-boundaries.mjs", [root]);
+  const output = outputOf(result);
+  assert(result.status === 1, "check-boundaries should fail when pure core packages import AWS or DynamoDB modules");
+  assert(
+    output.includes("pure core package 'audit' must not import AWS SDK"),
+    "pure core AWS SDK finding should name the package and AWS SDK",
+  );
+  assert(
+    output.includes("pure core package 'audit' must not import DynamoDB module (dynamodb-toolbox)"),
+    "pure core DynamoDB finding should name the DynamoDB module import",
+  );
+}
+
+async function testAppAwsImportDoesNotTripPureCoreRule() {
+  const root = path.join(tempRoot, "app-aws-import-pass");
+  await writeText(
+    path.join(root, "apps", "api", "package.json"),
+    JSON.stringify({ name: "@fixture/api", dependencies: {} }, null, 2),
+  );
+  await writeText(
+    path.join(root, "apps", "api", "src", "index.ts"),
+    "import { DynamoDBClient } from '@aws-sdk/client-dynamodb';\nexport const client = DynamoDBClient;\n",
+  );
+
+  const result = runNode("check-boundaries.mjs", [root]);
+  assert(result.status === 0, `check-boundaries should allow AWS imports outside pure core packages: ${outputOf(result)}`);
+}
+
 async function testDuplicateRegistryConstDetection() {
   const root = path.join(tempRoot, "duplicate-registry");
   await writeText(
@@ -481,8 +526,10 @@ async function testOpenApiDriftDetection() {
 try {
   await testBoundaryViolationDetection();
   await testBoundaryCleanFixturePasses();
-await testDuplicateRegistryConstDetection();
-await testDuplicateContractAndKernelConstDetectionAcrossApps();
+  await testPureCoreRejectsAwsAndDynamoDbImports();
+  await testAppAwsImportDoesNotTripPureCoreRule();
+  await testDuplicateRegistryConstDetection();
+  await testDuplicateContractAndKernelConstDetectionAcrossApps();
   await testCalculationPurityCleanFixturePasses();
   await testCalculationPurityViolationDetection();
   await testSecretAllowlistAndDetection();
