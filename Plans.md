@@ -488,6 +488,12 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 実装: 性別ラベルを `Record<PatientSearchResult["sex"], string>` / `Record<PatientHeaderProps["sex"], string>`、処方箋受付区分ラベルを `Record<ReceptionQueueEntry["prescriptionIntakeType"], string>` に変更。ランタイム表示は不変更。
   - 検証: `pnpm --filter @yrese/web test` PASS(37)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
 
+- [x] WP-4064 PatientSearch runner lazy initialization(codex 提案 SELF-SCAN-20260710-09、本WPで実装)
+  - 発見根拠: `apps/web/app/patients/patient-search.tsx` の `useRef(createSearchRunner(fetchSearch, setState))` は React の render ごとに初期値式を評価するため、最初の runner 以外に未使用の runner closure を毎回生成しうる。動作上は破棄されるが、患者検索の stale guard は runner 内 generation に依存するため、runner lifecycle は明示的に固定した方が読みやすい。
+  - 目的: PatientSearch の検索 runner を初回 render でだけ作成し、stale response guard の所有者を明確にする。検索挙動・DOM・API呼び出し・契約shapeは変更しない。
+  - 実装: `runnerRef` を `null` 初期化し、初回 render 時だけ `createSearchRunner(fetchSearch, setState)` を代入する lazy ref へ変更。通常到達しない未初期化状態は黙殺せず明示例外にした。
+  - 検証: `pnpm --filter @yrese/web test` PASS(37)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 - [x] WP-6001 DynamoDB single-table + FHIR store design proposal(d5d06e0、fable5/opus4.8 REVIEW_RESULT: CHANGES_REQUIRED but formalize by fable5)
   - 内容: `docs/research/dynamodb_fhir_store_design_proposal.md` を DRAFT(codex 設計提案・fable5 レビュー用・SSOT ではない)として追加。ARC-008 に基づく DynamoDB single-table / FHIR store / append-only audit / adapter 境界 / PostgreSQL 段階移行の素材を提示。
   - レビュー結果: 設計骨格は健全と評価。DynamoDB transaction 同一 item 制約、監査 append 冪等性、HMAC prefix 検索不可、Provenance 投影化、per-request STS tenant scope 等の必須修正は fable5 が DB/FHIR store SSOT formalize 時に織り込む。proposal は入力記録として残置。

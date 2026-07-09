@@ -6,6 +6,13 @@
 
 ## 2026-07-10
 
+### WP-4064 PatientSearch runner lazy initialization
+
+- WP-4063 handoff後も agmsg inbox は空。dev tenant scope の最小化候補は auth/security 境界に触れるため即実装せず、純粋な Web 内部初期化の self-scan を優先。
+- `apps/web/app/patients/patient-search.tsx` の `useRef(createSearchRunner(fetchSearch, setState))` は render ごとに初期値式を評価し、最初の runner 以外に未使用の runner closure を生成しうる点を確認。
+- `runnerRef` を `null` 初期化し、初回 render 時だけ `createSearchRunner()` を代入する lazy ref に変更。検索 runner 内の generation guard の所有者が明確になり、表示・API・契約shapeは不変更。
+- 検証: `pnpm --filter @yrese/web test` PASS(37)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 ### WP-4063 web display label exhaustiveness tightening
 
 - WP-4062 handoff後も agmsg inbox は空。DB runner の高リスク PLAN_REQUEST は承認待ちのため、Web表示型の低リスク self-scan を継続。

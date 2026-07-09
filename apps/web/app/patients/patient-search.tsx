@@ -306,10 +306,16 @@ export function PatientSearchResults({
 export function PatientSearch() {
   const [q, setQ] = useState("");
   const [state, setState] = useState<SearchState>({ kind: "idle" });
-  const runnerRef = useRef(createSearchRunner(fetchSearch, setState));
+  const runnerRef = useRef<ReturnType<typeof createSearchRunner> | null>(null);
+  if (runnerRef.current === null) {
+    runnerRef.current = createSearchRunner(fetchSearch, setState);
+  }
 
   const runSearch = useCallback(
     (query: string, cursor?: string, append = false) => {
+      if (runnerRef.current === null) {
+        throw new Error("PatientSearch runner is not initialized");
+      }
       void runnerRef.current(query, cursor, append);
     },
     [],
