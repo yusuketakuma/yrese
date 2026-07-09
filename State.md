@@ -6,6 +6,12 @@
 
 ## 2026-07-09(続き)
 
+### WP-4018 — web test gate strictness
+
+- `apps/web/package.json` の `test` から `--passWithNoTests` を削除し、webテストが誤って消えた場合に成功扱いにならないようにした。
+- 既存の `apps/web/app/shell-smoke.test.tsx` が実テストとして存在することを確認し、WP-3005後の退行検知ゲートを厳格化。
+- 検証: `pnpm --filter @yrese/web test`, `pnpm --filter @yrese/web typecheck`, `pnpm -r test`, `pnpm check:boundaries`, `git diff --check`。
+
 ### 構築プロンプト仕様の0.2.0一本化
 
 - WP-0049: `docs/spec/construction_prompt_baseline.md` を0.2.0正本入口へ縮約し、過去版本文・版一覧・版間優先順位規定を削除。
