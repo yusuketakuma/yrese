@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   BLOCKER_TYPES,
+  CLAIMABLE_SAFE_STATUSES,
   CONFLICT_REQUIRES_HUMAN_REVIEW,
   ErrorCodeRegistry,
   createKernelErrorCodeRegistry,
@@ -77,6 +78,17 @@ describe("provisional statuses (v0.1.7 §14)", () => {
     expect(isClaimable(["BLOCKED_UNSUPPORTED_CLAIM"])).toBe(false);
     expect(isClaimable([CONFLICT_REQUIRES_HUMAN_REVIEW])).toBe(false);
     expect(isClaimable(["FUTURE_SCOPE_NOT_CLAIMABLE"])).toBe(false);
+  });
+
+  it("fails closed for unapproved claimability statuses", () => {
+    expect(isClaimable(["REQUIRES_RECORD"])).toBe(false);
+    expect(isClaimable(["SUGGESTED_REQUIRES_CONFIRMATION"])).toBe(false);
+    expect(isClaimable(["UNKNOWN_FUTURE_STATUS"])).toBe(false);
+    expect(isClaimable(["PENDING_REVERIFY", "UNKNOWN_FUTURE_STATUS"])).toBe(false);
+  });
+
+  it("starts with no claimable safe statuses", () => {
+    expect(CLAIMABLE_SAFE_STATUSES).toEqual([]);
   });
 });
 

@@ -38,12 +38,15 @@ export const UNSUPPORTED_CLAIM_STATUSES = [
 
 export type UnsupportedClaimStatus = (typeof UNSUPPORTED_CLAIM_STATUSES)[number];
 
-/** 請求データ生成を許可してよいか(保留・対象外ステータスが1つでもあれば不可) */
+/**
+ * 請求可否判定の fail-closed allow-list。
+ *
+ * 未知ステータスは請求不可として扱う。ここへ追加できるのは「付与されていても請求可」と
+ * MOD-005(status_registry)のSSOT改版で明示承認されたステータスだけ。
+ */
+export const CLAIMABLE_SAFE_STATUSES = [] as const;
+
+/** 請求データ生成を許可してよいか(未知ステータスを含め、allow-list外が1つでもあれば不可) */
 export function isClaimable(statuses: readonly string[]): boolean {
-  return statuses.every(
-    (s) =>
-      !isProvisionalStatus(s) &&
-      !(UNSUPPORTED_CLAIM_STATUSES as readonly string[]).includes(s) &&
-      s !== CONFLICT_REQUIRES_HUMAN_REVIEW,
-  );
+  return statuses.every((s) => (CLAIMABLE_SAFE_STATUSES as readonly string[]).includes(s));
 }
