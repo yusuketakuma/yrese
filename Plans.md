@@ -422,6 +422,11 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 実装: `apps/web` の `typecheck` を `next typegen && tsc --noEmit` に変更し、`.next/types` 生成を型検査前に実行する。UIコード・webpack extensionAlias・Next/React の実行時設定は不変更。
   - 検証: clean `.next` state で `pnpm --filter @yrese/web typecheck`, `pnpm -r typecheck`, `pnpm --filter @yrese/web test`, `pnpm build`, `git diff --check`。
 
+- [x] WP-4053 reception business date JST boundary(codex SELF-SCAN-20260709-32、fable5 WP_ASSIGN)
+  - 発見根拠: `apps/web/app/reception-dashboard.tsx` と `apps/api/src/reception-repository.ts` が `toISOString().slice(0, 10)` を受付日の導出に使うと、JST 00:00〜08:59 の受付が前日 UTC 日付になる。
+  - 実装: UI側は `todayAsIsoDate()` を `Asia/Tokyo` 固定へ修正(49fb867)。API側は `acceptedAt` からの受付業務日付導出を `Asia/Tokyo` 固定へ統一し、MOD-011(date_time_policy)を v0.1.1 へ改版して UTC日付流用禁止を明記。
+  - 検証: `pnpm --filter @yrese/web test`, `pnpm --filter @yrese/web typecheck`, `pnpm --filter @yrese/api test`, `pnpm --filter @yrese/api typecheck`, `pnpm check:ssot-index`, `pnpm check:boundaries`, `git diff --check`。
+
 - [x] WP-4012 dependency scan / SBOM CI gate(b0ecf84、addendum 702c2f5)
   - 発見根拠: `.github/workflows/ci.yml` には dependency scan / SBOM 追加TODOが残り、`package.json` にも依存脆弱性・SBOM生成を検査するroot scriptが未定義。
   - 目的: secret scan に加えて、依存脆弱性検知とSBOM生成/検証をCIの機械ゲートにし、security SSOTの「dependency scan / SBOM」予定項目を実装へ進める。

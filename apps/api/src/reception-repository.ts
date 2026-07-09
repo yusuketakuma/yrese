@@ -152,8 +152,22 @@ function sortRecords(left: ReceptionRecord, right: ReceptionRecord): number {
   return left.receptionId.localeCompare(right.receptionId);
 }
 
+const JAPAN_BUSINESS_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Asia/Tokyo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
 function dateFromAcceptedAt(acceptedAt: Date): string {
-  return acceptedAt.toISOString().slice(0, 10);
+  const parts = JAPAN_BUSINESS_DATE_FORMATTER.formatToParts(acceptedAt);
+  const year = parts.find((part) => part.type === 'year')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  const day = parts.find((part) => part.type === 'day')?.value;
+  if (year === undefined || month === undefined || day === undefined) {
+    throw new Error('failed to format acceptedAt as Asia/Tokyo business date');
+  }
+  return `${year}-${month}-${day}`;
 }
 
 export class InMemoryReceptionRepository implements ReceptionRepository {

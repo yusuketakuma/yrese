@@ -6,6 +6,13 @@
 
 ## 2026-07-09(続き)
 
+### WP-4053 reception business date JST boundary
+
+- fable5 から WP-4053-UI commit_request と WP-4053-API assign を受領。UI側は `todayAsIsoDate()` を `Asia/Tokyo` 固定にする Claude 差分を `49fb867` として commit/push 済み。
+- API側実装: `apps/api/src/reception-repository.ts` の `acceptedAt` → `record.date` 導出を JST 固定の業務日付へ変更し、UTC 日付(`toISOString().slice(0,10)`)の流用を廃止。`server.test.ts` に JST 00:00〜08:59 境界(UTCでは前日)の受付がJST業務日のキューへ入るテストを追加。
+- MOD-011(date_time_policy)を v0.1.1 へ改版し、業務日付は薬局ロケール(MVPでは `Asia/Tokyo` 固定)の暦日、UTC日付流用禁止を明記。
+- 検証: `pnpm --filter @yrese/api test` 40 tests PASS、`pnpm --filter @yrese/api typecheck` PASS、`pnpm check:ssot-index` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 ### WP-5001 DB設計 SSOT パック
 
 - Claude側 fable5 起草の DB-001〜004 を Codex 側 commit/push 対象として受領。`docs/database/db_schema_design_standards.md`、`db_migration_policy.md`、`db_tenant_isolation_ddl_policy.md`、`db_retention_and_deletion_policy.md` はいずれも PROPOSED。

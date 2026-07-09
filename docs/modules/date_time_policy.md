@@ -8,7 +8,7 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -30,6 +30,7 @@ blockers: []
 - **診療系日付は wall-clock date semantics**(壁時計上の暦日)として扱う。正本実装は `@yrese/date-time` — CalendarDate は 'YYYY-MM-DD' または {year,month,day} からのみ構築し、実カレンダー検証(うるう年含む)を行う
 - **`@yrese/date-time` はタイムゾーン変換を行わない**。日本の薬局業務の暦日は JST の壁時計を前提とし、UTC 変換を挟まない(変換により暦日がずれる事故を構造的に防ぐ)
 - **現在時刻への暗黙依存禁止**(v0.2.0 §18): Date.now() / new Date() を既定値として使う API を共通モジュールに置かない。「今日」を必要とする層(UI・受付処理)が明示的に値を注入する
+- **業務日付は薬局ロケールの暦日として扱う**。MVP では薬局ロケールを `Asia/Tokyo` 固定とし、instant から受付日等の業務日付を導出する場合は JST の暦日を使う。`toISOString().slice(0, 10)` 等の UTC 日付を業務日付へ流用してはならない
 
 ## 2. 診療系日付型の使い分け
 
@@ -47,7 +48,12 @@ blockers: []
 - イベント・監査の時刻は `@yrese/events` の wallClock(タイムゾーン付き ISO instant、呼び出し側供給)+ logicalClock / sequenceNumber で扱う。**診療系日付(暦日)と機械時刻(instant)を型で分離**し、相互の暗黙変換をしない
 - clock drift は RECOVERY_SYNC(ARC-002 R1)で検証する。Edge/端末の時刻ずれを暦日確定に直接使わない
 
-## 4. タイムゾーン変換を行う層(将来)
+## 4. タイムゾーン変換を行う層
 
-- UI 表示・API 入出力で instant→JST 暦日の変換が必要になる場合、変換は **apps 層(UI/API境界)に限定**し、共通モジュールへ持ち込まない。変換ヘルパーを共通化する場合は本SSOTを改版し、変換規約(JST固定・DSTなし)を明記してから実装する
+- UI 表示・API 入出力で instant→JST 暦日の変換が必要になる場合、変換は **apps 層(UI/API境界)に限定**し、共通モジュールへ持ち込まない。MVP では `Asia/Tokyo` 固定、DST なしとして扱う。変換ヘルパーを共通化する場合は本SSOTを再改版し、変換規約と所有境界を明記してから実装する
 - サーバ・DB・Edge の内部タイムスタンプは UTC instant で保持し、診療系暦日フィールドとは別カラム・別型で持つ(Phase 1 data_model で確定)
+
+## 変更履歴
+
+- 0.1.1 (2026-07-09): WP-4053 — 業務日付は薬局ロケール(MVPではAsia/Tokyo固定)の暦日とし、UTC日付の流用禁止を明記。
+- 0.1.0 (2026-07-09): 初版承認。

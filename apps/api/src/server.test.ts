@@ -542,6 +542,46 @@ describe('buildServer', () => {
     });
   });
 
+  it('stores reception queue dates as JST business dates, not UTC dates', async () => {
+    const acceptedAt = new Date('2026-07-09T20:00:00.000Z'); // JST 2026-07-10 05:00
+    const server = buildServer({
+      now: () => acceptedAt,
+    });
+
+    const created = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-004',
+        idempotencyKey: 'reception-create-jst-date',
+      },
+    });
+    const jstBusinessDateQueue = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-10',
+      headers: tenantOneReceptionReadHeaders,
+    });
+    const utcDateQueue = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-09',
+      headers: tenantOneReceptionReadHeaders,
+    });
+
+    await server.close();
+
+    expect(created.statusCode).toBe(201);
+    expect(jstBusinessDateQueue.statusCode).toBe(200);
+    expect(
+      jstBusinessDateQueue
+        .json()
+        .entries.map((entry: { readonly receptionId: string }) => entry.receptionId),
+    ).toContain('reception-000004');
+    expect(
+      utcDateQueue.json().entries.map((entry: { readonly receptionId: string }) => entry.receptionId),
+    ).not.toContain('reception-000004');
+  });
+
   it('returns the existing entry for an idempotent reception resend', async () => {
     const acceptedAt = new Date('2026-07-09T09:05:00.000Z');
     const server = buildServer({
