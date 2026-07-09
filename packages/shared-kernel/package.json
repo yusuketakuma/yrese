@@ -1,0 +1,21 @@
+{
+  "name": "@yrese/shared-kernel",
+  "version": "0.0.1",
+  "private": true,
+  "description": "共通カーネル: branded ID型・システムモード・保留系status・BLOCKER種別・エラーコード/権限スコープの型基盤(runtime-neutral / dependency-light)",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.json --outDir dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.0"
+  }
+}
