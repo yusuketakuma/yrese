@@ -1,0 +1,22 @@
+# yrese local development PostgreSQL.
+# Dev/test databases must contain synthetic data only. Do not load PHI, PII, or
+# production pharmacy data into this service.
+services:
+  postgres:
+    image: postgres:17-alpine
+    ports:
+      - "127.0.0.1:55432:5432"
+    environment:
+      POSTGRES_DB: yrese_dev
+      POSTGRES_USER: yrese_dev
+      POSTGRES_PASSWORD: yrese_dev_password
+    volumes:
+      - yrese-dev-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yrese_dev -d yrese_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  yrese-dev-postgres-data:

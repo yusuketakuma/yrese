@@ -1,0 +1,103 @@
+import type { MigrationFile } from './migrations.js';
+
+export interface AppliedMigration {
+  readonly version: string;
+  readonly name: string;
+  readonly checksumSha256: string;
+}
+
+export type MigrationCheckResult =
+  | {
+      readonly ok: true;
+      readonly status: 'up_to_date' | 'db_ahead';
+      readonly appliedCount: number;
+      readonly availableCount: number;
+      readonly extraAppliedVersions: readonly string[];
+    }
+  | {
+      readonly ok: false;
+      readonly status: 'checksum_mismatch';
+      readonly appliedCount: number;
+      readonly availableCount: number;
+      readonly version: string;
+      readonly expectedChecksumSha256: string;
+      readonly actualChecksumSha256: string;
+    }
+  | {
+      readonly ok: false;
+      readonly status: 'unapplied_required';
+      readonly appliedCount: number;
+      readonly availableCount: number;
+      readonly pendingVersions: readonly string[];
+    };
+
+export function reconcileMigrationState(input: {
+  readonly availableMigrations: readonly MigrationFile[];
+  readonly appliedMigrations: readonly AppliedMigration[];
+}): MigrationCheckResult {
+  const { availableMigrations, appliedMigrations } = input;
+  const comparableCount = Math.min(availableMigrations.length, appliedMigrations.length);
+
+  for (let index = 0; index < comparableCount; index += 1) {
+    const available = availableMigrations[index];
+    const applied = appliedMigrations[index];
+    if (available === undefined || applied === undefined) {
+      throw new Error('migration reconciliation index is unexpectedly out of range');
+    }
+
+    if (applied.version !== available.version || applied.checksumSha256 !== available.checksumSha256) {
+      return {
+        ok: false,
+        status: 'checksum_mismatch',
+        appliedCount: appliedMigrations.length,
+        availableCount: availableMigrations.length,
+        version: available.version,
+        expectedChecksumSha256: available.checksumSha256,
+        actualChecksumSha256: applied.checksumSha256,
+      };
+    }
+  }
+
+  if (appliedMigrations.length > availableMigrations.length) {
+    return {
+      ok: true,
+      status: 'db_ahead',
+      appliedCount: appliedMigrations.length,
+      availableCount: availableMigrations.length,
+      extraAppliedVersions: appliedMigrations.slice(availableMigrations.length).map((migration) => migration.version),
+    };
+  }
+
+  if (appliedMigrations.length < availableMigrations.length) {
+    return {
+      ok: false,
+      status: 'unapplied_required',
+      appliedCount: appliedMigrations.length,
+      availableCount: availableMigrations.length,
+      pendingVersions: availableMigrations.slice(appliedMigrations.length).map((migration) => migration.version),
+    };
+  }
+
+  return {
+    ok: true,
+    status: 'up_to_date',
+    appliedCount: appliedMigrations.length,
+    availableCount: availableMigrations.length,
+    extraAppliedVersions: [],
+  };
+}
+
+export function formatMigrationCheckResult(result: MigrationCheckResult): string {
+  if (result.ok) {
+    if (result.status === 'db_ahead') {
+      return `DB schema is ahead but prefix-compatible: ${result.extraAppliedVersions.join(', ')}`;
+    }
+    return `DB schema is up to date (${result.appliedCount}/${result.availableCount}).`;
+  }
+
+  if (result.status === 'checksum_mismatch') {
+    return `DB schema checksum mismatch at ${result.version}: expected ${result.expectedChecksumSha256}, actual ${result.actualChecksumSha256}`;
+  }
+
+  return `DB schema requires explicit migration apply before startup: ${result.pendingVersions.join(', ')}`;
+}

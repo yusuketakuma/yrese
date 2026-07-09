@@ -16,6 +16,8 @@
     "check:sbom": "node scripts/check-sbom.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:ssot-index": "node scripts/check-ssot-index.mjs",
+    "db:check": "pnpm --filter @yrese/api db:check",
+    "db:migrate": "pnpm --filter @yrese/api db:migrate",
     "generate:openapi": "tsx scripts/generate-openapi.mjs",
     "test:scripts": "node scripts/check-scripts.mjs",
     "typecheck": "pnpm -r --parallel typecheck",

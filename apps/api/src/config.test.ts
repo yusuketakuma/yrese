@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { defaultApiPort, parseApiPort } from './config.js';
+import { defaultApiPort, parseApiPort, parseDatabaseUrl } from './config.js';
 
 describe('parseApiPort', () => {
   it('defaults when PORT is absent or blank', () => {
@@ -20,5 +20,28 @@ describe('parseApiPort', () => {
     expect(parseApiPort('3001')).toBe(3001);
     expect(parseApiPort('65535')).toBe(65535);
     expect(parseApiPort(' 3001 ')).toBe(3001);
+  });
+});
+
+describe('parseDatabaseUrl', () => {
+  it('defaults to undefined when DATABASE_URL is absent or blank', () => {
+    for (const value of [undefined, '', '   ']) {
+      expect(parseDatabaseUrl(value)).toBeUndefined();
+    }
+  });
+
+  it('fails fast when DATABASE_URL is malformed or not PostgreSQL', () => {
+    for (const value of ['not-a-url', 'https://example.com/db', 'mysql://localhost/yrese']) {
+      expect(() => parseDatabaseUrl(value)).toThrow(Error);
+    }
+  });
+
+  it('accepts PostgreSQL URLs without logging or normalizing credentials', () => {
+    expect(parseDatabaseUrl('postgres://user:pass@localhost:55432/yrese_dev')).toBe(
+      'postgres://user:pass@localhost:55432/yrese_dev',
+    );
+    expect(parseDatabaseUrl(' postgresql://user:pass@localhost:55432/yrese_dev ')).toBe(
+      'postgresql://user:pass@localhost:55432/yrese_dev',
+    );
   });
 });

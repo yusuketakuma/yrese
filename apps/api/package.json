@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "db:check": "tsx src/db/check.ts",
+    "db:migrate": "tsx src/db/migrate.ts",
     "dev": "tsx src/main.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
@@ -14,10 +16,12 @@
     "@yrese/date-time": "workspace:*",
     "@yrese/shared-kernel": "workspace:*",
     "fastify": "^5.0.0",
-    "fastify-plugin": "^5.0.0"
+    "fastify-plugin": "^5.0.0",
+    "pg": "^8.22.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@types/pg": "^8.20.0",
     "tsx": "^4.20.0",
     "typescript": "^5.7.3",
     "vitest": "^3.0.0"

@@ -6,6 +6,14 @@
 
 ## 2026-07-09(続き)
 
+### WP-5002 開発 PostgreSQL + マイグレーション基盤
+
+- fable5 PLAN_APPROVED に基づき、既製 migration tool ではなく repo-local forward-only SQL runner + `pg` を採用。DB-002 の3分類照合(前方互換な DB 先行は許容 / checksum相違・未適用要求は起動拒否)を直接実装し、起動時は照合のみで自動適用しない方針にした。
+- 実装: `compose.yaml` に dev PostgreSQL(`127.0.0.1:55432`)を追加し、PHI/PII/本番薬局データ投入禁止をコメントで明示。`migrations/000001_create_schema_migrations.sql` は履歴テーブルのみで、業務テーブルは WP-5003 以降へ分離。
+- `apps/api/src/db/**` に migration loader、checksum、state reconciliation、explicit apply CLI(`pnpm db:migrate`)、startup check CLI(`pnpm db:check`)を追加。`DATABASE_URL` がある API 起動時は `assertMigrationStateAllowsStartup` のみ実行し、未適用 migration は fail-closed にする。
+- 既存 `BuildServerOptions` の `patientRepository` / `receptionRepository` injection seam を維持し、既存テストは in-memory 既定のまま。PostgreSQL 統合テストは `TEST_DATABASE_URL` 不在時に skip 名を表示する `describe.skip` にし、silent pass にしない。
+- 検証: `pnpm --filter @yrese/api test` 47 PASS + PostgreSQL integration 1 SKIP(`TEST_DATABASE_URL` 不在)、`pnpm --filter @yrese/api typecheck` PASS、`pnpm -r typecheck` PASS、`pnpm -r test` PASS(全体 47+1 skip を含む)、`pnpm build` PASS、`pnpm check:openapi` PASS、`pnpm check:secrets` PASS、`pnpm check:deps` PASS、`pnpm check:sbom` PASS、`pnpm check:boundaries` PASS、`pnpm check:ssot-index` PASS、`pnpm check:calculation-purity` PASS、`pnpm test:scripts` PASS、`git diff --check` PASS。`docker` CLI 不在のため compose 起動と実 PostgreSQL 統合テストは未実行。
+
 ### WP-4046 API ID wire-field validation policy
 
 - fable5 裁定: wire ID は素の string を維持しつつ、受付系と同じ検証水準(非空・空白のみ拒否・制御文字拒否・妥当な max 長)を全契約で統一。
