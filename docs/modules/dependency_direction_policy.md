@@ -8,12 +8,13 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.1
+version: 0.1.2
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 change_log:
+  - 0.1.2 (2026-07-09): WP-4035 検査拡張。check-boundaries の重複 const 検査を apps/** にも広げ、contracts 正本 const の再定義検出を追加(依存方向ルールは不変更)。
   - 0.1.1 (2026-07-09): WP-4043 実装状態 drift 整備。実装済み共通モジュール数、現在の workspace 依存グラフ、check-boundaries の重複 const 検査対象を現行実装へ同期(依存方向ルールは不変更)。
 source_refs:
   - 構築プロンプト v0.2.0 §0.0.3.5
@@ -51,11 +52,11 @@ shared-kernel / money / date-time ─→ (workspace依存なし)
 
 ## 3. 機械的強制(実装済み)
 
-`scripts/check-boundaries.mjs`(Node ESM・依存ゼロ、0213ac0)が CI(`pnpm check:boundaries`)で以下を検査する:
+`scripts/check-boundaries.mjs`(Node ESM・依存ゼロ、0213ac0、WP-4035で拡張)が CI(`pnpm check:boundaries`)で以下を検査する:
 
 1. **import boundary**: `packages/**` のソースが `apps/` パスまたは `@yrese/api` / `@yrese/web` を import → violation。`apps/**` が他の `apps/**` を import → violation
 2. **循環検出**: 各 package.json の `workspace:*` 依存から DAG を構築し、循環で fail
-3. **重複 const 検査**: `SYSTEM_MODES` / `PROVISIONAL_STATUSES` / `BLOCKER_TYPES` / `PERMISSION_ACTIONS` / `PERMISSION_RESOURCES` / `ROLE_NAMES` / `ERROR_SEVERITIES` / `ERROR_DOMAINS` / `KERNEL_ERROR_CODES` と同名の `as const` 配列が shared-kernel 以外に定義 → violation
+3. **重複 const 検査**: `packages/**` と `apps/**` において、`SYSTEM_MODES` / `PROVISIONAL_STATUSES` / `BLOCKER_TYPES` / `PERMISSION_ACTIONS` / `PERMISSION_RESOURCES` / `ROLE_NAMES` / `ERROR_SEVERITIES` / `ERROR_DOMAINS` / `KERNEL_ERROR_CODES` と同名の `as const` 配列が shared-kernel 以外に定義 → violation。`ELIGIBILITY_STATUSES` と `PATIENT_SEARCH_CURSOR_MAX_LENGTH` が contracts 以外に定義 → violation
 
 違反注入テストで検出動作を実証済み(WP-4003 レビュー記録参照)。検査対象 const 名の追加・削除は本SSOTの改版を経て scripts を更新する。
 

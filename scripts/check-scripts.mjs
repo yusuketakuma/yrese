@@ -170,6 +170,47 @@ async function testDuplicateRegistryConstDetection() {
   );
 }
 
+async function testDuplicateContractsConstDetectionAcrossApps() {
+  const root = path.join(tempRoot, "duplicate-contracts");
+  await writeText(
+    path.join(root, "packages", "contracts", "package.json"),
+    JSON.stringify({ name: "@fixture/contracts", dependencies: {} }, null, 2),
+  );
+  await writeText(
+    path.join(root, "packages", "contracts", "src", "patient-search.ts"),
+    [
+      "export const ELIGIBILITY_STATUSES = ['VERIFIED'] as const;",
+      "export const PATIENT_SEARCH_CURSOR_MAX_LENGTH = 512;",
+      "",
+    ].join("\n"),
+  );
+  await writeText(
+    path.join(root, "apps", "web", "package.json"),
+    JSON.stringify({ name: "@fixture/web", dependencies: { "@fixture/contracts": "workspace:*" } }, null, 2),
+  );
+  await writeText(
+    path.join(root, "apps", "web", "app", "patient-search.tsx"),
+    [
+      "export const ELIGIBILITY_STATUSES = ['VERIFIED'] as const;",
+      "const PATIENT_SEARCH_CURSOR_MAX_LENGTH = 100;",
+      "export const value = PATIENT_SEARCH_CURSOR_MAX_LENGTH;",
+      "",
+    ].join("\n"),
+  );
+
+  const result = runNode("check-boundaries.mjs", [root]);
+  const output = outputOf(result);
+  assert(result.status === 1, "check-boundaries should fail for apps redefining contracts const values");
+  assert(
+    output.includes("duplicate contracts const array 'ELIGIBILITY_STATUSES'"),
+    "contracts duplicate finding should name ELIGIBILITY_STATUSES",
+  );
+  assert(
+    output.includes("duplicate contracts const 'PATIENT_SEARCH_CURSOR_MAX_LENGTH'"),
+    "contracts duplicate finding should name PATIENT_SEARCH_CURSOR_MAX_LENGTH",
+  );
+}
+
 async function testSecretAllowlistAndDetection() {
   const allowRoot = path.join(tempRoot, "secrets-allow");
   await writeText(
@@ -379,6 +420,7 @@ try {
   await testBoundaryViolationDetection();
   await testBoundaryCleanFixturePasses();
   await testDuplicateRegistryConstDetection();
+  await testDuplicateContractsConstDetectionAcrossApps();
   await testSecretAllowlistAndDetection();
   await testCleanRemovesGeneratedArtifacts();
   await testDependencyAuditWrapper();

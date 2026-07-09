@@ -6,16 +6,23 @@ const rootDir = path.resolve(process.argv[2] ?? process.cwd());
 const violations = [];
 const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"]);
 const ignoredDirs = new Set([".git", ".next", "coverage", "dist", "node_modules"]);
-const duplicateConstNames = [
-  "SYSTEM_MODES",
-  "PROVISIONAL_STATUSES",
-  "BLOCKER_TYPES",
-  "PERMISSION_ACTIONS",
-  "PERMISSION_RESOURCES",
-  "ROLE_NAMES",
-  "ERROR_SEVERITIES",
-  "ERROR_DOMAINS",
-  "KERNEL_ERROR_CODES",
+const duplicateConstRules = [
+  { constName: "SYSTEM_MODES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
+  { constName: "PROVISIONAL_STATUSES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
+  { constName: "BLOCKER_TYPES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
+  { constName: "PERMISSION_ACTIONS", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
+  { constName: "PERMISSION_RESOURCES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
+  { constName: "ROLE_NAMES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
+  { constName: "ERROR_SEVERITIES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
+  { constName: "ERROR_DOMAINS", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
+  { constName: "KERNEL_ERROR_CODES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
+  { constName: "ELIGIBILITY_STATUSES", ownerPackageName: "contracts", sourceName: "contracts", requiresAsConst: true },
+  {
+    constName: "PATIENT_SEARCH_CURSOR_MAX_LENGTH",
+    ownerPackageName: "contracts",
+    sourceName: "contracts",
+    requiresAsConst: false,
+  },
 ];
 
 function report(message) {
@@ -125,6 +132,11 @@ function packageNameFromPath(filePath) {
   const relative = toPosix(path.relative(rootDir, filePath));
   const match = /^packages\/([^/]+)\//.exec(relative);
   return match?.[1] ?? null;
+}
+
+function isTestSourceFile(filePath) {
+  const basename = path.basename(filePath);
+  return /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(basename);
 }
 
 async function checkImportBoundaries(packageNameByDir, appPackageNames) {
@@ -238,23 +250,34 @@ async function checkWorkspaceCycles(workspacePackageDirs) {
 }
 
 async function checkDuplicateConstArrays() {
-  const files = await listFiles(path.join(rootDir, "packages"), (filePath) => {
+  const sourcePredicate = (filePath) => {
     const relative = toPosix(path.relative(rootDir, filePath));
-    return /^packages\/[^/]+\/src\/.+\.ts$/.test(relative);
-  });
+    const isPackageSource = /^packages\/[^/]+\/src\/.+\.[cm]?[jt]sx?$/.test(relative);
+    const isAppSource = /^apps\/[^/]+\/.+\.[cm]?[jt]sx?$/.test(relative);
+    if (!isPackageSource && !isAppSource) {
+      return false;
+    }
+    return !isTestSourceFile(filePath);
+  };
+  const files = [
+    ...(await listFiles(path.join(rootDir, "packages"), sourcePredicate)),
+    ...(await listFiles(path.join(rootDir, "apps"), sourcePredicate)),
+  ];
 
   for (const filePath of files) {
     const packageName = packageNameFromPath(filePath);
-    if (packageName === "shared-kernel") {
-      continue;
-    }
-
     const source = await readFile(filePath, "utf8");
     const relative = toPosix(path.relative(rootDir, filePath));
-    for (const constName of duplicateConstNames) {
-      const pattern = new RegExp(`\\b(?:export\\s+)?const\\s+${constName}\\b[\\s\\S]*?\\bas\\s+const\\b`, "m");
+    for (const { constName, ownerPackageName, sourceName, requiresAsConst } of duplicateConstRules) {
+      if (packageName === ownerPackageName) {
+        continue;
+      }
+      const pattern = requiresAsConst
+        ? new RegExp(`\\b(?:export\\s+)?const\\s+${constName}\\b[\\s\\S]*?\\bas\\s+const\\b`, "m")
+        : new RegExp(`\\b(?:export\\s+)?const\\s+${constName}\\b\\s*(?::[^=]+)?=`, "m");
       if (pattern.test(source)) {
-        report(`${relative}: duplicate shared-kernel const array '${constName}' is not allowed`);
+        const constKind = requiresAsConst ? "const array" : "const";
+        report(`${relative}: duplicate ${sourceName} ${constKind} '${constName}' is not allowed`);
       }
     }
   }
