@@ -348,6 +348,7 @@ v0.2.0の最上位方針:
 - [x] WP-0040 v0.2.0構築プロンプト保存: `docs/spec/construction_prompt_v0.2.0.md` を追加し、`docs/spec/construction_prompt_baseline.md` の優先規定と収録バージョン一覧を更新。
 - [ ] WP-0041 yrese doctrine SSOT pack(docs/product/またはdocs/architecture/): `yrese_product_doctrine.md`, `yrese_four_battles_strategy.md`, `nsips_quarantine_architecture.md`, `legacy_adapter_s3_lambda_policy.md`。NSIPS境界隔離・S3/Lambda候補構成・Legacy Adapter停止条件を確定。
 - [ ] WP-0042 FHIR canonical SSOT pack(docs/domain/またはdocs/adapters/): `fhir_native_canonical_model.md`, `fhir_mapping_registry.md`。Official AdapterをFHIRで勝手に置換しない境界を明文化。
+- [x] WP-0048 JP Core/FHIR Ready 薬局データ連携基盤戦略: `docs/product/jp_core_fhir_platform_strategy.md` を追加し、電子処方箋対応とJP Core/FHIR準拠を分離。公式ソース台帳 `SRC-FHIR-001..006` を `docs/regulatory/source_registry.md` に追加。WP-0042/WP-0046の上流方針とする。
 - [ ] WP-0043 Quality transparency SSOT pack(docs/quality/またはdocs/product/): `quality_transparency_strategy.md`, `public_quality_kpi_policy.md`, `claim_return_rate_kpi_policy.md`。公開KPIの匿名化・同意・契約・悪用リスクを整理。
 - [ ] WP-0044 Calculation event-sourcing SSOT pack(docs/calculation/またはdocs/architecture/): `calculation_rule_data_architecture.md`, `calculation_pure_function_policy.md`, `calculation_golden_test_source_policy.md`, `event_sourcing_architecture.md`, `projection_recalculation_policy.md`, `claim_finalization_immutability_policy.md`。確定済み請求のimmutabilityと再投影境界を確定。
 - [ ] WP-0045 Always-on architecture SSOT pack(docs/architecture/またはdocs/operations/): `always_on_rececon_architecture.md`, `no_nightly_batch_policy.md`。Cloud Core / Pharmacy Edge Node / LOCAL_ONLY / RECOVERY_SYNC / zero planned downtime の24/365方針を確定。
@@ -363,7 +364,7 @@ v0.2.0の最上位方針:
 
 ### 実行順序(v0.2.0)
 
-1. WP-0041 / WP-0042 / WP-0043 を第1波として起案し、Open Rececon/FHIR/品質公開のプロダクト・境界方針を固める。
+1. WP-0041 / WP-0042 / WP-0043 を第1波として起案し、Open Rececon/FHIR/品質公開のプロダクト・境界方針を固める。WP-0042はWP-0048(PRD-007)の「電子処方箋対応 ≠ JP Core/FHIR準拠」「JP Core/FHIR Readyな薬局データ連携基盤」方針を前提にする。
 2. WP-0044 / WP-0045 を第2波として、算定・イベント・24/365アーキテクチャの高リスク設計を固める。
 3. WP-0046 / WP-0047 を第3波として、API-first platformと監査・テナント分離の実装前ゲートを固める。
 4. 実装WPは、該当SSOTがAPPROVEDになり、fable5/opus4.8レビューと必要な人間レビューが完了してから発行する。
