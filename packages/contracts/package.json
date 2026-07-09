@@ -11,7 +11,8 @@
     "./error": "./src/error.ts",
     "./health": "./src/health.ts",
     "./openapi": "./src/openapi.ts",
-    "./patient-search": "./src/patient-search.ts"
+    "./patient-search": "./src/patient-search.ts",
+    "./whoami": "./src/whoami.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -19,6 +20,7 @@
     "build": "tsc -p tsconfig.build.json --outDir dist"
   },
   "dependencies": {
+    "@yrese/shared-kernel": "workspace:*",
     "zod": "^4.0.0"
   },
   "devDependencies": {

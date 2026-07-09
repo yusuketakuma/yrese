@@ -13,3 +13,4 @@ export * from "./error.js";
 export * from "./health.js";
 export * from "./openapi.js";
 export * from "./patient-search.js";
+export * from "./whoami.js";

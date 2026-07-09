@@ -7,6 +7,8 @@ import {
   patientSearchResponseSchema,
   type HealthResponse,
   type PatientSearchResponse,
+  whoamiResponseSchema,
+  type WhoamiResponse,
 } from '@yrese/contracts';
 import {
   PATIENT_SEARCH_INVALID_QUERY_ERROR_CODE,
@@ -126,18 +128,18 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     {
       preHandler: requirePermission(permissionScope('tenant', 'read')),
     },
-    async (request) => {
+    async (request): Promise<WhoamiResponse> => {
       const tenantContext = request.tenantContext;
       if (tenantContext === undefined) {
         throw new Error('tenantContext is unexpectedly missing after authorization');
       }
 
-      return {
+      return whoamiResponseSchema.parse({
         tenantId: tenantContext.tenantId,
         pharmacyId: tenantContext.pharmacyId,
         actorId: tenantContext.actorId,
         scopes: tenantContext.scopes,
-      };
+      });
     },
   );
 

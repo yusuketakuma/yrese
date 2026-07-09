@@ -22,6 +22,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
+  /whoami:
+    get:
+      operationId: getWhoami
+      tags:
+        - system
+      summary: Return the authenticated tenant context
+      description: Requires tenant:read scope. Returns the current tenant, pharmacy, actor, and granted scopes.
+      x-yrese-ssot: API-002
+      x-yrese-required-scope: tenant:read
+      responses:
+        "200":
+          description: Current tenant context
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhoamiResponse"
+        "403":
+          description: Forbidden (AUTH-0003)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /patients/search:
     get:
       operationId: searchPatients
@@ -95,6 +117,44 @@ components:
         - timestamp
       additionalProperties: false
       description: Health check response
+    WhoamiResponse:
+      type: object
+      properties:
+        tenantId:
+          type: string
+          minLength: 1
+        pharmacyId:
+          type: string
+          minLength: 1
+        actorId:
+          type: string
+          minLength: 1
+        scopes:
+          type: array
+          items:
+            type: string
+            pattern: ^(?:patient|insurance|public-expense|prescription|dispensing|calculation|claim|report|master|audit-log|tenant|user|device|sync):(?:read|write|confirm|finalize|admin)$
+      required:
+        - tenantId
+        - pharmacyId
+        - actorId
+        - scopes
+      additionalProperties: false
+      description: Current tenant context response. PHI-free.
+    ErrorResponse:
+      type: object
+      properties:
+        errorCode:
+          type: string
+          minLength: 1
+        message:
+          type: string
+          minLength: 1
+      required:
+        - errorCode
+        - message
+      additionalProperties: false
+      description: PHI-free API error response
     PatientSearchResponse:
       type: object
       properties:
@@ -152,17 +212,3 @@ components:
         - results
       additionalProperties: false
       description: Patient search response. Contains PHI and must not be logged in plaintext.
-    ErrorResponse:
-      type: object
-      properties:
-        errorCode:
-          type: string
-          minLength: 1
-        message:
-          type: string
-          minLength: 1
-      required:
-        - errorCode
-        - message
-      additionalProperties: false
-      description: PHI-free API error response

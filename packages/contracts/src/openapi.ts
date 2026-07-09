@@ -5,6 +5,7 @@ import { createDocument, type ZodOpenApiObject } from "zod-openapi";
 import { errorResponseSchema } from "./error.js";
 import { healthResponseSchema } from "./health.js";
 import { patientSearchQuerySchema, patientSearchResponseSchema } from "./patient-search.js";
+import { whoamiResponseSchema } from "./whoami.js";
 
 const jsonContentType = "application/json";
 
@@ -28,6 +29,11 @@ const patientSearchResponseOpenApiSchema = patientSearchResponseSchema.meta({
   description: "Patient search response. Contains PHI and must not be logged in plaintext.",
 });
 
+const whoamiResponseOpenApiSchema = whoamiResponseSchema.meta({
+  id: "WhoamiResponse",
+  description: "Current tenant context response. PHI-free.",
+});
+
 const openApiDefinition = {
   openapi: "3.1.0",
   info: {
@@ -47,6 +53,34 @@ const openApiDefinition = {
             content: {
               [jsonContentType]: {
                 schema: healthResponseOpenApiSchema,
+              },
+            },
+          },
+        },
+      },
+    },
+    "/whoami": {
+      get: {
+        operationId: "getWhoami",
+        tags: ["system"],
+        summary: "Return the authenticated tenant context",
+        description: "Requires tenant:read scope. Returns the current tenant, pharmacy, actor, and granted scopes.",
+        "x-yrese-ssot": "API-002",
+        "x-yrese-required-scope": "tenant:read",
+        responses: {
+          "200": {
+            description: "Current tenant context",
+            content: {
+              [jsonContentType]: {
+                schema: whoamiResponseOpenApiSchema,
+              },
+            },
+          },
+          "403": {
+            description: "Forbidden (AUTH-0003)",
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
               },
             },
           },
