@@ -6,6 +6,11 @@
 
 ## 2026-07-10
 
+### WP-4074 patient search cursor authenticity/privacy — plan request
+
+- WP-7001 M1 landing後のself-scanで、API-001が不透明・非PHI・tenant/pharmacy/query拘束を要求する患者検索cursorに対し、現行実装が clear tenant/pharmacy + unsalted SHA-256(query) + offset のbase64url JSONであることを確認。cursorをdecodeしてquery候補をoffline照合でき、offsetを999へ改変・再encodeしたcursorも200で受理され空pageを返す再現を得た。既存cross-tenant/pharmacy/query checkは有効でauth bypassではない。
+- HIGH候補 `WP-4074` として、injected HMAC cursor codec、32-byte base64url keyのenvironment fail-closed resolver、constant-time verification、legacy unsigned cursorの400拒否、no raw key/query/token loggingをfable5へ提案。contract/OpenAPI/DB/package/lockを変えない最小scopeとし、rotation overlapはTTL + key id/keyring SSOTへ分離する。agmsgのClaude monitorは0 aliveで提案が未読のため、Plans登録だけを行い、承認まではコード/configを変更しない。
+
 ### WP-7001 M1 audit intent fingerprint golden-before-write gate
 
 - fable5 の `PLAN_APPROVED` と DB-005 v0.1.2 APPROVED に基づき、永続化writeより先に必要な M1 だけを `@yrese/audit` へ実装。`AuditAppendIntent` は trusted context の tenant/pharmacy/actor と分離し、authority/chain位置を型とruntime exact-key検証で供給不能にした。fingerprintは context + intent全フィールド(`retryCount`含む)の sorted-key canonical JSON に対する SHA-256で、`fingerprintSchemaVersion=1` はhash入力に含めず別metadataとして返し、未知versionは専用errorでfail-closedに拒否する。
