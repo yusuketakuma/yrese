@@ -74,7 +74,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 | API-001 | [patient_search_contract.md](api/patient_search_contract.md) | APPROVED |
 | API-004 | [ph_os_reference_integration.md](api/ph_os_reference_integration.md) | APPROVED |
 | API-003 | [platform_api_architecture.md](api/platform_api_architecture.md) | APPROVED |
-| API-006 | [reception_queue_contract.md](api/reception_queue_contract.md) | PROPOSED |
+| API-006 | [reception_queue_contract.md](api/reception_queue_contract.md) | APPROVED |
 
 ## docs/architecture/ (9件)
 
