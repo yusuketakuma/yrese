@@ -433,6 +433,12 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `ReceptionCreateInput` の fingerprint 対象定義、`reception_entries` への immutable request fingerprint/hash 追加 migration、in-memory / PostgreSQL repository の同一key異payload判定、API / DB 統合テスト。hash に PHI を直接含めず、監査・ハッシュチェーン(WP-5004)と混同しない。
   - 検証: 同一key同一payload 200(existing)、同一key同一patient別acceptedAt/別業務日付 409、同一key別patient 409、tenant/pharmacy越え分離、`pnpm --filter @yrese/api test`、`pnpm check:boundaries`、`git diff --check`。DB migration を含むため fable5 PLAN_APPROVED 後に着手。
 
+- [ ] WP-4055 migration filename strictness and skipped-file fail-closed(codex 提案 SELF-SCAN-20260709-34、WP-5002後続)
+  - 発見根拠: `apps/api/src/db/migrations.ts` の `loadMigrationFiles()` は `migrations/` 内のファイルを `parseMigrationFilename(...) !== undefined` で先に filter しており、命名規則に合わない `.sql` / backup / uppercase / typo file を silently skip する。DB-002 の forward-only / immutable migration discipline では、実行対象ディレクトリに置かれた migration-like file の無視は運用事故の入口になりうる。
+  - 目的: `migrations/` 配下の不正命名ファイルを fail-closed に検出し、typoed migration が未適用のまま起動・CI を通る状態を防ぐ。README 等の非SQL補助ファイルを許すかは明示 allow-list にする。
+  - 想定スコープ: `apps/api/src/db/migrations.ts`、migration loader unit test、必要なら `scripts/check-scripts.mjs` fixture。既存 migration SQL 内容・適用順・checksum 仕様は変更しない。
+  - 検証: invalid filename fixture が throw、valid migrations は従来通り version sort + duplicate reject、`pnpm --filter @yrese/api test`、`pnpm check:boundaries`、`git diff --check`。DB migration runner の規律変更なので fable5 PLAN_APPROVED 後に実装。
+
 - [x] WP-4012 dependency scan / SBOM CI gate(b0ecf84、addendum 702c2f5)
   - 発見根拠: `.github/workflows/ci.yml` には dependency scan / SBOM 追加TODOが残り、`package.json` にも依存脆弱性・SBOM生成を検査するroot scriptが未定義。
   - 目的: secret scan に加えて、依存脆弱性検知とSBOM生成/検証をCIの機械ゲートにし、security SSOTの「dependency scan / SBOM」予定項目を実装へ進める。
