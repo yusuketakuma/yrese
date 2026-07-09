@@ -435,11 +435,11 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `ReceptionCreateInput` の fingerprint 対象定義、`reception_entries` への immutable request fingerprint/hash 追加 migration、in-memory / PostgreSQL repository の同一key異payload判定、API / DB 統合テスト。hash に PHI を直接含めず、監査・ハッシュチェーン(WP-5004)と混同しない。
   - 検証: 同一key同一payload 200(existing)、同一key同一patient別acceptedAt/別業務日付 409、同一key別patient 409、tenant/pharmacy越え分離、`pnpm --filter @yrese/api test`、`pnpm check:boundaries`、`git diff --check`。DB migration を含むため fable5 PLAN_APPROVED 後に着手。
 
-- [ ] WP-4055 migration filename strictness and skipped-file fail-closed(codex 提案 SELF-SCAN-20260709-34、WP-5002後続)
+- [x] WP-4055 migration filename strictness and skipped-file fail-closed(codex 提案 SELF-SCAN-20260709-34、WP-5002後続。fable5 PLAN_APPROVED、本WPで実装)
   - 発見根拠: `apps/api/src/db/migrations.ts` の `loadMigrationFiles()` は `migrations/` 内のファイルを `parseMigrationFilename(...) !== undefined` で先に filter しており、命名規則に合わない `.sql` / backup / uppercase / typo file を silently skip する。DB-002 の forward-only / immutable migration discipline では、実行対象ディレクトリに置かれた migration-like file の無視は運用事故の入口になりうる。
   - 目的: `migrations/` 配下の不正命名ファイルを fail-closed に検出し、typoed migration が未適用のまま起動・CI を通る状態を防ぐ。README 等の非SQL補助ファイルを許すかは明示 allow-list にする。
-  - 想定スコープ: `apps/api/src/db/migrations.ts`、migration loader unit test、必要なら `scripts/check-scripts.mjs` fixture。既存 migration SQL 内容・適用順・checksum 仕様は変更しない。
-  - 検証: invalid filename fixture が throw、valid migrations は従来通り version sort + duplicate reject、`pnpm --filter @yrese/api test`、`pnpm check:boundaries`、`git diff --check`。DB migration runner の規律変更なので fable5 PLAN_APPROVED 後に実装。
+  - 実装: `loadMigrationFiles()` で migration directory entry を先に分類し、正規 `NNNNNN_snake_case.sql` は従来どおり読み込み、`README.md` / `.gitkeep` / `.DS_Store` は明示 allowlist で無視、それ以外の不正/typo/大文字/backup系 entry はファイル名付きで throw するように変更。SQL内容・checksum算出・version sort・duplicate version semantics は不変更。
+  - 検証: `pnpm --filter @yrese/api exec vitest run src/db/migrations.test.ts` PASS(7)、`pnpm --filter @yrese/api test` PASS(60 + 3 SKIP)、`pnpm --filter @yrese/api typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
 
 - [x] WP-4056 API repository mode explicitness and in-memory startup guard(codex 提案 SELF-SCAN-20260710-01、WP-5003後続。e74b251、fable5 APPROVED)
   - 発見根拠: `apps/api/src/main.ts` の `buildServerForEnvironment()` は `DATABASE_URL` が未設定の場合に常に `buildServer()` を返し、`apps/api/src/server.ts` は既定で `InMemoryPatientRepository` / `InMemoryReceptionRepository` を使う。WP-5003 でDB実装は追加済みだが、起動時の「DBなしでin-memoryへ落ちる」挙動は明示モードではなく、staging/dev-like環境の設定漏れを合成データAPIとして起動させうる。
@@ -452,11 +452,11 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: API-001 cursor semantics の互換方針、`PatientSearchCursor` 内部表現、`PostgresPatientRepository.search()`、必要なら検索用 migration(index / generated search column / pg_trgm 採否はDB SSOT裁定後)、in-memory repository parity tests。既存 response schema と OpenAPI wire 形状を変える場合はAPI-001改版が先。
   - 検証: 大きな offset に依存しないページングの repository test、tenant/pharmacy/query境界 cursor reject 回帰、同一 patient_number/同一accepted相当の安定順序、DB integration test(`TEST_DATABASE_URL` gate)、`pnpm --filter @yrese/api test`、`pnpm --filter @yrese/contracts test`、`pnpm check:openapi`、`pnpm check:boundaries`、`git diff --check`。DB migration / API cursor 方針を含むため fable5 PLAN_APPROVED 後に実装。
 
-- [ ] WP-4058 migration directory resolution for pnpm-filtered DB commands(codex 提案 SELF-SCAN-20260710-03、WP-5002後続)
+- [x] WP-4058 migration directory resolution for pnpm-filtered DB commands(codex 提案 SELF-SCAN-20260710-03、WP-5002後続。fable5 PLAN_APPROVED、本WPで実装)
   - 発見根拠: `pnpm --filter @yrese/api exec pwd` は `/Users/yusuke/workspace/yrese/apps/api` を返すが、`defaultMigrationsDirectory()` は `resolve(process.cwd(), 'migrations')` を返す。read-only probe で `pnpm --filter @yrese/api exec tsx -e ...loadMigrationFiles()` を実行すると `/Users/yusuke/workspace/yrese/apps/api/migrations` を見に行き `ENOENT` になった。root package の `db:check` / `db:migrate` は `pnpm --filter @yrese/api ...` 経由のため、`DATABASE_URL` 設定時に root `migrations/` を読めない可能性が高い。
   - 目的: DBマイグレーションの既定ディレクトリをコマンド実行cwdに依存させず、repo root の `migrations/` を安定して参照する。DB-002 の明示運用操作が、pnpm workspace 実行方式で失敗する状態を防ぐ。
-  - 想定スコープ: `apps/api/src/db/migrations.ts` の default path 解決、migration loader unit test、必要なら root/package script の引数化。WP-4055 の不正filename fail-closedと同じ loader 領域のため、fable5判断で同時実装可。
-  - 検証: package cwd と repo root cwd の双方で `loadMigrationFiles()` が root `migrations/` を読むこと、明示 `migrationsDirectory` 引数は従来通り尊重すること、`pnpm --filter @yrese/api test`、`pnpm db:check` は `DATABASE_URL` 不在時に従来通り明示エラー、`git diff --check`。DB migration runner の運用境界なので fable5 PLAN_APPROVED 後に実装。
+  - 実装: `defaultMigrationsDirectory()` を `process.cwd()` ではなく `import.meta.url` 由来の `apps/api/src/db` / `dist/db` 位置から repo root へ解決する方式へ変更。明示 `migrationsDirectory` 引数は従来どおり尊重する。unit test で `process.chdir()` 後も root `migrations/` を読むことを固定。
+  - 検証: `pnpm --filter @yrese/api exec vitest run src/db/migrations.test.ts` PASS(7)、`pnpm --filter @yrese/api test` PASS(60 + 3 SKIP)、`pnpm --filter @yrese/api typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
 
 - [x] WP-4059 PostgreSQL reception integration test load-bearing narrowing(codex 提案 SELF-SCAN-20260710-04、WP-5003後続)
   - 発見根拠: `apps/api/src/db/postgres-repositories.integration.test.ts` の受付冪等性テストは `expect(created.kind).toBe('created')` / `expect(resent.kind).toBe('existing')` の直後に `if (created.kind !== 'idempotency_conflict' && resent.kind !== 'idempotency_conflict')` で entry 比較を行っている。実行時 expect が失敗すればテスト全体は落ちるが、型絞りのための条件が本来あり得ない分岐を残しており、今後の編集で idempotency conflict を誤って許すテストに弱化しやすい。

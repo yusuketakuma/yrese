@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export interface MigrationFile {
   readonly version: string;
@@ -11,6 +12,7 @@ export interface MigrationFile {
 }
 
 const migrationFilenamePattern = /^(\d{6})_([a-z0-9_]+)\.sql$/;
+const ignoredMigrationDirectoryEntries = new Set(['README.md', '.gitkeep', '.DS_Store']);
 
 function checksumSha256(input: string): string {
   return createHash('sha256').update(input, 'utf8').digest('hex');
@@ -29,17 +31,44 @@ function parseMigrationFilename(filename: string): Pick<MigrationFile, 'version'
   return { version, name, filename };
 }
 
+function repositoryRoot(): string {
+  return resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+}
+
+function formatFilenameForError(filename: string): string {
+  return JSON.stringify(filename);
+}
+
+function parseMigrationDirectoryEntry(filename: string): Pick<MigrationFile, 'version' | 'name' | 'filename'> | undefined {
+  const parsed = parseMigrationFilename(filename);
+  if (parsed !== undefined) {
+    return parsed;
+  }
+  if (ignoredMigrationDirectoryEntries.has(filename)) {
+    return undefined;
+  }
+  throw new Error(
+    `invalid migration directory entry ${formatFilenameForError(filename)}: expected migration filename NNNNNN_snake_case.sql or an explicitly ignored non-migration file`,
+  );
+}
+
 export function defaultMigrationsDirectory(): string {
-  return resolve(process.cwd(), 'migrations');
+  return resolve(repositoryRoot(), 'migrations');
 }
 
 export async function loadMigrationFiles(migrationsDirectory = defaultMigrationsDirectory()): Promise<readonly MigrationFile[]> {
-  const filenames = (await readdir(migrationsDirectory)).filter((filename) => parseMigrationFilename(filename) !== undefined);
+  const entries = (await readdir(migrationsDirectory)).map((filename) => ({
+    filename,
+    parsed: parseMigrationDirectoryEntry(filename),
+  }));
+  const filenames = entries
+    .filter((entry): entry is { filename: string; parsed: Pick<MigrationFile, 'version' | 'name' | 'filename'> } => entry.parsed !== undefined)
+    .map((entry) => entry.filename);
   const migrations = await Promise.all(
     filenames.map(async (filename): Promise<MigrationFile> => {
       const parsed = parseMigrationFilename(filename);
       if (parsed === undefined) {
-        throw new Error(`invalid migration filename: ${filename}`);
+        throw new Error(`invalid migration filename ${formatFilenameForError(filename)}: expected NNNNNN_snake_case.sql`);
       }
       const sql = await readFile(resolve(migrationsDirectory, filename), 'utf8');
       return {

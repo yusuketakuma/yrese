@@ -6,6 +6,14 @@
 
 ## 2026-07-10
 
+### WP-4055 / WP-4058 DB migration runner fail-closed hardening
+
+- fable5 から `WP-4055 + WP-4058(bundle)` の `PLAN_APPROVED` を受領。DB runner 領域のため HIGH risk とし、スコープを `apps/api/src/db/migrations.ts` と focused unit test のみに限定。Claude 側 dirty の `docs/ssot_index.md` / `docs/database/dynamodb_single_table_design.md` は温存。
+- WP-4055: `loadMigrationFiles()` の silent filter を廃止し、migration directory entry を先に分類するように変更。`NNNNNN_snake_case.sql` は読み込み、`README.md` / `.gitkeep` / `.DS_Store` は明示 allowlist で無視し、それ以外の不正/typo/大文字/backup系 entry はファイル名付きで fail-closed に throw する。既存の SQL 内容・checksum・version sort・duplicate version semantics は変更なし。
+- WP-4058: `defaultMigrationsDirectory()` を `process.cwd()` 依存から `import.meta.url` 由来の repo root anchor へ変更。`pnpm --filter @yrese/api` や任意 cwd から呼んでも root `migrations/` を解決する。明示 `migrationsDirectory` 引数は従来どおり尊重。
+- focused test: valid migrations の version sort/checksum、allowlist file ignore、不正 migration-like file の throw、`process.chdir()` 後の cwd 非依存 default path を追加。
+- 検証: `pnpm --filter @yrese/api exec vitest run src/db/migrations.test.ts` PASS(7)、`pnpm --filter @yrese/api test` PASS(60 + 3 SKIP)、`pnpm --filter @yrese/api typecheck` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 ### WP-4064 PatientSearch runner lazy initialization
 
 - WP-4063 handoff後も agmsg inbox は空。dev tenant scope の最小化候補は auth/security 境界に触れるため即実装せず、純粋な Web 内部初期化の self-scan を優先。
