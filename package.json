@@ -1,0 +1,17 @@
+{
+  "name": "yrese",
+  "version": "0.0.1",
+  "private": true,
+  "description": "調剤用レセプトコンピューター MVP — Cloud Core + Pharmacy Edge Node",
+  "engines": {
+    "node": ">=24",
+    "pnpm": ">=10"
+  },
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "typecheck": "pnpm -r --parallel typecheck",
+    "test": "pnpm -r --parallel test",
+    "lint": "pnpm -r --parallel lint",
+    "build": "pnpm -r build"
+  }
+}
