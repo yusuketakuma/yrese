@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { defaultApiPort, parseApiPort, parseDatabaseUrl } from './config.js';
+import { defaultApiPort, parseApiPort, parseDatabaseUrl, resolveApiRepositoryMode } from './config.js';
 
 describe('parseApiPort', () => {
   it('defaults when PORT is absent or blank', () => {
@@ -43,5 +43,85 @@ describe('parseDatabaseUrl', () => {
     expect(parseDatabaseUrl(' postgresql://user:pass@localhost:55432/yrese_dev ')).toBe(
       'postgresql://user:pass@localhost:55432/yrese_dev',
     );
+  });
+});
+
+describe('resolveApiRepositoryMode', () => {
+  it('uses postgres mode when DATABASE_URL is present', () => {
+    expect(
+      resolveApiRepositoryMode({
+        repositoryMode: undefined,
+        databaseUrl: 'postgres://user:pass@localhost:55432/yrese_dev',
+        nodeEnv: 'development',
+      }),
+    ).toBe('postgres');
+    expect(
+      resolveApiRepositoryMode({
+        repositoryMode: 'postgres',
+        databaseUrl: 'postgres://user:pass@localhost:55432/yrese_dev',
+        nodeEnv: 'development',
+      }),
+    ).toBe('postgres');
+  });
+
+  it('allows in-memory mode only when explicitly requested outside production', () => {
+    expect(
+      resolveApiRepositoryMode({
+        repositoryMode: 'in_memory',
+        databaseUrl: undefined,
+        nodeEnv: 'development',
+      }),
+    ).toBe('in_memory');
+    expect(
+      resolveApiRepositoryMode({
+        repositoryMode: ' in_memory ',
+        databaseUrl: undefined,
+        nodeEnv: 'test',
+      }),
+    ).toBe('in_memory');
+  });
+
+  it('fails closed when DATABASE_URL is absent and repository mode is unset', () => {
+    expect(() =>
+      resolveApiRepositoryMode({
+        repositoryMode: undefined,
+        databaseUrl: undefined,
+        nodeEnv: 'development',
+      }),
+    ).toThrow(/DATABASE_URL/);
+  });
+
+  it('fails closed when in-memory mode is requested in production', () => {
+    expect(() =>
+      resolveApiRepositoryMode({
+        repositoryMode: 'in_memory',
+        databaseUrl: undefined,
+        nodeEnv: 'production',
+      }),
+    ).toThrow(/in_memory/);
+  });
+
+  it('fails closed for invalid repository modes and contradictory settings', () => {
+    expect(() =>
+      resolveApiRepositoryMode({
+        repositoryMode: 'memory',
+        databaseUrl: undefined,
+        nodeEnv: 'development',
+      }),
+    ).toThrow(/YRESE_API_REPOSITORY_MODE/);
+    expect(() =>
+      resolveApiRepositoryMode({
+        repositoryMode: 'postgres',
+        databaseUrl: undefined,
+        nodeEnv: 'development',
+      }),
+    ).toThrow(/DATABASE_URL/);
+    expect(() =>
+      resolveApiRepositoryMode({
+        repositoryMode: 'in_memory',
+        databaseUrl: 'postgres://user:pass@localhost:55432/yrese_dev',
+        nodeEnv: 'development',
+      }),
+    ).toThrow(/DATABASE_URL/);
   });
 });

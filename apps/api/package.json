@@ -6,7 +6,7 @@
   "scripts": {
     "db:check": "tsx src/db/check.ts",
     "db:migrate": "tsx src/db/migrate.ts",
-    "dev": "tsx src/main.ts",
+    "dev": "YRESE_API_REPOSITORY_MODE=in_memory tsx src/main.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "build": "tsc -p tsconfig.build.json"

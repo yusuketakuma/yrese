@@ -1,4 +1,4 @@
-import { parseApiPort, parseDatabaseUrl } from './config.js';
+import { parseApiPort, parseDatabaseUrl, resolveApiRepositoryMode } from './config.js';
 import { assertMigrationStateAllowsStartup } from './db/migration-runner.js';
 import { loadMigrationFiles } from './db/migrations.js';
 import { PostgresPatientRepository } from './db/patient-repository.js';
@@ -8,8 +8,18 @@ import { buildServer } from './server.js';
 
 async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServer>> {
   const databaseUrl = parseDatabaseUrl(process.env.DATABASE_URL);
-  if (databaseUrl === undefined) {
+  const repositoryMode = resolveApiRepositoryMode({
+    repositoryMode: process.env.YRESE_API_REPOSITORY_MODE,
+    databaseUrl,
+    nodeEnv: process.env.NODE_ENV,
+  });
+
+  if (repositoryMode === 'in_memory') {
     return buildServer();
+  }
+
+  if (databaseUrl === undefined) {
+    throw new Error('DATABASE_URL is required for postgres repository mode');
   }
 
   const pool = createDbPool(databaseUrl);

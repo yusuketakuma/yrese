@@ -1,4 +1,7 @@
 export const defaultApiPort = 3001;
+export const apiRepositoryModes = ['postgres', 'in_memory'] as const;
+
+export type ApiRepositoryMode = (typeof apiRepositoryModes)[number];
 
 const decimalIntegerPattern = /^(0|[1-9]\d*)$/;
 
@@ -38,4 +41,46 @@ export function parseDatabaseUrl(value: string | undefined): string | undefined 
   }
 
   return normalizedValue;
+}
+
+function parseExplicitRepositoryMode(value: string | undefined): ApiRepositoryMode | undefined {
+  if (value === undefined || value.trim().length === 0) {
+    return undefined;
+  }
+
+  const normalizedValue = value.trim();
+  if (!apiRepositoryModes.includes(normalizedValue as ApiRepositoryMode)) {
+    throw new Error('YRESE_API_REPOSITORY_MODE must be postgres or in_memory');
+  }
+
+  return normalizedValue as ApiRepositoryMode;
+}
+
+export function resolveApiRepositoryMode(input: {
+  readonly repositoryMode: string | undefined;
+  readonly databaseUrl: string | undefined;
+  readonly nodeEnv: string | undefined;
+}): ApiRepositoryMode {
+  const explicitMode = parseExplicitRepositoryMode(input.repositoryMode);
+
+  if (explicitMode === 'in_memory' && input.nodeEnv === 'production') {
+    throw new Error('YRESE_API_REPOSITORY_MODE=in_memory is not allowed in production');
+  }
+
+  if (input.databaseUrl !== undefined) {
+    if (explicitMode === 'in_memory') {
+      throw new Error('YRESE_API_REPOSITORY_MODE=in_memory cannot be used with DATABASE_URL');
+    }
+    return 'postgres';
+  }
+
+  if (explicitMode === 'in_memory') {
+    return 'in_memory';
+  }
+
+  if (explicitMode === 'postgres') {
+    throw new Error('DATABASE_URL is required when YRESE_API_REPOSITORY_MODE=postgres');
+  }
+
+  throw new Error('DATABASE_URL is required unless YRESE_API_REPOSITORY_MODE=in_memory is explicit');
 }

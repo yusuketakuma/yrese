@@ -6,6 +6,13 @@
 
 ## 2026-07-10
 
+### WP-4056 API repository mode explicitness and in-memory startup guard
+
+- fable5 PLAN_APPROVED に基づき、API 起動時の暗黙 in-memory fallback を廃止する方針で実装中。`YRESE_API_REPOSITORY_MODE` を明示 repository mode とし、許可値は `postgres` / `in_memory` のみ。`DATABASE_URL` がある場合は `postgres`、`DATABASE_URL` 不在時は `YRESE_API_REPOSITORY_MODE=in_memory` の明示がある場合だけ in-memory 起動を許可する。
+- `YRESE_API_REPOSITORY_MODE=in_memory` は `NODE_ENV=production` で起動拒否。未知の mode、`postgres` 明示かつ `DATABASE_URL` 不在、`in_memory` 明示かつ `DATABASE_URL` ありは fail-closed。
+- dev 起動は `pnpm --filter @yrese/api dev` が `YRESE_API_REPOSITORY_MODE=in_memory tsx src/main.ts` を使うため、開発時は明示 in-memory mode で起動する。永続化期待環境では `DATABASE_URL` を設定して PostgreSQL repository を使う。
+- 検証: `pnpm --filter @yrese/api test` 53 PASS + 3 SKIP、`pnpm --filter @yrese/api typecheck` PASS、`pnpm -r typecheck` PASS、`pnpm check:boundaries` PASS、`pnpm test` PASS。`pnpm --filter @yrese/api dev` は明示 `YRESE_API_REPOSITORY_MODE=in_memory` 経由で起動開始を確認し、確認後に停止。
+
 ### WP-1101 DOM-001..004 APPROVED 昇格と opus4.8 指摘是正
 
 - Claude側 fable5 から commit_request を受領し、対象7文書のみを stage して `99e84c2` として commit/push。対象は `docs/domain/bounded_contexts.md`、`docs/domain/domain_model.md`、`docs/domain/ubiquitous_language.md`、`docs/domain/state_transition.md`、`docs/modules/shared_type_registry.md`、`docs/modules/status_registry.md`、`docs/ssot_index.md`。
