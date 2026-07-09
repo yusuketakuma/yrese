@@ -451,6 +451,12 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: API-001 cursor semantics の互換方針、`PatientSearchCursor` 内部表現、`PostgresPatientRepository.search()`、必要なら検索用 migration(index / generated search column / pg_trgm 採否はDB SSOT裁定後)、in-memory repository parity tests。既存 response schema と OpenAPI wire 形状を変える場合はAPI-001改版が先。
   - 検証: 大きな offset に依存しないページングの repository test、tenant/pharmacy/query境界 cursor reject 回帰、同一 patient_number/同一accepted相当の安定順序、DB integration test(`TEST_DATABASE_URL` gate)、`pnpm --filter @yrese/api test`、`pnpm --filter @yrese/contracts test`、`pnpm check:openapi`、`pnpm check:boundaries`、`git diff --check`。DB migration / API cursor 方針を含むため fable5 PLAN_APPROVED 後に実装。
 
+- [ ] WP-4058 migration directory resolution for pnpm-filtered DB commands(codex 提案 SELF-SCAN-20260710-03、WP-5002後続)
+  - 発見根拠: `pnpm --filter @yrese/api exec pwd` は `/Users/yusuke/workspace/yrese/apps/api` を返すが、`defaultMigrationsDirectory()` は `resolve(process.cwd(), 'migrations')` を返す。read-only probe で `pnpm --filter @yrese/api exec tsx -e ...loadMigrationFiles()` を実行すると `/Users/yusuke/workspace/yrese/apps/api/migrations` を見に行き `ENOENT` になった。root package の `db:check` / `db:migrate` は `pnpm --filter @yrese/api ...` 経由のため、`DATABASE_URL` 設定時に root `migrations/` を読めない可能性が高い。
+  - 目的: DBマイグレーションの既定ディレクトリをコマンド実行cwdに依存させず、repo root の `migrations/` を安定して参照する。DB-002 の明示運用操作が、pnpm workspace 実行方式で失敗する状態を防ぐ。
+  - 想定スコープ: `apps/api/src/db/migrations.ts` の default path 解決、migration loader unit test、必要なら root/package script の引数化。WP-4055 の不正filename fail-closedと同じ loader 領域のため、fable5判断で同時実装可。
+  - 検証: package cwd と repo root cwd の双方で `loadMigrationFiles()` が root `migrations/` を読むこと、明示 `migrationsDirectory` 引数は従来通り尊重すること、`pnpm --filter @yrese/api test`、`pnpm db:check` は `DATABASE_URL` 不在時に従来通り明示エラー、`git diff --check`。DB migration runner の運用境界なので fable5 PLAN_APPROVED 後に実装。
+
 - [x] WP-4012 dependency scan / SBOM CI gate(b0ecf84、addendum 702c2f5)
   - 発見根拠: `.github/workflows/ci.yml` には dependency scan / SBOM 追加TODOが残り、`package.json` にも依存脆弱性・SBOM生成を検査するroot scriptが未定義。
   - 目的: secret scan に加えて、依存脆弱性検知とSBOM生成/検証をCIの機械ゲートにし、security SSOTの「dependency scan / SBOM」予定項目を実装へ進める。
