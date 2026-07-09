@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto';
 import Fastify, { type FastifyInstance } from 'fastify';
 import {
   errorResponseSchema,
@@ -30,11 +29,7 @@ import {
   patientSearchCursorHmacConfigurationErrorMessage,
   type ApiRepositoryMode,
 } from './config.js';
-import {
-  createPatientSearchCursorCodec,
-  patientSearchCursorHmacKeyByteLength,
-  type PatientSearchCursorCodec,
-} from './patient-search-cursor.js';
+import type { PatientSearchCursorCodec } from './patient-search-cursor.js';
 import {
   requirePermission,
   tenantContextPlugin,
@@ -50,6 +45,8 @@ export const patientSearchInvalidQueryErrorCode = PATIENT_SEARCH_INVALID_QUERY_E
 export const receptionInvalidRequestErrorCode = RECEPTION_INVALID_REQUEST_ERROR_CODE;
 export const receptionPatientNotFoundErrorCode = RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE;
 export const receptionIdempotencyConflictErrorCode = RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE;
+export const receptionPatientIdentityMismatchErrorMessage =
+  'Patient lookup returned a mismatched patient identity';
 
 export interface BuildServerOptions {
   readonly patientRepository?: PatientRepository;
@@ -94,12 +91,10 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     throw new Error(devTenantContextConfigurationErrorMessage);
   }
 
-  if (options.patientSearchCursorCodec === undefined && options.repositoryMode === 'postgres') {
+  if (options.patientSearchCursorCodec === undefined) {
     throw new Error(patientSearchCursorHmacConfigurationErrorMessage);
   }
-  const patientSearchCursorCodec =
-    options.patientSearchCursorCodec ??
-    createPatientSearchCursorCodec(randomBytes(patientSearchCursorHmacKeyByteLength));
+  const patientSearchCursorCodec = options.patientSearchCursorCodec;
 
   const patientRepository = options.patientRepository ?? new InMemoryPatientRepository();
   const receptionRepository = options.receptionRepository ?? new InMemoryReceptionRepository();
@@ -266,11 +261,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       if (patient === undefined) {
         return reply.code(404).send(receptionPatientNotFoundResponse());
       }
+      if (patient.patientId !== parsedPatientId) {
+        throw new Error(receptionPatientIdentityMismatchErrorMessage);
+      }
 
       const result = await receptionRepository.create({
         tenantId: tenantContext.tenantId,
         pharmacyId: tenantContext.pharmacyId,
-        patientId: parsedPatientId,
         patient,
         idempotencyKey: body.data.idempotencyKey,
         acceptedAt: now(),

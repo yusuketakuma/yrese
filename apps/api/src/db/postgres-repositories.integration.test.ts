@@ -280,19 +280,18 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
         await receptionRepository.create({
           tenantId: tenantId('tenant-001'),
           pharmacyId: pharmacyId('pharmacy-001'),
-          patientId: patientId('patient-db-001'),
           patient: firstPatient,
           idempotencyKey: 'db-idempotency-001',
           acceptedAt,
         }),
         'created',
       );
+      expect(created.entry.patient.patientId).toBe(firstPatient.patientId);
 
       const resent = expectReceptionEntryResult(
         await receptionRepository.create({
           tenantId: tenantId('tenant-001'),
           pharmacyId: pharmacyId('pharmacy-001'),
-          patientId: patientId('patient-db-001'),
           patient: firstPatient,
           idempotencyKey: 'db-idempotency-001',
           acceptedAt,
@@ -304,7 +303,6 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
       const conflict = await receptionRepository.create({
         tenantId: tenantId('tenant-001'),
         pharmacyId: pharmacyId('pharmacy-001'),
-        patientId: patientId('patient-db-002'),
         patient: secondPatient,
         idempotencyKey: 'db-idempotency-001',
         acceptedAt,
@@ -315,7 +313,6 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
         await receptionRepository.create({
           tenantId: tenantId('tenant-001'),
           pharmacyId: pharmacyId('pharmacy-001'),
-          patientId: patientId('patient-db-002'),
           patient: secondPatient,
           idempotencyKey: 'db-idempotency-002',
           acceptedAt,

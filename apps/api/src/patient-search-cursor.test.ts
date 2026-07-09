@@ -40,6 +40,24 @@ function makeNonCanonicalBase64Url(value: string): string {
 }
 
 describe('patient search cursor HMAC codec', () => {
+  it('pins the v1 HMAC and outer token bytes with a synthetic golden vector', () => {
+    const key = Buffer.from(
+      '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f',
+      'hex',
+    );
+    const codec = createPatientSearchCursorCodec(key);
+    const binding = syntheticBinding();
+    const expectedMac = 'i5Em-uMH7nIgBLdC-t2wAlF7H0WG8wGuvy2lQREANk8';
+    const expectedToken =
+      'eyJ2IjoxLCJvIjo0MiwibSI6Imk1RW0tdU1IN25JZ0JMZEMtdDJ3QWxGN0gwV0c4d0d1dnkybFFSRUFOazgifQ';
+
+    const token = codec.encode(binding, { offset: 42 });
+
+    expect(token).toBe(expectedToken);
+    expect(decodeTokenBody(token)).toEqual({ v: 1, o: 42, m: expectedMac });
+    expect(codec.decode(binding, expectedToken)).toEqual({ offset: 42 });
+  });
+
   it('round-trips across codec instances with the same process-generated key', () => {
     const key = randomBytes(patientSearchCursorHmacKeyByteLength);
     const issuer = createPatientSearchCursorCodec(key);
@@ -126,9 +144,14 @@ describe('patient search cursor HMAC codec', () => {
     const binding = syntheticBinding();
     const valid = codec.encode(binding, { offset: 1 });
     const mac = decodeTokenBody(valid).m;
+    const canonicalInvalidUtf8Token = 'wyg';
+    expect(Buffer.from(canonicalInvalidUtf8Token, 'base64url').toString('base64url')).toBe(
+      canonicalInvalidUtf8Token,
+    );
     const invalidTokens = [
       '',
       'not+base64url',
+      canonicalInvalidUtf8Token,
       `${valid}=`,
       'x'.repeat(513),
       encodeTokenBody({ v: 1, o: -1, m: mac }),
@@ -144,6 +167,24 @@ describe('patient search cursor HMAC codec', () => {
     for (const invalidToken of invalidTokens) {
       expect(codec.decode(binding, invalidToken)).toBeUndefined();
     }
+  });
+
+  it('rejects a non-canonical outer base64url alias with identical decoded bytes', () => {
+    const key = Buffer.from(
+      '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f',
+      'hex',
+    );
+    const codec = createPatientSearchCursorCodec(key);
+    const binding = syntheticBinding();
+    const canonicalToken =
+      'eyJ2IjoxLCJvIjo0MiwibSI6Imk1RW0tdU1IN25JZ0JMZEMtdDJ3QWxGN0gwV0c4d0d1dnkybFFSRUFOazgifQ';
+    const nonCanonicalAlias =
+      'eyJ2IjoxLCJvIjo0MiwibSI6Imk1RW0tdU1IN25JZ0JMZEMtdDJ3QWxGN0gwV0c4d0d1dnkybFFSRUFOazgifR';
+
+    expect(Buffer.from(nonCanonicalAlias, 'base64url')).toEqual(
+      Buffer.from(canonicalToken, 'base64url'),
+    );
+    expect(codec.decode(binding, nonCanonicalAlias)).toBeUndefined();
   });
 
   it('accepts the maximum safe offset but refuses invalid encode inputs and key sizes', () => {

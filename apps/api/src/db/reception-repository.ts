@@ -144,7 +144,7 @@ export class PostgresReceptionRepository implements ReceptionRepository {
           input.tenantId,
           input.pharmacyId,
           newReceptionId,
-          input.patientId,
+          input.patient.patientId,
           acceptedAt,
           businessDate,
           input.idempotencyKey,
@@ -173,7 +173,7 @@ export class PostgresReceptionRepository implements ReceptionRepository {
         throw new Error('idempotency conflict row was not visible after unique constraint conflict');
       }
 
-      if (existing.stored_patient_id !== input.patientId) {
+      if (existing.stored_patient_id !== input.patient.patientId) {
         await client.query('COMMIT');
         return { kind: 'idempotency_conflict' };
       }

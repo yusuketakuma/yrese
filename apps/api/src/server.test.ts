@@ -18,6 +18,7 @@ import {
   patientSearchInvalidQueryErrorCode,
   receptionIdempotencyConflictErrorCode,
   receptionInvalidRequestErrorCode,
+  receptionPatientIdentityMismatchErrorMessage,
   receptionPatientNotFoundErrorCode,
   type BuildServerOptions,
   type HealthResponse,
@@ -300,18 +301,28 @@ describe('buildServer', () => {
     ).toThrowError(new Error(devTenantContextConfigurationErrorMessage));
   });
 
-  it('requires an injected cursor codec only for postgres and uses an ephemeral non-postgres test seam', async () => {
+  it('requires an injected cursor codec for every repository mode', async () => {
+    expect(() => buildServer()).toThrowError(
+      new Error(patientSearchCursorHmacConfigurationErrorMessage),
+    );
+    expect(() =>
+      buildServer({
+        repositoryMode: 'in_memory',
+        tenantContextMode: 'dev_headers',
+      }),
+    ).toThrowError(new Error(patientSearchCursorHmacConfigurationErrorMessage));
     expect(() => buildServer({ repositoryMode: 'postgres' })).toThrowError(
       new Error(patientSearchCursorHmacConfigurationErrorMessage),
     );
 
-    const defaultEphemeralServer = buildServer();
-    const inMemoryEphemeralServer = buildServer({
+    const inMemoryServer = buildServer({
+      patientSearchCursorCodec: createPatientSearchCursorCodec(
+        randomBytes(patientSearchCursorHmacKeyByteLength),
+      ),
       repositoryMode: 'in_memory',
       tenantContextMode: 'dev_headers',
     });
-    await defaultEphemeralServer.close();
-    await inMemoryEphemeralServer.close();
+    await inMemoryServer.close();
   });
 
   it('denies /patients/search when dev tenant context headers are absent', async () => {
@@ -749,6 +760,61 @@ describe('buildServer', () => {
         patientId: 'patient-syn-004',
       },
     });
+  });
+
+  it('fails closed before reception creation when scoped patient lookup returns another identity', async () => {
+    const requestedPatientId = 'patient-requested-synthetic-001';
+    const mismatchedPatientId = 'patient-other-synthetic-999';
+    const mismatchedName = '合成別患者氏名';
+    const mismatchedKana = 'ゴウセイベツカンジャシメイ';
+    const receptionCreate = vi.fn<ReceptionRepository['create']>();
+    const server = buildDevTestServer({
+      patientRepository: {
+        search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
+        findById: vi.fn<PatientRepository['findById']>(async () => ({
+          patientId: mismatchedPatientId,
+          name: mismatchedName,
+          kana: mismatchedKana,
+          birthDate: '1990-01-01',
+          sex: 'unknown',
+          patientNumber: 'SYN-MISMATCH-999',
+          eligibilityStatus: 'NOT_CHECKED',
+        })),
+      },
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => []),
+        create: receptionCreate,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: requestedPatientId,
+        idempotencyKey: 'reception-mismatched-patient-identity',
+      },
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(receptionCreate).not.toHaveBeenCalled();
+    expect(response.json()).toMatchObject({
+      statusCode: 500,
+      error: 'Internal Server Error',
+      message: receptionPatientIdentityMismatchErrorMessage,
+    });
+    for (const sensitiveValue of [
+      requestedPatientId,
+      mismatchedPatientId,
+      mismatchedName,
+      mismatchedKana,
+      'SYN-MISMATCH-999',
+    ]) {
+      expect(response.body).not.toContain(sensitiveValue);
+    }
   });
 
   it('stores reception queue dates as JST business dates, not UTC dates', async () => {

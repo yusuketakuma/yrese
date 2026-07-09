@@ -24,7 +24,6 @@ export interface ReceptionListInput {
 export interface ReceptionCreateInput {
   readonly tenantId: TenantId;
   readonly pharmacyId: PharmacyId;
-  readonly patientId: PatientId;
   readonly patient: PatientSearchResult;
   readonly idempotencyKey: string;
   readonly acceptedAt: Date;
@@ -193,10 +192,11 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
   }
 
   async create(input: ReceptionCreateInput): Promise<ReceptionCreateResult> {
+    const inputPatientId = patientId(input.patient.patientId);
     const idempotencyKey = toIdempotencyKey(input);
     const existing = this.idempotencyRecords.get(idempotencyKey);
     if (existing !== undefined) {
-      if (existing.patientId !== input.patientId) {
+      if (existing.patientId !== inputPatientId) {
         return { kind: 'idempotency_conflict' };
       }
 
@@ -219,7 +219,7 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
       tenantId: input.tenantId,
       pharmacyId: input.pharmacyId,
       receptionId: receptionId(`reception-${String(this.nextSequence).padStart(6, '0')}`),
-      patientId: input.patientId,
+      patientId: inputPatientId,
       patient: input.patient,
       acceptedAt,
       date: businessDateFromAcceptedAt(input.acceptedAt),
@@ -229,7 +229,7 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
     this.nextSequence += 1;
     this.records.push(record);
     this.idempotencyRecords.set(idempotencyKey, {
-      patientId: input.patientId,
+      patientId: inputPatientId,
       receptionId: record.receptionId,
     });
 
