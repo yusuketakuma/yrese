@@ -6,6 +6,13 @@
 
 ## 2026-07-09(続き)
 
+### UI/UX 開発計画の起案(ユーザー指示)
+
+- ユーザー指示2件: (1) UI 構築時は The Component Gallery(component.gallery)を活用する(メモリにも保存)、(2) fable5 が UI/UX の今後の開発計画を緻密に立案する
+- `docs/plan/uiux_development_plan.md`(PLAN-UIUX-001、PROPOSED)を起案: UIX-001〜007 と画面台帳 SCR-001〜029 を基に Phase UI-1(デザイン基盤)〜UI-6(請求線)の6波を定義。契約 SSOT なしに画面を作らない fail-closed 発行条件、U4 画面の opus4.8 医療安全レビュー必須、component.gallery 参照規律を組込み
+- Plans.md に WP-3006〜3021 を登録。第1弾は WP-3006(トークン+状態コンポーネント)/ WP-3007(SCR-013 横断表示)/ WP-3011(trace ビューア)
+- codex: WP-4033(money RoundingMode ガード、ef978d4)/ WP-4022(date-time nominal brand、6f04722)いずれもレビュー APPROVED(money 12・date-time 8 テスト、全 typecheck PASS)
+
 ### WP-4022 — date-time clinical wrapper nominal brands
 
 - fable5 PLAN_APPROVED 後に codex 実装。`@yrese/date-time` の PrescriptionDate / DispensingDate / ReceptionDate を nominal brand 化し、異種ラッパーの `compare()` / `equals()` と代入を型で拒否するようにした。

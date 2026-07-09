@@ -18,7 +18,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 **Phase 0 ゲート: 2026-07-09 人間レビュー承認済み(当時97文書)。** ゲート後に追加された文書は各自の status(PROPOSED 等)を保持し、承認は PRC-007 の更新フローに従う。
 本索引は frontmatter からの機械生成である(手編集しない。再生成漏れは索引整合性欠陥として扱う)。
 
-総文書数: 161(本索引を除く)
+総文書数: 162(本索引を除く)
 
 ## docs/accounting/ (11件)
 
@@ -181,12 +181,13 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 | OPS-005 | [sla_slo_policy.md](operations/sla_slo_policy.md) | APPROVED |
 | OPS-004 | [support_operations_model.md](operations/support_operations_model.md) | APPROVED |
 
-## docs/plan/ (2件)
+## docs/plan/ (3件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
 | PLAN-PHASE0-GATE-001 | [phase0_gate_report.md](plan/phase0_gate_report.md) | APPROVED |
 | PLAN-PHASE0-001 | [phase0_plan.md](plan/phase0_plan.md) | APPROVED |
+| PLAN-UIUX-001 | [uiux_development_plan.md](plan/uiux_development_plan.md) | PROPOSED |
 
 ## docs/process/ (7件)
 
