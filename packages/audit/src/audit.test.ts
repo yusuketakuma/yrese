@@ -332,6 +332,25 @@ describe("createAuditEvent", () => {
     expect(auditEvent.entryHash).toBe(expectedEntryHash);
   });
 
+  it.each([
+    "2026-02-29T00:00:00Z",
+    "2024-02-30T00:00:00+09:00",
+    "1900-02-29T00:00:00-04:00",
+    "2026-04-31T00:00:00+23:59",
+  ])("rejects non-real wallClock date %s instead of normalizing it", (wallClock) => {
+    expect(() => createAuditEvent(baseAuditEvent({ wallClock }))).toThrow(/wallClock/);
+  });
+
+  it("normalizes a valid leap-day wallClock with an offset", () => {
+    const auditEvent = createAuditEvent(
+      baseAuditEvent({
+        wallClock: "2024-02-29T17:59:01.123+09:00",
+      }),
+    );
+
+    expect(auditEvent.wallClock).toBe("2024-02-29T08:59:01.123Z");
+  });
+
   it("normalizes Date-derived wallClock values but rejects timezone-less date strings", () => {
     const dateAuditEvent = createAuditEvent(
       baseAuditEvent({

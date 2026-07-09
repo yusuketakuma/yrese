@@ -6,6 +6,12 @@
 
 ## 2026-07-10
 
+### WP-4068 event/audit ISO instant calendar validation
+
+- fable5 の `PLAN_APPROVED` に基づき、`@yrese/events` に共有 `assertIsoInstant` を追加。primitive string / non-empty を明示検証し、既存の timezone 必須・任意長 year・offset・fraction の lexical semantics を維持しつつ、文字列から年月日を捕捉して proleptic Gregorian calendar 上の実在日を fail-closed に検証する。任意長 year は全体を数値化せず、400年周期に必要な末尾4桁のみで閏年を判定する。
+- event envelope は検証済み `wallClock` の原文を保持する。`@yrese/audit` は重複していた ISO regex を削除し、文字列入力を共有 validator へ通してから既存の `Date` offset→UTC 正規化を実行する。Date 入力 branch と canonicalization、既存 audit golden hash は変更していない。
+- tests は非閏年2026/2023/1900年の2月29日、2月30/31日、4月31日を Z/offset 入力で拒否し、2028/2024/2000年の leap day、任意長 year、events の原文保持、audit の valid leap offset 正規化を固定。null / undefined / boxed String / `toString` object の暗黙文字列化も拒否する。検証: `pnpm --filter @yrese/events test` PASS(45)、events typecheck/build PASS、`pnpm --filter @yrese/audit test` PASS(46)、audit typecheck/build PASS、`pnpm check:boundaries` PASS、`pnpm check:secrets` PASS、`git diff --check` PASS。
+
 ### WP-4069 dependency audit report fail-closed validation
 
 - fable5 の `PLAN_APPROVED` に基づき、dependency audit gate の malformed/partial/error-only JSON false-pass と、parseable stdout 時の pnpm nonzero status 見落としを修正。`metadata.vulnerabilities` は plain object、info/low/moderate/high/critical はすべて finite な非負 safe integer を必須とし、error field・欠落・文字列・負数・小数・unsafe integer は fail-closed にした。

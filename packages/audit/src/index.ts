@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { EventEnvelope } from "@yrese/events";
-import { createEventEnvelope } from "@yrese/events";
+import { assertIsoInstant, createEventEnvelope } from "@yrese/events";
 import { createKernelErrorCodeRegistry, type UserId } from "@yrese/shared-kernel";
 
 export const AUDIT_EVENT_TYPES = [
@@ -133,8 +133,6 @@ export type AuditHashChainVerification =
 const auditEventTypeSet = new Set<string>(AUDIT_EVENT_TYPES);
 const snakeCaseSegmentPattern = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 const sha256HexPattern = /^[a-f0-9]{64}$/;
-const isoInstantPattern =
-  /^\d{4,}-((0[1-9])|(1[0-2]))-((0[1-9])|([12]\d)|(3[01]))T(([01]\d)|(2[0-3])):[0-5]\d:[0-5]\d(?:\.\d+)?(Z|[+-](([01]\d)|(2[0-3])):[0-5]\d)$/;
 const businessReasonCodePattern = /^[A-Z][A-Z0-9_]{2,63}$/;
 const businessReasonRequiredActions = new Set([
   "cancelled",
@@ -306,9 +304,7 @@ function normalizeInstant(value: string | Date, label: string): string {
   }
 
   assertNonEmptyString(value, label);
-  if (!isoInstantPattern.test(value)) {
-    throw new RangeError(`${label} must be an ISO string with timezone`);
-  }
+  assertIsoInstant(value, label);
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {

@@ -35,9 +35,40 @@ export type CreateEventEnvelopeInput = EventEnvelope;
 
 const sha256HexPattern = /^[a-f0-9]{64}$/;
 const isoInstantPattern =
-  /^\d{4,}-((0[1-9])|(1[0-2]))-((0[1-9])|([12]\d)|(3[01]))T(([01]\d)|(2[0-3])):[0-5]\d:[0-5]\d(?:\.\d+)?(Z|[+-](([01]\d)|(2[0-3])):[0-5]\d)$/;
+  /^(\d{4,})-((?:0[1-9])|(?:1[0-2]))-((?:0[1-9])|(?:[12]\d)|(?:3[01]))T(?:(?:[01]\d)|(?:2[0-3])):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:(?:[01]\d)|(?:2[0-3])):[0-5]\d)$/;
 // eslint-disable-next-line no-control-regex
 const controlCharacterPattern = /[\x00-\x1f\x7f]/;
+
+function isGregorianLeapYear(year: string): boolean {
+  const yearCycle = Number(year.slice(-4));
+  return yearCycle % 4 === 0 && (yearCycle % 100 !== 0 || yearCycle % 400 === 0);
+}
+
+function daysInGregorianMonth(year: string, month: number): number {
+  if (month === 2) {
+    return isGregorianLeapYear(year) ? 29 : 28;
+  }
+
+  return month === 4 || month === 6 || month === 9 || month === 11 ? 30 : 31;
+}
+
+export function assertIsoInstant(value: string, label = "instant"): void {
+  assertNonEmptyString(value, label);
+
+  const match = isoInstantPattern.exec(value);
+  if (match === null) {
+    throw new RangeError(`${label} must be an ISO string with timezone`);
+  }
+
+  const year = match[1]!;
+  const monthText = match[2]!;
+  const dayText = match[3]!;
+  const month = Number(monthText);
+  const day = Number(dayText);
+  if (day > daysInGregorianMonth(year, month)) {
+    throw new RangeError(`${label} must contain a real proleptic Gregorian calendar date`);
+  }
+}
 
 function assertNonEmptyString(value: string, label: string): void {
   if (typeof value !== "string") {
@@ -96,12 +127,6 @@ function assertPayloadHash(value: string): void {
   }
 }
 
-function assertWallClock(value: string): void {
-  if (!isoInstantPattern.test(value)) {
-    throw new RangeError("wallClock must be a caller-provided ISO string with timezone");
-  }
-}
-
 function assertPhiEncryptionInvariant(
   phiClassification: PhiClassification,
   encryptionStatus: EncryptionStatus,
@@ -139,7 +164,7 @@ export function createEventEnvelope(input: CreateEventEnvelopeInput): EventEnvel
   }
   assertNonNegativeBigInt(input.sequenceNumber, "sequenceNumber");
   assertNonNegativeBigInt(input.logicalClock, "logicalClock");
-  assertWallClock(input.wallClock);
+  assertIsoInstant(input.wallClock, "wallClock");
   assertSafeIdentifier(input.idempotencyKey, "idempotencyKey");
   if (input.causationId !== undefined) {
     assertSafeIdentifier(input.causationId, "causationId");

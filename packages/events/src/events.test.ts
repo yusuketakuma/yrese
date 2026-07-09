@@ -183,6 +183,52 @@ describe("createEventEnvelope", () => {
     ).toThrow(/wallClock/);
   });
 
+  it.each([
+    "2026-02-29T00:00:00Z",
+    "2023-02-29T23:59:59+09:00",
+    "2024-02-30T00:00:00.000Z",
+    "2024-02-31T12:30:00-04:00",
+    "1900-02-29T00:00:00+00:00",
+    "2026-04-31T00:00:00-23:59",
+  ])("rejects non-real Gregorian wallClock date %s", (wallClock) => {
+    expect(() => createEventEnvelope(baseEnvelope({ wallClock }))).toThrow(/wallClock/);
+  });
+
+  it.each([
+    "2028-02-29T23:59:59Z",
+    "2024-02-29T00:00:00.123456+09:00",
+    "2000-02-29T12:30:00-23:59",
+  ])("accepts real leap-day wallClock %s without changing it", (wallClock) => {
+    const actualWallClock = createEventEnvelope(baseEnvelope({ wallClock })).wallClock;
+
+    expect(actualWallClock).toBe(wallClock);
+    expect(typeof actualWallClock).toBe("string");
+  });
+
+  it.each([
+    null,
+    undefined,
+    new String("2024-02-29T00:00:00Z"),
+    { toString: () => "2024-02-29T00:00:00Z" },
+  ])("rejects non-primitive wallClock value %j", (wallClock) => {
+    expect(() =>
+      createEventEnvelope(baseEnvelope({ wallClock: wallClock as unknown as string })),
+    ).toThrow(/wallClock/);
+  });
+
+  it("validates unbounded years using the Gregorian 400-year cycle", () => {
+    const yearPrefix = "9".repeat(400);
+    const validWallClock = `${yearPrefix}2000-02-29T00:00:00Z`;
+    const invalidWallClock = `${yearPrefix}1900-02-29T00:00:00Z`;
+
+    expect(createEventEnvelope(baseEnvelope({ wallClock: validWallClock })).wallClock).toBe(
+      validWallClock,
+    );
+    expect(() => createEventEnvelope(baseEnvelope({ wallClock: invalidWallClock }))).toThrow(
+      /wallClock/,
+    );
+  });
+
   it("accepts dead-letter envelopes with a reason", () => {
     const envelope = createEventEnvelope(
       baseEnvelope({
