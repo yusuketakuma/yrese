@@ -6,12 +6,24 @@
 
 ## 2026-07-09(続き)
 
+### SSOT 第3波(WP-0046/0047)
+
+- WP-0046: API-first platform pack — API-002(dogfooding: 自社 UI も公開 API と同一契約のみ、抜け道 API 禁止)/ API-003(公開 API 共通土台: deny-by-default・テナント境界・バージョニング。数値は BLOCKED_PERFORMANCE_SLO)/ API-004(PH-OS リファレンス連携、特別扱い API 禁止)/ API-005(OSS 公開 allow-list、実公開は BLOCKED_LEGAL_REVIEW + 人間最終承認)。全て PROPOSED
+- WP-0047: SEC-008 — 監査 WORM・テナント分離戦略。論理層(append-only・SEC-007 ハッシュチェーン・偽ハッシュ供給禁止の規律化)と物理層候補(S3 Object Lock/KMS/RLS = 追加防御)を分離、break-glass は監査必須 fail-closed。PROPOSED
+- ssot_index 再生成: 161文書。check:ssot-index / boundaries PASS
+- codex: WP-4032(events 実行時ガード強化、d665c06)レビュー APPROVED — enum 値源を const tuple に単一化、events 31テスト PASS
+
 ### WP-4032 — EventEnvelope ID / enum runtime guard
 
 - fable5 PLAN_APPROVED 後に codex 実装。`@yrese/events` の `SyncStatus` / `PhiClassification` / `EncryptionStatus` を既存 union literal と同じ値の exported const tuple から派生させ、runtime allow-list と型の値源を単一化。
 - `createEventEnvelope()` で eventId / tenantId / pharmacyId / deviceId / actorId / causationId / correlationId / aggregateId / aggregateType / idempotencyKey の空白のみ・制御文字を拒否。`syncStatus='lost'`、`phiClassification='bad'`、`encryptionStatus='plain'` は fail-closed に拒否する否定テストを追加。
 - PHI≠none→encrypted と dead-letter reason の既存不変条件は維持。
 - 検証: `pnpm --filter @yrese/events test`(31 tests PASS)、`pnpm --filter @yrese/events typecheck`、`pnpm -r typecheck`、`pnpm check:boundaries`、`git diff --check`。
+
+### codex autonomous scan — trace / money follow-up candidates
+
+- agmsg 未読なしを確認後、read-only スキャンを継続。`@yrese/trace` の runtime enum/kind guard 補強候補(WP-4039)と、`@yrese/money` constructor 入力型ガード候補(WP-4040)を `Plans.md` へ登録。
+- 既存の WP-4033(rounding mode guard)とは別に、trace の target/kind drift と money constructor の不明瞭 TypeError 化を後続 triage 対象に分離。
 
 ### SSOT 第1〜2波 opus4.8 レビュー → 一括 APPROVED(WP-0052/0053)
 

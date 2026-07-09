@@ -18,7 +18,7 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 **Phase 0 ゲート: 2026-07-09 人間レビュー承認済み(当時97文書)。** ゲート後に追加された文書は各自の status(PROPOSED 等)を保持し、承認は PRC-007 の更新フローに従う。
 本索引は frontmatter からの機械生成である(手編集しない。再生成漏れは索引整合性欠陥として扱う)。
 
-総文書数: 156(本索引を除く)
+総文書数: 161(本索引を除く)
 
 ## docs/accounting/ (11件)
 
@@ -65,11 +65,15 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 | AGT-016 | [llm_capability_registry.md](agents/llm_capability_registry.md) | APPROVED |
 | AGT-004 | [sol_ultra_mode_execution_policy.md](agents/sol_ultra_mode_execution_policy.md) | APPROVED |
 
-## docs/api/ (1件)
+## docs/api/ (5件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
+| API-002 | [api_first_dogfooding_policy.md](api/api_first_dogfooding_policy.md) | PROPOSED |
+| API-005 | [oss_sdk_and_schema_publication_policy.md](api/oss_sdk_and_schema_publication_policy.md) | PROPOSED |
 | API-001 | [patient_search_contract.md](api/patient_search_contract.md) | APPROVED |
+| API-004 | [ph_os_reference_integration.md](api/ph_os_reference_integration.md) | PROPOSED |
+| API-003 | [platform_api_architecture.md](api/platform_api_architecture.md) | PROPOSED |
 
 ## docs/architecture/ (9件)
 
@@ -254,11 +258,12 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 | SAF-001 | [medical_safety_risk_register.md](safety/medical_safety_risk_register.md) | APPROVED |
 | SAF-002 | [safety_case.md](safety/safety_case.md) | APPROVED |
 
-## docs/security/ (7件)
+## docs/security/ (8件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
 | SEC-007 | [audit_log_design.md](security/audit_log_design.md) | APPROVED |
+| SEC-008 | [audit_worm_and_tenant_isolation_strategy.md](security/audit_worm_and_tenant_isolation_strategy.md) | PROPOSED |
 | SEC-005 | [edge_node_security_design.md](security/edge_node_security_design.md) | APPROVED |
 | SEC-004 | [privacy_impact_assessment.md](security/privacy_impact_assessment.md) | APPROVED |
 | SEC-002 | [provider_security_guideline_mapping.md](security/provider_security_guideline_mapping.md) | APPROVED |
