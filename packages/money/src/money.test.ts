@@ -18,6 +18,12 @@ describe("ScaledDecimal", () => {
     expect(() => ScaledDecimal.fromCoefficient(1, 1.5)).toThrow(RangeError);
   });
 
+  it("rejects type-erased constructor inputs with typed errors", () => {
+    expect(() => ScaledDecimal.fromString({} as never)).toThrow(RangeError);
+    expect(() => ScaledDecimal.fromInteger({} as never)).toThrow(RangeError);
+    expect(() => ScaledDecimal.fromCoefficient(false as never, 0)).toThrow(RangeError);
+  });
+
   it("adds and subtracts values by aligning scales exactly", () => {
     const left = ScaledDecimal.fromString("999999999999999999999999.99");
     const right = ScaledDecimal.fromString("0.01");
@@ -101,6 +107,10 @@ describe("Yen", () => {
     expect(() => Yen.fromInteger(1.5)).toThrow(RangeError);
     expect(() => Yen.fromInteger("1.5")).toThrow(RangeError);
   });
+
+  it("rejects type-erased yen constructor inputs with typed errors", () => {
+    expect(() => Yen.fromInteger(null as never)).toThrow(RangeError);
+  });
 });
 
 describe("Points", () => {
@@ -116,5 +126,9 @@ describe("Points", () => {
   it("rejects fractional points", () => {
     expect(() => Points.fromInteger(Number.MAX_SAFE_INTEGER + 1)).toThrow(RangeError);
     expect(() => Points.fromInteger("10.0")).toThrow(RangeError);
+  });
+
+  it("rejects type-erased point constructor inputs with typed errors", () => {
+    expect(() => Points.fromInteger(true as never)).toThrow(RangeError);
   });
 });

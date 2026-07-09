@@ -326,9 +326,10 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `packages/trace/**`。CAL-008/MOD-004 との整合確認後に実装。
   - 検証: `pnpm --filter @yrese/trace test`, `pnpm --filter @yrese/trace typecheck`, `pnpm check:boundaries`, `git diff --check`。
 
-- [ ] WP-4040 @yrese/money constructor input type guard(codex 提案 SELF-SCAN-20260709-20、fable5 triage待ち)
+- [x] WP-4040 @yrese/money constructor input type guard(codex 提案 SELF-SCAN-20260709-20、fable5 PLAN_APPROVED。本WPで実装)
   - 発見根拠: `packages/money/src/index.ts` の `parseIntegerInput()` は `bigint` / `number` 以外を string として扱い `value.trim()` へ進むため、型を迂回した object / boolean 等で意図的な `RangeError` ではなく `TypeError` になりうる。`ScaledDecimal.fromString()` も string runtime guard を持たない。
   - 目的: 金額・点数境界で不正入力を曖昧な TypeError にせず、外部入力・fixture・adapter生成値の誤配線を明示的に拒否する。WP-4033(rounding mode guard)とは別に constructor 入力境界を固める。
+  - 実装: `parseIntegerInput()` を `unknown` 境界で受け、`bigint` / safe integer `number` / integer `string` 以外を `RangeError` で拒否。`ScaledDecimal.fromString()` に string runtime guard を追加し、型を迂回した decimal / yen / point constructor 入力の否定テストを追加。既存の計算結果・丸め挙動・政策値は不変更。
   - 想定スコープ: `packages/money/**`。
   - 検証: `pnpm --filter @yrese/money test`, `pnpm --filter @yrese/money typecheck`, `pnpm check:boundaries`, `git diff --check`。
 

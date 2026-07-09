@@ -44,7 +44,7 @@ function assertSafeScale(scale: number): void {
   }
 }
 
-function parseIntegerInput(value: IntegerInput, label: string): bigint {
+function parseIntegerInput(value: unknown, label: string): bigint {
   if (typeof value === "bigint") {
     return value;
   }
@@ -54,6 +54,10 @@ function parseIntegerInput(value: IntegerInput, label: string): bigint {
       throw new RangeError(`${label} must be a safe integer number`);
     }
     return BigInt(value);
+  }
+
+  if (typeof value !== "string") {
+    throw new RangeError(`${label} must be a bigint, safe integer number, or integer string`);
   }
 
   const trimmed = value.trim();
@@ -150,6 +154,10 @@ export class ScaledDecimal {
   }
 
   static fromString(value: string): ScaledDecimal {
+    if (typeof value !== "string") {
+      throw new RangeError("decimal value must be a string");
+    }
+
     const trimmed = value.trim();
     if (!decimalPattern.test(trimmed)) {
       throw new RangeError("decimal string must be a base-10 decimal literal");
