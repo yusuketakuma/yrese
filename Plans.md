@@ -445,6 +445,12 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `apps/api/src/config.ts` に repository mode / runtime mode helper を追加、`apps/api/src/main.ts` の起動分岐を明示化、main起動用の単体テストまたはhelper testを追加。既存 `buildServer()` のテスト注入 seam と in-memory repository 自体は維持する。
   - 検証: `DATABASE_URL` 不在 + 明示dev/test mode は in-memory 起動可、DB必須modeで `DATABASE_URL` 不在は起動前に throw、`DATABASE_URL` 設定時は migration startup check + PostgreSQL repository 注入、`pnpm --filter @yrese/api test`、`pnpm check:boundaries`、`git diff --check`。本番認証スタブ境界(WP-4038/SEC-006)と混同しないため fable5 PLAN_APPROVED 後に実装。
 
+- [ ] WP-4057 patient search DB pagination and search index SLO hardening(codex 提案 SELF-SCAN-20260710-02、WP-5003後続)
+  - 発見根拠: `PostgresPatientRepository.search()` は `name ILIKE '%query%' OR kana ILIKE '%query%' OR patient_number ILIKE '%query%'` と `LIMIT/OFFSET` で検索している。一方、現行 migration の index は `(tenant_id, pharmacy_id, patient_number)` のみで、先頭ワイルドカードの氏名・カナ検索や大きな offset page を支えにくい。API-001 の cursor は tenant/pharmacy/query 境界拘束済みだが、内部表現は offset であり、大規模薬局・チェーン薬局の患者検索 p95 を悪化させうる。
+  - 目的: 患者検索をSLOに耐えるDB検索へ進める。API wire は不透明 cursor のまま維持しつつ、内部 cursor を keyset 方式または明示承認された検索インデックス方式へ移行し、tenant/pharmacy境界・安定順序・no-store・PHIログ禁止の既存規律を保つ。
+  - 想定スコープ: API-001 cursor semantics の互換方針、`PatientSearchCursor` 内部表現、`PostgresPatientRepository.search()`、必要なら検索用 migration(index / generated search column / pg_trgm 採否はDB SSOT裁定後)、in-memory repository parity tests。既存 response schema と OpenAPI wire 形状を変える場合はAPI-001改版が先。
+  - 検証: 大きな offset に依存しないページングの repository test、tenant/pharmacy/query境界 cursor reject 回帰、同一 patient_number/同一accepted相当の安定順序、DB integration test(`TEST_DATABASE_URL` gate)、`pnpm --filter @yrese/api test`、`pnpm --filter @yrese/contracts test`、`pnpm check:openapi`、`pnpm check:boundaries`、`git diff --check`。DB migration / API cursor 方針を含むため fable5 PLAN_APPROVED 後に実装。
+
 - [x] WP-4012 dependency scan / SBOM CI gate(b0ecf84、addendum 702c2f5)
   - 発見根拠: `.github/workflows/ci.yml` には dependency scan / SBOM 追加TODOが残り、`package.json` にも依存脆弱性・SBOM生成を検査するroot scriptが未定義。
   - 目的: secret scan に加えて、依存脆弱性検知とSBOM生成/検証をCIの機械ゲートにし、security SSOTの「dependency scan / SBOM」予定項目を実装へ進める。
