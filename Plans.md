@@ -170,11 +170,23 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `scripts/**`, `package.json`。
   - 検証: 追加するscript testコマンド、`pnpm check:boundaries`, `pnpm check:secrets`, `pnpm clean`, `git diff --check`。
 
-- [ ] WP-3005 web shell smoke tests
+- [x] WP-3005 web shell smoke tests(f46d626、WP-4007と併走レビュー済み)
   - 発見根拠: `apps/web/package.json` の `test` は `vitest run --passWithNoTests` で、現時点のweb shell/navigation/system-mode badgeには自動テストがない。
   - 目的: 主要ナビゲーション項目、システムモード表示、placeholder routeの最低限のrender契約を固定し、routing shellの退行を早期検知する。
   - 想定スコープ: `apps/web/**`。
   - 検証: `pnpm --filter @yrese/web test`, `pnpm --filter @yrese/web typecheck`。
+
+- [ ] WP-4018 web test gate strictness after smoke tests
+  - 発見根拠: `apps/web/app/shell-smoke.test.tsx` が導入済みなのに、`apps/web/package.json` の `test` はまだ `vitest run --passWithNoTests` のまま。将来テストファイルが誤って消えても web test が成功しうる。
+  - 目的: web shell smoke tests 導入後のCI退行検知力を上げるため、web test script から `--passWithNoTests` を外す。
+  - 想定スコープ: `apps/web/package.json`。
+  - 検証: `pnpm --filter @yrese/web test`, `pnpm --filter @yrese/web typecheck`, `pnpm test`, `git diff --check`。
+
+- [ ] WP-2009 audit hash-chain canonicalization / hydrate split
+  - 発見根拠: WP-2003 は assignment 明記どおり `prevHash` / `entryHash` の sha-256 hex 形式検証のみで、entryHash 計算自体は呼び出し側/永続層責務として残した。SEC-007 は最終的に `entryHash = H(prevHash || 正規化ペイロード)` を要求する。
+  - 目的: 監査ログ永続化実装時に、canonical payload から entryHash を生成する作成APIと、保存済みレコードを検証して復元する hydrate/verify API を分離し、任意hexを真正性証跡として扱わない。
+  - 想定スコープ: `packages/audit/**`、将来の監査永続化パッケージ/アプリ配線。必要なら SEC-007/MOD-008 改版を fable5 に依頼。
+  - 検証: payload変更でhash不一致になるテスト、prevHash連鎖テスト、hydrate時の不一致拒否テスト、`pnpm --filter @yrese/audit test`。
 
 - [x] WP-4012 dependency scan / SBOM CI gate(b0ecf84、addendum 702c2f5)
   - 発見根拠: `.github/workflows/ci.yml` には dependency scan / SBOM 追加TODOが残り、`package.json` にも依存脆弱性・SBOM生成を検査するroot scriptが未定義。
@@ -296,3 +308,62 @@ v0.1.7 → v0.1.8 の差分を fable5 が棚卸しした結果。既存承認済
 2. フォーク第2波: WP-0036(Integration)+ WP-0037(派生機能)+ WP-0039(算定残)
 3. WP-0038 mvp_scope 改版は第1波完了後に fable5 起案
 4. 進行中作業は継続: CAL-005〜008 opus4.8レビュー、codex WP-2008b・統合スモーク
+
+## v0.2.0 yrese ベースライン受理(ユーザー提供 2026-07-09)
+
+ユーザー提供の「調剤用レセプトコンピューター MVP 構築プロンプト v0.2.0」を受理し、版別ベースラインとして `docs/spec/construction_prompt_v0.2.0.md` に保存した。
+既存 `docs/spec/construction_prompt_baseline.md` の優先規定も `v0.2.0 > v0.1.9 > v0.1.8 > v0.1.7` に更新済み。
+
+v0.2.0の最上位方針:
+
+- プロダクト名を **yrese** とする。
+- 一文定義: NSIPSを境界に追放し、イベントログを心臓に据え、品質を公開数字で証明し、APIで生態系を作る、止まらないレセコン。
+- 戦う対象は NSIPS支配、低品質シェア、不安定な24時間稼働、弱い連携基盤の4つ。
+- NSIPSはAnti-Corruption Layer / Legacy Adapterへ隔離し、FHIRネイティブCanonical Coreを中心に据える。
+- 算定エンジンは versioned rule data + effective-dated master data + deterministic pure functions + calculation trace + golden tests + receipt validation + event-sourced facts + projections とする。
+- 夜間バッチ停止を廃止し、イベントログとprojectionを中核にして24/365稼働品質を目指す。
+- yrese UIも公開APIをdogfoodingし、PH-OSを最初のリファレンス接続クライアントにする。
+
+### v0.2.0 新停止条件(即時有効)
+
+- NSIPSの概念がCanonical Modelへ浸食している場合は停止。
+- NSIPSファイル連携をコアロジックとして扱う場合は停止。
+- NSIPS許諾未確認のまま互換実装を進める場合は停止。
+- FHIRネイティブ方針とOfficial Adapter境界が未定義の場合は停止。
+- 公式仕様をFHIR内部モデルで勝手に置き換える場合は停止。
+- 算定ルールをversioned rule dataではなくコード直書きする場合は停止。
+- calculation golden testの根拠が未定義の場合は停止。
+- イベント再投影で確定済み請求を人間承認なしに変更する場合は停止。
+- 夜間バッチのためにシステム停止を前提とする場合は停止。
+- Cloud Core停止時のLOCAL_ONLY業務継続が未定義の場合は停止。
+- yrese UIが公開APIをdogfoodingしていない場合は停止。
+- PH-OS連携が専用裏口APIに依存する場合は停止。
+- 公開KPIにPHI、薬局秘密情報、契約上非公開情報が含まれる場合は停止。
+- OSS SDKに許諾上公開できない仕様情報が含まれる場合は停止。
+- 監査ログの改ざん検知方針がない場合は停止。
+- tenant isolationがアプリケーション層だけに依存している場合は停止。
+
+### v0.2.0 新規SSOT WP
+
+- [x] WP-0040 v0.2.0構築プロンプト保存: `docs/spec/construction_prompt_v0.2.0.md` を追加し、`docs/spec/construction_prompt_baseline.md` の優先規定と収録バージョン一覧を更新。
+- [ ] WP-0041 yrese doctrine SSOT pack(docs/product/またはdocs/architecture/): `yrese_product_doctrine.md`, `yrese_four_battles_strategy.md`, `nsips_quarantine_architecture.md`, `legacy_adapter_s3_lambda_policy.md`。NSIPS境界隔離・S3/Lambda候補構成・Legacy Adapter停止条件を確定。
+- [ ] WP-0042 FHIR canonical SSOT pack(docs/domain/またはdocs/adapters/): `fhir_native_canonical_model.md`, `fhir_mapping_registry.md`。Official AdapterをFHIRで勝手に置換しない境界を明文化。
+- [ ] WP-0043 Quality transparency SSOT pack(docs/quality/またはdocs/product/): `quality_transparency_strategy.md`, `public_quality_kpi_policy.md`, `claim_return_rate_kpi_policy.md`。公開KPIの匿名化・同意・契約・悪用リスクを整理。
+- [ ] WP-0044 Calculation event-sourcing SSOT pack(docs/calculation/またはdocs/architecture/): `calculation_rule_data_architecture.md`, `calculation_pure_function_policy.md`, `calculation_golden_test_source_policy.md`, `event_sourcing_architecture.md`, `projection_recalculation_policy.md`, `claim_finalization_immutability_policy.md`。確定済み請求のimmutabilityと再投影境界を確定。
+- [ ] WP-0045 Always-on architecture SSOT pack(docs/architecture/またはdocs/operations/): `always_on_rececon_architecture.md`, `no_nightly_batch_policy.md`。Cloud Core / Pharmacy Edge Node / LOCAL_ONLY / RECOVERY_SYNC / zero planned downtime の24/365方針を確定。
+- [ ] WP-0046 API-first platform SSOT pack(docs/api/またはdocs/integration/): `api_first_dogfooding_policy.md`, `platform_api_architecture.md`, `ph_os_reference_integration.md`, `oss_sdk_and_schema_publication_policy.md`。公開API dogfooding、PH-OSリファレンス連携、OSS公開範囲を確定。
+- [ ] WP-0047 Audit/WORM tenant isolation SSOT(docs/security/またはdocs/architecture/): `audit_worm_and_tenant_isolation_strategy.md`。append-only、tamper-evident、WORM、S3 Object Lock、KMS、RLS検討、break-glass監査を確定。
+
+### v0.2.0 既存WPへの影響
+
+- WP-0036 Integration Hub SSOTは、v0.1.9/v0.2.0のOpen Rececon Platform、Partner Sandbox、Contract Test Kit、API-first dogfooding、PH-OSリファレンス連携を統合する。
+- WP-0039 算定エンジン深化は、v0.2.0のversioned rule data / pure function / event re-projection / finalized claim immutabilityを追加前提にする。
+- WP-2203 Integration Hub骨格、WP-2204 JAHIS Adapter、会計/領収証系実装は、上記SSOTがAPPROVEDになるまで該当範囲を拡張実装しない。
+- WP-2009 audit hash-chain canonicalization / hydrate split は、`audit_worm_and_tenant_isolation_strategy.md` とSEC-007/MOD-008改版後に実装へ進める。
+
+### 実行順序(v0.2.0)
+
+1. WP-0041 / WP-0042 / WP-0043 を第1波として起案し、Open Rececon/FHIR/品質公開のプロダクト・境界方針を固める。
+2. WP-0044 / WP-0045 を第2波として、算定・イベント・24/365アーキテクチャの高リスク設計を固める。
+3. WP-0046 / WP-0047 を第3波として、API-first platformと監査・テナント分離の実装前ゲートを固める。
+4. 実装WPは、該当SSOTがAPPROVEDになり、fable5/opus4.8レビューと必要な人間レビューが完了してから発行する。
