@@ -194,6 +194,12 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `docs/api/patient_search_contract.md`(契約修正が承認された場合のみ), `packages/contracts/**`, `apps/api/**`。
   - 検証: `pnpm --filter @yrese/contracts test`, `pnpm --filter @yrese/api test`, `pnpm check:boundaries`, `pnpm check:secrets`。
 
+- [ ] WP-4015 error_code_registry SSOT/code drift cleanup
+  - 発見根拠: `packages/shared-kernel/src/error-codes.ts` は `KERNEL_ERROR_CODES` に `AUTH-0003` と `PAT-0001` をseed済みだが、`docs/modules/error_code_registry.md` はまだ `AUTH-0003` を「ErrorCodeRegistry 未登録」と記載し、API-001で実装済みの `PAT-0001` 行もない。
+  - 目的: error_code_registry SSOTを実装済みseedと同期し、以後のAPI実装が古い台帳を根拠に誤ったCODEX_PLANを出さないようにする。
+  - 想定スコープ: `docs/modules/error_code_registry.md`, 必要なら `docs/modules/common_module_inventory.md` / `State.md` の状態記述のみ。
+  - 検証: `rg -n "AUTH-0003|PAT-0001|未登録|要整備" docs/modules/error_code_registry.md packages/shared-kernel/src/error-codes.ts`, `git diff --check`。
+
 ## v0.1.8 レセコンベンチマーク反映(ユーザー提供調査 2026-07-09)
 
 ユーザー提供の主要レセコン調査(MEDIXS / EMシステムズ MAPs・Recepty NEXT / PHC Pharnes / Pharmy Connect / P-CUBE n / GENNAI just / 調剤くんV8)に基づく計画拡張。
@@ -237,3 +243,50 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
 2. WP-0019(mvp_scope改版)は 0018 完了後に fable5 が起案 → opus4.8 → 人間レビュー
 3. WP-0024〜0030 を第2波フォーク、WP-0031/0032 を第3波
 4. 実装WP(2103〜)は各SSOT承認+evidence充足を確認して逐次発行
+
+## v0.1.8 ベースライン差分計画(2026-07-09 受理)
+
+v0.1.7 → v0.1.8 の差分を fable5 が棚卸しした結果。既存承認済みSSOT・実装は維持し、新規範囲を追加する。
+ディレクトリは既存規約 docs/<domain>/ を維持(v0.1.8 の docs/ssot/ 表記は本規約へ読み替え、PRC-007 に既録)。
+
+### 充足状況マッピング
+
+- §0.0.4.12 ベンチマーク: **一部充足**(PRD-004/005 済み)→ 不足分: ORCA会計思想・POS/セルフレジ製品・API公開性/標準規格対応の観点追加 + derivative_feature_inventory + mvp_feature_prioritization
+- §0.0.4.14 算定エンジン深化: **一部充足**(CAL-005〜008 PROPOSED・opus4.8レビュー中、WP-0024〜0030 計画済み)→ 不足分: calculation_pipeline / canonical_prescription_model / master_resolution_policy / material_fee_policy(fee_item_registry・drug_fee 等は既計画)
+- §0.0.4.1〜0.0.4.7 会計・収納・領収証・日計・POS・施設請求: **全面新規**(Calculation/Claim/Accounting/Receipt/POS の5領域分離、append-only ledger、一部入金MVP必須)
+- §0.0.4.8〜0.0.4.9 Integration Hub モジュール化: **新規**(API-001/contracts の実績を基盤に拡張)
+- §0.0.4.10 JAHISフル対応: **新規**(Applicability Matrix 方式。全標準の無差別実装ではない)
+- §0.0.4.11 開かれたレセコン: **一部充足**(OPS-011 portability / MOD 公開SSOT)→ 不足分: sandbox・SDK・開発者ポータル方針
+
+### v0.1.8 新停止条件(即時有効)
+
+- 会計SSOT(17文書)未承認のまま会計・未収・領収証・入金APIを実装しない
+- JAHIS Applicability Matrix / full support definition / conformance test 未整備で「JAHIS対応」を名乗らない(BLOCKED_JAHIS_CONFORMANCE_REVIEW)
+- 未入金額を領収済み表示する設計を禁止 / LOCAL_ONLY会計の同期・重複防止未設計での実装禁止
+- 外部ベンダー直接DBアクセス禁止 / undocumented API 本番利用禁止
+
+### 新規SSOT WP
+
+- [ ] WP-0033 会計SSOT 11文書(docs/accounting/: domain_model / patient_receivable / payment_allocation / partial_payment / refund_adjustment / ar_status_registry / daily_cash_closing / payment_method_registry / pos_integration / facility_billing / accounting_audit_log)— append-only ledger・状態機械(PatientReceivable 10状態 / Payment 10状態)・一部入金・割当順序
+- [ ] WP-0034 領収証SSOT 6文書(docs/receipt/: issuance / numbering / reissue_cancel / statement_issuance / template_registry / privacy)— 領収証=入金事実対応・明細書=算定基礎項目の分離、再発行表示・交付履歴・0円時明細書【要確認】
+- [ ] WP-0035 JAHIS SSOT 8文書(docs/jahis/: applicability_matrix / full_support_definition / adapter_inventory / version_watchlist / conformance_test_plan / character_encoding_policy / code_mapping_policy / roundtrip_test_policy)
+- [ ] WP-0036 Integration Hub SSOT 11文書(docs/integration/: hub_architecture / partner_registry / data_sharing_module_inventory / data_sharing_policy / api_scope_registry / webhook_event_catalog / idempotency_policy / partner_sandbox / contract_test_policy / data_portability / adapter_registry)
+- [ ] WP-0037 派生機能調査+ベンチマーク拡張(docs/product/: derivative_feature_inventory / mvp_feature_prioritization + PRD-004/005 への ORCA・POS・API公開性観点追記)
+- [ ] WP-0038 mvp_scope(PRD-001)v0.1.8改版: WP-0019 を統合し、一部入金・会計台帳・領収証発行・日計をMVP必須へ、POS/セルフレジ/施設請求は境界設計のみ等を確定 → opus4.8+人間レビュー
+- [ ] WP-0039 算定エンジン深化 残SSOT(docs/calculation/: calculation_pipeline / canonical_prescription_model / master_resolution_policy / material_fee_policy)— WP-0024〜0030 と統合実行
+
+### 新規実装WP(SSOT承認後に発行、v0.1.8 §0.0.4.15 レーン準拠)
+
+- [!] WP-2201 会計台帳バックエンド(codex — WP-0033 APPROVED まで BLOCKED)
+- [!] WP-2202 領収証ドキュメントバックエンド(codex — WP-0034 APPROVED まで BLOCKED)
+- [!] WP-2203 Integration Hub 骨格(codex — WP-0036 APPROVED まで BLOCKED)
+- [!] WP-2204 JAHIS 2Dシンボル Adapter(codex — WP-0035 承認 + JAHIS仕様本文入手(Ver.1.11、入手経路【要確認: 人間手続きの可能性】)まで BLOCKED)
+- [!] WP-3101 会計・未収・一部入金・領収証画面(claude — WP-0033/0034 + API契約承認まで BLOCKED)
+- [ ] 共通モジュール追加(shared-kernel: accounting/payment/receipt status enum — WP-0033/0034 承認後、MOD-005 改版経由)
+
+### 実行順序
+
+1. フォーク第1波: WP-0033(会計)+ WP-0034(領収証)+ WP-0035(JAHIS)並列
+2. フォーク第2波: WP-0036(Integration)+ WP-0037(派生機能)+ WP-0039(算定残)
+3. WP-0038 mvp_scope 改版は第1波完了後に fable5 起案
+4. 進行中作業は継続: CAL-005〜008 opus4.8レビュー、codex WP-2008b・統合スモーク
