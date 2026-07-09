@@ -6,6 +6,12 @@
 
 ## 2026-07-09(続き)
 
+### WP-4021 — dev patient search fixture alignment
+
+- codex実装。Web側の既定DEV_HEADERS(`t-dev` / `ph-dev` / `u-dev`)を変更せず、API synthetic fixture に同じdevテナントの非PHI合成患者2件を追加。
+- `/patients/search?q=合成` をWeb既定devヘッダで呼ぶroute-level APIテストを追加し、開発UIの手動確認で空結果にならないことを固定。
+- 検証: `pnpm --filter @yrese/api test`(29 tests PASS)、`pnpm --filter @yrese/api typecheck`、`pnpm check:boundaries`、`git diff --check`。
+
 ### WP-4030 — dev tenant context malformed ID route tests
 
 - codex自律バックログから実施。`apps/api/src/server.test.ts` に `/whoami` と `/patients/search` の不正 dev ID ヘッダ否定テストを追加。

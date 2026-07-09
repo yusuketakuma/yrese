@@ -28,6 +28,13 @@ const otherPharmacyPatientReadHeaders = {
   'x-dev-scopes': 'patient:read',
 } as const;
 
+const devUiPatientReadHeaders = {
+  'x-dev-tenant': 't-dev',
+  'x-dev-pharmacy': 'ph-dev',
+  'x-dev-actor': 'u-dev',
+  'x-dev-scopes': 'patient:read',
+} as const;
+
 const tenantOneTenantReadHeaders = {
   'x-dev-tenant': 'tenant-001',
   'x-dev-pharmacy': 'pharmacy-001',
@@ -259,6 +266,27 @@ describe('buildServer', () => {
       });
     },
   );
+
+  it('returns synthetic patients for the default development UI tenant headers', async () => {
+    const server = buildServer();
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/patients/search?q=合成',
+      headers: devUiPatientReadHeaders,
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    const body = response.json();
+    expect(body.results.map((result: { patientId: string }) => result.patientId)).toEqual([
+      'patient-dev-001',
+      'patient-dev-002',
+    ]);
+    expect(body.nextCursor).toBeUndefined();
+  });
 
   it.each([
     ['/patients/search', 'missing q'],
