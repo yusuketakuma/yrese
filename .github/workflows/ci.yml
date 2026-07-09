@@ -44,3 +44,6 @@ jobs:
 
       - name: Check boundaries
         run: pnpm check:boundaries
+
+      - name: Check SSOT index
+        run: pnpm check:ssot-index

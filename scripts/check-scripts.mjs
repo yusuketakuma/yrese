@@ -36,6 +36,68 @@ function outputOf(result) {
   return `${result.stdout ?? ""}${result.stderr ?? ""}`;
 }
 
+function ssotDoc(ssotId, status, title = ssotId) {
+  return `# ${title}
+
+\`\`\`yaml
+ssot_id: ${ssotId}
+title: ${title}
+domain: fixture
+status: ${status}
+owner: fable5
+version: 0.1.0
+created_at: 2026-07-09
+updated_at: 2026-07-09
+\`\`\`
+
+Fixture body.
+`;
+}
+
+function ssotIndex(rows) {
+  const rowsBySection = new Map();
+  for (const row of rows) {
+    const section = row.linkPath.split("/")[0];
+    const sectionRows = rowsBySection.get(section) ?? [];
+    sectionRows.push(row);
+    rowsBySection.set(section, sectionRows);
+  }
+
+  const sections = [...rowsBySection.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([section, sectionRows]) => {
+      const tableRows = sectionRows
+        .sort((left, right) => left.linkPath.localeCompare(right.linkPath))
+        .map((row) => `| ${row.ssotId} | [${path.basename(row.linkPath)}](${row.linkPath}) | ${row.status} |`)
+        .join("\n");
+
+      return `## docs/${section}/ (${sectionRows.length}件)
+
+| ssot_id | 文書 | status |
+|---|---|---|
+${tableRows}`;
+    })
+    .join("\n\n");
+
+  return `# ssot_index — SSOT文書索引
+
+\`\`\`yaml
+ssot_id: IDX-001
+title: SSOT文書索引
+domain: plan
+status: APPROVED
+owner: fable5
+version: 0.1.0
+created_at: 2026-07-09
+updated_at: 2026-07-09
+\`\`\`
+
+総文書数: ${rows.length}(本索引を除く)
+
+${sections}
+`;
+}
+
 async function testBoundaryViolationDetection() {
   const root = path.join(tempRoot, "boundary-violation");
   await writeText(
@@ -231,6 +293,70 @@ async function testSbomGenerationFixture() {
   );
 }
 
+async function testSsotIndexCleanFixturePasses() {
+  const root = path.join(tempRoot, "ssot-index-pass");
+  await writeText(path.join(root, "docs", "architecture", "system_context.md"), ssotDoc("ARC-001", "APPROVED"));
+  await writeText(path.join(root, "docs", "product", "mvp_scope.md"), ssotDoc("PRD-001", "APPROVED"));
+  await writeText(path.join(root, "docs", "product", "non_mvp_scope.md"), ssotDoc("PRD-002", "PROPOSED"));
+  await writeText(
+    path.join(root, "docs", "ssot_index.md"),
+    ssotIndex([
+      { ssotId: "ARC-001", linkPath: "architecture/system_context.md", status: "APPROVED" },
+      { ssotId: "PRD-001", linkPath: "product/mvp_scope.md", status: "APPROVED" },
+      { ssotId: "PRD-002", linkPath: "product/non_mvp_scope.md", status: "PROPOSED" },
+    ]),
+  );
+
+  const result = runNode("check-ssot-index.mjs", [root]);
+  assert(result.status === 0, `check-ssot-index should pass for a matching fixture: ${outputOf(result)}`);
+}
+
+async function testSsotIndexDetectsMissingDocumentRow() {
+  const root = path.join(tempRoot, "ssot-index-missing-row");
+  await writeText(path.join(root, "docs", "product", "mvp_scope.md"), ssotDoc("PRD-001", "APPROVED"));
+  await writeText(path.join(root, "docs", "product", "non_mvp_scope.md"), ssotDoc("PRD-002", "PROPOSED"));
+  await writeText(
+    path.join(root, "docs", "ssot_index.md"),
+    ssotIndex([{ ssotId: "PRD-001", linkPath: "product/mvp_scope.md", status: "APPROVED" }]),
+  );
+
+  const result = runNode("check-ssot-index.mjs", [root]);
+  const output = outputOf(result);
+  assert(result.status === 1, "check-ssot-index should fail when a document is missing from the index");
+  assert(output.includes("missing from docs/ssot_index.md"), "missing row finding should name the index drift");
+  assert(output.includes("regenerate the SSOT index"), "missing row finding should point to index regeneration");
+}
+
+async function testSsotIndexDetectsStatusMismatch() {
+  const root = path.join(tempRoot, "ssot-index-status-mismatch");
+  await writeText(path.join(root, "docs", "product", "mvp_scope.md"), ssotDoc("PRD-001", "APPROVED"));
+  await writeText(
+    path.join(root, "docs", "ssot_index.md"),
+    ssotIndex([{ ssotId: "PRD-001", linkPath: "product/mvp_scope.md", status: "PROPOSED" }]),
+  );
+
+  const result = runNode("check-ssot-index.mjs", [root]);
+  assert(result.status === 1, "check-ssot-index should fail for status drift");
+  assert(outputOf(result).includes("status mismatch"), "status drift finding should explain the mismatch");
+}
+
+async function testSsotIndexDetectsDuplicateSsotId() {
+  const root = path.join(tempRoot, "ssot-index-duplicate-id");
+  await writeText(path.join(root, "docs", "product", "mvp_scope.md"), ssotDoc("PRD-001", "APPROVED"));
+  await writeText(path.join(root, "docs", "quality", "quality_plan.md"), ssotDoc("PRD-001", "APPROVED"));
+  await writeText(
+    path.join(root, "docs", "ssot_index.md"),
+    ssotIndex([
+      { ssotId: "PRD-001", linkPath: "product/mvp_scope.md", status: "APPROVED" },
+      { ssotId: "PRD-001", linkPath: "quality/quality_plan.md", status: "APPROVED" },
+    ]),
+  );
+
+  const result = runNode("check-ssot-index.mjs", [root]);
+  assert(result.status === 1, "check-ssot-index should fail for duplicate frontmatter ssot_id values");
+  assert(outputOf(result).includes("duplicate PRD-001"), "duplicate finding should name the repeated ssot_id");
+}
+
 try {
   await testBoundaryViolationDetection();
   await testBoundaryCleanFixturePasses();
@@ -239,6 +365,10 @@ try {
   await testCleanRemovesGeneratedArtifacts();
   await testDependencyAuditWrapper();
   await testSbomGenerationFixture();
+  await testSsotIndexCleanFixturePasses();
+  await testSsotIndexDetectsMissingDocumentRow();
+  await testSsotIndexDetectsStatusMismatch();
+  await testSsotIndexDetectsDuplicateSsotId();
 } finally {
   await rm(tempRoot, { force: true, recursive: true });
 }
