@@ -6,6 +6,13 @@
 
 ## 2026-07-10
 
+### WP-4070 SBOM component version/link validation fail-closed
+
+- fable5 の `PLAN_APPROVED` に基づき、`scripts/check-sbom.mjs` の missing/blank version `0.0.0` 合成と malformed node silent skip を廃止。workspace root / dependency node / dependency container を plain object、name/version/path を primitive nonblank string として fail-closed 検証する。明示 `0.0.0` と nonblank version 原文は semver/trim 正規化せず維持し、`unsavedDependencies` は承認どおり対象外、既知 pnpm 追加fieldは許容する。
+- workspace registry は absolute root path の一意性と同名 workspace の path/version consistency を強制。`link:` は nonblank suffix、absolute node path、登録済み target、dependency key/name一致、non-link concrete target version の全条件を要求する。ただしsuffixは表示metadataとして検証するだけでpath解決せず、pnpmのabsolute `node.path`→unique registryだけをidentity authorityとした。package name は whitespace/extra `@`/slashを拒否する unscoped/scoped grammarへ限定し、component Mapは曖昧なbom-refでなくJSON pair keyを使う。workspace rootsはdependency traversal前に全件applicationとしてcanonical emitし、root順序によるlibrary降格を防止。同名同versionのnon-link dependencyはworkspace impersonationとして拒否する。同一external dependency pairの再出現はdedupeを維持。errors は raw node/name/version/link/path/resolved URL を出さない固定contextとした。
+- output は全validation後にserializeし、targetと同一directoryの exclusive unique 0600 temp fileへ書いてから atomic renameする。temp write/rename failure はbest-effort cleanup後に固定errorで停止し、既存targetを保持する。regression harness は invalid package name、raw値非露出、malformed時のoutput no-create/no-overwriteに加え、nonempty directoryをtargetにしたdeterministic rename failureでsentinel保持とtemp artifact不在を固定。package/lock/CI/docs は変更していない。
+- 検証: root順序正逆、非権威link suffix、workspace/external identity conflict、bom-ref境界攻撃を追加固定。`node --check scripts/check-sbom.mjs` PASS、`node --check scripts/check-scripts.mjs` PASS、`pnpm test:scripts` PASS、`pnpm check:sbom` PASS(231 components)、`pnpm check:secrets` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
+
 ### WP-4071 patientNumber tenant/pharmacy uniqueness enforcement
 
 - fable5 の `PLAN_APPROVED` に基づき、APPROVED DOM-002 の薬局内患者番号一意性を PostgreSQL に fail-closed で反映。checksum 管理済み `000002_create_patient_and_reception_tables.sql` は SHA-256 `2910b460d2b9733904937093b399784089dbda9a444af75ac5fd498a1ae4b599` のまま変更せず、forward-only `000003_add_patient_number_scope_unique.sql` に named UNIQUE constraint `(tenant_id, pharmacy_id, patient_number)` を追加した。

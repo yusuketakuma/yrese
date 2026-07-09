@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -479,48 +479,326 @@ async function testDependencyAuditWrapper() {
 
 async function testSbomGenerationFixture() {
   const root = path.join(tempRoot, "sbom");
+  const internalPath = path.join(root, "packages", "internal");
+  const validFixture = () => [
+    {
+      name: "fixture-root",
+      version: "0.0.0",
+      path: root,
+      private: true,
+      dependencies: {
+        "left-pad": {
+          from: "left-pad",
+          version: "0.0.0",
+          resolved: "https://registry.example.invalid/left-pad.tgz",
+          path: path.join(root, "node_modules", "left-pad"),
+          deduped: true,
+        },
+        "spaced-version": {
+          version: " 1.2.3 ",
+          path: path.join(root, "node_modules", "spaced-version"),
+        },
+      },
+      devDependencies: {
+        "@fixture/internal": {
+          version: "link:display-only-suffix-not-used-for-resolution",
+          path: internalPath,
+        },
+      },
+      unsavedDependencies: "malformed but explicitly ignored",
+    },
+    {
+      name: "@fixture/internal",
+      version: "0.0.0",
+      path: internalPath,
+      optionalDependencies: {
+        "left-pad": {
+          version: "0.0.0",
+          path: path.join(root, "node_modules", "left-pad"),
+        },
+      },
+    },
+  ];
+  const mutateFixture = (mutate) => {
+    const fixture = validFixture();
+    mutate(fixture);
+    return fixture;
+  };
   const listJsonPath = path.join(root, "pnpm-list.json");
   const outputPath = path.join(root, "sbom.json");
-  await writeText(
-    listJsonPath,
-    JSON.stringify(
-      [
-        {
-          name: "fixture-root",
-          version: "0.0.1",
-          path: root,
-          dependencies: {
-            "left-pad": {
-              version: "1.3.0",
-              path: path.join(root, "node_modules", "left-pad"),
-            },
-          },
-          devDependencies: {
-            "@fixture/internal": {
-              version: "link:packages/internal",
-              path: path.join(root, "packages", "internal"),
-            },
-          },
-        },
-        {
-          name: "@fixture/internal",
-          version: "0.0.2",
-          path: path.join(root, "packages", "internal"),
-        },
-      ],
-      null,
-      2,
-    ),
-  );
+  await writeText(listJsonPath, JSON.stringify(validFixture(), null, 2));
 
   const result = runNode("check-sbom.mjs", ["--from-list-json", listJsonPath, "--output", outputPath]);
   assert(result.status === 0, `check-sbom should pass for a valid pnpm list fixture: ${outputOf(result)}`);
   const sbom = JSON.parse(await readFile(outputPath, "utf8"));
   assert(sbom.bomFormat === "CycloneDX", "check-sbom should emit CycloneDX metadata");
-  assert(sbom.components.length >= 3, "check-sbom should emit workspace and dependency components");
+  assert(sbom.components.length === 4, "check-sbom should deduplicate repeated name/version components");
   assert(
-    sbom.components.some((component) => component.name === "@fixture/internal" && component.version === "0.0.2"),
-    "check-sbom should resolve workspace link versions",
+    sbom.components.filter((component) => component.name === "left-pad" && component.version === "0.0.0").length === 1,
+    "check-sbom should allow and deduplicate an explicitly declared dependency version 0.0.0",
+  );
+  assert(
+    sbom.components.some((component) => component.name === "fixture-root" && component.version === "0.0.0"),
+    "check-sbom should allow an explicitly declared root version 0.0.0",
+  );
+  assert(
+    sbom.components.some(
+      (component) => component.name === "@fixture/internal" && component.version === "0.0.0" && component.type === "application",
+    ),
+    "check-sbom should use canonical node.path despite a non-authoritative link suffix and retain workspace application type",
+  );
+  assert(
+    sbom.components.some((component) => component.name === "spaced-version" && component.version === " 1.2.3 "),
+    "check-sbom should preserve a non-blank version without trim normalization",
+  );
+
+  const reversedListJsonPath = path.join(root, "pnpm-list-reversed.json");
+  const reversedOutputPath = path.join(root, "sbom-reversed.json");
+  await writeText(reversedListJsonPath, JSON.stringify(validFixture().reverse(), null, 2));
+  const reversedResult = runNode("check-sbom.mjs", [
+    "--from-list-json",
+    reversedListJsonPath,
+    "--output",
+    reversedOutputPath,
+  ]);
+  assert(reversedResult.status === 0, `check-sbom should pass with reversed workspace root order: ${outputOf(reversedResult)}`);
+  const reversedSbom = JSON.parse(await readFile(reversedOutputPath, "utf8"));
+  assert(
+    reversedSbom.components.some(
+      (component) => component.name === "@fixture/internal" && component.version === "0.0.0" && component.type === "application",
+    ),
+    "check-sbom workspace component type should remain application regardless of root traversal order",
+  );
+
+  const invalidCases = [
+    ["null-root", () => [null]],
+    ["array-root", () => [[]]],
+    ["missing-root-name", () => mutateFixture((fixture) => delete fixture[0].name)],
+    ["blank-root-name", () => mutateFixture((fixture) => (fixture[0].name = "   "))],
+    ["scoped-name-missing-package", () => mutateFixture((fixture) => (fixture[0].name = "@fixture"))],
+    ["scoped-name-missing-scope", () => mutateFixture((fixture) => (fixture[0].name = "@/root"))],
+    ["scoped-name-empty-package", () => mutateFixture((fixture) => (fixture[0].name = "@fixture/   "))],
+    ["scoped-name-extra-slash", () => mutateFixture((fixture) => (fixture[0].name = "@fixture/root/extra"))],
+    ["unscoped-name-slash", () => mutateFixture((fixture) => (fixture[0].name = "fixture/root"))],
+    ["unscoped-name-at", () => mutateFixture((fixture) => (fixture[0].name = "fixture@root"))],
+    ["unscoped-name-whitespace", () => mutateFixture((fixture) => (fixture[0].name = "fixture root"))],
+    ["scoped-name-inner-at", () => mutateFixture((fixture) => (fixture[0].name = "@fixture/ro@ot"))],
+    ["scoped-name-whitespace", () => mutateFixture((fixture) => (fixture[0].name = "@fixture scope/root"))],
+    ["missing-root-version", () => mutateFixture((fixture) => delete fixture[0].version)],
+    ["blank-root-version", () => mutateFixture((fixture) => (fixture[0].version = "   "))],
+    ["missing-root-path", () => mutateFixture((fixture) => delete fixture[0].path)],
+    ["blank-root-path", () => mutateFixture((fixture) => (fixture[0].path = "   "))],
+    ["relative-root-path", () => mutateFixture((fixture) => (fixture[0].path = "relative/root"))],
+    ["null-dependency-container", () => mutateFixture((fixture) => (fixture[0].dependencies = null))],
+    ["array-dependency-container", () => mutateFixture((fixture) => (fixture[0].dependencies = []))],
+    ["string-dependency-container", () => mutateFixture((fixture) => (fixture[0].dependencies = "invalid"))],
+    [
+      "null-dependency-node",
+      () => mutateFixture((fixture) => (fixture[0].dependencies["left-pad"] = null)),
+    ],
+    [
+      "array-dependency-node",
+      () => mutateFixture((fixture) => (fixture[0].dependencies["left-pad"] = [])),
+    ],
+    [
+      "string-dependency-node",
+      () => mutateFixture((fixture) => (fixture[0].dependencies["left-pad"] = "invalid")),
+    ],
+    [
+      "blank-dependency-name",
+      () =>
+        mutateFixture((fixture) => {
+          fixture[0].dependencies["   "] = fixture[0].dependencies["left-pad"];
+          delete fixture[0].dependencies["left-pad"];
+        }),
+    ],
+    [
+      "missing-dependency-version",
+      () => mutateFixture((fixture) => delete fixture[0].dependencies["left-pad"].version),
+    ],
+    [
+      "blank-dependency-version",
+      () => mutateFixture((fixture) => (fixture[0].dependencies["left-pad"].version = "   ")),
+    ],
+    [
+      "missing-dependency-path",
+      () => mutateFixture((fixture) => delete fixture[0].dependencies["left-pad"].path),
+    ],
+    [
+      "blank-dependency-path",
+      () => mutateFixture((fixture) => (fixture[0].dependencies["left-pad"].path = "   ")),
+    ],
+    [
+      "empty-link-suffix",
+      () => mutateFixture((fixture) => (fixture[0].devDependencies["@fixture/internal"].version = "link:   ")),
+    ],
+    [
+      "unresolved-link-target",
+      () =>
+        mutateFixture(
+          (fixture) => (fixture[0].devDependencies["@fixture/internal"].path = path.join(root, "packages", "unknown")),
+        ),
+    ],
+    [
+      "pathless-link",
+      () => mutateFixture((fixture) => delete fixture[0].devDependencies["@fixture/internal"].path),
+    ],
+    [
+      "relative-link-path",
+      () => mutateFixture((fixture) => (fixture[0].devDependencies["@fixture/internal"].path = "packages/internal")),
+    ],
+    [
+      "link-target-name-mismatch",
+      () =>
+        mutateFixture((fixture) => {
+          fixture[0].devDependencies["@fixture/wrong-name"] = fixture[0].devDependencies["@fixture/internal"];
+          delete fixture[0].devDependencies["@fixture/internal"];
+        }),
+    ],
+    ["link-target-link-version", () => mutateFixture((fixture) => (fixture[1].version = "link:other"))],
+    [
+      "workspace-external-identity-conflict",
+      () =>
+        mutateFixture((fixture) => {
+          fixture[0].devDependencies["@fixture/internal"] = {
+            version: "0.0.0",
+            path: path.join(root, "node_modules", "workspace-impersonator"),
+          };
+        }),
+    ],
+    [
+      "duplicate-workspace-path",
+      () =>
+        mutateFixture((fixture) =>
+          fixture.push({ name: "@fixture/duplicate-path", version: "1.0.0", path: internalPath }),
+        ),
+    ],
+    [
+      "workspace-name-conflict",
+      () =>
+        mutateFixture((fixture) =>
+          fixture.push({
+            name: "@fixture/internal",
+            version: "2.0.0",
+            path: path.join(root, "packages", "conflicting-internal"),
+          }),
+        ),
+    ],
+    [
+      "nested-malformed-container",
+      () => mutateFixture((fixture) => (fixture[0].dependencies["left-pad"].dependencies = [])),
+    ],
+    [
+      "nested-malformed-node",
+      () =>
+        mutateFixture(
+          (fixture) => (fixture[0].dependencies["left-pad"].dependencies = { nested: { version: "1.0.0" } }),
+        ),
+    ],
+  ];
+
+  const outputSentinel = "existing-output-must-remain-unchanged\n";
+  for (const [name, fixtureFactory] of invalidCases) {
+    const invalidListPath = path.join(root, `${name}.json`);
+    const invalidOutputPath = path.join(root, `${name}-sbom.json`);
+    await writeText(invalidListPath, JSON.stringify(fixtureFactory(), null, 2));
+    await writeText(invalidOutputPath, outputSentinel);
+    const invalidResult = runNode("check-sbom.mjs", [
+      "--from-list-json",
+      invalidListPath,
+      "--output",
+      invalidOutputPath,
+    ]);
+    assert(invalidResult.status === 1, `check-sbom should fail closed for ${name}`);
+    assert(
+      (await readFile(invalidOutputPath, "utf8")) === outputSentinel,
+      `check-sbom should not overwrite output before full validation for ${name}`,
+    );
+  }
+
+  const absentOutputPath = path.join(root, "invalid-output-must-not-exist.json");
+  const absentOutputListPath = path.join(root, "invalid-output-list.json");
+  await writeText(absentOutputListPath, JSON.stringify([{ name: "invalid", path: root }], null, 2));
+  const absentOutputResult = runNode("check-sbom.mjs", [
+    "--from-list-json",
+    absentOutputListPath,
+    "--output",
+    absentOutputPath,
+  ]);
+  assert(absentOutputResult.status === 1, "check-sbom should reject invalid input before creating output");
+  assert(!existsSync(absentOutputPath), "check-sbom should not create output before full validation");
+
+  const publishFailureTarget = path.join(root, "publish-failure-target");
+  const publishFailureSentinelPath = path.join(publishFailureTarget, "sentinel.txt");
+  await writeText(publishFailureSentinelPath, "publish-target-sentinel\n");
+  const publishFailureResult = runNode("check-sbom.mjs", [
+    "--from-list-json",
+    listJsonPath,
+    "--output",
+    publishFailureTarget,
+  ]);
+  assert(publishFailureResult.status === 1, "check-sbom should fail when atomic output publication cannot rename");
+  assert(
+    (await readFile(publishFailureSentinelPath, "utf8")) === "publish-target-sentinel\n",
+    "check-sbom atomic publish failure should preserve the prior target contents",
+  );
+  assert(
+    (await readdir(root)).every((entry) => !entry.startsWith(".yrese-sbom-")),
+    "check-sbom atomic publish failure should remove its temporary artifact",
+  );
+
+  const leakVersion = "link:LEAK_VERSION_SENTINEL";
+  const leakPath = path.join(root, "LEAK_PATH_SENTINEL");
+  const leakResolved = "https://LEAK_RESOLVED_SENTINEL.invalid/package.tgz";
+  const nonLeakFixture = mutateFixture((fixture) => {
+    fixture[0].devDependencies["@fixture/internal"] = {
+      version: leakVersion,
+      path: leakPath,
+      resolved: leakResolved,
+    };
+  });
+  const nonLeakListPath = path.join(root, "non-leak.json");
+  await writeText(nonLeakListPath, JSON.stringify(nonLeakFixture, null, 2));
+  const nonLeakResult = runNode("check-sbom.mjs", ["--from-list-json", nonLeakListPath]);
+  const nonLeakOutput = outputOf(nonLeakResult);
+  assert(nonLeakResult.status === 1, "check-sbom should reject a workspace link with an unknown target");
+  for (const sentinel of [leakVersion, leakPath, leakResolved]) {
+    assert(!nonLeakOutput.includes(sentinel), "check-sbom errors must not expose raw version, link, path, or resolved URL values");
+  }
+
+  const invalidName = "INVALID_NAME_SENTINEL/extra";
+  const invalidNameFixture = mutateFixture((fixture) => {
+    fixture[0].name = invalidName;
+  });
+  const invalidNameListPath = path.join(root, "non-leak-name.json");
+  await writeText(invalidNameListPath, JSON.stringify(invalidNameFixture, null, 2));
+  const invalidNameResult = runNode("check-sbom.mjs", ["--from-list-json", invalidNameListPath]);
+  assert(invalidNameResult.status === 1, "check-sbom should reject structurally invalid package names");
+  assert(!outputOf(invalidNameResult).includes(invalidName), "check-sbom errors must not expose raw invalid package names");
+
+  const boundaryCollisionName = "foo@1";
+  const boundaryCollisionFixture = [
+    { name: boundaryCollisionName, version: "2", path: path.join(root, "collision-one") },
+    { name: "foo", version: "1@2", path: path.join(root, "collision-two") },
+  ];
+  const boundaryCollisionListPath = path.join(root, "bom-ref-boundary-collision.json");
+  const boundaryCollisionOutputPath = path.join(root, "bom-ref-boundary-collision-sbom.json");
+  await writeText(boundaryCollisionListPath, JSON.stringify(boundaryCollisionFixture, null, 2));
+  await writeText(boundaryCollisionOutputPath, outputSentinel);
+  const boundaryCollisionResult = runNode("check-sbom.mjs", [
+    "--from-list-json",
+    boundaryCollisionListPath,
+    "--output",
+    boundaryCollisionOutputPath,
+  ]);
+  assert(boundaryCollisionResult.status === 1, "check-sbom should reject package names that can cross bom-ref boundaries");
+  assert(
+    (await readFile(boundaryCollisionOutputPath, "utf8")) === outputSentinel,
+    "check-sbom bom-ref boundary rejection should preserve the prior output",
+  );
+  assert(
+    !outputOf(boundaryCollisionResult).includes(boundaryCollisionName),
+    "check-sbom bom-ref boundary errors must not expose the raw invalid package name",
   );
 }
 
