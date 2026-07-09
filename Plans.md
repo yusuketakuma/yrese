@@ -173,3 +173,9 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 目的: 主要ナビゲーション項目、システムモード表示、placeholder routeの最低限のrender契約を固定し、routing shellの退行を早期検知する。
   - 想定スコープ: `apps/web/**`。
   - 検証: `pnpm --filter @yrese/web test`, `pnpm --filter @yrese/web typecheck`。
+
+- [ ] WP-4012 dependency scan / SBOM CI gate
+  - 発見根拠: `.github/workflows/ci.yml` には dependency scan / SBOM 追加TODOが残り、`package.json` にも依存脆弱性・SBOM生成を検査するroot scriptが未定義。
+  - 目的: secret scan に加えて、依存脆弱性検知とSBOM生成/検証をCIの機械ゲートにし、security SSOTの「dependency scan / SBOM」予定項目を実装へ進める。
+  - 想定スコープ: `package.json`, `.github/workflows/ci.yml`, 必要なら `scripts/**`。
+  - 検証: 追加する依存scan/SBOMコマンド、`pnpm install --frozen-lockfile`, `pnpm check:secrets`, `pnpm check:boundaries`, `git diff --check`。
