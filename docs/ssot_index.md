@@ -126,12 +126,12 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 
 | ssot_id | 文書 | status |
 |---|---|---|
-| DOM-001 | [bounded_contexts.md](domain/bounded_contexts.md) | PROPOSED |
-| DOM-002 | [domain_model.md](domain/domain_model.md) | PROPOSED |
+| DOM-001 | [bounded_contexts.md](domain/bounded_contexts.md) | APPROVED |
+| DOM-002 | [domain_model.md](domain/domain_model.md) | APPROVED |
 | DOM-006 | [fhir_mapping_registry.md](domain/fhir_mapping_registry.md) | APPROVED |
 | DOM-005 | [fhir_native_canonical_model.md](domain/fhir_native_canonical_model.md) | APPROVED |
-| DOM-004 | [state_transition.md](domain/state_transition.md) | PROPOSED |
-| DOM-003 | [ubiquitous_language.md](domain/ubiquitous_language.md) | PROPOSED |
+| DOM-004 | [state_transition.md](domain/state_transition.md) | APPROVED |
+| DOM-003 | [ubiquitous_language.md](domain/ubiquitous_language.md) | APPROVED |
 
 ## docs/jahis/ (8件)
 

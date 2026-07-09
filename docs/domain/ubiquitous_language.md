@@ -4,12 +4,14 @@
 ssot_id: DOM-003
 title: ユビキタス言語辞書
 domain: domain
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 source_refs: 構築プロンプト v0.2.0 §12, §17
@@ -30,11 +32,14 @@ open_questions: 本文【要確認】参照
 
 | 用語 | 読み | 英語識別子 | 定義 | 公式用語対応 |
 |---|---|---|---|---|
+| 受付 | うけつけ | Reception | 来局患者の受付業務(C1)。実装済み(API-006 / WP-3009) | —(内部用語) |
+| 受付エントリ | うけつけえんとり | ReceptionEntry | 受付キューの1件。ルート集約(ReceptionId — DOM-002 §1) | —(内部用語) |
+| 受付状態 | うけつけじょうたい | ReceptionStatus | RECEPTION_STATUSES(shared-kernel 正本): WAITING=待機中 / IN_PROGRESS=対応中 / COMPLETED=完了 / CANCELLED=取消済み(UI表示ラベルは apps/web と一致) | —(内部状態) |
 | 処方箋 | しょほうせん | Prescription | 医師が交付する処方の原本。紙・電子の別を由来として管理 | 処方箋(医師法・薬剤師法) |
 | 院外処方箋2次元シンボル | いんがいしょほうせん… | Prescription2DSymbol | JAHIS規約 Ver.1.11 準拠のQR。UI表示は「処方箋QRコード」可 | JAHIS院外処方箋2次元シンボル記録条件規約 |
 | 処方箋引換番号 | …ひきかえばんごう | PrescriptionAccessCode | 電子処方箋の引換番号(境界設計のみMVP) | 電子処方箋管理サービス用語 |
-| 仮受付 | かりうけつけ | ProvisionalReception | 原本照合・薬剤師確認前の受付状態 | —(内部用語) |
-| 仮取込 | かりとりこみ | ProvisionalImport | QR等からの機械取込。確定前 | —(内部用語) |
+| 仮受付 | かりうけつけ | RECEIVED_PROVISIONAL | 原本照合・薬剤師確認前の処方ライフサイクル状態(状態名は DOM-004 §1 の識別子を正とする) | —(内部状態) |
+| 仮取込 | かりとりこみ | IMPORTED_PROVISIONAL | QR等からの機械取込。確定前(状態名は DOM-004 §1 の識別子を正とする) | —(内部状態) |
 | 原本照合 | げんぽんしょうごう | SourceDocumentVerification | QR/取込内容と紙面・正式データの照合 | —(内部用語) |
 | RP(処方区分) | あーるぴー | Rp | 処方内の剤単位。入力・算定の基本単位 | 剤(調剤報酬点数表) |
 | 用法 | ようほう | DosageInstruction | 服用方法。用法コード対応は CodeMappingRegistry 経由 | 用法コード |
@@ -122,3 +127,8 @@ open_questions: 本文【要確認】参照
 - 区分番号・法令条番号を伴う対応(調剤管理料の区分、薬剤師法の条番号等)は一次資料で確認後に確定
 - 現場用語(「QRコード」「マイナ」等)⇔本辞書の対応表は UIX-001 側で整備(薬剤師レビュー)
 - 電子処方箋関連用語は ONS 資料入手後に拡充
+
+## 変更履歴
+
+- 0.1.1 (2026-07-09): opus4.8 レビュー反映(受付/受付エントリ/受付状態の用語追加、仮受付・仮取込の識別子を DOM-004 §1 の状態名 RECEIVED_PROVISIONAL / IMPORTED_PROVISIONAL に統一)。
+- 0.1.0 (2026-07-09): 初版起草(WP-1101)。

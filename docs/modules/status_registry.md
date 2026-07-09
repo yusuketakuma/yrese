@@ -8,12 +8,13 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.3
+version: 0.1.4
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 change_log:
+  - 0.1.4 (2026-07-09): ドメインライフサイクル状態の所有権を明記 — 定義の正本は DOM-004、shared-kernel への登録は使用する実装 WP の着地時に DOM-004 と同期して行う(opus4.8 DOM レビューの governance 決着)。
   - 0.1.3 (2026-07-09): WP-3009-BE / API-006 v0.2.0 に基づき、受付キュー専用 `RECEPTION_STATUSES` 4値(WAITING / IN_PROGRESS / COMPLETED / CANCELLED)を追加。処方箋ライフサイクル状態・請求可否判定とは分離。
   - 0.1.2 (2026-07-09): BLOCKER_TYPES に FHIR/連携境界の2種(BLOCKED_OFFICIAL_ADAPTER_BOUNDARY / BLOCKED_FHIR_CONFORMANCE_REVIEW)を追加(opus4.8 FHIR系レビュー指摘 — PRD-007/DOM-005/006 が定義する停止条件の allow-list 登録)
   - 0.1.1 (2026-07-09): isClaimable を deny-list(fail-open)から allow-list(fail-closed)へ転換(opus4.8 指摘・CAL-007 §3.1、実装 WP-1012)。CLAIMABLE_SAFE_STATUSES への追加は本SSOT改版必須と明記
@@ -28,6 +29,10 @@ blockers: []
 ```
 
 **現在の正本は `@yrese/shared-kernel` の実装コードである。** ステータスの追加・変更・削除は本SSOT改版 → fable5+opus4.8 レビュー → 実装の順で行う。ローカル(apps/** や他パッケージ)での同名 const 再定義は check-boundaries.mjs が CI で検出する(`COMMON_MODULE_DUPLICATION_BLOCKED`)。
+
+**ドメインライフサイクル状態(処方・調剤・請求等の業務遷移状態)の定義の正本は DOM-004。**
+shared-kernel / 本レジストリへの登録は、当該状態を使用する実装 WP の着地時に DOM-004 と同期して行う
+(未実装状態の先行登録をしない。登録時は DOM-004 と本SSOTの両方を改版し一致を保つ)。
 
 ## 1. システムモード(SYSTEM_MODES — 5種)
 

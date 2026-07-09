@@ -4,16 +4,18 @@
 ssot_id: DOM-001
 title: 境界づけられたコンテキスト
 domain: domain
-status: PROPOSED
+status: APPROVED
+approved_at: 2026-07-09
+approved_by: opus4.8 review + fable5
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 source_refs: 構築プロンプト v0.2.0 §2, §12, §17
-depends_on: [PRD-001, ADP-002, ARC-001, MOD-001, MOD-003]
+depends_on: [PRD-001, ADP-002, ARC-001, MOD-001, MOD-003, ACC-001(会計ドメインモデル — C8 の正本)]
 impacts: [DOM-002, DOM-003, DOM-004]
 open_questions: 本文【要確認】参照
 ```
@@ -39,17 +41,18 @@ MVP のドメインを、責務・言語・整合性境界が明確な bounded c
 | C9 | 帳票 | Reports | 帳票生成(領収証・調剤明細書・調剤録・薬袋等)、版管理・ハッシュ・再出力、電子保存 | M7 |
 | C10 | マスター | Masters | マスター取込24段パイプライン(MST-001)、版・有効日・経過措置、当時有効版解決、CodeMappingRegistry(MST-002) | M9 |
 | C11 | 同期 | Sync | Cloud Core⇄Edge の Outbox/Inbox、競合検出、RECOVERY_SYNC 工程(ARC-002)、システムモード管理 | M10 |
-| C12 | 監査 | Audit | 監査イベント記録(追記専用・tamper-evident、SEC-007)、証跡照会 | M11 |
-| C13 | テナント・権限 | Identity | テナント・薬局・ユーザー・ロール・PermissionScope、認証境界(本番認証は BLOCKED_SECURITY_REVIEW) | M11 |
+| C12 | 監査 | Audit | 監査イベント記録(追記専用・tamper-evident、SEC-007)、証跡照会。イベント種別台帳は MOD-008 が正本 | M11 |
+| C13 | テナント・権限 | Identity | テナント・薬局・ユーザー・ロール・PermissionScope、認証境界(本番認証は BLOCKED_SECURITY_REVIEW)。テナント分離設計は SEC-006 が正本 | M11 |
 | C14 | 外部連携 | Integration | Official Adapter 6種(ADP-001)と Pharmacy Integration API(M12)。腐敗防止層(ACL)として他コンテキストを外部仕様から隔離 | M3, M12 |
 
-補足: 会計 Billing は v0.2.0 §17 の会計・未収・返金・差額精算に対応するため、指示候補の12個に加えて独立させた(受付/請求と整合性境界が異なるため)。【要確認: opus4.8 レビューで Claim への統合可否を判断】
+補足: 会計 Billing は v0.2.0 §17 の会計・未収・返金・差額精算に対応するため、指示候補の12個に加えて独立させた。
+**C8 Billing は独立コンテキストとして維持を確定**(opus4.8 レビュー裁定 2026-07-09): 会計ドメインは ACC-001〜011 が APPROVED 済みであり、append-only 会計台帳という Claim とは別の整合性境界を持つ。正本は ACC-001 系。
 
 ## 3. 共有カーネル
 
 実装済みの共通モジュール(MOD-001 正本)を共有カーネルとする:
 
-- `@yrese/shared-kernel` — branded ID 11種、SystemMode、PROVISIONAL_STATUSES、BLOCKER_TYPES、ErrorCode/PermissionScope 基盤
+- `@yrese/shared-kernel` — branded ID 12種(ReceptionId 含む — MOD-004)、SystemMode、PROVISIONAL_STATUSES、RECEPTION_STATUSES、BLOCKER_TYPES、ErrorCode/PermissionScope 基盤
 - `@yrese/money` / `@yrese/date-time` / `@yrese/trace` / `@yrese/events` / `@yrese/contracts` / `@yrese/calculation`(骨格)
 
 全コンテキストは共有カーネルの型を再定義せず import する(COMMON_MODULE_DUPLICATION_BLOCKED)。
@@ -85,6 +88,10 @@ Integration(C14) ──ACL── External National Systems / Partner Systems と
 
 ## 6. 【要確認】
 
-- Billing の独立可否(opus4.8 レビュー)
 - Reception と Prescription の境界(電子処方箋実装解禁後に再評価)
 - packages/domain の物理分割単位(Phase 1 の api 実装設計時に確定)
+
+## 変更履歴
+
+- 0.1.1 (2026-07-09): opus4.8 レビュー反映(C8 Billing の独立維持を確定[ACC-001 系が正本]、branded ID を実装12種へ訂正、C12/C13 に正本 SSOT 参照を追記)。
+- 0.1.0 (2026-07-09): 初版起草(WP-1101)。

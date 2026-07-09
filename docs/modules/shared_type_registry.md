@@ -8,7 +8,7 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.1
+version: 0.1.2
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -26,6 +26,7 @@ open_questions:
   - 保険・公費・PMH 関連の共通型(現状 opaque Ref のみ — Phase 1 ドメインSSOT承認後に拡充)
 blockers: []
 change_log:
+  - 0.1.2 (2026-07-09): branded ID を実装12種へ同期(ReceptionId 追加 — WP-3009-BE/93aefa1。台帳更新漏れの是正、opus4.8 DOM レビュー指摘)。
   - 0.1.1: WP-4022 で PrescriptionDate / DispensingDate / ReceptionDate を nominal brand 済みに更新し、異種代入・異種 compare を型で禁止。
 ```
 
@@ -35,7 +36,7 @@ change_log:
 
 `Brand<string, B>`(unique symbol brand)+ 検証付き factory(空文字・空白のみ・制御文字を拒否)。
 
-TenantId / PharmacyId / UserId / PatientId / PrescriptionId / DispensingId / ClaimId / EventId / DeviceId / EvidenceId / WorkPackageId(11種)
+TenantId / PharmacyId / UserId / PatientId / ReceptionId / PrescriptionId / DispensingId / ClaimId / EventId / DeviceId / EvidenceId / WorkPackageId(12種 — ReceptionId は WP-3009-BE/93aefa1 で追加)
 
 ## 2. 値オブジェクト
 
