@@ -121,9 +121,10 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `packages/shared-kernel/**`。
   - 検証: `pnpm --filter @yrese/shared-kernel test`, `pnpm --filter @yrese/api test`, `pnpm check:boundaries`。
 
-- [ ] WP-4007 package entrypoint/build output alignment
+- [!] WP-4007 package entrypoint/build output alignment(DEFERRED — 外部公開/partner配布決定時に再開)
   - 発見根拠: `packages/*/package.json` は `main` / `types` / `exports` が `./src/index.ts` を指す一方、`pnpm -r build` は `dist/` を生成する。build成果物を使う実行・配布・CI検証の方針がmetadataに反映されていない。
   - 目的: workspace内部はsource参照、build成果物はdist参照など、Phase 0のpackaging方針に合わせてpackage entrypointをSSOT化する。
+  - fable5判断(2026-07-09): 現時点はworkspace内消費のみで、src exports は dev/test/transpilePackages と整合。dist exports 切替は `pnpm clean` 後の解決不能や web extensionAlias 前提を壊すリスクが大きいため DEFER。外部公開(開かれたレセコン SDK / partner配布)開始時に conditional exports(development=src / default=dist)として再起動する。
   - 想定スコープ: `packages/*/package.json`, 必要なら `tsconfig*.json`。
   - 検証: `pnpm -r build`, `pnpm -r typecheck`, `pnpm check:boundaries`。
 
