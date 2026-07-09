@@ -9,11 +9,13 @@ owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.1.0
+version: 0.2.0
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+change_log:
+  - 2026-07-09 v0.2.0 evidence発行に伴う行status更新(WP-0017)— 16行を EVIDENCE_ISSUED 化(EVD-CAL-0001〜0071、CAL-003 evidence_register 参照)。9行は BLOCKED_REGULATORY_REVIEW 継続。EVIDENCE_ISSUED は点数値の根拠確定のみを意味し、実装可(APPROVED_FOR_IMPLEMENTATION)には解除手順 step 3〜5 が別途必要
 source_refs: 構築プロンプト v0.1.7 §18 / docs/plan/phase0_plan.md §2.1
 depends_on:
   - docs/product/mvp_scope.md
@@ -26,7 +28,7 @@ open_questions:
   - 項目名称は令和6年度改定時点の一般的呼称で仮置きしており、令和8年度改定での名称・体系変更は【要確認】
   - 服薬管理指導料等の薬学管理料のMVP境界(人間レビュー)
 blockers:
-  - 全行 BLOCKED_REGULATORY_REVIEW(evidence_id 未発行)。解除は行単位で行う
+  - 9行が BLOCKED_REGULATORY_REVIEW 継続(R-004/011/013/016/019/020/021/024/025)。16行は EVIDENCE_ISSUED(CAL-003、2026-07-09)。解除は行単位で行う
 ```
 
 ## 重要な前提(捏造禁止)
@@ -41,29 +43,29 @@ blockers:
 
 | ID | 算定項目(仮称・要改定確認) | MVP判定 | 根拠資料(要登録) | 必要マスター | 必要患者/薬局属性 | 公費影響 | オフライン仮算定 | test case | 医療安全影響 | 人間Rv | evidence_id | status |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| CAL-R-001 | 調剤基本料(区分・特例含む) | MVP | 調剤点数表・施設基準・届出 | 調剤行為 | 薬局届出・受付回数・集中率 | あり | 可 | golden: 基本料区分別 | 誤請求 | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
-| CAL-R-002 | 地域支援体制加算等の基本料加算 | 【要確認】 | 施設基準・届出 | 調剤行為 | 薬局届出 | あり | 可 | golden: 届出有無 | 誤請求 | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
-| CAL-R-003 | 薬剤調製料(剤形別) | MVP | 調剤点数表 | 調剤行為・医薬品 | 剤形・調剤量 | あり | 可 | golden: 剤形×日数 | 誤請求 | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
+| CAL-R-001 | 調剤基本料(区分・特例含む) | MVP | 調剤点数表・施設基準・届出 | 調剤行為 | 薬局届出・受付回数・集中率 | あり | 可 | golden: 基本料区分別 | 誤請求 | 要 | EVD-CAL-0001〜0020(特別調剤基本料Bは保留P-01) | EVIDENCE_ISSUED |
+| CAL-R-002 | 地域支援体制加算等の基本料加算 | 【要確認】 | 施設基準・届出 | 調剤行為 | 薬局届出 | あり | 可 | golden: 届出有無 | 誤請求 | 要 | EVD-CAL-0009〜0012, 0016〜0019 | EVIDENCE_ISSUED |
+| CAL-R-003 | 薬剤調製料(剤形別) | MVP | 調剤点数表 | 調剤行為・医薬品 | 剤形・調剤量 | あり | 可 | golden: 剤形×日数 | 誤請求 | 要 | EVD-CAL-0021〜0029 | EVIDENCE_ISSUED |
 | CAL-R-004 | 無菌製剤処理加算等の調製系加算 | 非MVP | 同上 | 同上 | 設備要件 | あり | — | — | — | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
-| CAL-R-005 | 自家製剤加算 | 非MVP(non_mvp N6) | 同上+疑義解釈 | 同上 | — | あり | — | 検知テストのみ | 解釈幅大 | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
-| CAL-R-006 | 計量混合調剤加算 | 非MVP(non_mvp N6) | 同上 | 同上 | — | あり | — | 検知テストのみ | 同上 | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
-| CAL-R-007 | 時間外・休日・深夜加算 | MVP | 調剤点数表 | 調剤行為 | 受付日時区分 | あり | 可 | golden: 時間帯境界 | 誤請求 | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
-| CAL-R-008 | 麻薬・向精神薬・毒薬・覚醒剤原料加算 | 【要確認】 | 調剤点数表 | 医薬品(区分) | — | あり | 可 | golden: 区分判定 | 誤調剤・誤請求 | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
-| CAL-R-009 | 一包化(外来服薬支援料2 相当) | 【要確認】 | 調剤点数表・留意事項 | 調剤行為 | 指示有無 | あり | 可 | golden: 日数区分 | 誤請求 | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
-| CAL-R-010 | 調剤管理料 | MVP | 調剤点数表 | 調剤行為 | 処方内容 | あり | 可 | golden: 日数区分 | 誤請求 | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
+| CAL-R-005 | 自家製剤加算 | 非MVP(non_mvp N6) | 同上+疑義解釈 | 同上 | — | あり | — | 検知テストのみ | 解釈幅大 | 要 | EVD-CAL-0033 | EVIDENCE_ISSUED |
+| CAL-R-006 | 計量混合調剤加算 | 非MVP(non_mvp N6) | 同上 | 同上 | — | あり | — | 検知テストのみ | 同上 | 要 | EVD-CAL-0034 | EVIDENCE_ISSUED |
+| CAL-R-007 | 時間外・休日・深夜加算 | MVP | 調剤点数表 | 調剤行為 | 受付日時区分 | あり | 可 | golden: 時間帯境界 | 誤請求 | 要 | EVD-CAL-0031, 0032 | EVIDENCE_ISSUED |
+| CAL-R-008 | 麻薬・向精神薬・毒薬・覚醒剤原料加算 | 【要確認】 | 調剤点数表 | 医薬品(区分) | — | あり | 可 | golden: 区分判定 | 誤調剤・誤請求 | 要 | EVD-CAL-0030 | EVIDENCE_ISSUED |
+| CAL-R-009 | 一包化(外来服薬支援料2 相当) | 【要確認】 | 調剤点数表・留意事項 | 調剤行為 | 指示有無 | あり | 可 | golden: 日数区分 | 誤請求 | 要 | EVD-CAL-0055, 0056 | EVIDENCE_ISSUED |
+| CAL-R-010 | 調剤管理料 | MVP | 調剤点数表 | 調剤行為 | 処方内容 | あり | 可 | golden: 日数区分 | 誤請求 | 要 | EVD-CAL-0035〜0039 | EVIDENCE_ISSUED |
 | CAL-R-011 | 重複投薬・相互作用等防止加算 | 【要確認】(SaMD該当性と関連) | 留意事項・疑義解釈 | — | 薬歴・疑義照会記録 | あり | 不可(外部確認前提の場合) | 検知テスト | チェック未実施誤認 | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
-| CAL-R-012 | 服薬管理指導料 | MVP(境界【要確認】) | 調剤点数表・留意事項 | — | 手帳有無・期間 | あり | 可 | golden: 手帳×期間 | 誤請求 | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
+| CAL-R-012 | 服薬管理指導料 | MVP(境界【要確認】) | 調剤点数表・留意事項 | — | 手帳有無・期間 | あり | 可 | golden: 手帳×期間 | 誤請求 | 要 | EVD-CAL-0040〜0053(イ/ロ同点caveat付き) | EVIDENCE_ISSUED |
 | CAL-R-013 | かかりつけ薬剤師指導料・包括管理料 | 非MVP | 施設基準・同意要件 | — | 同意記録 | あり | — | 検知テストのみ | — | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
-| CAL-R-014 | 服薬情報等提供料 | 非MVP | 留意事項 | — | 提供記録 | あり | — | 検知テストのみ | — | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
-| CAL-R-015 | 外来服薬支援料1 | 非MVP | 同上 | — | — | あり | — | 検知テストのみ | — | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
+| CAL-R-014 | 服薬情報等提供料 | 非MVP | 留意事項 | — | 提供記録 | あり | — | 検知テストのみ | — | 要 | EVD-CAL-0062 | EVIDENCE_ISSUED |
+| CAL-R-015 | 外来服薬支援料1 | 非MVP | 同上 | — | — | あり | — | 検知テストのみ | — | 要 | EVD-CAL-0054 | EVIDENCE_ISSUED |
 | CAL-R-016 | 在宅患者訪問薬剤管理指導料ほか在宅系 | 非MVP(non_mvp N4) | 同上 | — | — | あり | — | 検知テストのみ | — | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
-| CAL-R-017 | 薬剤料(所定単位・剤形別計算) | MVP | 調剤点数表・薬価基準 | 医薬品・薬価 | 用法用量・日数 | あり | 可 | golden: 五捨五超入等の端数処理【要確認】 | 金額誤り | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
-| CAL-R-018 | 特定保険医療材料料 | MVP | 材料価格基準 | 材料マスター | — | あり | 可 | golden: 材料別 | 金額誤り | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
+| CAL-R-017 | 薬剤料(所定単位・剤形別計算) | MVP | 調剤点数表・薬価基準 | 医薬品・薬価 | 用法用量・日数 | あり | 可 | golden: 五捨五超入等の端数処理【要確認】 | 金額誤り | 要 | EVD-CAL-0067, 0068(端数処理細部は保留P-06) | EVIDENCE_ISSUED |
+| CAL-R-018 | 特定保険医療材料料 | MVP | 材料価格基準 | 材料マスター | — | あり | 可 | golden: 材料別 | 金額誤り | 要 | EVD-CAL-0069 | EVIDENCE_ISSUED |
 | CAL-R-019 | 一般名処方・後発品変更の取扱い | MVP | 関連通知 | 医薬品(一般名対応) | 変更可否 | — | 可 | golden: 変更パターン | 誤調剤 | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
 | CAL-R-020 | 長期収載品の選定療養 | MVP | 関連通知・疑義解釈 | 医薬品(対象区分) | 患者希望・医療上必要性 | あり(選定療養は保険外併用) | 可 | golden: 対象判定×負担計算 | 患者負担誤り | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
 | CAL-R-021 | リフィル処方箋対応 | 【要確認】(基本パターンのみ検討) | 関連通知 | — | 回数・期間 | あり | 可 | golden: 回次管理 | 誤調剤 | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
-| CAL-R-022 | 分割調剤 | 非MVP(non_mvp N7) | 留意事項 | — | — | あり | — | 検知テストのみ | — | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
-| CAL-R-023 | 調剤ベースアップ評価料 | 【要確認】 | 施設基準・届出 | 調剤行為 | 薬局届出 | あり | 可 | golden: 届出有無 | 誤請求 | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
+| CAL-R-022 | 分割調剤 | 非MVP(non_mvp N7) | 留意事項 | — | — | あり | — | 検知テストのみ | — | 要 | EVD-CAL-0013〜0015 | EVIDENCE_ISSUED |
+| CAL-R-023 | 調剤ベースアップ評価料 | 【要確認】 | 施設基準・届出 | 調剤行為 | 薬局届出 | あり | 可 | golden: 届出有無 | 誤請求 | 要 | EVD-CAL-0070 | EVIDENCE_ISSUED |
 | CAL-R-024 | 一部負担金計算(負担割合・端数処理) | MVP | 健保法・通知【要確認】 | — | 負担割合・限度額 | あり(公費優先順位) | 仮計算可 | golden: 割合×端数 | 患者負担誤り | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
 | CAL-R-025 | 公費併用の按分計算 | MVP(対象公費は限定【要確認】) | 各公費制度・請求省令 | 公費マスター | 受給者証 | 本体 | 仮計算可 | golden: 併用パターン | 誤請求 | 要 | 【要確認】 | BLOCKED_REGULATORY_REVIEW |
 
