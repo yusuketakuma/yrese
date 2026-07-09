@@ -6,6 +6,14 @@
 
 ## 2026-07-09(続き)
 
+### データベース構築計画の立案(ユーザー指示)
+
+- ユーザー指示3件: (1)「各種データベースの構築計画立案を開始」、(2) 医療機関・薬剤など他のマスター DB の個別台帳化、(3) 漏れの網羅確認
+- `docs/plan/database_construction_plan.md`(PLAN-DB-001、PROPOSED)を起案: 種別台帳12種(業務OLTP / イベントストア / 監査 / マスター群 / Edge / 同期キュー / 検索分析 / 帳票文書 / 請求成果物 / 外部連携記録 / 認証テナント / アーカイブ法定保存)+ マスター個別台帳 M1〜M10(医薬品・一般名・点数・医療機関・医師・保険者・公費・用法・薬局内・安全性系[BLOCKED])+ 対象外3(電子薬歴=外部面 / 在庫=non-MVP / 安全性DB)
+- 横断原則: アプリ層テナント分離が正 / 浮動小数点カラム禁止 / DB now() 業務使用禁止 / append-only の DDL/DCL 化 / 前方一方向マイグレーション(明示操作のみ)
+- 段階計画 DB-0〜DB-5(WP-5001〜5008 を Plans.md 登録)。本番インフラ製品確定は SEC-008 §3 + 人間承認の独立ゲート
+- WP-3009-BE(受付バックエンド、93aefa1)レビュー APPROVED — 全10ワークスペース 252 テスト・全ゲート PASS。WP-3009-UI(受付ダッシュボード)フォーク実行中
+
 ### WP-4019 — OpenAPI generation pipeline
 
 - fable5 PLAN_APPROVED 後に codex 実装。`@yrese/contracts` の zod schema を正本として `zod-openapi` で OpenAPI 3.1 YAML を生成する pipeline を追加。
