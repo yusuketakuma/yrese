@@ -9,7 +9,7 @@ owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-07-09
 approved_at: 2026-07-09
@@ -27,6 +27,8 @@ open_questions:
   - 薬局(医療機関等側)としての遵守事項と、システム提供事業者側の分担線引き(SEC-002 と往復確認)
 blockers:
   - BLOCKED_SECURITY_REVIEW(本表 APPROVED まで認証・監査・バックアップ等の本実装は開始しない)
+change_log:
+  - 0.1.1 (2026-07-09): WP-4048 実装状態 drift 整備。脆弱性・パッチ管理行の secret scan / dependency scan / SBOM CI 実装状態を WP-4009/a90df35・WP-4012/b0ecf84+702c2f5 に同期(第7.0版精読待ち・管理策判断は不変更)。
 ```
 
 ## 前提
@@ -46,7 +48,7 @@ blockers:
 | 6 | 委託・外部保存 | 外部保存通知・委託先管理・責任分界 | Cloud Core(AWS東京)外部保存。データ処理契約・再委託管理(§9.8) | 契約・委託先監査(人間対応) | 未着手(契約論点) |
 | 7 | ネットワークセキュリティ | 回線・暗号化・接続先制限 | TLS/mTLS、VPC、private connectivity、公的網は公式接続方式のみ(T3) | 接続構成の文書化 | 未実装 |
 | 8 | 端末・媒体管理 | 端末管理・持ち出し制御 | Edge Node セキュリティ設計(SEC-005: ディスク暗号化・USB制御) | 端末台帳・紛失時手順 | 設計中 |
-| 9 | 脆弱性・パッチ管理 | 既知脆弱性への対応 | dependency scan / secret scan(haiku4.5 常時検査)、SBOM | 定期スキャン運用 | CI一部実装(boundary check)、scan拡充は Phase 2 |
+| 9 | 脆弱性・パッチ管理 | 既知脆弱性への対応 | dependency scan / secret scan(haiku4.5 常時検査)、SBOM | 定期スキャン運用 | CI一部稼働中: `check:secrets`(WP-4009/a90df35)、`check:deps` + `check:sbom`(WP-4012/b0ecf84+702c2f5)。追加SAST/DAST・定期スキャン運用は未着手 |
 | 10 | 医療機関等との責任分界 | 提供事業者ガイドラインとの整合 | SEC-002(provider mapping)で分担を定義 | 契約書ひな形(人間対応) | 設計中 |
 
 ## 精読後に確定すべき事項(【要精読】リスト)
