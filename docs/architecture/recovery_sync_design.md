@@ -11,9 +11,11 @@ reviewers:
   - human_review_required
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §16, §32
   - docs/architecture/offline_mode_matrix.md
@@ -22,6 +24,13 @@ depends_on:
 impacts:
   - packages/events(実装済み EventEnvelope を使用)
   - apps/api(同期エンジン — 未実装)
+related_work_packages: [WP-9002-W5B]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5B metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - 競合解決の人間承認 UI の詳細導線(UI/UX SSOT 側)
   - clock drift 許容閾値の具体値(性能・運用データ取得後に確定)

@@ -7,15 +7,26 @@ domain: architecture
 status: APPROVED
 approved_at: 2026-07-09
 approved_by: opus4.8 review + fable5
+effective_from: null
+effective_to: null
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 source_refs: [構築プロンプト v0.2.0 §13・§14, PRD-006 柱3, PRD-009 戦い3]
 depends_on: [ARC-010, ARC-001, packages/shared-kernel(allowsClaimFinalization), packages/events(Outbox/Inbox)]
 impacts: [WP-0044 event-sourcing pack, 会計・請求系実装WP, docs/operations/observability_plan.md]
+related_work_packages: [WP-0045, WP-9002-W5B]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5B metadata-only completion: body/status/version/approval/effective semantics unchanged"
+open_questions: []
+blockers: []
 ```
 
 既存レセコンの「夜間に全件を止めて一括処理する」設計を yrese に持ち込まないことを確定する。

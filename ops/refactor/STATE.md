@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002 legacy SSOT frontmatter migration W5B preparation. W1-W4/W5A are LANDED; inventory is 173 total / 118 incomplete / 55 complete.
-- Current task: fresh read-only mapping/pre-plan for the next bounded architecture/domain/database/adapters/masters batch. No W5B target edit has started.
+- Current phase: WP-9002 W5B architecture metadata finalized; landed 173/118/55, landing target 173/108/65.
+- Current task: revalidate exact14 finalization, exact-stage, commit, and push; then write the landing record.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -22,5 +22,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
   - Production/external/migration/DML/deploy operations remain human-gated and were not run.
 - Validation baseline (2026-07-11): workspace typecheck/test PASS; audit 182, trace 37, contracts 86, web 99, API 161 + 9 expected PostgreSQL skips without `TEST_DATABASE_URL`; web/full builds PASS; OpenAPI, SSOT index 173, boundaries, secrets, dependency audit high=0/critical=0, SBOM 231, calculation purity, script harness and diff check PASS.
 - Git resume check: run `git status -sb`, `git rev-list --left-right --count origin/main...HEAD`, and `git log -5 --oneline`. Preserve any new unrelated dirty paths. Root alone stages exact task paths and pushes because the active Goal explicitly requests grouped commit/push.
-- Landing-record checkpoint: `main @ 74666c9` equals `origin/main`; this three-path ledger update records already-pushed W5A and must not include target or product changes.
-- Next action: exact-stage only Plans/State/this file, commit as `WP-9002-W5A: record metadata landing`, push, then fresh-map W5B from clean HEAD.
+- Pending W5B checkpoint: baseline `ff7fb77`; exact14; inventory 173/108/65; target missing0; ten bodies and non-target `19207/de1e4127…` unchanged; nine reviews and full gates PASS; IDX v0.4.7 APPROVED.
+- Next action: final invariant/gate check, then exact14 commit/push `WP-9002-W5B: normalize architecture metadata` and separate landing record.

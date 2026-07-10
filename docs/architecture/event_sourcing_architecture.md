@@ -7,13 +7,15 @@ domain: architecture
 status: APPROVED
 approved_at: 2026-07-09
 approved_by: opus4.8 review + fable5
+effective_from: null
+effective_to: null
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
 version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-10
+updated_at: 2026-07-11
 amended_by: [ARC-008]
 amendment_status: PENDING_REVISION
 amendment_note: "ARC-008(APPROVED 2026-07-10)により改版予約中。方向は ARC-008 が暫定的に優先する。本文の全面改版は Phase 1 の PRC-007 10段フローで実施し本注記を解除する。"
@@ -22,6 +24,13 @@ source_refs:
   - MOD-006(events エンベロープ)/ DOM-002(ドメインモデル)/ ACC 系(会計 append-only)
 depends_on: [MOD-006, DOM-002, DOM-004, CAL-009, CAL-010]
 impacts: [ARC-006, ARC-007, WP-0045(always-on), WP-0047(WORM)]
+related_work_packages: [WP-0044, WP-5005, WP-9002-W5B]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5B metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - イベントストアの永続化技術の選定(候補は §5。確定は BLOCKED)
   - スナップショット(集約の中間状態保存)の要否と頻度

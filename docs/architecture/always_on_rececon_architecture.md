@@ -7,18 +7,31 @@ domain: architecture
 status: APPROVED
 approved_at: 2026-07-09
 approved_by: opus4.8 review + fable5
+effective_from: null
+effective_to: null
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 source_refs: [構築プロンプト v0.2.0 §13・§14・§16, PRD-006 柱3, PRD-009 戦い3]
 depends_on: [ARC-001, ARC-002, OPS-005(SLA/SLO), packages/shared-kernel(system-mode)]
 impacts: [ARC-011, WP-0044 event-sourcing pack, WP-2203 Integration Hub, apps/api, apps/web]
+related_work_packages: [WP-0045, WP-9002-W5B]
+related_tests:
+  - packages/shared-kernel/src/kernel.test.ts
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5B metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - Pharmacy Edge Node の実行形態(常駐プロセス / PWA + ローカルストア / 専用機器)の確定
   - Edge ↔ Cloud の同期プロトコル詳細(EDGE_SYNC_DESIGN — 確定まで BLOCKED_EDGE_SYNC_DESIGN)
+blockers:
+  - BLOCKED_EDGE_SYNC_DESIGN
+  - BLOCKED_PERFORMANCE_SLO
 ```
 
 v0.2.0 の「24時間365日、業務を止めないレセコン」を実装可能なアーキテクチャ方針として確定する。

@@ -7,13 +7,15 @@ domain: architecture
 status: APPROVED
 approved_at: 2026-07-10
 approved_by: opus4.8 (APPROVED_READY) + 人間承認(2026-07-10) + fable5
+effective_from: null
+effective_to: null
 owner: fable5
 reviewers:
   - opus4.8
   - 人間承認済み(2026-07-10)
 version: 0.1.2
 created_at: 2026-07-10
-updated_at: 2026-07-10
+updated_at: 2026-07-11
 source_refs:
   - ユーザー実装親プロンプト(2026-07-10「PH-OS接続FHIRネイティブ・レセコン実装」)
   - ユーザー方針決定(2026-07-10 AskUserQuestion: FHIR=ハイブリッド / PH-OS=汎用投影 / インフラ=AWS移行)
@@ -25,6 +27,13 @@ impacts:
   - SEC-006(JWT 認可・テナント取得の拡張)/ SEC-008(本番認証・分離方式の独立ゲート)
   - 新規 SSOT: AWS 基盤設計 / DynamoDB single-table 設計 / FHIR ストア・CapabilityStatement 設計 / DOM-006 拡張(FHIR extension) / 汎用投影 API 契約
   - WP: Phase 1..6(FHIR 契約・REST API・投影・Claim/レセ電・電子処方箋・テスト)
+related_work_packages: [WP-6001, WP-9002-W5B]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5B metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - DynamoDB single-table の key 設計と FHIR/レセコン関係データの access pattern(専用設計 SSOT で確定)
   - Cognito/API Gateway JWT Authorizer の claim 設計(tenant_id/role/user_id)と本番認証解禁(SEC-008 セキュリティレビューと同期)

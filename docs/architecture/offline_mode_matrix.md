@@ -11,9 +11,11 @@ reviewers:
   - human_review_required
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §13, §14, §15
   - docs/plan/phase0_plan.md §9.3
@@ -24,9 +26,16 @@ impacts:
   - apps/web(モード別UI)
 related_tests:
   - packages/shared-kernel/src/kernel.test.ts(モードガード関数の単体テスト — 実装済み)
+related_work_packages: [WP-3010a, WP-3010b, WP-9002-W5B]
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5B metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - LOCAL_ONLY での操作範囲の最終確定は薬剤師実務レビュー・請求実務レビュー後(v0.2.0 §14)
   - 災害時モード(オン資公式の障害時運用)との整合は外部IF仕様確認後
+blockers: []
 ```
 
 ## 1. モード定義(v0.2.0 §13)

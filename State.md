@@ -2,11 +2,16 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.6はWP-9002-W5A eight-reviewer approvalを経てAPPROVED・landed済み。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.7はWP-9002-W5B nine-reviewer approvalを経てAPPROVED・landing pending。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-11
+
+### WP-9002-W5B architecture metadata — finalized / landing pending
+
+- clean `ff7fb77`からarchitecture 10件をmap/pre-plan。exact14、inventory173/108/65、対象外163 hash `de1e4127…f340b2`。本文/approval、ARC-005/007 amendment、ARC-008 amends、全blockerを保持した。
+- independent/spec/data-integrity/architect/test/security/privacy/medical/APIの9 roleがAPPROVED。workspace typecheck/test/buildとOpenAPI/calculation-purity/scripts/SSOT173/secrets/boundaries/deps/SBOM/diffがPASS。IDX v0.4.7を旧provenance保持+9承認でAPPROVED finalizationし、exact14 landing待ち。コード、DB、external、deploy変更なし。
 
 ### WP-9002-W5A API legacy metadata migration — completed / LANDED
 

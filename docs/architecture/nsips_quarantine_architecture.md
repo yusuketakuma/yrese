@@ -12,9 +12,23 @@ reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
+effective_from: null
+effective_to: null
 source_refs: [構築プロンプト v0.2.0 §5・§6・§28, PRD-006 柱1, PRD-008 D5, PRD-009 戦い1]
+depends_on: []
 impacts: [ARC-004, WP-0042 FHIR canonical, packages/shared-kernel(LEGACY_DEPENDENCY), Integration Hub SSOT]
+related_work_packages: [WP-0041, WP-9002-W5B]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5B metadata-only completion: body/status/version/approval/effective semantics unchanged"
+open_questions:
+  - LEGACY_DEPENDENCY marker implementation form is deferred to the Adapter implementation WP
+blockers:
+  - BLOCKED_NSIPS_LICENSE
 ```
 
 v0.2.0 §6「NSIPS境界隔離」を実装可能なアーキテクチャ方針として確定する。

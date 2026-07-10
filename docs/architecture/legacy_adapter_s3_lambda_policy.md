@@ -12,9 +12,27 @@ reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
+effective_from: null
+effective_to: null
 source_refs: [構築プロンプト v0.2.0 §6・§28, ARC-003, PRD-008 D2/D5]
+depends_on: [ARC-003]
 impacts: [NSIPS Legacy Adapter 実装WP(未起案), Integration Hub SSOT, ARC-001 offline_mode_matrix]
+related_work_packages: [WP-0041, WP-9002-W5B]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5B metadata-only completion: body/status/version/approval/effective semantics unchanged"
+open_questions:
+  - pharmacy-LAN integration method
+  - PHI handling, encryption, and storage location
+  - medical information system safety guideline conformity
+  - network responsibility boundary, communication path, and authentication
+  - LOCAL_ONLY behavior
+blockers:
+  - BLOCKED_NSIPS_LICENSE
 ```
 
 v0.2.0 §6 末尾の「S3へのファイル投下とLambda双方向変換は Legacy Adapter の候補構成であり、

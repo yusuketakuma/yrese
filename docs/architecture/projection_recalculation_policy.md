@@ -7,18 +7,29 @@ domain: architecture
 status: APPROVED
 approved_at: 2026-07-09
 approved_by: opus4.8 review + fable5
+effective_from: null
+effective_to: null
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 source_refs:
   - 構築プロンプト v0.2.0 §18
   - ARC-005 / CAL-009 / CAL-010 / ARC-007
 depends_on: [ARC-005, CAL-009, CAL-010, ARC-007]
 impacts: [packages/calculation, 将来の read model 実装WP, QUA-009]
+related_work_packages: [WP-0044, WP-5005, WP-9002-W5B]
+related_tests:
+  - packages/calculation/src/calculation.test.ts
+  - pnpm check:calculation-purity
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5B metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - 投影の再構築時間目標(SLO)は WP-0045(always-on)側で確定
 blockers: []

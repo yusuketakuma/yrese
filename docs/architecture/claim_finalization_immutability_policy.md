@@ -7,13 +7,15 @@ domain: architecture
 status: APPROVED
 approved_at: 2026-07-09
 approved_by: opus4.8 review + fable5
+effective_from: null
+effective_to: null
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
 version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-10
+updated_at: 2026-07-11
 amended_by: [ARC-008]
 amendment_status: PENDING_REVISION
 amendment_note: "ARC-008(APPROVED 2026-07-10)により改版予約中。方向は ARC-008 が暫定的に優先する。本文の全面改版は Phase 1 の PRC-007 10段フローで実施し本注記を解除する。"
@@ -22,6 +24,13 @@ source_refs:
   - ARC-005 / ARC-006 / CAL-007(請求可否)/ MOD-008(監査)/ ACC 系(append-only 台帳)
 depends_on: [ARC-005, ARC-006, CAL-007, MOD-008, CLM-001]
 impacts: [請求確定・返戻再請求の実装WP, QUA-009, WP-0047(WORM)]
+related_work_packages: [WP-0044, WP-9002-W5B]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5B metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - 返戻・再請求の業務イベント語彙(オンライン請求の公式仕様確認後に確定 — BLOCKED_OFFICIAL_ADAPTER_SPEC)
 blockers:
