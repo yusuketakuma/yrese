@@ -11,15 +11,26 @@ reviewers:
   - human_review_if_required
 version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §0.0.4.6
 depends_on: [ACC-001, ACC-003, ACC-008]
+impacts: [future Accounting daily-close and CashDrawerSession implementation, future LOCAL_ONLY / RECOVERY_SYNC daily-report projection]
+related_work_packages: [WP-0033, WP-0037, WP-0038, WP-9002-W7B]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文 §5の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W7B metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - 仕訳データ出力形式・会計システム連携先(派生機能調査 WP-0037 後)
   - 本部集計の要件(多店舗は Phase 2 以降)
   - OTC・物販との同時会計境界(POS 境界 ACC-009 と併せて実務レビュー)
+blockers: []
 ```
 
 ## 1. 日計(MVP対象)
