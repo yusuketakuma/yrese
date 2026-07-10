@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Pool } from 'pg';
 
+import type { PatientSearchResult } from '@yrese/contracts';
 import { patientId, pharmacyId, tenantId } from '@yrese/shared-kernel';
 
 import { applyPendingMigrations } from './migration-runner.js';
@@ -17,11 +18,26 @@ const describePostgres = testDatabaseUrl === undefined ? describe.skip : describ
 
 type ReceptionEntryResult = Extract<ReceptionCreateResult, { readonly entry: unknown }>;
 
+interface StoredReceptionRow {
+  readonly tenant_id: string;
+  readonly pharmacy_id: string;
+  readonly reception_id: string;
+  readonly patient_id: string;
+  readonly accepted_at: Date | string;
+}
+
+interface MigratedSchemaOptions {
+  readonly poolMax?: number;
+}
+
 function createTestSchemaName(): string {
   return `yrese_repository_test_${process.pid}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
 
-async function withMigratedSchema(run: (pool: Pool) => Promise<void>): Promise<void> {
+async function withMigratedSchema(
+  run: (pool: Pool) => Promise<void>,
+  options: MigratedSchemaOptions = {},
+): Promise<void> {
   if (testDatabaseUrl === undefined) {
     throw new Error('TEST_DATABASE_URL unexpectedly missing');
   }
@@ -31,7 +47,10 @@ async function withMigratedSchema(run: (pool: Pool) => Promise<void>): Promise<v
   await adminPool.query(`CREATE SCHEMA ${schemaName}`);
   await adminPool.end();
 
-  const pool = createDbPool(testDatabaseUrl, { max: 1, options: `-c search_path=${schemaName}` });
+  const pool = createDbPool(testDatabaseUrl, {
+    max: options.poolMax ?? 1,
+    options: `-c search_path=${schemaName}`,
+  });
   try {
     await applyPendingMigrations(pool, await loadMigrationFiles(), {
       appliedBy: 'vitest',
@@ -95,6 +114,10 @@ function expectReceptionEntryResult(result: ReceptionCreateResult, expectedKind:
     throw new Error(`expected ${expectedKind} reception result, got ${result.kind}`);
   }
   return result;
+}
+
+function normalizeInstant(value: Date | string): string {
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
 describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_URL to run)', () => {
@@ -342,6 +365,316 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
       expect(jstQueue).toHaveLength(2);
       expect(utcQueue).toHaveLength(0);
       expect(otherTenantQueue).toHaveLength(0);
+    });
+  });
+
+  it('durably converges concurrent same-patient creates to one created and one existing result', async () => {
+    await withMigratedSchema(
+      async (pool) => {
+        const scope = {
+          tenantId: tenantId('tenant-concurrent-same-001'),
+          pharmacyId: pharmacyId('pharmacy-concurrent-same-001'),
+        };
+        await seedPatient(pool, {
+          ...scope,
+          patientId: 'patient-concurrent-same-001',
+          name: '合成患者並行同一',
+          kana: 'ゴウセイカンジャヘイコウドウイツ',
+          patientNumber: 'CONCURRENT-SAME-001',
+        });
+
+        const patientRepository = new PostgresPatientRepository(pool);
+        const receptionRepository = new PostgresReceptionRepository(pool);
+        const patient = await patientRepository.findById({
+          ...scope,
+          patientId: patientId('patient-concurrent-same-001'),
+        });
+        if (patient === undefined) {
+          throw new Error('seeded concurrent same-patient fixture was not found');
+        }
+
+        const idempotencyKey = 'opaque-concurrent-same-patient-001';
+        const acceptedAtA = new Date('2026-07-10T01:00:00.000Z');
+        const acceptedAtB = new Date('2026-07-10T01:00:01.000Z');
+        const results = await Promise.all([
+          receptionRepository.create({ ...scope, patient, idempotencyKey, acceptedAt: acceptedAtA }),
+          receptionRepository.create({ ...scope, patient, idempotencyKey, acceptedAt: acceptedAtB }),
+        ]);
+
+        expect(results.map((result) => result.kind).sort()).toEqual(['created', 'existing']);
+        const entries = results.map((result) => {
+          if (result.kind === 'idempotency_conflict') {
+            throw new Error('same-patient concurrent create unexpectedly conflicted');
+          }
+          return result.entry;
+        });
+        expect(new Set(entries.map((entry) => entry.receptionId)).size).toBe(1);
+
+        const stored = await pool.query<StoredReceptionRow>(
+          `SELECT tenant_id, pharmacy_id, reception_id, patient_id, accepted_at
+           FROM reception_entries
+           WHERE tenant_id = $1 AND pharmacy_id = $2 AND idempotency_key = $3`,
+          [scope.tenantId, scope.pharmacyId, idempotencyKey],
+        );
+        expect(stored.rows).toHaveLength(1);
+        const storedRow = stored.rows[0];
+        if (storedRow === undefined) {
+          throw new Error('concurrent same-patient reception row was not stored');
+        }
+        const storedAcceptedAt = normalizeInstant(storedRow.accepted_at);
+        expect(entries.map((entry) => entry.receptionId)).toEqual([
+          storedRow.reception_id,
+          storedRow.reception_id,
+        ]);
+        expect(entries.map((entry) => entry.acceptedAt)).toEqual([storedAcceptedAt, storedAcceptedAt]);
+        expect([acceptedAtA.toISOString(), acceptedAtB.toISOString()]).toContain(storedAcceptedAt);
+      },
+      { poolMax: 2 },
+    );
+  });
+
+  it('durably rejects one of two concurrent different-patient creates for the same scoped key', async () => {
+    await withMigratedSchema(
+      async (pool) => {
+        const scope = {
+          tenantId: tenantId('tenant-concurrent-conflict-001'),
+          pharmacyId: pharmacyId('pharmacy-concurrent-conflict-001'),
+        };
+        await seedPatient(pool, {
+          ...scope,
+          patientId: 'patient-concurrent-conflict-a',
+          name: '合成患者並行競合甲',
+          kana: 'ゴウセイカンジャヘイコウキョウゴウコウ',
+          patientNumber: 'CONCURRENT-CONFLICT-A',
+        });
+        await seedPatient(pool, {
+          ...scope,
+          patientId: 'patient-concurrent-conflict-b',
+          name: '合成患者並行競合乙',
+          kana: 'ゴウセイカンジャヘイコウキョウゴウオツ',
+          patientNumber: 'CONCURRENT-CONFLICT-B',
+        });
+
+        const patientRepository = new PostgresPatientRepository(pool);
+        const receptionRepository = new PostgresReceptionRepository(pool);
+        const firstPatient = await patientRepository.findById({
+          ...scope,
+          patientId: patientId('patient-concurrent-conflict-a'),
+        });
+        const secondPatient = await patientRepository.findById({
+          ...scope,
+          patientId: patientId('patient-concurrent-conflict-b'),
+        });
+        if (firstPatient === undefined || secondPatient === undefined) {
+          throw new Error('seeded concurrent different-patient fixtures were not found');
+        }
+
+        const idempotencyKey = 'opaque-concurrent-different-patient-001';
+        const results = await Promise.all([
+          receptionRepository.create({
+            ...scope,
+            patient: firstPatient,
+            idempotencyKey,
+            acceptedAt: new Date('2026-07-10T02:00:00.000Z'),
+          }),
+          receptionRepository.create({
+            ...scope,
+            patient: secondPatient,
+            idempotencyKey,
+            acceptedAt: new Date('2026-07-10T02:00:01.000Z'),
+          }),
+        ]);
+
+        expect(results.map((result) => result.kind).sort()).toEqual(['created', 'idempotency_conflict']);
+        const createdResult = results.find((result) => result.kind === 'created');
+        const conflict = results.find((result) => result.kind === 'idempotency_conflict');
+        if (createdResult === undefined || conflict === undefined) {
+          throw new Error('concurrent different-patient results did not contain both expected outcomes');
+        }
+        const created = expectReceptionEntryResult(createdResult, 'created');
+        expect(conflict).toEqual({ kind: 'idempotency_conflict' });
+        expect('entry' in conflict).toBe(false);
+
+        const stored = await pool.query<StoredReceptionRow>(
+          `SELECT tenant_id, pharmacy_id, reception_id, patient_id, accepted_at
+           FROM reception_entries
+           WHERE tenant_id = $1 AND pharmacy_id = $2 AND idempotency_key = $3`,
+          [scope.tenantId, scope.pharmacyId, idempotencyKey],
+        );
+        expect(stored.rows).toHaveLength(1);
+        expect(stored.rows[0]?.patient_id).toBe(created.entry.patient.patientId);
+      },
+      { poolMax: 2 },
+    );
+  });
+
+  it('returns the original reception after repository re-instantiation', async () => {
+    await withMigratedSchema(async (pool) => {
+      const scope = {
+        tenantId: tenantId('tenant-reinstantiated-001'),
+        pharmacyId: pharmacyId('pharmacy-reinstantiated-001'),
+      };
+      await seedPatient(pool, {
+        ...scope,
+        patientId: 'patient-reinstantiated-001',
+        name: '合成患者再生成',
+        kana: 'ゴウセイカンジャサイセイセイ',
+        patientNumber: 'REINSTANTIATED-001',
+      });
+
+      const patientRepository = new PostgresPatientRepository(pool);
+      const patient = await patientRepository.findById({
+        ...scope,
+        patientId: patientId('patient-reinstantiated-001'),
+      });
+      if (patient === undefined) {
+        throw new Error('seeded repository re-instantiation fixture was not found');
+      }
+
+      const idempotencyKey = 'opaque-repository-reinstantiation-001';
+      const firstRepository = new PostgresReceptionRepository(pool);
+      const created = expectReceptionEntryResult(
+        await firstRepository.create({
+          ...scope,
+          patient,
+          idempotencyKey,
+          acceptedAt: new Date('2026-07-10T03:00:00.000Z'),
+        }),
+        'created',
+      );
+
+      const reinstantiatedRepository = new PostgresReceptionRepository(pool);
+      const existing = expectReceptionEntryResult(
+        await reinstantiatedRepository.create({
+          ...scope,
+          patient,
+          idempotencyKey,
+          acceptedAt: new Date('2026-07-11T03:30:00.000Z'),
+        }),
+        'existing',
+      );
+      expect(existing.entry.receptionId).toBe(created.entry.receptionId);
+      expect(existing.entry.acceptedAt).toBe(created.entry.acceptedAt);
+
+      const stored = await pool.query<{ readonly row_count: string }>(
+        `SELECT COUNT(*)::text AS row_count
+         FROM reception_entries
+         WHERE tenant_id = $1 AND pharmacy_id = $2 AND idempotency_key = $3`,
+        [scope.tenantId, scope.pharmacyId, idempotencyKey],
+      );
+      expect(stored.rows[0]?.row_count).toBe('1');
+    });
+  });
+
+  it('isolates the same idempotency key across tenant and pharmacy scopes after repository re-instantiation', async () => {
+    await withMigratedSchema(async (pool) => {
+      const scopes = [
+        {
+          tenantId: tenantId('tenant-scope-a'),
+          pharmacyId: pharmacyId('pharmacy-scope-a'),
+          patientId: patientId('patient-scope-aa'),
+          patientNumber: 'SCOPE-AA',
+          name: '合成患者範囲甲甲',
+          kana: 'ゴウセイカンジャハンイコウコウ',
+        },
+        {
+          tenantId: tenantId('tenant-scope-a'),
+          pharmacyId: pharmacyId('pharmacy-scope-b'),
+          patientId: patientId('patient-scope-ab'),
+          patientNumber: 'SCOPE-AB',
+          name: '合成患者範囲甲乙',
+          kana: 'ゴウセイカンジャハンイコウオツ',
+        },
+        {
+          tenantId: tenantId('tenant-scope-b'),
+          pharmacyId: pharmacyId('pharmacy-scope-a'),
+          patientId: patientId('patient-scope-ba'),
+          patientNumber: 'SCOPE-BA',
+          name: '合成患者範囲乙甲',
+          kana: 'ゴウセイカンジャハンイオツコウ',
+        },
+      ] as const;
+      const preparedScopes: Array<{
+        readonly scope: (typeof scopes)[number];
+        readonly patient: PatientSearchResult;
+      }> = [];
+      const patientRepository = new PostgresPatientRepository(pool);
+      for (const scope of scopes) {
+        await seedPatient(pool, {
+          ...scope,
+          patientId: scope.patientId,
+        });
+        const patient = await patientRepository.findById({
+          tenantId: scope.tenantId,
+          pharmacyId: scope.pharmacyId,
+          patientId: scope.patientId,
+        });
+        if (patient === undefined) {
+          throw new Error('seeded scope-isolation fixture was not found');
+        }
+        preparedScopes.push({ scope, patient });
+      }
+
+      const idempotencyKey = 'opaque-shared-across-three-scopes-001';
+      const repository = new PostgresReceptionRepository(pool);
+      const createdByScope = new Map<string, ReceptionEntryResult['entry']>();
+      for (const [index, prepared] of preparedScopes.entries()) {
+        const created = expectReceptionEntryResult(
+          await repository.create({
+            tenantId: prepared.scope.tenantId,
+            pharmacyId: prepared.scope.pharmacyId,
+            patient: prepared.patient,
+            idempotencyKey,
+            acceptedAt: new Date(`2026-07-10T04:00:0${index}.000Z`),
+          }),
+          'created',
+        );
+        createdByScope.set(`${prepared.scope.tenantId}/${prepared.scope.pharmacyId}`, created.entry);
+      }
+
+      const stored = await pool.query<StoredReceptionRow>(
+        `SELECT tenant_id, pharmacy_id, reception_id, patient_id, accepted_at
+         FROM reception_entries
+         WHERE idempotency_key = $1
+         ORDER BY tenant_id, pharmacy_id`,
+        [idempotencyKey],
+      );
+      expect(stored.rows).toHaveLength(3);
+      for (const storedRow of stored.rows) {
+        const scopeKey = `${storedRow.tenant_id}/${storedRow.pharmacy_id}`;
+        const original = createdByScope.get(scopeKey);
+        const prepared = preparedScopes.find(
+          ({ scope }) => scope.tenantId === storedRow.tenant_id && scope.pharmacyId === storedRow.pharmacy_id,
+        );
+        if (original === undefined || prepared === undefined) {
+          throw new Error('stored reception row mixed or introduced an unexpected scope');
+        }
+        expect(storedRow.reception_id).toBe(original.receptionId);
+        expect(storedRow.patient_id).toBe(prepared.patient.patientId);
+      }
+
+      const reinstantiatedRepository = new PostgresReceptionRepository(pool);
+      for (const prepared of preparedScopes) {
+        const scopeKey = `${prepared.scope.tenantId}/${prepared.scope.pharmacyId}`;
+        const original = createdByScope.get(scopeKey);
+        if (original === undefined) {
+          throw new Error('created scope-isolation result was not recorded');
+        }
+        const existing = expectReceptionEntryResult(
+          await reinstantiatedRepository.create({
+            tenantId: prepared.scope.tenantId,
+            pharmacyId: prepared.scope.pharmacyId,
+            patient: prepared.patient,
+            idempotencyKey,
+            acceptedAt: new Date('2026-07-10T05:00:00.000Z'),
+          }),
+          'existing',
+        );
+        expect(existing.entry.receptionId).toBe(original.receptionId);
+        expect(existing.entry.patient.patientId).toBe(prepared.patient.patientId);
+        expect(existing.entry.acceptedAt).toBe(original.acceptedAt);
+      }
+      expect(new Set(Array.from(createdByScope.values(), (entry) => entry.receptionId)).size).toBe(3);
     });
   });
 });

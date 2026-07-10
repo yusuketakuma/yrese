@@ -6,6 +6,14 @@
 
 ## 2026-07-10
 
+### WP-4051 PostgreSQL reception idempotency durability/concurrency proof — local implementation complete, CI pending
+
+- WP-5003 / `000002_create_patient_and_reception_tables.sql` で既に実装済みの `(tenant_id, pharmacy_id, idempotency_key)` UNIQUE、transaction、scoped既存行返却について、test-only PostgreSQL integration proofを4件追加した。同一scope/key/同一patientの並行createはdistinct `acceptedAt`でも `created` + `existing` と1行・同一receptionId/保存acceptedAtへ収束し、別patientの並行createはwinner順序を仮定せず `created` + entryなし `idempotency_conflict` と1行へ収束することを固定した。
+- repositoryを新規生成した後の同一key/patient再送が元のreceptionId/acceptedAtを返すことと、同一opaque keyを `(tenantA, pharmacyA)` / `(tenantA, pharmacyB)` / `(tenantB, pharmacyA)` で独立に3行作成し、新規repositoryから各scopeの正しい受付だけを返すことも固定した。全fixtureは合成、keyは非PHI opaque値。sleep/barrier/retry/timing/winner順序への依存は置いていない。
+- `withMigratedSchema` のworkload poolだけを `poolMax` option対応にし、default 1を維持して新規並行2テストだけmax 2を指定。admin/cleanup poolと既存・再生成・scope分離テストはmax 1のまま。source/migration/schema/contracts/OpenAPI/CI/package/lock、fingerprint/hashは変更しておらず、WP-4054の `PLAN_INVALID_AS_WRITTEN` 裁定も維持した。
+- 最終ローカル検証: `pnpm -r typecheck`、`pnpm -r test`(API 161 PASS + PostgreSQL integration 9 expected SKIP)、`pnpm -r build` → `pnpm clean`、`pnpm check:openapi`、`pnpm check:secrets`、`pnpm check:deps`(high=0 / critical=0)、`pnpm check:sbom`(231 components)、`pnpm check:boundaries`、`pnpm check:calculation-purity`、`pnpm check:ssot-index`(172文書)、`pnpm test:scripts`、`git diff --check` はすべてPASS。
+- 独立 verifier は `APPROVED`。data-integrity/privacy reviewerも10/10、findingなしで `APPROVED`。read-only Opus最終reviewも `APPROVED` で、非blocking所見はLOWのtest-local `normalizeInstant` 重複とINFOのdefault `READ COMMITTED` semantics依存のみ。テストはwinnerを仮定せず、いずれもsource変更を要する指摘ではない。localは `TEST_DATABASE_URL` 不在のためDB接続・migration適用・DMLを実行していない。追加4件の実DB証明はCI未実行であり、CI greenを主張せずWP-4051はIN_PROGRESSのまま。stage / commit / pushなし。
+
 ### WP-4077 raw audit DynamoDB physical item envelope SSOT pin
 
 - WP-7001 M3a後のself-scanで、DB-005は監査event/dedupe/TIPのkey・連番・minimum pointer/TIP属性を定める一方、raw event完全属性、DynamoDB `S`/`N`/`M`物理型、nested表現、optional omit/`NULL`、item schema version/discriminator、timestamp retry semantics、item別PHI/encryption、golden/decoder互換を未確定のまま残していることを確認。raw codecへ進むと永続契約の推測実装になるため `SSOT_UPDATE_REQUIRED` と判定した。
