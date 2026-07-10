@@ -2,12 +2,45 @@ import { describe, expect, it } from "vitest";
 import { evidenceId } from "@yrese/shared-kernel";
 
 import {
+  collectCalculationTraceEvidenceIds,
   createCalculationTrace,
   createLegalTrace,
+  isCanonicalTraceIntegerString,
+  isPhiLikeIntermediateValueKey,
   type CalculationInputsSummary,
   type CalculationTraceStep,
   type EvidenceRef,
 } from "./index.js";
+
+describe("isPhiLikeIntermediateValueKey", () => {
+  it("flags PHI-like keys (case-insensitive) as the single source of truth for trace/contracts", () => {
+    for (const key of ["patientId", "PatientName", "address", "phone", "TEL", "email", "free_text", "freetext", "memo"]) {
+      expect(isPhiLikeIntermediateValueKey(key)).toBe(true);
+    }
+  });
+
+  it("accepts non-PHI calculation keys", () => {
+    for (const key of ["basePoints", "multiplier", "rate", "subtotal"]) {
+      expect(isPhiLikeIntermediateValueKey(key)).toBe(false);
+    }
+  });
+});
+
+describe("structured calculation trace integer strings", () => {
+  it.each(["0", "1", "-1", "123456789012345678901234567890"])(
+    "accepts canonical bigint string %s",
+    (value) => {
+      expect(isCanonicalTraceIntegerString(value)).toBe(true);
+    },
+  );
+
+  it.each(["", " ", "NaN", "Infinity", "47.5", "1e3", "+1", "01", "-0"])(
+    "rejects non-canonical integer string %j",
+    (value) => {
+      expect(isCanonicalTraceIntegerString(value)).toBe(false);
+    },
+  );
+});
 
 const officialEvidence: EvidenceRef = {
   evidenceId: evidenceId("evidence:official:dispensing-fee:v1"),
@@ -90,6 +123,7 @@ describe("createCalculationTrace", () => {
     expect(Object.isFrozen(trace.steps)).toBe(true);
     expect(Object.isFrozen(trace.steps[0])).toBe(true);
     expect(Object.isFrozen(trace.steps[0]?.evidenceRefs)).toBe(true);
+    expect(Object.isFrozen(trace.evidenceIds)).toBe(true);
     expect(Object.isFrozen(trace.inputsSummary.ids)).toBe(true);
   });
 
@@ -310,6 +344,37 @@ describe("createCalculationTrace", () => {
         ],
       }),
     ).toThrow(/PHI-like/);
+  });
+
+  it.each([
+    ["resultPoints", "NaN"],
+    ["resultPoints", "47.5"],
+    ["resultPoints", "1e3"],
+    ["resultPoints", "01"],
+    ["resultYen", "Infinity"],
+    ["resultYen", "+1"],
+    ["resultYen", "-0"],
+  ] as const)("rejects non-canonical %s value %j", (field, value) => {
+      expect(() =>
+        createCalculationTrace({
+          inputsSummary,
+          masterVersion: "2026.04",
+          calculationRuleVersion: "draft-001",
+          steps: [claimStep({ [field]: value })],
+        }),
+      ).toThrow(new RegExp(`${field} must be a canonical base-10 integer string`));
+    });
+
+  it("collects a unique evidence-id set from step and rounding evidence", () => {
+    expect(
+      collectCalculationTraceEvidenceIds([
+        {
+          evidenceRefs: [{ evidenceId: "EVD-A" }, { evidenceId: "EVD-A" }],
+          rounding: { evidenceId: "EVD-B" },
+        },
+        { evidenceRefs: [{ evidenceId: "EVD-C" }] },
+      ]),
+    ).toEqual(["EVD-A", "EVD-B", "EVD-C"]);
   });
 
   it("allows non-claim-affecting steps without evidence refs", () => {

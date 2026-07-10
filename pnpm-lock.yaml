@@ -135,6 +135,9 @@ importers:
       '@yrese/shared-kernel':
         specifier: workspace:*
         version: link:../shared-kernel
+      '@yrese/trace':
+        specifier: workspace:*
+        version: link:../trace
       zod:
         specifier: ^4.0.0
         version: 4.4.3

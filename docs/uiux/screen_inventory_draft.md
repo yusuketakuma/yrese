@@ -38,7 +38,7 @@ scope は実装済み `@yrese/shared-kernel` permissions.ts(9ab039e)の `resourc
 | SCR-009 | PMH確認結果 | 医療費助成確認状態 | PENDING_PMH_REVERIFY | public-expense:read | U3 | BLOCKED(PMH仕様) |
 | SCR-010 | 調剤入力 | 調剤内容・変更記録 | 薬剤師確認前 / 残薬調整記録 | dispensing:write | U4 | 未実装 |
 | SCR-011 | 算定結果 | 点数・負担金の提示 | 仮算定/確定・警告・BLOCKER | calculation:read | U3 | 未実装(算定エンジン BLOCKED) |
-| SCR-012 | calculation_trace 表示 | 金額根拠の説明可能性 | マスター版・ルール版・evidence | calculation:read | U3 | 型実装済み(@yrese/trace ddc06a1)。画面未実装 |
+| SCR-012 | calculation_trace 表示 | 金額根拠の説明可能性 | マスター版・ルール版・evidence | calculation:read | U3 | WP-3011aでfixture-only read contract/viewer component実装済み。live endpoint・tenant/permission・route結線はWP-3011b/c待ちでBLOCKED |
 | SCR-013 | 警告・エラー・BLOCKER表示(横断) | 重要度別警告(UIX-001 §5) | BLOCKER/CRITICAL/WARNING/INFO | — (横断) | U4 | 未実装 |
 | SCR-014 | 薬剤師確認 | 専門的判断の記録 | 確認者・日時・確認前後区別 | dispensing:confirm | U4 | 未実装 |
 | SCR-015 | 疑義照会記録 | 照会内容・回答の記録 | 照会中 / 回答済み / 処方訂正 | prescription:write【要確認】 | U3 | 未実装 |

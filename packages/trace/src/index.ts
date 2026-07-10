@@ -143,14 +143,40 @@ const traceDateKinds = new Set<TraceDateRefKind>(TRACE_DATE_REF_KINDS);
 const stepStatuses = new Set<CalculationTraceStepStatus>(CALCULATION_TRACE_STEP_STATUSES);
 const legalTraceTargetTypes = new Set<LegalTraceTargetType>(LEGAL_TRACE_TARGET_TYPES);
 const phiLikeIntermediateValueKeyPattern = /(patient|name|address|phone|tel|email|free_?text|memo)/i;
+const canonicalTraceIntegerPattern = /^(?:0|[1-9]\d*|-[1-9]\d*)$/;
 
 export function isEvidenceSourceType(value: string): value is EvidenceSourceType {
   return sourceTypes.has(value as EvidenceSourceType);
 }
 
+/**
+ * intermediateValues のキーが PHI 様(患者氏名・住所・電話・自由記述など)かを判定する。
+ *
+ * calculation_trace の PHI 排除規律(SEC-004 / API-007 §5)の**唯一の判定源**。
+ * 読取契約側(@yrese/contracts)はこの述語を再利用し、正規表現を再実装しない
+ * (COMMON_MODULE_DUPLICATION_BLOCKED)。
+ */
+export function isPhiLikeIntermediateValueKey(key: string): boolean {
+  return phiLikeIntermediateValueKeyPattern.test(key);
+}
+
+/**
+ * Returns whether a structured trace result is a canonical base-10 bigint string.
+ * This remains in @yrese/trace so runtime construction and read contracts cannot drift.
+ */
+export function isCanonicalTraceIntegerString(value: string): boolean {
+  return canonicalTraceIntegerPattern.test(value);
+}
+
 function assertNonEmptyString(value: unknown, label: string): void {
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new RangeError(`${label} must be a non-empty string`);
+  }
+}
+
+function assertCanonicalTraceIntegerString(value: unknown, label: string): asserts value is string {
+  if (typeof value !== "string" || !isCanonicalTraceIntegerString(value)) {
+    throw new RangeError(`${label} must be a canonical base-10 integer string`);
   }
 }
 
@@ -238,7 +264,7 @@ function freezeIntermediateValues(values: Readonly<Record<string, string>>): Rea
   const frozenValues: Record<string, string> = {};
   for (const [key, value] of Object.entries(values)) {
     assertNonEmptyString(key, "CalculationTraceStep intermediateValues key");
-    if (phiLikeIntermediateValueKeyPattern.test(key)) {
+    if (isPhiLikeIntermediateValueKey(key)) {
       throw new RangeError("CalculationTraceStep intermediateValues must not include PHI-like keys");
     }
     if (typeof value !== "string") {
@@ -270,10 +296,10 @@ function freezeStep(step: CalculationTraceStep): CalculationTraceStep {
     assertNonEmptyString(step.formula, "CalculationTraceStep formula");
   }
   if (step.resultPoints !== undefined) {
-    assertNonEmptyString(step.resultPoints, "CalculationTraceStep resultPoints");
+    assertCanonicalTraceIntegerString(step.resultPoints, "CalculationTraceStep resultPoints");
   }
   if (step.resultYen !== undefined) {
-    assertNonEmptyString(step.resultYen, "CalculationTraceStep resultYen");
+    assertCanonicalTraceIntegerString(step.resultYen, "CalculationTraceStep resultYen");
   }
   if (step.stepStatus !== undefined && !stepStatuses.has(step.stepStatus)) {
     throw new RangeError("CalculationTraceStep stepStatus is not supported");
@@ -295,8 +321,13 @@ function freezeStep(step: CalculationTraceStep): CalculationTraceStep {
   });
 }
 
-function collectEvidenceIds(steps: readonly CalculationTraceStep[]): readonly EvidenceId[] {
-  const ids = new Set<EvidenceId>();
+export function collectCalculationTraceEvidenceIds<T extends string>(
+  steps: readonly {
+    readonly evidenceRefs: readonly { readonly evidenceId: T }[];
+    readonly rounding?: { readonly evidenceId: T } | undefined;
+  }[],
+): readonly T[] {
+  const ids = new Set<T>();
   for (const step of steps) {
     for (const ref of step.evidenceRefs) {
       ids.add(ref.evidenceId);
@@ -321,7 +352,7 @@ export function createCalculationTrace(input: CreateCalculationTraceInput): Calc
     steps,
     warnings: freezeArray(input.warnings ?? []),
     blockers: freezeArray(input.blockers ?? []),
-    evidenceIds: collectEvidenceIds(steps),
+    evidenceIds: collectCalculationTraceEvidenceIds(steps),
   });
 }
 

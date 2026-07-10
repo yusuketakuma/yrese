@@ -8,6 +8,13 @@
 
 ## 2026-07-11
 
+### WP-3011a fixture-first calculation_trace read contract/viewer foundation — completed
+
+- APPROVED API-007/CAL-008/QUA-007を根拠に、`@yrese/contracts`へ`@yrese/trace`のread-only zod写像を追加した。enumはtrace const tupleを再利用し、canonical base-10 `resultPoints` / `resultYen` predicateとstep/rounding由来evidence-id collectorをtrace側の単一正本としてruntime constructorとcontractで共有した。contractはevidenceIdsの欠落・余剰・重複を拒否する。
+- `CalculationTraceView`は合成fixtureだけを表示し、evidence/rounding gap、blockers、未知source/statusをfail-closedに明示する。EvidenceRef URL、PHI-like intermediate key、外部link/log/sendは拒否/不実装。endpoint、permission、tenant binding、live trace、routeは追加していない。
+- trace 37、contracts 86、web 99、workspace typecheck/test、web/full build、OpenAPI/boundaries/secrets/diff checkがPASS。independent verifier、API-contract、medical-safety、privacy、frontend/accessibility reviewerはfixture-only foundationをAPPROVEDした。
+- parent WP-3011はlive screenとして完了扱いせず、WP-3011b(intermediate typed semantics / producer trust boundary)とWP-3011c(endpoint/auth/tenant/route/UI-flow)を具体的解除条件付きBLOCKEDへ分離。rollbackは本subtaskのcontracts/trace/web/package/lock差分のatomic revert。
+
 ### WP-4078 direct audit intent fingerprint single-snapshot/Proxy TOCTOU hardening — completed
 
 - AGT-018のread-only mapper / spec guardianがcurrent diffをAPPROVED SSOTへ再照合し、Codex root sole maintainerがdirect append fingerprintを単一frozen descriptor snapshotへ変更した。outer version-first、v1 deep copy、canonical `wallClock` exactly once、同一snapshotによるhash/domain validationでProxy/mutable inputのhash-A/validate-Bを除去した。

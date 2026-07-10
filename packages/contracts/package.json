@@ -8,6 +8,7 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./calculation-trace": "./src/calculation-trace.ts",
     "./error": "./src/error.ts",
     "./health": "./src/health.ts",
     "./openapi": "./src/openapi.ts",
@@ -22,6 +23,7 @@
   },
   "dependencies": {
     "@yrese/shared-kernel": "workspace:*",
+    "@yrese/trace": "workspace:*",
     "zod": "^4.0.0"
   },
   "devDependencies": {
