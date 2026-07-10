@@ -2,15 +2,15 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.18はWP-9002-W7B ten-reviewer approvalを経てAPPROVED・landing pending。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.18はWP-9002-W7B ten-reviewer approvalを経てAPPROVED・landed済み。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-11
 
-### WP-9002-W7B ACC-007 metadata — finalized / landing pending
+### WP-9002-W7B ACC-007 metadata — completed / LANDED
 
-- clean `4b99ab7`でACC-007を実装・台帳へ照合し、DailyCashClosing/CashDrawerSessionのruntime/direct testがないことを確認。単独exact5をpre-plan APPROVED_WITH_PINS。本文/承認/3 questions不変、target173/83/90、non-target172 `16991/7de30c7d…`。empty blocker/tests/evidenceはdocument-level nonclaimで、accounting/claims/LOCAL_ONLY/POS/production readinessを解除しない。10 role/full regression gates PASS後にIDX v0.4.18をAPPROVED/effective 2026-07-11へfinalize。exact5 landing pending。
+- clean `4b99ab7`でACC-007を実装・台帳へ照合し、DailyCashClosing/CashDrawerSessionのruntime/direct testがないことを確認。単独exact5をpre-plan APPROVED_WITH_PINS。本文/承認/3 questions不変、target173/83/90、non-target172 `16991/7de30c7d…`。empty blocker/tests/evidenceはdocument-level nonclaimで、accounting/claims/LOCAL_ONLY/POS/production readinessを解除しない。10 role/full regression gates PASS後にIDX v0.4.18をAPPROVED/effective 2026-07-11へfinalize。commit `e8477c9`をorigin/mainへpushしLANDED。
 
 ### WP-9002-W7A SEC-003 metadata — completed / LANDED
 

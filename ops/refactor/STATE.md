@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002 W7B ACC-007 metadata finalized; landed inventory 173/84/89, target 173/83/90.
-- Current task: run post-finalization exact/docs gates, then exact5 commit and push.
+- Current phase: WP-9002 W7B ACC-007 metadata landed at inventory 173/83/90.
+- Current task: fresh read-only mapping/pre-plan of the next safe metadata or semantic reconciliation slice.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -52,4 +52,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W7A landing checkpoint: commit `464f454` pushed to `origin/main`; inventory 173/84/89; exact5; SEC-003 body/legacy approval and non-target fingerprint unchanged; ten reviews/full gates PASS; no security/privacy/medical/DB/KMS/code/external/production/deployment change.
 - W7B review checkpoint: baseline `4b99ab7`; ACC-007 + index/Plans/State/this file exact5; body `1383/3fc2b568…`; target inventory 173/83/90; non-target `172/16991/7de30c7d…`; pre-plan APPROVED_WITH_PINS; IDX v0.4.18 PROPOSED/null. No runtime/direct test or accounting readiness claim.
 - W7B finalization checkpoint: ten reviews/full regression gates PASS; IDX v0.4.18 APPROVED/effective 2026-07-11; ACC-007 legacy approval unchanged; inventory 173/83/90; no runtime/direct test or accounting readiness claim.
-- Next action: post-finalization exact/docs gates and exact5 commit/push, then three-ledger landing record. Six security docs, PRD-003, safety, Phase0-gate, claim, regulatory and receipt docs remain excluded pending semantic/human review.
+- W7B landing checkpoint: commit `e8477c9` pushed to `origin/main`; inventory 173/83/90; exact5; ACC-007 body/legacy approval/questions and non-target fingerprint unchanged; ten reviews/full regression gates PASS; no accounting/claim/API/DB/code/external/production/deployment change.
+- Next action: complete this three-ledger record, then fresh next-wave mapping/pre-plan. Six security docs, PRD-003, safety, Phase0-gate, claim, regulatory and receipt docs remain excluded pending semantic/human review.

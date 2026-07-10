@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W7A + WP-9005/9006 LANDED、W7B FINALIZED / LANDING PENDING、83 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W7B + WP-9005/9006 LANDED、83 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -617,7 +617,7 @@ validation_results: FINAL PASS before landing — exact12/staged0; inventory173/
 finalization_record: IDX-001 v0.4.6 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and eight W5A approvals appended; API targets unchanged from approved review candidate and API-008 remains PROPOSED
 landing_required: commit_and_push after finalization
 landing_record: commit 74666c9 `WP-9002-W5A: normalize API metadata` pushed successfully to origin/main (134864c..74666c9); inventory 173/118/55; exact 12 paths; eight API bodies/preserved/amendment/blocker states and 165 non-target set unchanged; all eight reviewer/full validation gates APPROVED; no code, DB, external, deployment, or destructive change
-overall_state: W7A and WP-9005/9006 LANDED; W7B FINALIZED / LANDING PENDING; WP-9002 remains IN_PROGRESS with 83 incomplete SSOT documents
+overall_state: W7B and WP-9005/9006 LANDED; WP-9002 remains IN_PROGRESS with 83 incomplete SSOT documents and the next wave requires fresh mapping/pre-plan
 ```
 
 #### WP-9002-W5B architecture legacy metadata — LANDED
@@ -813,7 +813,7 @@ landing_record: commit 464f454 `WP-9002-W7A: normalize threat model metadata` pu
 state: LANDED; WP-9002 remains IN_PROGRESS and the next wave starts only after fresh read-only mapping/pre-plan
 ```
 
-#### WP-9002-W7B ACC-007 legacy metadata — FINALIZED / LANDING PENDING
+#### WP-9002-W7B ACC-007 legacy metadata — LANDED
 
 ```yaml
 baseline_commit: 4b99ab7
@@ -832,7 +832,8 @@ review_results: all ten required roles APPROVED; no actionable findings; reviews
 validation_results: FINAL PASS before landing — exact5/staged0; body/preserved fields/3 questions byte-identical and all23; inventory173/83/90; non-target172/16991/7de30c7d4639763749d4e92475aa05b8ccaa72d8870d38f445869e285ba23a9c; workspace typecheck/test/build PASS; audit182, contracts86, web99, API161 plus 9 expected PostgreSQL skips; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates; no direct ACC runtime test exists
 finalization_record: IDX-001 v0.4.18 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and ten W7B approvals appended; ACC-007 legacy approval/status/version unchanged
 landing_required: exact5 commit_and_push
-state: FINALIZED / LANDING PENDING
+landing_record: commit e8477c9 `WP-9002-W7B: normalize daily closing metadata` pushed successfully to origin/main (4b99ab7..e8477c9); inventory 173/83/90; exact5; ACC-007 body/legacy approval/3 questions and 172 non-target rows unchanged; ten reviews/full regression gates APPROVED; no accounting/claim/API/DB/code/external/production/deployment change
+state: LANDED; WP-9002 remains IN_PROGRESS and the next wave starts only after fresh read-only mapping/pre-plan
 ```
 
 - [x] WP-9003 repository reconciliation state pack(Codex-only、resume-safe、docs-only)
