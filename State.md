@@ -8,6 +8,13 @@
 
 ## 2026-07-11
 
+### WP-3010a shared-kernel mode-guard projection foundation — completed
+
+- ARC-001とshared-kernelの3 guardだけを判定源に、全5 `SystemMode`の禁止・未禁止、禁止理由、復旧後導線、仮状態凡例を表示するfixture-only componentを追加した。未禁止は`data-mode-guard="not-prohibited"`かつ「実行可否は未確定」とし、権限・資格・evidence・`isClaimable`・個別接続/業務条件を明示する。
+- online claimをgeneric external-confirmation labelから除外し、CLOUD_DEGRADEDを全面許可にせず、RECOVERY_SYNCを物理的接続断と誤断定しない。非LOCALの`PROVISIONAL_STATUSES`は「候補」とし、LOCAL_ONLYだけARC-001の必須付与を表示。PHI、network、API、DB、auth、請求ロジック変更なし。
+- web 99、focused mode 7、web typecheck/build、boundaries/secrets/diff checkがPASS。independent verifier、medical-safety、privacy、frontend/accessibility specialistはpresentational foundationをAPPROVEDした。
+- parent WP-3010はfull SCR-026として完了扱いせず、WP-3010b(28操作/16禁止・live mode・件数contract/human review)とWP-3010c(route/browser/UI-flow)を解除条件付きBLOCKEDへ分離。rollbackはcomponent/testと`MODE_LABELS` exportの3-file revert。
+
 ### WP-3011a fixture-first calculation_trace read contract/viewer foundation — completed
 
 - APPROVED API-007/CAL-008/QUA-007を根拠に、`@yrese/contracts`へ`@yrese/trace`のread-only zod写像を追加した。enumはtrace const tupleを再利用し、canonical base-10 `resultPoints` / `resultYen` predicateとstep/rounding由来evidence-id collectorをtrace側の単一正本としてruntime constructorとcontractで共有した。contractはevidenceIdsの欠落・余剰・重複を拒否する。

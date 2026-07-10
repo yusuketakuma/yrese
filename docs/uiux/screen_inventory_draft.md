@@ -52,7 +52,7 @@ scope は実装済み `@yrese/shared-kernel` permissions.ts(9ab039e)の `resourc
 | SCR-023 | マスター更新管理 | 版・有効日・検証状態 | PENDING_MASTER_VALIDATION / 版差異 | master:admin | U3 | ルート `/masters` shell 済み |
 | SCR-024 | 外部連携状態 | 各 Adapter の稼働状態 | EXTERNAL_DEGRADED 詳細 | sync:read | U2 | 未実装 |
 | SCR-025 | 同期状態 | Cloud/Edge 同期・キュー | バックログ / queue age / 失敗 | sync:read | U2 | ルート `/sync-status` shell 済み |
-| SCR-026 | LOCAL_ONLY モード画面 | 可能/不可能操作の明示 | 禁止操作一覧+理由 / 仮状態件数 | — (横断) | U4 | SystemModeBadge のみ実装済み。専用画面未実装 |
+| SCR-026 | LOCAL_ONLY モード画面 | 可能/不可能操作の明示 | 禁止操作一覧+理由 / 仮状態件数 | — (横断) | U4 | WP-3010aで3 shared guardのfixture-only禁止/未禁止基盤実装済み。全28操作/16禁止・live mode・件数・routeはWP-3010b/c待ちでBLOCKED |
 | SCR-027 | RECOVERY_SYNC 画面 | 要再検証一覧・競合解決 | 未解消件数 / CONFLICT_REQUIRES_HUMAN_REVIEW | sync:confirm【要確認】 | U4 | 未実装 |
 | SCR-028 | 監査ログ | 操作証跡の閲覧 | 改ざん検知状態 | audit-log:read | U2 | 未実装 |
 | SCR-029 | 管理者・権限管理 | ユーザー・ロール・薬局設定 | 権限変更履歴 | user:admin, tenant:admin | U3 | ルート `/admin` shell 済み |

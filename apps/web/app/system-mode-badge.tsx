@@ -1,6 +1,6 @@
 import type { SystemMode } from "@yrese/shared-kernel";
 
-const MODE_LABELS: Record<SystemMode, string> = {
+export const MODE_LABELS: Record<SystemMode, string> = {
   NORMAL: "通常稼働",
   EXTERNAL_DEGRADED: "外部システム障害",
   CLOUD_DEGRADED: "クラウド障害",
