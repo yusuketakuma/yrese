@@ -8,6 +8,11 @@
 
 ## 2026-07-11
 
+### WP-9003 repository reconciliation state pack — completed
+
+- 未追跡`ops/refactor` 7文書をAPPROVED AGT-018のCodex-only運用、landed 4 commits、current validation、terminal task split、high-risk/rollback/human gate、WP-9002 173/139/34 inventoryとW3 next actionへ同期した。旧dual-lane / agmsg / model gate / SSOT 172 / commit_requestはactive stateから除去し、historical provenanceだけを既存Plans/Stateに保持した。
+- `ops/refactor/STATE.md`を単独resume entrypointとし、current phase、last completed、blockers、validation、Git resume checks、next actionを明記。product code、DB、migration、external、deploy変更なし。independent verifierとdocs gates PASS後にCodex rootがexact 9 pathsをlandingする。rollbackはWP-9003 docs commitのrevert。
+
 ### WP-4080 production plaintext Web API base fail-closed hardening — completed
 
 - 最終security scanで、WP-4067のresolverがproductionを含む全environmentでabsolute HTTPを受理し、患者検索・受付データを平文送受信し得るHIGHを確認。APPROVED SEC-003の「LAN内もTLS必須」を上位根拠にCodex-native pre-planをAPPROVEDし、WP-4067履歴を改変せずfollow-up化した。

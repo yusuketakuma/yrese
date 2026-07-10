@@ -384,6 +384,11 @@ landing_record: commit ff7518f `WP-9002-W2: normalize module metadata` pushed su
 overall_state: WP-9002 remains [~] / IN_PROGRESS with 139 incomplete SSOT documents; W1 and W2 are LANDED, W3 has not started, and a new read-only mapping and pre-plan review are required before any W3 edit
 ```
 
+- [x] WP-9003 repository reconciliation state pack(Codex-only、resume-safe、docs-only)
+  - Scope: `ops/refactor/{STATE,CODE_MAP,CHANGE_LOG,VERIFICATION,HIGH_RISK_CHANGES,PENDING_DECISIONS,SCAN_LOG}.md`, `Plans.md`, `State.md` only.
+  - Acceptance / evidence: AGT-018をactive governanceとし、landed commits、current validation、terminal task split、high-risk rollback/human gate、WP-9002 inventory/next actionを同期。旧dual-lane / agmsg / model gate / SSOT 172 / commit_request文言をactive stateから除去し、`ops/refactor/STATE.md`だけで安全に再開可能にした。
+  - Verification: independent verifier、`pnpm check:ssot-index`(173)、scripts/secrets/boundaries/diff check。product code、DB、migration、external、deploy変更なし。rollbackはWP-9003 docs commitのrevert。
+
 ## Phase 0: 調査・計画(ドキュメント)
 
 - [x] WP-0001 Phase 0 計画書作成(docs/plan/phase0_plan.md)— 人間承認済み(「次に進む」)
