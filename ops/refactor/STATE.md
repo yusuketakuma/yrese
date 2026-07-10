@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9006 PRD-001/002 AGT-018 routing compatibility finalized; landed inventory 173/87/86, target 173/85/88.
-- Current task: run post-finalization exact/docs gates, then exact6 commit and push.
+- Current phase: WP-9006 PRD-001/002 AGT-018 routing compatibility landed at inventory 173/85/88.
+- Current task: fresh read-only mapping/pre-plan of the next safe metadata or semantic reconciliation slice.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -46,4 +46,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W6C landing checkpoint: commit `8eb3e98` pushed to `origin/main`; inventory 173/87/86; exact6; target bodies/legacy approvals and non-target fingerprint unchanged; nine reviews/full gates PASS; no calculation/claim/evidence/code/DB/external/production/deployment change.
 - WP-9006 review checkpoint: baseline `47154bd`; exact6 PRD-001/002 + index/Plans/State/this file; only two active routing lines may change; target inventory 173/85/88; non-target `171/17183/037b3f5b…`; pre-plan APPROVED_WITH_PINS; targets/IDX v0.4.16 PROPOSED/null. PRD-003 remains excluded for risk-state semantic/human review.
 - WP-9006 finalization checkpoint: two review findings corrected; ten reviews/full gates PASS; PRD-001/002 v0.1.1 and IDX v0.4.16 APPROVED/effective 2026-07-11; inventory 173/85/88; WP-0019/0038 remain pending and no scope/readiness activation.
-- Next action: post-finalization exact/docs gates and exact6 commit/push, then three-ledger landing record. PRD-003, safety, Phase0-gate, claim, regulatory and receipt docs remain excluded pending semantic/human review.
+- WP-9006 landing checkpoint: commit `770590a` pushed to `origin/main`; exact6; inventory 173/85/88; ten reviews/full gates PASS; no scope, claim, API, code, DB, external, production, deployment or destructive change.
+- Next action: complete this three-ledger record, then fresh next-wave mapping/pre-plan. PRD-003, safety, Phase0-gate, claim, regulatory and receipt docs remain excluded pending semantic/human review.

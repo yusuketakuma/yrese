@@ -2,15 +2,15 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.16とPRD-001/002はWP-9006 ten-reviewer approvalを経てAPPROVED・landing pending。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.16とPRD-001/002はWP-9006 ten-reviewer approvalを経てAPPROVED・landed済み。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-11
 
-### WP-9006 product scope routing compatibility — finalized / landing pending
+### WP-9006 product scope routing compatibility — completed / LANDED
 
-- clean `47154bd`でPRD-001/002/003を監査し、3件metadata-only案を却下。PRD-003はrisk-state semantic/human authority WPへ分離し、PRD-001/002だけをexact2 routing-line amendment + 23-field completionとしてpre-plan APPROVED_WITH_PINS。M1-M12/N1-N14、claim stop、open questions/blockers/reactivation/human gates不変。orphan landing ledger/reviewer-set findingsを修正し、target173/85/88、non-target171 `17183/037b3f5b…`、10 role/full gates PASS。PRD-001/002 v0.1.1とIDX v0.4.16をAPPROVED/effective 2026-07-11へfinalize。exact6 landing pending。
+- clean `47154bd`でPRD-001/002/003を監査し、3件metadata-only案を却下。PRD-003はrisk-state semantic/human authority WPへ分離し、PRD-001/002だけをexact2 routing-line amendment + 23-field completionとしてpre-plan APPROVED_WITH_PINS。M1-M12/N1-N14、claim stop、open questions/blockers/reactivation/human gates不変。orphan landing ledger/reviewer-set findingsを修正し、target173/85/88、non-target171 `17183/037b3f5b…`、10 role/full gates PASS。PRD-001/002 v0.1.1とIDX v0.4.16をAPPROVED/effective 2026-07-11へfinalize。commit `770590a`をorigin/mainへpushしLANDED。
 
 ### WP-9002-W6C CAL-010/011 metadata — completed / LANDED
 

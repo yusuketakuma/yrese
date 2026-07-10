@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W6C + WP-9005 LANDED、WP-9006 FINALIZED / LANDING PENDING、85 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W6C + WP-9005/9006 LANDED、85 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -617,7 +617,7 @@ validation_results: FINAL PASS before landing — exact12/staged0; inventory173/
 finalization_record: IDX-001 v0.4.6 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and eight W5A approvals appended; API targets unchanged from approved review candidate and API-008 remains PROPOSED
 landing_required: commit_and_push after finalization
 landing_record: commit 74666c9 `WP-9002-W5A: normalize API metadata` pushed successfully to origin/main (134864c..74666c9); inventory 173/118/55; exact 12 paths; eight API bodies/preserved/amendment/blocker states and 165 non-target set unchanged; all eight reviewer/full validation gates APPROVED; no code, DB, external, deployment, or destructive change
-overall_state: W6C and WP-9005 LANDED; WP-9006 FINALIZED / LANDING PENDING; WP-9002 remains IN_PROGRESS with 85 incomplete SSOT documents
+overall_state: W6C and WP-9005/9006 LANDED; WP-9002 remains IN_PROGRESS with 85 incomplete SSOT documents and the next wave requires fresh mapping/pre-plan
 ```
 
 #### WP-9002-W5B architecture legacy metadata — LANDED
@@ -829,7 +829,7 @@ landing_record: commit 2b26c06 `WP-9005: align quality governance with AGT-018` 
 state: LANDED
 ```
 
-- [~] WP-9006 product scope AGT-018 routing compatibility amendment(FINALIZED / LANDING PENDING、P1)
+- [x] WP-9006 product scope AGT-018 routing compatibility amendment(LANDED、commit 770590a)
 
 ```yaml
 work_package_id: WP-9006
@@ -852,7 +852,8 @@ review_results: all ten required roles APPROVED after moving the orphan WP-9004a
 validation_results: FINAL PASS before landing — exact6/staged0; exactly two intended body lines changed and all M1-M12/N1-N14/open questions/blockers/reactivation conditions preserved; all23; inventory173/85/88; non-target171/17183/037b3f5b8bf8a7e88a38fc5de03de2dcf9bf07d2988dbef44c34826c95311e98; shared-kernel23 and workspace typecheck/test/build PASS; audit182, contracts86, web99, API161 plus 9 expected PostgreSQL skips; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS
 finalization_record: PRD-001/002 v0.1.1 and IDX-001 v0.4.16 APPROVED with approved_at/effective_from 2026-07-11; prior human approvals historical only; WP-9001 direct cutover plus ten WP-9006 reviews recorded; no scope decision adopted
 landing_required: exact6 commit_and_push
-state: FINALIZED / LANDING PENDING
+landing_record: commit 770590a `WP-9006: align product scope routing with AGT-018` pushed successfully to origin/main (47154bd..770590a); exact6; inventory 173/85/88; ten reviews/full gates APPROVED; no scope, claim, API, code, DB, external, production, deployment or destructive change
+state: LANDED
 ```
 
 ## Phase 0: 調査・計画(ドキュメント)
