@@ -34,11 +34,12 @@
 - branded ID factoryが許す `#` をcodec境界で全補間IDから拒否し、blank/control/wrong type、BigInt前のASCII文法、zero/max+1/20桁overflow、malformed marker/width/eventIdを入力値非echoの固定errorへ収束。seq=1/maxのexact golden、数値順=辞書順、`DEDUPE# < SEQ# < TIP`、actor非関与を74テストで固定した。
 - 検証: codec 74/74、API 161 PASS + PostgreSQL integration 5 expected SKIP、audit 105/105、全workspace typecheck/test、API/full build、`pnpm check:openapi`、boundaries、secrets、deps(high=0 / critical=0)、SBOM(231 components)、script harness、`pnpm install --frozen-lockfile`、diff-checkがPASS。独立 verifier 10/10 と read-only Opus最終reviewはいずれも `APPROVED`、blocker/HIGH findingなし。AWS SDK/table/network/write、DynamoDB Local、DB操作/migration、genesis/state判断、raw item hydrate、TWI/CAS/retry/verifyは未変更でM3へHOLD。
 
-### WP-4076 reception idempotency SSOT-plan contradiction cleanup
+### WP-4076 reception idempotency SSOT-plan contradiction cleanup — completed
 
 - self-scanで、WP-4054 が server 採番の `acceptedAt` / 導出業務日付を fingerprint 対象にして同一 key + 同一 `patientId` の正当再送を409へ変える計画となっており、APPROVED API-006 v0.2.0 の200既存返却契約と矛盾することを確認した。API-006 payload 範囲の WP-4051 要件は in-memory / PostgreSQL の両実装で充足済み。
 - fable5 read-only裁定 `CHANGES_REQUIRED` に従い、WP-4054 を `PLAN_INVALID_AS_WRITTEN` として無効化し、清算用WP-4076を追加。将来の fingerprint は API-006 APPROVED改版 + fable5 plan承認の二重gate、client送信内容限定、`acceptedAt` / `receptionId` / 導出 `businessDate` 恒久除外、PHI生値のhash input/storage/log禁止を必須pinとした。
-- ledger-only変更。コード・migration・API契約・OpenAPI・package/lockは変更しておらず、`git diff --check` はPASS。stage / commit / push、DB操作、外部送信は行っていない。
+- ledger-only変更を commit `a5eb9a8` としてpush。コード・migration・API契約・OpenAPI・package/lockは変更しておらず、DB操作も行っていない。
+- GitHub Actions run `29058471602` / job `86254995220` はsuccessし、typecheck / test / build / OpenAPI / secrets / deps / SBOM / boundaries / calculation purity / SSOTを含む全stepがgreen。WP-4076のsole deliverableであるWP-4054の無効化と安全な後続gateの台帳化は完了した。
 
 ### WP-4075 reception patient identity single-source enforcement
 
