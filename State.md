@@ -2,16 +2,16 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.8はWP-9002-W5C nine-reviewer approvalを経てAPPROVED・landing pending。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.8はWP-9002-W5C nine-reviewer approvalを経てAPPROVED・landed済み。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-11
 
-### WP-9002-W5C adapters metadata — finalized / landing pending
+### WP-9002-W5C adapters metadata — completed / LANDED
 
 - clean `34d0a6e`からremaining 108件を再scanし、domain/database/adapters/mastersを比較。最小coherent pairのADP-001/002をexact6 W5Cに選定し、pre-planをAPPROVED_WITH_PINS。target173/106/67、対象外171 hash `6d777f91…53b346`。本文/人間承認/個別gateを保持し、ADP-002の共通blockerは本文T3のdocument-level umbrellaに限定。
-- independent/spec/data-integrity/architect/API/test/security/privacy/medicalの9 roleがAPPROVED。workspace typecheck/test/buildと全gateがPASS。IDX v0.4.8を旧provenance保持+9承認でAPPROVED finalizationし、exact6 landing待ち。コード、DB、external、deploy変更なし。
+- independent/spec/data-integrity/architect/API/test/security/privacy/medicalの9 roleがAPPROVED。workspace typecheck/test/buildと全gateがPASS。IDX v0.4.8を旧provenance保持+9承認でAPPROVED finalizationし、exact6をcommit `86319a4`として`origin/main`へpush。コード、DB、external、deploy変更なし。
 
 ### WP-9002-W5B architecture metadata — completed / LANDED
 
