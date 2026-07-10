@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9004a SAF-001 critical aggregate correction finalized; WP-9002 landed inventory remains 173/93/80.
-- Current task: exact-stage and land the summary-only correction, then write landing record and resume W6A mapping.
+- Current phase: WP-9004a landed; WP-9002 W6A selection resumes from inventory 173/93/80.
+- Current task: re-map the next safe metadata category after excluding SAF-001/002 pending WP-9004b evidence freshness review.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -19,6 +19,7 @@ This is the resume entrypoint for the active repository reconciliation goal.
   - `ea2ddf2` WP-9002-W5D masters metadata migration
   - `a57bacd` WP-9002-W5E database metadata migration
   - `5976a0a` WP-9002-W5F domain metadata migration
+  - `0b0b5ba` WP-9004a SAF-001 critical aggregate correction
 - Verified blockers:
   - WP-4079: R3 stored audit fingerprint version-before-deep-read; explicit human scope approval required.
   - WP-3010 parent: full ARC-001 capability source, live mode/count contract, route/UI flow and pharmacist/claims review.
@@ -32,5 +33,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W5D landing checkpoint: commit `ea2ddf2` pushed to `origin/main`; inventory 173/104/69; exact6; two bodies and non-target `19224/a70313e7…` unchanged; nine reviews/full gates PASS; IDX v0.4.9 APPROVED.
 - W5E landing checkpoint: commit `a57bacd` pushed to `origin/main`; inventory 173/99/74; exact9; five bodies and non-target `18537/c3a067a4…` unchanged; ten reviews/full gates PASS; IDX v0.4.10 APPROVED.
 - W5F landing checkpoint: commit `5976a0a` pushed to `origin/main`; inventory 173/93/80; exact10; six bodies and non-target `17899/59f36f3f…` unchanged; ten reviews/full gates PASS; IDX v0.4.11 APPROVED.
-- WP-9004a checkpoint: baseline `6076fe1`; exact4; SAF-001 critical table count/set=11 and summary now 11; risk rows/status/version/approval unchanged; independent/medical APPROVED; gates PASS; WP-9004b freshness audit remains separate.
-- Next action: commit/push `WP-9004a: correct safety critical aggregate`, then separate landing record and resume W6A from a clean baseline.
+- WP-9004a landing checkpoint: commit `0b0b5ba` pushed; critical table count/set and summary=11; risk rows/status/version/approval unchanged; independent/medical APPROVED; gates PASS; WP-9004b freshness audit remains separate.
+- Next action: complete this three-ledger landing record, then choose the next safe W6A category from a clean baseline; safety pair remains excluded until WP-9004b review.

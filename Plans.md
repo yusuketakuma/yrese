@@ -729,11 +729,12 @@ state: LANDED; WP-9002 remains IN_PROGRESS and W6 starts only after fresh read-o
   - Acceptance / evidence: AGT-018をactive governanceとし、landed commits、current validation、terminal task split、high-risk rollback/human gate、WP-9002 inventory/next actionを同期。旧dual-lane / agmsg / model gate / SSOT 172 / commit_request文言をactive stateから除去し、`ops/refactor/STATE.md`だけで安全に再開可能にした。
   - Verification: independent verifier、`pnpm check:ssot-index`(173)、scripts/secrets/boundaries/diff check。product code、DB、migration、external、deploy変更なし。rollbackはWP-9003 docs commitのrevert。
 
-- [x] WP-9004a SAF-001 critical aggregate correction(FINALIZED / LANDING PENDING)
+- [x] WP-9004a SAF-001 critical aggregate correction(LANDED / commit 0b0b5ba)
   - Scope: `docs/safety/medical_safety_risk_register.md`の集計件数だけを、表のcritical 11行・既存11 IDへ一致させる。severity/risk/mitigation/evidence/status/version/approvalは不変。
   - Acceptance: table critical count=11、ID集合=`MSR-001,005,006,007,016,020,021,022,031,032,033`、summary count/list一致、SAF-001はsummary行以外byte-identical、exact4/staged0。
   - Review/verification: pre-plan APPROVED_WITH_PINS、independent verifier + medical-safety reviewer APPROVED。critical count/set/summary-only assertion、SSOT173、scripts、secrets、boundaries、diff PASS。exact4/staged0。rollbackはsummaryの`11件`を`9件`へ戻す単一行revert。
   - WP-9004b: SAF-001/002のevidence freshness（`WP-1006実装中`、`WP-2002予定`、`WP-2003予定`等）をlive code/testへ照合する別WP。推測更新せず、現時点はread-only mapping/review前。
+  - Landing: commit `0b0b5ba`を`origin/main`へpush。critical summary-only correction、exact4、independent/medical approval、全docs gates PASS。コード/DB/runtime/external変更なし。
 
 ## Phase 0: 調査・計画(ドキュメント)
 
