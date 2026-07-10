@@ -2,16 +2,16 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.11はWP-9002-W5F ten-reviewer approvalを経てAPPROVED・landing pending。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.11はWP-9002-W5F ten-reviewer approvalを経てAPPROVED・landed済み。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-11
 
-### WP-9002-W5F domain metadata — finalized / landing pending
+### WP-9002-W5F domain metadata — completed / LANDED
 
 - clean `ebb4ca4`からDOM-001..006をexact10 waveとしてmap/pre-plan。target173/93/80、対象外167 hash `59f36f3f…aeed28`。本文/承認/広い既存questionを保持し、DOM-005 ARC-008 amendment exact、DOM-006 blocker非変更。WP-1101はcommit-history-only provenance。
-- independent/spec/data-integrity/architect/test/API/claims-evidence/security/privacy/medicalの10 roleがAPPROVED。workspace typecheck/test/buildと全gateがPASS。IDX v0.4.11を旧provenance保持+10承認でAPPROVED finalizationし、exact10 landing待ち。FHIR/adapter/claim/security/medical/external/production変更なし。
+- independent/spec/data-integrity/architect/test/API/claims-evidence/security/privacy/medicalの10 roleがAPPROVED。workspace typecheck/test/buildと全gateがPASS。IDX v0.4.11を旧provenance保持+10承認でAPPROVED finalizationし、exact10をcommit `5976a0a`として`origin/main`へpush。FHIR/adapter/claim/security/medical/external/production変更なし。
 
 ### WP-9002-W5E database metadata — completed / LANDED
 
