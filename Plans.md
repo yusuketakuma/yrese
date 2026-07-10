@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W5F LANDED、W6A FINALIZED / LANDING PENDING、landed 93 / target 92 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W6A LANDED、92 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -617,7 +617,7 @@ validation_results: FINAL PASS before landing — exact12/staged0; inventory173/
 finalization_record: IDX-001 v0.4.6 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and eight W5A approvals appended; API targets unchanged from approved review candidate and API-008 remains PROPOSED
 landing_required: commit_and_push after finalization
 landing_record: commit 74666c9 `WP-9002-W5A: normalize API metadata` pushed successfully to origin/main (134864c..74666c9); inventory 173/118/55; exact 12 paths; eight API bodies/preserved/amendment/blocker states and 165 non-target set unchanged; all eight reviewer/full validation gates APPROVED; no code, DB, external, deployment, or destructive change
-overall_state: W6A FINALIZED / LANDING PENDING; WP-9002 remains IN_PROGRESS with landed 93 and target 92 incomplete SSOT documents
+overall_state: W6A LANDED; WP-9002 remains IN_PROGRESS with 92 incomplete SSOT documents and W6B requires fresh mapping/pre-plan
 ```
 
 #### WP-9002-W5B architecture legacy metadata — LANDED
@@ -724,7 +724,7 @@ landing_record: commit 5976a0a `WP-9002-W5F: normalize domain metadata` pushed s
 state: LANDED; WP-9002 remains IN_PROGRESS and W6 starts only after fresh read-only mapping/pre-plan
 ```
 
-#### WP-9002-W6A PLAN-DB legacy metadata — FINALIZED / LANDING PENDING
+#### WP-9002-W6A PLAN-DB legacy metadata — LANDED
 
 ```yaml
 baseline_commit: 05a1edc
@@ -741,7 +741,8 @@ validation: exact invariants plus workspace typecheck/test/build, DB focused tes
 review_results: independent/spec/data-integrity/architect/DB/test/claims-evidence/security/privacy/medicalの10 roleがAPPROVED。本文/PROPOSED/null approval/open question/6 blockers、限定test provenance、非activationを確認
 validation_results: exact5/staged0、inventory173/92/81、target missing0、本文15082 bytes/hash、対象外172 missing-set 17939 bytes / SHA-256 467e8abc0be46885d836cd570e1a7a4264c35e914032c46ead8f132820729709を確認。workspace typecheck/test/build、OpenAPI、calculation-purity、scripts、SSOT173、secrets、boundaries、deps high0 critical0、SBOM231、diff PASS。DB integrationはTEST_DATABASE_URLなしでexpected skip
 finalization_record: IDX-001 v0.4.12 APPROVED with approved_at/effective_from 2026-07-11; all prior provenance preserved and ten W6A approvals appended; PLAN-DB remains PROPOSED/null approval/effective and target body unchanged
-state: FINALIZED; landing pending
+landing_record: commit 07bdc96 `WP-9002-W6A: normalize database plan metadata` pushed successfully to origin/main (05a1edc..07bdc96); inventory 173/92/81; exact5; PLAN-DB body/PROPOSED/null approval/6 blockers and 172 non-target fingerprint unchanged; ten reviews/full validation APPROVED; no DB connection, migration, DDL/DML, infra, production, deploy, or destructive change
+state: LANDED; WP-9002 remains IN_PROGRESS and W6B starts only after fresh read-only mapping/pre-plan
 ```
 
 - [x] WP-9003 repository reconciliation state pack(Codex-only、resume-safe、docs-only)
