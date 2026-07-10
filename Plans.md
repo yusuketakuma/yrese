@@ -13,7 +13,7 @@
 
 ## Active governance cutover
 
-- [~] WP-9001 Codex single-lane governance cutover(direct user instruction 2026-07-10、FINALIZED_READY_TO_LAND / landing_pending)
+- [x] WP-9001 Codex single-lane governance cutover(direct user instruction 2026-07-10、LANDED / commit 86be6b1)
 
 ```yaml
 work_package_id: WP-9001
@@ -38,8 +38,8 @@ priority: P0
 risk_level: R3
 ambiguity_level: A2
 implementation_layer: ssot
-status: REVIEW_REQUESTED
-landing_state: FINALIZED_READY_TO_LAND
+status: DONE
+landing_state: LANDED
 
 ssot_refs:
   - SPEC-001
@@ -62,7 +62,7 @@ ssot_versions:
   - PLAN-PHASE0-001 v0.1.1 APPROVED
   - PLAN-UIUX-001 v0.1.1 PROPOSED (unchanged gate)
   - IDX-001 v0.4.1 APPROVED (data_integrity_auditor APPROVED)
-ssot_status_check: all WP-9001 cutover and transition SSOT finalization complete; PLAN-UIUX-001 remains independently PROPOSED; ready for root landing
+ssot_status_check: all WP-9001 cutover and transition SSOT finalization complete and landed; PLAN-UIUX-001 remains independently PROPOSED
 ssot_update_required: yes
 evidence_ids: []
 evidence_not_required_reason: agent governance and repository workflow only; no calculation, claim, receipt, legal rule value, or production data behavior is implemented
@@ -92,7 +92,7 @@ acceptance_criteria:
   - AGT-001..017 remain APPROVED and body-unchanged during review; finalization makes them metadata-only SUPERSEDED only after AGT-018 approval, with all PRC-007 23 fields present. AGT-016/017 missing metadata is completed and all 17 are machine-audited before landing.
   - SSOT index, script harness, secrets, boundaries, and diff checks pass with no code/package/lock changes.
   - PRC-007 v0.3.1 defines a prospective 23-field rule and a non-destructive legacy migration path; existing unmodified legacy SSOT status/approval remains valid until WP-9002 migration or a separate substantive amendment.
-  - WP-9001 reaches DONE/COMPLETE only after required data-integrity review, exact-stage commit_and_push, and a separate post-landing Plans/State ledger update.
+  - WP-9001 DONE/COMPLETE required data-integrity review, exact-stage commit_and_push, and this separate post-landing Plans/State ledger update; all conditions are satisfied by commit 86be6b1 and this ledger record.
 stop_conditions:
   - any unresolved HIGH/CRITICAL verifier or specialist finding
   - any premature APPROVED/SUPERSEDED claim in the review batch
@@ -154,6 +154,7 @@ implementation_plan:
   - completed: base-aware matrix restored formerly APPROVED revisions, approved AGT-018, retained PLAN-UIUX-001 as PROPOSED, and superseded legacy AGTs metadata-only.
   - completed: AGT-016/017 missing metadata was added; all legacy AGTs passed 23-field, status, effective date, supersession, body-identity, and index audits.
   - completed: data_integrity_auditor approved PRC-007 v0.3.1 / IDX-001 v0.4.1 based on inventory 173/142, legacy semantic preservation, AGT 17 integrity, and validation gates; WP-9002 records the later post-landing migration.
+  - completed: exact-stage landing commit 86be6b1 was pushed to origin/main after the rebase and all post-rebase validation, governance, and data-integrity gates passed.
 test_plan:
   - pnpm check:ssot-index
   - pnpm test:scripts
@@ -175,20 +176,26 @@ performance_slo_impact: none
 migration_deploy_external_action_impact: none performed or authorized; every such action remains separately human-gated
 human_gates: direct user instruction authorizes Codex-only repository routing; pharmacist, claims, legal, production security, medical-risk, Cloud/PHI/external/privilege, deployment, migration, DML, and destructive-action approvals remain distinct
 
-handoff_record: all cutover and transition metadata finalization complete in isolated /tmp/yrese-wp9001; data_integrity approval recorded; exact paths and validation evidence are ready for Codex root landing; commit/push not performed by maintainer
+handoff_record: historical pre-landing handoff completed from isolated /tmp/yrese-wp9001 after data_integrity approval; Codex root exact-staged the reviewed paths and landed commit 86be6b1 to origin/main (86fa45c..86be6b1)
 verification_record: initial independent review CHANGES_REQUIRED -> sole-maintainer fixes -> independent_verifier APPROVED; spec_guardian final APPROVED
 specialist_review_records: medical_safety_reviewer, privacy_compliance_reviewer, security_critic, and data_integrity_auditor APPROVED; data-integrity evidence covers inventory 173/142, legacy semantics/body/status/approval/effective preservation, AGT 17 body/status/23-field, and gates PASS
 validation_commands:
+  - pnpm -r typecheck
+  - pnpm -r test
+  - pnpm -r build
+  - pnpm check:openapi
+  - pnpm check:calculation-purity
   - pnpm check:ssot-index
   - pnpm test:scripts
   - pnpm check:secrets
+  - pnpm check:deps
+  - pnpm check:sbom
   - pnpm check:boundaries
   - git diff --check
-validation_results: final approval metadata PASS — SSOT index 173, script harness, secret scan, boundary check, diff check, inventory 173/142, PRC-007/IDX approval metadata, AGT-018 data-integrity approval, legacy AGT 17 body/status/23-field, status/claims audit, no code/package/lock diff
-remaining_risks:
-  - root landing must exact-stage WP-9001 paths and exclude unrelated concurrent WP-7001 changes
-landing_required: commit_and_push
-landing_record: FINALIZED_READY_TO_LAND; data_integrity approval complete; only Codex root exact-stage commit_and_push remains. DONE/COMPLETE requires a separate post-landing ledger update
+validation_results: PASS — all workspace typecheck and build commands passed; workspace tests passed with audit 173, API 161 plus 9 expected integration skips because TEST_DATABASE_URL was absent, web 63, and all other workspace tests passing; OpenAPI, calculation purity, SSOT index 173, script harness, secret scan, boundaries, and diff check passed; dependency audit high=0 / critical=0; SBOM contained 231 components; governance and data-integrity reviews APPROVED; no code/package/lock/DB/external/deploy changes
+remaining_risks: []
+landing_required: satisfied
+landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
 - [ ] WP-9002 legacy SSOT frontmatter migration(WP-9001 landing後、metadata-only、P1)
@@ -197,7 +204,7 @@ landing_record: FINALIZED_READY_TO_LAND; data_integrity approval complete; only 
   - routing: Codex root → read-only mapper → read-only pre-plan reviewer → sole maintainer → independent verifier + relevant `spec_guardian` / `data_integrity_auditor` → root exact-stage landing。waveごとにallowed exact paths、body identity、rollback、validationを定義する。
   - stop conditions: 本文、法令、請求、薬学、患者安全、security/privacy、evidence、status/approval意味の変更が必要な文書はmigration対象から除外し、必要なhuman authorityを持つ別WPへ分離する。metadata migrationをhuman/safety gateの省略に使わない。
   - acceptance: 対象文書の23 field充足、本文byte identity、status/approval/effective semantics不変、index同期、`pnpm check:ssot-index`、script/secrets/boundaries/diff checks PASS。大規模一括変更にせずreview可能なwave単位で実施する。
-  - sequencing: WP-9001 commit_and_pushとpost-landing ledger更新の完了後に開始する。現時点では実装・stage・commit・pushしない。
+  - sequencing: 本post-landing ledger更新がlandした後の次のeligible governance taskとする。現時点では未着手であり、実装・stage・commit・pushしない。
 
 ## Phase 0: 調査・計画(ドキュメント)
 

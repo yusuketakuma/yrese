@@ -49,7 +49,7 @@
 - ledger-only変更を commit `a5eb9a8` としてpush。コード・migration・API契約・OpenAPI・package/lockは変更しておらず、DB操作も行っていない。
 - GitHub Actions run `29058471602` / job `86254995220` はsuccessし、typecheck / test / build / OpenAPI / secrets / deps / SBOM / boundaries / calculation purity / SSOTを含む全stepがgreen。WP-4076のsole deliverableであるWP-4054の無効化と安全な後続gateの台帳化は完了した。
 
-### WP-9001 Codex single-lane governance cutover — FINALIZED_READY_TO_LAND (landing_pending)
+### WP-9001 Codex single-lane governance cutover — COMPLETE
 
 - direct user instruction (2026-07-10) により、旧複数lane前提を停止し、Codex root / read-only mapper / read-only pre-plan reviewer / sole maintainer / independent verifier / relevant specialists / root exact-stage landingへrepository governanceをatomicに切り替えるWPを開始した。
 - code mapperは、active agent/process/spec/plan/ledgerが旧routingを相互参照し、入口だけの修正ではAPPROVED文書同士の矛盾が残るimpact radiusを確認。initial plan reviewはscope/atomicity/current-artifact coverage不足で`CHANGES_REQUIRED`となり、Codex rootがAGENTS/CLAUDE、AGT-001〜018、SPEC-001/002、PRC-001〜007、current plans/ledgersを含むexpanded atomic scopeへ修正した。
@@ -67,7 +67,8 @@
 - post-finalization scanで、index対象173文書中142文書にPRC-007 required 23 field不足を確認。既存legacyのstatus/approvalを直ちに無効化しない移行規則としてPRC-007 v0.3.1とIDX-001 v0.4.1をPROPOSED化し、WP-9002 `legacy SSOT frontmatter migration`をWP-9001 landing後の未完了taskとして追加した。metadata migrationは本文/status/approval/effective semantics不変、wave単位、body identity/index同期を必須とし、本文・human/safety/evidence判断は別WPへ分離する。
 - independent_verifier、spec_guardian、medical_safety/privacy/security reviewsに加え、data_integrity_auditorもAPPROVED。data-integrity evidenceはindependent inventory 173/142、legacy semantics/body/status/approval/effective preservation、AGT 17件のbody/status/23-field、validation gates PASSである。PRC-007 v0.3.1 / IDX-001 v0.4.1をAPPROVEDへfinalizeし、AGT-018 `approved_by`へdata_integrity approvalをmetadata-onlyで追記した。
 - final approval metadata validationは`pnpm check:ssot-index`(173)、`pnpm test:scripts`、`pnpm check:secrets`、`pnpm check:boundaries`、`git diff --check`、inventory 173/142、PRC-007/IDX APPROVED metadata、AGT-018 data-integrity approval、legacy AGT 17件のbody/status/23-field、status/claims audit、code/package/lock差分なしがすべてPASS。
-- isolated worktree `/tmp/yrese-wp9001`のWP statusは`REVIEW_REQUESTED`、landing stateは`FINALIZED_READY_TO_LAND`である。apps/packages/scripts/migrations/package/lock、DB data、external system、deployは変更していない。Codex rootがexact-stage commit_and_pushし、別のpost-landing Plans/State更新でのみDONE/COMPLETEへ変更する。
+- exact-stage landing commit `86be6b1` (`WP-9001: switch repository governance to Codex only`) は `origin/main` へ `86fa45c..86be6b1` としてpush済み。post-rebase suiteは全workspace typecheck/build、audit 173、API 161 + `TEST_DATABASE_URL`不在によるexpected integration skip 9、web 63、その他全workspace test、OpenAPI、calculation purity、SSOT index 173、script harness、secrets、boundaries、diff checkがPASS、dependency auditはhigh=0 / critical=0、SBOMは231 components。governance/data-integrity reviewsも`APPROVED`であり、WP statusを`DONE`、landing stateを`LANDED`、本entryを`COMPLETE`とする。
+- landing対象はgovernance/SSOT文書だけで、apps/packages/scripts/migrations/package/lock、DB data、external system、deployの変更・操作はない。WP-9002は未着手のまま、本ledger更新landing後の次のeligible governance taskとする。
 
 ### WP-4075 reception patient identity single-source enforcement
 
