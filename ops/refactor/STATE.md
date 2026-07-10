@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002 W5B architecture metadata landed at 173/108/65; preparing W5C.
-- Current task: map the next coherent metadata-only category from a clean landed baseline, then obtain pre-plan approval before editing.
+- Current phase: WP-9002 W5C adapters metadata finalized; landed 173/108/65, landing target 173/106/67.
+- Current task: revalidate exact6 finalization, exact-stage, commit, and push; then write the landing record.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -24,4 +24,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - Validation baseline (2026-07-11): workspace typecheck/test PASS; audit 182, trace 37, contracts 86, web 99, API 161 + 9 expected PostgreSQL skips without `TEST_DATABASE_URL`; web/full builds PASS; OpenAPI, SSOT index 173, boundaries, secrets, dependency audit high=0/critical=0, SBOM 231, calculation purity, script harness and diff check PASS.
 - Git resume check: run `git status -sb`, `git rev-list --left-right --count origin/main...HEAD`, and `git log -5 --oneline`. Preserve any new unrelated dirty paths. Root alone stages exact task paths and pushes because the active Goal explicitly requests grouped commit/push.
 - W5B landing checkpoint: commit `05edac6` pushed to `origin/main`; inventory 173/108/65; exact14; ten bodies and non-target `19207/de1e4127…` unchanged; nine reviews/full gates PASS; IDX v0.4.7 APPROVED.
-- Next action: complete this three-ledger landing record, then fresh read-only W5C mapping/pre-plan. Do not edit the next category before approval.
+- W5C finalization checkpoint: baseline `34d0a6e`; exact6; inventory 173/106/67; target missing0; two bodies and non-target `19429/6d777f91…` unchanged; nine reviews/full gates PASS; IDX v0.4.8 APPROVED.
+- Next action: final invariant/gate check, then exact6 commit/push `WP-9002-W5C: normalize adapter metadata` and separate landing record.

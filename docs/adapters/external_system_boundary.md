@@ -11,9 +11,11 @@ reviewers:
   - human_review_required
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §12, §2, §23-28
   - docs/plan/phase0_plan.md §9.2, §10
@@ -22,9 +24,18 @@ depends_on:
 impacts:
   - docs/architecture/offline_mode_matrix.md
   - docs/architecture/recovery_sync_design.md
+related_work_packages: [WP-0007, WP-9002-W5C]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5C metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - 資格確認端末とEdge Node間の接続方式(外部IF仕様確認後)
   - オンライン請求用端末への受け渡し媒体・手順(公式手順確認後)
+blockers:
+  - BLOCKED_OFFICIAL_ADAPTER_SPEC
 ```
 
 ## 1. 構成要素の定義(v0.2.0 §12 準拠)

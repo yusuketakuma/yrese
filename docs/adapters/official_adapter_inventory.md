@@ -11,9 +11,11 @@ reviewers:
   - human_review_required
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §12, §19, §23-27, §29
   - docs/plan/phase0_plan.md §10
@@ -23,6 +25,13 @@ depends_on:
 impacts:
   - packages/adapters(将来)
   - apps/api
+related_work_packages: [WP-0007, WP-9002-W5C]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5C metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - 各公式仕様の版・適用日(source_registry で UNVERIFIED)
   - オンライン請求の公式接続方式(直接送信は禁止のまま)
