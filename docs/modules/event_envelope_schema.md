@@ -10,19 +10,37 @@ reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §32(同期設計の必須項目), §0.0.3.3
 depends_on:
   - packages/events(85bd3aa)
   - docs/architecture/recovery_sync_design.md(ARC-002)
+impacts:
+  - packages/events envelope validation
+  - packages/audit base envelope
+  - future Outbox/Inbox/DLQ consumers
+related_work_packages:
+  - WP-0012
+  - WP-1006
+  - WP-4032
+  - WP-9002-W4
+related_tests:
+  - pnpm --filter @yrese/events test
+related_prs: []
+evidence_ids: []
 open_questions:
   - dead_letter 時の deadLetterReason 必須化(WP-1006 レビューノートの deferred 事項 — Outbox 実装時に追加)
   - schemaVersion の互換性ポリシー(minor互換/major非互換の判定基準 — Outbox/Inbox 実装時)
   - payloadHash の正規化規約(ペイロード直列化の canonical form — 実装時に確定)
 blockers: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
 ```
 
 **現在の正本は `@yrese/events` の実装である。** EventEnvelope は Cloud Core / Pharmacy Edge Node 間同期(Outbox/Inbox)の共通封筒であり、監査イベント(MOD-008)の基底でもある。変更は本SSOT改版 → opus4.8 レビュー → 実装。

@@ -10,20 +10,39 @@ reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §3(floating point禁止), §18(算定エンジン必須事項), §0.0.3.3
 depends_on:
   - packages/money(533f89a)
   - docs/calculation/tensuhyo_reading_notes.md(CAL-002 — 一次資料ノート)
+impacts:
+  - packages/money
+  - packages/calculation rounding boundary
+  - packages/trace evidence boundary
+related_work_packages:
+  - WP-0012
+  - WP-1003
+  - WP-4033
+  - WP-4040
+  - WP-9002-W4
+related_tests:
+  - pnpm --filter @yrese/money test
+related_prs: []
+evidence_ids: []
 open_questions:
   - 使用薬剤料の端数処理(15円以下1点・10円ごと1点の正確な適用式)— CAL-002 の人間目視ダブルチェック+留意事項通知の確認後に evidence_id 付きで確定
   - 一部負担金の丸め(負担割合適用後の端数)— 公式根拠確認後に確定
   - 公費按分の丸め順序 — BLOCKED_PMH_REVIEW / 公費SSOT確定後
 blockers:
   - 丸め政策値の配線は BLOCKED_REGULATORY_REVIEW(evidence_id 発行まで)
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
 ```
 
 ## 1. 絶対規則(v0.2.0 §3, §18)

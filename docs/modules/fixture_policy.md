@@ -10,18 +10,35 @@ reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §0.0.3.4(本番個人情報のfixtures混入禁止), §36(本番個人情報をテストに使わない), §0.1.6.14
 depends_on:
   - docs/testing/test_strategy.md(TST-001)
   - docs/security/privacy_impact_assessment.md(SEC-004)
+impacts:
+  - repository fixtures and mocks
+  - future packages/fixtures and packages/test-utils
+  - planned PHI and golden-fixture gates
+related_work_packages:
+  - WP-0012
+  - WP-9002-W4
+related_tests:
+  - pnpm test:scripts
+  - pnpm check:secrets
+related_prs: []
+evidence_ids: []
 open_questions:
   - packages/fixtures / packages/test-utils の新設時期(golden test 資産が発生する Phase 1 以降 — MOD-001 §2)
   - 合成患者データの生成規約(実在人名・実在保険者番号との衝突回避規則)
 blockers: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
 ```
 
 ## 1. 絶対規則

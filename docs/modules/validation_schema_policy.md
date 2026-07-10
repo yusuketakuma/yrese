@@ -10,10 +10,14 @@ reviewers:
   - opus4.8
 version: 0.1.3
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - 0.1.3 (2026-07-09): WP-4046 — `@yrese/contracts` の ID wire field(patient/search、whoami、reception queue)を shared-kernel branded ID factory 由来の共通 refine へ統一。wire 型は string 維持。
   - 0.1.2 (2026-07-09): WP-4049 実装状態 drift 整備。`@yrese/contracts` の受付キュー契約(API-006 / WP-3009-BE/93aefa1)と現行 contract test 数を反映(検証分担・規約は不変更)。
   - 0.1.1 (2026-07-09): WP-4043 実装状態 drift 整備。`@yrese/contracts` の実装済み契約(health/error/patients/search/whoami)と OpenAPI drift 検査実装を現行状態へ同期(検証分担・規約は不変更)。
@@ -22,6 +26,25 @@ source_refs:
 depends_on:
   - packages/contracts(WP-1007/7fa369c, WP-2008+2005/bb3d237, WP-4019/3dd1daa, WP-4042/1b1bff5, WP-3009-BE/93aefa1)
   - docs/modules/generated_code_policy.md(MOD-014)
+impacts:
+  - packages/contracts validation schemas
+  - apps/api and apps/web contract consumers
+  - docs/api/openapi.yaml
+related_work_packages:
+  - WP-0012
+  - WP-1007
+  - WP-4019
+  - WP-4043
+  - WP-4046
+  - WP-4049
+  - WP-9002-W4
+related_tests:
+  - pnpm --filter @yrese/contracts test
+  - pnpm --filter @yrese/api test
+  - pnpm --filter @yrese/web test
+  - pnpm check:openapi
+related_prs: []
+evidence_ids: []
 open_questions:
   - 医療安全に関わる入力制約(用量上限等)の検証所在(算定・チェックロジックとの分担 — SaMD評価 REG-005 と連動)
 blockers: []

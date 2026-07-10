@@ -10,16 +10,35 @@ reviewers:
   - opus4.8
 version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - 0.1.2 (2026-07-09): WP-4035 検査拡張。check-boundaries の重複 const 検査を apps/** にも広げ、contracts 正本 const の再定義検出を追加(依存方向ルールは不変更)。
   - 0.1.1 (2026-07-09): WP-4043 実装状態 drift 整備。実装済み共通モジュール数、現在の workspace 依存グラフ、check-boundaries の重複 const 検査対象を現行実装へ同期(依存方向ルールは不変更)。
 source_refs:
   - 構築プロンプト v0.2.0 §0.0.3.5
 depends_on:
   - scripts/check-boundaries.mjs(0213ac0、CI組込済み)
+impacts:
+  - workspace dependency graph
+  - scripts/check-boundaries.mjs
+  - CI boundary gate
+related_work_packages:
+  - WP-0012
+  - WP-4003
+  - WP-4035
+  - WP-4043
+  - WP-9002-W4
+related_tests:
+  - pnpm check:boundaries
+  - pnpm test:scripts
+related_prs: []
+evidence_ids: []
 open_questions:
   - packages/domain / packages/claim 新設時の詳細ルール追記(Phase 1)
   - UI import boundary(server-only module の client 混入検査)の追加時期

@@ -10,19 +10,41 @@ reviewers:
   - opus4.8
 version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §36, §8.6
 depends_on:
   - QUA-001 quality_plan
   - QUA-002 validation_plan
   - UIX-002 experience_quality_baseline
+impacts:
+  - workspace and CI test strategy
+  - fixture, golden-test, and future E2E gates
+  - security, dependency, and SBOM gates
+related_work_packages:
+  - WP-4009
+  - WP-4012
+  - WP-4047
+  - WP-9002-W4
+related_tests:
+  - pnpm -r test
+  - pnpm test:scripts
+  - pnpm check:secrets
+  - pnpm check:deps
+  - pnpm check:sbom
+related_prs: []
+evidence_ids: []
 open_questions:
   - E2E フレームワーク選定(Playwright 想定、Phase 1 で確定)
   - golden test 資産の管理場所(packages/fixtures 想定、fixture_policy と連動)
 change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - 0.1.1 (2026-07-09): WP-4047 実装状態 drift 整備。CI ゲートの secret scan / dependency scan / SBOM 実装状態を WP-4009/a90df35・WP-4012/b0ecf84+702c2f5 に同期(テスト戦略要件は不変更)。
+blockers: []
 ```
 
 ## 1. 大原則

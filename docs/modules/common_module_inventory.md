@@ -10,10 +10,14 @@ reviewers:
   - opus4.8
 version: 0.1.3
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - 0.1.3 (2026-07-09): WP-4046 — `@yrese/contracts` の ID wire field 共通 refine 追加と contract test 数を同期。要件・境界は不変更。
   - 0.1.2 (2026-07-09): WP-4049 実装状態 drift 整備。WP-3009-BE/93aefa1 の受付キュー契約・shared-kernel 実装、WP-4028/12f1bb7 の calculation purity gate、最新テスト数を現行 packages/* 実態へ同期(要件・境界は不変更)。
   - 0.1.1 (2026-07-09): WP-4043 実装状態 drift 整備。`@yrese/audit`、`@yrese/contracts`、各実装済み共通モジュールの現行実装状態を packages/* の実態へ同期(要件・境界は不変更)。
@@ -22,6 +26,23 @@ source_refs:
 depends_on:
   - docs/agents/file_ownership_and_lock_policy.md(AGT-009)
   - docs/modules/dependency_direction_policy.md(MOD-003)
+impacts:
+  - current eight common packages
+  - boundary and calculation-purity tooling
+  - future common-package creation gate
+related_work_packages:
+  - WP-0012
+  - WP-4028
+  - WP-4043
+  - WP-4046
+  - WP-4049
+  - WP-9002-W4
+related_tests:
+  - pnpm -r test
+  - pnpm check:boundaries
+  - pnpm check:calculation-purity
+related_prs: []
+evidence_ids: []
 open_questions:
   - packages/domain / packages/claim / packages/masters / packages/reports の新設時期(Phase 1 のドメインSSOT承認後)
   - packages/ui の分離時期(第二利用者出現時 — shared肥大化防止の方針による)

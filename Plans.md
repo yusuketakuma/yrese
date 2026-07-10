@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1/W2/W3 LANDED、remaining 137、metadata-only、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1/W2/W3 LANDED、W4 FINALIZED / LANDING PENDING、landed remaining 137 / finalized target 126、metadata-only、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -476,6 +476,83 @@ finalization_record: IDX-001 v0.4.4 APPROVED with approved_at/effective_from 202
 landing_required: commit_and_push after finalization
 landing_record: commit 1b07db6 `WP-9002-W3: normalize error and permission metadata` pushed successfully to origin/main (3e8dee0..1b07db6); inventory 173/137/36; exact six paths; MOD-006 body 3509 bytes / SHA-256 96ebdea1a65b949e77ef4165dd3049cc4f7e7eeda27904dce19a8f67e075e84c and MOD-007 body 2139 bytes / SHA-256 94974900b71ece2bcdf025b876e661e7692e8174e54d4cd4f887a2ce01ea86f0; all eight reviewer and validation gates APPROVED; no code, DB, external, deployment, or destructive change
 overall_state: W3 LANDED; WP-9002 remains IN_PROGRESS with 137 incomplete SSOT documents and W4 requires fresh read-only mapping and pre-plan review
+```
+
+#### WP-9002-W4 remaining MOD/TST legacy frontmatter migration — FINALIZED / LANDING PENDING
+
+```yaml
+work_package_id: WP-9002
+wave_id: WP-9002-W4
+title: remaining module and test-strategy legacy metadata migration
+status: IN_PROGRESS
+execution_state: W4_FINALIZED
+landing_state: pending
+priority: P1
+risk_level: R2
+implementation_layer: ssot_metadata
+baseline_commit: 5d68633
+baseline_inventory: { total: 173, incomplete: 137, complete: 36 }
+target_inventory: { total: 173, incomplete: 126, complete: 47 }
+target_ssots:
+  - MOD-001 common_module_inventory
+  - MOD-002 common_module_boundary
+  - MOD-003 dependency_direction_policy
+  - MOD-004 shared_type_registry
+  - MOD-005 status_registry
+  - MOD-008 audit_event_registry
+  - MOD-009 event_envelope_schema
+  - MOD-010 money_point_policy
+  - MOD-012 validation_schema_policy
+  - MOD-013 fixture_policy
+  - TST-001 test_strategy
+allowed_files: eleven target SSOTs plus docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact total 15
+owner_role: sole_maintainer
+reviewer_roles: [independent_verifier, spec_guardian, data_integrity_auditor]
+specialist_roles: [test_architect, security_critic, api_contract_reviewer, medical_safety_reviewer, privacy_compliance_reviewer]
+human_gate: none for exact metadata-only scope; stop/split any semantic, approval/effective, evidence, security/privacy, medical/claim, DB, external, deployment, or production change
+mapping_record: clean baseline 5d68633; exact eleven targets; body hashes fixed in mapper evidence; 162 non-target canonical missing-set 21306 bytes / SHA-256 2725393dd4eee5cd7949dc43238edbb4df2a962dd23c15ae23c6b882a51d1a5d
+pre_plan_review: APPROVED as one bounded R2 wave; TST-001 blockers=[] means no document-level approval blocker and does not change body BLOCKED/planned test categories
+review_records:
+  - independent_verifier APPROVED
+  - spec_guardian APPROVED
+  - data_integrity_auditor APPROVED
+  - test_architect APPROVED after direct calculation-purity/secret-test provenance completion
+  - api_contract_reviewer APPROVED after direct MOD-012 provenance completion
+  - security_critic APPROVED
+  - medical_safety_reviewer APPROVED
+  - privacy_compliance_reviewer APPROVED
+  - No W4 human approval is claimed; all reviewers confirmed exact metadata-only scope and preserved legacy human authority.
+frontmatter_rules:
+  - Preserve every target body, version, status, owner, reviewers, created_at, approved_at/by, source_refs, depends_on, open_questions, and existing blockers exactly.
+  - Set updated_at 2026-07-11, effective_from/to null, related_prs/evidence_ids empty; add only approved conservative impacts/WPs/tests and non-versioned W4 history.
+  - Add missing change_log only to MOD-009/MOD-010/MOD-013; add TST-001 blockers=[] only as document-level metadata.
+  - Do not add W4 reviewers to target approved_by. Keep target human approval unchanged.
+  - IDX-001 v0.4.5 remains PROPOSED with approval/effective fields null until all eight reviews approve; preserve W1-W3 provenance and every index row.
+stop_conditions:
+  - Any target body/hash or preserved field changes; any non-target missing-set/index/history drift; inventory not 173/126/47; path outside exact 15.
+  - Any reviewer CHANGES_REQUIRED or validation failure; any metadata that would alter policy, blocker, approval, effective, medical, privacy, security, evidence, or runtime semantics.
+review_gates:
+  - independent/spec/data-integrity verify exact paths, all bodies/preserved fields, inventory, non-target identity and index history.
+  - test/API/security/privacy/medical specialists verify provenance and semantic non-change across test, contract, audit, fixture, status and money boundaries.
+  - After eight approvals only, sole maintainer may finalize IDX-001; root alone exact-stages, commits, and pushes.
+validation_commands:
+  - exact 23-field, eleven body/preserved-field, 162 non-target and exact-path/staged-zero audits
+  - pnpm -r typecheck
+  - pnpm -r test
+  - pnpm -r build
+  - pnpm check:openapi
+  - pnpm check:calculation-purity
+  - pnpm test:scripts
+  - pnpm check:ssot-index
+  - pnpm check:secrets
+  - pnpm check:boundaries
+  - pnpm check:deps
+  - pnpm check:sbom
+  - git diff --check
+validation_results: FINAL PASS before landing — exact 15 paths/staged 0; inventory 173/126/47; eleven target missing 0 and bodies/preserved fields baseline-identical; 162 non-target canonical missing-set 21306 bytes / SHA-256 2725393dd4eee5cd7949dc43238edbb4df2a962dd23c15ae23c6b882a51d1a5d; workspace typecheck/test/build PASS (audit 182, events 45, contracts 86, web 99, API 161 + expected PostgreSQL skips 9); OpenAPI, calculation purity, scripts, SSOT 173, secrets, boundaries, deps high=0/critical=0, SBOM 231 and diff check PASS; all eight reviewers APPROVED
+finalization_record: IDX-001 v0.4.5 APPROVED with approved_at/effective_from 2026-07-11, all WP-9001/W1-W4 prior provenance preserved, eight W4 approvals appended, and no W4 human approval claimed; eleven targets remain byte-identical to approved review candidate
+landing_required: commit_and_push after finalization
+overall_state: W4 finalized and validation/reviews complete; landed inventory remains 173/137/36 until exact-stage commit and push
 ```
 
 - [x] WP-9003 repository reconciliation state pack(Codex-only、resume-safe、docs-only)

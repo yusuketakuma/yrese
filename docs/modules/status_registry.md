@@ -10,10 +10,14 @@ reviewers:
   - opus4.8
 version: 0.1.4
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - 0.1.4 (2026-07-09): ドメインライフサイクル状態の所有権を明記 — 定義の正本は DOM-004、shared-kernel への登録は使用する実装 WP の着地時に DOM-004 と同期して行う(opus4.8 DOM レビューの governance 決着)。
   - 0.1.3 (2026-07-09): WP-3009-BE / API-006 v0.2.0 に基づき、受付キュー専用 `RECEPTION_STATUSES` 4値(WAITING / IN_PROGRESS / COMPLETED / CANCELLED)を追加。処方箋ライフサイクル状態・請求可否判定とは分離。
   - 0.1.2 (2026-07-09): BLOCKER_TYPES に FHIR/連携境界の2種(BLOCKED_OFFICIAL_ADAPTER_BOUNDARY / BLOCKED_FHIR_CONFORMANCE_REVIEW)を追加(opus4.8 FHIR系レビュー指摘 — PRD-007/DOM-005/006 が定義する停止条件の allow-list 登録)
@@ -23,6 +27,21 @@ source_refs:
 depends_on:
   - packages/shared-kernel(9ab039e)
   - docs/architecture/offline_mode_matrix.md(ARC-001)
+impacts:
+  - packages/shared-kernel statuses and mode guards
+  - packages/calculation claimability boundary
+  - reception queue status consumers
+related_work_packages:
+  - WP-0012
+  - WP-1012
+  - WP-0052
+  - WP-3009-BE
+  - WP-9002-W4
+related_tests:
+  - packages/shared-kernel/src/kernel.test.ts
+  - packages/calculation/src/calculation.test.ts
+related_prs: []
+evidence_ids: []
 open_questions:
   - WP status(DRAFT〜CANCELLED、PRC-002 管理)と本レジストリの関係整理(WP status はプロセス側で管理し本レジストリ対象外とする現方針の確認)
 blockers: []

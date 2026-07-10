@@ -2,11 +2,18 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はdata_integrity_auditor reviewを経てAPPROVED。IDX-001 v0.4.4はWP-9002-W3 eight-reviewer approvalを経てAPPROVED・landed済みである。以下に残る旧model/role/lane/message名は各活動時点のhistorical provenanceであり、current assignment・approval・completion gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.5はWP-9002-W4 eight-reviewer approvalを経てfinalized済みで、landing pendingである。以下に残る旧model/role/lane/message名はhistorical provenanceであり、current gateには再利用しない。
 
 ---
 
 ## 2026-07-11
+
+### WP-9002-W4 remaining MOD/TST legacy metadata migration — finalized / landing pending
+
+- cleanな`5d68633`をbaselineに、残りmodule 10件+TST-001の23-field不足、本文hash、provenanceをread-only mapping。pre-planは11件一括のR2 metadata-only waveをAPPROVEDした。本文/status/version/human approval/effective semanticsは不変。
+- review candidateはinventory 173/126/47、target missing 0、対象外162 canonical missing-set 21306 bytes / SHA-256 `2725393dd4eee5cd7949dc43238edbb4df2a962dd23c15ae23c6b882a51d1a5d`。TST-001 `blockers: []`は文書承認blockerなしだけを示し、本文のBLOCKED/planned testカテゴリは解除しない。
+- API/test reviewがMOD-001 calculation-purity、MOD-012 WP-4043、TST-001 secrets provenance不足を検出して修正。W2 validation listへの誤挿入もcore/safety reviewで検出し、W4へ移した。3系統再review後、independent/spec/data-integrity/test/security/API-contract/medical-safety/privacyの8 roleがAPPROVED。
+- exact 15 paths/staged 0、inventory 173/126/47、11本文/preserved fields、対象外162 hashを確認。workspace typecheck/test/build、OpenAPI/calculation-purity/scripts/SSOT173/secrets/boundaries/deps/SBOM/diffがPASS。IDX-001 v0.4.5を全旧provenance保持+W4 8承認でAPPROVED finalization。product code、DB、external、deploy変更なし。landing pending。
 
 ### WP-9002-W3 MOD-006/MOD-007 legacy metadata migration — completed / LANDED
 

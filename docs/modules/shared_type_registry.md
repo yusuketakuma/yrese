@@ -10,9 +10,11 @@ reviewers:
   - opus4.8
 version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §0.0.3.3, §0.0.3.7
 depends_on:
@@ -22,10 +24,28 @@ depends_on:
   - packages/trace(ddc06a1)
   - packages/events(85bd3aa)
   - packages/calculation(d26424d)
+impacts:
+  - shared-kernel, money, and date-time public types
+  - trace and events public types
+  - calculation public types
+related_work_packages:
+  - WP-0012
+  - WP-4022
+  - WP-3009-BE
+  - WP-9002-W4
+related_tests:
+  - packages/shared-kernel/src/kernel.test.ts
+  - packages/date-time/src/date-time.test.ts
+  - packages/trace/src/trace.test.ts
+  - packages/calculation/src/calculation.test.ts
+related_prs: []
+evidence_ids: []
 open_questions:
   - 保険・公費・PMH 関連の共通型(現状 opaque Ref のみ — Phase 1 ドメインSSOT承認後に拡充)
 blockers: []
 change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - 0.1.2 (2026-07-09): branded ID を実装12種へ同期(ReceptionId 追加 — WP-3009-BE/93aefa1。台帳更新漏れの是正、opus4.8 DOM レビュー指摘)。
   - 0.1.1: WP-4022 で PrescriptionDate / DispensingDate / ReceptionDate を nominal brand 済みに更新し、異種代入・異種 compare を型で禁止。
 ```

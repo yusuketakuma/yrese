@@ -10,18 +10,37 @@ reviewers:
   - opus4.8
 version: 0.2.3
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §0.0.3.3, §34
 depends_on:
   - docs/security/audit_log_design.md(SEC-007 — 構造・保全・アクセス制御の正)
   - packages/events(85bd3aa — 基底 EventEnvelope)
   - packages/audit(WP-2003/73ffd90, WP-2010/4cf702f — AuditEvent registry 実装)
+impacts:
+  - packages/audit event registry
+  - packages/events audit envelope base
+  - apps/api future audit persistence boundary
+related_work_packages:
+  - WP-0012
+  - WP-2003
+  - WP-2010
+  - WP-3009-BE
+  - WP-4043
+  - WP-9002-W4
+related_tests:
+  - pnpm --filter @yrese/audit test
+related_prs: []
+evidence_ids: []
 open_questions:
   - 保存期間(REG-003 の法定根拠確定待ち — SEC-007 と同期)
 change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - 0.2.3 (2026-07-09): WP-3009-BE / API-006 v0.2.0 に基づき、受付キュー操作の監査イベント `reception.created` / `reception.cancelled` を追加。`reception.cancelled` は action=cancelled の既存規律により businessReason 必須。
   - 0.2.2 (2026-07-09): WP-4043 実装状態 drift 整備。MOD-008 台帳の実装先を `@yrese/audit` 実装済みとして記録し、旧予定の記述を現行 packages/* 実態へ同期(命名文法・イベント種別・必須属性は不変更)。
   - 0.2.1 (2026-07-09) SEC-008 §4 反映 — breakglass.ended を追加し、businessReasonRequiredEventTypes に breakglass.used を登録。終了イベントは発動イベントと同一 correlationId で紐づける。

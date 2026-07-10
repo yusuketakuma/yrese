@@ -10,16 +10,33 @@ reviewers:
   - opus4.8
 version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - 0.1.2 (2026-07-09): WP-4049 実装状態 drift 整備。受付キュー契約・ReceptionId・RECEPTION_STATUSES・RCVエラー・reception scope・reception audit event と最新テスト状態を反映(要件・禁止事項は不変更)。
   - 0.1.1 (2026-07-09): WP-4043 実装状態 drift 整備。contracts と audit の実装済み状態、BLOCKER_TYPES 数、実装済み共通モジュール数を現行 packages/* 実態へ同期(要件・禁止事項は不変更)。
 source_refs:
   - 構築プロンプト v0.2.0 §0.0.3.3, §0.0.3.4
 depends_on:
   - docs/modules/common_module_inventory.md(MOD-001)
+impacts:
+  - packages/* shared-module boundaries
+  - apps/api shared-module consumers
+  - apps/web shared-module consumers
+related_work_packages:
+  - WP-0012
+  - WP-4043
+  - WP-4049
+  - WP-9002-W4
+related_tests:
+  - pnpm check:boundaries
+related_prs: []
+evidence_ids: []
 open_questions:
   - UI表示文言モジュールの管理場所(UI/UX SSOTとの整合方法 — packages/ui 新設時に確定)
 blockers: []
