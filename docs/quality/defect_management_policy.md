@@ -10,11 +10,25 @@ reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §10
 depends_on: [QUA-001, SAF-001, SEC-007, OPS-013]
+impacts: [QUA-005, release gates, affected implementation work packages]
+related_work_packages: [WP-0013, WP-9002-W6B]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W6B metadata-only completion: body/status/version/approval/effective semantics unchanged"
+open_questions:
+  - 欠陥台帳の運用場所(GitHub Issues 移行時期)
+  - SLA と連動した修正期限(OPS-005 確定後)
+blockers: []
 ```
 
 ## 目的

@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W6A LANDED、92 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W6A LANDED、W6B FINALIZED / LANDING PENDING、91 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -617,7 +617,7 @@ validation_results: FINAL PASS before landing — exact12/staged0; inventory173/
 finalization_record: IDX-001 v0.4.6 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and eight W5A approvals appended; API targets unchanged from approved review candidate and API-008 remains PROPOSED
 landing_required: commit_and_push after finalization
 landing_record: commit 74666c9 `WP-9002-W5A: normalize API metadata` pushed successfully to origin/main (134864c..74666c9); inventory 173/118/55; exact 12 paths; eight API bodies/preserved/amendment/blocker states and 165 non-target set unchanged; all eight reviewer/full validation gates APPROVED; no code, DB, external, deployment, or destructive change
-overall_state: W6A LANDED; WP-9002 remains IN_PROGRESS with 92 incomplete SSOT documents and W6B requires fresh mapping/pre-plan
+overall_state: W6A LANDED; W6B FINALIZED / LANDING PENDING; WP-9002 remains IN_PROGRESS with 91 incomplete SSOT documents
 ```
 
 #### WP-9002-W5B architecture legacy metadata — LANDED
@@ -743,6 +743,27 @@ validation_results: exact5/staged0、inventory173/92/81、target missing0、本�
 finalization_record: IDX-001 v0.4.12 APPROVED with approved_at/effective_from 2026-07-11; all prior provenance preserved and ten W6A approvals appended; PLAN-DB remains PROPOSED/null approval/effective and target body unchanged
 landing_record: commit 07bdc96 `WP-9002-W6A: normalize database plan metadata` pushed successfully to origin/main (05a1edc..07bdc96); inventory 173/92/81; exact5; PLAN-DB body/PROPOSED/null approval/6 blockers and 172 non-target fingerprint unchanged; ten reviews/full validation APPROVED; no DB connection, migration, DDL/DML, infra, production, deploy, or destructive change
 state: LANDED; WP-9002 remains IN_PROGRESS and W6B starts only after fresh read-only mapping/pre-plan
+```
+
+#### WP-9002-W6B QUA-004 legacy metadata — FINALIZED / LANDING PENDING
+
+```yaml
+baseline_commit: 2d695fa
+baseline_inventory: { total: 173, incomplete: 92, complete: 81 }
+target_inventory: { total: 173, incomplete: 91, complete: 82 }
+targets: [QUA-004]
+allowed_files: QUA-004 plus index/Plans/State/ops; exact5
+mapping: QUA-001/003 excluded because APPROVED bodies conflict with AGT-018 and require semantic governance reconciliation; QUA-002/005/006/008/009, regulatory and receipt remain excluded for claims/legal/production/external semantics
+pre_plan_review: APPROVED_WITH_PINS after shrinking from the rejected quality-core proposal
+pins: preserve body/status/version/human approval/source/dependencies; impacts are direct policy consumers; questions copy the two body unresolved items exactly; blockers empty is document-level only and does not waive critical/high release prohibition, human review, regression/golden or SSOT-first rules; no quality gate/incident/legal/production activation
+non_target: 172 docs / 17807 bytes / SHA-256 54f8fede62a60732cb37d399cc65981dfa918a21689bfdfda6700bed70f5d45f
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, security_critic, privacy_compliance_reviewer, medical_safety_reviewer, claims_evidence_specialist]
+validation: exact invariants plus workspace typecheck/test/build, OpenAPI, calculation-purity, scripts, SSOT, secrets, boundaries, deps, SBOM, diff
+review_results: nine required roles APPROVED; no actionable findings; empty tests/evidence/blockers are document-level non-claims and do not waive normative defect gates
+validation_results: FINAL PASS before landing — exact5/staged0; inventory173/91/82; QUA-004 body 1409 bytes/SHA-256 2016ae0b47a3cb5f2d1d60af25f282b28f7a8c039f267a8b090dd300414b2ae9; non-target172/17807/54f8fede62a60732cb37d399cc65981dfa918a21689bfdfda6700bed70f5d45f; typecheck/test/build, OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS; API 161 plus 9 expected PostgreSQL skips without TEST_DATABASE_URL
+finalization_record: IDX-001 v0.4.13 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and nine W6B approvals appended
+landing_required: commit_and_push after finalization
+state: FINALIZED / LANDING PENDING; exact5 landing pending
 ```
 
 - [x] WP-9003 repository reconciliation state pack(Codex-only、resume-safe、docs-only)
