@@ -2,15 +2,16 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.19はWP-9007 ten-reviewer approvalを経てAPPROVED・landed済み。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.20はWP-9002-W7C ten-reviewer approvalを経てAPPROVED・landing pending。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-11
 
-### WP-9002-W7C ACC-008 metadata — READY / pre-plan approved
+### WP-9002-W7C ACC-008 metadata — FINALIZED / landing pending
 
-- clean `375c1ee`でresidual82を再triageし、OPS-009は`causationId` optionalとの本文driftと未実装observability基盤のためmetadata-onlyから除外した。ACC-008だけをbody-preserving exact5へ選定。PaymentMethod/POSSettlement等のruntime/direct testはなく、empty tests/evidenceはnon-waiver。body `1256/987fea1d…`、target173/81/92、non-target172 `16778/097329f5…`、IDX v0.4.20。CASH/MVP、Payment method_code、POS結果不在時の決済完了非捏造、混合支払、open question、legacy approvalは不変。copay、Charge-before-Payment、ACC-009、WP-0037/0038、WP-2201/3101、tenant/audit/production/deployを解除しない。まだtarget editは開始していない。
+- clean `375c1ee`でresidual82を再triageし、OPS-009は`causationId` optionalとの本文driftと未実装observability基盤のためmetadata-onlyから除外した。ACC-008だけをbody-preserving exact5へ選定。PaymentMethod/POSSettlement等のruntime/direct testはなく、empty tests/evidenceはnon-waiver。body `1256/987fea1d…`、target173/81/92、non-target172 `16778/097329f5…`、IDX v0.4.20。CASH/MVP、Payment method_code、POS結果不在時の決済完了非捏造、混合支払、open question、legacy approvalは不変。copay、Charge-before-Payment、ACC-009、WP-0037/0038、WP-2201/3101、tenant/audit/production/deployを解除しない。候補時にACC-008は23 fieldを補完し、IDX v0.4.20はPROPOSED/nullだった。
+- independent/spec/data/architect/DB/test/claims/security/privacy/medicalの10 roleがAPPROVED。ACC-008のbody/status/version/legacy approval/effective nullは不変、IDX v0.4.20をAPPROVED/effective 2026-07-11へfinalize。workspace typecheck/test/build、OpenAPI、calculation-purity、scripts、SSOT173、secrets、boundaries、deps high0/critical0、SBOM231、diffがPASSし、API PostgreSQL integration 9件は`TEST_DATABASE_URL`なしのexpected skip。これらはACC-008のruntime証拠ではなくregression-onlyであり、payment/POS/claim/tenant/production/human gateを解除しない。exact5 landing pending。
 
 ### WP-9007 SEC-008 audit security freshness — LANDED
 

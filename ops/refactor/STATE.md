@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9007 landed at inventory 173/82/91; WP-9002-W7C ACC-008 metadata-only migration is READY with pre-plan approval.
-- Current task: from clean `375c1ee`, implement only ACC-008 23-field metadata plus index/ledger completion in exact5.
+- Current phase: WP-9002-W7C ACC-008 metadata-only migration is finalized at inventory 173/81/92; exact5 landing is pending.
+- Current task: recheck finalized exact5/staged paths, commit and push the owned W7C landing, then record the three-ledger landing.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -58,4 +58,6 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - WP-9007 finalization checkpoint: all ten required roles APPROVED; SEC-008 v0.1.2 and IDX v0.4.19 APPROVED/effective 2026-07-11; exact5/staged0; all23; inventory173/82/91; non-target `172/16879/060cf2b2…`; audit182 and workspace typecheck/test/build PASS; API161 plus nine expected PostgreSQL skips without TEST_DATABASE_URL; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS. No physical WORM/KMS/RLS, retention/legal, break-glass authorization, persistence, production, DB, external or deployment change.
 - WP-9007 landing checkpoint: commit `4a2cefd` pushed to `origin/main` (d43a905..4a2cefd); exact5; inventory173/82/91; ten reviews/full gates APPROVED; no physical WORM/KMS/RLS, retention/legal, break-glass authorization, persistence, production, DB, external, deployment or destructive change.
 - W7C pre-plan checkpoint: ACC-008 + index/Plans/State/this file exact5; baseline `375c1ee`; body `1256/987fea1d…` and preserved approval/status/version/deps/question/history; target173/81/92; non-target `172/16778/097329f5…`; IDX v0.4.20 PROPOSED/null during review. No PaymentMethod/POSSettlement/Payment runtime/direct test exists, so empty tests/evidence are non-waivers. Keep CASH/MVP, Payment method_code, no synthetic settlement success, mixed payment, copay/Charge-before-Payment/ACC-009/WP-0037/0038/WP-2201/3101/tenant/audit/production boundaries unchanged and human-gated.
-- Next action: recheck clean baseline/body/live-symbol absence, then create W7C review candidate. Remaining 82 incomplete SSOT documents require per-slice factual/human-gate assessment; provisional A/B/C counts are not a terminal manifest.
+- W7C review checkpoint: ACC-008 all23 with body/preserved approval/status/version/deps/question/history byte-identical; IDX v0.4.20 PROPOSED/null; inventory173/81/92; non-target `172/16778/097329f5…`; no PaymentMethod/POSSettlement/Payment runtime/direct test exists. No semantic/payment/POS/tenant/claim/production activation.
+- W7C finalization checkpoint: all ten required roles APPROVED; ACC-008 metadata all23 while body/status/version/legacy approval/effective null remain unchanged; IDX v0.4.20 APPROVED/effective 2026-07-11; exact5/staged0; inventory173/81/92; non-target `172/16778/097329f5…`; workspace typecheck/test/build PASS; API161 plus nine expected PostgreSQL skips without TEST_DATABASE_URL; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates. No payment/POS/claim/tenant/DB/production/external/deployment activation.
+- Next action: exact-stage and push the finalized five paths; then write and land the three-ledger landing record.

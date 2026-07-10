@@ -10,13 +10,27 @@ reviewers:
   - opus4.8
 version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §0.0.4.3, §0.0.4.6
 depends_on: [ACC-001, ACC-009]
+impacts:
+  - ACC-007 daily closing aggregation
+  - future WP-2201 accounting ledger implementation
+  - future WP-3101 accounting UI implementation
+related_work_packages: [WP-0033, WP-0037, WP-0038, WP-2201, WP-3101, WP-9002-W7C]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文§4変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W7C metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - キャッシュレス各方式(クレジット/電子マネー/QR)の決済事業者・端末要件(ACC-009 の接続確定後)
+blockers: []
 ```
 
 ## 1. レジストリ構造
