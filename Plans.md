@@ -902,6 +902,29 @@ landing_record: commit 770590a `WP-9006: align product scope routing with AGT-01
 state: LANDED
 ```
 
+- [~] WP-9007 SEC-008 audit security fact/routing freshness semantic amendment(READY / PRE-PLAN APPROVED、P1)
+
+```yaml
+work_package_id: WP-9007
+baseline_commit: e14dd04
+baseline_inventory: { total: 173, incomplete: 83, complete: 90 }
+target_inventory: { total: 173, incomplete: 82, complete: 91 }
+target: SEC-008 v0.1.2
+purpose: Synchronize stale WP-2009/WP-2010 future wording with implemented audit pure core while keeping persistence, physical WORM, KMS/RLS, retention, break-glass operations and production wiring explicitly unimplemented/human-gated.
+allowed_files: SEC-008, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other SSOT/code/tests/packages/lock; persistence adapter/schema/migration/DML; AWS/WORM/KMS/RLS choice; break-glass feature/auth; retention/legal/risk acceptance; production/deploy/external action
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: exactly five bounded edits — WP-5004a/WP-2009 hash/hydrate facts, fake-hash prohibition wording, WP-2010 break-glass registry/businessReason facts, two fail-closed stop lines, plus v0.1.2 history
+pins: distinguish implemented create/hash/hydrate/chain pure core from unimplemented append-only persistence/WORM/production; preserve physical-candidate table, four adoption prerequisites, both questions and BLOCKED_SECURITY_REVIEW; no cross-event runtime enforcement claim
+expected_body: 5165 bytes / SHA-256 62ef6f1d0459d9853861905ab7a36f9c623303373aa6e6e75c729bd872fbc059
+non_target: 172 canonical rows / 16879 bytes / SHA-256 060cf2b2ddf3e60b03c7f8580527d2b36313d8409ad24b349cdf4c5571bb2ccd
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, api_contract_reviewer, test_architect, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: exact live-fact/routing correction needs no new risk acceptance; any physical WORM/KMS/RLS, retention/legal, tenant, break-glass authorization, production wiring/deploy or risk decision stops for applicable human authority
+validation: exact5/body-edit/hash/inventory/non-target assertions, audit pure-core symbols/tests, workspace typecheck/test/build and all repo gates
+rollback: revert exact5 landing and reopen WP-9007 BLOCKED; never use reverted future wording to disable implemented pure-core validation or imply production WORM readiness
+state: READY; no target edit has started; fresh baseline/exact invariants required before edit
+```
+
 ## Phase 0: 調査・計画(ドキュメント)
 
 - [x] WP-0001 Phase 0 計画書作成(docs/plan/phase0_plan.md)— 人間承認済み(「次に進む」)

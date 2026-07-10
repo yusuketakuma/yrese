@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002 W7B ACC-007 metadata landed at inventory 173/83/90.
-- Current task: fresh read-only mapping/pre-plan of the next safe metadata or semantic reconciliation slice.
+- Current phase: WP-9002 W7B landed at inventory 173/83/90; WP-9007 SEC-008 fact/routing freshness is READY with pre-plan approval.
+- Current task: from clean `e14dd04`, implement only the five bounded SEC-008 body/history edits plus 23-field/index/ledger completion in exact5.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -53,4 +53,6 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W7B review checkpoint: baseline `4b99ab7`; ACC-007 + index/Plans/State/this file exact5; body `1383/3fc2b568…`; target inventory 173/83/90; non-target `172/16991/7de30c7d…`; pre-plan APPROVED_WITH_PINS; IDX v0.4.18 PROPOSED/null. No runtime/direct test or accounting readiness claim.
 - W7B finalization checkpoint: ten reviews/full regression gates PASS; IDX v0.4.18 APPROVED/effective 2026-07-11; ACC-007 legacy approval unchanged; inventory 173/83/90; no runtime/direct test or accounting readiness claim.
 - W7B landing checkpoint: commit `e8477c9` pushed to `origin/main`; inventory 173/83/90; exact5; ACC-007 body/legacy approval/questions and non-target fingerprint unchanged; ten reviews/full regression gates PASS; no accounting/claim/API/DB/code/external/production/deployment change.
-- Next action: complete this three-ledger record, then fresh next-wave mapping/pre-plan. Six security docs, PRD-003, safety, Phase0-gate, claim, regulatory and receipt docs remain excluded pending semantic/human review.
+- Residual checkpoint: verified total is 83 incomplete. Mapper A/B/C grouping is provisional advisory because no tracked 83-ID manifest exists; do not use it for queue-wide terminal or no-overlap claims.
+- WP-9007 pre-plan checkpoint: SEC-008 v0.1.2 exact5; target 173/82/91; expected body `5165/62ef6f1d…`; non-target `172/16879/060cf2b2…`. Sync pure-core facts only; keep persistence/WORM/KMS/RLS/retention/break-glass operations/production BLOCKED and human-gated.
+- Next action: recheck clean baseline and exact live symbols, then create WP-9007 review candidate. No target edit has started.

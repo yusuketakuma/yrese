@@ -8,6 +8,10 @@
 
 ## 2026-07-11
 
+### WP-9007 SEC-008 audit security freshness — READY / pre-plan approved
+
+- verified residualは83 incomplete。mapperのA metadata / B fact-routing / C human-authority分類はtracked全件manifest未作成の暫定advisoryで、queue-wide terminal判定には使わない。次taskは独立pre-plan済みSEC-008 exact5 fact/routing amendment。WP-5004a/WP-2009/WP-2010 pure-core実装事実だけを同期し、persistence/WORM/KMS/RLS/retention/break-glass operations/productionは未実装・human-gatedのまま。baseline `e14dd04`、target173/82/91、non-target172 `16879/060cf2b2…`、expected body `5165/62ef6f1d…`。まだtarget editは開始していない。
+
 ### WP-9002-W7B ACC-007 metadata — completed / LANDED
 
 - clean `4b99ab7`でACC-007を実装・台帳へ照合し、DailyCashClosing/CashDrawerSessionのruntime/direct testがないことを確認。単独exact5をpre-plan APPROVED_WITH_PINS。本文/承認/3 questions不変、target173/83/90、non-target172 `16991/7de30c7d…`。empty blocker/tests/evidenceはdocument-level nonclaimで、accounting/claims/LOCAL_ONLY/POS/production readinessを解除しない。10 role/full regression gates PASS後にIDX v0.4.18をAPPROVED/effective 2026-07-11へfinalize。commit `e8477c9`をorigin/mainへpushしLANDED。
