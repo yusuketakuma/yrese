@@ -7,18 +7,29 @@ domain: api
 status: APPROVED
 approved_at: 2026-07-09
 approved_by: opus4.8 review + fable5
+effective_from: null
+effective_to: null
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-10
+updated_at: 2026-07-11
 amended_by: [ARC-008]
 amendment_status: PENDING_REVISION
 amendment_note: "ARC-008(APPROVED 2026-07-10)により改版予約中。方向は ARC-008 が暫定的に優先する。本文の全面改版は Phase 1 の PRC-007 10段フローで実施し本注記を解除する。"
 source_refs: [構築プロンプト v0.2.0 §14(API-first dogfooding / PH-OS / OSS), PRD-006(柱4), PRD-009(戦い4)]
 depends_on: [API-002, API-003]
 impacts: [WP-0036(Integration Hub), API-005]
+related_work_packages: [WP-0046, WP-0036, WP-9002-W5A]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5A metadata-only completion: body/status/version/approval/effective semantics unchanged"
+open_questions: []
+blockers: []
 ```
 
 ## 1. 目的と結論

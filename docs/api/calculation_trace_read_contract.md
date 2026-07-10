@@ -7,13 +7,15 @@ domain: api
 status: APPROVED
 approved_at: 2026-07-10
 approved_by: opus4.8 review + fable5
+effective_from: null
+effective_to: null
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
 version: 0.1.0
 created_at: 2026-07-10
-updated_at: 2026-07-10
+updated_at: 2026-07-11
 source_refs:
   - docs/quality/quality_transparency_strategy.md(QUA-007 §2 L2 過程の証明)
   - docs/uiux/screen_inventory_draft.md(SCR-012)
@@ -27,6 +29,16 @@ impacts:
   - WP-3011(SCR-012 calculation_trace ビューア)
   - packages/contracts(calculation-trace.ts の追加)
   - apps/web(SCR-012 コンポーネント)
+related_work_packages: [WP-3011, WP-3011a, WP-9002-W5A]
+related_tests:
+  - packages/trace/src/trace.test.ts
+  - packages/contracts/src/calculation-trace.test.ts
+  - apps/web/app/components/calculation-trace-view.test.tsx
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5A metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - trace を返すエンドポイントのパス・キー(calculationResultId)は算定結果契約(算定エンジン解禁後)で確定する。本契約は trace ペイロードの読取表現と不変条件を確定し、結線はそちらへ委譲する。
 blockers:

@@ -7,16 +7,31 @@ domain: api
 status: APPROVED
 approved_at: 2026-07-09
 approved_by: codex 実装可能性レビュー(CONTRACT_REVIEW 全反映)+ fable5
+effective_from: null
+effective_to: null
 owner: fable5
 reviewers:
   - opus4.8
   - codex (backend実装可能性)
 version: 0.2.2
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 source_refs: [UIX-007(SCR-001), UIX-006(業務導線), API-001 v0.2.2(様式先例), API-003(公開API共通土台)]
 depends_on: [API-001, API-002, API-003, DOM-004(処方ライフサイクルとの分界), MOD-005(状態台帳 — 改版前提), MOD-006(error_code_registry — 改版前提), MOD-007(permission registry — 改版前提), MOD-011(date-time policy)]
 impacts: [packages/contracts, apps/api, apps/web(WP-3009 SCR-001), packages/shared-kernel(RECEPTION_STATUSES / PERMISSION_RESOURCES / RCV エラーコード / ReceptionId factory 追加)]
+related_work_packages: [WP-3009, WP-3009-BE, WP-3009-UI, WP-4046, WP-4049, WP-5003, WP-9002-W5A]
+related_tests:
+  - packages/shared-kernel/src/kernel.test.ts
+  - packages/contracts/src/reception-queue.test.ts
+  - apps/api/src/server.test.ts
+  - apps/api/src/db/postgres-repositories.integration.test.ts
+  - apps/web/app/reception-dashboard.test.tsx
+  - pnpm check:openapi
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文§8変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5A metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - キュー状態と DOM-004 処方ライフサイクル(RECEIVED_PROVISIONAL 等)の対応付け(処方箋取込 WP で確定)
 blockers:

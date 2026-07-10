@@ -11,7 +11,11 @@ reviewers:
   - human_review_if_required(外部IF・conformance)
 version: 0.1.1
 created_at: 2026-07-10
-updated_at: 2026-07-10
+updated_at: 2026-07-11
+approved_at: null
+approved_by: null
+effective_from: null
+effective_to: null
 source_refs:
   - HL7 FHIR R4 4.0.1 RESTful API(https://hl7.org/fhir/R4/http.html)
   - HL7 FHIR R4 OperationOutcome / IssueType(https://hl7.org/fhir/R4/operationoutcome.html, valueset-issue-type.html)
@@ -31,6 +35,13 @@ impacts:
   - Phase 1 FHIR REST 層 実装 WP
   - packages/contracts(FHIR wire schema・OperationOutcome・CapabilityStatement を contract-first 単一正本へ)
   - apps/api(/fhir/R4/* ルート)
+related_work_packages: [WP-9002-W5A]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5A metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - If-Match 欠如(400)に用いる IssueType コードの確定(FHIR は専用コードを規定せず yrese 選定 — §4 で `required` を暫定)
   - JP Core 1.2.0 の DocumentReference profile 正式ステータス・must-support(artifacts.html の StructureDefinition 直接確認 — grounding で抽出結果が矛盾)

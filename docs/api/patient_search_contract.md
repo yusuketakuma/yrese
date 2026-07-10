@@ -11,12 +11,29 @@ reviewers:
   - codex (backend実装可能性)
 version: 0.2.3
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: codex実装可能性レビュー(CONTRACT_CHANGE_REQUESTS 4件反映)+ fable5承認
+effective_from: null
+effective_to: null
 source_refs: [DOM-002(患者集約), UIX-007(SCR患者検索), SEC-004(PIA), MOD-012(validation policy)]
 depends_on: [DOM-001..004(PROPOSED — 本契約はR1-R2骨格範囲で先行、Phase 1ゲートで両者同時承認)]
 impacts: [packages/contracts, apps/api, apps/web(WP-3003)]
+related_work_packages: [WP-2008, WP-3003, WP-4014, WP-4029, WP-4045, WP-4046, WP-4074, WP-5003, WP-9002-W5A]
+related_tests:
+  - packages/contracts/src/patient-search.test.ts
+  - apps/api/src/patient-search-cursor.test.ts
+  - apps/api/src/server.test.ts
+  - apps/api/src/db/postgres-repositories.integration.test.ts
+  - apps/web/app/patients/patient-search.test.tsx
+  - pnpm check:openapi
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文§6変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5A metadata-only completion: body/status/version/approval/effective semantics unchanged"
+open_questions: []
+blockers: []
 ```
 
 ## 1. 目的とスコープ

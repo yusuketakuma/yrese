@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1/W2/W3/W4 LANDED、remaining 126、metadata-only、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W4 LANDED、W5A FINALIZED / LANDING PENDING、landed remaining 126 / finalized target 118、metadata-only、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -554,6 +554,69 @@ finalization_record: IDX-001 v0.4.5 APPROVED with approved_at/effective_from 202
 landing_required: commit_and_push after finalization
 landing_record: commit 09070f3 `WP-9002-W4: normalize remaining module metadata` pushed successfully to origin/main (5d68633..09070f3); inventory 173/126/47; exact 15 paths; eleven target bodies/preserved fields and 162 non-target missing-set unchanged; all eight reviewer and full validation gates APPROVED; no code, DB, external, deployment, or destructive change
 overall_state: W4 LANDED; WP-9002 remains IN_PROGRESS with 126 incomplete SSOT documents and W5 requires fresh read-only mapping and pre-plan review
+```
+
+#### WP-9002-W5A API legacy frontmatter migration — FINALIZED / LANDING PENDING
+
+```yaml
+work_package_id: WP-9002
+wave_id: WP-9002-W5A
+title: all eight legacy API SSOT metadata migration
+status: IN_PROGRESS
+execution_state: W5A_FINALIZED
+landing_state: pending
+priority: P1
+risk_level: R2
+baseline_commit: 134864c
+baseline_inventory: { total: 173, incomplete: 126, complete: 47 }
+target_inventory: { total: 173, incomplete: 118, complete: 55 }
+target_ssots: [API-001, API-002, API-003, API-004, API-005, API-006, API-007, API-008]
+allowed_files: eight docs/api targets plus docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact total 12
+owner_role: sole_maintainer
+reviewer_roles: [independent_verifier, spec_guardian, data_integrity_auditor]
+specialist_roles: [api_contract_reviewer, test_architect, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: none for exact metadata-only completion; external publication, legal, FHIR conformance, security/privacy, medical, approval/effective, DB/runtime changes stop and split
+mapping_record: clean baseline 134864c; 165 non-target canonical missing-set 20481 bytes / SHA-256 479459faefe5ea55412d508559bd486162eec68955a10b57f9a13ef6303b6ca0; eight target body hashes pinned in mapper evidence
+pre_plan_review: APPROVED_WITH_PINS; API-008 stays PROPOSED/null approval, API-004 PENDING_REVISION and API-005/API-008 blockers remain exact, API-004/005/008 related_tests stay empty
+review_records:
+  - independent_verifier APPROVED
+  - spec_guardian APPROVED
+  - data_integrity_auditor APPROVED
+  - api_contract_reviewer APPROVED
+  - test_architect APPROVED
+  - security_critic APPROVED
+  - privacy_compliance_reviewer APPROVED
+  - medical_safety_reviewer APPROVED
+  - No W5A human approval is claimed; API-005 legal and API-008 conformance/security/official-adapter gates remain unresolved.
+frontmatter_rules:
+  - Preserve all target bodies, versions, statuses, owners/reviewers, created/approval values, sources, dependencies, impacts, existing questions/blockers and API-004 amendment fields exactly.
+  - Set updated_at 2026-07-11, effective_from/to null, related_prs/evidence_ids empty; add only mapped WPs/tests and W5A metadata history.
+  - Add absent questions/blockers as [] only at document level; no body stop condition is released. API-008 approved_at/by are explicit null.
+  - Do not add W5A reviewers to target approved_by. IDX v0.4.6 remains PROPOSED/null approval until eight reviews approve.
+stop_conditions:
+  - Any body/hash/preserved/amendment/blocker drift, non-target fingerprint or index/history drift, inventory other than 173/118/55, path outside exact 12, validation failure or CHANGES_REQUIRED.
+  - Any API semantic, external publication, FHIR/legal/security/privacy/medical/evidence/DB/runtime activation or approval/effective change.
+review_gates:
+  - independent/spec/data-integrity verify exact paths, bodies/preserved fields, inventory, non-target identity and index history.
+  - API/test/security/privacy/medical reviewers verify provenance and all non-activation pins.
+  - After eight approvals only, root finalizes IDX, revalidates, exact-stages, commits, and pushes.
+validation_commands:
+  - exact 23-field/body/preserved/non-target/index/exact-path/staged-zero audits
+  - pnpm -r typecheck
+  - pnpm -r test
+  - pnpm -r build
+  - pnpm check:openapi
+  - pnpm test:scripts
+  - pnpm check:ssot-index
+  - pnpm check:secrets
+  - pnpm check:boundaries
+  - pnpm check:deps
+  - pnpm check:sbom
+  - git diff --check
+validation_results: FINAL PASS before landing — exact12/staged0; inventory173/118/55; eight target missing0/bodies/preserved fields and API-004 amendment exact; API-008 PROPOSED/null approval; 165 non-target missing-set 20481 bytes / SHA-256 479459faefe5ea55412d508559bd486162eec68955a10b57f9a13ef6303b6ca0; workspace typecheck/test/build PASS (audit182, contracts86, web99, API161 + expected skips9); OpenAPI/scripts/SSOT173/secrets/boundaries/deps high0 critical0/SBOM231/diff PASS; eight reviewers APPROVED
+finalization_record: IDX-001 v0.4.6 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and eight W5A approvals appended; API targets unchanged from approved review candidate and API-008 remains PROPOSED
+landing_required: commit_and_push after finalization
+overall_state: W5A finalized; landed inventory remains 173/126/47 until exact-stage commit and push
 ```
 
 - [x] WP-9003 repository reconciliation state pack(Codex-only、resume-safe、docs-only)

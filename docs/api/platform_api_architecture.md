@@ -7,16 +7,28 @@ domain: api
 status: APPROVED
 approved_at: 2026-07-09
 approved_by: opus4.8 review + fable5
+effective_from: null
+effective_to: null
 owner: fable5
 reviewers:
   - opus4.8
   - codex (backend実装可能性)
 version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 source_refs: [構築プロンプト v0.2.0 §14(API-first)・§5(Open Rececon Platform)・§11(Integration Hub), PRD-006(柱4), PRD-007(§4 facade), PRD-009(戦い4)]
 depends_on: [API-002, PRD-007, DOM-005, DOM-006, SEC-004(PIA), OPS-005(SLA/SLO)]
 impacts: [API-004, API-005, WP-0036(Integration Hub), packages/contracts, apps/api]
+related_work_packages: [WP-0046, WP-0036, WP-9002-W5A]
+related_tests:
+  - apps/api/src/server.test.ts
+  - pnpm check:openapi
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5A metadata-only completion: body/status/version/approval/effective semantics unchanged"
+open_questions: []
 blockers:
   - BLOCKED_PERFORMANCE_SLO: rate limit / quota / 可用性の具体数値は OPS-005 系確定まで定めない
   - BLOCKED_OFFICIAL_ADAPTER_BOUNDARY: 公的接続系を公開 API で代替・再公開しない

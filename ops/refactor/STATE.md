@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002 legacy SSOT frontmatter migration W5 preparation. W1/W2/W3/W4 are LANDED; inventory is 173 total / 126 incomplete / 47 complete.
-- Current task: fresh read-only mapping and pre-plan review for the next bounded metadata-only wave. No W5 target edit has started.
+- Current phase: WP-9002 legacy SSOT frontmatter migration W5A API finalized / landing pending. W1-W4 are LANDED; landed inventory 173/126/47, finalized target 173/118/55.
+- Current task: post-finalization invariant confirmation, exact-stage, commit, and push of 12 owned paths.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -21,5 +21,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
   - Production/external/migration/DML/deploy operations remain human-gated and were not run.
 - Validation baseline (2026-07-11): workspace typecheck/test PASS; audit 182, trace 37, contracts 86, web 99, API 161 + 9 expected PostgreSQL skips without `TEST_DATABASE_URL`; web/full builds PASS; OpenAPI, SSOT index 173, boundaries, secrets, dependency audit high=0/critical=0, SBOM 231, calculation purity, script harness and diff check PASS.
 - Git resume check: run `git status -sb`, `git rev-list --left-right --count origin/main...HEAD`, and `git log -5 --oneline`. Preserve any new unrelated dirty paths. Root alone stages exact task paths and pushes because the active Goal explicitly requests grouped commit/push.
-- Landing-record checkpoint: `main @ 09070f3` equals `origin/main`; this three-path ledger update records the already-pushed W4 landing and must not include target SSOT or product changes.
-- Next action: exact-stage only `Plans.md`, `State.md`, and `ops/refactor/STATE.md`, commit as `WP-9002-W4: record metadata landing`, push, then begin fresh W5 mapping/pre-plan from clean HEAD.
+- Pending W5A checkpoint: baseline `main @ 134864c` equals `origin/main`; owned paths are eight docs/api targets plus index/Plans/State/this file. 165 non-target missing-set baseline is 20481 bytes / `479459fa…`.
+- Next action: revalidate finalized W5A and obtain independent confirmation, commit as `WP-9002-W5A: normalize API metadata`, push, then map W5B.

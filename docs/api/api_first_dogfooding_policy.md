@@ -7,16 +7,31 @@ domain: api
 status: APPROVED
 approved_at: 2026-07-09
 approved_by: opus4.8 review + fable5
+effective_from: null
+effective_to: null
 owner: fable5
 reviewers:
   - opus4.8
   - codex (backend実装可能性)
 version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 source_refs: [構築プロンプト v0.2.0 §14(API-first dogfooding / PH-OS / OSS), PRD-006(柱4), PRD-008(D6), PRD-009(戦い4)]
 depends_on: [PRD-006, PRD-008, API-001, MOD-003(依存方向)]
 impacts: [API-003, API-004, API-005, packages/contracts, apps/api, apps/web]
+related_work_packages: [WP-0046, WP-9002-W5A]
+related_tests:
+  - pnpm --filter @yrese/contracts test
+  - pnpm --filter @yrese/api test
+  - pnpm --filter @yrese/web test
+  - pnpm check:openapi
+  - pnpm check:boundaries
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5A metadata-only completion: body/status/version/approval/effective semantics unchanged"
+open_questions: []
 blockers:
   - API_CONTRACT_BLOCKED: 契約(@yrese/contracts)にない API の呼び出し・提供は実装しない
 ```

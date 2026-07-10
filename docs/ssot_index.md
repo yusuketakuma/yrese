@@ -16,11 +16,11 @@ reviewers:
   - security_critic
   - api_contract_reviewer
   - test_architect
-version: 0.4.5
+version: 0.4.6
 created_at: 2026-07-09
 updated_at: 2026-07-11
 approved_at: 2026-07-11
-approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; spec_guardian APPROVED; data_integrity_auditor APPROVED; WP-9002-W1 independent_verifier APPROVED; WP-9002-W1 spec_guardian APPROVED; WP-9002-W1 data_integrity_auditor APPROVED; WP-9002-W1 medical_safety_reviewer APPROVED; WP-9002-W1 privacy_compliance_reviewer APPROVED; WP-9002-W1 security_critic APPROVED; WP-9002-W2 independent_verifier APPROVED; WP-9002-W2 test_architect APPROVED; WP-9002-W2 spec_guardian APPROVED; WP-9002-W2 api_contract_reviewer APPROVED; WP-9002-W2 data_integrity_auditor APPROVED; WP-9002-W2 medical_safety_reviewer APPROVED; WP-9002-W2 privacy_compliance_reviewer APPROVED; WP-9002-W3 independent_verifier APPROVED; WP-9002-W3 spec_guardian APPROVED; WP-9002-W3 data_integrity_auditor APPROVED; WP-9002-W3 security_critic APPROVED; WP-9002-W3 api_contract_reviewer APPROVED; WP-9002-W3 test_architect APPROVED; WP-9002-W3 medical_safety_reviewer APPROVED; WP-9002-W3 privacy_compliance_reviewer APPROVED; WP-9002-W4 independent_verifier APPROVED; WP-9002-W4 spec_guardian APPROVED; WP-9002-W4 data_integrity_auditor APPROVED; WP-9002-W4 test_architect APPROVED; WP-9002-W4 security_critic APPROVED; WP-9002-W4 api_contract_reviewer APPROVED; WP-9002-W4 medical_safety_reviewer APPROVED; WP-9002-W4 privacy_compliance_reviewer APPROVED
+approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; spec_guardian APPROVED; data_integrity_auditor APPROVED; WP-9002-W1 independent_verifier APPROVED; WP-9002-W1 spec_guardian APPROVED; WP-9002-W1 data_integrity_auditor APPROVED; WP-9002-W1 medical_safety_reviewer APPROVED; WP-9002-W1 privacy_compliance_reviewer APPROVED; WP-9002-W1 security_critic APPROVED; WP-9002-W2 independent_verifier APPROVED; WP-9002-W2 test_architect APPROVED; WP-9002-W2 spec_guardian APPROVED; WP-9002-W2 api_contract_reviewer APPROVED; WP-9002-W2 data_integrity_auditor APPROVED; WP-9002-W2 medical_safety_reviewer APPROVED; WP-9002-W2 privacy_compliance_reviewer APPROVED; WP-9002-W3 independent_verifier APPROVED; WP-9002-W3 spec_guardian APPROVED; WP-9002-W3 data_integrity_auditor APPROVED; WP-9002-W3 security_critic APPROVED; WP-9002-W3 api_contract_reviewer APPROVED; WP-9002-W3 test_architect APPROVED; WP-9002-W3 medical_safety_reviewer APPROVED; WP-9002-W3 privacy_compliance_reviewer APPROVED; WP-9002-W4 independent_verifier APPROVED; WP-9002-W4 spec_guardian APPROVED; WP-9002-W4 data_integrity_auditor APPROVED; WP-9002-W4 test_architect APPROVED; WP-9002-W4 security_critic APPROVED; WP-9002-W4 api_contract_reviewer APPROVED; WP-9002-W4 medical_safety_reviewer APPROVED; WP-9002-W4 privacy_compliance_reviewer APPROVED; WP-9002-W5A independent_verifier APPROVED; WP-9002-W5A spec_guardian APPROVED; WP-9002-W5A data_integrity_auditor APPROVED; WP-9002-W5A api_contract_reviewer APPROVED; WP-9002-W5A test_architect APPROVED; WP-9002-W5A security_critic APPROVED; WP-9002-W5A privacy_compliance_reviewer APPROVED; WP-9002-W5A medical_safety_reviewer APPROVED
 effective_from: 2026-07-11
 effective_to: null
 source_refs:
@@ -30,6 +30,7 @@ source_refs:
   - WP-9002-W2 modules metadata-only plan (2026-07-10)
   - WP-9002-W3 error/permission registries metadata-only plan (2026-07-11)
   - WP-9002-W4 remaining modules/testing metadata-only plan (2026-07-11)
+  - WP-9002-W5A API metadata-only plan (2026-07-11)
 depends_on:
   - AGT-018
   - PRC-007
@@ -42,11 +43,13 @@ related_work_packages:
   - WP-9002-W2
   - WP-9002-W3
   - WP-9002-W4
+  - WP-9002-W5A
 related_tests:
   - pnpm check:ssot-index
 related_prs: []
 evidence_ids: []
 change_log:
+  - 0.4.6 2026-07-11 WP-9002-W5A API metadata-only migrationをfinalize、173/126/47→173/118/55、eight-reviewer APPROVED
   - 0.4.5 2026-07-11 WP-9002-W4 remaining MOD/TST metadata-only migrationをfinalize、173/137/36→173/126/47、eight-reviewer APPROVED
   - 0.4.4 2026-07-11 WP-9002-W3 MOD-006/MOD-007 metadata-only migrationをfinalize、173/139/34→173/137/36、eight-reviewer APPROVED
   - 0.4.3 2026-07-10 WP-9002-W2 MOD-011/MOD-014 metadata-only migrationをfinalize、173/141/32→173/139/34、seven-reviewer APPROVED
