@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W4 LANDED、W5A FINALIZED / LANDING PENDING、landed remaining 126 / finalized target 118、metadata-only、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W4/W5A LANDED、remaining 118、metadata-only、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -556,15 +556,15 @@ landing_record: commit 09070f3 `WP-9002-W4: normalize remaining module metadata`
 overall_state: W4 LANDED; WP-9002 remains IN_PROGRESS with 126 incomplete SSOT documents and W5 requires fresh read-only mapping and pre-plan review
 ```
 
-#### WP-9002-W5A API legacy frontmatter migration — FINALIZED / LANDING PENDING
+#### WP-9002-W5A API legacy frontmatter migration — LANDED
 
 ```yaml
 work_package_id: WP-9002
 wave_id: WP-9002-W5A
 title: all eight legacy API SSOT metadata migration
 status: IN_PROGRESS
-execution_state: W5A_FINALIZED
-landing_state: pending
+execution_state: W5A_LANDED
+landing_state: satisfied
 priority: P1
 risk_level: R2
 baseline_commit: 134864c
@@ -616,7 +616,8 @@ validation_commands:
 validation_results: FINAL PASS before landing — exact12/staged0; inventory173/118/55; eight target missing0/bodies/preserved fields and API-004 amendment exact; API-008 PROPOSED/null approval; 165 non-target missing-set 20481 bytes / SHA-256 479459faefe5ea55412d508559bd486162eec68955a10b57f9a13ef6303b6ca0; workspace typecheck/test/build PASS (audit182, contracts86, web99, API161 + expected skips9); OpenAPI/scripts/SSOT173/secrets/boundaries/deps high0 critical0/SBOM231/diff PASS; eight reviewers APPROVED
 finalization_record: IDX-001 v0.4.6 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and eight W5A approvals appended; API targets unchanged from approved review candidate and API-008 remains PROPOSED
 landing_required: commit_and_push after finalization
-overall_state: W5A finalized; landed inventory remains 173/126/47 until exact-stage commit and push
+landing_record: commit 74666c9 `WP-9002-W5A: normalize API metadata` pushed successfully to origin/main (134864c..74666c9); inventory 173/118/55; exact 12 paths; eight API bodies/preserved/amendment/blocker states and 165 non-target set unchanged; all eight reviewer/full validation gates APPROVED; no code, DB, external, deployment, or destructive change
+overall_state: W5A LANDED; WP-9002 remains IN_PROGRESS with 118 incomplete SSOT documents and W5B requires fresh mapping/pre-plan
 ```
 
 - [x] WP-9003 repository reconciliation state pack(Codex-only、resume-safe、docs-only)

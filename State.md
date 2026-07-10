@@ -2,18 +2,18 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.6はWP-9002-W5A eight-reviewer approvalを経てfinalized済みでlanding pending。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.6はWP-9002-W5A eight-reviewer approvalを経てAPPROVED・landed済み。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-11
 
-### WP-9002-W5A API legacy metadata migration — finalized / landing pending
+### WP-9002-W5A API legacy metadata migration — completed / LANDED
 
 - clean `134864c`からdocs/api全8件をread-only mappingし、pre-planは12パス限定R2 waveをAPPROVED_WITH_PINS。API-008 PROPOSED/null承認、API-004 PENDING_REVISION、API-005/API-008 blocker、全本文/status/version/approval/effective semanticsを保持した。
 - review targetは173/118/55、target missing 0、対象外165 missing-set 20481 bytes / SHA-256 `479459faefe5ea55412d508559bd486162eec68955a10b57f9a13ef6303b6ca0`。API-004/005/008は実装testを主張しない。
 - core/spec/data、API/test、security/privacy/medicalの8 roleがAPPROVED。API-004 amendment、API-005 legal blocker、API-008 PROPOSED/null承認+3 blockerを保持し、API-004/005/008は実装testを主張しない。
-- exact12/staged0、inventory173/118/55、8本文/preserved fields、対象外165 hashを確認。workspace typecheck/test/buildと全gate PASS。IDX-001 v0.4.6を旧provenance保持+W5A 8承認でAPPROVED finalization。external/DB/runtime/deploy変更なし、landing pending。
+- exact12/staged0、inventory173/118/55、8本文/preserved fields、対象外165 hashを確認。workspace typecheck/test/buildと全gate PASS。IDX-001 v0.4.6を旧provenance保持+W5A 8承認でAPPROVED finalizationし、commit `74666c9`を`origin/main`へpush。external/DB/runtime/deploy変更なし。
 
 ### WP-9002-W4 remaining MOD/TST legacy metadata migration — completed / LANDED
 
