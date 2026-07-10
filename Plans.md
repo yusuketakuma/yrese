@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W6B LANDED、WP-9005 FINALIZED / LANDING PENDING、89 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W6B + WP-9005 LANDED、89 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -617,7 +617,7 @@ validation_results: FINAL PASS before landing — exact12/staged0; inventory173/
 finalization_record: IDX-001 v0.4.6 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and eight W5A approvals appended; API targets unchanged from approved review candidate and API-008 remains PROPOSED
 landing_required: commit_and_push after finalization
 landing_record: commit 74666c9 `WP-9002-W5A: normalize API metadata` pushed successfully to origin/main (134864c..74666c9); inventory 173/118/55; exact 12 paths; eight API bodies/preserved/amendment/blocker states and 165 non-target set unchanged; all eight reviewer/full validation gates APPROVED; no code, DB, external, deployment, or destructive change
-overall_state: W6B LANDED; WP-9005 FINALIZED / LANDING PENDING; WP-9002 remains IN_PROGRESS with 89 incomplete SSOT documents
+overall_state: W6B and WP-9005 LANDED; WP-9002 remains IN_PROGRESS with 89 incomplete SSOT documents and the next wave requires fresh mapping/pre-plan
 ```
 
 #### WP-9002-W5B architecture legacy metadata — LANDED
@@ -778,7 +778,7 @@ state: LANDED; WP-9002 remains IN_PROGRESS and the next wave starts only after f
   - Review/verification: pre-plan APPROVED_WITH_PINS、independent verifier + medical-safety reviewer APPROVED。critical count/set/summary-only assertion、SSOT173、scripts、secrets、boundaries、diff PASS。exact4/staged0。rollbackはsummaryの`11件`を`9件`へ戻す単一行revert。
   - WP-9004b: SAF-001/002のevidence freshness（`WP-1006実装中`、`WP-2002予定`、`WP-2003予定`等）をlive code/testへ照合する別WP。推測更新せず、現時点はread-only mapping/review前。
 
-- [~] WP-9005 quality governance AGT-018 compatibility amendment(FINALIZED / LANDING PENDING、P1)
+- [x] WP-9005 quality governance AGT-018 compatibility amendment(LANDED、commit 2b26c06)
 
 ```yaml
 work_package_id: WP-9005
@@ -801,7 +801,8 @@ review_results: independent_verifier, spec_guardian, data_integrity_auditor, tes
 validation_results: FINAL PASS before landing — exact6/staged0; inventory173/89/84; both targets all23; active body stale-routing scan clean; 171 non-target canonical rows `17568/315025491df9d8862387561bd4f3bc47f64c39199a2cc77601cc5bfc4432f051`; workspace typecheck/test/build PASS; audit182, contracts86, web99, API161 plus 9 expected PostgreSQL skips without TEST_DATABASE_URL; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS
 finalization_record: QUA-001 v0.1.2, QUA-003 v0.1.1 and IDX-001 v0.4.14 APPROVED with approved_at/effective_from 2026-07-11; prior human approvals preserved as history only; WP-9001 direct cutover plus eight WP-9005 reviews recorded
 landing_required: exact6 commit_and_push
-state: FINALIZED / LANDING PENDING
+landing_record: commit 2b26c06 `WP-9005: align quality governance with AGT-018` pushed successfully to origin/main (bfb806c..2b26c06); exact6; inventory 173/89/84; eight reviews/full gates APPROVED; no code, DB, external, production, deployment or destructive change
+state: LANDED
 ```
   - Landing: commit `0b0b5ba`を`origin/main`へpush。critical summary-only correction、exact4、independent/medical approval、全docs gates PASS。コード/DB/runtime/external変更なし。
 

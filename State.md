@@ -2,15 +2,15 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.14とQUA-001/003はWP-9005 eight-reviewer approvalを経てAPPROVED・landing pending。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.14とQUA-001/003はWP-9005 eight-reviewer approvalを経てAPPROVED・landed済み。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-11
 
-### WP-9005 quality governance compatibility — finalized / landing pending
+### WP-9005 quality governance compatibility — completed / LANDED
 
-- clean `bfb806c`からQUA-001/003の旧model・dual-lane・agmsg routingとQUA-004/005/006未作成扱いを検出。exact6 semantic amendmentをpre-plan APPROVED_WITH_PINSで起票。C1-C5、medical/claims/security/privacy/legal/production/human authority、golden/regression、incident、rollback、synthetic-only gateは不変。誤ったnon-target fingerprint evidenceをreview指摘で訂正し、target173/89/84・171 rows `17568/31502549…32f051`を再確認。8 role/full gates PASS後にQUA-001 v0.1.2、QUA-003 v0.1.1、IDX v0.4.14をAPPROVED/effective 2026-07-11へfinalize。exact6 landing pending。
+- clean `bfb806c`からQUA-001/003の旧model・dual-lane・agmsg routingとQUA-004/005/006未作成扱いを検出。exact6 semantic amendmentをpre-plan APPROVED_WITH_PINSで起票。C1-C5、medical/claims/security/privacy/legal/production/human authority、golden/regression、incident、rollback、synthetic-only gateは不変。誤ったnon-target fingerprint evidenceをreview指摘で訂正し、target173/89/84・171 rows `17568/31502549…32f051`を再確認。8 role/full gates PASS後にQUA-001 v0.1.2、QUA-003 v0.1.1、IDX v0.4.14をAPPROVED/effective 2026-07-11へfinalize。commit `2b26c06`をorigin/mainへpushしLANDED。
 
 ### WP-9002-W6B QUA-004 metadata — completed / LANDED
 
