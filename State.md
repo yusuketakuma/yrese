@@ -8,6 +8,17 @@
 
 ## 2026-07-10
 
+### WP-9002-W1 QUA-007 legacy frontmatter canary — FINALIZED_READY_TO_LAND (landing_pending)
+
+- approved canary planに従い、HEAD `619806842135e4a1d08d84488b771c06e12f8778`をbaselineとして23-field exact-key scanを実施。index対象173文書中、不足142 / 充足31、QUA-007は`effective_from` / `effective_to` / `related_work_packages` / `related_tests` / `related_prs` / `evidence_ids` / `change_log`の7 field不足を確認した。
+- sole maintainerは許可された`docs/quality/quality_transparency_strategy.md`、`docs/ssot_index.md`、`Plans.md`、`State.md`だけを変更。QUA-007はversion/status/approval/owner/reviewers/created/source/dependency/impact/blocker/open-questionを保持し、PRC-007 metadataだけを補完した。本文境界のbaselineは3336 bytes、SHA-256 `3315dfe31bf199248ace7058adf044e4fd3d72b260873063efa438800b36b851`である。
+- IDX-001 v0.4.2はreview diffとしてPROPOSEDにし、approval/effective metadataを空欄のまま保持。historical 173/142記録、総数173、QUA-007 APPROVED/path行を変えず、W1 baseline 173/142/31とtarget 173/141/32を別ledgerとして追加した。
+- worktree-local dependency provisioning後にfull auditを再実行。23-field target 173/141/32、QUA missing 0、非対象172文書のmissing-set同一、QUA preserved frontmatter、本文3336 bytes / SHA-256 `3315dfe31bf199248ace7058adf044e4fd3d72b260873063efa438800b36b851`、exact 4-path unstaged diff、historical 173/142・QUA index APPROVED/path・総数173をすべてPASSした。`pnpm check:ssot-index`(173)、`pnpm test:scripts`、secrets、boundaries、`git diff --check`もPASSし、independent_verifier、spec_guardian、data_integrity_auditorのreview-readyである。
+- independent_verifier、spec_guardian、data_integrity_auditor、medical_safety_reviewer、privacy_compliance_reviewer、security_criticのcombined reviewは`APPROVED`。exact 4-path、QUA本文3336 bytes / 指定SHA、status/version/approval不変を確認し、`BLOCKED_LEGAL_REVIEW`、claim evidence/evidenceRef fail-closed、PHI/PII非露出を維持してmetadataがsemantic activationを生じないと判定した。
+- six-reviewer approval後、sole maintainerがIDX-001 v0.4.2をAPPROVEDへfinalizeした。approved_at/effective_fromは2026-07-10、approved_byはWP-9001 provenanceを保持して全WP-9002-W1 reviewer approvalを追記した。QUA-007 current fileはbyte-for-byte変更していない。
+- post-finalization validationはQUA current file 4663 bytes / SHA-256 `e7a7e7ec8800288e9865da6c2ed878862e25887373b7617bf5087bd83aa62e7c`、HEAD-identical body 3336 bytes / 指定SHA、preserved values、173/141/32、QUA missing 0、非対象172 missing-set同一、IDX APPROVED/six reviewers/WP-9001 provenance/historical 142、QUA index行/総数、exact 4-path/staged 0をPASS。`pnpm check:ssot-index`(173)、`pnpm test:scripts`、secrets、boundaries、diff checkもPASSした。
+- current stateは`FINALIZED_READY_TO_LAND / landing_pending`で、残る作業はCodex rootのexact-stage commit/requested pushだけである。それ以前にstage / commit / push、次wave、DB/migration、external/deploy操作を開始しない。WP-9002全体は`[~]`でDONEではない。policy/legal/medical-safety/claim-evidence/privacy/security/external-publicationのsemantic changeが必要になった場合はW1を停止して対象を分離し、該当human authorityの承認を持つ別WPへ送る。
+
 ### WP-4078 direct audit intent fingerprint single-snapshot/Proxy TOCTOU hardening — historical PLAN_APPROVED / AGT-018 re-plan pending / implementation HOLD
 
 - independent explorer(confidence HIGH)が、direct M1 fingerprint pathでexact descriptor検証後のcopyを捨てて元のouter/context/intent/nestedを再dereferenceし、canonicalize後も元inputを`createAuditEvent`へ渡していることを確認。hostile Proxy/mutable inputはhash対象Aとdomain validation対象Bを分離し、将来のdedupe/conflict判定を壊し得るためHIGH audit-integrity findingとして登録した。copy/freeze済みのstored M3a event pathは変更対象外。

@@ -7,19 +7,24 @@ domain: plan
 status: APPROVED
 owner: codex_root
 reviewers:
-  - independent_verifier
-  - data_integrity_auditor
   - human_review_if_required
-version: 0.4.1
+  - independent_verifier
+  - spec_guardian
+  - data_integrity_auditor
+  - medical_safety_reviewer
+  - privacy_compliance_reviewer
+  - security_critic
+version: 0.4.2
 created_at: 2026-07-09
 updated_at: 2026-07-10
 approved_at: 2026-07-10
-approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; spec_guardian APPROVED; data_integrity_auditor APPROVED
+approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; spec_guardian APPROVED; data_integrity_auditor APPROVED; WP-9002-W1 independent_verifier APPROVED; WP-9002-W1 spec_guardian APPROVED; WP-9002-W1 data_integrity_auditor APPROVED; WP-9002-W1 medical_safety_reviewer APPROVED; WP-9002-W1 privacy_compliance_reviewer APPROVED; WP-9002-W1 security_critic APPROVED
 effective_from: 2026-07-10
 effective_to: null
 source_refs:
   - docs/process/ssot_governance.md
   - human_instruction WP-9001 (2026-07-10)
+  - WP-9002-W1 metadata-only canary plan (2026-07-10)
 depends_on:
   - AGT-018
   - PRC-007
@@ -28,11 +33,13 @@ impacts:
 related_work_packages:
   - WP-9001
   - WP-9002
+  - WP-9002-W1
 related_tests:
   - pnpm check:ssot-index
 related_prs: []
 evidence_ids: []
 change_log:
+  - 0.4.2 2026-07-10 WP-9002-W1 QUA-007 metadata-only canaryをfinalize、173/142/31→173/141/32、six-reviewer APPROVED
   - 0.4.1 2026-07-10 PRC-007 v0.3.1 APPROVED、legacy 23-field inventory 173/142、WP-9002 migrationを同期(data_integrity_auditor APPROVED)
   - 0.4.0 2026-07-10 WP-9001 atomic finalizationのCodex ownership、173文書、APPROVED/PROPOSED/SUPERSEDED statusを同期
   - 0.3.2 2026-07-10 AGT-018追加案とindex machine validation wording
@@ -61,6 +68,10 @@ blockers: []
 ### Post-finalization governance amendment
 
 atomic finalization後のrepo-wide inventoryで、index対象173文書中142文書にPRC-007の23 field不足を確認した。data_integrity_auditorは既存legacyのstatus/approval意味を一括無効化しない移行方針、legacy semantics/body/status/approval/effective preservation、AGT 17件のbody/status/23-field、validation gatesを確認してAPPROVEDした。PRC-007 v0.3.1とIDX-001 v0.4.1はAPPROVEDである。metadata-only補完はWP-9001 landing後のWP-9002で段階実施し、開始前の再scan結果をbaselineとして更新する。AGT-018および既にfinalizeした旧AGT statusは変更しない。
+
+### WP-9002-W1 finalization ledger
+
+WP-9002-W1はHEAD `6198068`の23-field exact-key scanをbaselineとし、173文書 / 不足142 / 充足31を確認した。QUA-007だけをmetadata-onlyで補完したfinal inventoryは173文書 / 不足141 / 充足32である。QUA-007の本文、version、status、approval、effective semanticsと本索引のQUA-007行(`APPROVED` / `quality/quality_transparency_strategy.md`)および総文書数173は変更していない。independent_verifier、spec_guardian、data_integrity_auditor、medical_safety_reviewer、privacy_compliance_reviewer、security_criticのAPPROVEDとfinal validation後、IDX-001 v0.4.2をAPPROVEDとしてfinalizeした。historical 173/142 recordはWP-9001時点のprovenanceとして維持する。
 
 総文書数: 173(本索引を除く)
 

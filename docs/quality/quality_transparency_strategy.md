@@ -13,7 +13,9 @@ reviewers:
   - human_review_required
 version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-10
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §10、PRD-006 product_concept(柱2「証明可能な品質」)
 depends_on:
   - PRD-006 product_concept
@@ -23,6 +25,15 @@ depends_on:
 impacts:
   - QUA-008 public_quality_kpi_policy
   - QUA-009 claim_return_rate_kpi_policy
+related_work_packages:
+  - WP-0043
+  - WP-9002-W1
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-10 WP-9002-W1 metadata-only completion: body/status/approval/effective semantics/version unchanged"
 blockers:
   - BLOCKED_LEGAL_REVIEW(公開KPIの法令適合性が未確認の間、外部公開の実施は BLOCKED)
 open_questions:

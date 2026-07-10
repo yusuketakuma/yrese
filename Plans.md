@@ -198,13 +198,91 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [ ] WP-9002 legacy SSOT frontmatter migration(WP-9001 landing後、metadata-only、P1)
-  - baseline: current index対象173文書の再scanで142文書にPRC-007 required 23 frontmatter field不足を確認。WP-9001 landing直前/直後に同じscannerを再実行し、その結果をmigration baselineとして更新する。
-  - purpose: legacy SSOTを段階的waveに分け、本文、status、approval、effective date、実装根拠としての意味を変えずに不足metadataだけを補完し、各waveで`docs/ssot_index.md`を同期する。
-  - routing: Codex root → read-only mapper → read-only pre-plan reviewer → sole maintainer → independent verifier + relevant `spec_guardian` / `data_integrity_auditor` → root exact-stage landing。waveごとにallowed exact paths、body identity、rollback、validationを定義する。
-  - stop conditions: 本文、法令、請求、薬学、患者安全、security/privacy、evidence、status/approval意味の変更が必要な文書はmigration対象から除外し、必要なhuman authorityを持つ別WPへ分離する。metadata migrationをhuman/safety gateの省略に使わない。
-  - acceptance: 対象文書の23 field充足、本文byte identity、status/approval/effective semantics不変、index同期、`pnpm check:ssot-index`、script/secrets/boundaries/diff checks PASS。大規模一括変更にせずreview可能なwave単位で実施する。
-  - sequencing: 本post-landing ledger更新がlandした後の次のeligible governance taskとする。現時点では未着手であり、実装・stage・commit・pushしない。
+- [~] WP-9002 legacy SSOT frontmatter migration(WP-9002-W1 FINALIZED_READY_TO_LAND / landing_pending、metadata-only、P1)
+
+```yaml
+work_package_id: WP-9002
+wave_id: WP-9002-W1
+title: legacy SSOT frontmatter migration wave 1 — QUA-007 canary
+status: REVIEW_REQUESTED
+execution_state: FINALIZED_READY_TO_LAND
+landing_state: landing_pending
+priority: P1
+risk_level: R2
+implementation_layer: ssot_metadata
+baseline_commit: 619806842135e4a1d08d84488b771c06e12f8778
+baseline_inventory:
+  total: 173
+  incomplete: 142
+  complete: 31
+target_inventory:
+  total: 173
+  incomplete: 141
+  complete: 32
+target_ssot:
+  ssot_id: QUA-007
+  path: docs/quality/quality_transparency_strategy.md
+  baseline_body_bytes_after_first_yaml_closing_fence: 3336
+  baseline_body_sha256: 3315dfe31bf199248ace7058adf044e4fd3d72b260873063efa438800b36b851
+allowed_files:
+  - docs/quality/quality_transparency_strategy.md
+  - docs/ssot_index.md
+  - Plans.md
+  - State.md
+forbidden_files:
+  - every path not listed in allowed_files
+owner_role: sole_maintainer
+reviewer_roles:
+  - independent_verifier
+  - spec_guardian
+  - data_integrity_auditor
+specialist_roles:
+  - medical_safety_reviewer
+  - privacy_compliance_reviewer
+  - security_critic
+pre_plan_review: APPROVED canary plan; QUA-007 is the only migrated SSOT in W1
+review_records:
+  - independent_verifier / spec_guardian / data_integrity_auditor / medical_safety_reviewer / privacy_compliance_reviewer / security_critic combined review APPROVED.
+  - Review evidence confirms exact four-path scope, QUA body identity at 3336 bytes and SHA-256 3315dfe31bf199248ace7058adf044e4fd3d72b260873063efa438800b36b851, and status/version/approval unchanged.
+  - BLOCKED_LEGAL_REVIEW remains active; claim evidence/evidenceRef behavior remains fail-closed; PHI/PII non-exposure remains unchanged; metadata adds no semantic activation.
+purpose: Prove the PRC-007 legacy metadata-only migration workflow on one bounded APPROVED quality SSOT before issuing later waves.
+frontmatter_rules:
+  - QUA-007 keeps version 0.1.1 and preserves status, approved_at, approved_by, owner, reviewers, created_at, source_refs, depends_on, impacts, blockers, and open_questions exactly.
+  - QUA-007 updated_at becomes 2026-07-10; effective_from/effective_to are explicit null; related_work_packages is exactly [WP-0043, WP-9002-W1]; related_tests/related_prs/evidence_ids are empty arrays.
+  - QUA-007 change_log points to the body history as authoritative and records a non-versioned 2026-07-10 WP-9002-W1 metadata-only completion with body/status/approval/effective semantics/version unchanged.
+  - QUA-007 approved_by does not add data_integrity_auditor or any new approval authority.
+  - Bytes after the first yaml closing fence remain exactly 3336 with SHA-256 3315dfe31bf199248ace7058adf044e4fd3d72b260873063efa438800b36b851.
+  - IDX-001 review diff remained v0.4.2 PROPOSED with approved_at, approved_by, and effective_from blank until all W1 reviewers approved; finalization now records the approved review evidence and 2026-07-10 approval/effective metadata.
+  - IDX-001 preserves historical 173/142 statements, total 173, and the QUA-007 APPROVED/path row while recording the distinct W1 baseline 173/142/31 and target 173/141/32.
+  - All 172 non-target SSOT missing-field sets remain byte-for-byte equivalent as exact key sets to baseline HEAD.
+  - Metadata completion does not activate external KPI publication, claim behavior, evidence/evidenceRef semantics, PHI/PII handling, or any product/runtime behavior.
+stop_conditions:
+  - QUA-007 body bytes/hash or any preserved frontmatter value changes.
+  - Any non-target SSOT missing-field set changes, any index row/status/path drift, or inventory differs from 173/141/32.
+  - Any edit outside the four exact allowed paths, validation failure, or reviewer CHANGES_REQUIRED finding.
+  - Any semantic change or attempted activation of policy, legal, medical-safety, claim/evidence, privacy, security, or external-publication behavior; remove it from W1 and require the applicable human approval in a separate WP.
+finalization_gates:
+  - Combined independent/spec/data-integrity/medical-safety/privacy/security review APPROVED with no unresolved finding.
+  - QUA-007 body, status, version, approval, effective semantics, BLOCKED_LEGAL_REVIEW, claim evidence/evidenceRef fail-closed behavior, and PHI/PII non-exposure remain unchanged.
+  - Sole maintainer finalized IDX-001 approval metadata only after the approved review evidence was recorded; the complete post-finalization validation bundle must remain PASS.
+  - Codex root exact-stages only the four allowed paths after finalization verification; stage, commit, and requested push remain root-only.
+rollback_method: Revert only the four WP-9002-W1 paths; no schema/data migration, deployment, external action, or destructive operation exists.
+validation_commands:
+  - exact 23-field top-level key scanner with baseline non-target set comparison
+  - exact QUA-007 preserved-frontmatter audit
+  - QUA-007 body byte/SHA-256 audit
+  - exact four-path diff audit
+  - historical 173/142 retention and QUA index row audit
+  - pnpm check:ssot-index
+  - pnpm test:scripts
+  - pnpm check:secrets
+  - pnpm check:boundaries
+  - git diff --check
+validation_results: FINAL PASS — QUA current file remains exactly 4663 bytes / SHA-256 e7a7e7ec8800288e9865da6c2ed878862e25887373b7617bf5087bd83aa62e7c; QUA body remains HEAD-identical at 3336 bytes / SHA-256 3315dfe31bf199248ace7058adf044e4fd3d72b260873063efa438800b36b851 with all preserved values unchanged; exact 23-field scan confirms 173 total / 141 incomplete / 32 complete, QUA missing 0, and all 172 non-target missing-field sets identical; IDX-001 v0.4.2 APPROVED with six W1 reviewers, WP-9001 provenance, historical 173/142 and final 173/141/32; QUA index APPROVED/path and total 173 unchanged; exact four-path unstaged diff, check:ssot-index, test:scripts, secrets, boundaries, and diff checks PASS
+finalization_record: IDX-001 v0.4.2 APPROVED with approved_at/effective_from 2026-07-10 and WP-9001 provenance plus all six WP-9002-W1 approvals; QUA-007 current file remains byte-for-byte unchanged
+landing_required: combined reviewer gates, IDX-001 final approval metadata, and full post-finalization validation satisfied; only Codex root exact-stage commit and requested push remain pending
+landing_record: FINALIZED_READY_TO_LAND / landing_pending; exact four allowed paths, staged 0
+```
 
 ## Phase 0: 調査・計画(ドキュメント)
 
