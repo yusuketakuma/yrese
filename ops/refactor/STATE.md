@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002 legacy SSOT frontmatter migration W4 finalized / landing pending. W1/W2/W3 are LANDED; landed inventory is 173/137/36 and W4 finalized target is 173/126/47.
-- Current task: post-finalization invariant/gate confirmation, exact-stage, commit, and push of the 15 owned paths.
+- Current phase: WP-9002 legacy SSOT frontmatter migration W5 preparation. W1/W2/W3/W4 are LANDED; inventory is 173 total / 126 incomplete / 47 complete.
+- Current task: fresh read-only mapping and pre-plan review for the next bounded metadata-only wave. No W5 target edit has started.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -12,6 +12,7 @@ This is the resume entrypoint for the active repository reconciliation goal.
   - `468da34` WP-4080 production plaintext API-base rejection
   - `3e8dee0` WP-9003 resume-safe repository state pack
   - `1b07db6` WP-9002-W3 error/permission registry metadata migration
+  - `09070f3` WP-9002-W4 remaining module/testing metadata migration
 - Verified blockers:
   - WP-4079: R3 stored audit fingerprint version-before-deep-read; explicit human scope approval required.
   - WP-3010 parent: full ARC-001 capability source, live mode/count contract, route/UI flow and pharmacist/claims review.
@@ -20,5 +21,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
   - Production/external/migration/DML/deploy operations remain human-gated and were not run.
 - Validation baseline (2026-07-11): workspace typecheck/test PASS; audit 182, trace 37, contracts 86, web 99, API 161 + 9 expected PostgreSQL skips without `TEST_DATABASE_URL`; web/full builds PASS; OpenAPI, SSOT index 173, boundaries, secrets, dependency audit high=0/critical=0, SBOM 231, calculation purity, script harness and diff check PASS.
 - Git resume check: run `git status -sb`, `git rev-list --left-right --count origin/main...HEAD`, and `git log -5 --oneline`. Preserve any new unrelated dirty paths. Root alone stages exact task paths and pushes because the active Goal explicitly requests grouped commit/push.
-- Pending W4 checkpoint: baseline `main @ 5d68633` equals `origin/main`; owned paths are the eleven W4 target SSOTs plus index/Plans/State/this file. Target bodies are fixed by Plans/mapping; 162 non-target missing-set baseline is 21306 bytes / `2725393d…`.
-- Next action: revalidate finalized W4 and obtain independent finalization confirmation, then commit as `WP-9002-W4: normalize remaining module metadata`, push, and fresh-map W5.
+- Landing-record checkpoint: `main @ 09070f3` equals `origin/main`; this three-path ledger update records the already-pushed W4 landing and must not include target SSOT or product changes.
+- Next action: exact-stage only `Plans.md`, `State.md`, and `ops/refactor/STATE.md`, commit as `WP-9002-W4: record metadata landing`, push, then begin fresh W5 mapping/pre-plan from clean HEAD.
