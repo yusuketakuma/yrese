@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W5A LANDED、W5B FINALIZED / LANDING PENDING、landed 118 / target 108 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W5B LANDED、108 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -617,10 +617,10 @@ validation_results: FINAL PASS before landing — exact12/staged0; inventory173/
 finalization_record: IDX-001 v0.4.6 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and eight W5A approvals appended; API targets unchanged from approved review candidate and API-008 remains PROPOSED
 landing_required: commit_and_push after finalization
 landing_record: commit 74666c9 `WP-9002-W5A: normalize API metadata` pushed successfully to origin/main (134864c..74666c9); inventory 173/118/55; exact 12 paths; eight API bodies/preserved/amendment/blocker states and 165 non-target set unchanged; all eight reviewer/full validation gates APPROVED; no code, DB, external, deployment, or destructive change
-overall_state: W5B FINALIZED / LANDING PENDING; WP-9002 remains IN_PROGRESS with landed 118 and target 108 incomplete SSOT documents
+overall_state: W5B LANDED; WP-9002 remains IN_PROGRESS with 108 incomplete SSOT documents and W5C requires fresh mapping/pre-plan
 ```
 
-#### WP-9002-W5B architecture legacy metadata — FINALIZED / LANDING PENDING
+#### WP-9002-W5B architecture legacy metadata — LANDED
 
 ```yaml
 baseline_commit: ff7fb77
@@ -636,7 +636,8 @@ validation: exact invariants plus workspace typecheck/test/build, OpenAPI, calcu
 review_results: independent/spec/data-integrity/architect/test/security/privacy/medical/APIの9 roleがAPPROVED。本文byte identity、preserved fields、ARC-005/007 amendment、ARC-008 amends/human approval/4 blocker、NSIPS/FHIR/AWS/PHI/法務/患者安全/API非activationを確認
 validation_results: exact14/staged0、inventory173/108/65、target missing0、10本文hashと対象外163 missing-set 19207 bytes / SHA-256 de1e412784e06230c83f258da86d19a61d4689c40dca62a37432f1e226f340b2を確認。workspace typecheck/test/build、OpenAPI、calculation-purity、scripts、SSOT173、secrets、boundaries、deps high0 critical0、SBOM231、diff PASS
 finalization_record: IDX-001 v0.4.7 APPROVED with approved_at/effective_from 2026-07-11; all prior provenance preserved and nine W5B approvals appended; architecture targets unchanged from approved review candidate
-state: FINALIZED; landing pending
+landing_record: commit 05edac6 `WP-9002-W5B: normalize architecture metadata` pushed successfully to origin/main (ff7fb77..05edac6); inventory 173/108/65; exact14; ten bodies, preserved/amendment/blocker states and 163 non-target fingerprint unchanged; nine reviews and full validation APPROVED; no code, DB, external, deploy, or destructive change
+state: LANDED; WP-9002 remains IN_PROGRESS and W5C starts only after fresh read-only mapping/pre-plan
 ```
 
 - [x] WP-9003 repository reconciliation state pack(Codex-only、resume-safe、docs-only)
