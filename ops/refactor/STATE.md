@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002 W6B QUA-004 metadata landed at 173/91/82; preparing the next wave.
-- Current task: fresh read-only mapping/pre-plan of the next safe metadata or semantic reconciliation slice; preserve all excluded human/claims/legal/production gates.
+- Current phase: WP-9005 QUA-001/003 AGT-018 compatibility amendment finalized; landed inventory 173/91/82, target 173/89/84.
+- Current task: run post-finalization exact/docs gates, then exact6 commit and push.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -38,4 +38,6 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W6A landing checkpoint: commit `07bdc96` pushed; inventory 173/92/81; exact5; PLAN-DB body/PROPOSED/null and non-target `17939/467e8abc…` unchanged; ten reviews/full gates PASS; IDX v0.4.12 APPROVED.
 - W6B finalization checkpoint: baseline `2d695fa`; QUA-004 + index/Plans/State/this file; inventory 173/91/82; body `1409/2016ae0b…`; non-target `17807/54f8fede…`; nine reviews/full gates PASS; IDX v0.4.13 APPROVED/effective 2026-07-11.
 - W6B landing checkpoint: commit `c9a2641` pushed to `origin/main`; inventory 173/91/82; exact5; QUA-004 body and 172 non-target records unchanged; nine reviews/full gates PASS; no runtime, DB, external, deployment, or destructive change.
-- Next action: complete this three-ledger landing record, then fresh next-wave mapping/pre-plan; do not re-enter QUA-001/003, safety, Phase0-gate, claim, regulatory or receipt docs without their required semantic review.
+- WP-9005 review checkpoint: baseline `bfb806c`; exact6 QUA-001/003 + index/Plans/State/this file; both targets and IDX v0.4.14 PROPOSED/null; target inventory 173/89/84; 171 non-target canonical missing-set `<path>\t<PRC-007-order missing fields>\n` = `17568/31502549…32f051`; pre-plan APPROVED_WITH_PINS. No model/dual-lane authority, quality/domain/human gate relaxation, code, DB, external, production or deployment change is permitted.
+- WP-9005 finalization checkpoint: fingerprint finding corrected; eight reviews/full gates PASS; QUA-001 v0.1.2, QUA-003 v0.1.1 and IDX v0.4.14 APPROVED/effective 2026-07-11; inventory 173/89/84; active stale-routing scan clean; all human/domain gates preserved.
+- Next action: post-finalization exact/docs gates and exact6 commit/push, then three-ledger landing record. Safety, Phase0-gate, claim, regulatory and receipt docs remain excluded pending their own semantic review.

@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W6B LANDED、91 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W6B LANDED、WP-9005 FINALIZED / LANDING PENDING、89 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -617,7 +617,7 @@ validation_results: FINAL PASS before landing — exact12/staged0; inventory173/
 finalization_record: IDX-001 v0.4.6 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and eight W5A approvals appended; API targets unchanged from approved review candidate and API-008 remains PROPOSED
 landing_required: commit_and_push after finalization
 landing_record: commit 74666c9 `WP-9002-W5A: normalize API metadata` pushed successfully to origin/main (134864c..74666c9); inventory 173/118/55; exact 12 paths; eight API bodies/preserved/amendment/blocker states and 165 non-target set unchanged; all eight reviewer/full validation gates APPROVED; no code, DB, external, deployment, or destructive change
-overall_state: W6B LANDED; WP-9002 remains IN_PROGRESS with 91 incomplete SSOT documents and the next wave requires fresh mapping/pre-plan
+overall_state: W6B LANDED; WP-9005 FINALIZED / LANDING PENDING; WP-9002 remains IN_PROGRESS with 89 incomplete SSOT documents
 ```
 
 #### WP-9002-W5B architecture legacy metadata — LANDED
@@ -777,6 +777,32 @@ state: LANDED; WP-9002 remains IN_PROGRESS and the next wave starts only after f
   - Acceptance: table critical count=11、ID集合=`MSR-001,005,006,007,016,020,021,022,031,032,033`、summary count/list一致、SAF-001はsummary行以外byte-identical、exact4/staged0。
   - Review/verification: pre-plan APPROVED_WITH_PINS、independent verifier + medical-safety reviewer APPROVED。critical count/set/summary-only assertion、SSOT173、scripts、secrets、boundaries、diff PASS。exact4/staged0。rollbackはsummaryの`11件`を`9件`へ戻す単一行revert。
   - WP-9004b: SAF-001/002のevidence freshness（`WP-1006実装中`、`WP-2002予定`、`WP-2003予定`等）をlive code/testへ照合する別WP。推測更新せず、現時点はread-only mapping/review前。
+
+- [~] WP-9005 quality governance AGT-018 compatibility amendment(FINALIZED / LANDING PENDING、P1)
+
+```yaml
+work_package_id: WP-9005
+baseline_commit: bfb806c
+baseline_inventory: { total: 173, incomplete: 91, complete: 82 }
+target_inventory: { total: 173, incomplete: 89, complete: 84 }
+purpose: Remove stale model/dual-lane/agmsg routing and stale not-created claims from QUA-001/003 while preserving all quality, medical, claims, regulatory, security/privacy, incident, rollback and human-authority gates.
+targets: [QUA-001 v0.1.2, QUA-003 v0.1.1]
+allowed_files: QUA-001, QUA-003, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact6
+forbidden: code/packages/lock/other SSOT; risk class or threshold changes; human/domain gate removal; SaMD/medical/claims/privacy/security/legal/production/risk acceptance decisions
+pre_plan_review: APPROVED_WITH_PINS
+pins: review candidate PROPOSED/null approval; owner/reviewers align to AGT-018 roles; prior Phase0 human approvals remain historical only; C1-C5, C5 72h human review/incident, golden/regression, synthetic-only, rollback/rehearsal, master no-immediate-production and evidence/versioning gates remain normative; human authority is never replaced by Codex reviewers
+body_changes: QUA-001 maker-checker and existing QUA-004/005/006 references; QUA-003 C2/C3 maker-checker/specialist/human flow, ad-hoc consensus prohibition and Codex-root/read-only-mapper impact analysis
+non_target: 171 docs / canonical `<path>\t<PRC-007-order comma-joined missing fields>\n` rows / 17568 bytes / SHA-256 315025491df9d8862387561bd4f3bc47f64c39199a2cc77601cc5bfc4432f051
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, test_architect, security_critic, privacy_compliance_reviewer, medical_safety_reviewer, claims_evidence_specialist]
+acceptance: exact6/staged0; both targets have all 23 fields; active owner/reviewer/body routing contains no stale model, Claude, agmsg or dual-lane authority; index/status/version aligned; human/domain gates not weakened; full validation passes
+validation: targeted stale-token and governance matrix; inventory/non-target/exact-path; workspace typecheck/test/build; OpenAPI, calculation-purity, scripts, SSOT, secrets, boundaries, deps, SBOM, diff
+rollback: revert only the exact6 landing commit; because that would restore known governance contradictions, immediately re-open WP-9005 as BLOCKED and do not use stale routing
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, test_architect, security_critic, privacy_compliance_reviewer, medical_safety_reviewer and claims_evidence_specialist APPROVED after correcting the non-target fingerprint evidence; no actionable findings remain
+validation_results: FINAL PASS before landing — exact6/staged0; inventory173/89/84; both targets all23; active body stale-routing scan clean; 171 non-target canonical rows `17568/315025491df9d8862387561bd4f3bc47f64c39199a2cc77601cc5bfc4432f051`; workspace typecheck/test/build PASS; audit182, contracts86, web99, API161 plus 9 expected PostgreSQL skips without TEST_DATABASE_URL; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS
+finalization_record: QUA-001 v0.1.2, QUA-003 v0.1.1 and IDX-001 v0.4.14 APPROVED with approved_at/effective_from 2026-07-11; prior human approvals preserved as history only; WP-9001 direct cutover plus eight WP-9005 reviews recorded
+landing_required: exact6 commit_and_push
+state: FINALIZED / LANDING PENDING
+```
   - Landing: commit `0b0b5ba`を`origin/main`へpush。critical summary-only correction、exact4、independent/medical approval、全docs gates PASS。コード/DB/runtime/external変更なし。
 
 ## Phase 0: 調査・計画(ドキュメント)
