@@ -5,22 +5,44 @@ ssot_id: PRD-001
 title: MVP対象範囲
 domain: product
 status: APPROVED
-owner: fable5
+owner: codex_root
 reviewers:
-  - opus4.8
-  - human_review_required
-version: 0.1.0
+  - independent_verifier
+  - spec_guardian
+  - data_integrity_auditor
+  - architect
+  - test_architect
+  - medical_safety_reviewer
+  - privacy_compliance_reviewer
+  - claims_evidence_specialist
+  - security_critic
+  - api_contract_reviewer
+  - human_review_if_required
+version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
-approved_at: 2026-07-09
-approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.2.0 §2, §3, §18, §19 / docs/plan/phase0_plan.md §2.1
+updated_at: 2026-07-11
+approved_at: 2026-07-11
+approved_by: direct_user_instruction (WP-9001 AGT-018 cutover); independent_verifier APPROVED; spec_guardian APPROVED; data_integrity_auditor APPROVED; architect APPROVED; api_contract_reviewer APPROVED; test_architect APPROVED; claims_evidence_specialist APPROVED; security_critic APPROVED; privacy_compliance_reviewer APPROVED; medical_safety_reviewer APPROVED
+effective_from: 2026-07-11
+effective_to: null
+source_refs:
+  - 構築プロンプト v0.2.0 §2, §3, §18, §19 / docs/plan/phase0_plan.md §2.1
+  - AGT-018 codex_single_lane_operating_model
+  - PRC-007 ssot_governance
 depends_on:
   - docs/product/non_mvp_scope.md
   - docs/calculation/calculation_coverage_matrix.md
   - docs/claim/claim_scope_matrix.md
 impacts:
   - すべての実装WP
+related_work_packages: [WP-0006, WP-0019, WP-0038, WP-9001, WP-9006]
+related_tests:
+  - packages/shared-kernel/src/kernel.test.ts
+related_prs: []
+evidence_ids: []
+change_log:
+  - 0.1.1 (2026-07-11): WP-9006 AGT-018 routing compatibility amendmentを10-role review後にfinalize。M1-M12、claim-stop、open questions、blocker、human product/pharmacist/claims/legal authorityは不変更。0.1.0 human approvalはhistorical provenanceとして保持し、本版のscope承認には流用しない。
+  - 0.1.0 (2026-07-09): Phase 0 human reviewで承認。
 open_questions:
   - 電子処方箋を「境界設計のみMVP」とする判断の市場妥当性(人間レビュー必須)
   - 公費・地方単独助成のカバー範囲(対象制度の限定リスト)
@@ -64,4 +86,4 @@ MVP対象外の要素を含む処方・請求は、`@yrese/shared-kernel` の以
 
 ## 変更管理
 
-MVP範囲の変更は本SSOTの改版として fable5 が起案し、opus4.8 レビュー + 人間レビューを経て APPROVED とする。実装者(sonnet5 / Codex側)が実装中に範囲を拡大・縮小してはならない(SSOT_UPDATE_REQUIRED で返す)。
+MVP範囲の変更は本SSOTの改版としてCodex rootがcurrent WPを起票し、read-only mapper/pre-plan reviewer → sole maintainer → independent verifier + relevant specialists → required human product/pharmacist/claims/legal authority の順に審査してAPPROVEDとする。実装者が実装中に範囲を拡大・縮小してはならない(SSOT_UPDATE_REQUIREDで返す)。

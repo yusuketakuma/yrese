@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W6C + WP-9005 LANDED、87 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W6C + WP-9005 LANDED、WP-9006 FINALIZED / LANDING PENDING、85 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -617,7 +617,7 @@ validation_results: FINAL PASS before landing — exact12/staged0; inventory173/
 finalization_record: IDX-001 v0.4.6 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and eight W5A approvals appended; API targets unchanged from approved review candidate and API-008 remains PROPOSED
 landing_required: commit_and_push after finalization
 landing_record: commit 74666c9 `WP-9002-W5A: normalize API metadata` pushed successfully to origin/main (134864c..74666c9); inventory 173/118/55; exact 12 paths; eight API bodies/preserved/amendment/blocker states and 165 non-target set unchanged; all eight reviewer/full validation gates APPROVED; no code, DB, external, deployment, or destructive change
-overall_state: W6C and WP-9005 LANDED; WP-9002 remains IN_PROGRESS with 87 incomplete SSOT documents and the next wave requires fresh mapping/pre-plan
+overall_state: W6C and WP-9005 LANDED; WP-9006 FINALIZED / LANDING PENDING; WP-9002 remains IN_PROGRESS with 85 incomplete SSOT documents
 ```
 
 #### WP-9002-W5B architecture legacy metadata — LANDED
@@ -800,6 +800,7 @@ state: LANDED; WP-9002 remains IN_PROGRESS and the next wave starts only after f
   - Acceptance: table critical count=11、ID集合=`MSR-001,005,006,007,016,020,021,022,031,032,033`、summary count/list一致、SAF-001はsummary行以外byte-identical、exact4/staged0。
   - Review/verification: pre-plan APPROVED_WITH_PINS、independent verifier + medical-safety reviewer APPROVED。critical count/set/summary-only assertion、SSOT173、scripts、secrets、boundaries、diff PASS。exact4/staged0。rollbackはsummaryの`11件`を`9件`へ戻す単一行revert。
   - WP-9004b: SAF-001/002のevidence freshness（`WP-1006実装中`、`WP-2002予定`、`WP-2003予定`等）をlive code/testへ照合する別WP。推測更新せず、現時点はread-only mapping/review前。
+  - Landing: commit `0b0b5ba`を`origin/main`へpush。critical summary-only correction、exact4、independent/medical approval、全docs gates PASS。コード/DB/runtime/external変更なし。
 
 - [x] WP-9005 quality governance AGT-018 compatibility amendment(LANDED、commit 2b26c06)
 
@@ -827,7 +828,32 @@ landing_required: exact6 commit_and_push
 landing_record: commit 2b26c06 `WP-9005: align quality governance with AGT-018` pushed successfully to origin/main (bfb806c..2b26c06); exact6; inventory 173/89/84; eight reviews/full gates APPROVED; no code, DB, external, production, deployment or destructive change
 state: LANDED
 ```
-  - Landing: commit `0b0b5ba`を`origin/main`へpush。critical summary-only correction、exact4、independent/medical approval、全docs gates PASS。コード/DB/runtime/external変更なし。
+
+- [~] WP-9006 product scope AGT-018 routing compatibility amendment(FINALIZED / LANDING PENDING、P1)
+
+```yaml
+work_package_id: WP-9006
+baseline_commit: 47154bd
+baseline_inventory: { total: 173, incomplete: 87, complete: 86 }
+target_inventory: { total: 173, incomplete: 85, complete: 88 }
+purpose: Replace stale active model/lane routing in PRD-001/002 while preserving every product-scope, claim-stop, reactivation, market, pharmacist, claims, legal and human decision.
+targets: [PRD-001 v0.1.1, PRD-002 v0.1.1]
+allowed_files: PRD-001, PRD-002, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact6
+forbidden: other product/claim/calculation docs, code/tests/packages/lock; M1-M12 or N1-N14 changes; open question/blocker/claimability/reactivation/product/legal/pharmacist/claims decisions
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: exactly PRD-001 change-management routing line and PRD-002 no-side-implementation routing line; all other body content must remain byte-equivalent
+pins: review candidate PROPOSED/null; old human approvals historical only; owner/reviewers role-based; WP-0019/WP-0038 remain pending substantive amendments and are not completed/adopted; exact routing amendment uses WP-9001 authority, but any scope byte change requires human product/pharmacist/claims/legal approval
+metadata: both WPs [WP-0006, WP-0019, WP-0038, WP-9001, WP-9006]; shared-kernel test is only fail-closed status/isClaimable subset evidence; related PRs/evidence empty; no readiness claim
+non_target: 171 canonical rows / 17183 bytes / SHA-256 037b3f5b8bf8a7e88a38fc5de03de2dcf9bf07d2988dbef44c34826c95311e98
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, api_contract_reviewer, test_architect, claims_evidence_specialist, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+validation: exact body-line/inventory/non-target/path assertions, shared-kernel test, workspace typecheck/test/build, OpenAPI, calculation-purity, scripts, SSOT, secrets, boundaries, deps, SBOM, diff
+rollback: revert exact6 landing commit; immediately re-open WP-9006 as BLOCKED because revert restores known routing conflict, and never use old routing as authority
+review_results: all ten required roles APPROVED after moving the orphan WP-9004a landing bullet and aligning target reviewer metadata; no actionable findings remain; approvals do not replace product/pharmacist/claims/legal human authority
+validation_results: FINAL PASS before landing — exact6/staged0; exactly two intended body lines changed and all M1-M12/N1-N14/open questions/blockers/reactivation conditions preserved; all23; inventory173/85/88; non-target171/17183/037b3f5b8bf8a7e88a38fc5de03de2dcf9bf07d2988dbef44c34826c95311e98; shared-kernel23 and workspace typecheck/test/build PASS; audit182, contracts86, web99, API161 plus 9 expected PostgreSQL skips; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS
+finalization_record: PRD-001/002 v0.1.1 and IDX-001 v0.4.16 APPROVED with approved_at/effective_from 2026-07-11; prior human approvals historical only; WP-9001 direct cutover plus ten WP-9006 reviews recorded; no scope decision adopted
+landing_required: exact6 commit_and_push
+state: FINALIZED / LANDING PENDING
+```
 
 ## Phase 0: 調査・計画(ドキュメント)
 

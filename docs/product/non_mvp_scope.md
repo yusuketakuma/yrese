@@ -5,21 +5,43 @@ ssot_id: PRD-002
 title: MVP対象外範囲
 domain: product
 status: APPROVED
-owner: fable5
+owner: codex_root
 reviewers:
-  - opus4.8
-  - human_review_required
-version: 0.1.0
+  - independent_verifier
+  - spec_guardian
+  - data_integrity_auditor
+  - architect
+  - test_architect
+  - medical_safety_reviewer
+  - privacy_compliance_reviewer
+  - claims_evidence_specialist
+  - security_critic
+  - api_contract_reviewer
+  - human_review_if_required
+version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
-approved_at: 2026-07-09
-approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.2.0 §2, §18, §29 / docs/plan/phase0_plan.md §2.2
+updated_at: 2026-07-11
+approved_at: 2026-07-11
+approved_by: direct_user_instruction (WP-9001 AGT-018 cutover); independent_verifier APPROVED; spec_guardian APPROVED; data_integrity_auditor APPROVED; architect APPROVED; api_contract_reviewer APPROVED; test_architect APPROVED; claims_evidence_specialist APPROVED; security_critic APPROVED; privacy_compliance_reviewer APPROVED; medical_safety_reviewer APPROVED
+effective_from: 2026-07-11
+effective_to: null
+source_refs:
+  - 構築プロンプト v0.2.0 §2, §18, §29 / docs/plan/phase0_plan.md §2.2
+  - AGT-018 codex_single_lane_operating_model
+  - PRC-007 ssot_governance
 depends_on:
   - docs/product/mvp_scope.md
 impacts:
   - docs/calculation/calculation_coverage_matrix.md
   - docs/claim/claim_scope_matrix.md
+related_work_packages: [WP-0006, WP-0019, WP-0038, WP-9001, WP-9006]
+related_tests:
+  - packages/shared-kernel/src/kernel.test.ts
+related_prs: []
+evidence_ids: []
+change_log:
+  - 0.1.1 (2026-07-11): WP-9006 AGT-018 routing compatibility amendmentを10-role review後にfinalize。N1-N14、claim-stop、open questions、reactivation/human/license gatesは不変更。0.1.0 human approvalはhistorical provenanceとして保持し、本版のscope承認には流用しない。
+  - 0.1.0 (2026-07-09): Phase 0 human reviewで承認。
 open_questions:
   - 電子処方箋フル実装の投入時期(義務化動向・市場要件 — 人間レビュー)
   - 地方単独公費のMVPカバーリスト(対象自治体の限定)
@@ -52,6 +74,6 @@ blockers: []
 
 ## 禁止事項
 
-- 対象外領域を「ついで実装」してはならない(新WPとして fable5 に提案する)。
+- 対象外領域を「ついで実装」してはならない。新しいscope候補はCodex rootが別WPとして記録し、PRD-001/002改版とrequired specialist/human product/pharmacist/claims/legal review完了まで実装しない。
 - 対象外の検知を緩めて請求を通してはならない(請求事故直結)。
 - N8(NSIPS)は許諾なしにコード・ドキュメントいずれにも仕様内容を書き写してはならない。
