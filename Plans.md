@@ -415,11 +415,11 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 想定スコープ: `docs/security/audit_log_design.md` または後続 audit implementation plan、`apps/api` の audit adapter interface、必要なら `packages/audit` の作成ヘルパー追加。SEC-007高リスク隣接のため実装前に fable5/opus4.8 review 必須。
   - 検証: 受付作成成功時の audit event 生成/書込テスト、audit 書込失敗時の fail-closed テスト、PHIを audit payload に含めないテスト、`pnpm --filter @yrese/api test`, `pnpm --filter @yrese/audit test`, `pnpm check:boundaries`, `git diff --check`。
 
-- [~] WP-4051 reception idempotency durability boundary(codex 提案 SELF-SCAN-20260709-30、WP-5003実装済み・PostgreSQL CI実証待ち)
+- [x] WP-4051 reception idempotency durability boundary(codex 提案 SELF-SCAN-20260709-30、WP-5003実装済み・PostgreSQL CI実証完了)
   - 実装現状: WP-5003 と `000002_create_patient_and_reception_tables.sql` で `reception_entries`、`(tenant_id, pharmacy_id, idempotency_key)` UNIQUE、transaction内 `INSERT ... ON CONFLICT DO NOTHING` + scoped既存行取得は実装済み。同一scope/key/同一patientは元の受付を返し、別patientだけを conflict とする永続挙動を持つ。
   - 本WP追加: test-only PostgreSQL integration proofを4件追加。同一patientの並行createは `created` + `existing` と同一DB行へ収束、別patientの並行createは `created` + `idempotency_conflict` と1行へ収束、repository再生成後の同一受付返却、同一keyのtenant/pharmacy 3 scope分離を、順序・winner・sleep・retry仮定なしで固定した。fixture/keyは合成・非PHI。
   - 契約境界: API-006のclient payloadはpatientIdのみであり、同一patient再送ではserver採番 `acceptedAt`、導出 `businessDate`、`receptionId` の差を無視して既存受付を返す。fingerprint/hashは追加しない。WP-4054はWP-4076の裁定どおり `PLAN_INVALID_AS_WRITTEN` のまま維持する。
-  - 残作業/検証: localは `pnpm --filter @yrese/api typecheck` PASS、`pnpm --filter @yrese/api test` 161 PASS + PostgreSQL integration 9 expected SKIP、`git diff --check` PASS。`TEST_DATABASE_URL` があるCIで追加4件を実行し、実DB上のdurability/concurrencyを確認するまでIN_PROGRESSを維持する。migration/source/API契約/OpenAPI/package/lockは変更しない。
+  - 完了検証: implementation commit `6f5bd5b` をpush。GitHub Actions run `29062131540` / job `86266062178` は1m14sでsuccessし、CI disposable PostgreSQL上でrepository integration 7件(既存3 + 新規4、603ms)、migration-runner integration 2件、API 10 files / 170 testsが全件PASS・0 skipped。typecheck/test/build/OpenAPI/secrets/deps/SBOM/boundaries/calculation purity/SSOTの全CI stepもgreen。migration/source/API契約/OpenAPI/package/lock、fingerprint/hashは変更せず、local/prod DBや他環境への適用は行っていない。
 
 - [x] WP-4052 web typecheck prebuild reproducibility(codex 提案 SELF-SCAN-20260709-31、fable5 裁定で tooling 領域として codex 実装可)
   - 発見根拠: clean build 前の全体検証で `pnpm -r typecheck` が `apps/web/.next/types/**/*.ts` の TS6053(file not found)で失敗し、`pnpm build` 後の再実行では PASS した。`apps/web/tsconfig.json` は `.next/types/**/*.ts` を include しているが、`apps/web` の `typecheck` script は `tsc --noEmit` のみで Next 生成型を事前生成しない。
