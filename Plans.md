@@ -198,15 +198,15 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(WP-9002-W1 FINALIZED_READY_TO_LAND / landing_pending、metadata-only、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、WP-9002-W1 LANDED、metadata-only、P1)
 
 ```yaml
 work_package_id: WP-9002
 wave_id: WP-9002-W1
 title: legacy SSOT frontmatter migration wave 1 — QUA-007 canary
-status: REVIEW_REQUESTED
-execution_state: FINALIZED_READY_TO_LAND
-landing_state: landing_pending
+status: IN_PROGRESS
+execution_state: W1_LANDED
+landing_state: satisfied
 priority: P1
 risk_level: R2
 implementation_layer: ssot_metadata
@@ -280,8 +280,9 @@ validation_commands:
   - git diff --check
 validation_results: FINAL PASS — QUA current file remains exactly 4663 bytes / SHA-256 e7a7e7ec8800288e9865da6c2ed878862e25887373b7617bf5087bd83aa62e7c; QUA body remains HEAD-identical at 3336 bytes / SHA-256 3315dfe31bf199248ace7058adf044e4fd3d72b260873063efa438800b36b851 with all preserved values unchanged; exact 23-field scan confirms 173 total / 141 incomplete / 32 complete, QUA missing 0, and all 172 non-target missing-field sets identical; IDX-001 v0.4.2 APPROVED with six W1 reviewers, WP-9001 provenance, historical 173/142 and final 173/141/32; QUA index APPROVED/path and total 173 unchanged; exact four-path unstaged diff, check:ssot-index, test:scripts, secrets, boundaries, and diff checks PASS
 finalization_record: IDX-001 v0.4.2 APPROVED with approved_at/effective_from 2026-07-10 and WP-9001 provenance plus all six WP-9002-W1 approvals; QUA-007 current file remains byte-for-byte unchanged
-landing_required: combined reviewer gates, IDX-001 final approval metadata, and full post-finalization validation satisfied; only Codex root exact-stage commit and requested push remain pending
-landing_record: FINALIZED_READY_TO_LAND / landing_pending; exact four allowed paths, staged 0
+landing_required: satisfied
+landing_record: commit 41c4d9f `WP-9002-W1: normalize QUA-007 frontmatter` pushed successfully to origin/main (6198068..41c4d9f); inventory 173/141/32, QUA current file 4663 bytes / SHA-256 e7a7e7ec8800288e9865da6c2ed878862e25887373b7617bf5087bd83aa62e7c, QUA body 3336 bytes / SHA-256 3315dfe31bf199248ace7058adf044e4fd3d72b260873063efa438800b36b851, six-reviewer and validation gates PASS; no code, DB, migration, external, deployment, or destructive change
+overall_state: WP-9002 remains IN_PROGRESS with 141 incomplete SSOT documents; no later wave has started, and the next wave requires a new read-only mapping and pre-plan review before any edit
 ```
 
 ## Phase 0: 調査・計画(ドキュメント)

@@ -2,13 +2,13 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1 / IDX-001 v0.4.1はdata_integrity_auditor reviewを経てAPPROVED。以下に残る旧model/role/lane/message名は各活動時点のhistorical provenanceであり、current assignment・approval・completion gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はdata_integrity_auditor reviewを経てAPPROVED、IDX-001 v0.4.2はWP-9002-W1 six-reviewer approvalを経てAPPROVED。以下に残る旧model/role/lane/message名は各活動時点のhistorical provenanceであり、current assignment・approval・completion gateには再利用しない。
 
 ---
 
 ## 2026-07-10
 
-### WP-9002-W1 QUA-007 legacy frontmatter canary — FINALIZED_READY_TO_LAND (landing_pending)
+### WP-9002-W1 QUA-007 legacy frontmatter canary — LANDED
 
 - approved canary planに従い、HEAD `619806842135e4a1d08d84488b771c06e12f8778`をbaselineとして23-field exact-key scanを実施。index対象173文書中、不足142 / 充足31、QUA-007は`effective_from` / `effective_to` / `related_work_packages` / `related_tests` / `related_prs` / `evidence_ids` / `change_log`の7 field不足を確認した。
 - sole maintainerは許可された`docs/quality/quality_transparency_strategy.md`、`docs/ssot_index.md`、`Plans.md`、`State.md`だけを変更。QUA-007はversion/status/approval/owner/reviewers/created/source/dependency/impact/blocker/open-questionを保持し、PRC-007 metadataだけを補完した。本文境界のbaselineは3336 bytes、SHA-256 `3315dfe31bf199248ace7058adf044e4fd3d72b260873063efa438800b36b851`である。
@@ -17,7 +17,8 @@
 - independent_verifier、spec_guardian、data_integrity_auditor、medical_safety_reviewer、privacy_compliance_reviewer、security_criticのcombined reviewは`APPROVED`。exact 4-path、QUA本文3336 bytes / 指定SHA、status/version/approval不変を確認し、`BLOCKED_LEGAL_REVIEW`、claim evidence/evidenceRef fail-closed、PHI/PII非露出を維持してmetadataがsemantic activationを生じないと判定した。
 - six-reviewer approval後、sole maintainerがIDX-001 v0.4.2をAPPROVEDへfinalizeした。approved_at/effective_fromは2026-07-10、approved_byはWP-9001 provenanceを保持して全WP-9002-W1 reviewer approvalを追記した。QUA-007 current fileはbyte-for-byte変更していない。
 - post-finalization validationはQUA current file 4663 bytes / SHA-256 `e7a7e7ec8800288e9865da6c2ed878862e25887373b7617bf5087bd83aa62e7c`、HEAD-identical body 3336 bytes / 指定SHA、preserved values、173/141/32、QUA missing 0、非対象172 missing-set同一、IDX APPROVED/six reviewers/WP-9001 provenance/historical 142、QUA index行/総数、exact 4-path/staged 0をPASS。`pnpm check:ssot-index`(173)、`pnpm test:scripts`、secrets、boundaries、diff checkもPASSした。
-- current stateは`FINALIZED_READY_TO_LAND / landing_pending`で、残る作業はCodex rootのexact-stage commit/requested pushだけである。それ以前にstage / commit / push、次wave、DB/migration、external/deploy操作を開始しない。WP-9002全体は`[~]`でDONEではない。policy/legal/medical-safety/claim-evidence/privacy/security/external-publicationのsemantic changeが必要になった場合はW1を停止して対象を分離し、該当human authorityの承認を持つ別WPへ送る。
+- Codex rootはexact four pathsをcommit `41c4d9f` (`WP-9002-W1: normalize QUA-007 frontmatter`)としてstage/commitし、origin/mainへ`6198068..41c4d9f`をpushした。W1は`LANDED`、landing gateはsatisfiedである。landing時点のinventoryは173/141/32、QUA current fileは4663 bytes / SHA-256 `e7a7e7ec8800288e9865da6c2ed878862e25887373b7617bf5087bd83aa62e7c`、本文は3336 bytes / SHA-256 `3315dfe31bf199248ace7058adf044e4fd3d72b260873063efa438800b36b851`で、six-reviewer approvalと全validation gateを維持した。コード、DB、migration、external、deploy、destructive changeはない。
+- WP-9002全体は不足141文書を残して`[~] / IN_PROGRESS`でありDONEではない。次waveは未着手で、編集前に新しいread-only mappingとpre-plan reviewを必須とする。policy/legal/medical-safety/claim-evidence/privacy/security/external-publicationのsemantic changeが必要な文書は対象から分離し、該当human authorityの承認を持つ別WPへ送る。
 
 ### WP-4078 direct audit intent fingerprint single-snapshot/Proxy TOCTOU hardening — historical PLAN_APPROVED / AGT-018 re-plan pending / implementation HOLD
 
