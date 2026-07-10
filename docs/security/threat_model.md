@@ -11,9 +11,11 @@ reviewers:
   - human_review_required
 version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §34, §35, §33
 depends_on:
@@ -23,11 +25,21 @@ impacts:
   - docs/security/edge_node_security_design.md
   - docs/security/tenant_isolation_design.md
   - docs/security/audit_log_design.md
+related_work_packages: [WP-0009, WP-2002, WP-4012, WP-4047, WP-4080, WP-9002-W7A]
+related_tests:
+  - packages/events/src/events.test.ts
+  - apps/api/src/server.test.ts
+  - apps/web/app/api-transport.test.ts
+  - pnpm check:deps
+  - pnpm check:sbom
+related_prs: []
+evidence_ids: []
 open_questions:
   - Edge Node の物理環境前提(サーバールーム有無・盗難リスク水準)は導入薬局プロファイルで再評価
   - DDoS 対策水準(WAF/Shield)の費用対効果(finops と往復)
 blockers: []
 change_log:
+  - "2026-07-11 WP-9002-W7A metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - 0.1.1 (2026-07-09): WP-4047 実装状態 drift 整備。供給網攻撃対策の dependency scan / SBOM CI 実装状態を WP-4012/b0ecf84+702c2f5 に同期(脅威判断は不変更)。
 ```
 
