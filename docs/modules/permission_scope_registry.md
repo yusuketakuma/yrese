@@ -10,20 +10,45 @@ reviewers:
   - opus4.8
 version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §0.0.3.3, §7(UIだけで権限制御せずAPI側でも制御), §9.9
 depends_on:
   - packages/shared-kernel permissions.ts(9ab039e)
   - apps/api tenant-context(40a2512)
+impacts:
+  - packages/shared-kernel permission scope registry
+  - apps/api tenant-context authorization and protected routes
+  - apps/web development-only least-privilege scope headers
+  - packages/contracts/OpenAPI required-scope declarations
+related_work_packages:
+  - WP-0012
+  - WP-2002
+  - WP-3009-BE
+  - WP-4042
+  - WP-4065
+  - WP-9002-W3
+related_tests:
+  - packages/shared-kernel/src/kernel.test.ts
+  - packages/contracts/src/whoami.test.ts
+  - apps/api/src/server.test.ts
+  - apps/web/app/patients/patient-search.test.tsx
+  - apps/web/app/reception-dashboard.test.tsx
+  - pnpm check:openapi
+related_prs: []
+evidence_ids: []
 open_questions:
   - 疑義照会・会計(返金/差額)・RECOVERY_SYNC承認の専用 scope 要否(UIX-007 の指摘 — 画面実装WPの DoR までに確定)
   - ロール→scope の既定割当表(pharmacist/clerk/admin/support)— auth 設計SSOTと同時に確定
   - break-glass アカウントの scope 表現(SEC-005)
 blockers: []
 change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W3 metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - 0.1.1 (2026-07-09): WP-3009-BE / API-006 v0.2.0 に基づき、受付キュー API 用 resource `reception` を追加(`reception:read` / `reception:write`)。GET/POST は patient:read 併須。
 ```
 

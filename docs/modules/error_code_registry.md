@@ -10,17 +10,42 @@ reviewers:
   - opus4.8
 version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §0.0.3.3, §7(エラー表示原則)
 depends_on:
   - packages/shared-kernel error-codes.ts(KERNEL_ERROR_CODES seed)
+impacts:
+  - packages/shared-kernel error-code registry
+  - packages/contracts error response validation and OpenAPI error descriptions
+  - apps/api registered error responses
+  - apps/web registered error-code display filtering
+related_work_packages:
+  - WP-0012
+  - WP-4015
+  - WP-4036
+  - WP-4062
+  - WP-3009-BE
+  - WP-9002-W3
+related_tests:
+  - packages/shared-kernel/src/kernel.test.ts
+  - packages/contracts/src/error.test.ts
+  - apps/api/src/server.test.ts
+  - apps/web/app/components/error-notice.test.tsx
+  - apps/web/app/reception-dashboard.test.tsx
+  - pnpm check:openapi
+related_prs: []
+evidence_ids: []
 open_questions:
   - エラーコードとUI表示文言(次に何をすべきか)の対応表の管理場所(UIX-001 と連動)
 blockers: []
 change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W3 metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - 0.1.2 (2026-07-09): WP-3009-BE / API-006 v0.2.0 に基づき、RECEPTION domain の prefix を RCV と確定し、受付キュー API 用 RCV-0001/0002/0003 を登録。
 ```
 

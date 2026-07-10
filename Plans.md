@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1/W2 LANDED、remaining 139、metadata-only、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1/W2 LANDED、W3 FINALIZED / LANDING PENDING、landed remaining 139 / finalized target 137、metadata-only、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -382,6 +382,99 @@ finalization_record: IDX-001 v0.4.3 APPROVED with approved_at/effective_from 202
 landing_required: satisfied
 landing_record: commit ff7518f `WP-9002-W2: normalize module metadata` pushed successfully to origin/main (73fda4b..ff7518f); inventory 173/139/34; MOD-011 current file 4679 bytes / SHA-256 a929603619981b113bb81c209584900e1f78275806d47388e2d1fd0754675074 and body 3041 bytes / SHA-256 e4a73fad7fc8f47a0485c2d08eab461edd6c5a5a3d024adbcb55775e94b06066; MOD-014 current file 3786 bytes / SHA-256 0fa815faebec490b3c0704c00271b8e705939cf209679c056208240aeb42e032 and body 2507 bytes / SHA-256 ed145a48bdda369e64c7d7b4e3d88b6e759d1bb4397c1b637cb1e4781c698d16; independent_verifier, test_architect, spec_guardian, api_contract_reviewer, data_integrity_auditor, medical_safety_reviewer, and privacy_compliance_reviewer APPROVED; date-time 8, API server 43, web reception 10 PASS, PostgreSQL integration 7 expected skips because TEST_DATABASE_URL was absent with no DB connection/migration/DML, OpenAPI/scripts/SSOT/secrets/boundaries/diff gates PASS; no code, DB, external, deployment, or destructive change
 overall_state: WP-9002 remains [~] / IN_PROGRESS with 139 incomplete SSOT documents; W1 and W2 are LANDED, W3 has not started, and a new read-only mapping and pre-plan review are required before any W3 edit
+```
+
+#### WP-9002-W3 MOD-006/MOD-007 legacy frontmatter migration — FINALIZED / LANDING PENDING
+
+```yaml
+work_package_id: WP-9002
+wave_id: WP-9002-W3
+title: legacy SSOT frontmatter migration wave 3 — error and permission registries
+status: IN_PROGRESS
+execution_state: W3_FINALIZED
+landing_state: pending
+priority: P1
+risk_level: R2
+implementation_layer: ssot_metadata
+baseline_commit: 3e8dee054f808ad25022b9f731d96a9fe34f59c3
+baseline_inventory: { total: 173, incomplete: 139, complete: 34 }
+target_inventory: { total: 173, incomplete: 137, complete: 36 }
+target_ssots:
+  - ssot_id: MOD-006
+    path: docs/modules/error_code_registry.md
+    baseline_body_bytes_after_first_yaml_closing_fence: 3509
+    baseline_body_sha256: 96ebdea1a65b949e77ef4165dd3049cc4f7e7eeda27904dce19a8f67e075e84c
+  - ssot_id: MOD-007
+    path: docs/modules/permission_scope_registry.md
+    baseline_body_bytes_after_first_yaml_closing_fence: 2139
+    baseline_body_sha256: 94974900b71ece2bcdf025b876e661e7692e8174e54d4cd4f887a2ce01ea86f0
+allowed_files:
+  - docs/modules/error_code_registry.md
+  - docs/modules/permission_scope_registry.md
+  - docs/ssot_index.md
+  - Plans.md
+  - State.md
+  - ops/refactor/STATE.md
+forbidden_files:
+  - every path not listed in allowed_files
+owner_role: sole_maintainer
+reviewer_roles:
+  - independent_verifier
+  - spec_guardian
+  - data_integrity_auditor
+specialist_roles:
+  - security_critic
+  - api_contract_reviewer
+  - test_architect
+  - medical_safety_reviewer
+  - privacy_compliance_reviewer
+human_gate: none for the exact metadata-only scope; stop and split any semantic, authorization, claimability, approval/effective, medical, privacy, security, evidence, code, DB, external, or deployment change
+mapping_record: read-only mapping confirmed clean HEAD/origin at baseline, both targets missing the same seven fields, 171 non-target canonical missing-set baseline 22739 bytes / SHA-256 40b4506bfa956eed0303348fa62945dfe9456d123ba4942395993abfcd49ca42, and no semantic/human-gated change required
+pre_plan_review: APPROVED; exact six-path R2 metadata-only wave, with MOD-006 patient-search test removed as non-direct and MOD-007 whoami contract test added as direct scope validation
+review_records:
+  - independent_verifier APPROVED
+  - spec_guardian APPROVED
+  - data_integrity_auditor APPROVED
+  - security_critic APPROVED
+  - api_contract_reviewer APPROVED after direct implementation WP provenance was completed
+  - test_architect APPROVED after direct implementation WP provenance was completed
+  - medical_safety_reviewer APPROVED
+  - privacy_compliance_reviewer APPROVED
+  - No W3 human approval is claimed; all reviewers confirmed metadata-only scope and preserved legacy human authority.
+frontmatter_rules:
+  - MOD-006 preserves version 0.1.2 and MOD-007 preserves version 0.1.1; both preserve status, approved_at, approved_by, owner, reviewers, created_at, source_refs, depends_on, open_questions, blockers, and body exactly.
+  - Both targets set updated_at to 2026-07-11, effective_from/effective_to to null, related_prs/evidence_ids to empty arrays, and add only the mapped impacts, work packages, tests, and non-versioned W3 migration change log.
+  - MOD-006 traces shared-kernel error registry, contract/OpenAPI error validation, API registered responses and Web registered-code filtering to WP-0012/WP-3009-BE/WP-4015/WP-4036/WP-4062/WP-9002-W3 and their direct tests.
+  - MOD-007 traces shared-kernel permission scopes, API tenant authorization/protected routes, Web dev least-privilege headers and contract/OpenAPI scope declarations to WP-0012/WP-2002/WP-3009-BE/WP-4042/WP-4065/WP-9002-W3 and their direct tests.
+  - No W3 reviewer is added to either target approved_by. IDX-001 v0.4.4 remains PROPOSED with approval/effective fields null during review and preserves all W1/W2 provenance.
+  - All 171 non-target missing-field sets, historical inventories, index rows/status/path and total 173 remain identical to baseline.
+stop_conditions:
+  - Either target body bytes/hash or any preserved frontmatter value changes.
+  - Any non-target missing-set drift, inventory other than 173/137/36, index drift, edit outside six paths, validation failure, or reviewer CHANGES_REQUIRED.
+  - Any error/permission/claimability/authorization/tenant/evidence/medical/privacy/security semantic change; split to a separate WP with applicable human authority.
+review_gates:
+  - independent_verifier, spec_guardian, and data_integrity_auditor approve exact scope, body/preserved-field and inventory proof.
+  - security_critic and privacy_compliance_reviewer approve authorization/PHI boundary non-change.
+  - api_contract_reviewer and test_architect approve contract/OpenAPI/test provenance without behavior change.
+  - medical_safety_reviewer approves error/claimability/human-review semantics non-change.
+  - After all eight approvals only, sole maintainer may finalize IDX-001; Codex root alone exact-stages, commits, and pushes.
+validation_commands:
+  - exact 23-field scanner, target preservation/body hashes, and 171 non-target missing-set comparison
+  - exact six-path and staged-zero audit; historical inventory/index ledger audit
+  - pnpm --filter @yrese/shared-kernel test
+  - pnpm --filter @yrese/contracts exec vitest run src/error.test.ts src/whoami.test.ts
+  - pnpm --filter @yrese/api exec vitest run src/server.test.ts
+  - pnpm --filter @yrese/web exec vitest run app/components/error-notice.test.tsx app/patients/patient-search.test.tsx app/reception-dashboard.test.tsx
+  - pnpm check:openapi
+  - pnpm test:scripts
+  - pnpm check:ssot-index
+  - pnpm check:secrets
+  - pnpm check:boundaries
+  - git diff --check
+validation_results: FINAL PASS before landing — exact six paths/staged 0; inventory 173/137/36; target missing 0; MOD-006 body 3509 bytes / SHA-256 96ebdea1a65b949e77ef4165dd3049cc4f7e7eeda27904dce19a8f67e075e84c and MOD-007 body 2139 bytes / SHA-256 94974900b71ece2bcdf025b876e661e7692e8174e54d4cd4f887a2ce01ea86f0 unchanged; all preserved target fields unchanged; 171 non-target canonical missing-set 22739 bytes / SHA-256 40b4506bfa956eed0303348fa62945dfe9456d123ba4942395993abfcd49ca42; shared-kernel 23, contracts 23, API 43, Web 28 PASS; OpenAPI, scripts, SSOT index 173, secrets, boundaries and diff check PASS; all eight reviewer gates APPROVED
+finalization_record: IDX-001 v0.4.4 APPROVED with approved_at/effective_from 2026-07-11, all WP-9001/W1/W2 provenance preserved, eight W3 approvals appended, and no W3 human approval claimed; MOD-006/MOD-007 remain byte-for-byte identical to the approved review candidate
+landing_required: commit_and_push after finalization
+overall_state: W3 finalized and validation/reviews complete; landed inventory remains 173/139/34 until exact-stage commit and push
 ```
 
 - [x] WP-9003 repository reconciliation state pack(Codex-only、resume-safe、docs-only)
