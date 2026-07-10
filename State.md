@@ -8,6 +8,10 @@
 
 ## 2026-07-11
 
+### WP-9002-W7C ACC-008 metadata — READY / pre-plan approved
+
+- clean `375c1ee`でresidual82を再triageし、OPS-009は`causationId` optionalとの本文driftと未実装observability基盤のためmetadata-onlyから除外した。ACC-008だけをbody-preserving exact5へ選定。PaymentMethod/POSSettlement等のruntime/direct testはなく、empty tests/evidenceはnon-waiver。body `1256/987fea1d…`、target173/81/92、non-target172 `16778/097329f5…`、IDX v0.4.20。CASH/MVP、Payment method_code、POS結果不在時の決済完了非捏造、混合支払、open question、legacy approvalは不変。copay、Charge-before-Payment、ACC-009、WP-0037/0038、WP-2201/3101、tenant/audit/production/deployを解除しない。まだtarget editは開始していない。
+
 ### WP-9007 SEC-008 audit security freshness — LANDED
 
 - verified residualは83 incomplete。mapperのA metadata / B fact-routing / C human-authority分類はtracked全件manifest未作成の暫定advisoryで、queue-wide terminal判定には使わない。SEC-008 exact5 candidateでWP-5004a/WP-2009/WP-2010 pure-core実装事実だけを同期し、persistence/WORM/KMS/RLS/retention/break-glass authorization/productionは未実装・human-gatedのまま。privacy/medical reviewの指摘により、tamper-evident対外訴求はpure coreと適用永続層の双方証拠、WORM訴求は採用authorityと運用検証を必須化し、correlation/causationはcaller-supplied規律でcross-event enforcementではないと明記した。候補時のSEC-008/IDX v0.4.19はPROPOSED/nullで、23 field充足、baseline `e14dd04`、target173/82/91、non-target172 `16879/060cf2b2…`、expected body `5738/f9104fa8…`。この候補を独立re-reviewとfull validationへ通した。

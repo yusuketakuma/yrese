@@ -931,6 +931,29 @@ landing_record: commit 4a2cefd `WP-9007: synchronize audit security facts` pushe
 state: LANDED
 ```
 
+- [~] WP-9002-W7C ACC-008 payment-method registry metadata-only migration(READY / PRE-PLAN APPROVED、P1)
+
+```yaml
+work_package_id: WP-9002-W7C
+baseline_commit: 375c1ee
+baseline_inventory: { total: 173, incomplete: 82, complete: 91 }
+target_inventory: { total: 173, incomplete: 81, complete: 92 }
+target: ACC-008 v0.2.0 metadata-only; body/status/version/legacy approval semantics preserved
+purpose: Complete PRC-007 23-field metadata for the already-approved payment-method registry without changing payment, POS, charge, receipt, claim, tenant, or production semantics.
+allowed_files: ACC-008, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other ACC/PRD/claim docs, code/tests/packages/lock; payment/accounting/POS implementation, schema/migration/DML, external settlement/send, production/deploy, method/scope/business-rule changes
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: none; body must remain byte-identical
+pins: preserve body1256/987fea1d913e41a5a1469c87f84a7b8fba7d9cd060a2a0a053243b0c3752d4bd; APPROVED/v0.2.0/created_at/approved_at/approved_by/owner/reviewers/source/deps `[ACC-001, ACC-009]`/single provider-device open_question/body history; legacy model names are historical provenance only under AGT-018
+metadata: updated_at 2026-07-11; effective_from/effective_to null; impacts `[ACC-007 daily closing aggregation, future WP-2201 accounting ledger implementation, future WP-3101 accounting UI implementation]`; related_work_packages `[WP-0033, WP-0037, WP-0038, WP-2201, WP-3101, WP-9002-W7C]`; related_tests/related_prs/evidence_ids empty; top-level change_log only; blockers empty only for validity, never implementation/readiness
+non_target: 172 canonical rows / 16778 bytes / SHA-256 097329f5e8a578160b0771c01f6ca26212402e6bfa334cdcb3e23f6284fdfe54
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, claims_evidence_specialist, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata only; payment-method addition/removal, CASH/MVP or mixed-payment rule, POS/provider/device settlement, copay/Charge/claim linkage, product scope, production DB/API/external integration, or residual-risk decision stops for applicable accounting/pharmacy operations/claims/product/legal/privacy/security authority
+validation: exact5/staged0; target body/preserved-field/all23/inventory/non-target assertions; no direct ACC-008 test or evidence; workspace typecheck/test/build and OpenAPI, calculation-purity, scripts, SSOT, secrets, boundaries, deps, SBOM, diff are regression-only gates
+rollback: revert exact5 landing only and reopen W7C metadata incompleteness; never alter registry semantics, unlock copay/payment/POS/production, or revive stale routing
+state: READY; no target edit has started; fresh clean baseline/exact invariants required before edit
+```
+
 ## Phase 0: 調査・計画(ドキュメント)
 
 - [x] WP-0001 Phase 0 計画書作成(docs/plan/phase0_plan.md)— 人間承認済み(「次に進む」)
