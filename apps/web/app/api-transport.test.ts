@@ -31,6 +31,21 @@ describe("web API transport (WP-4067)", () => {
       environment: { nodeEnv: "production", publicApiBase: "/" },
       expected: "",
     },
+    {
+      name: "accepts development localhost HTTP",
+      environment: { nodeEnv: "development", publicApiBase: "http://localhost:3001/" },
+      expected: "http://localhost:3001",
+    },
+    {
+      name: "accepts development IPv4 loopback HTTP",
+      environment: { nodeEnv: "development", publicApiBase: "http://127.0.0.1:3001/api/" },
+      expected: "http://127.0.0.1:3001/api",
+    },
+    {
+      name: "accepts development IPv6 loopback HTTP",
+      environment: { nodeEnv: "development", publicApiBase: "http://[::1]:3001/" },
+      expected: "http://[::1]:3001",
+    },
   ])("$name", ({ environment, expected }) => {
     expect(resolveWebApiBase(environment)).toBe(expected);
   });
@@ -48,10 +63,39 @@ describe("web API transport (WP-4067)", () => {
     { nodeEnv: "production", publicApiBase: "/gateway#fragment" },
     { nodeEnv: "production", publicApiBase: "/\\evil" },
     { nodeEnv: "production", publicApiBase: "https://user:secret@example.test" },
+    { nodeEnv: "production", publicApiBase: "https://@api.example.test" },
+    { nodeEnv: "production", publicApiBase: "https://:@api.example.test" },
     { nodeEnv: "production", publicApiBase: "https://api.example.test?q=secret" },
+    { nodeEnv: "production", publicApiBase: "https://api.example.test?" },
+    { nodeEnv: "production", publicApiBase: "https://api.example.test#" },
+    { nodeEnv: "production", publicApiBase: "http://api.example.test" },
+    { nodeEnv: "production", publicApiBase: "http://127.0.0.1:3001" },
+    { nodeEnv: "staging", publicApiBase: "http://api.example.test" },
+    { nodeEnv: "test", publicApiBase: "http://localhost:3001" },
+    { nodeEnv: "preview", publicApiBase: "http://api.example.test" },
+    { nodeEnv: undefined, publicApiBase: "http://api.example.test" },
+    { nodeEnv: "development", publicApiBase: "http://api.example.test" },
+    { nodeEnv: "development", publicApiBase: "http://192.168.1.10:3001" },
+    { nodeEnv: "development", publicApiBase: "http://localhost.example.test:3001" },
   ])("fails closed for an unavailable or unsafe base: %j", (environment) => {
     expect(() => resolveWebApiBase(environment)).toThrow(
       ApiTransportConfigurationError,
+    );
+  });
+
+  it("does not echo a rejected HTTP base in the configuration error", () => {
+    const sensitiveBase = "http://patient-data.internal.example.test/private";
+    let thrown: unknown;
+    try {
+      resolveWebApiBase({ nodeEnv: "production", publicApiBase: sensitiveBase });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(ApiTransportConfigurationError);
+    expect((thrown as Error).message).not.toContain(sensitiveBase);
+    expect((thrown as Error).message).toBe(
+      "Web API endpoint configuration is unavailable.",
     );
   });
 

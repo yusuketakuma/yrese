@@ -73,6 +73,28 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     expect((thrown as Error).message).not.toContain(sensitiveQuery);
   });
 
+  it("fails before fetch when production API base uses plaintext HTTP (WP-4080)", async () => {
+    const sensitiveBase = "http://patient-data.internal.example.test/private";
+    const sensitiveQuery = "合成患者-秘密";
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", sensitiveBase);
+    const fetchImpl = vi.fn();
+
+    let thrown: unknown;
+    try {
+      await fetchSearch(sensitiveQuery, undefined, fetchImpl);
+    } catch (error) {
+      thrown = error;
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).not.toContain(sensitiveBase);
+    expect((thrown as Error).message).not.toContain(sensitiveQuery);
+  });
+
   it("warns on duplicate kana and flags each duplicate row (P-09)", () => {
     const results = [
       patient({ patientId: "p1", patientNumber: "T-0001", kana: "ヤマダ タロウ" }),

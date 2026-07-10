@@ -8,6 +8,13 @@
 
 ## 2026-07-11
 
+### WP-4080 production plaintext Web API base fail-closed hardening — completed
+
+- 最終security scanで、WP-4067のresolverがproductionを含む全environmentでabsolute HTTPを受理し、患者検索・受付データを平文送受信し得るHIGHを確認。APPROVED SEC-003の「LAN内もTLS必須」を上位根拠にCodex-native pre-planをAPPROVEDし、WP-4067履歴を改変せずfollow-up化した。
+- absolute HTTPはexact development + canonical loopback (`localhost` / `127.0.0.1` / `[::1]`)だけ許可。root-relative/HTTPSは維持し、production/staging/test/preview/unknown HTTPとdev外部/LAN/lookalikeを固定値非echo errorでfetch前拒否する。raw `?` / `#`、empty/populated userinfoの`@`も拒否し、WHATWG empty delimiter bypassを閉じた。
+- focused resolver/search/reception 59/59、web 99、web typecheck/build、workspace typecheck/test、boundaries/secrets/diff checkがPASS。患者検索、受付一覧、受付登録はいずれもunsafe production baseでzero-fetch、errorへのbase/query/patientId非露出を固定。
+- independent verifierとsecurity/privacy/medical-safety specialistは修正後APPROVED。active Goal §10のR3事前human authority下のcontrol tighteningで、API/auth/CORS/Next rewrite/DB/PHI schema/deployは変更なし。production origin TLS/HSTSは別deploy gate。rollbackは4ファイルのatomic revert。
+
 ### WP-3010a shared-kernel mode-guard projection foundation — completed
 
 - ARC-001とshared-kernelの3 guardだけを判定源に、全5 `SystemMode`の禁止・未禁止、禁止理由、復旧後導線、仮状態凡例を表示するfixture-only componentを追加した。未禁止は`data-mode-guard="not-prohibited"`かつ「実行可否は未確定」とし、権限・資格・evidence・`isClaimable`・個別接続/業務条件を明示する。

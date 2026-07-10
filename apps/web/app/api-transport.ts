@@ -1,4 +1,5 @@
 const DEVELOPMENT_API_PROXY_BASE = "/_yrese-api";
+const DEVELOPMENT_HTTP_LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const API_CONFIGURATION_ERROR_MESSAGE =
   "Web API endpoint configuration is unavailable.";
 
@@ -21,16 +22,22 @@ function currentWebApiEnvironment(): WebApiEnvironment {
   };
 }
 
-function normalizeConfiguredBase(value: string): string | undefined {
+function normalizeConfiguredBase(
+  value: string,
+  nodeEnv: string | undefined,
+): string | undefined {
   const trimmed = value.trim();
   if (trimmed.length === 0) {
     return undefined;
+  }
+  if (/[?#]/u.test(trimmed)) {
+    throw new ApiTransportConfigurationError();
   }
 
   const isRootRelative =
     trimmed.startsWith("/") && !trimmed.startsWith("//");
   if (isRootRelative) {
-    if (/[?#\\]/u.test(trimmed)) {
+    if (/\\/u.test(trimmed)) {
       throw new ApiTransportConfigurationError();
     }
     return trimmed.replace(/\/+$/, "");
@@ -38,8 +45,14 @@ function normalizeConfiguredBase(value: string): string | undefined {
 
   try {
     const url = new URL(trimmed);
+    const isHttps = url.protocol === "https:";
+    const isDevelopmentLoopbackHttp =
+      nodeEnv === "development" &&
+      url.protocol === "http:" &&
+      DEVELOPMENT_HTTP_LOOPBACK_HOSTS.has(url.hostname);
     if (
-      (url.protocol === "http:" || url.protocol === "https:") &&
+      (isHttps || isDevelopmentLoopbackHttp) &&
+      !trimmed.includes("@") &&
       url.username.length === 0 &&
       url.password.length === 0 &&
       url.search.length === 0 &&
@@ -61,7 +74,7 @@ export function resolveWebApiBase(
   const configured =
     environment.publicApiBase === undefined
       ? undefined
-      : normalizeConfiguredBase(environment.publicApiBase);
+      : normalizeConfiguredBase(environment.publicApiBase, environment.nodeEnv);
   if (configured !== undefined) {
     return configured;
   }

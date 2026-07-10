@@ -903,6 +903,12 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - 実装: `apps/web/app/api-transport.ts` に lazy resolver を追加し、明示 HTTP(S) / 安全な root-relative base のみ許可、production/test/staging/undefined の欠落を fail-closed にした。患者検索・受付一覧・受付登録は resolver を共有。Next rewrite `/_yrese-api/:path* -> http://127.0.0.1:3001/:path*` は `NODE_ENV=development` の場合だけ有効で、production/test/staging では route 自体を公開しない。WP-4066 の backend opt-in と WP-4065 の dev-only least-privilege headers は不変更。
   - 検証: resolver environment matrix、production 設定欠落時の全3操作 zero fetch + PHI/query 非露出、3操作の same-origin URL、rewrite の development-only matrix を追加。`pnpm --filter @yrese/web test` PASS(63)、`pnpm --filter @yrese/web typecheck` PASS、`pnpm --filter @yrese/web build` PASS、`pnpm check:boundaries` PASS、`git diff --check` PASS。
 
+- [x] WP-4080 production plaintext Web API base fail-closed hardening(HIGH security/privacy、WP-4067 follow-up)
+  - 発見根拠: WP-4067は明示HTTP(S) baseを全environmentで許可していたため、productionの`NEXT_PUBLIC_API_BASE=http://...`設定ミスで患者検索語・受付患者ID・PHI応答を平文送受信できた。APPROVED SEC-003は薬局LAN内もTLS必須であり、従来acceptanceより上位制約を優先する。
+  - 実装: root-relativeとabsolute HTTPSは維持し、absolute HTTPは`NODE_ENV=development`かつcanonical loopback host (`localhost` / `127.0.0.1` / `[::1]`)だけを許可。production/staging/test/preview/undefined/unknown、dev外部/LAN/lookalike hostを固定値非echo errorでfetch前拒否する。raw `?` / `#`とuserinfo `@`もparser前後で拒否し、empty delimiter正規化によるpath→query/fragment化を防止した。CORS/API/auth/Next rewriteは変更なし。
+  - 検証: resolver 36、patient search 12、reception 11のfocused 59/59、web 99、web typecheck/build、workspace typecheck/test、boundaries/secrets/diff check PASS。search/queue/createはplaintext production baseでfetch zero、base/query/patientId非echo。independent verifier、security/privacy/medical-safety specialistはAPPROVED。
+  - human gate / rollback: active Goal §10のR3事前権限下でcontrol tighteningとして実施。deploy/production origin HTTPS/HSTS検証は別Go/No-Goで、本WPは外部操作なし。rollbackはtransport resolverと3 testファイルのrevert。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

@@ -104,6 +104,38 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect((createError as Error).message).not.toContain(sensitivePatientId);
   });
 
+  it("fails before reception fetches when production API base uses plaintext HTTP (WP-4080)", async () => {
+    const sensitiveBase = "http://patient-data.internal.example.test/private";
+    const sensitivePatientId = "patient-secret-001";
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", sensitiveBase);
+    const queueFetch = vi.fn();
+    const createFetch = vi.fn();
+
+    let queueError: unknown;
+    let createError: unknown;
+    try {
+      await fetchReceptionQueue("2026-07-10", queueFetch);
+    } catch (error) {
+      queueError = error;
+    }
+    try {
+      await createReception(sensitivePatientId, createFetch, "key-transport-http");
+    } catch (error) {
+      createError = error;
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    expect(queueFetch).not.toHaveBeenCalled();
+    expect(createFetch).not.toHaveBeenCalled();
+    expect(queueError).toBeInstanceOf(Error);
+    expect(createError).toBeInstanceOf(Error);
+    expect((queueError as Error).message).not.toContain(sensitiveBase);
+    expect((createError as Error).message).not.toContain(sensitiveBase);
+    expect((createError as Error).message).not.toContain(sensitivePatientId);
+  });
+
   it("renders queue rows with text status labels and patient juxtaposition", () => {
     const html = renderToStaticMarkup(
       <ReceptionQueueTable
