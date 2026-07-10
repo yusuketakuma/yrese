@@ -578,6 +578,12 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 実装gate: fingerprint 導入は API-006 の APPROVED 改版と fable5 plan 承認の二重gateを必須とする。
   - 現時点では code / migration を変更せず、WP-4054 の無効化と後続清算だけを台帳へ記録する。
 
+- [ ] WP-4077 raw audit DynamoDB physical item envelope SSOT pin(owner: Claude/fable5、WP-7001 M3b / WP-5004b共通DoR、SSOT-only)
+  - 発見根拠: APPROVED DB-005 は監査chainのkey/sequence、event/dedupe/TIP minimum属性までを定めるが、raw eventの完全属性表、各属性のDynamoDB `AttributeValue`型(`S`/`N`/`M`)とnestedのflat/`M`表現、optionalのomit/`NULL`、`entityType` / item schema version、共通timestamp、item別PHI/encryption、golden bytes/map、decoder互換性をpinしていない。実装で補完すると永続契約を推測するため `SSOT_UPDATE_REQUIRED`。
+  - 必須pin: low-level physical mapの完全表と、logical fingerprint versionから分離した正の `itemSchemaVersion`、event/dedupe/TIPだけのexact 3 discriminator allow-listを確定する。bigintはcanonical decimal `S`、optionalはomitのみ(`NULL`禁止)、unknown属性は拒否。nestedのflat/`M`、共通timestampのapp-supplied sourceとambiguous retry時の保持/再生成 semanticsを属性単位で固定する。
+  - security/compatibility pin: item種別ごとの `phiClassification` / `encryptionStatus`を定義し、生PHIをkey/GSI/logへ置かず、event/dedupe/TIPへTTL/GSIを付けない。synthetic-onlyのfull/min event、dedupe、TIP exact goldenを固定し、version dispatchは未知versionをdistinct fail-closed、implicit v0を禁止。append-only event/dedupeのin-place rewriteを禁止し、TIP schema migrationは別の明示手順とする。
+  - M3b DoR: DB-005のAPPROVED改版 + `ssot_index`反映、fable5 / opus4.8 / security_critic / data_integrity_auditor / privacy_compliance_reviewer / Codex実装可能性レビューを必須とする。最初の実装sliceは `apps/api` server-onlyのpure raw item codecだけとし、M2 key/sequence codecとM3a hydrate/fingerprintを再利用する。AWS SDK、TWI/CAS、network、DynamoDB Local/writeは後続laneへ分離する。
+
 - [ ] WP-7001 Phase 1 DynamoDB persistence foundation + first aggregate synthetic proof(fable5 PLAN_APPROVED、HIGH、M1完了・後続HOLD)
   - 目的: APPROVED 済み DB-005 §11 step 2 に従い、DynamoDB 永続化アダプタ基盤と最初の集約スライスを synthetic-only(PHI禁止)で実証する。
   - 承認済み計画: persistence adapter は `apps/api` server-only に置き、AWS SDK import を adapter 層へ限定する。最初の集約は、FHIR REST/CapabilityStatement を推測実装せず、DB-005 §6.1/§10 と `@yrese/audit` core が確定済みの synthetic-only `AuditAppendStore` とする。DynamoDB Local harness は CI では接続必須、local では明示 skip 可とし、IAM/STS/KMS/PITR/throughput の証明には使わない。

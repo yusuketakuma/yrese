@@ -6,6 +6,12 @@
 
 ## 2026-07-10
 
+### WP-4077 raw audit DynamoDB physical item envelope SSOT pin
+
+- WP-7001 M3a後のself-scanで、DB-005は監査event/dedupe/TIPのkey・連番・minimum pointer/TIP属性を定める一方、raw event完全属性、DynamoDB `S`/`N`/`M`物理型、nested表現、optional omit/`NULL`、item schema version/discriminator、timestamp retry semantics、item別PHI/encryption、golden/decoder互換を未確定のまま残していることを確認。raw codecへ進むと永続契約の推測実装になるため `SSOT_UPDATE_REQUIRED` と判定した。
+- ownerをClaude/fable5、WP-7001 M3b / WP-5004b共通DoRとするpending SSOT-only WP-4077を追加。完全physical map、logical fingerprintと分離したitem version、exact 3 discriminator、bigint decimal `S`、optional omit/unknown拒否、app-supplied timestamp retry規律、item別PHI/encryption + no TTL/GSI/PHI、synthetic full/min golden、version dispatch/no implicit v0、append-only no rewrite、TIP migration分離を必須pinとし、APPROVED DB-005改版・索引・Fable/Opus/security/data/privacy/Codex review前のM3b実装を停止した。Claude側へagmsgで起案依頼済み。
+- ledger-only変更。コード、既存SSOT本文、raw codec、AWS SDK/table/network/write、DynamoDB Local、DB/migration、package/lockは変更していない。`git diff --check` / `pnpm check:ssot-index`(172文書)はPASSし、stage / commit / pushは行っていない。
+
 ### WP-7001 M3a / WP-2009 strict audit hydration and stored-event fingerprint
 
 - fable5 `PLAN_APPROVED` の許可範囲で `@yrese/audit` に `hydrateAuditEvent(unknown)` を追加。rootと`targetRef` / `businessReason` nestedをexact plain own enumerable data shapeとしてdescriptor検証後に一度だけ内部copyし、unknown/symbol/non-enumerable/accessor/missing、optional明示`undefined`、非canonical wallClock、domain/hash形式不正を固定非echo `AuditEventHydrationError(reason=malformed_event)`へ収束した。shape/domainが正しくlowercase SHA-256形式の保存hashだけが再計算値と異なる場合に限り `entry_hash_mismatch` とし、Proxyが公開errorを投げてreasonを偽装する経路もmalformedへ固定。`createAuditEvent`をsole domain/hash coreとして再利用し、返却値は入力と独立したroot/nested frozen再生成物。
