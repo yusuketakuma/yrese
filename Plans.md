@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1/W2 LANDED、W3 FINALIZED / LANDING PENDING、landed remaining 139 / finalized target 137、metadata-only、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1/W2/W3 LANDED、remaining 137、metadata-only、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -384,15 +384,15 @@ landing_record: commit ff7518f `WP-9002-W2: normalize module metadata` pushed su
 overall_state: WP-9002 remains [~] / IN_PROGRESS with 139 incomplete SSOT documents; W1 and W2 are LANDED, W3 has not started, and a new read-only mapping and pre-plan review are required before any W3 edit
 ```
 
-#### WP-9002-W3 MOD-006/MOD-007 legacy frontmatter migration — FINALIZED / LANDING PENDING
+#### WP-9002-W3 MOD-006/MOD-007 legacy frontmatter migration — LANDED
 
 ```yaml
 work_package_id: WP-9002
 wave_id: WP-9002-W3
 title: legacy SSOT frontmatter migration wave 3 — error and permission registries
 status: IN_PROGRESS
-execution_state: W3_FINALIZED
-landing_state: pending
+execution_state: W3_LANDED
+landing_state: satisfied
 priority: P1
 risk_level: R2
 implementation_layer: ssot_metadata
@@ -474,7 +474,8 @@ validation_commands:
 validation_results: FINAL PASS before landing — exact six paths/staged 0; inventory 173/137/36; target missing 0; MOD-006 body 3509 bytes / SHA-256 96ebdea1a65b949e77ef4165dd3049cc4f7e7eeda27904dce19a8f67e075e84c and MOD-007 body 2139 bytes / SHA-256 94974900b71ece2bcdf025b876e661e7692e8174e54d4cd4f887a2ce01ea86f0 unchanged; all preserved target fields unchanged; 171 non-target canonical missing-set 22739 bytes / SHA-256 40b4506bfa956eed0303348fa62945dfe9456d123ba4942395993abfcd49ca42; shared-kernel 23, contracts 23, API 43, Web 28 PASS; OpenAPI, scripts, SSOT index 173, secrets, boundaries and diff check PASS; all eight reviewer gates APPROVED
 finalization_record: IDX-001 v0.4.4 APPROVED with approved_at/effective_from 2026-07-11, all WP-9001/W1/W2 provenance preserved, eight W3 approvals appended, and no W3 human approval claimed; MOD-006/MOD-007 remain byte-for-byte identical to the approved review candidate
 landing_required: commit_and_push after finalization
-overall_state: W3 finalized and validation/reviews complete; landed inventory remains 173/139/34 until exact-stage commit and push
+landing_record: commit 1b07db6 `WP-9002-W3: normalize error and permission metadata` pushed successfully to origin/main (3e8dee0..1b07db6); inventory 173/137/36; exact six paths; MOD-006 body 3509 bytes / SHA-256 96ebdea1a65b949e77ef4165dd3049cc4f7e7eeda27904dce19a8f67e075e84c and MOD-007 body 2139 bytes / SHA-256 94974900b71ece2bcdf025b876e661e7692e8174e54d4cd4f887a2ce01ea86f0; all eight reviewer and validation gates APPROVED; no code, DB, external, deployment, or destructive change
+overall_state: W3 LANDED; WP-9002 remains IN_PROGRESS with 137 incomplete SSOT documents and W4 requires fresh read-only mapping and pre-plan review
 ```
 
 - [x] WP-9003 repository reconciliation state pack(Codex-only、resume-safe、docs-only)

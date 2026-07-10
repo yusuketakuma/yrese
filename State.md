@@ -2,18 +2,18 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はdata_integrity_auditor reviewを経てAPPROVED。IDX-001 v0.4.4はWP-9002-W3 eight-reviewer approvalを経てfinalized済みで、landing pendingである。以下に残る旧model/role/lane/message名は各活動時点のhistorical provenanceであり、current assignment・approval・completion gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はdata_integrity_auditor reviewを経てAPPROVED。IDX-001 v0.4.4はWP-9002-W3 eight-reviewer approvalを経てAPPROVED・landed済みである。以下に残る旧model/role/lane/message名は各活動時点のhistorical provenanceであり、current assignment・approval・completion gateには再利用しない。
 
 ---
 
 ## 2026-07-11
 
-### WP-9002-W3 MOD-006/MOD-007 legacy metadata migration — finalized / landing pending
+### WP-9002-W3 MOD-006/MOD-007 legacy metadata migration — completed / LANDED
 
 - WP-9003はcommit `3e8dee0`で`origin/main`へlanded済み。cleanな同commitをbaselineにread-only mapperがMOD-006/MOD-007の本文、legacy frontmatter、23-field不足、implementation/test provenanceを照合し、pre-plan reviewerがexact six-path R2 metadata-only waveをAPPROVEDした。
 - 両targetは同じ7 field不足。本文をMOD-006 3509 bytes / SHA-256 `96ebdea1a65b949e77ef4165dd3049cc4f7e7eeda27904dce19a8f67e075e84c`、MOD-007 2139 bytes / `94974900b71ece2bcdf025b876e661e7692e8174e54d4cd4f887a2ce01ea86f0`で固定し、status/version/human approval/effective semanticsを変えず、保守的provenanceだけを追加した。review inventoryは173/137/36、対象外171 missing-set baselineは22739 bytes / SHA-256 `40b4506bfa956eed0303348fa62945dfe9456d123ba4942395993abfcd49ca42`。
 - API/test reviewがimpactに対する直接WP provenance不足を検出したため、MOD-006へWP-4036/WP-4062、MOD-007へWP-2002/WP-4042/WP-4065を追加し、3系統すべてで再reviewした。independent/spec/data-integrity/security/API-contract/test/medical-safety/privacyの8 roleがAPPROVED。新規human gateなし。
-- exact six paths/staged 0、inventory 173/137/36、target missing 0、両本文hash、対象外171 hash、preserved fieldsを確認。shared-kernel 23、contracts 23、API 43、Web 28、OpenAPI/scripts/SSOT 173/secrets/boundaries/diff checkがPASS。IDX-001 v0.4.4を全旧provenance保持+W3 8承認でAPPROVED finalizationした。product code、DB、migration、external、deploy変更なし。landingはrootのexact stage/commit/push待ち。
+- exact six paths/staged 0、inventory 173/137/36、target missing 0、両本文hash、対象外171 hash、preserved fieldsを確認。shared-kernel 23、contracts 23、API 43、Web 28、OpenAPI/scripts/SSOT 173/secrets/boundaries/diff checkがPASS。IDX-001 v0.4.4を全旧provenance保持+W3 8承認でAPPROVED finalizationし、commit `1b07db6`を`origin/main`へpushした。product code、DB、migration、external、deploy変更なし。
 
 ### WP-9003 repository reconciliation state pack — completed
 
