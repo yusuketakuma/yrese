@@ -252,12 +252,15 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - 実施: `parseApiPort()` を不正指定で `RangeError` を投げる契約へ変更し、`main.ts` のtryブロック内でport解決を行うようにした。
   - 検証: `pnpm --filter @yrese/api test`, `pnpm --filter @yrese/api typecheck`, `pnpm check:boundaries`, `git diff --check`。
 
-- [ ] WP-2009 audit hash-chain canonicalization / hydrate split
+- [x] WP-2009 audit hash-chain canonicalization / hydrate split
   - 発見根拠: WP-2003 は assignment 明記どおり `prevHash` / `entryHash` の sha-256 hex 形式検証のみで、entryHash 計算自体は呼び出し側/永続層責務として残した。SEC-007 は最終的に `entryHash = H(prevHash || 正規化ペイロード)` を要求する。
   - 目的: 監査ログ永続化実装時に、canonical payload から entryHash を生成する作成APIと、保存済みレコードを検証して復元する hydrate/verify API を分離し、任意hexを真正性証跡として扱わない。
   - 想定スコープ: `packages/audit/**`、将来の監査永続化パッケージ/アプリ配線。必要なら SEC-007/MOD-008 改版を fable5 に依頼。
   - 検証: payload変更でhash不一致になるテスト、prevHash連鎖テスト、hydrate時の不一致拒否テスト、`pnpm --filter @yrese/audit test`。
-  - opus4.8 事後レビュー申し送り(2026-07-09): createAuditEvent は sha256 hex 形式検証のみで entryHash の計算・連続性は未検証。WP-2009 完了まで本番配線で任意ハッシュを供給する呼び出しを作らない(裏付けのない tamper-evidence を提示しない)。
+  - opus4.8 事後レビュー申し送り(2026-07-09、M3aで解消): 当時はsha256 hex形式検証のみだったが、WP-5004aでentryHash計算/chain検証、M3aでhydrate再計算照合を実装し、pure coreの任意hash真正扱いを閉じた。永続adapter配線は後続reviewまで引き続きHOLD。
+  - M3a/WP-2009完了: fable5 `PLAN_APPROVED` に基づき、`hydrateAuditEvent(unknown)` を追加。root/nestedのexact plain own enumerable data shapeをdescriptorで全検証してから内部copyし、optional明示`undefined`、非canonical wallClock、domain/hash形式不正を固定非echo `malformed_event` に収束。`createAuditEvent` だけでdomain検証とentryHash再計算を行い、形状/domain/hash形式が正しい保存行のhash不一致だけを `entry_hash_mismatch` とした。戻り値は入力と独立したroot/nested frozen再生成物。
+  - 保存event fingerprint: `computeAuditEventIntentFingerprint` は同じexact event shape validatorを再利用し、trusted contextのtenant/pharmacy/actor完全一致を固定 `AuditEventContextMismatchError` で強制。M1 `intentFields` 単一正本から存在するoptionalだけを射影し、chain位置(`sequenceNumber`/`prevHash`/`entryHash`)を除外して既存v1 canonicalizer/version dispatchへ委譲する。`retryCount` は引き続きlogical intentへ含む。
+  - M3a検証: hydration 56 + fingerprint 71 = focused 127、audit全体173、全workspace typecheck/test、audit/full build、OpenAPI、boundaries、secrets、deps(high=0 / critical=0)、SBOM(231 components)、script harness、diff-checkがPASS。独立 verifier 10/10 と read-only Opus最終reviewはいずれも `APPROVED`、blocker/HIGH findingなし。raw DynamoDB item codecは物理属性envelope未確定のため `SSOT_UPDATE_REQUIRED` として停止し、AWS SDK/table/network/write、DynamoDB Local、DB操作/migration、TIP/genesis/state/TWI/CAS/retry/persistence verifyは未変更。
 
 - [x] WP-4024 audit 実行時ガードの否定テスト補強(opus4.8 レビュー指摘 LOW。本WPで実装)
   - 発見根拠: WP-2003 事後レビューで、assertTargetRef(空/制御文字/非snake_case)、assertOutcome(不正値)、businessReasonCodePattern(小文字/不正コード)、correlationId 欠落の否定テストが未カバーと指摘。ガード自体は実装済みで正しく動作。
@@ -584,6 +587,7 @@ Claude から新規 `WP_ASSIGN` がない場合、Codex はコードベースを
   - M1検証: audit 105/105 (intent fingerprint 59 + legacy audit 46)、全workspace typecheck/test、audit build、boundaries、secrets、deps、SBOM、script harness、full build、diff-checkがPASS。local PostgreSQL integration 5件は `TEST_DATABASE_URL` 不在でexpected skip、DB操作なし。AWS SDK/package/lock、DynamoDB Local harness、adapter/persistence writeは未変更。後続laneは別途fable5計画承認までHOLDを維持する。
   - M2完了: fable5 `PLAN_APPROVED` の単一sliceとして、`apps/api` server-only に pure audit persistence key/sequence codecを追加。trusted `AuditWriteContext` の tenant/pharmacyだけから exact chain PKを構築し、event/dedupe/TIPの同一PK・相異SK、uint64 `[1, 18446744073709551615]` のunpadded decimal attribute / 20桁 sort segment、strict event SK parse + byte round-tripを固定した。全補間IDの `#` / blank / control / runtime type、非ASCII・非canonical decimal、20桁overflowを入力値非echoの固定errorで拒否する。
   - M2検証・境界: focused codec 74/74、API 161 PASS + PostgreSQL integration 5 expected SKIP、audit 105/105、全workspace typecheck/test、API/full build、OpenAPI、boundaries、secrets、deps(high=0 / critical=0)、SBOM(231 components)、script harness、frozen lock、diff-checkをPASSさせた。独立 verifier 10/10 と read-only Opus最終reviewはいずれも `APPROVED`、blocker/HIGH findingなし。追加依存は `@yrese/audit` workspace linkだけ。AWS SDK/table/network/write、DynamoDB Local、PostgreSQL操作、migration、genesis/state判断、raw item hydrate、TWI/CAS/retry/verifyは変更せず、M3以降を別途fable5計画承認までHOLDする。
+  - M3a完了: WP-2009と統合し、保存済み`AuditEvent`のstrict hydrate/hash照合と保存event→M1 logical intent fingerprint再計算を `@yrese/audit` pure coreへ追加。authority/chain位置を保存値から再信頼せず、context一致・hash真正性・versioned fingerprintを永続adapter着手前にfail-closed固定した。検証はWP-2009記載の全gateをPASSし、独立 verifier 10/10 / read-only Opusともに `APPROVED`。raw item/AWS/DB persistence laneは物理属性SSOTをpinするまで `SSOT_UPDATE_REQUIRED`、かつ後続M3b以降のfable5計画承認までHOLD。
 
 - [x] WP-6001 DynamoDB single-table + FHIR store design proposal(d5d06e0、fable5/opus4.8 REVIEW_RESULT: CHANGES_REQUIRED but formalize by fable5)
   - 内容: `docs/research/dynamodb_fhir_store_design_proposal.md` を DRAFT(codex 設計提案・fable5 レビュー用・SSOT ではない)として追加。ARC-008 に基づく DynamoDB single-table / FHIR store / append-only audit / adapter 境界 / PostgreSQL 段階移行の素材を提示。
@@ -774,7 +778,7 @@ v0.2.0の最上位方針:
 - WP-0036 Integration Hub SSOTは、0.2.0正本のOpen Rececon Platform、Partner Sandbox、Contract Test Kit、API-first dogfooding、PH-OSリファレンス連携を統合する。
 - WP-0039 算定エンジン深化は、v0.2.0のversioned rule data / pure function / event re-projection / finalized claim immutabilityを追加前提にする。
 - WP-2203 Integration Hub骨格、WP-2204 JAHIS Adapter、会計/領収証系実装は、上記SSOTがAPPROVEDになるまで該当範囲を拡張実装しない。
-- WP-2009 audit hash-chain canonicalization / hydrate split は、`audit_worm_and_tenant_isolation_strategy.md` とSEC-007/MOD-008改版後に実装へ進める。
+- WP-2009 audit hash-chain canonicalization / hydrate split は、APPROVED済みSEC-007/008・MOD-008とDB-005の下でWP-7001 M3aに統合して完了。永続adapter/AWS/DB配線はWP-5004/WP-7001後続laneに残す。
 
 ### 実行順序(v0.2.0)
 

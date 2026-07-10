@@ -7,14 +7,19 @@ import { canonicalJsonString, normalizeCanonicalInstant } from "./canonical-json
 import {
   AUDIT_INTENT_FINGERPRINT_SCHEMA_VERSION,
   canonicalizeAuditAppendIntentFingerprintInput,
+  copyExactAuditEventShape,
+  projectAuditEventIntentFingerprintInput,
+  type AuditEventIntentFingerprintInput,
   type AuditIntentFingerprint,
   type AuditIntentFingerprintInput,
 } from "./intent-fingerprint.js";
 
 export {
   AUDIT_INTENT_FINGERPRINT_SCHEMA_VERSION,
+  AuditEventContextMismatchError,
   UnsupportedAuditIntentFingerprintSchemaVersionError,
   type AuditAppendIntent,
+  type AuditEventIntentFingerprintInput,
   type AuditIntentFingerprint,
   type AuditIntentFingerprintInput,
   type AuditWriteContext,
@@ -120,6 +125,15 @@ export interface AuditEvent extends EventEnvelope {
 export type CreateAuditEventInput = Omit<AuditEvent, "auditEventType" | "entryHash"> & {
   readonly auditEventType: string;
 };
+
+export type AuditEventHydrationFailureReason = "malformed_event" | "entry_hash_mismatch";
+
+export class AuditEventHydrationError extends Error {
+  constructor(readonly reason: AuditEventHydrationFailureReason) {
+    super("Stored audit event failed integrity validation");
+    this.name = "AuditEventHydrationError";
+  }
+}
 
 export const AUDIT_GENESIS_PREV_HASH =
   "0000000000000000000000000000000000000000000000000000000000000000";
@@ -467,6 +481,40 @@ export function createAuditEvent(input: CreateAuditEventInput): AuditEvent {
   return Object.freeze(auditEvent);
 }
 
+export function hydrateAuditEvent(value: unknown): AuditEvent {
+  let storedEntryHash: string;
+  let hydrated: AuditEvent;
+  try {
+    const storedEvent = copyExactAuditEventShape(value);
+    if (
+      typeof storedEvent.auditEventType !== "string" ||
+      typeof storedEvent.entryHash !== "string" ||
+      typeof storedEvent.payloadHash !== "string" ||
+      typeof storedEvent.prevHash !== "string"
+    ) {
+      throw new TypeError("Stored audit event hash and type fields must be strings");
+    }
+    assertSha256Hex(storedEvent.entryHash, "entryHash");
+    if (
+      typeof storedEvent.wallClock !== "string" ||
+      normalizeInstant(storedEvent.wallClock, "wallClock") !== storedEvent.wallClock
+    ) {
+      throw new RangeError("wallClock must use canonical UTC millisecond form");
+    }
+
+    const { entryHash, ...createInput } = storedEvent;
+    storedEntryHash = entryHash;
+    hydrated = createAuditEvent(createInput);
+  } catch {
+    throw new AuditEventHydrationError("malformed_event");
+  }
+
+  if (hydrated.entryHash !== storedEntryHash) {
+    throw new AuditEventHydrationError("entry_hash_mismatch");
+  }
+  return hydrated;
+}
+
 function canonicalizeAuditAppendIntentFingerprint(
   input: AuditIntentFingerprintInput,
 ): string {
@@ -491,6 +539,12 @@ export function computeAuditAppendIntentFingerprint(
     fingerprintSchemaVersion: AUDIT_INTENT_FINGERPRINT_SCHEMA_VERSION,
     intentFingerprint: createHash("sha256").update(canonicalJson, "utf8").digest("hex"),
   });
+}
+
+export function computeAuditEventIntentFingerprint(
+  input: AuditEventIntentFingerprintInput,
+): AuditIntentFingerprint {
+  return computeAuditAppendIntentFingerprint(projectAuditEventIntentFingerprintInput(input));
 }
 
 function hashFormatFailure(

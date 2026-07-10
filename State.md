@@ -6,6 +6,12 @@
 
 ## 2026-07-10
 
+### WP-7001 M3a / WP-2009 strict audit hydration and stored-event fingerprint
+
+- fable5 `PLAN_APPROVED` の許可範囲で `@yrese/audit` に `hydrateAuditEvent(unknown)` を追加。rootと`targetRef` / `businessReason` nestedをexact plain own enumerable data shapeとしてdescriptor検証後に一度だけ内部copyし、unknown/symbol/non-enumerable/accessor/missing、optional明示`undefined`、非canonical wallClock、domain/hash形式不正を固定非echo `AuditEventHydrationError(reason=malformed_event)`へ収束した。shape/domainが正しくlowercase SHA-256形式の保存hashだけが再計算値と異なる場合に限り `entry_hash_mismatch` とし、Proxyが公開errorを投げてreasonを偽装する経路もmalformedへ固定。`createAuditEvent`をsole domain/hash coreとして再利用し、返却値は入力と独立したroot/nested frozen再生成物。
+- `computeAuditEventIntentFingerprint` は同じexact event validatorを再利用し、trusted `AuditWriteContext` と保存eventのtenant/pharmacy/actor完全一致を固定非echo `AuditEventContextMismatchError` で強制。M1 `intentFields` 単一正本から存在するoptionalだけを射影し、`sequenceNumber` / `prevHash` / `entryHash` を除外して既存v1 canonicalizer/version dispatchへ委譲した。M1 golden hashは不変で、`retryCount`変更は異なるfingerprintとなる。
+- テストは全required欠落、全optional明示undefined、全optional同時dead-letter成功/freeze、canonical instant、root/nested descriptor攻撃、attacker coercion、Proxy reason偽装、stored hash/payload/prevHash改変、runtime bigint/enum/classification不正、context不一致、chain位置除外、unknown fingerprint versionに加え、outer/context exact guardと全nestedを含むProxy descriptor exactly-once/property-get zeroを合成データだけで固定。focused 127、audit全体173、全workspace typecheck/test、audit/full build、OpenAPI、boundaries、secrets、deps(high=0 / critical=0)、SBOM(231 components)、script harness、diff-checkがPASS。独立 verifier 10/10 と read-only Opus最終reviewはいずれも `APPROVED`、blocker/HIGH findingなし。raw DynamoDB itemは物理属性envelope未確定のため `SSOT_UPDATE_REQUIRED` として停止し、AWS SDK/table/network/write、DynamoDB Local、DB操作/migration、TIP/genesis/state/TWI/CAS/retry/persistence verify、package/lockは未変更。stage / commit / pushなし。
+
 ### WP-7001 M2 audit persistence key/sequence canonical codec
 
 - fable5 read-only `PLAN_APPROVED` の許可範囲で、`apps/api/src/dynamodb/audit-persistence-key-codec.ts` と focused testを追加。`@yrese/audit` の `AuditWriteContext` を正本として再利用し、trusted tenant/pharmacy由来の `TENANT#{tenantId}#PHARMACY#{pharmacyId}#AUDIT#CHAIN#CLOUD`、event/dedupe/TIP SK、uint64 decimal/20桁sort segment、strict event SK round-tripをpure・side-effect-freeに固定した。

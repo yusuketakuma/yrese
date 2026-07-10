@@ -1,7 +1,7 @@
 import type { PharmacyId, TenantId, UserId } from "@yrese/shared-kernel";
 
 import { canonicalJsonString, normalizeCanonicalInstant } from "./canonical-json.js";
-import type { CreateAuditEventInput } from "./index.js";
+import type { AuditEvent, CreateAuditEventInput } from "./index.js";
 
 export const AUDIT_INTENT_FINGERPRINT_SCHEMA_VERSION = 1 as const;
 
@@ -34,10 +34,23 @@ export interface AuditIntentFingerprintInput {
   readonly intent: AuditAppendIntent;
 }
 
+export interface AuditEventIntentFingerprintInput {
+  readonly fingerprintSchemaVersion: number;
+  readonly context: AuditWriteContext;
+  readonly event: unknown;
+}
+
 export class UnsupportedAuditIntentFingerprintSchemaVersionError extends Error {
   constructor() {
     super("Unsupported audit intent fingerprint schema version");
     this.name = "UnsupportedAuditIntentFingerprintSchemaVersionError";
+  }
+}
+
+export class AuditEventContextMismatchError extends Error {
+  constructor() {
+    super("Audit event authority context mismatch");
+    this.name = "AuditEventContextMismatchError";
   }
 }
 
@@ -77,12 +90,66 @@ const intentFields = {
   wallClock: true,
 } as const satisfies Record<keyof AuditAppendIntent, true>;
 
+const eventFields = {
+  actorId: true,
+  aggregateId: true,
+  aggregateType: true,
+  auditEventType: true,
+  businessReason: true,
+  causationId: true,
+  correlationId: true,
+  deadLetterReason: true,
+  deviceId: true,
+  encryptionStatus: true,
+  entryHash: true,
+  eventId: true,
+  idempotencyKey: true,
+  logicalClock: true,
+  outcome: true,
+  payloadHash: true,
+  pharmacyId: true,
+  phiClassification: true,
+  prevHash: true,
+  reasonCode: true,
+  retryCount: true,
+  schemaVersion: true,
+  sequenceNumber: true,
+  syncStatus: true,
+  targetRef: true,
+  tenantId: true,
+  wallClock: true,
+} as const satisfies Record<keyof AuditEvent, true>;
+
+const optionalEventFields = [
+  "businessReason",
+  "causationId",
+  "deadLetterReason",
+  "deviceId",
+  "reasonCode",
+] as const satisfies readonly (keyof AuditEvent)[];
+
+const auditEventIntentFingerprintInputFields = {
+  context: true,
+  event: true,
+  fingerprintSchemaVersion: true,
+} as const satisfies Record<keyof AuditEventIntentFingerprintInput, true>;
+
 function assertExactRecordKeys(
   value: unknown,
   allowedFields: Readonly<Record<string, true>>,
   requiredFields: readonly string[],
   label: string,
 ): asserts value is Record<string, unknown> {
+  copyExactRecord(value, allowedFields, requiredFields, [], label);
+}
+
+function copyExactRecord(
+  value: unknown,
+  allowedFields: Readonly<Record<string, true>>,
+  requiredFields: readonly string[],
+  optionalFields: readonly string[],
+  label: string,
+): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new TypeError(`${label} must be a plain object`);
   }
@@ -91,6 +158,7 @@ function assertExactRecordKeys(
     throw new TypeError(`${label} must be a plain object`);
   }
 
+  const descriptors = new Map<string, PropertyDescriptor & { value: unknown }>();
   for (const key of Reflect.ownKeys(value)) {
     if (typeof key === "symbol" || !Object.hasOwn(allowedFields, key)) {
       throw new TypeError(`${label} contains an unknown field`);
@@ -99,13 +167,96 @@ function assertExactRecordKeys(
     if (descriptor === undefined || !("value" in descriptor) || descriptor.enumerable !== true) {
       throw new TypeError(`${label}.${key} must be an enumerable data property`);
     }
+    descriptors.set(key, descriptor as PropertyDescriptor & { value: unknown });
   }
 
   for (const key of requiredFields) {
-    if (!Object.hasOwn(value, key)) {
+    if (!descriptors.has(key)) {
       throw new TypeError(`${label}.${key} is required`);
     }
   }
+  const optionalFieldSet = new Set(optionalFields);
+  const copy: Record<string, unknown> = {};
+  for (const [key, descriptor] of descriptors) {
+    const fieldValue = descriptor.value;
+    if (optionalFieldSet.has(key) && fieldValue === undefined) {
+      throw new TypeError(`${label}.${key} must be omitted instead of undefined`);
+    }
+    copy[key] = fieldValue;
+  }
+  return copy;
+}
+
+export function copyExactAuditEventShape(value: unknown): AuditEvent {
+  const optionalFields = new Set<string>(optionalEventFields);
+  const event = copyExactRecord(
+    value,
+    eventFields,
+    Object.keys(eventFields).filter((field) => !optionalFields.has(field)),
+    optionalEventFields,
+    "auditEvent",
+  );
+  event.targetRef = Object.freeze(
+    copyExactRecord(
+      event.targetRef,
+      { id: true, kind: true },
+      ["id", "kind"],
+      [],
+      "auditEvent.targetRef",
+    ),
+  );
+  if (Object.hasOwn(event, "businessReason")) {
+    event.businessReason = Object.freeze(
+      copyExactRecord(
+        event.businessReason,
+        { code: true },
+        ["code"],
+        [],
+        "auditEvent.businessReason",
+      ),
+    );
+  }
+  return Object.freeze(event) as unknown as AuditEvent;
+}
+
+function copyAuditWriteContext(value: unknown): AuditWriteContext {
+  return Object.freeze(
+    copyExactRecord(value, contextFields, Object.keys(contextFields), [], "context"),
+  ) as unknown as AuditWriteContext;
+}
+
+export function projectAuditEventIntentFingerprintInput(
+  value: AuditEventIntentFingerprintInput,
+): AuditIntentFingerprintInput {
+  const input = copyExactRecord(
+    value,
+    auditEventIntentFingerprintInputFields,
+    Object.keys(auditEventIntentFingerprintInputFields),
+    [],
+    "auditEventFingerprintInput",
+  );
+  const context = copyAuditWriteContext(input.context);
+  const event = copyExactAuditEventShape(input.event);
+  if (
+    event.tenantId !== context.tenantId ||
+    event.pharmacyId !== context.pharmacyId ||
+    event.actorId !== context.actorId
+  ) {
+    throw new AuditEventContextMismatchError();
+  }
+
+  const intent: Record<string, unknown> = {};
+  for (const field of Object.keys(intentFields)) {
+    if (Object.hasOwn(event, field)) {
+      intent[field] = event[field as keyof AuditEvent];
+    }
+  }
+
+  return Object.freeze({
+    fingerprintSchemaVersion: input.fingerprintSchemaVersion as number,
+    context,
+    intent: Object.freeze(intent) as unknown as AuditAppendIntent,
+  });
 }
 
 function projectTargetRef(value: AuditAppendIntent["targetRef"]): Record<string, unknown> {
