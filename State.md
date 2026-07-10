@@ -6,6 +6,12 @@
 
 ## 2026-07-10
 
+### WP-7001 M2 audit persistence key/sequence canonical codec
+
+- fable5 read-only `PLAN_APPROVED` の許可範囲で、`apps/api/src/dynamodb/audit-persistence-key-codec.ts` と focused testを追加。`@yrese/audit` の `AuditWriteContext` を正本として再利用し、trusted tenant/pharmacy由来の `TENANT#{tenantId}#PHARMACY#{pharmacyId}#AUDIT#CHAIN#CLOUD`、event/dedupe/TIP SK、uint64 decimal/20桁sort segment、strict event SK round-tripをpure・side-effect-freeに固定した。
+- branded ID factoryが許す `#` をcodec境界で全補間IDから拒否し、blank/control/wrong type、BigInt前のASCII文法、zero/max+1/20桁overflow、malformed marker/width/eventIdを入力値非echoの固定errorへ収束。seq=1/maxのexact golden、数値順=辞書順、`DEDUPE# < SEQ# < TIP`、actor非関与を74テストで固定した。
+- 検証: codec 74/74、API 161 PASS + PostgreSQL integration 5 expected SKIP、audit 105/105、全workspace typecheck/test、API/full build、`pnpm check:openapi`、boundaries、secrets、deps(high=0 / critical=0)、SBOM(231 components)、script harness、`pnpm install --frozen-lockfile`、diff-checkがPASS。独立 verifier 10/10 と read-only Opus最終reviewはいずれも `APPROVED`、blocker/HIGH findingなし。AWS SDK/table/network/write、DynamoDB Local、DB操作/migration、genesis/state判断、raw item hydrate、TWI/CAS/retry/verifyは未変更でM3へHOLD。
+
 ### WP-4076 reception idempotency SSOT-plan contradiction cleanup
 
 - self-scanで、WP-4054 が server 採番の `acceptedAt` / 導出業務日付を fingerprint 対象にして同一 key + 同一 `patientId` の正当再送を409へ変える計画となっており、APPROVED API-006 v0.2.0 の200既存返却契約と矛盾することを確認した。API-006 payload 範囲の WP-4051 要件は in-memory / PostgreSQL の両実装で充足済み。

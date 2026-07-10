@@ -17,6 +17,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@yrese/audit':
+        specifier: workspace:*
+        version: link:../../packages/audit
       '@yrese/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
