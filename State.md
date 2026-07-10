@@ -6,6 +6,12 @@
 
 ## 2026-07-10
 
+### WP-4078 direct audit intent fingerprint single-snapshot/Proxy TOCTOU hardening — PLAN_APPROVED / implementation HOLD
+
+- independent explorer(confidence HIGH)が、direct M1 fingerprint pathでexact descriptor検証後のcopyを捨てて元のouter/context/intent/nestedを再dereferenceし、canonicalize後も元inputを`createAuditEvent`へ渡していることを確認。hostile Proxy/mutable inputはhash対象Aとdomain validation対象Bを分離し、将来のdedupe/conflict判定を壊し得るためHIGH audit-integrity findingとして登録した。copy/freeze済みのstored M3a event pathは変更対象外。
+- fable5 `PLAN_APPROVED`: 許可範囲は `packages/audit/src/intent-fingerprint.ts`, `packages/audit/src/index.ts`, `packages/audit/src/intent-fingerprint.test.ts`, `Plans.md`, `State.md`のみ。outer exact key → version validation → v1 deep copy → canonicalize → domain validationの順を固定し、単一frozen snapshot、`wallClock` canonical string exactly once、stored/direct共用nested copy helperを使う。v1 bytes/public API/error label・message・classとstored behaviorは不変で、新error classは追加しない。direct optional明示`undefined`は承認済み5項目だけを新規拒否する。
+- 実装・テストは未着手。descriptor once/get zeroの5層、alternating getter/invalid descriptor、hash-A/validate-B、hostile Date、5 optional undefined、version error precedence、golden不変、stored回帰を実装後に固定し、独立verifier + security(data-integrity内包) + read-only Opusをcommit前gateとする。PHI none限定・storage/log変更なしのpure hardeningのためprivacy reviewerは不要。audit code/test、API/AWS/DB/raw item/network/package/lock/SSOTは変更しておらず、DB操作、stage / commit / pushも行っていない。
+
 ### WP-4051 PostgreSQL reception idempotency durability/concurrency proof — completed
 
 - WP-5003 / `000002_create_patient_and_reception_tables.sql` で既に実装済みの `(tenant_id, pharmacy_id, idempotency_key)` UNIQUE、transaction、scoped既存行返却について、test-only PostgreSQL integration proofを4件追加した。同一scope/key/同一patientの並行createはdistinct `acceptedAt`でも `created` + `existing` と1行・同一receptionId/保存acceptedAtへ収束し、別patientの並行createはwinner順序を仮定せず `created` + entryなし `idempotency_conflict` と1行へ収束することを固定した。
