@@ -902,7 +902,7 @@ landing_record: commit 770590a `WP-9006: align product scope routing with AGT-01
 state: LANDED
 ```
 
-- [~] WP-9007 SEC-008 audit security fact/routing freshness semantic amendment(READY / PRE-PLAN APPROVED、P1)
+- [~] WP-9007 SEC-008 audit security fact/routing freshness semantic amendment(FINALIZED / LANDING PENDING、P1)
 
 ```yaml
 work_package_id: WP-9007
@@ -913,16 +913,21 @@ target: SEC-008 v0.1.2
 purpose: Synchronize stale WP-2009/WP-2010 future wording with implemented audit pure core while keeping persistence, physical WORM, KMS/RLS, retention, break-glass operations and production wiring explicitly unimplemented/human-gated.
 allowed_files: SEC-008, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
 forbidden: other SSOT/code/tests/packages/lock; persistence adapter/schema/migration/DML; AWS/WORM/KMS/RLS choice; break-glass feature/auth; retention/legal/risk acceptance; production/deploy/external action
-pre_plan_review: APPROVED_WITH_PINS
-body_changes: exactly five bounded edits — WP-5004a/WP-2009 hash/hydrate facts, fake-hash prohibition wording, WP-2010 break-glass registry/businessReason facts, two fail-closed stop lines, plus v0.1.2 history
-pins: distinguish implemented create/hash/hydrate/chain pure core from unimplemented append-only persistence/WORM/production; preserve physical-candidate table, four adoption prerequisites, both questions and BLOCKED_SECURITY_REVIEW; no cross-event runtime enforcement claim
-expected_body: 5165 bytes / SHA-256 62ef6f1d0459d9853861905ab7a36f9c623303373aa6e6e75c729bd872fbc059
+pre_plan_review: APPROVED_WITH_PINS; privacy/medical conservative clarification incorporated before final review
+body_changes: exactly five bounded edit areas — WP-5004a/WP-2009 hash/hydrate facts, fake-hash prohibition wording, WP-2010 break-glass registry/businessReason facts with explicit caller-supplied correlation/causation boundary, fail-closed stop rules (pure-core+persistence joint evidence and separate WORM authority/operations condition), plus v0.1.2 history
+pins: distinguish implemented create/hash/hydrate/chain pure core from unimplemented append-only persistence/WORM/production; require both pure-core and applicable persistence proof for tamper-evident external claims; preserve physical-candidate table, four adoption prerequisites, both questions and BLOCKED_SECURITY_REVIEW; no cross-event runtime enforcement claim; complete all 23 frontmatter fields
+expected_body: 5738 bytes / SHA-256 f9104fa8728da7e65333d1e7af162862830ce2e84afbf79ba3ba71ea9e9def8c
 non_target: 172 canonical rows / 16879 bytes / SHA-256 060cf2b2ddf3e60b03c7f8580527d2b36313d8409ad24b349cdf4c5571bb2ccd
 reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, api_contract_reviewer, test_architect, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
 human_gate: exact live-fact/routing correction needs no new risk acceptance; any physical WORM/KMS/RLS, retention/legal, tenant, break-glass authorization, production wiring/deploy or risk decision stops for applicable human authority
 validation: exact5/body-edit/hash/inventory/non-target assertions, audit pure-core symbols/tests, workspace typecheck/test/build and all repo gates
 rollback: revert exact5 landing and reopen WP-9007 BLOCKED; never use reverted future wording to disable implemented pure-core validation or imply production WORM readiness
-state: READY; no target edit has started; fresh baseline/exact invariants required before edit
+review_findings: privacy/medical found ambiguous either-or WORM readiness wording and potential cross-event enforcement overclaim; narrowed within existing scope without changing human gates. Initial history/hash and missing top-level change_log findings corrected before final review.
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, api_contract_reviewer, test_architect, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED after regenerated pin and conservative clarification; no human risk acceptance added.
+validation_results: FINAL PASS before landing — exact5/staged0; SEC-008 all23 and body5738/f9104fa8728da7e65333d1e7af162862830ce2e84afbf79ba3ba71ea9e9def8c; inventory173/82/91; non-target172/16879/060cf2b2ddf3e60b03c7f8580527d2b36313d8409ad24b349cdf4c5571bb2ccd; audit182, workspace typecheck/test/build PASS; API161 plus 9 expected PostgreSQL skips without TEST_DATABASE_URL; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS.
+finalization_record: SEC-008 v0.1.2 and IDX-001 v0.4.19 APPROVED with approved_at/effective_from 2026-07-11; prior 0.1.1 approval is historical only; WP-9001 direct cutover plus ten WP-9007 role approvals recorded; no physical WORM/KMS/RLS, retention/legal, break-glass authorization, persistence or production decision adopted.
+landing_required: exact5 commit_and_push
+state: FINALIZED; exact5 landing pending
 ```
 
 ## Phase 0: 調査・計画(ドキュメント)
