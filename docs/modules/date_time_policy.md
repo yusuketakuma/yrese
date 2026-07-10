@@ -10,14 +10,35 @@ reviewers:
   - opus4.8
 version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-10
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §3(処方日・調剤日・受付日・請求月・マスター版の明示), §18, §0.0.3.3
 depends_on:
   - packages/date-time(ab234fe)
   - packages/events(85bd3aa — wallClock)
+impacts:
+  - packages/date-time
+  - packages/events wallClock/instant boundary
+  - apps/api reception business-date derivation
+  - apps/web reception date/time presentation
+related_work_packages:
+  - WP-0012
+  - WP-4053
+  - WP-9002-W2
+related_tests:
+  - packages/date-time/src/date-time.test.ts
+  - apps/api/src/server.test.ts
+  - apps/api/src/db/postgres-repositories.integration.test.ts
+  - apps/web/app/reception-dashboard.test.tsx
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-10 WP-9002-W2 metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - 深夜営業(日付跨ぎ)時の受付日確定ルール(薬局実務レビュー)
   - 請求月の締め境界(月末調剤・月初請求の当時有効版選択)— REG-002 の当時有効版ルールと統合

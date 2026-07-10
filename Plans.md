@@ -285,6 +285,105 @@ landing_record: commit 41c4d9f `WP-9002-W1: normalize QUA-007 frontmatter` pushe
 overall_state: WP-9002 remains IN_PROGRESS with 141 incomplete SSOT documents; no later wave has started, and the next wave requires a new read-only mapping and pre-plan review before any edit
 ```
 
+#### WP-9002-W2 MOD-011/MOD-014 legacy frontmatter migration — FINALIZED_READY_TO_LAND (landing_pending)
+
+```yaml
+work_package_id: WP-9002
+wave_id: WP-9002-W2
+title: legacy SSOT frontmatter migration wave 2 — module policy pair
+status: IN_PROGRESS
+execution_state: FINALIZED_READY_TO_LAND
+landing_state: landing_pending
+priority: P1
+risk_level: R2
+implementation_layer: ssot_metadata
+baseline_commit: 73fda4bce9f500fbe9c4dc157c8cc573ca28eee2
+baseline_inventory:
+  total: 173
+  incomplete: 141
+  complete: 32
+target_inventory:
+  total: 173
+  incomplete: 139
+  complete: 34
+target_ssots:
+  - ssot_id: MOD-011
+    path: docs/modules/date_time_policy.md
+    baseline_body_bytes_after_first_yaml_closing_fence: 3041
+    baseline_body_sha256: e4a73fad7fc8f47a0485c2d08eab461edd6c5a5a3d024adbcb55775e94b06066
+  - ssot_id: MOD-014
+    path: docs/modules/generated_code_policy.md
+    baseline_body_bytes_after_first_yaml_closing_fence: 2507
+    baseline_body_sha256: ed145a48bdda369e64c7d7b4e3d88b6e759d1bb4397c1b637cb1e4781c698d16
+allowed_files:
+  - docs/modules/date_time_policy.md
+  - docs/modules/generated_code_policy.md
+  - docs/ssot_index.md
+  - Plans.md
+  - State.md
+forbidden_files:
+  - every path not listed in allowed_files
+owner_role: sole_maintainer
+reviewer_roles:
+  - independent_verifier
+  - spec_guardian
+  - data_integrity_auditor
+specialist_roles:
+  - medical_safety_reviewer
+  - privacy_compliance_reviewer
+  - api_contract_reviewer
+  - test_architect
+human_gate: required before any semantic, policy, medical-safety, privacy, API-contract, test-policy, approval, or effective-semantics change; W2 stops and splits such work into a separate WP
+pre_plan_review: APPROVED; exact two-target metadata-only wave with traceable impacts/tests and frozen body/approval semantics
+review_records:
+  - independent_verifier APPROVED
+  - test_architect APPROVED
+  - spec_guardian APPROVED
+  - api_contract_reviewer APPROVED
+  - data_integrity_auditor APPROVED
+  - medical_safety_reviewer APPROVED
+  - privacy_compliance_reviewer APPROVED
+  - No W2 human approval is claimed; reviewers confirmed metadata-only scope without semantic, approval-authority, effective-semantics, DB, or external change.
+frontmatter_rules:
+  - MOD-011 and MOD-014 preserve version 0.1.1, status, approved_at, approved_by, owner, reviewers, created_at, source_refs, depends_on, open_questions, and blockers exactly; no W2 reviewer is added to target approved_by.
+  - Both targets set updated_at to 2026-07-10, effective_from/effective_to to null, related_prs/evidence_ids to empty arrays, and add only the approved impacts, work packages, tests, and non-versioned migration change log.
+  - MOD-011 impacts are packages/date-time, packages/events wallClock/instant boundary, apps/api reception business-date derivation, and apps/web reception date/time presentation; work packages are WP-0012/WP-4053/WP-9002-W2; tests are the date-time package, API server, PostgreSQL repository integration, and web reception dashboard targets.
+  - MOD-014 impacts are packages/contracts, docs/api/openapi.yaml, scripts/check-openapi.mjs, and the future generated-client boundary (unimplemented; no coverage claim); work packages are WP-0012/WP-4019/WP-9002-W2; tests are pnpm check:openapi and pnpm test:scripts.
+  - Each target change_log references body history as authoritative and records WP-9002-W2 metadata-only completion with body/status/version/approval/effective semantics unchanged.
+  - After all seven W2 reviewers approved, IDX-001 v0.4.3 was finalized APPROVED with approved_at/effective_from 2026-07-10; approved_by preserves all prior WP-9001/W1 provenance and appends only the seven W2 reviewer approvals, with no W2 human approval claim.
+  - All existing reviewers including human_review_if_required and W1 roles, historical 173/142, W1 173/141/32, index rows/status/path, and total 173 remain intact.
+  - All 171 non-target SSOT missing-field sets remain identical to baseline HEAD.
+stop_conditions:
+  - Either target body bytes/hash or any preserved frontmatter value changes.
+  - Any non-target missing-field set changes, index row/status/path drift, inventory other than 173/139/34, or edit outside the five exact paths.
+  - Any semantic/effective/approval change, validation failure, or reviewer CHANGES_REQUIRED; require applicable human authority and a separate WP where relevant.
+review_gates:
+  - independent_verifier, spec_guardian, and data_integrity_auditor approve the combined diff and inventory proof.
+  - medical_safety_reviewer and privacy_compliance_reviewer approve MOD-011 metadata scope and reception date/time boundary non-change.
+  - api_contract_reviewer and test_architect approve MOD-014 metadata scope and generated-contract/test policy non-change.
+  - After approvals, sole maintainer may finalize IDX-001 approval metadata; Codex root alone exact-stages, commits, and performs the requested push.
+validation_commands:
+  - exact 23-field scanner and 171 non-target missing-set comparison
+  - target preserved-frontmatter and body byte/SHA-256 audits
+  - exact five-path and staged-zero audit
+  - historical 173/142, W1 173/141/32, W2 173/139/34, index row/status/path, and total-173 audit
+  - pnpm --filter @yrese/date-time test
+  - pnpm --filter @yrese/api exec vitest run src/server.test.ts
+  - pnpm --filter @yrese/api exec vitest run src/db/postgres-repositories.integration.test.ts
+  - pnpm --filter @yrese/web exec vitest run app/reception-dashboard.test.tsx
+  - pnpm check:openapi
+  - pnpm test:scripts
+  - pnpm check:ssot-index
+  - pnpm check:secrets
+  - pnpm check:boundaries
+  - git diff --check
+validation_results: FINAL PASS — inventory 173/139/34, both targets missing 0, all 171 non-target missing-field sets baseline-identical, MOD-011 current review file 4679 bytes / SHA-256 a929603619981b113bb81c209584900e1f78275806d47388e2d1fd0754675074 and body 3041 bytes / SHA-256 e4a73fad7fc8f47a0485c2d08eab461edd6c5a5a3d024adbcb55775e94b06066, MOD-014 current review file 3786 bytes / SHA-256 0fa815faebec490b3c0704c00271b8e705939cf209679c056208240aeb42e032 and body 2507 bytes / SHA-256 ed145a48bdda369e64c7d7b4e3d88b6e759d1bb4397c1b637cb1e4781c698d16, preserved fields and W1 records byte-identical, exact five paths and staged 0; date-time 8, API server 43, web reception 10 tests PASS; PostgreSQL repository integration 7 expected skips because TEST_DATABASE_URL was absent, with no DB connection, migration, or DML operation; OpenAPI, scripts, SSOT index 173, secrets, boundaries, and diff checks PASS; all seven reviewer gates APPROVED
+finalization_record: IDX-001 v0.4.3 APPROVED with approved_at/effective_from 2026-07-10, all prior provenance preserved, seven W2 reviewer approvals appended, and no W2 human approval claimed; MOD-011 and MOD-014 remain byte-for-byte identical to the approved review diff
+landing_required: all reviewer and validation gates satisfied; only Codex root exact-stage commit and requested push remain pending
+landing_record: FINALIZED_READY_TO_LAND / landing_pending; exact five allowed paths, staged 0
+overall_state: WP-9002 remains [~] / IN_PROGRESS with 139 incomplete SSOT documents; W1 remains LANDED, W2 is finalized but not landed, and no later wave has started
+```
+
 ## Phase 0: 調査・計画(ドキュメント)
 
 - [x] WP-0001 Phase 0 計画書作成(docs/plan/phase0_plan.md)— 人間承認済み(「次に進む」)

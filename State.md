@@ -2,11 +2,22 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はdata_integrity_auditor reviewを経てAPPROVED、IDX-001 v0.4.2はWP-9002-W1 six-reviewer approvalを経てAPPROVED。以下に残る旧model/role/lane/message名は各活動時点のhistorical provenanceであり、current assignment・approval・completion gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はdata_integrity_auditor reviewを経てAPPROVED、IDX-001 v0.4.3はWP-9002-W2 seven-reviewer approvalを経てAPPROVED。以下に残る旧model/role/lane/message名は各活動時点のhistorical provenanceであり、current assignment・approval・completion gateには再利用しない。
 
 ---
 
 ## 2026-07-10
+
+### WP-9002-W2 MOD-011/MOD-014 legacy frontmatter migration — FINALIZED_READY_TO_LAND (landing_pending)
+
+- approved pre-planに従い、HEAD `73fda4bce9f500fbe9c4dc157c8cc573ca28eee2`のinventory 173/141/32をbaselineとして、MOD-011とMOD-014の不足8 fieldだけを補完した。targetは173/139/34、変更許可は両target、`docs/ssot_index.md`、`Plans.md`、`State.md`のexact five pathsだけで、W1 LANDED recordは変更していない。
+- MOD-011は本文3041 bytes / SHA-256 `e4a73fad7fc8f47a0485c2d08eab461edd6c5a5a3d024adbcb55775e94b06066`、MOD-014は本文2507 bytes / SHA-256 `ed145a48bdda369e64c7d7b4e3d88b6e759d1bb4397c1b637cb1e4781c698d16`を固定する。両文書のversion/status/approval/owner/reviewers/created/source/depends/open-questions/blockersは維持し、W2 reviewerをtarget approved_byへ追加していない。
+- MOD-011はdate-time/events wallClock/API reception business-date/web reception presentationのtraceable impactsと、date-time/API server/PostgreSQL repository integration/web receptionのfocused testsだけをmetadataとして追加した。MOD-014はcontracts/OpenAPI/check-openapiと`future generated-client boundary (unimplemented; no coverage claim)`のtraceable impacts、check gatesだけをmetadataとして追加した。コード、API契約、生成物、テスト、DB、migration、external、deploy、destructive operationは変更していない。
+- independent_verifier、test_architect、spec_guardian、api_contract_reviewer、data_integrity_auditor、medical_safety_reviewer、privacy_compliance_reviewerは全員`APPROVED`。metadata-only scope、本文・preserved approval値・effective semantics、traceability、inventory、W1 provenance、DB/外部非変更を確認し、未解決findingはない。W2 human approvalは主張しない。
+- seven-reviewer approval後、sole maintainerがIDX-001 v0.4.3を`APPROVED`へfinalizeした。approved_at/effective_fromは2026-07-10、approved_byはWP-9001/W1の全provenanceを保持してW2の7 reviewer approvalだけを追記し、既存human_review_if_requiredとW1 rolesを削除していない。historical 173/142、W1 173/141/32、index rows/status/path、総数173を維持し、W2 final inventoryは173/139/34である。
+- validationはtarget missing 0、inventory 173/139/34、171非対象missing-set baseline同一、両本文の指定bytes/hash、preserved fields、W1 record byte identity、exact five paths / staged 0をPASSした。focused testはdate-time 8、API server 43、web reception 10がPASSし、PostgreSQL repository integrationは`TEST_DATABASE_URL`不在のため7件expected skipで、DB接続・migration・DML操作は行っていない。`pnpm check:openapi`、`pnpm test:scripts`、`pnpm check:ssot-index`(173)、secrets、boundaries、`git diff --check`もPASSした。
+- review gateはindependent_verifier / spec_guardian / data_integrity_auditor、MOD-011のmedical_safety_reviewer / privacy_compliance_reviewer、MOD-014のapi_contract_reviewer / test_architectである。semantic/effective/approval/policy/medical/privacy/API/test-policy changeが必要なら停止し、applicable human authorityを持つ別WPへ分離する。全review APPROVED後にだけIDX finalizationへ進み、stage/commit/pushはCodex rootに限定する。
+- current stateは`FINALIZED_READY_TO_LAND / landing_pending`。MOD-011/MOD-014はapproved review diffからbyte-for-byte不変で、全review/validation gateはsatisfied。残る作業はCodex rootのexact-stage commit/requested pushだけである。WP-9002全体は不足139文書を残して`[~] / IN_PROGRESS`、W1はLANDED、W2は未landing、後続waveは未着手のままとする。
 
 ### WP-9002-W1 QUA-007 legacy frontmatter canary — LANDED
 

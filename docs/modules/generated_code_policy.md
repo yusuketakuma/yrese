@@ -10,14 +10,33 @@ reviewers:
   - opus4.8
 version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-10
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §0.0.3.4(generated codeの手編集禁止), §0.0.3.11(drift check), §0.1.6.12(generated filesは生成元と同一WP)
 depends_on:
   - packages/contracts(@yrese/contracts zod schema 正本)
   - docs/modules/validation_schema_policy.md(MOD-012)
+impacts:
+  - packages/contracts
+  - docs/api/openapi.yaml
+  - scripts/check-openapi.mjs
+  - future generated-client boundary (unimplemented; no coverage claim)
+related_work_packages:
+  - WP-0012
+  - WP-4019
+  - WP-9002-W2
+related_tests:
+  - pnpm check:openapi
+  - pnpm test:scripts
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-10 WP-9002-W2 metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions: []
 blockers: []
 ```
