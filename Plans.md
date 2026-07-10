@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W5E LANDED、99 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W5E LANDED、W5F FINALIZED / LANDING PENDING、landed 99 / target 93 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -617,7 +617,7 @@ validation_results: FINAL PASS before landing — exact12/staged0; inventory173/
 finalization_record: IDX-001 v0.4.6 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and eight W5A approvals appended; API targets unchanged from approved review candidate and API-008 remains PROPOSED
 landing_required: commit_and_push after finalization
 landing_record: commit 74666c9 `WP-9002-W5A: normalize API metadata` pushed successfully to origin/main (134864c..74666c9); inventory 173/118/55; exact 12 paths; eight API bodies/preserved/amendment/blocker states and 165 non-target set unchanged; all eight reviewer/full validation gates APPROVED; no code, DB, external, deployment, or destructive change
-overall_state: W5E LANDED; WP-9002 remains IN_PROGRESS with 99 incomplete SSOT documents and W5F requires fresh mapping/pre-plan
+overall_state: W5F FINALIZED / LANDING PENDING; WP-9002 remains IN_PROGRESS with landed 99 and target 93 incomplete SSOT documents
 ```
 
 #### WP-9002-W5B architecture legacy metadata — LANDED
@@ -701,6 +701,26 @@ validation_results: exact9/staged0、inventory173/99/74、target missing0、5本
 finalization_record: IDX-001 v0.4.10 APPROVED with approved_at/effective_from 2026-07-11; all prior provenance preserved and ten W5E approvals appended; database targets unchanged from approved review candidate
 landing_record: commit a57bacd `WP-9002-W5E: normalize database metadata` pushed successfully to origin/main (96cc1dd..a57bacd); inventory 173/99/74; exact9; five bodies, preserved amendment/blocker/question states and 168 non-target fingerprint unchanged; ten reviews and full validation APPROVED; no DB connection, migration, DDL/DML, AWS, FHIR, production, deploy, or destructive change
 state: LANDED; WP-9002 remains IN_PROGRESS and W5F starts only after fresh read-only mapping/pre-plan
+```
+
+#### WP-9002-W5F domain legacy metadata — FINALIZED / LANDING PENDING
+
+```yaml
+baseline_commit: ebb4ca4
+baseline_inventory: { total: 173, incomplete: 99, complete: 74 }
+target_inventory: { total: 173, incomplete: 93, complete: 80 }
+targets: [DOM-001, DOM-002, DOM-003, DOM-004, DOM-005, DOM-006]
+allowed_files: six domain targets plus index/Plans/State/ops; exact10
+mapping: all six domain SSOTs migrate atomically; broad existing questions remain verbatim and are not expanded
+pre_plan_review: APPROVED_WITH_PINS
+pins: preserve bodies/status/version/approval/source/dependencies/questions and DOM-005 ARC-008 amendment; WP-1101 is commit-history-only provenance; DOM-001/004/005 blockers are direct body mappings; DOM-002/003 empty blockers are document-level only; DOM-006 existing blocker is not changed and body evidence/conformance gates are not waived; no FHIR/adapter/claim/medical/security/production activation
+non_target: 167 docs / 17899 bytes / SHA-256 59f36f3faa9ee985826f4e47613985fd0e113ff5298f4eb64c6893fcf3aeed28
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, security_critic, privacy_compliance_reviewer, medical_safety_reviewer, api_contract_reviewer, claims_evidence_specialist]
+validation: exact invariants plus workspace typecheck/test/build, OpenAPI, calculation-purity, scripts, SSOT, secrets, boundaries, deps, SBOM, diff
+review_results: independent/spec/data-integrity/architect/test/API/claims-evidence/security/privacy/medicalの10 roleがAPPROVED。本文/承認/questions/DOM-005 amendment/DOM-006 blocker、evidence non-waiver、非activationを確認
+validation_results: exact10/staged0、inventory173/93/80、target missing0、6本文/preserved fields、対象外167 missing-set 17899 bytes / SHA-256 59f36f3faa9ee985826f4e47613985fd0e113ff5298f4eb64c6893fcf3aeed28を確認。workspace typecheck/test/build、OpenAPI、calculation-purity、scripts、SSOT173、secrets、boundaries、deps high0 critical0、SBOM231、diff PASS
+finalization_record: IDX-001 v0.4.11 APPROVED with approved_at/effective_from 2026-07-11; all prior provenance preserved and ten W5F approvals appended; domain targets unchanged from approved review candidate
+state: FINALIZED; landing pending
 ```
 
 - [x] WP-9003 repository reconciliation state pack(Codex-only、resume-safe、docs-only)

@@ -13,10 +13,19 @@ reviewers:
   - human_review_if_required
 version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
+effective_from: null
+effective_to: null
 source_refs: PRD-007(SRC-FHIR-001..006 経由), 構築プロンプト v0.2.0 §17, §22
 depends_on: [PRD-007, DOM-005, ADP-001, ADP-002]
 impacts: [WP-0046]
+related_work_packages: [WP-0042, WP-9002-W5F]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5F metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions: conformance 検証ツールの選定(PRD-007 open_question を継承)
 blockers:
   - BLOCKED_OFFICIAL_ADAPTER_BOUNDARY: 公的接続系を FHIR マッピングで置換しない(§4)

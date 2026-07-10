@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002 W5E database metadata landed at 173/99/74; preparing W5F.
-- Current task: map the next coherent metadata-only category from a clean landed baseline, then obtain pre-plan approval before editing.
+- Current phase: WP-9002 W5F domain metadata finalized; landed 173/99/74, landing target 173/93/80.
+- Current task: revalidate exact10 finalization, exact-stage, commit, and push; then write the landing record.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -30,4 +30,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W5C landing checkpoint: commit `86319a4` pushed to `origin/main`; inventory 173/106/67; exact6; two bodies and non-target `19429/6d777f91…` unchanged; nine reviews/full gates PASS; IDX v0.4.8 APPROVED.
 - W5D landing checkpoint: commit `ea2ddf2` pushed to `origin/main`; inventory 173/104/69; exact6; two bodies and non-target `19224/a70313e7…` unchanged; nine reviews/full gates PASS; IDX v0.4.9 APPROVED.
 - W5E landing checkpoint: commit `a57bacd` pushed to `origin/main`; inventory 173/99/74; exact9; five bodies and non-target `18537/c3a067a4…` unchanged; ten reviews/full gates PASS; IDX v0.4.10 APPROVED.
-- Next action: complete this three-ledger landing record, then fresh read-only W5F mapping/pre-plan. Do not edit the next category before approval.
+- W5F finalization checkpoint: baseline `ebb4ca4`; exact10; inventory 173/93/80; target missing0; six bodies and non-target `17899/59f36f3f…` unchanged; ten reviews/full gates PASS; IDX v0.4.11 APPROVED.
+- Next action: final invariant/gate check, then exact10 commit/push `WP-9002-W5F: normalize domain metadata` and separate landing record.

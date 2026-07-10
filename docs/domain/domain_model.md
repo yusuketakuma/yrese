@@ -13,11 +13,21 @@ reviewers:
   - human_review_required
 version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §12, §17, §18
 depends_on: [DOM-001, PRD-001, SAF-001, MOD-004, MOD-005]
 impacts: [DOM-004]
+related_work_packages: [WP-1101, WP-9002-W5F]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5F metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions: 本文【要確認】参照
+blockers: []
 ```
 
 ## 0. 原則

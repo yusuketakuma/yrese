@@ -13,14 +13,26 @@ reviewers:
   - human_review_if_required
 version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-10
+updated_at: 2026-07-11
+effective_from: null
+effective_to: null
 amended_by: [ARC-008]
 amendment_status: PENDING_REVISION
 amendment_note: "ARC-008(APPROVED 2026-07-10)により改版予約中。方向は ARC-008 が暫定的に優先する。本文の全面改版は Phase 1 の PRC-007 10段フローで実施し本注記を解除する。"
 source_refs: PRD-007(SRC-FHIR-001..006 経由), 構築プロンプト v0.2.0 §12, §17
 depends_on: [PRD-007, DOM-001, DOM-002, ADP-001, ADP-002, MOD-009(event_envelope_schema)]
 impacts: [DOM-006, WP-0046]
+related_work_packages: [WP-0042, WP-9002-W5F]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5F metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions: PRD-007 open_questions を継承(JP-CLINS参照範囲 / 業務イベントの表現分担 / conformance条件)
+blockers:
+  - BLOCKED_FHIR_CONFORMANCE_REVIEW: profile / terminology mapping / conformance testなしにJP Core準拠を訴求しない
+  - BLOCKED_OFFICIAL_ADAPTER_BOUNDARY: 公的接続系・JAHIS・NSIPSをFHIRで置換しない
 ```
 
 ## 1. 目的と結論

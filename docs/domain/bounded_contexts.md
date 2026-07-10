@@ -13,11 +13,22 @@ reviewers:
   - human_review_required
 version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §2, §12, §17
 depends_on: [PRD-001, ADP-002, ARC-001, MOD-001, MOD-003, ACC-001(会計ドメインモデル — C8 の正本)]
 impacts: [DOM-002, DOM-003, DOM-004]
+related_work_packages: [WP-1101, WP-9002-W5F]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5F metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions: 本文【要確認】参照
+blockers:
+  - BLOCKED_SECURITY_REVIEW: C13 本番認証はsecurity review完了まで未確定
 ```
 
 ## 1. 目的

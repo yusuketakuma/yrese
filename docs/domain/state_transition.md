@@ -13,10 +13,23 @@ reviewers:
   - human_review_required
 version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §13-16, §18-19
 depends_on: [DOM-001, DOM-002, ARC-001, ARC-002, MOD-005]
+impacts: [MOD-005(domain lifecycle registration), apps/api transition enforcement, apps/web transition presentation]
+related_work_packages: [WP-1101, WP-9002-W5F]
+related_tests:
+  - packages/shared-kernel/src/kernel.test.ts
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5F metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions: 本文【要確認】参照
+blockers:
+  - BLOCKED_REGULATORY_REVIEW: オンライン請求への直接送信自動化は公式仕様確認まで禁止
 ```
 
 ## 0. 原則
