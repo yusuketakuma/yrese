@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、WP-9002-W1 LANDED、metadata-only、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1/W2 LANDED、remaining 139、metadata-only、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -285,15 +285,15 @@ landing_record: commit 41c4d9f `WP-9002-W1: normalize QUA-007 frontmatter` pushe
 overall_state: WP-9002 remains IN_PROGRESS with 141 incomplete SSOT documents; no later wave has started, and the next wave requires a new read-only mapping and pre-plan review before any edit
 ```
 
-#### WP-9002-W2 MOD-011/MOD-014 legacy frontmatter migration — FINALIZED_READY_TO_LAND (landing_pending)
+#### WP-9002-W2 MOD-011/MOD-014 legacy frontmatter migration — LANDED
 
 ```yaml
 work_package_id: WP-9002
 wave_id: WP-9002-W2
 title: legacy SSOT frontmatter migration wave 2 — module policy pair
 status: IN_PROGRESS
-execution_state: FINALIZED_READY_TO_LAND
-landing_state: landing_pending
+execution_state: W2_LANDED
+landing_state: satisfied
 priority: P1
 risk_level: R2
 implementation_layer: ssot_metadata
@@ -379,9 +379,9 @@ validation_commands:
   - git diff --check
 validation_results: FINAL PASS — inventory 173/139/34, both targets missing 0, all 171 non-target missing-field sets baseline-identical, MOD-011 current review file 4679 bytes / SHA-256 a929603619981b113bb81c209584900e1f78275806d47388e2d1fd0754675074 and body 3041 bytes / SHA-256 e4a73fad7fc8f47a0485c2d08eab461edd6c5a5a3d024adbcb55775e94b06066, MOD-014 current review file 3786 bytes / SHA-256 0fa815faebec490b3c0704c00271b8e705939cf209679c056208240aeb42e032 and body 2507 bytes / SHA-256 ed145a48bdda369e64c7d7b4e3d88b6e759d1bb4397c1b637cb1e4781c698d16, preserved fields and W1 records byte-identical, exact five paths and staged 0; date-time 8, API server 43, web reception 10 tests PASS; PostgreSQL repository integration 7 expected skips because TEST_DATABASE_URL was absent, with no DB connection, migration, or DML operation; OpenAPI, scripts, SSOT index 173, secrets, boundaries, and diff checks PASS; all seven reviewer gates APPROVED
 finalization_record: IDX-001 v0.4.3 APPROVED with approved_at/effective_from 2026-07-10, all prior provenance preserved, seven W2 reviewer approvals appended, and no W2 human approval claimed; MOD-011 and MOD-014 remain byte-for-byte identical to the approved review diff
-landing_required: all reviewer and validation gates satisfied; only Codex root exact-stage commit and requested push remain pending
-landing_record: FINALIZED_READY_TO_LAND / landing_pending; exact five allowed paths, staged 0
-overall_state: WP-9002 remains [~] / IN_PROGRESS with 139 incomplete SSOT documents; W1 remains LANDED, W2 is finalized but not landed, and no later wave has started
+landing_required: satisfied
+landing_record: commit ff7518f `WP-9002-W2: normalize module metadata` pushed successfully to origin/main (73fda4b..ff7518f); inventory 173/139/34; MOD-011 current file 4679 bytes / SHA-256 a929603619981b113bb81c209584900e1f78275806d47388e2d1fd0754675074 and body 3041 bytes / SHA-256 e4a73fad7fc8f47a0485c2d08eab461edd6c5a5a3d024adbcb55775e94b06066; MOD-014 current file 3786 bytes / SHA-256 0fa815faebec490b3c0704c00271b8e705939cf209679c056208240aeb42e032 and body 2507 bytes / SHA-256 ed145a48bdda369e64c7d7b4e3d88b6e759d1bb4397c1b637cb1e4781c698d16; independent_verifier, test_architect, spec_guardian, api_contract_reviewer, data_integrity_auditor, medical_safety_reviewer, and privacy_compliance_reviewer APPROVED; date-time 8, API server 43, web reception 10 PASS, PostgreSQL integration 7 expected skips because TEST_DATABASE_URL was absent with no DB connection/migration/DML, OpenAPI/scripts/SSOT/secrets/boundaries/diff gates PASS; no code, DB, external, deployment, or destructive change
+overall_state: WP-9002 remains [~] / IN_PROGRESS with 139 incomplete SSOT documents; W1 and W2 are LANDED, W3 has not started, and a new read-only mapping and pre-plan review are required before any W3 edit
 ```
 
 ## Phase 0: 調査・計画(ドキュメント)

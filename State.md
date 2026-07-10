@@ -8,7 +8,7 @@
 
 ## 2026-07-10
 
-### WP-9002-W2 MOD-011/MOD-014 legacy frontmatter migration — FINALIZED_READY_TO_LAND (landing_pending)
+### WP-9002-W2 MOD-011/MOD-014 legacy frontmatter migration — LANDED
 
 - approved pre-planに従い、HEAD `73fda4bce9f500fbe9c4dc157c8cc573ca28eee2`のinventory 173/141/32をbaselineとして、MOD-011とMOD-014の不足8 fieldだけを補完した。targetは173/139/34、変更許可は両target、`docs/ssot_index.md`、`Plans.md`、`State.md`のexact five pathsだけで、W1 LANDED recordは変更していない。
 - MOD-011は本文3041 bytes / SHA-256 `e4a73fad7fc8f47a0485c2d08eab461edd6c5a5a3d024adbcb55775e94b06066`、MOD-014は本文2507 bytes / SHA-256 `ed145a48bdda369e64c7d7b4e3d88b6e759d1bb4397c1b637cb1e4781c698d16`を固定する。両文書のversion/status/approval/owner/reviewers/created/source/depends/open-questions/blockersは維持し、W2 reviewerをtarget approved_byへ追加していない。
@@ -17,7 +17,8 @@
 - seven-reviewer approval後、sole maintainerがIDX-001 v0.4.3を`APPROVED`へfinalizeした。approved_at/effective_fromは2026-07-10、approved_byはWP-9001/W1の全provenanceを保持してW2の7 reviewer approvalだけを追記し、既存human_review_if_requiredとW1 rolesを削除していない。historical 173/142、W1 173/141/32、index rows/status/path、総数173を維持し、W2 final inventoryは173/139/34である。
 - validationはtarget missing 0、inventory 173/139/34、171非対象missing-set baseline同一、両本文の指定bytes/hash、preserved fields、W1 record byte identity、exact five paths / staged 0をPASSした。focused testはdate-time 8、API server 43、web reception 10がPASSし、PostgreSQL repository integrationは`TEST_DATABASE_URL`不在のため7件expected skipで、DB接続・migration・DML操作は行っていない。`pnpm check:openapi`、`pnpm test:scripts`、`pnpm check:ssot-index`(173)、secrets、boundaries、`git diff --check`もPASSした。
 - review gateはindependent_verifier / spec_guardian / data_integrity_auditor、MOD-011のmedical_safety_reviewer / privacy_compliance_reviewer、MOD-014のapi_contract_reviewer / test_architectである。semantic/effective/approval/policy/medical/privacy/API/test-policy changeが必要なら停止し、applicable human authorityを持つ別WPへ分離する。全review APPROVED後にだけIDX finalizationへ進み、stage/commit/pushはCodex rootに限定する。
-- current stateは`FINALIZED_READY_TO_LAND / landing_pending`。MOD-011/MOD-014はapproved review diffからbyte-for-byte不変で、全review/validation gateはsatisfied。残る作業はCodex rootのexact-stage commit/requested pushだけである。WP-9002全体は不足139文書を残して`[~] / IN_PROGRESS`、W1はLANDED、W2は未landing、後続waveは未着手のままとする。
+- Codex rootはexact five pathsをcommit `ff7518f` (`WP-9002-W2: normalize module metadata`)としてstage/commitし、origin/mainへ`73fda4b..ff7518f`をpushした。W2は`LANDED`、landing gateはsatisfiedである。landing時点のinventoryは173/139/34。MOD-011はcurrent file 4679 bytes / SHA-256 `a929603619981b113bb81c209584900e1f78275806d47388e2d1fd0754675074`、本文3041 bytes / SHA-256 `e4a73fad7fc8f47a0485c2d08eab461edd6c5a5a3d024adbcb55775e94b06066`、MOD-014はcurrent file 3786 bytes / SHA-256 `0fa815faebec490b3c0704c00271b8e705939cf209679c056208240aeb42e032`、本文2507 bytes / SHA-256 `ed145a48bdda369e64c7d7b4e3d88b6e759d1bb4397c1b637cb1e4781c698d16`を維持した。7 role approvalとdate-time 8 / API server 43 / web reception 10 PASS、PostgreSQL integration 7 expected skip(`TEST_DATABASE_URL`不在、DB接続・migration・DMLなし)、OpenAPI/scripts/SSOT/secrets/boundaries/diff gatesを維持し、コード、DB、external、deploy、destructive changeはない。
+- WP-9002全体は不足139文書を残して`[~] / IN_PROGRESS`でありDONEではない。W1/W2はLANDED、W3は未着手で、W3の編集前に新しいread-only mappingとpre-plan reviewを必須とする。
 
 ### WP-9002-W1 QUA-007 legacy frontmatter canary — LANDED
 
