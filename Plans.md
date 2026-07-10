@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W6B + WP-9005 LANDED、W6C FINALIZED / LANDING PENDING、87 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W6C + WP-9005 LANDED、87 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -617,7 +617,7 @@ validation_results: FINAL PASS before landing — exact12/staged0; inventory173/
 finalization_record: IDX-001 v0.4.6 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and eight W5A approvals appended; API targets unchanged from approved review candidate and API-008 remains PROPOSED
 landing_required: commit_and_push after finalization
 landing_record: commit 74666c9 `WP-9002-W5A: normalize API metadata` pushed successfully to origin/main (134864c..74666c9); inventory 173/118/55; exact 12 paths; eight API bodies/preserved/amendment/blocker states and 165 non-target set unchanged; all eight reviewer/full validation gates APPROVED; no code, DB, external, deployment, or destructive change
-overall_state: W6B and WP-9005 LANDED; W6C FINALIZED / LANDING PENDING; WP-9002 remains IN_PROGRESS with 87 incomplete SSOT documents
+overall_state: W6C and WP-9005 LANDED; WP-9002 remains IN_PROGRESS with 87 incomplete SSOT documents and the next wave requires fresh mapping/pre-plan
 ```
 
 #### WP-9002-W5B architecture legacy metadata — LANDED
@@ -767,7 +767,7 @@ landing_record: commit c9a2641 `WP-9002-W6B: normalize defect metadata` pushed s
 state: LANDED; WP-9002 remains IN_PROGRESS and the next wave starts only after fresh read-only mapping/pre-plan
 ```
 
-#### WP-9002-W6C CAL-010/011 legacy metadata — FINALIZED / LANDING PENDING
+#### WP-9002-W6C CAL-010/011 legacy metadata — LANDED
 
 ```yaml
 baseline_commit: 76afa17
@@ -786,7 +786,8 @@ review_results: all nine required roles APPROVED; no actionable findings; approv
 validation_results: FINAL PASS before landing — exact6/staged0; target bodies and preserved fields byte-identical; all23; inventory173/87/86; non-target171/17326/58c51344159f8ac41b269577d3386203f3e5266ec02149db93a740d285f1fe7c; workspace typecheck/test/build PASS; calculation20, audit182, contracts86, web99, API161 plus 9 expected PostgreSQL skips without TEST_DATABASE_URL; calculation-purity, OpenAPI, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231, diff PASS
 finalization_record: IDX-001 v0.4.15 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and nine W6C approvals appended; target legacy approvals unchanged
 landing_required: exact6 commit_and_push
-state: FINALIZED / LANDING PENDING
+landing_record: commit 8eb3e98 `WP-9002-W6C: normalize calculation policy metadata` pushed successfully to origin/main (76afa17..8eb3e98); inventory 173/87/86; exact6; target bodies/legacy approvals and 171 non-target rows unchanged; nine reviews/full gates APPROVED; no calculation/claim/evidence/code/DB/external/production/deployment change
+state: LANDED; WP-9002 remains IN_PROGRESS and the next wave starts only after fresh read-only mapping/pre-plan
 ```
 
 - [x] WP-9003 repository reconciliation state pack(Codex-only、resume-safe、docs-only)
