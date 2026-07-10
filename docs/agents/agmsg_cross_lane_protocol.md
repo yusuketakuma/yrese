@@ -4,18 +4,19 @@
 ssot_id: AGT-005
 title: agmsg 二系統相互連絡プロトコル
 domain: agents
-status: APPROVED
+status: SUPERSEDED
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-10
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 effective_from: 承認後
-effective_to: null
+effective_to: 2026-07-10
+superseded_by: AGT-018
 source_refs:
   - 構築プロンプト v0.2.0 §0.1.6.7〜§0.1.6.10, §0.0.3.9, §0.6
 depends_on:
@@ -29,6 +30,7 @@ related_prs: []
 evidence_ids: []
 change_log:
   - 0.1.0 初版作成(Phase 0 作業#1)
+  - 0.2.0 2026-07-10 AGT-018のAPPROVED化に伴いmetadata-onlyでSUPERSEDED (WP-9001)
 open_questions:
   - agmsg 実環境(~/.agents/skills/agmsg)に「ルーム」機能があるか未確認。ない場合は本書 §3 のルームタグ方式で代替する【要確認】
   - Codex側エージェントの agmsg 参加名・delivery mode(monitor/turn/both)の標準値【要確認】

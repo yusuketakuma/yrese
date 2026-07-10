@@ -5,20 +5,64 @@ ssot_id: IDX-001
 title: SSOT文書索引
 domain: plan
 status: APPROVED
-owner: fable5
-version: 0.3.1
+owner: codex_root
+reviewers:
+  - independent_verifier
+  - data_integrity_auditor
+  - human_review_if_required
+version: 0.4.1
 created_at: 2026-07-09
 updated_at: 2026-07-10
-approved_at: 2026-07-09
-approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+approved_at: 2026-07-10
+approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; spec_guardian APPROVED; data_integrity_auditor APPROVED
+effective_from: 2026-07-10
+effective_to: null
+source_refs:
+  - docs/process/ssot_governance.md
+  - human_instruction WP-9001 (2026-07-10)
+depends_on:
+  - AGT-018
+  - PRC-007
+impacts:
+  - all SSOT discovery and status checks
+related_work_packages:
+  - WP-9001
+  - WP-9002
+related_tests:
+  - pnpm check:ssot-index
+related_prs: []
+evidence_ids: []
+change_log:
+  - 0.4.1 2026-07-10 PRC-007 v0.3.1 APPROVED、legacy 23-field inventory 173/142、WP-9002 migrationを同期(data_integrity_auditor APPROVED)
+  - 0.4.0 2026-07-10 WP-9001 atomic finalizationのCodex ownership、173文書、APPROVED/PROPOSED/SUPERSEDED statusを同期
+  - 0.3.2 2026-07-10 AGT-018追加案とindex machine validation wording
+open_questions: []
+blockers: []
 ```
 
 本索引は `docs/**` 配下の全SSOT文書の正式な一覧である。台帳にない文書の参照・実装根拠化を禁止する。
 
 **Phase 0 ゲート: 2026-07-09 人間レビュー承認済み(当時97文書)。** ゲート後に追加された文書は各自の status(PROPOSED 等)を保持し、承認は PRC-007 の更新フローに従う。
-本索引は frontmatter からの機械生成である(手編集しない。再生成漏れは索引整合性欠陥として扱う)。
+本索引は各文書の frontmatter と件数・ID・status・path・並び順を `pnpm check:ssot-index` で機械検証する。文書追加または metadata 変更時は本索引を同じ変更で更新し、検証不一致を索引整合性欠陥として扱う。
 
-総文書数: 172(本索引を除く)
+## WP-9001 review/finalization status matrix
+
+本節はbase `a5eb9a8`とWP-9001 review diffのstatus遷移を固定する。required reviews APPROVED後にatomic finalizationを適用済みであり、現在のindex行は次のfinalization targetと一致する。PLAN-UIUX-001だけは別design/human gateのためPROPOSEDを維持する。
+
+| 対象 | base | review中 | finalization target |
+|---|---|---|---|
+| AGT-018 | 文書なし | PROPOSED | direct cutover approval + independent/specialist verification後にAPPROVED |
+| SPEC-001/002、PRC-001〜007、OPS-012、REG-006、PLAN-PHASE0-001、IDX-001 | APPROVED | PROPOSED revision | required reviewとapplicable human gate後にAPPROVEDへ戻す |
+| PLAN-UIUX-001 | PROPOSED | PROPOSED revision | PROPOSED維持。別design/human gateなしにAPPROVED化しない |
+| AGT-001〜AGT-017 | APPROVED | APPROVED・本文無変更 | AGT-018承認と同一batchでmetadata-only SUPERSEDED |
+
+旧AGTのmetadata-only finalizationでもPRC-007の23 fieldを省略しなかった。AGT-016/017の不足9 fieldを補完し、全17件のfield充足・本文byte identity・index statusを機械監査済みである。
+
+### Post-finalization governance amendment
+
+atomic finalization後のrepo-wide inventoryで、index対象173文書中142文書にPRC-007の23 field不足を確認した。data_integrity_auditorは既存legacyのstatus/approval意味を一括無効化しない移行方針、legacy semantics/body/status/approval/effective preservation、AGT 17件のbody/status/23-field、validation gatesを確認してAPPROVEDした。PRC-007 v0.3.1とIDX-001 v0.4.1はAPPROVEDである。metadata-only補完はWP-9001 landing後のWP-9002で段階実施し、開始前の再scan結果をbaselineとして更新する。AGT-018および既にfinalizeした旧AGT statusは変更しない。
+
+総文書数: 173(本索引を除く)
 
 ## docs/accounting/ (11件)
 
@@ -43,27 +87,28 @@ approved_by: human_review (ユーザー承認「人間レビューはOKです」
 | ADP-002 | [external_system_boundary.md](adapters/external_system_boundary.md) | APPROVED |
 | ADP-001 | [official_adapter_inventory.md](adapters/official_adapter_inventory.md) | APPROVED |
 
-## docs/agents/ (17件)
+## docs/agents/ (18件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
-| AGT-013 | [agent_assignment_matrix.md](agents/agent_assignment_matrix.md) | APPROVED |
-| AGT-015 | [agent_handoff_protocol.md](agents/agent_handoff_protocol.md) | APPROVED |
-| AGT-014 | [agent_review_pairing_policy.md](agents/agent_review_pairing_policy.md) | APPROVED |
-| AGT-012 | [agent_routing_policy.md](agents/agent_routing_policy.md) | APPROVED |
-| AGT-005 | [agmsg_cross_lane_protocol.md](agents/agmsg_cross_lane_protocol.md) | APPROVED |
-| AGT-002 | [claude_side_charter.md](agents/claude_side_charter.md) | APPROVED |
-| AGT-017 | [codex_capability_verification.md](agents/codex_capability_verification.md) | APPROVED |
-| AGT-010 | [codex_data_handling_policy.md](agents/codex_data_handling_policy.md) | APPROVED |
-| AGT-003 | [codex_side_ultra_mode_charter.md](agents/codex_side_ultra_mode_charter.md) | APPROVED |
-| AGT-007 | [cross_lane_review_policy.md](agents/cross_lane_review_policy.md) | APPROVED |
-| AGT-001 | [dual_lane_operating_model.md](agents/dual_lane_operating_model.md) | APPROVED |
-| AGT-006 | [dual_lane_raci_matrix.md](agents/dual_lane_raci_matrix.md) | APPROVED |
-| AGT-011 | [execution_mode_policy.md](agents/execution_mode_policy.md) | APPROVED |
-| AGT-009 | [file_ownership_and_lock_policy.md](agents/file_ownership_and_lock_policy.md) | APPROVED |
-| AGT-008 | [lane_conflict_resolution_policy.md](agents/lane_conflict_resolution_policy.md) | APPROVED |
-| AGT-016 | [llm_capability_registry.md](agents/llm_capability_registry.md) | APPROVED |
-| AGT-004 | [sol_ultra_mode_execution_policy.md](agents/sol_ultra_mode_execution_policy.md) | APPROVED |
+| AGT-013 | [agent_assignment_matrix.md](agents/agent_assignment_matrix.md) | SUPERSEDED |
+| AGT-015 | [agent_handoff_protocol.md](agents/agent_handoff_protocol.md) | SUPERSEDED |
+| AGT-014 | [agent_review_pairing_policy.md](agents/agent_review_pairing_policy.md) | SUPERSEDED |
+| AGT-012 | [agent_routing_policy.md](agents/agent_routing_policy.md) | SUPERSEDED |
+| AGT-005 | [agmsg_cross_lane_protocol.md](agents/agmsg_cross_lane_protocol.md) | SUPERSEDED |
+| AGT-002 | [claude_side_charter.md](agents/claude_side_charter.md) | SUPERSEDED |
+| AGT-017 | [codex_capability_verification.md](agents/codex_capability_verification.md) | SUPERSEDED |
+| AGT-010 | [codex_data_handling_policy.md](agents/codex_data_handling_policy.md) | SUPERSEDED |
+| AGT-003 | [codex_side_ultra_mode_charter.md](agents/codex_side_ultra_mode_charter.md) | SUPERSEDED |
+| AGT-018 | [codex_single_lane_operating_model.md](agents/codex_single_lane_operating_model.md) | APPROVED |
+| AGT-007 | [cross_lane_review_policy.md](agents/cross_lane_review_policy.md) | SUPERSEDED |
+| AGT-001 | [dual_lane_operating_model.md](agents/dual_lane_operating_model.md) | SUPERSEDED |
+| AGT-006 | [dual_lane_raci_matrix.md](agents/dual_lane_raci_matrix.md) | SUPERSEDED |
+| AGT-011 | [execution_mode_policy.md](agents/execution_mode_policy.md) | SUPERSEDED |
+| AGT-009 | [file_ownership_and_lock_policy.md](agents/file_ownership_and_lock_policy.md) | SUPERSEDED |
+| AGT-008 | [lane_conflict_resolution_policy.md](agents/lane_conflict_resolution_policy.md) | SUPERSEDED |
+| AGT-016 | [llm_capability_registry.md](agents/llm_capability_registry.md) | SUPERSEDED |
+| AGT-004 | [sol_ultra_mode_execution_policy.md](agents/sol_ultra_mode_execution_policy.md) | SUPERSEDED |
 
 ## docs/api/ (8件)
 

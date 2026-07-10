@@ -5,28 +5,53 @@ ssot_id: OPS-012
 title: 本番移行 Go/No-Go 判定チェックリスト
 domain: operations
 status: APPROVED
-owner: fable5
+owner: codex_root
 reviewers:
-  - opus4.8
+  - independent_verifier
+  - security_critic
+  - medical_safety_reviewer
+  - privacy_compliance_reviewer
   - human_review_required
-version: 0.1.0
+version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
-approved_at: 2026-07-09
-approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.2.0 §9.7 / docs/plan/phase0_plan.md §8
+updated_at: 2026-07-10
+approved_at: 2026-07-10
+approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; spec_guardian APPROVED; medical_safety_reviewer APPROVED; privacy_compliance_reviewer APPROVED; security_critic APPROVED
+effective_from: 2026-07-10
+effective_to: null
+source_refs:
+  - docs/spec/construction_prompt_v0.2.0.md §9.7
+  - docs/plan/phase0_plan.md §8
+  - docs/agents/codex_single_lane_operating_model.md
+  - docs/process/review_gate_matrix.md
 depends_on:
   - OPS-003 (parallel_run_and_cutover_plan)
   - REG-004 (regulatory_blockers)
   - SAF-001 (medical_safety_risk_register)
+  - AGT-018 (codex_single_lane_operating_model)
+impacts:
+  - production cutover decision
+  - Plans.md
+  - State.md
+related_work_packages:
+  - WP-9001
+related_tests:
+  - pnpm check:ssot-index
+related_prs: []
+evidence_ids: []
+change_log:
+  - 0.2.0 2026-07-10 WP-9001とrequired reviews PASSによりCodex rootの判定案作成、independent/domain review、human-only最終決定へ改定
+  - 0.1.0 2026-07-09 初版。Phase 0 human reviewで承認
 open_questions:
   - 判定会議体の構成(薬局側/当社側の出席者・決裁者)【要確認 — 経営レビュー】
   - 並行稼働差分の許容範囲定量値(OPS-003 と同期)【要確認】
+blockers: []
 ```
 
 ## 1. 判定原則
 
-- 判定は fable5 が判定案を作成し、人間(決裁者【要確認】)が最終決定する
+- Codex rootはread-only evidence、independent verifier、required Codex specialists、各human gateの記録を集約し、Go/No-Go判定案と未達一覧を作成する。Codex root、maintainer、verifier、specialistは最終Goを決定または自己承認しない
+- 最終Go/No-Goは、明示された人間決裁者だけが決定する。決裁者、出席者、各human authority、判断日時、根拠を監査ログ+議事録へ記録する
 - 1項目でも No の場合は Go としない(条件付き Go は許可しない — 条件は解消してから再判定)
 - 判定結果・根拠・出席者は監査ログ+議事録として保存する
 
@@ -37,11 +62,11 @@ open_questions:
 | # | 項目 | 判定基準 |
 |---|---|---|
 | A1 | 未解決 BLOCKER なし | REG-004 台帳+Plans.md の [!] が対象スコープでゼロ |
-| A2 | 高リスクレビュー完了 | R3+ 全WPに opus4.8 レビュー記録 |
-| A3 | 薬剤師レビュー完了 | 医療安全・業務導線・警告表示(SAF-001/UIX系) |
-| A4 | 請求実務者レビュー完了 | 算定照合・レセプト照合・返戻運用 |
-| A5 | セキュリティレビュー完了 | SEC-001〜007 の APPROVED+isolation test 通過 |
-| A6 | 医療安全レビュー完了 | SAF-001 の residual risk 受容判定 |
+| A2 | 高リスクreview記録完了 | R3+ 全WPについてmakerとは別contextのindependent verifier、riskに応じたCodex specialists、該当するhuman approvalの記録があり、未解消HIGH/CRITICAL findingがない |
+| A3 | 人間薬剤師レビュー完了 | **人間の薬剤師**が医療安全・業務導線・警告表示(SAF-001/UIX系)を確認。`medical_safety_reviewer`は補助であり代替不可 |
+| A4 | 人間請求実務者レビュー完了 | **人間の請求実務者**が算定照合・レセプト照合・返戻運用を確認。Codex claim reviewerは補助であり代替不可 |
+| A5 | 人間production security承認完了 | `security_critic`のreview、SEC-001〜008のAPPROVED status、isolation/security test PASSに加え、**人間のproduction security authority**が本番構成・権限・残riskを承認 |
+| A6 | 人間医療安全risk受容完了 | `medical_safety_reviewer`のreviewに加え、**人間の医療安全authority**がSAF-001のresidual riskを受容。A3の薬剤師業務reviewとは別記録 |
 
 ### B. 接続試験(公式)
 
@@ -78,5 +103,5 @@ open_questions:
 
 ## 3. 判定後
 
-- Go: カットオーバー実行(OPS-003 §2)
+- Go: 人間決裁者の明示記録後にのみカットオーバー実行候補とする。実際のdeploy、migration適用、production write、external actionは各操作直前の明示human approvalを別途必要とする
 - No-Go: 未達項目の是正計画+再判定日を設定し、State.md/Plans.md に記録

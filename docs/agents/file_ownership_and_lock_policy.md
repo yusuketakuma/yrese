@@ -4,18 +4,19 @@
 ssot_id: AGT-009
 title: ファイル所有・ロックポリシー
 domain: agents
-status: APPROVED
+status: SUPERSEDED
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-10
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 effective_from: 承認後
-effective_to: null
+effective_to: 2026-07-10
+superseded_by: AGT-018
 source_refs:
   - 構築プロンプト v0.2.0 §0.0.2.1, §0.1.6.12, §0.9, §0.10, §0.0.3.6
 depends_on:
@@ -28,6 +29,7 @@ related_prs: []
 evidence_ids: []
 change_log:
   - 0.1.0 初版作成(Phase 0 作業#1)
+  - 0.2.0 2026-07-10 AGT-018のAPPROVED化に伴いmetadata-onlyでSUPERSEDED (WP-9001)
 open_questions:
   - ロック台帳の実装方式(本書 §4 案: docs/agents/locks/ 配下のロックファイル)は Phase 1 のリポジトリ scaffold 時に確定【要確認】
 blockers: []

@@ -5,15 +5,41 @@ ssot_id: PLAN-PHASE0-001
 title: Phase 0 計画案
 domain: plan
 status: APPROVED
-owner: fable5
+owner: codex_root
 reviewers:
+  - independent_verifier
   - human_review_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
-source_refs: 構築プロンプト v0.2.0
+updated_at: 2026-07-10
+approved_at: 2026-07-10
+approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; spec_guardian APPROVED; medical_safety_reviewer APPROVED; privacy_compliance_reviewer APPROVED; security_critic APPROVED
+effective_from: 2026-07-10
+effective_to: null
+source_refs:
+  - 構築プロンプト v0.2.0
+  - docs/agents/codex_single_lane_operating_model.md
+depends_on:
+  - AGT-018 codex_single_lane_operating_model
+impacts:
+  - Plans.md
+  - all Phase 0 governance
+related_work_packages:
+  - WP-0001
+  - WP-9001
+related_tests:
+  - pnpm check:ssot-index
+related_prs: []
+evidence_ids: []
+change_log:
+  - 0.1.1 2026-07-10 direct user instruction (WP-9001) とrequired reviews PASSにより現行routingをAGT-018へ切り替えてAPPROVED化。本文の旧role/model名はPhase 0 provenanceとして保持
+  - 0.1.0 2026-07-09 Phase 0初回計画
 open_questions: 本書「19. 人間レビューが必要な論点」参照
 blockers: 本書「20. 現時点のBLOCKER」参照
 ```
+
+> [!IMPORTANT]
+> **proposed routing (2026-07-10):** 本文に残る旧model名、旧role名、旧lane、旧handoff/lock手順は2026-07-09のPhase 0計画provenanceである。AGT-018と本改版がAPPROVEDになった後、Codex root → read-only mapper → read-only pre-plan reviewer → sole Codex maintainer → independent verifier → relevant specialists → root exact-stage landingを適用する。frontend/backend/shared/SSOTをlane分割しない。UIはsole Codex maintainerが編集し、`frontend_reviewer`・`ui_flow_tester`・`accessibility_ux_reviewer`がread-onlyで確認する。U4は`medical_safety_reviewer`・`privacy_compliance_reviewer`を追加し、既存の薬剤師確認・人間承認gateを維持する。WP-9001自体はdirect user instructionにより同routingで実行中である。
 
 本書は初回出力(Phase 0 計画案)である。コードは含まない。人間レビュー承認後に Phase 0 の調査・成果物作成へ進む。
 

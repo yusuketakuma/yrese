@@ -5,68 +5,115 @@ ssot_id: PRC-006
 title: ブロッカー処理ポリシー
 domain: process
 status: APPROVED
-owner: fable5
+owner: codex_root
 reviewers:
-  - opus4.8
-version: 0.1.0
+  - independent_verifier
+  - human_review_if_required
+version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
-approved_at: 2026-07-09
-approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.2.0 §0.13, §42
+updated_at: 2026-07-10
+approved_at: 2026-07-10
+approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; spec_guardian APPROVED; medical_safety_reviewer APPROVED; privacy_compliance_reviewer APPROVED; security_critic APPROVED
+effective_from: 2026-07-10
+effective_to: null
+source_refs:
+  - docs/spec/construction_prompt_v0.2.0.md §0.13, §42
+  - docs/agents/codex_single_lane_operating_model.md
 depends_on:
+  - AGT-018 codex_single_lane_operating_model
   - REG-004 regulatory_blockers
 impacts: 全WP・全実装
+related_work_packages:
+  - WP-9001
+related_tests:
+  - pnpm check:ssot-index
+related_prs: []
+evidence_ids: []
+change_log:
+  - 0.2.0 2026-07-10 direct user instruction (WP-9001) とrequired reviews PASSによりrepository-based blocker recordとrole-based triageへ改定
+  - 0.1.0 2026-07-09 初版
 open_questions: []
+blockers: []
 ```
 
-## 1. 報告形式(v0.2.0 §0.13)
+## 1. 報告形式
 
-agmsg(または State.md)へ以下の形式で報告する。
+BLOCKERはcurrent Work Packageと`State.md`へ、次の形式で記録する。一時的な会話やagent packetだけで報告済みにしてはならない。
 
 ```text
-[msg_type]: BLOCKER
-[to]: fable5
-[from]: <agent>
 work_package_id:
 status: BLOCKED
-blocker_type:            # @yrese/shared-kernel BLOCKER_TYPES のいずれか
+reported_by_role:
+root_role: codex_root
+owner_role:
+reviewer_roles:
+required_specialist_roles:
+required_human_authority:
+blocker_type:                 # @yrese/shared-kernel BLOCKER_TYPES の登録値
 blocking_question:
 affected_files:
+affected_ssot_refs:
+evidence_ids:
+missing_evidence:
 risk:
+medical_safety_impact:
+claim_safety_impact:
+privacy_security_impact:
+prohibited_scope_until_resolved:
 recommended_next_step:
+resolution_evidence:
 ```
 
-## 2. BLOCKER 種別
+P0/P1は関連scopeの編集・landingを即時停止し、Codex rootへ返す。PHI/PII、secret、production dataをBLOCKER record、prompt、agent packetへ含めない。
 
-種別の正本はコードの `@yrese/shared-kernel` `BLOCKER_TYPES`(packages/shared-kernel/src/blockers.ts)と本書・REG-004 で同期する。新種別の追加は SSOT 更新(fable5)→ shared-kernel 反映の順で行い、コード側での独自追加を禁止する。
+## 2. BLOCKER種別
 
-現行の主要カテゴリ: 実装統率系(BLOCKED_NOT_READY 等)/ 規制系(BLOCKED_REGULATORY_REVIEW, BLOCKED_PMDA_SAMD_REVIEW 等 — 台帳は REG-004)/ 移行系 / 実装所有・契約系(IMPLEMENTATION_OWNERSHIP_BLOCKED, API_CONTRACT_BLOCKED)/ 共通モジュール系(COMMON_MODULE_* , GENERATED_CODE_DRIFT_BLOCKED)/ 実行モード系(CODEX_ULTRA_MODE_UNAVAILABLE 等)/ SSOT系(SSOT_UPDATE_REQUIRED)。
+種別のcode正本は`@yrese/shared-kernel`の`BLOCKER_TYPES` (`packages/shared-kernel/src/blockers.ts`)とし、本書・REG-004と同期する。新種別はSSOT更新、independent verification、required specialist/human gate、shared-kernel反映の順で追加し、実装側で独自文字列を作らない。
 
-## 3. triage(fable5)
+主要category:
 
-fable5 はブロッカーを受領後、以下のいずれかを決定し、State.md に記録する。
+- 実装準備: `BLOCKED_NOT_READY`
+- 規制・医療安全: `BLOCKED_REGULATORY_REVIEW`、`BLOCKED_PMDA_SAMD_REVIEW`等。詳細はREG-004
+- 実装所有・contract: `IMPLEMENTATION_OWNERSHIP_BLOCKED`、`API_CONTRACT_BLOCKED`
+- common module / generated code: `COMMON_MODULE_*`、`GENERATED_CODE_DRIFT_BLOCKED`
+- SSOT / evidence: `SSOT_UPDATE_REQUIRED`および該当domainの根拠不足BLOCKER
+- migration、external system、runtime capability、security/privacy、data integrityはregistryにある最も具体的な種別を使う
 
-1. 追加調査(Web公式資料調査は許可済み — WP-0014/0015 方式)
-2. scope 変更 / WP 分割
-3. opus4.8 レビュー依頼
-4. 人間レビュー依頼(REG-006 human_review_checklist へ登録)
-5. 人間作業依頼(例: WP-0016 ONS登録、点数の目視ダブルチェック)
-6. future scope へ移動(non_mvp_scope 更新)
+未知種別をfallback文字列で通さず、registry追加が承認されるまでfail-closedで停止する。
+
+## 3. Codex rootによるtriage
+
+Codex rootはmapper evidenceとpre-plan reviewを確認し、次のいずれかをcurrent WPと`State.md`へ記録する。
+
+1. read-only追加調査。公式sourceを優先し、取得日時・版・適用日を記録する
+2. scope変更またはWP分割
+3. relevant domain specialist review
+4. human review依頼(REG-006 `human_review_checklist`へ登録)
+5. human作業依頼(例: ONS登録、点数の目視double-check)
+6. future scopeへ移動し、`non_mvp_scope`を更新
 7. 実装禁止の確定
-8. 代替案採用(SSOT 更新を伴う)
+8. 代替案採用。必要なSSOT改版とevidenceを先行する
+
+rootは法令、調剤報酬、薬学、患者安全、production操作の最終判断を自己承認しない。該当する場合はhuman authorityへエスカレーションする。
 
 ## 4. 優先度
 
-| 優先 | 条件 | 対応期限の目安 |
+| 優先 | 条件 | 対応 |
 |---|---|---|
-| P0 | 患者安全・請求事故・PHI漏えいに直結 | 即時。関連作業を全停止 |
-| P1 | 高リスクWPの進行を止めている | 当該レーンを停止し triage |
-| P2 | 通常WPの進行を止めている | 次の WP 発行前に triage |
-| P3 | 将来作業の前提(ONS登録等の人間作業) | Plans.md に登録し定期リマインド |
+| P0 | 患者安全、請求事故、PHI/secret漏えい、tenant escapeに直結 | 関連作業・landingを即時停止し、human authorityとrequired specialistへ報告 |
+| P1 | high-risk WPの進行を停止 | 当該scopeを停止し、rootが優先triage |
+| P2 | 通常WPの進行を停止 | 次WP着手前にtriage |
+| P3 | 将来作業の前提となるhuman/external作業 | `Plans.md`へ期限・owner・解除条件を記録 |
+
+priorityは納期都合でfail-closed条件を弱める根拠にしない。
 
 ## 5. 解除
 
-- 解除条件は BLOCKER ごとに REG-004 または該当SSOTに明記する(「行単位の解除手順」方式 — CAL-001 参照)。
-- 解除は fable5 が判定し、根拠(evidence_id / レビュー記録)を State.md に記録する。
-- 解除なしに実装で迂回することを禁止する(先例: 空ruleset→BLOCKED を返す算定エンジン骨格)。
+- 解除条件はREG-004または該当APPROVED SSOTに行単位で明記する。
+- sole maintainerはBLOCKERを迂回するcodeを書かない。
+- independent verifierがresolution evidence、regression test、禁止scopeの解除範囲をread-onlyで確認する。
+- relevant specialistとrequired human authorityのreview/approvalが必要な場合、そのrecordなしに解除しない。
+- Codex rootだけが解除を判定し、evidence_id、review record、validation、残riskをcurrent WPと`State.md`へ記録する。
+- 解除後もrootのexact-stage landingを経る。解除は未関係のscope拡大を許可しない。
+
+根拠不足を検知してBLOCKEDを返す挙動は正しいfail-closed実装であり、無理に成功pathへ変えてはならない。

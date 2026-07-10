@@ -4,18 +4,19 @@
 ssot_id: AGT-010
 title: Codex側データ取扱いポリシー
 domain: agents
-status: APPROVED
+status: SUPERSEDED
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-10
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 effective_from: 承認後
-effective_to: null
+effective_to: 2026-07-10
+superseded_by: AGT-018
 source_refs:
   - 構築プロンプト v0.2.0 §0.1.6.14, §0.1.6.7, §0.6, §0.7
 depends_on:
@@ -28,6 +29,7 @@ related_prs: []
 evidence_ids: []
 change_log:
   - 0.1.0 初版作成(Phase 0 作業#1)
+  - 0.2.0 2026-07-10 AGT-018のAPPROVED化に伴いmetadata-onlyでSUPERSEDED (WP-9001)
 open_questions:
   - codex CLI のデータ送信範囲(ローカル実行時にリポジトリ内容がクラウドへ送信される範囲)の確認【要確認】
   - Codex Cloud 利用時のデータレジデンシー・保持ポリシー【要確認】

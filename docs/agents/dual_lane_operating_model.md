@@ -4,18 +4,19 @@
 ssot_id: AGT-001
 title: 二系統運用モデル(Claude側 / Codex側)
 domain: agents
-status: APPROVED
+status: SUPERSEDED
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-10
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 effective_from: 承認後
-effective_to: null
+effective_to: 2026-07-10
+superseded_by: AGT-018
 source_refs:
   - 構築プロンプト v0.2.0 §0.0.2, §0.1.6.1〜§0.1.6.3, §0.1.6.18
   - docs/plan/phase0_plan.md §12
@@ -31,6 +32,7 @@ related_prs: []
 evidence_ids: []
 change_log:
   - 0.1.0 初版作成(Phase 0 作業#1)
+  - 0.2.0 2026-07-10 AGT-018のAPPROVED化に伴いmetadata-onlyでSUPERSEDED (WP-9001)
 open_questions:
   - Codex側モデル名「GPT-5.6 sol max」は実環境で【要確認】(codex-cli 0.143.0 の存在とChatGPTログインは確認済み。実際に使用されるモデルIDは未確認)
 blockers:

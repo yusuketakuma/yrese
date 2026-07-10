@@ -5,24 +5,48 @@ ssot_id: PLAN-UIUX-001
 title: UI/UX 開発計画
 domain: plan
 status: PROPOSED
-owner: fable5
+owner: codex_root
 reviewers:
-  - opus4.8
+  - independent_verifier
+  - frontend_reviewer
+  - ui_flow_tester
+  - accessibility_ux_reviewer
   - human_review_if_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
-source_refs: 構築プロンプト v0.2.0 §7(医療UI原則), ユーザー指示 2026-07-09(component.gallery 活用)
-depends_on: [UIX-001, UIX-002, UIX-003, UIX-004, UIX-006, UIX-007, API-001, API-002, PRD-008]
+updated_at: 2026-07-10
+approved_at:
+approved_by:
+effective_from:
+effective_to: null
+source_refs:
+  - 構築プロンプト v0.2.0 §7(医療UI原則)
+  - ユーザー指示 2026-07-09(component.gallery 活用)
+  - docs/agents/codex_single_lane_operating_model.md
+depends_on: [AGT-018, UIX-001, UIX-002, UIX-003, UIX-004, UIX-006, UIX-007, API-001, API-002, PRD-008]
 impacts: [UIX-007(画面台帳の実装状態更新), Plans.md WP-3006以降]
+related_work_packages:
+  - WP-3006
+  - WP-9001
+related_tests:
+  - pnpm check:ssot-index
+related_prs: []
+evidence_ids: []
+change_log:
+  - 0.1.1 2026-07-10 direct user instruction (WP-9001) により現行UI routingをAGT-018のsole Codex maintainer + independent/domain reviewersへ切替。本文の旧role/model名はprovenanceとして保持
+  - 0.1.0 2026-07-09 初版起案
 open_questions: 受付キュー・処方・調剤・会計の各API契約SSOT(未起草)の採番と起草順
+blockers: []
 ```
+
+> [!IMPORTANT]
+> **proposed UI routing (2026-07-10):** 本文中の旧model名、旧role名、旧lane、旧review呼称は過去の計画provenanceであり、新規Work Packageへコピーしない。AGT-018と本改版がAPPROVEDになった後、`apps/web/**`を含むUIのeditorはactive scopeごとにsole Codex maintainer 1名とする。実装前にread-only mapper / pre-plan reviewer、実装後にmakerとは別contextの`independent_verifier`、`frontend_reviewer`、`ui_flow_tester`、`accessibility_ux_reviewer`が確認する。U4画面・横断安全componentは`medical_safety_reviewer`と`privacy_compliance_reviewer`を必須追加し、薬剤師による専門判断、患者安全・請求安全の人間review/approval gateを省略しない。Codex rootだけがverification後にowned exact pathをstageし、commit/push要件を満たす。WP-9001自体はdirect user instructionにより同routingで実行中である。
 
 ## 1. 目的と上位方針
 
-apps/web(Claude 側所有)の UI/UX を、画面台帳 UIX-007 の29画面に対して段階的に実装するための実行計画。次を上位方針とし、本計画はそれらを変更しない。
+`apps/web/**`をCodex単一レーンのsole maintainerが担当し、画面台帳 UIX-007 の29画面に対してUI/UXを段階的に実装するための実行計画。次を上位方針とし、本計画はそれらを変更しない。
 
-1. **医療UI原則(UIX-001 / v0.2.0 §7)**: 患者文脈の常時固定表示(PatientHeader)、状態は色だけに依存せずテキストラベル併記、システムモード常時可視、U4 画面は opus4.8 医療安全レビュー必須
+1. **医療UI原則(UIX-001 / v0.2.0 §7)**: 患者文脈の常時固定表示(PatientHeader)、状態は色だけに依存せずテキストラベル併記、システムモード常時可視。U4画面はindependent verifier、`medical_safety_reviewer`、`privacy_compliance_reviewer`、accessibility/flow reviewersと、該当する人間薬剤師・患者安全authorityのreviewを必須とする
 2. **contract-first / dogfooding(API-002)**: UI は @yrese/contracts の zod 契約経由でのみ API を呼ぶ。契約外フィールドの仮定禁止、抜け道 API 禁止
 3. **fail-closed の可視化**: BLOCKED・PENDING 系ステータスを隠さない。「なぜ操作できないか」を理由付きで表示する(UIX-007 SCR-013/026 の趣旨)
 4. **デザイン参照規律(ユーザー指示 2026-07-09)**: 新規コンポーネントの設計前に The Component Gallery(https://component.gallery/components/)で標準パターン・命名・バリエーション・a11y 慣行を確認し、独自発明を避ける。医療UI原則と衝突する場合は医療UI原則が優先
@@ -104,4 +128,5 @@ UI-1(WP-3006→3007)→ UI-2(WP-3008→3009→3010)→ UI-3(WP-3011→3012→301
 
 ## 変更履歴
 
+- 0.1.1 (2026-07-10): direct user instruction (WP-9001) により、現行routingをAGT-018のsole Codex maintainer、independent verifier、frontend/UI-flow/accessibility reviewersへ変更。U4のmedical/privacy reviewerと既存の薬剤師・人間gateを維持。本文の旧role/model名は歴史的provenanceとして保持。
 - 0.1.0 (2026-07-09): 初版起案(ユーザー指示「UIUXの今後の開発計画」による)。
