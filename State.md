@@ -2,15 +2,15 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.13はWP-9002-W6B nine-reviewer approvalを経てAPPROVED・landing pending。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.13はWP-9002-W6B nine-reviewer approvalを経てAPPROVED・landed済み。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-11
 
-### WP-9002-W6B QUA-004 metadata — finalized / landing pending
+### WP-9002-W6B QUA-004 metadata — completed / LANDED
 
-- clean `2d695fa`でquality/regulatory/receiptを比較。QUA-001/003はAGT-018と矛盾する旧routing本文、他quality/regulatory/receiptはclaims/legal/production/external意味のため除外し、QUA-004単独exact5へ縮小してpre-plan APPROVED_WITH_PINS。target173/91/82、対象外172 hash `54f8fede…5d45f`。本文/承認、2questions、document-level empty blocker非免除を保持。9 role reviewとworkspace typecheck/test/buildを含むfull gatesが全PASSし、IDX v0.4.13をAPPROVED/effective 2026-07-11へfinalize。exact5 landing pending。
+- clean `2d695fa`でquality/regulatory/receiptを比較。QUA-001/003はAGT-018と矛盾する旧routing本文、他quality/regulatory/receiptはclaims/legal/production/external意味のため除外し、QUA-004単独exact5へ縮小してpre-plan APPROVED_WITH_PINS。target173/91/82、対象外172 hash `54f8fede…5d45f`。本文/承認、2questions、document-level empty blocker非免除を保持。9 role reviewとworkspace typecheck/test/buildを含むfull gatesが全PASSし、IDX v0.4.13をAPPROVED/effective 2026-07-11へfinalize。commit `c9a2641` をorigin/mainへpushし、exact5でLANDED。
 
 ### WP-9002-W6A PLAN-DB metadata — completed / LANDED
 

@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002 W6B QUA-004 metadata finalized; landed 173/92/81, target 173/91/82.
-- Current task: run post-finalization exact/docs gates, then exact5 commit and push.
+- Current phase: WP-9002 W6B QUA-004 metadata landed at 173/91/82; preparing the next wave.
+- Current task: fresh read-only mapping/pre-plan of the next safe metadata or semantic reconciliation slice; preserve all excluded human/claims/legal/production gates.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -37,4 +37,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - WP-9004a landing checkpoint: commit `0b0b5ba` pushed; critical table count/set and summary=11; risk rows/status/version/approval unchanged; independent/medical APPROVED; gates PASS; WP-9004b freshness audit remains separate.
 - W6A landing checkpoint: commit `07bdc96` pushed; inventory 173/92/81; exact5; PLAN-DB body/PROPOSED/null and non-target `17939/467e8abc…` unchanged; ten reviews/full gates PASS; IDX v0.4.12 APPROVED.
 - W6B finalization checkpoint: baseline `2d695fa`; QUA-004 + index/Plans/State/this file; inventory 173/91/82; body `1409/2016ae0b…`; non-target `17807/54f8fede…`; nine reviews/full gates PASS; IDX v0.4.13 APPROVED/effective 2026-07-11.
-- Next action: post-finalization exact/docs gates, exact5 commit/push, then record the three-ledger landing checkpoint before fresh next-wave mapping.
+- W6B landing checkpoint: commit `c9a2641` pushed to `origin/main`; inventory 173/91/82; exact5; QUA-004 body and 172 non-target records unchanged; nine reviews/full gates PASS; no runtime, DB, external, deployment, or destructive change.
+- Next action: complete this three-ledger landing record, then fresh next-wave mapping/pre-plan; do not re-enter QUA-001/003, safety, Phase0-gate, claim, regulatory or receipt docs without their required semantic review.
