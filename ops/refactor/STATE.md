@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002 W5D masters metadata finalized; landed 173/106/67, landing target 173/104/69.
-- Current task: revalidate exact6 finalization, exact-stage, commit, and push; then write the landing record.
+- Current phase: WP-9002 W5D masters metadata landed at 173/104/69; preparing W5E.
+- Current task: map the next coherent metadata-only category from a clean landed baseline, then obtain pre-plan approval before editing.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -16,6 +16,7 @@ This is the resume entrypoint for the active repository reconciliation goal.
   - `74666c9` WP-9002-W5A API metadata migration
   - `05edac6` WP-9002-W5B architecture metadata migration
   - `86319a4` WP-9002-W5C adapters metadata migration
+  - `ea2ddf2` WP-9002-W5D masters metadata migration
 - Verified blockers:
   - WP-4079: R3 stored audit fingerprint version-before-deep-read; explicit human scope approval required.
   - WP-3010 parent: full ARC-001 capability source, live mode/count contract, route/UI flow and pharmacist/claims review.
@@ -26,5 +27,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - Git resume check: run `git status -sb`, `git rev-list --left-right --count origin/main...HEAD`, and `git log -5 --oneline`. Preserve any new unrelated dirty paths. Root alone stages exact task paths and pushes because the active Goal explicitly requests grouped commit/push.
 - W5B landing checkpoint: commit `05edac6` pushed to `origin/main`; inventory 173/108/65; exact14; ten bodies and non-target `19207/de1e4127…` unchanged; nine reviews/full gates PASS; IDX v0.4.7 APPROVED.
 - W5C landing checkpoint: commit `86319a4` pushed to `origin/main`; inventory 173/106/67; exact6; two bodies and non-target `19429/6d777f91…` unchanged; nine reviews/full gates PASS; IDX v0.4.8 APPROVED.
-- W5D finalization checkpoint: baseline `6ca8fc6`; exact6; inventory 173/104/69; target missing0; two bodies and non-target `19224/a70313e7…` unchanged; nine reviews/full gates PASS; IDX v0.4.9 APPROVED.
-- Next action: final invariant/gate check, then exact6 commit/push `WP-9002-W5D: normalize masters metadata` and separate landing record.
+- W5D landing checkpoint: commit `ea2ddf2` pushed to `origin/main`; inventory 173/104/69; exact6; two bodies and non-target `19224/a70313e7…` unchanged; nine reviews/full gates PASS; IDX v0.4.9 APPROVED.
+- Next action: complete this three-ledger landing record, then fresh read-only W5E mapping/pre-plan. Do not edit the next category before approval.
