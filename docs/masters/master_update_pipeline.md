@@ -11,9 +11,11 @@ reviewers:
   - human_review_required
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §21
   - docs/regulatory/source_registry.md(マスター配布元)
@@ -22,6 +24,13 @@ depends_on:
 impacts:
   - packages/masters(将来)
   - Edge Node 配布機構
+related_work_packages: [WP-0007, WP-5006, WP-9002-W5D]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5D metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - 診療報酬情報提供サービスの配布形式・署名/ハッシュ提供有無【要確認】
   - 令和8年度改定対応マスターの適用日・経過措置【要確認】

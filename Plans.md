@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W5C LANDED、106 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W5C LANDED、W5D FINALIZED / LANDING PENDING、landed 106 / target 104 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -617,7 +617,7 @@ validation_results: FINAL PASS before landing — exact12/staged0; inventory173/
 finalization_record: IDX-001 v0.4.6 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and eight W5A approvals appended; API targets unchanged from approved review candidate and API-008 remains PROPOSED
 landing_required: commit_and_push after finalization
 landing_record: commit 74666c9 `WP-9002-W5A: normalize API metadata` pushed successfully to origin/main (134864c..74666c9); inventory 173/118/55; exact 12 paths; eight API bodies/preserved/amendment/blocker states and 165 non-target set unchanged; all eight reviewer/full validation gates APPROVED; no code, DB, external, deployment, or destructive change
-overall_state: W5C LANDED; WP-9002 remains IN_PROGRESS with 106 incomplete SSOT documents and W5D requires fresh mapping/pre-plan
+overall_state: W5D FINALIZED / LANDING PENDING; WP-9002 remains IN_PROGRESS with landed 106 and target 104 incomplete SSOT documents
 ```
 
 #### WP-9002-W5B architecture legacy metadata — LANDED
@@ -659,6 +659,26 @@ validation_results: exact6/staged0、inventory173/106/67、target missing0、2�
 finalization_record: IDX-001 v0.4.8 APPROVED with approved_at/effective_from 2026-07-11; all prior provenance preserved and nine W5C approvals appended; adapter targets unchanged from approved review candidate
 landing_record: commit 86319a4 `WP-9002-W5C: normalize adapter metadata` pushed successfully to origin/main (34d0a6e..86319a4); inventory 173/106/67; exact6; two bodies, preserved/blocker states and 171 non-target fingerprint unchanged; nine reviews and full validation APPROVED; no code, DB, external, deploy, or destructive change
 state: LANDED; WP-9002 remains IN_PROGRESS and W5D starts only after fresh read-only mapping/pre-plan
+```
+
+#### WP-9002-W5D masters legacy metadata — FINALIZED / LANDING PENDING
+
+```yaml
+baseline_commit: 6ca8fc6
+baseline_inventory: { total: 173, incomplete: 106, complete: 67 }
+target_inventory: { total: 173, incomplete: 104, complete: 69 }
+targets: [MST-001, MST-002]
+allowed_files: two masters targets plus index/Plans/State/ops; exact6
+mapping: mutual dependency is pre-existing APPROVED meaning and both targets migrate atomically without changing it
+pre_plan_review: APPROVED_WITH_PINS
+pins: preserve bodies/status/version/human approval/source/mutual dependencies/impacts/questions and MST-001 blocker exact; MST-002 blockers are direct body copies only; document evidence_ids empty does not waive per-master/per-mapping evidence; no JAHIS/master ingestion/DB/production/Edge distribution activation
+non_target: 171 docs / 19224 bytes / SHA-256 a70313e77b512d9fab89f0f82fb1fd2568724bdb2e2342a34507d7d7b8007ade
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, security_critic, privacy_compliance_reviewer, medical_safety_reviewer, claims_evidence_or_master_data_specialist]
+validation: exact invariants plus workspace typecheck/test/build, OpenAPI, calculation-purity, scripts, SSOT, secrets, boundaries, deps, SBOM, diff
+review_results: independent/spec/data-integrity/architect/test/security/privacy/medical/claims-evidence-master-dataの9 roleがAPPROVED。本文/人間承認/相互依存/evidence blocker、document evidence非免除、非activationを確認
+validation_results: exact6/staged0、inventory173/104/69、target missing0、2本文/preserved fields、対象外171 missing-set 19224 bytes / SHA-256 a70313e77b512d9fab89f0f82fb1fd2568724bdb2e2342a34507d7d7b8007adeを確認。workspace typecheck/test/build、OpenAPI、calculation-purity、scripts、SSOT173、secrets、boundaries、deps high0 critical0、SBOM231、diff PASS
+finalization_record: IDX-001 v0.4.9 APPROVED with approved_at/effective_from 2026-07-11; all prior provenance preserved and nine W5D approvals appended; masters targets unchanged from approved review candidate
+state: FINALIZED; landing pending
 ```
 
 - [x] WP-9003 repository reconciliation state pack(Codex-only、resume-safe、docs-only)

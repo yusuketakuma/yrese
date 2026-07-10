@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002 W5C adapters metadata landed at 173/106/67; preparing W5D.
-- Current task: map the next coherent metadata-only category from a clean landed baseline, then obtain pre-plan approval before editing.
+- Current phase: WP-9002 W5D masters metadata finalized; landed 173/106/67, landing target 173/104/69.
+- Current task: revalidate exact6 finalization, exact-stage, commit, and push; then write the landing record.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -26,4 +26,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - Git resume check: run `git status -sb`, `git rev-list --left-right --count origin/main...HEAD`, and `git log -5 --oneline`. Preserve any new unrelated dirty paths. Root alone stages exact task paths and pushes because the active Goal explicitly requests grouped commit/push.
 - W5B landing checkpoint: commit `05edac6` pushed to `origin/main`; inventory 173/108/65; exact14; ten bodies and non-target `19207/de1e4127…` unchanged; nine reviews/full gates PASS; IDX v0.4.7 APPROVED.
 - W5C landing checkpoint: commit `86319a4` pushed to `origin/main`; inventory 173/106/67; exact6; two bodies and non-target `19429/6d777f91…` unchanged; nine reviews/full gates PASS; IDX v0.4.8 APPROVED.
-- Next action: complete this three-ledger landing record, then fresh read-only W5D mapping/pre-plan. Do not edit the next category before approval.
+- W5D finalization checkpoint: baseline `6ca8fc6`; exact6; inventory 173/104/69; target missing0; two bodies and non-target `19224/a70313e7…` unchanged; nine reviews/full gates PASS; IDX v0.4.9 APPROVED.
+- Next action: final invariant/gate check, then exact6 commit/push `WP-9002-W5D: normalize masters metadata` and separate landing record.

@@ -11,9 +11,11 @@ reviewers:
   - human_review_required
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §22, §26, §27
 depends_on:
@@ -22,10 +24,20 @@ depends_on:
 impacts:
   - packages/masters(将来)
   - Official Adapter 全種(コード変換の共通基盤)
+related_work_packages: [WP-0007, WP-9002-W5D]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5D metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - 電子処方箋医薬品コード対応表の配布形式【要確認】
   - JAHIS 規約内コード表の利用条件(規約入手後)
   - mapping_confidence の閾値運用(人間レビュー通過基準)
+blockers:
+  - "BLOCKED_CODE_MAPPING_REVIEW: derived / ambiguous mapping は薬剤師または請求実務者のレビュー完了まで請求経路で使用禁止"
+  - 公式対応表・規約の evidence_id がないマッピング登録は禁止
 ```
 
 ## 1. 原則(v0.2.0 §22)
