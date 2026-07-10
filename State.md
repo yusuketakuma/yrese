@@ -2,11 +2,16 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.11はWP-9002-W5F ten-reviewer approvalを経てAPPROVED・landed済み。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.12はWP-9002-W6A ten-reviewer approvalを経てAPPROVED・landing pending。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-11
+
+### WP-9002-W6A PLAN-DB metadata — finalized / landing pending
+
+- clean `05a1edc`でsafety/plan/claim最小カテゴリを再評価。SAFはWP-9004b、claimはclaims semantics、Phase0 gate reportはstale historical blockersのため除外し、PLAN-DB-001単独exact5をpre-plan APPROVED_WITH_PINS。target173/92/81、対象外172 hash `467e8abc…9729709`。PROPOSED/null承認、本文・open question・6停止条件を保持した。
+- independent/spec/data-integrity/architect/DB/test/claims-evidence/security/privacy/medicalの10 roleがAPPROVED。workspace full gates PASS。IDX v0.4.12を旧provenance+10承認でAPPROVED finalizationし、exact5 landing待ち。PLAN-DB自体はPROPOSED/null承認、DB/infra/production非activation。
 
 ### WP-9004a SAF-001 critical aggregate correction — completed / LANDED
 

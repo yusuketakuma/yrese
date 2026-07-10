@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9004a landed; WP-9002 W6A selection resumes from inventory 173/93/80.
-- Current task: re-map the next safe metadata category after excluding SAF-001/002 pending WP-9004b evidence freshness review.
+- Current phase: WP-9002 W6A PLAN-DB metadata finalized; landed 173/93/80, landing target 173/92/81.
+- Current task: revalidate exact5 finalization, exact-stage, commit, and push; then write the landing record.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -34,4 +34,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W5E landing checkpoint: commit `a57bacd` pushed to `origin/main`; inventory 173/99/74; exact9; five bodies and non-target `18537/c3a067a4…` unchanged; ten reviews/full gates PASS; IDX v0.4.10 APPROVED.
 - W5F landing checkpoint: commit `5976a0a` pushed to `origin/main`; inventory 173/93/80; exact10; six bodies and non-target `17899/59f36f3f…` unchanged; ten reviews/full gates PASS; IDX v0.4.11 APPROVED.
 - WP-9004a landing checkpoint: commit `0b0b5ba` pushed; critical table count/set and summary=11; risk rows/status/version/approval unchanged; independent/medical APPROVED; gates PASS; WP-9004b freshness audit remains separate.
-- Next action: complete this three-ledger landing record, then choose the next safe W6A category from a clean baseline; safety pair remains excluded until WP-9004b review.
+- W6A finalization checkpoint: baseline `05a1edc`; exact5; inventory 173/92/81; target missing0/body unchanged; non-target `17939/467e8abc…`; ten reviews/full gates PASS; IDX v0.4.12 APPROVED; PLAN-DB remains PROPOSED/null.
+- Next action: final invariant/gate check, then exact5 commit/push `WP-9002-W6A: normalize database plan metadata` and separate landing record.

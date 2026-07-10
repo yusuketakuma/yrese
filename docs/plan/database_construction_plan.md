@@ -11,11 +11,35 @@ reviewers:
   - human_review_if_required(本番インフラ確定時)
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
+approved_at: null
+approved_by: null
+effective_from: null
+effective_to: null
 source_refs: ユーザー指示 2026-07-09(各種データベースの構築計画立案)
 depends_on: [DOM-002, ARC-004, ARC-005, ARC-006, ARC-010, ARC-011, SEC-006, SEC-007, SEC-008, MOD-009, MOD-010, MST-001, API-001, API-006, OPS-005, REG-003]
 impacts: [Plans.md WP-5001以降, apps/api(リポジトリ差し替え), packages/events(Outbox永続化)]
+related_work_packages: [WP-5001, WP-5002, WP-5003, WP-5004, WP-5005, WP-5006, WP-5007, WP-5008, WP-9002-W6A]
+related_tests:
+  - apps/api/src/db/migrations.test.ts
+  - apps/api/src/db/migration-state.test.ts
+  - apps/api/src/db/migration-ddl.test.ts
+  - apps/api/src/db/migration-runner.integration.test.ts
+  - apps/api/src/db/postgres-repositories.integration.test.ts
+  - apps/api/src/db/test-database-environment.test.ts
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W6A metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions: 保存期間・削除方針の法令要求(BLOCKED_LEGAL_REVIEW)/ 本番リージョン・DR構成(BLOCKED_SECURITY_REVIEW)
+blockers:
+  - BLOCKED_SECURITY_REVIEW
+  - BLOCKED_LEGAL_REVIEW
+  - BLOCKED_PERFORMANCE_SLO
+  - SSOT_UPDATE_REQUIRED
+  - BLOCKED_REGULATORY_REVIEW
+  - BLOCKED_MEDICAL_SAFETY_REVIEW
 ```
 
 ## 1. 目的と上位制約
