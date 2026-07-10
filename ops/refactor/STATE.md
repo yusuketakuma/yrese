@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9007 SEC-008 fact/routing freshness is finalized at inventory 173/82/91; exact5 landing is pending.
-- Current task: recheck finalized exact5/staged paths, commit and push the owned WP-9007 landing, then record the three-ledger landing.
+- Current phase: WP-9007 SEC-008 fact/routing freshness landed at inventory 173/82/91.
+- Current task: perform fresh mapping/pre-plan for the next safe reconciliation slice.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -56,4 +56,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - Residual checkpoint: verified total is 83 incomplete. Mapper A/B/C grouping is provisional advisory because no tracked 83-ID manifest exists; do not use it for queue-wide terminal or no-overlap claims.
 - WP-9007 review checkpoint: baseline `e14dd04`; SEC-008 + index/Plans/State/this file exact5; SEC-008 and IDX v0.4.19 began PROPOSED/null; target 173/82/91; revised body `5738/f9104fa8…`; non-target `172/16879/060cf2b2…`. Privacy/medical clarification requires both pure-core and applicable persistence evidence for tamper-evident external claims, separate authority/operations proof for WORM claims, and says break-glass correlation/causation has no cross-event runtime enforcement. All physical WORM/KMS/RLS/retention/break-glass authorization/production boundaries remain BLOCKED and human-gated.
 - WP-9007 finalization checkpoint: all ten required roles APPROVED; SEC-008 v0.1.2 and IDX v0.4.19 APPROVED/effective 2026-07-11; exact5/staged0; all23; inventory173/82/91; non-target `172/16879/060cf2b2…`; audit182 and workspace typecheck/test/build PASS; API161 plus nine expected PostgreSQL skips without TEST_DATABASE_URL; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS. No physical WORM/KMS/RLS, retention/legal, break-glass authorization, persistence, production, DB, external or deployment change.
-- Next action: exact-stage and push the finalized five paths; then write and land the three-ledger landing record.
+- WP-9007 landing checkpoint: commit `4a2cefd` pushed to `origin/main` (d43a905..4a2cefd); exact5; inventory173/82/91; ten reviews/full gates APPROVED; no physical WORM/KMS/RLS, retention/legal, break-glass authorization, persistence, production, DB, external, deployment or destructive change.
+- Next action: complete this three-ledger record, then fresh map/pre-plan the next safe residual slice. Remaining 82 incomplete SSOT documents require per-slice factual/human-gate assessment; provisional A/B/C counts are not a terminal manifest.

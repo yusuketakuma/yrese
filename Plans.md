@@ -902,7 +902,7 @@ landing_record: commit 770590a `WP-9006: align product scope routing with AGT-01
 state: LANDED
 ```
 
-- [~] WP-9007 SEC-008 audit security fact/routing freshness semantic amendment(FINALIZED / LANDING PENDING、P1)
+- [x] WP-9007 SEC-008 audit security fact/routing freshness semantic amendment(LANDED、commit 4a2cefd、P1)
 
 ```yaml
 work_package_id: WP-9007
@@ -927,7 +927,8 @@ review_results: independent_verifier, spec_guardian, data_integrity_auditor, arc
 validation_results: FINAL PASS before landing — exact5/staged0; SEC-008 all23 and body5738/f9104fa8728da7e65333d1e7af162862830ce2e84afbf79ba3ba71ea9e9def8c; inventory173/82/91; non-target172/16879/060cf2b2ddf3e60b03c7f8580527d2b36313d8409ad24b349cdf4c5571bb2ccd; audit182, workspace typecheck/test/build PASS; API161 plus 9 expected PostgreSQL skips without TEST_DATABASE_URL; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS.
 finalization_record: SEC-008 v0.1.2 and IDX-001 v0.4.19 APPROVED with approved_at/effective_from 2026-07-11; prior 0.1.1 approval is historical only; WP-9001 direct cutover plus ten WP-9007 role approvals recorded; no physical WORM/KMS/RLS, retention/legal, break-glass authorization, persistence or production decision adopted.
 landing_required: exact5 commit_and_push
-state: FINALIZED; exact5 landing pending
+landing_record: commit 4a2cefd `WP-9007: synchronize audit security facts` pushed successfully to origin/main (d43a905..4a2cefd); exact5; inventory173/82/91; ten reviews/full gates APPROVED; no physical WORM/KMS/RLS, retention/legal, break-glass authorization, persistence, production, DB, external, deployment or destructive change.
+state: LANDED
 ```
 
 ## Phase 0: 調査・計画(ドキュメント)

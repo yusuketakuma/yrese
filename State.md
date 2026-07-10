@@ -2,16 +2,16 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.19はWP-9007 ten-reviewer approvalを経てAPPROVED・landing pending。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.19はWP-9007 ten-reviewer approvalを経てAPPROVED・landed済み。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-11
 
-### WP-9007 SEC-008 audit security freshness — FINALIZED / landing pending
+### WP-9007 SEC-008 audit security freshness — LANDED
 
 - verified residualは83 incomplete。mapperのA metadata / B fact-routing / C human-authority分類はtracked全件manifest未作成の暫定advisoryで、queue-wide terminal判定には使わない。SEC-008 exact5 candidateでWP-5004a/WP-2009/WP-2010 pure-core実装事実だけを同期し、persistence/WORM/KMS/RLS/retention/break-glass authorization/productionは未実装・human-gatedのまま。privacy/medical reviewの指摘により、tamper-evident対外訴求はpure coreと適用永続層の双方証拠、WORM訴求は採用authorityと運用検証を必須化し、correlation/causationはcaller-supplied規律でcross-event enforcementではないと明記した。候補時のSEC-008/IDX v0.4.19はPROPOSED/nullで、23 field充足、baseline `e14dd04`、target173/82/91、non-target172 `16879/060cf2b2…`、expected body `5738/f9104fa8…`。この候補を独立re-reviewとfull validationへ通した。
-- independent/spec/data/architect/DB/API/test/security/privacy/medicalの10 roleがAPPROVED。audit182、workspace typecheck/test/build、OpenAPI、calculation-purity、scripts、SSOT173、secrets、boundaries、deps high0/critical0、SBOM231、diffがPASSし、API PostgreSQL integration 9件は`TEST_DATABASE_URL`なしのexpected skip。SEC-008 v0.1.2とIDX v0.4.19をAPPROVED/effective 2026-07-11へfinalize。physical WORM/KMS/RLS、retention/legal、break-glass authorization、persistence、productionは未実装・human-gatedのまま。exact5 landing pending。
+- independent/spec/data/architect/DB/API/test/security/privacy/medicalの10 roleがAPPROVED。audit182、workspace typecheck/test/build、OpenAPI、calculation-purity、scripts、SSOT173、secrets、boundaries、deps high0/critical0、SBOM231、diffがPASSし、API PostgreSQL integration 9件は`TEST_DATABASE_URL`なしのexpected skip。SEC-008 v0.1.2とIDX v0.4.19をAPPROVED/effective 2026-07-11へfinalize。physical WORM/KMS/RLS、retention/legal、break-glass authorization、persistence、productionは未実装・human-gatedのまま。exact5をcommit `4a2cefd`として`origin/main`へpushしLANDED。
 
 ### WP-9002-W7B ACC-007 metadata — completed / LANDED
 
