@@ -128,20 +128,19 @@ const optionalEventFields = [
   "reasonCode",
 ] as const satisfies readonly (keyof AuditEvent)[];
 
+const optionalIntentFields = [
+  "businessReason",
+  "causationId",
+  "deadLetterReason",
+  "deviceId",
+  "reasonCode",
+] as const satisfies readonly (keyof AuditAppendIntent)[];
+
 const auditEventIntentFingerprintInputFields = {
   context: true,
   event: true,
   fingerprintSchemaVersion: true,
 } as const satisfies Record<keyof AuditEventIntentFingerprintInput, true>;
-
-function assertExactRecordKeys(
-  value: unknown,
-  allowedFields: Readonly<Record<string, true>>,
-  requiredFields: readonly string[],
-  label: string,
-): asserts value is Record<string, unknown> {
-  copyExactRecord(value, allowedFields, requiredFields, [], label);
-}
 
 function copyExactRecord(
   value: unknown,
@@ -187,6 +186,18 @@ function copyExactRecord(
   return copy;
 }
 
+function copyTargetRef(value: unknown, label: string): AuditEvent["targetRef"] {
+  return Object.freeze(
+    copyExactRecord(value, { id: true, kind: true }, ["id", "kind"], [], label),
+  ) as unknown as AuditEvent["targetRef"];
+}
+
+function copyBusinessReason(value: unknown, label: string): AuditEvent["businessReason"] {
+  return Object.freeze(
+    copyExactRecord(value, { code: true }, ["code"], [], label),
+  ) as unknown as NonNullable<AuditEvent["businessReason"]>;
+}
+
 export function copyExactAuditEventShape(value: unknown): AuditEvent {
   const optionalFields = new Set<string>(optionalEventFields);
   const event = copyExactRecord(
@@ -196,25 +207,9 @@ export function copyExactAuditEventShape(value: unknown): AuditEvent {
     optionalEventFields,
     "auditEvent",
   );
-  event.targetRef = Object.freeze(
-    copyExactRecord(
-      event.targetRef,
-      { id: true, kind: true },
-      ["id", "kind"],
-      [],
-      "auditEvent.targetRef",
-    ),
-  );
+  event.targetRef = copyTargetRef(event.targetRef, "auditEvent.targetRef");
   if (Object.hasOwn(event, "businessReason")) {
-    event.businessReason = Object.freeze(
-      copyExactRecord(
-        event.businessReason,
-        { code: true },
-        ["code"],
-        [],
-        "auditEvent.businessReason",
-      ),
-    );
+    event.businessReason = copyBusinessReason(event.businessReason, "auditEvent.businessReason");
   }
   return Object.freeze(event) as unknown as AuditEvent;
 }
@@ -223,6 +218,26 @@ function copyAuditWriteContext(value: unknown): AuditWriteContext {
   return Object.freeze(
     copyExactRecord(value, contextFields, Object.keys(contextFields), [], "context"),
   ) as unknown as AuditWriteContext;
+}
+
+function copyAuditAppendIntent(value: unknown): AuditAppendIntent {
+  const optionalFields = new Set<string>(optionalIntentFields);
+  const intent = copyExactRecord(
+    value,
+    intentFields,
+    Object.keys(intentFields).filter((field) => !optionalFields.has(field)),
+    optionalIntentFields,
+    "intent",
+  );
+  intent.targetRef = copyTargetRef(intent.targetRef, "intent.targetRef");
+  if (Object.hasOwn(intent, "businessReason")) {
+    intent.businessReason = copyBusinessReason(intent.businessReason, "intent.businessReason");
+  }
+  intent.wallClock = normalizeCanonicalInstant(
+    intent.wallClock as string | Date,
+    "intent.wallClock",
+  );
+  return Object.freeze(intent) as unknown as AuditAppendIntent;
 }
 
 export function projectAuditEventIntentFingerprintInput(
@@ -259,37 +274,7 @@ export function projectAuditEventIntentFingerprintInput(
   });
 }
 
-function projectTargetRef(value: AuditAppendIntent["targetRef"]): Record<string, unknown> {
-  assertExactRecordKeys(value, { id: true, kind: true }, ["id", "kind"], "intent.targetRef");
-  return {
-    id: value.id,
-    kind: value.kind,
-  };
-}
-
-function projectBusinessReason(
-  value: NonNullable<AuditAppendIntent["businessReason"]>,
-): Record<string, unknown> {
-  assertExactRecordKeys(value, { code: true }, ["code"], "intent.businessReason");
-  return { code: value.code };
-}
-
 function canonicalizeV1(context: AuditWriteContext, intent: AuditAppendIntent): string {
-  assertExactRecordKeys(context, contextFields, Object.keys(contextFields), "context");
-  assertExactRecordKeys(
-    intent,
-    intentFields,
-    Object.keys(intentFields).filter(
-      (key) =>
-        key !== "businessReason" &&
-        key !== "causationId" &&
-        key !== "deadLetterReason" &&
-        key !== "deviceId" &&
-        key !== "reasonCode",
-    ),
-    "intent",
-  );
-
   const canonicalContext: Record<keyof AuditWriteContext, unknown> = {
     actorId: context.actorId,
     pharmacyId: context.pharmacyId,
@@ -299,8 +284,7 @@ function canonicalizeV1(context: AuditWriteContext, intent: AuditAppendIntent): 
     aggregateId: intent.aggregateId,
     aggregateType: intent.aggregateType,
     auditEventType: intent.auditEventType,
-    businessReason:
-      intent.businessReason === undefined ? undefined : projectBusinessReason(intent.businessReason),
+    businessReason: intent.businessReason,
     causationId: intent.causationId,
     correlationId: intent.correlationId,
     deadLetterReason: intent.deadLetterReason,
@@ -316,8 +300,8 @@ function canonicalizeV1(context: AuditWriteContext, intent: AuditAppendIntent): 
     retryCount: intent.retryCount,
     schemaVersion: intent.schemaVersion,
     syncStatus: intent.syncStatus,
-    targetRef: projectTargetRef(intent.targetRef),
-    wallClock: normalizeCanonicalInstant(intent.wallClock, "intent.wallClock"),
+    targetRef: intent.targetRef,
+    wallClock: intent.wallClock,
   };
 
   return canonicalJsonString(
@@ -329,13 +313,14 @@ function canonicalizeV1(context: AuditWriteContext, intent: AuditAppendIntent): 
   );
 }
 
-export function canonicalizeAuditAppendIntentFingerprintInput(
-  input: AuditIntentFingerprintInput,
-): string {
-  assertExactRecordKeys(
-    input,
+export function snapshotAuditAppendIntentFingerprintInput(
+  value: AuditIntentFingerprintInput,
+): AuditIntentFingerprintInput {
+  const input = copyExactRecord(
+    value,
     fingerprintInputFields,
     Object.keys(fingerprintInputFields),
+    [],
     "fingerprintInput",
   );
 
@@ -350,8 +335,26 @@ export function canonicalizeAuditAppendIntentFingerprintInput(
 
   switch (fingerprintSchemaVersion) {
     case AUDIT_INTENT_FINGERPRINT_SCHEMA_VERSION:
-      return canonicalizeV1(input.context, input.intent);
+      return Object.freeze({
+        fingerprintSchemaVersion,
+        context: copyAuditWriteContext(input.context),
+        intent: copyAuditAppendIntent(input.intent),
+      });
     default:
       throw new UnsupportedAuditIntentFingerprintSchemaVersionError();
   }
+}
+
+export function canonicalizeAuditAppendIntentFingerprintSnapshot(
+  snapshot: AuditIntentFingerprintInput,
+): string {
+  return canonicalizeV1(snapshot.context, snapshot.intent);
+}
+
+export function canonicalizeAuditAppendIntentFingerprintInput(
+  input: AuditIntentFingerprintInput,
+): string {
+  return canonicalizeAuditAppendIntentFingerprintSnapshot(
+    snapshotAuditAppendIntentFingerprintInput(input),
+  );
 }

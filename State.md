@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-07-11
+
+### WP-4078 direct audit intent fingerprint single-snapshot/Proxy TOCTOU hardening — completed
+
+- AGT-018のread-only mapper / spec guardianがcurrent diffをAPPROVED SSOTへ再照合し、Codex root sole maintainerがdirect append fingerprintを単一frozen descriptor snapshotへ変更した。outer version-first、v1 deep copy、canonical `wallClock` exactly once、同一snapshotによるhash/domain validationでProxy/mutable inputのhash-A/validate-Bを除去した。
+- stored M3a behavior、public API、v1 canonical JSON/golden `2c3a02b9051c29598991a60ebffaa1636e1ac9fdab74af88b4a6e7d164e02745`、既存error class/messageは不変。direct optional明示`undefined`は承認済み5項目だけを新規拒否し、API/AWS/DB/raw item/network/package/lock/SSOTは変更していない。
+- focused 80/80、audit 182/182、audit typecheck/build、workspace typecheck/test/build、OpenAPI/secrets/deps(high=0, critical=0)/SBOM(231)/boundaries/calculation-purity/SSOT index(173)/script harness/diff checkがPASS。PostgreSQL integration 9件は`TEST_DATABASE_URL`不在のexpected skipで、DB操作なし。
+- independent verifier、security/data-integrity、medical-safety、privacy reviewerはAPPROVED。active Goal §10をR3事前human authorizationとして記録し、監査意味変更・PHI・storage/log・production・migration・残存risk受容なし。rollbackはaudit 3ファイルのatomic revert。
+- 別finding WP-4079はstored pathのversion-before-deep-read問題として`BLOCKED_HUMAN_SCOPE_APPROVAL`へ分離した。
+
 ## 2026-07-10
 
 ### WP-9002-W2 MOD-011/MOD-014 legacy frontmatter migration — LANDED

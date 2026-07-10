@@ -200,6 +200,202 @@ describe("audit append intent fingerprint v1 golden vector", () => {
     expect(() => computeAuditAppendIntentFingerprint(accessorInput)).toThrow(/data property/);
   });
 
+  it("reads each direct Proxy data descriptor once and never invokes property getters", () => {
+    const descriptorReads = new Map<string, number>();
+    const propertyReads = new Map<string, number>();
+    const singleReadProxy = <T extends object>(label: string, target: T): T =>
+      new Proxy(target, {
+        getOwnPropertyDescriptor: (current, key) => {
+          const countKey = `${label}.${String(key)}`;
+          const nextCount = (descriptorReads.get(countKey) ?? 0) + 1;
+          descriptorReads.set(countKey, nextCount);
+          if (nextCount > 1) {
+            throw new Error(`descriptor-read-twice:${countKey}`);
+          }
+          return Reflect.getOwnPropertyDescriptor(current, key);
+        },
+        get: (_current, key) => {
+          const countKey = `${label}.${String(key)}`;
+          propertyReads.set(countKey, (propertyReads.get(countKey) ?? 0) + 1);
+          throw new Error(`property-get-must-not-run:${countKey}`);
+        },
+      });
+
+    const targetRefTarget = { ...syntheticIntent().targetRef };
+    const businessReasonTarget = { ...syntheticIntent().businessReason! };
+    const targetRef = singleReadProxy("targetRef", targetRefTarget);
+    const businessReason = singleReadProxy("businessReason", businessReasonTarget);
+    const intentTarget = syntheticIntent({ targetRef, businessReason });
+    const intent = singleReadProxy("intent", intentTarget);
+    const contextTarget = syntheticContext();
+    const context = singleReadProxy("context", contextTarget);
+    const outerTarget = fingerprintInput({ context, intent });
+    const outer = singleReadProxy("outer", outerTarget);
+
+    expect(computeAuditAppendIntentFingerprint(outer)).toEqual({
+      fingerprintSchemaVersion: 1,
+      intentFingerprint: expectedFingerprint,
+    });
+    for (const [label, target] of [
+      ["outer", outerTarget],
+      ["context", contextTarget],
+      ["intent", intentTarget],
+      ["targetRef", targetRefTarget],
+      ["businessReason", businessReasonTarget],
+    ] as const) {
+      for (const key of Reflect.ownKeys(target)) {
+        expect(descriptorReads.get(`${label}.${String(key)}`)).toBe(1);
+      }
+    }
+    expect(propertyReads.size).toBe(0);
+  });
+
+  it("uses descriptor values for both hashing and validation instead of hostile Proxy getters", () => {
+    const getterOnlyAttackerValue = "audit.getter_only_attacker_value";
+    let getterReads = 0;
+    const getterIntent = new Proxy(syntheticIntent(), {
+      get: (current, key, receiver) => {
+        getterReads += 1;
+        if (key === "auditEventType") {
+          return getterOnlyAttackerValue;
+        }
+        if (key === "phiClassification") {
+          return "phi";
+        }
+        return Reflect.get(current, key, receiver);
+      },
+    });
+
+    expect(
+      computeAuditAppendIntentFingerprint(fingerprintInput({ intent: getterIntent })),
+    ).toEqual({
+      fingerprintSchemaVersion: 1,
+      intentFingerprint: expectedFingerprint,
+    });
+    expect(getterReads).toBe(0);
+
+    const descriptorAttackerValue = "audit.descriptor_attacker_value";
+    let descriptorGetterReads = 0;
+    const descriptorIntent = new Proxy(syntheticIntent(), {
+      getOwnPropertyDescriptor: (current, key) => {
+        const descriptor = Reflect.getOwnPropertyDescriptor(current, key);
+        if (key === "auditEventType" && descriptor !== undefined && "value" in descriptor) {
+          return { ...descriptor, value: descriptorAttackerValue };
+        }
+        return descriptor;
+      },
+      get: (current, key, receiver) => {
+        descriptorGetterReads += 1;
+        return Reflect.get(current, key, receiver);
+      },
+    });
+
+    try {
+      computeAuditAppendIntentFingerprint(fingerprintInput({ intent: descriptorIntent }));
+      throw new Error("expected descriptor-supplied audit event type to fail");
+    } catch (error) {
+      expect(error).toBeInstanceOf(RangeError);
+      expect((error as Error).message).toBe("unknown auditEventType");
+      expect((error as Error).message).not.toContain(descriptorAttackerValue);
+    }
+    expect(descriptorGetterReads).toBe(0);
+  });
+
+  it("normalizes a hostile Date subclass exactly once into the shared snapshot", () => {
+    const firstCanonicalInstant = "2026-07-10T00:00:00.000Z";
+    class HostileDate extends Date {
+      getTimeCalls = 0;
+      toISOStringCalls = 0;
+
+      override getTime(): number {
+        this.getTimeCalls += 1;
+        if (this.getTimeCalls > 1) {
+          throw new Error("getTime-must-not-run-twice");
+        }
+        return super.getTime();
+      }
+
+      override toISOString(): string {
+        this.toISOStringCalls += 1;
+        if (this.toISOStringCalls > 1) {
+          throw new Error("toISOString-must-not-run-twice");
+        }
+        return firstCanonicalInstant;
+      }
+    }
+    const hostileDate = new HostileDate(firstCanonicalInstant);
+
+    const hostile = computeAuditAppendIntentFingerprint(
+      fingerprintInput({
+        intent: syntheticIntent({ wallClock: hostileDate as unknown as string }),
+      }),
+    );
+    const ordinary = computeAuditAppendIntentFingerprint(
+      fingerprintInput({
+        intent: syntheticIntent({ wallClock: firstCanonicalInstant }),
+      }),
+    );
+
+    expect(hostileDate.getTimeCalls).toBe(1);
+    expect(hostileDate.toISOStringCalls).toBe(1);
+    expect(hostile).toEqual(ordinary);
+    expect(hostile.intentFingerprint).toBe(expectedFingerprint);
+  });
+
+  it.each([
+    "businessReason",
+    "causationId",
+    "deadLetterReason",
+    "deviceId",
+    "reasonCode",
+  ] as const)("rejects direct optional field %s when explicitly undefined", (field) => {
+    const intent = { ...syntheticIntent(), [field]: undefined } as unknown as AuditAppendIntent;
+
+    expect(() =>
+      computeAuditAppendIntentFingerprint(fingerprintInput({ intent })),
+    ).toThrow(`intent.${field} must be omitted instead of undefined`);
+  });
+
+  it("rejects an unsupported version before inspecting a malformed intent", () => {
+    let deepReads = 0;
+    const malformedTarget = syntheticIntent();
+    Object.defineProperty(malformedTarget, "auditEventType", {
+      enumerable: true,
+      get: () => {
+        deepReads += 1;
+        return "audit.accessor_attacker_value";
+      },
+    });
+    const malformedIntent = new Proxy(malformedTarget, {
+      getPrototypeOf: (current) => {
+        deepReads += 1;
+        return Reflect.getPrototypeOf(current);
+      },
+      ownKeys: (current) => {
+        deepReads += 1;
+        return Reflect.ownKeys(current);
+      },
+      getOwnPropertyDescriptor: (current, key) => {
+        deepReads += 1;
+        return Reflect.getOwnPropertyDescriptor(current, key);
+      },
+      get: (current, key, receiver) => {
+        deepReads += 1;
+        return Reflect.get(current, key, receiver);
+      },
+    });
+
+    expect(() =>
+      computeAuditAppendIntentFingerprint(
+        fingerprintInput({
+          fingerprintSchemaVersion: 2,
+          intent: malformedIntent,
+        }),
+      ),
+    ).toThrow(UnsupportedAuditIntentFingerprintSchemaVersionError);
+    expect(deepReads).toBe(0);
+  });
+
   it("rejects unknown nested and missing required fields", () => {
     const unknownNested = {
       ...syntheticIntent(),
@@ -265,6 +461,10 @@ describe("audit append intent fingerprint v1 golden vector", () => {
   it("does not expose the raw canonical fingerprint input through the package public API", () => {
     expect(Object.hasOwn(auditPublicApi, "canonicalizeAuditAppendIntentFingerprint")).toBe(false);
     expect(Object.hasOwn(auditPublicApi, "canonicalizeAuditAppendIntentFingerprintInput")).toBe(
+      false,
+    );
+    expect(Object.hasOwn(auditPublicApi, "snapshotAuditAppendIntentFingerprintInput")).toBe(false);
+    expect(Object.hasOwn(auditPublicApi, "canonicalizeAuditAppendIntentFingerprintSnapshot")).toBe(
       false,
     );
     expect(typeof auditPublicApi.computeAuditAppendIntentFingerprint).toBe("function");

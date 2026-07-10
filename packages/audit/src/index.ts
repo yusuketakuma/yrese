@@ -6,9 +6,10 @@ import { createKernelErrorCodeRegistry, type UserId } from "@yrese/shared-kernel
 import { canonicalJsonString, normalizeCanonicalInstant } from "./canonical-json.js";
 import {
   AUDIT_INTENT_FINGERPRINT_SCHEMA_VERSION,
-  canonicalizeAuditAppendIntentFingerprintInput,
+  canonicalizeAuditAppendIntentFingerprintSnapshot,
   copyExactAuditEventShape,
   projectAuditEventIntentFingerprintInput,
+  snapshotAuditAppendIntentFingerprintInput,
   type AuditEventIntentFingerprintInput,
   type AuditIntentFingerprint,
   type AuditIntentFingerprintInput,
@@ -518,13 +519,13 @@ export function hydrateAuditEvent(value: unknown): AuditEvent {
 function canonicalizeAuditAppendIntentFingerprint(
   input: AuditIntentFingerprintInput,
 ): string {
-  // Exact-key canonicalization runs before dereferencing the input for domain validation.
-  const canonicalJson = canonicalizeAuditAppendIntentFingerprintInput(input);
+  const snapshot = snapshotAuditAppendIntentFingerprintInput(input);
+  const canonicalJson = canonicalizeAuditAppendIntentFingerprintSnapshot(snapshot);
   createAuditEvent({
-    ...input.intent,
-    tenantId: input.context.tenantId,
-    pharmacyId: input.context.pharmacyId,
-    actorId: input.context.actorId,
+    ...snapshot.intent,
+    tenantId: snapshot.context.tenantId,
+    pharmacyId: snapshot.context.pharmacyId,
+    actorId: snapshot.context.actorId,
     sequenceNumber: 1n,
     prevHash: AUDIT_GENESIS_PREV_HASH,
   });
