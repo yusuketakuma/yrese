@@ -13,7 +13,9 @@ reviewers:
   - human_review_if_required(セキュリティ/法令 — 機微部は BLOCKED_SECURITY_REVIEW/BLOCKED_LEGAL_REVIEW に退避)
 version: 0.1.2
 created_at: 2026-07-10
-updated_at: 2026-07-10
+updated_at: 2026-07-11
+effective_from: null
+effective_to: null
 source_refs:
   - docs/architecture/fhir_native_phos_aws_platform_direction.md(ARC-008 v0.1.2 APPROVED — 方針正本)
   - docs/research/dynamodb_fhir_store_design_proposal.md(WP-6001 codex 設計提案 — 骨格の入力)
@@ -43,6 +45,17 @@ impacts:
   - apps/api persistence adapters(または新規 persistence パッケージ)
   - packages/contracts(FhirResourceStore/ProjectionStore/AuditAppendStore の入出力契約)
   - scripts/check-boundaries.mjs(AWS/DynamoDB import 境界検査の拡張 = WP-6002)
+related_work_packages: [WP-5004, WP-6001, WP-6002, WP-7001, WP-9002-W5E]
+related_tests:
+  - packages/audit/src/audit.test.ts
+  - packages/audit/src/audit-hydration.test.ts
+  - packages/audit/src/intent-fingerprint.test.ts
+  - apps/api/src/dynamodb/audit-persistence-key-codec.test.ts
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5E metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - Q3 上位ティア: per-tenant table/account 物理分離(高リスク/大規模テナント向け)の提供有無と条件(商用判断 + SEC-008)
   - HMAC 決定的検索トークンの許容範囲(exact-token のみか、低感度粗バケットを許すか)は SEC-008 で確定

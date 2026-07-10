@@ -18,11 +18,12 @@ reviewers:
   - test_architect
   - architect
   - claims_evidence_or_master_data_specialist
-version: 0.4.9
+  - db_steward
+version: 0.4.10
 created_at: 2026-07-09
 updated_at: 2026-07-11
 approved_at: 2026-07-11
-approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; spec_guardian APPROVED; data_integrity_auditor APPROVED; WP-9002-W1 independent_verifier APPROVED; WP-9002-W1 spec_guardian APPROVED; WP-9002-W1 data_integrity_auditor APPROVED; WP-9002-W1 medical_safety_reviewer APPROVED; WP-9002-W1 privacy_compliance_reviewer APPROVED; WP-9002-W1 security_critic APPROVED; WP-9002-W2 independent_verifier APPROVED; WP-9002-W2 test_architect APPROVED; WP-9002-W2 spec_guardian APPROVED; WP-9002-W2 api_contract_reviewer APPROVED; WP-9002-W2 data_integrity_auditor APPROVED; WP-9002-W2 medical_safety_reviewer APPROVED; WP-9002-W2 privacy_compliance_reviewer APPROVED; WP-9002-W3 independent_verifier APPROVED; WP-9002-W3 spec_guardian APPROVED; WP-9002-W3 data_integrity_auditor APPROVED; WP-9002-W3 security_critic APPROVED; WP-9002-W3 api_contract_reviewer APPROVED; WP-9002-W3 test_architect APPROVED; WP-9002-W3 medical_safety_reviewer APPROVED; WP-9002-W3 privacy_compliance_reviewer APPROVED; WP-9002-W4 independent_verifier APPROVED; WP-9002-W4 spec_guardian APPROVED; WP-9002-W4 data_integrity_auditor APPROVED; WP-9002-W4 test_architect APPROVED; WP-9002-W4 security_critic APPROVED; WP-9002-W4 api_contract_reviewer APPROVED; WP-9002-W4 medical_safety_reviewer APPROVED; WP-9002-W4 privacy_compliance_reviewer APPROVED; WP-9002-W5A independent_verifier APPROVED; WP-9002-W5A spec_guardian APPROVED; WP-9002-W5A data_integrity_auditor APPROVED; WP-9002-W5A api_contract_reviewer APPROVED; WP-9002-W5A test_architect APPROVED; WP-9002-W5A security_critic APPROVED; WP-9002-W5A privacy_compliance_reviewer APPROVED; WP-9002-W5A medical_safety_reviewer APPROVED; WP-9002-W5B independent_verifier APPROVED; WP-9002-W5B spec_guardian APPROVED; WP-9002-W5B data_integrity_auditor APPROVED; WP-9002-W5B architect APPROVED; WP-9002-W5B test_architect APPROVED; WP-9002-W5B security_critic APPROVED; WP-9002-W5B privacy_compliance_reviewer APPROVED; WP-9002-W5B medical_safety_reviewer APPROVED; WP-9002-W5B api_contract_reviewer APPROVED; WP-9002-W5C independent_verifier APPROVED; WP-9002-W5C spec_guardian APPROVED; WP-9002-W5C data_integrity_auditor APPROVED; WP-9002-W5C architect APPROVED; WP-9002-W5C api_contract_reviewer APPROVED; WP-9002-W5C test_architect APPROVED; WP-9002-W5C security_critic APPROVED; WP-9002-W5C privacy_compliance_reviewer APPROVED; WP-9002-W5C medical_safety_reviewer APPROVED; WP-9002-W5D independent_verifier APPROVED; WP-9002-W5D spec_guardian APPROVED; WP-9002-W5D data_integrity_auditor APPROVED; WP-9002-W5D architect APPROVED; WP-9002-W5D test_architect APPROVED; WP-9002-W5D security_critic APPROVED; WP-9002-W5D privacy_compliance_reviewer APPROVED; WP-9002-W5D medical_safety_reviewer APPROVED; WP-9002-W5D claims_evidence_or_master_data_specialist APPROVED
+approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; spec_guardian APPROVED; data_integrity_auditor APPROVED; WP-9002-W1 independent_verifier APPROVED; WP-9002-W1 spec_guardian APPROVED; WP-9002-W1 data_integrity_auditor APPROVED; WP-9002-W1 medical_safety_reviewer APPROVED; WP-9002-W1 privacy_compliance_reviewer APPROVED; WP-9002-W1 security_critic APPROVED; WP-9002-W2 independent_verifier APPROVED; WP-9002-W2 test_architect APPROVED; WP-9002-W2 spec_guardian APPROVED; WP-9002-W2 api_contract_reviewer APPROVED; WP-9002-W2 data_integrity_auditor APPROVED; WP-9002-W2 medical_safety_reviewer APPROVED; WP-9002-W2 privacy_compliance_reviewer APPROVED; WP-9002-W3 independent_verifier APPROVED; WP-9002-W3 spec_guardian APPROVED; WP-9002-W3 data_integrity_auditor APPROVED; WP-9002-W3 security_critic APPROVED; WP-9002-W3 api_contract_reviewer APPROVED; WP-9002-W3 test_architect APPROVED; WP-9002-W3 medical_safety_reviewer APPROVED; WP-9002-W3 privacy_compliance_reviewer APPROVED; WP-9002-W4 independent_verifier APPROVED; WP-9002-W4 spec_guardian APPROVED; WP-9002-W4 data_integrity_auditor APPROVED; WP-9002-W4 test_architect APPROVED; WP-9002-W4 security_critic APPROVED; WP-9002-W4 api_contract_reviewer APPROVED; WP-9002-W4 medical_safety_reviewer APPROVED; WP-9002-W4 privacy_compliance_reviewer APPROVED; WP-9002-W5A independent_verifier APPROVED; WP-9002-W5A spec_guardian APPROVED; WP-9002-W5A data_integrity_auditor APPROVED; WP-9002-W5A api_contract_reviewer APPROVED; WP-9002-W5A test_architect APPROVED; WP-9002-W5A security_critic APPROVED; WP-9002-W5A privacy_compliance_reviewer APPROVED; WP-9002-W5A medical_safety_reviewer APPROVED; WP-9002-W5B independent_verifier APPROVED; WP-9002-W5B spec_guardian APPROVED; WP-9002-W5B data_integrity_auditor APPROVED; WP-9002-W5B architect APPROVED; WP-9002-W5B test_architect APPROVED; WP-9002-W5B security_critic APPROVED; WP-9002-W5B privacy_compliance_reviewer APPROVED; WP-9002-W5B medical_safety_reviewer APPROVED; WP-9002-W5B api_contract_reviewer APPROVED; WP-9002-W5C independent_verifier APPROVED; WP-9002-W5C spec_guardian APPROVED; WP-9002-W5C data_integrity_auditor APPROVED; WP-9002-W5C architect APPROVED; WP-9002-W5C api_contract_reviewer APPROVED; WP-9002-W5C test_architect APPROVED; WP-9002-W5C security_critic APPROVED; WP-9002-W5C privacy_compliance_reviewer APPROVED; WP-9002-W5C medical_safety_reviewer APPROVED; WP-9002-W5D independent_verifier APPROVED; WP-9002-W5D spec_guardian APPROVED; WP-9002-W5D data_integrity_auditor APPROVED; WP-9002-W5D architect APPROVED; WP-9002-W5D test_architect APPROVED; WP-9002-W5D security_critic APPROVED; WP-9002-W5D privacy_compliance_reviewer APPROVED; WP-9002-W5D medical_safety_reviewer APPROVED; WP-9002-W5D claims_evidence_or_master_data_specialist APPROVED; WP-9002-W5E independent_verifier APPROVED; WP-9002-W5E spec_guardian APPROVED; WP-9002-W5E data_integrity_auditor APPROVED; WP-9002-W5E architect APPROVED; WP-9002-W5E db_steward APPROVED; WP-9002-W5E test_architect APPROVED; WP-9002-W5E api_contract_reviewer APPROVED; WP-9002-W5E security_critic APPROVED; WP-9002-W5E privacy_compliance_reviewer APPROVED; WP-9002-W5E medical_safety_reviewer APPROVED
 effective_from: 2026-07-11
 effective_to: null
 source_refs:
@@ -36,6 +37,7 @@ source_refs:
   - WP-9002-W5B architecture metadata-only plan (2026-07-11)
   - WP-9002-W5C adapters metadata-only plan (2026-07-11)
   - WP-9002-W5D masters metadata-only plan (2026-07-11)
+  - WP-9002-W5E database metadata-only plan (2026-07-11)
 depends_on:
   - AGT-018
   - PRC-007
@@ -52,11 +54,13 @@ related_work_packages:
   - WP-9002-W5B
   - WP-9002-W5C
   - WP-9002-W5D
+  - WP-9002-W5E
 related_tests:
   - pnpm check:ssot-index
 related_prs: []
 evidence_ids: []
 change_log:
+  - 0.4.10 2026-07-11 WP-9002-W5E database metadata-only migrationをfinalize、173/104/69→173/99/74、ten-reviewer APPROVED
   - 0.4.9 2026-07-11 WP-9002-W5D masters metadata-only migrationをfinalize、173/106/67→173/104/69、nine-reviewer APPROVED
   - 0.4.8 2026-07-11 WP-9002-W5C adapters metadata-only migrationをfinalize、173/108/65→173/106/67、nine-reviewer APPROVED
   - 0.4.7 2026-07-11 WP-9002-W5B architecture metadata-only migrationをfinalize、173/118/55→173/108/65、nine-reviewer APPROVED

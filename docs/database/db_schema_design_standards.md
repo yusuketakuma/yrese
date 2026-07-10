@@ -13,7 +13,9 @@ reviewers:
   - codex (実装可能性)
 version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-10
+updated_at: 2026-07-11
+effective_from: null
+effective_to: null
 amended_by: [ARC-008]
 amendment_status: PENDING_REVISION
 amendment_note: "ARC-008(APPROVED 2026-07-10)により改版予約中。方向は ARC-008 が暫定的に優先する。本文の全面改版は Phase 1 の PRC-007 10段フローで実施し本注記を解除する。"
@@ -21,8 +23,16 @@ source_refs:
   - docs/plan/database_construction_plan.md(PLAN-DB-001 §3 横断原則)
 depends_on: [PLAN-DB-001, SEC-006, MOD-010, MOD-011, MOD-004(shared_type_registry), MOD-005(status_registry), DOM-002, DOM-003(ubiquitous_language)]
 impacts: [WP-5002(マイグレーション基盤), WP-5003以降の全DB実装]
+related_work_packages: [WP-5001, WP-5002, WP-9002-W5E]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5E metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - ID の物理表現(UUID v7 か ULID か等)は WP-5002 の実装可能性レビューで確定
+blockers: []
 ```
 
 ## 1. 目的

@@ -13,7 +13,9 @@ reviewers:
   - codex (実装可能性)
 version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-10
+updated_at: 2026-07-11
+effective_from: null
+effective_to: null
 amended_by: [ARC-008]
 amendment_status: PENDING_REVISION
 amendment_note: "ARC-008(APPROVED 2026-07-10)により改版予約中。方向は ARC-008 が暫定的に優先する。本文の全面改版は Phase 1 の PRC-007 10段フローで実施し本注記を解除する。"
@@ -21,6 +23,16 @@ source_refs:
   - docs/plan/database_construction_plan.md(PLAN-DB-001 §3)
 depends_on: [PLAN-DB-001, DB-001, SEC-006(テナント分離設計の正本), SEC-008(§2-4 テナント越え監査), MOD-013(fixture)]
 impacts: [WP-5002以降の全DB実装, apps/api Repository層]
+related_work_packages: [WP-5001, WP-5002, WP-9002-W5E]
+related_tests:
+  - apps/api/src/db/postgres-repositories.integration.test.ts
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5E metadata-only completion: body/status/version/approval/effective semantics unchanged"
+open_questions:
+  - RLS / GRANT / role / privileged connection の具体設計(SEC-008 security reviewとWP-5002実装review後に確定)
 blockers:
   - BLOCKED_SECURITY_REVIEW: RLS 等 DB 層分離の採用確定はセキュリティレビュー完了後(SEC-008 §3)
 ```

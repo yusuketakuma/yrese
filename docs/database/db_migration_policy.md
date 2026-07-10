@@ -13,7 +13,9 @@ reviewers:
   - codex (実装可能性)
 version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-10
+updated_at: 2026-07-11
+effective_from: null
+effective_to: null
 amended_by: [ARC-008]
 amendment_status: PENDING_REVISION
 amendment_note: "ARC-008(APPROVED 2026-07-10)により改版予約中。方向は ARC-008 が暫定的に優先する。本文の全面改版は Phase 1 の PRC-007 10段フローで実施し本注記を解除する。"
@@ -22,8 +24,19 @@ source_refs:
   - docs/architecture/no_nightly_batch_policy.md(ARC-011 — 時刻トリガー自動実行の禁止)
 depends_on: [PLAN-DB-001, DB-001, ARC-011, QUA-003(変更管理), PRC-005(レビューゲート)]
 impacts: [WP-5002(マイグレーション基盤の実装)]
+related_work_packages: [WP-5001, WP-5002, WP-9002-W5E]
+related_tests:
+  - apps/api/src/db/migrations.test.ts
+  - apps/api/src/db/migration-state.test.ts
+  - apps/api/src/db/migration-ddl.test.ts
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5E metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - マイグレーションツールの選定(WP-5002 の実装可能性レビューで確定。本書はツール非依存の規律)
+blockers: []
 ```
 
 ## 1. 目的

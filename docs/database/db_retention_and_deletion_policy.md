@@ -13,7 +13,9 @@ reviewers:
   - human_review_if_required(法令・保存年限)
 version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-10
+updated_at: 2026-07-11
+effective_from: null
+effective_to: null
 amended_by: [ARC-008]
 amendment_status: PENDING_REVISION
 amendment_note: "ARC-008(APPROVED 2026-07-10)により改版予約中。方向は ARC-008 が暫定的に優先する。本文の全面改版は Phase 1 の PRC-007 10段フローで実施し本注記を解除する。"
@@ -21,6 +23,15 @@ source_refs:
   - docs/plan/database_construction_plan.md(PLAN-DB-001 §2 の 12: アーカイブ・法定保存階層)
 depends_on: [PLAN-DB-001, DB-001, SEC-007(保存階層 open_question), SEC-008, ARC-007(確定請求 immutability), REG-003(法令適合)]
 impacts: [WP-5002以降の全DB実装, アーカイブ階層設計]
+related_work_packages: [WP-5001, WP-5002, WP-9002-W5E]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W5E metadata-only completion: body/status/version/approval/effective semantics unchanged"
+open_questions:
+  - アーカイブ階層・媒体(S3 Glacier等は候補のみ)の選定はSEC-008 §3の独立gate後に確定
 blockers:
   - BLOCKED_LEGAL_REVIEW: 法定保存年限・削除可否の確定は法令レビュー完了後(REG-003 と同期)
 ```
