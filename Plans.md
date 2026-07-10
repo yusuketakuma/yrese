@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W6B + WP-9005 LANDED、89 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W6B + WP-9005 LANDED、W6C FINALIZED / LANDING PENDING、87 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -617,7 +617,7 @@ validation_results: FINAL PASS before landing — exact12/staged0; inventory173/
 finalization_record: IDX-001 v0.4.6 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and eight W5A approvals appended; API targets unchanged from approved review candidate and API-008 remains PROPOSED
 landing_required: commit_and_push after finalization
 landing_record: commit 74666c9 `WP-9002-W5A: normalize API metadata` pushed successfully to origin/main (134864c..74666c9); inventory 173/118/55; exact 12 paths; eight API bodies/preserved/amendment/blocker states and 165 non-target set unchanged; all eight reviewer/full validation gates APPROVED; no code, DB, external, deployment, or destructive change
-overall_state: W6B and WP-9005 LANDED; WP-9002 remains IN_PROGRESS with 89 incomplete SSOT documents and the next wave requires fresh mapping/pre-plan
+overall_state: W6B and WP-9005 LANDED; W6C FINALIZED / LANDING PENDING; WP-9002 remains IN_PROGRESS with 87 incomplete SSOT documents
 ```
 
 #### WP-9002-W5B architecture legacy metadata — LANDED
@@ -765,6 +765,28 @@ finalization_record: IDX-001 v0.4.13 APPROVED with approved_at/effective_from 20
 landing_required: commit_and_push after finalization
 landing_record: commit c9a2641 `WP-9002-W6B: normalize defect metadata` pushed successfully to origin/main (2d695fa..c9a2641); inventory 173/91/82; exact5; QUA-004 body and 172 non-target records unchanged; nine reviews/full gates APPROVED; no code, DB, external, deployment, or destructive change
 state: LANDED; WP-9002 remains IN_PROGRESS and the next wave starts only after fresh read-only mapping/pre-plan
+```
+
+#### WP-9002-W6C CAL-010/011 legacy metadata — FINALIZED / LANDING PENDING
+
+```yaml
+baseline_commit: 76afa17
+baseline_inventory: { total: 173, incomplete: 89, complete: 84 }
+target_inventory: { total: 173, incomplete: 87, complete: 86 }
+targets: [CAL-010, CAL-011]
+allowed_files: CAL-010, CAL-011 plus index/Plans/State/ops; exact6
+pre_plan_review: APPROVED_WITH_PINS
+pins: preserve body/status/version/approval/owner/reviewers/source/dependencies/impacts/questions/blockers; effective null; related PRs/evidence empty; policy-level empty evidence does not waive per-golden EVD references, CAL-003/REG-007 recheck or required human review; no rule/point/condition/claimability change
+body_hashes: { CAL-010: 3250 bytes / 0491f54d3b8c27658ec16a0813349d1138a152011d736d200c2850d4f7eb2f64, CAL-011: 3146 bytes / b89da978400689ce262d0c2640f7e3c47665cefe2e781e34925c0b4a2520f4c9 }
+non_target: 171 canonical rows / 17326 bytes / SHA-256 58c51344159f8ac41b269577d3386203f3e5266ec02149db93a740d285f1fe7c
+test_scope: calculation20, calculation-purity and script regression are direct partial evidence only; they do not prove complete CAL-010 conformance, a complete golden catalog, calculation requirements, copay/claim/regulatory/production readiness
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, claims_evidence_specialist, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+validation: body/preserved/inventory/non-target/exact-path invariants plus workspace typecheck/test/build, calculation-purity, OpenAPI, scripts, SSOT, secrets, boundaries, deps, SBOM, diff
+review_results: all nine required roles APPROVED; no actionable findings; approvals do not replace claims/regulatory/human/risk/production authority
+validation_results: FINAL PASS before landing — exact6/staged0; target bodies and preserved fields byte-identical; all23; inventory173/87/86; non-target171/17326/58c51344159f8ac41b269577d3386203f3e5266ec02149db93a740d285f1fe7c; workspace typecheck/test/build PASS; calculation20, audit182, contracts86, web99, API161 plus 9 expected PostgreSQL skips without TEST_DATABASE_URL; calculation-purity, OpenAPI, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231, diff PASS
+finalization_record: IDX-001 v0.4.15 APPROVED with approved_at/effective_from 2026-07-11, all prior provenance preserved and nine W6C approvals appended; target legacy approvals unchanged
+landing_required: exact6 commit_and_push
+state: FINALIZED / LANDING PENDING
 ```
 
 - [x] WP-9003 repository reconciliation state pack(Codex-only、resume-safe、docs-only)

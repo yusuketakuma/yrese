@@ -13,12 +13,22 @@ reviewers:
   - human_review_if_required
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
+effective_from: null
+effective_to: null
 source_refs:
   - CAL-003(evidence_register)/ CAL-004 v0.2.1 / CAL-006(test_case_refs)
   - REG-007(evidence_verification_log)
 depends_on: [CAL-003, CAL-004, CAL-006, CAL-009, CAL-010]
 impacts: [packages/calculation のテスト, 全 fee-item-rules 実装WP]
+related_work_packages: [WP-0044, WP-2101b, WP-9002-W6C]
+related_tests:
+  - packages/calculation/src/calculation.test.ts
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W6C metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - TST-001(テスト戦略SSOT)への golden test 台帳の統合方法
 blockers: []

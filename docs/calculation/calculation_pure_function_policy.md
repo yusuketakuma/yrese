@@ -13,13 +13,25 @@ reviewers:
   - human_review_if_required
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §18
   - CAL-004 v0.2.1 / CAL-005 §2(大原則)/ CAL-006 §4
   - MOD-010(money_point_policy)/ MOD-003(依存方向)
 depends_on: [CAL-004, CAL-005, CAL-006, MOD-003, MOD-010]
 impacts: [packages/calculation, ARC-005, ARC-006, CAL-011]
+related_work_packages: [WP-0044, WP-2101b, WP-4028, WP-9002-W6C]
+related_tests:
+  - packages/calculation/src/calculation.test.ts
+  - pnpm check:calculation-purity
+  - pnpm test:scripts
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-11 WP-9002-W6C metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions: []
 blockers: []
 ```

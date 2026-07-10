@@ -2,11 +2,15 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.14とQUA-001/003はWP-9005 eight-reviewer approvalを経てAPPROVED・landed済み。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.15はWP-9002-W6C nine-reviewer approvalを経てAPPROVED・landing pending。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-11
+
+### WP-9002-W6C CAL-010/011 metadata — finalized / landing pending
+
+- clean `76afa17`からpure-function/golden-source policyをexact6 metadata-only waveへ選定。本文/status/version/approval/source/deps/impacts/questions/blockers不変、target173/87/86、non-target171 `17326/58c51344…`。calculation20/purity/scriptsは部分証拠のみで、全pure規律、golden catalog、算定要件、copay/claim/regulatory/production readinessを主張しない。`evidence_ids: []`は各goldenのEVD/human gateを免除しない。9 role/full gates PASS後にIDX v0.4.15をAPPROVED/effective 2026-07-11へfinalize。exact6 landing pending。
 
 ### WP-9005 quality governance compatibility — completed / LANDED
 
