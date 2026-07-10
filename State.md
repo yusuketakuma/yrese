@@ -8,6 +8,10 @@
 
 ## 2026-07-11
 
+### WP-9004a SAF-001 critical aggregate correction — finalized / landing pending
+
+- pre-plan reviewでSAF-001表のcritical行が11件、集計欄の列挙IDも同じ11件なのに件数だけ9件と判明。risk意味を変えずsummaryを11件へ訂正。exact4/staged0、表count/setとsummary一致、risk rows/frontmatterはbyte-identical。independent/medical-safety review APPROVED、SSOT/scripts/secrets/boundaries/diff PASS。古い実装状況記述はWP-9004b evidence freshness reviewへ分離。
+
 ### WP-9002-W5F domain metadata — completed / LANDED
 
 - clean `ebb4ca4`からDOM-001..006をexact10 waveとしてmap/pre-plan。target173/93/80、対象外167 hash `59f36f3f…aeed28`。本文/承認/広い既存questionを保持し、DOM-005 ARC-008 amendment exact、DOM-006 blocker非変更。WP-1101はcommit-history-only provenance。
