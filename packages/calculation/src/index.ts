@@ -94,6 +94,12 @@ export interface CalculationRule {
   readonly ruleId: string;
   readonly evidenceRefs: readonly EvidenceRef[];
   readonly effectiveFrom: CalendarDate;
+  /**
+   * 最終有効日(その日を含む)。未設定=現行(廃止未定)。
+   * CAL-006 §3.1 停止条件: 第2版 evidence(改定・修正版)の導入は effectiveTo ガードが前提。
+   * 失効ルールの適用継続(誤請求)を機械的に禁止する。
+   */
+  readonly effectiveTo?: CalendarDate;
   readonly apply: (ctx: CalculationRuleContext) => StepResult;
 }
 
@@ -312,6 +318,66 @@ function createEffectiveFromBlocker(rule: CalculationRule): CalculationBlocker {
   };
 }
 
+function effectiveToBlockedStep(rule: CalculationRule): CalculationTraceStep {
+  return {
+    stepId: `${rule.ruleId}:effective-to`,
+    description: "Stop rule application because the dispensing date is after the rule expiry date",
+    affectsClaim: false,
+    evidenceRefs: rule.evidenceRefs,
+    inputRefs: ["dispensing.dispensingDate"],
+    output: "BLOCKED_REGULATORY_REVIEW:適用終了後",
+  };
+}
+
+function createEffectiveToBlocker(rule: CalculationRule, effectiveTo: CalendarDate): CalculationBlocker {
+  return {
+    type: "BLOCKED_REGULATORY_REVIEW",
+    detail: `適用終了後: ${rule.ruleId} was effective through ${effectiveTo.toString()}`,
+  };
+}
+
+function createMaxApplicationsMismatchBlocker(
+  ruleId: string,
+  declared: number | undefined,
+  observed: number | undefined,
+): CalculationBlocker {
+  const format = (value: number | undefined) => (value === undefined ? "(undeclared)" : String(value));
+  return {
+    type: "SSOT_UPDATE_REQUIRED",
+    detail: `inconsistent maxApplications declarations for ruleId=${ruleId}: ${format(declared)} vs ${format(observed)}`,
+  };
+}
+
+function maxApplicationsMismatchStep(rule: CalculationRule): CalculationTraceStep {
+  return {
+    stepId: `${rule.ruleId}:max-applications-mismatch`,
+    description:
+      "Stop calculation because applications of the same rule declared different maxApplications limits",
+    affectsClaim: false,
+    evidenceRefs: rule.evidenceRefs,
+    inputRefs: [],
+    output: "SSOT_UPDATE_REQUIRED:maxApplications宣言不整合",
+  };
+}
+
+function createInvalidEffectiveRangeBlocker(rule: CalculationRule, effectiveTo: CalendarDate): CalculationBlocker {
+  return {
+    type: "SSOT_UPDATE_REQUIRED",
+    detail: `invalid effective range for ruleId=${rule.ruleId}: effectiveTo ${effectiveTo.toString()} is before effectiveFrom ${rule.effectiveFrom.toString()}`,
+  };
+}
+
+function invalidEffectiveRangeStep(rule: CalculationRule): CalculationTraceStep {
+  return {
+    stepId: `${rule.ruleId}:invalid-effective-range`,
+    description: "Stop calculation because the rule declares an effective range that ends before it starts",
+    affectsClaim: false,
+    evidenceRefs: rule.evidenceRefs,
+    inputRefs: [],
+    output: "SSOT_UPDATE_REQUIRED:適用期間不正",
+  };
+}
+
 function createDuplicateBlocker(ruleId: string, applicationKey: string): CalculationBlocker {
   return {
     type: "BLOCKED_REGULATORY_REVIEW",
@@ -423,6 +489,25 @@ function validateExclusivityGroupShape(value: unknown): string | undefined {
   return validateEvidenceRefShape(value.evidenceRef, "exclusivityGroup.evidenceRef");
 }
 
+const COMMON_STEP_RESULT_FIELDS = ["status", "description", "affectsClaim", "output", "inputRefs", "warnings"] as const;
+const BLOCKED_STEP_RESULT_FIELDS = new Set<string>([...COMMON_STEP_RESULT_FIELDS, "blocker"]);
+const ITEM_STEP_RESULT_FIELDS = new Set<string>([
+  ...COMMON_STEP_RESULT_FIELDS,
+  "itemPoints",
+  "applicationKey",
+  "maxApplications",
+  "exclusivityGroup",
+]);
+
+const zeroPoints = Points.fromInteger(0);
+
+function findUnknownField(
+  value: Readonly<Record<string, unknown>>,
+  allowedFields: ReadonlySet<string>,
+): string | undefined {
+  return Object.keys(value).find((key) => !allowedFields.has(key));
+}
+
 function validateStepResult(value: unknown): StepResultValidation {
   if (!isRecord(value)) {
     return { ok: false, reason: "StepResult must be an object" };
@@ -430,6 +515,16 @@ function validateStepResult(value: unknown): StepResultValidation {
 
   if (value.status !== "BLOCKED" && value.status !== "ITEM_CALCULATED") {
     return { ok: false, reason: "status must be BLOCKED or ITEM_CALCULATED" };
+  }
+
+  // SSOT 外のフィールドは黙認しない(BLOCKED 結果への itemPoints 密輸や
+  // 未承認 DSL フィールドの先行導入を SSOT_UPDATE_REQUIRED として停止する)
+  const unknownField = findUnknownField(
+    value,
+    value.status === "BLOCKED" ? BLOCKED_STEP_RESULT_FIELDS : ITEM_STEP_RESULT_FIELDS,
+  );
+  if (unknownField !== undefined) {
+    return { ok: false, reason: `unknown StepResult field outside the approved SSOT: ${unknownField}` };
   }
 
   const commonFailure = validateCommonStepTraceOutput(value);
@@ -446,6 +541,11 @@ function validateStepResult(value: unknown): StepResultValidation {
 
   if (!(value.itemPoints instanceof Points)) {
     return { ok: false, reason: "itemPoints must be a Points value" };
+  }
+  // 減算・負点数は CAL-004 §2 のスコープ外(禁止)。負値の固定点数として
+  // 混入した減算を fail-closed に停止する(0 は合算に無害のため許容)
+  if (value.itemPoints.compare(zeroPoints) < 0) {
+    return { ok: false, reason: "itemPoints must not be negative (減算は CAL-004 §2 スコープ外)" };
   }
   if (!isNonEmptyString(value.applicationKey)) {
     return { ok: false, reason: "applicationKey must be a non-empty string" };
@@ -562,16 +662,51 @@ export function calculate(request: CalculationRequest, ruleSet: CalculationRuleS
   const steps: CalculationTraceStep[] = [];
   const blockers: CalculationBlocker[] = [];
   const warnings: string[] = [];
+  const seenWarnings = new Set<string>();
   const seenApplications = new Set<string>();
   const applicationCountsByRuleId = new Map<string, number>();
+  // 同一 ruleId の全適用は同一の maxApplications 宣言(未宣言含む)を持たなければならない
+  // (evidence 文言との1:1対応 — CAL-004 §2)。値は undefined(未宣言)も区別して記録する。
+  const declaredMaxApplicationsByRuleId = new Map<string, number | undefined>();
   const seenExclusivityGroups = new Set<string>();
   let total = Points.fromInteger(0);
   let hasItemCalculation = false;
 
+  // 同一警告の重複蓄積を防ぐ(初出順維持 — warning fatigue 抑制。必須警告の存在保証は不変)
+  const pushWarnings = (values: readonly string[] | undefined): void => {
+    for (const value of values ?? []) {
+      if (!seenWarnings.has(value)) {
+        seenWarnings.add(value);
+        warnings.push(value);
+      }
+    }
+  };
+
   for (const rule of ruleSet.rules) {
-    if (request.dispensing.dispensingDate.toCalendarDate().compare(rule.effectiveFrom) < 0) {
+    const dispensingCalendarDate = request.dispensing.dispensingDate.toCalendarDate();
+
+    // 適用期間の宣言不正(終了日が開始日より前)はルール定義エラーとして即時停止
+    if (rule.effectiveTo !== undefined && rule.effectiveTo.compare(rule.effectiveFrom) < 0) {
+      const blocker = createInvalidEffectiveRangeBlocker(rule, rule.effectiveTo);
+      return createBlockedResult(
+        request,
+        [...blockers, blocker],
+        [...steps, invalidEffectiveRangeStep(rule)],
+        [...warnings, invalidStepResultWarning],
+      );
+    }
+
+    if (dispensingCalendarDate.compare(rule.effectiveFrom) < 0) {
       blockers.push(createEffectiveFromBlocker(rule));
       steps.push(effectiveFromBlockedStep(rule));
+      continue;
+    }
+
+    // 適用終了ガード(CAL-006 §3.1 停止条件): 失効ルールの適用継続を機械的に禁止する。
+    // effectiveTo は最終有効日(その日を含む)。
+    if (rule.effectiveTo !== undefined && dispensingCalendarDate.compare(rule.effectiveTo) > 0) {
+      blockers.push(createEffectiveToBlocker(rule, rule.effectiveTo));
+      steps.push(effectiveToBlockedStep(rule));
       continue;
     }
 
@@ -588,7 +723,7 @@ export function calculate(request: CalculationRequest, ruleSet: CalculationRuleS
 
     const result = resultValidation.result;
     steps.push(ruleStep(rule, result));
-    warnings.push(...(result.warnings ?? []));
+    pushWarnings(result.warnings);
 
     if (result.status === "BLOCKED") {
       blockers.push(result.blocker);
@@ -603,10 +738,26 @@ export function calculate(request: CalculationRequest, ruleSet: CalculationRuleS
     }
     seenApplications.add(applicationIdentity);
 
+    // maxApplications 宣言の一貫性(同一 ruleId 内で宣言値が食い違えば定義エラーとして即時停止)
+    if (declaredMaxApplicationsByRuleId.has(rule.ruleId)) {
+      const declared = declaredMaxApplicationsByRuleId.get(rule.ruleId);
+      if (declared !== result.maxApplications) {
+        const blocker = createMaxApplicationsMismatchBlocker(rule.ruleId, declared, result.maxApplications);
+        return createBlockedResult(
+          request,
+          [...blockers, blocker],
+          [...steps, maxApplicationsMismatchStep(rule)],
+          [...warnings, invalidStepResultWarning],
+        );
+      }
+    } else {
+      declaredMaxApplicationsByRuleId.set(rule.ruleId, result.maxApplications);
+    }
+
+    const nextCount = (applicationCountsByRuleId.get(rule.ruleId) ?? 0) + 1;
+    applicationCountsByRuleId.set(rule.ruleId, nextCount);
     if (result.maxApplications !== undefined) {
       assertPositiveSafeInteger(result.maxApplications, "maxApplications");
-      const nextCount = (applicationCountsByRuleId.get(rule.ruleId) ?? 0) + 1;
-      applicationCountsByRuleId.set(rule.ruleId, nextCount);
       if (nextCount > result.maxApplications) {
         blockers.push(createMaxApplicationsBlocker(rule.ruleId, result.maxApplications));
         continue;

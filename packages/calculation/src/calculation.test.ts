@@ -473,6 +473,179 @@ describe("calculate", () => {
     ]);
   });
 
+  it("returns BLOCKED with SSOT_UPDATE_REQUIRED for negative itemPoints (減算はスコープ外 — CAL-004 §2)", () => {
+    const ruleSet: CalculationRuleSet = {
+      rules: [
+        {
+          ruleId: "rule:negative-points",
+          evidenceRefs: [evidenceRef("EVD-CAL-0001")],
+          effectiveFrom: CalendarDate.fromString("2026-06-01"),
+          apply: () => ({
+            status: "ITEM_CALCULATED",
+            description: "Negative fixed points must not pass as an addition",
+            affectsClaim: true,
+            output: "itemPoints=-5",
+            itemPoints: Points.fromInteger(-5),
+            applicationKey: "prescription",
+          }),
+        },
+      ],
+    };
+
+    const result = calculate(request(), ruleSet);
+    const blocked = expectBlocked(result);
+
+    expect(blocked.blockers).toEqual([
+      {
+        type: "SSOT_UPDATE_REQUIRED" satisfies BlockerType,
+        detail:
+          "invalid StepResult for ruleId=rule:negative-points: itemPoints must not be negative (減算は CAL-004 §2 スコープ外)",
+      },
+    ]);
+    expect(blocked.trace.warnings).toEqual([invalidStepResultWarning]);
+  });
+
+  it("returns BLOCKED with SSOT_UPDATE_REQUIRED for unknown StepResult fields (SSOT外フィールドの密輸禁止)", () => {
+    const ruleSet: CalculationRuleSet = {
+      rules: [
+        {
+          ruleId: "rule:blocked-with-item-points",
+          evidenceRefs: [evidenceRef("EVD-CAL-0001")],
+          effectiveFrom: CalendarDate.fromString("2026-06-01"),
+          apply: () =>
+            ({
+              status: "BLOCKED",
+              description: "Blocked result smuggling itemPoints",
+              affectsClaim: false,
+              output: "BLOCKED",
+              blocker: {
+                type: "BLOCKED_REGULATORY_REVIEW" satisfies BlockerType,
+                detail: "test blocker",
+              },
+              itemPoints: Points.fromInteger(47),
+            }) as any,
+        },
+      ],
+    };
+
+    const result = calculate(request(), ruleSet);
+    const blocked = expectBlocked(result);
+
+    expect(blocked.blockers).toEqual([
+      {
+        type: "SSOT_UPDATE_REQUIRED" satisfies BlockerType,
+        detail:
+          "invalid StepResult for ruleId=rule:blocked-with-item-points: unknown StepResult field outside the approved SSOT: itemPoints",
+      },
+    ]);
+  });
+
+  it("applies a rule through its effectiveTo boundary date (最終有効日を含む)", () => {
+    const expiringRule: CalculationRule = {
+      ...dispensingBasicFee1Rule,
+      effectiveTo: CalendarDate.fromString("2026-07-02"),
+    };
+
+    const onBoundary = calculate(request("2026-07-02"), { rules: [expiringRule] });
+    expectPointsOnly(onBoundary, "47");
+  });
+
+  it("is BLOCKED after effectiveTo (失効ルールの適用継続を禁止 — CAL-006 §3.1)", () => {
+    const expiringRule: CalculationRule = {
+      ...dispensingBasicFee1Rule,
+      effectiveTo: CalendarDate.fromString("2026-07-01"),
+    };
+
+    const result = calculate(request("2026-07-02"), { rules: [expiringRule] });
+    const blocked = expectBlocked(result);
+
+    expect(blocked.blockers).toEqual([
+      {
+        type: "BLOCKED_REGULATORY_REVIEW" satisfies BlockerType,
+        detail: "適用終了後: EVD-CAL-0001:dispensing-basic-fee-1 was effective through 2026-07-01",
+      },
+    ]);
+    expect(blocked.trace.steps[0]?.output).toBe("BLOCKED_REGULATORY_REVIEW:適用終了後");
+  });
+
+  it("returns BLOCKED with SSOT_UPDATE_REQUIRED when effectiveTo is before effectiveFrom (適用期間不正)", () => {
+    const invalidRangeRule: CalculationRule = {
+      ...dispensingBasicFee1Rule,
+      effectiveFrom: CalendarDate.fromString("2026-06-01"),
+      effectiveTo: CalendarDate.fromString("2026-05-31"),
+    };
+
+    const result = calculate(request(), { rules: [invalidRangeRule] });
+    const blocked = expectBlocked(result);
+
+    expect(blocked.blockers).toEqual([
+      {
+        type: "SSOT_UPDATE_REQUIRED" satisfies BlockerType,
+        detail:
+          "invalid effective range for ruleId=EVD-CAL-0001:dispensing-basic-fee-1: effectiveTo 2026-05-31 is before effectiveFrom 2026-06-01",
+      },
+    ]);
+    expect(blocked.trace.warnings).toEqual([invalidStepResultWarning]);
+  });
+
+  it("returns BLOCKED with SSOT_UPDATE_REQUIRED for inconsistent maxApplications declarations", () => {
+    const declaringRule = createOralMedicinePreparationFeeRule("oral-medicine:1");
+    const conflictingRule: CalculationRule = {
+      ruleId: declaringRule.ruleId,
+      evidenceRefs: declaringRule.evidenceRefs,
+      effectiveFrom: CalendarDate.fromString("2026-06-01"),
+      apply: () => ({
+        status: "ITEM_CALCULATED",
+        description: "Same ruleId without the evidence-backed limit declaration",
+        affectsClaim: true,
+        output: "itemPoints=24",
+        itemPoints: Points.fromInteger(24),
+        applicationKey: "oral-medicine:2",
+      }),
+    };
+
+    const result = calculate(request(), { rules: [declaringRule, conflictingRule] });
+    const blocked = expectBlocked(result);
+
+    expect(blocked.blockers).toEqual([
+      {
+        type: "SSOT_UPDATE_REQUIRED" satisfies BlockerType,
+        detail:
+          "inconsistent maxApplications declarations for ruleId=EVD-CAL-0021:oral-medicine-preparation-fee: 3 vs (undeclared)",
+      },
+    ]);
+    expect(blocked.trace.warnings).toContain(invalidStepResultWarning);
+  });
+
+  it("deduplicates repeated warnings while keeping first-seen order (warning fatigue 抑制)", () => {
+    const warningRule = (ruleId: string, applicationKey: string): CalculationRule => ({
+      ruleId,
+      evidenceRefs: [evidenceRef("EVD-CAL-0001")],
+      effectiveFrom: CalendarDate.fromString("2026-06-01"),
+      apply: () => ({
+        status: "ITEM_CALCULATED",
+        description: "Rule emitting a repeated warning",
+        affectsClaim: true,
+        output: "itemPoints=1",
+        itemPoints: Points.fromInteger(1),
+        applicationKey,
+        warnings: ["同一警告", "個別警告:" + applicationKey],
+      }),
+    });
+
+    const result = calculate(request(), {
+      rules: [warningRule("rule:warn-1", "a"), warningRule("rule:warn-2", "b")],
+    });
+    const pointsOnly = expectPointsOnly(result, "2");
+
+    expect(pointsOnly.warnings).toEqual([
+      "同一警告",
+      "個別警告:a",
+      "個別警告:b",
+      requirementsNotVerifiedWarning,
+    ]);
+  });
+
   it("is deterministic for identical inputs", () => {
     const ruleSet = {
       rules: [

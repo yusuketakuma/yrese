@@ -9,9 +9,9 @@ owner: fable5
 reviewers:
   - opus4.8 (APPROVE_WITH_CHANGES 2026-07-09 → 全指摘反映済み)
   - human_review_if_required
-version: 0.2.1
+version: 0.2.2
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-11
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー反映後、fable5承認(人間の包括承認 2026-07-09 の範囲内)
 source_refs: [CAL-001, CAL-002, CAL-003, MOD-010, 構築プロンプト v0.2.0 §18]
@@ -84,6 +84,14 @@ evidence 発行済み(CAL-003)の算定項目に限定した最初の Calculatio
 
 ## 8. 変更履歴
 
+- 0.2.2 (2026-07-11): エンジン防御強化(human_review_required — 承認済みセマンティクスの機械的強制の強化であり算定値の意味論は不変。
+  レビュー記録: docs/research/calculation_engine_logic_review_20260711.md)。
+  (1) §3 予告の effectiveTo(最終有効日・その日を含む)ガードを実装 — CAL-006 §3.1 停止条件(第2版 evidence 導入前提)を充足。
+  終了日<開始日の宣言は SSOT_UPDATE_REQUIRED。
+  (2) §2 スコープ外の減算が負の固定点数として混入することを SSOT_UPDATE_REQUIRED で機械的に禁止(0 は許容)。
+  (3) 同一 ruleId 内の maxApplications 宣言不整合を SSOT_UPDATE_REQUIRED で停止(evidence 文言との1:1対応の防御)。
+  (4) StepResult の SSOT 外フィールドを SSOT_UPDATE_REQUIRED で拒否。
+  (5) warnings の重複蓄積を初出順維持で排除(必須警告の存在保証は不変)。
 - 0.2.1 (2026-07-09): evidence register との照合で EVD-CAL-0021 の上限記述を訂正(4剤分以上算定しない=3剤分まで)、対象5ルールの evidence_id を確定値に固定。
 - 0.2.0 (2026-07-09): opus4.8 レビュー(APPROVE_WITH_CHANGES)の全指摘を反映 — 嚥下困難者用製剤加算を削除し実在evidenceに差し替え / 適用日ガード追加 / 重複検知を(ruleId, applicationKey)に変更 / POINTS_ONLY_COPAY_BLOCKED 命名+claimable:false 型強制 / 要件未検証warning必須化 / exclusivityGroup の evidence必須化 / スコープ外(乗率・減算・クランプ)明記 / 再照合トラッキング / CAL-001 プロセス整合 / 移行手順。承認。
 - 0.1.0 (2026-07-09): 初版。
