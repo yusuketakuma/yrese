@@ -116,6 +116,14 @@ export const KERNEL_ERROR_CODES = [
     requiresHumanReview: false,
     description: "reception idempotency conflict",
   },
+  {
+    code: "AUD-0001",
+    domain: "AUDIT",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "invalid audit log query",
+  },
 ] as const satisfies readonly ErrorCodeDef[];
 
 export const AUTH_PERMISSION_DENIED_ERROR_CODE = KERNEL_ERROR_CODES[0].code;
@@ -123,6 +131,7 @@ export const PATIENT_SEARCH_INVALID_QUERY_ERROR_CODE = KERNEL_ERROR_CODES[1].cod
 export const RECEPTION_INVALID_REQUEST_ERROR_CODE = KERNEL_ERROR_CODES[2].code;
 export const RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE = KERNEL_ERROR_CODES[3].code;
 export const RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE = KERNEL_ERROR_CODES[4].code;
+export const AUDIT_LOG_INVALID_QUERY_ERROR_CODE = KERNEL_ERROR_CODES[5].code;
 
 export function createKernelErrorCodeRegistry(): ErrorCodeRegistry {
   const registry = new ErrorCodeRegistry();

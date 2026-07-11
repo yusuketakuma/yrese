@@ -1,5 +1,8 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import { verifyAuditHashChain } from '@yrese/audit';
 import {
+  auditLogQuerySchema,
+  auditLogResponseSchema,
   errorResponseSchema,
   healthResponseSchema,
   patientSearchQuerySchema,
@@ -7,6 +10,7 @@ import {
   receptionCreateRequestSchema,
   receptionQueueResponseSchema,
   receptionQueueQuerySchema,
+  type AuditLogResponse,
   type HealthResponse,
   type PatientSearchResponse,
   type ReceptionQueueEntry,
@@ -16,12 +20,14 @@ import {
 } from '@yrese/contracts';
 import { CalendarDate } from '@yrese/date-time';
 import {
+  AUDIT_LOG_INVALID_QUERY_ERROR_CODE,
   PATIENT_SEARCH_INVALID_QUERY_ERROR_CODE,
   RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE,
   RECEPTION_INVALID_REQUEST_ERROR_CODE,
   RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE,
   patientId,
   permissionScope,
+  userId,
 } from '@yrese/shared-kernel';
 
 import {
@@ -35,6 +41,7 @@ import {
   tenantContextPlugin,
   type TenantContextMode,
 } from './plugins/tenant-context.js';
+import { InMemoryAuditRepository, type AuditRepository } from './audit-repository.js';
 import { InMemoryPatientRepository, type PatientRepository } from './patient-repository.js';
 import { InMemoryReceptionRepository, type ReceptionRepository } from './reception-repository.js';
 
@@ -51,6 +58,7 @@ export const receptionPatientIdentityMismatchErrorMessage =
 export interface BuildServerOptions {
   readonly patientRepository?: PatientRepository;
   readonly receptionRepository?: ReceptionRepository;
+  readonly auditRepository?: AuditRepository;
   readonly now?: () => Date;
   readonly repositoryMode?: ApiRepositoryMode;
   readonly tenantContextMode?: TenantContextMode;
@@ -85,6 +93,13 @@ function receptionIdempotencyConflictResponse() {
   });
 }
 
+function invalidAuditLogQueryResponse() {
+  return errorResponseSchema.parse({
+    errorCode: AUDIT_LOG_INVALID_QUERY_ERROR_CODE,
+    message: 'Invalid audit log query',
+  });
+}
+
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const tenantContextMode = options.tenantContextMode ?? 'disabled';
   if (tenantContextMode === 'dev_headers' && options.repositoryMode !== 'in_memory') {
@@ -98,6 +113,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   const patientRepository = options.patientRepository ?? new InMemoryPatientRepository();
   const receptionRepository = options.receptionRepository ?? new InMemoryReceptionRepository();
+  const auditRepository = options.auditRepository ?? new InMemoryAuditRepository();
   const now = options.now ?? (() => new Date());
   const server = Fastify({
     logger: false,
@@ -277,7 +293,87 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         return reply.code(409).send(receptionIdempotencyConflictResponse());
       }
 
+      // 監査証跡(who/when/what)。冪等再送(existing)では二重記録しない。
+      // targetRef は識別子のみ(PHI 非含有)。
+      if (result.kind === 'created') {
+        await auditRepository.record(
+          { tenantId: tenantContext.tenantId, pharmacyId: tenantContext.pharmacyId },
+          {
+            actorId: userId(tenantContext.actorId),
+            auditEventType: 'reception.created',
+            targetRef: { kind: 'reception', id: result.entry.receptionId },
+            outcome: 'success',
+            wallClock: now().toISOString(),
+          },
+        );
+      }
+
       return reply.code(result.kind === 'created' ? 201 : 200).send(result.entry);
+    },
+  );
+
+  server.get(
+    '/audit/events',
+    {
+      preHandler: requirePermission(permissionScope('audit-log', 'read')),
+    },
+    async (request, reply): Promise<AuditLogResponse | void> => {
+      const tenantContext = request.tenantContext;
+      if (tenantContext === undefined) {
+        throw new Error('tenantContext is unexpectedly missing after authorization');
+      }
+
+      reply.header('Cache-Control', 'no-store');
+
+      const query = auditLogQuerySchema.safeParse(request.query);
+      if (!query.success) {
+        return reply.code(400).send(invalidAuditLogQueryResponse());
+      }
+
+      const scope = { tenantId: tenantContext.tenantId, pharmacyId: tenantContext.pharmacyId };
+      const events = await auditRepository.list(scope);
+
+      // 改ざん検知: 保存されている全イベントに対する hash chain 検証(返却分だけではない)。
+      const verification = verifyAuditHashChain(events);
+
+      // 監査ログの閲覧自体を監査する(audit.viewed)。今回の応答には含めない(閲覧後に追記)。
+      await auditRepository.record(scope, {
+        actorId: userId(tenantContext.actorId),
+        auditEventType: 'audit.viewed',
+        targetRef: { kind: 'audit_log', id: `view:${events.length}` },
+        outcome: 'success',
+        wallClock: now().toISOString(),
+      });
+
+      // 新しい順(追記順の逆)で limit 件へ射影。表示投影に hash・envelope 内部は含めない。
+      const entries = [...events]
+        .reverse()
+        .slice(0, query.data.limit)
+        .map((event) => ({
+          eventId: event.eventId,
+          wallClock: event.wallClock,
+          actorId: event.actorId,
+          auditEventType: event.auditEventType,
+          targetRef: { kind: event.targetRef.kind, id: event.targetRef.id },
+          outcome: event.outcome,
+          ...(event.reasonCode === undefined ? {} : { reasonCode: event.reasonCode }),
+          ...(event.businessReason === undefined
+            ? {}
+            : { businessReasonCode: event.businessReason.code }),
+        }));
+
+      return auditLogResponseSchema.parse({
+        entries,
+        chainVerification: verification.ok
+          ? { ok: true, checkedCount: verification.checkedCount }
+          : {
+              ok: false,
+              checkedCount: verification.checkedCount,
+              breakIndex: verification.breakIndex,
+              reason: verification.reason,
+            },
+        totalCount: events.length,
+      });
     },
   );
 

@@ -2,6 +2,7 @@ import "zod-openapi";
 
 import { createDocument, type ZodOpenApiObject } from "zod-openapi";
 
+import { auditLogQuerySchema, auditLogResponseSchema } from "./audit-log.js";
 import { errorResponseSchema } from "./error.js";
 import { healthResponseSchema } from "./health.js";
 import { patientSearchQuerySchema, patientSearchResponseSchema } from "./patient-search.js";
@@ -58,6 +59,17 @@ const receptionQueueResponseOpenApiSchema = receptionQueueResponseSchema.meta({
 const receptionCreateRequestOpenApiSchema = receptionCreateRequestSchema.meta({
   id: "ReceptionCreateRequest",
   description: "Create a reception entry using an opaque idempotency key.",
+});
+
+const auditLogQueryOpenApiSchema = auditLogQuerySchema.meta({
+  id: "AuditLogQuery",
+  description: "Audit log view query parameters",
+});
+
+const auditLogResponseOpenApiSchema = auditLogResponseSchema.meta({
+  id: "AuditLogResponse",
+  description:
+    "Audit log display projection (who/when/what) with hash chain verification. IDs only; no PHI names.",
 });
 
 const openApiDefinition = {
@@ -253,6 +265,46 @@ const openApiDefinition = {
           },
           "409": {
             description: "Idempotency conflict (RCV-0003)",
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+        },
+      },
+    },
+    "/audit/events": {
+      get: {
+        operationId: "getAuditEvents",
+        tags: ["audit"],
+        summary: "Return recent audit events with hash chain verification",
+        description:
+          "Requires audit-log:read scope. Returns a display projection (IDs only, no PHI names) ordered by wallClock desc, plus a hash chain verification over all stored events. Must use Cache-Control: no-store.",
+        "x-yrese-ssot": "SCR-028",
+        "x-yrese-required-scope": "audit-log:read",
+        requestParams: {
+          query: auditLogQueryOpenApiSchema,
+        },
+        responses: {
+          "200": {
+            description: "Audit events and chain verification",
+            content: {
+              [jsonContentType]: {
+                schema: auditLogResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": {
+            description: "Invalid audit log query (AUD-0001)",
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+          "403": {
+            description: "Forbidden (AUTH-0003)",
             content: {
               [jsonContentType]: {
                 schema: errorResponseOpenApiSchema,

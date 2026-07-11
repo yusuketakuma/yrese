@@ -186,6 +186,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /audit/events:
+    get:
+      operationId: getAuditEvents
+      tags:
+        - audit
+      summary: Return recent audit events with hash chain verification
+      description: "Requires audit-log:read scope. Returns a display projection (IDs only, no PHI names) ordered by wallClock
+        desc, plus a hash chain verification over all stored events. Must use Cache-Control: no-store."
+      x-yrese-ssot: SCR-028
+      x-yrese-required-scope: audit-log:read
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            default: 50
+            type: integer
+            minimum: 1
+            maximum: 200
+      responses:
+        "200":
+          description: Audit events and chain verification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogResponse"
+        "400":
+          description: Invalid audit log query (AUD-0001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden (AUTH-0003)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     ReceptionCreateRequest:
@@ -488,3 +525,114 @@ components:
         - prescriptionIntakeType
       additionalProperties: false
       description: Reception queue entry. Contains PatientSummary PHI and must not be logged in plaintext.
+    AuditLogResponse:
+      type: object
+      properties:
+        entries:
+          type: array
+          items:
+            type: object
+            properties:
+              eventId:
+                type: string
+                minLength: 1
+                maxLength: 128
+              wallClock:
+                type: string
+                format: date-time
+                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+              actorId:
+                type: string
+                minLength: 1
+                maxLength: 128
+              auditEventType:
+                type: string
+                pattern: ^[a-z][a-z0-9]*(?:_[a-z0-9]+)*(?:\.[a-z][a-z0-9]*(?:_[a-z0-9]+)*){1,2}$
+              targetRef:
+                type: object
+                properties:
+                  kind:
+                    type: string
+                    minLength: 1
+                    maxLength: 64
+                  id:
+                    type: string
+                    minLength: 1
+                    maxLength: 128
+                required:
+                  - kind
+                  - id
+                additionalProperties: false
+              outcome:
+                type: string
+                enum:
+                  - success
+                  - denied
+                  - failed
+              reasonCode:
+                type: string
+                minLength: 1
+                maxLength: 64
+              businessReasonCode:
+                type: string
+                minLength: 1
+                maxLength: 64
+            required:
+              - eventId
+              - wallClock
+              - actorId
+              - auditEventType
+              - targetRef
+              - outcome
+            additionalProperties: false
+        chainVerification:
+          oneOf:
+            - type: object
+              properties:
+                ok:
+                  type: boolean
+                  const: true
+                checkedCount:
+                  type: integer
+                  minimum: 0
+                  maximum: 9007199254740991
+              required:
+                - ok
+                - checkedCount
+              additionalProperties: false
+            - type: object
+              properties:
+                ok:
+                  type: boolean
+                  const: false
+                checkedCount:
+                  type: integer
+                  minimum: 0
+                  maximum: 9007199254740991
+                breakIndex:
+                  type: integer
+                  minimum: 0
+                  maximum: 9007199254740991
+                reason:
+                  type: string
+                  enum:
+                    - prev_hash_mismatch
+                    - entry_hash_mismatch
+                    - hash_format_invalid
+              required:
+                - ok
+                - checkedCount
+                - breakIndex
+                - reason
+              additionalProperties: false
+          type: object
+        totalCount:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+      required:
+        - entries
+        - chainVerification
+        - totalCount
+      additionalProperties: false
+      description: Audit log display projection (who/when/what) with hash chain verification. IDs only; no PHI names.

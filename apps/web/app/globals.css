@@ -719,6 +719,47 @@ tr[data-duplicate-kana="true"] > td {
   font-size: var(--font-size-sm);
 }
 
+/* 監査ログビュー(SCR-028)。破断通知は ErrorNotice(CRITICAL)が担う */
+.audit-chain-ok {
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-fg);
+  border-radius: 4px;
+  background: var(--color-status-ok-bg);
+  padding: var(--space-1) var(--space-2);
+  font-weight: 600;
+}
+
+.audit-log-table {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 1100px;
+}
+
+.audit-log-table th,
+.audit-log-table td {
+  border: 1px solid var(--color-border);
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.audit-log-table thead {
+  background: var(--color-surface);
+}
+
+.audit-log-table tr[data-outcome="denied"],
+.audit-log-table tr[data-outcome="failed"] {
+  background: var(--color-status-attention-bg);
+}
+
+.audit-event-type {
+  font-size: var(--font-size-sm);
+}
+
+.audit-log-count {
+  margin: var(--space-2) 0 var(--space-1);
+}
+
 /* 監査・版・権限・閲覧専用 */
 .audit-metadata {
   display: inline-flex;

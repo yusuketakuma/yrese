@@ -9,6 +9,7 @@
  * `pnpm check:openapi` fails on generated artifact drift.
  */
 
+export * from "./audit-log.js";
 export * from "./calculation-trace.js";
 export * from "./error.js";
 export * from "./health.js";
