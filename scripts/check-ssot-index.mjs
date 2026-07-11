@@ -9,7 +9,8 @@ const indexRelativePath = "docs/ssot_index.md";
 const markdownExtension = ".md";
 // 非SSOT領域: 提案・調査・レビュー用の作業文書(PRC-007 で定義)。SSOT index の追跡対象外とし、
 // ssot_id 必須・index 登録の規律を適用しない(APPROVED SSOT の正本性を汚さないため)。
-const nonSsotDirPrefixes = ["docs/research/"];
+// docs/ui-ux-refresh/: UI/UX 監査・SSOT再構築の作業/証跡ワークスペース(規範SSOTは docs/uiux/ 側が正本)。
+const nonSsotDirPrefixes = ["docs/research/", "docs/ui-ux-refresh/"];
 const violations = [];
 
 function isNonSsotDoc(relativePath) {
