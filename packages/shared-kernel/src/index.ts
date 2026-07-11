@@ -12,3 +12,8 @@ export * from "./status.js";
 export * from "./blockers.js";
 export * from "./error-codes.js";
 export * from "./permissions.js";
+export * from "./record-lifecycle.js";
+export * from "./clinical-alert.js";
+export * from "./sync-status.js";
+export * from "./prescription-change.js";
+export * from "./session.js";
