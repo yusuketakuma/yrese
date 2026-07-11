@@ -51,7 +51,21 @@
 **医療安全レビュー**・**SaMD 該当性評価**、認証の**実プロトコル接続+セキュリティレビュー**、各**実データ配線**、
 **実薬剤師テスト(R-PHARMTEST は Not executed)**、G7 逐条・「法令完全準拠」非断定。詳細は §11。
 
+## 第3次実装(2026-07-11 — 監査ログ + 画面配線)
+
+- **監査ログ閲覧(SCR-028 / R-AUDIT)実装**: contracts 契約(AUD-0001 エラーコード含む)+
+  API `GET /audit/events`(hash chain 全件検証・audit.viewed メタ監査・reception.created 発行)+
+  管理画面ビュー(chain 破断=CRITICAL alert)。OpenAPI 再生成・drift 0。
+- **placeholder 画面への実部品配線(捏造なし — 実ドメイン関数/実状態のみ)**:
+  同期状態(SCR-027): SystemHealthBanner + ModeCapabilityView + 全モード可否早見表(shared-kernel ガード駆動、P-19)。
+  処方入力(SCR-006): 横断患者文脈ゲート(未選択で入力開始不可 H-01/H-02)+ **臨床チェック未接続を
+  「安全確認済み」に見せない明示警告(H-08)**。
+  月次締め(SCR-021): allowsClaimFinalization モードゲート可視化。
+- 検証実測: **web 182 / api 168 / contracts 95 / kernel 36、全パッケージ緑・回帰0、build 12/12**。
+- モードは検知バックエンド未実装のため NORMAL 固定(表示にその旨明記)。未接続部は placeholder-note で正直に残置。
+
 ## 画面台帳(サマリ; 詳細は 04)
 
-実装済み本格2画面(受付 SCR-001 / 患者検索 SCR-002)+ 横断部品。残り7ルートは placeholder。
-本タスクは状態表現の共通層(Visual Status Registry)を全横断部品へ適用。個別業務画面の本実装は §11 に申し送り。
+本格実装: 受付 SCR-001 / 患者検索 SCR-002 / 管理(監査ログ)SCR-028。
+基盤配線済み: 同期状態 SCR-027 / 処方入力 SCR-006(文脈ゲート)/ 月次締め SCR-021(モードゲート)。
+純 placeholder 残: 会計 / 請求前点検 / マスター管理(算定エンジン・SSOT 前提)。

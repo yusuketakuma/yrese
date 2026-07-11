@@ -719,6 +719,39 @@ tr[data-duplicate-kana="true"] > td {
   font-size: var(--font-size-sm);
 }
 
+/* モード別可否早見表(SCR-027 / P-19)。可否はテキスト(可/不可)が主担 */
+.mode-overview-table {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 1100px;
+}
+
+.mode-overview-table th,
+.mode-overview-table td {
+  border: 1px solid var(--color-border);
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.mode-overview-table thead {
+  background: var(--color-surface);
+}
+
+.mode-overview-table tr[data-current="true"] {
+  background: var(--color-surface-raised);
+}
+
+.mode-overview-table td[data-allowed="false"] {
+  background: var(--color-status-attention-bg);
+  font-weight: 600;
+}
+
+.mode-overview-current {
+  margin-left: var(--space-1);
+  font-weight: 700;
+}
+
 /* 監査ログビュー(SCR-028)。破断通知は ErrorNotice(CRITICAL)が担う */
 .audit-chain-ok {
   border: 1px solid var(--color-border);
