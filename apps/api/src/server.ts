@@ -5,8 +5,11 @@ import {
   auditLogResponseSchema,
   errorResponseSchema,
   healthResponseSchema,
+  patientGetParamsSchema,
   patientSearchQuerySchema,
   patientSearchResponseSchema,
+  patientSearchResultSchema,
+  type PatientSearchResult,
   receptionCreateRequestSchema,
   receptionQueueResponseSchema,
   receptionQueueQuerySchema,
@@ -21,6 +24,7 @@ import {
 import { CalendarDate } from '@yrese/date-time';
 import {
   AUDIT_LOG_INVALID_QUERY_ERROR_CODE,
+  PATIENT_NOT_FOUND_ERROR_CODE,
   PATIENT_SEARCH_INVALID_QUERY_ERROR_CODE,
   RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE,
   RECEPTION_INVALID_REQUEST_ERROR_CODE,
@@ -97,6 +101,13 @@ function invalidAuditLogQueryResponse() {
   return errorResponseSchema.parse({
     errorCode: AUDIT_LOG_INVALID_QUERY_ERROR_CODE,
     message: 'Invalid audit log query',
+  });
+}
+
+function patientNotFoundResponse() {
+  return errorResponseSchema.parse({
+    errorCode: PATIENT_NOT_FOUND_ERROR_CODE,
+    message: 'Patient not found',
   });
 }
 
@@ -204,6 +215,41 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
               ),
             }),
       });
+    },
+  );
+
+  server.get(
+    '/patients/:patientId',
+    {
+      preHandler: requirePermission(permissionScope('patient', 'read')),
+    },
+    async (request, reply): Promise<PatientSearchResult | void> => {
+      const tenantContext = request.tenantContext;
+      if (tenantContext === undefined) {
+        throw new Error('tenantContext is unexpectedly missing after authorization');
+      }
+
+      reply.header('Cache-Control', 'no-store');
+
+      const params = patientGetParamsSchema.safeParse(request.params);
+      if (!params.success) {
+        return reply.code(400).send(invalidPatientSearchQueryResponse());
+      }
+
+      const parsedPatientId = patientId(params.data.patientId);
+      const patient = await patientRepository.findById({
+        tenantId: tenantContext.tenantId,
+        pharmacyId: tenantContext.pharmacyId,
+        patientId: parsedPatientId,
+      });
+      if (patient === undefined) {
+        return reply.code(404).send(patientNotFoundResponse());
+      }
+      if (patient.patientId !== parsedPatientId) {
+        throw new Error(receptionPatientIdentityMismatchErrorMessage);
+      }
+
+      return patientSearchResultSchema.parse(patient);
     },
   );
 

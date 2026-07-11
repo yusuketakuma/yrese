@@ -92,6 +92,49 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /patients/{patientId}:
+    get:
+      operationId: getPatientById
+      tags:
+        - patients
+      summary: Return one patient summary by ID within the authenticated tenant and pharmacy context
+      description: "Requires patient:read scope and tenant context. Used to refresh the cross-route patient context
+        (R-PATCTX). The response contains PHI and must use Cache-Control: no-store."
+      x-yrese-ssot: API-001
+      x-yrese-required-scope: patient:read
+      parameters:
+        - in: path
+          name: patientId
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: true
+      responses:
+        "200":
+          description: Patient summary (same projection as search results)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientSummary"
+        "400":
+          description: Invalid patient ID (PAT-0001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden (AUTH-0003)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Patient not found (PAT-0002)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /reception/queue:
     get:
       operationId: getReceptionQueue
@@ -362,6 +405,53 @@ components:
         - results
       additionalProperties: false
       description: Patient search response. Contains PHI and must not be logged in plaintext.
+    PatientSummary:
+      type: object
+      properties:
+        patientId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        name:
+          type: string
+          minLength: 1
+        kana:
+          type: string
+          minLength: 1
+        birthDate:
+          type: string
+          format: date
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        sex:
+          type: string
+          enum:
+            - male
+            - female
+            - unknown
+        patientNumber:
+          type: string
+          minLength: 1
+        eligibilityStatus:
+          type: string
+          enum:
+            - VERIFIED
+            - PENDING_REVERIFY
+            - LOCAL_ONLY_UNVERIFIED
+            - NOT_CHECKED
+        eligibilityCheckedAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+      required:
+        - patientId
+        - name
+        - kana
+        - birthDate
+        - sex
+        - patientNumber
+        - eligibilityStatus
+      additionalProperties: false
+      description: Patient summary projection (same shape as search results). Contains PHI and must not be logged in plaintext.
     ReceptionQueueResponse:
       type: object
       properties:

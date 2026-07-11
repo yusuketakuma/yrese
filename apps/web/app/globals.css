@@ -448,6 +448,24 @@ tr[data-duplicate-kana="true"] > td {
   margin: 0 0 var(--space-1);
 }
 
+.patient-context-bar-stale {
+  margin-left: var(--space-2);
+}
+
+.patient-context-bar[data-stale="true"] {
+  border-style: dashed;
+}
+
+/* 選択患者が参照不能になった際の解除通知(取り違え防止 — 静かに消さない) */
+.patient-context-removed {
+  border: 2px solid var(--color-danger-border);
+  border-radius: 4px;
+  background: var(--color-status-blocked-bg);
+  padding: var(--space-2) var(--space-3);
+  margin: 0 0 var(--space-3);
+  font-weight: 600;
+}
+
 /* 記録状態(R-RECLIFE)。確定系の監査行・版は控えめに併記 */
 .record-state {
   display: inline-flex;

@@ -6,12 +6,15 @@ import {
   patientSearchResponseSchema,
   type PatientSearchResult,
 } from "@yrese/contracts";
-import { patientId, permissionScope, type PermissionScope } from "@yrese/shared-kernel";
+import { patientId } from "@yrese/shared-kernel";
+
+import { devTenantHeaders } from "../dev-tenant";
 
 import { registeredErrorCodeOrUndefined } from "../components/error-code";
 import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
 import {
   type PatientContextData,
+  toPatientContextData,
   useOptionalPatientContext,
 } from "../components/patient-context";
 import {
@@ -34,30 +37,8 @@ import { resolveWebApiUrl } from "../api-transport";
  * キーボード第一(autoFocus + Enter 送信)。
  */
 
-export const PATIENT_SEARCH_DEV_SCOPES = [
-  permissionScope("patient", "read"),
-] as const satisfies readonly PermissionScope[];
-
-/**
- * 開発用テナントヘッダ(バックエンドの dev stub と対)。
- * development 以外では一切送らない(WP-4038: 本番境界)。バックエンド側も
- * NODE_ENV=production で dev stub 自体が起動拒否されるため二重防御になる。
- * 本番認証(OIDC等)は BLOCKED_SECURITY_REVIEW — auth SSOT 承認後に置換する。
- */
-export function devTenantHeaders(
-  scopes: readonly PermissionScope[] = PATIENT_SEARCH_DEV_SCOPES,
-  nodeEnv: string | undefined = process.env.NODE_ENV,
-): Record<string, string> {
-  if (nodeEnv !== "development") {
-    return {};
-  }
-  return {
-    "x-dev-tenant": "t-dev",
-    "x-dev-pharmacy": "ph-dev",
-    "x-dev-actor": "u-dev",
-    "x-dev-scopes": scopes.join(","),
-  };
-}
+// 正本は dev-tenant.ts(複数画面で共用)。既存 import 互換のため再エクスポート。
+export { PATIENT_SEARCH_DEV_SCOPES, devTenantHeaders } from "../dev-tenant";
 
 const SEX_LABELS: Record<PatientSearchResult["sex"], string> = {
   male: "男",
@@ -208,20 +189,8 @@ export function createSearchRunner(
   };
 }
 
-/** 検索結果を横断患者文脈(表示投影)へ変換する(R-PATCTX)。 */
-export function toPatientContextData(p: PatientSearchResult): PatientContextData {
-  return {
-    patientId: p.patientId,
-    name: p.name,
-    kana: p.kana,
-    birthDate: p.birthDate,
-    sex: p.sex,
-    eligibilityStatus: p.eligibilityStatus,
-    ...(p.eligibilityCheckedAt !== undefined
-      ? { eligibilityCheckedAt: p.eligibilityCheckedAt }
-      : {}),
-  };
-}
+// 正本は patient-context.tsx(再取得経路と共用)。既存 import 互換のため再エクスポート。
+export { toPatientContextData } from "../components/patient-context";
 
 /** カナ完全一致で複数存在する患者のカナ集合(UIX-001 P-09 同姓同名警告) */
 export function duplicateKanaSet(

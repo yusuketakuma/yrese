@@ -5,7 +5,12 @@ import { createDocument, type ZodOpenApiObject } from "zod-openapi";
 import { auditLogQuerySchema, auditLogResponseSchema } from "./audit-log.js";
 import { errorResponseSchema } from "./error.js";
 import { healthResponseSchema } from "./health.js";
-import { patientSearchQuerySchema, patientSearchResponseSchema } from "./patient-search.js";
+import {
+  patientGetParamsSchema,
+  patientSearchQuerySchema,
+  patientSearchResponseSchema,
+  patientSearchResultSchema,
+} from "./patient-search.js";
 import {
   receptionCreateRequestSchema,
   receptionQueueQuerySchema,
@@ -39,6 +44,17 @@ const patientSearchResponseOpenApiSchema = patientSearchResponseSchema.meta({
 const whoamiResponseOpenApiSchema = whoamiResponseSchema.meta({
   id: "WhoamiResponse",
   description: "Current tenant context response. PHI-free.",
+});
+
+const patientGetParamsOpenApiSchema = patientGetParamsSchema.meta({
+  id: "PatientGetParams",
+  description: "Patient get-by-id path parameters",
+});
+
+const patientSummaryOpenApiSchema = patientSearchResultSchema.meta({
+  id: "PatientSummary",
+  description:
+    "Patient summary projection (same shape as search results). Contains PHI and must not be logged in plaintext.",
 });
 
 const receptionQueueQueryOpenApiSchema = receptionQueueQuerySchema.meta({
@@ -156,6 +172,54 @@ const openApiDefinition = {
           },
           "403": {
             description: "Forbidden (AUTH-0003)",
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+        },
+      },
+    },
+    "/patients/{patientId}": {
+      get: {
+        operationId: "getPatientById",
+        tags: ["patients"],
+        summary: "Return one patient summary by ID within the authenticated tenant and pharmacy context",
+        description:
+          "Requires patient:read scope and tenant context. Used to refresh the cross-route patient context (R-PATCTX). The response contains PHI and must use Cache-Control: no-store.",
+        "x-yrese-ssot": "API-001",
+        "x-yrese-required-scope": "patient:read",
+        requestParams: {
+          path: patientGetParamsOpenApiSchema,
+        },
+        responses: {
+          "200": {
+            description: "Patient summary (same projection as search results)",
+            content: {
+              [jsonContentType]: {
+                schema: patientSummaryOpenApiSchema,
+              },
+            },
+          },
+          "400": {
+            description: "Invalid patient ID (PAT-0001)",
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+          "403": {
+            description: "Forbidden (AUTH-0003)",
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+          "404": {
+            description: "Patient not found (PAT-0002)",
             content: {
               [jsonContentType]: {
                 schema: errorResponseOpenApiSchema,

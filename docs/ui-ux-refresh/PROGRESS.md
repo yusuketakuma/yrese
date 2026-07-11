@@ -64,6 +64,17 @@
 - 検証実測: **web 182 / api 168 / contracts 95 / kernel 36、全パッケージ緑・回帰0、build 12/12**。
 - モードは検知バックエンド未実装のため NORMAL 固定(表示にその旨明記)。未接続部は placeholder-note で正直に残置。
 
+## 第4次実装(2026-07-11 — patient get-by-id + 横断患者文脈の鮮度)
+
+- **契約**: `GET /patients/:patientId`(API-001 拡張)— 応答は検索結果と同一射影(PatientSummary)、
+  `PAT-0002`(not found)追加、OpenAPI 再生成 drift 0。
+- **API**: patient:read、no-store、テナント越しは 404(存在有無を隠す)、identity mismatch ガード。
+- **web**: 画面遷移(pathname 変化)ごとに選択患者を get-by-id で再取得。
+  404 → 選択解除 + role=alert 通知(参照不能患者の残存防止)。通信失敗 → 選択維持 + STALE バッジ
+  「情報が古い可能性」(古い表示を最新に見せない)。devTenantHeaders/toPatientContextData を
+  共用モジュールへ正本化(再エクスポートで互換維持)。
+- 検証実測: **web 188 / api 172 / contracts 95 / kernel 36(PAT-0002 追加)、全緑・回帰0、build 12/12**。
+
 ## 画面台帳(サマリ; 詳細は 04)
 
 本格実装: 受付 SCR-001 / 患者検索 SCR-002 / 管理(監査ログ)SCR-028。

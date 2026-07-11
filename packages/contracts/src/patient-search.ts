@@ -27,7 +27,17 @@ export const patientSearchResponseSchema = z.object({
   nextCursor: z.string().max(PATIENT_SEARCH_CURSOR_MAX_LENGTH).optional(),
 });
 
+/**
+ * 患者 get-by-id(GET /patients/:patientId)のパスパラメータ。
+ * 応答は patientSearchResultSchema(PatientSummary 表示投影)を再利用する —
+ * 検索結果と同一射影であることが、横断患者文脈(R-PATCTX)の再取得互換性の根拠。
+ */
+export const patientGetParamsSchema = z.object({
+  patientId: patientIdWireSchema,
+});
+
 export { ELIGIBILITY_STATUSES, type EligibilityStatus };
 export type PatientSearchQuery = z.infer<typeof patientSearchQuerySchema>;
 export type PatientSearchResult = z.infer<typeof patientSearchResultSchema>;
 export type PatientSearchResponse = z.infer<typeof patientSearchResponseSchema>;
+export type PatientGetParams = z.infer<typeof patientGetParamsSchema>;
