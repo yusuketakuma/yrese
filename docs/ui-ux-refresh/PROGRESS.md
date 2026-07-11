@@ -75,6 +75,18 @@
   共用モジュールへ正本化(再エクスポートで互換維持)。
 - 検証実測: **web 188 / api 172 / contracts 95 / kernel 36(PAT-0002 追加)、全緑・回帰0、build 12/12**。
 
+## 第5次実装(2026-07-11 — 監査ログ Postgres 永続層)
+
+- `migrations/000004_create_audit_events.sql`: hash chain 保存テーブル + **append-only trigger**
+  (UPDATE/DELETE を DB 層で拒否 — 真正性)+ sha256 形式 CHECK。
+- `PostgresAuditRepository`: (tenant, pharmacy) 単位の advisory xact lock で chain 追記を直列化、
+  event_body(JSONB, bigint は文字列)を hydrateAuditEvent で読み出し時再検証。
+  破損行は隠さず raw 返却 → 閲覧側 verifyAuditHashChain が破断(CRITICAL)として報告(fail-visible)。
+- main.ts postgres モードへ配線。イベント構築は buildChainedAuditEvent として InMemory と共通化。
+- **統合テスト4件(chain 検証/スコープ分離/append-only 拒否/改ざん検出)は作成済みだが、
+  本環境に Postgres/Docker が無く Not executed**(既存 postgres 統合テストと同一の skip 条件)。
+- 検証実測: api 単体 172 pass(+13 skip)・typecheck 0・回帰0。
+
 ## 画面台帳(サマリ; 詳細は 04)
 
 本格実装: 受付 SCR-001 / 患者検索 SCR-002 / 管理(監査ログ)SCR-028。

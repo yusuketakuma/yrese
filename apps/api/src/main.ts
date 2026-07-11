@@ -6,6 +6,7 @@ import {
   resolvePatientSearchCursorHmacKey,
   resolveTenantContextMode,
 } from './config.js';
+import { PostgresAuditRepository } from './db/audit-repository.js';
 import { assertMigrationStateAllowsStartup } from './db/migration-runner.js';
 import { loadMigrationFiles } from './db/migrations.js';
 import { PostgresPatientRepository } from './db/patient-repository.js';
@@ -56,6 +57,7 @@ async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServe
     const server = buildServer({
       patientRepository: new PostgresPatientRepository(pool),
       receptionRepository: new PostgresReceptionRepository(pool),
+      auditRepository: new PostgresAuditRepository(pool),
       repositoryMode,
       tenantContextMode,
       patientSearchCursorCodec,
