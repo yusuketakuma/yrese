@@ -6,12 +6,21 @@ import {
   patientSearchResponseSchema,
   type PatientSearchResult,
 } from "@yrese/contracts";
-import { permissionScope, type PermissionScope } from "@yrese/shared-kernel";
+import { patientId, permissionScope, type PermissionScope } from "@yrese/shared-kernel";
 
 import { registeredErrorCodeOrUndefined } from "../components/error-code";
 import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
-import { ELIGIBILITY_LABELS } from "../components/patient-header";
+import {
+  type PatientContextData,
+  useOptionalPatientContext,
+} from "../components/patient-context";
+import {
+  ELIGIBILITY_LABELS,
+  PatientHeader,
+  computeAgeYears,
+} from "../components/patient-header";
 import { SeverityList } from "../components/severity-list";
+import { ELIGIBILITY_PRESENTATION } from "../status/visual-status-registry";
 import { resolveWebApiUrl } from "../api-transport";
 
 /**
@@ -199,6 +208,21 @@ export function createSearchRunner(
   };
 }
 
+/** 検索結果を横断患者文脈(表示投影)へ変換する(R-PATCTX)。 */
+export function toPatientContextData(p: PatientSearchResult): PatientContextData {
+  return {
+    patientId: p.patientId,
+    name: p.name,
+    kana: p.kana,
+    birthDate: p.birthDate,
+    sex: p.sex,
+    eligibilityStatus: p.eligibilityStatus,
+    ...(p.eligibilityCheckedAt !== undefined
+      ? { eligibilityCheckedAt: p.eligibilityCheckedAt }
+      : {}),
+  };
+}
+
 /** カナ完全一致で複数存在する患者のカナ集合(UIX-001 P-09 同姓同名警告) */
 export function duplicateKanaSet(
   results: readonly PatientSearchResult[],
@@ -217,11 +241,14 @@ export function PatientSearchResults({
   query,
   nextCursor,
   onLoadMore,
+  onSelect,
 }: {
   readonly results: readonly PatientSearchResult[];
   readonly query: string;
   readonly nextCursor?: string;
   readonly onLoadMore?: () => void;
+  /** 患者を業務対象として選択する(患者文脈確定 — UIX-006 / R-PATCTX) */
+  readonly onSelect?: (patient: PatientSearchResult) => void;
 }) {
   const duplicates = duplicateKanaSet(results);
   // 同姓同名判定は「読み込み済みの結果」に対してのみ有効。続きがある間は
@@ -255,7 +282,8 @@ export function PatientSearchResults({
       </p>
       {notices.length > 0 && <SeverityList items={notices} />}
       {results.length > 0 && (
-        <table className="patient-search-results">
+        <div className="table-scroll">
+          <table className="patient-search-results">
           <thead>
             <tr>
               <th scope="col">患者番号</th>
@@ -263,6 +291,7 @@ export function PatientSearchResults({
               <th scope="col">生年月日</th>
               <th scope="col">性別</th>
               <th scope="col">資格確認状態</th>
+              {onSelect !== undefined && <th scope="col">操作</th>}
             </tr>
           </thead>
           <tbody>
@@ -290,6 +319,9 @@ export function PatientSearchResults({
                       className="patient-eligibility"
                       data-status={p.eligibilityStatus}
                     >
+                      <span className="patient-eligibility-shape" aria-hidden="true">
+                        {ELIGIBILITY_PRESENTATION[p.eligibilityStatus].shape}
+                      </span>
                       {ELIGIBILITY_LABELS[p.eligibilityStatus]}
                       {p.eligibilityCheckedAt !== undefined && (
                         <span className="patient-eligibility-checked-at">
@@ -298,11 +330,19 @@ export function PatientSearchResults({
                       )}
                     </span>
                   </td>
+                  {onSelect !== undefined && (
+                    <td>
+                      <button type="button" onClick={() => onSelect(p)}>
+                        この患者を選択
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })}
           </tbody>
-        </table>
+          </table>
+        </div>
       )}
       {nextCursor !== undefined && onLoadMore !== undefined && (
         <button type="button" onClick={onLoadMore}>
@@ -316,6 +356,12 @@ export function PatientSearchResults({
 export function PatientSearch() {
   const [q, setQ] = useState("");
   const [state, setState] = useState<SearchState>({ kind: "idle" });
+  // 業務対象として確定した患者(患者文脈)。別患者を選ぶと置き換わり、
+  // 前患者の文脈は破棄される(患者切替時の残存防止 — R-PATCTX / H-02)。
+  // Provider 配下(実アプリ)では横断文脈へ委譲し、全画面共通バーで固定表示する。
+  // Provider なし(スタンドアロン)ではローカル状態で自己完結する。
+  const patientCtx = useOptionalPatientContext();
+  const [localSelected, setLocalSelected] = useState<PatientContextData | null>(null);
   const runnerRef = useRef<ReturnType<typeof createSearchRunner> | null>(null);
   if (runnerRef.current === null) {
     runnerRef.current = createSearchRunner(fetchSearch, setState);
@@ -331,8 +377,45 @@ export function PatientSearch() {
     [],
   );
 
+  const selectPatient = useCallback(
+    (p: PatientSearchResult) => {
+      const data = toPatientContextData(p);
+      if (patientCtx !== null) {
+        patientCtx.selectPatient(data);
+      } else {
+        setLocalSelected(data);
+      }
+    },
+    [patientCtx],
+  );
+
+  // Provider 配下では固定バーが選択中患者を表示するため、検索画面での重複表示はしない。
+  const standaloneSelected = patientCtx === null ? localSelected : null;
+
   return (
     <section aria-label="患者検索">
+      {standaloneSelected !== null && (
+        <div className="selected-patient-context">
+          <p className="selected-patient-context-title" role="status">
+            選択中の患者(この患者を業務対象とします)
+          </p>
+          <PatientHeader
+            patientId={patientId(standaloneSelected.patientId)}
+            name={standaloneSelected.name}
+            kana={standaloneSelected.kana}
+            birthDate={standaloneSelected.birthDate}
+            age={computeAgeYears(standaloneSelected.birthDate, new Date())}
+            sex={standaloneSelected.sex}
+            eligibility={standaloneSelected.eligibilityStatus}
+            {...(standaloneSelected.eligibilityCheckedAt !== undefined
+              ? { eligibilityCheckedAt: standaloneSelected.eligibilityCheckedAt }
+              : {})}
+          />
+          <button type="button" onClick={() => setLocalSelected(null)}>
+            選択解除
+          </button>
+        </div>
+      )}
       <form
         className="patient-search-form"
         onSubmit={(e) => {
@@ -371,6 +454,7 @@ export function PatientSearch() {
             ? { nextCursor: state.nextCursor }
             : {})}
           onLoadMore={() => runSearch(state.query, state.nextCursor, true)}
+          onSelect={selectPatient}
         />
       )}
     </section>

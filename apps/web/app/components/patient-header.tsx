@@ -1,6 +1,11 @@
 import type { EligibilityStatus } from "@yrese/contracts";
 import type { PatientId } from "@yrese/shared-kernel";
 
+import {
+  ELIGIBILITY_PRESENTATION,
+  ELIGIBILITY_STATUS_LABELS,
+} from "../status/visual-status-registry";
+
 /**
  * 患者ヘッダー(患者取り違え防止表示)。
  *
@@ -14,16 +19,44 @@ import type { PatientId } from "@yrese/shared-kernel";
 export type EligibilityDisplayStatus = EligibilityStatus;
 
 /**
- * 資格確認状態の表示文言の唯一の正(WP-3008 / WP-4041)。
- * 資格状態を表示する画面はすべて本定義を再利用し、独自文言を定義しない
- * (安全含意の弱い言い換えを防ぐ)。状態型は @yrese/contracts の正本を使う。
+ * 資格確認状態の表示文言(WP-3008 / WP-4041)。
+ * 正本は Visual Status Registry(ELIGIBILITY_STATUS_LABELS)。資格状態を表示する画面は
+ * すべて本定義を再利用し、独自文言を定義しない(安全含意の弱い言い換えを防ぐ)。
+ * 状態型は @yrese/contracts の正本を使う。
  */
-export const ELIGIBILITY_LABELS: Record<EligibilityDisplayStatus, string> = {
-  VERIFIED: "資格確認済み",
-  PENDING_REVERIFY: "資格再確認待ち(請求前に再確認必須)",
-  LOCAL_ONLY_UNVERIFIED: "ローカル参照のみ(オンライン未確認)",
-  NOT_CHECKED: "資格未確認",
-};
+export const ELIGIBILITY_LABELS: Record<EligibilityDisplayStatus, string> =
+  ELIGIBILITY_STATUS_LABELS;
+
+/**
+ * 生年月日(YYYY-MM-DD)と基準日から満年齢を計算する(監査 R-PATCTX)。
+ * PatientHeader の age は呼び出し側責務(本コンポーネント冒頭コメント)。
+ * 基準日は JST の暦日で判定する(業務日付のタイムゾーン規律 — WP-4053 と整合。
+ * 実行環境のタイムゾーンに依存させない)。
+ */
+export function computeAgeYears(birthDate: string, asOf: Date): number {
+  // asOf を JST の暦日(YYYY-MM-DD)へ正規化する
+  const asOfJst = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(asOf);
+
+  const birth = birthDate.split("-");
+  const now = asOfJst.split("-");
+  const birthYear = Number(birth[0]);
+  const birthMonth = Number(birth[1]);
+  const birthDay = Number(birth[2]);
+  const nowYear = Number(now[0]);
+  const nowMonth = Number(now[1]);
+  const nowDay = Number(now[2]);
+
+  let age = nowYear - birthYear;
+  if (nowMonth < birthMonth || (nowMonth === birthMonth && nowDay < birthDay)) {
+    age -= 1;
+  }
+  return age;
+}
 
 export interface PatientHeaderProps {
   readonly patientId: PatientId;
@@ -67,6 +100,9 @@ export function PatientHeader(props: PatientHeaderProps) {
         data-status={props.eligibility}
         role="status"
       >
+        <span className="patient-eligibility-shape" aria-hidden="true">
+          {ELIGIBILITY_PRESENTATION[props.eligibility].shape}
+        </span>
         {ELIGIBILITY_LABELS[props.eligibility]}
         {!verified && props.eligibilityCheckedAt && (
           <span className="patient-eligibility-checked-at">

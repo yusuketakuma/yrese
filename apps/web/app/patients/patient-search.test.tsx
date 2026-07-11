@@ -4,7 +4,12 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { PatientSearchResult } from "@yrese/contracts";
 
-import { ELIGIBILITY_LABELS } from "../components/patient-header";
+import {
+  ELIGIBILITY_LABELS,
+  PatientHeader,
+  computeAgeYears,
+} from "../components/patient-header";
+import { patientId } from "@yrese/shared-kernel";
 import {
   createSearchRunner,
   devTenantHeaders,
@@ -307,5 +312,73 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     expect(html).toContain("資格再確認待ち(請求前に再確認必須)");
     expect(html).toContain(ELIGIBILITY_LABELS.LOCAL_ONLY_UNVERIFIED);
     expect(html).toContain("ローカル参照のみ(オンライン未確認)");
+    // 色非依存の冗長エンコード: 形状記号を aria-hidden で併記(監査 A-03)
+    expect(html).toContain("patient-eligibility-shape");
+    expect(html).toContain('aria-hidden="true"');
+    // 狭幅で薬剤名・患者識別を切らないため横スクロールコンテナで包む(監査 L-02)
+    expect(html).toContain('class="table-scroll"');
+  });
+
+  it("shows a select action only when onSelect is provided (患者文脈確定 — R-PATCTX)", () => {
+    const withSelect = renderToStaticMarkup(
+      <PatientSearchResults
+        results={[patient({ patientId: "p1" })]}
+        query="テスト"
+        onSelect={() => undefined}
+      />,
+    );
+    const withoutSelect = renderToStaticMarkup(
+      <PatientSearchResults results={[patient({ patientId: "p1" })]} query="テスト" />,
+    );
+
+    expect(withSelect).toContain("この患者を選択");
+    expect(withSelect).toContain("操作");
+    expect(withoutSelect).not.toContain("この患者を選択");
+    expect(withoutSelect).not.toContain("操作");
+  });
+});
+
+describe("computeAgeYears (患者年齢 — R-PATCTX)", () => {
+  it("counts a birthday already passed this year", () => {
+    expect(computeAgeYears("1990-06-15", new Date("2026-07-11T00:00:00+09:00"))).toBe(36);
+  });
+
+  it("does not count a birthday not yet reached this year", () => {
+    expect(computeAgeYears("1990-08-01", new Date("2026-07-11T00:00:00+09:00"))).toBe(35);
+  });
+
+  it("counts the birthday on the exact day", () => {
+    expect(computeAgeYears("1990-07-11", new Date("2026-07-11T00:00:00+09:00"))).toBe(36);
+  });
+});
+
+describe("PatientHeader with a selected patient (患者取り違え防止表示 — R-PATCTX)", () => {
+  it("fixes the identity + computed age + eligibility of the selected patient", () => {
+    const p = patient({
+      patientId: "p-selected",
+      name: "選択 花子",
+      kana: "センタク ハナコ",
+      birthDate: "1988-03-20",
+      sex: "female",
+      eligibilityStatus: "PENDING_REVERIFY",
+    });
+    const html = renderToStaticMarkup(
+      <PatientHeader
+        patientId={patientId(p.patientId)}
+        name={p.name}
+        kana={p.kana}
+        birthDate={p.birthDate}
+        age={computeAgeYears(p.birthDate, new Date("2026-07-11T00:00:00+09:00"))}
+        sex={p.sex}
+        eligibility={p.eligibilityStatus}
+      />,
+    );
+
+    expect(html).toContain("センタク ハナコ");
+    expect(html).toContain("選択 花子");
+    expect(html).toContain("1988-03-20");
+    expect(html).toContain("38歳");
+    expect(html).toContain(ELIGIBILITY_LABELS.PENDING_REVERIFY);
+    expect(html).toContain('data-patient-id="p-selected"');
   });
 });

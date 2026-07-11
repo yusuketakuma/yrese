@@ -19,6 +19,8 @@
   --color-status-pending-bg: #fff3cd;
   --color-status-blocked-bg: #f8d7da;
   --color-status-neutral-bg: #eef1f4;
+  /* attention(注意 — Visual Status Registry の attention トーン。ERROR/NOT_CHECKED 等) */
+  --color-status-attention-bg: #ffe8cc;
 
   /* 旧名称(既存参照互換) */
   --color-mode-normal-bg: var(--color-status-ok-bg);
@@ -197,6 +199,20 @@ tr[data-duplicate-kana="true"] > td {
   font-size: 0.85rem;
 }
 
+/* 選択中患者の文脈(患者取り違え防止 — R-PATCTX)。目立つ枠で常時上部に固定表示 */
+.selected-patient-context {
+  margin-bottom: var(--space-3);
+  padding: var(--space-2);
+  border: 2px solid var(--color-accent);
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+}
+
+.selected-patient-context-title {
+  margin: 0 0 var(--space-1);
+  font-weight: 700;
+}
+
 /* 患者検索(WP-3003) */
 .patient-search-form {
   margin-bottom: 1rem;
@@ -286,6 +302,43 @@ tr[data-duplicate-kana="true"] > td {
   background: var(--color-status-blocked-bg);
 }
 
+.status-badge[data-tone="attention"] {
+  background: var(--color-status-attention-bg);
+}
+
+/* 形状記号(色非依存の冗長エンコード補助。aria-hidden。label が意味の主担) */
+.status-badge-shape,
+.severity-shape,
+.system-mode-shape,
+.patient-eligibility-shape {
+  margin-right: var(--space-1);
+  font-weight: 700;
+}
+
+/*
+ * テーブルの横溢れ対応(監査 L-02 / §13.6)。単純縮小ではなく、狭幅では横スクロールで
+ * 薬剤名・患者識別情報を切らずに保持する。max-width は内側テーブルが持つ。
+ */
+.table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 一覧の鮮度表示(監査 S-02): 古い一覧を最新と誤認させないため最終取得時刻を明示 */
+.queue-last-updated {
+  font-size: var(--font-size-sm);
+  color: var(--color-fg);
+  margin: 0 0 var(--space-2);
+}
+
+/* 仮状態の機械可読キー併記(traceability。文言は補助的に控えめ表示) */
+.mode-capability-provisional-key {
+  margin-left: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-fg);
+}
+
 .blocker-banner {
   border: 2px solid var(--color-danger-border);
   border-radius: 4px;
@@ -366,4 +419,386 @@ tr[data-duplicate-kana="true"] > td {
 .patient-search-results thead,
 .reception-queue thead {
   background: #f0f2f5;
+}
+
+/* 追加状態記号(色非依存の冗長エンコード補助。すべて aria-hidden) */
+.record-state span[aria-hidden],
+.prescription-change-arrow,
+.clinical-alert-shape,
+.offline-banner-shape,
+.system-health-shape,
+.emergency-mode-shape,
+.session-expiry-shape,
+.file-upload-shape,
+.permission-state-shape {
+  font-weight: 700;
+}
+
+/* 全画面横断の患者文脈バー(R-PATCTX / H-01・H-02)。目立つ固定表示で取り違えを防ぐ */
+.patient-context-bar {
+  border: 2px solid var(--color-accent);
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+  padding: var(--space-2) var(--space-3);
+  margin: 0 0 var(--space-3);
+}
+
+.patient-context-bar-title {
+  font-weight: 700;
+  margin: 0 0 var(--space-1);
+}
+
+/* 記録状態(R-RECLIFE)。確定系の監査行・版は控えめに併記 */
+.record-state {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.record-state-version,
+.record-state-audit {
+  font-size: var(--font-size-sm);
+}
+
+/* 処方変化(H-06/H-07)。臨床警告とは別の中立的な見た目にして混同を避ける(§11.7) */
+.prescription-change {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.prescription-change-drug {
+  font-weight: 700;
+}
+
+.prescription-change-delta {
+  font-size: var(--font-size-sm);
+}
+
+/* 臨床アラート(R-CLINALERT / H-08)。重大度で左境界を強調。点滅しない */
+.clinical-alert {
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-fg);
+  border-radius: 4px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-status-neutral-bg);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.clinical-alert[data-tone="blocked"] {
+  border-left-color: var(--color-danger-border);
+  background: var(--color-status-blocked-bg);
+}
+
+.clinical-alert[data-tone="attention"] {
+  background: var(--color-status-attention-bg);
+}
+
+.clinical-alert[data-tone="pending"] {
+  background: var(--color-status-pending-bg);
+}
+
+.clinical-alert-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-weight: 700;
+}
+
+.clinical-alert-blocking {
+  color: var(--color-danger-border);
+  font-weight: 700;
+}
+
+.clinical-alert-body {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.clinical-alert-provenance {
+  font-size: var(--font-size-sm);
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.clinical-alert-summary {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-raised);
+}
+
+.clinical-alert-summary[data-top-severity="CRITICAL"],
+.clinical-alert-summary[data-top-severity="BLOCKER"] {
+  border-color: var(--color-danger-border);
+  background: var(--color-status-blocked-bg);
+}
+
+.clinical-alert-summary-total {
+  font-weight: 700;
+  margin-right: var(--space-2);
+}
+
+.clinical-alert-summary-breakdown {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* 同期・オフライン・稼働・非常時(R-OFFLINE)。ローカル保存を成功表現にしない(H-03) */
+.sync-indicator {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.sync-indicator-last {
+  font-size: var(--font-size-sm);
+}
+
+.offline-banner,
+.system-health-banner {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-status-pending-bg);
+  margin: 0 0 var(--space-2);
+}
+
+.offline-banner[data-mode="LOCAL_ONLY"],
+.system-health-banner[data-degraded="true"][data-mode="LOCAL_ONLY"] {
+  background: var(--color-status-blocked-bg);
+  border-color: var(--color-danger-border);
+}
+
+.system-health-banner[data-degraded="false"] {
+  background: var(--color-status-ok-bg);
+}
+
+.offline-banner-mode,
+.system-health-mode {
+  font-weight: 700;
+}
+
+.emergency-mode-banner {
+  border: 2px solid var(--color-danger-border);
+  border-radius: 4px;
+  background: var(--color-status-blocked-bg);
+  padding: var(--space-2) var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.emergency-mode-title {
+  font-weight: 700;
+}
+
+.emergency-mode-capability {
+  display: flex;
+  gap: var(--space-4, 1.5rem);
+  flex-wrap: wrap;
+}
+
+.emergency-mode-heading {
+  font-weight: 700;
+}
+
+/* セッション失効警告・サインイン(R-AUTH / H-10) */
+.session-expiry-warning {
+  border: 2px solid var(--color-accent);
+  border-radius: 4px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-status-attention-bg);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.session-expiry-warning[data-session-status="EXPIRED"],
+.session-expiry-warning[data-session-status="LOCKED"] {
+  border-color: var(--color-danger-border);
+  background: var(--color-status-blocked-bg);
+}
+
+.session-expiry-header {
+  font-weight: 700;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.login-form {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 22rem;
+}
+
+.login-form-field {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.login-form-error {
+  color: var(--color-danger-border);
+  font-weight: 700;
+  margin: 0;
+}
+
+/* 確認ダイアログ(P-11)。オーバーレイ表示。ワンクリック実行を避ける */
+.confirmation-dialog,
+.destructive-action-dialog {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  padding: var(--space-3);
+  z-index: 100;
+}
+
+.confirmation-dialog-panel,
+.destructive-action-panel {
+  background: var(--color-bg);
+  border: 2px solid var(--color-fg);
+  border-radius: 6px;
+  padding: var(--space-3);
+  max-width: 32rem;
+  width: 100%;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.destructive-action-dialog[data-tone="blocked"] .destructive-action-panel {
+  border-color: var(--color-danger-border);
+}
+
+.confirmation-dialog-patient,
+.destructive-action-patient {
+  font-weight: 700;
+}
+
+.destructive-action-impact {
+  color: var(--color-danger-border);
+  font-weight: 600;
+  margin: 0;
+}
+
+.confirmation-dialog-actions,
+.destructive-action-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+/* ファイルアップロード状態。完了前を保存済みに見せない */
+.file-upload-status {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.file-upload-name {
+  font-weight: 600;
+}
+
+.file-upload-message {
+  font-size: var(--font-size-sm);
+}
+
+/* 監査・版・権限・閲覧専用 */
+.audit-metadata {
+  display: inline-flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: var(--font-size-sm);
+}
+
+.version-history-note {
+  margin-left: var(--space-1);
+  font-size: var(--font-size-sm);
+}
+
+.permission-state {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.permission-state[data-allowed="false"] {
+  color: var(--color-danger-border);
+  font-weight: 600;
+}
+
+.read-only-indicator {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+}
+
+/*
+ * アクセシビリティ(UIX-001 P-20 / 監査 A-04 / §11.4-13,16)。
+ * reduced-motion: 装飾的な動きを抑止する(重要状態は元々アニメーションに依存しない)。
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * forced-colors(ハイコントラスト): 状態は背景色ではなく境界・ラベル・形状で判別できるようにする。
+ * 状態バッジ・重要度・患者ヘッダ・エラー領域の境界を明示し、focus を可視化する。
+ */
+@media (forced-colors: active) {
+  .status-badge,
+  .system-mode-badge,
+  .patient-eligibility,
+  .severity-list li,
+  .error-notice,
+  .blocker-banner,
+  .patient-context-bar,
+  .clinical-alert,
+  .clinical-alert-summary,
+  .offline-banner,
+  .system-health-banner,
+  .emergency-mode-banner,
+  .session-expiry-warning,
+  .confirmation-dialog-panel,
+  .destructive-action-panel {
+    border: 1px solid CanvasText;
+  }
+
+  .severity-list li[data-severity="BLOCKER"],
+  .severity-list li[data-severity="CRITICAL"],
+  .error-notice[data-severity="CRITICAL"],
+  .blocker-banner,
+  .clinical-alert[data-tone="blocked"],
+  .emergency-mode-banner {
+    border-left-width: 4px;
+  }
+
+  :focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 1px;
+  }
 }

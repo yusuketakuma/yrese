@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { PatientContextBar, PatientContextProvider } from "./components/patient-context";
 import { BusinessNav } from "./nav";
 import { SystemModeBadge } from "./system-mode-badge";
 import "./globals.css";
@@ -19,12 +20,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ja">
       <body>
-        <header className="app-header">
-          <h1 className="app-title">yrese 調剤レセコン</h1>
-          <SystemModeBadge />
-        </header>
-        <BusinessNav />
-        <main className="app-main">{children}</main>
+        <PatientContextProvider>
+          <header className="app-header">
+            <h1 className="app-title">yrese 調剤レセコン</h1>
+            <SystemModeBadge />
+          </header>
+          <BusinessNav />
+          <PatientContextBar />
+          <main className="app-main">{children}</main>
+        </PatientContextProvider>
       </body>
     </html>
   );

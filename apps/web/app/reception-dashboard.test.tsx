@@ -18,6 +18,7 @@ import {
   createReceptionQueueRunner,
   fetchReceptionQueue,
   formatAcceptedTime,
+  parseDateParam,
   type QueueState,
   todayAsIsoDate,
 } from "./reception-dashboard";
@@ -318,6 +319,31 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
       return true;
     });
   });
+
+  it("shows the last-updated time so a stale queue is not read as current (S-02)", () => {
+    const html = renderToStaticMarkup(
+      <ReceptionQueueView
+        state={{
+          kind: "loaded",
+          response: queueResponse("2026-07-10", [entry({ receptionId: "rc-1" })]),
+          loadedAt: "05:15",
+        }}
+      />,
+    );
+    expect(html).toContain("最終取得: 05:15");
+  });
+
+  it("omits last-updated when the loaded state has no timestamp", () => {
+    const html = renderToStaticMarkup(
+      <ReceptionQueueView
+        state={{
+          kind: "loaded",
+          response: queueResponse("2026-07-10", [entry({ receptionId: "rc-1" })]),
+        }}
+      />,
+    );
+    expect(html).not.toContain("最終取得:");
+  });
 });
 
 describe("business date is JST (WP-4053)", () => {
@@ -326,5 +352,21 @@ describe("business date is JST (WP-4053)", () => {
     expect(todayAsIsoDate(new Date("2026-07-09T20:00:00Z"))).toBe("2026-07-10");
     // 2026-07-09T02:00:00Z = JST 2026-07-09 11:00(同日)
     expect(todayAsIsoDate(new Date("2026-07-09T02:00:00Z"))).toBe("2026-07-09");
+  });
+});
+
+describe("parseDateParam (URL 状態は非PHIの業務日付のみ — S-03)", () => {
+  it("accepts a valid YYYY-MM-DD date param", () => {
+    expect(parseDateParam("?date=2026-07-10")).toBe("2026-07-10");
+    expect(parseDateParam("?foo=1&date=2026-01-01")).toBe("2026-01-01");
+  });
+
+  it("rejects missing / malformed / impossible dates (fail-closed)", () => {
+    expect(parseDateParam("")).toBeUndefined();
+    expect(parseDateParam("?date=2026/07/10")).toBeUndefined();
+    expect(parseDateParam("?date=07-10-2026")).toBeUndefined();
+    expect(parseDateParam("?date=2026-02-31")).toBeUndefined();
+    // 患者名などの PHI らしき値は日付形式でないため復元されない(URLにPHIを載せない前提)
+    expect(parseDateParam("?date=ヤマダタロウ")).toBeUndefined();
   });
 });

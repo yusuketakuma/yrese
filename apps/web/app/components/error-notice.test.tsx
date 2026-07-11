@@ -61,6 +61,29 @@ describe("cross-screen error display (WP-3007 / SCR-013)", () => {
     expect(html).toContain("次のアクション: SSOT の改版を依頼してください。");
   });
 
+  it("uses a polite status role for WARNING/INFO but an assertive alert role for ERROR/BLOCKER (§11.4-18)", () => {
+    const warning = renderToStaticMarkup(
+      <ErrorNotice severity="WARNING" message="確認してください。" nextAction="確認する。" />,
+    );
+    const info = renderToStaticMarkup(
+      <ErrorNotice severity="INFO" message="参考情報です。" nextAction="なし。" />,
+    );
+    const error = renderToStaticMarkup(
+      <ErrorNotice severity="ERROR" message="失敗しました。" nextAction="再試行。" />,
+    );
+    const blocker = renderToStaticMarkup(
+      <ErrorNotice severity="BLOCKER" message="停止中です。" nextAction="SSOT 改版。" />,
+    );
+
+    // 警告過多を避けるため WARNING/INFO は status(polite 含意)
+    expect(warning).toContain('role="status"');
+    expect(warning).not.toContain('role="alert"');
+    expect(info).toContain('role="status"');
+    // 重大側は alert(assertive 含意)で埋没させない
+    expect(error).toContain('role="alert"');
+    expect(blocker).toContain('role="alert"');
+  });
+
   it("RouteError never leaks error.message or stack to the screen", () => {
     const error = Object.assign(new Error("PHI-LIKE-SECRET 山田太郎"), {
       digest: "abc123",

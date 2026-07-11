@@ -12,6 +12,8 @@ import {
 import { permissionScope, type PermissionScope } from "@yrese/shared-kernel";
 
 import { resolveWebApiUrl } from "./api-transport";
+import { RECEPTION_STATUS_LABELS as RECEPTION_STATUS_LABELS_SSOT } from "./status/visual-status-registry";
+import { DomainStatusBadge } from "./components/domain-status-badge";
 import { EmptyState } from "./components/empty-state";
 import { registeredErrorCodeOrUndefined } from "./components/error-code";
 import { ErrorNotice, type ErrorNoticeProps } from "./components/error-notice";
@@ -27,13 +29,12 @@ import { devTenantHeaders } from "./patients/patient-search";
  * 受付状態は RECEPTION_STATUSES のテキストラベルで表示(色非依存、UIX-001 P-20)。
  */
 
-/** 受付状態の表示ラベル(値の正本は shared-kernel の RECEPTION_STATUSES) */
-export const RECEPTION_STATUS_LABELS: Record<ReceptionStatus, string> = {
-  WAITING: "待機中",
-  IN_PROGRESS: "対応中",
-  COMPLETED: "完了",
-  CANCELLED: "取消済み",
-};
+/**
+ * 受付状態の表示ラベル。文言の正本は Visual Status Registry(RECEPTION_STATUS_LABELS)、
+ * 状態値の正本は shared-kernel の RECEPTION_STATUSES。既存 export 互換のため同名で再エクスポートする。
+ */
+export const RECEPTION_STATUS_LABELS: Record<ReceptionStatus, string> =
+  RECEPTION_STATUS_LABELS_SSOT;
 
 const PRESCRIPTION_INTAKE_LABELS: Record<
   ReceptionQueueEntry["prescriptionIntakeType"],
@@ -180,44 +181,46 @@ export function ReceptionQueueTable({
   readonly entries: readonly ReceptionQueueEntry[];
 }) {
   return (
-    <table className="reception-queue">
-      <thead>
-        <tr>
-          <th scope="col">受付時刻</th>
-          <th scope="col">患者番号</th>
-          <th scope="col">氏名(カナ)</th>
-          <th scope="col">生年月日</th>
-          <th scope="col">受付状態</th>
-          <th scope="col">処方箋</th>
-        </tr>
-      </thead>
-      <tbody>
-        {entries.map((entry) => (
-          <tr key={entry.receptionId}>
-            <td>{formatAcceptedTime(entry.acceptedAt)}</td>
-            <td>{entry.patient.patientNumber}</td>
-            <td>
-              <span className="patient-kana">{entry.patient.kana}</span>
-              <span className="patient-name">{entry.patient.name}</span>
-            </td>
-            <td>{entry.patient.birthDate}</td>
-            <td>
-              <span data-status={entry.receptionStatus}>
-                {RECEPTION_STATUS_LABELS[entry.receptionStatus]}
-              </span>
-            </td>
-            <td>{PRESCRIPTION_INTAKE_LABELS[entry.prescriptionIntakeType]}</td>
+    <div className="table-scroll">
+      <table className="reception-queue">
+        <thead>
+          <tr>
+            <th scope="col">受付時刻</th>
+            <th scope="col">患者番号</th>
+            <th scope="col">氏名(カナ)</th>
+            <th scope="col">生年月日</th>
+            <th scope="col">受付状態</th>
+            <th scope="col">処方箋</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {entries.map((entry) => (
+            <tr key={entry.receptionId}>
+              <td>{formatAcceptedTime(entry.acceptedAt)}</td>
+              <td>{entry.patient.patientNumber}</td>
+              <td>
+                <span className="patient-kana">{entry.patient.kana}</span>
+                <span className="patient-name">{entry.patient.name}</span>
+              </td>
+              <td>{entry.patient.birthDate}</td>
+              <td>
+                <DomainStatusBadge
+                  query={{ domain: "reception", key: entry.receptionStatus }}
+                />
+              </td>
+              <td>{PRESCRIPTION_INTAKE_LABELS[entry.prescriptionIntakeType]}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
 export type QueueState =
   | { kind: "loading" }
   | { kind: "error"; notice: ErrorNoticeProps }
-  | { kind: "loaded"; response: ReceptionQueueResponse };
+  | { kind: "loaded"; response: ReceptionQueueResponse; loadedAt?: string };
 
 type QueueStateUpdate = (prev: QueueState) => QueueState;
 
@@ -244,7 +247,12 @@ export function createReceptionQueueRunner(
       if (gen !== generation) {
         return;
       }
-      emit(() => ({ kind: "loaded", response }));
+      // 最終取得時刻(JST)。古い一覧を最新と誤認させない(監査 S-02)
+      emit(() => ({
+        kind: "loaded",
+        response,
+        loadedAt: formatAcceptedTime(new Date().toISOString()),
+      }));
     } catch (error) {
       if (gen !== generation) {
         return;
@@ -269,6 +277,9 @@ export function ReceptionQueueView({ state }: { readonly state: QueueState }) {
       <p role="status">
         {state.response.date} の受付: {state.response.entries.length}件
       </p>
+      {state.loadedAt !== undefined && (
+        <p className="queue-last-updated">最終取得: {state.loadedAt}(JST)</p>
+      )}
       <ReceptionQueueTable entries={state.response.entries} />
     </>
   );
@@ -289,6 +300,32 @@ export function todayAsIsoDate(now: Date = new Date()): string {
   }).format(now);
 }
 
+/**
+ * URL の ?date= から業務日付(YYYY-MM-DD)を取り出す(監査 S-03)。
+ * 共有・復元してよいのは PHI を含まない業務日付のみ。患者検索クエリ(氏名等)は
+ * PHI がブラウザ履歴・リファラ・ログに残るため URL へ永続しない(意図的な除外)。
+ */
+export function parseDateParam(search: string): string | undefined {
+  const value = new URLSearchParams(search).get("date");
+  if (value === null || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return undefined;
+  }
+  // 実在日付か(2026-02-31 等はロールオーバーするため Y-M-D の往復一致で弾く)
+  const parts = value.split("-");
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  const day = Number(parts[2]);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return undefined;
+  }
+  return value;
+}
+
 export function ReceptionDashboard() {
   const [date, setDate] = useState(todayAsIsoDate);
   const [queue, setQueue] = useState<QueueState>({ kind: "loading" });
@@ -306,12 +343,23 @@ export function ReceptionDashboard() {
         setQueue((prev) => update(prev)),
       );
     }
+    // 業務日付(非PHI)を URL に反映して共有・リロード復元を可能にする(監査 S-03)
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("date", targetDate);
+      window.history.replaceState(null, "", url);
+    }
     await loadRunner.current(targetDate);
   }, []);
 
   useEffect(() => {
-    void load(date);
-    // 初回表示のみ。日付変更は明示の「表示」操作で反映する
+    // 初回のみ URL の ?date= を復元。以降は明示の「表示」操作で反映する
+    const fromUrl =
+      typeof window !== "undefined" ? parseDateParam(window.location.search) : undefined;
+    if (fromUrl !== undefined && fromUrl !== date) {
+      setDate(fromUrl);
+    }
+    void load(fromUrl ?? date);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

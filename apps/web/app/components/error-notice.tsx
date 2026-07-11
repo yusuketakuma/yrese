@@ -1,5 +1,6 @@
 import type { ErrorSeverity } from "@yrese/shared-kernel";
 
+import { SEVERITY_PRESENTATION } from "../status/visual-status-registry";
 import { SeverityList } from "./severity-list";
 
 /**
@@ -31,10 +32,13 @@ export function ErrorNotice({
 }: ErrorNoticeProps) {
   const text =
     errorCode !== undefined ? `${message}(エラーコード: ${errorCode})` : message;
+  // 重要度に応じて live region を使い分ける(§11.4-18)。CRITICAL/BLOCKER/ERROR は alert
+  // (assertive 含意)、WARNING/INFO は status(polite 含意)にして警告過多を防ぐ。
+  const role = SEVERITY_PRESENTATION[severity].ariaRole;
   return (
     <div
       className="error-notice"
-      role="alert"
+      role={role}
       data-severity={severity}
       {...(errorCode !== undefined ? { "data-error-code": errorCode } : {})}
     >

@@ -6,6 +6,7 @@ import {
   type SystemMode,
 } from "@yrese/shared-kernel";
 
+import { PROVISIONAL_STATUS_LABELS } from "../status/visual-status-registry";
 import { MODE_LABELS } from "../system-mode-badge";
 
 /**
@@ -139,7 +140,8 @@ export function ModeCapabilityView({ mode }: { readonly mode: SystemMode }) {
           <ul role="list">
             {PROVISIONAL_STATUSES.map((status) => (
               <li key={status} data-status={status}>
-                {status}
+                {PROVISIONAL_STATUS_LABELS[status]}
+                <span className="mode-capability-provisional-key">({status})</span>
               </li>
             ))}
           </ul>
