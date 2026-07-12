@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
+import { createAuditEvent, verifyAuditHashChain } from '@yrese/audit';
 import type { AuditLogResponse } from '@yrese/contracts';
 import { pharmacyId, tenantId, userId } from '@yrese/shared-kernel';
 
@@ -9,6 +10,7 @@ import {
   patientSearchCursorHmacKeyByteLength,
 } from './patient-search-cursor.js';
 import {
+  auditLogDuplicateIdentityInvariantErrorMessage,
   auditLogScopeInvariantErrorMessage,
   buildServer,
   type BuildServerOptions,
@@ -176,6 +178,115 @@ describe('GET /audit/events (SCR-028)', () => {
       'reception-equal-b',
       'reception-equal-a',
     ]);
+  });
+
+  it.each([
+    ['same logical payload', false],
+    ['conflicting logical payload', true],
+  ] as const)(
+    'rejects a verified full chain that reuses one EventId with %s',
+    async (_label, conflicting) => {
+      const base = new InMemoryAuditRepository();
+      await seedEvents(base, 2);
+      const seeded = await base.list(SCOPE);
+      const first = seeded[0]!;
+      const duplicate = createAuditEvent(
+        conflicting
+          ? {
+              ...seeded[1]!,
+              eventId: first.eventId,
+              prevHash: first.entryHash,
+            }
+          : {
+              ...first,
+              sequenceNumber: 2n,
+              logicalClock: 2n,
+              prevHash: first.entryHash,
+            },
+      );
+      expect(verifyAuditHashChain([first, duplicate])).toMatchObject({
+        ok: true,
+        checkedCount: 2,
+      });
+      const record = vi.fn<AuditRepository['record']>(async () => first);
+      const server = buildDevTestServer({
+        auditRepository: {
+          list: vi.fn(async () => [first, duplicate]),
+          record,
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/audit/events?limit=1',
+        headers: auditReadHeaders,
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(record).not.toHaveBeenCalled();
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: auditLogDuplicateIdentityInvariantErrorMessage,
+      });
+      for (const sensitiveValue of [
+        first.eventId,
+        first.actorId,
+        first.targetRef.id,
+        first.correlationId,
+        first.idempotencyKey,
+        duplicate.targetRef.id,
+        duplicate.entryHash,
+      ]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+    },
+  );
+
+  it('preserves broken-chain reason and view auditing when EventIds also repeat', async () => {
+    const base = new InMemoryAuditRepository();
+    await seedEvents(base, 2);
+    const seeded = await base.list(SCOPE);
+    const first = seeded[0]!;
+    const duplicate = createAuditEvent({
+      ...seeded[1]!,
+      eventId: first.eventId,
+      prevHash: first.entryHash,
+    });
+    const brokenDuplicate = {
+      ...duplicate,
+      prevHash: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+    };
+    const record = vi.fn<AuditRepository['record']>(async () => first);
+    const server = buildDevTestServer({
+      auditRepository: {
+        list: vi.fn(async () => [first, brokenDuplicate]),
+        record,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events',
+      headers: auditReadHeaders,
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      chainVerification: {
+        ok: false,
+        checkedCount: 1,
+        breakIndex: 1,
+        reason: 'prev_hash_mismatch',
+      },
+      totalCount: 2,
+    });
+    expect(record).toHaveBeenCalledOnce();
   });
 
   it('reports a broken hash chain instead of hiding tampering', async () => {

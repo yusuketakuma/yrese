@@ -426,6 +426,63 @@ describe("createAuditLogRunner (latest-only / lifecycle invalidation)", () => {
     }
   });
 
+  it("retains the last verified view when refresh returns duplicate healthy EventIds, then retries", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const duplicateHealthy: AuditLogResponse = {
+      ...SAMPLE,
+      entries: [SAMPLE.entries[0]!, { ...SAMPLE.entries[1]!, eventId: "evt-002" }],
+    };
+    const replacement: AuditLogResponse = {
+      ...SAMPLE,
+      entries: [SAMPLE.entries[0]!],
+      totalCount: 1,
+      chainVerification: { ok: true, checkedCount: 1 },
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(duplicateHealthy), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(replacement), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    const recorder = createStateRecorder({
+      kind: "loaded",
+      data: SAMPLE,
+      refreshState: { kind: "idle" },
+    });
+    const runner = createAuditLogRunner(() => fetchAuditLog(fetchImpl), recorder.emit);
+
+    try {
+      await runner.run();
+      const failed = recorder.current();
+      expect(failed.kind).toBe("loaded");
+      if (failed.kind !== "loaded") throw new Error("expected retained audit view");
+      expect(failed.data).toBe(SAMPLE);
+      expect(failed.refreshState).toMatchObject({
+        kind: "error",
+        notice: { message: "監査ログの処理に失敗しました。" },
+      });
+      expect(JSON.stringify(failed)).not.toContain("Verified audit response contains");
+
+      await runner.run();
+      const retried = recorder.current();
+      expect(retried.kind).toBe("loaded");
+      if (retried.kind === "loaded") {
+        expect(retried.data).toEqual(replacement);
+        expect(retried.refreshState).toEqual({ kind: "idle" });
+      }
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("keeps initial failure top-level and retries with initial loading semantics", async () => {
     const fetcher = vi
       .fn<() => Promise<AuditLogResponse>>()
@@ -490,6 +547,70 @@ describe("fetchAuditLog transport contract", () => {
         expect(JSON.stringify(notice)).not.toContain("internal");
         return true;
       });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("rejects duplicate EventIds in a verified response without echoing audit fields", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const duplicate = {
+      ...SAMPLE,
+      entries: [SAMPLE.entries[0]!, { ...SAMPLE.entries[1]!, eventId: "evt-002" }],
+    };
+    try {
+      await expect(
+        fetchAuditLog(
+          vi.fn().mockResolvedValue(
+            new Response(JSON.stringify(duplicate), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        ),
+      ).rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe(
+          "Verified audit response contains duplicate event identities",
+        );
+        for (const sensitiveValue of [
+          "evt-002",
+          SAMPLE.entries[0]!.actorId,
+          SAMPLE.entries[0]!.targetRef.id,
+        ]) {
+          expect((error as Error).message).not.toContain(sensitiveValue);
+        }
+        return true;
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("keeps duplicate EventIds visible when the response is already a broken chain", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const duplicateBroken: AuditLogResponse = {
+      ...SAMPLE,
+      entries: [SAMPLE.entries[0]!, { ...SAMPLE.entries[0]! }],
+      chainVerification: {
+        ok: false,
+        checkedCount: 1,
+        breakIndex: 1,
+        reason: "prev_hash_mismatch",
+      },
+      totalCount: 2,
+    };
+    try {
+      await expect(
+        fetchAuditLog(
+          vi.fn().mockResolvedValue(
+            new Response(JSON.stringify(duplicateBroken), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        ),
+      ).resolves.toEqual(duplicateBroken);
     } finally {
       vi.unstubAllEnvs();
     }

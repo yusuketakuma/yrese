@@ -2435,6 +2435,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused audit-log-view19、web269、API219 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `0ebe4f9` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent/domain reviewとfull gates PASS、active audit refreshをsingle shared flight化し重複GET/audit.viewedを抑制。
 
+- [x] WP-4112 reject duplicate EventId in verified audit views(R2 audit identity integrity) — FINALIZED
+  - 発見根拠: `verifyAuditHashChain`はhash/prevHash/entryHashを検証するがEventId一意性を見ず、同一EventIdをsequence2で再hash連結した2件chainが`ok:true`となることを実証。API/UIは両rowをhealthyとして投影しReact keyも衝突した。
+  - scope: exact7 `apps/api/src/server.ts`, `apps/api/src/audit-log.test.ts`, `apps/web/app/admin/audit-log-view.tsx`, `apps/web/app/admin/audit-log-view.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。audit core/contracts/OpenAPI/reason enum/repository/DB/migration/SSOT/UI copy/ARIAは変更しない。
+  - implementation: APIはWP-4106 scope guard→core full-chain verify一回後、`verification.ok`時のみunwindowed全eventsのexact EventId一意性を`audit.viewed`/sort/limit/projection/response前に要求。browserもparse後healthy responseのみdisplay entriesを検査。duplicate healthyはfixed non-echo全体拒否、dedupe/repair/partial表示なし。
+  - acceptance: same-logical/conflicting payloadを同一EventIdでvalid rehashしたchainを`limit=1`でもAPI 500/no-store/audit zero。browser healthy duplicate拒否、refreshはlast verified view保持+generic error+retry成功。broken/malformed+duplicateは既存reason/checkedCount/raw window/no-backfill/audit.viewed/CRITICALを優先。foreign scope precedence、unique healthy semantics維持。
+  - review_results: independent verifierとaudit/data/security/privacy/API/frontend/accessibility/medical/DB-boundary review APPROVED、findingsなし。DB-005 EventId uniquenessをread boundaryで補強するだけでcore reason/DB/SSOT/human gates不変。
+  - validation_results: focused audit API18/web22、API222 + PostgreSQL14 expected skips、web272、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: exact7 implementation commit/push pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

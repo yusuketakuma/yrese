@@ -75,7 +75,17 @@ export async function fetchAuditLog(
       } satisfies ErrorNoticeProps,
     });
   }
-  return auditLogResponseSchema.parse(await res.json());
+  const parsed = auditLogResponseSchema.parse(await res.json());
+  if (parsed.chainVerification.ok) {
+    const eventIds = new Set<string>();
+    for (const entry of parsed.entries) {
+      if (eventIds.has(entry.eventId)) {
+        throw new Error("Verified audit response contains duplicate event identities");
+      }
+      eventIds.add(entry.eventId);
+    }
+  }
+  return parsed;
 }
 
 /** Keeps only the latest audit fetch authoritative without cancelling audited GET requests. */
