@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W8 + WP-9005/9006 LANDED、80 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W8 + WP-9005/9006 LANDED、W9 FINALIZED、79 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -985,6 +985,33 @@ finalization_record: RCP-005 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fbef2c2 `WP-9002-W8: normalize receipt template metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/80/93; RCP-005 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; nine reviews/full regression gates APPROVED; no receipt/template/legal/hash/storage/runtime/DB/production/external activation
 state: LANDED; WP-9002 remains IN_PROGRESS with 80 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W9 RCP-006 receipt-privacy policy metadata-only migration(FINALIZED / LANDING PENDING、P1)
+
+```yaml
+work_package_id: WP-9002-W9
+baseline_commit: d6677f9
+baseline_inventory: { total: 173, incomplete: 80, complete: 93 }
+target_inventory: { total: 173, incomplete: 79, complete: 94 }
+target: RCP-006 v0.2.0 metadata-only; body/status/version/legacy approval/effective semantics preserved
+purpose: Complete PRC-007 metadata without changing privacy consent, proxy delivery, PHI, legal fields, permissions, audit behavior, receipt generation, or production semantics.
+allowed_files: RCP-006, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other receipt/security/regulatory docs, code/tests/packages/lock; privacy/consent/legal/PHI/permission/audit changes, receipt generation, schema/migration/DML, API/UI, external action, production/deploy, semantic or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: none; body must remain 1862 bytes / SHA-256 1bc7aa7db477fcd8858983201a3117aa8866767c987ce427e76d70a5a2b9b3c8
+pins: preserve APPROVED/v0.2.0/created_at/approved_at/approved_by/owner/reviewers/source/dependencies/impacts/two open questions/blockers; preserve existing RCP-004 cycle without repair or acyclic claim; adjacent audit/report controls are not direct RCP-006 implementation evidence
+metadata: updated_at 2026-07-12; effective_from/effective_to null; related_work_packages [WP-0034, WP-2202, WP-3101, WP-9002-W9]; related_tests/related_prs/evidence_ids empty; top-level change_log only
+non_target: 172 canonical rows / 16584 bytes / SHA-256 c860764d31f25fe7a1ba34e0d659a8c15be790d37837a78d4f040b32a2c71bee must remain unchanged; target review inventory 173/79/94
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, claims_evidence_specialist, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata only; consent/proxy workflow, legal fields, PHI/log/cache/permission/audit behavior, receipt contents or issuance, WP-2202/3101, DB/API/UI/runtime/production/external behavior, or risk acceptance stops for applicable legal/pharmacy/medical/claims/privacy/security/product authority
+validation: exact5/staged0; target body/preserved-field/all23/inventory/non-target assertions; check:ssot-index, test:scripts, secrets, boundaries, diff; full workspace gates are regression-only and never direct RCP-006 evidence
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock privacy behavior, WP-2202/3101, or receipt/legal/runtime readiness
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, claims_evidence_specialist, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; legal/pharmacy/product/claims human authority remains separate for semantic decisions
+validation_results: FINAL PASS before landing — exact5/staged0; RCP-006 all23 and body 1862/1bc7aa7db477fcd8858983201a3117aa8866767c987ce427e76d70a5a2b9b3c8 byte-identical; preserved fields unchanged; inventory173/79/94; 172 non-target missing-set baseline-identical at 16584 bytes / SHA-256 c860764d31f25fe7a1ba34e0d659a8c15be790d37837a78d4f040b32a2c71bee; workspace typecheck/test/build PASS with API172 plus 13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
+finalization_record: RCP-006 retains APPROVED/v0.2.0/legacy approval/effective null and privacy semantics; IDX-001 v0.4.22 APPROVED with approved_at/effective_from 2026-07-12 and nine W9 role approvals; empty direct tests/PRs/evidence do not waive consent/PHI/legal/permission/audit/receipt/runtime/production gates
+landing_required: exact5 commit_and_push to the safe feature branch only
+state: FINALIZED; exact5 landing pending
 ```
 
 ## Phase 0: 調査・計画(ドキュメント)

@@ -2,11 +2,16 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.21はWP-9002-W8 nine-reviewer approvalを経てAPPROVED・commit `fbef2c2`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.21はWP-9002-W8でfeature branchへLANDED済み。現在のIDX-001 v0.4.22はWP-9002-W9 nine-reviewer approvalを経てAPPROVED・landing pendingである。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
+
+### WP-9002-W9 RCP-006 metadata — FINALIZED / landing pending
+
+- clean feature-branch baseline `d6677f9`で80 incomplete SSOTをfresh mappingし、RCP-006単独exact5をpre-plan `APPROVED_WITH_PINS`とした。不足7 fieldだけを補完し、本文1862 bytes / SHA-256 `1bc7aa7db477fcd8858983201a3117aa8866767c987ce427e76d70a5a2b9b3c8`、APPROVED/v0.2.0/legacy approval、依存・impacts・2 open questions・blockersを不変とする。review candidate inventoryは173/79/94、non-target172は`16584/c860764d…`。RCP-004との既存cycleは変更せず、direct runtime/test evidenceはない。privacy consent/代理人、PHI、法令、permission/audit、WP-2202/3101、DB/API/UI/production/externalを解除せず、候補時のIDX v0.4.22はPROPOSED・approval/effective nullでreview待ちだった。
+- independent/spec/data/architect/test/claims/security/privacy/medicalの9 roleがAPPROVED。RCP-006本文/preserved fields/all23、inventory173/79/94、172 non-target identityを独立再現。full regression gatesはPASSしたがprivacy/receipt直接実装証拠ではない。IDX v0.4.22をAPPROVED/effective 2026-07-12へfinalize。human authorityと全停止境界は未解除。exact5 landing pending。
 
 ### WP-9002-W8 RCP-005 metadata — LANDED
 

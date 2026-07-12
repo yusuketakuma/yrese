@@ -11,12 +11,21 @@ reviewers:
   - human_review_if_required
 version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
+effective_from: null
+effective_to: null
 source_refs: [構築プロンプト v0.2.0 §0.0.4.5, SEC-004(privacy_impact_assessment)]
 depends_on: [RCP-001, RCP-004, SEC-004]
 impacts: [WP-2202, WP-3101]
+related_work_packages: [WP-0034, WP-2202, WP-3101, WP-9002-W9]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文§5変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-12 WP-9002-W9 metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - 領収証・明細書の法定記載事項と省略可能事項の境界【要確認: 記載要領精読 — 条文番号の推測記載禁止】
   - 代理人交付時の本人同意確認の実務手順(薬剤師レビュー)【要確認】
