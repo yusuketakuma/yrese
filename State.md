@@ -8,11 +8,12 @@
 
 ## 2026-07-13
 
-### WP-4094 verified audit wallClock-desc display ordering — FINALIZED
+### WP-4094 verified audit wallClock-desc display ordering — LANDED
 
 - clean HEAD `a24da45`。公開contractはwallClock descだがruntimeはappend reverse + limitで、非単調時刻時にmembershipまで誤るMEDIUM driftをmapper/plannerが確認。rollback client quarantineより先行する。
 - exact5でfull chain append-order検証を維持し、healthy displayだけwallClock desc + later-append tieへ整合。broken chainはWP-4093 no-backfill quarantineを保持し、untrusted wallClockを並べ替えない。
-- nonmonotonic membership、equal-time tie、full checkedCountを回帰固定。independent API/audit/data/security/privacy/frontend/medical review APPROVED。API195 + expected skip14、web215、audit183、workspace typecheck/test/buildと全gate PASS。exact5 landing待ち。
+- nonmonotonic membership、equal-time tie、full checkedCountを回帰固定。independent API/audit/data/security/privacy/frontend/medical review APPROVED。API195 + expected skip14、web215、audit183、workspace typecheck/test/buildと全gate PASS。
+- exact5 commit `b5fa648`をfeature branchへpush済み。公開display orderingを満たし、chain authorityと破損時quarantineは維持。
 
 ### WP-4093 fail-visible malformed audit display projection — LANDED
 
