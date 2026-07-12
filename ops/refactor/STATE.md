@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. WP-0020〜0023 stale SSOT-creation ledger reconciliation is LANDED. W31/WP-4081 are LANDED.
-- Current task: build the next executable queue from non-semantic work; WP-4057 keyset-only pagination is the highest-value code candidate, while the remaining57 require classification/semantic revision. WP-4050 remains separate and human-gated.
+- Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. Remaining57 classification is in REVIEW; WP-0020〜0023 reconciliation and W31/WP-4081 are LANDED.
+- Current task: independently verify the 57-item classification manifest and WP-4057 privacy/DB choice gate. WP-4050 remains separate and human-gated.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -139,4 +139,6 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W32 eligibility checkpoint: all remaining57 have body/current-fact drift or require new semantic/human-authority mapping; no IDX v0.4.45, inventory decrement or metadata candidate is permitted. CAL-005/006/007 and other drifted authorities require separate PRC-007 semantic revision/human-domain gates.
 - WP-0020〜0023 ledger checkpoint: CAL-005〜008 were created in `97338e5` and APPROVED v0.2.0 in `c6867e3`; exact3 reconciliation changes only task completion evidence, not SSOT/runtime readiness. CAL drift, WP-2105, typed values, producer migration, rounding evidence and live API remain open.
 - WP-0020〜0023 ledger landing checkpoint: commit `6dff2a3` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact3; independent/domain review accepted; IDX v0.4.44, inventory173/57/116, CAL SSOT/code/runtime unchanged and all semantic/human gates retained.
-- Next action: read-only mapping/pre-plan of WP-4057 keyset-only pagination versus remaining57 classification manifest. WP-4050 remains separate.
+- Remaining57 classification checkpoint: non-SSOT manifest partitions all documents into metadata-safe0/semantic-amendment18/human-authority39 with missing-field signatures and next gates; no index/status/approval change.
+- WP-4057 checkpoint: plaintext signed keyset anchors violate API-001 non-PHI cursor; AEAD cursor needs privacy/security contract amendment, while a non-PHI order key needs DB SSOT/migration approval. Keep v1 HMAC/OFFSET unchanged until human selection.
+- Next action: independent/domain review of the classification, then exact-stage landing; after landing, request/record the WP-4057 human choice or select another non-gated code slice. WP-4050 remains separate.

@@ -8,6 +8,11 @@
 
 ## 2026-07-12
 
+### WP-9002 remaining57 classification + WP-4057 keyset gate — REVIEW
+
+- W32 `NO_ELIGIBLE`後の57文書を、`metadata-safe=0`、`semantic-amendment-required=18`、`human-authority-required=39`へ漏れ/重複なく分類し、`ops/refactor/WP-9002-remaining-classification.md`へmissing-field signature、drift根拠、next gateを記録した。本manifestは非SSOTであり、IDX v0.4.44/inventory173/57/116/status/approvalを変更しない。
+- WP-4057 keyset-onlyは、API-001のnon-PHI cursor要件と既存sort key(patientNumber/patientId)が衝突。平文署名cursorは禁止し、AEAD cursorのprivacy/security契約改版または非PHI不変order keyのDB migrationについてhuman choice/approvalが得られるまで実装を停止する。現行v1 HMAC/OFFSETは不変。
+
 ### W32 metadata eligibility stop + WP-0020〜0023 ledger reconciliation — LANDED
 
 - HEAD `0ea60fb`、inventory173/57/116でremaining57をfresh再監査。CAL-006のeffectiveTo/from-only/5-rule記述、CAL-005のimplementation matrix、CAL-007の`BLOCKER_TYPES 31種`などが live codeと矛盾し、その他はsemantic field・公式evidence・human authority判断を要するため、W32 metadata-onlyは`NO_ELIGIBLE`としてIDX v0.4.44/inventoryを変更しない。
