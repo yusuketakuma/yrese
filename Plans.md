@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W7B + WP-9005/9006 LANDED、83 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W7C + WP-9005/9006 LANDED、81 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -931,7 +931,7 @@ landing_record: commit 4a2cefd `WP-9007: synchronize audit security facts` pushe
 state: LANDED
 ```
 
-- [~] WP-9002-W7C ACC-008 payment-method registry metadata-only migration(FINALIZED / LANDING PENDING、P1)
+- [x] WP-9002-W7C ACC-008 payment-method registry metadata-only migration(LANDED、P1)
 
 ```yaml
 work_package_id: WP-9002-W7C
@@ -954,8 +954,9 @@ rollback: revert exact5 landing only and reopen W7C metadata incompleteness; nev
 review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, claims_evidence_specialist, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; no semantic/payment/POS/tenant/claim/production activation and no new human approval claim.
 validation_results: FINAL PASS before landing — exact5/staged0; ACC-008 body/preserved fields byte-identical and all23; inventory173/81/92; non-target172/16778/097329f5e8a578160b0771c01f6ca26212402e6bfa334cdcb3e23f6284fdfe54; workspace typecheck/test/build PASS; API161 plus 9 expected PostgreSQL skips without TEST_DATABASE_URL; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates.
 finalization_record: ACC-008 retains APPROVED/v0.2.0/legacy approval/effective null; IDX-001 v0.4.20 APPROVED with approved_at/effective_from 2026-07-11 and prior approval provenance plus ten W7C roles; empty direct tests/evidence/blockers do not waive payment/POS/claim/production gates.
-landing_required: exact5 commit_and_push
-state: FINALIZED; exact5 landing pending
+landing_required: satisfied
+landing_record: commit 57172ca `WP-9002-W7C: normalize payment method metadata` is present on origin/main and is an ancestor of current HEAD; exact5; inventory173/81/92; ACC-008 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; no payment/POS/claim/tenant/DB/production/external/deployment activation
+state: LANDED; WP-9002 remains IN_PROGRESS with 81 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
 ## Phase 0: 調査・計画(ドキュメント)
