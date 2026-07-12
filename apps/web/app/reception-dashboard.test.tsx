@@ -845,6 +845,71 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(String(init.body)).toContain('"idempotencyKey":"key-1"');
   });
 
+  it.each([200, 201])(
+    "returns a matching reception response for HTTP %s",
+    async (status) => {
+      const matchingEntry = entry({
+        patient: patient({ patientId: "patient-requested-001" }),
+      });
+      const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(status, matchingEntry));
+
+      const result = await withNodeEnv("development", () =>
+        createReception("patient-requested-001", fetchImpl, `key-match-${status}`),
+      );
+
+      expect(result).toEqual(matchingEntry);
+    },
+  );
+
+  it.each([200, 201])(
+    "rejects a mismatched reception response for HTTP %s without echoing patient data",
+    async (status) => {
+      const requestedPatientId = "patient-requested-sensitive";
+      const returnedPatientId = "patient-returned-sensitive";
+      const returnedName = "合成 別患者";
+      const returnedKana = "ゴウセイ ベツカンジャ";
+      const returnedPatientNumber = "SENSITIVE-999";
+      const fetchImpl = vi.fn().mockResolvedValue(
+        jsonResponse(
+          status,
+          entry({
+            receptionId: "reception-returned-sensitive",
+            patient: patient({
+              patientId: returnedPatientId,
+              name: returnedName,
+              kana: returnedKana,
+              patientNumber: returnedPatientNumber,
+            }),
+          }),
+        ),
+      );
+
+      let caught: unknown;
+      try {
+        await withNodeEnv("development", () =>
+          createReception(requestedPatientId, fetchImpl, `key-mismatch-${status}`),
+        );
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(Error);
+      expect((caught as Error).message).toBe(
+        "Reception response patient identity mismatch",
+      );
+      for (const sensitiveValue of [
+        requestedPatientId,
+        returnedPatientId,
+        returnedName,
+        returnedKana,
+        returnedPatientNumber,
+        "reception-returned-sensitive",
+      ]) {
+        expect((caught as Error).message).not.toContain(sensitiveValue);
+      }
+    },
+  );
+
   it("does not display unregistered error codes verbatim", async () => {
     const fetchImpl = vi
       .fn()

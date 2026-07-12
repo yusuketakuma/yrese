@@ -2390,6 +2390,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused audit-log15、API212 + PostgreSQL14 expected skips、web256、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `0b4e7ae` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent/domain reviewとfull gates PASS、foreign/mixed audit resultsをchain/view/projection前にfail-closed拒否。
 
+- [x] WP-4107 bind reception client response to submitted patient identity(R2 wrong-patient prevention) — FINALIZED
+  - 発見根拠: browser `createReception`はPOSTしたpatientIdに対し、schema-valid 200/201 responseのnested patientIdを再拘束せず、別患者entryでも成功表示・入力clear・queue reloadへ進めた。WP-4105 server adapter境界とは独立したclient trust boundary。
+  - scope: exact5 `apps/web/app/reception-dashboard.tsx`, `apps/web/app/reception-dashboard.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。UI/copy/ARIA/CSS/API/contracts/server/DB/SSOT/idempotencyは変更しない。
+  - implementation: 2xx bodyをschema parse一回後、`parsed.patient.patientId === patientIdValue`をstrict要求。一致後だけreturnし、不一致は固定`Reception response patient identity mismatch`をthrow。normalize/repair/raw echoなし。
+  - acceptance: matching/mismatching x HTTP200(existing)/201(created)を固定。不一致errorに要求/返却ID、氏名、カナ、患者番号、受付IDを含めず、registerの成功表示/input clear/queue reloadへ到達しない。409/404/403/400/idempotency/no-store semantics維持。
+  - review_results: independent verifierとfrontend/medical/privacy/security/API/data/accessibility review APPROVED、findingsなし。contract/OpenAPI/DB/SSOT/human gates不変。
+  - validation_results: focused reception-dashboard47、web260、API212 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: exact5 implementation commit/push pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

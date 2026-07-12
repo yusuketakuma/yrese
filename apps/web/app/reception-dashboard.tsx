@@ -164,7 +164,11 @@ export async function createReception(
       errorCode,
     );
   }
-  return receptionQueueEntrySchema.parse(await res.json());
+  const parsed = receptionQueueEntrySchema.parse(await res.json());
+  if (parsed.patient.patientId !== patientIdValue) {
+    throw new Error("Reception response patient identity mismatch");
+  }
+  return parsed;
 }
 
 export function formatAcceptedTime(acceptedAt: string): string {

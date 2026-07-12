@@ -8,6 +8,13 @@
 
 ## 2026-07-13
 
+### WP-4107 reception client response patient identity binding — FINALIZED / landing pending
+
+- clean baseline `55807b0`。browser側がschema-valid 200/201 reception responseの別患者entryを成功扱いできるR2 wrong-patient gapをexact5で修正。WP-4105 server-side adapter result bindingと相補的なclient boundary。
+- 2xx responseをparse一回後、POSTしたexact patientIdとnested response patientIdをstrict比較。一致後だけreturnし、不一致は固定non-echo error。成功表示、入力clear、queue reloadはthrow後に実行されない。
+- independent verifierとfrontend/medical/privacy/security/API/data/accessibility review APPROVED、findingsなし。focused reception-dashboard47、web260、API212 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/buildと全gate PASS。UI/copy/ARIA/API/contracts/server/DB/SSOT不変。
+- exact5 implementation commit/push pending。
+
 ### WP-4106 audit result tenant/pharmacy scope binding — LANDED
 
 - clean baseline `c9b256e`。scoped audit listが返すevent authority fieldsをrouteで再拘束せず、別tenant/pharmacyまたはmixed結果がchain/displayへ影響できるR2 tenant-isolation gapをexact5で修正。
