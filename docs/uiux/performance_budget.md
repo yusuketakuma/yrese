@@ -10,14 +10,26 @@ reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §8.1, §9.3 / docs/plan/phase0_plan.md §6, §8
 depends_on: [docs/uiux/experience_quality_baseline.md]
+impacts: [docs/uiux/usability_acceptance_criteria.md, docs/uiux/stability_slo_policy.md, docs/operations/sla_slo_policy.md, docs/operations/performance_capacity_plan.md, docs/operations/observability_plan.md, docs/testing/test_strategy.md, docs/quality/post_release_monitoring.md]
+related_work_packages: [WP-0032, WP-9002-W26]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - 0.1.0 2026-07-09 初版APPROVED
+  - 0.1.0 2026-07-12 WP-9002-W26 metadata-only migration; body and candidate performance budgets unchanged
 open_questions:
   - 全数値は Phase 0 候補値。Phase 1 以降の実測(latency regression test)で調整する
   - 混雑時(ピーク時)の同時操作数の定義は performance_capacity_plan と整合させる【要確認】
+blockers:
+  - BLOCKED_PERFORMANCE_SLO(Phase 1実測・capacity整合・human product/operations acceptance前は18候補値をrelease SLOとして使用しない)
 ```
 
 ## 1. 設計前提

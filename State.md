@@ -2,11 +2,16 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.38とWP-9002-W25 exact5はnine-reviewer approval後、commit `9e0b38e`でsafe feature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.39はWP-9002-W26 eleven-role reviewを経てAPPROVED、exact5 landing待ち。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
+
+### WP-9002-W26 UIX-003 metadata — FINALIZED_PENDING_LANDING
+
+- clean feature-branch baseline `6703c59`で残存63 SSOTをfresh mappingし、refund/legal/audit/medical/security/production drift候補を避け、全数値をPhase 0候補と明示するUIX-003単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
+- UIX-003本文2563 bytes / SHA-256 `d27a7144725fbea20e8d8375ebea0c9666a3a503656aecaefef8c361dd91ce21`、APPROVED/v0.1.0/legacy approval、dependency、2 questionsを不変とする。candidate inventory173/62/111、non-target172 `14751/70435986…`。3設計前提、18候補値、3運用ルール、PHI非出力、検証/監査/外部確認省略禁止、async状態可視化を保持する。Phase 1 latency/perceived-performance実測未着手のため、候補値をrelease SLO達成やEdge/Cloud/async runtime readinessへ昇格しない。3 dead impact pathsを正本へ訂正後、11 roleがAPPROVEDまたはAPPROVED_WITH_PINS。full gates PASS、IDX v0.4.39 finalize済み、landingのみ未主張。
 
 ### WP-9002-W25 UIX-002 metadata — LANDED
 

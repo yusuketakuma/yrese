@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W25 + WP-9005/9006 LANDED、63 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W25 + WP-9005/9006 LANDED、W26 FINALIZED_PENDING_LANDING、62 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1125,6 +1125,34 @@ finalization_record: RCP-004 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/75/98; RCP-004 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; legal/evidence/cycle/audit gaps remain unresolved and no StatementDocument/privacy/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W26 UIX-003 performance-budget metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+
+```yaml
+work_package_id: WP-9002-W26
+baseline_commit: 6703c59
+baseline_inventory: { total: 173, incomplete: 63, complete: 110 }
+target_inventory: { total: 173, incomplete: 62, complete: 111 }
+target: UIX-003 v0.1.0 metadata-only; body/status/version/legacy approval/effective/candidate-budget semantics preserved
+purpose: Complete PRC-007 metadata and machine-map the existing performance-readiness stop without finalizing any Phase 0 candidate value as a release SLO or claiming Edge/Cloud/async runtime performance.
+allowed_files: UIX-003, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other UIX/OPS/ARC/testing/security/privacy docs, code/tests/packages/lock; performance number/metric/measurement/telemetry/Edge/offline/async behavior, API/schema/DB/UI implementation, external/production/deploy, semantic or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: none; body must remain 2563 bytes / SHA-256 d27a7144725fbea20e8d8375ebea0c9666a3a503656aecaefef8c361dd91ce21
+pins: preserve APPROVED/v0.1.0/created_at/approved_at/approved_by/owner/reviewers/source/dependency/two questions/body; preserve three design assumptions, 18 candidate rows and all p50/p95 values, three operational rules, PHI-free correlation logging, no validation/audit/external-confirmation omission, and unambiguous async progress/residual/failure states
+metadata: updated_at 2026-07-12; effective_from/effective_to null; impacts UIX-004/UIX-005/OPS-005/OPS-006/OPS-009/TST-001/QUA-006; related_work_packages [WP-0032, WP-9002-W26]; related_tests/related_prs/evidence_ids empty; body-history plus W26 metadata-only change log; BLOCKED_PERFORMANCE_SLO only prevents candidate-to-release-SLO promotion
+non_target: 172 canonical rows / 14751 bytes / SHA-256 70435986006bb7e9369631364b5bd5e27426de7744d84a9e2b6a421eeb24a836 must remain unchanged; target review inventory 173/62/111
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, performance_reliability_reviewer, frontend_reviewer, accessibility_ux_reviewer, product_quality_reviewer, operations_reviewer, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata/existing performance stop only; 18 values, congestion concurrency, measurement environment/data, Edge feasibility, async UX, PHI-safe telemetry/retention, latency/error budget/release threshold, pharmacist/claim-clerk workflow, accessibility/perceived performance, OPS capacity/SLO/observability, production and risk acceptance remain with applicable human authorities
+validation: exact5/staged0; body/preserved/all23/18 rows and values/2 questions/inventory/non-target assertions; SSOT/scripts/secrets/boundaries/diff and full workspace gates are regression-only, not direct performance evidence
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock performance SLO, Edge/offline, telemetry, medical workflow, or production gates
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, performance_reliability_reviewer, frontend_reviewer, accessibility_ux_reviewer, product_quality_reviewer, operations_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED or APPROVED_WITH_PINS after correcting three dead impact paths; performance/product/operations/medical/security/privacy human authority remains separate
+validation_results: FINAL PASS before landing — exact5/staged0; UIX-003 all23 and body 2563/d27a7144725fbea20e8d8375ebea0c9666a3a503656aecaefef8c361dd91ce21 byte-identical; preserved fields/18 rows and values/3 assumptions/3 rules/2 questions unchanged; inventory173/62/111; 172 non-target missing-set baseline-identical at 14751 bytes / SHA-256 70435986006bb7e9369631364b5bd5e27426de7744d84a9e2b6a421eeb24a836; workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
+finalization_record: UIX-003 retains APPROVED/v0.1.0/legacy approval/effective null and all Phase 0 candidate-budget semantics; IDX-001 v0.4.39 APPROVED with approved_at/effective_from 2026-07-12 and eleven W26 role results; BLOCKED_PERFORMANCE_SLO prevents candidate promotion and empty direct evidence does not waive Phase 1 measurement, capacity, telemetry, accessibility, medical workflow, Edge/Cloud/runtime, production, or human gates
+landing_required: root exact-stage landing after final exact5 verification
+landing_record: pending
+state: FINALIZED_PENDING_LANDING; WP-9002 remains IN_PROGRESS and no performance/runtime readiness is claimed
 ```
 
 - [x] WP-9002-W25 UIX-002 experience-quality metadata-only migration(LANDED、P1)

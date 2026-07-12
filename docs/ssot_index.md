@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.38
+version: 0.4.39
 created_at: 2026-07-09
 updated_at: 2026-07-12
 approved_at: 2026-07-12
@@ -36,6 +36,7 @@ approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; s
   ; WP-9002-W23 independent_verifier APPROVED; WP-9002-W23 spec_guardian APPROVED; WP-9002-W23 data_integrity_auditor APPROVED; WP-9002-W23 architect APPROVED; WP-9002-W23 db_steward APPROVED; WP-9002-W23 test_architect APPROVED; WP-9002-W23 accounting_domain_reviewer APPROVED; WP-9002-W23 claims_evidence_specialist APPROVED; WP-9002-W23 receipt_legal_reviewer APPROVED; WP-9002-W23 api_contract_reviewer APPROVED; WP-9002-W23 security_critic APPROVED; WP-9002-W23 privacy_compliance_reviewer APPROVED; WP-9002-W23 medical_safety_reviewer APPROVED
   ; WP-9002-W24 independent_verifier APPROVED; WP-9002-W24 spec_guardian APPROVED; WP-9002-W24 data_integrity_auditor APPROVED; WP-9002-W24 architect APPROVED; WP-9002-W24 db_steward APPROVED; WP-9002-W24 test_architect APPROVED; WP-9002-W24 accounting_domain_reviewer APPROVED; WP-9002-W24 product_quality_reviewer APPROVED; WP-9002-W24 payment_integration_reviewer APPROVED; WP-9002-W24 api_contract_reviewer APPROVED; WP-9002-W24 security_critic APPROVED; WP-9002-W24 privacy_compliance_reviewer APPROVED; WP-9002-W24 medical_safety_reviewer APPROVED
   ; WP-9002-W25 independent_verifier APPROVED; WP-9002-W25 spec_guardian APPROVED; WP-9002-W25 data_integrity_auditor APPROVED; WP-9002-W25 frontend_reviewer APPROVED; WP-9002-W25 accessibility_ux_reviewer APPROVED_WITH_PINS; WP-9002-W25 product_quality_reviewer APPROVED; WP-9002-W25 security_critic APPROVED; WP-9002-W25 privacy_compliance_reviewer APPROVED; WP-9002-W25 medical_safety_reviewer APPROVED_WITH_PINS
+  ; WP-9002-W26 independent_verifier APPROVED; WP-9002-W26 spec_guardian APPROVED; WP-9002-W26 data_integrity_auditor APPROVED; WP-9002-W26 performance_reliability_reviewer APPROVED_WITH_PINS; WP-9002-W26 frontend_reviewer APPROVED_WITH_PINS; WP-9002-W26 accessibility_ux_reviewer APPROVED_WITH_PINS; WP-9002-W26 product_quality_reviewer APPROVED; WP-9002-W26 operations_reviewer APPROVED_WITH_PINS; WP-9002-W26 security_critic APPROVED; WP-9002-W26 privacy_compliance_reviewer APPROVED; WP-9002-W26 medical_safety_reviewer APPROVED_WITH_PINS
 effective_from: 2026-07-12
 effective_to: null
 source_refs:
@@ -78,6 +79,7 @@ source_refs:
   - WP-9002-W23 ACC-004 partial-payment metadata-only review candidate (2026-07-12)
   - WP-9002-W24 ACC-009 POS-integration metadata-only review candidate (2026-07-12)
   - WP-9002-W25 UIX-002 experience-quality metadata-only review candidate (2026-07-12)
+  - WP-9002-W26 UIX-003 performance-budget metadata-only review candidate (2026-07-12)
 depends_on:
   - AGT-018
   - PRC-007
@@ -123,11 +125,13 @@ related_work_packages:
   - WP-9002-W23
   - WP-9002-W24
   - WP-9002-W25
+  - WP-9002-W26
 related_tests:
   - pnpm check:ssot-index
 related_prs: []
 evidence_ids: []
 change_log:
+  - 0.4.39 2026-07-12 WP-9002-W26 UIX-003 metadata-only migrationをfinalize、UIX-003本文/status/version/legacy approval/effective/candidate-budget semantics、18 rows/3 assumptions/3 rules/2 questions不変、inventory173/63/110→173/62/111、eleven-role review accepted
   - 0.4.38 2026-07-12 WP-9002-W25 UIX-002 metadata-only migrationをfinalize、UIX-002本文/status/version/legacy approval/effective/experience-quality semantics、11 criteria/3 pillars/10 prohibitions/14 tests/2 questions不変、inventory173/64/109→173/63/110、nine-reviewer APPROVED
   - 0.4.37 2026-07-12 WP-9002-W24 ACC-009 metadata-only migrationをfinalize、ACC-009本文/status/version/legacy approval/effective/POS-integration semanticsとfailure/nonmasking pins不変、inventory173/65/108→173/64/109、thirteen-reviewer APPROVED
   - 0.4.36 2026-07-12 WP-9002-W23 ACC-004 metadata-only migrationをfinalize、ACC-004本文/status/version/legacy approval/effective/partial-payment semantics、10 requirements/4 prohibitions不変、inventory173/66/107→173/65/108、thirteen-reviewer APPROVED
