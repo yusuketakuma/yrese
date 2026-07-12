@@ -55,6 +55,8 @@ export type { HealthResponse } from '@yrese/contracts';
 
 export const apiVersion = '0.0.1';
 export const patientSearchInvalidQueryErrorCode = PATIENT_SEARCH_INVALID_QUERY_ERROR_CODE;
+export const patientSearchResultLimitInvariantErrorMessage =
+  'Patient repository returned more results than requested';
 export const receptionInvalidRequestErrorCode = RECEPTION_INVALID_REQUEST_ERROR_CODE;
 export const receptionPatientNotFoundErrorCode = RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE;
 export const receptionIdempotencyConflictErrorCode = RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE;
@@ -230,6 +232,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         limit: query.data.limit,
         ...(cursor === undefined ? {} : { cursor }),
       });
+      if (page.results.length > query.data.limit) {
+        throw new Error(patientSearchResultLimitInvariantErrorMessage);
+      }
 
       return patientSearchResponseSchema.parse({
         results: page.results,

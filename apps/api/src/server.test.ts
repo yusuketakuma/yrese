@@ -17,6 +17,7 @@ import {
   apiVersion,
   buildServer,
   patientSearchInvalidQueryErrorCode,
+  patientSearchResultLimitInvariantErrorMessage,
   receptionIdempotencyConflictErrorCode,
   receptionInvalidRequestErrorCode,
   receptionPatientIdentityMismatchErrorMessage,
@@ -542,6 +543,74 @@ describe('buildServer', () => {
     ]);
     expect(typeof secondBody.nextCursor).toBe('string');
   });
+
+  it.each([1, 50])(
+    'fails closed without encoding a cursor when repository results exceed limit=%s',
+    async (limit) => {
+      const syntheticPatients = Array.from({ length: limit + 1 }, (_, index) => ({
+        patientId: `patient-over-limit-${String(index).padStart(3, '0')}`,
+        name: `合成超過患者${index}`,
+        kana: `ゴウセイチョウカカンジャ${index}`,
+        birthDate: '1990-01-01',
+        sex: 'unknown' as const,
+        patientNumber: `OVER-LIMIT-${String(index).padStart(3, '0')}`,
+        eligibilityStatus: 'NOT_CHECKED' as const,
+      }));
+      const search = vi.fn<PatientRepository['search']>(async () => ({
+        results: syntheticPatients,
+        nextCursor: { offset: limit + 1 },
+      }));
+      const encode = vi.fn(() => {
+        throw new Error('cursor encoding must not run for an over-limit page');
+      });
+      const server = buildDevTestServer({
+        patientRepository: {
+          search,
+          findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        },
+        patientSearchCursorCodec: {
+          encode,
+          decode: vi.fn(() => undefined),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: `/patients/search?q=synthetic&limit=${limit}`,
+        headers: tenantOnePatientReadHeaders,
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(search).toHaveBeenCalledOnce();
+      expect(search).toHaveBeenCalledWith({
+        tenantId: tenantOnePatientReadHeaders['x-dev-tenant'],
+        pharmacyId: tenantOnePatientReadHeaders['x-dev-pharmacy'],
+        q: 'synthetic',
+        limit,
+      });
+      expect(encode).not.toHaveBeenCalled();
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: patientSearchResultLimitInvariantErrorMessage,
+      });
+      for (const result of syntheticPatients) {
+        for (const sensitiveValue of [
+          result.patientId,
+          result.name,
+          result.kana,
+          result.patientNumber,
+          result.birthDate,
+          result.eligibilityStatus,
+        ]) {
+          expect(response.body).not.toContain(sensitiveValue);
+        }
+      }
+    },
+  );
 
   it('keeps cursor scope/query opaque and rejects an authenticated offset mutation', async () => {
     const cursorKey = randomBytes(patientSearchCursorHmacKeyByteLength);

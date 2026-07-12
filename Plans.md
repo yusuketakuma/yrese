@@ -2399,6 +2399,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused reception-dashboard47、web260、API212 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `85c17a2` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent/domain reviewとfull gates PASS、browser reception response identityをsuccess side effects前にfail-closed拘束。
 
+- [x] WP-4108 bind patient-search repository results to validated request limit(R2 PHI minimization) — FINALIZED
+  - 発見根拠: `/patients/search`はvalidated limitをrepositoryへ渡すが、unbounded `page.results`をそのままresponseへ渡し、faulty adapterが要求数を超える患者PHIを200で返せた。
+  - scope: exact5 `apps/api/src/server.ts`, `apps/api/src/server.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。contract/OpenAPI/repository/SQL/DB/cursor/SSOTは変更しない。
+  - implementation: repository search直後、cursor encode/response parse前に`page.results.length <= query.data.limit`を要求。超過は固定`Patient repository returned more results than requested`で全体fail-closedし、slice/filter/repair/requery/partial response/cursor発行/raw echoなし。
+  - acceptance: limit1/result2とlimit50/result51を500/no-store、cursor encode zero、exact authenticated scope/query/limit input、全患者ID/氏名/カナ/番号/生年月日/資格状態non-echoで固定。正常default/exact-limit/second-page/opaque cursor semantics維持。
+  - review_results: independent verifierとAPI/privacy/security/data-integrity/medical review APPROVED、findingsなし。API-001の既存limit/PHI規律強化でcontract/OpenAPI/DB/SSOT/human gates不変。
+  - validation_results: focused server62、API214 + PostgreSQL14 expected skips、web260、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: exact5 implementation commit/push pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

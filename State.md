@@ -8,6 +8,13 @@
 
 ## 2026-07-13
 
+### WP-4108 patient-search result limit binding — FINALIZED / landing pending
+
+- clean baseline `ad04318`。patient search repositoryのover-returnをrouteが拒否せず、要求limit超過の患者PHIを200で返せるR2 PHI-minimization/data-integrity gapをexact5で修正。
+- search直後、cursor encode/response前にvalidated limitへ件数を拘束。超過は固定non-echo 500/no-store、slice/filter/partial response/cursor発行なし。正常pagination/cursor semanticsは維持。
+- independent verifierとAPI/privacy/security/data-integrity/medical review APPROVED、findingsなし。focused server62、API214 + PostgreSQL14 expected skips、web260、audit183、workspace typecheck/test/buildと全gate PASS。contract/OpenAPI/repository/DB/cursor/SSOT不変。
+- exact5 implementation commit/push pending。
+
 ### WP-4107 reception client response patient identity binding — LANDED
 
 - clean baseline `55807b0`。browser側がschema-valid 200/201 reception responseの別患者entryを成功扱いできるR2 wrong-patient gapをexact5で修正。WP-4105 server-side adapter result bindingと相補的なclient boundary。
