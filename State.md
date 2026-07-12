@@ -2,17 +2,17 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.31はWP-9002-W18 eleven-reviewer approvalを経てAPPROVED・commit `f1339a6`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.32はWP-9002-W19 twelve-reviewer approvalを経てAPPROVED・commit `4e2cc4e`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
 
-### WP-9002-W19 ACC-002 metadata — FINALIZED_PENDING_LANDING
+### WP-9002-W19 ACC-002 metadata — LANDED
 
 - clean feature-branch baseline `ca38b0f`で残存70 SSOTをfresh mappingし、fact-drift候補と会計候補を比較した。ACC-006より意味面が小さく、ACC-001の既存copay stopをPatientReceivable生成へ狭く継承できるACC-002単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
 - ACC-002本文1724 bytes / SHA-256 `702a35e047be61983ba205beaf401bdb826a360eeb52937a6b512aca7883a805`、APPROVED/v0.2.0/legacy approval、dependencies、2 questionsを不変とする。candidate inventory173/69/104、non-target172 `15549/826ab6de…`。direct receivable tests/PRs/evidenceはなく、copay blockerはACC-001から狭く継承するだけ。仮債権禁止、未収非隠蔽、WRITTEN_OFF human approvalを維持し、WP-2201/3101/DB/API/UI/runtimeをunblockしない。review待ち、landing未主張。
-- independent/spec/data/architect/DB/test/accounting/claims/API/security/privacy/medicalの12 roleがAPPROVED。ACC-002本文/preserved/all23、inventory173/69/104、172 non-target identity、narrow copay blockerを独立確認。full gatesはPASSしたがreceivable runtime correctness証拠ではない。IDX v0.4.32をAPPROVED/effective 2026-07-12へfinalizeし、copay/Charge/write-off/notification/WP-2201/3101/DB/API/UI/production/human gatesは未解除。exact-stage commit/push前でlanding未主張。
+- independent/spec/data/architect/DB/test/accounting/claims/API/security/privacy/medicalの12 roleがAPPROVED。ACC-002本文/preserved/all23、inventory173/69/104、172 non-target identity、narrow copay blockerを独立確認。full gatesはPASSしたがreceivable runtime correctness証拠ではない。IDX v0.4.32をAPPROVED/effective 2026-07-12へfinalizeし、copay/Charge/write-off/notification/WP-2201/3101/DB/API/UI/production/human gatesは未解除。exact5をcommit `4e2cc4e`として`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。WP-9002は69 incompleteでIN_PROGRESSを継続する。
 
 ### WP-9002-W18 ACC-001 metadata — LANDED
 
