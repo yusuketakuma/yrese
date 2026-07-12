@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W8 + WP-9005/9006 LANDED、W9 FINALIZED、79 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W9 + WP-9005/9006 LANDED、79 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -987,7 +987,7 @@ landing_record: commit fbef2c2 `WP-9002-W8: normalize receipt template metadata`
 state: LANDED; WP-9002 remains IN_PROGRESS with 80 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
-- [~] WP-9002-W9 RCP-006 receipt-privacy policy metadata-only migration(FINALIZED / LANDING PENDING、P1)
+- [x] WP-9002-W9 RCP-006 receipt-privacy policy metadata-only migration(LANDED、P1)
 
 ```yaml
 work_package_id: WP-9002-W9
@@ -1010,8 +1010,9 @@ rollback: revert exact5 candidate/final landing only and reopen metadata incompl
 review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, claims_evidence_specialist, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; legal/pharmacy/product/claims human authority remains separate for semantic decisions
 validation_results: FINAL PASS before landing — exact5/staged0; RCP-006 all23 and body 1862/1bc7aa7db477fcd8858983201a3117aa8866767c987ce427e76d70a5a2b9b3c8 byte-identical; preserved fields unchanged; inventory173/79/94; 172 non-target missing-set baseline-identical at 16584 bytes / SHA-256 c860764d31f25fe7a1ba34e0d659a8c15be790d37837a78d4f040b32a2c71bee; workspace typecheck/test/build PASS with API172 plus 13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
 finalization_record: RCP-006 retains APPROVED/v0.2.0/legacy approval/effective null and privacy semantics; IDX-001 v0.4.22 APPROVED with approved_at/effective_from 2026-07-12 and nine W9 role approvals; empty direct tests/PRs/evidence do not waive consent/PHI/legal/permission/audit/receipt/runtime/production gates
-landing_required: exact5 commit_and_push to the safe feature branch only
-state: FINALIZED; exact5 landing pending
+landing_required: satisfied
+landing_record: commit ee91fad `WP-9002-W9: normalize receipt privacy metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/79/94; RCP-006 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; nine reviews/full regression gates APPROVED; no privacy/consent/PHI/legal/permission/audit/receipt/runtime/DB/API/UI/production/external activation
+state: LANDED; WP-9002 remains IN_PROGRESS with 79 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
 ## Phase 0: 調査・計画(ドキュメント)
