@@ -8,12 +8,12 @@
 
 ## 2026-07-13
 
-### WP-4111 audit refresh active-flight sharing — FINALIZED / landing pending
+### WP-4111 audit refresh active-flight sharing — LANDED
 
 - clean baseline `5e794e9`。parameterless audit refreshの同期duplicate/re-entryが複数GETと複数`audit.viewed`を生むR1 request/audit-integrity gapをexact5で修正。WP-4086のtwo-GET latest-winsをactive-flight共有+explicit invalidate supersessionへ更新。
 - owner/shared Promiseをemit/fetch前に公開し、active callerは同一Promiseへjoin。invalidateはdetach+generationのみでaudited GETをabortせず、old completion zero emit。exact-owner cleanup-before-settleでreplacementを保護し、completed cacheなし。
 - independent verifierとaudit/frontend/accessibility/security/privacy/API/data/medical review APPROVED、findingsなし。focused audit-log-view19、web269、API219 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/buildと全gate PASS。WP-4100 retained/broken CRITICAL/ARIA/error/retry不変。
-- exact5 implementation commit/push pending。
+- exact5 implementation commit `0ebe4f9`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。
 
 ### WP-4110 reception queue duplicate identity rejection — LANDED
 
