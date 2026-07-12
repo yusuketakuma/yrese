@@ -2226,7 +2226,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - acceptance: `/`、`/patients`、`/admin`は対応hrefにexactly one current、unknownと`/patients/example`はzero。9 href/label/orderとnav aria-labelは不変。focused web、workspace full gates、independent/frontend/accessibility review PASSまで未完了。
   - review_results: independent verifierがfrontend/accessibility/medical/privacy影響を含めAPPROVED。production signature/hook経路、exact-only marker、unknown/nested zero、exact5と非対象不変を確認し、findingsなし。
   - validation_results: focused shell15、web215、API187 + PostgreSQL13 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
-  - landing_record: exact5 commit/push待ち。
+  - landing_record: commit `77e91f7` `WP-4088: wire live navigation current state` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、review/full gates PASS、production current markerをexact routeへ配線し、layout/CSS/labels/order/nested policyは不変。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。

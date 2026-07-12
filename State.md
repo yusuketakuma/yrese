@@ -8,11 +8,12 @@
 
 ## 2026-07-13
 
-### WP-4088 BusinessNav live current-location semantics — FINALIZED
+### WP-4088 BusinessNav live current-location semantics — LANDED
 
 - clean HEAD `08acfd8`。productionは`BusinessNav`へcurrent propを渡さず全routeで`aria-current`が欠落する一方、既存testは手動prop経路だけを通していた。mapper/plannerはMEDIUM accessibility defect、WP-4088 exact5、exact pathname semanticsをHIGH confidenceで承認した。
 - `usePathname()`をproduction signatureへ配線し、pure viewへ委譲する最小client boundaryを実装。label/order/CSS/layout、nested route policy、focus/animation、API/contracts/SSOT/DBは不変。
-- exact path/unknown/nested semanticsをproduction hook mockで固定。independent verifierはfindingsなしでAPPROVED。focused15、web215、API187 + expected skip13、workspace typecheck/test/buildと全gate PASS。exact5 landing待ち。
+- exact path/unknown/nested semanticsをproduction hook mockで固定。independent verifierはfindingsなしでAPPROVED。focused15、web215、API187 + expected skip13、workspace typecheck/test/buildと全gate PASS。
+- exact5 commit `77e91f7`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。productionの現在地表示を回復し、未承認nested policyや非対象UI/API/data semanticsは導入していない。
 
 ### WP-4087 preserve next-patient reception input on prior success — LANDED
 
