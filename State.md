@@ -2,17 +2,17 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.32はWP-9002-W19 twelve-reviewer approvalを経てAPPROVED・commit `4e2cc4e`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.33はWP-9002-W20 thirteen-reviewer approvalを経てAPPROVED・commit `a570c51`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
 
-### WP-9002-W20 ACC-010 metadata — FINALIZED_PENDING_LANDING
+### WP-9002-W20 ACC-010 metadata — LANDED
 
 - clean feature-branch baseline `f21e380`で残存69 SSOTをfresh mappingし、fact-drift群とACC-003/010を比較した。候補運用値を持つACC-003より意味面が小さく、WP-0037/0038 human scope判断までruntimeを停止できるACC-010単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
 - ACC-010本文1333 bytes / SHA-256 `a7fc92b1dad967665c0e2be8b5548401ce9fde4fedbb8b371f7c91709797705d`、APPROVED/v0.2.0/legacy approval、dependencies、3 questionsを不変とする。candidate inventory173/68/105、non-target172 `15435/5997b181…`。個人/施設会計分離、患者別内訳、二重請求排他、MVP model separation+route flagを保持し、invoice/AR/payment allocation/HQ runtimeやWP-0037/0038をunblockしない。direct tests/PRs/evidenceは空。review待ち、landing未主張。
-- independent/spec/data/architect/DB/test/accounting/claims/product/API/security/privacy/medicalの13 roleがAPPROVED。ACC-010本文/preserved/all23、inventory173/68/105、172 non-target identity、human-scope blockerを独立確認。full gatesはPASSしたがfacility runtime correctness証拠ではない。IDX v0.4.33をAPPROVED/effective 2026-07-12へfinalizeし、WP-0037/0038/product/privacy/legal/accounting/DB/API/UI/production/human gatesは未解除。exact-stage commit/push前でlanding未主張。
+- independent/spec/data/architect/DB/test/accounting/claims/product/API/security/privacy/medicalの13 roleがAPPROVED。ACC-010本文/preserved/all23、inventory173/68/105、172 non-target identity、human-scope blockerを独立確認。full gatesはPASSしたがfacility runtime correctness証拠ではない。IDX v0.4.33をAPPROVED/effective 2026-07-12へfinalizeし、WP-0037/0038/product/privacy/legal/accounting/DB/API/UI/production/human gatesは未解除。exact5をcommit `a570c51`として`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。WP-9002は68 incompleteでIN_PROGRESSを継続する。
 
 ### WP-9002-W19 ACC-002 metadata — LANDED
 

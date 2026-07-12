@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W19 + WP-9005/9006 LANDED、W20 FINALIZED_PENDING_LANDING、68 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W20 + WP-9005/9006 LANDED、68 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1127,7 +1127,7 @@ landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metada
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
-- [~] WP-9002-W20 ACC-010 facility-billing metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+- [x] WP-9002-W20 ACC-010 facility-billing metadata-only migration(LANDED、P1)
 
 ```yaml
 work_package_id: WP-9002-W20
@@ -1150,7 +1150,9 @@ rollback: revert exact5 candidate/final landing only and reopen metadata incompl
 review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, accounting_domain_reviewer, claims_evidence_specialist, product_quality_reviewer, api_contract_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; product/accounting/claims/legal/privacy authority remains separate
 validation_results: FINAL PASS before landing — exact5/staged0; ACC-010 all23 and body 1333/a7fc92b1dad967665c0e2be8b5548401ce9fde4fedbb8b371f7c91709797705d byte-identical; preserved fields/three questions/separation/double-billing pins unchanged; inventory173/68/105; 172 non-target missing-set baseline-identical at 15435 bytes / SHA-256 5997b1813544a649ffe59e15e58c97d9207c7f46d216cd804e8741008249b78d; workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
 finalization_record: ACC-010 retains APPROVED/v0.2.0/legacy approval/effective null and facility-billing semantics; IDX-001 v0.4.33 APPROVED with approved_at/effective_from 2026-07-12 and thirteen W20 role approvals; BLOCKED_NOT_READY only stops facility runtime pending WP-0037/0038 human scope decision and empty direct evidence does not waive privacy/legal/accounting/DB/API/UI/production gates
-state: FINALIZED_PENDING_LANDING; exact-stage commit and safe feature-branch push pending; landing not claimed
+landing_required: satisfied
+landing_record: commit a570c51 `WP-9002-W20: normalize facility billing metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/68/105; ACC-010 body/status/version/legacy approval/effective/facility-billing semantics, separation/double-billing pins and 172 non-target records unchanged; thirteen reviews/full regression gates APPROVED; facility runtime/WP-0037/0038/product/privacy/legal/accounting/DB/API/UI/human gates remain unresolved and no payment/document/external/production activation occurred
+state: LANDED; WP-9002 remains IN_PROGRESS with 68 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
 - [x] WP-9002-W19 ACC-002 patient-receivable metadata-only migration(LANDED、P1)

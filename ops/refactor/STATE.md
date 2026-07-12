@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002-W20 ACC-010 exact5 metadata-only migration FINALIZED_PENDING_LANDING at inventory 173/68/105; WP-9002 remains IN_PROGRESS and landing is not yet claimed.
-- Current task: root exact-stage the verified five paths, commit and push to the safe feature branch, then record landing and resume fresh residual mapping.
+- Current phase: WP-9002-W20 ACC-010 exact5 metadata-only migration LANDED on the safe feature branch at inventory 173/68/105; WP-9002 remains IN_PROGRESS.
+- Current task: fresh read-only mapping and pre-plan review of the remaining 68 incomplete SSOT documents before defining the next wave.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -99,4 +99,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W19 landing checkpoint: commit `4e2cc4e` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5; inventory173/69/104; ACC-002 body/preserved/narrow blocker and 172 non-target identity unchanged; twelve reviews/full regression gates APPROVED; no receivable/DB/API/UI/payment/receipt/external/production activation.
 - W20 review checkpoint: baseline `f21e380`; ACC-010 exact5 selected after comparing ACC-003 and avoiding fact-drift candidates; body `1333/a7fc92b1…`; target173/68/105; non-target `172/15435/5997b181…`; pre-plan APPROVED_WITH_PINS. No FacilityInvoice/Payment runtime/direct tests exist; WP-0037/0038/product/privacy/legal/accounting/DB/API/UI/production gates remain unchanged.
 - W20 finalization checkpoint: all thirteen roles APPROVED; ACC-010 body/preserved/all23, separation/double-billing pins and 172 non-target identity verified; IDX v0.4.33 APPROVED/effective 2026-07-12; full regression gates PASS. Facility runtime/WP-0037/0038 and human gates remain unresolved; no DB/API/UI/payment/document/external/production activation.
-- Next action: exact-stage/commit/push W20 exact5, record landing, then fresh read-only mapping of remaining 68 incomplete SSOT documents.
+- W20 landing checkpoint: commit `a570c51` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5; inventory173/68/105; ACC-010 body/preserved/separation/double-billing pins and 172 non-target identity unchanged; thirteen reviews/full regression gates APPROVED; no facility/DB/API/UI/payment/document/external/production activation.
+- Next action: fresh read-only mapping and pre-plan review of remaining 68 incomplete SSOT documents.
