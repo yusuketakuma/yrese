@@ -2237,6 +2237,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused audit47/API audit8、audit full183、API188 + PostgreSQL13 expected skips、web215、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: commit `8b7b162` `WP-4089: keep malformed audit payloads fail-visible` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact6、review/full gates PASS、保存payload不正を既存reasonでfail-visible化し、DB/contracts/UIは不変。
 
+- [x] WP-4090 audit advisory-lock source literal-NUL hygiene(R1 tooling visibility)
+  - 発見根拠: `apps/api/src/db/audit-repository.ts`のtenant/pharmacy advisory-lock key separatorが物理`0x00`としてsourceへ混入し、`file`/`rg`/Git diffがTypeScriptをbinary扱いする。WP-1011と同じreview/search可視性の欠陥。
+  - scope: exact4 `apps/api/src/db/audit-repository.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。SQL、lock algorithm/key bytes、tenant/pharmacy順、DB/schema/migration/DML、API/contracts/SSOTは変更しない。
+  - implementation: 単一physical NULをECMAScript source escape `\u0000`へ置換する。runtimeは同じsingle U+0000 separatorであり、printable delimiterやvisible six-character sequenceへ変更しない。
+  - acceptance: source NUL byte zero、textual escape exactly one、runtime char code/UTF-8 bytes同一、新blobはtext判定かつ通常`rg`成功。cleanup diff自体はNULを含むpreimageによりbinary表示となるため、post-commit blobと次回差分のtext可視性を証拠にする。API/workspace full gatesとindependent DB/data-integrity review PASSまで未完了。
+  - review_results: independent verifierがDB/data-integrity/security/privacyを含めAPPROVED。HEADのphysical NUL 1→working 0、escape 1、変換以外byte-identical、runtime/UTF-8同値、SQL/transaction/lock semantics不変を確認しfindingsなし。
+  - validation_results: source byte/escape/runtime equivalence、通常`rg`/new blob text判定、API188 + PostgreSQL13 expected skips、web215、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: exact4 commit/push待ち。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
