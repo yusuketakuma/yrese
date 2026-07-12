@@ -8,11 +8,12 @@
 
 ## 2026-07-13
 
-### WP-4103 reception queue latest-flight sharing — FINALIZED
+### WP-4103 reception queue latest-flight sharing — LANDED
 
 - clean baseline `23caf6e`。同一latest active queue targetの重複loadがgeneration/emit/fetchを重ねるR1 request-integrity gapをexact5で修正中。
 - latest single flightをtarget/unique owner/shared Promiseでsynchronous emit前に公開し、same targetはjoin、different targetとA-B-Aはadmit。exact-owner cleanup後にsettleする。verifier + reception/data/frontend/accessibility/medical/privacy/API review APPROVED、findingsなし。
-- focused reception-dashboard43、web251、API207 + PostgreSQL14 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。WP-4102 state、UI/tracker/URL/POST/API/DB/SSOTは不変。landing pending。
+- focused reception-dashboard43、web251、API207 + PostgreSQL14 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。WP-4102 state、UI/tracker/URL/POST/API/DB/SSOTは不変。
+- exact5 implementation commit `ea67f13`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。identical latest active queue flightをsharedし、A-B-Aとexact-owner lifecycleを維持。
 
 ### WP-4102 reception queue retained-source refresh — LANDED
 
