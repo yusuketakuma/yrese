@@ -2,17 +2,17 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.35はWP-9002-W22 twelve-reviewer approvalを経てAPPROVED・commit `65c68d9`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.36はWP-9002-W23 thirteen-reviewer approvalを経てAPPROVED・commit `b692f09`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
 
-### WP-9002-W23 ACC-004 metadata — FINALIZED_PENDING_LANDING
+### WP-9002-W23 ACC-004 metadata — LANDED
 
 - clean feature-branch baseline `47c7422`で残存66 SSOTをfresh mappingし、known drift/高権限候補を避け、ACC-006との明示read-throughがあるACC-004単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
 - ACC-004本文1882 bytes / SHA-256 `b2b41d847221ab02ea8fdb871d1fa926ba95eef9f0a8c3679a27e3f7e412fb9d`、APPROVED/v0.2.0/legacy approval、dependencies、2 questionsを不変とする。candidate inventory173/65/108、non-target172 `15096/cea9bad6…`。10要件/4禁止、実受領額のみ領収、残債非隠蔽、現金RECEIVED/キャッシュレスCAPTURED、LOCAL_ONLY番号/sync/reverifyを保持。copay blockerを狭く継承し、direct tests/evidence/runtimeなし。review待ち、landing未主張。
-- independent/spec/data/architect/DB/test/accounting/claims/receipt-legal/API/security/privacy/medicalの13 roleがAPPROVED。ACC-004本文/preserved/all23、10 requirements/4 prohibitions、inventory173/65/108、172 non-target identityを独立確認。full gatesはPASSしたがpartial-payment runtime correctness証拠ではない。IDX v0.4.36をAPPROVED/effective 2026-07-12へfinalizeし、copay/receipt/legal/LOCAL_ONLY/WP/DB/API/UI/production/human gatesは未解除。exact-stage commit/push前でlanding未主張。
+- independent/spec/data/architect/DB/test/accounting/claims/receipt-legal/API/security/privacy/medicalの13 roleがAPPROVED。ACC-004本文/preserved/all23、10 requirements/4 prohibitions、inventory173/65/108、172 non-target identityを独立確認。full gatesはPASSしたがpartial-payment runtime correctness証拠ではない。IDX v0.4.36をAPPROVED/effective 2026-07-12へfinalizeし、copay/receipt/legal/LOCAL_ONLY/WP/DB/API/UI/production/human gatesは未解除。exact5をcommit `b692f09`として`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。WP-9002は65 incompleteでIN_PROGRESSを継続する。
 
 ### WP-9002-W22 ACC-006 metadata — LANDED
 
