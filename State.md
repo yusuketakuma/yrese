@@ -2,17 +2,17 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.27はWP-9002-W14 ten-reviewer approvalを経てAPPROVED・commit `16eb58f`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.28はWP-9002-W15 ten-reviewer approvalを経てAPPROVED・commit `2fda53a`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
 
-### WP-9002-W15 QUA-008 metadata — FINALIZED_PENDING_LANDING
+### WP-9002-W15 QUA-008 metadata — LANDED
 
 - clean feature-branch baseline `894967a`で残存74 SSOTをfresh mappingし、QUA-002/005/006/008を比較した。既存`BLOCKED_LEGAL_REVIEW`と3 open questionsが構造化済みで不足8 fieldだけを意味判断なしに補完できるQUA-008単独exact5をpre-plan `APPROVED_WITH_PINS`とした。QUA-006はproduction monitoring fact freshnessの別reviewが必要なため除外した。
 - QUA-008本文4271 bytes / SHA-256 `de14877893ccef8f3ef355443934fe6f6505c16dc33340d6379915fe50711754`、APPROVED/v0.1.0/legacy approval、dependencies、legal blocker、3 questionsを不変とする。candidate inventory173/73/100、non-target172 `15971/76a074e4…`。related tests/PRs/evidenceは空であり、法令、匿名化、同意、契約、PHI、KPI/publication correctnessの証拠不在を免除しない。外部公開・production変更なし。independent/domain reviewとfull regression validation待ちで、landingは未主張。
-- independent/spec/data/architect/test/product-quality/claims/security/privacy/medicalの10 roleがAPPROVED。QUA-008本文/preserved fields/all23、inventory173/73/100、172 non-target identityを独立確認。workspace typecheck/test/buildと全gateはPASSしたが法務/privacy/匿名化/同意/publicationの直接証拠ではない。IDX v0.4.28をAPPROVED/effective 2026-07-12へfinalizeし、BLOCKED_LEGAL_REVIEWとhuman authorityは未解除。exact-stage commit/push前でlandingは未主張。
+- independent/spec/data/architect/test/product-quality/claims/security/privacy/medicalの10 roleがAPPROVED。QUA-008本文/preserved fields/all23、inventory173/73/100、172 non-target identityを独立確認。workspace typecheck/test/buildと全gateはPASSしたが法務/privacy/匿名化/同意/publicationの直接証拠ではない。IDX v0.4.28をAPPROVED/effective 2026-07-12へfinalizeし、BLOCKED_LEGAL_REVIEWとhuman authorityは未解除。exact5をcommit `2fda53a`として`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。WP-9002は73 incompleteでIN_PROGRESSを継続する。
 
 ### WP-9002-W14 QUA-009 metadata — LANDED
 
