@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W27 + WP-9005/9006 LANDED、61 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W27 + WP-9005/9006 LANDED、W28 FINALIZED_PENDING_LANDING、60 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1125,6 +1125,34 @@ finalization_record: RCP-004 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/75/98; RCP-004 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; legal/evidence/cycle/audit gaps remain unresolved and no StatementDocument/privacy/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W28 UIX-004 usability-acceptance metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+
+```yaml
+work_package_id: WP-9002-W28
+baseline_commit: 363a7a1
+baseline_inventory: { total: 173, incomplete: 61, complete: 112 }
+target_inventory: { total: 173, incomplete: 60, complete: 113 }
+target: UIX-004 v0.1.0 metadata-only; body/status/version/legacy approval/effective/UAC semantics preserved
+purpose: Complete PRC-007 metadata and machine-map the existing usability/release-acceptance stop without claiming UAC-01..12 execution, workflow completion, accessibility conformance, or human acceptance.
+allowed_files: UIX-004, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other UIX/QUA/TST/OPS/medical/security/privacy docs, code/tests/packages/lock; UAC method/value/role/severity, performance/offline/recovery/warning/accessibility behavior, API/schema/DB/UI implementation, external/production/deploy, semantic or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: none; body must remain 3817 bytes / SHA-256 b92633441b0b3c06d7027612c092ec91b21e71ca912594749bd469ffd7e85f06
+pins: preserve APPROVED/v0.1.0/created_at/approved_at/approved_by/owner/reviewers/source/dependencies/two questions/body; preserve UAC-01..12 criteria/methods/candidate pass conditions/roles, pharmacist and claim-clerk final review, synthetic/demo-only data, and patient-safety critical/claim high-or-higher defect severity; existing unit/component tests are not UAC execution evidence
+metadata: updated_at 2026-07-12; effective_from/effective_to null; impacts UIX-002/003/005, TST-001, QUA-001/002; related_work_packages [WP-0032, WP-3007, WP-9002-W28]; related_tests/related_prs/evidence_ids empty; body-history plus W28 metadata-only change log; BLOCKED_NOT_READY until UAC execution and applicable human approval
+non_target: 172 canonical rows / 14508 bytes / SHA-256 06bf06543647c7e31d9ffaf647702a4be2c1da4373c7abeef9b8b978ce55debe must remain unchanged; target review inventory 173/60/113
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, test_architect, frontend_reviewer, accessibility_ux_reviewer, product_quality_reviewer, performance_reliability_reviewer, operations_reviewer, claims_workflow_reviewer, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata/existing readiness stop only; participant recruitment/count, WCAG/JIS level, UAC values/thresholds, congestion N/performance, state misrecognition, offline/error/recovery, print/claim path, keyboard/accessibility, warning fatigue, pharmacist/claim-clerk workflow, synthetic-only training mode, defect acceptance, product/medical/claims/privacy/security, production release and risk acceptance remain with applicable human authorities
+validation: exact5/staged0; body/preserved/all23/UAC-01..12 values/methods/roles/2 questions/inventory/non-target assertions; SSOT/scripts/secrets/boundaries/diff and full workspace gates are regression-only, not direct UAC evidence
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock usability, accessibility, medical/claims workflow, warning, offline/recovery, production, or release gates
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, test_architect, frontend_reviewer, accessibility_ux_reviewer, product_quality_reviewer, performance_reliability_reviewer, operations_reviewer, claims_workflow_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED or APPROVED_WITH_PINS; usability/product/medical/claims/accessibility/privacy/security human authority remains separate
+validation_results: FINAL PASS before landing — exact5/staged0; UIX-004 all23 and body 3817/b92633441b0b3c06d7027612c092ec91b21e71ca912594749bd469ffd7e85f06 byte-identical; preserved fields/UAC-01..12 methods/all candidate values/roles/2 questions/3 operations unchanged; inventory173/60/113; 172 non-target missing-set baseline-identical at 14508 bytes / SHA-256 06bf06543647c7e31d9ffaf647702a4be2c1da4373c7abeef9b8b978ce55debe; workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
+finalization_record: UIX-004 retains APPROVED/v0.1.0/legacy approval/effective null and all UAC semantics; IDX-001 v0.4.41 APPROVED with approved_at/effective_from 2026-07-12 and thirteen W28 role results; BLOCKED_NOT_READY retains UAC execution/human acceptance and empty direct evidence does not waive usability, accessibility, pharmacist/claim-clerk, medical/claims, privacy/security, production, or release gates
+landing_required: root exact-stage landing after final exact5 verification
+landing_record: pending
+state: FINALIZED_PENDING_LANDING; WP-9002 remains IN_PROGRESS and no usability/release acceptance is claimed
 ```
 
 - [x] WP-9002-W27 UIX-005 stability-SLO metadata-only migration(LANDED、P1)

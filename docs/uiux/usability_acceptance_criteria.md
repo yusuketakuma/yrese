@@ -11,14 +11,26 @@ reviewers:
   - human_review_required
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §8.4, §8.6 / docs/plan/phase0_plan.md §6
 depends_on: [docs/uiux/medical_ui_ux_principles.md, docs/uiux/performance_budget.md]
+impacts: [docs/uiux/experience_quality_baseline.md, docs/uiux/performance_budget.md, docs/uiux/stability_slo_policy.md, docs/testing/test_strategy.md, docs/quality/quality_plan.md, docs/quality/validation_plan.md]
+related_work_packages: [WP-0032, WP-3007, WP-9002-W28]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - 0.1.0 2026-07-09 初版APPROVED
+  - 0.1.0 2026-07-12 WP-9002-W28 metadata-only migration; body and usability acceptance authority unchanged
 open_questions:
   - 被験者(新人事務・薬剤師・管理者)の確保方法と人数【要確認・人間対応】
   - アクセシビリティ基準の適用レベル(JIS X 8341-3 / WCAG 2.1 AA 相当の範囲)は quality SSOT で確定【要確認】
+blockers:
+  - BLOCKED_NOT_READY(UAC-01〜12をsynthetic/demo dataで実施し、pharmacist/claim-clerk/accessibility/product human approvalを得る前はusability/release acceptanceを主張しない)
 ```
 
 v0.2.0 §8.4 の12基準を、検証方法・合格条件付きの受入基準に落とす。MVP リリースゲートで全件判定する。

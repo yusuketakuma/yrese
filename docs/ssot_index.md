@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.40
+version: 0.4.41
 created_at: 2026-07-09
 updated_at: 2026-07-12
 approved_at: 2026-07-12
@@ -38,6 +38,7 @@ approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; s
   ; WP-9002-W25 independent_verifier APPROVED; WP-9002-W25 spec_guardian APPROVED; WP-9002-W25 data_integrity_auditor APPROVED; WP-9002-W25 frontend_reviewer APPROVED; WP-9002-W25 accessibility_ux_reviewer APPROVED_WITH_PINS; WP-9002-W25 product_quality_reviewer APPROVED; WP-9002-W25 security_critic APPROVED; WP-9002-W25 privacy_compliance_reviewer APPROVED; WP-9002-W25 medical_safety_reviewer APPROVED_WITH_PINS
   ; WP-9002-W26 independent_verifier APPROVED; WP-9002-W26 spec_guardian APPROVED; WP-9002-W26 data_integrity_auditor APPROVED; WP-9002-W26 performance_reliability_reviewer APPROVED_WITH_PINS; WP-9002-W26 frontend_reviewer APPROVED_WITH_PINS; WP-9002-W26 accessibility_ux_reviewer APPROVED_WITH_PINS; WP-9002-W26 product_quality_reviewer APPROVED; WP-9002-W26 operations_reviewer APPROVED_WITH_PINS; WP-9002-W26 security_critic APPROVED; WP-9002-W26 privacy_compliance_reviewer APPROVED; WP-9002-W26 medical_safety_reviewer APPROVED_WITH_PINS
   ; WP-9002-W27 independent_verifier APPROVED; WP-9002-W27 spec_guardian APPROVED; WP-9002-W27 data_integrity_auditor APPROVED; WP-9002-W27 performance_reliability_reviewer APPROVED_WITH_PINS; WP-9002-W27 frontend_reviewer APPROVED_WITH_PINS; WP-9002-W27 accessibility_ux_reviewer APPROVED_WITH_PINS; WP-9002-W27 product_quality_reviewer APPROVED; WP-9002-W27 operations_reviewer APPROVED_WITH_PINS; WP-9002-W27 audit_security_reviewer APPROVED; WP-9002-W27 privacy_compliance_reviewer APPROVED; WP-9002-W27 medical_safety_reviewer APPROVED_WITH_PINS
+  ; WP-9002-W28 independent_verifier APPROVED; WP-9002-W28 spec_guardian APPROVED; WP-9002-W28 data_integrity_auditor APPROVED; WP-9002-W28 test_architect APPROVED; WP-9002-W28 frontend_reviewer APPROVED_WITH_PINS; WP-9002-W28 accessibility_ux_reviewer APPROVED_WITH_PINS; WP-9002-W28 product_quality_reviewer APPROVED; WP-9002-W28 performance_reliability_reviewer APPROVED_WITH_PINS; WP-9002-W28 operations_reviewer APPROVED_WITH_PINS; WP-9002-W28 claims_workflow_reviewer APPROVED_WITH_PINS; WP-9002-W28 security_critic APPROVED; WP-9002-W28 privacy_compliance_reviewer APPROVED; WP-9002-W28 medical_safety_reviewer APPROVED_WITH_PINS
 effective_from: 2026-07-12
 effective_to: null
 source_refs:
@@ -82,6 +83,7 @@ source_refs:
   - WP-9002-W25 UIX-002 experience-quality metadata-only review candidate (2026-07-12)
   - WP-9002-W26 UIX-003 performance-budget metadata-only review candidate (2026-07-12)
   - WP-9002-W27 UIX-005 stability-SLO metadata-only review candidate (2026-07-12)
+  - WP-9002-W28 UIX-004 usability-acceptance metadata-only review candidate (2026-07-12)
 depends_on:
   - AGT-018
   - PRC-007
@@ -129,11 +131,13 @@ related_work_packages:
   - WP-9002-W25
   - WP-9002-W26
   - WP-9002-W27
+  - WP-9002-W28
 related_tests:
   - pnpm check:ssot-index
 related_prs: []
 evidence_ids: []
 change_log:
+  - 0.4.41 2026-07-12 WP-9002-W28 UIX-004 metadata-only migrationをfinalize、UIX-004本文/status/version/legacy approval/effective/UAC semantics、UAC-01..12/2 questions/3 operations不変、inventory173/61/112→173/60/113、thirteen-role review accepted
   - 0.4.40 2026-07-12 WP-9002-W27 UIX-005 metadata-only migrationをfinalize、UIX-005本文/status/version/legacy approval/effective/candidate-SLO/stability semantics、7 SLO/ST-01..15/2 prohibitions/2 questions不変、inventory173/62/111→173/61/112、eleven-role review accepted
   - 0.4.39 2026-07-12 WP-9002-W26 UIX-003 metadata-only migrationをfinalize、UIX-003本文/status/version/legacy approval/effective/candidate-budget semantics、18 rows/3 assumptions/3 rules/2 questions不変、inventory173/63/110→173/62/111、eleven-role review accepted
   - 0.4.38 2026-07-12 WP-9002-W25 UIX-002 metadata-only migrationをfinalize、UIX-002本文/status/version/legacy approval/effective/experience-quality semantics、11 criteria/3 pillars/10 prohibitions/14 tests/2 questions不変、inventory173/64/109→173/63/110、nine-reviewer APPROVED

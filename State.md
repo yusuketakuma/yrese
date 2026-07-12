@@ -2,11 +2,16 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.40とWP-9002-W27 exact5はeleven-role review後、commit `f02d3c2`でsafe feature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.41はWP-9002-W28 thirteen-role reviewを経てAPPROVED、exact5 landing待ち。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
+
+### WP-9002-W28 UIX-004 metadata — FINALIZED_PENDING_LANDING
+
+- clean feature-branch baseline `363a7a1`で残存61 SSOTをfresh mappingし、高authority/fact-drift候補を避け、12 UACをcriteria authorityのまま保持するUIX-004単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
+- UIX-004本文3817 bytes / SHA-256 `b92633441b0b3c06d7027612c092ec91b21e71ca912594749bd469ffd7e85f06`、APPROVED/v0.1.0/legacy approval、dependencies、2 questionsを不変とする。candidate inventory173/60/113、non-target172 `14508/06bf0654…`。UAC-01〜12の方法/候補合格値/role、薬剤師・請求事務最終review、synthetic/demo限定、patient-safety critical/claim high以上のdefect規律を保持する。既存unit/component testsをUAC実施証拠へ昇格せず、usability/release acceptanceは未達。13 roleがAPPROVEDまたはAPPROVED_WITH_PINS、full gates PASS、IDX v0.4.41 finalize済み、landingのみ未主張。
 
 ### WP-4081 patient-search cursor privacy assertion determinism — LANDED
 
