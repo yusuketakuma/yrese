@@ -469,6 +469,30 @@ describe("createAuditEvent", () => {
     });
   });
 
+  it("reports malformed stored canonical payloads instead of throwing", () => {
+    const first = createAuditEvent(baseAuditEvent());
+    const malformed = {
+      ...createAuditEvent(
+        baseAuditEvent({
+          eventId: eventId("audit-event-002"),
+          sequenceNumber: 2n,
+          logicalClock: 2n,
+          idempotencyKey: "audit-event-002:1",
+          prevHash: first.entryHash,
+        }),
+      ),
+      schemaVersion: Number.MAX_SAFE_INTEGER + 1,
+    } as AuditEvent;
+
+    expect(verifyAuditHashChain([first, malformed])).toEqual({
+      ok: false,
+      checkedCount: 1,
+      breakIndex: 1,
+      eventId: malformed.eventId,
+      reason: "hash_format_invalid",
+    });
+  });
+
   it.each(["phi", "pii", "phi_pii"] as const)(
     "rejects audit events with %s classification even when encrypted",
     (phiClassification) => {

@@ -2228,6 +2228,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused shell15、web215、API187 + PostgreSQL13 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: commit `77e91f7` `WP-4088: wire live navigation current state` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、review/full gates PASS、production current markerをexact routeへ配線し、layout/CSS/labels/order/nested policyは不変。
 
+- [x] WP-4089 fail-visible malformed stored audit payload verification(R2 integrity status)
+  - 発見根拠: PostgreSQL adapterはhydrate不能な保存行をraw eventとして返してchain break表示へ委ねるが、`verifyAuditHashChain()`はhash文字列検証だけをcatchし、canonical payload検証例外を外へthrowする。valid-format hash + unsafe `schemaVersion`で`RangeError`を再現し、`/audit/events`がstructured CRITICALではなく500となる。
+  - scope: exact6 `packages/audit/src/index.ts`, `packages/audit/src/audit.test.ts`, `apps/api/src/audit-log.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。DB adapter/schema/migration/DML、contracts/OpenAPI/SSOT、UI、raw payload loggingは変更しない。
+  - implementation: current eventのcanonicalization/hash再計算だけをnarrow catchし、保存payloadを安全にhash検証できない場合は既存`hash_format_invalid`を返す。invalid hash、prev-link、valid payload hash mismatchのreason precedenceは維持する。
+  - acceptance: malformed canonical fieldはthrowせずbreakIndex/checkedCount/eventId付きfailure。APIは200/no-store/contract-valid chain breakを返し、raw malformed値を投影せず`audit.viewed`を1回記録。focused/full gatesとindependent/audit-data/security/privacy/API/medical review PASSまで未完了。
+  - review_results: independent verifierがaudit-data-integrity/security/privacy/API-contract/medical-safetyを含めAPPROVED。narrow catch、reason precedence、count/index/eventId、API non-echoと`audit.viewed`を確認しfindingsなし。
+  - validation_results: focused audit47/API audit8、audit full183、API188 + PostgreSQL13 expected skips、web215、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: exact6 commit/push待ち。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

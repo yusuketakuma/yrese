@@ -144,6 +144,47 @@ describe('GET /audit/events (SCR-028)', () => {
     }
   });
 
+  it('reports malformed stored canonical payloads without hiding the view audit', async () => {
+    const base = new InMemoryAuditRepository();
+    await seedEvents(base, 1);
+    const malformed: AuditRepository = {
+      record: (scope, input) => base.record(scope, input),
+      list: async (scope) => {
+        const events = await base.list(scope);
+        return events.map((event, index) =>
+          index === 0
+            ? ({
+                ...event,
+                schemaVersion: Number.MAX_SAFE_INTEGER + 1,
+              } as typeof event)
+            : event,
+        );
+      },
+    };
+    const server = buildDevTestServer({ auditRepository: malformed });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events',
+      headers: auditReadHeaders,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({
+      chainVerification: {
+        ok: false,
+        checkedCount: 0,
+        breakIndex: 0,
+        reason: 'hash_format_invalid',
+      },
+    });
+    expect(JSON.stringify(response.json())).not.toContain(String(Number.MAX_SAFE_INTEGER + 1));
+
+    const stored = await base.list(SCOPE);
+    expect(stored).toHaveLength(2);
+    expect(stored[1]?.auditEventType).toBe('audit.viewed');
+  });
+
   it('rejects invalid limits with AUD-0001', async () => {
     const server = buildDevTestServer();
     const response = await server.inject({

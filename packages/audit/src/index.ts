@@ -592,10 +592,15 @@ export function verifyAuditHashChain(events: readonly AuditEvent[]): AuditHashCh
       });
     }
 
-    const expectedEntryHash = computeAuditEntryHash({
-      prevHash: event.prevHash,
-      canonicalJson: canonicalizeAuditEventPayload(event),
-    });
+    let expectedEntryHash: string;
+    try {
+      expectedEntryHash = computeAuditEntryHash({
+        prevHash: event.prevHash,
+        canonicalJson: canonicalizeAuditEventPayload(event),
+      });
+    } catch {
+      return hashFormatFailure(events, index, checkedCount);
+    }
     if (event.entryHash !== expectedEntryHash) {
       return Object.freeze({
         ok: false,

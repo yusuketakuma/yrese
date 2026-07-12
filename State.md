@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4089 fail-visible malformed stored audit payload verification — FINALIZED
+
+- clean HEAD `4c121f3`。adapter parity候補の比較中、保存audit eventのcanonical payload不正がverifierからthrowし、structured chain breakと`audit.viewed`を失うR2 integrity gapをplannerが検出。mapperがunsafe `schemaVersion` + valid-format hashで`RangeError`を独立再現し、HIGH confidenceでconfirmed。
+- 既存`hash_format_invalid`を再利用するexact6を採択。DB/contract/OpenAPI/SSOT/UI変更、repair/quarantine、raw値投影は行わない。
+- canonicalization/hash再計算のnarrow catchとcore/API回帰を実装。independent audit-data/security/privacy/API/medical reviewはfindingsなしでAPPROVED。audit183、API188 + expected skip13、web215、workspace typecheck/test/buildと全gate PASS。exact6 landing待ち。
+
 ### WP-4088 BusinessNav live current-location semantics — LANDED
 
 - clean HEAD `08acfd8`。productionは`BusinessNav`へcurrent propを渡さず全routeで`aria-current`が欠落する一方、既存testは手動prop経路だけを通していた。mapper/plannerはMEDIUM accessibility defect、WP-4088 exact5、exact pathname semanticsをHIGH confidenceで承認した。
