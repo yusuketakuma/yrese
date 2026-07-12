@@ -2,17 +2,17 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.36はWP-9002-W23 thirteen-reviewer approvalを経てAPPROVED・commit `b692f09`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.37はWP-9002-W24 thirteen-reviewer approvalを経てAPPROVED・commit `cfaa01b`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
 
-### WP-9002-W24 ACC-009 metadata — FINALIZED_PENDING_LANDING
+### WP-9002-W24 ACC-009 metadata — LANDED
 
 - clean feature-branch baseline `60fa14f`で残存65 SSOTをfresh mappingした。OPS-014はcloud/pricing assumptionsのfact freshness reviewへ分離し、direct POS接続非MVPと境界設計だけを明示するACC-009単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
 - ACC-009本文1351 bytes / SHA-256 `e93cdd5b84f555c3c585e9c70ef549f5d5b47f93ff83657ec75fbec78b96fd04`、APPROVED/v0.2.0/legacy approval、dependencies、2 questionsを不変とする。candidate inventory173/64/109、non-target172 `14980/aaa93047…`。direct DB禁止、POSSettlement→RECEIVED/CAPTURED、Idempotency、failure states/nonmasking、cash fallback、payment≠dispensingを保持。WP-0036/0037/human approvalまでBLOCKED_NOT_READY、direct tests/evidence/runtimeなし。review待ち、landing未主張。
-- independent/spec/data/architect/DB/test/accounting/product/payment/API/security/privacy/medicalの13 roleがAPPROVED。ACC-009本文/preserved/all23、inventory173/64/109、172 non-target identity、boundary/failure pinsを独立確認。full gatesはPASSしたがPOS/payment runtime correctness証拠ではない。IDX v0.4.37をAPPROVED/effective 2026-07-12へfinalizeし、WP-0036/0037/2203/3101/payment-security/DB/API/UI/external/production/human gatesは未解除。exact-stage commit/push前でlanding未主張。
+- independent/spec/data/architect/DB/test/accounting/product/payment/API/security/privacy/medicalの13 roleがAPPROVED。ACC-009本文/preserved/all23、inventory173/64/109、172 non-target identity、boundary/failure pinsを独立確認。full gatesはPASSしたがPOS/payment runtime correctness証拠ではない。IDX v0.4.37をAPPROVED/effective 2026-07-12へfinalizeし、WP-0036/0037/2203/3101/payment-security/DB/API/UI/external/production/human gatesは未解除。exact5をcommit `cfaa01b`として`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。WP-9002は64 incompleteでIN_PROGRESSを継続する。
 
 ### WP-9002-W23 ACC-004 metadata — LANDED
 
