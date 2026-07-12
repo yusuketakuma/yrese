@@ -2,11 +2,16 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.41とWP-9002-W28 exact5はthirteen-role review後、commit `5afca6d`でsafe feature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.42はWP-9002-W29 thirteen-role reviewを経てAPPROVED、exact5 landing待ち。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
+
+### WP-9002-W29 UIX-006 metadata — FINALIZED_PENDING_LANDING
+
+- clean feature-branch baseline `2ac4c7d`で残存60 SSOTをfresh mappingし、implementation-state drift/high-authority候補を避け、normative workflow authorityであるUIX-006単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
+- UIX-006本文4122 bytes / SHA-256 `cf5ec8fa5e15bbed2974a365ed228ee79638fa2dd0aca2a4bff7e34e9d26c003`、APPROVED/v0.1.0/legacy approval、dependencies、2 questionsを不変とする。candidate inventory173/59/114、non-target172 `14409/3af708d3…`。NORMAL/LOCAL_ONLY/RECOVERY_SYNC、4 role home、3 navigation principles、既存inline blockers、人間conflict解決、support PHI非表示を保持する。部分UIをE2E workflow証拠へ昇格せず、導線ごとのONS/record-spec evidenceとworkflow/release readinessを独立blockerで維持。13 roleがAPPROVED_WITH_PINS、full gates PASS、IDX v0.4.42 finalize済み、landingのみ未主張。
 
 ### WP-9002-W28 UIX-004 metadata — LANDED
 

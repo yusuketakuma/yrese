@@ -11,14 +11,27 @@ reviewers:
   - human_review_required
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §7, §13-16 / docs/plan/phase0_plan.md §5, §9.3
 depends_on: [docs/architecture/offline_mode_matrix.md, docs/architecture/recovery_sync_design.md, docs/product/mvp_scope.md]
+impacts: [docs/uiux/medical_ui_ux_principles.md, docs/uiux/experience_quality_baseline.md, docs/uiux/usability_acceptance_criteria.md, docs/uiux/stability_slo_policy.md, docs/uiux/screen_inventory_draft.md, docs/architecture/offline_mode_matrix.md, docs/architecture/recovery_sync_design.md]
+related_work_packages: [WP-0016, WP-0032, WP-3001, WP-3007, WP-9002-W29]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - 0.1.0 2026-07-09 初版APPROVED
+  - 0.1.0 2026-07-12 WP-9002-W29 metadata-only migration; body and workflow authority unchanged
 open_questions:
   - 疑義照会・残薬調整の導線分岐の実務詳細(薬剤師レビュー)【要確認】
   - 電子処方箋受付導線は ONS 資料入手後に確定(WP-0016)【要確認】
+blockers:
+  - BLOCKED_REGULATORY_REVIEW(電子処方箋・資格確認は各導線に必要なONS資料と接続境界、電子レセプトは記録条件仕様のevidence確定前にreleaseしない)
+  - BLOCKED_NOT_READY(NORMAL/LOCAL_ONLY/RECOVERY_SYNC end-to-end、薬剤師/請求事務workflow、WP-0016/WP-0032 human validation前はworkflow/release readinessを主張しない)
 ```
 
 ## 1. 通常導線(NORMAL)

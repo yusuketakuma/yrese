@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W28 + WP-9005/9006 LANDED、60 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W28 + WP-9005/9006 LANDED、W29 FINALIZED_PENDING_LANDING、59 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1125,6 +1125,34 @@ finalization_record: RCP-004 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/75/98; RCP-004 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; legal/evidence/cycle/audit gaps remain unresolved and no StatementDocument/privacy/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W29 UIX-006 workflow-map metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+
+```yaml
+work_package_id: WP-9002-W29
+baseline_commit: 2ac4c7d
+baseline_inventory: { total: 173, incomplete: 60, complete: 113 }
+target_inventory: { total: 173, incomplete: 59, complete: 114 }
+target: UIX-006 v0.1.0 metadata-only; body/status/version/legacy approval/effective/workflow semantics preserved
+purpose: Complete PRC-007 metadata and machine-map regulatory/evidence and end-to-end readiness stops without claiming full NORMAL/LOCAL_ONLY/RECOVERY_SYNC, role-home, navigation, API/DB/UI/Edge/device/accounting/claim implementation.
+allowed_files: UIX-006, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other UIX/ARC/PRD/TST/medical/claim/accounting docs, code/tests/packages/lock; workflow/order/status/role/permission/offline/recovery/ONS/claim semantics, API/schema/DB/UI implementation, external/production/deploy, semantic or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS after root adjudication of three navigation principles and two distinct blockers
+body_changes: none; body must remain 4122 bytes / SHA-256 cf5ec8fa5e15bbed2974a365ed228ee79638fa2dd0aca2a4bff7e34e9d26c003
+pins: preserve APPROVED/v0.1.0/created_at/approved_at/approved_by/owner/reviewers/source/dependencies/two questions/body; preserve NORMAL stages and four inline stops, UAC-05, LOCAL_ONLY steps/prohibitions, RECOVERY_SYNC five task branches/NORMAL gate, four role homes, three navigation principles, support PHI non-display and human-review requirements; partial components are not end-to-end evidence
+metadata: updated_at 2026-07-12; effective_from/effective_to null; impacts UIX-001/002/004/005/007 and ARC-001/002; related_work_packages [WP-0016, WP-0032, WP-3001, WP-3007, WP-9002-W29]; related_tests/related_prs/evidence_ids empty; body-history plus W29 metadata-only change log; separate regulatory/evidence and end-to-end readiness blockers
+non_target: 172 canonical rows / 14409 bytes / SHA-256 3af708d326e3e6c2699de838a8f267115641d7f526a4f84cb3e3ada5847240f6 must remain unchanged; target review inventory 173/59/114
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, test_architect, frontend_reviewer, accessibility_ux_reviewer, product_quality_reviewer, workflow_architect, claims_workflow_reviewer, accounting_domain_reviewer, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata/existing stops only;疑義照会/残薬、ONS/e-prescription、患者/保険/公費、薬剤師確認、copay/accounting/receipt、claim finalization/record-spec/return-resubmit、LOCAL_ONLY provisional accounting/receipt、RECOVERY conflict、role homes/permissions/PHI、UAC/accessibility/pharmacist/claim-clerk、medical/claims/legal/privacy/security/production risk acceptance remain with applicable human authorities
+validation: exact5/staged0; body/preserved/all23/three flows/four roles/three principles/two questions/inventory/non-target assertions; SSOT/scripts/secrets/boundaries/diff and full workspace gates are regression-only, not end-to-end workflow evidence
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock regulatory evidence, workflow, offline/recovery, claim, accounting, role/permission, PHI, or production gates
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, test_architect, frontend_reviewer, accessibility_ux_reviewer, product_quality_reviewer, workflow_architect, claims_workflow_reviewer, accounting_domain_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED_WITH_PINS; workflow/product/medical/claims/accounting/accessibility/privacy/security human authority remains separate
+validation_results: FINAL PASS before landing — exact5/staged0; UIX-006 all23 and body 4122/cf5ec8fa5e15bbed2974a365ed228ee79638fa2dd0aca2a4bff7e34e9d26c003 byte-identical; preserved fields/NORMAL/LOCAL_ONLY/RECOVERY_SYNC/four role homes/three navigation principles/two questions unchanged; inventory173/59/114; 172 non-target missing-set baseline-identical at 14409 bytes / SHA-256 3af708d326e3e6c2699de838a8f267115641d7f526a4f84cb3e3ada5847240f6; workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
+finalization_record: UIX-006 retains APPROVED/v0.1.0/legacy approval/effective null and all workflow semantics; IDX-001 v0.4.42 APPROVED with approved_at/effective_from 2026-07-12 and thirteen W29 role results; BLOCKED_REGULATORY_REVIEW is item-specific and BLOCKED_NOT_READY independently retains E2E/human acceptance; empty direct evidence does not waive ONS/record-spec, workflow, accessibility, pharmacist/claim-clerk, medical/claims/accounting, privacy/security, production, or release gates
+landing_required: root exact-stage landing after final exact5 verification
+landing_record: pending
+state: FINALIZED_PENDING_LANDING; WP-9002 remains IN_PROGRESS and no workflow/release readiness is claimed
 ```
 
 - [x] WP-9002-W28 UIX-004 usability-acceptance metadata-only migration(LANDED、P1)
