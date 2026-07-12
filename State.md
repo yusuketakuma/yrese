@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4087 preserve next-patient reception input on prior success — COMPLETED / LANDING PENDING
+
+- clean HEAD `1032d32`。受付Aのpending中に次患者Bを入力するとA成功時のunconditional clearでBが消える通常操作R1をmapper/plannerが再現確認。監査R2を先行landing後、次sliceとして採択した。
+- raw snapshot exact比較のsuccess-only functional clearを実装。unchanged/padded unchangedはclearし、pending中のBとraw差異は保持する。input enabled、same-flight lock、API-006、copy/focus/DB/contractsは不変。
+- independent/frontend/accessibility/medical/privacy/API reviewはAPPROVED。focused23、web210、API187 + expected skip13、workspace typecheck/test/buildと全gate PASS。exact5 landing待ち。
+
 ### WP-4086 audit log latest-only and lifecycle invalidation — LANDED
 
 - clean HEAD `c3e6773`のincremental scanで、古い監査正常応答が新しいchain-break CRITICALを上書きし得るclient raceを検出。受付次患者ID入力損失もR1候補だが、security/data-integrity fail-closed優先でR2 WP-4086を先行する。

@@ -2210,6 +2210,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused audit view11、web206、focused API audit/server65、API187 + PostgreSQL13 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。初回Web buildとworkspace typecheckの並列実行は`.next/types`生成競合でTS6053となり、順次再実行でPASS。
   - landing_record: commit `e7c86b3` `WP-4086: keep latest audit verification authoritative` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、review/full gates PASS、最新chain verificationだけを表示authorityとし、各GET/audit.viewed/API/backendは不変。
 
+- [x] WP-4087 preserve next-patient reception input on prior success(R1 workflow input loss)
+  - 発見根拠: 受付AのPOST/reload中もpatient ID inputは編集可能だが、A成功時に無条件`setRegisterPatientId("")`するため、operatorが準備した次患者Bを消去する。accepted requestはcaptured Aのためwrong registrationではなく通常操作の入力損失。
+  - scope: exact5 `apps/web/app/reception-dashboard.tsx`, `apps/web/app/reception-dashboard.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。API/contracts/SSOT/DB/package/lock/copy/CSS/focusは変更しない。
+  - implementation: 送信時raw inputをsnapshotし、成功時のfunctional setterでcurrent raw値がsnapshotとexact一致する場合だけclearする。trim済み値では比較しない。inputはenabledのまま、WP-4084 same-flight lockは維持。
+  - acceptance: unchanged raw/whitespace padded inputは成功時clear、pending中にBへ編集済みならB保持、failureは入力保持。registered notice/queue reload/409/404/error/UUID/API/headers/blank semantics不変。自動next registration、focus移動、retry-key lifecycleは対象外。
+  - review_results: independent verifier、frontend/accessibility、medical-safety/privacy/API workflowがAPPROVED。DOM async integrationなしはproduction functional setterがtested helperへ直接委譲するためnon-blocking。
+  - validation_results: focused reception23、web210、server58、API187 + PostgreSQL13 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

@@ -14,6 +14,7 @@ import {
   ReceptionError,
   ReceptionQueueTable,
   ReceptionQueueView,
+  clearRegistrationInputIfUnchanged,
   createReception,
   createReceptionQueueRunner,
   createReceptionRegistrationRunner,
@@ -420,6 +421,24 @@ describe("createReceptionRegistrationRunner (same-flight duplicate prevention)",
     await expect(runner.run(operation)).resolves.toBe(true);
 
     expect(operation).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("clearRegistrationInputIfUnchanged (next-patient input preservation)", () => {
+  it("clears the unchanged raw input after a successful registration", () => {
+    expect(clearRegistrationInputIfUnchanged("patient-A", "patient-A")).toBe("");
+  });
+
+  it("clears an unchanged whitespace-padded raw input", () => {
+    expect(clearRegistrationInputIfUnchanged("  patient-A  ", "  patient-A  ")).toBe("");
+  });
+
+  it("preserves a next-patient input typed while the prior registration is pending", () => {
+    expect(clearRegistrationInputIfUnchanged("patient-B", "patient-A")).toBe("patient-B");
+  });
+
+  it("uses exact raw equality rather than trimmed equivalence", () => {
+    expect(clearRegistrationInputIfUnchanged("patient-A", " patient-A ")).toBe("patient-A");
   });
 });
 

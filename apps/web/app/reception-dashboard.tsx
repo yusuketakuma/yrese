@@ -286,6 +286,14 @@ export function createReceptionRegistrationRunner() {
   };
 }
 
+/** Clears a successful submission only when the operator has not prepared a new value. */
+export function clearRegistrationInputIfUnchanged(
+  currentInput: string,
+  submittedInput: string,
+): string {
+  return currentInput === submittedInput ? "" : currentInput;
+}
+
 export function ReceptionQueueView({ state }: { readonly state: QueueState }) {
   if (state.kind === "loading") {
     return <LoadingState label="受付一覧を読み込み中…" />;
@@ -398,7 +406,8 @@ export function ReceptionDashboard() {
     if (runner === null || runner.isRunning()) {
       return;
     }
-    const trimmed = registerPatientId.trim();
+    const submittedInput = registerPatientId;
+    const trimmed = submittedInput.trim();
     if (trimmed.length === 0) {
       setRegistered(null);
       setRegisterNotice({
@@ -415,7 +424,9 @@ export function ReceptionDashboard() {
       try {
         const entry = await createReception(trimmed);
         setRegistered(entry);
-        setRegisterPatientId("");
+        setRegisterPatientId((currentInput) =>
+          clearRegistrationInputIfUnchanged(currentInput, submittedInput),
+        );
         await load(date);
       } catch (error) {
         setRegisterNotice(
