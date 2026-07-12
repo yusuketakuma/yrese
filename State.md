@@ -8,6 +8,12 @@
 
 ## 2026-07-12
 
+### WP-9002-W18 ACC-001 metadata — FINALIZED_PENDING_LANDING
+
+- clean feature-branch baseline `81b4d18`で残存71 SSOTをfresh mappingし、known fact-drift候補とmissing最少群を比較した。会計runtime未実装とWP-2201 BLOCKEDを本文設計原則から区別し、copay blocker/Charge-before-Payment/append-only/tenant境界を保持できるACC-001単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
+- ACC-001本文6250 bytes / SHA-256 `db48374c9974a4cb857ef7665fb3a18d21112b858338d61bcfecc6064c8ae633`、APPROVED/v0.2.0/legacy approval、dependencies/impacts、3 questions、copay blockerを不変とする。candidate inventory173/70/103、non-target172 `15667/e4eec545…`。direct accounting tests/PRs/evidenceは存在せず空であり、APPROVEDをledger/DB/API/UI/payment/receipt runtime readyやWP-2201/3101 unblockと解釈しない。independent/domain review待ち、landing未主張。
+- independent/spec/data/architect/DB/test/accounting/claims/security/privacy/medicalの11 roleがAPPROVED。ACC-001本文/preserved/all23、21 concepts、inventory173/70/103、172 non-target identityを独立確認。full gatesはPASSしたがaccounting runtime correctness証拠ではない。IDX v0.4.31をAPPROVED/effective 2026-07-12へfinalizeし、copay/retention/journal/Deposit/DB privileges/refund/receipt/tax/WP-2201/3101/production/human gatesは未解除。exact-stage commit/push前でlanding未主張。
+
 ### WP-9002-W17 CAL-003 metadata — LANDED
 
 - clean feature-branch baseline `973f1fb`で残存72 SSOTをfresh mappingし、missing最少のCAL-001/CAL-003/SEC-001/SEC-004を比較した。CAL-001/SEC-001/004はrouting/security/privacy fact driftがあるため除外し、未確認事項とevidence限界を本文でfail-closedに保持するCAL-003単独exact5をpre-plan `APPROVED_WITH_PINS`とした。

@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W17 + WP-9005/9006 LANDED、71 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W17 + WP-9005/9006 LANDED、W18 FINALIZED_PENDING_LANDING、70 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1125,6 +1125,32 @@ finalization_record: RCP-004 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/75/98; RCP-004 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; legal/evidence/cycle/audit gaps remain unresolved and no StatementDocument/privacy/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W18 ACC-001 accounting-domain metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+
+```yaml
+work_package_id: WP-9002-W18
+baseline_commit: 81b4d18
+baseline_inventory: { total: 173, incomplete: 71, complete: 102 }
+target_inventory: { total: 173, incomplete: 70, complete: 103 }
+target: ACC-001 v0.2.0 metadata-only; body/status/version/legacy approval/effective/accounting semantics preserved
+purpose: Complete PRC-007 metadata without changing accounting concepts/status/transitions, append-only/tenant/audit invariants, Charge-before-Payment, money/copay, receipt/payment, DB/API/UI, or implementation readiness.
+allowed_files: ACC-001, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other accounting/receipt/calculation/claim/module/security/database docs, code/tests/packages/lock; accounting/status/money/copay/audit/schema/migration/DML/API/UI/POS/payment/external/production/deploy or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: none; body must remain 6250 bytes / SHA-256 db48374c9974a4cb857ef7665fb3a18d21112b858338d61bcfecc6064c8ae633
+pins: preserve APPROVED/v0.2.0/created_at/approved_at/approved_by/owner/reviewers/source/dependencies/impacts/three open questions/copay blocker and body history; preserve append-only, Charge-before-Payment, correlation-vs-idempotency, tenant/pharmacy, bigint, fail-closed; APPROVED and empty direct evidence do not unblock WP-2201/3101 or prove runtime/DB enforcement
+metadata: updated_at 2026-07-12; effective_from/effective_to null; related_work_packages [WP-0033, WP-2201, WP-3101, WP-9002-W18]; related_tests/related_prs/evidence_ids empty; body-history authority plus W18 metadata-only change log
+non_target: 172 canonical rows / 15667 bytes / SHA-256 e4eec54559e2c703665035754f28b418932e7cb25ba5229521fb1a6079c81f49 must remain unchanged; target review inventory 173/70/103
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, accounting_domain_reviewer, claims_evidence_specialist, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata only; copay/patient charge, legal retention, journal format, Deposit, accounting/claims practice, DB append-only privileges, refund/adjustment, receipt/tax/legal, MVP scope, WP-2201/3101 activation, production/risk acceptance stop for applicable human authorities
+validation: exact5/staged0; body/preserved/all23/inventory/non-target assertions; SSOT/scripts/secrets/boundaries/diff and full workspace gates are regression-only and not accounting runtime correctness evidence
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock copay/accounting/receipt/runtime/production gates
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, accounting_domain_reviewer, claims_evidence_specialist, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; accounting/claims/legal/product authority remains separate
+validation_results: FINAL PASS before landing — exact5/staged0; ACC-001 all23 and body 6250/db48374c9974a4cb857ef7665fb3a18d21112b858338d61bcfecc6064c8ae633 byte-identical; 21 concepts/preserved fields/copay blocker unchanged; inventory173/70/103; 172 non-target missing-set baseline-identical at 15667 bytes / SHA-256 e4eec54559e2c703665035754f28b418932e7cb25ba5229521fb1a6079c81f49; workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
+finalization_record: ACC-001 retains APPROVED/v0.2.0/legacy approval/effective null and accounting semantics; IDX-001 v0.4.31 APPROVED with approved_at/effective_from 2026-07-12 and eleven W18 role approvals; empty direct tests/PRs/evidence do not waive copay/accounting/receipt/DB/API/UI/runtime/production gates or unblock WP-2201/3101
+state: FINALIZED_PENDING_LANDING; exact-stage commit and safe feature-branch push pending; landing not claimed
 ```
 
 - [x] WP-9002-W17 CAL-003 evidence-register metadata-only migration(LANDED、P1)
