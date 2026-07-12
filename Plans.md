@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W17 + WP-9005/9006 LANDED、W18 FINALIZED_PENDING_LANDING、70 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W18 + WP-9005/9006 LANDED、70 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1127,7 +1127,7 @@ landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metada
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
-- [~] WP-9002-W18 ACC-001 accounting-domain metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+- [x] WP-9002-W18 ACC-001 accounting-domain metadata-only migration(LANDED、P1)
 
 ```yaml
 work_package_id: WP-9002-W18
@@ -1150,7 +1150,9 @@ rollback: revert exact5 candidate/final landing only and reopen metadata incompl
 review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, accounting_domain_reviewer, claims_evidence_specialist, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; accounting/claims/legal/product authority remains separate
 validation_results: FINAL PASS before landing — exact5/staged0; ACC-001 all23 and body 6250/db48374c9974a4cb857ef7665fb3a18d21112b858338d61bcfecc6064c8ae633 byte-identical; 21 concepts/preserved fields/copay blocker unchanged; inventory173/70/103; 172 non-target missing-set baseline-identical at 15667 bytes / SHA-256 e4eec54559e2c703665035754f28b418932e7cb25ba5229521fb1a6079c81f49; workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
 finalization_record: ACC-001 retains APPROVED/v0.2.0/legacy approval/effective null and accounting semantics; IDX-001 v0.4.31 APPROVED with approved_at/effective_from 2026-07-12 and eleven W18 role approvals; empty direct tests/PRs/evidence do not waive copay/accounting/receipt/DB/API/UI/runtime/production gates or unblock WP-2201/3101
-state: FINALIZED_PENDING_LANDING; exact-stage commit and safe feature-branch push pending; landing not claimed
+landing_required: satisfied
+landing_record: commit f1339a6 `WP-9002-W18: normalize accounting domain metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/70/103; ACC-001 body/status/version/legacy approval/effective/accounting semantics, 21 concepts/copay blocker and 172 non-target records unchanged; eleven reviews/full regression gates APPROVED; accounting runtime/DB enforcement/WP-2201/3101/human gates remain unresolved and no DB/API/UI/payment/receipt/external/production activation occurred
+state: LANDED; WP-9002 remains IN_PROGRESS with 70 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
 - [x] WP-9002-W17 CAL-003 evidence-register metadata-only migration(LANDED、P1)
