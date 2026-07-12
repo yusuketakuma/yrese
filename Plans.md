@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W20 + WP-9005/9006 LANDED、W21 FINALIZED_PENDING_LANDING、67 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W21 + WP-9005/9006 LANDED、67 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1127,7 +1127,7 @@ landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metada
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
-- [~] WP-9002-W21 ACC-003 payment-allocation metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+- [x] WP-9002-W21 ACC-003 payment-allocation metadata-only migration(LANDED、P1)
 
 ```yaml
 work_package_id: WP-9002-W21
@@ -1150,7 +1150,9 @@ rollback: revert exact5 candidate/final landing only and reopen metadata incompl
 review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, accounting_domain_reviewer, claims_evidence_specialist, api_contract_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; accounting/claims/product authority remains separate
 validation_results: FINAL PASS before landing — exact5/staged0; ACC-003 all23 and body 2410/d29074caf138552fdc5245133862cecf46de19c5cfc7c639bcd5ee47fdf40b4e byte-identical; preserved fields/question/candidate values/empty blocker unchanged; inventory173/67/106; 172 non-target missing-set baseline-identical at 15317 bytes / SHA-256 5708eeda3c644b0bdc3190e732442d42f2847e8ca613d91d7b19d4ea0dda06d2; workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
 finalization_record: ACC-003 retains APPROVED/v0.2.0/legacy approval/effective null and allocation semantics; IDX-001 v0.4.34 APPROVED with approved_at/effective_from 2026-07-12 and twelve W21 role approvals; empty blockers/direct evidence do not finalize order/24h or waive allocation/accounting/DB/API/UI/runtime/production gates
-state: FINALIZED_PENDING_LANDING; exact-stage commit and safe feature-branch push pending; landing not claimed
+landing_required: satisfied
+landing_record: commit e0c9609 `WP-9002-W21: normalize allocation metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/67/106; ACC-003 body/status/version/legacy approval/effective/allocation semantics, candidate values/empty blocker and 172 non-target records unchanged; twelve reviews/full regression gates APPROVED; allocation runtime/WP-2201/3101/order/24h/DB/API/UI/human gates remain unresolved and no payment/refund/audit/external/production activation occurred
+state: LANDED; WP-9002 remains IN_PROGRESS with 67 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
 - [x] WP-9002-W20 ACC-010 facility-billing metadata-only migration(LANDED、P1)
