@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.36
+version: 0.4.37
 created_at: 2026-07-09
 updated_at: 2026-07-12
 approved_at: 2026-07-12
@@ -34,6 +34,7 @@ approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; s
   ; WP-9002-W21 independent_verifier APPROVED; WP-9002-W21 spec_guardian APPROVED; WP-9002-W21 data_integrity_auditor APPROVED; WP-9002-W21 architect APPROVED; WP-9002-W21 db_steward APPROVED; WP-9002-W21 test_architect APPROVED; WP-9002-W21 accounting_domain_reviewer APPROVED; WP-9002-W21 claims_evidence_specialist APPROVED; WP-9002-W21 api_contract_reviewer APPROVED; WP-9002-W21 security_critic APPROVED; WP-9002-W21 privacy_compliance_reviewer APPROVED; WP-9002-W21 medical_safety_reviewer APPROVED
   ; WP-9002-W22 independent_verifier APPROVED; WP-9002-W22 spec_guardian APPROVED; WP-9002-W22 data_integrity_auditor APPROVED; WP-9002-W22 architect APPROVED; WP-9002-W22 db_steward APPROVED; WP-9002-W22 test_architect APPROVED; WP-9002-W22 accounting_domain_reviewer APPROVED; WP-9002-W22 claims_evidence_specialist APPROVED; WP-9002-W22 api_contract_reviewer APPROVED; WP-9002-W22 security_critic APPROVED; WP-9002-W22 privacy_compliance_reviewer APPROVED; WP-9002-W22 medical_safety_reviewer APPROVED
   ; WP-9002-W23 independent_verifier APPROVED; WP-9002-W23 spec_guardian APPROVED; WP-9002-W23 data_integrity_auditor APPROVED; WP-9002-W23 architect APPROVED; WP-9002-W23 db_steward APPROVED; WP-9002-W23 test_architect APPROVED; WP-9002-W23 accounting_domain_reviewer APPROVED; WP-9002-W23 claims_evidence_specialist APPROVED; WP-9002-W23 receipt_legal_reviewer APPROVED; WP-9002-W23 api_contract_reviewer APPROVED; WP-9002-W23 security_critic APPROVED; WP-9002-W23 privacy_compliance_reviewer APPROVED; WP-9002-W23 medical_safety_reviewer APPROVED
+  ; WP-9002-W24 independent_verifier APPROVED; WP-9002-W24 spec_guardian APPROVED; WP-9002-W24 data_integrity_auditor APPROVED; WP-9002-W24 architect APPROVED; WP-9002-W24 db_steward APPROVED; WP-9002-W24 test_architect APPROVED; WP-9002-W24 accounting_domain_reviewer APPROVED; WP-9002-W24 product_quality_reviewer APPROVED; WP-9002-W24 payment_integration_reviewer APPROVED; WP-9002-W24 api_contract_reviewer APPROVED; WP-9002-W24 security_critic APPROVED; WP-9002-W24 privacy_compliance_reviewer APPROVED; WP-9002-W24 medical_safety_reviewer APPROVED
 effective_from: 2026-07-12
 effective_to: null
 source_refs:
@@ -74,6 +75,7 @@ source_refs:
   - WP-9002-W21 ACC-003 payment-allocation metadata-only review candidate (2026-07-12)
   - WP-9002-W22 ACC-006 accounting-status metadata-only review candidate (2026-07-12)
   - WP-9002-W23 ACC-004 partial-payment metadata-only review candidate (2026-07-12)
+  - WP-9002-W24 ACC-009 POS-integration metadata-only review candidate (2026-07-12)
 depends_on:
   - AGT-018
   - PRC-007
@@ -117,11 +119,13 @@ related_work_packages:
   - WP-9002-W21
   - WP-9002-W22
   - WP-9002-W23
+  - WP-9002-W24
 related_tests:
   - pnpm check:ssot-index
 related_prs: []
 evidence_ids: []
 change_log:
+  - 0.4.37 2026-07-12 WP-9002-W24 ACC-009 metadata-only migrationをfinalize、ACC-009本文/status/version/legacy approval/effective/POS-integration semanticsとfailure/nonmasking pins不変、inventory173/65/108→173/64/109、thirteen-reviewer APPROVED
   - 0.4.36 2026-07-12 WP-9002-W23 ACC-004 metadata-only migrationをfinalize、ACC-004本文/status/version/legacy approval/effective/partial-payment semantics、10 requirements/4 prohibitions不変、inventory173/66/107→173/65/108、thirteen-reviewer APPROVED
   - 0.4.35 2026-07-12 WP-9002-W22 ACC-006 metadata-only migrationをfinalize、ACC-006本文/status/version/legacy approval/effective/accounting-state semantics、10/10/6 states不変、inventory173/67/106→173/66/107、twelve-reviewer APPROVED
   - 0.4.34 2026-07-12 WP-9002-W21 ACC-003 metadata-only migrationをfinalize、ACC-003本文/status/version/legacy approval/effective/allocation semanticsとcandidate values不変、inventory173/68/105→173/67/106、twelve-reviewer APPROVED

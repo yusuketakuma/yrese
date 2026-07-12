@@ -8,6 +8,12 @@
 
 ## 2026-07-12
 
+### WP-9002-W24 ACC-009 metadata — FINALIZED_PENDING_LANDING
+
+- clean feature-branch baseline `60fa14f`で残存65 SSOTをfresh mappingした。OPS-014はcloud/pricing assumptionsのfact freshness reviewへ分離し、direct POS接続非MVPと境界設計だけを明示するACC-009単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
+- ACC-009本文1351 bytes / SHA-256 `e93cdd5b84f555c3c585e9c70ef549f5d5b47f93ff83657ec75fbec78b96fd04`、APPROVED/v0.2.0/legacy approval、dependencies、2 questionsを不変とする。candidate inventory173/64/109、non-target172 `14980/aaa93047…`。direct DB禁止、POSSettlement→RECEIVED/CAPTURED、Idempotency、failure states/nonmasking、cash fallback、payment≠dispensingを保持。WP-0036/0037/human approvalまでBLOCKED_NOT_READY、direct tests/evidence/runtimeなし。review待ち、landing未主張。
+- independent/spec/data/architect/DB/test/accounting/product/payment/API/security/privacy/medicalの13 roleがAPPROVED。ACC-009本文/preserved/all23、inventory173/64/109、172 non-target identity、boundary/failure pinsを独立確認。full gatesはPASSしたがPOS/payment runtime correctness証拠ではない。IDX v0.4.37をAPPROVED/effective 2026-07-12へfinalizeし、WP-0036/0037/2203/3101/payment-security/DB/API/UI/external/production/human gatesは未解除。exact-stage commit/push前でlanding未主張。
+
 ### WP-9002-W23 ACC-004 metadata — LANDED
 
 - clean feature-branch baseline `47c7422`で残存66 SSOTをfresh mappingし、known drift/高権限候補を避け、ACC-006との明示read-throughがあるACC-004単独exact5をpre-plan `APPROVED_WITH_PINS`とした。

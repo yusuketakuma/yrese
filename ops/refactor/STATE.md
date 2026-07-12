@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002-W23 ACC-004 exact5 metadata-only migration LANDED on the safe feature branch at inventory 173/65/108; WP-9002 remains IN_PROGRESS.
-- Current task: fresh read-only mapping and pre-plan review of the remaining 65 incomplete SSOT documents before defining the next wave.
+- Current phase: WP-9002-W24 ACC-009 exact5 metadata-only migration FINALIZED_PENDING_LANDING at inventory 173/64/109; WP-9002 remains IN_PROGRESS and landing is not yet claimed.
+- Current task: root exact-stage the verified five paths, commit and push to the safe feature branch, then record landing and resume fresh residual mapping.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -109,4 +109,6 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W23 review checkpoint: baseline `47c7422`; ACC-004 exact5 selected after avoiding fact-drift/high-authority candidates; body `1882/b2b41d84…`; target173/65/108; non-target `172/15096/cea9bad6…`; pre-plan APPROVED_WITH_PINS. No partial-payment runtime/direct tests exist; copay/receipt/legal/LOCAL_ONLY/WP/DB/API/UI/production gates remain unchanged.
 - W23 finalization checkpoint: all thirteen roles APPROVED; ACC-004 body/preserved/all23, 10 requirements/4 prohibitions and 172 non-target identity verified; IDX v0.4.36 APPROVED/effective 2026-07-12; full regression gates PASS. Partial-payment runtime/copay/receipt/legal/LOCAL_ONLY/WPs and human gates remain unresolved; no DB/API/UI/payment/receipt/external/production activation.
 - W23 landing checkpoint: commit `b692f09` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5; inventory173/65/108; ACC-004 body/preserved/10 requirements/4 prohibitions and 172 non-target identity unchanged; thirteen reviews/full regression gates APPROVED; no partial-payment/DB/API/UI/payment/receipt/external/production activation.
-- Next action: fresh read-only mapping and pre-plan review of remaining 65 incomplete SSOT documents.
+- W24 review checkpoint: baseline `60fa14f`; ACC-009 exact5 selected while OPS-014 cloud/pricing assumptions require separate freshness review; body `1351/e93cdd5b…`; target173/64/109; non-target `172/14980/aaa93047…`; pre-plan APPROVED_WITH_PINS. No POS/payment runtime/direct tests exist; WP-0036/0037/2203/3101/payment-security/DB/API/UI/external/production gates remain unchanged.
+- W24 finalization checkpoint: all thirteen roles APPROVED; ACC-009 body/preserved/all23, boundary/failure pins and 172 non-target identity verified; IDX v0.4.37 APPROVED/effective 2026-07-12; full regression gates PASS. POS/payment runtime/WPs and human gates remain unresolved; no DB/API/UI/device/external transaction/production activation.
+- Next action: exact-stage/commit/push W24 exact5, record landing, then fresh read-only mapping of remaining 64 incomplete SSOT documents.

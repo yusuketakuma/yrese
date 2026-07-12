@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W23 + WP-9005/9006 LANDED、65 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W23 + WP-9005/9006 LANDED、W24 FINALIZED_PENDING_LANDING、64 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1125,6 +1125,32 @@ finalization_record: RCP-004 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/75/98; RCP-004 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; legal/evidence/cycle/audit gaps remain unresolved and no StatementDocument/privacy/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W24 ACC-009 POS-integration metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+
+```yaml
+work_package_id: WP-9002-W24
+baseline_commit: 60fa14f
+baseline_inventory: { total: 173, incomplete: 65, complete: 108 }
+target_inventory: { total: 173, incomplete: 64, complete: 109 }
+target: ACC-009 v0.2.0 metadata-only; body/status/version/legacy approval/effective/POS-integration semantics preserved
+purpose: Complete PRC-007 metadata and machine-map the existing direct-integration stop without changing MVP boundary, POSSettlement/payment/status/idempotency, adapter/API/data model, DB/UI/device/external transaction, or runtime readiness.
+allowed_files: ACC-009, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other accounting/adapter/integration/security/database docs, code/tests/packages/lock; POSSettlement/payment/status/idempotency/adapter/API/schema/migration/DML/UI/device/external transaction/email/production/deploy or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: none; body must remain 1351 bytes / SHA-256 e93cdd5b84f555c3c585e9c70ef549f5d5b47f93ff83657ec75fbec78b96fd04
+pins: preserve APPROVED/v0.2.0/created_at/approved_at/approved_by/owner/reviewers/source/dependencies/two open questions/body history; preserve direct POS/cashless non-MVP, MVP API/event/data-model/adapter-registration boundary only, direct DB prohibition, POSSettlement external fact to RECEIVED/CAPTURED, Idempotency, FAILED/CANCELLED/REVERSED, failure nonmasking, cash fallback, and payment-vs-dispensing authorization separation
+metadata: updated_at 2026-07-12; effective_from/effective_to null; impacts ACC-006/008 and future WP-0036 Partner API/POS adapter/WP-3101 only; related_work_packages [WP-0033, WP-0036, WP-0037, WP-2203, WP-3101, WP-9002-W24]; related_tests/related_prs/evidence_ids empty; body-history authority plus W24 metadata-only change log; BLOCKED_NOT_READY for direct integration only
+non_target: 172 canonical rows / 14980 bytes / SHA-256 aaa93047480e98a8613193a1f60f249a076f71b4b9a8d39af94415d5039a22d2 must remain unchanged; target review inventory 173/64/109
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, accounting_domain_reviewer, product_quality_reviewer, payment_integration_reviewer, api_contract_reviewer, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata/existing direct-integration stop only; vendor/device selection, OTC boundary, payment provider/contract/cost, Partner API, payment security/privacy, refund/cancel, terminal failure/cash fallback, payment-vs-dispensing workflow, WP-0036/0037/2203/3101, DB/API/UI, external sandbox/transaction, production/risk acceptance stop for applicable human authorities
+validation: exact5/staged0; body/preserved/all23/boundary/failure-state/inventory/non-target assertions; SSOT/scripts/secrets/boundaries/diff and full workspace gates are regression-only, not POS/payment runtime correctness evidence
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock direct POS/payment integration or external/production gates
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, accounting_domain_reviewer, product_quality_reviewer, payment_integration_reviewer, api_contract_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; product/accounting/payment/security authority remains separate
+validation_results: FINAL PASS before landing — exact5/staged0; ACC-009 all23 and body 1351/e93cdd5b84f555c3c585e9c70ef549f5d5b47f93ff83657ec75fbec78b96fd04 byte-identical; preserved fields/two questions/boundary/failure pins unchanged; inventory173/64/109; 172 non-target missing-set baseline-identical at 14980 bytes / SHA-256 aaa93047480e98a8613193a1f60f249a076f71b4b9a8d39af94415d5039a22d2; workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
+finalization_record: ACC-009 retains APPROVED/v0.2.0/legacy approval/effective null and POS-integration semantics; IDX-001 v0.4.37 APPROVED with approved_at/effective_from 2026-07-12 and thirteen W24 role approvals; BLOCKED_NOT_READY only stops direct integration and empty evidence does not waive vendor/payment-security/DB/API/UI/external/production gates
+state: FINALIZED_PENDING_LANDING; exact-stage commit and safe feature-branch push pending; landing not claimed
 ```
 
 - [x] WP-9002-W23 ACC-004 partial-payment metadata-only migration(LANDED、P1)

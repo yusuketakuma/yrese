@@ -10,14 +10,26 @@ reviewers:
   - opus4.8
 version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §0.0.4.1, §0.0.4.6
 depends_on: [ACC-001, ACC-008, docs/integration/**(WP-0036), ADP-002]
+impacts: [ACC-006 payment states, ACC-008 payment methods, future WP-0036 Integration Hub and Partner API, future POS adapter and WP-3101 UI]
+related_work_packages: [WP-0033, WP-0036, WP-0037, WP-2203, WP-3101, WP-9002-W24]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文§4の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-12 WP-9002-W24 metadata-only completion: body/status/version/approval/effective/POS-integration semantics unchanged"
 open_questions:
   - 接続対象POS/セルフレジ/決済端末の製品調査(WP-0037 派生機能調査)
   - OTC・物販との同時会計の境界(レセコン側は保険調剤会計のみか、合算表示か — 実務レビュー)
+blockers:
+  - BLOCKED_NOT_READY(WP-0036 Integration Hub/Partner API、WP-0037 vendor調査、人間product/accounting/security承認前はPOS・決済端末direct integrationを実装しない)
 ```
 
 ## 1. MVP境界(v0.2.0 §0.0.4.6)
