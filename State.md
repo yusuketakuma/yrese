@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-07-13
+
+### WP-4084 reception registration same-flight mutual exclusion — COMPLETED / LANDING PENDING
+
+- clean HEAD `4f31994`でplannerが受付登録の同期再入を検出。mapper反証で通常double-clickはdisabledが軽減すると確認し、R2ではなくR1 bounded hardeningとして採択。API-006のsame-key semantics、retry key lifecycle、DB/API/contracts/SSOTは変更しない。
+- exact5でsingle-flight coordinatorをproduction handlerへ配線し、同一flightの重複POST/UUID/state更新を抑止。lockはqueue reloadまで保持し、success/failure後に解放する。independent/frontend/accessibility/medical/privacy/API/data reviewはAPPROVED。
+- focused19、web200、API172 + PostgreSQL13 expected skips、server43、workspace typecheck/test/buildと既存gateはPASS。exact5 landing待ち。API-006/retry key lifecycle/DB/contracts/SSOT/copy/CSSは不変。
+
 ## 2026-07-12
 
 ### WP-4083 patient-search blank-submit stale request invalidation — LANDED

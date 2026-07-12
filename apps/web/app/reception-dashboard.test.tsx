@@ -16,6 +16,7 @@ import {
   ReceptionQueueView,
   createReception,
   createReceptionQueueRunner,
+  createReceptionRegistrationRunner,
   fetchReceptionQueue,
   formatAcceptedTime,
   parseDateParam,
@@ -343,6 +344,82 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
       />,
     );
     expect(html).not.toContain("最終取得:");
+  });
+});
+
+describe("createReceptionRegistrationRunner (same-flight duplicate prevention)", () => {
+  const deferred = () => {
+    let resolve!: () => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<void>((resolvePromise, rejectPromise) => {
+      resolve = resolvePromise;
+      reject = rejectPromise;
+    });
+    return { promise, resolve, reject };
+  };
+
+  it("runs only one operation while the accepted registration flight is pending", async () => {
+    const pending = deferred();
+    const operation = vi.fn(() => pending.promise);
+    const runner = createReceptionRegistrationRunner();
+
+    const first = runner.run(operation);
+    const duplicate = runner.run(operation);
+
+    await expect(duplicate).resolves.toBe(false);
+    expect(operation).toHaveBeenCalledOnce();
+    expect(runner.isRunning()).toBe(true);
+
+    pending.resolve();
+    await expect(first).resolves.toBe(true);
+    expect(runner.isRunning()).toBe(false);
+  });
+
+  it("keeps the lock through the authoritative queue reload", async () => {
+    const reload = deferred();
+    const events: string[] = [];
+    const runner = createReceptionRegistrationRunner();
+    const first = runner.run(async () => {
+      events.push("created");
+      await reload.promise;
+      events.push("reloaded");
+    });
+
+    expect(events).toEqual(["created"]);
+    await expect(
+      runner.run(async () => {
+        events.push("duplicate");
+      }),
+    ).resolves.toBe(false);
+    expect(events).toEqual(["created"]);
+
+    reload.resolve();
+    await first;
+    expect(events).toEqual(["created", "reloaded"]);
+  });
+
+  it("allows a later explicit operation after success", async () => {
+    const operation = vi.fn().mockResolvedValue(undefined);
+    const runner = createReceptionRegistrationRunner();
+
+    await expect(runner.run(operation)).resolves.toBe(true);
+    await expect(runner.run(operation)).resolves.toBe(true);
+
+    expect(operation).toHaveBeenCalledTimes(2);
+  });
+
+  it("releases the lock after failure and allows an explicit retry", async () => {
+    const operation = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(new Error("synthetic failure"))
+      .mockResolvedValueOnce(undefined);
+    const runner = createReceptionRegistrationRunner();
+
+    await expect(runner.run(operation)).rejects.toThrow("synthetic failure");
+    expect(runner.isRunning()).toBe(false);
+    await expect(runner.run(operation)).resolves.toBe(true);
+
+    expect(operation).toHaveBeenCalledTimes(2);
   });
 });
 

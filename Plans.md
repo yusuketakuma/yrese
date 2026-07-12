@@ -2183,6 +2183,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused20、web196、API172 + PostgreSQL13 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: commit `edd594e` `WP-4083: invalidate stale searches on blank submit` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、review/full gates PASS、blank後の旧患者結果復活を防止し、copy/API/contracts/SSOT/DB/productionは不変。
 
+- [x] WP-4084 reception registration same-flight mutual exclusion(R1 duplicate-operation hardening)
+  - 発見根拠: `ReceptionDashboard.register()`は`setSubmitting(true)`とrender後のdisabledだけに依存し、同一render内の同期再入をhandler自身では拒否しない。各`createReception()`は別UUIDを生成するため、2 POSTがAPI-006のsame-key冪等境界を迂回し得る。通常double-clickはdisabledで軽減されるためR1とする。
+  - scope: exact5 `apps/web/app/reception-dashboard.tsx`, `apps/web/app/reception-dashboard.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。API/contracts/SSOT/DB/migration/package/lock/copy/CSSは変更しない。
+  - implementation: ref保持の同期single-flight coordinatorをcorrectness境界とし、accepted operationだけがstate更新・UUID生成・POST・queue reloadを行う。lockはreloadを含むflightの`finally`まで保持し、success/failure後の明示的な次操作は許可する。blank idleは従来warning/fetch-zero。
+  - acceptance: 同期2呼出し=operation 1回、pending中の重複はstate/key無変更、success/failure後に再実行可、既存409/404/error copy・least-privilege headers・queue reload・button disabled semantics不変。曖昧network retryのkey再利用は別API/UI semantic gateとして除外する。
+  - review_results: independent verifier、frontend/accessibility、medical-safety/privacy/API-contract/data-integrityがAPPROVED。R1評価を維持し、通常physical double-clickの実害や曖昧network retry解決は主張しない。
+  - validation_results: focused reception19、web200、API172 + PostgreSQL13 expected skips、server43、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

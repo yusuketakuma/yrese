@@ -262,6 +262,30 @@ export function createReceptionQueueRunner(
   };
 }
 
+/**
+ * Runs at most one reception registration flight at a time.
+ * The rendered disabled state is user feedback; this synchronous lock is the
+ * correctness boundary for re-entrant submits before React commits a render.
+ */
+export function createReceptionRegistrationRunner() {
+  let running = false;
+  return {
+    isRunning: () => running,
+    async run(operation: () => Promise<void>): Promise<boolean> {
+      if (running) {
+        return false;
+      }
+      running = true;
+      try {
+        await operation();
+        return true;
+      } finally {
+        running = false;
+      }
+    },
+  };
+}
+
 export function ReceptionQueueView({ state }: { readonly state: QueueState }) {
   if (state.kind === "loading") {
     return <LoadingState label="受付一覧を読み込み中…" />;
@@ -336,6 +360,12 @@ export function ReceptionDashboard() {
   const loadRunner = useRef<ReturnType<typeof createReceptionQueueRunner> | null>(
     null,
   );
+  const registrationRunner = useRef<ReturnType<
+    typeof createReceptionRegistrationRunner
+  > | null>(null);
+  if (registrationRunner.current === null) {
+    registrationRunner.current = createReceptionRegistrationRunner();
+  }
 
   const load = useCallback(async (targetDate: string) => {
     if (loadRunner.current === null) {
@@ -364,9 +394,13 @@ export function ReceptionDashboard() {
   }, []);
 
   const register = useCallback(async () => {
+    const runner = registrationRunner.current;
+    if (runner === null || runner.isRunning()) {
+      return;
+    }
     const trimmed = registerPatientId.trim();
-    setRegistered(null);
     if (trimmed.length === 0) {
+      setRegistered(null);
       setRegisterNotice({
         severity: "WARNING",
         message: "患者IDが入力されていません。",
@@ -374,26 +408,29 @@ export function ReceptionDashboard() {
       });
       return;
     }
-    setSubmitting(true);
-    setRegisterNotice(null);
-    try {
-      const entry = await createReception(trimmed);
-      setRegistered(entry);
-      setRegisterPatientId("");
-      await load(date);
-    } catch (error) {
-      setRegisterNotice(
-        error instanceof ReceptionError
-          ? error.toNotice()
-          : {
-              message: "受付の処理に失敗しました。",
-              nextAction:
-                "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
-            },
-      );
-    } finally {
-      setSubmitting(false);
-    }
+    await runner.run(async () => {
+      setRegistered(null);
+      setSubmitting(true);
+      setRegisterNotice(null);
+      try {
+        const entry = await createReception(trimmed);
+        setRegistered(entry);
+        setRegisterPatientId("");
+        await load(date);
+      } catch (error) {
+        setRegisterNotice(
+          error instanceof ReceptionError
+            ? error.toNotice()
+            : {
+                message: "受付の処理に失敗しました。",
+                nextAction:
+                  "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+              },
+        );
+      } finally {
+        setSubmitting(false);
+      }
+    });
   }, [registerPatientId, date, load]);
 
   return (
