@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002-W28 UIX-004 exact5 metadata-only migration is FINALIZED_PENDING_LANDING at inventory 173/60/113; IDX v0.4.41 is APPROVED and WP-9002 remains IN_PROGRESS. WP-4081 is LANDED.
-- Current task: perform final exact5/staged-diff verification, then root exact-stage commit/push. WP-4050 remains separate.
+- Current phase: WP-9002-W28 UIX-004 exact5 metadata-only migration LANDED on the safe feature branch at inventory 173/60/113; IDX v0.4.41 is APPROVED and WP-9002 remains IN_PROGRESS. WP-4081 is LANDED.
+- Current task: fresh read-only mapping and pre-plan review of the remaining 60 incomplete SSOT documents. WP-4050 remains separate.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -126,4 +126,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - WP-4081 landing checkpoint: commit `82f8b85` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4; deterministic legal MAC-with-`qh` regression and structural legacy-property absence locked; production codec/contracts/OpenAPI/DB/SSOT/package unchanged; review/full gates PASS.
 - W28 review checkpoint: baseline `363a7a1`; UIX-004 exact5 selected after avoiding fact-drift/high-authority candidates; body `3817/b9263344…`; target173/60/113; non-target `172/14508/06bf0654…`; pre-plan APPROVED_WITH_PINS. Preserve UAC-01..12 methods/candidate values/roles, two questions, final pharmacist/claim-clerk review, synthetic-only data and defect severity. Existing tests are not UAC execution evidence.
 - W28 finalization checkpoint: all thirteen roles APPROVED or APPROVED_WITH_PINS; UIX-004 body/preserved/all23, UAC-01..12 values/methods/roles and 172 non-target identity verified; IDX v0.4.41 APPROVED/effective 2026-07-12; full regression gates PASS. UAC execution, accessibility, pharmacist/claim-clerk, medical/claims, privacy/security, human/production/release gates remain unresolved.
-- Next action: final exact5 verification and root exact-stage landing. WP-4050 remains separate.
+- W28 landing checkpoint: commit `5afca6d` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5; inventory173/60/113; UIX-004 body/preserved/UAC-01..12 methods/all candidate values/roles/2 questions/3 operations and 172 non-target identity unchanged; thirteen reviews/full regression gates accepted; no UAC execution, usability/accessibility, pharmacist/claim-clerk, medical/claims, privacy/security, production, or release acceptance activation.
+- Next action: fresh read-only mapping and pre-plan review of remaining 60 incomplete SSOT documents. WP-4050 remains separate.
