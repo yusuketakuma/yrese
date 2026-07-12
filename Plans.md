@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W19 + WP-9005/9006 LANDED、69 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W19 + WP-9005/9006 LANDED、W20 FINALIZED_PENDING_LANDING、68 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1125,6 +1125,32 @@ finalization_record: RCP-004 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/75/98; RCP-004 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; legal/evidence/cycle/audit gaps remain unresolved and no StatementDocument/privacy/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W20 ACC-010 facility-billing metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+
+```yaml
+work_package_id: WP-9002-W20
+baseline_commit: f21e380
+baseline_inventory: { total: 173, incomplete: 69, complete: 104 }
+target_inventory: { total: 173, incomplete: 68, complete: 105 }
+target: ACC-010 v0.2.0 metadata-only; body/status/version/legacy approval/effective/facility-billing semantics preserved
+purpose: Complete PRC-007 metadata and machine-map the existing human scope stop without deciding facility billing MVP scope or changing individual/facility accounting separation, patient detail, double-billing exclusion, invoice/payment/allocation, DB/API/UI, or implementation readiness.
+allowed_files: ACC-010, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other accounting/product/receipt/claim/database docs, code/tests/packages/lock; facility model/scope/invoice/payment/allocation/patient detail/PHI/schema/migration/DML/API/UI/HQ/external/production/deploy or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: none; body must remain 1333 bytes / SHA-256 a7fc92b1dad967665c0e2be8b5548401ce9fde4fedbb8b371f7c91709797705d
+pins: preserve APPROVED/v0.2.0/created_at/approved_at/approved_by/owner/reviewers/source/dependencies/three open questions/body history; preserve individual PatientReceivable vs FacilityInvoice/Payment separation, patient-level details, double-billing exclusion, and MVP boundary of model separation plus route flag only; blocker does not stop those design boundaries and does not decide WP-0037/0038
+metadata: updated_at 2026-07-12; effective_from/effective_to null; impacts future facility payment allocation/daily view/data model/API/UI only; related_work_packages [WP-0033, WP-0037, WP-0038, WP-9002-W20]; related_tests/related_prs/evidence_ids empty; body-history authority plus W20 metadata-only change log; one existing-scope BLOCKED_NOT_READY
+non_target: 172 canonical rows / 15435 bytes / SHA-256 5997b1813544a649ffe59e15e58c97d9207c7f46d216cd804e8741008249b78d must remain unchanged; target review inventory 173/68/105
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, accounting_domain_reviewer, claims_evidence_specialist, product_quality_reviewer, api_contract_reviewer, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata/existing stop mapping only; WP-0037/0038, facility-billing need and MVP scope, invoice/closing/payment terms, home-care/long-term-care boundary, patient-detail privacy, contract/legal/tax/accounting/claims, double-billing controls, DB/API/UI, production/risk acceptance stop for applicable human authorities
+validation: exact5/staged0; body/preserved/all23/inventory/non-target assertions; SSOT/scripts/secrets/boundaries/diff and full workspace gates are regression-only, not facility-billing runtime correctness evidence
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock facility invoice/AR/payment/HQ/runtime/production gates
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, accounting_domain_reviewer, claims_evidence_specialist, product_quality_reviewer, api_contract_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; product/accounting/claims/legal/privacy authority remains separate
+validation_results: FINAL PASS before landing — exact5/staged0; ACC-010 all23 and body 1333/a7fc92b1dad967665c0e2be8b5548401ce9fde4fedbb8b371f7c91709797705d byte-identical; preserved fields/three questions/separation/double-billing pins unchanged; inventory173/68/105; 172 non-target missing-set baseline-identical at 15435 bytes / SHA-256 5997b1813544a649ffe59e15e58c97d9207c7f46d216cd804e8741008249b78d; workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
+finalization_record: ACC-010 retains APPROVED/v0.2.0/legacy approval/effective null and facility-billing semantics; IDX-001 v0.4.33 APPROVED with approved_at/effective_from 2026-07-12 and thirteen W20 role approvals; BLOCKED_NOT_READY only stops facility runtime pending WP-0037/0038 human scope decision and empty direct evidence does not waive privacy/legal/accounting/DB/API/UI/production gates
+state: FINALIZED_PENDING_LANDING; exact-stage commit and safe feature-branch push pending; landing not claimed
 ```
 
 - [x] WP-9002-W19 ACC-002 patient-receivable metadata-only migration(LANDED、P1)

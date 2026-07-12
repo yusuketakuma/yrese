@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.32
+version: 0.4.33
 created_at: 2026-07-09
 updated_at: 2026-07-12
 approved_at: 2026-07-12
@@ -30,6 +30,7 @@ approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; s
   ; WP-9002-W17 independent_verifier APPROVED; WP-9002-W17 spec_guardian APPROVED; WP-9002-W17 data_integrity_auditor APPROVED; WP-9002-W17 architect APPROVED; WP-9002-W17 test_architect APPROVED; WP-9002-W17 claims_evidence_specialist APPROVED; WP-9002-W17 regulatory_adapter_reviewer APPROVED; WP-9002-W17 calculation_domain_reviewer APPROVED; WP-9002-W17 security_critic APPROVED; WP-9002-W17 privacy_compliance_reviewer APPROVED; WP-9002-W17 medical_safety_reviewer APPROVED
   ; WP-9002-W18 independent_verifier APPROVED; WP-9002-W18 spec_guardian APPROVED; WP-9002-W18 data_integrity_auditor APPROVED; WP-9002-W18 architect APPROVED; WP-9002-W18 db_steward APPROVED; WP-9002-W18 test_architect APPROVED; WP-9002-W18 accounting_domain_reviewer APPROVED; WP-9002-W18 claims_evidence_specialist APPROVED; WP-9002-W18 security_critic APPROVED; WP-9002-W18 privacy_compliance_reviewer APPROVED; WP-9002-W18 medical_safety_reviewer APPROVED
   ; WP-9002-W19 independent_verifier APPROVED; WP-9002-W19 spec_guardian APPROVED; WP-9002-W19 data_integrity_auditor APPROVED; WP-9002-W19 architect APPROVED; WP-9002-W19 db_steward APPROVED; WP-9002-W19 test_architect APPROVED; WP-9002-W19 accounting_domain_reviewer APPROVED; WP-9002-W19 claims_evidence_specialist APPROVED; WP-9002-W19 api_contract_reviewer APPROVED; WP-9002-W19 security_critic APPROVED; WP-9002-W19 privacy_compliance_reviewer APPROVED; WP-9002-W19 medical_safety_reviewer APPROVED
+  ; WP-9002-W20 independent_verifier APPROVED; WP-9002-W20 spec_guardian APPROVED; WP-9002-W20 data_integrity_auditor APPROVED; WP-9002-W20 architect APPROVED; WP-9002-W20 db_steward APPROVED; WP-9002-W20 test_architect APPROVED; WP-9002-W20 accounting_domain_reviewer APPROVED; WP-9002-W20 claims_evidence_specialist APPROVED; WP-9002-W20 product_quality_reviewer APPROVED; WP-9002-W20 api_contract_reviewer APPROVED; WP-9002-W20 security_critic APPROVED; WP-9002-W20 privacy_compliance_reviewer APPROVED; WP-9002-W20 medical_safety_reviewer APPROVED
 effective_from: 2026-07-12
 effective_to: null
 source_refs:
@@ -66,6 +67,7 @@ source_refs:
   - WP-9002-W17 CAL-003 evidence-register metadata-only review candidate (2026-07-12)
   - WP-9002-W18 ACC-001 accounting-domain metadata-only review candidate (2026-07-12)
   - WP-9002-W19 ACC-002 patient-receivable metadata-only review candidate (2026-07-12)
+  - WP-9002-W20 ACC-010 facility-billing metadata-only review candidate (2026-07-12)
 depends_on:
   - AGT-018
   - PRC-007
@@ -105,11 +107,13 @@ related_work_packages:
   - WP-9002-W17
   - WP-9002-W18
   - WP-9002-W19
+  - WP-9002-W20
 related_tests:
   - pnpm check:ssot-index
 related_prs: []
 evidence_ids: []
 change_log:
+  - 0.4.33 2026-07-12 WP-9002-W20 ACC-010 metadata-only migrationをfinalize、ACC-010本文/status/version/legacy approval/effective/facility-billing semantics、separation/double-billing pins不変、inventory173/69/104→173/68/105、thirteen-reviewer APPROVED
   - 0.4.32 2026-07-12 WP-9002-W19 ACC-002 metadata-only migrationをfinalize、ACC-002本文/status/version/legacy approval/effective/receivable semanticsとnarrow copay blocker不変、inventory173/70/103→173/69/104、twelve-reviewer APPROVED
   - 0.4.31 2026-07-12 WP-9002-W18 ACC-001 metadata-only migrationをfinalize、ACC-001本文/status/version/legacy approval/effective/accounting semantics、21 concepts、copay blocker不変、inventory173/71/102→173/70/103、eleven-reviewer APPROVED
   - 0.4.30 2026-07-12 WP-9002-W17 CAL-003 metadata-only migrationをfinalize、CAL-003本文/status/version/legacy approval/effective/evidence semantics、71 EVD、8 holds不変、inventory173/72/101→173/71/102、eleven-reviewer APPROVED
