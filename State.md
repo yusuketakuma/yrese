@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4095 audit rollback-failed client quarantine — FINALIZED
+
+- clean HEAD `2e07ee8`。audit transaction失敗後のROLLBACK自体が失敗してもclientを通常poolへ戻すMEDIUM lifecycle gapをmapper/plannerが確認。installed pg/type/runtimeは`release(true)` destroyを正式サポート。
+- exact5でrollback失敗時だけclientをquarantineし、original error、SQL/order/lock/hash/sequence、DB/API semanticsは維持する。WP-4092 pending integration fileとの目的混在を避け、新規unit testへ分離。
+- success/rollback-success/rollback-failureをDB非依存fake clientで固定。independent DB/data/audit/security/privacy/medical review APPROVED。API198 + expected skip14、web215、audit183、workspace typecheck/test/buildと全gate PASS。exact5 landing待ち。
+
 ### WP-4094 verified audit wallClock-desc display ordering — LANDED
 
 - clean HEAD `a24da45`。公開contractはwallClock descだがruntimeはappend reverse + limitで、非単調時刻時にmembershipまで誤るMEDIUM driftをmapper/plannerが確認。rollback client quarantineより先行する。

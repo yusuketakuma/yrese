@@ -69,6 +69,7 @@ export class PostgresAuditRepository implements AuditRepository {
 
   async record(scope: AuditScope, input: RecordAuditInput): Promise<AuditEvent> {
     const client = await this.pool.connect();
+    let destroyClient = false;
     try {
       await client.query('BEGIN');
       await lockScope(client, scope);
@@ -106,10 +107,18 @@ export class PostgresAuditRepository implements AuditRepository {
       await client.query('COMMIT');
       return event;
     } catch (error) {
-      await client.query('ROLLBACK').catch(() => undefined);
+      try {
+        await client.query('ROLLBACK');
+      } catch {
+        destroyClient = true;
+      }
       throw error;
     } finally {
-      client.release();
+      if (destroyClient) {
+        client.release(true);
+      } else {
+        client.release();
+      }
     }
   }
 
