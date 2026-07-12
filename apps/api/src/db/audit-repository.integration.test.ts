@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 
-import { verifyAuditHashChain } from '@yrese/audit';
+import { AUDIT_GENESIS_PREV_HASH, verifyAuditHashChain } from '@yrese/audit';
 import { pharmacyId, tenantId, userId } from '@yrese/shared-kernel';
 
 import { PostgresAuditRepository } from './audit-repository.js';
@@ -19,7 +19,15 @@ function createTestSchemaName(): string {
   return `yrese_audit_test_${process.pid}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
 
-async function withMigratedSchema(run: (pool: Pool) => Promise<void>): Promise<void> {
+interface MigratedSchemaOptions {
+  readonly poolMax?: number;
+  readonly applicationName?: string;
+}
+
+async function withMigratedSchema(
+  run: (pool: Pool) => Promise<void>,
+  options: MigratedSchemaOptions = {},
+): Promise<void> {
   if (testDatabaseUrl === undefined) {
     throw new Error('TEST_DATABASE_URL unexpectedly missing');
   }
@@ -30,8 +38,10 @@ async function withMigratedSchema(run: (pool: Pool) => Promise<void>): Promise<v
   await adminPool.end();
 
   const pool = createDbPool(testDatabaseUrl, {
-    max: 1,
-    options: `-c search_path=${schemaName}`,
+    max: options.poolMax ?? 1,
+    options: `-c search_path=${schemaName}${
+      options.applicationName === undefined ? '' : ` -c application_name=${options.applicationName}`
+    }`,
   });
   try {
     await applyPendingMigrations(pool, await loadMigrationFiles(), {
@@ -48,6 +58,30 @@ async function withMigratedSchema(run: (pool: Pool) => Promise<void>): Promise<v
       await cleanupPool.end();
     }
   }
+}
+
+async function waitForAdvisoryLockWaiters(
+  client: PoolClient,
+  applicationName: string,
+  expectedCount: number,
+): Promise<void> {
+  const deadline = Date.now() + 3_000;
+  while (Date.now() < deadline) {
+    const result = await client.query<{ waiting_count: number }>(
+      `SELECT count(*)::int AS waiting_count
+         FROM pg_locks AS locks
+         JOIN pg_stat_activity AS activity ON activity.pid = locks.pid
+        WHERE locks.locktype = 'advisory'
+          AND locks.granted = false
+          AND activity.application_name = $1`,
+      [applicationName],
+    );
+    if (result.rows[0]?.waiting_count === expectedCount) {
+      return;
+    }
+    await new Promise<void>((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error('timed out waiting for concurrent audit advisory-lock waiters');
 }
 
 const SCOPE: AuditScope = {
@@ -134,4 +168,75 @@ describePostgres('PostgresAuditRepository (migrations/000004)', () => {
       expect(verification.ok).toBe(false);
     });
   });
+
+  it(
+    'serializes two observed concurrent appends into one verifiable scoped chain',
+    async () => {
+      const applicationName = `yrese_audit_${process.pid}_${Math.random().toString(36).slice(2)}`;
+      await withMigratedSchema(
+        async (pool) => {
+          const repository = new PostgresAuditRepository(pool);
+          const blocker = await pool.connect();
+          let blockerTransactionOpen = false;
+          let appends: Array<ReturnType<PostgresAuditRepository['record']>> = [];
+
+          try {
+            await blocker.query('BEGIN');
+            blockerTransactionOpen = true;
+            await blocker.query(
+              'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+              [`audit_events:${SCOPE.tenantId}\u0000${SCOPE.pharmacyId}`],
+            );
+
+            appends = [
+              repository.record(
+                SCOPE,
+                receptionCreated('reception-concurrent-a', '2026-07-11T04:00:00.000Z'),
+              ),
+              repository.record(
+                SCOPE,
+                receptionCreated('reception-concurrent-b', '2026-07-11T04:00:01.000Z'),
+              ),
+            ];
+            await waitForAdvisoryLockWaiters(blocker, applicationName, 2);
+
+            await blocker.query('COMMIT');
+            blockerTransactionOpen = false;
+            const returned = await Promise.all(appends);
+            expect(returned.map((event) => event.sequenceNumber).sort((a, b) => Number(a - b))).toEqual([
+              1n,
+              2n,
+            ]);
+            expect(new Set(returned.map((event) => event.eventId)).size).toBe(2);
+            expect(new Set(returned.map((event) => event.entryHash)).size).toBe(2);
+
+            const events = await repository.list(SCOPE);
+            expect(events.map((event) => event.sequenceNumber)).toEqual([1n, 2n]);
+            expect(events[0]?.prevHash).toBe(AUDIT_GENESIS_PREV_HASH);
+            expect(events[1]?.prevHash).toBe(events[0]?.entryHash);
+            expect(new Set(events.map((event) => event.eventId))).toEqual(
+              new Set(returned.map((event) => event.eventId)),
+            );
+            expect(events.map((event) => event.targetRef.id).sort()).toEqual([
+              'reception-concurrent-a',
+              'reception-concurrent-b',
+            ]);
+            expect(verifyAuditHashChain(events)).toEqual({
+              ok: true,
+              checkedCount: 2,
+              lastEntryHash: events[1]?.entryHash,
+            });
+          } finally {
+            if (blockerTransactionOpen) {
+              await blocker.query('ROLLBACK').catch(() => undefined);
+            }
+            blocker.release();
+            await Promise.allSettled(appends);
+          }
+        },
+        { poolMax: 3, applicationName },
+      );
+    },
+    10_000,
+  );
 });

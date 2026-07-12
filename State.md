@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4092 PostgreSQL audit append observed-concurrency proof — IN PROGRESS
+
+- clean HEAD `544c7f7`。audit integration pool `max:1`がrepository transactionをclient checkoutで直列化し、advisory lockの並行保証を未証明とmapper/plannerが確認。production defectではなくMEDIUM evidence gap。
+- test-only exact4でblocker + waiter2のDB-observed overlapとchain収束を追加する。local `TEST_DATABASE_URL`は未設定のため、local skipを完了扱いにせずCI zero-skipをlanding gateとする。
+- independent reviewはcode APPROVED / runtime VERIFY_REQUIRED。local focused5 skip、API191 + DB skip14、web215、audit183、workspace typecheck/test/buildと全gate PASS。candidate commit/push後もCI PostgreSQL実証までIN PROGRESSを維持する。
+
 ### WP-4091 deterministic in-memory patient search field ordering — LANDED
 
 - clean HEAD `eb2b916`。PostgreSQLは`patient_number, patient_id`順でpaginationする一方、InMemoryは投入順のままsliceし、同一synthetic recordのpage membershipがrepository modeで変わることをmapperが再現。plannerは公開ordering/collation保証を除外するpins付きでAPPROVED。

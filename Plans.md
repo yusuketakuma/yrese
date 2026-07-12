@@ -2255,6 +2255,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused repository3/server58、API191 + PostgreSQL13 expected skips、web215、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。初回testはPASSしたがexact optional cursor型errorを検出し、明示guard後typecheck再実行PASS。
   - landing_record: commit `c7a4b56` `WP-4091: stabilize in-memory patient pagination` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、review/full gates PASS、synthetic ASCII field-order/paginationを決定化し、public ordering/SQL/DB/APIは不変。
 
+- [~] WP-4092 PostgreSQL audit append observed-concurrency proof(R2 integrity evidence)
+  - 発見根拠: productionはtenant/pharmacy単位のtransaction advisory lockでchain追記を直列化するが、既存integration helperはpool `max:1`で、並行呼出しもclient checkout前に直列化されlock保証を検証できない。production defectは未確認。
+  - scope: test-only exact4 `apps/api/src/db/audit-repository.integration.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。production repository/SQL/lock/migration/pool default、API/contracts/SSOTは変更しない。
+  - implementation: test transactionが同scope lockを保持し、別2接続のrecordが同じadvisory lockを実際に待機中であることを`pg_locks`でbounded観測してから解放する。winner順序を仮定せず、両append、sequence 1/2、genesis/link、unique event/hash、full chainを検証する。
+  - acceptance: disposable PostgreSQLでwaiter2を観測し、deadlock/lost write/duplicateなし、resource cleanup完了、既存4 integration維持。local skipは完了証拠にせず、GitHub Actions PostgreSQL serviceのzero-skip PASSまでVERIFY_REQUIRED。
+  - review_results: independent DB/data/security/privacy/medical/test reviewはcode APPROVED、runtime VERIFY_REQUIRED。max3/blocker/waiter2/pg_locks bounded observation、release/drain、order-independent assertions、exact4を確認しactionable findingなし。
+  - validation_results: local focused audit integration5は`TEST_DATABASE_URL`不在でexpected skip、API191 + PostgreSQL14 skips、web215、audit183、workspace typecheck/test/buildと全標準gate PASS。実DB concurrency acceptanceは未実施。
+  - push_record: code-review済みcandidateをfeature branchへcommit/push後、PR/CI PostgreSQL zero-skip run待ち。CI証拠前はDONE/landingを主張しない。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
