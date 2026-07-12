@@ -2,17 +2,17 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.34はWP-9002-W21 twelve-reviewer approvalを経てAPPROVED・commit `e0c9609`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.35はWP-9002-W22 twelve-reviewer approvalを経てAPPROVED・commit `65c68d9`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
 
-### WP-9002-W22 ACC-006 metadata — FINALIZED_PENDING_LANDING
+### WP-9002-W22 ACC-006 metadata — LANDED
 
 - clean feature-branch baseline `cee9415`で残存67 SSOTをfresh mappingし、known drift群とACC-005/006を比較した。refund permission/fraud/legal面が広いACC-005を後続へ回し、live codeで26 state runtime未実装を確認したACC-006単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
 - ACC-006本文3713 bytes / SHA-256 `ea1f5bca3fdc8f306f956855a3fb38192286d2a5c2dd4e0d3965af8e9c519c5c`、APPROVED/v0.2.0/legacy approval、dependencies/impacts、1 questionを不変とする。candidate inventory173/66/107、non-target172 `15216/ec444498…`。PatientReceivable10/Payment10/ReceiptDocument6と遷移、StatementDocument no-state、local duplicate禁止を保持。MOD-005+approved implementation WPまでBLOCKED_NOT_READYで、direct tests/evidence/runtimeなし。review待ち、landing未主張。
-- independent/spec/data/architect/DB/test/accounting/claims/API/security/privacy/medicalの12 roleがAPPROVED。ACC-006本文/preserved/all23、10/10/6 states、inventory173/66/107、172 non-target identityを独立確認。full gatesはPASSしたがstate runtime correctness証拠ではない。IDX v0.4.35をAPPROVED/effective 2026-07-12へfinalizeし、MOD-005/WP-2201/2202/3101/DB/API/UI/production/human gatesは未解除。exact-stage commit/push前でlanding未主張。
+- independent/spec/data/architect/DB/test/accounting/claims/API/security/privacy/medicalの12 roleがAPPROVED。ACC-006本文/preserved/all23、10/10/6 states、inventory173/66/107、172 non-target identityを独立確認。full gatesはPASSしたがstate runtime correctness証拠ではない。IDX v0.4.35をAPPROVED/effective 2026-07-12へfinalizeし、MOD-005/WP-2201/2202/3101/DB/API/UI/production/human gatesは未解除。exact5をcommit `65c68d9`として`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。WP-9002は66 incompleteでIN_PROGRESSを継続する。
 
 ### WP-9002-W21 ACC-003 metadata — LANDED
 
