@@ -11,12 +11,21 @@ reviewers:
   - human_review_if_required
 version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
+effective_from: null
+effective_to: null
 source_refs: [構築プロンプト v0.2.0 §0.0.4.5, CAL-003(evidence_register), CLM-001(claim_scope_matrix)]
 depends_on: [RCP-001(概念分離), RCP-005, RCP-006]
 impacts: [WP-2202, WP-3101]
+related_work_packages: [WP-0034, WP-2202, WP-3101, WP-9002-W13]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文§6変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-12 WP-9002-W13 metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - 明細書無償交付義務の根拠規定・例外(正当な理由)の範囲【要確認: 療担規則・関連通知の精読 → evidence_id 発行。条文番号の推測記載は禁止】
   - 支払額0円(公費等)の場合の明細書発行要否【要確認: 公式通知 — v0.2.0 明示の要確認事項】

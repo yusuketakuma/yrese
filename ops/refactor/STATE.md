@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002-W12 RCP-001 exact5 metadata-only migration LANDED on the safe feature branch at inventory 173/76/97; WP-9002 remains IN_PROGRESS.
-- Current task: fresh read-only mapping and pre-plan review of the remaining 76 incomplete SSOT documents before defining any next wave.
+- Current phase: WP-9002-W13 RCP-004 exact5 metadata-only migration finalized at inventory 173/75/98; IDX-001 v0.4.26 APPROVED/effective 2026-07-12; landing pending.
+- Current task: independently recheck finalized exact5/staged paths and gates, then root exact-stages, commits, and pushes only this safe feature branch.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -76,4 +76,6 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W12 mapping/pre-plan checkpoint: baseline `5133f19`; fresh inventory173/77/96; RCP-001 exact5 selected; body `3254/8d7336d3…`; target173/76/97; non-target `172/16286/9e7a90df…`; pre-plan APPROVED_WITH_PINS and RCP-004 grouping rejected. No direct receipt/payment issuance runtime or tests; preserve cycles/source drift/audit partiality and all payment/offline/legal/accounting/PHI/production gates.
 - W12 finalization checkpoint: ten roles APPROVED; RCP-001 body/preserved fields/all23 and 172 non-target identity verified; IDX v0.4.25 APPROVED/effective 2026-07-12; full regression gates PASS. RCP cycles/source drift/audit partiality remain unresolved; no receipt/payment/offline/audit/legal/accounting/PHI/runtime/DB/API/UI/production/external readiness claim or human semantic approval.
 - W12 landing checkpoint: commit `06719da` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5; inventory173/76/97; RCP-001 body/preserved fields and 172 non-target identity unchanged; ten reviews/full regression gates APPROVED; cycles/source drift/audit partiality remain unresolved and no receipt/payment/offline/legal/accounting/PHI/runtime/DB/API/UI/production/external activation occurred.
-- Next action: fresh read-only mapping and pre-plan review of remaining 76 incomplete SSOT documents; do not infer receipt/payment implementation/readiness from W12 metadata completion.
+- W13 mapping/pre-plan checkpoint: baseline `18ec003`; fresh inventory173/76/97; RCP-004 exact5 selected; body `2993/3868a926…`; target173/75/98; non-target `172/16185/d6adb1ad…`; pre-plan APPROVED_WITH_PINS. No direct StatementDocument runtime/tests; preserve legacy source, CAL/CLM partiality, RCP cycles, statement.declined audit gap and all legal/evidence/privacy/audit/production gates.
+- W13 finalization checkpoint: ten roles APPROVED; RCP-004 body/preserved fields/all23 and 172 non-target identity verified; IDX v0.4.26 APPROVED/effective 2026-07-12; full regression gates PASS. Free/zero-yen/legal fields, CAL/CLM partiality, RCP cycles and statement.declined audit gap remain unresolved; no StatementDocument/legal/evidence/privacy/audit/runtime/DB/API/UI/production/external readiness claim or human semantic approval.
+- Next action: final read-only recheck, then exact-stage/commit/push finalized five paths on safe feature branch; afterwards record landing.
