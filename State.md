@@ -8,11 +8,12 @@
 
 ## 2026-07-13
 
-### WP-4084 reception registration same-flight mutual exclusion — COMPLETED / LANDING PENDING
+### WP-4084 reception registration same-flight mutual exclusion — LANDED
 
 - clean HEAD `4f31994`でplannerが受付登録の同期再入を検出。mapper反証で通常double-clickはdisabledが軽減すると確認し、R2ではなくR1 bounded hardeningとして採択。API-006のsame-key semantics、retry key lifecycle、DB/API/contracts/SSOTは変更しない。
 - exact5でsingle-flight coordinatorをproduction handlerへ配線し、同一flightの重複POST/UUID/state更新を抑止。lockはqueue reloadまで保持し、success/failure後に解放する。independent/frontend/accessibility/medical/privacy/API/data reviewはAPPROVED。
 - focused19、web200、API172 + PostgreSQL13 expected skips、server43、workspace typecheck/test/buildと既存gateはPASS。exact5 landing待ち。API-006/retry key lifecycle/DB/contracts/SSOT/copy/CSSは不変。
+- exact5 commit `0d3eafa`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。通常double-clickの実害は未立証のためR1を維持し、曖昧network retryは別semantic gateへ残す。
 
 ## 2026-07-12
 
