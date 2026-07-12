@@ -10,12 +10,21 @@ reviewers:
   - opus4.8
 version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
+effective_from: null
+effective_to: null
 source_refs: [構築プロンプト v0.2.0 §0.0.4.5, v0.2.0 §20(帳票・電子保存)]
 depends_on: [RCP-001, RCP-004, REG-003(e-文書法・保存期間は legal_compliance_matrix 参照)]
 impacts: [WP-2202, packages/reports(将来), CAL-008(trace schema)]
+related_work_packages: [WP-0034, WP-2202, WP-9002-W8]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文§4変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-12 WP-9002-W8 metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - 電子保存の運用管理規程の策定(REG-003 と同期)【要確認】
   - テンプレートの薬局別カスタマイズ許容範囲(ロゴ・文言)【要確認: 実務レビュー】
