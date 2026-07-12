@@ -2309,6 +2309,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused patient-search23、web218、workspace typecheck/test（API203 + PostgreSQL14 expected skipsを含む）/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: commit `9f41c07` `WP-4097: preserve patient results on append failure` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent review/full gates PASS、API/DB/cursor/CSS/focus/animation/PHI handling不変。
 
+- [x] WP-4098 quarantine migration DB client after rollback failure(R2 migration connection integrity) — FINALIZED
+  - 発見根拠: migration SQLまたはhistory INSERT/COMMIT失敗後のROLLBACK自体が失敗しても、transaction state不明clientを通常`release()`でpoolへ戻し、後続利用へ混入させる。
+  - scope: exact5 `apps/api/src/db/migration-runner.ts`, `apps/api/src/db/migration-runner.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。SQL/order/migration/history/checksum/API/SSOT/DB実行/retry/logは変更しない。
+  - implementation: post-BEGIN operation失敗後のrollback失敗時だけ外側ownerへunusableを通知し`release(true)`。original operation error identityを維持し、rollback成功、success、BEGIN失敗、check clientはzero-arg releaseを維持する。
+  - acceptance: DB非依存fake Pool/PoolClientでsuccess、operation failure + rollback success/failure、BEGIN failureのquery/release順、release once、original identity、failure後のnext migration/final check停止、check client非destroyを固定。focused/API typecheckとindependent DB/data/security/privacy review PASSまで未完了。
+  - review_results: independent verifier + DB/data/security/privacy/operations review APPROVED、findingsなし。original operation error identity、rollback-failure-only destroy、zero-arg reusable paths、failure後停止、SQL/semantic non-changeを確認。
+  - validation_results: focused migration18（runner4）、API207 + PostgreSQL14 expected skips、web218、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。landing pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

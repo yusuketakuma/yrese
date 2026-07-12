@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4098 migration rollback-failed client quarantine — FINALIZED
+
+- clean baseline `97ca41f`。post-BEGIN migration operation failure後のROLLBACK失敗clientが通常poolへ戻るR2 connection-integrity gapをexact5で修正中。
+- rollback失敗時だけouter ownerへunusableを通知して`release(true)`とし、original operation error、SQL/order/migration/history/checksum/API/SSOT/DB execution/retry/log semanticsを維持する。
+- independent verifier + DB/data/security/privacy/operations review APPROVED、findingsなし。focused migration18（runner4）、API207 + PostgreSQL14 expected skips、web218、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。landing pending。
+
 ### WP-4097 patient search append failure recovery — LANDED
 
 - clean HEAD `6021f0b`。append failureが既存患者results/query/cursor/未読込警告を全消去するLOW-MEDIUM workflow gapをmapper/plannerが確認。API-001/MSR-001/P-09の比較継続性を改善するexact5を採択。

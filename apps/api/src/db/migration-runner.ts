@@ -81,7 +81,12 @@ export async function assertMigrationStateAllowsStartup(
   return result;
 }
 
-async function applyMigration(client: PoolClient, migration: MigrationFile, options: ApplyMigrationsOptions): Promise<void> {
+async function applyMigration(
+  client: PoolClient,
+  migration: MigrationFile,
+  options: ApplyMigrationsOptions,
+  markClientUnusable: () => void,
+): Promise<void> {
   const appliedAt = options.appliedAt ?? new Date();
   await client.query('BEGIN');
   try {
@@ -93,7 +98,11 @@ async function applyMigration(client: PoolClient, migration: MigrationFile, opti
     );
     await client.query('COMMIT');
   } catch (error) {
-    await client.query('ROLLBACK');
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      markClientUnusable();
+    }
     throw error;
   }
 }
@@ -117,13 +126,20 @@ export async function applyPendingMigrations(
   const pendingMigrations = migrations.slice(initialCheck.appliedCount);
   const appliedVersions: string[] = [];
   const client = await pool.connect();
+  let clientUnusable = false;
   try {
     for (const migration of pendingMigrations) {
-      await applyMigration(client, migration, options);
+      await applyMigration(client, migration, options, () => {
+        clientUnusable = true;
+      });
       appliedVersions.push(migration.version);
     }
   } finally {
-    client.release();
+    if (clientUnusable) {
+      client.release(true);
+    } else {
+      client.release();
+    }
   }
 
   return {
