@@ -2044,6 +2044,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - 検証: resolver 36、patient search 12、reception 11のfocused 59/59、web 99、web typecheck/build、workspace typecheck/test、boundaries/secrets/diff check PASS。search/queue/createはplaintext production baseでfetch zero、base/query/patientId非echo。independent verifier、security/privacy/medical-safety specialistはAPPROVED。
   - human gate / rollback: active Goal §10のR3事前権限下でcontrol tighteningとして実施。deploy/production origin HTTPS/HSTS検証は別Go/No-Goで、本WPは外部操作なし。rollbackはtransport resolverと3 testファイルのrevert。
 
+- [~] WP-4081 patient-search cursor privacy assertion determinism(FINALIZED_PENDING_LANDING、R1 test reliability、WP-4074 follow-up)
+  - 発見根拠: `apps/api/src/patient-search-cursor.test.ts` がrandom HMAC値を含むserialized body全体へ `not.toContain('qh')` を適用し、legacy `qh` property不在ではなくMAC内の偶然の2文字一致を失敗扱いしていた。W25 full testで実際にfalse red後rerun PASS。43文字base64url MACでの概算発生率は約0.996%/run。
+  - scope: exact4 `apps/api/src/patient-search-cursor.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。production codec、server/config、contracts/OpenAPI、API-001/SSOT/index、DB/migration、package/lockは変更禁止。
+  - implementation: privacy-shape testだけをsynthetic fixed keyへ変更し、合法MACに`qh`が含まれるdeterministic vectorを固定する。exact keys `[v,o,m]`を維持し、legacy `t/p/q/qh/offset`はpropertyとして不在を検証する。random serialized substringと長さ上あり得ない64-char hash substring assertionは削除するが、MAC shape/token cap/golden/binding/tamper/canonicalization/legacy rejection coverageは維持する。
+  - acceptance: focused cursor 8 testsを反復してPASS、API test/typecheck/buildとworkspace full gates PASS、production `patient-search-cursor.ts` byte-identical。independent/test/security/privacy/medical reviewでprivacy coverage非弱化を確認後、rootだけがexact4をcommit/pushする。
+  - review_results: independent_verifier/test_architect、security_critic、privacy_compliance_reviewer、medical_safety_reviewer、spec reviewerがAPPROVED。production codec SHA-256 `bd8b37227acfda2aeaa9eb10fb17bcc0b5e7e337fef716a8282601e992051808`はbaseline/current byte-identical、privacy/security coverage非弱化。
+  - validation_results: focused cursor 8/8 PASS、deterministic repeat20で20 runs/160 tests PASS、API172 + PostgreSQL13 expected skips、API typecheck/build、workspace typecheck/test/build（web188等）、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: pending
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

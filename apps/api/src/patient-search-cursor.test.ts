@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { pharmacyId, tenantId } from '@yrese/shared-kernel';
 
@@ -70,7 +70,9 @@ describe('patient search cursor HMAC codec', () => {
   });
 
   it('emits only the exact canonical v/o/m token body without query or scope values', () => {
-    const codec = createPatientSearchCursorCodec(randomBytes(patientSearchCursorHmacKeyByteLength));
+    const key = Buffer.alloc(patientSearchCursorHmacKeyByteLength);
+    key[key.length - 1] = 0x1e;
+    const codec = createPatientSearchCursorCodec(key);
     const binding = syntheticBinding();
     const token = codec.encode(binding, { offset: 3 });
     const body = decodeTokenBody(token);
@@ -78,14 +80,12 @@ describe('patient search cursor HMAC codec', () => {
     expect(Object.keys(body)).toEqual(['v', 'o', 'm']);
     expect(body).toMatchObject({ v: patientSearchCursorSchemaVersion, o: 3 });
     expect(body.m).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(body.m).toBe('8c4GnZ-0ZaYbhA2mheIdWSDA2Bqh5ieA2H_cXatuNtU');
+    expect(body.m).toContain('qh');
     expect(token.length).toBeLessThanOrEqual(512);
-    expect(JSON.stringify(body)).not.toContain(binding.q);
-    expect(JSON.stringify(body)).not.toContain(binding.tenantId);
-    expect(JSON.stringify(body)).not.toContain(binding.pharmacyId);
-    expect(JSON.stringify(body)).not.toContain('qh');
-    expect(JSON.stringify(body)).not.toContain(
-      createHash('sha256').update(binding.q, 'utf8').digest('hex'),
-    );
+    for (const legacyField of ['t', 'p', 'q', 'qh', 'offset']) {
+      expect(body).not.toHaveProperty(legacyField);
+    }
   });
 
   it('binds the MAC to key, tenant, pharmacy, query, and offset without concatenation ambiguity', () => {
