@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W28 + WP-9005/9006 LANDED、W29 FINALIZED_PENDING_LANDING、59 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W29 + WP-9005/9006 LANDED、59 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1127,7 +1127,7 @@ landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metada
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
-- [~] WP-9002-W29 UIX-006 workflow-map metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+- [x] WP-9002-W29 UIX-006 workflow-map metadata-only migration(LANDED、P1)
 
 ```yaml
 work_package_id: WP-9002-W29
@@ -1150,9 +1150,9 @@ rollback: revert exact5 candidate/final landing only and reopen metadata incompl
 review_results: independent_verifier, spec_guardian, data_integrity_auditor, test_architect, frontend_reviewer, accessibility_ux_reviewer, product_quality_reviewer, workflow_architect, claims_workflow_reviewer, accounting_domain_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED_WITH_PINS; workflow/product/medical/claims/accounting/accessibility/privacy/security human authority remains separate
 validation_results: FINAL PASS before landing — exact5/staged0; UIX-006 all23 and body 4122/cf5ec8fa5e15bbed2974a365ed228ee79638fa2dd0aca2a4bff7e34e9d26c003 byte-identical; preserved fields/NORMAL/LOCAL_ONLY/RECOVERY_SYNC/four role homes/three navigation principles/two questions unchanged; inventory173/59/114; 172 non-target missing-set baseline-identical at 14409 bytes / SHA-256 3af708d326e3e6c2699de838a8f267115641d7f526a4f84cb3e3ada5847240f6; workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
 finalization_record: UIX-006 retains APPROVED/v0.1.0/legacy approval/effective null and all workflow semantics; IDX-001 v0.4.42 APPROVED with approved_at/effective_from 2026-07-12 and thirteen W29 role results; BLOCKED_REGULATORY_REVIEW is item-specific and BLOCKED_NOT_READY independently retains E2E/human acceptance; empty direct evidence does not waive ONS/record-spec, workflow, accessibility, pharmacist/claim-clerk, medical/claims/accounting, privacy/security, production, or release gates
-landing_required: root exact-stage landing after final exact5 verification
-landing_record: pending
-state: FINALIZED_PENDING_LANDING; WP-9002 remains IN_PROGRESS and no workflow/release readiness is claimed
+landing_required: satisfied
+landing_record: commit 0634b9d `WP-9002-W29: normalize workflow map metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/59/114; UIX-006 body/status/version/legacy approval/effective/workflow semantics, three flows/four role homes/three navigation principles/two questions and 172 non-target records unchanged; thirteen reviews/full regression gates accepted; no ONS/record-spec, E2E workflow, responsive/accessibility, medical/claims/accounting, privacy/security, production, or release acceptance activation
+state: LANDED; WP-9002 remains IN_PROGRESS with 59 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
 - [x] WP-9002-W28 UIX-004 usability-acceptance metadata-only migration(LANDED、P1)
