@@ -622,6 +622,202 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(roleCount(idleEmptyHtml, "alert")).toBe(0);
   });
 
+  it("shares one active same-target queue flight, loading emit, fetch, and commit", async () => {
+    const pending = deferredValue<ReceptionQueueResponse>();
+    const states: QueueState[] = [
+      {
+        kind: "loaded",
+        response: queueResponse("2026-07-10"),
+        refreshState: { kind: "idle" },
+      },
+    ];
+    const fetcher = vi.fn(() => pending.promise);
+    const run = createReceptionQueueRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    const owner = run("2026-07-11");
+    const joined = run("2026-07-11");
+    let settled = false;
+    void joined.then(() => {
+      settled = true;
+    });
+
+    expect(joined).toBe(owner);
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(states).toHaveLength(2);
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    pending.resolve(queueResponse("2026-07-11"));
+    await Promise.all([owner, joined]);
+    expect(states).toHaveLength(3);
+    expect(states.at(-1)).toMatchObject({
+      kind: "loaded",
+      response: { date: "2026-07-11" },
+      refreshState: { kind: "idle" },
+    });
+  });
+
+  it("cleans successful, handled-failure, and mismatch flights so same-target retries are admitted", async () => {
+    const scenarios: Array<{
+      first: () => Promise<ReceptionQueueResponse>;
+    }> = [
+      { first: () => Promise.resolve(queueResponse("2026-07-11")) },
+      { first: () => Promise.reject(new Error("synthetic handled failure")) },
+      { first: () => Promise.resolve(queueResponse("2099-12-31")) },
+    ];
+
+    for (const scenario of scenarios) {
+      const states: QueueState[] = [
+        {
+          kind: "loaded",
+          response: queueResponse("2026-07-10"),
+          refreshState: { kind: "idle" },
+        },
+      ];
+      const fetcher = vi
+        .fn<() => Promise<ReceptionQueueResponse>>()
+        .mockImplementationOnce(scenario.first)
+        .mockResolvedValueOnce(queueResponse("2026-07-11"));
+      const run = createReceptionQueueRunner(fetcher, (update) => {
+        states.push(update(states[states.length - 1]!));
+      });
+
+      await run("2026-07-11");
+      await run("2026-07-11");
+
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      expect(states.at(-1)).toMatchObject({
+        kind: "loaded",
+        response: { date: "2026-07-11" },
+        refreshState: { kind: "idle" },
+      });
+    }
+  });
+
+  it("admits A-B-A as three flights and keeps the final A authoritative", async () => {
+    const firstA = deferredValue<ReceptionQueueResponse>();
+    const b = deferredValue<ReceptionQueueResponse>();
+    const finalA = deferredValue<ReceptionQueueResponse>();
+    const states: QueueState[] = [{ kind: "loading" }];
+    const fetcher = vi
+      .fn<() => Promise<ReceptionQueueResponse>>()
+      .mockImplementationOnce(() => firstA.promise)
+      .mockImplementationOnce(() => b.promise)
+      .mockImplementationOnce(() => finalA.promise);
+    const run = createReceptionQueueRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    const oldA = run("2026-07-10");
+    const oldB = run("2026-07-11");
+    const currentA = run("2026-07-10");
+    expect(fetcher).toHaveBeenCalledTimes(3);
+
+    finalA.resolve(queueResponse("2026-07-10", [entry({ receptionId: "current-a" })]));
+    await currentA;
+    firstA.resolve(queueResponse("2026-07-10", [entry({ receptionId: "old-a" })]));
+    b.reject(new Error("old B failure"));
+    await Promise.all([oldA, oldB]);
+
+    expect(states.at(-1)).toMatchObject({
+      kind: "loaded",
+      response: { date: "2026-07-10", entries: [{ receptionId: "current-a" }] },
+    });
+  });
+
+  it("does not let an obsolete owner cleanup clear a newer same-target flight", async () => {
+    const oldA = deferredValue<ReceptionQueueResponse>();
+    const b = deferredValue<ReceptionQueueResponse>();
+    const newA = deferredValue<ReceptionQueueResponse>();
+    const fetcher = vi
+      .fn<() => Promise<ReceptionQueueResponse>>()
+      .mockImplementationOnce(() => oldA.promise)
+      .mockImplementationOnce(() => b.promise)
+      .mockImplementationOnce(() => newA.promise);
+    const states: QueueState[] = [{ kind: "loading" }];
+    const run = createReceptionQueueRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    const obsoleteA = run("2026-07-10");
+    const obsoleteB = run("2026-07-11");
+    const ownerA = run("2026-07-10");
+    oldA.resolve(queueResponse("2026-07-10"));
+    await obsoleteA;
+    const joinedA = run("2026-07-10");
+
+    expect(joinedA).toBe(ownerA);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    newA.resolve(queueResponse("2026-07-10"));
+    b.resolve(queueResponse("2026-07-11"));
+    await Promise.all([obsoleteB, ownerA, joinedA]);
+  });
+
+  it("publishes ownership before a re-entrant loading emit", async () => {
+    const pending = deferredValue<ReceptionQueueResponse>();
+    const fetcher = vi.fn(() => pending.promise);
+    let reentrant: Promise<void> | undefined;
+    let reenter = true;
+    let state: QueueState = { kind: "loading" };
+    let run!: (target: string) => Promise<void>;
+    run = createReceptionQueueRunner(fetcher, (update) => {
+      state = update(state);
+      if (reenter) {
+        reenter = false;
+        reentrant = run("2026-07-10");
+      }
+    });
+
+    const owner = run("2026-07-10");
+
+    expect(reentrant).toBe(owner);
+    expect(fetcher).toHaveBeenCalledOnce();
+    pending.resolve(queueResponse("2026-07-10"));
+    await owner;
+  });
+
+  it("cleans ownership and rejects after a synchronous loading emit failure", async () => {
+    const emitFailure = new Error("synthetic emit failure");
+    const fetcher = vi.fn().mockResolvedValue(queueResponse("2026-07-10"));
+    let failEmit = true;
+    let state: QueueState = { kind: "loading" };
+    const run = createReceptionQueueRunner(fetcher, (update) => {
+      if (failEmit) {
+        failEmit = false;
+        throw emitFailure;
+      }
+      state = update(state);
+    });
+
+    await expect(run("2026-07-10")).rejects.toBe(emitFailure);
+    await run("2026-07-10");
+
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(state.kind).toBe("loaded");
+  });
+
+  it("handles a synchronous fetch throw, cleans ownership, and admits retry", async () => {
+    const fetcher = vi
+      .fn<() => Promise<ReceptionQueueResponse>>()
+      .mockImplementationOnce(() => {
+        throw new Error("synthetic synchronous fetch failure");
+      })
+      .mockResolvedValueOnce(queueResponse("2026-07-10"));
+    const states: QueueState[] = [{ kind: "loading" }];
+    const run = createReceptionQueueRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    await run("2026-07-10");
+    expect(states.at(-1)?.kind).toBe("error");
+    await run("2026-07-10");
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(states.at(-1)?.kind).toBe("loaded");
+  });
+
   it("maps 409 idempotency conflicts to a duplicate-operation notice (RCV-0003)", async () => {
     const fetchImpl = vi
       .fn()
@@ -741,6 +937,28 @@ describe("createReceptionRegistrationRunner (same-flight duplicate prevention)",
     reload.resolve();
     await first;
     expect(events).toEqual(["created", "reloaded"]);
+  });
+
+  it("keeps the registration lock through a shared same-target queue reload", async () => {
+    const pendingQueue = deferredValue<ReceptionQueueResponse>();
+    const queueFetcher = vi.fn(() => pendingQueue.promise);
+    let queueState: QueueState = { kind: "loading" };
+    const queueRun = createReceptionQueueRunner(queueFetcher, (update) => {
+      queueState = update(queueState);
+    });
+    const registrationRunner = createReceptionRegistrationRunner();
+
+    const registration = registrationRunner.run(async () => {
+      await queueRun("2026-07-10");
+    });
+    const joinedReload = queueRun("2026-07-10");
+
+    expect(queueFetcher).toHaveBeenCalledOnce();
+    expect(registrationRunner.isRunning()).toBe(true);
+    pendingQueue.resolve(queueResponse("2026-07-10"));
+    await Promise.all([registration, joinedReload]);
+    expect(registrationRunner.isRunning()).toBe(false);
+    expect(queueState.kind).toBe("loaded");
   });
 
   it("allows a later explicit operation after success", async () => {

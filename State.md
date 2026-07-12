@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4103 reception queue latest-flight sharing — FINALIZED
+
+- clean baseline `23caf6e`。同一latest active queue targetの重複loadがgeneration/emit/fetchを重ねるR1 request-integrity gapをexact5で修正中。
+- latest single flightをtarget/unique owner/shared Promiseでsynchronous emit前に公開し、same targetはjoin、different targetとA-B-Aはadmit。exact-owner cleanup後にsettleする。verifier + reception/data/frontend/accessibility/medical/privacy/API review APPROVED、findingsなし。
+- focused reception-dashboard43、web251、API207 + PostgreSQL14 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。WP-4102 state、UI/tracker/URL/POST/API/DB/SSOTは不変。landing pending。
+
 ### WP-4102 reception queue retained-source refresh — LANDED
 
 - clean baseline `0ba6352`。refresh loading/failureで直前queue/source date/Tが消え、requested targetとresponse.date不一致も受理するR2 queue-integrity gapをexact5で修正中。

@@ -257,58 +257,97 @@ export function createReceptionQueueRunner(
   emit: (update: QueueStateUpdate) => void,
 ): (targetDate: string) => Promise<void> {
   let generation = 0;
-  return async (targetDate) => {
+  let latestFlight:
+    | {
+        readonly targetDate: string;
+        readonly ownerToken: object;
+        readonly sharedPromise: Promise<void>;
+      }
+    | undefined;
+  return (targetDate) => {
+    if (latestFlight?.targetDate === targetDate) {
+      return latestFlight.sharedPromise;
+    }
+
+    const ownerToken = {};
+    let resolveShared!: () => void;
+    let rejectShared!: (reason?: unknown) => void;
+    const sharedPromise = new Promise<void>((resolve, reject) => {
+      resolveShared = resolve;
+      rejectShared = reject;
+    });
+    latestFlight = { targetDate, ownerToken, sharedPromise };
     const gen = ++generation;
-    emit((prev) =>
-      prev.kind === "loaded"
-        ? {
-            ...prev,
-            refreshState: { kind: "loading", requestTarget: targetDate },
-          }
-        : { kind: "loading" },
-    );
-    try {
-      const response = await fetcher(targetDate);
-      if (gen !== generation) {
-        return;
-      }
-      if (response.date !== targetDate) {
-        const notice = queueResponseDateMismatchNotice();
-        emit((prev) =>
-          prev.kind === "loaded"
-            ? {
-                ...prev,
-                refreshState: {
-                  kind: "error",
-                  requestTarget: targetDate,
-                  notice,
-                },
-              }
-            : { kind: "error", notice },
-        );
-        return;
-      }
-      // 最終取得時刻(JST)。古い一覧を最新と誤認させない(監査 S-02)
-      emit(() => ({
-        kind: "loaded",
-        response,
-        loadedAt: formatAcceptedTime(new Date().toISOString()),
-        refreshState: { kind: "idle" },
-      }));
-    } catch (error) {
-      if (gen !== generation) {
-        return;
-      }
-      const notice = queueLoadErrorNotice(error);
+
+    const execute = async () => {
       emit((prev) =>
         prev.kind === "loaded"
           ? {
               ...prev,
-              refreshState: { kind: "error", requestTarget: targetDate, notice },
+              refreshState: { kind: "loading", requestTarget: targetDate },
             }
-          : { kind: "error", notice },
+          : { kind: "loading" },
       );
-    }
+      try {
+        const response = await fetcher(targetDate);
+        if (gen !== generation) {
+          return;
+        }
+        if (response.date !== targetDate) {
+          const notice = queueResponseDateMismatchNotice();
+          emit((prev) =>
+            prev.kind === "loaded"
+              ? {
+                  ...prev,
+                  refreshState: {
+                    kind: "error",
+                    requestTarget: targetDate,
+                    notice,
+                  },
+                }
+              : { kind: "error", notice },
+          );
+          return;
+        }
+        // 最終取得時刻(JST)。古い一覧を最新と誤認させない(監査 S-02)
+        emit(() => ({
+          kind: "loaded",
+          response,
+          loadedAt: formatAcceptedTime(new Date().toISOString()),
+          refreshState: { kind: "idle" },
+        }));
+      } catch (error) {
+        if (gen !== generation) {
+          return;
+        }
+        const notice = queueLoadErrorNotice(error);
+        emit((prev) =>
+          prev.kind === "loaded"
+            ? {
+                ...prev,
+                refreshState: { kind: "error", requestTarget: targetDate, notice },
+              }
+            : { kind: "error", notice },
+        );
+      }
+    };
+
+    const cleanupOwner = () => {
+      if (latestFlight?.ownerToken === ownerToken) {
+        latestFlight = undefined;
+      }
+    };
+    void execute().then(
+      () => {
+        cleanupOwner();
+        resolveShared();
+      },
+      (error: unknown) => {
+        cleanupOwner();
+        rejectShared(error);
+      },
+    );
+    return sharedPromise;
   };
 }
 
