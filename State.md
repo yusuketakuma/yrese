@@ -8,11 +8,12 @@
 
 ## 2026-07-13
 
-### WP-4090 audit advisory-lock source literal-NUL hygiene — FINALIZED
+### WP-4090 audit advisory-lock source literal-NUL hygiene — LANDED
 
 - clean HEAD `981d5a3`。audit repository line 63 / byte offset 2631にphysical `0x00`が1個あり、sourceがbinary判定されることをmapper/plannerがHIGH confidenceで確認。runtime separatorは正しく、source representationだけが欠陥。
 - WP-1011 precedentに従いexact4で`\u0000`へescape化する。advisory lock key bytes/SQL/transaction/tenant scope、DB/API/contracts/SSOTは不変。
-- physical NUL 0、textual escape 1、runtime/UTF-8 strict equality、通常`rg`とnew blob text判定を確認。independent DB/data/security/privacy reviewはfindingsなしでAPPROVED。API188 + expected skip13、web215、audit183、workspace typecheck/test/buildと全gate PASS。exact4 landing待ち。
+- physical NUL 0、textual escape 1、runtime/UTF-8 strict equality、通常`rg`とnew blob text判定を確認。independent DB/data/security/privacy reviewはfindingsなしでAPPROVED。API188 + expected skip13、web215、audit183、workspace typecheck/test/buildと全gate PASS。
+- exact4 commit `9238a54`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。committed blobはUTF-8 text/NUL0で、lock key/DB semanticsは不変。
 
 ### WP-4089 fail-visible malformed stored audit payload verification — LANDED
 

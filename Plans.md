@@ -2244,7 +2244,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - acceptance: source NUL byte zero、textual escape exactly one、runtime char code/UTF-8 bytes同一、新blobはtext判定かつ通常`rg`成功。cleanup diff自体はNULを含むpreimageによりbinary表示となるため、post-commit blobと次回差分のtext可視性を証拠にする。API/workspace full gatesとindependent DB/data-integrity review PASSまで未完了。
   - review_results: independent verifierがDB/data-integrity/security/privacyを含めAPPROVED。HEADのphysical NUL 1→working 0、escape 1、変換以外byte-identical、runtime/UTF-8同値、SQL/transaction/lock semantics不変を確認しfindingsなし。
   - validation_results: source byte/escape/runtime equivalence、通常`rg`/new blob text判定、API188 + PostgreSQL13 expected skips、web215、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
-  - landing_record: exact4 commit/push待ち。
+  - landing_record: commit `9238a54` `WP-4090: restore audit repository text visibility` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4、review/full gates PASS、committed blob NUL0/text判定/通常rgを確認し、runtime lock key bytesは不変。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
