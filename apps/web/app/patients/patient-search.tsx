@@ -140,6 +140,7 @@ export function createSearchRunner(
 ): (query: string, cursor?: string, append?: boolean) => Promise<void> {
   let generation = 0;
   return async (query, cursor, append = false) => {
+    const gen = ++generation;
     const trimmed = query.trim();
     if (trimmed.length === 0) {
       emit(() => ({
@@ -152,7 +153,6 @@ export function createSearchRunner(
       }));
       return;
     }
-    const gen = ++generation;
     emit((prev) =>
       append && prev.kind === "loaded" ? prev : { kind: "loading" },
     );

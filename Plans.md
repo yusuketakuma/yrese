@@ -2174,6 +2174,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused 14/14、web 193/193、API 172 + PostgreSQL 13 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: commit `ed67009` `WP-4082: invalidate stale patient refreshes on clear` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、review/full gates PASS、患者解除後の旧応答復活を防止し、API/contracts/SSOT/DB/production semanticsは不変。
 
+- [x] WP-4083 patient-search blank-submit stale request invalidation(R2 patient-selection UI race)
+  - 発見根拠: `createSearchRunner()`はblank警告をemitしてreturnした後の非blank経路でのみgenerationを進めていたため、先行検索のlate 200/errorがblank警告を古い患者結果/errorで上書きできた。
+  - scope: exact5 `apps/web/app/patients/patient-search.tsx`, `apps/web/app/patients/patient-search.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。API/contracts/SSOT/DB/migration/package/lock/copy/CSSは変更しない。
+  - implementation: runnerの各invocation開始時にgenerationを進め、blank送信自体を最新authoritative actionにする。blankは従来どおりfetch zeroで固定WARNINGを表示し、nonblank/append/error semanticsは不変。
+  - acceptance: A→blank後のlate success/failureを破棄、blank fetch zero、既存last-wins/append tests維持。focused web、workspace full gates、independent/frontend/accessibility/medical/privacy review PASSまで未完了。
+  - review_results: independent verifier、frontend/accessibility、medical-safety/privacyがAPPROVED。blankが先行initial/appendの全completionをgeneration guardで無効化し、copy/ARIA/API/PHI境界は不変。
+  - validation_results: focused20、web196、API172 + PostgreSQL13 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

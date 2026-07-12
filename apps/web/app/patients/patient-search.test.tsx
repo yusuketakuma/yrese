@@ -230,6 +230,77 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     expect(states[states.length - 1]!.kind).toBe("loaded");
   });
 
+  it("keeps a blank-query warning authoritative over a late success", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    const emit = (update: (prev: SearchState) => SearchState) => {
+      states.push(update(states[states.length - 1]!));
+    };
+    let resolveFirst!: (page: SearchPage) => void;
+    const fetcher = vi.fn<(q: string) => Promise<SearchPage>>(
+      () =>
+        new Promise<SearchPage>((resolve) => {
+          resolveFirst = resolve;
+        }),
+    );
+    const run = createSearchRunner(fetcher, emit);
+
+    const first = run("合成");
+    await run("   ");
+    resolveFirst({ results: [patient({ patientId: "stale-patient" })] });
+    await first;
+
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(states[states.length - 1]).toEqual({
+      kind: "error",
+      notice: {
+        severity: "WARNING",
+        message: "検索語が入力されていません。",
+        nextAction: "氏名・カナ・患者番号のいずれかを入力してください。",
+      },
+    });
+  });
+
+  it("keeps a blank-query warning authoritative over a late failure", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    const emit = (update: (prev: SearchState) => SearchState) => {
+      states.push(update(states[states.length - 1]!));
+    };
+    let rejectFirst!: (reason: Error) => void;
+    const fetcher = vi.fn<(q: string) => Promise<SearchPage>>(
+      () =>
+        new Promise<SearchPage>((_resolve, reject) => {
+          rejectFirst = reject;
+        }),
+    );
+    const run = createSearchRunner(fetcher, emit);
+
+    const first = run("合成");
+    await run("\t");
+    rejectFirst(new Error("late failure"));
+    await first;
+
+    expect(fetcher).toHaveBeenCalledOnce();
+    const last = states[states.length - 1]!;
+    expect(last.kind).toBe("error");
+    if (last.kind === "error") {
+      expect(last.notice.severity).toBe("WARNING");
+      expect(last.notice.message).toBe("検索語が入力されていません。");
+    }
+  });
+
+  it("does not call the fetcher for a blank query", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    const fetcher = vi.fn<(q: string) => Promise<SearchPage>>();
+    const run = createSearchRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    await run("   ");
+
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(states[states.length - 1]?.kind).toBe("error");
+  });
+
   it("discards a stale append so another query's continuation never mixes in (WP-4037 / opus F3)", async () => {
     const states: SearchState[] = [{ kind: "idle" }];
     const emit = (update: (prev: SearchState) => SearchState) => {

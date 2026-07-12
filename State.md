@@ -8,6 +8,11 @@
 
 ## 2026-07-12
 
+### WP-4083 patient-search blank-submit stale request invalidation — COMPLETED / LANDING PENDING
+
+- clean HEAD `18680e0`でmapper/plannerが一致して次のR2 sliceに選定。blank validation前にgenerationを進め、blankを最新actionとして先行検索のlate success/failureを破棄する。警告文/fetch/API/contracts/SSOTは不変。
+- deferred late success/failure、blank fetch zeroの3 testsを追加。independent/frontend/accessibility/medical/privacy reviewはAPPROVED。focused20、web196、API172 + PostgreSQL13 expected skips、workspace typecheck/test/buildと全gateはPASS。exact5 landing待ち。
+
 ### WP-4082 patient-context manual-clear stale refresh invalidation — LANDED
 
 - read-only mapperは患者検索blank-submit raceを、independent plannerはより直接的なwrong-patient riskとして患者コンテキスト解除後の旧refresh復活を最優先に選定。R2、既存APPROVED H-02/API-001 authority内で、SSOT/contract/DB/migration/human gate変更なし。
