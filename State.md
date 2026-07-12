@@ -2,17 +2,17 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.28はWP-9002-W15 ten-reviewer approvalを経てAPPROVED・commit `2fda53a`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.29はWP-9002-W16 eleven-reviewer approvalを経てAPPROVED・commit `3cf9257`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
 
-### WP-9002-W16 QUA-002 metadata — FINALIZED_PENDING_LANDING
+### WP-9002-W16 QUA-002 metadata — LANDED
 
 - clean feature-branch baseline `27f9325`で残存73 SSOTをfresh mappingし、QUA-002/005/006を比較した。QUA-005/006はproduction operations fact driftがあるため除外し、本文のREG-004接続試験停止を意味変更なく構造化できるQUA-002単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
 - QUA-002本文2594 bytes / SHA-256 `61c58e92c4e9a05f4028ff8de65d67d056e9f464863653b2ebed35a6d78a1125`、APPROVED/v0.1.0/legacy approval、dependencies、2 questionsを不変とする。candidate inventory173/72/101、non-target172 `15865/1ba901fa…`。related tests/PRs/evidenceは空で、L1 CI/traceはL2/L3、golden妥当性、外部sandbox、並行稼働、UAC、Go/No-Go/release readinessを証明しない。外部接続・production変更なし。independent/domain review待ちでlandingは未主張。
-- independent/spec/data/architect/test/claims/regulatory/product-quality/security/privacy/medicalの11 roleがAPPROVED。QUA-002本文/preserved fields/all23、inventory173/72/101、172 non-target identity、RB-002/RB-003限定blockerを独立確認。workspace typecheck/test/buildと全gateはPASSしたがL1 regression-onlyである。IDX v0.4.29をAPPROVED/effective 2026-07-12へfinalizeし、L2/L3/golden/external/UAC/Go-No-Go/releaseとhuman authorityは未解除。exact-stage commit/push前でlandingは未主張。
+- independent/spec/data/architect/test/claims/regulatory/product-quality/security/privacy/medicalの11 roleがAPPROVED。QUA-002本文/preserved fields/all23、inventory173/72/101、172 non-target identity、RB-002/RB-003限定blockerを独立確認。workspace typecheck/test/buildと全gateはPASSしたがL1 regression-onlyである。IDX v0.4.29をAPPROVED/effective 2026-07-12へfinalizeし、L2/L3/golden/external/UAC/Go-No-Go/releaseとhuman authorityは未解除。exact5をcommit `3cf9257`として`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。WP-9002は72 incompleteでIN_PROGRESSを継続する。
 
 ### WP-9002-W15 QUA-008 metadata — LANDED
 

@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W15 + WP-9005/9006 LANDED、W16 FINALIZED_PENDING_LANDING、72 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W16 + WP-9005/9006 LANDED、72 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1127,7 +1127,7 @@ landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metada
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
-- [~] WP-9002-W16 QUA-002 validation-plan metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+- [x] WP-9002-W16 QUA-002 validation-plan metadata-only migration(LANDED、P1)
 
 ```yaml
 work_package_id: WP-9002-W16
@@ -1150,7 +1150,9 @@ rollback: revert exact5 candidate/final landing only and reopen metadata incompl
 review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, claims_evidence_specialist, regulatory_adapter_reviewer, product_quality_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; human pharmacist/claims/regulatory/product authority remains separate
 validation_results: FINAL PASS before landing — exact5/staged0; QUA-002 all23 and body 2594/61c58e92c4e9a05f4028ff8de65d67d056e9f464863653b2ebed35a6d78a1125 byte-identical; preserved fields unchanged; inventory173/72/101; 172 non-target missing-set baseline-identical at 15865 bytes / SHA-256 1ba901fa5d3c88d62226f4ee2abd0d15b9bfd363ccd60934f4fdde4c2adf4fc6; workspace typecheck/test/build PASS with API172 plus 13 expected PostgreSQL skips and web188; audit182/calculation87; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as L1 regression-only gates
 finalization_record: QUA-002 retains APPROVED/v0.1.0/legacy approval/effective null and validation semantics; IDX-001 v0.4.29 APPROVED with approved_at/effective_from 2026-07-12 and eleven W16 role approvals; blocker is limited to existing REG-004 RB-002/RB-003 connection tests and empty tests/PRs/evidence do not waive L2/L3/golden/external/UAC/Go-No-Go/release gates
-state: FINALIZED_PENDING_LANDING; exact-stage commit and safe feature-branch push pending; landing not claimed
+landing_required: satisfied
+landing_record: commit 3cf9257 `WP-9002-W16: normalize validation plan metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/72/101; QUA-002 body/status/version/legacy approval/effective/validation semantics and 172 non-target records unchanged; eleven reviews/full L1 regression gates APPROVED; blocker remains limited to REG-004 RB-002/RB-003 connection tests and no L2/L3/golden/external/UAC/Go-No-Go/release/runtime/DB/API/UI/production activation occurred
+state: LANDED; WP-9002 remains IN_PROGRESS with 72 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
 - [x] WP-9002-W15 QUA-008 public-quality KPI policy metadata-only migration(LANDED、P1)
