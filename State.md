@@ -8,11 +8,12 @@
 
 ## 2026-07-13
 
-### WP-4085 protected sensitive routes early no-store enforcement — COMPLETED / LANDING PENDING
+### WP-4085 protected sensitive routes early no-store enforcement — LANDED
 
 - clean HEAD `1c8f37f`でmapper/plannerが一致してR1 privacy/cache hardeningを選定。live route確認によりplannerの`/audit-log`表記を実在する`/audit/events`へ補正した。
 - 5 sensitive routeだけへroute-local `onRequest`を付与し、tenant/auth拒否より前に`no-store`を設定。handler内5重複setterを除去し、missing/malformed/insufficient scopeの15拒否、400/404/409/500/成功、health/whoami非対象を固定した。
 - review指摘の404/409 assertion不足と500 non-echo過剰記録を修正後、independent/API/security/privacy/medical reviewはAPPROVED。server58、API187 + expected skip13、web200、workspace typecheck/test/buildと全gate PASS。exact5 landing待ち。
+- exact5 commit `591e27a`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。5 sensitive routeの認可前non-cacheabilityを固定し、health/whoamiとauth/body/status/repository semanticsは不変。
 
 ### WP-4084 reception registration same-flight mutual exclusion — LANDED
 

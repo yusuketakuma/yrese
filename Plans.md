@@ -2199,6 +2199,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - acceptance: 5 routeのmissing/malformed context・insufficient scope 403と代表400/404/409/500/成功がno-store、auth denialはrepository zero-call。既存error bodyは不変でquery/patient identifiers/PHIを非echoとし、固定internal error copyのhardeningは対象外。health/whoamiには強制付与しない。403本文PHI leakやbrowser history/log解決は主張しない。
   - review_results: 初回reviewの404/409 assertion不足と500 non-echo記録過剰を修正後、independent verifier、API-contract/test、security/privacy/medicalがAPPROVED。live audit path `/audit/events`を含むexact5 routeだけを確認。
   - validation_results: focused server58、API187 + PostgreSQL13 expected skips、web200、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: commit `591e27a` `WP-4085: enforce no-store before sensitive route auth` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、review/full gates PASS、5 sensitive routeの認可前non-cacheabilityを固定し、body/status/auth/contracts/DBは不変。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
