@@ -2342,7 +2342,8 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - implementation: component-instance closure trackerをinitial dateから一度だけ生成。every `load(target)`の先頭でmarkし、registration successはcompletion時の`current()`をreloadする。input onChange/renderはmarkせず、trackerからdate/queueへwriteしない。
   - acceptance: tracker closure、deferred POST中A→explicit B→completion B、draft C no mark、multiple B/C latest、failed invoked B authoritative、URL restoration via load mark、POST failure no reload/alterを固定。existing later-generation semanticsを維持。focused/full gatesとindependent reception/frontend/accessibility/privacy/API/medical review PASSまで未完了。
   - review_results: verifier + reception/frontend/accessibility/medical/privacy/API/data review APPROVED、findingsなし。load-first mark、completion-time read、draft非追跡、failed target維持、generation/POST/idempotency semantic不変を確認。
-  - validation_results: focused reception-dashboard29、web237、API207 + PostgreSQL14 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。landing pending。
+  - validation_results: focused reception-dashboard29、web237、API207 + PostgreSQL14 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: implementation commit `dc8f088` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent review/full gates PASS、registration completionはlatest requested queue targetをreloadしdraft/URL/generation/POST semantics不変。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
