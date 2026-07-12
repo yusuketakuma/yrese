@@ -9,6 +9,7 @@ import {
   AuditLogLoadedState,
   AuditLogView,
   ChainVerificationNotice,
+  auditLogResponseInvariantErrorMessage,
   createAuditLogRunner,
   fetchAuditLog,
   type AuditLogState,
@@ -483,6 +484,63 @@ describe("createAuditLogRunner (latest-only / lifecycle invalidation)", () => {
     }
   });
 
+  it("retains the last verified view when refresh counts conflict, then installs a valid retry", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const inconsistent = {
+      ...SAMPLE,
+      chainVerification: { ok: true as const, checkedCount: 1 },
+    };
+    const replacement: AuditLogResponse = {
+      ...SAMPLE,
+      entries: [SAMPLE.entries[0]!],
+      totalCount: 1,
+      chainVerification: { ok: true, checkedCount: 1 },
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(inconsistent), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(replacement), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    const recorder = createStateRecorder({
+      kind: "loaded",
+      data: SAMPLE,
+      refreshState: { kind: "idle" },
+    });
+    const runner = createAuditLogRunner(() => fetchAuditLog(fetchImpl), recorder.emit);
+
+    try {
+      await runner.run();
+      const failed = recorder.current();
+      expect(failed.kind).toBe("loaded");
+      if (failed.kind !== "loaded") throw new Error("expected retained audit view");
+      expect(failed.data).toBe(SAMPLE);
+      expect(failed.refreshState).toMatchObject({
+        kind: "error",
+        notice: { message: "監査ログの処理に失敗しました。" },
+      });
+      expect(JSON.stringify(failed)).not.toContain(auditLogResponseInvariantErrorMessage);
+
+      await runner.run();
+      expect(recorder.current()).toEqual({
+        kind: "loaded",
+        data: replacement,
+        refreshState: { kind: "idle" },
+      });
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("keeps initial failure top-level and retries with initial loading semantics", async () => {
     const fetcher = vi
       .fn<() => Promise<AuditLogResponse>>()
@@ -557,6 +615,8 @@ describe("fetchAuditLog transport contract", () => {
     const duplicate = {
       ...SAMPLE,
       entries: [SAMPLE.entries[0]!, { ...SAMPLE.entries[1]!, eventId: "evt-002" }],
+      totalCount: 1,
+      chainVerification: { ok: true as const, checkedCount: 1 },
     };
     try {
       await expect(
@@ -611,6 +671,142 @@ describe("fetchAuditLog transport contract", () => {
           ),
         ),
       ).resolves.toEqual(duplicateBroken);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it.each([
+    [
+      "has more entries than stored events",
+      {
+        ...SAMPLE,
+        totalCount: 1,
+        chainVerification: { ok: true, checkedCount: 1 },
+      },
+    ],
+    [
+      "claims a partially checked healthy chain",
+      {
+        ...SAMPLE,
+        totalCount: 2,
+        chainVerification: { ok: true, checkedCount: 1 },
+      },
+    ],
+    [
+      "uses a broken checked count different from its break index",
+      {
+        ...SAMPLE,
+        chainVerification: {
+          ok: false,
+          checkedCount: 0,
+          breakIndex: 1,
+          reason: "prev_hash_mismatch",
+        },
+      },
+    ],
+    [
+      "uses a break index equal to the stored-event count",
+      {
+        ...SAMPLE,
+        entries: [SAMPLE.entries[0]!],
+        totalCount: 1,
+        chainVerification: {
+          ok: false,
+          checkedCount: 1,
+          breakIndex: 1,
+          reason: "entry_hash_mismatch",
+        },
+      },
+    ],
+    [
+      "reports a broken chain for an empty store",
+      {
+        entries: [],
+        totalCount: 0,
+        chainVerification: {
+          ok: false,
+          checkedCount: 0,
+          breakIndex: 0,
+          reason: "hash_format_invalid",
+        },
+      },
+    ],
+  ] as const)("rejects a response that %s without echoing audit evidence", async (_label, body) => {
+    vi.stubEnv("NODE_ENV", "development");
+    try {
+      await expect(
+        fetchAuditLog(
+          vi.fn().mockResolvedValue(
+            new Response(JSON.stringify(body), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        ),
+      ).rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe(auditLogResponseInvariantErrorMessage);
+        for (const sensitiveValue of [
+          "evt-002",
+          SAMPLE.entries[0]!.actorId,
+          SAMPLE.entries[0]!.targetRef.id,
+          "prev_hash_mismatch",
+        ]) {
+          expect((error as Error).message).not.toContain(sensitiveValue);
+        }
+        return true;
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it.each([
+    [
+      "empty healthy",
+      { entries: [], chainVerification: { ok: true, checkedCount: 0 }, totalCount: 0 },
+    ],
+    ["limited healthy", { ...SAMPLE, entries: [SAMPLE.entries[0]!], totalCount: 2 }],
+    [
+      "broken at the first event",
+      {
+        ...SAMPLE,
+        entries: [],
+        chainVerification: {
+          ok: false,
+          checkedCount: 0,
+          breakIndex: 0,
+          reason: "hash_format_invalid",
+        },
+      },
+    ],
+    [
+      "broken at the last event",
+      {
+        ...SAMPLE,
+        entries: [SAMPLE.entries[0]!],
+        chainVerification: {
+          ok: false,
+          checkedCount: 1,
+          breakIndex: 1,
+          reason: "entry_hash_mismatch",
+        },
+      },
+    ],
+  ] as const)("accepts a relationally consistent %s response unchanged", async (_label, body) => {
+    vi.stubEnv("NODE_ENV", "development");
+    try {
+      await expect(
+        fetchAuditLog(
+          vi.fn().mockResolvedValue(
+            new Response(JSON.stringify(body), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        ),
+      ).resolves.toEqual(body);
     } finally {
       vi.unstubAllEnvs();
     }

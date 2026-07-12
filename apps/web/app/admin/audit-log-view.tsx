@@ -38,6 +38,9 @@ export type AuditLogRefreshState =
   | { kind: "loading" }
   | { kind: "error"; notice: ErrorNoticeProps };
 
+export const auditLogResponseInvariantErrorMessage =
+  "Audit response contains inconsistent verification counts";
+
 function auditLogErrorNotice(error: unknown): ErrorNoticeProps {
   return typeof error === "object" && error !== null && "notice" in error
     ? (error as { notice: ErrorNoticeProps }).notice
@@ -84,6 +87,13 @@ export async function fetchAuditLog(
       }
       eventIds.add(entry.eventId);
     }
+  }
+  const countsAreConsistent = parsed.chainVerification.ok
+    ? parsed.chainVerification.checkedCount === parsed.totalCount
+    : parsed.chainVerification.checkedCount === parsed.chainVerification.breakIndex &&
+      parsed.chainVerification.breakIndex < parsed.totalCount;
+  if (parsed.entries.length > parsed.totalCount || !countsAreConsistent) {
+    throw new Error(auditLogResponseInvariantErrorMessage);
   }
   return parsed;
 }

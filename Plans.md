@@ -2453,6 +2453,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused audit API23、API227 + PostgreSQL14 expected skips、web272、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `4077779` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、initial MEDIUM 2件修正後のindependent/domain re-reviewとfull gates PASS、healthy verified audit sequenceを厳密な`1..N`へfail-closed。
 
+- [x] WP-4114 validate audit response count relationships at the browser trust boundary(R2 audit evidence integrity) — FINALIZED
+  - 発見根拠: audit response schemaは各fieldを個別検証するが、`entries.length > totalCount`、healthy `checkedCount != totalCount`、broken `checkedCount != breakIndex`または`breakIndex >= totalCount`を受理する。contractは全保存event検証/総数を規定し、core verifierはhealthyで全件count、brokenで成功済み件数=zero-based break indexを返す。
+  - scope: exact5 `apps/web/app/admin/audit-log-view.tsx`, `apps/web/app/admin/audit-log-view.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。contracts/OpenAPI/API/server/audit core/reason/repository/DB/migration/SSOT/UI copy/DOM/ARIA/CSSは変更しない。
+  - implementation: schema parse→WP-4112 healthy duplicate EventId全件検査後、全responseで`entries.length <= totalCount`、healthyで`checkedCount === totalCount`、brokenで`checkedCount === breakIndex < totalCount`を要求。矛盾はfixed non-echo全体拒否し、clamp/rewrite/filter/reclassification/partial state commitなし。
+  - acceptance: entries overflow、partial healthy、broken count/index mismatch、index==total、empty brokenを拒否。empty/limited/full healthy、first/last breakをexact objectのまま受理。duplicate+invalid countsはWP-4112 identity error優先、consistent broken duplicateはfail-visible維持。refresh invalidはlast verified viewを保持しgeneric error+retry成功。
+  - review_results: independent verifierとaudit/data/security/privacy/API/frontend/accessibility/medical review APPROVED、findingsなし。existing contract/core semanticsのbrowser defense-in-depthでhuman gate不変。
+  - validation_results: focused audit web32、web282、API227 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: exact5 implementation commit/push pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
