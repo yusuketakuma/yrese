@@ -194,6 +194,16 @@ export function createSearchRunner(
         if (gen !== generation) {
           return; // 古い応答は破棄(最後の検索のみ反映)
         }
+        const pagePatientIds = new Set<string>();
+        if (
+          page.results.some((result) => {
+            if (pagePatientIds.has(result.patientId)) return true;
+            pagePatientIds.add(result.patientId);
+            return false;
+          })
+        ) {
+          throw new Error("Patient search page returned duplicate patient identity");
+        }
         emit((prev) => {
           if (append) {
             if (
@@ -202,6 +212,22 @@ export function createSearchRunner(
               prev.nextCursor !== cursor
             ) {
               return prev;
+            }
+            const existingPatientIds = new Set(
+              prev.results.map((result) => result.patientId),
+            );
+            if (page.results.some((result) => existingPatientIds.has(result.patientId))) {
+              return {
+                ...prev,
+                appendState: {
+                  kind: "error",
+                  notice: {
+                    message: "検索結果の処理に失敗しました。",
+                    nextAction:
+                      "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+                  },
+                },
+              };
             }
             return {
               kind: "loaded",

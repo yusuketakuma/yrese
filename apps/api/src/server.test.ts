@@ -17,6 +17,7 @@ import {
   apiVersion,
   buildServer,
   patientSearchInvalidQueryErrorCode,
+  patientSearchDuplicateIdentityInvariantErrorMessage,
   patientSearchResultLimitInvariantErrorMessage,
   receptionIdempotencyConflictErrorCode,
   receptionInvalidRequestErrorCode,
@@ -611,6 +612,112 @@ describe('buildServer', () => {
       }
     },
   );
+
+  it.each([
+    ['identical', false],
+    ['conflicting', true],
+  ] as const)(
+    'rejects %s duplicate patient identities without issuing a cursor',
+    async (_label, conflicting) => {
+      const duplicatePatientId = 'patient-duplicate-sensitive';
+      const first = {
+        patientId: duplicatePatientId,
+        name: '合成 重複患者A',
+        kana: 'ゴウセイ ジュウフクカンジャエー',
+        birthDate: '1990-01-01',
+        sex: 'unknown' as const,
+        patientNumber: 'DUPLICATE-001',
+        eligibilityStatus: 'NOT_CHECKED' as const,
+      };
+      const second = conflicting
+        ? {
+            ...first,
+            name: '合成 矛盾患者B',
+            kana: 'ゴウセイ ムジュンカンジャビー',
+            birthDate: '1985-12-31',
+            patientNumber: 'DUPLICATE-999',
+            eligibilityStatus: 'VERIFIED' as const,
+          }
+        : { ...first };
+      const encode = vi.fn(() => {
+        throw new Error('cursor encoding must not run for duplicate patient identities');
+      });
+      const server = buildDevTestServer({
+        patientRepository: {
+          search: vi.fn(async () => ({
+            results: [first, second],
+            nextCursor: { offset: 2 },
+          })),
+          findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        },
+        patientSearchCursorCodec: {
+          encode,
+          decode: vi.fn(() => undefined),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/patients/search?q=synthetic&limit=2',
+        headers: tenantOnePatientReadHeaders,
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(encode).not.toHaveBeenCalled();
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: patientSearchDuplicateIdentityInvariantErrorMessage,
+      });
+      for (const result of [first, second]) {
+        for (const sensitiveValue of [
+          result.patientId,
+          result.name,
+          result.kana,
+          result.birthDate,
+          result.patientNumber,
+          result.eligibilityStatus,
+        ]) {
+          expect(response.body).not.toContain(sensitiveValue);
+        }
+      }
+    },
+  );
+
+  it('allows distinct patient identities with the same display attributes', async () => {
+    const sharedDisplay = {
+      name: '合成 同姓同名',
+      kana: 'ゴウセイ ドウセイドウメイ',
+      birthDate: '1990-01-01',
+      sex: 'unknown' as const,
+      patientNumber: 'SHARED-DISPLAY',
+      eligibilityStatus: 'NOT_CHECKED' as const,
+    };
+    const results = [
+      { patientId: 'patient-distinct-001', ...sharedDisplay },
+      { patientId: 'patient-distinct-002', ...sharedDisplay },
+    ];
+    const server = buildDevTestServer({
+      patientRepository: {
+        search: vi.fn(async () => ({ results })),
+        findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/patients/search?q=synthetic&limit=2',
+      headers: tenantOnePatientReadHeaders,
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().results).toEqual(results);
+  });
 
   it('keeps cursor scope/query opaque and rejects an authenticated offset mutation', async () => {
     const cursorKey = randomBytes(patientSearchCursorHmacKeyByteLength);

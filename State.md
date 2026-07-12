@@ -8,6 +8,13 @@
 
 ## 2026-07-13
 
+### WP-4109 patient-search duplicate identity rejection — FINALIZED / landing pending
+
+- clean baseline `bdbc5e2`。page内またはoffset pagination append跨ぎで同一PatientIdの矛盾summaryが共存・選択可能になるR2 identity-integrity gapをserver+web exact7で修正。
+- serverはlimit-first、全schema validation後にpage内exact PatientId uniquenessをcursor/response前に強制。webはnew page内重複とauthoritative existing rowsとの交差をmerge前に拒否し、verified rows/query/cursorを保持してgeneric append error/retryへ流す。dedupe/merge/partial commitなし。
+- initial domain MEDIUMのcross-page ambiguityをclient guardで修正後、independent verifierとAPI/data/privacy/security/medical re-review APPROVED、remaining findingsなし。focused server65/patient-search34、API217 + PostgreSQL14 expected skips、web263、audit183、workspace typecheck/test/buildと全gate PASS。
+- exact7 implementation commit/push pending。cross-page snapshot/keyset、患者統合、patientNumber重複判断、contract/DB/SSOTは不変。
+
 ### WP-4108 patient-search result limit binding — LANDED
 
 - clean baseline `ad04318`。patient search repositoryのover-returnをrouteが拒否せず、要求limit超過の患者PHIを200で返せるR2 PHI-minimization/data-integrity gapをexact5で修正。

@@ -395,6 +395,93 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     expect(duplicateKanaSet(retried.results).has("ドウイツ カナ")).toBe(true);
   });
 
+  it.each([
+    ["identical", false],
+    ["conflicting", true],
+  ] as const)(
+    "rejects a cross-page %s PatientId overlap and preserves the verified page for retry",
+    async (_label, conflicting) => {
+      const states: SearchState[] = [{ kind: "idle" }];
+      const retained = patient({
+        patientId: "patient-overlap-sensitive",
+        name: "合成 保持患者",
+        kana: "ゴウセイ ホジカンジャ",
+        patientNumber: "RETAINED-001",
+      });
+      const conflictingResult = conflicting
+        ? patient({
+            patientId: retained.patientId,
+            name: "合成 矛盾患者",
+            kana: "ゴウセイ ムジュンカンジャ",
+            birthDate: "1985-12-31",
+            patientNumber: "CONFLICTING-999",
+          })
+        : { ...retained };
+      const replacement = patient({ patientId: "patient-retry-safe" });
+      const fetcher = vi
+        .fn<(q: string, cursor?: string) => Promise<SearchPage>>()
+        .mockResolvedValueOnce({ results: [retained], nextCursor: "cursor-overlap" })
+        .mockResolvedValueOnce({
+          results: [conflictingResult],
+          nextCursor: "cursor-untrusted",
+        })
+        .mockResolvedValueOnce({ results: [replacement] });
+      const run = createSearchRunner(fetcher, (update) => {
+        states.push(update(states[states.length - 1]!));
+      });
+
+      await run("合成");
+      await run("合成", "cursor-overlap", true);
+
+      const failed = states[states.length - 1]!;
+      expect(failed.kind).toBe("loaded");
+      if (failed.kind !== "loaded") throw new Error("expected retained loaded state");
+      expect(failed.results).toEqual([retained]);
+      expect(failed.nextCursor).toBe("cursor-overlap");
+      expect(failed.appendState).toMatchObject({
+        kind: "error",
+        notice: { message: "検索結果の処理に失敗しました。" },
+      });
+      expect(JSON.stringify(failed)).not.toContain("cursor-untrusted");
+      if (conflicting) {
+        expect(JSON.stringify(failed)).not.toContain("CONFLICTING-999");
+        expect(JSON.stringify(failed)).not.toContain("合成 矛盾患者");
+      }
+
+      await run(failed.query, failed.nextCursor, true);
+      const retried = states[states.length - 1]!;
+      expect(retried.kind).toBe("loaded");
+      if (retried.kind !== "loaded") throw new Error("expected retried loaded state");
+      expect(retried.results).toEqual([retained, replacement]);
+      expect(retried.nextCursor).toBeUndefined();
+      expect(retried.appendState).toEqual({ kind: "idle" });
+    },
+  );
+
+  it("rejects duplicate PatientIds inside an append page before merging any row", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    const retained = patient({ patientId: "patient-retained" });
+    const duplicate = patient({ patientId: "patient-new-duplicate" });
+    const fetcher = vi
+      .fn<(q: string, cursor?: string) => Promise<SearchPage>>()
+      .mockResolvedValueOnce({ results: [retained], nextCursor: "cursor-1" })
+      .mockResolvedValueOnce({ results: [duplicate, { ...duplicate }] });
+    const run = createSearchRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    await run("合成");
+    await run("合成", "cursor-1", true);
+
+    const failed = states[states.length - 1]!;
+    expect(failed.kind).toBe("loaded");
+    if (failed.kind !== "loaded") throw new Error("expected retained loaded state");
+    expect(failed.results).toEqual([retained]);
+    expect(failed.nextCursor).toBe("cursor-1");
+    expect(failed.appendState.kind).toBe("error");
+    expect(JSON.stringify(failed)).not.toContain("patient-new-duplicate");
+  });
+
   it("coalesces synchronous trim-equivalent append requests and merges the owner result once", async () => {
     const states: SearchState[] = [{ kind: "idle" }];
     let resolveAppend!: (page: SearchPage) => void;

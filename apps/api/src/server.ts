@@ -57,6 +57,8 @@ export const apiVersion = '0.0.1';
 export const patientSearchInvalidQueryErrorCode = PATIENT_SEARCH_INVALID_QUERY_ERROR_CODE;
 export const patientSearchResultLimitInvariantErrorMessage =
   'Patient repository returned more results than requested';
+export const patientSearchDuplicateIdentityInvariantErrorMessage =
+  'Patient repository returned duplicate patient identities';
 export const receptionInvalidRequestErrorCode = RECEPTION_INVALID_REQUEST_ERROR_CODE;
 export const receptionPatientNotFoundErrorCode = RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE;
 export const receptionIdempotencyConflictErrorCode = RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE;
@@ -235,9 +237,19 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       if (page.results.length > query.data.limit) {
         throw new Error(patientSearchResultLimitInvariantErrorMessage);
       }
+      const validatedResults = page.results.map((result) =>
+        patientSearchResultSchema.parse(result),
+      );
+      const patientIds = new Set<string>();
+      for (const result of validatedResults) {
+        if (patientIds.has(result.patientId)) {
+          throw new Error(patientSearchDuplicateIdentityInvariantErrorMessage);
+        }
+        patientIds.add(result.patientId);
+      }
 
       return patientSearchResponseSchema.parse({
-        results: page.results,
+        results: validatedResults,
         ...(page.nextCursor === undefined
           ? {}
           : {
