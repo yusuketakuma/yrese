@@ -8,6 +8,12 @@
 
 ## 2026-07-12
 
+### WP-9002-W19 ACC-002 metadata — FINALIZED_PENDING_LANDING
+
+- clean feature-branch baseline `ca38b0f`で残存70 SSOTをfresh mappingし、fact-drift候補と会計候補を比較した。ACC-006より意味面が小さく、ACC-001の既存copay stopをPatientReceivable生成へ狭く継承できるACC-002単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
+- ACC-002本文1724 bytes / SHA-256 `702a35e047be61983ba205beaf401bdb826a360eeb52937a6b512aca7883a805`、APPROVED/v0.2.0/legacy approval、dependencies、2 questionsを不変とする。candidate inventory173/69/104、non-target172 `15549/826ab6de…`。direct receivable tests/PRs/evidenceはなく、copay blockerはACC-001から狭く継承するだけ。仮債権禁止、未収非隠蔽、WRITTEN_OFF human approvalを維持し、WP-2201/3101/DB/API/UI/runtimeをunblockしない。review待ち、landing未主張。
+- independent/spec/data/architect/DB/test/accounting/claims/API/security/privacy/medicalの12 roleがAPPROVED。ACC-002本文/preserved/all23、inventory173/69/104、172 non-target identity、narrow copay blockerを独立確認。full gatesはPASSしたがreceivable runtime correctness証拠ではない。IDX v0.4.32をAPPROVED/effective 2026-07-12へfinalizeし、copay/Charge/write-off/notification/WP-2201/3101/DB/API/UI/production/human gatesは未解除。exact-stage commit/push前でlanding未主張。
+
 ### WP-9002-W18 ACC-001 metadata — LANDED
 
 - clean feature-branch baseline `81b4d18`で残存71 SSOTをfresh mappingし、known fact-drift候補とmissing最少群を比較した。会計runtime未実装とWP-2201 BLOCKEDを本文設計原則から区別し、copay blocker/Charge-before-Payment/append-only/tenant境界を保持できるACC-001単独exact5をpre-plan `APPROVED_WITH_PINS`とした。

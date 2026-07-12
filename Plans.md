@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W18 + WP-9005/9006 LANDED、70 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W18 + WP-9005/9006 LANDED、W19 FINALIZED_PENDING_LANDING、69 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1125,6 +1125,32 @@ finalization_record: RCP-004 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/75/98; RCP-004 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; legal/evidence/cycle/audit gaps remain unresolved and no StatementDocument/privacy/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W19 ACC-002 patient-receivable metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+
+```yaml
+work_package_id: WP-9002-W19
+baseline_commit: ca38b0f
+baseline_inventory: { total: 173, incomplete: 70, complete: 103 }
+target_inventory: { total: 173, incomplete: 69, complete: 104 }
+target: ACC-002 v0.2.0 metadata-only; body/status/version/legacy approval/effective/receivable semantics preserved
+purpose: Complete PRC-007 metadata and narrowly machine-map the existing ACC-001 copay stop without changing receivable generation, statuses/transitions, amounts, allocation, write-off, notification, accounting/claim/receipt, DB/API/UI, or implementation readiness.
+allowed_files: ACC-002, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other accounting/receipt/calculation/claim/module/database docs, code/tests/packages/lock; receivable/status/copay/money/claimability/schema/migration/DML/API/UI/payment/refund/receipt/external/production/deploy or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: none; body must remain 1724 bytes / SHA-256 702a35e047be61983ba205beaf401bdb826a360eeb52937a6b512aca7883a805
+pins: preserve APPROVED/v0.2.0/created_at/approved_at/approved_by/owner/reviewers/source/dependencies/two open questions/body history; preserve Charge/calculation_trace requirement, provisional receivable prohibition, non-concealment, Adjustment evidence, WRITTEN_OFF human approval, ACC-006 states and append-only traceability; blocker only narrowly inherits ACC-001 copay stop
+metadata: updated_at 2026-07-12; effective_from/effective_to null; impacts direct ACC-003/004/005/007 and future WP-2201/3101 consumers; related_work_packages [WP-0033, WP-2201, WP-3101, WP-9002-W19]; related_tests/related_prs/evidence_ids empty; body-history authority plus W19 metadata-only change log; one existing-scope blocker
+non_target: 172 canonical rows / 15549 bytes / SHA-256 826ab6de304e674a4671e87cf15bd6456ce2b815869b3bd3a63eb68d6a0fd3d5 must remain unchanged; target review inventory 173/69/104
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, accounting_domain_reviewer, claims_evidence_specialist, api_contract_reviewer, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata/existing blocker mapping only; copay/Charge, collection/limitation/write-off, patient notification, reduction/Adjustment, public-expense/claims/accounting/legal practice, WP-2201/3101, DB/API/UI, production/risk acceptance stop for applicable human authorities
+validation: exact5/staged0; body/preserved/all23/inventory/non-target assertions; SSOT/scripts/secrets/boundaries/diff and full workspace gates are regression-only, not receivable runtime correctness evidence
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock copay/receivable/accounting/runtime/production gates
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, accounting_domain_reviewer, claims_evidence_specialist, api_contract_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; accounting/claims/legal/product authority remains separate
+validation_results: FINAL PASS before landing — exact5/staged0; ACC-002 all23 and body 1724/702a35e047be61983ba205beaf401bdb826a360eeb52937a6b512aca7883a805 byte-identical; preserved fields/two questions/narrow copay blocker unchanged; inventory173/69/104; 172 non-target missing-set baseline-identical at 15549 bytes / SHA-256 826ab6de304e674a4671e87cf15bd6456ce2b815869b3bd3a63eb68d6a0fd3d5; workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
+finalization_record: ACC-002 retains APPROVED/v0.2.0/legacy approval/effective null and receivable semantics; IDX-001 v0.4.32 APPROVED with approved_at/effective_from 2026-07-12 and twelve W19 role approvals; blocker only inherits ACC-001 copay stop and empty direct evidence does not waive receivable/accounting/DB/API/UI/runtime/production gates or unblock WP-2201/3101
+state: FINALIZED_PENDING_LANDING; exact-stage commit and safe feature-branch push pending; landing not claimed
 ```
 
 - [x] WP-9002-W18 ACC-001 accounting-domain metadata-only migration(LANDED、P1)
