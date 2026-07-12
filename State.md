@@ -8,6 +8,12 @@
 
 ## 2026-07-12
 
+### WP-9002-W22 ACC-006 metadata — FINALIZED_PENDING_LANDING
+
+- clean feature-branch baseline `cee9415`で残存67 SSOTをfresh mappingし、known drift群とACC-005/006を比較した。refund permission/fraud/legal面が広いACC-005を後続へ回し、live codeで26 state runtime未実装を確認したACC-006単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
+- ACC-006本文3713 bytes / SHA-256 `ea1f5bca3fdc8f306f956855a3fb38192286d2a5c2dd4e0d3965af8e9c519c5c`、APPROVED/v0.2.0/legacy approval、dependencies/impacts、1 questionを不変とする。candidate inventory173/66/107、non-target172 `15216/ec444498…`。PatientReceivable10/Payment10/ReceiptDocument6と遷移、StatementDocument no-state、local duplicate禁止を保持。MOD-005+approved implementation WPまでBLOCKED_NOT_READYで、direct tests/evidence/runtimeなし。review待ち、landing未主張。
+- independent/spec/data/architect/DB/test/accounting/claims/API/security/privacy/medicalの12 roleがAPPROVED。ACC-006本文/preserved/all23、10/10/6 states、inventory173/66/107、172 non-target identityを独立確認。full gatesはPASSしたがstate runtime correctness証拠ではない。IDX v0.4.35をAPPROVED/effective 2026-07-12へfinalizeし、MOD-005/WP-2201/2202/3101/DB/API/UI/production/human gatesは未解除。exact-stage commit/push前でlanding未主張。
+
 ### WP-9002-W21 ACC-003 metadata — LANDED
 
 - clean feature-branch baseline `c19d03e`で残存68 SSOTをfresh mappingし、known drift群とACC-003/006を比較した。複数state machineとblocker構造化を伴うACC-006より意味面が小さく、candidate値を本文で明示するACC-003単独exact5をpre-plan `APPROVED_WITH_PINS`とした。

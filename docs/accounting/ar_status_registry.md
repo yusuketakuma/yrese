@@ -11,14 +11,25 @@ reviewers:
   - human_review_if_required
 version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §0.0.4.3
 depends_on: [ACC-001, MOD-005(status_registry)]
 impacts: [packages/shared-kernel(将来の enum 追加), WP-2201, WP-3101]
+related_work_packages: [WP-0033, WP-2201, WP-2202, WP-3101, WP-9002-W22]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-12 WP-9002-W22 metadata-only completion: body/status/version/approval/effective/accounting-state semantics unchanged"
 open_questions:
   - WRITTEN_OFF の確定手続(法務・経営レビュー)
+blockers:
+  - BLOCKED_NOT_READY(MOD-005改版とapproved implementation WP完了前は26 stateをshared-kernel/API/UIへ実装しない; local duplicate禁止は継続)
 ```
 
 ## 1. shared-kernel との整合(重複定義禁止)
