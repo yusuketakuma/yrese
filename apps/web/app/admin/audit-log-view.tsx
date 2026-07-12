@@ -84,32 +84,66 @@ export function createAuditLogRunner(
   emit: (update: (prev: AuditLogState) => AuditLogState) => void,
 ) {
   let generation = 0;
+  let activeFlight:
+    | { readonly ownerToken: object; readonly sharedPromise: Promise<void> }
+    | undefined;
   return {
     invalidate() {
+      activeFlight = undefined;
       generation += 1;
     },
-    async run() {
-      const currentGeneration = ++generation;
-      emit((prev) =>
-        prev.kind === "loaded"
-          ? { ...prev, refreshState: { kind: "loading" } }
-          : { kind: "loading" },
-      );
-      try {
-        const data = await fetcher();
-        if (currentGeneration === generation) {
-          emit(() => ({ kind: "loaded", data, refreshState: { kind: "idle" } }));
-        }
-      } catch (error) {
-        if (currentGeneration === generation) {
-          const notice = auditLogErrorNotice(error);
-          emit((prev) =>
-            prev.kind === "loaded"
-              ? { ...prev, refreshState: { kind: "error", notice } }
-              : { kind: "error", notice },
-          );
-        }
+    run(): Promise<void> {
+      if (activeFlight !== undefined) {
+        return activeFlight.sharedPromise;
       }
+
+      const ownerToken = {};
+      let resolveShared!: () => void;
+      let rejectShared!: (reason?: unknown) => void;
+      const sharedPromise = new Promise<void>((resolve, reject) => {
+        resolveShared = resolve;
+        rejectShared = reject;
+      });
+      activeFlight = { ownerToken, sharedPromise };
+      const currentGeneration = ++generation;
+      const execute = async () => {
+        emit((prev) =>
+          prev.kind === "loaded"
+            ? { ...prev, refreshState: { kind: "loading" } }
+            : { kind: "loading" },
+        );
+        try {
+          const data = await fetcher();
+          if (currentGeneration === generation) {
+            emit(() => ({ kind: "loaded", data, refreshState: { kind: "idle" } }));
+          }
+        } catch (error) {
+          if (currentGeneration === generation) {
+            const notice = auditLogErrorNotice(error);
+            emit((prev) =>
+              prev.kind === "loaded"
+                ? { ...prev, refreshState: { kind: "error", notice } }
+                : { kind: "error", notice },
+            );
+          }
+        }
+      };
+      const cleanupOwner = () => {
+        if (activeFlight?.ownerToken === ownerToken) {
+          activeFlight = undefined;
+        }
+      };
+      void execute().then(
+        () => {
+          cleanupOwner();
+          resolveShared();
+        },
+        (error: unknown) => {
+          cleanupOwner();
+          rejectShared(error);
+        },
+      );
+      return sharedPromise;
     },
   };
 }

@@ -2426,6 +2426,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused server67/reception-dashboard50、API219 + PostgreSQL14 expected skips、web266、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `172b98e` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact7、independent/domain reviewとfull gates PASS、duplicate ReceptionIdをAPI/browser両境界でnonpartial fail-closed拒否。
 
+- [x] WP-4111 share one active audit-log refresh flight(R1 request/audit integrity) — FINALIZED
+  - 発見根拠: parameterless audit runnerはactive中の再呼出しごとにgeneration/loading/GETを重ね、render前の同期連打・emit再入で重複通信と重複`audit.viewed`を発生させた。WP-4086のlatest-wins/two-GET保持を、同一active flight共有へ意図的に更新する。
+  - scope: exact5 `apps/web/app/admin/audit-log-view.tsx`, `apps/web/app/admin/audit-log-view.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。UI/copy/DOM/ARIA/CSS/focus/animation/API/contracts/server/audit core/DB/SSOTは変更しない。
+  - implementation: closure-local `ownerToken/sharedPromise`をgeneration/emit/fetch前にpublishし、active run/re-entrant runはexact同一Promiseをreturn。invalidateはowner detach+generation更新しGETをcancelしない。exact-owner cleanupをsettle前に行い、obsolete cleanupからreplacementを保護する。
+  - acceptance: sync duplicate/re-entrant one Promise/loading/fetch/terminal、invalidate A→B+duplicate B、old success/failure zero emit、sync loading emit rejection shared+cleanup、sync fetch throw handled+retry、cleanup-before-settlement continuation new GETを固定。completed cache/abort/global Map/log/audit suppressionなし。WP-4100 retained healthy/broken CRITICAL/error/retry semantics維持。
+  - review_results: independent verifierとaudit/frontend/accessibility/security/privacy/API/data/medical review APPROVED、findingsなし。WP-4086 concurrent latest-winsはexplicit invalidate supersessionへ置換、API/audit.viewed/SSOT/human gates不変。
+  - validation_results: focused audit-log-view19、web269、API219 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: exact5 implementation commit/push pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

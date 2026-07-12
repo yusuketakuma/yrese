@@ -200,60 +200,83 @@ describe("createAuditLogRunner (latest-only / lifecycle invalidation)", () => {
     };
   }
 
-  it("does not let an older healthy response replace a newer broken chain", async () => {
-    const oldHealthy = deferred<AuditLogResponse>();
+  it("shares one active refresh promise, loading transition, fetch and terminal commit", async () => {
+    const pending = deferred<AuditLogResponse>();
     const recorder = createStateRecorder();
-    const fetcher = vi
-      .fn<() => Promise<AuditLogResponse>>()
-      .mockImplementationOnce(() => oldHealthy.promise)
-      .mockResolvedValueOnce(broken);
+    const fetcher = vi.fn<() => Promise<AuditLogResponse>>(() => pending.promise);
     const runner = createAuditLogRunner(fetcher, recorder.emit);
 
     const first = runner.run();
-    await runner.run();
-    oldHealthy.resolve(SAMPLE);
+    const duplicate = runner.run();
+
+    expect(duplicate).toBe(first);
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(recorder.states).toEqual([{ kind: "loading" }]);
+
+    pending.resolve(broken);
     await first;
 
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    await duplicate;
     const last = recorder.current();
     expect(last.kind).toBe("loaded");
     if (last.kind === "loaded") {
       expect(last.data.chainVerification.ok).toBe(false);
     }
+    expect(recorder.states).toHaveLength(2);
   });
 
-  it("does not let an older failure replace a newer success", async () => {
-    const oldFailure = deferred<AuditLogResponse>();
+  it("publishes ownership before loading emit so a re-entrant run joins the same flight", async () => {
+    const pending = deferred<AuditLogResponse>();
     const recorder = createStateRecorder();
-    const fetcher = vi
-      .fn<() => Promise<AuditLogResponse>>()
-      .mockImplementationOnce(() => oldFailure.promise)
-      .mockResolvedValueOnce(SAMPLE);
-    const runner = createAuditLogRunner(fetcher, recorder.emit);
+    const fetcher = vi.fn<() => Promise<AuditLogResponse>>(() => pending.promise);
+    let runner!: ReturnType<typeof createAuditLogRunner>;
+    let reentrant: Promise<void> | undefined;
+    runner = createAuditLogRunner(fetcher, (update) => {
+      recorder.emit(update);
+      if (reentrant === undefined) reentrant = runner.run();
+    });
 
-    const first = runner.run();
-    await runner.run();
-    oldFailure.reject(new Error("old failure"));
-    await first;
+    const owner = runner.run();
+
+    expect(reentrant).toBe(owner);
+    expect(fetcher).toHaveBeenCalledOnce();
+    pending.resolve(SAMPLE);
+    await owner;
 
     expect(recorder.current().kind).toBe("loaded");
   });
 
-  it("does not let an older success replace a newer error", async () => {
-    const oldSuccess = deferred<AuditLogResponse>();
+  it("detaches an invalidated flight, admits one shared replacement, and protects its owner", async () => {
+    const oldPending = deferred<AuditLogResponse>();
+    const replacementPending = deferred<AuditLogResponse>();
     const recorder = createStateRecorder();
     const fetcher = vi
       .fn<() => Promise<AuditLogResponse>>()
-      .mockImplementationOnce(() => oldSuccess.promise)
-      .mockRejectedValueOnce(new Error("new failure"));
+      .mockImplementationOnce(() => oldPending.promise)
+      .mockImplementationOnce(() => replacementPending.promise);
     const runner = createAuditLogRunner(fetcher, recorder.emit);
 
-    const first = runner.run();
-    await runner.run();
-    oldSuccess.resolve(SAMPLE);
-    await first;
+    const old = runner.run();
+    runner.invalidate();
+    const replacement = runner.run();
+    const replacementDuplicate = runner.run();
 
-    expect(recorder.current().kind).toBe("error");
+    expect(replacementDuplicate).toBe(replacement);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+
+    oldPending.resolve(SAMPLE);
+    await old;
+    const beforeReplacement = recorder.current();
+    expect(beforeReplacement.kind).toBe("loading");
+
+    const joinedAfterOldCleanup = runner.run();
+    expect(joinedAfterOldCleanup).toBe(replacement);
+    replacementPending.resolve(broken);
+    await replacement;
+
+    const last = recorder.current();
+    expect(last.kind).toBe("loaded");
+    if (last.kind === "loaded") expect(last.data).toBe(broken);
   });
 
   it("suppresses all completion callbacks after lifecycle invalidation", async () => {
@@ -267,6 +290,66 @@ describe("createAuditLogRunner (latest-only / lifecycle invalidation)", () => {
     await run;
 
     expect(recorder.states).toEqual([{ kind: "loading" }]);
+  });
+
+  it("shares a synchronous loading-emit rejection, cleans ownership, and admits retry", async () => {
+    const emitFailure = new Error("synthetic loading emit failure");
+    let failEmit = true;
+    const recorder = createStateRecorder();
+    const fetcher = vi.fn<() => Promise<AuditLogResponse>>().mockResolvedValue(SAMPLE);
+    const runner = createAuditLogRunner(fetcher, (update) => {
+      if (failEmit) {
+        failEmit = false;
+        throw emitFailure;
+      }
+      recorder.emit(update);
+    });
+
+    const owner = runner.run();
+    const duplicate = runner.run();
+
+    expect(duplicate).toBe(owner);
+    await expect(owner).rejects.toBe(emitFailure);
+    await expect(duplicate).rejects.toBe(emitFailure);
+    expect(fetcher).not.toHaveBeenCalled();
+
+    await runner.run();
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(recorder.current().kind).toBe("loaded");
+  });
+
+  it("handles a synchronous fetch throw, cleans ownership, and admits retry", async () => {
+    const recorder = createStateRecorder();
+    const fetcher = vi
+      .fn<() => Promise<AuditLogResponse>>()
+      .mockImplementationOnce(() => {
+        throw new Error("synthetic synchronous fetch failure");
+      })
+      .mockResolvedValueOnce(SAMPLE);
+    const runner = createAuditLogRunner(fetcher, recorder.emit);
+
+    await runner.run();
+    expect(recorder.current().kind).toBe("error");
+    await runner.run();
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(recorder.current().kind).toBe("loaded");
+  });
+
+  it("cleans active ownership before settlement continuations start another refresh", async () => {
+    const recorder = createStateRecorder();
+    const fetcher = vi
+      .fn<() => Promise<AuditLogResponse>>()
+      .mockResolvedValueOnce(SAMPLE)
+      .mockResolvedValueOnce(broken);
+    const runner = createAuditLogRunner(fetcher, recorder.emit);
+
+    await runner.run().then(() => runner.run());
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    const last = recorder.current();
+    expect(last.kind).toBe("loaded");
+    if (last.kind === "loaded") expect(last.data).toBe(broken);
   });
 
   it("retains verified data during refresh failure, does not echo raw errors, and replaces it on retry", async () => {
