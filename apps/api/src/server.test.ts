@@ -101,6 +101,14 @@ const malformedDevIdHeaderCases = [
   ['x-dev-actor', 'user-001\t', 'control-character actor id'],
 ] as const;
 
+const sensitiveRouteCases = [
+  ['GET', '/patients/search?q=synthetic', 'patient search'],
+  ['GET', '/patients/patient-syn-001', 'patient get'],
+  ['GET', '/reception/queue?date=2026-07-10', 'reception queue'],
+  ['POST', '/reception', 'reception create'],
+  ['GET', '/audit/events', 'audit events'],
+] as const;
+
 describe('buildServer', () => {
   it('returns health status without PHI or database dependencies', async () => {
     const healthTimestamp = new Date('2026-07-09T10:20:00.000Z');
@@ -116,6 +124,7 @@ describe('buildServer', () => {
     await server.close();
 
     expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBeUndefined();
 
     const body = response.json<HealthResponse>();
 
@@ -138,11 +147,65 @@ describe('buildServer', () => {
     await server.close();
 
     expect(response.statusCode).toBe(403);
+    expect(response.headers['cache-control']).toBeUndefined();
     expect(response.json()).toEqual({
       errorCode: 'AUTH-0003',
       message: 'Forbidden',
     });
   });
+
+  it.each(sensitiveRouteCases)(
+    'sets no-store before missing tenant context is denied: %s %s (%s)',
+    async (method, url) => {
+      const server = buildDefaultTestServer();
+
+      const response = await server.inject({ method, url });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(403);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toEqual({ errorCode: 'AUTH-0003', message: 'Forbidden' });
+    },
+  );
+
+  it.each(sensitiveRouteCases)(
+    'sets no-store before insufficient scope is denied: %s %s (%s)',
+    async (method, url) => {
+      const server = buildDevTestServer();
+
+      const response = await server.inject({
+        method,
+        url,
+        headers: tenantOneTenantReadHeaders,
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(403);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toEqual({ errorCode: 'AUTH-0003', message: 'Forbidden' });
+    },
+  );
+
+  it.each(sensitiveRouteCases)(
+    'sets no-store before malformed tenant context is denied: %s %s (%s)',
+    async (method, url) => {
+      const server = buildDevTestServer();
+
+      const response = await server.inject({
+        method,
+        url,
+        headers: { ...tenantOnePatientReadHeaders, 'x-dev-tenant': '   ' },
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(403);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toEqual({ errorCode: 'AUTH-0003', message: 'Forbidden' });
+    },
+  );
 
   it('ignores attacker-controlled dev headers by default before protected repositories run', async () => {
     const patientSearch = vi.fn<PatientRepository['search']>(async () => ({ results: [] }));
@@ -186,6 +249,7 @@ describe('buildServer', () => {
 
     for (const response of [patientResponse, queueResponse, createResponse]) {
       expect(response.statusCode).toBe(403);
+      expect(response.headers['cache-control']).toBe('no-store');
       expect(response.json()).toEqual({
         errorCode: 'AUTH-0003',
         message: 'Forbidden',
@@ -431,6 +495,7 @@ describe('buildServer', () => {
     await server.close();
 
     expect(response.statusCode).toBe(400);
+    expect(response.headers['cache-control']).toBe('no-store');
     expect(response.json()).toEqual({
       errorCode: patientSearchInvalidQueryErrorCode,
       message: 'Invalid patient search query',
@@ -800,6 +865,7 @@ describe('buildServer', () => {
     await server.close();
 
     expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
     expect(receptionCreate).not.toHaveBeenCalled();
     expect(response.json()).toMatchObject({
       statusCode: 500,
@@ -915,6 +981,7 @@ describe('buildServer', () => {
 
     expect(created.statusCode).toBe(201);
     expect(conflict.statusCode).toBe(409);
+    expect(conflict.headers['cache-control']).toBe('no-store');
     expect(conflict.json()).toEqual({
       errorCode: receptionIdempotencyConflictErrorCode,
       message: 'Reception idempotency conflict',
@@ -959,6 +1026,7 @@ describe('buildServer', () => {
     await server.close();
 
     expect(response.statusCode).toBe(404);
+    expect(response.headers['cache-control']).toBe('no-store');
     expect(response.json()).toEqual({
       errorCode: receptionPatientNotFoundErrorCode,
       message: 'Patient not found for reception',

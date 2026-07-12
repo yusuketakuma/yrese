@@ -2192,6 +2192,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused reception19、web200、API172 + PostgreSQL13 expected skips、server43、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: commit `0d3eafa` `WP-4084: prevent same-flight reception duplicates` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、review/full gates PASS、同一flightのstate/UUID/POST/reloadを単一化し、API-006/retry-key semantics/DB/SSOTは不変。
 
+- [x] WP-4085 protected sensitive routes early no-store enforcement(R1 privacy/cache hardening)
+  - 発見根拠: 患者検索/取得、受付一覧/登録、監査イベントはhandler内で`Cache-Control: no-store`を設定するため、tenant/auth `preHandler`が先に403を返す経路ではheaderが欠落する。特に患者検索URLは氏名・カナ・患者番号を含み得る。
+  - scope: exact5 `apps/api/src/server.ts`, `apps/api/src/server.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。対象routeは`GET /patients/search`, `GET /patients/:patientId`, `GET /reception/queue`, `POST /reception`, `GET /audit/events`のみ。health/whoami、contracts/OpenAPI/SSOT/DB/package/lock/logging/CORSは変更しない。
+  - implementation: 単一route-local `onRequest` hookで認可前にexact `no-store`を設定し、handler内の5重複setterを除去する。global hook/path推論は使わず、status/body/auth/repository semanticsを維持する。
+  - acceptance: 5 routeのmissing/malformed context・insufficient scope 403と代表400/404/409/500/成功がno-store、auth denialはrepository zero-call。既存error bodyは不変でquery/patient identifiers/PHIを非echoとし、固定internal error copyのhardeningは対象外。health/whoamiには強制付与しない。403本文PHI leakやbrowser history/log解決は主張しない。
+  - review_results: 初回reviewの404/409 assertion不足と500 non-echo記録過剰を修正後、independent verifier、API-contract/test、security/privacy/medicalがAPPROVED。live audit path `/audit/events`を含むexact5 routeだけを確認。
+  - validation_results: focused server58、API187 + PostgreSQL13 expected skips、web200、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

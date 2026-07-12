@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4085 protected sensitive routes early no-store enforcement — COMPLETED / LANDING PENDING
+
+- clean HEAD `1c8f37f`でmapper/plannerが一致してR1 privacy/cache hardeningを選定。live route確認によりplannerの`/audit-log`表記を実在する`/audit/events`へ補正した。
+- 5 sensitive routeだけへroute-local `onRequest`を付与し、tenant/auth拒否より前に`no-store`を設定。handler内5重複setterを除去し、missing/malformed/insufficient scopeの15拒否、400/404/409/500/成功、health/whoami非対象を固定した。
+- review指摘の404/409 assertion不足と500 non-echo過剰記録を修正後、independent/API/security/privacy/medical reviewはAPPROVED。server58、API187 + expected skip13、web200、workspace typecheck/test/buildと全gate PASS。exact5 landing待ち。
+
 ### WP-4084 reception registration same-flight mutual exclusion — LANDED
 
 - clean HEAD `4f31994`でplannerが受付登録の同期再入を検出。mapper反証で通常double-clickはdisabledが軽減すると確認し、R2ではなくR1 bounded hardeningとして採択。API-006のsame-key semantics、retry key lifecycle、DB/API/contracts/SSOTは変更しない。

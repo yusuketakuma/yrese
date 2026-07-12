@@ -1,4 +1,4 @@
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type onRequestHookHandler } from 'fastify';
 import { verifyAuditHashChain } from '@yrese/audit';
 import {
   auditLogQuerySchema,
@@ -111,6 +111,10 @@ function patientNotFoundResponse() {
   });
 }
 
+const setSensitiveResponseNoStore: onRequestHookHandler = async (_request, reply) => {
+  reply.header('Cache-Control', 'no-store');
+};
+
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const tenantContextMode = options.tenantContextMode ?? 'disabled';
   if (tenantContextMode === 'dev_headers' && options.repositoryMode !== 'in_memory') {
@@ -164,6 +168,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   server.get(
     '/patients/search',
     {
+      onRequest: setSensitiveResponseNoStore,
       preHandler: requirePermission(permissionScope('patient', 'read')),
     },
     async (request, reply): Promise<PatientSearchResponse | void> => {
@@ -171,8 +176,6 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       if (tenantContext === undefined) {
         throw new Error('tenantContext is unexpectedly missing after authorization');
       }
-
-      reply.header('Cache-Control', 'no-store');
 
       const query = patientSearchQuerySchema.safeParse(request.query);
       if (!query.success) {
@@ -221,6 +224,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   server.get(
     '/patients/:patientId',
     {
+      onRequest: setSensitiveResponseNoStore,
       preHandler: requirePermission(permissionScope('patient', 'read')),
     },
     async (request, reply): Promise<PatientSearchResult | void> => {
@@ -228,8 +232,6 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       if (tenantContext === undefined) {
         throw new Error('tenantContext is unexpectedly missing after authorization');
       }
-
-      reply.header('Cache-Control', 'no-store');
 
       const params = patientGetParamsSchema.safeParse(request.params);
       if (!params.success) {
@@ -256,6 +258,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   server.get(
     '/reception/queue',
     {
+      onRequest: setSensitiveResponseNoStore,
       preHandler: [
         requirePermission(permissionScope('reception', 'read')),
         requirePermission(permissionScope('patient', 'read')),
@@ -266,8 +269,6 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       if (tenantContext === undefined) {
         throw new Error('tenantContext is unexpectedly missing after authorization');
       }
-
-      reply.header('Cache-Control', 'no-store');
 
       const query = receptionQueueQuerySchema.safeParse(request.query);
       if (!query.success) {
@@ -296,6 +297,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   server.post(
     '/reception',
     {
+      onRequest: setSensitiveResponseNoStore,
       preHandler: [
         requirePermission(permissionScope('reception', 'write')),
         requirePermission(permissionScope('patient', 'read')),
@@ -306,8 +308,6 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       if (tenantContext === undefined) {
         throw new Error('tenantContext is unexpectedly missing after authorization');
       }
-
-      reply.header('Cache-Control', 'no-store');
 
       const body = receptionCreateRequestSchema.safeParse(request.body);
       if (!body.success) {
@@ -361,6 +361,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   server.get(
     '/audit/events',
     {
+      onRequest: setSensitiveResponseNoStore,
       preHandler: requirePermission(permissionScope('audit-log', 'read')),
     },
     async (request, reply): Promise<AuditLogResponse | void> => {
@@ -368,8 +369,6 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       if (tenantContext === undefined) {
         throw new Error('tenantContext is unexpectedly missing after authorization');
       }
-
-      reply.header('Cache-Control', 'no-store');
 
       const query = auditLogQuerySchema.safeParse(request.query);
       if (!query.success) {
