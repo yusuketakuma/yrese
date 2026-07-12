@@ -13,6 +13,7 @@
 - clean HEAD `544c7f7`。audit integration pool `max:1`がrepository transactionをclient checkoutで直列化し、advisory lockの並行保証を未証明とmapper/plannerが確認。production defectではなくMEDIUM evidence gap。
 - test-only exact4でblocker + waiter2のDB-observed overlapとchain収束を追加する。local `TEST_DATABASE_URL`は未設定のため、local skipを完了扱いにせずCI zero-skipをlanding gateとする。
 - independent reviewはcode APPROVED / runtime VERIFY_REQUIRED。local focused5 skip、API191 + DB skip14、web215、audit183、workspace typecheck/test/buildと全gate PASS。candidate commit/push後もCI PostgreSQL実証までIN PROGRESSを維持する。
+- candidate exact4 commit `193024b`をfeature branchへpush済み。current branchにPRがなくCI runは生成されていないため、PostgreSQL zero-skip証拠待ち。production codeは不変。
 
 ### WP-4091 deterministic in-memory patient search field ordering — LANDED
 

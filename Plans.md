@@ -2262,7 +2262,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - acceptance: disposable PostgreSQLでwaiter2を観測し、deadlock/lost write/duplicateなし、resource cleanup完了、既存4 integration維持。local skipは完了証拠にせず、GitHub Actions PostgreSQL serviceのzero-skip PASSまでVERIFY_REQUIRED。
   - review_results: independent DB/data/security/privacy/medical/test reviewはcode APPROVED、runtime VERIFY_REQUIRED。max3/blocker/waiter2/pg_locks bounded observation、release/drain、order-independent assertions、exact4を確認しactionable findingなし。
   - validation_results: local focused audit integration5は`TEST_DATABASE_URL`不在でexpected skip、API191 + PostgreSQL14 skips、web215、audit183、workspace typecheck/test/buildと全標準gate PASS。実DB concurrency acceptanceは未実施。
-  - push_record: code-review済みcandidateをfeature branchへcommit/push後、PR/CI PostgreSQL zero-skip run待ち。CI証拠前はDONE/landingを主張しない。
+  - push_record: candidate commit `193024b` `WP-4092: add observed audit concurrency proof` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; associated PRなしのためCI run未作成。PR/CI PostgreSQL zero-skip run待ちで、CI証拠前はDONE/landingを主張しない。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
