@@ -8,11 +8,12 @@
 
 ## 2026-07-13
 
-### WP-4099 patient-search append structural single-flight — FINALIZED
+### WP-4099 patient-search append structural single-flight — LANDED
 
 - clean baseline `fdca88a`。同一非blank query/cursor appendの同期重複が複数fetchとgeneration競合を起こすR1 request-integrity gapをexact5で修正中。
 - closure-local nested Mapとowner-token finally cleanupでidentical active tupleだけを抑止する。initial verifier MEDIUMのobsolete owner findingを、full/blank authority change前のownership clearとexact-token replacement protectionで修正。
-- verifier + frontend/accessibility/privacy/API/medical re-review APPROVED、remaining findingsなし。focused patient-search31、web226、API207 + PostgreSQL14 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。UI DOM/copy/CSS/focus/animation/state/API/cursor semanticsは不変。landing pending。
+- verifier + frontend/accessibility/privacy/API/medical re-review APPROVED、remaining findingsなし。focused patient-search31、web226、API207 + PostgreSQL14 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。UI DOM/copy/CSS/focus/animation/state/API/cursor semanticsは不変。
+- exact5 implementation commit `9689a83`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。同一active appendだけをcoalesceし、full/blank/different tupleとstale-generation handlingを維持。
 
 ### WP-4098 migration rollback-failed client quarantine — LANDED
 
