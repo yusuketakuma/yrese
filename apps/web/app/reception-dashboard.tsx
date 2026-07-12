@@ -110,7 +110,15 @@ export async function fetchReceptionQueue(
       errorCode,
     );
   }
-  return receptionQueueResponseSchema.parse(await res.json());
+  const parsed = receptionQueueResponseSchema.parse(await res.json());
+  const receptionIds = new Set<string>();
+  for (const entry of parsed.entries) {
+    if (receptionIds.has(entry.receptionId)) {
+      throw new Error("Reception queue response contains duplicate reception identities");
+    }
+    receptionIds.add(entry.receptionId);
+  }
+  return parsed;
 }
 
 export async function createReception(

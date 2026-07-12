@@ -66,6 +66,8 @@ export const receptionPatientIdentityMismatchErrorMessage =
   'Patient lookup returned a mismatched patient identity';
 export const receptionResultPatientIdentityMismatchErrorMessage =
   'Reception repository returned a mismatched patient identity';
+export const receptionQueueDuplicateIdentityInvariantErrorMessage =
+  'Reception repository returned duplicate reception identities';
 const auditLogProjectionInvariantErrorMessage =
   'Audit event display projection failed for a verified hash chain';
 export const auditLogScopeInvariantErrorMessage =
@@ -332,10 +334,18 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         date: query.data.date,
       });
 
-      return receptionQueueResponseSchema.parse({
+      const response = receptionQueueResponseSchema.parse({
         date: query.data.date,
         entries,
       });
+      const receptionIds = new Set<string>();
+      for (const entry of response.entries) {
+        if (receptionIds.has(entry.receptionId)) {
+          throw new Error(receptionQueueDuplicateIdentityInvariantErrorMessage);
+        }
+        receptionIds.add(entry.receptionId);
+      }
+      return response;
     },
   );
 

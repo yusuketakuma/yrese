@@ -22,6 +22,7 @@ import {
   receptionIdempotencyConflictErrorCode,
   receptionInvalidRequestErrorCode,
   receptionPatientIdentityMismatchErrorMessage,
+  receptionQueueDuplicateIdentityInvariantErrorMessage,
   receptionResultPatientIdentityMismatchErrorMessage,
   receptionPatientNotFoundErrorCode,
   type BuildServerOptions,
@@ -934,6 +935,87 @@ describe('buildServer', () => {
       'reception-syn-003',
     ]);
   });
+
+  it.each([
+    ['identical', false],
+    ['conflicting', true],
+  ] as const)(
+    'rejects %s duplicate reception identities without returning a partial queue',
+    async (_label, conflicting) => {
+      const duplicateReceptionId = 'reception-duplicate-sensitive';
+      const first = {
+        receptionId: duplicateReceptionId,
+        acceptedAt: '2026-07-09T00:15:00.000Z',
+        receptionStatus: 'WAITING' as const,
+        prescriptionIntakeType: 'paper' as const,
+        patient: {
+          patientId: 'patient-reception-duplicate-a',
+          name: '合成 重複受付A',
+          kana: 'ゴウセイ ジュウフクウケツケエー',
+          birthDate: '1990-01-01',
+          sex: 'unknown' as const,
+          patientNumber: 'RECEPTION-DUPLICATE-001',
+          eligibilityStatus: 'NOT_CHECKED' as const,
+        },
+      };
+      const second = conflicting
+        ? {
+            ...first,
+            acceptedAt: '2026-07-09T01:15:00.000Z',
+            receptionStatus: 'IN_PROGRESS' as const,
+            patient: {
+              ...first.patient,
+              patientId: 'patient-reception-duplicate-b',
+              name: '合成 矛盾受付B',
+              kana: 'ゴウセイ ムジュンウケツケビー',
+              patientNumber: 'RECEPTION-DUPLICATE-999',
+            },
+          }
+        : { ...first, patient: { ...first.patient } };
+      const list = vi.fn<ReceptionRepository['list']>(async () => [first, second]);
+      const server = buildDevTestServer({
+        receptionRepository: {
+          list,
+          create: vi.fn<ReceptionRepository['create']>(),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/reception/queue?date=2026-07-09',
+        headers: tenantOneReceptionReadHeaders,
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(list).toHaveBeenCalledOnce();
+      expect(list).toHaveBeenCalledWith({
+        tenantId: tenantOneReceptionReadHeaders['x-dev-tenant'],
+        pharmacyId: tenantOneReceptionReadHeaders['x-dev-pharmacy'],
+        date: '2026-07-09',
+      });
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: receptionQueueDuplicateIdentityInvariantErrorMessage,
+      });
+      for (const queueEntry of [first, second]) {
+        for (const sensitiveValue of [
+          queueEntry.receptionId,
+          queueEntry.acceptedAt,
+          queueEntry.receptionStatus,
+          queueEntry.patient.patientId,
+          queueEntry.patient.name,
+          queueEntry.patient.kana,
+          queueEntry.patient.patientNumber,
+        ]) {
+          expect(response.body).not.toContain(sensitiveValue);
+        }
+      }
+    },
+  );
 
   it('denies /reception/queue when patient read scope is missing', async () => {
     const server = buildDevTestServer();

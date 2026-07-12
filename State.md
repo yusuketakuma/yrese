@@ -8,6 +8,13 @@
 
 ## 2026-07-13
 
+### WP-4110 reception queue duplicate identity rejection — FINALIZED / landing pending
+
+- clean baseline `6eeb216`。queue内の同一ReceptionIdへ矛盾する患者/status/acceptedAtを持つ複数rowがAPI/UIへ到達するR2 queue identity gapをserver+browser exact7で修正。
+- 両境界でfull schema parse後にexact ReceptionId uniquenessを要求。duplicateは固定non-echo全体拒否、dedupe/merge/partial response/commitなし。refreshではlast verified queue/date/metadataを保持してgeneric error/retryへ流す。
+- independent verifierとreception/frontend/accessibility/API/data/privacy/security/medical review APPROVED、findingsなし。focused server67/reception-dashboard50、API219 + PostgreSQL14 expected skips、web266、audit183、workspace typecheck/test/buildと全gate PASS。
+- exact7 implementation commit/push pending。同患者の別受付、entry order/date/JST/generation、contract/DB/SSOT/human gatesは不変。
+
 ### WP-4109 patient-search duplicate identity rejection — LANDED
 
 - clean baseline `bdbc5e2`。page内またはoffset pagination append跨ぎで同一PatientIdの矛盾summaryが共存・選択可能になるR2 identity-integrity gapをserver+web exact7で修正。

@@ -228,6 +228,107 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(response.entries).toEqual([]);
   });
 
+  it.each([
+    ["identical", false],
+    ["conflicting", true],
+  ] as const)(
+    "rejects a %s duplicate reception identity from the queue transport",
+    async (_label, conflicting) => {
+      const first = entry({
+        receptionId: "reception-duplicate-sensitive",
+        patient: patient({
+          patientId: "patient-duplicate-a",
+          name: "合成 重複受付A",
+          kana: "ゴウセイ ジュウフクウケツケエー",
+          patientNumber: "DUPLICATE-001",
+        }),
+      });
+      const second = conflicting
+        ? entry({
+            receptionId: first.receptionId,
+            acceptedAt: "2026-07-09T01:15:00.000Z",
+            receptionStatus: "IN_PROGRESS",
+            patient: patient({
+              patientId: "patient-duplicate-b",
+              name: "合成 矛盾受付B",
+              kana: "ゴウセイ ムジュンウケツケビー",
+              patientNumber: "DUPLICATE-999",
+            }),
+          })
+        : { ...first, patient: { ...first.patient } };
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValue(jsonResponse(200, queueResponse("2026-07-09", [first, second])));
+
+      let caught: unknown;
+      try {
+        await withNodeEnv("development", () =>
+          fetchReceptionQueue("2026-07-09", fetchImpl),
+        );
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(Error);
+      expect((caught as Error).message).toBe(
+        "Reception queue response contains duplicate reception identities",
+      );
+      for (const queueEntry of [first, second]) {
+        for (const sensitiveValue of [
+          queueEntry.receptionId,
+          queueEntry.acceptedAt,
+          queueEntry.receptionStatus,
+          queueEntry.patient.patientId,
+          queueEntry.patient.name,
+          queueEntry.patient.kana,
+          queueEntry.patient.patientNumber,
+        ]) {
+          expect((caught as Error).message).not.toContain(sensitiveValue);
+        }
+      }
+    },
+  );
+
+  it("retains the last verified queue when a refresh contains duplicate reception identities", async () => {
+    const retained = queueResponse("2026-07-09", [entry({ receptionId: "retained" })]);
+    const duplicate = entry({ receptionId: "duplicate-untrusted" });
+    const replacement = queueResponse("2026-07-09", [
+      entry({ receptionId: "replacement" }),
+    ]);
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, retained))
+      .mockResolvedValueOnce(
+        jsonResponse(200, queueResponse("2026-07-09", [duplicate, { ...duplicate }])),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, replacement));
+    const states: QueueState[] = [{ kind: "loading" }];
+    const run = createReceptionQueueRunner(
+      (targetDate) => fetchReceptionQueue(targetDate, fetchImpl),
+      (update) => states.push(update(states[states.length - 1]!)),
+    );
+
+    await withNodeEnv("development", async () => {
+      await run("2026-07-09");
+      await run("2026-07-09");
+    });
+
+    const failed = states[states.length - 1]!;
+    expect(failed.kind).toBe("loaded");
+    if (failed.kind !== "loaded") throw new Error("expected retained queue state");
+    expect(failed.response).toEqual(retained);
+    expect(failed.refreshState.kind).toBe("error");
+    expect(JSON.stringify(failed)).not.toContain("duplicate-untrusted");
+
+    await withNodeEnv("development", () => run("2026-07-09"));
+    const retried = states[states.length - 1]!;
+    expect(retried.kind).toBe("loaded");
+    if (retried.kind === "loaded") {
+      expect(retried.response).toEqual(replacement);
+      expect(retried.refreshState).toEqual({ kind: "idle" });
+    }
+  });
+
   it("discards stale queue responses so the last displayed date wins", async () => {
     const states: QueueState[] = [
       {

@@ -2417,6 +2417,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused server65、patient-search34、API217 + PostgreSQL14 expected skips、web263、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `4c94b91` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact7、initial MEDIUM修正後のindependent/domain re-reviewとfull gates PASS、page/append跨ぎのduplicate PatientIdをnonpartial fail-closed拒否。
 
+- [x] WP-4110 reject duplicate ReceptionId at queue API and browser boundaries(R2 queue identity integrity) — FINALIZED
+  - 発見根拠: queue response schemaは各entryをvalidateするがarray内ReceptionId一意性を強制せず、同一IDの別患者/status行をAPI/UIが受理しReact keyとoperator workflowを曖昧化できた。
+  - scope: exact7 `apps/api/src/server.ts`, `apps/api/src/server.test.ts`, `apps/web/app/reception-dashboard.tsx`, `apps/web/app/reception-dashboard.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。contract/OpenAPI/repository/SQL/DB/SSOT/date/order/UI copy/CSSは変更しない。
+  - implementation: server/browser双方でqueue全体を既存schema parse一回後、exact ReceptionId一意性をSetで検証。一件でもduplicateなら固定non-echo errorで全体拒否し、dedupe/merge/first-last/filter/repair/sort/partial response/commitなし。
+  - acceptance: identical/conflicting(patient/status/acceptedAt) duplicateを両境界で拒否。API 500/no-store/exact scope-date、PHI/ID/status/time non-echo。browser refreshはlast verified response/date/loaded metadataを保持しuntrusted row zero、retry replacement成功。同患者の別ReceptionId、同acceptedAtの別ReceptionId、既存order/date/generation semanticsは維持。
+  - review_results: independent verifierとreception/frontend/accessibility/API/data/privacy/security/medical review APPROVED、findingsなし。MOD-011業務日付やordering policyへ拡張せず、contract/DB/SSOT/human gates不変。
+  - validation_results: focused server67/reception-dashboard50、API219 + PostgreSQL14 expected skips、web266、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: exact7 implementation commit/push pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
