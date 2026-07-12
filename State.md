@@ -8,11 +8,12 @@
 
 ## 2026-07-12
 
-### WP-4081 patient-search cursor privacy assertion determinism — FINALIZED_PENDING_LANDING
+### WP-4081 patient-search cursor privacy assertion determinism — LANDED
 
 - W25 regressionで、random MACに偶然`qh`が含まれたためprivacy-shape testが1件false redとなり、focused/full rerunでPASSした。read-only mapper/pre-planはproduction codec defectではなく、property不在をserialized random value substringで検査したtest root causeと判定した。発生率は約0.996%/run、riskはR1 test reliability。
 - exact4候補では対象testだけをdeterministic keyへ変更し、MAC `8c4GnZ-0ZaYbhA2mheIdWSDA2Bqh5ieA2H_cXatuNtU` が合法的に`qh`を含む一方、body exact keysは`v/o/m`だけでlegacy `t/p/q/qh/offset` propertyがないことを固定した。production codec/contract/OpenAPI/DB/SSOT/packageは未変更。review/validationは完了し、landingのみ未実施。
-- independent/test/spec/security/privacy/medical reviewは全APPROVED。focused 8/8、repeat20=160/160、API172+13 expected skips、workspace typecheck/test/buildと全gateがPASS。production codecはSHA-256 `bd8b37227acfda2aeaa9eb10fb17bcc0b5e7e337fef716a8282601e992051808`でbyte-identical。privacy/security semantic変更なし、exact4 landingのみ未実施。
+- independent/test/spec/security/privacy/medical reviewは全APPROVED。focused 8/8、repeat20=160/160、API172+13 expected skips、workspace typecheck/test/buildと全gateがPASS。production codecはSHA-256 `bd8b37227acfda2aeaa9eb10fb17bcc0b5e7e337fef716a8282601e992051808`でbyte-identical。privacy/security semantic変更なしでexact4 landing前検証を完了した。
+- final exact4のState整合指摘を修正後、independent/data verifierがAPPROVED。commit `82f8b85`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。CI false-red root causeは解消し、production runtime/contract/DB/SSOTは不変。
 
 ### WP-9002-W27 UIX-005 metadata — LANDED
 
