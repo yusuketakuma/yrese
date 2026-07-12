@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W16 + WP-9005/9006 LANDED、W17 FINALIZED_PENDING_LANDING、71 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W17 + WP-9005/9006 LANDED、71 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1127,7 +1127,7 @@ landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metada
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
-- [~] WP-9002-W17 CAL-003 evidence-register metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+- [x] WP-9002-W17 CAL-003 evidence-register metadata-only migration(LANDED、P1)
 
 ```yaml
 work_package_id: WP-9002-W17
@@ -1150,7 +1150,9 @@ rollback: revert exact5 candidate/final landing only and reopen metadata incompl
 review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, claims_evidence_specialist, regulatory_adapter_reviewer, calculation_domain_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; pharmacist/claims/regulatory correctness authority remains separate
 validation_results: FINAL PASS before landing — exact5/staged0; CAL-003 all23 and body 13044/df10e6f29793745cadfaf862f230845e505881c103e7f9fbe7f958539b88bdc5 byte-identical; 71 sequential unique EVD IDs and 8 sequential unique holds, preserved fields unchanged; inventory173/71/102; 172 non-target missing-set baseline-identical at 15771 bytes / SHA-256 7eb06b78c22bff25593de811ec3ce8e22e222d9caad4c9aa5bda0dc71b717d4d; calculation87 and workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
 finalization_record: CAL-003 retains APPROVED/v0.1.0/legacy approval/effective null and evidence semantics; IDX-001 v0.4.30 APPROVED with approved_at/effective_from 2026-07-12 and eleven W17 role approvals; document evidence_ids empty and partial tests do not waive official-original/calculation-requirement/golden/claimability/release gates
-state: FINALIZED_PENDING_LANDING; exact-stage commit and safe feature-branch push pending; landing not claimed
+landing_required: satisfied
+landing_record: commit 9e03142 `WP-9002-W17: normalize evidence register metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/71/102; CAL-003 body/status/version/legacy approval/effective/evidence semantics, 71 EVD, 8 holds and 172 non-target records unchanged; eleven reviews/full regression gates APPROVED; official original/revision/calculation requirement/golden/claimability/release gates remain unresolved and no runtime/DB/API/UI/external/production activation occurred
+state: LANDED; WP-9002 remains IN_PROGRESS with 71 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
 - [x] WP-9002-W16 QUA-002 validation-plan metadata-only migration(LANDED、P1)

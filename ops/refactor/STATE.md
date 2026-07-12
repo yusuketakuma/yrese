@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002-W17 CAL-003 exact5 metadata-only migration FINALIZED_PENDING_LANDING at inventory 173/71/102; WP-9002 remains IN_PROGRESS and landing is not yet claimed.
-- Current task: root exact-stage the verified five paths, commit and push to the safe feature branch, then record landing and resume fresh residual mapping.
+- Current phase: WP-9002-W17 CAL-003 exact5 metadata-only migration LANDED on the safe feature branch at inventory 173/71/102; WP-9002 remains IN_PROGRESS.
+- Current task: fresh read-only mapping and pre-plan review of the remaining 71 incomplete SSOT documents before defining the next wave.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -90,4 +90,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W16 landing checkpoint: commit `3cf9257` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5; inventory173/72/101; QUA-002 body/preserved fields/limited blocker and 172 non-target identity unchanged; eleven reviews/full L1 regression gates APPROVED; no L2/L3/golden/external/UAC/Go-No-Go/release/runtime/DB/API/UI/production activation.
 - W17 review checkpoint: baseline `973f1fb`; CAL-003 exact5 selected after comparing minimal-missing CAL-001/CAL-003/SEC-001/SEC-004; body `13044/df10e6f2…`; target173/71/102; non-target `172/15771/7eb06b78…`; pre-plan APPROVED_WITH_PINS. All EVD rows/points/sources/caveats/holds and evidence limitations remain unchanged; focused tests are partial consumer regression only.
 - W17 finalization checkpoint: all eleven roles APPROVED; CAL-003 body/preserved/all23, 71 EVD, 8 holds and 172 non-target identity verified; IDX v0.4.30 APPROVED/effective 2026-07-12; calculation87/full regression gates PASS. Official originals/revision/calculation requirements/golden/claimability/release and human gates remain unresolved; no runtime/DB/API/UI/external/production activation.
-- Next action: exact-stage/commit/push W17 exact5, record landing, then fresh read-only mapping of remaining 71 incomplete SSOT documents.
+- W17 landing checkpoint: commit `9e03142` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5; inventory173/71/102; CAL-003 body/preserved/71 EVD/8 holds and 172 non-target identity unchanged; eleven reviews/full regression gates APPROVED; no evidence/claimability/release/runtime/DB/API/UI/external/production activation.
+- Next action: fresh read-only mapping and pre-plan review of remaining 71 incomplete SSOT documents.
