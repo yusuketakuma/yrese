@@ -2,16 +2,17 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.40はWP-9002-W27 eleven-role reviewを経てAPPROVED、exact5 landing待ち。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.40とWP-9002-W27 exact5はeleven-role review後、commit `f02d3c2`でsafe feature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
 
-### WP-9002-W27 UIX-005 metadata — FINALIZED_PENDING_LANDING
+### WP-9002-W27 UIX-005 metadata — LANDED
 
 - clean feature-branch baseline `366a031`で残存62 SSOTをfresh mappingし、refund/audit/medical/security/production drift候補を避け、候補SLOと実装方針を完成主張しないUIX-005単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
 - UIX-005本文2955 bytes / SHA-256 `093669b03ef45143be0052a7179c876342934cb37d904f4c669494f5c0ed7b5f`、APPROVED/v0.1.0/legacy approval、dependencies、2 questionsを不変とする。candidate inventory173/61/112、non-target172 `14633/a402fe26…`。7 SLO候補、ST-01〜15、2禁止、PHI非出力、エラー/partial failure非隠蔽を保持する。SystemModeBadge/error boundary等の部分実装をnetwork detection/LOCAL_ONLY/RECOVERY/audit/stability readinessへ拡張せず、WP-4050 audit sink gapも未解決。11 roleがAPPROVEDまたはAPPROVED_WITH_PINS、full gates PASS、IDX v0.4.40 finalize済み、landingのみ未主張。
+- final exact5はindependent/data verifierがAPPROVED。commit `f02d3c2`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。UIX-005本文・7 SLO・ST-01..15・legacy authority・172 non-targetを保持し、WP-9002は61 incompleteでIN_PROGRESSを継続する。WP-4050とrandom-MAC flakyは別WPのまま分離する。
 
 ### WP-9002-W26 UIX-003 metadata — LANDED
 
