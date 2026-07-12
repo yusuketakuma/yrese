@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W25 + WP-9005/9006 LANDED、W26 FINALIZED_PENDING_LANDING、62 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W26 + WP-9005/9006 LANDED、62 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1127,7 +1127,7 @@ landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metada
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
-- [~] WP-9002-W26 UIX-003 performance-budget metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+- [x] WP-9002-W26 UIX-003 performance-budget metadata-only migration(LANDED、P1)
 
 ```yaml
 work_package_id: WP-9002-W26
@@ -1150,9 +1150,9 @@ rollback: revert exact5 candidate/final landing only and reopen metadata incompl
 review_results: independent_verifier, spec_guardian, data_integrity_auditor, performance_reliability_reviewer, frontend_reviewer, accessibility_ux_reviewer, product_quality_reviewer, operations_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED or APPROVED_WITH_PINS after correcting three dead impact paths; performance/product/operations/medical/security/privacy human authority remains separate
 validation_results: FINAL PASS before landing — exact5/staged0; UIX-003 all23 and body 2563/d27a7144725fbea20e8d8375ebea0c9666a3a503656aecaefef8c361dd91ce21 byte-identical; preserved fields/18 rows and values/3 assumptions/3 rules/2 questions unchanged; inventory173/62/111; 172 non-target missing-set baseline-identical at 14751 bytes / SHA-256 70435986006bb7e9369631364b5bd5e27426de7744d84a9e2b6a421eeb24a836; workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
 finalization_record: UIX-003 retains APPROVED/v0.1.0/legacy approval/effective null and all Phase 0 candidate-budget semantics; IDX-001 v0.4.39 APPROVED with approved_at/effective_from 2026-07-12 and eleven W26 role results; BLOCKED_PERFORMANCE_SLO prevents candidate promotion and empty direct evidence does not waive Phase 1 measurement, capacity, telemetry, accessibility, medical workflow, Edge/Cloud/runtime, production, or human gates
-landing_required: root exact-stage landing after final exact5 verification
-landing_record: pending
-state: FINALIZED_PENDING_LANDING; WP-9002 remains IN_PROGRESS and no performance/runtime readiness is claimed
+landing_required: satisfied
+landing_record: commit c3947e3 `WP-9002-W26: normalize performance budget metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/62/111; UIX-003 body/status/version/legacy approval/effective/candidate-budget semantics, 18 rows/all values/3 assumptions/3 rules/2 questions and 172 non-target records unchanged; eleven reviews/full regression gates accepted after correcting three dead impact paths; no performance SLO, telemetry, Edge/Cloud/async runtime, accessibility, medical workflow, production, or release-readiness activation
+state: LANDED; WP-9002 remains IN_PROGRESS with 62 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
 ```
 
 - [x] WP-9002-W25 UIX-002 experience-quality metadata-only migration(LANDED、P1)

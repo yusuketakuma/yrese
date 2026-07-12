@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002-W26 UIX-003 exact5 metadata-only migration is FINALIZED_PENDING_LANDING at inventory 173/62/111; IDX v0.4.39 is APPROVED and WP-9002 remains IN_PROGRESS.
-- Current task: perform final exact5/staged-diff verification, then root exact-stage commit/push to the safe feature branch; random-MAC flaky remains separate.
+- Current phase: WP-9002-W26 UIX-003 exact5 metadata-only migration LANDED on the safe feature branch at inventory 173/62/111; IDX v0.4.39 is APPROVED and WP-9002 remains IN_PROGRESS.
+- Current task: fresh read-only mapping and pre-plan review of the remaining 62 incomplete SSOT documents; random-MAC flaky remains a separate code-test WP candidate.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -117,4 +117,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W25 landing checkpoint: commit `9e0b38e` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5; inventory173/63/110; UIX-002 body/preserved/11 criteria/3 pillars/10 prohibitions/14 tests/2 questions and 172 non-target identity unchanged; nine reviews/regression gates accepted; no UI/UX, Edge/offline, performance, accessibility, medical workflow, PHI telemetry, production, or release-readiness activation.
 - W26 review checkpoint: baseline `6703c59`; UIX-003 exact5 selected after avoiding fact-drift/high-authority candidates; body `2563/d27a7144…`; target173/62/111; non-target `172/14751/70435986…`; pre-plan APPROVED_WITH_PINS. Preserve all 18 Phase 0 candidate rows/values, three assumptions/rules, two questions, PHI-free logging and safety/nonmasking pins. Phase 1 performance tests are not implemented, so no release-SLO or Edge/Cloud/async runtime readiness claim.
 - W26 finalization checkpoint: mapper/planner independently found three dead impact paths; sole maintainer corrected them to live OPS-005/OPS-009/QUA-006 paths and re-review approved. All eleven roles APPROVED or APPROVED_WITH_PINS; UIX-003 body/preserved/all23, 18 candidate rows/values and 172 non-target identity verified; IDX v0.4.39 APPROVED/effective 2026-07-12; full regression gates PASS. Performance/Edge/Cloud/async/telemetry/accessibility/medical workflow/human/production gates remain unresolved.
-- Next action: final exact5 verification and root exact-stage landing. Random-MAC flaky is a separate code-test WP candidate.
+- W26 landing checkpoint: commit `c3947e3` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5; inventory173/62/111; UIX-003 body/preserved/18 rows/all values/3 assumptions/3 rules/2 questions and 172 non-target identity unchanged; eleven reviews/full regression gates accepted; no performance SLO, telemetry, Edge/Cloud/async runtime, accessibility, medical workflow, production, or release-readiness activation.
+- Next action: fresh read-only mapping and pre-plan review of remaining 62 incomplete SSOT documents. Random-MAC flaky remains a separate exact-path code-test WP candidate.
