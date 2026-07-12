@@ -11,14 +11,24 @@ reviewers:
   - human_review_if_required
 version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認
+effective_from: null
+effective_to: null
 source_refs:
   - ユーザー提供レセコン調査(2026-07-09)§8
   - MOD-004(shared_type_registry — 変更手順)
 depends_on: [MOD-004, CAL-004, CAL-005, CAL-007]
 impacts: [packages/trace(後方互換拡張WP), packages/calculation]
+related_work_packages: [WP-4031, WP-3011a, WP-9002-W31]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - 0.1.0 2026-07-09 初版
+  - 0.2.0 2026-07-09 opus4.8 review反映(rounding判定の自己完結規則を明記)
+  - 0.2.0 2026-07-12 WP-9002-W31 metadata-only migration; body and trace authority unchanged
 open_questions:
   - intermediateValues の値型(string | number)における number の扱い — 金額・点数は文字列表現(bigint由来)へ限定すべきか【要確認 — MOD-010 と整合させ、float混入を型で防ぐ方針を第一候補】
 blockers:
