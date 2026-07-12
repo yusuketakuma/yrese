@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4091 deterministic in-memory patient search field ordering — FINALIZED
+
+- clean HEAD `eb2b916`。PostgreSQLは`patient_number, patient_id`順でpaginationする一方、InMemoryは投入順のままsliceし、同一synthetic recordのpage membershipがrepository modeで変わることをmapperが再現。plannerは公開ordering/collation保証を除外するpins付きでAPPROVED。
+- exact5でcurrent synthetic ASCII field tuple/order stageだけを整合する。tenant/pharmacy filter、query/cursor/API/SQL/DB/SSOT、PHI handlingは不変。
+- filter後にexplicit patientNumber/patientId sortしてからsliceし、投入順差・scope外boundary・2page completeness・input非破壊・defensive tieを回帰固定。independent API/data/DB/privacy/medical reviewはfindingsなしでAPPROVED。API191 + expected skip13、web215、audit183、workspace typecheck/test/buildと全gate PASS。exact5 landing待ち。
+
 ### WP-4090 audit advisory-lock source literal-NUL hygiene — LANDED
 
 - clean HEAD `981d5a3`。audit repository line 63 / byte offset 2631にphysical `0x00`が1個あり、sourceがbinary判定されることをmapper/plannerがHIGH confidenceで確認。runtime separatorは正しく、source representationだけが欠陥。

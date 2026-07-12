@@ -201,6 +201,17 @@ function toSearchResult(record: SyntheticPatientRecord): PatientSearchResult {
   });
 }
 
+function comparePatientSearchOrder(
+  left: SyntheticPatientRecord,
+  right: SyntheticPatientRecord,
+): number {
+  if (left.patientNumber < right.patientNumber) return -1;
+  if (left.patientNumber > right.patientNumber) return 1;
+  if (left.patientId < right.patientId) return -1;
+  if (left.patientId > right.patientId) return 1;
+  return 0;
+}
+
 export class InMemoryPatientRepository implements PatientRepository {
   constructor(private readonly records: readonly SyntheticPatientRecord[] = syntheticPatients) {}
 
@@ -224,7 +235,8 @@ export class InMemoryPatientRepository implements PatientRepository {
         [record.name, record.kana, record.patientNumber].some((value) =>
           normalizeSearchText(value).includes(normalizedQuery),
         ),
-      );
+      )
+      .sort(comparePatientSearchOrder);
     const results = matches.slice(offset, offset + input.limit).map(toSearchResult);
     const nextOffset = offset + input.limit;
 
