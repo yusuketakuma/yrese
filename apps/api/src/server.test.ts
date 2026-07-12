@@ -12,6 +12,7 @@ import {
 } from './patient-search-cursor.js';
 import type { PatientRepository } from './patient-repository.js';
 import type { ReceptionRepository } from './reception-repository.js';
+import type { AuditRepository } from './audit-repository.js';
 import {
   apiVersion,
   buildServer,
@@ -19,6 +20,7 @@ import {
   receptionIdempotencyConflictErrorCode,
   receptionInvalidRequestErrorCode,
   receptionPatientIdentityMismatchErrorMessage,
+  receptionResultPatientIdentityMismatchErrorMessage,
   receptionPatientNotFoundErrorCode,
   type BuildServerOptions,
   type HealthResponse,
@@ -882,6 +884,75 @@ describe('buildServer', () => {
       expect(response.body).not.toContain(sensitiveValue);
     }
   });
+
+  it.each(['created', 'existing'] as const)(
+    'fails closed before audit and response when a %s reception result belongs to another patient',
+    async (resultKind) => {
+      const requestedPatientId = 'patient-syn-004';
+      const mismatchedPatientId = 'patient-other-synthetic-999';
+      const mismatchedName = '合成別患者氏名';
+      const mismatchedKana = 'ゴウセイベツカンジャシメイ';
+      const auditRecord = vi.fn<AuditRepository['record']>();
+      const server = buildDevTestServer({
+        receptionRepository: {
+          list: vi.fn<ReceptionRepository['list']>(async () => []),
+          create: vi.fn<ReceptionRepository['create']>(async () => ({
+            kind: resultKind,
+            entry: {
+              receptionId: 'reception-mismatched-result-999',
+              acceptedAt: '2026-07-09T09:00:00.000Z',
+              receptionStatus: 'WAITING',
+              prescriptionIntakeType: 'paper',
+              patient: {
+                patientId: mismatchedPatientId,
+                name: mismatchedName,
+                kana: mismatchedKana,
+                birthDate: '1990-01-01',
+                sex: 'unknown',
+                patientNumber: 'SYN-MISMATCH-999',
+                eligibilityStatus: 'NOT_CHECKED',
+              },
+            },
+          })),
+        },
+        auditRepository: {
+          record: auditRecord,
+          list: vi.fn<AuditRepository['list']>(async () => []),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/reception',
+        headers: tenantOneReceptionWriteHeaders,
+        payload: {
+          patientId: requestedPatientId,
+          idempotencyKey: `reception-mismatched-result-${resultKind}`,
+        },
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(auditRecord).not.toHaveBeenCalled();
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: receptionResultPatientIdentityMismatchErrorMessage,
+      });
+      for (const sensitiveValue of [
+        requestedPatientId,
+        mismatchedPatientId,
+        mismatchedName,
+        mismatchedKana,
+        'SYN-MISMATCH-999',
+        'reception-mismatched-result-999',
+      ]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+    },
+  );
 
   it('stores reception queue dates as JST business dates, not UTC dates', async () => {
     const acceptedAt = new Date('2026-07-09T20:00:00.000Z'); // JST 2026-07-10 05:00

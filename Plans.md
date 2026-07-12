@@ -2372,6 +2372,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused patient-context19/19、web full256/256、web typecheck/build PASS。full workspace gate exit0: `pnpm -r typecheck/test/build`、check:openapi、check:calculation-purity、boundaries、SSOT index173、secrets、deps high=0 critical=0、SBOM231、test:scripts、git diff --check全PASS。
   - landing_record: implementation commit `9cc9f56` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、reviews/full gates PASS、strict response identity bindingを追加し404/stale semanticsを維持。
 
+- [x] WP-4105 bind reception repository result to requested patient identity(R2 wrong-patient prevention) — FINALIZED
+  - 発見根拠: reception create routeはscoped patient lookupをrequest IDへ拘束する一方、repositoryが返すschema-valid `created` / `existing` entryのpatientIdを再拘束せず、別患者結果でもsuccess audit/responseへ進めた。
+  - scope: exact5 `apps/api/src/server.ts`, `apps/api/src/server.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。contract/OpenAPI/repository/DB/migration/SSOT/idempotency/audit schemaは変更しない。
+  - implementation: `idempotency_conflict`判定後、created/existing共通で`result.entry.patient.patientId === parsedPatientId`をstrict要求。mismatchは固定`Reception repository returned a mismatched patient identity`でaudit/response前にfail-closedし、ID/氏名/カナ/患者番号/受付IDをechoしない。
+  - acceptance: created/existing mismatchの500/no-store/fixed non-echo/audit zeroを固定し、created201/existing200/conflict409の既存semanticsを維持。repository side-effect rollbackやrepairは主張せず、現行adapterの到達不能 invariantにroute defense-in-depthを追加する。
+  - review_results: independent verifierとmedical-safety/privacy/security/API/data-integrity review APPROVED、findingsなし。contract/OpenAPI/DB/SSOT/R3+ human gate変更なし。
+  - validation_results: focused server60、API209 + PostgreSQL14 expected skips、web256、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: exact5 implementation commit/push pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

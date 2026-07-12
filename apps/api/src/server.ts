@@ -60,6 +60,8 @@ export const receptionPatientNotFoundErrorCode = RECEPTION_PATIENT_NOT_FOUND_ERR
 export const receptionIdempotencyConflictErrorCode = RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE;
 export const receptionPatientIdentityMismatchErrorMessage =
   'Patient lookup returned a mismatched patient identity';
+export const receptionResultPatientIdentityMismatchErrorMessage =
+  'Reception repository returned a mismatched patient identity';
 const auditLogProjectionInvariantErrorMessage =
   'Audit event display projection failed for a verified hash chain';
 
@@ -361,6 +363,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
       if (result.kind === 'idempotency_conflict') {
         return reply.code(409).send(receptionIdempotencyConflictResponse());
+      }
+      if (result.entry.patient.patientId !== parsedPatientId) {
+        throw new Error(receptionResultPatientIdentityMismatchErrorMessage);
       }
 
       // 監査証跡(who/when/what)。冪等再送(existing)では二重記録しない。

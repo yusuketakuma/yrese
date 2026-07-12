@@ -8,6 +8,13 @@
 
 ## 2026-07-13
 
+### WP-4105 reception result patient identity binding — FINALIZED / landing pending
+
+- clean baseline `cc7eb21`。schema-valid reception repository resultのpatientId不一致がcreated/existingでsuccess audit/responseへ進めるR2 wrong-patient gapをexact5で修正。
+- conflict判定後、audit/response前にstrict requested/result patient ID一致を要求。不一致は固定non-echo error、no-store、audit zero。contract/OpenAPI/repository/DB/migration/SSOT/idempotency semanticsは不変。
+- independent verifierとmedical-safety/privacy/security/API/data-integrity review APPROVED、findingsなし。focused server60、API209 + PostgreSQL14 expected skips、web256、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+- exact5 implementation commit/push pending。壊れた外部repositoryの事前side effect rollbackは主張せず、現行in-memory/PostgreSQL adapterで到達不能な invariantのroute defense-in-depthに限定。
+
 ### WP-4104 patient refresh response identity binding — LANDED
 
 - clean baseline `dabb180`。schema-valid get-by-id 200 responseのpatientId不一致が選択中文脈を別患者へ置換できるR2 wrong-patient gapをexact5で修正中。
