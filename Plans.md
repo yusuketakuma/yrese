@@ -2345,6 +2345,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused reception-dashboard29、web237、API207 + PostgreSQL14 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `dc8f088` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent review/full gates PASS、registration completionはlatest requested queue targetをreloadしdraft/URL/generation/POST semantics不変。
 
+- [x] WP-4102 preserve reception queue source across refresh(R2 queue integrity) — FINALIZED
+  - 発見根拠: queue refresh開始でloaded response/loadedAtをtop-level loadingへ置換し、失敗時はerrorだけになるため、直前の受付一覧とsource date/timeが消える。さらにresponse.dateとrequested targetの一致を検証せず、別日付responseを要求日付の結果として受理できる。
+  - scope: exact5 `apps/web/app/reception-dashboard.tsx`, `apps/web/app/reception-dashboard.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。WP-4101 tracker、URL、POST/idempotency/generation/every GET、API/DB/SSOT/CSS/focus/animationは変更しない。
+  - implementation: loaded stateにrequired refresh idle/loading/error(requestTarget)を追加。refresh中/失敗/mismatchはexact response+loadedAtを保持し、current matching responseだけを新loadedAt一回で置換。current mismatchはactual date非echoの固定notice、stale completionはzero emit。
+  - acceptance: initial、nonempty/empty A→B loading/failure、identity/T保持、raw非echo、current mismatch retained/initial、matching success/new timestamp、A-B-C stale success/failure/mismatch、retryを固定。qualifierはcount/table/empty前にrequest target、retained response.date、original loadedAtを表示し、errorは既存ErrorNoticeを併設、idle markup不変。full gatesとindependent reception/frontend/accessibility/medical/privacy/API/data review PASSまで未完了。
+  - review_results: candidate arbitrationはLOW same-flight候補よりR2 last-verified queue/source preservationを優先。initial accessibility MEDIUMはrefresh qualifierとretained count/emptyのduplicate queue-level live region。refresh count/emptyを非live、qualifierをsole queue-level status、errorをone alertに固定後、verifier + reception/data/frontend/accessibility/medical/privacy/API re-review APPROVED、remaining findingsなし。
+  - validation_results: focused reception-dashboard35、web243、API207 + PostgreSQL14 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。landing pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

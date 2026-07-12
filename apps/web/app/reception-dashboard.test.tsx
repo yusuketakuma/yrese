@@ -65,6 +65,16 @@ function jsonResponse(status: number, body: unknown): Response {
   } as unknown as Response;
 }
 
+function deferredValue<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
 async function withNodeEnv<T>(
   nodeEnv: string,
   run: () => Promise<T>,
@@ -177,7 +187,11 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
   it("shows EmptyState for an empty queue and ErrorNotice for errors", () => {
     const empty = renderToStaticMarkup(
       <ReceptionQueueView
-        state={{ kind: "loaded", response: { date: "2026-07-09", entries: [] } }}
+        state={{
+          kind: "loaded",
+          response: { date: "2026-07-09", entries: [] },
+          refreshState: { kind: "idle" },
+        }}
       />,
     );
     expect(empty).toContain("2026-07-09 の受付はまだありません");
@@ -216,7 +230,11 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
 
   it("discards stale queue responses so the last displayed date wins", async () => {
     const states: QueueState[] = [
-      { kind: "loaded", response: queueResponse("2026-07-08") },
+      {
+        kind: "loaded",
+        response: queueResponse("2026-07-08"),
+        refreshState: { kind: "idle" },
+      },
     ];
     const emit = (update: (prev: QueueState) => QueueState) => {
       states.push(update(states[states.length - 1]!));
@@ -253,7 +271,11 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
 
   it("discards stale queue failures so an older error does not mask newer results", async () => {
     const states: QueueState[] = [
-      { kind: "loaded", response: queueResponse("2026-07-08") },
+      {
+        kind: "loaded",
+        response: queueResponse("2026-07-08"),
+        refreshState: { kind: "idle" },
+      },
     ];
     const emit = (update: (prev: QueueState) => QueueState) => {
       states.push(update(states[states.length - 1]!));
@@ -279,6 +301,325 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     await first;
 
     expect(states[states.length - 1]!.kind).toBe("loaded");
+  });
+
+  it("uses initial loading/error semantics and accepts only a matching response date", async () => {
+    const states: QueueState[] = [{ kind: "loading" }];
+    const emit = (update: (prev: QueueState) => QueueState) => {
+      states.push(update(states[states.length - 1]!));
+    };
+    const fetcher = vi
+      .fn<(target: string) => Promise<ReceptionQueueResponse>>()
+      .mockResolvedValueOnce(queueResponse("2026-07-10"))
+      .mockRejectedValueOnce(new Error("raw initial queue failure"));
+    const run = createReceptionQueueRunner(fetcher, emit);
+
+    await run("2026-07-10");
+    expect(states.at(-1)).toMatchObject({
+      kind: "loaded",
+      response: { date: "2026-07-10" },
+      refreshState: { kind: "idle" },
+    });
+
+    states.splice(0, states.length, { kind: "loading" });
+    await run("2026-07-11");
+    expect(states.at(-1)).toMatchObject({
+      kind: "error",
+      notice: { message: "受付一覧の処理に失敗しました。" },
+    });
+    expect(JSON.stringify(states.at(-1))).not.toContain("raw initial queue failure");
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("retains exact nonempty data and timestamp through B loading/failure, then replaces them on retry", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-13T03:34:00.000Z"));
+    try {
+      const retainedResponse = queueResponse("2026-07-10", [
+        entry({ receptionId: "retained" }),
+      ]);
+      const replacementResponse = queueResponse("2026-07-11", [
+        entry({ receptionId: "replacement" }),
+      ]);
+      const pendingFailure = deferredValue<ReceptionQueueResponse>();
+      const states: QueueState[] = [
+        {
+          kind: "loaded",
+          response: retainedResponse,
+          loadedAt: "08:15",
+          refreshState: { kind: "idle" },
+        },
+      ];
+      const fetcher = vi
+        .fn<(target: string) => Promise<ReceptionQueueResponse>>()
+        .mockImplementationOnce(() => pendingFailure.promise)
+        .mockResolvedValueOnce(replacementResponse);
+      const run = createReceptionQueueRunner(fetcher, (update) => {
+        states.push(update(states[states.length - 1]!));
+      });
+
+      const failedRun = run("2026-07-11");
+      const loading = states.at(-1)!;
+      expect(loading.kind).toBe("loaded");
+      if (loading.kind !== "loaded") throw new Error("expected retained loading state");
+      expect(loading.response).toBe(retainedResponse);
+      expect(loading.loadedAt).toBe("08:15");
+      expect(loading.refreshState).toEqual({
+        kind: "loading",
+        requestTarget: "2026-07-11",
+      });
+
+      pendingFailure.reject(new Error("raw retained failure must not appear"));
+      await failedRun;
+      const failed = states.at(-1)!;
+      expect(failed.kind).toBe("loaded");
+      if (failed.kind !== "loaded") throw new Error("expected retained error state");
+      expect(failed.response).toBe(retainedResponse);
+      expect(failed.loadedAt).toBe("08:15");
+      expect(failed.refreshState).toMatchObject({
+        kind: "error",
+        requestTarget: "2026-07-11",
+        notice: { message: "受付一覧の処理に失敗しました。" },
+      });
+      expect(JSON.stringify(failed)).not.toContain("raw retained failure");
+
+      await run("2026-07-11");
+      const retried = states.at(-1)!;
+      expect(retried.kind).toBe("loaded");
+      if (retried.kind === "loaded") {
+        expect(retried.response).toBe(replacementResponse);
+        expect(retried.loadedAt).toBe("12:34");
+        expect(retried.refreshState).toEqual({ kind: "idle" });
+      }
+      expect(fetcher.mock.calls).toEqual([["2026-07-11"], ["2026-07-11"]]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("retains an empty A response and its timestamp through B loading and failure", async () => {
+    const retainedResponse = queueResponse("2026-07-10");
+    const pending = deferredValue<ReceptionQueueResponse>();
+    const states: QueueState[] = [
+      {
+        kind: "loaded",
+        response: retainedResponse,
+        loadedAt: "09:05",
+        refreshState: { kind: "idle" },
+      },
+    ];
+    const run = createReceptionQueueRunner(() => pending.promise, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    const request = run("2026-07-11");
+    expect(states.at(-1)).toMatchObject({
+      kind: "loaded",
+      response: { date: "2026-07-10", entries: [] },
+      loadedAt: "09:05",
+      refreshState: { kind: "loading", requestTarget: "2026-07-11" },
+    });
+    pending.reject(new Error("synthetic empty refresh failure"));
+    await request;
+    expect(states.at(-1)).toMatchObject({
+      kind: "loaded",
+      response: { date: "2026-07-10", entries: [] },
+      loadedAt: "09:05",
+      refreshState: { kind: "error", requestTarget: "2026-07-11" },
+    });
+  });
+
+  it("rejects current mismatched response dates without echoing the actual date", async () => {
+    const retainedResponse = queueResponse("2026-07-10", [entry({ receptionId: "a" })]);
+    const states: QueueState[] = [
+      {
+        kind: "loaded",
+        response: retainedResponse,
+        loadedAt: "07:40",
+        refreshState: { kind: "idle" },
+      },
+    ];
+    const run = createReceptionQueueRunner(
+      () => Promise.resolve(queueResponse("2099-12-31")),
+      (update) => states.push(update(states[states.length - 1]!)),
+    );
+
+    await run("2026-07-11");
+    const retained = states.at(-1)!;
+    expect(retained.kind).toBe("loaded");
+    if (retained.kind === "loaded") {
+      expect(retained.response).toBe(retainedResponse);
+      expect(retained.loadedAt).toBe("07:40");
+      expect(retained.refreshState).toMatchObject({
+        kind: "error",
+        requestTarget: "2026-07-11",
+        notice: { message: "受付一覧の応答日付が要求日付と一致しません。" },
+      });
+    }
+    expect(JSON.stringify(retained)).not.toContain("2099-12-31");
+
+    const initialStates: QueueState[] = [{ kind: "loading" }];
+    const initialRun = createReceptionQueueRunner(
+      () => Promise.resolve(queueResponse("2099-12-31")),
+      (update) => initialStates.push(update(initialStates[initialStates.length - 1]!)),
+    );
+    await initialRun("2026-07-11");
+    expect(initialStates.at(-1)).toMatchObject({
+      kind: "error",
+      notice: { message: "受付一覧の応答日付が要求日付と一致しません。" },
+    });
+    expect(JSON.stringify(initialStates.at(-1))).not.toContain("2099-12-31");
+  });
+
+  it("emits nothing for stale A/B success, failure, or mismatch after current C wins", async () => {
+    const staleSuccess = deferredValue<ReceptionQueueResponse>();
+    const staleFailure = deferredValue<ReceptionQueueResponse>();
+    const states: QueueState[] = [
+      {
+        kind: "loaded",
+        response: queueResponse("2026-07-09"),
+        refreshState: { kind: "idle" },
+      },
+    ];
+    const fetcher = vi
+      .fn<(target: string) => Promise<ReceptionQueueResponse>>()
+      .mockImplementationOnce(() => staleSuccess.promise)
+      .mockImplementationOnce(() => staleFailure.promise)
+      .mockResolvedValueOnce(queueResponse("2026-07-12"));
+    const run = createReceptionQueueRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    const a = run("2026-07-10");
+    const b = run("2026-07-11");
+    await run("2026-07-12");
+    const countAfterC = states.length;
+    staleSuccess.resolve(queueResponse("2099-12-31"));
+    staleFailure.reject(new Error("stale B failure"));
+    await Promise.all([a, b]);
+
+    expect(states).toHaveLength(countAfterC);
+    expect(states.at(-1)).toMatchObject({
+      kind: "loaded",
+      response: { date: "2026-07-12" },
+      refreshState: { kind: "idle" },
+    });
+  });
+
+  it("renders refresh source qualifiers before retained nonempty and empty content while idle stays unchanged", () => {
+    const roleCount = (html: string, role: "status" | "alert") =>
+      html.match(new RegExp(`role="${role}"`, "g"))?.length ?? 0;
+    const loadingHtml = renderToStaticMarkup(
+      <ReceptionQueueView
+        state={{
+          kind: "loaded",
+          response: queueResponse("2026-07-10", [entry({ receptionId: "a" })]),
+          loadedAt: "08:15",
+          refreshState: { kind: "loading", requestTarget: "2026-07-11" },
+        }}
+      />,
+    );
+    expect(loadingHtml).toContain(
+      "2026-07-11 の受付一覧を取得中です。2026-07-10 (最終取得: 08:15(JST)) の内容を表示しています。",
+    );
+    expect(loadingHtml.indexOf("取得中です")).toBeLessThan(
+      loadingHtml.indexOf("2026-07-10 の受付: 1件"),
+    );
+    expect(roleCount(loadingHtml, "status")).toBe(2); // qualifier + row status badge
+    expect(roleCount(loadingHtml, "alert")).toBe(0);
+
+    const loadingEmptyHtml = renderToStaticMarkup(
+      <ReceptionQueueView
+        state={{
+          kind: "loaded",
+          response: queueResponse("2026-07-10"),
+          loadedAt: "08:20",
+          refreshState: { kind: "loading", requestTarget: "2026-07-11" },
+        }}
+      />,
+    );
+    expect(roleCount(loadingEmptyHtml, "status")).toBe(1);
+    expect(roleCount(loadingEmptyHtml, "alert")).toBe(0);
+    expect(loadingEmptyHtml.indexOf("取得中です")).toBeLessThan(
+      loadingEmptyHtml.indexOf("2026-07-10 の受付はまだありません"),
+    );
+
+    const errorHtml = renderToStaticMarkup(
+      <ReceptionQueueView
+        state={{
+          kind: "loaded",
+          response: queueResponse("2026-07-10"),
+          loadedAt: "09:05",
+          refreshState: {
+            kind: "error",
+            requestTarget: "2026-07-11",
+            notice: {
+              message: "受付一覧の処理に失敗しました。",
+              nextAction: "再表示してください。",
+            },
+          },
+        }}
+      />,
+    );
+    expect(errorHtml).toContain(
+      "2026-07-11 の受付一覧を取得できなかったため、2026-07-10 (最終取得: 09:05(JST)) の内容を表示しています。",
+    );
+    expect(errorHtml.indexOf("取得できなかったため")).toBeLessThan(
+      errorHtml.indexOf("2026-07-10 の受付はまだありません"),
+    );
+    expect(roleCount(errorHtml, "status")).toBe(1);
+    expect(roleCount(errorHtml, "alert")).toBe(1);
+
+    const errorNonemptyHtml = renderToStaticMarkup(
+      <ReceptionQueueView
+        state={{
+          kind: "loaded",
+          response: queueResponse("2026-07-10", [entry({ receptionId: "a" })]),
+          loadedAt: "09:10",
+          refreshState: {
+            kind: "error",
+            requestTarget: "2026-07-11",
+            notice: {
+              message: "受付一覧の処理に失敗しました。",
+              nextAction: "再表示してください。",
+            },
+          },
+        }}
+      />,
+    );
+    expect(roleCount(errorNonemptyHtml, "status")).toBe(2); // qualifier + row status badge
+    expect(roleCount(errorNonemptyHtml, "alert")).toBe(1);
+    expect(errorNonemptyHtml.indexOf("取得できなかったため")).toBeLessThan(
+      errorNonemptyHtml.indexOf("2026-07-10 の受付: 1件"),
+    );
+
+    const idleHtml = renderToStaticMarkup(
+      <ReceptionQueueView
+        state={{
+          kind: "loaded",
+          response: queueResponse("2026-07-10", [entry({ receptionId: "a" })]),
+          loadedAt: "08:15",
+          refreshState: { kind: "idle" },
+        }}
+      />,
+    );
+    expect(idleHtml).not.toContain("の内容を表示しています");
+    expect(idleHtml).toContain("2026-07-10 の受付: 1件");
+    expect(idleHtml).toContain("最終取得: 08:15(JST)");
+    expect(roleCount(idleHtml, "status")).toBe(2); // count + row status badge
+    expect(roleCount(idleHtml, "alert")).toBe(0);
+
+    const idleEmptyHtml = renderToStaticMarkup(
+      <ReceptionQueueView
+        state={{
+          kind: "loaded",
+          response: queueResponse("2026-07-10"),
+          refreshState: { kind: "idle" },
+        }}
+      />,
+    );
+    expect(roleCount(idleEmptyHtml, "status")).toBe(1);
+    expect(roleCount(idleEmptyHtml, "alert")).toBe(0);
   });
 
   it("maps 409 idempotency conflicts to a duplicate-operation notice (RCV-0003)", async () => {
@@ -330,6 +671,7 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
           kind: "loaded",
           response: queueResponse("2026-07-10", [entry({ receptionId: "rc-1" })]),
           loadedAt: "05:15",
+          refreshState: { kind: "idle" },
         }}
       />,
     );
@@ -342,6 +684,7 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
         state={{
           kind: "loaded",
           response: queueResponse("2026-07-10", [entry({ receptionId: "rc-1" })]),
+          refreshState: { kind: "idle" },
         }}
       />,
     );
@@ -479,7 +822,13 @@ describe("createReceptionRegistrationRunner (same-flight duplicate prevention)",
       .fn<(target: string) => Promise<ReceptionQueueResponse>>()
       .mockRejectedValueOnce(new Error("synthetic queue failure"))
       .mockResolvedValueOnce(queueResponse("2026-07-11"));
-    const states: QueueState[] = [{ kind: "loaded", response: queueResponse("2026-07-10") }];
+    const states: QueueState[] = [
+      {
+        kind: "loaded",
+        response: queueResponse("2026-07-10"),
+        refreshState: { kind: "idle" },
+      },
+    ];
     const queueRunner = createReceptionQueueRunner(queueFetch, (update) => {
       states.push(update(states[states.length - 1]!));
     });
@@ -494,7 +843,11 @@ describe("createReceptionRegistrationRunner (same-flight duplicate prevention)",
     });
 
     await load("2026-07-11");
-    expect(states[states.length - 1]?.kind).toBe("error");
+    expect(states[states.length - 1]).toMatchObject({
+      kind: "loaded",
+      response: { date: "2026-07-10" },
+      refreshState: { kind: "error", requestTarget: "2026-07-11" },
+    });
     expect(tracker.current()).toBe("2026-07-11");
     post.resolve();
     await registration;

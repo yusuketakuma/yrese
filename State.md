@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4102 reception queue retained-source refresh — FINALIZED
+
+- clean baseline `0ba6352`。refresh loading/failureで直前queue/source date/Tが消え、requested targetとresponse.date不一致も受理するR2 queue-integrity gapをexact5で修正中。
+- candidate arbitrationはLOW same-flight候補よりR2 last-verified queue/source preservationを優先。loaded refresh substateでnonempty/empty response identityとloadedAtを保持し、current matching responseだけを置換。mismatchはactual date非echo、stale completionはzero emit。
+- initial accessibility MEDIUMのduplicate queue-level live regionを、refresh count/empty非live、qualifier sole status、error one alertで修正。verifier + reception/data/frontend/accessibility/medical/privacy/API re-review APPROVED、remaining findingsなし。focused reception-dashboard35、web243、API207 + PostgreSQL14 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。WP-4101 tracker、URL、POST/idempotency/generation/every GET、API/DB/SSOT/CSS/focus/animationは不変。landing pending。
+
 ### WP-4101 reception registration latest queue-target reload — LANDED
 
 - clean baseline `be76c75`。deferred registration completionがcaptured start-dateをreloadし、POST中のexplicit queue-date変更を巻き戻すR2 workflow-integrity gapをexact5で修正中。

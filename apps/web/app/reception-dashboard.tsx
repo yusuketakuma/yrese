@@ -220,7 +220,17 @@ export function ReceptionQueueTable({
 export type QueueState =
   | { kind: "loading" }
   | { kind: "error"; notice: ErrorNoticeProps }
-  | { kind: "loaded"; response: ReceptionQueueResponse; loadedAt?: string };
+  | {
+      kind: "loaded";
+      response: ReceptionQueueResponse;
+      loadedAt?: string;
+      refreshState: QueueRefreshState;
+    };
+
+export type QueueRefreshState =
+  | { kind: "idle" }
+  | { kind: "loading"; requestTarget: string }
+  | { kind: "error"; requestTarget: string; notice: ErrorNoticeProps };
 
 type QueueStateUpdate = (prev: QueueState) => QueueState;
 
@@ -234,6 +244,14 @@ function queueLoadErrorNotice(error: unknown): ErrorNoticeProps {
       };
 }
 
+function queueResponseDateMismatchNotice(): ErrorNoticeProps {
+  return {
+    message: "受付一覧の応答日付が要求日付と一致しません。",
+    nextAction:
+      "表示日付を確認して再表示してください。解消しない場合はシステム管理者へ連絡してください。",
+  };
+}
+
 export function createReceptionQueueRunner(
   fetcher: (targetDate: string) => Promise<ReceptionQueueResponse>,
   emit: (update: QueueStateUpdate) => void,
@@ -241,10 +259,33 @@ export function createReceptionQueueRunner(
   let generation = 0;
   return async (targetDate) => {
     const gen = ++generation;
-    emit(() => ({ kind: "loading" }));
+    emit((prev) =>
+      prev.kind === "loaded"
+        ? {
+            ...prev,
+            refreshState: { kind: "loading", requestTarget: targetDate },
+          }
+        : { kind: "loading" },
+    );
     try {
       const response = await fetcher(targetDate);
       if (gen !== generation) {
+        return;
+      }
+      if (response.date !== targetDate) {
+        const notice = queueResponseDateMismatchNotice();
+        emit((prev) =>
+          prev.kind === "loaded"
+            ? {
+                ...prev,
+                refreshState: {
+                  kind: "error",
+                  requestTarget: targetDate,
+                  notice,
+                },
+              }
+            : { kind: "error", notice },
+        );
         return;
       }
       // 最終取得時刻(JST)。古い一覧を最新と誤認させない(監査 S-02)
@@ -252,12 +293,21 @@ export function createReceptionQueueRunner(
         kind: "loaded",
         response,
         loadedAt: formatAcceptedTime(new Date().toISOString()),
+        refreshState: { kind: "idle" },
       }));
     } catch (error) {
       if (gen !== generation) {
         return;
       }
-      emit(() => ({ kind: "error", notice: queueLoadErrorNotice(error) }));
+      const notice = queueLoadErrorNotice(error);
+      emit((prev) =>
+        prev.kind === "loaded"
+          ? {
+              ...prev,
+              refreshState: { kind: "error", requestTarget: targetDate, notice },
+            }
+          : { kind: "error", notice },
+      );
     }
   };
 }
@@ -311,18 +361,48 @@ export function ReceptionQueueView({ state }: { readonly state: QueueState }) {
   if (state.kind === "error") {
     return <ErrorNotice {...state.notice} />;
   }
-  if (state.response.entries.length === 0) {
-    return <EmptyState message={`${state.response.date} の受付はまだありません。`} />;
-  }
+  const retainedSource = `${state.response.date}${
+    state.loadedAt !== undefined ? ` (最終取得: ${state.loadedAt}(JST))` : ""
+  }`;
+  const refreshing = state.refreshState.kind !== "idle";
+  const content =
+    state.response.entries.length === 0 ? (
+      refreshing ? (
+        <div className="empty-state">
+          {state.response.date} の受付はまだありません。
+        </div>
+      ) : (
+        <EmptyState message={`${state.response.date} の受付はまだありません。`} />
+      )
+    ) : (
+      <>
+        <p {...(!refreshing ? { role: "status" } : {})}>
+          {state.response.date} の受付: {state.response.entries.length}件
+        </p>
+        {state.loadedAt !== undefined && (
+          <p className="queue-last-updated">最終取得: {state.loadedAt}(JST)</p>
+        )}
+        <ReceptionQueueTable entries={state.response.entries} />
+      </>
+    );
   return (
     <>
-      <p role="status">
-        {state.response.date} の受付: {state.response.entries.length}件
-      </p>
-      {state.loadedAt !== undefined && (
-        <p className="queue-last-updated">最終取得: {state.loadedAt}(JST)</p>
+      {state.refreshState.kind === "loading" && (
+        <p role="status">
+          {state.refreshState.requestTarget} の受付一覧を取得中です。{retainedSource}
+          {" "}の内容を表示しています。
+        </p>
       )}
-      <ReceptionQueueTable entries={state.response.entries} />
+      {state.refreshState.kind === "error" && (
+        <>
+          <p role="status">
+            {state.refreshState.requestTarget} の受付一覧を取得できなかったため、
+            {retainedSource}{" "}の内容を表示しています。
+          </p>
+          <ErrorNotice {...state.refreshState.notice} />
+        </>
+      )}
+      {content}
     </>
   );
 }
