@@ -2327,6 +2327,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused patient-search31、web226、API207 + PostgreSQL14 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `9689a83` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、initial MEDIUM修正後のindependent re-review/full gates PASS、同一active appendだけをcoalesceしUI/state/API/cursor semantics不変。
 
+- [x] WP-4100 preserve last verified audit view across refresh(R2 audit workflow integrity) — FINALIZED
+  - 発見根拠: refresh開始でloaded audit dataをtop-level loadingへ置換し、失敗時はerrorだけを残すため、直前に検証済みのchain状態、件数、監査tableを通常の取得失敗で消去する。broken-chain CRITICALも一時的に不可視になる。
+  - scope: exact5 `apps/web/app/admin/audit-log-view.tsx`, `apps/web/app/admin/audit-log-view.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。CSS/focus/animation/API/contracts/server/audit core/DB/SSOTは変更しない。
+  - implementation: runner emitをReact-setter-compatible functional updateへ変更し、loaded stateにidle/loading/error noticeのrefreshStateを追加。loaded refresh中/失敗はexact dataを保持し、successだけcurrent dataへ置換。initial loading/error、generation/invalidate、every-run GETは維持。
+  - acceptance: healthy/broken dataをrefresh loading/failure中も保持、raw error非echo、retry successで置換/clear、initial error/retry、stale/lifecycle/every run fetchを固定。broken CRITICAL/count/tableとrefresh error/retryを同時表示し、loading時はrefresh buttonだけdisabled。full gatesとindependent audit/frontend/accessibility/privacy/API/medical review PASSまで未完了。
+  - review_results: initial audit/UI MEDIUMは保持表示が直前取得・検証内容であるfreshness ambiguity。exact `role=status` qualifierをview前へ置き、broken CRITICAL + refresh errorのtwo alertsとErrorNotice/retry隣接を固定後、verifier + audit/security/frontend/accessibility/privacy/API/medical re-review APPROVED、remaining findingsなし。
+  - validation_results: focused audit-log-view16、web231、API207 + PostgreSQL14 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。landing pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

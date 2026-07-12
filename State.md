@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4100 audit refresh last-verified-view preservation — FINALIZED
+
+- clean baseline `c1aa0a1`。refresh loading/failureが直前のverified audit chain/count/table、特にbroken-chain CRITICALを消すR2 workflow-integrity gapをexact5で修正中。
+- loaded refresh substateとfunctional updaterでexact dataを保持し、refresh controlだけをloading/error化する。initial audit/UI MEDIUMのfreshness ambiguityを、exact `role=status` qualifier-before-view、broken CRITICAL + refresh errorのtwo alerts、ErrorNotice/retry隣接で修正。
+- verifier + audit/security/frontend/accessibility/privacy/API/medical re-review APPROVED、remaining findingsなし。focused audit-log-view16、web231、API207 + PostgreSQL14 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。CSS/focus/animation/API/contracts/server/core/DB/SSOTは不変。landing pending。
+
 ### WP-4099 patient-search append structural single-flight — LANDED
 
 - clean baseline `fdca88a`。同一非blank query/cursor appendの同期重複が複数fetchとgeneration競合を起こすR1 request-integrity gapをexact5で修正中。

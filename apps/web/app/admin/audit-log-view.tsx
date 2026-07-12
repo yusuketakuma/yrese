@@ -31,7 +31,12 @@ const OUTCOME_LABELS: Record<AuditLogEntry["outcome"], string> = {
 export type AuditLogState =
   | { kind: "loading" }
   | { kind: "error"; notice: ErrorNoticeProps }
-  | { kind: "loaded"; data: AuditLogResponse };
+  | { kind: "loaded"; data: AuditLogResponse; refreshState: AuditLogRefreshState };
+
+export type AuditLogRefreshState =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "error"; notice: ErrorNoticeProps };
 
 function auditLogErrorNotice(error: unknown): ErrorNoticeProps {
   return typeof error === "object" && error !== null && "notice" in error
@@ -76,7 +81,7 @@ export async function fetchAuditLog(
 /** Keeps only the latest audit fetch authoritative without cancelling audited GET requests. */
 export function createAuditLogRunner(
   fetcher: () => Promise<AuditLogResponse>,
-  emit: (state: AuditLogState) => void,
+  emit: (update: (prev: AuditLogState) => AuditLogState) => void,
 ) {
   let generation = 0;
   return {
@@ -85,15 +90,24 @@ export function createAuditLogRunner(
     },
     async run() {
       const currentGeneration = ++generation;
-      emit({ kind: "loading" });
+      emit((prev) =>
+        prev.kind === "loaded"
+          ? { ...prev, refreshState: { kind: "loading" } }
+          : { kind: "loading" },
+      );
       try {
         const data = await fetcher();
         if (currentGeneration === generation) {
-          emit({ kind: "loaded", data });
+          emit(() => ({ kind: "loaded", data, refreshState: { kind: "idle" } }));
         }
       } catch (error) {
         if (currentGeneration === generation) {
-          emit({ kind: "error", notice: auditLogErrorNotice(error) });
+          const notice = auditLogErrorNotice(error);
+          emit((prev) =>
+            prev.kind === "loaded"
+              ? { ...prev, refreshState: { kind: "error", notice } }
+              : { kind: "error", notice },
+          );
         }
       }
     },
@@ -182,6 +196,45 @@ export function AuditLogView({ data }: { readonly data: AuditLogResponse }) {
   );
 }
 
+/** ロード済み監査ログを保持したままrefresh状態と操作だけを切り替える。 */
+export function AuditLogLoadedState({
+  data,
+  refreshState,
+  onRefresh,
+}: {
+  readonly data: AuditLogResponse;
+  readonly refreshState: AuditLogRefreshState;
+  readonly onRefresh: () => void;
+}) {
+  return (
+    <>
+      {refreshState.kind === "loading" && (
+        <p role="status">
+          最新情報を取得中です。直前に取得・検証した内容を表示しています。
+        </p>
+      )}
+      {refreshState.kind === "error" && (
+        <p role="status">
+          最新情報を取得できなかったため、直前に取得・検証した内容を表示しています。
+        </p>
+      )}
+      <AuditLogView data={data} />
+      {refreshState.kind === "error" && <ErrorNotice {...refreshState.notice} />}
+      <button
+        type="button"
+        onClick={onRefresh}
+        disabled={refreshState.kind === "loading"}
+      >
+        {refreshState.kind === "loading"
+          ? "更新中…"
+          : refreshState.kind === "error"
+            ? "最新情報の取得を再試行"
+            : "最新に更新"}
+      </button>
+    </>
+  );
+}
+
 /** fetch と状態管理を担う client パネル。 */
 export function AuditLogPanel() {
   const [state, setState] = useState<AuditLogState>({ kind: "loading" });
@@ -211,12 +264,11 @@ export function AuditLogPanel() {
         </>
       )}
       {state.kind === "loaded" && (
-        <>
-          <AuditLogView data={state.data} />
-          <button type="button" onClick={load}>
-            最新に更新
-          </button>
-        </>
+        <AuditLogLoadedState
+          data={state.data}
+          refreshState={state.refreshState}
+          onRefresh={load}
+        />
       )}
     </div>
   );
