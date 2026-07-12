@@ -2289,7 +2289,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - acceptance: success、operation failure+rollback success、operation failure+rollback failureの3経路でquery/release exactness、original error identity、release onceをDB非依存fake clientで固定。full gatesとindependent DB/data/security/privacy/audit review PASSまで未完了。
   - review_results: independent DB/data/audit/security/privacy/medical review APPROVED、findingsなし。public pg release contract、original error、destroy-only-on-rollback-failure、once-only release、SQL/semantic non-changeを確認。
   - validation_results: focused lifecycle3、API198 + PostgreSQL14 expected skips、web215、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
-  - landing_record: exact5 commit/push待ち。
+  - landing_record: commit `cd500ed` `WP-4095: quarantine failed audit transactions` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、review/full gates PASS、rollback失敗clientだけをdestroyし、SQL/lock/hash/DB/APIは不変。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
