@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002-W25 UIX-002 exact5 metadata-only migration is FINALIZED_PENDING_LANDING at inventory 173/63/110; IDX v0.4.38 is APPROVED and WP-9002 remains IN_PROGRESS.
-- Current task: perform final exact5/staged-diff verification, then root exact-stage commit/push to the safe feature branch.
+- Current phase: WP-9002-W25 UIX-002 exact5 metadata-only migration LANDED on the safe feature branch at inventory 173/63/110; IDX v0.4.38 is APPROVED and WP-9002 remains IN_PROGRESS.
+- Current task: fresh read-only mapping and pre-plan review of the remaining 63 incomplete SSOT documents before defining the next wave; separately retain the random-MAC substring flaky assertion as a code-test backlog item.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -114,4 +114,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W24 landing checkpoint: commit `cfaa01b` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5; inventory173/64/109; ACC-009 body/preserved/boundary/failure pins and 172 non-target identity unchanged; thirteen reviews/full regression gates APPROVED; no POS/payment/DB/API/UI/device/external transaction/production activation.
 - W25 review checkpoint: baseline `53f55eb`; UIX-002 exact5 selected over refund/legal/permission-heavy ACC-005; body `3659/2a4b5ed1…`; target173/63/110; non-target `172/14858/29885af8…`; pre-plan APPROVED_WITH_PINS after root adjudication. Preserve 11 minimum criteria, three pillars/prohibitions, ten UX prohibitions, fourteen tests, two questions, and legacy approval. Limited BusinessNav/SystemModeBadge/PatientHeader existence is not full UI/Edge/offline/performance/usability/accessibility/medical-workflow or release evidence.
 - W25 finalization checkpoint: all nine roles APPROVED or APPROVED_WITH_PINS; UIX-002 body/preserved/all23 and 172 non-target identity verified; IDX v0.4.38 APPROVED/effective 2026-07-12. Typecheck/build/gates PASS; initial workspace test hit an unrelated random-MAC substring flaky assertion, then focused and full rerun PASS. Fourteen UX tests, WP-0032, accessibility/performance/medical workflow and human/production gates remain unresolved.
-- Next action: final exact5 verification and root exact-stage landing on the safe feature branch.
+- W25 landing checkpoint: commit `9e0b38e` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5; inventory173/63/110; UIX-002 body/preserved/11 criteria/3 pillars/10 prohibitions/14 tests/2 questions and 172 non-target identity unchanged; nine reviews/regression gates accepted; no UI/UX, Edge/offline, performance, accessibility, medical workflow, PHI telemetry, production, or release-readiness activation.
+- Next action: fresh read-only mapping and pre-plan review of remaining 63 incomplete SSOT documents; address the unrelated random-MAC substring flaky assertion in a separate exact-path WP.
