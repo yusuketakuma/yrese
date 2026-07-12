@@ -13,7 +13,9 @@ reviewers:
   - human_review_required
 version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §10、PRD-006 product_concept(柱2: 返戻率KPI公開)
 depends_on:
   - QUA-007 quality_transparency_strategy
@@ -22,6 +24,16 @@ depends_on:
   - CLM-系 請求SSOT(返戻業務フロー — 未起案分を含む)
   - ARC-006 projection_recalculation_policy
   - ARC-007 claim_finalization_immutability_policy
+impacts:
+  - shared-kernel allowsClaimFinalization NORMAL-only invariant
+  - future claim-return KPI aggregation and publication implementation
+related_work_packages: [WP-0043, WP-9002-W14]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-12 WP-9002-W14 metadata-only completion: body/status/version/approval/effective semantics unchanged"
 blockers:
   - BLOCKED_LEGAL_REVIEW(公開実施は QUA-008 の前提条件に従い BLOCKED)
   - SSOT_UPDATE_REQUIRED(分母分子の確定は返戻業務フロー SSOT の APPROVED 範囲に依存)

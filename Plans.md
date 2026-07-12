@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W13 + WP-9005/9006 LANDED、75 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W13 + WP-9005/9006 LANDED、W14 FINALIZED、74 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1125,6 +1125,33 @@ finalization_record: RCP-004 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/75/98; RCP-004 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; legal/evidence/cycle/audit gaps remain unresolved and no StatementDocument/privacy/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W14 QUA-009 claim-return KPI policy metadata-only migration(FINALIZED / LANDING PENDING、P1)
+
+```yaml
+work_package_id: WP-9002-W14
+baseline_commit: 86a63e1
+baseline_inventory: { total: 173, incomplete: 75, complete: 98 }
+target_inventory: { total: 173, incomplete: 74, complete: 99 }
+target: QUA-009 v0.1.1 metadata-only; body/status/version/legacy approval/effective semantics preserved
+purpose: Complete PRC-007 metadata without changing claim-return definition, numerator/denominator, legal/privacy/publication, anonymization, consent, correction history, or production semantics.
+allowed_files: QUA-009, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other quality/claim/product/security docs, code/tests/packages/lock; KPI/claim/publication/schema changes, migration/DML, API/UI, external publish, production/deploy, semantic or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: none; body must remain 3693 bytes / SHA-256 b163e8a4912109f835ea502b21fecbd2e511f551bfcb834137dba2bccf97264f
+pins: preserve APPROVED/v0.1.1/created_at/approved_at/approved_by/owner/reviewers/source/dependencies/two blockers/two open questions; shared-kernel NORMAL-only guard is partial invariant evidence only; no KPI aggregator/publication runtime or direct tests exist
+metadata: updated_at 2026-07-12; effective_from/effective_to null; impacts [shared-kernel allowsClaimFinalization NORMAL-only invariant, future claim-return KPI aggregation and publication implementation]; related_work_packages [WP-0043, WP-9002-W14]; related_tests/related_prs/evidence_ids empty; top-level change_log only
+non_target: 172 canonical rows / 16075 bytes / SHA-256 eb9ec0ed8876debc5cd970d9833584d135715081fd654066844a1672fed63e28 must remain unchanged; target review inventory 173/74/99
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, claims_evidence_specialist, security_critic, privacy_compliance_reviewer, medical_safety_reviewer, product_quality_reviewer]
+human_gate: no new human approval for byte-preserving metadata only; legal/privacy classification, anonymity threshold, consent/contract, returned-vs-assessed and numerator/denominator definitions, publication/business authority, claim/KPI flow, PHI, DB/API/UI/runtime/external publish/production behavior, or risk acceptance stops for applicable authority
+validation: exact5/staged0; target body/preserved-field/all23/inventory/non-target assertions; shared-kernel test and full repository gates are partial/regression-only, never direct KPI correctness/publication evidence
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock blockers, KPI computation/publication, claim finalization, or legal/privacy readiness
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, claims_evidence_specialist, security_critic, privacy_compliance_reviewer, medical_safety_reviewer, and product_quality_reviewer APPROVED; legal/privacy/publication/product authority remains separate for semantic decisions
+validation_results: FINAL PASS before landing — exact5/staged0; QUA-009 all23 and body 3693/b163e8a4912109f835ea502b21fecbd2e511f551bfcb834137dba2bccf97264f byte-identical; preserved fields/two blockers/two questions unchanged; inventory173/74/99; 172 non-target missing-set baseline-identical at 16075 bytes / SHA-256 eb9ec0ed8876debc5cd970d9833584d135715081fd654066844a1672fed63e28; shared-kernel36 and workspace typecheck/test/build PASS with API172 plus 13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as partial/regression-only gates
+finalization_record: QUA-009 retains APPROVED/v0.1.1/legacy approval/effective null and fail-closed KPI/publication semantics; IDX-001 v0.4.27 APPROVED with approved_at/effective_from 2026-07-12 and ten W14 role approvals; NORMAL-only guard and regression gates do not prove KPI aggregation, provenance filtering, legal/privacy approval, or publication readiness
+landing_required: exact5 commit_and_push to the safe feature branch only
+state: FINALIZED; exact5 landing pending
 ```
 
 ## Phase 0: 調査・計画(ドキュメント)
