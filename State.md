@@ -2,16 +2,16 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.26はWP-9002-W13でfeature branchへLANDED済み。現在のIDX-001 v0.4.27はWP-9002-W14 ten-reviewer approvalを経てAPPROVED・landing pendingである。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.27はWP-9002-W14 ten-reviewer approvalを経てAPPROVED・commit `16eb58f`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
 
-### WP-9002-W14 QUA-009 metadata — FINALIZED / landing pending
+### WP-9002-W14 QUA-009 metadata — LANDED
 
 - clean feature-branch baseline `86a63e1`で75 incomplete SSOTをfresh mappingし、QUA-009 exact5をpre-plan `APPROVED_WITH_PINS`とした。不足8 fieldだけを補完し、本文3693 bytes / SHA-256 `b163e8a4912109f835ea502b21fecbd2e511f551bfcb834137dba2bccf97264f`、APPROVED/v0.1.1/legacy approval、dependencies・2 blockers・2 questionsを不変とする。candidate inventory173/74/99、non-target172 `16075/eb9ec0ed…`。`allowsClaimFinalization`はNORMAL-only mode guardの部分証拠だけで、直接KPI aggregator/publication runtime/testはない。返戻/査定・分母分子、法務/privacy/匿名化/同意/公開、PHI、DB/API/UI/production/externalを解除せず、候補時のIDX v0.4.27はPROPOSED・approval/effective nullでreview待ちだった。
-- independent/spec/data/architect/test/claims/security/privacy/medical/product-qualityの10 roleがAPPROVED。QUA-009本文/preserved fields/all23、inventory173/74/99、172 non-target identityを独立確認。full gatesはPASSしたがKPI correctness/publication evidenceではない。IDX v0.4.27をAPPROVED/effective 2026-07-12へfinalize。legacy LOCAL_ONLY provenance/filtering表現もend-to-end証明済みとせず、blockers/human authorityは未解除。exact5 landing pending。
+- independent/spec/data/architect/test/claims/security/privacy/medical/product-qualityの10 roleがAPPROVED。QUA-009本文/preserved fields/all23、inventory173/74/99、172 non-target identityを独立確認。full gatesはPASSしたがKPI correctness/publication evidenceではない。IDX v0.4.27をAPPROVED/effective 2026-07-12へfinalize。legacy LOCAL_ONLY provenance/filtering表現もend-to-end証明済みとせず、blockers/human authorityは未解除。exact5はcommit `16eb58f`として`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。WP-9002は74 incompleteでIN_PROGRESSを継続する。
 
 ### WP-9002-W13 RCP-004 metadata — LANDED
 
