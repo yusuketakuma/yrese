@@ -2,11 +2,16 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.24はWP-9002-W11 ten-reviewer approvalを経てAPPROVED・commit `e233197`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.24はWP-9002-W11でfeature branchへLANDED済み。現在のIDX-001 v0.4.25はWP-9002-W12 ten-reviewer approvalを経てAPPROVED・landing pendingである。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
+
+### WP-9002-W12 RCP-001 metadata — FINALIZED / landing pending
+
+- clean feature-branch baseline `5133f19`で77 incomplete SSOTをfresh mappingし、RCP-001単独exact5をpre-plan `APPROVED_WITH_PINS`とした。RCP-004とのgroupingは別authority surfaceのため却下。不足7 fieldだけを補完し、本文3254 bytes / SHA-256 `8d7336d37c9816741bd2e72bf72c0814857c6851ef60daf9e3fb13fcbd3082ed`、APPROVED/v0.2.0/legacy approval、依存・impacts・2 questions・1 blockerを不変とする。candidate inventory173/76/97、non-target172 `16286/9e7a90df…`。直接ReceiptDocument/payment issuance runtime/testはなく、既存cycle/source drift/audit部分証拠を解決済みとしない。actual payment/partial balance、LOCAL_ONLY/recovery、audit、legal/tax/accounting、PHI、WP-2202/3101、DB/API/UI/production/externalを解除せず、候補時のIDX v0.4.25はPROPOSED・approval/effective nullでreview待ちだった。
+- independent/spec/data/architect/DB/test/claims/security/privacy/medicalの10 roleがAPPROVED。RCP-001本文/preserved fields/all23、inventory173/76/97、172 non-target identityを独立確認。full regression gatesはPASSしたがreceipt/payment直接実装証拠ではない。IDX v0.4.25をAPPROVED/effective 2026-07-12へfinalize。known gapsとhuman authorityは未解除。exact5 landing pending。
 
 ### WP-9002-W11 RCP-003 metadata — LANDED
 

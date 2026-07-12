@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W11 + WP-9005/9006 LANDED、77 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W11 + WP-9005/9006 LANDED、W12 FINALIZED、76 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1069,6 +1069,33 @@ finalization_record: RCP-003 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit e233197 `WP-9002-W11: normalize receipt lifecycle metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/77/96; RCP-003 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; known dependency/source/audit gaps remain unresolved and no receipt-state/legal/tax/accounting/audit/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 77 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W12 RCP-001 receipt-issuance policy metadata-only migration(FINALIZED / LANDING PENDING、P1)
+
+```yaml
+work_package_id: WP-9002-W12
+baseline_commit: 5133f19
+baseline_inventory: { total: 173, incomplete: 77, complete: 96 }
+target_inventory: { total: 173, incomplete: 76, complete: 97 }
+target: RCP-001 v0.2.0 metadata-only; body/status/version/legacy approval/effective semantics preserved
+purpose: Complete PRC-007 metadata without changing actual-payment-only issuance, partial-payment balance, LOCAL_ONLY/recovery, audit, legal/tax/accounting, PHI, or production semantics.
+allowed_files: RCP-001, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: RCP-004 or other receipt/accounting/audit/regulatory docs, code/tests/packages/lock; payment/receipt/offline/audit/schema changes, migration/DML, API/UI, external action, production/deploy, semantic or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS; RCP-004 grouping REJECTED due separate statement/calculation/evidence/legal/privacy authority surface
+body_changes: none; body must remain 3254 bytes / SHA-256 8d7336d37c9816741bd2e72bf72c0814857c6851ef60daf9e3fb13fcbd3082ed
+pins: preserve APPROVED/v0.2.0/created_at/approved_at/approved_by/owner/reviewers/source/dependencies/impacts/two open questions/one blocker; preserve existing RCP cycles/references without repair or acyclic/completeness claim; construction section refs are legacy/unverified; generic SystemMode/audit foundations are not receipt implementation evidence
+metadata: updated_at 2026-07-12; effective_from/effective_to null; related_work_packages [WP-0034, WP-2202, WP-3101, WP-9002-W12]; related_tests/related_prs/evidence_ids empty; top-level change_log only
+non_target: 172 canonical rows / 16286 bytes / SHA-256 9e7a90df0ca30599d791a2a075d0c1aaa17dd40db56d5ee602388726ac6853df must remain unchanged; target review inventory 173/76/97
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, claims_evidence_specialist, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata only; legal receipt fields/deduction/partial-payment display, patient/payment correctness, LOCAL_ONLY/recovery/outbox/dedupe, audit taxonomy/persistence, tenant/PHI/authz, ReceiptDocument/WP-2202/3101, DB/API/UI/runtime/production/external behavior, or risk acceptance stops for applicable authority
+validation: exact5/staged0; target body/preserved-field/all23/inventory/non-target assertions; check:ssot-index, test:scripts, secrets, boundaries, diff; full workspace gates are regression-only and never direct RCP-001 evidence
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock receipt/payment/offline/legal/runtime readiness
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, claims_evidence_specialist, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; legal/tax/accounting/pharmacy/product/claims human authority remains separate for semantic decisions
+validation_results: FINAL PASS before landing — exact5/staged0; RCP-001 all23 and body 3254/8d7336d37c9816741bd2e72bf72c0814857c6851ef60daf9e3fb13fcbd3082ed byte-identical; preserved fields unchanged; inventory173/76/97; 172 non-target missing-set baseline-identical at 16286 bytes / SHA-256 9e7a90df0ca30599d791a2a075d0c1aaa17dd40db56d5ee602388726ac6853df; workspace typecheck/test/build PASS with API172 plus 13 expected PostgreSQL skips and web188; audit182; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
+finalization_record: RCP-001 retains APPROVED/v0.2.0/legacy approval/effective null and receipt/payment semantics; IDX-001 v0.4.25 APPROVED with approved_at/effective_from 2026-07-12 and ten W12 role approvals; empty direct tests/PRs/evidence and regression gates do not waive payment/offline/audit/legal/accounting/PHI/runtime/production gates
+landing_required: exact5 commit_and_push to the safe feature branch only
+state: FINALIZED; exact5 landing pending
 ```
 
 ## Phase 0: 調査・計画(ドキュメント)

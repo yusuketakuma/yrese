@@ -11,12 +11,21 @@ reviewers:
   - human_review_if_required
 version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
+effective_from: null
+effective_to: null
 source_refs: [構築プロンプト v0.2.0 §0.0.4.1, §0.0.4.3, §0.0.4.5]
 depends_on: [ACC-001(accounting_domain_model — WP-0033), RCP-002, RCP-003, RCP-005]
 impacts: [WP-2202(領収証バックエンド), WP-3101(会計・領収証画面)]
+related_work_packages: [WP-0034, WP-2202, WP-3101, WP-9002-W12]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文§7変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-12 WP-9002-W12 metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - 領収証の法定記載事項(療担規則・記載要領の該当規定)【要確認: 一次資料精読 → evidence_id 発行】
   - 医療費控除対応の記載範囲【要確認】
