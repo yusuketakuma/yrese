@@ -2469,7 +2469,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - acceptance: distinct nonempty/empty self-loopを拒否しuntrusted row/token zero commit。同じretained cursorでretryを許し、different/undefined nextCursorは既存どおり一度だけmerge/terminal化。page/cross-page duplicate precedence、stale/coalescing/replacement/owner cleanup維持。PHI/raw cursor/error非echo。
   - review_results: independent verifierとpatient/data/security/privacy/API/frontend/accessibility/medical review APPROVED、findingsなし。current deterministic v1限定のcontrol tighteningでWP-4057/future stateful cursor/human gate不変。
   - validation_results: focused patient-search36、web284、API227 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
-  - landing_record: exact5 implementation commit/push pending。
+  - landing_record: implementation commit `066ca00` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent/domain reviewとfull gates PASS、patient appendのexact cursor self-loopをpartial commit前にfail-closed拒否。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。

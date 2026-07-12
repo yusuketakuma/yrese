@@ -8,12 +8,12 @@
 
 ## 2026-07-13
 
-### WP-4115 patient append cursor self-loop rejection — FINALIZED / landing pending
+### WP-4115 patient append cursor self-loop rejection — LANDED
 
 - clean baseline `1c1133b`。append cursor Cがdistinct/empty pageと同じ`nextCursor:C`を返すとpartial rowsをcommitしたままpaginationが停止/loopする実在R1 gapをexact5で修正。
 - stale/page duplicate/state tuple/cross-page overlap後、merge前にdefined cursorのexact equalityだけを拒否。decode/order推測なし。prior rows/query/cursor、generic error、retryを維持しpartial commitなし。
 - independent verifierとpatient/data/security/privacy/API/frontend/accessibility/medical review APPROVED、findingsなし。focused patient-search36、web284、API227 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/buildと全gate PASS。
-- exact5 implementation commit/push pending。API/contracts/cursor codec/DB/WP-4057/UI/ARIA/SSOT/human gates不変。
+- exact5 implementation commit `066ca00`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。API/contracts/cursor codec/DB/WP-4057/UI/ARIA/SSOT/human gates不変。
 
 ### WP-4114 audit browser response count integrity — LANDED
 
