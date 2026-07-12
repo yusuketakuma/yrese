@@ -2451,7 +2451,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - acceptance: valid rehashしたstart-at-2、gap`[1,3]`、reuse`[1,1]`、valid prefix後backward`[1,2,1]`を`limit=1`でも500/no-store/audit zero。`[2,3]`+duplicate EventIdはWP-4112 identity errorを優先。empty/contiguous healthyは維持し、broken/malformed+sequence anomalyは既存reason/checkedCount/raw window/no-backfill/audit.viewedを優先。
   - review_results: initial domain MEDIUM(full EventId precedenceがsingle loopで配置依存)とverifier MEDIUM(backward fixtureがstart anomalyと同一branch)を、EventId/sequence別full passと`[1,2,1]` fixtureで修正。independent verifierとaudit/data/security/privacy/API/medical/DB-boundary re-review APPROVED、findingsなし。DB-005 decision B/app-local boundary、virtual genesis、no-delete、future segmentation stopを維持。
   - validation_results: focused audit API23、API227 + PostgreSQL14 expected skips、web272、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
-  - landing_record: exact5 implementation commit/push pending。
+  - landing_record: implementation commit `4077779` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、initial MEDIUM 2件修正後のindependent/domain re-reviewとfull gates PASS、healthy verified audit sequenceを厳密な`1..N`へfail-closed。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。

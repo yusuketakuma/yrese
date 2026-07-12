@@ -8,12 +8,12 @@
 
 ## 2026-07-13
 
-### WP-4113 verified audit sequence continuity — FINALIZED / landing pending
+### WP-4113 verified audit sequence continuity — LANDED
 
 - clean baseline `b324c52`。異なるEventIdを正しく再hash連結したsequence gap chainがcore verifierでhealthyになる実在R2 audit completeness gapをAPI exact5で修正。APPROVED DB-005の初回1/TIP採番`1..N`をapp read boundaryで補強。
 - scope/core verify後、WP-4112 EventId全件passを完了してからhealthy full listのみsequenceを別pass検査。start2/gap/reuse/valid-prefix backwardをfixed non-echo 500/no-store/audit zeroで全体拒否。broken/malformedは既存reason/view auditを維持。
 - initial domain/verifier MEDIUM 2件をfull-pass分離と`[1,2,1]` fixtureで修正し、independent verifierとaudit/data/security/privacy/API/medical/DB-boundary re-review APPROVED。focused audit23、API227 + PostgreSQL14 expected skips、web272、audit183、workspace typecheck/test/buildと全gate PASS。
-- exact5 implementation commit/push pending。audit core/reason/contracts/OpenAPI/repository/DB/SSOT/web/human gates不変。
+- exact5 implementation commit `4077779`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。audit core/reason/contracts/OpenAPI/repository/DB/SSOT/web/human gates不変。
 
 ### WP-4112 verified audit duplicate EventId rejection — LANDED
 
