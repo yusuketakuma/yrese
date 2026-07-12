@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. Remaining57 classification is in REVIEW; WP-0020〜0023 reconciliation and W31/WP-4081 are LANDED.
-- Current task: independently verify the 57-item classification manifest and WP-4057 privacy/DB choice gate. WP-4050 remains separate and human-gated.
+- Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. Remaining57 classification, WP-0020〜0023 reconciliation, W31 and WP-4081 are LANDED.
+- Current task: select the next non-gated code slice; WP-4057 is paused for human privacy/DB choice and WP-4050 remains separately human-gated.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -141,4 +141,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - WP-0020〜0023 ledger landing checkpoint: commit `6dff2a3` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact3; independent/domain review accepted; IDX v0.4.44, inventory173/57/116, CAL SSOT/code/runtime unchanged and all semantic/human gates retained.
 - Remaining57 classification checkpoint: non-SSOT manifest partitions all documents into metadata-safe0/semantic-amendment18/human-authority39 with missing-field signatures and next gates; no index/status/approval change.
 - WP-4057 checkpoint: plaintext signed keyset anchors violate API-001 non-PHI cursor; AEAD cursor needs privacy/security contract amendment, while a non-PHI order key needs DB SSOT/migration approval. Keep v1 HMAC/OFFSET unchanged until human selection.
-- Next action: independent/domain review of the classification, then exact-stage landing; after landing, request/record the WP-4057 human choice or select another non-gated code slice. WP-4050 remains separate.
+- Remaining57 classification landing checkpoint: commit `e654938` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4; independent/domain review accepted; all57 IDs/signatures match live frontmatter; metadata0/semantic18/human39, duplicates0/omissions0; no SSOT/index/code/readiness change.
+- Next action: read-only mapping/pre-plan of the next non-gated code slice while WP-4057 awaits human choice. WP-4050 remains separate.

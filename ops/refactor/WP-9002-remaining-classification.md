@@ -3,7 +3,7 @@
 Baseline: `57e9a66`
 Index: IDX-001 v0.4.44
 Inventory: 173 total / 57 incomplete / 116 complete
-Status: REVIEW
+Status: LANDED (`e654938`)
 
 This is a non-SSOT planning artifact. It does not approve, amend, activate, or deprecate any SSOT. It records why the byte-preserving metadata-only loop stopped after W31 and routes every remaining document to the next required gate.
 
