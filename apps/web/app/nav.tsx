@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 /**
  * 業務ナビゲーション。
@@ -24,7 +27,11 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/admin", label: "管理" },
 ] as const;
 
-export function BusinessNav({ current }: { current?: string }) {
+export function BusinessNav() {
+  return <BusinessNavView current={usePathname()} />;
+}
+
+export function BusinessNavView({ current }: { readonly current: string }) {
   return (
     <nav className="app-nav" aria-label="業務メニュー">
       <ul>

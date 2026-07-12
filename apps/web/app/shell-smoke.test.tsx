@@ -1,6 +1,12 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+const navigation = vi.hoisted(() => ({ pathname: "/" }));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => navigation.pathname,
+}));
 
 import AdminPage from "./admin/page";
 import CheckoutPage from "./checkout/page";
@@ -16,8 +22,9 @@ import { SystemModeBadge } from "./system-mode-badge";
 (globalThis as { React?: typeof React }).React = React;
 
 describe("web shell smoke contracts", () => {
-  it("renders every business navigation item with stable hrefs and current marker", () => {
-    const html = renderToStaticMarkup(<BusinessNav current="/patients" />);
+  it("renders every business navigation item with stable hrefs and production current marker", () => {
+    navigation.pathname = "/patients";
+    const html = renderToStaticMarkup(<BusinessNav />);
 
     for (const item of NAV_ITEMS) {
       expect(html).toContain(`href="${item.href}"`);
@@ -25,7 +32,30 @@ describe("web shell smoke contracts", () => {
     }
     expect(html).toContain('aria-label="業務メニュー"');
     expect(html).toMatch(/<a[^>]*aria-current="page"[^>]*href="\/patients"/);
+    expect(html.match(/aria-current="page"/g)).toHaveLength(1);
   });
+
+  it.each(["/", "/patients", "/admin"])(
+    "marks exactly one navigation item for the exact pathname: %s",
+    (pathname) => {
+      navigation.pathname = pathname;
+      const html = renderToStaticMarkup(<BusinessNav />);
+
+      expect(html).toMatch(
+        new RegExp(`<a[^>]*aria-current="page"[^>]*href="${pathname === "/" ? "\\/" : pathname}"`),
+      );
+      expect(html.match(/aria-current="page"/g)).toHaveLength(1);
+    },
+  );
+
+  it.each(["/not-present", "/patients/example"])(
+    "does not infer a current navigation item for an unmatched pathname: %s",
+    (pathname) => {
+      navigation.pathname = pathname;
+
+      expect(renderToStaticMarkup(<BusinessNav />)).not.toContain('aria-current="page"');
+    },
+  );
 
   it("renders system mode labels without relying on color only", () => {
     expect(renderToStaticMarkup(<SystemModeBadge />)).toContain("通常稼働");
