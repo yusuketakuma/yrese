@@ -8,6 +8,12 @@
 
 ## 2026-07-12
 
+### WP-9002-W23 ACC-004 metadata — FINALIZED_PENDING_LANDING
+
+- clean feature-branch baseline `47c7422`で残存66 SSOTをfresh mappingし、known drift/高権限候補を避け、ACC-006との明示read-throughがあるACC-004単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
+- ACC-004本文1882 bytes / SHA-256 `b2b41d847221ab02ea8fdb871d1fa926ba95eef9f0a8c3679a27e3f7e412fb9d`、APPROVED/v0.2.0/legacy approval、dependencies、2 questionsを不変とする。candidate inventory173/65/108、non-target172 `15096/cea9bad6…`。10要件/4禁止、実受領額のみ領収、残債非隠蔽、現金RECEIVED/キャッシュレスCAPTURED、LOCAL_ONLY番号/sync/reverifyを保持。copay blockerを狭く継承し、direct tests/evidence/runtimeなし。review待ち、landing未主張。
+- independent/spec/data/architect/DB/test/accounting/claims/receipt-legal/API/security/privacy/medicalの13 roleがAPPROVED。ACC-004本文/preserved/all23、10 requirements/4 prohibitions、inventory173/65/108、172 non-target identityを独立確認。full gatesはPASSしたがpartial-payment runtime correctness証拠ではない。IDX v0.4.36をAPPROVED/effective 2026-07-12へfinalizeし、copay/receipt/legal/LOCAL_ONLY/WP/DB/API/UI/production/human gatesは未解除。exact-stage commit/push前でlanding未主張。
+
 ### WP-9002-W22 ACC-006 metadata — LANDED
 
 - clean feature-branch baseline `cee9415`で残存67 SSOTをfresh mappingし、known drift群とACC-005/006を比較した。refund permission/fraud/legal面が広いACC-005を後続へ回し、live codeで26 state runtime未実装を確認したACC-006単独exact5をpre-plan `APPROVED_WITH_PINS`とした。

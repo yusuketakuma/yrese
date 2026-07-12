@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W22 + WP-9005/9006 LANDED、66 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W22 + WP-9005/9006 LANDED、W23 FINALIZED_PENDING_LANDING、65 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1125,6 +1125,32 @@ finalization_record: RCP-004 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/75/98; RCP-004 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; legal/evidence/cycle/audit gaps remain unresolved and no StatementDocument/privacy/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W23 ACC-004 partial-payment metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+
+```yaml
+work_package_id: WP-9002-W23
+baseline_commit: 47c7422
+baseline_inventory: { total: 173, incomplete: 66, complete: 107 }
+target_inventory: { total: 173, incomplete: 65, complete: 108 }
+target: ACC-004 v0.2.0 metadata-only; body/status/version/legacy approval/effective/partial-payment semantics preserved
+purpose: Complete PRC-007 metadata and narrowly inherit the existing copay stop without changing amounts/allocation/status/receipt/numbering/sync, DB/API/UI, or implementation readiness.
+allowed_files: ACC-004, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other accounting/receipt/calculation/module/database docs, code/tests/packages/lock; amount/allocation/status/receipt/numbering/sync/schema/migration/DML/API/UI/payment/refund/external/production/deploy or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: none; body must remain 1882 bytes / SHA-256 b2b41d847221ab02ea8fdb871d1fa926ba95eef9f0a8c3679a27e3f7e412fb9d
+pins: preserve APPROVED/v0.2.0/created_at/approved_at/approved_by/owner/reviewers/source/dependencies/two open questions/body history; preserve 10 requirements/4 prohibitions, PARTIALLY_PAID, cash RECEIVED and cashless ACC-006 CAPTURED read-through, receipt actual-received amount only, residual non-concealment, LOCAL_ONLY local number/sync/reverify; MVP scope is not runtime readiness
+metadata: updated_at 2026-07-12; effective_from/effective_to null; impacts ACC-002/003/005/006/007, RCP-001/002 and future WP-2201/2202/3101; related_work_packages [WP-0033, WP-0034, WP-2201, WP-2202, WP-3101, WP-9002-W23]; related_tests/related_prs/evidence_ids empty; body-history authority plus W23 metadata-only change log; narrow copay blocker
+non_target: 172 canonical rows / 15096 bytes / SHA-256 cea9bad606f769f58b80b04079b2512cd5e1cb5847c7c87e87fb61e9f4ca9d03 must remain unchanged; target review inventory 173/65/108
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, accounting_domain_reviewer, claims_evidence_specialist, receipt_legal_reviewer, api_contract_reviewer, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata/existing copay stop only; copay/patient charge, partial-payment practice, allocation default, receipt/supplement residual display and official notice, receipt legal/tax, LOCAL_ONLY numbering/sync/reverify, refund/cancel, WP-2201/2202/3101, DB/API/UI, production/risk acceptance stop for applicable human authorities
+validation: exact5/staged0; body/preserved/all23/10 requirements/4 prohibitions/state read-through/inventory/non-target assertions; SSOT/scripts/secrets/boundaries/diff and full workspace gates are regression-only, not partial-payment runtime correctness evidence
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock copay/partial-payment/receipt/runtime/production gates
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, accounting_domain_reviewer, claims_evidence_specialist, receipt_legal_reviewer, api_contract_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; accounting/claims/receipt/legal authority remains separate
+validation_results: FINAL PASS before landing — exact5/staged0; ACC-004 all23 and body 1882/b2b41d847221ab02ea8fdb871d1fa926ba95eef9f0a8c3679a27e3f7e412fb9d byte-identical; preserved fields/two questions/10 requirements/4 prohibitions unchanged; inventory173/65/108; 172 non-target missing-set baseline-identical at 15096 bytes / SHA-256 cea9bad606f769f58b80b04079b2512cd5e1cb5847c7c87e87fb61e9f4ca9d03; workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
+finalization_record: ACC-004 retains APPROVED/v0.2.0/legacy approval/effective null and partial-payment semantics; IDX-001 v0.4.36 APPROVED with approved_at/effective_from 2026-07-12 and thirteen W23 role approvals; narrow copay blocker/empty evidence do not waive receipt/legal/LOCAL_ONLY/accounting/DB/API/UI/runtime/production gates
+state: FINALIZED_PENDING_LANDING; exact-stage commit and safe feature-branch push pending; landing not claimed
 ```
 
 - [x] WP-9002-W22 ACC-006 accounting-status metadata-only migration(LANDED、P1)

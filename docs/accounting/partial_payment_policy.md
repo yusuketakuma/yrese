@@ -11,14 +11,26 @@ reviewers:
   - human_review_if_required
 version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §0.0.4.4
 depends_on: [ACC-001, ACC-002, ACC-003, docs/receipt/receipt_issuance_policy.md]
+impacts: [ACC-002 receivable, ACC-003 allocation, ACC-005 refund and adjustment, ACC-006 states, ACC-007 daily closing, RCP-001 partial receipt, RCP-002 local numbering, future WP-2201/2202/3101]
+related_work_packages: [WP-0033, WP-0034, WP-2201, WP-2202, WP-3101, WP-9002-W23]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文§5の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-12 WP-9002-W23 metadata-only completion: body/status/version/approval/effective/partial-payment semantics unchanged"
 open_questions:
   - 未収残額を領収証または別紙に表示するか否か(【要確認: 公式通知・実務レビュー】確認まで領収証本体には受領額のみ記載)
   - 割当順序デフォルト(ACC-003 と同一論点)
+blockers:
+  - BLOCKED_REGULATORY_REVIEW(copay evidence未発行中は確定Charge/PatientReceivableがないため一部入金runtimeを開始しない; ACC-001 §4を狭く継承)
 ```
 
 ## 1. MVP対象宣言
