@@ -2,16 +2,16 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.25はWP-9002-W12でfeature branchへLANDED済み。現在のIDX-001 v0.4.26はWP-9002-W13 ten-reviewer approvalを経てAPPROVED・landing pendingである。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.26はWP-9002-W13 ten-reviewer approvalを経てAPPROVED・commit `fb1928d`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
 
-### WP-9002-W13 RCP-004 metadata — FINALIZED / landing pending
+### WP-9002-W13 RCP-004 metadata — LANDED
 
 - clean feature-branch baseline `18ec003`で76 incomplete SSOTをfresh mappingし、sole receipt residual RCP-004 exact5をpre-plan `APPROVED_WITH_PINS`とした。不足7 fieldだけを補完し、本文2993 bytes / SHA-256 `3868a926099a03d83be853e397b89df8380da8df0bc62582d396795635d7aa05`、APPROVED/v0.2.0/legacy approval、依存・impacts・3 questions・1 blockerを不変とする。candidate inventory173/75/98、non-target172 `16185/d6adb1ad…`。直接StatementDocument runtime/testはなく、legacy source、CAL/CLM partial evidence、RCP cycles、statement.declined audit gapを解決済みとしない。free/zero-yen/legal fields、calculation/evidence、privacy/PHI、audit/retention、WP-2202/3101、DB/API/UI/production/externalを解除せず、候補時のIDX v0.4.26はPROPOSED・approval/effective nullでreview待ちだった。
-- independent/spec/data/architect/DB/test/claims/security/privacy/medicalの10 roleがAPPROVED。RCP-004本文/preserved fields/all23、inventory173/75/98、172 non-target identityを独立確認。full regression gatesはPASSしたがStatementDocument直接実装証拠ではない。IDX v0.4.26をAPPROVED/effective 2026-07-12へfinalize。known gapsとhuman authorityは未解除。exact5 landing pending。
+- independent/spec/data/architect/DB/test/claims/security/privacy/medicalの10 roleがAPPROVED。RCP-004本文/preserved fields/all23、inventory173/75/98、172 non-target identityを独立確認。full regression gatesはPASSしたがStatementDocument直接実装証拠ではない。IDX v0.4.26をAPPROVED/effective 2026-07-12へfinalize。known gapsとhuman authorityは未解除。exact5はcommit `fb1928d`として`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。WP-9002は75 incompleteでIN_PROGRESSを継続する。
 
 ### WP-9002-W12 RCP-001 metadata — LANDED
 
