@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002-W8 RCP-005 exact5 metadata-only migration finalized at inventory 173/80/93; IDX-001 v0.4.21 APPROVED/effective 2026-07-12; landing pending.
-- Current task: independently recheck finalized exact5/staged paths and gates, then root exact-stages, commits, and pushes only this safe feature branch.
+- Current phase: WP-9002-W8 RCP-005 exact5 metadata-only migration LANDED on the safe feature branch at inventory 173/80/93; WP-9002 remains IN_PROGRESS.
+- Current task: fresh read-only mapping and pre-plan review of the remaining 80 incomplete SSOT documents before defining any next wave.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -63,4 +63,5 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W7C landing checkpoint: commit `57172ca` pushed to `origin/main`; exact5; inventory173/81/92; ACC-008 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; no payment/POS/claim/tenant/DB/production/external/deployment activation.
 - W8 mapping/pre-plan checkpoint: baseline `7558084`; fresh inventory173/81/92; RCP-005 exact5 selected; body `1808/2142925c…`; target173/80/93; pre-plan APPROVED_WITH_PINS. No direct receipt/template runtime or tests; events hash format is adjacent evidence only. Preserve legal/pharmacy questions and all receipt/hash/storage/production human gates.
 - W8 finalization checkpoint: nine roles APPROVED; RCP-005 body/preserved fields/all23 and 172 non-target identity verified; IDX v0.4.21 APPROVED/effective 2026-07-12; full regression gates PASS. No receipt/template/legal/hash/storage/runtime/DB/production/external readiness claim or human semantic approval.
-- Next action: final read-only recheck, then exact-stage/commit/push the finalized five paths on `agent/reconcile-wp9002-w7c-20260712`; afterwards record landing without rewriting history.
+- W8 landing checkpoint: commit `fbef2c2` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5; inventory173/80/93; RCP-005 body/preserved fields and 172 non-target identity unchanged; nine reviews/full regression gates APPROVED; no receipt/template/legal/hash/storage/runtime/DB/production/external activation.
+- Next action: fresh read-only mapping and pre-plan review of the remaining 80 incomplete SSOT documents; do not infer receipt implementation/readiness from W8 metadata completion.

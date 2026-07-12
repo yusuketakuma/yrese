@@ -2,16 +2,16 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.20はWP-9002-W7CでLANDED済み。現在のIDX-001 v0.4.21はWP-9002-W8 nine-reviewer approvalを経てAPPROVED・landing pendingである。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.21はWP-9002-W8 nine-reviewer approvalを経てAPPROVED・commit `fbef2c2`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
 
-### WP-9002-W8 RCP-005 metadata — FINALIZED / landing pending
+### WP-9002-W8 RCP-005 metadata — LANDED
 
 - clean feature-branch baseline `7558084`で81 incomplete SSOTをfresh mappingし、RCP-005単独exact5をpre-plan `APPROVED_WITH_PINS`とした。RCP-005の不足7 fieldだけを補完し、本文1808 bytes / SHA-256 `2142925c8a298b450f127459edf77ff55ab63e0ef3afdd0002e7ccaceecf609a`、APPROVED/v0.2.0/legacy approval、依存・impacts・2 open questions・blockersを不変とする。review candidate inventoryは173/80/93。`@yrese/events`はlowercase SHA-256形式の隣接証拠だけでreceipt直接実装ではない。WP-2202、receipt生成/再発行、法令適合、電子保存、hash計算、DB/production/externalを解除せず、候補時のIDX v0.4.21はPROPOSED・approval/effective nullでreview待ちだった。
-- independent/spec/data/architect/test/claims/security/privacy/medicalの9 roleがAPPROVED。RCP-005本文/preserved fields/all23、inventory173/80/93、172 non-target baseline identityを独立再現した。workspace typecheck/test/build、OpenAPI、calculation-purity、scripts、SSOT173、secrets、boundaries、deps high0/critical0、SBOM231、diffはPASSしたがreceipt直接実装証拠ではない。IDX v0.4.21をAPPROVED/effective 2026-07-12へfinalize。legal/pharmacy/product/claims authority、WP-2202、receipt生成/再発行、電子保存、hash計算、DB/production/externalは未解除。exact5 landing pending。
+- independent/spec/data/architect/test/claims/security/privacy/medicalの9 roleがAPPROVED。RCP-005本文/preserved fields/all23、inventory173/80/93、172 non-target baseline identityを独立再現した。workspace typecheck/test/build、OpenAPI、calculation-purity、scripts、SSOT173、secrets、boundaries、deps high0/critical0、SBOM231、diffはPASSしたがreceipt直接実装証拠ではない。IDX v0.4.21をAPPROVED/effective 2026-07-12へfinalize。legal/pharmacy/product/claims authority、WP-2202、receipt生成/再発行、電子保存、hash計算、DB/production/externalは未解除。exact5はcommit `fbef2c2`として`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。WP-9002は80 incompleteでIN_PROGRESSを継続する。
 
 ## 2026-07-11
 
