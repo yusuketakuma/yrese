@@ -2460,7 +2460,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - acceptance: entries overflow、partial healthy、broken count/index mismatch、index==total、empty brokenを拒否。empty/limited/full healthy、first/last breakをexact objectのまま受理。duplicate+invalid countsはWP-4112 identity error優先、consistent broken duplicateはfail-visible維持。refresh invalidはlast verified viewを保持しgeneric error+retry成功。
   - review_results: independent verifierとaudit/data/security/privacy/API/frontend/accessibility/medical review APPROVED、findingsなし。existing contract/core semanticsのbrowser defense-in-depthでhuman gate不変。
   - validation_results: focused audit web32、web282、API227 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
-  - landing_record: exact5 implementation commit/push pending。
+  - landing_record: implementation commit `b7cf057` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent/domain reviewとfull gates PASS、browser audit responseのrelational countsをfail-closed検証。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
