@@ -286,6 +286,16 @@ export function createReceptionRegistrationRunner() {
   };
 }
 
+export function createReceptionQueueTargetTracker(initialTarget: string) {
+  let target = initialTarget;
+  return {
+    current: () => target,
+    mark(nextTarget: string) {
+      target = nextTarget;
+    },
+  };
+}
+
 /** Clears a successful submission only when the operator has not prepared a new value. */
 export function clearRegistrationInputIfUnchanged(
   currentInput: string,
@@ -371,11 +381,19 @@ export function ReceptionDashboard() {
   const registrationRunner = useRef<ReturnType<
     typeof createReceptionRegistrationRunner
   > | null>(null);
+  const queueTargetTrackerRef = useRef<ReturnType<
+    typeof createReceptionQueueTargetTracker
+  > | null>(null);
   if (registrationRunner.current === null) {
     registrationRunner.current = createReceptionRegistrationRunner();
   }
+  if (queueTargetTrackerRef.current === null) {
+    queueTargetTrackerRef.current = createReceptionQueueTargetTracker(date);
+  }
+  const queueTargetTracker = queueTargetTrackerRef.current;
 
   const load = useCallback(async (targetDate: string) => {
+    queueTargetTracker.mark(targetDate);
     if (loadRunner.current === null) {
       loadRunner.current = createReceptionQueueRunner(fetchReceptionQueue, (update) =>
         setQueue((prev) => update(prev)),
@@ -427,7 +445,7 @@ export function ReceptionDashboard() {
         setRegisterPatientId((currentInput) =>
           clearRegistrationInputIfUnchanged(currentInput, submittedInput),
         );
-        await load(date);
+        await load(queueTargetTracker.current());
       } catch (error) {
         setRegisterNotice(
           error instanceof ReceptionError
@@ -442,7 +460,7 @@ export function ReceptionDashboard() {
         setSubmitting(false);
       }
     });
-  }, [registerPatientId, date, load]);
+  }, [registerPatientId, load, queueTargetTracker]);
 
   return (
     <section aria-label="受付ダッシュボード">

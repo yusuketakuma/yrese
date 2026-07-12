@@ -17,6 +17,7 @@ import {
   clearRegistrationInputIfUnchanged,
   createReception,
   createReceptionQueueRunner,
+  createReceptionQueueTargetTracker,
   createReceptionRegistrationRunner,
   fetchReceptionQueue,
   formatAcceptedTime,
@@ -421,6 +422,127 @@ describe("createReceptionRegistrationRunner (same-flight duplicate prevention)",
     await expect(runner.run(operation)).resolves.toBe(true);
 
     expect(operation).toHaveBeenCalledTimes(2);
+  });
+
+  it("reloads the latest explicitly loaded target after a deferred registration instead of its start target", async () => {
+    const post = deferred();
+    const tracker = createReceptionQueueTargetTracker("2026-07-10");
+    const queueTargets: string[] = [];
+    const load = async (target: string) => {
+      tracker.mark(target);
+      queueTargets.push(target);
+    };
+    const runner = createReceptionRegistrationRunner();
+
+    await load("2026-07-10");
+    const registration = runner.run(async () => {
+      await post.promise;
+      await load(tracker.current());
+    });
+    await load("2026-07-11");
+    const draftOnlyDate = "2026-07-12";
+    expect(draftOnlyDate).toBe("2026-07-12");
+    expect(tracker.current()).toBe("2026-07-11");
+
+    post.resolve();
+    await registration;
+
+    expect(queueTargets).toEqual(["2026-07-10", "2026-07-11", "2026-07-11"]);
+  });
+
+  it("uses the latest of multiple explicit queue targets while registration is pending", async () => {
+    const post = deferred();
+    const tracker = createReceptionQueueTargetTracker("2026-07-10");
+    const queueTargets: string[] = [];
+    const load = async (target: string) => {
+      tracker.mark(target);
+      queueTargets.push(target);
+    };
+    const runner = createReceptionRegistrationRunner();
+    const registration = runner.run(async () => {
+      await post.promise;
+      await load(tracker.current());
+    });
+
+    await load("2026-07-11");
+    await load("2026-07-12");
+    post.resolve();
+    await registration;
+
+    expect(queueTargets).toEqual(["2026-07-11", "2026-07-12", "2026-07-12"]);
+  });
+
+  it("keeps a failed invoked queue target authoritative for registration completion reload", async () => {
+    const post = deferred();
+    const tracker = createReceptionQueueTargetTracker("2026-07-10");
+    const queueFetch = vi
+      .fn<(target: string) => Promise<ReceptionQueueResponse>>()
+      .mockRejectedValueOnce(new Error("synthetic queue failure"))
+      .mockResolvedValueOnce(queueResponse("2026-07-11"));
+    const states: QueueState[] = [{ kind: "loaded", response: queueResponse("2026-07-10") }];
+    const queueRunner = createReceptionQueueRunner(queueFetch, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+    const load = async (target: string) => {
+      tracker.mark(target);
+      await queueRunner(target);
+    };
+    const registrationRunner = createReceptionRegistrationRunner();
+    const registration = registrationRunner.run(async () => {
+      await post.promise;
+      await load(tracker.current());
+    });
+
+    await load("2026-07-11");
+    expect(states[states.length - 1]?.kind).toBe("error");
+    expect(tracker.current()).toBe("2026-07-11");
+    post.resolve();
+    await registration;
+
+    expect(queueFetch.mock.calls).toEqual([["2026-07-11"], ["2026-07-11"]]);
+    const last = states[states.length - 1]!;
+    expect(last.kind).toBe("loaded");
+    if (last.kind === "loaded") {
+      expect(last.response.date).toBe("2026-07-11");
+    }
+  });
+
+  it("does not reload or alter the queue target when registration POST fails", async () => {
+    const tracker = createReceptionQueueTargetTracker("2026-07-10");
+    const load = vi.fn(async (target: string) => tracker.mark(target));
+    await load("2026-07-10");
+    const runner = createReceptionRegistrationRunner();
+
+    await expect(
+      runner.run(async () => {
+        throw new Error("synthetic POST failure");
+      }),
+    ).rejects.toThrow("synthetic POST failure");
+
+    expect(load).toHaveBeenCalledOnce();
+    expect(tracker.current()).toBe("2026-07-10");
+  });
+});
+
+describe("createReceptionQueueTargetTracker", () => {
+  it("exposes only the current closure value and explicit mark transition", () => {
+    const tracker = createReceptionQueueTargetTracker("2026-07-10");
+
+    expect(tracker.current()).toBe("2026-07-10");
+    tracker.mark("2026-07-11");
+    expect(tracker.current()).toBe("2026-07-11");
+    expect(Object.keys(tracker).sort()).toEqual(["current", "mark"]);
+  });
+
+  it("treats an invoked restored-URL load target as authoritative without a separate state channel", () => {
+    const tracker = createReceptionQueueTargetTracker("2026-07-10");
+    const load = (target: string) => tracker.mark(target);
+    const restored = parseDateParam("?date=2026-07-15");
+    if (restored === undefined) throw new Error("expected synthetic restored date");
+
+    load(restored);
+
+    expect(tracker.current()).toBe("2026-07-15");
   });
 });
 

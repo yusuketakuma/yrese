@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4101 reception registration latest queue-target reload — FINALIZED
+
+- clean baseline `be76c75`。deferred registration completionがcaptured start-dateをreloadし、POST中のexplicit queue-date変更を巻き戻すR2 workflow-integrity gapをexact5で修正中。
+- component-instance closure trackerをevery load先頭でmarkし、success completionはcurrent targetをreloadする。input draft、URL/generation、POST/idempotency/single-flight/input clearing、copy/CSS/focus/animation/API/DB/SSOTは不変。
+- verifier + reception/frontend/accessibility/medical/privacy/API/data review APPROVED、findingsなし。focused reception-dashboard29、web237、API207 + PostgreSQL14 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。landing pending。
+
 ### WP-4100 audit refresh last-verified-view preservation — LANDED
 
 - clean baseline `c1aa0a1`。refresh loading/failureが直前のverified audit chain/count/table、特にbroken-chain CRITICALを消すR2 workflow-integrity gapをexact5で修正中。
