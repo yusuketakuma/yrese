@@ -11,12 +11,21 @@ reviewers:
   - human_review_if_required
 version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
+effective_from: null
+effective_to: null
 source_refs: [構築プロンプト v0.2.0 §0.0.4.3(ReceiptDocument状態), §0.0.4.5]
 depends_on: [RCP-001, RCP-002, ACC-011(accounting_audit_log — WP-0033)]
 impacts: [WP-2202, WP-3101]
+related_work_packages: [WP-0034, WP-2202, WP-3101, WP-9002-W11]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文§6変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-12 WP-9002-W11 metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - 再発行時の「再発行」表示の様式要件【要確認: 実務・税務慣行レビュー】
   - 再発行手数料の扱い(徴収する場合の会計処理)【要確認: 経営判断】
