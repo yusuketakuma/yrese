@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W26 + WP-9005/9006 LANDED、62 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W26 + WP-9005/9006 LANDED、W27 FINALIZED_PENDING_LANDING、61 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1125,6 +1125,34 @@ finalization_record: RCP-004 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/75/98; RCP-004 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; legal/evidence/cycle/audit gaps remain unresolved and no StatementDocument/privacy/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W27 UIX-005 stability-SLO metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+
+```yaml
+work_package_id: WP-9002-W27
+baseline_commit: 366a031
+baseline_inventory: { total: 173, incomplete: 62, complete: 111 }
+target_inventory: { total: 173, incomplete: 61, complete: 112 }
+target: UIX-005 v0.1.0 metadata-only; body/status/version/legacy approval/effective/candidate-SLO and stability semantics preserved
+purpose: Complete PRC-007 metadata and machine-map the existing stability-readiness stop without finalizing Phase 0 candidate SLOs or claiming ST-01..15, Edge/offline/recovery/audit, or release readiness.
+allowed_files: UIX-005, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other UIX/OPS/ARC/audit/testing/security/privacy docs, code/tests/packages/lock; SLO value/timeout/retry/autosave/idempotency/offline/recovery/print/claim/audit/Edge/version behavior, API/schema/DB/UI implementation, external/production/deploy, semantic or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: none; body must remain 2955 bytes / SHA-256 093669b03ef45143be0052a7179c876342934cb37d904f4c669494f5c0ed7b5f
+pins: preserve APPROVED/v0.1.0/created_at/approved_at/approved_by/owner/reviewers/source/dependencies/two questions/body; preserve seven candidate SLO rows/all values/methods, ST-01..15, two prohibitions, PHI-free error telemetry, idempotency/partial-failure/offline/recovery/print/audit/Edge/version pins; SystemModeBadge/error boundary existence and unit tests are partial facts only
+metadata: updated_at 2026-07-12; effective_from/effective_to null; impacts UIX-002/003/004, OPS-005/006/009, TST-001, QUA-006; related_work_packages [WP-0032, WP-3001, WP-3007, WP-4050, WP-9002-W27]; related_tests/related_prs/evidence_ids empty; body-history plus W27 metadata-only change log; BLOCKED_NOT_READY for Phase 1 measurement, ST-01..15 end-to-end evidence, WP-4050 audit sink, and human product/operations acceptance
+non_target: 172 canonical rows / 14633 bytes / SHA-256 a402fe26b12eff0d10706d25de6c11d56fc5c99bdf2f4f2311538a958414f988 must remain unchanged; target review inventory 173/61/112
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, performance_reliability_reviewer, frontend_reviewer, accessibility_ux_reviewer, product_quality_reviewer, operations_reviewer, audit_security_reviewer, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata/existing readiness stop only; seven SLO values, autosave interval/generations, measurement/telemetry and PHI retention, timeout/retry/idempotency, LOCAL_ONLY/RECOVERY, print/claim failure, audit write completion, Edge self-test/version mismatch, accessibility/error recovery/pharmacist/claim-clerk workflows, OPS SLO/observability/capacity, production and risk acceptance remain with applicable human authorities
+validation: exact5/staged0; body/preserved/all23/7 SLO rows and values/ST-01..15/2 prohibitions/2 questions/inventory/non-target assertions; SSOT/scripts/secrets/boundaries/diff and full workspace gates are regression-only, not direct stability evidence
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock SLO, autosave, offline/recovery, audit, Edge, medical workflow, telemetry, or production gates
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, performance_reliability_reviewer, frontend_reviewer, accessibility_ux_reviewer, product_quality_reviewer, operations_reviewer, audit_security_reviewer, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED or APPROVED_WITH_PINS; stability/product/operations/audit/medical/privacy human authority remains separate
+validation_results: FINAL PASS before landing — exact5/staged0; UIX-005 all23 and body 2955/093669b03ef45143be0052a7179c876342934cb37d904f4c669494f5c0ed7b5f byte-identical; preserved fields/7 SLO rows and all values/ST-01..15/2 prohibitions/2 questions unchanged; inventory173/61/112; 172 non-target missing-set baseline-identical at 14633 bytes / SHA-256 a402fe26b12eff0d10706d25de6c11d56fc5c99bdf2f4f2311538a958414f988; workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
+finalization_record: UIX-005 retains APPROVED/v0.1.0/legacy approval/effective null and all candidate-SLO/stability semantics; IDX-001 v0.4.40 APPROVED with approved_at/effective_from 2026-07-12 and eleven W27 role results; BLOCKED_NOT_READY retains Phase1/ST-01..15/WP-4050/human acceptance gates and empty direct evidence does not waive stability, audit, offline/recovery, accessibility, medical workflow, telemetry, Edge, production, or release gates
+landing_required: root exact-stage landing after final exact5 verification
+landing_record: pending
+state: FINALIZED_PENDING_LANDING; WP-9002 remains IN_PROGRESS and no stability/runtime readiness is claimed
 ```
 
 - [x] WP-9002-W26 UIX-003 performance-budget metadata-only migration(LANDED、P1)

@@ -10,14 +10,26 @@ reviewers:
   - opus4.8
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §8.2, §9.3 / docs/plan/phase0_plan.md §6, §8
 depends_on: [docs/architecture/offline_mode_matrix.md, docs/architecture/recovery_sync_design.md]
+impacts: [docs/uiux/experience_quality_baseline.md, docs/uiux/performance_budget.md, docs/uiux/usability_acceptance_criteria.md, docs/operations/sla_slo_policy.md, docs/operations/performance_capacity_plan.md, docs/operations/observability_plan.md, docs/testing/test_strategy.md, docs/quality/post_release_monitoring.md]
+related_work_packages: [WP-0032, WP-3001, WP-3007, WP-4050, WP-9002-W27]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - 0.1.0 2026-07-09 初版APPROVED
+  - 0.1.0 2026-07-12 WP-9002-W27 metadata-only migration; body and stability authority unchanged
 open_questions:
   - SLO数値は候補値。sla_slo_policy(operations)と統合し Phase 1 実測で確定【要確認】
   - 自動保存間隔・保持世代数は入力画面実装時に確定【要確認】
+blockers:
+  - BLOCKED_NOT_READY(Phase 1 SLO実測、ST-01〜15 runtime/integration validation、WP-4050 audit sink完了、人間product/operations acceptance前はstability/release readinessを主張しない)
 ```
 
 ## 1. SLO候補値(UI起点)
