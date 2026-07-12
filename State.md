@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4096 reception rollback-failed client quarantine — FINALIZED
+
+- clean HEAD `644dc9d`。reception createにもWP-4095と同じrollback-failed client再利用欠陥を確認。API-006/MSR-001/MSR-026境界のため、created/existing/different-patient conflict全正常分岐もcharacterizeするexact5を採択。
+- rollback失敗時だけclient destroy。idempotency scope/patient identity/response/SQL/timestamp/ID semanticsは変更しない。
+- created/existing/different-patient conflict/rollback success/failureの5分岐を固定。independent DB/data/API/security/privacy/medical review APPROVED。API203 + expected skip14、web215、audit183、workspace typecheck/test/buildと全gate PASS。exact5 landing待ち。
+
 ### WP-4095 audit rollback-failed client quarantine — LANDED
 
 - clean HEAD `2e07ee8`。audit transaction失敗後のROLLBACK自体が失敗してもclientを通常poolへ戻すMEDIUM lifecycle gapをmapper/plannerが確認。installed pg/type/runtimeは`release(true)` destroyを正式サポート。

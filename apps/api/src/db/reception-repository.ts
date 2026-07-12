@@ -108,6 +108,7 @@ export class PostgresReceptionRepository implements ReceptionRepository {
 
   async create(input: ReceptionCreateInput): Promise<ReceptionCreateResult> {
     const client = await this.pool.connect();
+    let destroyClient = false;
     try {
       await client.query('BEGIN');
 
@@ -185,10 +186,18 @@ export class PostgresReceptionRepository implements ReceptionRepository {
         entry,
       };
     } catch (error) {
-      await client.query('ROLLBACK').catch(() => undefined);
+      try {
+        await client.query('ROLLBACK');
+      } catch {
+        destroyClient = true;
+      }
       throw error;
     } finally {
-      client.release();
+      if (destroyClient) {
+        client.release(true);
+      } else {
+        client.release();
+      }
     }
   }
 }
