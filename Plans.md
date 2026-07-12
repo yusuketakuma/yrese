@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W20 + WP-9005/9006 LANDED、68 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W20 + WP-9005/9006 LANDED、W21 FINALIZED_PENDING_LANDING、67 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1125,6 +1125,32 @@ finalization_record: RCP-004 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/75/98; RCP-004 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; legal/evidence/cycle/audit gaps remain unresolved and no StatementDocument/privacy/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W21 ACC-003 payment-allocation metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+
+```yaml
+work_package_id: WP-9002-W21
+baseline_commit: c19d03e
+baseline_inventory: { total: 173, incomplete: 68, complete: 105 }
+target_inventory: { total: 173, incomplete: 67, complete: 106 }
+target: ACC-003 v0.2.0 metadata-only; body/status/version/legacy approval/effective/allocation semantics preserved
+purpose: Complete PRC-007 metadata without changing allocation order/window/amount, idempotency/deduplication, status/audit behavior, Payment/Receivable/Refund, DB/API/UI, or implementation readiness.
+allowed_files: ACC-003, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other accounting/receipt/module/events/database docs, code/tests/packages/lock; allocation order/window/amount/idempotency/dedupe/status/audit/schema/migration/DML/API/UI/payment/refund/external/production/deploy or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: none; body must remain 2410 bytes / SHA-256 d29074caf138552fdc5245133862cecf46de19c5cfc7c639bcd5ee47fdf40b4e
+pins: preserve APPROVED/v0.2.0/created_at/approved_at/approved_by/owner/reviewers/source/dependencies/single open question/body history; preserve many-to-many, sum<=payment, OVERPAID refund, candidate order and applied-rule recording, append-only Reversal+new allocation, audit, Idempotency-Key, candidate 24h duplicate detection, human review and auto-cancel/merge prohibition; candidate values remain non-normative
+metadata: updated_at 2026-07-12; effective_from/effective_to null; impacts ACC-004/005/007/011 and future WP-2201/3101 only; related_work_packages [WP-0033, WP-2201, WP-3101, WP-9002-W21]; related_tests/related_prs/evidence_ids empty; body-history authority plus W21 metadata-only change log; blockers empty means document validity only, not runtime readiness or operational-value finalization
+non_target: 172 canonical rows / 15317 bytes / SHA-256 5708eeda3c644b0bdc3190e732442d42f2847e8ca613d91d7b19d4ea0dda06d2 must remain unchanged; target review inventory 173/67/106
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, accounting_domain_reviewer, claims_evidence_specialist, api_contract_reviewer, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata only; allocation default, 24h window, claims practice, overpayment/refund, cross-channel duplicate judgment, false positives, idempotency/dedupe, LOCAL_ONLY/RECOVERY_SYNC, audit persistence, WP-2201/3101, DB/API/UI, production/risk acceptance stop for applicable human authorities
+validation: exact5/staged0; body/preserved/all23/inventory/non-target assertions; SSOT/scripts/secrets/boundaries/diff and full workspace gates are regression-only, not allocation runtime correctness evidence
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never finalize candidate values or unlock allocation/accounting/runtime/production gates
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, db_steward, test_architect, accounting_domain_reviewer, claims_evidence_specialist, api_contract_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; accounting/claims/product authority remains separate
+validation_results: FINAL PASS before landing — exact5/staged0; ACC-003 all23 and body 2410/d29074caf138552fdc5245133862cecf46de19c5cfc7c639bcd5ee47fdf40b4e byte-identical; preserved fields/question/candidate values/empty blocker unchanged; inventory173/67/106; 172 non-target missing-set baseline-identical at 15317 bytes / SHA-256 5708eeda3c644b0bdc3190e732442d42f2847e8ca613d91d7b19d4ea0dda06d2; workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
+finalization_record: ACC-003 retains APPROVED/v0.2.0/legacy approval/effective null and allocation semantics; IDX-001 v0.4.34 APPROVED with approved_at/effective_from 2026-07-12 and twelve W21 role approvals; empty blockers/direct evidence do not finalize order/24h or waive allocation/accounting/DB/API/UI/runtime/production gates
+state: FINALIZED_PENDING_LANDING; exact-stage commit and safe feature-branch push pending; landing not claimed
 ```
 
 - [x] WP-9002-W20 ACC-010 facility-billing metadata-only migration(LANDED、P1)

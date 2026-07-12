@@ -11,13 +11,24 @@ reviewers:
   - human_review_if_required
 version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §0.0.4.3, §0.0.4.4
 depends_on: [ACC-001, ACC-002, ACC-006]
+impacts: [ACC-004 partial payment, ACC-005 overpayment and refund, ACC-007 daily closing, ACC-011 accounting audit, future WP-2201 ledger, future WP-3101 UI]
+related_work_packages: [WP-0033, WP-2201, WP-3101, WP-9002-W21]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文§6の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-12 WP-9002-W21 metadata-only completion: body/status/version/approval/effective/allocation semantics unchanged"
 open_questions:
   - 割当順序デフォルトの確定(【要確認: 請求実務レビュー】候補: 請求発生日昇順)
+blockers: []
 ```
 
 ## 1. 割当モデル

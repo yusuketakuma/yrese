@@ -8,6 +8,12 @@
 
 ## 2026-07-12
 
+### WP-9002-W21 ACC-003 metadata — FINALIZED_PENDING_LANDING
+
+- clean feature-branch baseline `c19d03e`で残存68 SSOTをfresh mappingし、known drift群とACC-003/006を比較した。複数state machineとblocker構造化を伴うACC-006より意味面が小さく、candidate値を本文で明示するACC-003単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
+- ACC-003本文2410 bytes / SHA-256 `d29074caf138552fdc5245133862cecf46de19c5cfc7c639bcd5ee47fdf40b4e`、APPROVED/v0.2.0/legacy approval、dependencies、1 questionを不変とする。candidate inventory173/67/106、non-target172 `15317/5708eeda…`。割当順序と24h窓は候補のまま、append-only/idempotency/human review/auto-cancel禁止を保持。direct runtime tests/PRs/evidenceなし。blockers emptyはdocument validityだけでWP-2201/3101/runtime readyを意味しない。review待ち、landing未主張。
+- independent/spec/data/architect/DB/test/accounting/claims/API/security/privacy/medicalの12 roleがAPPROVED。ACC-003本文/preserved/all23、inventory173/67/106、172 non-target identity、candidate valuesを独立確認。full gatesはPASSしたがallocation runtime correctness証拠ではない。IDX v0.4.34をAPPROVED/effective 2026-07-12へfinalizeし、order/24h/overpayment/dedupe/audit/WP-2201/3101/DB/API/UI/production/human gatesは未解除。exact-stage commit/push前でlanding未主張。
+
 ### WP-9002-W20 ACC-010 metadata — LANDED
 
 - clean feature-branch baseline `f21e380`で残存69 SSOTをfresh mappingし、fact-drift群とACC-003/010を比較した。候補運用値を持つACC-003より意味面が小さく、WP-0037/0038 human scope判断までruntimeを停止できるACC-010単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
