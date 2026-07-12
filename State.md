@@ -8,10 +8,11 @@
 
 ## 2026-07-12
 
-### W32 metadata eligibility stop + WP-0020〜0023 ledger reconciliation — REVIEW
+### W32 metadata eligibility stop + WP-0020〜0023 ledger reconciliation — LANDED
 
 - HEAD `0ea60fb`、inventory173/57/116でremaining57をfresh再監査。CAL-006のeffectiveTo/from-only/5-rule記述、CAL-005のimplementation matrix、CAL-007の`BLOCKER_TYPES 31種`などが live codeと矛盾し、その他はsemantic field・公式evidence・human authority判断を要するため、W32 metadata-onlyは`NO_ELIGIBLE`としてIDX v0.4.44/inventoryを変更しない。
 - 別の台帳driftとして、WP-0020〜0023がcommit `97338e5`で起草、`c6867e3`でCAL-005〜008 v0.2.0 APPROVED済みにもかかわらず`[ ]`のままであることを確認。SSOT作成タスクだけを`[x]`へ同期し、CAL-005/006/007の本文drift、WP-2105、CAL-008 typed value/全producer/rounding/live APIは未完了として保持する。SSOT/index/code/runtimeの変更やreadiness主張はない。
+- independent/spec/data/calculation/claims/medical reviewはAPPROVEDまたはAPPROVED_WITH_PINS。exact3 commit `6dff2a3` を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。IDX v0.4.44、inventory173/57/116、CAL SSOT/code/runtimeは不変。
 
 ### WP-9002-W31 CAL-008 metadata — LANDED
 

@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W31 + WP-9005/9006 LANDED、W32 NO_ELIGIBLE、57 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W31 + WP-9005/9006 LANDED、W32 NO_ELIGIBLE、WP-0020〜0023 ledger reconciled `6dff2a3`、57 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
