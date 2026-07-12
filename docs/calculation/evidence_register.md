@@ -11,9 +11,11 @@ reviewers:
   - human_review_required
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」— Phase 0 ゲート 5fa3f14)
+effective_from: null
+effective_to: null
 source_refs:
   - CAL-002 tensuhyo_reading_notes(APPROVED)
   - REG-007 evidence_verification_log(APPROVED)
@@ -22,11 +24,18 @@ depends_on:
 impacts:
   - docs/calculation/calculation_coverage_matrix.md(行status更新)
   - WP-2101(算定エンジン CalculationRule 実装)
+related_work_packages: [WP-0017, WP-9002-W17]
+related_tests:
+  - packages/calculation/src/calculation.test.ts (partial implemented-EVD consumer regression only)
+  - packages/calculation/src/formulas.test.ts (partial implemented-EVD consumer regression only)
+related_prs: []
+evidence_ids: []
 open_questions:
   - 令和8年6月19日付修正版(716KB)の有無・差分確認(REG-007/CAL-002 の【要確認】継承)
   - 留意事項通知(保医発0305第6号)の算定要件精読(点数値のみでは実装不可の行がある)
 blockers: []
 change_log:
+  - 2026-07-12 WP-9002-W17 metadata-only completion(body/status/version/approval/effective/evidence semantics unchanged)
   - 2026-07-09 v0.1.0 初版発行(WP-0017)— EVD-CAL-0001〜0071 採番、保留8件
 ```
 

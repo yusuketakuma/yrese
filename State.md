@@ -8,6 +8,12 @@
 
 ## 2026-07-12
 
+### WP-9002-W17 CAL-003 metadata — FINALIZED_PENDING_LANDING
+
+- clean feature-branch baseline `973f1fb`で残存72 SSOTをfresh mappingし、missing最少のCAL-001/CAL-003/SEC-001/SEC-004を比較した。CAL-001/SEC-001/004はrouting/security/privacy fact driftがあるため除外し、未確認事項とevidence限界を本文でfail-closedに保持するCAL-003単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
+- CAL-003本文13044 bytes / SHA-256 `df10e6f29793745cadfaf862f230845e505881c103e7f9fbe7f958539b88bdc5`、APPROVED/v0.1.0/legacy approval、71 EVD IDs、P-01..08、points/sources/caveats、2 questions、empty blockerを不変とする。candidate inventory173/71/102、non-target172 `15771/7eb06b78…`。focused calculation testsは一部implemented-EVD consumerのpartial regressionだけで、全71件、公式原本、算定要件、golden/claim correctnessを証明しない。document-level evidence_ids emptyはrow-level EVDを置換・免除しない。independent/domain review待ちでlanding未主張。
+- independent/spec/data/architect/test/claims/regulatory/calculation/security/privacy/medicalの11 roleがAPPROVED。CAL-003本文/preserved/all23、71 EVD、8 holds、inventory173/71/102、172 non-target identityを独立確認。calculation87とfull gatesはPASSしたがpartial/regression-onlyである。IDX v0.4.30をAPPROVED/effective 2026-07-12へfinalizeし、公式原本/修正版/算定要件/golden/claimability/release/human gatesは未解除。exact-stage commit/push前でlanding未主張。
+
 ### WP-9002-W16 QUA-002 metadata — LANDED
 
 - clean feature-branch baseline `27f9325`で残存73 SSOTをfresh mappingし、QUA-002/005/006を比較した。QUA-005/006はproduction operations fact driftがあるため除外し、本文のREG-004接続試験停止を意味変更なく構造化できるQUA-002単独exact5をpre-plan `APPROVED_WITH_PINS`とした。

@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W16 + WP-9005/9006 LANDED、72 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W16 + WP-9005/9006 LANDED、W17 FINALIZED_PENDING_LANDING、71 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1125,6 +1125,32 @@ finalization_record: RCP-004 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/75/98; RCP-004 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; legal/evidence/cycle/audit gaps remain unresolved and no StatementDocument/privacy/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W17 CAL-003 evidence-register metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+
+```yaml
+work_package_id: WP-9002-W17
+baseline_commit: 973f1fb
+baseline_inventory: { total: 173, incomplete: 72, complete: 101 }
+target_inventory: { total: 173, incomplete: 71, complete: 102 }
+target: CAL-003 v0.1.0 metadata-only; body/status/version/legacy approval/effective/evidence semantics preserved
+purpose: Complete PRC-007 metadata without changing any EVD-CAL row, point value, source, caveat, status, hold, effective-date rule, calculation requirement, golden expectation, rule, claimability, or implementation readiness.
+allowed_files: CAL-003, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other calculation/regulatory/claim docs, code/tests/packages/lock; EVD/value/source/caveat/status/date changes, golden/rule/claimability changes, API/UI/DB/migration, external evidence retrieval, production/deploy, semantic or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: none; body must remain 13044 bytes / SHA-256 df10e6f29793745cadfaf862f230845e505881c103e7f9fbe7f958539b88bdc5
+pins: preserve APPROVED/v0.1.0/created_at/approved_at/approved_by/owner/reviewers/source/dependencies/impacts/two open questions/blockers empty/existing history and all EVD-CAL-0001..0071/P-01..08; document effective null is not the 2026-06-01 rule applicability date; blockers empty is not implementation-ready; CONFIRMED_VISUAL, original-page recheck, 2026-06-19 revision uncertainty, and unverified calculation requirements remain active
+metadata: updated_at 2026-07-12; effective_from/effective_to null; related_work_packages [WP-0017, WP-9002-W17]; related_tests [calculation.test.ts, formulas.test.ts] as partial implemented-EVD consumer regression only; related_prs/evidence_ids empty; append one metadata-only change-log entry
+non_target: 172 canonical rows / 15771 bytes / SHA-256 7eb06b78c22bff25593de811ec3ce8e22e222d9caad4c9aa5bda0dc71b717d4d must remain unchanged; target review inventory 173/71/102
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, claims_evidence_specialist, regulatory_adapter_reviewer, calculation_domain_reviewer, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata only; official PDF recheck, 2026-06-19 revision, calculation requirements, evidence supersede, points/effective date/golden expectations, CAL-001 release steps, pharmacist/claims/regulatory correctness, claimability and release stop for applicable human authorities
+validation: exact5/staged0; body/preserved/all23/EVD inventory/caveat/inventory/non-target assertions; focused calculation tests are partial consumer regression only; SSOT/scripts/secrets/boundaries/diff and full workspace gates are regression-only
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock evidence, calculation, claimability, or release gates
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, claims_evidence_specialist, regulatory_adapter_reviewer, calculation_domain_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; pharmacist/claims/regulatory correctness authority remains separate
+validation_results: FINAL PASS before landing — exact5/staged0; CAL-003 all23 and body 13044/df10e6f29793745cadfaf862f230845e505881c103e7f9fbe7f958539b88bdc5 byte-identical; 71 sequential unique EVD IDs and 8 sequential unique holds, preserved fields unchanged; inventory173/71/102; 172 non-target missing-set baseline-identical at 15771 bytes / SHA-256 7eb06b78c22bff25593de811ec3ce8e22e222d9caad4c9aa5bda0dc71b717d4d; calculation87 and workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
+finalization_record: CAL-003 retains APPROVED/v0.1.0/legacy approval/effective null and evidence semantics; IDX-001 v0.4.30 APPROVED with approved_at/effective_from 2026-07-12 and eleven W17 role approvals; document evidence_ids empty and partial tests do not waive official-original/calculation-requirement/golden/claimability/release gates
+state: FINALIZED_PENDING_LANDING; exact-stage commit and safe feature-branch push pending; landing not claimed
 ```
 
 - [x] WP-9002-W16 QUA-002 validation-plan metadata-only migration(LANDED、P1)
