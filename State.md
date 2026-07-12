@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4086 audit log latest-only and lifecycle invalidation — COMPLETED / LANDING PENDING
+
+- clean HEAD `c3e6773`のincremental scanで、古い監査正常応答が新しいchain-break CRITICALを上書きし得るclient raceを検出。受付次患者ID入力損失もR1候補だが、security/data-integrity fail-closed優先でR2 WP-4086を先行する。
+- exact5でgeneration runnerとcleanup invalidationを追加。old healthy/new broken、old failure/new success、old success/new error、invalidate、2 GET維持、transport/error mappingを固定した。Abort/single-flight/dedupはなく、各GET/backend `audit.viewed`は不変。
+- independent/frontend/accessibility/security/privacy/audit-data/medical reviewはAPPROVED。focused11、web206、API187 + expected skip13、workspace typecheck/test/buildと全gate PASS。初回parallel build/typecheckの`.next/types`競合は順次rerunで解消。exact5 landing待ち。
+
 ### WP-4085 protected sensitive routes early no-store enforcement — LANDED
 
 - clean HEAD `1c8f37f`でmapper/plannerが一致してR1 privacy/cache hardeningを選定。live route確認によりplannerの`/audit-log`表記を実在する`/audit/events`へ補正した。

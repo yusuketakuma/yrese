@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { auditLogResponseSchema, type AuditLogEntry, type AuditLogResponse } from "@yrese/contracts";
 import { permissionScope } from "@yrese/shared-kernel";
@@ -33,6 +33,15 @@ export type AuditLogState =
   | { kind: "error"; notice: ErrorNoticeProps }
   | { kind: "loaded"; data: AuditLogResponse };
 
+function auditLogErrorNotice(error: unknown): ErrorNoticeProps {
+  return typeof error === "object" && error !== null && "notice" in error
+    ? (error as { notice: ErrorNoticeProps }).notice
+    : {
+        message: "監査ログの処理に失敗しました。",
+        nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+      };
+}
+
 export async function fetchAuditLog(
   fetchImpl: typeof fetch = fetch,
 ): Promise<AuditLogResponse> {
@@ -62,6 +71,33 @@ export async function fetchAuditLog(
     });
   }
   return auditLogResponseSchema.parse(await res.json());
+}
+
+/** Keeps only the latest audit fetch authoritative without cancelling audited GET requests. */
+export function createAuditLogRunner(
+  fetcher: () => Promise<AuditLogResponse>,
+  emit: (state: AuditLogState) => void,
+) {
+  let generation = 0;
+  return {
+    invalidate() {
+      generation += 1;
+    },
+    async run() {
+      const currentGeneration = ++generation;
+      emit({ kind: "loading" });
+      try {
+        const data = await fetcher();
+        if (currentGeneration === generation) {
+          emit({ kind: "loaded", data });
+        }
+      } catch (error) {
+        if (currentGeneration === generation) {
+          emit({ kind: "error", notice: auditLogErrorNotice(error) });
+        }
+      }
+    },
+  };
 }
 
 /** chain 検証結果の表示(純粋・テスト可能)。破断を「正常」に見せない。 */
@@ -149,26 +185,18 @@ export function AuditLogView({ data }: { readonly data: AuditLogResponse }) {
 /** fetch と状態管理を担う client パネル。 */
 export function AuditLogPanel() {
   const [state, setState] = useState<AuditLogState>({ kind: "loading" });
+  const runnerRef = useRef<ReturnType<typeof createAuditLogRunner> | null>(null);
+  if (runnerRef.current === null) {
+    runnerRef.current = createAuditLogRunner(fetchAuditLog, setState);
+  }
 
   const load = useCallback(() => {
-    setState({ kind: "loading" });
-    fetchAuditLog().then(
-      (data) => setState({ kind: "loaded", data }),
-      (error: unknown) => {
-        const notice =
-          typeof error === "object" && error !== null && "notice" in error
-            ? (error as { notice: ErrorNoticeProps }).notice
-            : {
-                message: "監査ログの処理に失敗しました。",
-                nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
-              };
-        setState({ kind: "error", notice });
-      },
-    );
+    void runnerRef.current?.run();
   }, []);
 
   useEffect(() => {
     load();
+    return () => runnerRef.current?.invalidate();
   }, [load]);
 
   return (
