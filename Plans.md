@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W14 + WP-9005/9006 LANDED、74 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W14 + WP-9005/9006 LANDED、W15 FINALIZED_PENDING_LANDING、73 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1125,6 +1125,32 @@ finalization_record: RCP-004 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/75/98; RCP-004 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; legal/evidence/cycle/audit gaps remain unresolved and no StatementDocument/privacy/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W15 QUA-008 public-quality KPI policy metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+
+```yaml
+work_package_id: WP-9002-W15
+baseline_commit: 894967a
+baseline_inventory: { total: 173, incomplete: 74, complete: 99 }
+target_inventory: { total: 173, incomplete: 73, complete: 100 }
+target: QUA-008 v0.1.0 metadata-only; body/status/version/legacy approval/effective/legal/privacy/publication semantics preserved
+purpose: Complete PRC-007 metadata without changing legal classification, anonymization, consent, contracts, PHI handling, KPI definition, external publication, correction, or production semantics.
+allowed_files: QUA-008, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other quality/product/security/privacy/claim docs, code/tests/packages/lock; KPI/publication/schema changes, migration/DML, API/UI, external publish, production/deploy, semantic or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: none; body must remain 4271 bytes / SHA-256 de14877893ccef8f3ef355443934fe6f6505c16dc33340d6379915fe50711754
+pins: preserve APPROVED/v0.1.0/created_at/approved_at/approved_by/owner/reviewers/source/dependencies/BLOCKED_LEGAL_REVIEW/three open questions; QUA-009 is dependency context only and does not prove anonymization, consent, legal, or publication correctness
+metadata: updated_at 2026-07-12; effective_from/effective_to null; impacts [QUA-009 claim_return_rate_kpi_policy, future public quality KPI aggregation and publication implementation]; related_work_packages [WP-0043, WP-9002-W15]; related_tests/related_prs/evidence_ids empty; top-level change_log only
+non_target: 172 canonical rows / 15971 bytes / SHA-256 76a074e4fed41f19b60b31d98cdf8cedbe60431f27e372255ae49e69a2ea904c must remain unchanged; target review inventory 173/73/100
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, product_quality_reviewer, claims_evidence_specialist, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata only; blocker release, information classification, anonymization/k-threshold, patient consent/third-party provision, pharmacy contract/withdrawal, publication/business decision, correction/deletion, PHI, external publish, production behavior, or risk acceptance stops for applicable legal/privacy/product/business/security authority
+validation: exact5/staged0; target body/preserved-field/all23/inventory/non-target assertions; check:ssot-index, test:scripts, secrets, boundaries, diff; full workspace gates are regression-only and never direct legal/privacy/anonymization/consent/publication evidence
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock BLOCKED_LEGAL_REVIEW or external publication
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, product_quality_reviewer, claims_evidence_specialist, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; legal authority remains separate and BLOCKED_LEGAL_REVIEW stays active
+validation_results: FINAL PASS before landing — exact5/staged0; QUA-008 all23 and body 4271/de14877893ccef8f3ef355443934fe6f6505c16dc33340d6379915fe50711754 byte-identical; preserved fields unchanged; inventory173/73/100; 172 non-target missing-set baseline-identical at 15971 bytes / SHA-256 76a074e4fed41f19b60b31d98cdf8cedbe60431f27e372255ae49e69a2ea904c; workspace typecheck/test/build PASS with API172 plus 13 expected PostgreSQL skips and web188; audit182/calculation87; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
+finalization_record: QUA-008 retains APPROVED/v0.1.0/legacy approval/effective null and legal/privacy/publication semantics; IDX-001 v0.4.28 APPROVED with approved_at/effective_from 2026-07-12 and ten W15 role approvals; empty direct tests/PRs/evidence and regression gates do not waive legal/privacy/anonymization/consent/publication gates
+state: FINALIZED_PENDING_LANDING; exact-stage commit and safe feature-branch push pending; landing not claimed
 ```
 
 - [x] WP-9002-W14 QUA-009 claim-return KPI policy metadata-only migration(LANDED、P1)

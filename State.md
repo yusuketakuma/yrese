@@ -8,6 +8,12 @@
 
 ## 2026-07-12
 
+### WP-9002-W15 QUA-008 metadata — FINALIZED_PENDING_LANDING
+
+- clean feature-branch baseline `894967a`で残存74 SSOTをfresh mappingし、QUA-002/005/006/008を比較した。既存`BLOCKED_LEGAL_REVIEW`と3 open questionsが構造化済みで不足8 fieldだけを意味判断なしに補完できるQUA-008単独exact5をpre-plan `APPROVED_WITH_PINS`とした。QUA-006はproduction monitoring fact freshnessの別reviewが必要なため除外した。
+- QUA-008本文4271 bytes / SHA-256 `de14877893ccef8f3ef355443934fe6f6505c16dc33340d6379915fe50711754`、APPROVED/v0.1.0/legacy approval、dependencies、legal blocker、3 questionsを不変とする。candidate inventory173/73/100、non-target172 `15971/76a074e4…`。related tests/PRs/evidenceは空であり、法令、匿名化、同意、契約、PHI、KPI/publication correctnessの証拠不在を免除しない。外部公開・production変更なし。independent/domain reviewとfull regression validation待ちで、landingは未主張。
+- independent/spec/data/architect/test/product-quality/claims/security/privacy/medicalの10 roleがAPPROVED。QUA-008本文/preserved fields/all23、inventory173/73/100、172 non-target identityを独立確認。workspace typecheck/test/buildと全gateはPASSしたが法務/privacy/匿名化/同意/publicationの直接証拠ではない。IDX v0.4.28をAPPROVED/effective 2026-07-12へfinalizeし、BLOCKED_LEGAL_REVIEWとhuman authorityは未解除。exact-stage commit/push前でlandingは未主張。
+
 ### WP-9002-W14 QUA-009 metadata — LANDED
 
 - clean feature-branch baseline `86a63e1`で75 incomplete SSOTをfresh mappingし、QUA-009 exact5をpre-plan `APPROVED_WITH_PINS`とした。不足8 fieldだけを補完し、本文3693 bytes / SHA-256 `b163e8a4912109f835ea502b21fecbd2e511f551bfcb834137dba2bccf97264f`、APPROVED/v0.1.1/legacy approval、dependencies・2 blockers・2 questionsを不変とする。candidate inventory173/74/99、non-target172 `16075/eb9ec0ed…`。`allowsClaimFinalization`はNORMAL-only mode guardの部分証拠だけで、直接KPI aggregator/publication runtime/testはない。返戻/査定・分母分子、法務/privacy/匿名化/同意/公開、PHI、DB/API/UI/production/externalを解除せず、候補時のIDX v0.4.27はPROPOSED・approval/effective nullでreview待ちだった。

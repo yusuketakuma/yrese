@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002-W14 QUA-009 exact5 metadata-only migration LANDED on the safe feature branch at inventory 173/74/99; WP-9002 remains IN_PROGRESS.
-- Current task: fresh read-only mapping and pre-plan review of the remaining 74 incomplete SSOT documents before defining any next wave.
+- Current phase: WP-9002-W15 QUA-008 exact5 metadata-only migration FINALIZED_PENDING_LANDING at inventory 173/73/100; WP-9002 remains IN_PROGRESS and landing is not yet claimed.
+- Current task: root exact-stage the verified five paths, commit and push to the safe feature branch, then record the landing and resume fresh residual mapping.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -82,4 +82,6 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W14 mapping/pre-plan checkpoint: baseline `86a63e1`; fresh inventory173/75/98; QUA-009 exact5 selected; body `3693/b163e8a4…`; target173/74/99; non-target `172/16075/eb9ec0ed…`; pre-plan APPROVED_WITH_PINS. Shared-kernel NORMAL-only guard is partial evidence only; no direct KPI/runtime/publication tests; preserve all claim/legal/privacy/publication blockers and gates.
 - W14 finalization checkpoint: ten roles APPROVED; QUA-009 body/preserved fields/all23 and 172 non-target identity verified; IDX v0.4.27 APPROVED/effective 2026-07-12; full regression gates PASS. NORMAL-only mode guard does not prove end-to-end LOCAL_ONLY provenance/filtering or KPI correctness; claim/legal/privacy/publication blockers remain unresolved and no KPI/runtime/DB/API/UI/external publication/production readiness claim or human semantic approval.
 - W14 landing checkpoint: commit `16eb58f` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5; inventory173/74/99; QUA-009 body/preserved fields and 172 non-target identity unchanged; ten reviews/full regression gates APPROVED; NORMAL-only guard remains partial evidence and no KPI/legal/privacy/publication/runtime/DB/API/UI/external production activation occurred.
-- Next action: fresh read-only mapping and pre-plan review of remaining 74 incomplete SSOT documents; do not infer KPI implementation/publication readiness from W14 metadata completion.
+- W15 review checkpoint: baseline `894967a`; QUA-008 exact5 selected after comparing QUA-002/005/006/008; body `4271/de148778…`; target173/73/100; non-target `172/15971/76a074e4…`; pre-plan APPROVED_WITH_PINS. Existing BLOCKED_LEGAL_REVIEW and three questions remain unchanged; no anonymization/consent/legal/publication runtime or direct tests/evidence exist.
+- W15 finalization checkpoint: all ten required roles APPROVED; QUA-008 body/preserved fields/all23 and 172 non-target identity verified; IDX v0.4.28 APPROVED/effective 2026-07-12; full regression gates PASS. BLOCKED_LEGAL_REVIEW and all anonymization/consent/contract/PHI/publication human gates remain unresolved; no runtime/DB/API/UI/external publication/production activation.
+- Next action: exact-stage/commit/push W15 exact5, record landing, then fresh read-only mapping of remaining 73 incomplete SSOT documents; do not infer legal/privacy/anonymization/consent/publication readiness from metadata completion.
