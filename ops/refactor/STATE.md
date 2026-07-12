@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002-W9 RCP-006 exact5 metadata-only migration LANDED on the safe feature branch at inventory 173/79/94; WP-9002 remains IN_PROGRESS.
-- Current task: fresh read-only mapping and pre-plan review of the remaining 79 incomplete SSOT documents before defining any next wave.
+- Current phase: WP-9002-W10 RCP-002 exact5 metadata-only migration finalized at inventory 173/78/95; IDX-001 v0.4.23 APPROVED/effective 2026-07-12; landing pending.
+- Current task: independently recheck finalized exact5/staged paths and gates, then root exact-stages, commits, and pushes only this safe feature branch.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -67,4 +67,6 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W9 mapping/pre-plan checkpoint: baseline `d6677f9`; fresh inventory173/80/93; RCP-006 exact5 selected; body `1862/1bc7aa7d…`; target173/79/94; non-target `172/16584/c860764d…`; pre-plan APPROVED_WITH_PINS. No direct privacy/receipt runtime or tests; preserve RCP-004 dependency cycle and all consent/PHI/legal/permission/audit/production human gates.
 - W9 finalization checkpoint: nine roles APPROVED; RCP-006 body/preserved fields/all23 and 172 non-target identity verified; IDX v0.4.22 APPROVED/effective 2026-07-12; full regression gates PASS. No privacy/consent/PHI/legal/permission/audit/receipt/runtime/DB/API/UI/production/external readiness claim or human semantic approval.
 - W9 landing checkpoint: commit `ee91fad` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5; inventory173/79/94; RCP-006 body/preserved fields and 172 non-target identity unchanged; nine reviews/full regression gates APPROVED; no privacy/consent/PHI/legal/permission/audit/receipt/runtime/DB/API/UI/production/external activation.
-- Next action: fresh read-only mapping and pre-plan review of the remaining 79 incomplete SSOT documents; do not infer privacy/receipt implementation or readiness from W9 metadata completion.
+- W10 mapping/pre-plan checkpoint: baseline `d3647bb`; fresh inventory173/79/94; RCP-002 exact5 selected; body `2726/8fa46689…`; target173/78/95; non-target `172/16483/0dbb5e51…`; pre-plan APPROVED_WITH_PINS. No direct numbering/ReceiptDocument runtime or tests; preserve RCP-001 cycle and all legal/year/offline/recovery/transaction/PHI/production gates.
+- W10 finalization checkpoint: ten roles APPROVED; RCP-002 body/preserved fields/all23 and 172 non-target identity verified; IDX v0.4.23 APPROVED/effective 2026-07-12; full regression gates PASS. No numbering/legal/year/offline/recovery/transaction/idempotency/conflict/PHI/receipt/runtime/DB/API/UI/production/external readiness claim or human semantic approval; ARC-010/RCP-001 tension remains unresolved.
+- Next action: final read-only recheck, then exact-stage/commit/push finalized five paths on safe feature branch; afterwards record landing.
