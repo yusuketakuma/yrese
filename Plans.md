@@ -2381,6 +2381,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused server60、API209 + PostgreSQL14 expected skips、web256、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `cc7b42c` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent/domain reviewとfull gates PASS、created/existing result identityをaudit/response前にfail-closed拘束。
 
+- [x] WP-4106 bind audit list results to requested tenant/pharmacy scope(R2 tenant isolation) — FINALIZED
+  - 発見根拠: `/audit/events`はauthenticated scopeをrepositoryへ渡すが、返却AuditEventのtenantId/pharmacyIdを再拘束せず、healthyな別scope chainやmixed結果をchain status/totalCount/displayへ投影できた。
+  - scope: exact5 `apps/api/src/server.ts`, `apps/api/src/audit-log.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。contract/OpenAPI/audit core/repository/DB/migration/web/SSOTは変更しない。
+  - implementation: scoped list直後、chain verify/audit.viewed/sort/window/projection/response前に全eventのtenantId/pharmacyIdをstrict比較。一件でもmismatchなら固定`Audit repository returned events outside the requested scope`で全体をfail-closedし、filter/backfill/repair/partial response/audit.viewed success/identifier echoを行わない。
+  - acceptance: foreign tenant、foreign pharmacy、local+foreign mixed(limit=1)を500/no-store/non-echo/audit zeroで固定。healthy/broken/malformed local chainの既存full-chain/no-backfill/view audit semanticsを維持。
+  - review_results: independent verifierとsecurity/privacy/audit/data-integrity/API/medical review APPROVED、findingsなし。SEC-006/008の既存logical isolation強化であり、physical WORM/RLS/human gateは不変。
+  - validation_results: focused audit-log15、API212 + PostgreSQL14 expected skips、web256、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: exact5 implementation commit/push pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

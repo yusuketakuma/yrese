@@ -64,6 +64,8 @@ export const receptionResultPatientIdentityMismatchErrorMessage =
   'Reception repository returned a mismatched patient identity';
 const auditLogProjectionInvariantErrorMessage =
   'Audit event display projection failed for a verified hash chain';
+export const auditLogScopeInvariantErrorMessage =
+  'Audit repository returned events outside the requested scope';
 
 export interface BuildServerOptions {
   readonly patientRepository?: PatientRepository;
@@ -406,6 +408,14 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
       const scope = { tenantId: tenantContext.tenantId, pharmacyId: tenantContext.pharmacyId };
       const events = await auditRepository.list(scope);
+      if (
+        events.some(
+          (event) =>
+            event.tenantId !== scope.tenantId || event.pharmacyId !== scope.pharmacyId,
+        )
+      ) {
+        throw new Error(auditLogScopeInvariantErrorMessage);
+      }
 
       // 改ざん検知: 保存されている全イベントに対する hash chain 検証(返却分だけではない)。
       const verification = verifyAuditHashChain(events);

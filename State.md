@@ -8,6 +8,13 @@
 
 ## 2026-07-13
 
+### WP-4106 audit result tenant/pharmacy scope binding — FINALIZED / landing pending
+
+- clean baseline `c9b256e`。scoped audit listが返すevent authority fieldsをrouteで再拘束せず、別tenant/pharmacyまたはmixed結果がchain/displayへ影響できるR2 tenant-isolation gapをexact5で修正。
+- list直後、chain verify/audit.viewed/sort/projection/response前に全eventのtenantId/pharmacyIdをstrict比較。mismatchは固定non-echo 500/no-store、partial response/filter/repair/audit.viewed successなし。local healthy/broken/malformed semanticsは維持。
+- independent verifierとsecurity/privacy/audit/data-integrity/API/medical review APPROVED、findingsなし。focused audit-log15、API212 + PostgreSQL14 expected skips、web256、audit183、workspace typecheck/test/buildと全gate PASS。contract/OpenAPI/core/repository/DB/migration/SSOT/human gates不変。
+- exact5 implementation commit/push pending。
+
 ### WP-4105 reception result patient identity binding — LANDED
 
 - clean baseline `cc7eb21`。schema-valid reception repository resultのpatientId不一致がcreated/existingでsuccess audit/responseへ進めるR2 wrong-patient gapをexact5で修正。

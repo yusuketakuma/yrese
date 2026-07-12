@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { AuditLogResponse } from '@yrese/contracts';
 import { pharmacyId, tenantId, userId } from '@yrese/shared-kernel';
 
@@ -8,7 +8,11 @@ import {
   createPatientSearchCursorCodec,
   patientSearchCursorHmacKeyByteLength,
 } from './patient-search-cursor.js';
-import { buildServer, type BuildServerOptions } from './server.js';
+import {
+  auditLogScopeInvariantErrorMessage,
+  buildServer,
+  type BuildServerOptions,
+} from './server.js';
 
 function buildDevTestServer(
   options: Omit<BuildServerOptions, 'repositoryMode' | 'tenantContextMode'> = {},
@@ -356,6 +360,108 @@ describe('GET /audit/events (SCR-028)', () => {
     const body = response.json() as AuditLogResponse;
     expect(body.totalCount).toBe(0);
     expect(body.entries).toEqual([]);
+  });
+
+  it.each([
+    {
+      label: 'tenant',
+      foreignScope: {
+        tenantId: tenantId('tenant-foreign-sensitive'),
+        pharmacyId: pharmacyId('pharmacy-001'),
+      },
+    },
+    {
+      label: 'pharmacy',
+      foreignScope: {
+        tenantId: tenantId('tenant-001'),
+        pharmacyId: pharmacyId('pharmacy-foreign-sensitive'),
+      },
+    },
+  ])(
+    'fails closed before view audit or projection for a foreign-$label repository result',
+    async ({ foreignScope }) => {
+      const foreignRepository = new InMemoryAuditRepository();
+      const foreignTarget = 'reception-foreign-sensitive';
+      const foreignActor = 'user-foreign-sensitive';
+      await foreignRepository.record(foreignScope, {
+        actorId: userId(foreignActor),
+        auditEventType: 'reception.created',
+        targetRef: { kind: 'reception', id: foreignTarget },
+        outcome: 'success',
+        wallClock: '2026-07-11T03:00:00.000Z',
+      });
+      const foreignEvents = await foreignRepository.list(foreignScope);
+      const record = vi.fn<AuditRepository['record']>();
+      const list = vi.fn<AuditRepository['list']>(async () => foreignEvents);
+      const server = buildDevTestServer({ auditRepository: { list, record } });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/audit/events',
+        headers: auditReadHeaders,
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(list).toHaveBeenCalledOnce();
+      expect(list).toHaveBeenCalledWith(SCOPE);
+      expect(record).not.toHaveBeenCalled();
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: auditLogScopeInvariantErrorMessage,
+      });
+      for (const sensitiveValue of [
+        foreignScope.tenantId,
+        foreignScope.pharmacyId,
+        foreignTarget,
+        foreignActor,
+      ]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+    },
+  );
+
+  it('rejects a mixed local and foreign repository result without a partial response', async () => {
+    const localRepository = new InMemoryAuditRepository();
+    await localRepository.record(
+      SCOPE,
+      receptionCreated('reception-local', '2026-07-11T01:00:00.000Z'),
+    );
+    const foreignScope: AuditScope = {
+      tenantId: tenantId('tenant-foreign-mixed'),
+      pharmacyId: pharmacyId('pharmacy-foreign-mixed'),
+    };
+    const foreignRepository = new InMemoryAuditRepository();
+    await foreignRepository.record(
+      foreignScope,
+      receptionCreated('reception-foreign-mixed', '2026-07-11T02:00:00.000Z'),
+    );
+    const events = [
+      ...(await localRepository.list(SCOPE)),
+      ...(await foreignRepository.list(foreignScope)),
+    ];
+    const record = vi.fn<AuditRepository['record']>();
+    const server = buildDevTestServer({
+      auditRepository: { list: vi.fn(async () => events), record },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events?limit=1',
+      headers: auditReadHeaders,
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(record).not.toHaveBeenCalled();
+    expect(response.body).not.toContain('reception-local');
+    expect(response.body).not.toContain('reception-foreign-mixed');
+    expect(response.body).not.toContain('tenant-foreign-mixed');
+    expect(response.body).not.toContain('pharmacy-foreign-mixed');
   });
 });
 
