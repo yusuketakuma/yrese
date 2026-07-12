@@ -2253,7 +2253,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - acceptance: 異なる投入順で同一page、scope外recordがboundaryへ影響せず、2page間の重複/欠落なし、input非破壊。duplicate patientNumber tieはDOM-002違反のdefensive testに限定。API/workspace full gatesとindependent API/data/privacy/medical review PASSまで未完了。
   - review_results: independent verifierがAPI/data-integrity/test/DB/privacy/medicalを含めAPPROVED。filter→sort→slice、input非破壊、scope boundary、page completeness、defensive tie、限定claimを確認しfindingsなし。
   - validation_results: focused repository3/server58、API191 + PostgreSQL13 expected skips、web215、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。初回testはPASSしたがexact optional cursor型errorを検出し、明示guard後typecheck再実行PASS。
-  - landing_record: exact5 commit/push待ち。
+  - landing_record: commit `c7a4b56` `WP-4091: stabilize in-memory patient pagination` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、review/full gates PASS、synthetic ASCII field-order/paginationを決定化し、public ordering/SQL/DB/APIは不変。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
