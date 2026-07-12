@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W24 + WP-9005/9006 LANDED、64 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W24 + WP-9005/9006 LANDED、W25 FINALIZED_PENDING_LANDING、63 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1125,6 +1125,34 @@ finalization_record: RCP-004 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/75/98; RCP-004 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; legal/evidence/cycle/audit gaps remain unresolved and no StatementDocument/privacy/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W25 UIX-002 experience-quality metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+
+```yaml
+work_package_id: WP-9002-W25
+baseline_commit: 53f55eb
+baseline_inventory: { total: 173, incomplete: 64, complete: 109 }
+target_inventory: { total: 173, incomplete: 63, complete: 110 }
+target: UIX-002 v0.1.0 metadata-only; body/status/version/legacy approval/effective/experience-quality semantics preserved
+purpose: Complete PRC-007 metadata and machine-map the existing experience-quality baseline without claiming full UI, Edge/offline, performance, usability, accessibility, pharmacist, or claim-clerk readiness.
+allowed_files: UIX-002, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other UIUX/product/architecture/testing/medical/security/privacy docs, code/tests/packages/lock; performance target, UX requirement, status, permission, warning, error, PHI telemetry, API/schema/DB/UI implementation, external/production/deploy, or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS after root adjudication; lower-authority UIX-002 selected over refund/legal/permission-heavy ACC-005
+body_changes: none; body must remain 3659 bytes / SHA-256 2a4b5ed191720b378c57eb998ee692ec3cc5b511f5dcdcb1308af65742b15b5e
+pins: preserve APPROVED/v0.1.0/created_at/approved_at/approved_by/owner/reviewers/source/dependency/impacts/body history; preserve 11 minimum criteria, speed/stability/intuitiveness pillars and prohibitions, 10 UX prohibitions, 14 mandatory tests, and two open questions; BusinessNav/SystemModeBadge/PatientHeader existence is not full implementation or release evidence
+metadata: updated_at 2026-07-12; effective_from/effective_to null; related_work_packages [WP-0032, WP-3007, WP-9002-W25]; related_tests/related_prs/evidence_ids empty; body-history authority plus W25 metadata-only change log; open questions copied verbatim from body; blockers empty only for document validity, never release readiness
+non_target: 172 canonical rows / 14858 bytes / SHA-256 29885af8b9bc2ab55f895e114ca3a8e39e87524d7de41b455736f4d9e00254ad must remain unchanged; target review inventory 173/63/110
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, frontend_reviewer, accessibility_ux_reviewer, product_quality_reviewer, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata only; WP-0032, quantitative congestion/performance criteria, training mode, Edge/offline behavior, error recovery, accessibility, warning fatigue, pharmacist and claim-clerk workflow, medical/product/security/privacy validation, UI implementation, production and risk acceptance remain with applicable human authorities
+validation: exact5/staged0; body/preserved/all23/11 criteria/3 pillars/10 prohibitions/14 tests/2 questions/inventory/non-target assertions; SSOT/scripts/secrets/boundaries/diff and full workspace gates are regression-only, not UX or release evidence
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock UI/UX, performance, accessibility, medical workflow, or production gates
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, frontend_reviewer, accessibility_ux_reviewer, product_quality_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED or APPROVED_WITH_PINS; UX/product/medical/security/privacy human authority remains separate
+validation_results: FINAL PASS before landing — exact5/staged0; UIX-002 all23 and body 3659/2a4b5ed191720b378c57eb998ee692ec3cc5b511f5dcdcb1308af65742b15b5e byte-identical; preserved fields/11 criteria/3 pillars/10 prohibitions/14 tests/2 questions unchanged; inventory173/63/110; 172 non-target missing-set baseline-identical at 14858 bytes / SHA-256 29885af8b9bc2ab55f895e114ca3a8e39e87524d7de41b455736f4d9e00254ad; workspace typecheck/build PASS; first workspace test exposed an unrelated random-MAC substring flaky assertion in patient-search-cursor, focused 8/8 and full rerun then PASS with API172 plus13 expected PostgreSQL skips and web188; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
+finalization_record: UIX-002 retains APPROVED/v0.1.0/legacy approval/effective null and experience-quality semantics; IDX-001 v0.4.38 APPROVED with approved_at/effective_from 2026-07-12 and nine W25 role approvals; component existence and regression tests do not waive 14 mandatory UX tests, WP-0032, accessibility, performance, medical workflow, or production gates
+landing_required: root exact-stage landing after final exact5 verification
+landing_record: pending
+state: FINALIZED_PENDING_LANDING; WP-9002 remains IN_PROGRESS and no UI/runtime readiness is claimed
 ```
 
 - [x] WP-9002-W24 ACC-009 POS-integration metadata-only migration(LANDED、P1)

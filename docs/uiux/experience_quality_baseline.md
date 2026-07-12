@@ -11,12 +11,25 @@ reviewers:
   - human_review_required
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §8 / docs/plan/phase0_plan.md §6
 depends_on: [docs/uiux/medical_ui_ux_principles.md]
 impacts: [docs/uiux/performance_budget.md, docs/uiux/usability_acceptance_criteria.md, docs/uiux/stability_slo_policy.md]
+related_work_packages: [WP-0032, WP-3007, WP-9002-W25]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - 0.1.0 2026-07-09 初版APPROVED
+  - 0.1.0 2026-07-12 WP-9002-W25 metadata-only migration; body and UX authority unchanged
+open_questions:
+  - 「混雑時」の定量定義(処方箋枚数/時)— performance_capacity_plan と整合(実測前は候補値)
+  - training mode の提供時期(MVP同梱か直後か)
+blockers: []
 ```
 
 ## 1. 最低基準(v0.2.0 §8)

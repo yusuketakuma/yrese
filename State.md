@@ -2,11 +2,17 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.37はWP-9002-W24 thirteen-reviewer approvalを経てAPPROVED・commit `cfaa01b`でfeature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.38はWP-9002-W25 nine-reviewer approvalを経てAPPROVED、exact5 landing待ち。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
+
+### WP-9002-W25 UIX-002 metadata — FINALIZED_PENDING_LANDING
+
+- clean feature-branch baseline `53f55eb`で残存64 SSOTをfresh mappingした。ACC-005はrefund/legal/permissionの高権限human gateが密なため後続のsemantic reviewへ分離し、本文と限定的live component存在を確認できるUIX-002単独exact5を採用した。
+- UIX-002本文3659 bytes / SHA-256 `2a4b5ed191720b378c57eb998ee692ec3cc5b511f5dcdcb1308af65742b15b5e`、APPROVED/v0.1.0/legacy approval、dependency/impactsを不変とする。candidate inventory173/63/110、non-target172 `14858/29885af8…`。11最低基準、速さ/安定性/直感性3柱と禁止、10 UX禁止、14必須テスト、2 open questionsを保持する。BusinessNav/SystemModeBadge/PatientHeaderの存在だけをUI/Edge/offline/performance/usability/accessibility/medical workflow/release readinessへ拡張しない。candidate reviewは完了しIDX v0.4.38へfinalize済み、landingだけを未主張とする。
+- independent/spec/data/frontend/accessibility/product/security/privacy/medicalの9 roleがAPPROVEDまたはAPPROVED_WITH_PINS。本文/preserved/all23、inventory173/63/110、172 non-target identityを独立確認。typecheck/build/gatesはPASS。初回workspace testはrandom MACに偶然`qh`を含むunrelated flaky assertionで1件failしたが、focused 8/8とworkspace rerunはAPI172+13 expected skips/web188を含めPASSした。IDX v0.4.38をAPPROVED/effective 2026-07-12へfinalizeしたが、14 UX tests、WP-0032、accessibility/performance/medical workflow/production/human gatesは未解除。exact5 landing待ち。
 
 ### WP-9002-W24 ACC-009 metadata — LANDED
 

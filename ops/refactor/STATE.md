@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002-W24 ACC-009 exact5 metadata-only migration LANDED on the safe feature branch at inventory 173/64/109; WP-9002 remains IN_PROGRESS.
-- Current task: fresh read-only mapping and pre-plan review of the remaining 64 incomplete SSOT documents before defining the next wave.
+- Current phase: WP-9002-W25 UIX-002 exact5 metadata-only migration is FINALIZED_PENDING_LANDING at inventory 173/63/110; IDX v0.4.38 is APPROVED and WP-9002 remains IN_PROGRESS.
+- Current task: perform final exact5/staged-diff verification, then root exact-stage commit/push to the safe feature branch.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -112,4 +112,6 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W24 review checkpoint: baseline `60fa14f`; ACC-009 exact5 selected while OPS-014 cloud/pricing assumptions require separate freshness review; body `1351/e93cdd5b…`; target173/64/109; non-target `172/14980/aaa93047…`; pre-plan APPROVED_WITH_PINS. No POS/payment runtime/direct tests exist; WP-0036/0037/2203/3101/payment-security/DB/API/UI/external/production gates remain unchanged.
 - W24 finalization checkpoint: all thirteen roles APPROVED; ACC-009 body/preserved/all23, boundary/failure pins and 172 non-target identity verified; IDX v0.4.37 APPROVED/effective 2026-07-12; full regression gates PASS. POS/payment runtime/WPs and human gates remain unresolved; no DB/API/UI/device/external transaction/production activation.
 - W24 landing checkpoint: commit `cfaa01b` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5; inventory173/64/109; ACC-009 body/preserved/boundary/failure pins and 172 non-target identity unchanged; thirteen reviews/full regression gates APPROVED; no POS/payment/DB/API/UI/device/external transaction/production activation.
-- Next action: fresh read-only mapping and pre-plan review of remaining 64 incomplete SSOT documents.
+- W25 review checkpoint: baseline `53f55eb`; UIX-002 exact5 selected over refund/legal/permission-heavy ACC-005; body `3659/2a4b5ed1…`; target173/63/110; non-target `172/14858/29885af8…`; pre-plan APPROVED_WITH_PINS after root adjudication. Preserve 11 minimum criteria, three pillars/prohibitions, ten UX prohibitions, fourteen tests, two questions, and legacy approval. Limited BusinessNav/SystemModeBadge/PatientHeader existence is not full UI/Edge/offline/performance/usability/accessibility/medical-workflow or release evidence.
+- W25 finalization checkpoint: all nine roles APPROVED or APPROVED_WITH_PINS; UIX-002 body/preserved/all23 and 172 non-target identity verified; IDX v0.4.38 APPROVED/effective 2026-07-12. Typecheck/build/gates PASS; initial workspace test hit an unrelated random-MAC substring flaky assertion, then focused and full rerun PASS. Fourteen UX tests, WP-0032, accessibility/performance/medical workflow and human/production gates remain unresolved.
+- Next action: final exact5 verification and root exact-stage landing on the safe feature branch.
