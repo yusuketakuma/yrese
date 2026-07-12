@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance, type onRequestHookHandler } from 'fastify';
-import { verifyAuditHashChain } from '@yrese/audit';
+import { verifyAuditHashChain, type AuditEvent } from '@yrese/audit';
 import {
+  auditLogEntrySchema,
   auditLogQuerySchema,
   auditLogResponseSchema,
   errorResponseSchema,
@@ -14,6 +15,7 @@ import {
   receptionQueueResponseSchema,
   receptionQueueQuerySchema,
   type AuditLogResponse,
+  type AuditLogEntry,
   type HealthResponse,
   type PatientSearchResponse,
   type ReceptionQueueEntry,
@@ -58,6 +60,8 @@ export const receptionPatientNotFoundErrorCode = RECEPTION_PATIENT_NOT_FOUND_ERR
 export const receptionIdempotencyConflictErrorCode = RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE;
 export const receptionPatientIdentityMismatchErrorMessage =
   'Patient lookup returned a mismatched patient identity';
+const auditLogProjectionInvariantErrorMessage =
+  'Audit event display projection failed for a verified hash chain';
 
 export interface BuildServerOptions {
   readonly patientRepository?: PatientRepository;
@@ -81,6 +85,26 @@ function invalidReceptionRequestResponse() {
     errorCode: receptionInvalidRequestErrorCode,
     message: 'Invalid reception request',
   });
+}
+
+function projectAuditLogEntry(event: AuditEvent): AuditLogEntry | undefined {
+  try {
+    const projected = auditLogEntrySchema.safeParse({
+      eventId: event.eventId,
+      wallClock: event.wallClock,
+      actorId: event.actorId,
+      auditEventType: event.auditEventType,
+      targetRef: event.targetRef,
+      outcome: event.outcome,
+      ...(event.reasonCode === undefined ? {} : { reasonCode: event.reasonCode }),
+      ...(event.businessReason === undefined
+        ? {}
+        : { businessReasonCode: event.businessReason.code }),
+    });
+    return projected.success ? projected.data : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function receptionPatientNotFoundResponse() {
@@ -391,21 +415,20 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       });
 
       // 新しい順(追記順の逆)で limit 件へ射影。表示投影に hash・envelope 内部は含めない。
-      const entries = [...events]
-        .reverse()
-        .slice(0, query.data.limit)
-        .map((event) => ({
-          eventId: event.eventId,
-          wallClock: event.wallClock,
-          actorId: event.actorId,
-          auditEventType: event.auditEventType,
-          targetRef: { kind: event.targetRef.kind, id: event.targetRef.id },
-          outcome: event.outcome,
-          ...(event.reasonCode === undefined ? {} : { reasonCode: event.reasonCode }),
-          ...(event.businessReason === undefined
-            ? {}
-            : { businessReasonCode: event.businessReason.code }),
-        }));
+      const displayWindow = [...events].reverse().slice(0, query.data.limit);
+      const entries: AuditLogEntry[] = [];
+      let projectionFailed = false;
+      for (const event of displayWindow) {
+        const entry = projectAuditLogEntry(event);
+        if (entry === undefined) {
+          projectionFailed = true;
+        } else {
+          entries.push(entry);
+        }
+      }
+      if (projectionFailed && verification.ok) {
+        throw new Error(auditLogProjectionInvariantErrorMessage);
+      }
 
       return auditLogResponseSchema.parse({
         entries,

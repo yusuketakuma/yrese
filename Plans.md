@@ -2264,6 +2264,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: local focused audit integration5は`TEST_DATABASE_URL`不在でexpected skip、API191 + PostgreSQL14 skips、web215、audit183、workspace typecheck/test/buildと全標準gate PASS。実DB concurrency acceptanceは未実施。
   - push_record: candidate commit `193024b` `WP-4092: add observed audit concurrency proof` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; associated PRなしのためCI run未作成。PR/CI PostgreSQL zero-skip run待ちで、CI証拠前はDONE/landingを主張しない。
 
+- [x] WP-4093 fail-visible display projection for malformed stored audit rows(R2 integrity visibility)
+  - 発見根拠: WP-4089でmalformed canonical payloadはstructured `hash_format_invalid`となったが、routeがraw `targetRef.kind/id`等を無条件dereferenceし、invalid wallClock等もresponse parseでthrowするため、破損状態が再びHTTP 500となりCRITICAL表示を失う。
+  - scope: exact5 `apps/api/src/server.ts`, `apps/api/src/audit-log.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。contracts/OpenAPI/UI/audit core/repository/DB/migrationは変更しない。
+  - implementation: 全eventを先にchain検証・countし、`audit.viewed`記録後、latest raw windowを確定してから既存`auditLogEntrySchema`でdisplay-safe projectionする。invalid rowは表示だけ省略しbackfill/placeholderを作らない。verificationがokなのにprojection不能なら固定non-echo invariant errorで停止する。
+  - acceptance: malformed target/wallClockでも200/no-store + false chain、totalCount保持、raw値非echo、valid neighbor保持、limit後filterでno backfill、view audit1回。healthy/contract/UI copy不変。focused/full gatesとindependent audit/security/privacy/API/medical review PASSまで未完了。
+  - review_results: independent audit/data/security/privacy/API/frontend/medical review APPROVED、findingsなし。full verify/count→view audit→raw window→safe projection、false時のみomit、healthy invariant、no backfill/non-echoを確認。
+  - validation_results: focused API audit10、API193 + PostgreSQL14 expected skips、web215、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: exact5 commit/push待ち。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

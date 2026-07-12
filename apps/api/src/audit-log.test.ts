@@ -185,6 +185,87 @@ describe('GET /audit/events (SCR-028)', () => {
     expect(stored[1]?.auditEventType).toBe('audit.viewed');
   });
 
+  it('omits a malformed latest display row without backfilling or hiding chain failure', async () => {
+    const base = new InMemoryAuditRepository();
+    await seedEvents(base, 2);
+    const malformedTarget = 'raw-malformed-target-must-not-appear';
+    const malformed: AuditRepository = {
+      record: (scope, input) => base.record(scope, input),
+      list: async (scope) => {
+        const events = await base.list(scope);
+        return events.map((event, index) =>
+          index === 1
+            ? ({
+                ...event,
+                targetRef: null,
+                businessReason: { code: malformedTarget },
+              } as unknown as typeof event)
+            : event,
+        );
+      },
+    };
+    const server = buildDevTestServer({ auditRepository: malformed });
+
+    const limited = await server.inject({
+      method: 'GET',
+      url: '/audit/events?limit=1',
+      headers: auditReadHeaders,
+    });
+    expect(limited.statusCode).toBe(200);
+    expect(limited.headers['cache-control']).toBe('no-store');
+    expect(limited.json()).toMatchObject({
+      entries: [],
+      totalCount: 2,
+      chainVerification: {
+        ok: false,
+        checkedCount: 1,
+        breakIndex: 1,
+        reason: 'hash_format_invalid',
+      },
+    });
+    expect(limited.body).not.toContain(malformedTarget);
+
+    const stored = await base.list(SCOPE);
+    expect(stored).toHaveLength(3);
+    expect(stored[2]?.auditEventType).toBe('audit.viewed');
+  });
+
+  it('keeps valid rows in the raw display window when another stored wallClock is malformed', async () => {
+    const base = new InMemoryAuditRepository();
+    await seedEvents(base, 2);
+    const malformedWallClock = 'raw-invalid-wall-clock-must-not-appear';
+    const malformed: AuditRepository = {
+      record: (scope, input) => base.record(scope, input),
+      list: async (scope) => {
+        const events = await base.list(scope);
+        return events.map((event, index) =>
+          index === 1
+            ? ({ ...event, wallClock: malformedWallClock } as typeof event)
+            : event,
+        );
+      },
+    };
+    const server = buildDevTestServer({ auditRepository: malformed });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events?limit=2',
+      headers: auditReadHeaders,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      entries: [{ targetRef: { id: 'reception-001' } }],
+      totalCount: 2,
+      chainVerification: {
+        ok: false,
+        checkedCount: 1,
+        breakIndex: 1,
+        reason: 'hash_format_invalid',
+      },
+    });
+    expect(response.body).not.toContain(malformedWallClock);
+  });
+
   it('rejects invalid limits with AUD-0001', async () => {
     const server = buildDevTestServer();
     const response = await server.inject({
