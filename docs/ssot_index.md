@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.42
+version: 0.4.43
 created_at: 2026-07-09
 updated_at: 2026-07-12
 approved_at: 2026-07-12
@@ -40,6 +40,7 @@ approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; s
   ; WP-9002-W27 independent_verifier APPROVED; WP-9002-W27 spec_guardian APPROVED; WP-9002-W27 data_integrity_auditor APPROVED; WP-9002-W27 performance_reliability_reviewer APPROVED_WITH_PINS; WP-9002-W27 frontend_reviewer APPROVED_WITH_PINS; WP-9002-W27 accessibility_ux_reviewer APPROVED_WITH_PINS; WP-9002-W27 product_quality_reviewer APPROVED; WP-9002-W27 operations_reviewer APPROVED_WITH_PINS; WP-9002-W27 audit_security_reviewer APPROVED; WP-9002-W27 privacy_compliance_reviewer APPROVED; WP-9002-W27 medical_safety_reviewer APPROVED_WITH_PINS
   ; WP-9002-W28 independent_verifier APPROVED; WP-9002-W28 spec_guardian APPROVED; WP-9002-W28 data_integrity_auditor APPROVED; WP-9002-W28 test_architect APPROVED; WP-9002-W28 frontend_reviewer APPROVED_WITH_PINS; WP-9002-W28 accessibility_ux_reviewer APPROVED_WITH_PINS; WP-9002-W28 product_quality_reviewer APPROVED; WP-9002-W28 performance_reliability_reviewer APPROVED_WITH_PINS; WP-9002-W28 operations_reviewer APPROVED_WITH_PINS; WP-9002-W28 claims_workflow_reviewer APPROVED_WITH_PINS; WP-9002-W28 security_critic APPROVED; WP-9002-W28 privacy_compliance_reviewer APPROVED; WP-9002-W28 medical_safety_reviewer APPROVED_WITH_PINS
   ; WP-9002-W29 independent_verifier APPROVED_WITH_PINS; WP-9002-W29 spec_guardian APPROVED_WITH_PINS; WP-9002-W29 data_integrity_auditor APPROVED_WITH_PINS; WP-9002-W29 test_architect APPROVED_WITH_PINS; WP-9002-W29 frontend_reviewer APPROVED_WITH_PINS; WP-9002-W29 accessibility_ux_reviewer APPROVED_WITH_PINS; WP-9002-W29 product_quality_reviewer APPROVED_WITH_PINS; WP-9002-W29 workflow_architect APPROVED_WITH_PINS; WP-9002-W29 claims_workflow_reviewer APPROVED_WITH_PINS; WP-9002-W29 accounting_domain_reviewer APPROVED_WITH_PINS; WP-9002-W29 security_critic APPROVED_WITH_PINS; WP-9002-W29 privacy_compliance_reviewer APPROVED_WITH_PINS; WP-9002-W29 medical_safety_reviewer APPROVED_WITH_PINS
+  ; WP-9002-W30 independent_verifier APPROVED_WITH_PINS; WP-9002-W30 spec_guardian APPROVED_WITH_PINS; WP-9002-W30 data_integrity_auditor APPROVED_WITH_PINS; WP-9002-W30 architect APPROVED_WITH_PINS; WP-9002-W30 test_architect APPROVED_WITH_PINS; WP-9002-W30 calculation_domain_reviewer APPROVED_WITH_PINS; WP-9002-W30 claims_evidence_specialist APPROVED_WITH_PINS; WP-9002-W30 claims_workflow_reviewer APPROVED_WITH_PINS; WP-9002-W30 security_critic APPROVED_WITH_PINS; WP-9002-W30 privacy_compliance_reviewer APPROVED_WITH_PINS; WP-9002-W30 medical_safety_reviewer APPROVED_WITH_PINS
 effective_from: 2026-07-12
 effective_to: null
 source_refs:
@@ -86,6 +87,7 @@ source_refs:
   - WP-9002-W27 UIX-005 stability-SLO metadata-only review candidate (2026-07-12)
   - WP-9002-W28 UIX-004 usability-acceptance metadata-only review candidate (2026-07-12)
   - WP-9002-W29 UIX-006 workflow-map metadata-only review candidate (2026-07-12)
+  - WP-9002-W30 CAL-009 rule-data architecture metadata-only review candidate (2026-07-12)
 depends_on:
   - AGT-018
   - PRC-007
@@ -135,11 +137,13 @@ related_work_packages:
   - WP-9002-W27
   - WP-9002-W28
   - WP-9002-W29
+  - WP-9002-W30
 related_tests:
   - pnpm check:ssot-index
 related_prs: []
 evidence_ids: []
 change_log:
+  - 0.4.43 2026-07-12 WP-9002-W30 CAL-009 metadata-only migrationをfinalize、CAL-009本文/status/version/legacy approval/effective/calculation semantics、3 layers/5 invariants/5-rule 166-point example/4 stops/2 questions/1 blocker不変、inventory173/59/114→173/58/115、eleven-role review accepted
   - 0.4.42 2026-07-12 WP-9002-W29 UIX-006 metadata-only migrationをfinalize、UIX-006本文/status/version/legacy approval/effective/workflow semantics、NORMAL/LOCAL_ONLY/RECOVERY_SYNC/4 role homes/3 navigation principles/2 questions不変、inventory173/60/113→173/59/114、thirteen-role review accepted
   - 0.4.41 2026-07-12 WP-9002-W28 UIX-004 metadata-only migrationをfinalize、UIX-004本文/status/version/legacy approval/effective/UAC semantics、UAC-01..12/2 questions/3 operations不変、inventory173/61/112→173/60/113、thirteen-role review accepted
   - 0.4.40 2026-07-12 WP-9002-W27 UIX-005 metadata-only migrationをfinalize、UIX-005本文/status/version/legacy approval/effective/candidate-SLO/stability semantics、7 SLO/ST-01..15/2 prohibitions/2 questions不変、inventory173/62/111→173/61/112、eleven-role review accepted

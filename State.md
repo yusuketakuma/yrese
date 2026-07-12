@@ -2,11 +2,16 @@
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
 
-> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.42とWP-9002-W29 exact5はthirteen-role review後、commit `0634b9d`でsafe feature branchへLANDED。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
+> 現行routingはAPPROVED AGT-018のCodex単一レーンである。AGT-001〜017はmetadata-only SUPERSEDED。PRC-007 v0.3.1はAPPROVED。IDX-001 v0.4.43はWP-9002-W30 eleven-role reviewを経てAPPROVED、exact5 landing待ち。以下の旧model/role名はhistorical provenanceでcurrent gateには再利用しない。
 
 ---
 
 ## 2026-07-12
+
+### WP-9002-W30 CAL-009 metadata — FINALIZED_PENDING_LANDING
+
+- clean feature-branch baseline `8798b0c`で残存59 SSOTをfresh mappingし、OPS-004との再裁定後、既存impacts/questions/blockerを保持し機械的な7 fieldだけを補完できるCAL-009単独exact5をpre-plan `APPROVED_WITH_PINS`とした。
+- CAL-009本文3363 bytes / SHA-256 `c4c4d9599dc4cd423d63b8faf3bab5157d1a43d4e95127f09264deff9a4646b9`、APPROVED/v0.1.1/legacy approval、2 questions、1 blockerを不変とする。candidate inventory173/58/115、non-target172 `14281/10cea7a6…`。3層/5不変条件/5 rules・166点/4 stopsを保持し、現行testをrule-data/evidence/claim readinessへ昇格しない。11 roleがAPPROVED_WITH_PINS、full gates PASS、IDX v0.4.43 finalize済み、landingのみ未主張。
 
 ### WP-9002-W29 UIX-006 metadata — LANDED
 

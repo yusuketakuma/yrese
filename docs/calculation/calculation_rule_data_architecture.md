@@ -13,13 +13,23 @@ reviewers:
   - human_review_if_required
 version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
+effective_from: null
+effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §18(versioned rule data / pure function)
   - CAL-004 v0.2.1 / CAL-005 / CAL-006(ルールDSL・評価順序)
   - CAL-003(evidence_register)
 depends_on: [CAL-003, CAL-004, CAL-005, CAL-006]
 impacts: [packages/calculation, ARC-006(projection_recalculation_policy), QUA-007]
+related_work_packages: [WP-0044, WP-9002-W30]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - 0.1.0 2026-07-09 初版起草(WP-0044)
+  - 0.1.1 2026-07-09 opus4.8 review反映(golden合計166点の版依存性を明記)
+  - 0.1.1 2026-07-12 WP-9002-W30 metadata-only migration; body and calculation authority unchanged
 open_questions:
   - ルールデータの配布形式(CAL-006 open_question を継承。第一候補: TS 型付き宣言オブジェクト)
   - ルールセット版の永続化先(イベントストア設計 = ARC-005 の適用判断後に確定)

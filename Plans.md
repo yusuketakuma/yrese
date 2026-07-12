@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W29 + WP-9005/9006 LANDED、59 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W29 + WP-9005/9006 LANDED、W30 FINALIZED_PENDING_LANDING、58 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1125,6 +1125,34 @@ finalization_record: RCP-004 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/75/98; RCP-004 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; legal/evidence/cycle/audit gaps remain unresolved and no StatementDocument/privacy/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W30 CAL-009 rule-data architecture metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+
+```yaml
+work_package_id: WP-9002-W30
+baseline_commit: 8798b0c
+baseline_inventory: { total: 173, incomplete: 59, complete: 114 }
+target_inventory: { total: 173, incomplete: 58, complete: 115 }
+target: CAL-009 v0.1.1 metadata-only; body/status/version/legacy approval/effective/calculation semantics preserved
+purpose: Complete PRC-007 metadata without claiming rule-data distribution/persistence, second-version readiness, golden/regulatory/evidence/calculation/claim/release completion, or resolving existing questions/blocker.
+allowed_files: CAL-009, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other CAL/ARC/CLM/MST/REG/SAF/SEC/PRD docs, code/tests/packages/lock, DB/API/UI; rule values, points, dates, evidence, selection/effective semantics, canonical ruleset, claimability, external/production/deploy, semantic or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS after root adjudication against OPS-004; CAL-009 requires only mechanical missing7 while OPS-004 would require new PHI/break-glass/SLA impacts and blocker semantics
+body_changes: none; body must remain 3363 bytes / SHA-256 c4c4d9599dc4cd423d63b8faf3bab5157d1a43d4e95127f09264deff9a4646b9
+pins: preserve APPROVED/v0.1.1/created_at/approved_at/approved_by/owner/reviewers/source/dependencies/impacts/two questions/existing blocker/body; preserve three layers, five invariants, five-rule canonical example/166 points, external-distribution non-design and four fail-closed stops; current implementation/tests are partial regression evidence only
+metadata: updated_at 2026-07-12; effective_from/effective_to null; related_work_packages [WP-0044, WP-9002-W30]; related_tests/related_prs/evidence_ids empty; existing body history transcribed plus W30 metadata-only change log
+non_target: 172 canonical rows / 14281 bytes / SHA-256 10cea7a6399f82eeb3125bf1634420d2638a5dcdcc6b5afbc3ef952145d69116 must remain unchanged; target review inventory 173/58/115
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, calculation_domain_reviewer, claims_evidence_specialist, claims_workflow_reviewer, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata/existing stop only; points/dates/evidence validity, rule/ruleset/version selection, effective_to and prescription/dispensing/claim-month semantics, canonical ruleset, claimability, rounding/copay, legal/pharmacy/claims/patient-safety conclusions and production risk acceptance remain with applicable human authorities
+validation: exact5/staged0; body/preserved/all23/three layers/five invariants/five-rule/166/four stops/two questions/one blocker/inventory/non-target assertions; focused calculation and full workspace gates are regression-only, not architecture/evidence/claim/release proof
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock rule distribution/persistence, second version, evidence, calculation/claim, medical/legal, production, or release gates
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, calculation_domain_reviewer, claims_evidence_specialist, claims_workflow_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED_WITH_PINS; calculation/evidence/medical/claims/legal/security/privacy human authority remains separate
+validation_results: FINAL PASS before landing — exact5/staged0; CAL-009 all23 and body 3363/c4c4d9599dc4cd423d63b8faf3bab5157d1a43d4e95127f09264deff9a4646b9 byte-identical; preserved fields/three layers/five invariants/five-rule 166-point example/four stops/two questions/one blocker unchanged; inventory173/58/115; 172 non-target missing-set baseline-identical at 14281 bytes / SHA-256 10cea7a6399f82eeb3125bf1634420d2638a5dcdcc6b5afbc3ef952145d69116; workspace typecheck/test/build PASS with API172 plus13 expected PostgreSQL skips and web188; focused calculation4, OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as regression-only gates
+finalization_record: CAL-009 retains APPROVED/v0.1.1/legacy approval/effective null and all calculation semantics; IDX-001 v0.4.43 APPROVED with approved_at/effective_from 2026-07-12 and eleven W30 role results; empty direct tests/evidence and green regression do not prove ruleset-version binding, prescription/claim-month selection, persistence, second-version coexistence, canonical immutability enforcement, claimability/copay/rounding, legal/medical/claims, production, or release readiness
+landing_required: root exact-stage landing after final exact5 verification
+landing_record: pending
+state: FINALIZED_PENDING_LANDING; WP-9002 remains IN_PROGRESS and no calculation/claim/release readiness is claimed
 ```
 
 - [x] WP-9002-W29 UIX-006 workflow-map metadata-only migration(LANDED、P1)
