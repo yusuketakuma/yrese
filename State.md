@@ -8,12 +8,12 @@
 
 ## 2026-07-13
 
-### WP-4112 verified audit duplicate EventId rejection — FINALIZED / landing pending
+### WP-4112 verified audit duplicate EventId rejection — LANDED
 
 - clean baseline `9799680`。同一EventIdをsequence/logicalClock更新+正しいprevHashで再hashした2件chainがcore verifierでhealthyになる実在R2 audit identity gapをAPI+browser exact7で修正。
 - scope guard/core verify後、healthy full chainのみEventId一意性をaudit.viewed/window/projection前に強制。browserもhealthy responseのみ検査。duplicate healthyはfixed non-echo全体拒否、refreshはlast verified viewを保持してretry。broken/malformed duplicateは既存CRITICAL reason/view auditを維持。
 - independent verifierとaudit/data/security/privacy/API/frontend/accessibility/medical/DB-boundary review APPROVED、findingsなし。focused audit API18/web22、API222 + PostgreSQL14 expected skips、web272、audit183、workspace typecheck/test/buildと全gate PASS。
-- exact7 implementation commit/push pending。audit core/reason enum/contracts/OpenAPI/repository/DB/SSOT/human gates不変。
+- exact7 implementation commit `2eafa3b`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。audit core/reason enum/contracts/OpenAPI/repository/DB/SSOT/human gates不変。
 
 ### WP-4111 audit refresh active-flight sharing — LANDED
 
