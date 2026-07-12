@@ -74,6 +74,8 @@ export const auditLogScopeInvariantErrorMessage =
   'Audit repository returned events outside the requested scope';
 export const auditLogDuplicateIdentityInvariantErrorMessage =
   'Verified audit chain contains duplicate event identities';
+export const auditLogSequenceInvariantErrorMessage =
+  'Verified audit chain contains a non-contiguous event sequence';
 
 export interface BuildServerOptions {
   readonly patientRepository?: PatientRepository;
@@ -455,6 +457,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
             throw new Error(auditLogDuplicateIdentityInvariantErrorMessage);
           }
           eventIds.add(event.eventId);
+        }
+        for (const [index, event] of events.entries()) {
+          if (event.sequenceNumber !== BigInt(index + 1)) {
+            throw new Error(auditLogSequenceInvariantErrorMessage);
+          }
         }
       }
 

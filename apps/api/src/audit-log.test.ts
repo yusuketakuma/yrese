@@ -11,6 +11,7 @@ import {
 } from './patient-search-cursor.js';
 import {
   auditLogDuplicateIdentityInvariantErrorMessage,
+  auditLogSequenceInvariantErrorMessage,
   auditLogScopeInvariantErrorMessage,
   buildServer,
   type BuildServerOptions,
@@ -246,6 +247,117 @@ describe('GET /audit/events (SCR-028)', () => {
     },
   );
 
+  it.each([
+    ['starts after genesis', [2n]],
+    ['contains a gap', [1n, 3n]],
+    ['reuses a sequence', [1n, 1n]],
+    ['moves backwards after a valid prefix', [1n, 2n, 1n]],
+  ] as const)(
+    'rejects a verified full chain that %s',
+    async (_label, sequenceNumbers) => {
+      const base = new InMemoryAuditRepository();
+      await seedEvents(base, sequenceNumbers.length);
+      const seeded = await base.list(SCOPE);
+      let previousEntryHash: string | undefined;
+      const events = sequenceNumbers.map((sequenceNumber, index) => {
+        const event = createAuditEvent({
+          ...seeded[index]!,
+          sequenceNumber,
+          logicalClock: sequenceNumber,
+          ...(previousEntryHash === undefined
+            ? {}
+            : { prevHash: previousEntryHash }),
+        });
+        previousEntryHash = event.entryHash;
+        return event;
+      });
+      expect(verifyAuditHashChain(events)).toMatchObject({
+        ok: true,
+        checkedCount: events.length,
+      });
+      const record = vi.fn<AuditRepository['record']>(async () => events[0]!);
+      const server = buildDevTestServer({
+        auditRepository: {
+          list: vi.fn(async () => events),
+          record,
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/audit/events?limit=1',
+        headers: auditReadHeaders,
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(record).not.toHaveBeenCalled();
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: auditLogSequenceInvariantErrorMessage,
+      });
+      for (const event of events) {
+        for (const sensitiveValue of [
+          event.eventId,
+          event.actorId,
+          event.targetRef.id,
+          event.correlationId,
+          event.idempotencyKey,
+          event.entryHash,
+        ]) {
+          expect(response.body).not.toContain(sensitiveValue);
+        }
+      }
+    },
+  );
+
+  it('keeps duplicate EventId rejection authoritative over a sequence anomaly', async () => {
+    const base = new InMemoryAuditRepository();
+    await seedEvents(base, 2);
+    const seeded = await base.list(SCOPE);
+    const first = seeded[0]!;
+    const firstWithBadSequence = createAuditEvent({
+      ...first,
+      sequenceNumber: 2n,
+      logicalClock: 2n,
+    });
+    const duplicate = createAuditEvent({
+      ...seeded[1]!,
+      eventId: first.eventId,
+      sequenceNumber: 3n,
+      logicalClock: 3n,
+      prevHash: firstWithBadSequence.entryHash,
+    });
+    expect(verifyAuditHashChain([firstWithBadSequence, duplicate])).toMatchObject({
+      ok: true,
+      checkedCount: 2,
+    });
+    const record = vi.fn<AuditRepository['record']>(async () => first);
+    const server = buildDevTestServer({
+      auditRepository: {
+        list: vi.fn(async () => [firstWithBadSequence, duplicate]),
+        record,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events',
+      headers: auditReadHeaders,
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(record).not.toHaveBeenCalled();
+    expect(response.json()).toMatchObject({
+      message: auditLogDuplicateIdentityInvariantErrorMessage,
+    });
+  });
+
   it('preserves broken-chain reason and view auditing when EventIds also repeat', async () => {
     const base = new InMemoryAuditRepository();
     await seedEvents(base, 2);
@@ -254,6 +366,8 @@ describe('GET /audit/events (SCR-028)', () => {
     const duplicate = createAuditEvent({
       ...seeded[1]!,
       eventId: first.eventId,
+      sequenceNumber: 3n,
+      logicalClock: 3n,
       prevHash: first.entryHash,
     });
     const brokenDuplicate = {

@@ -2444,6 +2444,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused audit API18/web22、API222 + PostgreSQL14 expected skips、web272、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `2eafa3b` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact7、independent/domain reviewとfull gates PASS、healthy verified audit viewsのduplicate EventIdをAPI/browserで全体拒否し、broken/malformed fail-visible semanticsを維持。
 
+- [x] WP-4113 reject non-contiguous sequenceNumber in verified audit reads(R2 audit completeness integrity) — FINALIZED
+  - 発見根拠: `verifyAuditHashChain`はhash/prevHash/entryHashを検証するがsequence連続性を見ず、異なるEventIdを正しく再hash連結した`[1,3]` chainが`ok:true`となることを実証。APPROVED DB-005はcloud chainの初回永続eventを1、以後をTIP採番の厳密な`1..N`とする。
+  - scope: exact5 `apps/api/src/server.ts`, `apps/api/src/audit-log.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。audit core/contracts/OpenAPI/reason enum/repository/SQL/DB/migration/SSOT/web/UIは変更しない。
+  - implementation: scope guard→core full-chain verify一回→WP-4112 full EventId一意性の後、`verification.ok`時のみunwindowed append-order全eventsの`sequenceNumber === BigInt(index + 1)`を別passで要求。anomalyはfixed non-echo全体拒否し、`audit.viewed`/sort/limit/projection/response前に停止。filter/reindex/sort/repair/backfillなし。
+  - acceptance: valid rehashしたstart-at-2、gap`[1,3]`、reuse`[1,1]`、valid prefix後backward`[1,2,1]`を`limit=1`でも500/no-store/audit zero。`[2,3]`+duplicate EventIdはWP-4112 identity errorを優先。empty/contiguous healthyは維持し、broken/malformed+sequence anomalyは既存reason/checkedCount/raw window/no-backfill/audit.viewedを優先。
+  - review_results: initial domain MEDIUM(full EventId precedenceがsingle loopで配置依存)とverifier MEDIUM(backward fixtureがstart anomalyと同一branch)を、EventId/sequence別full passと`[1,2,1]` fixtureで修正。independent verifierとaudit/data/security/privacy/API/medical/DB-boundary re-review APPROVED、findingsなし。DB-005 decision B/app-local boundary、virtual genesis、no-delete、future segmentation stopを維持。
+  - validation_results: focused audit API23、API227 + PostgreSQL14 expected skips、web272、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: exact5 implementation commit/push pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
