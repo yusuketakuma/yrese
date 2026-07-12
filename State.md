@@ -8,11 +8,12 @@
 
 ## 2026-07-13
 
-### WP-4093 fail-visible malformed audit display projection — FINALIZED
+### WP-4093 fail-visible malformed audit display projection — LANDED
 
 - clean HEAD `ded1134`の増分scanで、WP-4089後もraw display fieldのdereference/response parseがmalformed rowを500へ戻すR2 gapをmapperが再現。plannerは保存集合/chain/totalCountを維持し、raw limit後のdisplay projectionだけを省略する設計をAPPROVED。
 - exact5で既存entry schemaを唯一の表示authorityとし、placeholder/backfill/raw echoを禁止。core verification ok時のsilent omissionも禁止する。DB/contracts/OpenAPI/UIは不変。
-- malformed target/wallClock、no-backfill、valid neighbor、totalCount、non-echo、view auditを回帰固定。independent audit/data/security/privacy/API/frontend/medical review APPROVED。API193 + expected skip14、web215、audit183、workspace typecheck/test/buildと全gate PASS。exact5 landing待ち。
+- malformed target/wallClock、no-backfill、valid neighbor、totalCount、non-echo、view auditを回帰固定。independent audit/data/security/privacy/API/frontend/medical review APPROVED。API193 + expected skip14、web215、audit183、workspace typecheck/test/buildと全gate PASS。
+- exact5 commit `888c449`をfeature branchへpush済み。chain verification/count/raw windowを保持し、display契約不能rowだけをfalse-chain時に省略する。
 
 ### WP-4092 PostgreSQL audit append observed-concurrency proof — IN PROGRESS
 
