@@ -229,6 +229,19 @@ export function createSearchRunner(
                 },
               };
             }
+            if (cursor !== undefined && page.nextCursor === cursor) {
+              return {
+                ...prev,
+                appendState: {
+                  kind: "error",
+                  notice: {
+                    message: "検索結果の処理に失敗しました。",
+                    nextAction:
+                      "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+                  },
+                },
+              };
+            }
             return {
               kind: "loaded",
               results: [...prev.results, ...page.results],

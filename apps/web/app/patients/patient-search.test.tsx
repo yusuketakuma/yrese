@@ -458,6 +458,57 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     },
   );
 
+  it.each([
+    ["a distinct result", [patient({ patientId: "patient-self-loop-sensitive" })]],
+    ["an empty result", []],
+  ] as const)(
+    "rejects an append cursor self-loop with %s and retries without a partial commit",
+    async (_label, selfLoopResults) => {
+      const states: SearchState[] = [{ kind: "idle" }];
+      const retained = patient({ patientId: "patient-retained-safe" });
+      const replacement = patient({ patientId: "patient-retry-safe" });
+      const fetcher = vi
+        .fn<(q: string, cursor?: string) => Promise<SearchPage>>()
+        .mockResolvedValueOnce({ results: [retained], nextCursor: "cursor-loop" })
+        .mockResolvedValueOnce({
+          results: [...selfLoopResults],
+          nextCursor: "cursor-loop",
+        })
+        .mockResolvedValueOnce({ results: [replacement] });
+      const run = createSearchRunner(fetcher, (update) => {
+        states.push(update(states[states.length - 1]!));
+      });
+
+      await run("合成");
+      await run("合成", "cursor-loop", true);
+
+      const failed = states[states.length - 1]!;
+      expect(failed.kind).toBe("loaded");
+      if (failed.kind !== "loaded") throw new Error("expected retained loaded state");
+      expect(failed.results).toEqual([retained]);
+      expect(failed.query).toBe("合成");
+      expect(failed.nextCursor).toBe("cursor-loop");
+      expect(failed.appendState).toMatchObject({
+        kind: "error",
+        notice: { message: "検索結果の処理に失敗しました。" },
+      });
+      expect(JSON.stringify(failed)).not.toContain("patient-self-loop-sensitive");
+
+      await run(failed.query, failed.nextCursor, true);
+      const retried = states[states.length - 1]!;
+      expect(retried.kind).toBe("loaded");
+      if (retried.kind !== "loaded") throw new Error("expected retried loaded state");
+      expect(retried.results).toEqual([retained, replacement]);
+      expect(retried.nextCursor).toBeUndefined();
+      expect(retried.appendState).toEqual({ kind: "idle" });
+      expect(fetcher.mock.calls).toEqual([
+        ["合成", undefined],
+        ["合成", "cursor-loop"],
+        ["合成", "cursor-loop"],
+      ]);
+    },
+  );
+
   it("rejects duplicate PatientIds inside an append page before merging any row", async () => {
     const states: SearchState[] = [{ kind: "idle" }];
     const retained = patient({ patientId: "patient-retained" });
@@ -516,7 +567,7 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     expect(last.results.map((result) => result.patientId)).toEqual(["p1", "p2"]);
   });
 
-  it("admits the same append tuple again after successful owner cleanup", async () => {
+  it("admits the same append tuple again after a rejected self-loop owner cleans up", async () => {
     const states: SearchState[] = [{ kind: "idle" }];
     const fetcher = vi
       .fn<(q: string, cursor?: string) => Promise<SearchPage>>()
@@ -545,7 +596,9 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     const last = states[states.length - 1]!;
     expect(last.kind).toBe("loaded");
     if (last.kind === "loaded") {
-      expect(last.results.map((result) => result.patientId)).toEqual(["p1", "p2", "p3"]);
+      expect(last.results.map((result) => result.patientId)).toEqual(["p1", "p3"]);
+      expect(last.nextCursor).toBeUndefined();
+      expect(last.appendState).toEqual({ kind: "idle" });
     }
   });
 
