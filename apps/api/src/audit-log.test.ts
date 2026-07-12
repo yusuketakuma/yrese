@@ -35,6 +35,16 @@ const SCOPE: AuditScope = {
   pharmacyId: pharmacyId('pharmacy-001'),
 };
 
+function receptionCreated(id: string, wallClock: string) {
+  return {
+    actorId: userId('user-001'),
+    auditEventType: 'reception.created' as const,
+    targetRef: { kind: 'reception', id },
+    outcome: 'success' as const,
+    wallClock,
+  };
+}
+
 async function seedEvents(repository: InMemoryAuditRepository, count: number): Promise<void> {
   for (let i = 1; i <= count; i += 1) {
     await repository.record(SCOPE, {
@@ -107,6 +117,61 @@ describe('GET /audit/events (SCR-028)', () => {
     expect(body.chainVerification).toEqual({ ok: true, checkedCount: 3 });
     // 表示投影に hash・envelope 内部を漏らさない
     expect(JSON.stringify(body.entries)).not.toMatch(/entryHash|prevHash|payloadHash/);
+  });
+
+  it('orders a verified display window by wallClock before applying limit', async () => {
+    const repository = new InMemoryAuditRepository();
+    await repository.record(
+      SCOPE,
+      receptionCreated('reception-late', '2026-07-11T03:00:00.000Z'),
+    );
+    await repository.record(
+      SCOPE,
+      receptionCreated('reception-early', '2026-07-11T01:00:00.000Z'),
+    );
+    await repository.record(
+      SCOPE,
+      receptionCreated('reception-middle', '2026-07-11T02:00:00.000Z'),
+    );
+    const server = buildDevTestServer({ auditRepository: repository });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events?limit=2',
+      headers: auditReadHeaders,
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as AuditLogResponse;
+    expect(body.entries.map((entry) => entry.targetRef.id)).toEqual([
+      'reception-late',
+      'reception-middle',
+    ]);
+    expect(body.chainVerification).toEqual({ ok: true, checkedCount: 3 });
+    expect(body.totalCount).toBe(3);
+  });
+
+  it('uses later append order as the deterministic tie-break for equal wallClock', async () => {
+    const repository = new InMemoryAuditRepository();
+    await repository.record(
+      SCOPE,
+      receptionCreated('reception-equal-a', '2026-07-11T03:00:00.000Z'),
+    );
+    await repository.record(
+      SCOPE,
+      receptionCreated('reception-equal-b', '2026-07-11T03:00:00.000Z'),
+    );
+    const server = buildDevTestServer({ auditRepository: repository });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events',
+      headers: auditReadHeaders,
+    });
+    expect(response.statusCode).toBe(200);
+    expect((response.json() as AuditLogResponse).entries.map((entry) => entry.targetRef.id)).toEqual([
+      'reception-equal-b',
+      'reception-equal-a',
+    ]);
   });
 
   it('reports a broken hash chain instead of hiding tampering', async () => {

@@ -414,8 +414,18 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         wallClock: now().toISOString(),
       });
 
-      // 新しい順(追記順の逆)で limit 件へ射影。表示投影に hash・envelope 内部は含めない。
-      const displayWindow = [...events].reverse().slice(0, query.data.limit);
+      // 検証済みchainは公開契約どおりwallClock降順。同時刻は後のappendを先にする。
+      // 破損chainはwallClockを信頼せず、WP-4093のraw append window/no-backfillを維持する。
+      const displayCandidates = events.map((event, appendIndex) => ({ event, appendIndex }));
+      displayCandidates.sort((left, right) => {
+        if (!verification.ok) return right.appendIndex - left.appendIndex;
+        if (left.event.wallClock < right.event.wallClock) return 1;
+        if (left.event.wallClock > right.event.wallClock) return -1;
+        return right.appendIndex - left.appendIndex;
+      });
+      const displayWindow = displayCandidates
+        .slice(0, query.data.limit)
+        .map(({ event }) => event);
       const entries: AuditLogEntry[] = [];
       let projectionFailed = false;
       for (const event of displayWindow) {

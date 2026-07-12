@@ -2273,6 +2273,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused API audit10、API193 + PostgreSQL14 expected skips、web215、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: commit `888c449` `WP-4093: keep malformed audit rows fail-visible` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、review/full gates PASS、保存破損をcount/verifyしたままdisplay-safeにCRITICAL表示へ戻し、contracts/UI/DBは不変。
 
+- [x] WP-4094 align verified audit display ordering with wallClock-desc contract(R1 contract correctness)
+  - 発見根拠: contracts/OpenAPIは`entries`を`wallClock desc`と公開するが、routeはappend順をreverseしてlimitする。03:00→01:00→02:00のappendでlimit2が02:00/01:00となり、03:00を誤って除外する再現を得た。
+  - scope: exact5 `apps/api/src/server.ts`, `apps/api/src/audit-log.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。contracts/OpenAPI/UI/audit core/repository/DBは変更しない。
+  - implementation: full chainは元append順で検証後、healthy chainだけwallClock降順、同時刻はlater append優先でdisplay windowを選びlimitする。broken chainはuntrusted wallClockをsort keyにせずWP-4093 raw-window/no-backfill quarantineを維持する。
+  - acceptance: nonmonotonic時刻のmembership/order、equal-time tie、full checkedCount、view audit snapshot除外を固定。broken-chain/malformed/no-backfill/non-echo semantics不変。focused/full gatesとindependent API/audit/security/privacy review PASSまで未完了。
+  - review_results: independent API/audit/data/security/privacy/frontend/medical review APPROVED、findingsなし。append-order full verification、healthy wallClock sort-before-limit、tie、broken quarantine、view snapshotを確認。
+  - validation_results: focused API audit12、API195 + PostgreSQL14 expected skips、web215、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。初回新規test helper未定義2件を検出・修正後再実行PASS。
+  - landing_record: exact5 commit/push待ち。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
