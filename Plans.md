@@ -2363,6 +2363,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused reception-dashboard43、web251、API207 + PostgreSQL14 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `ea67f13` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent review/full gates PASS、identical latest active queue flightをsharedしA-B-A/WP-4102 semanticsを維持。
 
+- [x] WP-4104 bind patient refresh response to requested identity(R2 wrong-patient prevention) — FINALIZED
+  - 発見根拠: `fetchPatientById(id)`はschema-valid 200 responseならreturned `patientId`がrequested IDと異なってもprojectionし、選択中患者文脈を別患者へ置換できる。404/non-ok/schema validationとrunner stale guardだけではcurrent response identityを拘束しない。
+  - scope: exact5 `apps/web/app/components/patient-context.tsx`, `apps/web/app/components/patient-context.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。copy/DOM/ARIA/focus/animation/API/contracts/server/DB/SSOTは変更しない。
+  - implementation: 200 bodyをschema parse一回後、parsed.patientIdとrequested idをstrict比較し、一致後だけprojection。不一致は固定`Patient refresh response identity mismatch`をthrowし、requested/returned ID、name/kana/patientNumber/body/status/Zod/rawをechoしない。normalize/rewriteなし。
+  - acceptance: same-ID projection、different-ID fixed/non-echo、bound fetch current mismatchはonFailureのみ、404 removal、transport/schema failure、clear/switch後stale mismatch zero callbacks、新er matching authorityを固定。mismatchはselection保持/stale経路でnull/onRemovedなし。full gatesとindependent patient/frontend/medical/privacy/security/API/data review PASSまで未完了。
+  - review_results: independent verifier APPROVED、findingsなし。patient-safety/domain reviewもAPPROVED、findingsなしで、frontend/medical/privacy/security/API/data implicationsを確認。strict identity-before-projection、fixed non-echo mismatch、onFailure retention、404/stale semantics維持を確認。
+  - validation_results: focused patient-context19/19、web full256/256、web typecheck/build PASS。full workspace gate exit0: `pnpm -r typecheck/test/build`、check:openapi、check:calculation-purity、boundaries、SSOT index173、secrets、deps high=0 critical=0、SBOM231、test:scripts、git diff --check全PASS。landing pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

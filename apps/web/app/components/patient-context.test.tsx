@@ -115,6 +115,39 @@ describe("fetchPatientById (GET /patients/:patientId 契約)", () => {
     });
   });
 
+  it("rejects a schema-valid response for a different patient with a fixed non-echo error", async () => {
+    await withDevEnv(async () => {
+      const requestedId = SAMPLE.patientId;
+      const returnedId = "22222222-2222-4222-8222-222222222222";
+      const mismatched = {
+        ...SAMPLE,
+        patientId: returnedId,
+        patientNumber: "SECRET-PATIENT-NUMBER",
+        name: "秘密 名前",
+        kana: "ヒミツ ナマエ",
+      };
+      const stub: typeof fetch = async () => jsonResponse(200, mismatched);
+
+      let thrown: unknown;
+      try {
+        await fetchPatientById(requestedId, stub);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toBe(
+        "Patient refresh response identity mismatch",
+      );
+      const serialized = JSON.stringify(thrown, Object.getOwnPropertyNames(thrown));
+      expect(serialized).not.toContain(requestedId);
+      expect(serialized).not.toContain(returnedId);
+      expect(serialized).not.toContain("SECRET-PATIENT-NUMBER");
+      expect(serialized).not.toContain("秘密 名前");
+      expect(serialized).not.toContain("ヒミツ ナマエ");
+    });
+  });
+
   it("returns null on 404 (対象患者が参照不能)", async () => {
     await withDevEnv(async () => {
       const stub: typeof fetch = async () =>
@@ -237,5 +270,121 @@ describe("createPatientRefreshRunner (患者切替・解除の競合防止)", ()
     expect(eventsA.onFresh).not.toHaveBeenCalled();
     expect(eventsA.onRemoved).not.toHaveBeenCalled();
     expect(eventsA.onFailure).not.toHaveBeenCalled();
+  });
+
+  it("routes a current bound-fetch identity mismatch only to onFailure", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    try {
+      const returnedId = "22222222-2222-4222-8222-222222222222";
+      const fetchImpl: typeof fetch = async () =>
+        new Response(JSON.stringify({ ...SAMPLE, patientId: returnedId }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      const runner = createPatientRefreshRunner((id) =>
+        fetchPatientById(id, fetchImpl),
+      );
+      const events = callbacks();
+
+      await runner.refresh(SAMPLE.patientId, events);
+
+      expect(events.onFailure).toHaveBeenCalledOnce();
+      expect(events.onFresh).not.toHaveBeenCalled();
+      expect(events.onRemoved).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("keeps bound-fetch 404 removal semantics unchanged", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    try {
+      const fetchImpl: typeof fetch = async () =>
+        new Response(JSON.stringify({ errorCode: "PAT-0002" }), {
+          status: 404,
+          headers: { "content-type": "application/json" },
+        });
+      const runner = createPatientRefreshRunner((id) =>
+        fetchPatientById(id, fetchImpl),
+      );
+      const events = callbacks();
+
+      await runner.refresh(SAMPLE.patientId, events);
+
+      expect(events.onRemoved).toHaveBeenCalledOnce();
+      expect(events.onFresh).not.toHaveBeenCalled();
+      expect(events.onFailure).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("suppresses a stale bound-fetch mismatch after clear", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const pending = deferred<Response>();
+    try {
+      const runner = createPatientRefreshRunner((id) =>
+        fetchPatientById(id, () => pending.promise),
+      );
+      const events = callbacks();
+
+      const refresh = runner.refresh(SAMPLE.patientId, events);
+      runner.invalidate();
+      pending.resolve(
+        new Response(
+          JSON.stringify({
+            ...SAMPLE,
+            patientId: "22222222-2222-4222-8222-222222222222",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+      await refresh;
+
+      expect(events.onFresh).not.toHaveBeenCalled();
+      expect(events.onRemoved).not.toHaveBeenCalled();
+      expect(events.onFailure).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("keeps a newer matching bound-fetch patient authoritative over an older mismatch", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const oldResponse = deferred<Response>();
+    const secondId = "22222222-2222-4222-8222-222222222222";
+    try {
+      const fetchImpl: typeof fetch = async (input) =>
+        String(input).endsWith(encodeURIComponent(SAMPLE.patientId))
+          ? oldResponse.promise
+          : new Response(JSON.stringify({ ...SAMPLE, patientId: secondId }), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            });
+      const runner = createPatientRefreshRunner((id) =>
+        fetchPatientById(id, fetchImpl),
+      );
+      const oldEvents = callbacks();
+      const newEvents = callbacks();
+
+      const oldRefresh = runner.refresh(SAMPLE.patientId, oldEvents);
+      await runner.refresh(secondId, newEvents);
+      oldResponse.resolve(
+        new Response(JSON.stringify({ ...SAMPLE, patientId: secondId }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+      await oldRefresh;
+
+      expect(newEvents.onFresh).toHaveBeenCalledWith(
+        expect.objectContaining({ patientId: secondId }),
+      );
+      expect(oldEvents.onFresh).not.toHaveBeenCalled();
+      expect(oldEvents.onRemoved).not.toHaveBeenCalled();
+      expect(oldEvents.onFailure).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

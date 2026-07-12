@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4104 patient refresh response identity binding — FINALIZED
+
+- clean baseline `dabb180`。schema-valid get-by-id 200 responseのpatientId不一致が選択中文脈を別患者へ置換できるR2 wrong-patient gapをexact5で修正中。
+- parse一回後のstrict requested/returned ID一致をprojection前に要求し、不一致は固定non-echo errorから既存onFailure/stale経路へ流す。404 removal/non-ok/schema/stale generation semanticsは維持。copy/DOM/ARIA/focus/animation/API/contracts/server/DB/SSOTは不変。
+- independent verifier APPROVED、findingsなし。patient-safety/domain reviewもfrontend/medical/privacy/security/API/data implicationsを確認してAPPROVED、findingsなし。focused patient-context19/19、web full256/256、web typecheck/build PASS。full workspace gate exit0: workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。landing pending。
+
 ### WP-4103 reception queue latest-flight sharing — LANDED
 
 - clean baseline `23caf6e`。同一latest active queue targetの重複loadがgeneration/emit/fetchを重ねるR1 request-integrity gapをexact5で修正中。

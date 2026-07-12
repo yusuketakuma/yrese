@@ -85,7 +85,11 @@ export async function fetchPatientById(
   if (!res.ok) {
     throw new Error(`patient refresh failed (HTTP ${res.status})`);
   }
-  return toPatientContextData(patientSearchResultSchema.parse(await res.json()));
+  const parsed = patientSearchResultSchema.parse(await res.json());
+  if (parsed.patientId !== id) {
+    throw new Error("Patient refresh response identity mismatch");
+  }
+  return toPatientContextData(parsed);
 }
 
 const PatientContext = createContext<PatientContextValue | null>(null);
