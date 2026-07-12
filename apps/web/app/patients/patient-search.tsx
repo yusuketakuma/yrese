@@ -55,7 +55,13 @@ export type SearchState =
       results: PatientSearchResult[];
       nextCursor?: string;
       query: string;
+      appendState: SearchAppendState;
     };
+
+export type SearchAppendState =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "error"; notice: ErrorNoticeProps };
 
 export interface SearchPage {
   readonly results: PatientSearchResult[];
@@ -153,38 +159,66 @@ export function createSearchRunner(
       }));
       return;
     }
-    emit((prev) =>
-      append && prev.kind === "loaded" ? prev : { kind: "loading" },
-    );
+    emit((prev) => {
+      if (!append) return { kind: "loading" };
+      return prev.kind === "loaded" &&
+        prev.query === trimmed &&
+        prev.nextCursor === cursor
+        ? { ...prev, appendState: { kind: "loading" } }
+        : prev;
+    });
     try {
       const page = await fetcher(trimmed, cursor);
       if (gen !== generation) {
         return; // 古い応答は破棄(最後の検索のみ反映)
       }
-      emit((prev) => ({
-        kind: "loaded",
-        results:
-          append && prev.kind === "loaded"
-            ? [...prev.results, ...page.results]
-            : page.results,
-        ...(page.nextCursor !== undefined ? { nextCursor: page.nextCursor } : {}),
-        query: trimmed,
-      }));
+      emit((prev) => {
+        if (append) {
+          if (
+            prev.kind !== "loaded" ||
+            prev.query !== trimmed ||
+            prev.nextCursor !== cursor
+          ) {
+            return prev;
+          }
+          return {
+            kind: "loaded",
+            results: [...prev.results, ...page.results],
+            ...(page.nextCursor !== undefined ? { nextCursor: page.nextCursor } : {}),
+            query: trimmed,
+            appendState: { kind: "idle" },
+          };
+        }
+        return {
+          kind: "loaded",
+          results: page.results,
+          ...(page.nextCursor !== undefined ? { nextCursor: page.nextCursor } : {}),
+          query: trimmed,
+          appendState: { kind: "idle" },
+        };
+      });
     } catch (error) {
       if (gen !== generation) {
         return; // 古いリクエストの失敗も破棄
       }
-      emit(() => ({
-        kind: "error",
-        notice:
-          error instanceof SearchError
-            ? error.toNotice()
-            : {
-                message: "検索結果の処理に失敗しました。",
-                nextAction:
-                  "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
-              },
-      }));
+      const notice =
+        error instanceof SearchError
+          ? error.toNotice()
+          : {
+              message: "検索結果の処理に失敗しました。",
+              nextAction:
+                "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+            };
+      emit((prev) => {
+        if (append) {
+          return prev.kind === "loaded" &&
+            prev.query === trimmed &&
+            prev.nextCursor === cursor
+            ? { ...prev, appendState: { kind: "error", notice } }
+            : prev;
+        }
+        return { kind: "error", notice };
+      });
     }
   };
 }
@@ -209,12 +243,14 @@ export function PatientSearchResults({
   results,
   query,
   nextCursor,
+  appendState = { kind: "idle" },
   onLoadMore,
   onSelect,
 }: {
   readonly results: readonly PatientSearchResult[];
   readonly query: string;
   readonly nextCursor?: string;
+  readonly appendState?: SearchAppendState;
   readonly onLoadMore?: () => void;
   /** 患者を業務対象として選択する(患者文脈確定 — UIX-006 / R-PATCTX) */
   readonly onSelect?: (patient: PatientSearchResult) => void;
@@ -314,9 +350,20 @@ export function PatientSearchResults({
         </div>
       )}
       {nextCursor !== undefined && onLoadMore !== undefined && (
-        <button type="button" onClick={onLoadMore}>
-          続きを読み込む
-        </button>
+        <>
+          {appendState.kind === "error" && <ErrorNotice {...appendState.notice} />}
+          <button
+            type="button"
+            onClick={onLoadMore}
+            disabled={appendState.kind === "loading"}
+          >
+            {appendState.kind === "loading"
+              ? "続きを読み込み中…"
+              : appendState.kind === "error"
+                ? "続きの読み込みを再試行"
+                : "続きを読み込む"}
+          </button>
+        </>
       )}
     </>
   );
@@ -419,6 +466,7 @@ export function PatientSearch() {
         <PatientSearchResults
           results={state.results}
           query={state.query}
+          appendState={state.appendState}
           {...(state.nextCursor !== undefined
             ? { nextCursor: state.nextCursor }
             : {})}

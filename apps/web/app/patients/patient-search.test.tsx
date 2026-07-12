@@ -349,6 +349,90 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     }
   });
 
+  it("preserves loaded results and cursor when append fails, then retries the same page", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    const emit = (update: (prev: SearchState) => SearchState) => {
+      states.push(update(states[states.length - 1]!));
+    };
+    const fetcher = vi
+      .fn<(q: string, cursor?: string) => Promise<SearchPage>>()
+      .mockResolvedValueOnce({
+        results: [patient({ patientId: "p1", kana: "ドウイツ カナ" })],
+        nextCursor: "cursor-1",
+      })
+      .mockRejectedValueOnce(new Error("raw append failure must not appear"))
+      .mockResolvedValueOnce({
+        results: [patient({ patientId: "p2", kana: "ドウイツ カナ" })],
+      });
+    const run = createSearchRunner(fetcher, emit);
+
+    await run("合成");
+    await run("合成", "cursor-1", true);
+    const failed = states[states.length - 1]!;
+    expect(failed.kind).toBe("loaded");
+    if (failed.kind !== "loaded") throw new Error("expected retained loaded state");
+    expect(failed.results.map((result) => result.patientId)).toEqual(["p1"]);
+    expect(failed.query).toBe("合成");
+    expect(failed.nextCursor).toBe("cursor-1");
+    expect(failed.appendState).toMatchObject({
+      kind: "error",
+      notice: { message: "検索結果の処理に失敗しました。" },
+    });
+    expect(JSON.stringify(failed)).not.toContain("raw append failure");
+
+    await run(failed.query, failed.nextCursor, true);
+    const retried = states[states.length - 1]!;
+    expect(retried.kind).toBe("loaded");
+    if (retried.kind !== "loaded") throw new Error("expected retried loaded state");
+    expect(retried.results.map((result) => result.patientId)).toEqual(["p1", "p2"]);
+    expect(retried.nextCursor).toBeUndefined();
+    expect(retried.appendState).toEqual({ kind: "idle" });
+    expect(fetcher.mock.calls).toEqual([
+      ["合成", undefined],
+      ["合成", "cursor-1"],
+      ["合成", "cursor-1"],
+    ]);
+    expect(duplicateKanaSet(retried.results).has("ドウイツ カナ")).toBe(true);
+  });
+
+  it("renders retained rows, append error, incomplete warning, and explicit retry together", () => {
+    const html = renderToStaticMarkup(
+      <PatientSearchResults
+        results={[patient({ patientId: "p1" })]}
+        query="合成"
+        nextCursor="cursor-1"
+        appendState={{
+          kind: "error",
+          notice: {
+            message: "検索結果の処理に失敗しました。",
+            nextAction: "再試行してください。",
+          },
+        }}
+        onLoadMore={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("T-0001");
+    expect(html).toContain("未読込の続きがあります");
+    expect(html).toContain('role="alert"');
+    expect(html).toContain("続きの読み込みを再試行");
+  });
+
+  it("keeps rows visible and disables only the continuation control while appending", () => {
+    const html = renderToStaticMarkup(
+      <PatientSearchResults
+        results={[patient({ patientId: "p1" })]}
+        query="合成"
+        nextCursor="cursor-1"
+        appendState={{ kind: "loading" }}
+        onLoadMore={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("T-0001");
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>続きを読み込み中…<\/button>/);
+  });
+
   it("sends dev tenant headers only in development (WP-4038)", () => {
     expect(devTenantHeaders(PATIENT_SEARCH_DEV_SCOPES, "development")).toMatchObject({
       "x-dev-tenant": "t-dev",

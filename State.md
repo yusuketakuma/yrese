@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4097 patient search append failure recovery — FINALIZED
+
+- clean HEAD `6021f0b`。append failureが既存患者results/query/cursor/未読込警告を全消去するLOW-MEDIUM workflow gapをmapper/plannerが確認。API-001/MSR-001/P-09の比較継続性を改善するexact5を採択。
+- loaded append substateでrows/cursorを保持し、既存ErrorNoticeと明示retryを併設。API/DB/cursor/CSS/focus/animation/PHI handlingは不変。
+- independent verifier APPROVED、findingなし。focused23、web218、workspace typecheck/test（API203 + PostgreSQL14 expected skips）/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。exact5 landing待ち。
+
 ### WP-4096 reception rollback-failed client quarantine — LANDED
 
 - clean HEAD `644dc9d`。reception createにもWP-4095と同じrollback-failed client再利用欠陥を確認。API-006/MSR-001/MSR-026境界のため、created/existing/different-patient conflict全正常分岐もcharacterizeするexact5を採択。

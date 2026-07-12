@@ -2300,6 +2300,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused reception lifecycle5、API203 + PostgreSQL14 expected skips、web215、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: commit `80b6bd7` `WP-4096: quarantine failed reception transactions` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、review/full gates PASS、rollback失敗clientだけをdestroyし、API-006/idempotency/patient identity/SQL/DBは不変。
 
+- [x] WP-4097 preserve patient results across append failure(R1 workflow recovery)
+  - 発見根拠: continuation fetch失敗時にloaded state全体をerrorへ置換し、既存患者rows/query/cursor/未読込警告とretry controlを失う。通常のnetwork/parse失敗で患者比較を最初からやり直す。
+  - scope: exact5 `apps/web/app/patients/patient-search.tsx`, `apps/web/app/patients/patient-search.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。API/contracts/cursor/server/DB/CSS/packageは変更しない。
+  - implementation: loaded stateがidle/loading/errorのappend substateを所有。append failureはmatching query/cursorのrows/query/cursorを保持してsanitized ErrorNoticeを表示し、明示retryは同じcursorを使う。successで一度だけmergeしてnoticeをclearする。
+  - acceptance: retained rows/cursor/incomplete warning、visible alert、explicit retry、loading時continuation-only disabled、retry merge/duplicate warning、initial/blank/stale semantics不変。animation/focus移動/auto-retry/raw error/PHI persistenceなし。full gatesとindependent frontend/accessibility/medical/privacy/API review PASSまで未完了。
+  - review_results: independent verifier APPROVED、findingなし。generation + query/cursor tuple guard、same-cursor retry、single merge、raw error非echo、role=alert、continuation-only disabled、medical workflow/privacy/security/API不変を確認。
+  - validation_results: focused patient-search23、web218、workspace typecheck/test（API203 + PostgreSQL14 expected skipsを含む）/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: exact5 implementation commit/push待ち。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
