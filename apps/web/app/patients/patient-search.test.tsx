@@ -395,6 +395,257 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     expect(duplicateKanaSet(retried.results).has("ドウイツ カナ")).toBe(true);
   });
 
+  it("coalesces synchronous trim-equivalent append requests and merges the owner result once", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    let resolveAppend!: (page: SearchPage) => void;
+    const fetcher = vi
+      .fn<(q: string, cursor?: string) => Promise<SearchPage>>()
+      .mockResolvedValueOnce({
+        results: [patient({ patientId: "p1" })],
+        nextCursor: "cursor-1",
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise<SearchPage>((resolve) => {
+            resolveAppend = resolve;
+          }),
+      );
+    const run = createSearchRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    await run("合成");
+    const owner = run(" 合成 ", "cursor-1", true);
+    const duplicate = run("合成", "cursor-1", true);
+
+    await duplicate;
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    resolveAppend({ results: [patient({ patientId: "p2" })] });
+    await owner;
+
+    const last = states[states.length - 1]!;
+    expect(last.kind).toBe("loaded");
+    if (last.kind !== "loaded") throw new Error("expected loaded state");
+    expect(last.results.map((result) => result.patientId)).toEqual(["p1", "p2"]);
+  });
+
+  it("admits the same append tuple again after successful owner cleanup", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    const fetcher = vi
+      .fn<(q: string, cursor?: string) => Promise<SearchPage>>()
+      .mockResolvedValueOnce({
+        results: [patient({ patientId: "p1" })],
+        nextCursor: "cursor-1",
+      })
+      .mockResolvedValueOnce({
+        results: [patient({ patientId: "p2" })],
+        nextCursor: "cursor-1",
+      })
+      .mockResolvedValueOnce({ results: [patient({ patientId: "p3" })] });
+    const run = createSearchRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    await run("合成");
+    await run("合成", "cursor-1", true);
+    await run("合成", "cursor-1", true);
+
+    expect(fetcher.mock.calls).toEqual([
+      ["合成", undefined],
+      ["合成", "cursor-1"],
+      ["合成", "cursor-1"],
+    ]);
+    const last = states[states.length - 1]!;
+    expect(last.kind).toBe("loaded");
+    if (last.kind === "loaded") {
+      expect(last.results.map((result) => result.patientId)).toEqual(["p1", "p2", "p3"]);
+    }
+  });
+
+  it("keeps a full search authoritative over a late append failure", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    let rejectAppend!: (reason: Error) => void;
+    const fetcher = vi
+      .fn<(q: string, cursor?: string) => Promise<SearchPage>>()
+      .mockResolvedValueOnce({
+        results: [patient({ patientId: "a1" })],
+        nextCursor: "cursor-a",
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise<SearchPage>((_resolve, reject) => {
+            rejectAppend = reject;
+          }),
+      )
+      .mockResolvedValueOnce({ results: [patient({ patientId: "b1" })] });
+    const run = createSearchRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    await run("検索A");
+    const append = run("検索A", "cursor-a", true);
+    await run("検索B");
+    rejectAppend(new Error("late synthetic append failure"));
+    await append;
+
+    const last = states[states.length - 1]!;
+    expect(last.kind).toBe("loaded");
+    if (last.kind === "loaded") {
+      expect(last.query).toBe("検索B");
+      expect(last.results.map((result) => result.patientId)).toEqual(["b1"]);
+    }
+  });
+
+  it("admits a replacement append after an authoritative full search and protects its owner from stale cleanup", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    let resolveOldAppend!: (page: SearchPage) => void;
+    let resolveReplacementAppend!: (page: SearchPage) => void;
+    const fetcher = vi
+      .fn<(q: string, cursor?: string) => Promise<SearchPage>>()
+      .mockResolvedValueOnce({
+        results: [patient({ patientId: "initial" })],
+        nextCursor: "cursor-a",
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise<SearchPage>((resolve) => {
+            resolveOldAppend = resolve;
+          }),
+      )
+      .mockResolvedValueOnce({
+        results: [patient({ patientId: "refreshed" })],
+        nextCursor: "cursor-a",
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise<SearchPage>((resolve) => {
+            resolveReplacementAppend = resolve;
+          }),
+      );
+    const run = createSearchRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    await run("検索A");
+    const oldAppend = run("検索A", "cursor-a", true);
+    await run("検索A");
+    const replacementAppend = run("検索A", "cursor-a", true);
+
+    expect(fetcher).toHaveBeenCalledTimes(4);
+    expect(states[states.length - 1]).toMatchObject({
+      kind: "loaded",
+      query: "検索A",
+      nextCursor: "cursor-a",
+      appendState: { kind: "loading" },
+    });
+
+    resolveOldAppend({ results: [patient({ patientId: "stale-old" })] });
+    await oldAppend;
+    await run(" 検索A ", "cursor-a", true);
+    expect(fetcher).toHaveBeenCalledTimes(4);
+
+    resolveReplacementAppend({ results: [patient({ patientId: "replacement" })] });
+    await replacementAppend;
+
+    const last = states[states.length - 1]!;
+    expect(last.kind).toBe("loaded");
+    if (last.kind === "loaded") {
+      expect(last.results.map((result) => result.patientId)).toEqual([
+        "refreshed",
+        "replacement",
+      ]);
+      expect(last.appendState).toEqual({ kind: "idle" });
+    }
+    expect(fetcher.mock.calls).toEqual([
+      ["検索A", undefined],
+      ["検索A", "cursor-a"],
+      ["検索A", undefined],
+      ["検索A", "cursor-a"],
+    ]);
+  });
+
+  it("admits structurally different append tuples even when delimiter concatenation would collide", async () => {
+    const fetcher = vi.fn<(q: string, cursor?: string) => Promise<SearchPage>>(
+      () => new Promise<SearchPage>(() => undefined),
+    );
+    const run = createSearchRunner(fetcher, () => undefined);
+
+    void run("a", "b\u0000c", true);
+    void run("a\u0000b", "c", true);
+    void run("a", undefined, true);
+
+    expect(fetcher.mock.calls).toEqual([
+      ["a", "b\u0000c"],
+      ["a\u0000b", "c"],
+      ["a", undefined],
+    ]);
+  });
+
+  it("lets a blank query invalidate an active append without acquiring an append lock", async () => {
+    const states: SearchState[] = [
+      {
+        kind: "loaded",
+        results: [patient({ patientId: "p1" })],
+        query: "合成",
+        nextCursor: "cursor-1",
+        appendState: { kind: "idle" },
+      },
+    ];
+    let resolveAppend!: (page: SearchPage) => void;
+    const fetcher = vi.fn<(q: string, cursor?: string) => Promise<SearchPage>>(
+      () =>
+        new Promise<SearchPage>((resolve) => {
+          resolveAppend = resolve;
+        }),
+    );
+    const run = createSearchRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    const append = run("合成", "cursor-1", true);
+    await run("   ", "cursor-1", true);
+    resolveAppend({ results: [patient({ patientId: "stale-p2" })] });
+    await append;
+
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(states[states.length - 1]).toMatchObject({
+      kind: "error",
+      notice: { severity: "WARNING", message: "検索語が入力されていません。" },
+    });
+  });
+
+  it("cleans the append owner when emit throws synchronously so a retry is admitted", async () => {
+    const emitError = new Error("synthetic emit failure");
+    const fetcher = vi.fn<(q: string, cursor?: string) => Promise<SearchPage>>().mockResolvedValue({ results: [] });
+    let throwOnEmit = true;
+    const run = createSearchRunner(fetcher, () => {
+      if (throwOnEmit) {
+        throwOnEmit = false;
+        throw emitError;
+      }
+    });
+
+    await expect(run("合成", "cursor-1", true)).rejects.toBe(emitError);
+    await run("合成", "cursor-1", true);
+
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+
+  it("cleans the append owner after a synchronous fetch throw so a retry is admitted", async () => {
+    const fetcher = vi
+      .fn<(q: string, cursor?: string) => Promise<SearchPage>>()
+      .mockImplementationOnce(() => {
+        throw new Error("synthetic synchronous fetch failure");
+      })
+      .mockResolvedValueOnce({ results: [] });
+    const run = createSearchRunner(fetcher, () => undefined);
+
+    await run("合成", "cursor-1", true);
+    await run("合成", "cursor-1", true);
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
   it("renders retained rows, append error, incomplete warning, and explicit retry together", () => {
     const html = renderToStaticMarkup(
       <PatientSearchResults

@@ -145,9 +145,30 @@ export function createSearchRunner(
   emit: (update: (prev: SearchState) => SearchState) => void,
 ): (query: string, cursor?: string, append?: boolean) => Promise<void> {
   let generation = 0;
+  const activeAppendOwners = new Map<
+    string,
+    Map<string | undefined, object>
+  >();
   return async (query, cursor, append = false) => {
-    const gen = ++generation;
     const trimmed = query.trim();
+    if (!append || trimmed.length === 0) {
+      activeAppendOwners.clear();
+    }
+    let appendOwner: object | undefined;
+    if (append && trimmed.length > 0) {
+      const cursorOwners = activeAppendOwners.get(trimmed);
+      if (cursorOwners?.has(cursor) === true) {
+        return;
+      }
+      appendOwner = {};
+      if (cursorOwners === undefined) {
+        activeAppendOwners.set(trimmed, new Map([[cursor, appendOwner]]));
+      } else {
+        cursorOwners.set(cursor, appendOwner);
+      }
+    }
+
+    const gen = ++generation;
     if (trimmed.length === 0) {
       emit(() => ({
         kind: "error",
@@ -159,66 +180,78 @@ export function createSearchRunner(
       }));
       return;
     }
-    emit((prev) => {
-      if (!append) return { kind: "loading" };
-      return prev.kind === "loaded" &&
-        prev.query === trimmed &&
-        prev.nextCursor === cursor
-        ? { ...prev, appendState: { kind: "loading" } }
-        : prev;
-    });
     try {
-      const page = await fetcher(trimmed, cursor);
-      if (gen !== generation) {
-        return; // 古い応答は破棄(最後の検索のみ反映)
-      }
       emit((prev) => {
-        if (append) {
-          if (
-            prev.kind !== "loaded" ||
-            prev.query !== trimmed ||
-            prev.nextCursor !== cursor
-          ) {
-            return prev;
+        if (!append) return { kind: "loading" };
+        return prev.kind === "loaded" &&
+          prev.query === trimmed &&
+          prev.nextCursor === cursor
+          ? { ...prev, appendState: { kind: "loading" } }
+          : prev;
+      });
+      try {
+        const page = await fetcher(trimmed, cursor);
+        if (gen !== generation) {
+          return; // 古い応答は破棄(最後の検索のみ反映)
+        }
+        emit((prev) => {
+          if (append) {
+            if (
+              prev.kind !== "loaded" ||
+              prev.query !== trimmed ||
+              prev.nextCursor !== cursor
+            ) {
+              return prev;
+            }
+            return {
+              kind: "loaded",
+              results: [...prev.results, ...page.results],
+              ...(page.nextCursor !== undefined ? { nextCursor: page.nextCursor } : {}),
+              query: trimmed,
+              appendState: { kind: "idle" },
+            };
           }
           return {
             kind: "loaded",
-            results: [...prev.results, ...page.results],
+            results: page.results,
             ...(page.nextCursor !== undefined ? { nextCursor: page.nextCursor } : {}),
             query: trimmed,
             appendState: { kind: "idle" },
           };
+        });
+      } catch (error) {
+        if (gen !== generation) {
+          return; // 古いリクエストの失敗も破棄
         }
-        return {
-          kind: "loaded",
-          results: page.results,
-          ...(page.nextCursor !== undefined ? { nextCursor: page.nextCursor } : {}),
-          query: trimmed,
-          appendState: { kind: "idle" },
-        };
-      });
-    } catch (error) {
-      if (gen !== generation) {
-        return; // 古いリクエストの失敗も破棄
+        const notice =
+          error instanceof SearchError
+            ? error.toNotice()
+            : {
+                message: "検索結果の処理に失敗しました。",
+                nextAction:
+                  "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+              };
+        emit((prev) => {
+          if (append) {
+            return prev.kind === "loaded" &&
+              prev.query === trimmed &&
+              prev.nextCursor === cursor
+              ? { ...prev, appendState: { kind: "error", notice } }
+              : prev;
+          }
+          return { kind: "error", notice };
+        });
       }
-      const notice =
-        error instanceof SearchError
-          ? error.toNotice()
-          : {
-              message: "検索結果の処理に失敗しました。",
-              nextAction:
-                "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
-            };
-      emit((prev) => {
-        if (append) {
-          return prev.kind === "loaded" &&
-            prev.query === trimmed &&
-            prev.nextCursor === cursor
-            ? { ...prev, appendState: { kind: "error", notice } }
-            : prev;
+    } finally {
+      if (appendOwner !== undefined) {
+        const cursorOwners = activeAppendOwners.get(trimmed);
+        if (cursorOwners?.get(cursor) === appendOwner) {
+          cursorOwners.delete(cursor);
+          if (cursorOwners.size === 0) {
+            activeAppendOwners.delete(trimmed);
+          }
         }
-        return { kind: "error", notice };
-      });
+      }
     }
   };
 }

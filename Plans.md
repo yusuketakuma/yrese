@@ -2318,6 +2318,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused migration18（runner4）、API207 + PostgreSQL14 expected skips、web218、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: commit `27b6391` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent review/full gates PASS、rollback失敗clientだけをdestroyし、SQL/order/migration/history/checksum/API/SSOT/DB execution/retry/log semantics不変。
 
+- [x] WP-4099 coalesce identical active patient-search append requests(R1 request integrity) — FINALIZED
+  - 発見根拠: runnerはappend開始ごとにgeneration更新・fetchを発行するため、React stateがloadingへ反映される前の同期連打や同一callback再入で同じquery/cursorのrequestが重複し、先行responseをstale化して不要な通信と比較待ちを生む。
+  - scope: exact5 `apps/web/app/patients/patient-search.tsx`, `apps/web/app/patients/patient-search.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。UI DOM/copy/CSS/focus/animation/state/API/cursorは変更しない。
+  - implementation: trim後の非blank appendだけをclosure-local nested `Map<query, Map<cursor | undefined, ownerToken>>`でstructural single-flight化。同一active tupleはgeneration/emit/fetch前にreturnし、unique owner一致時だけfinally cleanup/pruneする。full/blank/different tupleと既存generation semanticsは維持。
+  - acceptance: trim-equivalent duplicate fetch once + owner merge、failure retry、success cleanup、full-search supersession late success/failure、collision-adversarial structural tuple並行、blank invalidation、sync emit/fetch throw cleanupを固定。serialization/hash/log/persistenceなし。focused/full gatesとindependent frontend/accessibility/medical/privacy/API review PASSまで未完了。
+  - review_results: initial verifier MEDIUMはfull/blank authority change後もobsolete owner lockが残りreplacement appendを抑止する点。full/blankがauthority更新前にownershipをclearし、old finallyはexact token一致時だけreplacementを削除できない修正後、verifier + frontend/accessibility/privacy/API/medical review APPROVED、remaining findingsなし。
+  - validation_results: focused patient-search31、web226、API207 + PostgreSQL14 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。landing pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
