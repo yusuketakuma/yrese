@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W15 + WP-9005/9006 LANDED、73 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W15 + WP-9005/9006 LANDED、W16 FINALIZED_PENDING_LANDING、72 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -1125,6 +1125,32 @@ finalization_record: RCP-004 retains APPROVED/v0.2.0/legacy approval/effective n
 landing_required: satisfied
 landing_record: commit fb1928d `WP-9002-W13: normalize statement issuance metadata` pushed to origin/agent/reconcile-wp9002-w7c-20260712; exact5; inventory173/75/98; RCP-004 body/status/version/legacy approval/effective semantics and 172 non-target records unchanged; ten reviews/full regression gates APPROVED; legal/evidence/cycle/audit gaps remain unresolved and no StatementDocument/privacy/runtime/DB/API/UI/production/external activation occurred
 state: LANDED; WP-9002 remains IN_PROGRESS with 75 incomplete SSOT documents, and the next wave requires fresh read-only mapping and pre-plan review
+```
+
+- [~] WP-9002-W16 QUA-002 validation-plan metadata-only migration(FINALIZED_PENDING_LANDING、P1)
+
+```yaml
+work_package_id: WP-9002-W16
+baseline_commit: 27f9325
+baseline_inventory: { total: 173, incomplete: 73, complete: 100 }
+target_inventory: { total: 173, incomplete: 72, complete: 101 }
+target: QUA-002 v0.1.0 metadata-only; body/status/version/legacy approval/effective/validation semantics preserved
+purpose: Complete PRC-007 metadata and machine-map the existing REG-004 connection-test stop without changing evidence, golden expectations, validation acceptance, external connection, parallel-run, UAC, Go/No-Go, release, or production semantics.
+allowed_files: QUA-002, docs/ssot_index.md, Plans.md, State.md, ops/refactor/STATE.md; exact5
+forbidden: other quality/testing/regulatory/operations/UI/calculation/claim docs, code/tests/packages/lock; evidence/golden/acceptance/schema changes, migration/DML, external sandbox, API/UI, production/deploy, semantic or risk-acceptance changes
+pre_plan_review: APPROVED_WITH_PINS
+body_changes: none; body must remain 2594 bytes / SHA-256 61c58e92c4e9a05f4028ff8de65d67d056e9f464863653b2ebed35a6d78a1125
+pins: preserve APPROVED/v0.1.0/created_at/approved_at/approved_by/owner/reviewers/source/dependencies/two open questions; blocker only machine-maps existing REG-004 RB-002/RB-003 ONS and electronic-prescription connection-test stop; L1 CI/trace evidence does not prove L2/L3, complete golden validation, external sandbox, parallel run, UAC, Go/No-Go, or release readiness
+metadata: updated_at 2026-07-12; effective_from/effective_to null; impacts [TST-001 test strategy, validation and Go/No-Go evidence and release gates]; related_work_packages [WP-0011, WP-9002-W16]; related_tests/related_prs/evidence_ids empty; top-level change_log; one existing-scope blocker
+non_target: 172 canonical rows / 15865 bytes / SHA-256 1ba901fa5d3c88d62226f4ee2abd0d15b9bfd363ccd60934f4fdde4c2adf4fc6 must remain unchanged; target review inventory 173/72/101
+reviewers: [independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, claims_evidence_specialist, regulatory_adapter_reviewer, product_quality_reviewer, security_critic, privacy_compliance_reviewer, medical_safety_reviewer]
+human_gate: no new human approval for byte-preserving metadata and existing blocker mapping only; tolerance values, official evidence/golden expectations, pharmacist/claims correctness, ONS registration/sandbox connection, UAC/parallel run/Go-No-Go/release, patient-safety/legal/claim risk acceptance stop for applicable human authorities
+validation: exact5/staged0; target body/preserved-field/all23/inventory/non-target assertions; check:ssot-index, test:scripts, secrets, boundaries, diff; focused/full tests are L1 regression evidence only
+rollback: revert exact5 candidate/final landing only and reopen metadata incompleteness; never unlock REG-004, external validation, Go/No-Go, or release
+review_results: independent_verifier, spec_guardian, data_integrity_auditor, architect, test_architect, claims_evidence_specialist, regulatory_adapter_reviewer, product_quality_reviewer, security_critic, privacy_compliance_reviewer, and medical_safety_reviewer APPROVED; human pharmacist/claims/regulatory/product authority remains separate
+validation_results: FINAL PASS before landing — exact5/staged0; QUA-002 all23 and body 2594/61c58e92c4e9a05f4028ff8de65d67d056e9f464863653b2ebed35a6d78a1125 byte-identical; preserved fields unchanged; inventory173/72/101; 172 non-target missing-set baseline-identical at 15865 bytes / SHA-256 1ba901fa5d3c88d62226f4ee2abd0d15b9bfd363ccd60934f4fdde4c2adf4fc6; workspace typecheck/test/build PASS with API172 plus 13 expected PostgreSQL skips and web188; audit182/calculation87; OpenAPI, calculation-purity, scripts, SSOT173, secrets, boundaries, deps high0/critical0, SBOM231 and diff PASS as L1 regression-only gates
+finalization_record: QUA-002 retains APPROVED/v0.1.0/legacy approval/effective null and validation semantics; IDX-001 v0.4.29 APPROVED with approved_at/effective_from 2026-07-12 and eleven W16 role approvals; blocker is limited to existing REG-004 RB-002/RB-003 connection tests and empty tests/PRs/evidence do not waive L2/L3/golden/external/UAC/Go-No-Go/release gates
+state: FINALIZED_PENDING_LANDING; exact-stage commit and safe feature-branch push pending; landing not claimed
 ```
 
 - [x] WP-9002-W15 QUA-008 public-quality KPI policy metadata-only migration(LANDED、P1)

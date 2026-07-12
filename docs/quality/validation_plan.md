@@ -11,17 +11,31 @@ reviewers:
   - human_review_required
 version: 0.1.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-07-12
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+effective_from: null
+effective_to: null
 source_refs: 構築プロンプト v0.2.0 §10, §9.7
 depends_on:
   - QUA-001 quality_plan
   - TST-001 test_strategy
   - REG-004 regulatory_blockers
+impacts:
+  - TST-001 test_strategy
+  - validation and Go/No-Go evidence and release gates
+related_work_packages: [WP-0011, WP-9002-W16]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
+  - "2026-07-12 WP-9002-W16 metadata-only completion: body/status/version/approval/effective/validation semantics unchanged"
 open_questions:
   - 並行稼働の差分許容範囲(件数・金額)の定量値(請求実務者レビューで確定)
   - 接続試験環境(オン資・電子処方箋サンドボックス)の利用申請時期(ONS登録後)
+blockers:
+  - BLOCKED_REGULATORY_REVIEW(オン資・電子処方箋の接続試験はREG-004 RB-002/RB-003解除までBLOCKED)
 ```
 
 ## 1. バリデーションの層
