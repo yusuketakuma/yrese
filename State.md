@@ -8,6 +8,12 @@
 
 ## 2026-07-12
 
+### WP-4082 patient-context manual-clear stale refresh invalidation — COMPLETED / LANDING PENDING
+
+- read-only mapperは患者検索blank-submit raceを、independent plannerはより直接的なwrong-patient riskとして患者コンテキスト解除後の旧refresh復活を最優先に選定。R2、既存APPROVED H-02/API-001 authority内で、SSOT/contract/DB/migration/human gate変更なし。
+- sole maintainerはlatest-only refresh runnerを追加し、手動解除、patient切替、effect cleanup/null遷移で旧200/404/errorを無効化した。初回reviewで再取得開始時のpremature `stale=false`とclear配線test不足を検出したため、staleはauthoritative 200/404まで保持し、invalidate→clear順序をcoordinator testで固定。
+- independent/frontend/accessibility/medical/privacy再reviewはAPPROVED。focused14、web193、API172 + PostgreSQL13 expected skips、workspace typecheck/test/buildと全既存gateはPASS。exact5 landing待ちで、API/contracts/SSOT/DB/migration/package/lock/copy/CSS/productionは不変。
+
 ### WP-9002 remaining57 classification + WP-4057 keyset gate — LANDED
 
 - W32 `NO_ELIGIBLE`後の57文書を、`metadata-safe=0`、`semantic-amendment-required=18`、`human-authority-required=39`へ漏れ/重複なく分類し、`ops/refactor/WP-9002-remaining-classification.md`へmissing-field signature、drift根拠、next gateを記録した。本manifestは非SSOTであり、IDX v0.4.44/inventory173/57/116/status/approvalを変更しない。

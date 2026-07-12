@@ -7,8 +7,11 @@ import type { PatientSearchResult } from "@yrese/contracts";
 import {
   PatientContextBar,
   PatientContextBarView,
+  createPatientClearHandler,
+  createPatientRefreshRunner,
   fetchPatientById,
   toPatientContextData,
+  type PatientContextData,
 } from "./patient-context";
 
 (globalThis as { React?: typeof React }).React = React;
@@ -132,5 +135,107 @@ describe("fetchPatientById (GET /patients/:patientId 契約)", () => {
       const stub: typeof fetch = async () => jsonResponse(200, { patientId: SAMPLE.patientId });
       await expect(fetchPatientById(SAMPLE.patientId, stub)).rejects.toThrow();
     });
+  });
+});
+
+describe("createPatientRefreshRunner (患者切替・解除の競合防止)", () => {
+  const deferred = <T,>() => {
+    let resolve!: (value: T) => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+      resolve = resolvePromise;
+      reject = rejectPromise;
+    });
+    return { promise, resolve, reject };
+  };
+
+  const callbacks = () => ({
+    onFresh: vi.fn(),
+    onRemoved: vi.fn(),
+    onFailure: vi.fn(),
+  });
+
+  it("ignores a late success after the patient selection is cleared", async () => {
+    const pending = deferred<PatientContextData | null>();
+    const events = callbacks();
+    const runner = createPatientRefreshRunner(() => pending.promise);
+
+    const refresh = runner.refresh(SAMPLE.patientId, events);
+    const clearPatient = vi.fn();
+    createPatientClearHandler(runner, clearPatient)();
+    pending.resolve(toPatientContextData(SAMPLE));
+    await refresh;
+
+    expect(clearPatient).toHaveBeenCalledOnce();
+    expect(events.onFresh).not.toHaveBeenCalled();
+    expect(events.onRemoved).not.toHaveBeenCalled();
+    expect(events.onFailure).not.toHaveBeenCalled();
+  });
+
+  it("invalidates the refresh before clearing the selected patient", () => {
+    const order: string[] = [];
+    const handler = createPatientClearHandler(
+      { invalidate: () => order.push("invalidate") },
+      () => order.push("clear"),
+    );
+
+    handler();
+
+    expect(order).toEqual(["invalidate", "clear"]);
+  });
+
+  it("ignores a late failure after the patient selection is cleared", async () => {
+    const pending = deferred<PatientContextData | null>();
+    const events = callbacks();
+    const runner = createPatientRefreshRunner(() => pending.promise);
+
+    const refresh = runner.refresh(SAMPLE.patientId, events);
+    runner.invalidate();
+    pending.reject(new Error("late failure"));
+    await refresh;
+
+    expect(events.onFresh).not.toHaveBeenCalled();
+    expect(events.onRemoved).not.toHaveBeenCalled();
+    expect(events.onFailure).not.toHaveBeenCalled();
+  });
+
+  it("ignores a late removal response after the patient selection is cleared", async () => {
+    const pending = deferred<PatientContextData | null>();
+    const events = callbacks();
+    const runner = createPatientRefreshRunner(() => pending.promise);
+
+    const refresh = runner.refresh(SAMPLE.patientId, events);
+    runner.invalidate();
+    pending.resolve(null);
+    await refresh;
+
+    expect(events.onFresh).not.toHaveBeenCalled();
+    expect(events.onRemoved).not.toHaveBeenCalled();
+    expect(events.onFailure).not.toHaveBeenCalled();
+  });
+
+  it("keeps only the latest patient refresh authoritative", async () => {
+    const patientA = deferred<PatientContextData | null>();
+    const patientB = deferred<PatientContextData | null>();
+    const eventsA = callbacks();
+    const eventsB = callbacks();
+    const runner = createPatientRefreshRunner((id) =>
+      id === SAMPLE.patientId ? patientA.promise : patientB.promise,
+    );
+    const secondId = "22222222-2222-4222-8222-222222222222";
+
+    const refreshA = runner.refresh(SAMPLE.patientId, eventsA);
+    const refreshB = runner.refresh(secondId, eventsB);
+    patientB.resolve({ ...toPatientContextData(SAMPLE), patientId: secondId });
+    await refreshB;
+    patientA.resolve(toPatientContextData(SAMPLE));
+    await refreshA;
+
+    expect(eventsB.onFresh).toHaveBeenCalledWith(
+      expect.objectContaining({ patientId: secondId }),
+    );
+    expect(eventsA.onFresh).not.toHaveBeenCalled();
+    expect(eventsA.onRemoved).not.toHaveBeenCalled();
+    expect(eventsA.onFailure).not.toHaveBeenCalled();
   });
 });

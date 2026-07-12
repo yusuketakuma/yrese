@@ -194,43 +194,49 @@ function PatientContextBarWithRefresh({ ctx }: { readonly ctx: PatientContextVal
   const pathname = usePathname();
   const [stale, setStale] = useState(false);
   const [removedNotice, setRemovedNotice] = useState<string | null>(null);
-  const generationRef = useRef(0);
+  const refreshRunnerRef = useRef<ReturnType<typeof createPatientRefreshRunner> | null>(null);
+  if (refreshRunnerRef.current === null) {
+    refreshRunnerRef.current = createPatientRefreshRunner();
+  }
 
   const patientIdKey = ctx.patient?.patientId ?? null;
   const selectPatient = ctx.selectPatient;
   const clearPatient = ctx.clearPatient;
+  const handleClear = useMemo(
+    () => createPatientClearHandler(refreshRunnerRef.current, clearPatient),
+    [clearPatient],
+  );
 
   useEffect(() => {
-    if (patientIdKey === null) {
+    const refreshRunner = refreshRunnerRef.current;
+    if (refreshRunner === null) {
       return;
     }
-    const generation = ++generationRef.current;
-    fetchPatientById(patientIdKey).then(
-      (fresh) => {
-        if (generation !== generationRef.current) {
-          return; // 古い応答は破棄(患者切替・連続遷移対策)
-        }
-        if (fresh === null) {
-          clearPatient();
-          setRemovedNotice(
-            "選択中だった患者の情報が取得できなくなったため、選択を解除しました。患者検索から選択し直してください。",
-          );
-          setStale(false);
-          return;
-        }
+    if (patientIdKey === null) {
+      refreshRunner.invalidate();
+      return;
+    }
+    setRemovedNotice(null);
+    refreshRunner.refresh(patientIdKey, {
+      onFresh: (fresh) => {
         setRemovedNotice(null);
         setStale(false);
         // effect 依存は ID とコールバック(安定参照)のみのため、この更新で再実行されない
         selectPatient(fresh);
       },
-      () => {
-        if (generation !== generationRef.current) {
-          return;
-        }
+      onRemoved: () => {
+        clearPatient();
+        setRemovedNotice(
+          "選択中だった患者の情報が取得できなくなったため、選択を解除しました。患者検索から選択し直してください。",
+        );
+        setStale(false);
+      },
+      onFailure: () => {
         setStale(true); // 失敗時は選択を維持しつつ鮮度低下を明示
       },
-    );
+    });
     // patientIdKey / pathname が変わるたびに再取得(同一患者でも遷移ごとに最新化)
+    return () => refreshRunner.invalidate();
   }, [patientIdKey, pathname, selectPatient, clearPatient]);
 
   if (ctx.patient === null) {
@@ -240,5 +246,58 @@ function PatientContextBarWithRefresh({ ctx }: { readonly ctx: PatientContextVal
       </p>
     ) : null;
   }
-  return <PatientContextBarView patient={ctx.patient} onClear={ctx.clearPatient} stale={stale} />;
+  return <PatientContextBarView patient={ctx.patient} onClear={handleClear} stale={stale} />;
+}
+
+interface PatientRefreshCallbacks {
+  readonly onFresh: (patient: PatientContextData) => void;
+  readonly onRemoved: () => void;
+  readonly onFailure: () => void;
+}
+
+interface PatientRefreshInvalidator {
+  readonly invalidate: () => void;
+}
+
+/** Invalidates an in-flight refresh before clearing the selected patient. */
+export function createPatientClearHandler(
+  refreshRunner: PatientRefreshInvalidator | null,
+  clearPatient: () => void,
+) {
+  return () => {
+    refreshRunner?.invalidate();
+    clearPatient();
+  };
+}
+
+/** Keeps only the latest patient refresh authoritative across clear, switch, and unmount. */
+export function createPatientRefreshRunner(
+  fetcher: (id: string) => Promise<PatientContextData | null> = fetchPatientById,
+) {
+  let generation = 0;
+  return {
+    invalidate() {
+      generation += 1;
+    },
+    async refresh(id: string, callbacks: PatientRefreshCallbacks) {
+      const currentGeneration = ++generation;
+      let fresh: PatientContextData | null;
+      try {
+        fresh = await fetcher(id);
+      } catch {
+        if (currentGeneration === generation) {
+          callbacks.onFailure();
+        }
+        return;
+      }
+      if (currentGeneration !== generation) {
+        return;
+      }
+      if (fresh === null) {
+        callbacks.onRemoved();
+        return;
+      }
+      callbacks.onFresh(fresh);
+    },
+  };
 }

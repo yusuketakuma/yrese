@@ -2165,6 +2165,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused cursor 8/8 PASS、deterministic repeat20で20 runs/160 tests PASS、API172 + PostgreSQL13 expected skips、API typecheck/build、workspace typecheck/test/build（web188等）、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: commit `82f8b85` `WP-4081: make cursor privacy assertion deterministic` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4; deterministic false-positive regression locked, production codec byte-identical, review/full gates PASS, no runtime/security/privacy/medical semantic change
 
+- [x] WP-4082 patient-context manual-clear stale refresh invalidation(R2 patient-safety UI race)
+  - 発見根拠: `PatientContextBarWithRefresh` は患者IDがある再取得開始時だけgenerationを進め、手動の「選択解除」でpatientがnullになったeffectは無効化せずreturnしていた。解除前の旧200/404/errorが遅延完了すると、旧患者の再選択または解除後表示の上書きが起こり得る。
+  - scope: exact5以内 `apps/web/app/components/patient-context.tsx`, `apps/web/app/components/patient-context.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。API/contracts/SSOT/DB/migration/package/lock/copy/CSSは変更しない。
+  - implementation: latest-only refresh runnerを導入し、患者切替・effect cleanup・null遷移に加えて手動解除handlerで同期的に旧generationを無効化する。新しいrefresh開始時はremoved表示だけをclearし、staleはcurrent-generationの200/404まで保持して既存の200/404/error semanticsを維持する。
+  - acceptance: 解除後のlate 200/404/errorがcallbackを一切実行しないこと、A→BでBだけがauthoritativeであることをdeferred Promise testsで固定する。focused web tests/typecheck/build、workspace regression、既存gate、independent/frontend/accessibility/medical/privacy reviewがPASSするまで未完了。
+  - review_results: 初回reviewのpremature stale clearと配線coverage指摘を修正後、independent verifier、frontend/accessibility、medical-safety/privacyがAPPROVED。DOM click test未追加は、productionとtestが同一coordinatorを共有し順序とlate responseを固定したためnon-blocking。
+  - validation_results: focused 14/14、web 193/193、API 172 + PostgreSQL 13 expected skips、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
