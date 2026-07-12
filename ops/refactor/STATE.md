@@ -3,8 +3,8 @@
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
-- Current phase: WP-9002-W31 CAL-008 exact5 metadata-only migration LANDED on the safe feature branch at inventory 173/57/116; IDX v0.4.44 is APPROVED and WP-9002 remains IN_PROGRESS. W30/WP-4081 are LANDED.
-- Current task: fresh read-only mapping and pre-plan review of the remaining 57 incomplete SSOT documents. WP-4050 remains separate.
+- Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. WP-0020〜0023 stale SSOT-creation ledger reconciliation is in REVIEW. W31/WP-4081 are LANDED.
+- Current task: independently verify the exact3 Plans/State/ops ledger-only reconciliation, preserving all CAL semantic-drift/runtime/human gates and leaving SSOT/index/code unchanged. WP-4050 remains separate.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -136,4 +136,6 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - W31 review checkpoint: baseline `aa266fa`; CAL-008 exact5 selected after root adjudication against JHS-003 because CAL-008 only needs mechanical missing7 and preserves existing impacts/question/blocker, while JHS-003 would require new PROPOSED approval/dependency/impact/question authority mapping; body `3791/fefeb253…`; target173/57/116; non-target `172/14192/cce5e51c…`; pre-plan APPROVED_WITH_PINS. Preserve 6 extension rows/self-contained rounding/legacy fields/4 migration steps/4 statuses/1 question/1 blocker; tests are regression-only.
 - W31 finalization checkpoint: all twelve roles APPROVED_WITH_PINS; CAL-008 body/preserved/all23, six extensions/self-contained rounding/legacy fields/four migration steps/four statuses/one question/one blocker and 172 non-target identity verified; IDX v0.4.44 APPROVED/effective 2026-07-12; full regression gates PASS. Typed intermediateValues/value-PHI boundary, all-producer migration, rounding/copay evidence, suggested/excluded non-counting, claimability, live API tenant/permission/UI, legal/medical/claims, human/production/release gates remain unresolved.
 - W31 landing checkpoint: commit `72474ba` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5; inventory173/57/116; CAL-008 body/preserved/six extensions/self-contained rounding/legacy fields/four migration steps/four statuses/one question/one blocker and 172 non-target identity unchanged; twelve reviews/full regression gates accepted; no typed value/PHI, producer migration, rounding/copay, claimability, live API/tenant/UI, medical/legal/production/release acceptance activation.
-- Next action: fresh read-only mapping and pre-plan review of remaining 57 incomplete SSOT documents. WP-4050 remains separate.
+- W32 eligibility checkpoint: all remaining57 have body/current-fact drift or require new semantic/human-authority mapping; no IDX v0.4.45, inventory decrement or metadata candidate is permitted. CAL-005/006/007 and other drifted authorities require separate PRC-007 semantic revision/human-domain gates.
+- WP-0020〜0023 ledger checkpoint: CAL-005〜008 were created in `97338e5` and APPROVED v0.2.0 in `c6867e3`; exact3 reconciliation changes only task completion evidence, not SSOT/runtime readiness. CAL drift, WP-2105, typed values, producer migration, rounding evidence and live API remain open.
+- Next action: independent/domain review and exact3 ledger validation, then root exact-stage landing. WP-4050 remains separate.

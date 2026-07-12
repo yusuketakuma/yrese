@@ -198,7 +198,7 @@ landing_required: satisfied
 landing_record: commit 86be6b1 `WP-9001: switch repository governance to Codex only` pushed successfully to origin/main (86fa45c..86be6b1); post-rebase gates and governance/data-integrity reviews APPROVED
 ```
 
-- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W31 + WP-9005/9006 LANDED、57 incomplete、P1)
+- [~] WP-9002 legacy SSOT frontmatter migration(IN_PROGRESS、W1-W31 + WP-9005/9006 LANDED、W32 NO_ELIGIBLE、57 incomplete、P1)
 
 ```yaml
 work_package_id: WP-9002
@@ -2310,10 +2310,10 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
 
 ### 算定エンジンSSOT(CAL-004 の後継拡張群)
 
-- [ ] WP-0020 calculation_engine_architecture.md: 9段パイプライン(入力検証→マスター解決→処方グルーピング→候補抽出→条件評価→点数計算→負担金計算→請求可否判定→出力)+ CalculationInput/Output 型仕様(mode・versions・外部確認状態を明示入力)。CAL-004 を包含・置換
-- [ ] WP-0021 calculation_rule_dsl.md: ルールメタデータ仕様(rule_id / fee_item_code / effective_from・to / law_or_notice_ref / evidence_id / predicate / calculation_formula / exclusion_group / upper_limit / frequency_limit / required_records / required_facility_basis / offline_allowed / requires_human_confirmation / test_case_refs)。コード直書き禁止の根拠
-- [ ] WP-0022 claimability_status_policy.md: 候補抽出と確定算定の分離ステータス(AUTO_CALCULATED / SUGGESTED_REQUIRES_CONFIRMATION / REQUIRES_PHARMACIST_CONFIRMATION / REQUIRES_RECORD / BLOCKED_MISSING_EVIDENCE / BLOCKED_UNSUPPORTED_CLAIM)— shared-kernel status_registry との整合必須
-- [ ] WP-0023 calculation_trace_schema.md: trace拡張仕様(formula / intermediateValues / rounding{method, evidenceId} / status: applied|suggested|excluded|blocked)— @yrese/trace 現行実装からの拡張差分を定義
+- [x] WP-0020 calculation_engine_architecture.md SSOT作成・APPROVED済み(CAL-005 v0.2.0、commit `c6867e3`)。9段パイプラインの全runtime実装完了は未主張で、本文のimplementation-state driftは別semantic revision対象。
+- [x] WP-0021 calculation_rule_dsl.md SSOT作成・APPROVED済み(CAL-006 v0.2.0、commit `c6867e3`)。full DSL/rule-evaluator完成は未主張で、effectiveTo等の本文driftは別semantic revision対象。
+- [x] WP-0022 claimability_status_policy.md SSOT作成・APPROVED済み(CAL-007 v0.2.0、commit `c6867e3`)。historical草案の`BLOCKED_MISSING_EVIDENCE`追加案は採用せず、APPROVED本文の既存`BLOCKER_TYPES`再利用方針が正本。WP-2105/status・記録フロー実装は未完了。
+- [x] WP-0023 calculation_trace_schema.md SSOT作成・APPROVED済み(CAL-008 v0.2.0、commit `c6867e3`、metadata landing `72474ba`)。optional trace拡張はWP-4031で部分実装済みだが、typed value境界・全producer移行・rounding evidence・live APIは未完了。
 - [ ] WP-0024 fee_item_registry.md: 算定項目台帳(候補抽出対象の全項目体系: 調剤基本料〜調剤ベースアップ評価料。CAL-001/CAL-003 と行対応)
 - [ ] WP-0025 drug_fee_policy.md: 薬剤料計算(15円以下1点・10円ごと1点の evidence 化 — EVD-CAL 済み分参照、材料料=価格/10円)+ 計算単位(剤・調剤単位)定義。丸め根拠 evidence_id 必須
 - [ ] WP-0026 prescription_grouping_policy.md: 「剤」判定(内服/内滴/屯服/外用、用法・服用時点・剤形・同一有効成分・日数合算)— PrescriptionGroupResolver の仕様。留意事項通知(P-06)精読が前提の行は BLOCKED 明記
