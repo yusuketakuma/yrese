@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4139 OpenAPI generation atomic publication — FINALIZED
+
+- clean baseline `d714725`。generator output symlinkがsynthetic external targetを実際に上書きするMEDIUM file-integrity gapをtemp fixtureで再現。tracked artifactはregular/cleanで未変更。
+- exact5でexclusive sibling tempへの全量write後atomic renameし、final outputを直接openしない実装を開始。checker symlink false-greenはWP-4140 DISCOVEREDとしてread-only別slice化。
+- mapper/planner final re-adjudication APPROVED_WITH_PINS、integrated domain reviewとindependent verifier APPROVED、findingsなし。generator/harness syntax、script harness、live OpenAPI、SSOT173、secrets、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。renderer/checker/tracked artifact差分なし。implementation landing pending。
+
 ### WP-4138 SSOT index protected-scope fail-closed — FINALIZED
 
 - clean baseline `f12e46d`。SSOT semantic gateがinvalid/empty protected scopeでgreenになり得るMEDIUM governance/tooling gapをexact5で修正中。`docs/**`本文/indexは変更しない。

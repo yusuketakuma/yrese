@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { mkdir, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { defaultOpenApiPath, renderOpenApiYaml } from "./openapi-renderer.mjs";
@@ -23,8 +24,30 @@ function parseArgs(argv) {
 
 const args = parseArgs(process.argv.slice(2));
 const outputPath = path.resolve(args.output);
+const source = await renderOpenApiYaml();
+let temporaryPath;
+let published = false;
 
-await mkdir(path.dirname(outputPath), { recursive: true });
-await writeFile(outputPath, await renderOpenApiYaml(), "utf8");
+try {
+  const outputDirectory = path.dirname(outputPath);
+  await mkdir(outputDirectory, { recursive: true });
+  temporaryPath = path.join(outputDirectory, `.yrese-openapi-${process.pid}-${randomUUID()}.tmp`);
+  await writeFile(temporaryPath, source, { encoding: "utf8", flag: "wx", mode: 0o644 });
+  await rename(temporaryPath, outputPath);
+  temporaryPath = undefined;
+  published = true;
+} catch {
+  if (temporaryPath !== undefined) {
+    try {
+      await rm(temporaryPath, { force: true });
+    } catch {
+      // Best-effort cleanup; publication failure remains the primary error.
+    }
+  }
+  console.error("OpenAPI generation could not publish the generated artifact.");
+  process.exitCode = 1;
+}
 
-console.log(`Generated OpenAPI document: ${path.relative(process.cwd(), outputPath)}`);
+if (published) {
+  console.log(`Generated OpenAPI document: ${path.relative(process.cwd(), outputPath)}`);
+}
