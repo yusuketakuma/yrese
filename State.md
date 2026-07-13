@@ -12,7 +12,7 @@
 
 - clean baseline `4fc99b5`。API-006/OpenAPIが200だけを成功とするqueue GETでunsupported 2xxがPHI-rich authoritative queueになれるR2 gapをweb exact5で修正中。
 - non-ok mapping後にexact 200を要求し、unsupported body未読。exact200はtop-level requested date→duplicate→canonical order、initial/refresh/date-switch/stale/retry stateをfail-closedに維持。UI/ARIA/API/server/contracts/DB/SSOTは不変。
-- mapper APPROVED、pre-plan APPROVED_WITH_PINS、reception/data/API/privacy/security/medical/frontend/accessibility/DB-boundary domain reviewとindependent verifier APPROVED、findingsなし。focused reception-dashboard69、web335、API256 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/buildと全gate PASS。exact5 landing pending。
+- mapper APPROVED、pre-plan APPROVED_WITH_PINS、reception/data/API/privacy/security/medical/frontend/accessibility/DB-boundary domain reviewとindependent verifier APPROVED、findingsなし。focused reception-dashboard69、web335、API256 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/buildと全gate PASS。exact5 implementation commit `237000e` を対象branchへpush済み。
 
 ### WP-4127 reception queue entry JST business-date binding — LANDED
 
