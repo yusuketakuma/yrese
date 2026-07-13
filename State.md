@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4124 patient-context refresh exact HTTP 200 binding — VERIFIED / LANDING_PENDING
+
+- clean baseline `2f50373`。OpenAPIが200だけを成功とするpatient getでschema-valid unsupported 2xxがglobal selected patientをauthoritative refreshできるR2 gapをexact5で修正中。
+- 404→null後にexact 200を要求し、unsupported status bodyはparseせずstatus-only failure。current/stale runner callbacks、200 schema/identity、UI/ARIAは不変。
+- mapper/pre-plan、patient/data/API/privacy/security/medical/frontend/accessibility domain review、independent verificationは全てAPPROVED。focused patient-context26、web314、API252 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/buildと全gate PASS。exact-stage landingのみpending。
+
 ### WP-4123 post-apply migration reconciliation fail-closed — LANDED
 
 - clean baseline `d09f6bd`。final migration reconciliationがfailure-shapedでもCLI successになりうるDB-002 gapをexact5で修正中。

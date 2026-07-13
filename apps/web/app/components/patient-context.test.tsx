@@ -163,6 +163,52 @@ describe("fetchPatientById (GET /patients/:patientId 契約)", () => {
     });
   });
 
+  it.each([201, 202, 204, 206])(
+    "rejects unsupported success status %i before reading the response body",
+    async (status) => {
+      await withDevEnv(async () => {
+        const json = vi.fn(async () => SAMPLE);
+        const response = { status, ok: true, json } as unknown as Response;
+        const stub: typeof fetch = async () => response;
+
+        await expect(fetchPatientById(SAMPLE.patientId, stub)).rejects.toThrow(
+          `patient refresh failed (HTTP ${status})`,
+        );
+        expect(json).not.toHaveBeenCalled();
+      });
+    },
+  );
+
+  it("keeps unsupported-status diagnostics free of response PHI and identity data", async () => {
+    await withDevEnv(async () => {
+      const returnedId = "22222222-2222-4222-8222-222222222222";
+      const body = {
+        ...SAMPLE,
+        patientId: returnedId,
+        patientNumber: "SECRET-PATIENT-NUMBER",
+        name: "秘密 名前",
+        kana: "ヒミツ ナマエ",
+      };
+      const stub: typeof fetch = async () => jsonResponse(202, body);
+
+      let thrown: unknown;
+      try {
+        await fetchPatientById(SAMPLE.patientId, stub);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toBe("patient refresh failed (HTTP 202)");
+      const serialized = JSON.stringify(thrown, Object.getOwnPropertyNames(thrown));
+      expect(serialized).not.toContain(SAMPLE.patientId);
+      expect(serialized).not.toContain(returnedId);
+      expect(serialized).not.toContain("SECRET-PATIENT-NUMBER");
+      expect(serialized).not.toContain("秘密 名前");
+      expect(serialized).not.toContain("ヒミツ ナマエ");
+    });
+  });
+
   it("rejects contract drift (契約外レスポンスを表示に流さない)", async () => {
     await withDevEnv(async () => {
       const stub: typeof fetch = async () => jsonResponse(200, { patientId: SAMPLE.patientId });
@@ -313,6 +359,56 @@ describe("createPatientRefreshRunner (患者切替・解除の競合防止)", ()
 
       expect(events.onRemoved).toHaveBeenCalledOnce();
       expect(events.onFresh).not.toHaveBeenCalled();
+      expect(events.onFailure).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("routes a current unsupported success status only to onFailure", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    try {
+      const fetchImpl: typeof fetch = async () =>
+        new Response(JSON.stringify(SAMPLE), {
+          status: 202,
+          headers: { "content-type": "application/json" },
+        });
+      const runner = createPatientRefreshRunner((id) =>
+        fetchPatientById(id, fetchImpl),
+      );
+      const events = callbacks();
+
+      await runner.refresh(SAMPLE.patientId, events);
+
+      expect(events.onFailure).toHaveBeenCalledOnce();
+      expect(events.onFresh).not.toHaveBeenCalled();
+      expect(events.onRemoved).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("suppresses a stale unsupported success status after clear", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const pending = deferred<Response>();
+    try {
+      const runner = createPatientRefreshRunner((id) =>
+        fetchPatientById(id, () => pending.promise),
+      );
+      const events = callbacks();
+
+      const refresh = runner.refresh(SAMPLE.patientId, events);
+      runner.invalidate();
+      pending.resolve(
+        new Response(JSON.stringify(SAMPLE), {
+          status: 202,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+      await refresh;
+
+      expect(events.onFresh).not.toHaveBeenCalled();
+      expect(events.onRemoved).not.toHaveBeenCalled();
       expect(events.onFailure).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllEnvs();

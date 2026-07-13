@@ -82,7 +82,7 @@ export async function fetchPatientById(
   if (res.status === 404) {
     return null;
   }
-  if (!res.ok) {
+  if (res.status !== 200) {
     throw new Error(`patient refresh failed (HTTP ${res.status})`);
   }
   const parsed = patientSearchResultSchema.parse(await res.json());
