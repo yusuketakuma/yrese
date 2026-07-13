@@ -106,6 +106,14 @@ export async function fetchAuditLog(
       } satisfies ErrorNoticeProps,
     });
   }
+  if (res.status !== 200) {
+    throw Object.assign(new Error(`監査ログの取得に失敗しました(HTTP ${res.status})。`), {
+      notice: {
+        message: `監査ログの取得に失敗しました(HTTP ${res.status})。`,
+        nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+      } satisfies ErrorNoticeProps,
+    });
+  }
   const parsed = auditLogResponseSchema.parse(await res.json());
   if (parsed.chainVerification.ok) {
     const eventIds = new Set<string>();

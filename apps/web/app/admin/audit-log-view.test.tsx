@@ -402,6 +402,101 @@ describe("createAuditLogRunner (latest-only / lifecycle invalidation)", () => {
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
+  it("retains verified data when refresh returns unsupported 202 and replaces it on retry", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const replacement: AuditLogResponse = {
+      ...SAMPLE,
+      entries: [SAMPLE.entries[0]!],
+      totalCount: 1,
+      chainVerification: { ok: true, checkedCount: 1 },
+    };
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ...SAMPLE, rawInternal: "audit-secret-untrusted" }), {
+          status: 202,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(replacement), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    const recorder = createStateRecorder({
+      kind: "loaded",
+      data: SAMPLE,
+      refreshState: { kind: "idle" },
+    });
+    const runner = createAuditLogRunner(() => fetchAuditLog(fetchImpl), recorder.emit);
+
+    try {
+      await runner.run();
+      const failed = recorder.current();
+      expect(failed.kind).toBe("loaded");
+      if (failed.kind !== "loaded") throw new Error("expected retained audit data");
+      expect(failed.data).toBe(SAMPLE);
+      expect(failed.refreshState).toMatchObject({
+        kind: "error",
+        notice: { message: "監査ログの取得に失敗しました(HTTP 202)。" },
+      });
+      expect(JSON.stringify(failed)).not.toContain("audit-secret-untrusted");
+
+      await runner.run();
+      expect(recorder.current()).toEqual({
+        kind: "loaded",
+        data: replacement,
+        refreshState: { kind: "idle" },
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("suppresses an invalidated unsupported response after a newer exact-200 replacement", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const oldResponse = deferred<Response>();
+    const oldJson = vi.fn(async () => ({ ...SAMPLE, rawInternal: "audit-stale-secret" }));
+    const replacement: AuditLogResponse = {
+      ...SAMPLE,
+      entries: [SAMPLE.entries[0]!],
+      totalCount: 1,
+      chainVerification: { ok: true, checkedCount: 1 },
+    };
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockImplementationOnce(() => oldResponse.promise)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(replacement), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    const recorder = createStateRecorder();
+    const runner = createAuditLogRunner(() => fetchAuditLog(fetchImpl), recorder.emit);
+
+    try {
+      const old = runner.run();
+      runner.invalidate();
+      const current = runner.run();
+      await current;
+      oldResponse.resolve({ ok: true, status: 202, json: oldJson } as unknown as Response);
+      await old;
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    expect(oldJson).not.toHaveBeenCalled();
+    expect(recorder.current()).toEqual({
+      kind: "loaded",
+      data: replacement,
+      refreshState: { kind: "idle" },
+    });
+    expect(JSON.stringify(recorder.states)).not.toContain("audit-stale-secret");
+  });
+
   it("retains broken-chain data during refresh loading and failure", async () => {
     const pending = deferred<AuditLogResponse>();
     const recorder = createStateRecorder({
@@ -720,6 +815,89 @@ describe("fetchAuditLog transport contract", () => {
         expect(JSON.stringify(notice)).not.toContain("SYSTEM-9999");
         expect(JSON.stringify(notice)).not.toContain("internal");
         return true;
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it.each([201, 202, 204, 206])(
+    "rejects unsupported audit success status %i before reading evidence",
+    async (status) => {
+      vi.stubEnv("NODE_ENV", "development");
+      const json = vi.fn(async () => ({
+        ...SAMPLE,
+        entries: [
+          {
+            ...SAMPLE.entries[0]!,
+            eventId: "event-sensitive-unsupported",
+            actorId: "actor-sensitive-unsupported",
+            targetRef: { kind: "audit_log", id: "target-sensitive-unsupported" },
+          },
+        ],
+        rawInternal: "audit-raw-sensitive-unsupported",
+      }));
+      const fetchImpl: typeof fetch = async () =>
+        ({ ok: true, status, json }) as unknown as Response;
+
+      let thrown: unknown;
+      try {
+        await fetchAuditLog(fetchImpl);
+      } catch (error) {
+        thrown = error;
+      } finally {
+        vi.unstubAllEnvs();
+      }
+
+      expect(json).not.toHaveBeenCalled();
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toBe(
+        `監査ログの取得に失敗しました(HTTP ${status})。`,
+      );
+      const serialized = JSON.stringify(thrown, Object.getOwnPropertyNames(thrown));
+      expect(serialized).not.toContain("event-sensitive-unsupported");
+      expect(serialized).not.toContain("actor-sensitive-unsupported");
+      expect(serialized).not.toContain("target-sensitive-unsupported");
+      expect(serialized).not.toContain("audit-raw-sensitive-unsupported");
+    },
+  );
+
+  it("keeps initial unsupported status top-level and retries with exact-200 evidence", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ...SAMPLE, rawInternal: "initial-untrusted-audit" }), {
+          status: 202,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(SAMPLE), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    let current: AuditLogState = { kind: "loading" };
+    const runner = createAuditLogRunner(
+      () => fetchAuditLog(fetchImpl),
+      (update) => {
+        current = update(current);
+      },
+    );
+
+    try {
+      await runner.run();
+      expect(current.kind).toBe("error");
+      expect(JSON.stringify(current)).not.toContain("initial-untrusted-audit");
+
+      const retry = runner.run();
+      expect(current).toEqual({ kind: "loading" });
+      await retry;
+      expect(current).toEqual({
+        kind: "loaded",
+        data: SAMPLE,
+        refreshState: { kind: "idle" },
       });
     } finally {
       vi.unstubAllEnvs();
