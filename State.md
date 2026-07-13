@@ -12,6 +12,7 @@
 
 - clean baseline `12c4397`。escaped message外でenumerable raw resultが再表示されるMEDIUM diagnostic integrity gapをexact5で修正中。
 - `.result` access/identityを維持しhidden immutable own property化。initial test expectationをmessage/raw-field境界へ修正後、domain/independent review APPROVED、findingsなし。runner12、API268 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。
+- exact5 implementation commit `59908d7` を対象feature branchへpush済み。
 
 ### WP-4133 migration loader protected-scope fail-closed — FINALIZED
 
