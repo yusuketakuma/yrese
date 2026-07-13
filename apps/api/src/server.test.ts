@@ -24,7 +24,9 @@ import {
   receptionInvalidRequestErrorCode,
   receptionPatientIdentityMismatchErrorMessage,
   receptionQueueDuplicateIdentityInvariantErrorMessage,
+  receptionCreatedStatusInvariantErrorMessage,
   receptionResultPatientIdentityMismatchErrorMessage,
+  receptionResultSchemaInvariantErrorMessage,
   receptionPatientNotFoundErrorCode,
   type BuildServerOptions,
   type HealthResponse,
@@ -1339,6 +1341,184 @@ describe('buildServer', () => {
       }
     },
   );
+
+  it.each(['created', 'existing'] as const)(
+    'rejects a schema-invalid %s reception result before audit and response',
+    async (resultKind) => {
+      const auditRecord = vi.fn<AuditRepository['record']>();
+      const sensitiveEntry = {
+        receptionId: 'reception-schema-sensitive',
+        acceptedAt: 'invalid-sensitive-instant',
+        receptionStatus: 'WAITING' as const,
+        prescriptionIntakeType: 'paper' as const,
+        patient: {
+          patientId: 'patient-syn-004',
+          name: '合成 検証患者',
+          kana: 'ゴウセイ ケンショウカンジャ',
+          birthDate: '1990-01-01',
+          sex: 'unknown' as const,
+          patientNumber: 'SCHEMA-SENSITIVE-001',
+          eligibilityStatus: 'NOT_CHECKED' as const,
+        },
+      };
+      const server = buildDevTestServer({
+        receptionRepository: {
+          list: vi.fn<ReceptionRepository['list']>(async () => []),
+          create: vi.fn<ReceptionRepository['create']>(async () => ({
+            kind: resultKind,
+            entry: sensitiveEntry,
+          })),
+        },
+        auditRepository: {
+          record: auditRecord,
+          list: vi.fn<AuditRepository['list']>(async () => []),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/reception',
+        headers: tenantOneReceptionWriteHeaders,
+        payload: {
+          patientId: 'patient-syn-004',
+          idempotencyKey: `reception-schema-invalid-${resultKind}`,
+        },
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(auditRecord).not.toHaveBeenCalled();
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: receptionResultSchemaInvariantErrorMessage,
+      });
+      for (const sensitiveValue of [
+        sensitiveEntry.receptionId,
+        sensitiveEntry.acceptedAt,
+        sensitiveEntry.patient.patientId,
+        sensitiveEntry.patient.name,
+        sensitiveEntry.patient.kana,
+        sensitiveEntry.patient.patientNumber,
+      ]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+    },
+  );
+
+  it.each(['IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const)(
+    'rejects a newly created reception in %s before success audit',
+    async (receptionStatus) => {
+      const auditRecord = vi.fn<AuditRepository['record']>();
+      const server = buildDevTestServer({
+        receptionRepository: {
+          list: vi.fn<ReceptionRepository['list']>(async () => []),
+          create: vi.fn<ReceptionRepository['create']>(async (_input) => ({
+            kind: 'created',
+            entry: {
+              receptionId: 'reception-created-status-sensitive',
+              acceptedAt: '2026-07-09T09:00:00.000Z',
+              receptionStatus,
+              prescriptionIntakeType: 'paper',
+              patient: {
+                patientId: 'patient-syn-004',
+                name: '合成状態患者',
+                kana: 'ゴウセイジョウタイカンジャ',
+                birthDate: '1990-01-01',
+                sex: 'unknown',
+                patientNumber: 'STATUS-SENSITIVE-001',
+                eligibilityStatus: 'NOT_CHECKED',
+              },
+            },
+          })),
+        },
+        auditRepository: {
+          record: auditRecord,
+          list: vi.fn<AuditRepository['list']>(async () => []),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/reception',
+        headers: tenantOneReceptionWriteHeaders,
+        payload: {
+          patientId: 'patient-syn-004',
+          idempotencyKey: `reception-created-status-${receptionStatus}`,
+        },
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(auditRecord).not.toHaveBeenCalled();
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: receptionCreatedStatusInvariantErrorMessage,
+      });
+      for (const sensitiveValue of [
+        'reception-created-status-sensitive',
+        'patient-syn-004',
+        '合成状態患者',
+        'ゴウセイジョウタイカンジャ',
+        'STATUS-SENSITIVE-001',
+        receptionStatus,
+      ]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+    },
+  );
+
+  it('allows an existing reception to retain an advanced status without a duplicate audit', async () => {
+    const auditRecord = vi.fn<AuditRepository['record']>();
+    const server = buildDevTestServer({
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => []),
+        create: vi.fn<ReceptionRepository['create']>(async () => ({
+          kind: 'existing',
+          entry: {
+            receptionId: 'reception-existing-advanced',
+            acceptedAt: '2026-07-09T09:00:00.000Z',
+            receptionStatus: 'IN_PROGRESS',
+            prescriptionIntakeType: 'paper',
+            patient: {
+              patientId: 'patient-syn-004',
+              name: '合成既存患者',
+              kana: 'ゴウセイキソンカンジャ',
+              birthDate: '1990-01-01',
+              sex: 'unknown',
+              patientNumber: 'EXISTING-001',
+              eligibilityStatus: 'NOT_CHECKED',
+            },
+          },
+        })),
+      },
+      auditRepository: {
+        record: auditRecord,
+        list: vi.fn<AuditRepository['list']>(async () => []),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-004',
+        idempotencyKey: 'reception-existing-advanced',
+      },
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ receptionStatus: 'IN_PROGRESS' });
+    expect(auditRecord).not.toHaveBeenCalled();
+  });
 
   it('stores reception queue dates as JST business dates, not UTC dates', async () => {
     const acceptedAt = new Date('2026-07-09T20:00:00.000Z'); // JST 2026-07-10 05:00

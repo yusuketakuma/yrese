@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4120 reception result schema and created-state binding — VERIFIED / LANDING_PENDING
+
+- clean baseline `d4e63bb`。repository resultのruntime schema未検証とcreated non-WAITING受理により、invalid/newly advanced receptionをsuccess audit/UIへ進められる実在R2 workflow/audit gapをAPI+web exact7で修正中。
+- serverはconflict→full schema→identity→created WAITING→audit/response、browserはsuccess HTTP 200/201 allowlist→schema→identity→HTTP201 WAITING→return。200 existing advanced statusは維持し、unsupported 2xxもfixed non-echo拒否、補正なし。
+- domain initial MEDIUMの任意2xx bypassを修正後APPROVED。independent verifierのruntime APPROVED後、LOW ledger count/precedence指摘を修正。focused API server79、web reception62、API239 + PostgreSQL14 expected skips、web307、audit183、workspace typecheck/test/buildと全gate PASS。exact-stage landingのみpending。
+
 ### WP-4119 audit browser requested-window binding — LANDED
 
 - clean baseline `107b666`。固定limit50 requestに対するhealthy underfillとhealthy/broken overflowをbrowserが受理できる実在R2 audit evidence/data-minimization gapをexact5で修正中。

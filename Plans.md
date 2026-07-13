@@ -2507,6 +2507,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused audit web43、web299、API233 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `46b00a3` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent reviewとfull gates PASS、healthy completenessとall-response requested upper boundをbrowser commit前にfail-closed拘束。
 
+- [x] WP-4120 validate reception result schema and created WAITING state at trust boundaries(R2 workflow/audit integrity) — FINALIZED
+  - 発見根拠: serverはtyped repository resultをruntime full-schema検証せず、matching patientIdだけでsuccess audit/responseへ進み、server/browser双方がschema-valid HTTP201 created non-WAITINGを成功扱いできた。APPROVED API-006は新規受付がWAITING開始、200 replayはexisting entryと規定。
+  - scope: exact7 `apps/api/src/server.ts`, `apps/api/src/server.test.ts`, `apps/web/app/reception-dashboard.tsx`, `apps/web/app/reception-dashboard.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。contracts/OpenAPI/repositories/SQL/DB/migrations/audit core/SSOT/shared-kernel/UI copy/DOM/ARIA/CSS/package/lockは変更しない。
+  - implementation: serverはconflict後にfull ReceptionQueueEntry schema→result patient identity→created exact WAITING→audit/response。parsed entryだけをaudit target/responseへ使用。browserはsuccess HTTP 200/201 allowlist→schema→submitted patient identity→201 exact WAITING→return。200 existingの全registered statusは維持。unsupported 2xxも固定non-echo拒否し、status rewrite/default/repairなし。
+  - acceptance: malformed created/existingを500/no-store、created audit zero。created IN_PROGRESS/COMPLETED/CANCELLEDをserver/browserで拒否し、WAITING 201/audit onceを維持。existing advanced statusは200/no duplicate audit。202 WAITING/COMPLETED、identity mismatch precedence、409/400/403/404、success side effects前throw、PHI/status/schema details non-echoを固定。
+  - review_results: mapper/pre-plan後、rootがschema+created-state exact7へ統合。domain initial MEDIUM(任意2xx bypass)を200/201 allowlist+202 testsで修正しfinal APPROVED。independent verifier runtime APPROVED後、LOW ledger count/precedence指摘を本finalizationで修正。remaining findingsなし、human gate不要。
+  - validation_results: focused API server79、web reception62、API239 + PostgreSQL14 expected skips、web307、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: pending exact-stage commit and push; implementation/review/full gates PASS。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

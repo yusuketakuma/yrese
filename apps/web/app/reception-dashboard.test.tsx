@@ -1023,6 +1023,105 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     },
   );
 
+  it.each(["IN_PROGRESS", "COMPLETED", "CANCELLED"] as const)(
+    "rejects a newly created reception in %s without echoing reception data",
+    async (receptionStatus) => {
+      const sensitiveEntry = entry({
+        receptionId: "reception-created-status-sensitive",
+        receptionStatus,
+        patient: patient({
+          patientId: "patient-requested-001",
+          name: "合成 状態患者",
+          kana: "ゴウセイ ジョウタイカンジャ",
+          patientNumber: "STATUS-SENSITIVE-001",
+        }),
+      });
+      const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(201, sensitiveEntry));
+
+      await expect(
+        withNodeEnv("development", () =>
+          createReception("patient-requested-001", fetchImpl, `key-status-${receptionStatus}`),
+        ),
+      ).rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe(
+          "Created reception response did not start in WAITING status",
+        );
+        for (const sensitiveValue of [
+          sensitiveEntry.receptionId,
+          sensitiveEntry.receptionStatus,
+          sensitiveEntry.patient.patientId,
+          sensitiveEntry.patient.name,
+          sensitiveEntry.patient.kana,
+          sensitiveEntry.patient.patientNumber,
+        ]) {
+          expect((error as Error).message).not.toContain(sensitiveValue);
+        }
+        return true;
+      });
+    },
+  );
+
+  it.each(["WAITING", "COMPLETED"] as const)(
+    "rejects unsupported HTTP 202 with a %s body before reception success handling",
+    async (receptionStatus) => {
+      const sensitiveEntry = entry({
+        receptionId: "reception-unsupported-status-sensitive",
+        receptionStatus,
+        patient: patient({
+          patientId: "patient-requested-001",
+          name: "合成 応答患者",
+          kana: "ゴウセイ オウトウカンジャ",
+          patientNumber: "HTTP-STATUS-SENSITIVE-001",
+        }),
+      });
+
+      await expect(
+        withNodeEnv("development", () =>
+          createReception(
+            "patient-requested-001",
+            vi.fn().mockResolvedValue(jsonResponse(202, sensitiveEntry)),
+            `key-http-202-${receptionStatus}`,
+          ),
+        ),
+      ).rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe(
+          "Reception response used an unsupported success status",
+        );
+        for (const sensitiveValue of [
+          sensitiveEntry.receptionId,
+          sensitiveEntry.receptionStatus,
+          sensitiveEntry.patient.patientId,
+          sensitiveEntry.patient.name,
+          sensitiveEntry.patient.kana,
+          sensitiveEntry.patient.patientNumber,
+        ]) {
+          expect((error as Error).message).not.toContain(sensitiveValue);
+        }
+        return true;
+      });
+    },
+  );
+
+  it.each(["IN_PROGRESS", "COMPLETED", "CANCELLED"] as const)(
+    "accepts an existing HTTP 200 reception in %s",
+    async (receptionStatus) => {
+      const existing = entry({
+        receptionStatus,
+        patient: patient({ patientId: "patient-requested-001" }),
+      });
+      const result = await withNodeEnv("development", () =>
+        createReception(
+          "patient-requested-001",
+          vi.fn().mockResolvedValue(jsonResponse(200, existing)),
+          `key-existing-${receptionStatus}`,
+        ),
+      );
+      expect(result).toEqual(existing);
+    },
+  );
+
   it.each([200, 201])(
     "rejects a mismatched reception response for HTTP %s without echoing patient data",
     async (status) => {

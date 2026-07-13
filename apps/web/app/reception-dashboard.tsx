@@ -191,9 +191,15 @@ export async function createReception(
       errorCode,
     );
   }
+  if (res.status !== 200 && res.status !== 201) {
+    throw new Error("Reception response used an unsupported success status");
+  }
   const parsed = receptionQueueEntrySchema.parse(await res.json());
   if (parsed.patient.patientId !== patientIdValue) {
     throw new Error("Reception response patient identity mismatch");
+  }
+  if (res.status === 201 && parsed.receptionStatus !== "WAITING") {
+    throw new Error("Created reception response did not start in WAITING status");
   }
   return parsed;
 }

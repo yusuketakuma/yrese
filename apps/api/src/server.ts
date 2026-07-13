@@ -12,6 +12,7 @@ import {
   patientSearchResultSchema,
   type PatientSearchResult,
   receptionCreateRequestSchema,
+  receptionQueueEntrySchema,
   receptionQueueResponseSchema,
   receptionQueueQuerySchema,
   type AuditLogResponse,
@@ -68,6 +69,10 @@ export const receptionPatientIdentityMismatchErrorMessage =
   'Patient lookup returned a mismatched patient identity';
 export const receptionResultPatientIdentityMismatchErrorMessage =
   'Reception repository returned a mismatched patient identity';
+export const receptionResultSchemaInvariantErrorMessage =
+  'Reception repository returned an invalid reception entry';
+export const receptionCreatedStatusInvariantErrorMessage =
+  'Created reception did not start in WAITING status';
 export const receptionQueueDuplicateIdentityInvariantErrorMessage =
   'Reception repository returned duplicate reception identities';
 const auditLogProjectionInvariantErrorMessage =
@@ -409,8 +414,15 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       if (result.kind === 'idempotency_conflict') {
         return reply.code(409).send(receptionIdempotencyConflictResponse());
       }
-      if (result.entry.patient.patientId !== parsedPatientId) {
+      const parsedEntry = receptionQueueEntrySchema.safeParse(result.entry);
+      if (!parsedEntry.success) {
+        throw new Error(receptionResultSchemaInvariantErrorMessage);
+      }
+      if (parsedEntry.data.patient.patientId !== parsedPatientId) {
         throw new Error(receptionResultPatientIdentityMismatchErrorMessage);
+      }
+      if (result.kind === 'created' && parsedEntry.data.receptionStatus !== 'WAITING') {
+        throw new Error(receptionCreatedStatusInvariantErrorMessage);
       }
 
       // 監査証跡(who/when/what)。冪等再送(existing)では二重記録しない。
@@ -421,14 +433,14 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           {
             actorId: userId(tenantContext.actorId),
             auditEventType: 'reception.created',
-            targetRef: { kind: 'reception', id: result.entry.receptionId },
+            targetRef: { kind: 'reception', id: parsedEntry.data.receptionId },
             outcome: 'success',
             wallClock: now().toISOString(),
           },
         );
       }
 
-      return reply.code(result.kind === 'created' ? 201 : 200).send(result.entry);
+      return reply.code(result.kind === 'created' ? 201 : 200).send(parsedEntry.data);
     },
   );
 
