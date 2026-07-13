@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4122 applied migration name drift rejection — VERIFIED / LANDING_PENDING
+
+- clean baseline `5675b1e`。version/checksum一致ならapplied migration name driftをup_to_date/db_aheadとして受理する実在R1 immutable migration-history gapをexact7で修正中。
+- distinct name_mismatchをversion/checksum後に判定。両nameをJSON escapeしてcontrol文字log injectionを防止。apply runnerはunapplied_required以外をoperation connection前に拒否し、SQL/history mutation zero。migration files/DB/SSOTは不変。
+- domain LOWを修正後APPROVED、independent verifier runtime APPROVED後のLOW ledger指摘も修正。focused migration state8 + runner5 = 13、API248 + PostgreSQL14 expected skips、web307、audit183、workspace typecheck/test/buildと全gate PASS。exact-stage landingのみpending。
+
 ### WP-4121 pre-persistence patient snapshot and created acceptedAt binding — LANDED
 
 - clean baseline `272b577`。matching-ID malformed patient snapshotをreception persistenceへ渡せるgapと、created resultのacceptedAtをserver-issued instantへ拘束しない実在R2 patient/queue/audit gapをAPI exact5で修正中。

@@ -25,6 +25,15 @@ export type MigrationCheckResult =
     }
   | {
       readonly ok: false;
+      readonly status: 'name_mismatch';
+      readonly appliedCount: number;
+      readonly availableCount: number;
+      readonly version: string;
+      readonly expectedName: string;
+      readonly actualName: string;
+    }
+  | {
+      readonly ok: false;
       readonly status: 'unapplied_required';
       readonly appliedCount: number;
       readonly availableCount: number;
@@ -54,6 +63,17 @@ export function reconcileMigrationState(input: {
         version: available.version,
         expectedChecksumSha256: available.checksumSha256,
         actualChecksumSha256: applied.checksumSha256,
+      };
+    }
+    if (applied.name !== available.name) {
+      return {
+        ok: false,
+        status: 'name_mismatch',
+        appliedCount: appliedMigrations.length,
+        availableCount: availableMigrations.length,
+        version: available.version,
+        expectedName: available.name,
+        actualName: applied.name,
       };
     }
   }
@@ -97,6 +117,10 @@ export function formatMigrationCheckResult(result: MigrationCheckResult): string
 
   if (result.status === 'checksum_mismatch') {
     return `DB schema checksum mismatch at ${result.version}: expected ${result.expectedChecksumSha256}, actual ${result.actualChecksumSha256}`;
+  }
+
+  if (result.status === 'name_mismatch') {
+    return `DB migration name mismatch at ${result.version}: expected ${JSON.stringify(result.expectedName)}, actual ${JSON.stringify(result.actualName)}`;
   }
 
   return `DB schema requires explicit migration apply before startup: ${result.pendingVersions.join(', ')}`;

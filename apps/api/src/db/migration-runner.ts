@@ -119,7 +119,7 @@ export async function applyPendingMigrations(
       check: initialCheck,
     };
   }
-  if (initialCheck.status === 'checksum_mismatch') {
+  if (initialCheck.status !== 'unapplied_required') {
     throw new MigrationStateError(initialCheck);
   }
 

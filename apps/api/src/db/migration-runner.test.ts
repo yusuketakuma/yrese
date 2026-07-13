@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Pool, PoolClient } from 'pg';
 
-import { applyPendingMigrations } from './migration-runner.js';
+import { applyPendingMigrations, MigrationStateError } from './migration-runner.js';
 import type { MigrationFile } from './migrations.js';
 
 const migrations: readonly MigrationFile[] = [
@@ -67,6 +67,37 @@ async function captureRejection(run: () => Promise<unknown>): Promise<unknown> {
 }
 
 describe('applyPendingMigrations client lifecycle', () => {
+  it('rejects migration name drift before acquiring an operation client or running SQL', async () => {
+    const initialCheck = createCheckClient([
+      {
+        version: migrations[0]?.version,
+        name: 'renamed_first',
+        checksum_sha256: migrations[0]?.checksumSha256,
+      },
+    ]);
+    const { pool, connect } = createPool([initialCheck]);
+
+    const error = await captureRejection(() =>
+      applyPendingMigrations(pool, migrations.slice(0, 1), {
+        appliedBy: 'synthetic-migration-test',
+      }),
+    );
+
+    expect(error).toBeInstanceOf(MigrationStateError);
+    expect((error as MigrationStateError).result).toEqual({
+      ok: false,
+      status: 'name_mismatch',
+      appliedCount: 1,
+      availableCount: 1,
+      version: '000001',
+      expectedName: 'first',
+      actualName: 'renamed_first',
+    });
+    expect(connect).toHaveBeenCalledOnce();
+    expect(initialCheck.query).toHaveBeenCalledOnce();
+    expect(initialCheck.release.mock.calls).toEqual([[]]);
+  });
+
   it('applies all migrations and releases operation and check clients for reuse', async () => {
     const initialCheck = createCheckClient([]);
     const operation = createClient(async () => ({ rows: [] }));
