@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4143 repository script harness CI connection — LOCAL_FINALIZED / REMOTE_CI_VERIFY_REQUIRED
+
+- clean baseline `f842379`。root `test:scripts`のfixture harnessはCIから0回で、workspace tests/live gatesだけではsynthetic edge-case退行を見逃し得るMEDIUM CI-control gapを確認。WP-4011はharness作成のみで既存WP重複なし。
+- exact4で`Test`直後・`Build`直前に`Test repository scripts` / `pnpm test:scripts`を1件追加。package/lock/scripts/SSOT/apps/packages、workflow trigger/service/env/action pin/既存stepは不変。
+- MAP-03 / PLAN-03 `APPROVED_WITH_PINS`。final CI/security/tooling domain reviewとindependent verifierはいずれもAPPROVED、remaining findingsなし、human gate不要。YAML structure/count/order、Ruby parse、actionlint 1.7.12、test:scripts、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、全live gate/diffはPASS。feature-branch push単独では現triggerが起動しないため、PR/main run成功までremote CI proofはVERIFY_REQUIREDのまま。
+
 ### WP-4142 dev tenant helper ownership convergence — FINALIZED
 
 - clean baseline `c09d807`。`devTenantHeaders`の正本分離後もreception/audit/testの3 consumerがpatient-search compatibility re-exportを経由し、正本commentは現行API受理4条件より古いproduction-only説明を残すLOW maintenance driftを確認。既存WP重複なし。

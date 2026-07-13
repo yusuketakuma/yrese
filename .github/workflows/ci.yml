@@ -46,6 +46,9 @@ jobs:
         env:
           TEST_DATABASE_URL: postgresql://yrese_ci:yrese_ci_test@127.0.0.1:5432/yrese_ci
 
+      - name: Test repository scripts
+        run: pnpm test:scripts
+
       - name: Build
         run: pnpm -r build
 

@@ -2726,6 +2726,16 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: exact8 revert。migration/data/config rollback不要。
   - landing_record: implementation commit `4b2c013` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact8、full gates、final domain/independent review PASS。helper ownershipを正本へ収束し、private compatibility exportと不要module edgeを除去。runtime/UI/API semantics不変。
 
+- [~] WP-4143 connect repository script regression harness to CI(MEDIUM CI-control integrity) — LOCAL_FINALIZED / REMOTE_CI_VERIFY_REQUIRED
+  - 発見根拠: root `test:scripts`はboundary/secret/deps/SBOM/SSOT/OpenAPI等のsynthetic edge-case回帰を固定するが、CIはworkspace testsとlive gatesだけを実行し、harnessを0回しか呼ばない。live treeがcleanならcheckerのfixture-only退行を見逃すfalse-green gapがある。WP-4011はharness作成のみでCI接続は未追跡、既存WP重複なし。
+  - scope: exact4 `.github/workflows/ci.yml`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。package/lock/scripts/SSOT/apps/packages、trigger/job/service/timeout/action pin/Node/pnpm/PostgreSQL/env/既存stepは変更しない。
+  - implementation: existing `Test`直後・`Build`直前に`Test repository scripts` / `pnpm test:scripts`をexact 1件追加する。DB env、permissions、conditionは付けない。
+  - acceptance: step name/run exact 1件、`Test → Test repository scripts → Build`順序、YAML parse/actionlint、local harness/full gates/diff PASS、exact4のみ。現triggerはmain push/PRのみなのでfeature-branch push単独ではremote runなし。run URL/idと新step成功が得られるまでremote CI green/enforcement proofを主張せず`REMOTE_CI_VERIFY_REQUIRED`を維持する。
+  - review_results: MAP-03 / PLAN-03 `APPROVED_WITH_PINS`。final CI/security/tooling domain reviewとindependent verifierはいずれもAPPROVED、remaining findingsなし。実装risk LOW、human gate不要。
+  - validation_results: YAML structure/count/order assertion、Ruby YAML parse、actionlint 1.7.12、test:scripts、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/diff全PASS。remote CI runは未開始でgreen/enforcement proofなし。
+  - rollback: exact4 revert。DB/data/config/external rollback不要。
+  - landing_record: local implementation finalized; pending exact-stage commit and safe feature-branch push。remote CI proof requires a later PR/main run and remains VERIFY_REQUIRED。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
