@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4142 dev tenant helper ownership convergence — FINALIZED
+
+- clean baseline `c09d807`。`devTenantHeaders`の正本分離後もreception/audit/testの3 consumerがpatient-search compatibility re-exportを経由し、正本commentは現行API受理4条件より古いproduction-only説明を残すLOW maintenance driftを確認。既存WP重複なし。
+- exact8で3 consumerを正本へdirect importし、private app内部のcompatibility exportを除去。Webのdevelopment-only送信とAPIのexplicit opt-in + development/test + in-memory + no DATABASE_URL受理をcommentで分離する。helper/header/scope/config/authorization、DOM/copy/CSS/ARIA/network/API/DB/SSOTは不変。
+- MAP-02 / PLAN-02 `APPROVED_WITH_PINS`。domain initial LOW exact-`true` wording findingを修正し、final integrated domain reviewとindependent verifierはいずれもAPPROVED、remaining findingsなし、human gate不要。final exact8でAPI config19、post-fix focused Web162、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、OpenAPI/purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/script harness/diff全PASS。patient-search経由helper consumer 0件。landingのみpending。
+
 ### WP-4141 `.npmrc` registry credential scan — FINALIZED
 
 - clean baseline `4a44798`。extensionなしの`.npmrc`がscan対象外で、npm固有`_authToken` / `_auth` / `_password`のactive/commented credential materialがCIを通過できるMEDIUM security-control gapを確認。tracked/worktree `.npmrc`とcurrent incidentは未検出。

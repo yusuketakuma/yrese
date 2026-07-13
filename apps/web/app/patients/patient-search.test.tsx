@@ -9,14 +9,13 @@ import {
   PatientHeader,
   computeAgeYears,
 } from "../components/patient-header";
+import { PATIENT_SEARCH_DEV_SCOPES, devTenantHeaders } from "../dev-tenant";
 import { patientId } from "@yrese/shared-kernel";
 import {
   createSearchRunner,
-  devTenantHeaders,
   duplicateKanaSet,
   fetchSearch,
   PatientSearchResults,
-  PATIENT_SEARCH_DEV_SCOPES,
   type SearchPage,
   type SearchState,
 } from "./patient-search";

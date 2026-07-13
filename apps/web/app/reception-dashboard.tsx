@@ -18,7 +18,7 @@ import { EmptyState } from "./components/empty-state";
 import { registeredErrorCodeOrUndefined } from "./components/error-code";
 import { ErrorNotice, type ErrorNoticeProps } from "./components/error-notice";
 import { LoadingState } from "./components/loading-state";
-import { devTenantHeaders } from "./patients/patient-search";
+import { devTenantHeaders } from "./dev-tenant";
 
 /**
  * 受付ダッシュボード(WP-3009-UI / SCR-001)。

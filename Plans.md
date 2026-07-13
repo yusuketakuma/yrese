@@ -2716,6 +2716,16 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: exact5 revert。実credential発見時のrevoke/rotationは別human gateであり、code rollbackで代替しない。
   - landing_record: implementation commit `130aa26` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、full gates、domain/independent review PASS。`.npmrc`のactive/commented registry credential materialをmetadata-only findingで検出し、placeholder/allow/non-echo/symlink fail-closed境界を維持。
 
+- [x] WP-4142 converge dev tenant helper ownership(LOW frontend/security-maintenance) — FINALIZED
+  - 発見根拠: `devTenantHeaders`の正本は`apps/web/app/dev-tenant.ts`へ分離済みだが、reception/audit/testの3 consumerがpatient-searchのcompatibility re-exportを経由し、helper ownershipを逆転させている。正本commentもAPIの現行deny-by-default 4条件ではなく旧production-only説明を残す。既存WP重複なし。
+  - scope: exact8 `apps/web/app/dev-tenant.ts`, `apps/web/app/patients/patient-search.tsx`, `apps/web/app/patients/patient-search.test.tsx`, `apps/web/app/reception-dashboard.tsx`, `apps/web/app/admin/audit-log-view.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。API/config/contracts/SSOT/DB/package/lock、DOM/copy/CSS/ARIA/network semanticsは不変。
+  - implementation: 3 consumerを正本へdirect importし、patient-searchの内部compatibility export surfaceを意図的に縮小する。commentはWebのdevelopment-only送信と、APIのexplicit opt-in + development/test + in-memory + no DATABASE_URL受理境界を分離して記録する。helper/header/scope/config/authorization実装は変更しない。
+  - acceptance: `devTenantHeaders` / `PATIENT_SEARCH_DEV_SCOPES`定義は正本のみ、patient-search経由consumer 0件、既存header値/environment gate/scope順序/fetch/UI不変。focused web tests/typecheck/build、boundaries/SSOT/secrets/diff、full workspace regression、domain/independent review後にFINALIZED。
+  - review_results: ALIGN-01発見後、MAP-02とPLAN-02はいずれも`APPROVED_WITH_PINS`。integrated frontend/security/privacy domain reviewのinitial LOW exact-`true` wording findingを修正し、final domain reviewとindependent verifierはいずれもAPPROVED、remaining findingsなし。内部module export縮小を明記し、Web送信条件とAPI受理条件を混同せず、exact8外へ拡張していない。human gate不要。
+  - validation_results: final exact8でAPI config19、post-fix focused Web162、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/script harness/diff全PASS。patient-search経由helper consumer 0件。DOM/copy/fetch/header/scope挙動不変、bundle topologyは不要edge削除へ収束。
+  - rollback: exact8 revert。migration/data/config rollback不要。
+  - landing_record: implementation finalized; pending exact-stage commit and safe feature-branch push。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

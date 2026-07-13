@@ -15,7 +15,7 @@ import { EmptyState } from "../components/empty-state";
 import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
 import { LoadingState } from "../components/loading-state";
 import { registeredErrorCodeOrUndefined } from "../components/error-code";
-import { devTenantHeaders } from "../patients/patient-search";
+import { devTenantHeaders } from "../dev-tenant";
 
 /**
  * 監査ログビュー(SCR-028 / R-AUDIT)。

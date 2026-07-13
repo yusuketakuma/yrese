@@ -37,9 +37,6 @@ import { resolveWebApiUrl } from "../api-transport";
  * キーボード第一(autoFocus + Enter 送信)。
  */
 
-// 正本は dev-tenant.ts(複数画面で共用)。既存 import 互換のため再エクスポート。
-export { PATIENT_SEARCH_DEV_SCOPES, devTenantHeaders } from "../dev-tenant";
-
 const SEX_LABELS: Record<PatientSearchResult["sex"], string> = {
   male: "男",
   female: "女",
