@@ -2559,7 +2559,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - acceptance: exact200 schema→generation→page duplicate→append tuple→cross-page overlap→cursor self-loop→commit precedenceと400/403 guidanceを維持。unsupported 2xxはquery/PHI/ID/cursor/bodyをerror/stateへechoせず、row/tokenをcommitしない。append owner cleanup、retry、newer search authority、UI/accessibility markupは不変。
   - review_results: mapper APPROVED、planner APPROVED_WITH_PINS。patient/data/API/privacy/security/medical/frontend/accessibility domain reviewとindependent verifierはAPPROVED、findingsなし、human gate不要。
   - validation_results: focused patient-search43、web321、API252 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
-  - landing_record: pending exact-stage commit and push; implementation/review/full gates PASS。
+  - landing_record: implementation commit `3721c51` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent/domain reviewとfull gates PASS、non-contract 2xx patient pagesのselectable/append commitをbody parse前にfail-closed拒否。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
