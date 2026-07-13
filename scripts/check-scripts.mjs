@@ -108,6 +108,8 @@ ${sections}
 
 async function testBoundaryViolationDetection() {
   const root = path.join(tempRoot, "boundary-violation");
+  await writeText(path.join(root, "apps", "web", "package.json"), JSON.stringify({ name: "@fixture/web" }));
+  await writeText(path.join(root, "apps", "web", "src", "index.ts"), "export const app = 'web';\n");
   await writeText(
     path.join(root, "packages", "example", "package.json"),
     JSON.stringify({ name: "@fixture/example", dependencies: {} }, null, 2),
@@ -145,6 +147,8 @@ async function testBoundaryCleanFixturePasses() {
 
 async function testPureCoreRejectsAwsAndDynamoDbImports() {
   const root = path.join(tempRoot, "pure-core-aws-violation");
+  await writeText(path.join(root, "apps", "web", "package.json"), JSON.stringify({ name: "@fixture/web" }));
+  await writeText(path.join(root, "apps", "web", "src", "index.ts"), "export const app = 'web';\n");
   await writeText(
     path.join(root, "packages", "audit", "package.json"),
     JSON.stringify({ name: "@fixture/audit", dependencies: {} }, null, 2),
@@ -175,6 +179,8 @@ async function testPureCoreRejectsAwsAndDynamoDbImports() {
 
 async function testPureCoreRejectsAwsAndDynamoDbImportsThroughNonStaticForms() {
   const root = path.join(tempRoot, "pure-core-aws-nonstatic-violation");
+  await writeText(path.join(root, "apps", "web", "package.json"), JSON.stringify({ name: "@fixture/web" }));
+  await writeText(path.join(root, "apps", "web", "src", "index.ts"), "export const app = 'web';\n");
   await writeText(
     path.join(root, "packages", "trace", "package.json"),
     JSON.stringify({ name: "@fixture/trace", dependencies: {} }, null, 2),
@@ -203,6 +209,14 @@ async function testPureCoreRejectsAwsAndDynamoDbImportsThroughNonStaticForms() {
 async function testAppAwsImportDoesNotTripPureCoreRule() {
   const root = path.join(tempRoot, "app-aws-import-pass");
   await writeText(
+    path.join(root, "packages", "shared-kernel", "package.json"),
+    JSON.stringify({ name: "@fixture/shared-kernel" }),
+  );
+  await writeText(
+    path.join(root, "packages", "shared-kernel", "src", "index.ts"),
+    "export const value = 'fixture';\n",
+  );
+  await writeText(
     path.join(root, "apps", "api", "package.json"),
     JSON.stringify({ name: "@fixture/api", dependencies: {} }, null, 2),
   );
@@ -217,6 +231,8 @@ async function testAppAwsImportDoesNotTripPureCoreRule() {
 
 async function testDuplicateRegistryConstDetection() {
   const root = path.join(tempRoot, "duplicate-registry");
+  await writeText(path.join(root, "apps", "web", "package.json"), JSON.stringify({ name: "@fixture/web" }));
+  await writeText(path.join(root, "apps", "web", "src", "index.ts"), "export const app = 'web';\n");
   await writeText(
     path.join(root, "packages", "shared-kernel", "package.json"),
     JSON.stringify({ name: "@fixture/shared-kernel", dependencies: {} }, null, 2),
@@ -290,6 +306,98 @@ async function testDuplicateContractAndKernelConstDetectionAcrossApps() {
     output.includes("duplicate contracts const 'PATIENT_SEARCH_CURSOR_MAX_LENGTH'"),
     "contracts duplicate finding should name PATIENT_SEARCH_CURSOR_MAX_LENGTH",
   );
+}
+
+async function testBoundaryScopeValidationFailsClosed() {
+  const fixedMessage = "Boundary check could not validate the protected workspace scope.";
+  const fixtures = [];
+
+  fixtures.push({ label: "missing root", root: path.join(tempRoot, "boundary-missing-root") });
+
+  const missingApps = path.join(tempRoot, "boundary-missing-apps");
+  await writeText(path.join(missingApps, "packages", "core", "package.json"), JSON.stringify({ name: "@fixture/core" }));
+  await writeText(path.join(missingApps, "packages", "core", "src", "index.ts"), "export const marker = 'do-not-echo';\n");
+  fixtures.push({ label: "missing apps", root: missingApps });
+
+  const emptyScopes = path.join(tempRoot, "boundary-empty-scopes");
+  await mkdir(path.join(emptyScopes, "apps"), { recursive: true });
+  await mkdir(path.join(emptyScopes, "packages"), { recursive: true });
+  fixtures.push({ label: "empty scopes", root: emptyScopes });
+
+  const missingManifest = path.join(tempRoot, "boundary-missing-manifest");
+  await writeText(path.join(missingManifest, "apps", "web", "src", "index.ts"), "export const app = true;\n");
+  await writeText(path.join(missingManifest, "packages", "core", "package.json"), JSON.stringify({ name: "@fixture/core" }));
+  await writeText(path.join(missingManifest, "packages", "core", "src", "index.ts"), "export const core = true;\n");
+  fixtures.push({ label: "missing manifest", root: missingManifest });
+
+  const sourceEmpty = path.join(tempRoot, "boundary-source-empty");
+  await writeText(path.join(sourceEmpty, "apps", "web", "package.json"), JSON.stringify({ name: "@fixture/web" }));
+  await writeText(path.join(sourceEmpty, "packages", "core", "package.json"), JSON.stringify({ name: "@fixture/core" }));
+  await writeText(path.join(sourceEmpty, "packages", "core", "src", "index.ts"), "export const core = true;\n");
+  fixtures.push({ label: "source-empty app", root: sourceEmpty });
+
+  const scopeFile = path.join(tempRoot, "boundary-scope-file");
+  await writeText(path.join(scopeFile, "apps"), "do-not-echo\n");
+  await writeText(path.join(scopeFile, "packages", "core", "package.json"), JSON.stringify({ name: "@fixture/core" }));
+  await writeText(path.join(scopeFile, "packages", "core", "src", "index.ts"), "export const core = true;\n");
+  fixtures.push({ label: "scope file", root: scopeFile });
+
+  const malformedManifest = path.join(tempRoot, "boundary-malformed-manifest");
+  await writeText(path.join(malformedManifest, "apps", "web", "package.json"), "{do-not-echo");
+  await writeText(path.join(malformedManifest, "apps", "web", "src", "index.ts"), "export const app = true;\n");
+  await writeText(
+    path.join(malformedManifest, "packages", "core", "package.json"),
+    JSON.stringify({ name: "@fixture/core" }),
+  );
+  await writeText(path.join(malformedManifest, "packages", "core", "src", "index.ts"), "export const core = true;\n");
+  fixtures.push({ label: "malformed manifest", root: malformedManifest });
+
+  const symlinkScope = path.join(tempRoot, "boundary-symlink-scope");
+  const symlinkTarget = path.join(tempRoot, "boundary-symlink-target");
+  await writeText(path.join(symlinkTarget, "web", "package.json"), JSON.stringify({ name: "@fixture/web" }));
+  await writeText(path.join(symlinkTarget, "web", "src", "index.ts"), "export const app = true;\n");
+  await mkdir(symlinkScope, { recursive: true });
+  await symlink(symlinkTarget, path.join(symlinkScope, "apps"));
+  await writeText(path.join(symlinkScope, "packages", "core", "package.json"), JSON.stringify({ name: "@fixture/core" }));
+  await writeText(path.join(symlinkScope, "packages", "core", "src", "index.ts"), "export const core = true;\n");
+  fixtures.push({ label: "scope symlink", root: symlinkScope });
+
+  const nestedSymlink = path.join(tempRoot, "boundary-nested-symlink");
+  await writeText(path.join(nestedSymlink, "apps", "web", "package.json"), JSON.stringify({ name: "@fixture/web" }));
+  await writeText(path.join(nestedSymlink, "apps", "web", "src", "index.ts"), "export const app = true;\n");
+  await writeText(path.join(nestedSymlink, "packages", "core", "package.json"), JSON.stringify({ name: "@fixture/core" }));
+  await writeText(path.join(nestedSymlink, "packages", "core", "src", "index.ts"), "export const core = true;\n");
+  await symlink(
+    path.join(nestedSymlink, "packages", "core", "src", "index.ts"),
+    path.join(nestedSymlink, "packages", "core", "src", "linked.ts"),
+  );
+  fixtures.push({ label: "nested source symlink", root: nestedSymlink });
+
+  for (const [label, ignoredPath] of [
+    ["workspace ignored-name file", ["apps", "dist"]],
+    ["nested ignored-name file", ["apps", "web", "src", "node_modules"]],
+  ]) {
+    const ignoredFileRoot = path.join(tempRoot, `boundary-${label.replaceAll(" ", "-")}`);
+    await writeText(path.join(ignoredFileRoot, "apps", "web", "package.json"), JSON.stringify({ name: "@fixture/web" }));
+    await writeText(path.join(ignoredFileRoot, "apps", "web", "src", "index.ts"), "export const app = true;\n");
+    await writeText(
+      path.join(ignoredFileRoot, "packages", "core", "package.json"),
+      JSON.stringify({ name: "@fixture/core" }),
+    );
+    await writeText(path.join(ignoredFileRoot, "packages", "core", "src", "index.ts"), "export const core = true;\n");
+    await writeText(path.join(ignoredFileRoot, ...ignoredPath), "do-not-echo\n");
+    fixtures.push({ label, root: ignoredFileRoot });
+  }
+
+  for (const fixture of fixtures) {
+    const result = runNode("check-boundaries.mjs", [fixture.root]);
+    const output = outputOf(result);
+    assert(result.status === 1, `check-boundaries should fail for ${fixture.label}`);
+    assert(output.includes(fixedMessage), `${fixture.label} should use the fixed scope error`);
+    assert(!output.includes("Boundary check passed."), `${fixture.label} must not report PASS`);
+    assert(!output.includes(fixture.root), `${fixture.label} must not echo the fixture path`);
+    assert(!output.includes("do-not-echo"), `${fixture.label} must not echo source content`);
+  }
 }
 
 async function testCalculationPurityCleanFixturePasses() {
@@ -1034,6 +1142,7 @@ try {
   await testAppAwsImportDoesNotTripPureCoreRule();
   await testDuplicateRegistryConstDetection();
   await testDuplicateContractAndKernelConstDetectionAcrossApps();
+  await testBoundaryScopeValidationFailsClosed();
   await testCalculationPurityCleanFixturePasses();
   await testCalculationPurityViolationDetection();
   await testCalculationPurityInvalidScopesFailClosed();

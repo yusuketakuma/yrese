@@ -2616,6 +2616,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: exact5 commitをrevertし、extension allow-listとsynthetic regressionだけを元へ戻す。credential rotationやruntime/data rollbackは不要。
   - landing_record: implementation commit `6d730e8` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、domain/independent reviewとfull gates PASS、既存detector semanticsを変えずcommon credential/shell text filesのCI blind spotを解消。
 
+- [x] WP-4132 make boundary protected scope fail closed(MEDIUM architecture/tooling) — FINALIZED
+  - 発見根拠: `scripts/check-boundaries.mjs` はstat failure/missing `apps`・`packages`を空inventoryへ変換し、存在しないsupplied rootでexit0/`Boundary check passed.`をlive再現。import方向、cross-app、cycle、pure-core、duplicate registry ruleが全て未実行でもgreenになりうる。
+  - scope: exact5 `scripts/check-boundaries.mjs`, `scripts/check-scripts.mjs`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。boundary rule/regex/message、workspace config、package/lock/CI、APPROVED SSOT、apps/packages source、API/web/DB/migrationは変更しない。
+  - implementation: root/apps/packagesをreal non-symlink directoryとして先行検証し、各scopeのimmediate workspace directory・real readable/parseable package.json・source coverageを要求。nested symlink/special entry、traversal/read/JSON failureは固定非機密scope errorでfail closed。valid scopeだけを既存ruleへ進める。
+  - acceptance: missing/file/empty/source-empty/symlink/missing-or-malformed manifestはFAIL/no PASS/path/content echo。clean fixtureとlive repoはPASS、既存violation evidence/rule semanticsは維持。focused/full gates、domain review、independent verification後にFINALIZED。
+  - review_results: mapper CONCUR、planner APPROVED_WITH_PINS、integrated domain review APPROVED。independent verifier initial MEDIUM ignored-name regular-file depth gapをrecursive validation+2 fixturesで修正後、re-verification APPROVED、remaining findingsなし、human gate不要。
+  - validation_results: node syntax、script harness、live boundaries、API264 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/SSOT173/secrets/deps high0 critical0/SBOM231/diff全PASS。
+  - rollback: exact5 commit revert。runtime/data migrationやexternal rollbackは不要。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

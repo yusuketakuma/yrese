@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-import { readdir, readFile, stat } from "node:fs/promises";
+import { lstat, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 const rootDir = path.resolve(process.argv[2] ?? process.cwd());
 const violations = [];
 const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"]);
 const ignoredDirs = new Set([".git", ".next", "coverage", "dist", "node_modules"]);
+const scopeError = "Boundary check could not validate the protected workspace scope.";
 const pureCorePackageNames = new Set([
   "audit",
   "calculation",
@@ -44,24 +45,11 @@ function toPosix(filePath) {
   return filePath.split(path.sep).join("/");
 }
 
-async function pathExists(filePath) {
-  try {
-    await stat(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, "utf8"));
 }
 
 async function listFiles(dir, predicate = () => true) {
-  if (!(await pathExists(dir))) {
-    return [];
-  }
-
   const files = [];
   const entries = await readdir(dir, { withFileTypes: true });
 
@@ -86,19 +74,91 @@ async function listWorkspacePackageDirs() {
   const dirs = [];
   for (const workspaceDir of ["apps", "packages"]) {
     const baseDir = path.join(rootDir, workspaceDir);
-    if (!(await pathExists(baseDir))) {
-      continue;
-    }
-
     const entries = await readdir(baseDir, { withFileTypes: true });
     for (const entry of entries) {
-      if (entry.isDirectory() && (await pathExists(path.join(baseDir, entry.name, "package.json")))) {
+      if (entry.isDirectory() && !ignoredDirs.has(entry.name)) {
         dirs.push(path.join(baseDir, entry.name));
       }
     }
   }
 
   return dirs;
+}
+
+async function validateProtectedScopes() {
+  const rootEntry = await lstat(rootDir);
+  if (!rootEntry.isDirectory() || rootEntry.isSymbolicLink()) {
+    throw new Error(scopeError);
+  }
+
+  for (const workspaceDir of ["apps", "packages"]) {
+    const baseDir = path.join(rootDir, workspaceDir);
+    const baseEntry = await lstat(baseDir);
+    if (!baseEntry.isDirectory() || baseEntry.isSymbolicLink()) {
+      throw new Error(scopeError);
+    }
+
+    const scopeEntries = await readdir(baseDir, { withFileTypes: true });
+    const workspaceEntries = [];
+    for (const entry of scopeEntries) {
+      if (entry.isSymbolicLink()) {
+        throw new Error(scopeError);
+      }
+      if (ignoredDirs.has(entry.name)) {
+        if (!entry.isDirectory()) {
+          throw new Error(scopeError);
+        }
+        continue;
+      }
+      workspaceEntries.push(entry);
+    }
+    if (workspaceEntries.length === 0) {
+      throw new Error(scopeError);
+    }
+
+    let sourceCount = 0;
+    for (const workspaceEntry of workspaceEntries) {
+      if (!workspaceEntry.isDirectory() || workspaceEntry.isSymbolicLink()) {
+        throw new Error(scopeError);
+      }
+      const workspacePath = path.join(baseDir, workspaceEntry.name);
+      const manifestPath = path.join(workspacePath, "package.json");
+      const manifestEntry = await lstat(manifestPath);
+      if (!manifestEntry.isFile() || manifestEntry.isSymbolicLink()) {
+        throw new Error(scopeError);
+      }
+      await readJson(manifestPath);
+
+      const visit = async (dir) => {
+        for (const entry of await readdir(dir, { withFileTypes: true })) {
+          const entryPath = path.join(dir, entry.name);
+          if (entry.isSymbolicLink()) {
+            throw new Error(scopeError);
+          }
+          if (ignoredDirs.has(entry.name)) {
+            if (!entry.isDirectory()) {
+              throw new Error(scopeError);
+            }
+            continue;
+          }
+          if (entry.isDirectory()) {
+            await visit(entryPath);
+          } else if (entry.isFile()) {
+            if (sourceExtensions.has(path.extname(entryPath))) {
+              await readFile(entryPath, "utf8");
+              sourceCount += 1;
+            }
+          } else {
+            throw new Error(scopeError);
+          }
+        }
+      };
+      await visit(workspacePath);
+    }
+    if (sourceCount === 0) {
+      throw new Error(scopeError);
+    }
+  }
 }
 
 function extractImportSpecifiers(source) {
@@ -316,6 +376,7 @@ async function checkDuplicateConstArrays() {
 }
 
 async function main() {
+  await validateProtectedScopes();
   const workspacePackageDirs = await listWorkspacePackageDirs();
   const packageNameByDir = new Map();
   const appPackageNames = new Map();
@@ -347,4 +408,9 @@ async function main() {
   console.log("Boundary check passed.");
 }
 
-await main();
+try {
+  await main();
+} catch {
+  console.error(scopeError);
+  process.exitCode = 1;
+}
