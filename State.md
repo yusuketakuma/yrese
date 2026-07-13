@@ -12,7 +12,7 @@
 
 - clean baseline `f73901b`。手書きcomment stripper + regexがURL後の同一行`Date.now()`を見逃し、文字列内`Date.now()`を誤検知するMEDIUM calculation-safety/tooling gate gapを再現。現production違反と既存WP重複はなし。
 - exact7でTypeScript syntax-only AST、8拡張子のexplicit ScriptKind、既存5 familyのみのsyntactic matcherへ置換。comments/string/template raw/regex/JSX textを除外し、template/JSX expression、optional/static-computed、shadowed identifier、malformed source fail-closedをfixture化。calculation source/CAL-010/CI/apps/API/DB/runtimeは不変。
-- MAP-04 / PLAN-04 / PLAN-04Bは`APPROVED_WITH_PINS`。domain initial LOW fixture不足とindependent initial MEDIUM qualified receiver見逃しを修正し、final domain/independent reviewはいずれもAPPROVED、remaining findingsなし、human gate不要。frozen install、checker/harness syntax、live purity、expanded script harness、calculation87、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、全live gate/diff/cleanはPASS。exact7 implementation landingはpending。
+- MAP-04 / PLAN-04 / PLAN-04Bは`APPROVED_WITH_PINS`。domain initial LOW fixture不足とindependent initial MEDIUM qualified receiver見逃しを修正し、final domain/independent reviewはいずれもAPPROVED、remaining findingsなし、human gate不要。frozen install、checker/harness syntax、live purity、expanded script harness、calculation87、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、全live gate/diff/cleanはPASS。exact7 implementation commit `014b3e6` を対象feature branchへpush済み。
 
 ### WP-4143 repository script harness CI connection — LOCAL_LANDED / REMOTE_CI_VERIFY_REQUIRED
 
