@@ -2666,6 +2666,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: exact5 revert。DB/data rollback不要。
   - landing_record: implementation commit `66c6eb2` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、post-fix full gates、domain re-review/independent verification PASS。loader semantics不変でinvalid filename診断を一行化。
 
+- [x] WP-4137 make secret scan protected scope fail closed(MEDIUM security/tooling) — FINALIZED
+  - 発見根拠: existing empty cwdでsecret scannerがeligible file 0件のままexit0/`Secret scan passed.`をlive再現。root/symlink/special/nonempty scope validationがなく、credential prevention未実行でもgreenになり得た。current secret incidentは未検出。
+  - scope: exact5 `scripts/check-secrets.mjs`, `scripts/check-scripts.mjs`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。patterns/extensions/allow/ignored sets/finding schema、package/lock/CI、apps/packages/docs/SSOT/DBは不変。
+  - implementation: real non-symlink root、visited entry kind、ignored-name correct kind、eligible text >=1、traversal/read failureを固定非機密errorでfail closed。symlink target未読、既存finding semantics維持。
+  - acceptance: empty/noneligible-only/eligible symlink/ignored-name wrong-kindはFAIL/no PASS/path/content echo。既存allow/leak/SQL/shell/key/clean fixturesとlive scan維持。focused/full/domain/independent後FINALIZED。
+  - review_results: mapper direct repro、planner re-adjudication APPROVED_WITH_PINS、integrated domain reviewとindependent verifier APPROVED、findingsなし、human gate不要。
+  - validation_results: self-scan fixture literal修正後、script harness/live secrets/node syntax、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/deps high0 critical0/SBOM231/diff全PASS。
+  - rollback: exact5 revert。実secret発見時のremoval/rotationは別human gate。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

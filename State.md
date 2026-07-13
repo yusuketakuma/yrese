@@ -8,6 +8,11 @@
 
 ## 2026-07-13
 
+### WP-4137 secret scan protected-scope fail-closed — FINALIZED
+
+- clean baseline `9f221b2`。empty rootでeligible scan 0件でもPASSするMEDIUM security control gapをexact5で修正中。SSOT scope候補は有効だが次順位へ延期。
+- root/entry/symlink/ignored-kind/nonempty/read validationを追加。initial self-scan synthetic literal findingをruntime splitへ修正後、domain/independent review APPROVED、findingsなし。script harness/live secrets/node syntax、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。
+
 ### WP-4136 invalid migration filename Unicode separator escape — FINALIZED
 
 - clean baseline `1c31aaa`。local filename diagnostic formatterだけを強化し、U+0085/U+2028/U+2029のliteral出力を防止するexact5を実装中。

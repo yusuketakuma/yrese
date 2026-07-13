@@ -7,7 +7,7 @@
  *
  * Keep allowlists rare and local to non-secret examples only.
  */
-import { readdir, readFile } from "node:fs/promises";
+import { lstat, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 const rootDir = process.cwd();
@@ -21,6 +21,9 @@ const ignoredDirs = new Set([
   "out",
 ]);
 const ignoredFiles = new Set(["pnpm-lock.yaml"]);
+const scopeErrorMessage = "Secret scan could not validate the protected repository scope.";
+class ProtectedScopeError extends Error {}
+function failScope() { throw new ProtectedScopeError(scopeErrorMessage); }
 
 const secretPatterns = [
   { name: "AWS access key", pattern: /\bAKIA[0-9A-Z]{16}\b/g },
@@ -110,29 +113,45 @@ function lineForIndex(source, index) {
 
 async function listFiles(dir) {
   const files = [];
-  const entries = await readdir(dir, { withFileTypes: true });
+  let entries;
+  try { entries = await readdir(dir, { withFileTypes: true }); } catch { failScope(); }
 
   for (const entry of entries) {
     const entryPath = path.join(dir, entry.name);
+    if (entry.isSymbolicLink()) failScope();
+    if (ignoredDirs.has(entry.name)) {
+      if (!entry.isDirectory()) failScope();
+      continue;
+    }
+    if (ignoredFiles.has(entry.name)) {
+      if (!entry.isFile()) failScope();
+      continue;
+    }
     if (entry.isDirectory()) {
-      if (!ignoredDirs.has(entry.name)) {
-        files.push(...(await listFiles(entryPath)));
-      }
+      files.push(...(await listFiles(entryPath)));
       continue;
     }
 
-    if (entry.isFile() && !ignoredFiles.has(entry.name) && isTextFile(entryPath)) {
+    if (entry.isFile() && isTextFile(entryPath)) {
       files.push(entryPath);
+    } else if (!entry.isFile()) {
+      failScope();
     }
   }
 
   return files;
 }
 
+async function main() {
+const root = await lstat(rootDir).catch(() => failScope());
+if (!root.isDirectory() || root.isSymbolicLink()) failScope();
+const files = await listFiles(rootDir);
+if (files.length === 0) failScope();
 const findings = [];
 
-for (const filePath of await listFiles(rootDir)) {
-  const source = await readFile(filePath, "utf8");
+for (const filePath of files) {
+  let source;
+  try { source = await readFile(filePath, "utf8"); } catch { failScope(); }
   for (const { name, pattern, validate } of secretPatterns) {
     pattern.lastIndex = 0;
     let match;
@@ -160,4 +179,11 @@ if (findings.length > 0) {
   process.exitCode = 1;
 } else {
   console.log("Secret scan passed.");
+}
+}
+
+try { await main(); } catch (error) {
+  if (!(error instanceof ProtectedScopeError)) throw error;
+  console.error(scopeErrorMessage);
+  process.exitCode = 1;
 }

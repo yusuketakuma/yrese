@@ -516,6 +516,36 @@ async function testCalculationPurityInvalidScopesFailClosed() {
 }
 
 async function testSecretAllowlistAndDetection() {
+  const fixedScopeMessage = "Secret scan could not validate the protected repository scope.";
+  const invalidScopes = [];
+  const emptyRoot = path.join(tempRoot, "secrets-empty");
+  await mkdir(emptyRoot, { recursive: true });
+  invalidScopes.push({ label: "empty root", root: emptyRoot });
+  const noneligibleRoot = path.join(tempRoot, "secrets-noneligible");
+  await writeText(path.join(noneligibleRoot, "fixture.bin"), "do-not-echo");
+  invalidScopes.push({ label: "noneligible-only root", root: noneligibleRoot });
+  const symlinkRoot = path.join(tempRoot, "secrets-symlink");
+  const externalSecret = path.join(tempRoot, "secrets-external.ts");
+  const externalCredential = ["Synthetic", "External", "Credential", "1234"].join("_");
+  await writeText(externalSecret, `api_key='${externalCredential}'\n`);
+  await mkdir(symlinkRoot, { recursive: true });
+  await symlink(externalSecret, path.join(symlinkRoot, "linked.ts"));
+  invalidScopes.push({ label: "eligible symlink", root: symlinkRoot });
+  const ignoredWrongKind = path.join(tempRoot, "secrets-ignored-wrong-kind");
+  await writeText(path.join(ignoredWrongKind, "README.md"), "clean eligible text\n");
+  await writeText(path.join(ignoredWrongKind, "node_modules"), "do-not-echo");
+  invalidScopes.push({ label: "ignored directory name as file", root: ignoredWrongKind });
+  for (const fixture of invalidScopes) {
+    const result = runNode("check-secrets.mjs", [], { cwd: fixture.root });
+    const output = outputOf(result);
+    assert(result.status === 1, `check-secrets should fail for ${fixture.label}`);
+    assert(output.includes(fixedScopeMessage), `${fixture.label} should use the fixed scope error`);
+    assert(!output.includes("Secret scan passed."), `${fixture.label} must not report PASS`);
+    assert(!output.includes(fixture.root), `${fixture.label} must not echo the root path`);
+    assert(!output.includes(externalCredential), `${fixture.label} must not echo target content`);
+    assert(!output.includes("do-not-echo"), `${fixture.label} must not echo skipped content`);
+  }
+
   const allowRoot = path.join(tempRoot, "secrets-allow");
   await writeText(
     path.join(allowRoot, "README.md"),
