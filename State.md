@@ -8,11 +8,11 @@
 
 ## 2026-07-13
 
-### WP-4127 reception queue entry JST business-date binding — VERIFIED / LANDING_PENDING
+### WP-4127 reception queue entry JST business-date binding — LANDED
 
 - clean baseline `83a0416`。別日のschema-valid PHI-rich reception rowをrequested date queueとして返せるR2 gapをAPI exact5で修正中。
 - schema→duplicate→canonical JST business-dateを全件検証し、mixed/foreign rowをfixed 500/no-storeでall-or-nothing拒否。repository/DB/web/SSOTは不変。
-- mapper/pre-plan、reception/data/API/privacy/security/medical/DB-boundary domain review、independent verificationは全てAPPROVED。focused API server87、API256 + PostgreSQL14 expected skips、web328、audit183、workspace typecheck/test/buildと全gate PASS。exact-stage landingのみpending。
+- mapper/pre-plan、reception/data/API/privacy/security/medical/DB-boundary domain review、independent verificationは全てAPPROVED。focused API server87、API256 + PostgreSQL14 expected skips、web328、audit183、workspace typecheck/test/buildと全gate PASS。exact5 implementation commit `47836ba` を対象branchへpush済み。
 
 ### WP-4126 audit-log evidence exact HTTP 200 binding — LANDED
 
