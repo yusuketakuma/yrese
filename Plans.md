@@ -2498,6 +2498,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused reception web54、web294、API233 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `7eb4038` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent/domain reviewとfull gates PASS、API-006 client stable orderをPHI-rich reception queueへ適用。
 
+- [x] WP-4119 bind audit projection to the browser requested window(R2 audit evidence/data-minimization integrity) — FINALIZED
+  - 発見根拠: browserは固定`limit=50`でaudit entriesを要求するが、schema/identity/count/chronology後もrequested windowとの件数関係を検査せず、healthy underfillやhealthy/broken overflowをverified/latestまたはraw evidenceとしてcommitできた。
+  - scope: exact5 `apps/web/app/admin/audit-log-view.tsx`, `apps/web/app/admin/audit-log-view.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。contracts/OpenAPI/API/server/audit core/repository/DB/migration/SSOT/UI copy/DOM/ARIA/CSS/package/lockは変更しない。
+  - implementation: `AUDIT_LOG_DEFAULT_LIMIT`をrequest URLとresponse invariantの単一authorityにし、schema→healthy duplicate→count→healthy chronology後、全responseでentries<=limit、healthyはexact`min(totalCount, limit)`を要求。broken underfill/projection omissionは許可し、違反はfixed non-echo全体拒否、slice/backfill/refetch/filter/repair/partial commitなし。
+  - acceptance: healthy underfill、healthy/broken 51 overflowを拒否。healthy total51/entries50、0/1/49/50 complete window、bounded broken raw/projection-shortを維持。既存precedence、refresh last verified+generic error+retry、audit fields/counts/raw non-echo、URL limit50を固定。
+  - review_results: mapper/pre-plan後、rootがhealthy exact completeness + all-response upper boundへ統合。independent verifier APPROVED、findingsなし。audit/data-integrity/security/privacy/API/frontend/accessibility/medical観点をexact scopeで確認し、bounded broken raw evidence/non-echo/UI不変/human gate不要を確認。追加domain-agent turnはthread ceilingのため不可だったが、独立verifierが同観点を証拠付きで網羅。
+  - validation_results: focused audit web43、web299、API233 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: pending exact-stage commit and push; implementation/review/full gates PASS。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

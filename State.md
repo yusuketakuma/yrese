@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4119 audit browser requested-window binding — VERIFIED / LANDING_PENDING
+
+- clean baseline `107b666`。固定limit50 requestに対するhealthy underfillとhealthy/broken overflowをbrowserが受理できる実在R2 audit evidence/data-minimization gapをexact5で修正中。
+- contractsのdefault limitをURL/検証で共用。既存identity/count/chronology precedence後、全response upper bound + healthy exact min(total,limit)を要求。broken underfill/raw projectionは維持し、補正/partial commitなし。
+- independent verifier APPROVED、findingsなし。domain-agent追加turnはthread ceilingだったためrootがaudit/data/security/privacy/API/frontend/accessibility/medical観点を確認。focused audit web43、web299、API233 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/buildと全gate PASS。exact-stage landingのみpending。
+
 ### WP-4118 reception queue client canonical ordering — LANDED
 
 - clean baseline `7f4475d`。API-006がclient責務とするacceptedAt+ReceptionId安定順をbrowserが適用せず、transport順でPHI-rich受付queueを表示できる実在R2 workflow gapをexact5で修正中。

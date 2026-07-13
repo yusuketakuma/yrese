@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { auditLogResponseSchema, type AuditLogEntry, type AuditLogResponse } from "@yrese/contracts";
+import {
+  AUDIT_LOG_DEFAULT_LIMIT,
+  auditLogResponseSchema,
+  type AuditLogEntry,
+  type AuditLogResponse,
+} from "@yrese/contracts";
 import { permissionScope } from "@yrese/shared-kernel";
 
 import { resolveWebApiUrl } from "../api-transport";
@@ -42,6 +47,8 @@ export const auditLogResponseInvariantErrorMessage =
   "Audit response contains inconsistent verification counts";
 export const auditLogResponseOrderInvariantErrorMessage =
   "Verified audit response is not ordered newest first";
+export const auditLogResponseWindowInvariantErrorMessage =
+  "Audit response does not match the requested display window";
 
 function compareUtcIsoInstants(left: string, right: string): number {
   const leftSecond = left.slice(0, 19);
@@ -71,10 +78,13 @@ function auditLogErrorNotice(error: unknown): ErrorNoticeProps {
 export async function fetchAuditLog(
   fetchImpl: typeof fetch = fetch,
 ): Promise<AuditLogResponse> {
-  const res = await fetchImpl(resolveWebApiUrl("/audit/events?limit=50"), {
-    headers: devTenantHeaders([permissionScope("audit-log", "read")]),
-    cache: "no-store",
-  });
+  const res = await fetchImpl(
+    resolveWebApiUrl(`/audit/events?limit=${AUDIT_LOG_DEFAULT_LIMIT}`),
+    {
+      headers: devTenantHeaders([permissionScope("audit-log", "read")]),
+      cache: "no-store",
+    },
+  );
   if (!res.ok) {
     const body: unknown = await res.json().catch(() => null);
     const rawErrorCode =
@@ -124,6 +134,13 @@ export async function fetchAuditLog(
         throw new Error(auditLogResponseOrderInvariantErrorMessage);
       }
     }
+  }
+  const exceedsRequestedWindow = parsed.entries.length > AUDIT_LOG_DEFAULT_LIMIT;
+  const omitsHealthyWindowEntries =
+    parsed.chainVerification.ok &&
+    parsed.entries.length !== Math.min(parsed.totalCount, AUDIT_LOG_DEFAULT_LIMIT);
+  if (exceedsRequestedWindow || omitsHealthyWindowEntries) {
+    throw new Error(auditLogResponseWindowInvariantErrorMessage);
   }
   return parsed;
 }

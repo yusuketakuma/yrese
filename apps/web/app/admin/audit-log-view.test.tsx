@@ -11,6 +11,7 @@ import {
   ChainVerificationNotice,
   auditLogResponseInvariantErrorMessage,
   auditLogResponseOrderInvariantErrorMessage,
+  auditLogResponseWindowInvariantErrorMessage,
   createAuditLogRunner,
   fetchAuditLog,
   type AuditLogState,
@@ -599,6 +600,63 @@ describe("createAuditLogRunner (latest-only / lifecycle invalidation)", () => {
     }
   });
 
+  it("retains the last verified view when refresh underfills its window, then installs a valid retry", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const underfilled: AuditLogResponse = {
+      ...SAMPLE,
+      entries: [SAMPLE.entries[0]!],
+    };
+    const replacement: AuditLogResponse = {
+      ...SAMPLE,
+      entries: [SAMPLE.entries[0]!],
+      totalCount: 1,
+      chainVerification: { ok: true, checkedCount: 1 },
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(underfilled), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(replacement), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    const recorder = createStateRecorder({
+      kind: "loaded",
+      data: SAMPLE,
+      refreshState: { kind: "idle" },
+    });
+    const runner = createAuditLogRunner(() => fetchAuditLog(fetchImpl), recorder.emit);
+
+    try {
+      await runner.run();
+      const failed = recorder.current();
+      expect(failed.kind).toBe("loaded");
+      if (failed.kind !== "loaded") throw new Error("expected retained audit view");
+      expect(failed.data).toBe(SAMPLE);
+      expect(failed.refreshState).toMatchObject({
+        kind: "error",
+        notice: { message: "監査ログの処理に失敗しました。" },
+      });
+      expect(JSON.stringify(failed)).not.toContain(auditLogResponseWindowInvariantErrorMessage);
+
+      await runner.run();
+      expect(recorder.current()).toEqual({
+        kind: "loaded",
+        data: replacement,
+        refreshState: { kind: "idle" },
+      });
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("keeps initial failure top-level and retries with initial loading semantics", async () => {
     const fetcher = vi
       .fn<() => Promise<AuditLogResponse>>()
@@ -872,6 +930,100 @@ describe("fetchAuditLog transport contract", () => {
 
   it.each([
     [
+      "underfills a healthy window",
+      {
+        ...SAMPLE,
+        entries: [SAMPLE.entries[0]!],
+      },
+    ],
+    [
+      "overfills a healthy window",
+      {
+        entries: Array.from({ length: 51 }, (_, index) => ({
+          ...SAMPLE.entries[0]!,
+          eventId: `evt-window-sensitive-${index}`,
+        })),
+        totalCount: 51,
+        chainVerification: { ok: true as const, checkedCount: 51 },
+      },
+    ],
+    [
+      "overfills a broken raw window",
+      {
+        entries: Array.from({ length: 51 }, (_, index) => ({
+          ...SAMPLE.entries[0]!,
+          eventId: `evt-broken-window-sensitive-${index}`,
+        })),
+        totalCount: 51,
+        chainVerification: {
+          ok: false as const,
+          checkedCount: 1,
+          breakIndex: 1,
+          reason: "entry_hash_mismatch" as const,
+        },
+      },
+    ],
+  ] as const)("rejects a response that %s without echoing audit evidence", async (_label, body) => {
+    vi.stubEnv("NODE_ENV", "development");
+    try {
+      await expect(
+        fetchAuditLog(
+          vi.fn().mockResolvedValue(
+            new Response(JSON.stringify(body), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        ),
+      ).rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe(auditLogResponseWindowInvariantErrorMessage);
+        for (const sensitiveValue of [
+          body.entries[0]?.eventId,
+          body.entries[0]?.actorId,
+          body.entries[0]?.targetRef.id,
+          body.entries[0]?.wallClock,
+          "entry_hash_mismatch",
+        ]) {
+          if (sensitiveValue !== undefined) {
+            expect((error as Error).message).not.toContain(sensitiveValue);
+          }
+        }
+        return true;
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("accepts a complete healthy window capped at the requested limit", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const body: AuditLogResponse = {
+      entries: Array.from({ length: 50 }, (_, index) => ({
+        ...SAMPLE.entries[0]!,
+        eventId: `evt-window-${index}`,
+      })),
+      totalCount: 51,
+      chainVerification: { ok: true, checkedCount: 51 },
+    };
+    try {
+      await expect(
+        fetchAuditLog(
+          vi.fn().mockResolvedValue(
+            new Response(JSON.stringify(body), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        ),
+      ).resolves.toEqual(body);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it.each([
+    [
       "has more entries than stored events",
       {
         ...SAMPLE,
@@ -961,7 +1113,7 @@ describe("fetchAuditLog transport contract", () => {
       "empty healthy",
       { entries: [], chainVerification: { ok: true, checkedCount: 0 }, totalCount: 0 },
     ],
-    ["limited healthy", { ...SAMPLE, entries: [SAMPLE.entries[0]!], totalCount: 2 }],
+    ["complete healthy", SAMPLE],
     [
       "broken at the first event",
       {
