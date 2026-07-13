@@ -2489,6 +2489,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused audit web38、web290、API233 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `cebd9de` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent/domain reviewとfull gates PASS、healthy audit chronologyをbrowser state commit前にfail-closed拘束。
 
+- [x] WP-4118 canonicalize reception queue order at browser boundary(R2 workflow integrity) — FINALIZED
+  - 発見根拠: APPROVED API-006は`acceptedAt ASC + receptionId ASC`を要求しsortをclient責務とするが、browserはschema/duplicate検査後にtransport順をそのままPHI-rich受付queueへ表示していた。default adaptersの偶然の順序へ依存し、alternate/drifted repositoryで待ち順を誤表示できた。
+  - scope: exact5 `apps/web/app/reception-dashboard.tsx`, `apps/web/app/reception-dashboard.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。contracts/OpenAPI/API/server/repository/SQL/DB/migration/SSOT/UI copy/DOM/ARIA/CSS/date-time/package/lockは変更しない。
+  - implementation: HTTP/schema→full ReceptionId一意性の既存precedence後、entries copyをexact UTC acceptedAt昇順、equal instantはcode-unit ReceptionId昇順へsortして新responseを返す。arbitrary fractional秒を保持し、元array/entry/dateを変更せずreject/dedupe/merge/filterなし。
+  - acceptance: reversed/mixed acceptedAt、sub-millisecond、equal acceptedAtのID tieをcanonical化。sorted/single/emptyはvalue-equivalent、source非mutation、render earliest-firstを固定。duplicate non-echo拒否、date mismatch/stale/single-flight/last verified/retry/loadedAt/JST/UI semanticsを維持。
+  - review_results: mapper/pre-plan/explorer後、independent verifierとreception/data-integrity/API/frontend/accessibility/medical/privacy/security review APPROVED、findingsなし。exact fractional precision、code-unit tie、source非mutation、PHI/UI/runner不変を独立確認しhuman gate不要。
+  - validation_results: focused reception web54、web294、API233 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: pending exact-stage commit and push; implementation/review/full gates PASS。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

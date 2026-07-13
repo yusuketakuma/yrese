@@ -289,6 +289,67 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     },
   );
 
+  it("sorts a copied queue by exact acceptedAt then ReceptionId without mutating the source", async () => {
+    const late = entry({
+      receptionId: "rc-late",
+      acceptedAt: "2026-07-09T01:00:00Z",
+      patient: patient({ patientId: "patient-late", patientNumber: "QUEUE-LATE" }),
+    });
+    const tieB = entry({
+      receptionId: "rc-tie-b",
+      acceptedAt: "2026-07-09T00:00:00.0000010Z",
+    });
+    const early = entry({
+      receptionId: "rc-early",
+      acceptedAt: "2026-07-09T00:00:00.0000009Z",
+      patient: patient({ patientId: "patient-early", patientNumber: "QUEUE-EARLY" }),
+    });
+    const tieA = entry({
+      receptionId: "rc-tie-a",
+      acceptedAt: "2026-07-09T00:00:00.000001Z",
+    });
+    const source = queueResponse("2026-07-09", [late, tieB, early, tieA]);
+    const sourceOrder = source.entries.map((queueEntry) => queueEntry.receptionId);
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(200, source));
+
+    const response = await withNodeEnv("development", () =>
+      fetchReceptionQueue("2026-07-09", fetchImpl),
+    );
+
+    expect(response.entries.map((queueEntry) => queueEntry.receptionId)).toEqual([
+      "rc-early",
+      "rc-tie-a",
+      "rc-tie-b",
+      "rc-late",
+    ]);
+    expect(response.entries).toEqual([early, tieA, tieB, late]);
+    expect(source.entries.map((queueEntry) => queueEntry.receptionId)).toEqual(sourceOrder);
+    expect(response.entries).not.toBe(source.entries);
+
+    const html = renderToStaticMarkup(<ReceptionQueueTable entries={response.entries} />);
+    expect(html.indexOf(early.patient.patientNumber)).toBeLessThan(
+      html.indexOf(late.patient.patientNumber),
+    );
+  });
+
+  it.each([
+    ["empty", []],
+    ["single", [entry({ receptionId: "rc-single" })]],
+    [
+      "already canonical",
+      [
+        entry({ receptionId: "rc-a", acceptedAt: "2026-07-09T00:00:00Z" }),
+        entry({ receptionId: "rc-b", acceptedAt: "2026-07-09T00:00:00Z" }),
+      ],
+    ],
+  ] as const)("keeps a %s queue value-equivalent after canonical sorting", async (_label, entries) => {
+    const body = queueResponse("2026-07-09", entries);
+    const response = await withNodeEnv("development", () =>
+      fetchReceptionQueue("2026-07-09", vi.fn().mockResolvedValue(jsonResponse(200, body))),
+    );
+    expect(response).toEqual(body);
+  });
+
   it("retains the last verified queue when a refresh contains duplicate reception identities", async () => {
     const retained = queueResponse("2026-07-09", [entry({ receptionId: "retained" })]);
     const duplicate = entry({ receptionId: "duplicate-untrusted" });

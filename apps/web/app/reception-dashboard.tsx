@@ -118,7 +118,26 @@ export async function fetchReceptionQueue(
     }
     receptionIds.add(entry.receptionId);
   }
-  return parsed;
+  const compareUtcIsoInstants = (left: string, right: string): number => {
+    const leftSecond = left.slice(0, 19);
+    const rightSecond = right.slice(0, 19);
+    if (leftSecond !== rightSecond) return leftSecond < rightSecond ? -1 : 1;
+
+    const leftFraction = left[19] === "." ? left.slice(20, -1) : "";
+    const rightFraction = right[19] === "." ? right.slice(20, -1) : "";
+    const width = Math.max(leftFraction.length, rightFraction.length);
+    const normalizedLeft = leftFraction.padEnd(width, "0");
+    const normalizedRight = rightFraction.padEnd(width, "0");
+    if (normalizedLeft === normalizedRight) return 0;
+    return normalizedLeft < normalizedRight ? -1 : 1;
+  };
+  const entries = [...parsed.entries].sort((left, right) => {
+    const acceptedAtOrder = compareUtcIsoInstants(left.acceptedAt, right.acceptedAt);
+    if (acceptedAtOrder !== 0) return acceptedAtOrder;
+    if (left.receptionId === right.receptionId) return 0;
+    return left.receptionId < right.receptionId ? -1 : 1;
+  });
+  return { ...parsed, entries };
 }
 
 export async function createReception(
