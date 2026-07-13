@@ -8,11 +8,11 @@
 
 ## 2026-07-13
 
-### WP-4126 audit-log evidence exact HTTP 200 binding — VERIFIED / LANDING_PENDING
+### WP-4126 audit-log evidence exact HTTP 200 binding — LANDED
 
 - clean baseline `365882b`。OpenAPIが200だけを成功とするaudit GETでunsupported 2xxがauthoritative evidenceになれるR2 gapをexact5で修正中。
 - non-ok mapping後にexact 200を要求。unsupported body未読、initial data zero、refresh verified/broken view保持、stale generation suppress。UI/ARIAは不変。
-- mapper/pre-plan、audit/data/API/privacy/security/medical/frontend/accessibility domain review、independent verificationは全てAPPROVED。focused audit-log-view50、web328、API252 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/buildと全gate PASS。exact-stage landingのみpending。
+- mapper/pre-plan、audit/data/API/privacy/security/medical/frontend/accessibility domain review、independent verificationは全てAPPROVED。focused audit-log-view50、web328、API252 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/buildと全gate PASS。exact5 implementation commit `603973b` を対象branchへpush済み。
 
 ### WP-4125 patient-search exact HTTP 200 binding — LANDED
 
