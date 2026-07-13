@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4125 patient-search exact HTTP 200 binding — VERIFIED / LANDING_PENDING
+
+- clean baseline `e3e5c55`。API-001が200だけを成功とするpatient searchでunsupported 2xxがselectable/append pageになれるR2 gapをexact5で修正中。
+- non-ok mapping後にexact 200を要求。unsupported bodyは未読、full candidate zero、append verified state保持+retry、stale generation suppress。UI/ARIAは不変。
+- mapper/pre-plan、patient/data/API/privacy/security/medical/frontend/accessibility domain review、independent verificationは全てAPPROVED。focused patient-search43、web321、API252 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/buildと全gate PASS。exact-stage landingのみpending。
+
 ### WP-4124 patient-context refresh exact HTTP 200 binding — LANDED
 
 - clean baseline `2f50373`。OpenAPIが200だけを成功とするpatient getでschema-valid unsupported 2xxがglobal selected patientをauthoritative refreshできるR2 gapをexact5で修正中。

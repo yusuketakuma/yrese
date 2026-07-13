@@ -58,6 +58,45 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     );
   });
 
+  it.each([201, 202, 204, 206])(
+    "rejects unsupported patient-search success status %i before reading the body",
+    async (status) => {
+      vi.stubEnv("NODE_ENV", "development");
+      vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+      const json = vi.fn(async () => ({
+        results: [
+          patient({
+            patientId: "patient-sensitive-unsupported",
+            name: "秘密 患者",
+            patientNumber: "SECRET-SEARCH-001",
+          }),
+        ],
+        nextCursor: "cursor-sensitive-unsupported",
+      }));
+      const fetchImpl: typeof fetch = async () =>
+        ({ ok: true, status, json }) as unknown as Response;
+
+      let thrown: unknown;
+      try {
+        await fetchSearch("秘密検索語", undefined, fetchImpl);
+      } catch (error) {
+        thrown = error;
+      } finally {
+        vi.unstubAllEnvs();
+      }
+
+      expect(json).not.toHaveBeenCalled();
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toBe(`検索に失敗しました(HTTP ${status})。`);
+      const serialized = JSON.stringify(thrown, Object.getOwnPropertyNames(thrown));
+      expect(serialized).not.toContain("秘密検索語");
+      expect(serialized).not.toContain("patient-sensitive-unsupported");
+      expect(serialized).not.toContain("秘密 患者");
+      expect(serialized).not.toContain("SECRET-SEARCH-001");
+      expect(serialized).not.toContain("cursor-sensitive-unsupported");
+    },
+  );
+
   it("fails before fetch when the production API base is missing (WP-4067)", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
@@ -230,6 +269,74 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     expect(states[states.length - 1]!.kind).toBe("loaded");
   });
 
+  it("rejects a current unsupported search page without committing selectable results", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const states: SearchState[] = [{ kind: "idle" }];
+    const fetchImpl: typeof fetch = async () =>
+      new Response(JSON.stringify({ results: [patient({ patientId: "patient-untrusted" })] }), {
+        status: 202,
+        headers: { "content-type": "application/json" },
+      });
+    const run = createSearchRunner(
+      (query, cursor) => fetchSearch(query, cursor, fetchImpl),
+      (update) => states.push(update(states[states.length - 1]!)),
+    );
+
+    try {
+      await run("合成");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    const last = states[states.length - 1]!;
+    expect(last.kind).toBe("error");
+    expect(JSON.stringify(last)).not.toContain("patient-untrusted");
+  });
+
+  it("suppresses a stale unsupported search page after a newer exact-200 result", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const states: SearchState[] = [{ kind: "idle" }];
+    let resolveOld!: (response: Response) => void;
+    const oldResponse = new Promise<Response>((resolve) => {
+      resolveOld = resolve;
+    });
+    const fetchImpl: typeof fetch = async (input) =>
+      String(input).includes(encodeURIComponent("古い検索"))
+        ? oldResponse
+        : new Response(JSON.stringify({ results: [patient({ patientId: "patient-new" })] }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+    const run = createSearchRunner(
+      (query, cursor) => fetchSearch(query, cursor, fetchImpl),
+      (update) => states.push(update(states[states.length - 1]!)),
+    );
+
+    try {
+      const old = run("古い検索");
+      await run("新しい検索");
+      resolveOld(
+        new Response(JSON.stringify({ results: [patient({ patientId: "patient-old-untrusted" })] }), {
+          status: 202,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+      await old;
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    const last = states[states.length - 1]!;
+    expect(last.kind).toBe("loaded");
+    if (last.kind === "loaded") {
+      expect(last.query).toBe("新しい検索");
+      expect(last.results.map((result) => result.patientId)).toEqual(["patient-new"]);
+    }
+    expect(JSON.stringify(states)).not.toContain("patient-old-untrusted");
+  });
+
   it("keeps a blank-query warning authoritative over a late success", async () => {
     const states: SearchState[] = [{ kind: "idle" }];
     const emit = (update: (prev: SearchState) => SearchState) => {
@@ -393,6 +500,70 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
       ["合成", "cursor-1"],
     ]);
     expect(duplicateKanaSet(retried.results).has("ドウイツ カナ")).toBe(true);
+  });
+
+  it("retains the verified page when an append returns unsupported 202 and permits retry", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const states: SearchState[] = [{ kind: "idle" }];
+    const responses = [
+      new Response(
+        JSON.stringify({
+          results: [patient({ patientId: "patient-retained" })],
+          nextCursor: "cursor-retry",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+      new Response(
+        JSON.stringify({
+          results: [patient({ patientId: "patient-untrusted-append" })],
+          nextCursor: "cursor-untrusted",
+        }),
+        { status: 202, headers: { "content-type": "application/json" } },
+      ),
+      new Response(JSON.stringify({ results: [patient({ patientId: "patient-retried" })] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    ];
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      const response = responses.shift();
+      if (response === undefined) throw new Error("unexpected search request");
+      return response;
+    });
+    const run = createSearchRunner(
+      (query, cursor) => fetchSearch(query, cursor, fetchImpl),
+      (update) => states.push(update(states[states.length - 1]!)),
+    );
+
+    try {
+      await run("合成");
+      await run("合成", "cursor-retry", true);
+      const failed = states[states.length - 1]!;
+      expect(failed.kind).toBe("loaded");
+      if (failed.kind !== "loaded") throw new Error("expected retained loaded state");
+      expect(failed.results.map((result) => result.patientId)).toEqual(["patient-retained"]);
+      expect(failed.nextCursor).toBe("cursor-retry");
+      expect(failed.appendState.kind).toBe("error");
+      expect(JSON.stringify(failed)).not.toContain("patient-untrusted-append");
+      expect(JSON.stringify(failed)).not.toContain("cursor-untrusted");
+
+      await run(failed.query, failed.nextCursor, true);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    const retried = states[states.length - 1]!;
+    expect(retried.kind).toBe("loaded");
+    if (retried.kind === "loaded") {
+      expect(retried.results.map((result) => result.patientId)).toEqual([
+        "patient-retained",
+        "patient-retried",
+      ]);
+      expect(retried.nextCursor).toBeUndefined();
+      expect(retried.appendState).toEqual({ kind: "idle" });
+    }
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
   it.each([

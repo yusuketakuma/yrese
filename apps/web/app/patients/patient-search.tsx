@@ -129,6 +129,12 @@ export async function fetchSearch(
       errorCode,
     );
   }
+  if (res.status !== 200) {
+    throw new SearchError(
+      `検索に失敗しました(HTTP ${res.status})。`,
+      "再試行してください。解消しない場合は同期状態画面で外部接続状態を確認してください。",
+    );
+  }
   const parsed = patientSearchResponseSchema.parse(await res.json());
   return {
     results: [...parsed.results],

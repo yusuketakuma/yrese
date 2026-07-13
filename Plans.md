@@ -2552,6 +2552,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused patient-context26、web314、API252 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `ab71df7` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent/domain reviewとfull gates PASS、non-contract 2xxによるglobal selected-patient context置換をbody parse前にfail-closed拒否。
 
+- [x] WP-4125 require exact HTTP 200 for patient-search pages(R2 patient-selection integrity) — FINALIZED
+  - 発見根拠: API-001/OpenAPIは`GET /patients/search`のsuccessを200だけとするが、browser `fetchSearch()`は任意`res.ok`をpageとしてparseし、schema-valid 201/202/206をselectable patient candidatesまたはverified pageへのappendとしてcommitできた。WP-4109/4115/4116はidentity/cursor、WP-4124はget-by-id transportで非重複。
+  - scope: exact5 `apps/web/app/patients/patient-search.tsx`, `apps/web/app/patients/patient-search.test.tsx`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。API/server/contracts/OpenAPI/repositories/cursor codec/DB/migrations/SSOT、patient-context/audit/reception transport、UI copy/DOM/ARIA/CSS、package/lockは変更しない。
+  - implementation: 既存non-ok branch(400/403 error-code mapping含む)を先に維持し、その後exact status 200だけをbody schema/duplicate/cursor/mergeへ進める。201/202/204/206はbody未読のstatus-only SearchError。current fullはcandidate zero、appendはverified results/query/cursor保持とsame-tuple retry、stale responseはgeneration suppress。
+  - acceptance: exact200 schema→generation→page duplicate→append tuple→cross-page overlap→cursor self-loop→commit precedenceと400/403 guidanceを維持。unsupported 2xxはquery/PHI/ID/cursor/bodyをerror/stateへechoせず、row/tokenをcommitしない。append owner cleanup、retry、newer search authority、UI/accessibility markupは不変。
+  - review_results: mapper APPROVED、planner APPROVED_WITH_PINS。patient/data/API/privacy/security/medical/frontend/accessibility domain reviewとindependent verifierはAPPROVED、findingsなし、human gate不要。
+  - validation_results: focused patient-search43、web321、API252 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: pending exact-stage commit and push; implementation/review/full gates PASS。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
