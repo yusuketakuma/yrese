@@ -8,11 +8,11 @@
 
 ## 2026-07-13
 
-### WP-4123 post-apply migration reconciliation fail-closed — VERIFIED / LANDING_PENDING
+### WP-4123 post-apply migration reconciliation fail-closed — LANDED
 
 - clean baseline `d09f6bd`。final migration reconciliationがfailure-shapedでもCLI successになりうるDB-002 gapをexact5で修正中。
 - final non-okをexact `MigrationStateError`としてrejectし、up_to_date/db_aheadのみsuccess。commit済み処理のrollback/retry/history repairは行わず、fake client testsのみでDB操作なし。
-- mapper/pre-plan、DB/data-integrity/security/operations/API domain review、independent verificationは全てAPPROVED。focused migration-runner9、API252 + PostgreSQL14 expected skips、web307、audit183、workspace typecheck/test/buildと全gate PASS。exact-stage landingのみpending。
+- mapper/pre-plan、DB/data-integrity/security/operations/API domain review、independent verificationは全てAPPROVED。focused migration-runner9、API252 + PostgreSQL14 expected skips、web307、audit183、workspace typecheck/test/buildと全gate PASS。exact5 implementation commit `8b81c0b` を対象branchへpush済み。
 
 ### WP-4122 applied migration name drift rejection — LANDED
 

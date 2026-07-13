@@ -2541,7 +2541,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - acceptance: final checksum_mismatch/name_mismatch/unapplied_requiredはrejectし、BEGIN/DDL/history INSERT/COMMIT、operation/final-check client release、original operation/rollback error identityは維持。final up_to_date/db_aheadは成功し、initial WP-4122 semanticsは不変。fake client testsのみでDB write/applyなし。
   - review_results: mapper findingをplannerが比較再裁定しAPPROVED_WITH_PINS。DB/data-integrity/security/operations/API domain reviewとindependent verifierはAPPROVED、findingsなし、human gate不要。
   - validation_results: focused migration-runner9、API252 + PostgreSQL14 expected skips、web307、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
-  - landing_record: pending exact-stage commit and push; implementation/review/full gates PASS。
+  - landing_record: implementation commit `8b81c0b` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent/domain reviewとfull gates PASS、unhealthy post-apply reconciliationをCLI successとして返さずfail-closed拒否。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
