@@ -4,7 +4,7 @@ This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
 - Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. Remaining57 classification, WP-0020〜0023 reconciliation, W31 and WP-4081 are LANDED.
-- Current task: WP-4121 pre-persistence patient snapshot and created acceptedAt binding VERIFIED / LANDING_PENDING. Exact5 API server implementation/test + `Plans.md`, `State.md`, this file. Independent + patient/data/reception/audit/security/privacy/medical/DB-boundary review APPROVED; focused API server83、API243 + PostgreSQL14 expected skips、web307、audit183、workspace typecheck/test/build and all gates PASS. Exact-stage commit/push remains. WP-4092 CI VERIFY_REQUIRED; WP-4057/WP-4050 human-gated.
+- Current task: WP-4121 pre-persistence patient snapshot and created acceptedAt binding LANDED in `5e8203f`. Independent + patient/data/reception/audit/security/privacy/medical/DB-boundary review APPROVED; focused API server83、API243 + PostgreSQL14 expected skips、web307、audit183、workspace typecheck/test/build and all gates PASS. Select the next non-gated code slice by fresh read-only mapping/pre-plan. WP-4092 CI VERIFY_REQUIRED; WP-4057/WP-4050 human-gated.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
