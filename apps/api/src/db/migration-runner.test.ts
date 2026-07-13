@@ -133,6 +133,119 @@ describe('applyPendingMigrations client lifecycle', () => {
     expect(finalCheck.release.mock.calls).toEqual([[]]);
   });
 
+  it.each([
+    {
+      label: 'checksum drift',
+      finalRows: [
+        {
+          version: migrations[0]?.version,
+          name: migrations[0]?.name,
+          checksum_sha256: 'drifted-checksum',
+        },
+      ],
+      expectedResult: {
+        ok: false,
+        status: 'checksum_mismatch',
+        appliedCount: 1,
+        availableCount: 1,
+        version: '000001',
+        expectedChecksumSha256: 'checksum-000001',
+        actualChecksumSha256: 'drifted-checksum',
+      },
+    },
+    {
+      label: 'name drift',
+      finalRows: [
+        {
+          version: migrations[0]?.version,
+          name: 'renamed_first',
+          checksum_sha256: migrations[0]?.checksumSha256,
+        },
+      ],
+      expectedResult: {
+        ok: false,
+        status: 'name_mismatch',
+        appliedCount: 1,
+        availableCount: 1,
+        version: '000001',
+        expectedName: 'first',
+        actualName: 'renamed_first',
+      },
+    },
+    {
+      label: 'a still-unapplied migration',
+      finalRows: [],
+      expectedResult: {
+        ok: false,
+        status: 'unapplied_required',
+        appliedCount: 0,
+        availableCount: 1,
+        pendingVersions: ['000001'],
+      },
+    },
+  ])('rejects final reconciliation with $label without undoing committed work', async ({ finalRows, expectedResult }) => {
+    const initialCheck = createCheckClient([]);
+    const operation = createClient(async () => ({ rows: [] }));
+    const finalCheck = createCheckClient(finalRows);
+    const { pool, connect } = createPool([initialCheck, operation, finalCheck]);
+
+    const error = await captureRejection(() =>
+      applyPendingMigrations(pool, migrations.slice(0, 1), {
+        appliedBy: 'synthetic-migration-test',
+      }),
+    );
+
+    expect(error).toBeInstanceOf(MigrationStateError);
+    expect((error as MigrationStateError).result).toEqual(expectedResult);
+    expect(operation.query.mock.calls.map(([sql]) => String(sql).trim())).toEqual([
+      'BEGIN',
+      migrations[0]?.sql,
+      expect.stringContaining('INSERT INTO schema_migrations'),
+      'COMMIT',
+    ]);
+    expect(connect).toHaveBeenCalledTimes(3);
+    expect(initialCheck.release.mock.calls).toEqual([[]]);
+    expect(operation.release.mock.calls).toEqual([[]]);
+    expect(finalCheck.query).toHaveBeenCalledOnce();
+    expect(finalCheck.release.mock.calls).toEqual([[]]);
+  });
+
+  it('accepts a final DB-ahead state after applying the repository migration prefix', async () => {
+    const initialCheck = createCheckClient([]);
+    const operation = createClient(async () => ({ rows: [] }));
+    const finalCheck = createCheckClient([
+      {
+        version: migrations[0]?.version,
+        name: migrations[0]?.name,
+        checksum_sha256: migrations[0]?.checksumSha256,
+      },
+      {
+        version: '000002',
+        name: 'future_migration',
+        checksum_sha256: 'future-checksum',
+      },
+    ]);
+    const { pool, connect } = createPool([initialCheck, operation, finalCheck]);
+
+    const result = await applyPendingMigrations(pool, migrations.slice(0, 1), {
+      appliedBy: 'synthetic-migration-test',
+    });
+
+    expect(result).toEqual({
+      appliedVersions: ['000001'],
+      check: {
+        ok: true,
+        status: 'db_ahead',
+        appliedCount: 2,
+        availableCount: 1,
+        extraAppliedVersions: ['000002'],
+      },
+    });
+    expect(connect).toHaveBeenCalledTimes(3);
+    expect(operation.release.mock.calls).toEqual([[]]);
+    expect(finalCheck.release.mock.calls).toEqual([[]]);
+  });
+
   it('preserves the operation error and reuses the client after rollback succeeds', async () => {
     const operationError = new Error('synthetic migration SQL failure');
     const initialCheck = createCheckClient([]);

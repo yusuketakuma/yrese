@@ -2534,6 +2534,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused migration-state8 + runner5 = 13、API248 + PostgreSQL14 expected skips、web307、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `f7e9475` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact7、independent/domain reviewとfull gates PASS、applied migration name driftをDB mutation前にfail-closed拒否。
 
+- [x] WP-4123 reject unhealthy post-apply migration reconciliation(R2 migration-operation integrity) — FINALIZED
+  - 発見根拠: `applyPendingMigrations()` はpending migration commit後のfinal `checkMigrationState()` がchecksum/name mismatchまたはunapplied_requiredでもfailure-shaped resultを返し、`db:migrate` CLIはresolved resultを表示してexit 0にできた。APPROVED DB-002のimmutable history / unapplied fail-closed規律に反する。
+  - scope: exact5 `apps/api/src/db/migration-runner.ts`, `apps/api/src/db/migration-runner.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。migration state semantics/formatter、CLI、migration SQL/files/loader、DB/schema/history repair、package/lock、CI、SSOTは変更しない。
+  - implementation: operation client release後に既存final reconciliationをexact once実行し、non-okならexact resultを保持する`MigrationStateError`をthrow。final up_to_date / DB-002 prefix-compatible db_aheadのみsuccess resultを返す。commit済みmigrationのrollback/retry/history repair/additional DDL/DMLは行わない。
+  - acceptance: final checksum_mismatch/name_mismatch/unapplied_requiredはrejectし、BEGIN/DDL/history INSERT/COMMIT、operation/final-check client release、original operation/rollback error identityは維持。final up_to_date/db_aheadは成功し、initial WP-4122 semanticsは不変。fake client testsのみでDB write/applyなし。
+  - review_results: mapper findingをplannerが比較再裁定しAPPROVED_WITH_PINS。DB/data-integrity/security/operations/API domain reviewとindependent verifierはAPPROVED、findingsなし、human gate不要。
+  - validation_results: focused migration-runner9、API252 + PostgreSQL14 expected skips、web307、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: pending exact-stage commit and push; implementation/review/full gates PASS。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

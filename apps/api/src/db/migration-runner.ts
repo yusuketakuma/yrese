@@ -142,8 +142,13 @@ export async function applyPendingMigrations(
     }
   }
 
+  const finalCheck = await checkMigrationState(pool, migrations);
+  if (!finalCheck.ok) {
+    throw new MigrationStateError(finalCheck);
+  }
+
   return {
     appliedVersions,
-    check: await checkMigrationState(pool, migrations),
+    check: finalCheck,
   };
 }
