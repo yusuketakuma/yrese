@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4145 workspace boundary syntax-aware scan — FINALIZED
+
+- clean baseline `0cdc959`。boundary regexがcomment/string内の禁止import/duplicate constを誤検知し、no-sub template dynamic importと`<const>` assertionを見逃すMEDIUM architecture/security-control gapを再現。live違反と既存WP重複はなし。
+- exact5で既存root TypeScriptを使う8 ScriptKind + syntax-only AST/cacheへ移行。既存import/require/import-type/import-equals familyとduplicate const意図を維持し、non-code lexical content、dynamic/alias、actual const declaration、malformed fixed non-echo境界をfixture化。package/lock/CI/SSOT/apps/packages/API/DB/runtimeは不変。
+- MAP-05 / PLAN-05は`APPROVED_WITH_PINS`。final architecture/security/tooling domain reviewとindependent verifierはいずれもAPPROVED、remaining findingsなし、human gate不要。frozen install、checker/harness syntax、expanded script harness、live boundary、API270 + PostgreSQL14 expected skips、web335、audit183、calculation87、workspace typecheck/test/build、全live gate/diff/cleanはPASS。landingはpending。
+
 ### WP-4144 calculation purity syntax-aware scan — FINALIZED
 
 - clean baseline `f73901b`。手書きcomment stripper + regexがURL後の同一行`Date.now()`を見逃し、文字列内`Date.now()`を誤検知するMEDIUM calculation-safety/tooling gate gapを再現。現production違反と既存WP重複はなし。

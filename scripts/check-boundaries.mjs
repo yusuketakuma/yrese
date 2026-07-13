@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import { lstat, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import ts from "typescript";
 
 const rootDir = path.resolve(process.argv[2] ?? process.cwd());
 const violations = [];
 const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"]);
 const ignoredDirs = new Set([".git", ".next", "coverage", "dist", "node_modules"]);
 const scopeError = "Boundary check could not validate the protected workspace scope.";
+const sourceFileCache = new Map();
 const pureCorePackageNames = new Set([
   "audit",
   "calculation",
@@ -161,23 +163,117 @@ async function validateProtectedScopes() {
   }
 }
 
-function extractImportSpecifiers(source) {
-  const specifiers = new Set();
-  const patterns = [
-    /\bimport\s+(?:type\s+)?(?:[^'"]+\s+from\s+)?["']([^"']+)["']/g,
-    /\bexport\s+(?:type\s+)?[^'"]+\s+from\s+["']([^"']+)["']/g,
-    /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g,
-    /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g,
-  ];
+function unwrapExpression(node) {
+  let current = node;
+  while (
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isTypeAssertionExpression(current) ||
+    ts.isNonNullExpression(current) ||
+    ts.isSatisfiesExpression(current)
+  ) {
+    current = current.expression;
+  }
+  return current;
+}
 
-  for (const pattern of patterns) {
-    let match;
-    while ((match = pattern.exec(source)) !== null) {
-      specifiers.add(match[1]);
+function scriptKindFor(filePath) {
+  switch (path.extname(filePath)) {
+    case ".js":
+    case ".mjs":
+    case ".cjs":
+      return ts.ScriptKind.JS;
+    case ".jsx":
+      return ts.ScriptKind.JSX;
+    case ".ts":
+    case ".mts":
+    case ".cts":
+      return ts.ScriptKind.TS;
+    case ".tsx":
+      return ts.ScriptKind.TSX;
+    default:
+      throw new Error(scopeError);
+  }
+}
+
+async function parseSourceFile(filePath) {
+  const cached = sourceFileCache.get(filePath);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const source = await readFile(filePath, "utf8");
+  const relative = toPosix(path.relative(rootDir, filePath));
+  const sourceFile = ts.createSourceFile(
+    relative,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKindFor(filePath),
+  );
+  if (sourceFile.parseDiagnostics.length > 0) {
+    throw new Error(scopeError);
+  }
+  sourceFileCache.set(filePath, sourceFile);
+  return sourceFile;
+}
+
+function staticModuleSpecifier(node) {
+  const expression = unwrapExpression(node);
+  if (ts.isLiteralTypeNode(expression)) {
+    return staticModuleSpecifier(expression.literal);
+  }
+  if (ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression)) {
+    return expression.text;
+  }
+  return undefined;
+}
+
+function isRequireCallee(node) {
+  const expression = unwrapExpression(node);
+  if (ts.isIdentifier(expression)) {
+    return expression.text === "require";
+  }
+  if (!ts.isPropertyAccessExpression(expression) || expression.name.text !== "require") {
+    return false;
+  }
+  const receiver = unwrapExpression(expression.expression);
+  return ts.isIdentifier(receiver) && receiver.text === "module";
+}
+
+function extractImportSpecifiers(sourceFile) {
+  const staticImports = [];
+  const exports = [];
+  const dynamicImports = [];
+  const requires = [];
+
+  function addSpecifier(collection, node) {
+    const specifier = node === undefined ? undefined : staticModuleSpecifier(node);
+    if (specifier !== undefined) {
+      collection.push(specifier);
     }
   }
 
-  return [...specifiers];
+  function visit(node) {
+    if (ts.isImportDeclaration(node)) {
+      addSpecifier(staticImports, node.moduleSpecifier);
+    } else if (ts.isExportDeclaration(node)) {
+      addSpecifier(exports, node.moduleSpecifier);
+    } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
+      addSpecifier(requires, node.moduleReference.expression);
+    } else if (ts.isImportTypeNode(node)) {
+      addSpecifier(dynamicImports, node.argument);
+    } else if (ts.isCallExpression(node)) {
+      if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+        addSpecifier(dynamicImports, node.arguments[0]);
+      } else if (isRequireCallee(node.expression)) {
+        addSpecifier(requires, node.arguments[0]);
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+
+  return [...new Set([...staticImports, ...exports, ...dynamicImports, ...requires])];
 }
 
 function resolveRelativeImport(filePath, specifier) {
@@ -229,9 +325,9 @@ async function checkImportBoundaries(packageNameByDir, appPackageNames) {
 
   for (const filePath of packageFiles) {
     const packageName = packageNameFromPath(filePath);
-    const source = await readFile(filePath, "utf8");
+    const sourceFile = await parseSourceFile(filePath);
     const relative = toPosix(path.relative(rootDir, filePath));
-    for (const specifier of extractImportSpecifiers(source)) {
+    for (const specifier of extractImportSpecifiers(sourceFile)) {
       const forbiddenPureCoreImport =
         packageName !== null && pureCorePackageNames.has(packageName)
           ? forbiddenPureCoreImportReason(specifier)
@@ -261,9 +357,9 @@ async function checkImportBoundaries(packageNameByDir, appPackageNames) {
       continue;
     }
 
-    const source = await readFile(filePath, "utf8");
+    const sourceFile = await parseSourceFile(filePath);
     const relative = toPosix(path.relative(rootDir, filePath));
-    for (const specifier of extractImportSpecifiers(source)) {
+    for (const specifier of extractImportSpecifiers(sourceFile)) {
       const relativeTarget = resolveRelativeImport(filePath, specifier);
       const appImportByPath = specifier.startsWith("apps/")
         ? specifier.split("/")[1]
@@ -341,6 +437,46 @@ async function checkWorkspaceCycles(workspacePackageDirs) {
   }
 }
 
+function initializerContainsConstAssertion(initializer) {
+  let found = false;
+  function visit(node) {
+    if (
+      (ts.isAsExpression(node) || ts.isTypeAssertionExpression(node)) &&
+      ts.isConstTypeReference(node.type)
+    ) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(initializer);
+  return found;
+}
+
+function hasDuplicateConstDeclaration(sourceFile, constName, requiresAsConst) {
+  let found = false;
+  function visit(node) {
+    if (found) {
+      return;
+    }
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isVariableDeclarationList(node.parent) &&
+      (node.parent.flags & ts.NodeFlags.Const) !== 0 &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === constName &&
+      node.initializer !== undefined &&
+      (!requiresAsConst || initializerContainsConstAssertion(node.initializer))
+    ) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  return found;
+}
+
 async function checkDuplicateConstArrays() {
   const sourcePredicate = (filePath) => {
     const relative = toPosix(path.relative(rootDir, filePath));
@@ -358,16 +494,13 @@ async function checkDuplicateConstArrays() {
 
   for (const filePath of files) {
     const packageName = packageNameFromPath(filePath);
-    const source = await readFile(filePath, "utf8");
+    const sourceFile = await parseSourceFile(filePath);
     const relative = toPosix(path.relative(rootDir, filePath));
     for (const { constName, ownerPackageName, sourceName, requiresAsConst } of duplicateConstRules) {
       if (packageName === ownerPackageName) {
         continue;
       }
-      const pattern = requiresAsConst
-        ? new RegExp(`\\b(?:export\\s+)?const\\s+${constName}\\b[\\s\\S]*?\\bas\\s+const\\b`, "m")
-        : new RegExp(`\\b(?:export\\s+)?const\\s+${constName}\\b\\s*(?::[^=]+)?=`, "m");
-      if (pattern.test(source)) {
+      if (hasDuplicateConstDeclaration(sourceFile, constName, requiresAsConst)) {
         const constKind = requiresAsConst ? "const array" : "const";
         report(`${relative}: duplicate ${sourceName} ${constKind} '${constName}' is not allowed`);
       }

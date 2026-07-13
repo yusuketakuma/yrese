@@ -2746,6 +2746,16 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: exact7 revert。calculation/data/SSOT rollback不要。
   - landing_record: implementation commit `014b3e6` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact7、full gates、final domain/independent review PASS。TypeScript ASTでlexical false positive/negativeとqualified receiver gapを解消し、既存5 familyと意図的なsyntax-only境界をfixtureで固定。
 
+- [x] WP-4145 make workspace boundary scan syntax-aware(MEDIUM architecture/security-control integrity) — FINALIZED
+  - 発見根拠: `scripts/check-boundaries.mjs`のregex extractorはcomment/string内の`import` / `require('@yrese/api')`を依存として誤検知し、no-substitution templateのdynamic importを見逃す。duplicate const regexもcomment/stringを違反扱いし、`const SYSTEM_MODES = <const>[...]`を見逃すfalse positive / false negativeをin-memory再現。live source違反はなく、WP-6002/6003はquoted AWS import familyのenforcement/fixtureで本lexical gapとは非重複。
+  - scope: exact5 `scripts/check-boundaries.mjs`, `scripts/check-scripts.mjs`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。WP-4144のroot TypeScript direct dependencyを再利用しpackage/lock/CI/SSOT/apps/packages/API/DB/runtimeは変更しない。
+  - implementation: 8拡張子へexplicit ScriptKindを割当てsyntax-only ASTを一度parse/cache。static/type/side-effect import、export-from、dynamic/import-type、TS import-equals、bare/module.requireのstatic StringLiteral/NoSubstitutionTemplateLiteralだけを既存category順で抽出する。interpolated/dynamic/alias/dataflow/任意object methodは除外。duplicate constはactual const identifier + initializerを要求し、registry ruleはinitializer subtreeの`as const` / `<const>`、cursor length ruleは任意initializerを検出する。既存graph/rule/message/owner/test除外/dedupe/orderは不変、parse diagnosticsは固定非echo scope errorへfail-closed。
+  - acceptance: comment/string/template raw/regex/JSX textの疑似import/constはclean。static/side-effect/export/dynamic options/no-sub template/import-type/import-equals/bare+module requireと全8拡張子を検出し、interpolated import/alias/任意object methodは除外。`<const>`/type annotation/parentheses/satisfiesは検出し、let/var/property/destructure/declare-only/const-assertionなしを除外。既存WP-6002/6003、lineなしmessage/count/order、malformed fixed non-echo、live boundaryを固定。full/domain/independent review後にFINALIZED。
+  - review_results: MAP-05とPLAN-05はいずれも`APPROVED_WITH_PINS`、risk R2/MEDIUM、human gate不要。final architecture/security/tooling domain reviewとindependent verifierはいずれもAPPROVED、remaining findingsなし。exact5、既存rule/message/category/order/dedupe、owner/test除外、package/lock不変を確認。
+  - validation_results: frozen install、checker/harness syntax、expanded script harness、live boundary、API270 + PostgreSQL14 expected skips、web335、audit183、calculation87、workspace typecheck/test/build、OpenAPI/calculation purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/diff/clean全PASS。
+  - rollback: exact5 revert。dependency/SSOT/data rollback不要。
+  - landing_record: pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

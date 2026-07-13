@@ -207,6 +207,125 @@ async function testPureCoreRejectsAwsAndDynamoDbImportsThroughNonStaticForms() {
   );
 }
 
+async function testBoundarySyntaxAwareImportExtraction() {
+  const positiveRoot = path.join(tempRoot, "boundary-syntax-aware-imports");
+  await writeText(
+    path.join(positiveRoot, "apps", "web", "package.json"),
+    JSON.stringify({ name: "@fixture/web", dependencies: {} }, null, 2),
+  );
+  await writeText(path.join(positiveRoot, "apps", "web", "src", "index.ts"), "export const app = 'web';\n");
+  await writeText(
+    path.join(positiveRoot, "packages", "trace", "package.json"),
+    JSON.stringify({ name: "@fixture/trace", dependencies: {} }, null, 2),
+  );
+  await writeText(
+    path.join(positiveRoot, "packages", "trace", "src", "index.ts"),
+    [
+      'import api = require("@yrese/api/import-equals");',
+      'type ApiContract = import("@yrese/api/import-type").ApiContract;',
+      'const withOptions = import("@yrese/api/options", { with: { type: "json" } });',
+      "const templateImport = import(`@yrese/web/template`);",
+      'const bareRequire = require("@yrese/api/bare");',
+      "const moduleRequire = module.require(`@yrese/web/module`);",
+      "const aws = import(`@aws-sdk/client-dynamodb`);",
+      "export const refs = { api, withOptions, templateImport, bareRequire, moduleRequire, aws } satisfies Record<string, unknown>;",
+      "",
+    ].join("\n"),
+  );
+
+  const positiveResult = runNode("check-boundaries.mjs", [positiveRoot]);
+  const positiveOutput = outputOf(positiveResult);
+  assert(positiveResult.status === 1, "syntax-aware boundary scan should detect static module-loading forms");
+  for (const specifier of [
+    "@yrese/api/import-equals",
+    "@yrese/api/import-type",
+    "@yrese/api/options",
+    "@yrese/web/template",
+    "@yrese/api/bare",
+    "@yrese/web/module",
+  ]) {
+    assert(positiveOutput.includes(`(${specifier})`), `boundary output should retain static specifier ${specifier}`);
+  }
+  assert(
+    positiveOutput.includes("pure core package 'trace' must not import AWS SDK (@aws-sdk/client-dynamodb)"),
+    "no-substitution template import should retain the pure-core AWS boundary",
+  );
+  assert(positiveOutput.includes("failed with 7 violation(s)"), "syntax-aware import fixture should retain its exact count");
+
+  const lexicalRoot = path.join(tempRoot, "boundary-lexical-content-pass");
+  await writeText(
+    path.join(lexicalRoot, "apps", "web", "package.json"),
+    JSON.stringify({ name: "@fixture/web", dependencies: {} }, null, 2),
+  );
+  await writeText(path.join(lexicalRoot, "apps", "web", "src", "index.ts"), "export const app = 'web';\n");
+  await writeText(
+    path.join(lexicalRoot, "packages", "feature", "package.json"),
+    JSON.stringify({ name: "@fixture/feature", dependencies: {} }, null, 2),
+  );
+  await writeText(
+    path.join(lexicalRoot, "packages", "feature", "src", "index.tsx"),
+    [
+      "// import '@yrese/api'; require('@yrese/api');",
+      "/* export * from '@yrese/api'; import('@yrese/api'); */",
+      'export const docs = "import \'@yrese/api\'; require(\'@yrese/api\')";',
+      "export const templateDocs = `import('@yrese/api')`;",
+      "export const matcher = /require\\('@yrese\\/api'\\)/;",
+      'export const Copy = () => <div>import("@yrese/api") require("@yrese/api")</div>;',
+      'const appName = "api";',
+      "export const dynamicLoad = () => import(`@yrese/${appName}`);",
+      "const load = require;",
+      'export const aliasLoad = () => load("@yrese/api");',
+      "const importMethod = { import: (_value: string) => undefined };",
+      'importMethod.import("@yrese/api");',
+      "const requireMethod = { require: (_value: string) => undefined };",
+      'requireMethod.require("@yrese/api");',
+      "",
+    ].join("\n"),
+  );
+
+  const lexicalResult = runNode("check-boundaries.mjs", [lexicalRoot]);
+  assert(
+    lexicalResult.status === 0,
+    `boundary scan should ignore non-code lexical content and dynamic/alias forms: ${outputOf(lexicalResult)}`,
+  );
+
+  const extensionRoot = path.join(tempRoot, "boundary-source-extensions");
+  await writeText(
+    path.join(extensionRoot, "apps", "web", "package.json"),
+    JSON.stringify({ name: "@fixture/web", dependencies: {} }, null, 2),
+  );
+  await writeText(path.join(extensionRoot, "apps", "web", "src", "index.ts"), "export const app = 'web';\n");
+  await writeText(
+    path.join(extensionRoot, "packages", "feature", "package.json"),
+    JSON.stringify({ name: "@fixture/feature", dependencies: {} }, null, 2),
+  );
+  const extensionSources = new Map([
+    [".js", 'import("@yrese/api/js");\n'],
+    [".jsx", 'export const View = () => <span>{import("@yrese/api/jsx") && null}</span>;\n'],
+    [".mjs", 'import("@yrese/api/mjs");\n'],
+    [".cjs", 'import("@yrese/api/cjs");\n'],
+    [".ts", 'import("@yrese/api/ts");\n'],
+    [".tsx", 'export const View = () => <span>{import("@yrese/api/tsx") && null}</span>;\n'],
+    [".mts", 'import("@yrese/api/mts");\n'],
+    [".cts", 'import("@yrese/api/cts");\n'],
+  ]);
+  for (const [extension, source] of extensionSources) {
+    await writeText(path.join(extensionRoot, "packages", "feature", "src", `source${extension}`), source);
+  }
+
+  const extensionResult = runNode("check-boundaries.mjs", [extensionRoot]);
+  const extensionOutput = outputOf(extensionResult);
+  assert(extensionResult.status === 1, "all supported source extensions should use an explicit syntax kind");
+  assert(extensionOutput.includes("failed with 8 violation(s)"), "extension fixture should report exactly eight imports");
+  for (const extension of extensionSources.keys()) {
+    const label = extension.slice(1);
+    assert(
+      extensionOutput.includes(`packages/feature/src/source${extension}: packages/** source must not import app code (@yrese/api/${label})`),
+      `boundary scan should parse and report ${extension} source`,
+    );
+  }
+}
+
 async function testAppAwsImportDoesNotTripPureCoreRule() {
   const root = path.join(tempRoot, "app-aws-import-pass");
   await writeText(
@@ -309,6 +428,65 @@ async function testDuplicateContractAndKernelConstDetectionAcrossApps() {
   );
 }
 
+async function testDuplicateConstSyntaxBoundaries() {
+  const root = path.join(tempRoot, "duplicate-const-syntax");
+  await writeText(
+    path.join(root, "apps", "web", "package.json"),
+    JSON.stringify({ name: "@fixture/web", dependencies: {} }, null, 2),
+  );
+  await writeText(path.join(root, "apps", "web", "src", "index.ts"), "export const app = 'web';\n");
+  await writeText(
+    path.join(root, "packages", "feature", "package.json"),
+    JSON.stringify({ name: "@fixture/feature", dependencies: {} }, null, 2),
+  );
+  await writeText(
+    path.join(root, "packages", "feature", "src", "registries.ts"),
+    [
+      'export const SYSTEM_MODES = <const>["NORMAL"];',
+      'export const PROVISIONAL_STATUSES: readonly string[] = ((["PENDING"] as const) satisfies readonly string[]);',
+      "export const PATIENT_SEARCH_CURSOR_MAX_LENGTH: number = 100;",
+      "// const BLOCKER_TYPES = [] as const;",
+      'export const docs = "const PERMISSION_ACTIONS = [] as const";',
+      "export const registry = { PERMISSION_RESOURCES: [] as const, ROLE_NAMES: [] as const };",
+      "const { ROLE_NAMES } = registry;",
+      "let ERROR_SEVERITIES = [] as const;",
+      "var ERROR_DOMAINS = [] as const;",
+      "declare const KERNEL_ERROR_CODES: readonly string[];",
+      'const ELIGIBILITY_STATUSES = ["VERIFIED"];',
+      "export const values = { ROLE_NAMES, ERROR_SEVERITIES, ERROR_DOMAINS, KERNEL_ERROR_CODES, ELIGIBILITY_STATUSES };",
+      "",
+    ].join("\n"),
+  );
+
+  const result = runNode("check-boundaries.mjs", [root]);
+  const output = outputOf(result);
+  assert(result.status === 1, "duplicate const scan should detect syntax-equivalent canonical const assertions");
+  const expectedFindings = [
+    "duplicate shared-kernel const array 'SYSTEM_MODES'",
+    "duplicate shared-kernel const array 'PROVISIONAL_STATUSES'",
+    "duplicate contracts const 'PATIENT_SEARCH_CURSOR_MAX_LENGTH'",
+  ];
+  let previousFindingIndex = -1;
+  for (const expectedFinding of expectedFindings) {
+    const findingIndex = output.indexOf(expectedFinding);
+    assert(findingIndex > previousFindingIndex, `duplicate const finding should retain rule order: ${expectedFinding}`);
+    previousFindingIndex = findingIndex;
+  }
+  assert(output.includes("failed with 3 violation(s)"), "duplicate const syntax fixture should retain its exact count");
+  for (const excludedName of [
+    "BLOCKER_TYPES",
+    "PERMISSION_ACTIONS",
+    "PERMISSION_RESOURCES",
+    "ROLE_NAMES",
+    "ERROR_SEVERITIES",
+    "ERROR_DOMAINS",
+    "KERNEL_ERROR_CODES",
+    "ELIGIBILITY_STATUSES",
+  ]) {
+    assert(!output.includes(`'${excludedName}'`), `${excludedName} non-declaration form should remain excluded`);
+  }
+}
+
 async function testBoundaryScopeValidationFailsClosed() {
   const fixedMessage = "Boundary check could not validate the protected workspace scope.";
   const fixtures = [];
@@ -374,6 +552,22 @@ async function testBoundaryScopeValidationFailsClosed() {
   );
   fixtures.push({ label: "nested source symlink", root: nestedSymlink });
 
+  const malformedSource = path.join(tempRoot, "boundary-malformed-source");
+  await writeText(
+    path.join(malformedSource, "apps", "web", "package.json"),
+    JSON.stringify({ name: "@fixture/web" }),
+  );
+  await writeText(path.join(malformedSource, "apps", "web", "src", "index.ts"), "export const app = true;\n");
+  await writeText(
+    path.join(malformedSource, "packages", "core", "package.json"),
+    JSON.stringify({ name: "@fixture/core" }),
+  );
+  await writeText(
+    path.join(malformedSource, "packages", "core", "src", "index.ts"),
+    'export const sensitiveMarker = "do-not-echo";\nconst broken = (\n',
+  );
+  fixtures.push({ label: "malformed source", root: malformedSource, exactOutput: true });
+
   for (const [label, ignoredPath] of [
     ["workspace ignored-name file", ["apps", "dist"]],
     ["nested ignored-name file", ["apps", "web", "src", "node_modules"]],
@@ -398,6 +592,9 @@ async function testBoundaryScopeValidationFailsClosed() {
     assert(!output.includes("Boundary check passed."), `${fixture.label} must not report PASS`);
     assert(!output.includes(fixture.root), `${fixture.label} must not echo the fixture path`);
     assert(!output.includes("do-not-echo"), `${fixture.label} must not echo source content`);
+    if (fixture.exactOutput) {
+      assert(output.trim() === fixedMessage, `${fixture.label} should expose only the fixed scope error`);
+    }
   }
 }
 
@@ -1672,9 +1869,11 @@ try {
   await testBoundaryCleanFixturePasses();
   await testPureCoreRejectsAwsAndDynamoDbImports();
   await testPureCoreRejectsAwsAndDynamoDbImportsThroughNonStaticForms();
+  await testBoundarySyntaxAwareImportExtraction();
   await testAppAwsImportDoesNotTripPureCoreRule();
   await testDuplicateRegistryConstDetection();
   await testDuplicateContractAndKernelConstDetectionAcrossApps();
+  await testDuplicateConstSyntaxBoundaries();
   await testBoundaryScopeValidationFailsClosed();
   await testCalculationPurityCleanFixturePasses();
   await testCalculationPurityViolationDetection();
