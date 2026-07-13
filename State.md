@@ -8,6 +8,11 @@
 
 ## 2026-07-13
 
+### WP-4135 DB-ahead extra-version diagnostic quoting — FINALIZED
+
+- clean baseline `fe7ebb0`。allowed DB-ahead success diagnosticのraw DB version joinを既存one-line quote helperへ統合するexact5を実装中。
+- raw result/order/reconcile/startup semantics不変。domain/independent review APPROVED、findingsなし。state15、API269 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。
+
 ### WP-4134 MigrationStateError raw-result enumeration — FINALIZED
 
 - clean baseline `12c4397`。escaped message外でenumerable raw resultが再表示されるMEDIUM diagnostic integrity gapをexact5で修正中。

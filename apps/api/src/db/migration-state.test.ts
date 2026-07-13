@@ -51,6 +51,29 @@ describe('reconcileMigrationState', () => {
       status: 'db_ahead',
       extraAppliedVersions: ['000002'],
     });
+    expect(formatMigrationCheckResult(result)).toBe(
+      'DB schema is ahead but prefix-compatible: "000002"',
+    );
+  });
+
+  it('quotes and escapes DB-ahead versions without changing the raw result order', () => {
+    const first = '000002\nforged\rrow\tvalue"\\end';
+    const second = '000003next line paragraph';
+    const result = reconcileMigrationState({
+      availableMigrations: [migration('000001', 'a'.repeat(64))],
+      appliedMigrations: [
+        applied('000001', 'a'.repeat(64)),
+        applied(first, 'b'.repeat(64)),
+        applied(second, 'c'.repeat(64)),
+      ],
+    });
+
+    expect(result).toMatchObject({ ok: true, status: 'db_ahead' });
+    if (!result.ok || result.status !== 'db_ahead') throw new Error('expected DB-ahead result');
+    expect(result.extraAppliedVersions).toEqual([first, second]);
+    expect(formatMigrationCheckResult(result)).toBe(
+      'DB schema is ahead but prefix-compatible: "000002\\nforged\\rrow\\tvalue\\"\\\\end", "000003\\u0085next\\u2028line\\u2029paragraph"',
+    );
   });
 
   it('fails closed on checksum mismatch', () => {

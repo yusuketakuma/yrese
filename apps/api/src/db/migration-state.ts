@@ -134,7 +134,7 @@ function quoteMigrationDiagnosticValue(value: string): string {
 export function formatMigrationCheckResult(result: MigrationCheckResult): string {
   if (result.ok) {
     if (result.status === 'db_ahead') {
-      return `DB schema is ahead but prefix-compatible: ${result.extraAppliedVersions.join(', ')}`;
+      return `DB schema is ahead but prefix-compatible: ${result.extraAppliedVersions.map(quoteMigrationDiagnosticValue).join(', ')}`;
     }
     return `DB schema is up to date (${result.appliedCount}/${result.availableCount}).`;
   }
