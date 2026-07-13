@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { lstat, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import ts from "typescript";
 
 const rootDir = path.resolve(process.argv[2] ?? process.cwd());
 const targetDir = path.join(rootDir, "packages", "calculation");
@@ -9,31 +10,32 @@ const ignoredDirs = new Set([".git", ".next", "coverage", "dist", "node_modules"
 const invalidScopeMessage =
   "Calculation purity check failed: protected source scope is unavailable or contains no production source files.";
 
-const forbiddenPatterns = [
+const forbiddenRules = [
   {
     name: "Date.now()",
-    pattern: /\bDate\s*\.\s*now\s*\(/g,
     reason: "CAL-010 forbids implicit current time in calculation code",
+    matches: (node) => isStaticMemberCall(node, "Date", "now"),
   },
   {
     name: "new Date()",
-    pattern: /\bnew\s+Date\s*\(/g,
     reason: "CAL-010 requires dates to be explicit inputs",
+    matches: (node) => ts.isNewExpression(node) && isStaticReferenceNamed(node.expression, "Date"),
   },
   {
     name: "Math.random()",
-    pattern: /\bMath\s*\.\s*random\s*\(/g,
     reason: "CAL-010 requires deterministic calculation output",
+    matches: (node) => isStaticMemberCall(node, "Math", "random"),
   },
   {
     name: "parseFloat()",
-    pattern: /\bparseFloat\s*\(/g,
     reason: "CAL-010 forbids floating-point parsing in calculation code",
+    matches: (node) =>
+      ts.isCallExpression(node) && isIdentifierNamed(node.expression, "parseFloat"),
   },
   {
     name: "Math.round()",
-    pattern: /\bMath\s*\.\s*round\s*\(/g,
     reason: "CAL-010 requires rounding to go through approved money/point helpers",
+    matches: (node) => isStaticMemberCall(node, "Math", "round"),
   },
 ];
 
@@ -75,86 +77,115 @@ function isTestSourceFile(filePath) {
   return /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(basename);
 }
 
-function stripComments(source) {
-  let output = "";
-  let index = 0;
-  let state = "code";
-
-  while (index < source.length) {
-    const char = source[index];
-    const next = source[index + 1];
-
-    if (state === "line-comment") {
-      if (char === "\n") {
-        output += "\n";
-        state = "code";
-      } else {
-        output += " ";
-      }
-      index += 1;
-      continue;
-    }
-
-    if (state === "block-comment") {
-      if (char === "*" && next === "/") {
-        output += "  ";
-        index += 2;
-        state = "code";
-        continue;
-      }
-      output += char === "\n" ? "\n" : " ";
-      index += 1;
-      continue;
-    }
-
-    if (char === "/" && next === "/") {
-      output += "  ";
-      index += 2;
-      state = "line-comment";
-      continue;
-    }
-
-    if (char === "/" && next === "*") {
-      output += "  ";
-      index += 2;
-      state = "block-comment";
-      continue;
-    }
-
-    output += char;
-    index += 1;
+function unwrapExpression(node) {
+  let current = node;
+  while (
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isTypeAssertionExpression(current) ||
+    ts.isNonNullExpression(current) ||
+    ts.isSatisfiesExpression(current)
+  ) {
+    current = current.expression;
   }
-
-  return output;
+  return current;
 }
 
-function lineNumberAt(source, index) {
-  let line = 1;
-  for (let cursor = 0; cursor < index; cursor += 1) {
-    if (source[cursor] === "\n") {
-      line += 1;
+function isIdentifierNamed(node, name) {
+  const expression = unwrapExpression(node);
+  return ts.isIdentifier(expression) && expression.text === name;
+}
+
+function staticMemberName(node) {
+  const expression = unwrapExpression(node);
+  if (ts.isPropertyAccessExpression(expression)) {
+    return expression.name.text;
+  }
+  if (ts.isElementAccessExpression(expression)) {
+    const argument = expression.argumentExpression && unwrapExpression(expression.argumentExpression);
+    if (argument && (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument))) {
+      return argument.text;
     }
   }
-  return line;
+  return undefined;
+}
+
+function isStaticReferenceNamed(node, name) {
+  const expression = unwrapExpression(node);
+  if (ts.isIdentifier(expression)) {
+    return expression.text === name;
+  }
+  if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
+    return staticMemberName(expression) === name;
+  }
+  return false;
+}
+
+function isStaticMemberCall(node, receiverName, memberName) {
+  if (!ts.isCallExpression(node)) {
+    return false;
+  }
+  const callee = unwrapExpression(node.expression);
+  if (!ts.isPropertyAccessExpression(callee) && !ts.isElementAccessExpression(callee)) {
+    return false;
+  }
+  return isStaticReferenceNamed(callee.expression, receiverName) && staticMemberName(callee) === memberName;
+}
+
+function scriptKindFor(filePath) {
+  switch (path.extname(filePath)) {
+    case ".js":
+    case ".mjs":
+    case ".cjs":
+      return ts.ScriptKind.JS;
+    case ".jsx":
+      return ts.ScriptKind.JSX;
+    case ".ts":
+    case ".mts":
+    case ".cts":
+      return ts.ScriptKind.TS;
+    case ".tsx":
+      return ts.ScriptKind.TSX;
+    default:
+      throw new Error("unsupported production source extension");
+  }
 }
 
 async function checkFile(filePath) {
   const source = await readFile(filePath, "utf8");
-  const scanSource = stripComments(source);
   const relative = toPosix(path.relative(rootDir, filePath));
+  const sourceFile = ts.createSourceFile(
+    relative,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKindFor(filePath),
+  );
+  if (sourceFile.parseDiagnostics.length > 0) {
+    throw new Error("production source contains a syntax error");
+  }
 
-  for (const forbidden of forbiddenPatterns) {
-    forbidden.pattern.lastIndex = 0;
-    let match;
-    while ((match = forbidden.pattern.exec(scanSource)) !== null) {
+  const matchesByRule = forbiddenRules.map(() => []);
+  function visit(node) {
+    forbiddenRules.forEach((rule, index) => {
+      if (rule.matches(node)) {
+        matchesByRule[index].push(node);
+      }
+    });
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+
+  forbiddenRules.forEach((forbidden, index) => {
+    for (const node of matchesByRule[index]) {
       violations.push({
         relative,
-        line: lineNumberAt(scanSource, match.index),
+        line: sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1,
         name: forbidden.name,
         reason: forbidden.reason,
       });
     }
-  }
+  });
 }
 
 async function main() {

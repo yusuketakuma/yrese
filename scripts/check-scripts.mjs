@@ -410,6 +410,33 @@ async function testCalculationPurityCleanFixturePasses() {
       "  // Date.now(), new Date(), Math.random(), parseFloat(), and Math.round() are mentioned only in comments.",
       "  return { points: input.points };",
       "}",
+      "/* Date.now(); new Date(); Math.random(); parseFloat(); Math.round(); */",
+      'export const endpoint = "https://example.invalid/Date.now()";',
+      "export const quoted = 'new Date() Math.random() parseFloat() Math.round() /* //';",
+      "export const template = `Date.now() new Date() Math.random() parseFloat() Math.round() /* //`;",
+      "export const matcher = /Date\\.now\\(\\)|new Date\\(\\)|Math\\.random\\(\\)|parseFloat\\(\\)|Math\\.round\\(\\)/;",
+      "",
+    ].join("\n"),
+  );
+  await writeText(
+    path.join(root, "packages", "calculation", "src", "copy.tsx"),
+    "export const Copy = () => <div>Date.now() new Date() Math.random() parseFloat() Math.round()</div>;\n",
+  );
+  await writeText(
+    path.join(root, "packages", "calculation", "src", "dynamic.ts"),
+    [
+      'const dateMember = "now";',
+      'const randomMember = "random";',
+      "export const dynamicNow = Date[dateMember]();",
+      "export const dynamicRandom = Math[randomMember]();",
+      'export const numberParsed = Number.parseFloat("1.25");',
+      "export const truncated = Math.trunc(1.25);",
+      "const dateNowAlias = Date.now;",
+      "const dateConstructorAlias = Date;",
+      "const randomAlias = Math.random;",
+      "const parseAlias = parseFloat;",
+      "const roundAlias = Math.round;",
+      'export const aliasValues = [dateNowAlias(), new dateConstructorAlias(), randomAlias(), parseAlias("1.25"), roundAlias(1.25)];',
       "",
     ].join("\n"),
   );
@@ -425,7 +452,10 @@ async function testCalculationPurityCleanFixturePasses() {
   );
 
   const result = runNode("check-calculation-purity.mjs", [root]);
-  assert(result.status === 0, `check-calculation-purity should ignore comments and test files: ${outputOf(result)}`);
+  assert(
+    result.status === 0,
+    `check-calculation-purity should ignore non-code lexical content, dynamic members, and test files: ${outputOf(result)}`,
+  );
 }
 
 async function testCalculationPurityViolationDetection() {
@@ -448,11 +478,161 @@ async function testCalculationPurityViolationDetection() {
   const result = runNode("check-calculation-purity.mjs", [root]);
   const output = outputOf(result);
   assert(result.status === 1, "check-calculation-purity should fail for CAL-010 forbidden patterns");
-  for (const forbidden of ["Date.now()", "new Date()", "Math.random()", "parseFloat()", "Math.round()"]) {
-    assert(output.includes(forbidden), `purity violation output should name ${forbidden}`);
+  const expectedFindings = [
+    "- packages/calculation/src/index.ts:2: Date.now() is forbidden. CAL-010 forbids implicit current time in calculation code.",
+    "- packages/calculation/src/index.ts:3: new Date() is forbidden. CAL-010 requires dates to be explicit inputs.",
+    "- packages/calculation/src/index.ts:4: Math.random() is forbidden. CAL-010 requires deterministic calculation output.",
+    "- packages/calculation/src/index.ts:5: parseFloat() is forbidden. CAL-010 forbids floating-point parsing in calculation code.",
+    "- packages/calculation/src/index.ts:6: Math.round() is forbidden. CAL-010 requires rounding to go through approved money/point helpers.",
+  ];
+  let previousFindingIndex = -1;
+  for (const expectedFinding of expectedFindings) {
+    const findingIndex = output.indexOf(expectedFinding);
+    assert(findingIndex > previousFindingIndex, `purity finding should preserve full metadata and rule order: ${expectedFinding}`);
+    previousFindingIndex = findingIndex;
   }
+  assert(output.includes("failed with 5 violation(s)"), "purity output should retain the exact finding count");
   assert(output.includes("comments are ignored"), "purity violation output should document comment handling");
   assert(output.includes("test/spec files are excluded"), "purity violation output should document test handling");
+}
+
+async function testCalculationPuritySyntaxAwareDetection() {
+  const lexicalRoot = path.join(tempRoot, "calculation-purity-syntax-aware");
+  await writeText(
+    path.join(lexicalRoot, "packages", "calculation", "src", "masked.ts"),
+    [
+      'export const endpoint = "https://example.invalid"; Date.now();',
+      'export const marker = "/*"; Math.random();',
+      "new Date();",
+      'parseFloat("1.25"); Math.round(1.25);',
+      "",
+    ].join("\n"),
+  );
+  await writeText(
+    path.join(lexicalRoot, "packages", "calculation", "src", "embedded.tsx"),
+    [
+      "export const Template = () => `${Date.now()}-${new Date().toISOString()}`;",
+      'export const View = () => <span>{Math.random() + Math.round(parseFloat("1.25"))}</span>;',
+      "",
+    ].join("\n"),
+  );
+  await writeText(
+    path.join(lexicalRoot, "packages", "calculation", "src", "equivalents.ts"),
+    [
+      "export function syntaxOnly(Date: { now(): number }, Math: { random(): number; round(value: number): number }, parseFloat: (value: string) => number) {",
+      "  const optionalNow = Date?.now();",
+      '  const computedNow = Date["now"]();',
+      "  const optionalRandom = Math?.random();",
+      "  const computedRound = Math[`round`]();",
+      '  const parsed = (parseFloat)("1.25");',
+      "  return optionalNow + computedNow + optionalRandom + computedRound + parsed;",
+      "}",
+      "",
+    ].join("\n"),
+  );
+  await writeText(
+    path.join(lexicalRoot, "packages", "calculation", "src", "non-equivalents.ts"),
+    [
+      'const dateMember = "now";',
+      'const globalDateName = "Date";',
+      'const globalMathName = "Math";',
+      'export const dynamicNow = Date[dateMember]();',
+      'export const dynamicQualifiedNow = globalThis[globalDateName].now();',
+      'export const dynamicQualifiedRandom = globalThis[globalMathName].random();',
+      'export const numberParsed = Number.parseFloat("1.25");',
+      "export const truncated = Math.trunc(1.25);",
+      "",
+    ].join("\n"),
+  );
+  await writeText(
+    path.join(lexicalRoot, "packages", "calculation", "src", "qualified.ts"),
+    [
+      "globalThis.Date.now();",
+      'globalThis["Date"]["now"]();',
+      "globalThis.Math.random();",
+      'globalThis["Math"]["round"](1.25);',
+      "new globalThis.Date();",
+      'new globalThis["Date"]();',
+      "",
+    ].join("\n"),
+  );
+
+  const lexicalResult = runNode("check-calculation-purity.mjs", [lexicalRoot]);
+  const lexicalOutput = outputOf(lexicalResult);
+  assert(lexicalResult.status === 1, "syntax-aware purity scan should detect executable forbidden calls");
+  for (const forbidden of ["Date.now()", "new Date()", "Math.random()", "parseFloat()", "Math.round()"]) {
+    assert(lexicalOutput.includes(forbidden), `syntax-aware purity output should name ${forbidden}`);
+  }
+  assert(
+    lexicalOutput.includes("packages/calculation/src/masked.ts:1: Date.now()"),
+    "URL text must not hide a same-line Date.now call",
+  );
+  assert(
+    lexicalOutput.includes("packages/calculation/src/masked.ts:2: Math.random()"),
+    "block-comment text must not hide a same-line Math.random call",
+  );
+  assert(
+    lexicalOutput.includes("packages/calculation/src/masked.ts:4: parseFloat()") &&
+      lexicalOutput.includes("packages/calculation/src/masked.ts:4: Math.round()"),
+    "multiple forbidden calls on one line should retain the same 1-based line",
+  );
+  assert(
+    lexicalOutput.includes("packages/calculation/src/embedded.tsx:1: Date.now()") &&
+      lexicalOutput.includes("packages/calculation/src/embedded.tsx:2: Math.random()"),
+    "template and JSX expressions should remain executable scan scope",
+  );
+  assert(
+    lexicalOutput.includes("packages/calculation/src/equivalents.ts:2: Date.now()") &&
+      lexicalOutput.includes("packages/calculation/src/equivalents.ts:3: Date.now()") &&
+      lexicalOutput.includes("packages/calculation/src/equivalents.ts:4: Math.random()") &&
+      lexicalOutput.includes("packages/calculation/src/equivalents.ts:5: Math.round()") &&
+      lexicalOutput.includes("packages/calculation/src/equivalents.ts:6: parseFloat()"),
+    "optional, static-computed, parenthesized, and shadowed forms should be detected syntactically",
+  );
+  assert(
+    !lexicalOutput.includes("packages/calculation/src/non-equivalents.ts"),
+    "dynamic members, Number.parseFloat, and unrelated Math calls should remain outside the five rule families",
+  );
+  const expectedQualifiedFindings = [
+    "- packages/calculation/src/qualified.ts:1: Date.now() is forbidden. CAL-010 forbids implicit current time in calculation code.",
+    "- packages/calculation/src/qualified.ts:2: Date.now() is forbidden. CAL-010 forbids implicit current time in calculation code.",
+    "- packages/calculation/src/qualified.ts:5: new Date() is forbidden. CAL-010 requires dates to be explicit inputs.",
+    "- packages/calculation/src/qualified.ts:6: new Date() is forbidden. CAL-010 requires dates to be explicit inputs.",
+    "- packages/calculation/src/qualified.ts:3: Math.random() is forbidden. CAL-010 requires deterministic calculation output.",
+    "- packages/calculation/src/qualified.ts:4: Math.round() is forbidden. CAL-010 requires rounding to go through approved money/point helpers.",
+  ];
+  for (const expectedFinding of expectedQualifiedFindings) {
+    assert(
+      lexicalOutput.includes(expectedFinding),
+      `qualified receiver finding should preserve path, line, name, and reason: ${expectedFinding}`,
+    );
+  }
+  assert(lexicalOutput.includes("failed with 21 violation(s)"), "syntax-aware fixture should retain its exact finding count");
+
+  const extensionRoot = path.join(tempRoot, "calculation-purity-extensions");
+  const extensionSources = new Map([
+    [".js", "export const value = Date.now();\n"],
+    [".jsx", "export const View = () => <span>{Date.now()}</span>;\n"],
+    [".mjs", "export const value = Date.now();\n"],
+    [".cjs", "module.exports = Date.now();\n"],
+    [".ts", "export const value: number = Date.now();\n"],
+    [".tsx", "export const View = () => <span>{Date.now()}</span>;\n"],
+    [".mts", "export const value: number = Date.now();\n"],
+    [".cts", "export const value: number = Date.now();\n"],
+  ]);
+  for (const [extension, source] of extensionSources) {
+    await writeText(path.join(extensionRoot, "packages", "calculation", "src", `source${extension}`), source);
+  }
+
+  const extensionResult = runNode("check-calculation-purity.mjs", [extensionRoot]);
+  const extensionOutput = outputOf(extensionResult);
+  assert(extensionResult.status === 1, "all supported source extensions should be scanned with their explicit syntax kind");
+  for (const extension of extensionSources.keys()) {
+    assert(
+      extensionOutput.includes(`packages/calculation/src/source${extension}:1: Date.now()`),
+      `purity scan should parse and report ${extension} production source`,
+    );
+  }
 }
 
 async function testCalculationPurityInvalidScopesFailClosed() {
@@ -505,6 +685,13 @@ async function testCalculationPurityInvalidScopesFailClosed() {
   );
   fixtures.push({ label: "nested symlink", root: nestedSymlinkRoot });
 
+  const malformedRoot = path.join(tempRoot, "purity-malformed-source");
+  await writeText(
+    path.join(malformedRoot, "packages", "calculation", "src", "index.ts"),
+    'export const sensitiveMarker = "do-not-echo";\nconst broken = (\n',
+  );
+  fixtures.push({ label: "malformed source", root: malformedRoot, exactOutput: true });
+
   for (const fixture of fixtures) {
     const result = runNode("check-calculation-purity.mjs", [fixture.root]);
     const output = outputOf(result);
@@ -513,6 +700,9 @@ async function testCalculationPurityInvalidScopesFailClosed() {
     assert(!output.includes("Calculation purity check passed."), `${fixture.label} must not report PASS`);
     assert(!output.includes(fixture.root), `${fixture.label} must not echo the absolute fixture path`);
     assert(!output.includes("do-not-echo"), `${fixture.label} must not echo nested source content`);
+    if (fixture.exactOutput) {
+      assert(output.trim() === fixedMessage, `${fixture.label} should expose only the fixed scope error`);
+    }
   }
 }
 
@@ -1488,6 +1678,7 @@ try {
   await testBoundaryScopeValidationFailsClosed();
   await testCalculationPurityCleanFixturePasses();
   await testCalculationPurityViolationDetection();
+  await testCalculationPuritySyntaxAwareDetection();
   await testCalculationPurityInvalidScopesFailClosed();
   await testSecretAllowlistAndDetection();
   await testCleanRemovesGeneratedArtifacts();

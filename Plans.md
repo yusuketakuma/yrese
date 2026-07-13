@@ -2736,6 +2736,16 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: exact4 revert。DB/data/config/external rollback不要。
   - landing_record: implementation commit `10b92c5` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4、local full gates、CI-domain/independent review PASS。feature-branch pushではrun未発生のためremote CI proofはlater PR/main runまでVERIFY_REQUIRED。
 
+- [x] WP-4144 make calculation purity scan syntax-aware(MEDIUM calculation-safety/tooling) — FINALIZED
+  - 発見根拠: `scripts/check-calculation-purity.mjs`の手書きcomment stripper + regexはlexical contextを識別しない。`const endpoint = "https://example.invalid"; Date.now();`を見逃し、文字列`"Date.now()"`を違反扱いするfalse negative / false positiveをlive関数で再現。現production違反はなく、CAL-010 gate integrityの将来退行risk。
+  - scope: exact7 `scripts/check-calculation-purity.mjs`, `scripts/check-scripts.mjs`, `package.json`, `pnpm-lock.yaml`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。calculation source/CAL-010 SSOT/CI/apps/API/DB/runtimeは変更しない。
+  - implementation: root direct devDependencyのTypeScript syntax-only ASTを使い、8拡張子へexplicit ScriptKindを割当。既存5 familyだけ(Date.now call/new Date/Math.random call/bare parseFloat call/Math.round call)を検出し、optional/static-computed/parenthesized同等形は含める。symbol resolutionは行わずshadowed identifierもsyntacticに検出し、dynamic computed/alias/dataflow/Number.parseFloat/他Math familyは拡張しない。parse diagnosticsは既存固定非echo scope errorへfail-closed。
+  - acceptance: comments/string/template raw/regex/JSX text/test-specはclean、template/JSX expressionとURL/`/*`文字列後の同一行call、全8拡張子、複数違反/line、optional/static-computed/shadowedを検出。relative path/1-based line/name/reason/order、non-test protected scope、symlink/empty/unreadable/malformed fail-closedを維持。focused/full/domain/independent review後にFINALIZED。
+  - review_results: MAP-04とPLAN-04 / PLAN-04Bはいずれも`APPROVED_WITH_PINS`。domain initial LOWのblock-comment/alias/finding-order fixture不足とindependent initial MEDIUMのqualified global receiver見逃しを修正。final calculation/medical/privacy/security/tooling domain reviewとindependent verifierはいずれもAPPROVED、remaining findingsなし、human gate不要。
+  - validation_results: frozen install、checker/harness syntax、expanded script harness、live purity、calculation87、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、OpenAPI/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/diff/clean全PASS。root lock importer以外のresolution churnなし。
+  - rollback: exact7 revert。calculation/data/SSOT rollback不要。
+  - landing_record: exact7 implementation commit/push pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
