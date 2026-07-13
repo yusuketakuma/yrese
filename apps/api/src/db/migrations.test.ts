@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,6 +26,63 @@ async function withMigrationDirectory(
 }
 
 describe('loadMigrationFiles', () => {
+  const scopeError = 'Migration files could not be loaded from the protected repository scope.';
+
+  it('fails closed for missing, file, empty, and ignored-only migration scopes', async () => {
+    const parent = await mkdtemp(join(tmpdir(), 'yrese-migration-scopes-'));
+    try {
+      const missing = resolve(parent, 'missing');
+      await expect(loadMigrationFiles(missing)).rejects.toThrow(scopeError);
+      await writeFile(resolve(parent, 'scope-file'), 'synthetic marker', 'utf8');
+      await expect(loadMigrationFiles(resolve(parent, 'scope-file'))).rejects.toThrow(scopeError);
+      await withMigrationDirectory({}, async (directory) => {
+        await expect(loadMigrationFiles(directory)).rejects.toThrow(scopeError);
+      });
+      await withMigrationDirectory({ 'README.md': '# ignored\n' }, async (directory) => {
+        await expect(loadMigrationFiles(directory)).rejects.toThrow(scopeError);
+      });
+    } finally {
+      await rm(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects migration and ignored-name symlinks without reading their targets', async () => {
+    const parent = await mkdtemp(join(tmpdir(), 'yrese-migration-symlinks-'));
+    const external = resolve(parent, 'external.sql');
+    const marker = 'synthetic-out-of-scope-sql-marker';
+    await writeFile(external, marker, 'utf8');
+    try {
+      for (const filename of ['000001_external.sql', 'README.md']) {
+        const directory = await mkdtemp(join(parent, 'scope-'));
+        await symlink(external, resolve(directory, filename));
+        const error = await loadMigrationFiles(directory).catch((caught: unknown) => caught);
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe(scopeError);
+        expect((error as Error).message).not.toContain(parent);
+        expect((error as Error).message).not.toContain(marker);
+      }
+    } finally {
+      await rm(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a symlinked migration scope and a validly named directory', async () => {
+    const parent = await mkdtemp(join(tmpdir(), 'yrese-migration-entry-kinds-'));
+    try {
+      const target = resolve(parent, 'target');
+      await mkdir(target);
+      await writeFile(resolve(target, '000001_first.sql'), 'select 1;\n', 'utf8');
+      const linkedScope = resolve(parent, 'linked-scope');
+      await symlink(target, linkedScope);
+      await expect(loadMigrationFiles(linkedScope)).rejects.toThrow(scopeError);
+
+      const directoryEntryScope = resolve(parent, 'directory-entry-scope');
+      await mkdir(resolve(directoryEntryScope, '000001_directory.sql'), { recursive: true });
+      await expect(loadMigrationFiles(directoryEntryScope)).rejects.toThrow(scopeError);
+    } finally {
+      await rm(parent, { recursive: true, force: true });
+    }
+  });
   it('loads valid migration files in version order with checksums', async () => {
     await withMigrationDirectory(
       {

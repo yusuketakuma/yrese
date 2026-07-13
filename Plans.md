@@ -2626,6 +2626,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: exact5 commit revert。runtime/data migrationやexternal rollbackは不要。
   - landing_record: implementation commit `b4de089` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、post-fix full gates、domain review、independent re-verification PASS。既存boundary policyを変えず無検査PASSをfail closed化。
 
+- [x] WP-4133 make migration loader protected scope fail closed(MEDIUM data integrity/operations) — FINALIZED
+  - 発見根拠: empty migration directoryが`[]`となりreconciliationで`0/0 up_to_date`へ到達でき、valid-name symlinkは保護directory外SQLをread/checksum対象にできた。現tracked 4 migrationsはregular filesでlive悪性artifactなし。
+  - scope: exact5 `apps/api/src/db/migrations.ts`, `apps/api/src/db/migrations.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。runner/state/CLI、migration SQL/history/schema、DB操作、SSOT、package/lock/CI、API/web/contractsは不変。
+  - implementation: migrations directoryをreal non-symlink directoryとして検証し、既存filename分類後にvalid/ignored entryをreal regular fileへ限定、valid inventory >=1を要求。scope/readdir/read failureは固定非機密error。既存UTF-8/checksum/sort/duplicate/default-directory semanticsは維持。
+  - acceptance: missing/file/symlink/empty/ignored-only、valid-name/ignored-name symlink、valid-name directoryはFAILし、path/SQL marker非echo。regular filesとdefault live fourは不変。focused/full/domain/independent verification後にFINALIZED。
+  - review_results: mapper推奨、planner再裁定APPROVED_WITH_PINS、integrated domain reviewとindependent verifier APPROVED、findingsなし、human gate不要。
+  - validation_results: focused migration loader 10、API267 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - rollback: exact5 revert。DB/data/artifact migration不要。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

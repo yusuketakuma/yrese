@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readdir, readFile } from 'node:fs/promises';
+import { lstat, readdir, readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,6 +13,7 @@ export interface MigrationFile {
 
 const migrationFilenamePattern = /^(\d{6})_([a-z0-9_]+)\.sql$/;
 const ignoredMigrationDirectoryEntries = new Set(['README.md', '.gitkeep', '.DS_Store']);
+const migrationScopeError = 'Migration files could not be loaded from the protected repository scope.';
 
 function checksumSha256(input: string): string {
   return createHash('sha256').update(input, 'utf8').digest('hex');
@@ -57,20 +58,44 @@ export function defaultMigrationsDirectory(): string {
 }
 
 export async function loadMigrationFiles(migrationsDirectory = defaultMigrationsDirectory()): Promise<readonly MigrationFile[]> {
-  const entries = (await readdir(migrationsDirectory)).map((filename) => ({
-    filename,
-    parsed: parseMigrationDirectoryEntry(filename),
+  let directoryEntries;
+  try {
+    const directory = await lstat(migrationsDirectory);
+    if (!directory.isDirectory() || directory.isSymbolicLink()) {
+      throw new Error(migrationScopeError);
+    }
+    directoryEntries = await readdir(migrationsDirectory, { withFileTypes: true });
+  } catch {
+    throw new Error(migrationScopeError);
+  }
+  const entries = directoryEntries.map((entry) => ({
+    entry,
+    filename: entry.name,
+    parsed: parseMigrationDirectoryEntry(entry.name),
   }));
+  for (const { entry } of entries) {
+    if (!entry.isFile() || entry.isSymbolicLink()) {
+      throw new Error(migrationScopeError);
+    }
+  }
   const filenames = entries
-    .filter((entry): entry is { filename: string; parsed: Pick<MigrationFile, 'version' | 'name' | 'filename'> } => entry.parsed !== undefined)
+    .filter((entry): entry is typeof entry & { parsed: Pick<MigrationFile, 'version' | 'name' | 'filename'> } => entry.parsed !== undefined)
     .map((entry) => entry.filename);
+  if (filenames.length === 0) {
+    throw new Error(migrationScopeError);
+  }
   const migrations = await Promise.all(
     filenames.map(async (filename): Promise<MigrationFile> => {
       const parsed = parseMigrationFilename(filename);
       if (parsed === undefined) {
         throw new Error(`invalid migration filename ${formatFilenameForError(filename)}: expected NNNNNN_snake_case.sql`);
       }
-      const sql = await readFile(resolve(migrationsDirectory, filename), 'utf8');
+      let sql: string;
+      try {
+        sql = await readFile(resolve(migrationsDirectory, filename), 'utf8');
+      } catch {
+        throw new Error(migrationScopeError);
+      }
       return {
         ...parsed,
         sql,

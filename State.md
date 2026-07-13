@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4133 migration loader protected-scope fail-closed — FINALIZED
+
+- clean baseline `7b165e1`。empty inventoryの`0/0 up_to_date`化とvalid-name symlink外部SQL読込を防ぐloader-only exact5を実装中。DB操作・SQL/history/runner/SSOT変更なし。
+- real non-symlink directory/regular entry、nonempty inventory、fixed non-sensitive I/O failureを追加。既存filename precedence、checksum/sort/duplicate/default live fourを維持。
+- mapper推奨、pre-plan再裁定APPROVED_WITH_PINS、integrated domain reviewとindependent verifier APPROVED、findingsなし。focused loader10、API267 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。
+
 ### WP-4132 boundary protected-scope fail-closed — FINALIZED
 
 - clean baseline `8a06899`。missing/unavailable apps/packagesを空scopeとして全architecture rule未実行でもPASSするMEDIUM control-plane gapをexact5で修正中。
