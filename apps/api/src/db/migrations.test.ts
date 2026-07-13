@@ -143,6 +143,34 @@ describe('loadMigrationFiles', () => {
     );
   });
 
+  it('escapes control and Unicode separators in invalid filename diagnostics', async () => {
+    const nel = String.fromCharCode(0x85);
+    const lineSeparator = String.fromCharCode(0x2028);
+    const paragraphSeparator = String.fromCharCode(0x2029);
+    const filename = `synthetic\nname\t"marker${nel}next${lineSeparator}line${paragraphSeparator}paragraph.sql`;
+    const contentMarker = 'synthetic-file-content-must-not-appear';
+    await withMigrationDirectory(
+      {
+        '000001_first.sql': 'select 1;\n',
+        [filename]: contentMarker,
+      },
+      async (directory) => {
+        const error = await loadMigrationFiles(directory).catch((caught: unknown) => caught);
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe(
+          'invalid migration directory entry "synthetic\\nname\\t\\"marker\\u0085next\\u2028line\\u2029paragraph.sql": expected migration filename NNNNNN_snake_case.sql or an explicitly ignored non-migration file',
+        );
+        expect((error as Error).message).not.toContain('\n');
+        expect((error as Error).message).not.toContain('\t');
+        expect((error as Error).message).not.toContain(nel);
+        expect((error as Error).message).not.toContain(lineSeparator);
+        expect((error as Error).message).not.toContain(paragraphSeparator);
+        expect((error as Error).message).not.toContain(directory);
+        expect((error as Error).message).not.toContain(contentMarker);
+      },
+    );
+  });
+
   it('keeps the default migrations directory independent from process cwd', async () => {
     const originalCwd = process.cwd();
     await withMigrationDirectory({}, async (directory) => {

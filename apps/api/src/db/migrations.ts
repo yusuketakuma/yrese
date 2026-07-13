@@ -37,7 +37,9 @@ function repositoryRoot(): string {
 }
 
 function formatFilenameForError(filename: string): string {
-  return JSON.stringify(filename);
+  return JSON.stringify(filename).replace(/[\u0085\u2028\u2029]/gu, (separator) =>
+    `\\u${separator.charCodeAt(0).toString(16).padStart(4, '0')}`,
+  );
 }
 
 function parseMigrationDirectoryEntry(filename: string): Pick<MigrationFile, 'version' | 'name' | 'filename'> | undefined {

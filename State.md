@@ -8,6 +8,11 @@
 
 ## 2026-07-13
 
+### WP-4136 invalid migration filename Unicode separator escape — FINALIZED
+
+- clean baseline `1c31aaa`。local filename diagnostic formatterだけを強化し、U+0085/U+2028/U+2029のliteral出力を防止するexact5を実装中。
+- grammar/classification/scope/loader semantics不変。domain initial LOW test-source physical separator findingを修正し、re-review/independent verifier APPROVED。post-fix migrations11、physical separator 0/ASCII source、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。
+
 ### WP-4135 DB-ahead extra-version diagnostic quoting — FINALIZED
 
 - clean baseline `fe7ebb0`。allowed DB-ahead success diagnosticのraw DB version joinを既存one-line quote helperへ統合するexact5を実装中。
