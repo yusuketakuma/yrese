@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4121 pre-persistence patient snapshot and created acceptedAt binding — VERIFIED / LANDING_PENDING
+
+- clean baseline `272b577`。matching-ID malformed patient snapshotをreception persistenceへ渡せるgapと、created resultのacceptedAtをserver-issued instantへ拘束しない実在R2 patient/queue/audit gapをAPI exact5で修正中。
+- identity→full patient schema→capture acceptedAt/ISO→create→WP-4120 result gates→created exact acceptedAt→audit。parsed patientのみ使用し、existing historical acceptedAtとseparate audit clockを維持。
+- independent verifierとpatient/data/reception/audit/security/privacy/medical/DB-boundary review APPROVED、findingsなし。focused API server83、API243 + PostgreSQL14 expected skips、web307、audit183、workspace typecheck/test/buildと全gate PASS。exact-stage landingのみpending。
+
 ### WP-4120 reception result schema and created-state binding — LANDED
 
 - clean baseline `d4e63bb`。repository resultのruntime schema未検証とcreated non-WAITING受理により、invalid/newly advanced receptionをsuccess audit/UIへ進められる実在R2 workflow/audit gapをAPI+web exact7で修正中。

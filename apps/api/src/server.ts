@@ -67,12 +67,16 @@ export const receptionPatientNotFoundErrorCode = RECEPTION_PATIENT_NOT_FOUND_ERR
 export const receptionIdempotencyConflictErrorCode = RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE;
 export const receptionPatientIdentityMismatchErrorMessage =
   'Patient lookup returned a mismatched patient identity';
+export const receptionPatientSchemaInvariantErrorMessage =
+  'Patient lookup returned an invalid patient snapshot';
 export const receptionResultPatientIdentityMismatchErrorMessage =
   'Reception repository returned a mismatched patient identity';
 export const receptionResultSchemaInvariantErrorMessage =
   'Reception repository returned an invalid reception entry';
 export const receptionCreatedStatusInvariantErrorMessage =
   'Created reception did not start in WAITING status';
+export const receptionCreatedAcceptedAtInvariantErrorMessage =
+  'Created reception did not preserve the server-issued acceptance time';
 export const receptionQueueDuplicateIdentityInvariantErrorMessage =
   'Reception repository returned duplicate reception identities';
 const auditLogProjectionInvariantErrorMessage =
@@ -402,13 +406,19 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       if (patient.patientId !== parsedPatientId) {
         throw new Error(receptionPatientIdentityMismatchErrorMessage);
       }
+      const parsedPatient = patientSearchResultSchema.safeParse(patient);
+      if (!parsedPatient.success) {
+        throw new Error(receptionPatientSchemaInvariantErrorMessage);
+      }
 
+      const acceptedAt = now();
+      const acceptedAtIso = acceptedAt.toISOString();
       const result = await receptionRepository.create({
         tenantId: tenantContext.tenantId,
         pharmacyId: tenantContext.pharmacyId,
-        patient,
+        patient: parsedPatient.data,
         idempotencyKey: body.data.idempotencyKey,
-        acceptedAt: now(),
+        acceptedAt,
       });
 
       if (result.kind === 'idempotency_conflict') {
@@ -423,6 +433,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       }
       if (result.kind === 'created' && parsedEntry.data.receptionStatus !== 'WAITING') {
         throw new Error(receptionCreatedStatusInvariantErrorMessage);
+      }
+      if (result.kind === 'created' && parsedEntry.data.acceptedAt !== acceptedAtIso) {
+        throw new Error(receptionCreatedAcceptedAtInvariantErrorMessage);
       }
 
       // 監査証跡(who/when/what)。冪等再送(existing)では二重記録しない。

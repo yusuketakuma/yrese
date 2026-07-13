@@ -12,7 +12,7 @@ import {
 } from './patient-search-cursor.js';
 import type { PatientRepository } from './patient-repository.js';
 import type { ReceptionRepository } from './reception-repository.js';
-import type { AuditRepository } from './audit-repository.js';
+import { InMemoryAuditRepository, type AuditRepository } from './audit-repository.js';
 import {
   apiVersion,
   buildServer,
@@ -23,8 +23,10 @@ import {
   receptionIdempotencyConflictErrorCode,
   receptionInvalidRequestErrorCode,
   receptionPatientIdentityMismatchErrorMessage,
+  receptionPatientSchemaInvariantErrorMessage,
   receptionQueueDuplicateIdentityInvariantErrorMessage,
   receptionCreatedStatusInvariantErrorMessage,
+  receptionCreatedAcceptedAtInvariantErrorMessage,
   receptionResultPatientIdentityMismatchErrorMessage,
   receptionResultSchemaInvariantErrorMessage,
   receptionPatientNotFoundErrorCode,
@@ -1273,6 +1275,66 @@ describe('buildServer', () => {
     }
   });
 
+  it('rejects a matching-identity malformed patient snapshot before reception persistence', async () => {
+    const sensitivePatient = {
+      patientId: 'patient-requested-synthetic-001',
+      name: '合成 不正患者',
+      kana: 'ゴウセイ フセイカンジャ',
+      birthDate: 'invalid-sensitive-birth-date',
+      sex: 'unknown' as const,
+      patientNumber: 'PATIENT-SCHEMA-SENSITIVE-001',
+      eligibilityStatus: 'NOT_CHECKED' as const,
+    };
+    const receptionCreate = vi.fn<ReceptionRepository['create']>();
+    const auditRecord = vi.fn<AuditRepository['record']>();
+    const server = buildDevTestServer({
+      patientRepository: {
+        search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
+        findById: vi.fn<PatientRepository['findById']>(async () => sensitivePatient),
+      },
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => []),
+        create: receptionCreate,
+      },
+      auditRepository: {
+        record: auditRecord,
+        list: vi.fn<AuditRepository['list']>(async () => []),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: sensitivePatient.patientId,
+        idempotencyKey: 'reception-malformed-patient-snapshot',
+      },
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(receptionCreate).not.toHaveBeenCalled();
+    expect(auditRecord).not.toHaveBeenCalled();
+    expect(response.json()).toMatchObject({
+      statusCode: 500,
+      error: 'Internal Server Error',
+      message: receptionPatientSchemaInvariantErrorMessage,
+    });
+    for (const sensitiveValue of [
+      sensitivePatient.patientId,
+      sensitivePatient.name,
+      sensitivePatient.kana,
+      sensitivePatient.birthDate,
+      sensitivePatient.patientNumber,
+      sensitivePatient.eligibilityStatus,
+    ]) {
+      expect(response.body).not.toContain(sensitiveValue);
+    }
+  });
+
   it.each(['created', 'existing'] as const)(
     'fails closed before audit and response when a %s reception result belongs to another patient',
     async (resultKind) => {
@@ -1472,6 +1534,123 @@ describe('buildServer', () => {
       }
     },
   );
+
+  it.each([
+    ['earlier', '2026-07-09T08:59:59.999Z'],
+    ['later', '2026-07-09T09:00:00.001Z'],
+  ] as const)(
+    'rejects a created reception with a %s acceptedAt before success audit',
+    async (_label, returnedAcceptedAt) => {
+      const serverAcceptedAt = new Date('2026-07-09T09:00:00.000Z');
+      const auditRecord = vi.fn<AuditRepository['record']>();
+      const server = buildDevTestServer({
+        now: () => serverAcceptedAt,
+        receptionRepository: {
+          list: vi.fn<ReceptionRepository['list']>(async () => []),
+          create: vi.fn<ReceptionRepository['create']>(async (input) => ({
+            kind: 'created',
+            entry: {
+              receptionId: 'reception-accepted-at-sensitive',
+              acceptedAt: returnedAcceptedAt,
+              receptionStatus: 'WAITING',
+              prescriptionIntakeType: 'paper',
+              patient: input.patient,
+            },
+          })),
+        },
+        auditRepository: {
+          record: auditRecord,
+          list: vi.fn<AuditRepository['list']>(async () => []),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/reception',
+        headers: tenantOneReceptionWriteHeaders,
+        payload: {
+          patientId: 'patient-syn-004',
+          idempotencyKey: `reception-accepted-at-${_label}`,
+        },
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(auditRecord).not.toHaveBeenCalled();
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: receptionCreatedAcceptedAtInvariantErrorMessage,
+      });
+      for (const sensitiveValue of [
+        returnedAcceptedAt,
+        serverAcceptedAt.toISOString(),
+        'reception-accepted-at-sensitive',
+        'patient-syn-004',
+      ]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+    },
+  );
+
+  it('passes one validated patient snapshot and server-issued instant into a created reception', async () => {
+    const acceptedAt = new Date('2026-07-09T09:00:00.000Z');
+    const auditAt = new Date('2026-07-09T09:00:00.100Z');
+    const now = vi.fn().mockReturnValueOnce(acceptedAt).mockReturnValueOnce(auditAt);
+    const receptionCreate = vi.fn<ReceptionRepository['create']>(async (input) => ({
+      kind: 'created',
+      entry: {
+        receptionId: 'reception-valid-boundary',
+        acceptedAt: acceptedAt.toISOString(),
+        receptionStatus: 'WAITING',
+        prescriptionIntakeType: 'paper',
+        patient: input.patient,
+      },
+    }));
+    const backingAuditRepository = new InMemoryAuditRepository();
+    const auditRecord = vi.fn<AuditRepository['record']>(
+      backingAuditRepository.record.bind(backingAuditRepository),
+    );
+    const server = buildDevTestServer({
+      now,
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => []),
+        create: receptionCreate,
+      },
+      auditRepository: {
+        record: auditRecord,
+        list: vi.fn<AuditRepository['list']>(async () => []),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-004',
+        idempotencyKey: 'reception-valid-boundary',
+      },
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(201);
+    expect(receptionCreate).toHaveBeenCalledOnce();
+    expect(receptionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        patient: expect.objectContaining({ patientId: 'patient-syn-004' }),
+        acceptedAt,
+      }),
+    );
+    expect(auditRecord).toHaveBeenCalledOnce();
+    expect(auditRecord.mock.calls[0]?.[1]).toMatchObject({
+      wallClock: auditAt.toISOString(),
+    });
+    expect(now).toHaveBeenCalledTimes(2);
+  });
 
   it('allows an existing reception to retain an advanced status without a duplicate audit', async () => {
     const auditRecord = vi.fn<AuditRepository['record']>();

@@ -2516,6 +2516,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused API server79、web reception62、API239 + PostgreSQL14 expected skips、web307、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `96f3597` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact7、MEDIUM/LOW修正後のindependent/domain re-reviewとfull gates PASS、invalid/advanced created receptionをsuccess audit/UI前にfail-closed拒否。
 
+- [x] WP-4121 validate patient snapshot before persistence and bind created acceptedAt(R2 patient/queue/audit integrity) — FINALIZED
+  - 発見根拠: reception POSTはlookup patientId一致だけで未検証PHI snapshotをrepository mutationへ渡し、後段projection失敗前にin-memory/idempotencyまたはDB writeへ混入しえた。またAPI-006のserver-assigned acceptedAtに対しcreated resultの別canonical instantをsuccess audit/201へ受理できた。
+  - scope: exact5 `apps/api/src/server.ts`, `apps/api/src/server.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。contracts/OpenAPI/patient/reception repositories/interfaces/SQL/DB/migrations/audit core/SSOT/browser/UI/package/lockは変更しない。
+  - implementation: lookup not-found→patient identity→full PatientSearchResult schema→capture server acceptedAt Date+immutable ISO→repository mutation→WP-4120 result schema/identity/WAITING→created exact acceptedAt→audit/response。parsed patientだけをcreateへ渡す。existing replayはhistorical acceptedAtを許可し、audit wallClockは別now sampleを維持。固定non-echo拒否、normalize/tolerance/rewriteなし。
+  - acceptance: matching-ID malformed patientは500/no-store、create/audit zero。wrong-ID/404 precedence維持。created earlier/later acceptedAtはaudit zero、exact acceptedAtは201/audit once、repositoryへ同一Dateを一度渡しaudit clockを別sample。existing historical acceptedAt、WP-4120 schema/identity/status、JST/idempotency semanticsを維持しPHI/time/raw details非echo。
+  - review_results: mapperがupstream patient snapshot gap、pre-planがcreated acceptedAt gapを独立確認し、rootが同じexact5 trust boundaryへ統合。independent verifierとpatient/data/reception/audit/security/privacy/medical/DB-boundary domain review APPROVED、findingsなし。Date mutationにもimmutable ISOが耐えることを確認しhuman gate不要。
+  - validation_results: focused API server83、API243 + PostgreSQL14 expected skips、web307、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: pending exact-stage commit and push; implementation/review/full gates PASS。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
