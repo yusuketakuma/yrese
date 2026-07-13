@@ -26,6 +26,7 @@ function runTsx(script, args = [], options = {}) {
   return spawnSync("pnpm", ["exec", "tsx", scriptPath(script), ...args], {
     cwd: options.cwd ?? repoRoot,
     encoding: "utf8",
+    timeout: options.timeout,
   });
 }
 
@@ -1267,6 +1268,70 @@ async function testOpenApiDriftDetection() {
   const output = outputOf(result);
   assert(result.status === 1, "check-openapi should fail when the generated OpenAPI artifact drifts");
   assert(output.includes("GENERATED_CODE_DRIFT_BLOCKED"), "OpenAPI drift failure should use the blocker code");
+  assert(output.includes("Run `pnpm generate:openapi`"), "OpenAPI drift failure should preserve regeneration guidance");
+  assert(
+    !output.includes("artifact target must be a readable real regular file"),
+    "regular OpenAPI drift should not be misclassified as an artifact target failure",
+  );
+}
+
+async function testOpenApiArtifactTargetFailsClosed() {
+  const fixedMessage =
+    "GENERATED_CODE_DRIFT_BLOCKED: OpenAPI generated artifact target must be a readable real regular file.";
+  const expectedSource = await readFile(path.join(repoRoot, "docs", "api", "openapi.yaml"), "utf8");
+  const externalRoot = path.join(tempRoot, "openapi-check-external");
+  const externalCoherentPath = path.join(externalRoot, "coherent.yaml");
+  const externalMarkerPath = path.join(externalRoot, "marker.yaml");
+  const externalMarker = "DO_NOT_ECHO_OPENAPI_TARGET_CONTENT";
+  await writeText(externalCoherentPath, expectedSource);
+  await writeText(externalMarkerPath, externalMarker);
+
+  function assertScopeFailure(label, artifactPath, options = {}) {
+    const result = runTsx("check-openapi.mjs", ["--openapi-file", artifactPath], options);
+    const output = outputOf(result);
+    assert(result.error?.code !== "ETIMEDOUT", `check-openapi ${label} should not time out`);
+    assert(result.status === 1, `check-openapi should reject ${label}`);
+    assert(output.includes(fixedMessage), `check-openapi ${label} should use the fixed target error`);
+    assert(!output.includes("OpenAPI drift check passed"), `check-openapi ${label} should not report PASS`);
+    assert(!output.includes(artifactPath), `check-openapi ${label} should not expose the supplied path`);
+    assert(!output.includes(externalRoot), `check-openapi ${label} should not expose an external target path`);
+    assert(!output.includes(externalMarker), `check-openapi ${label} should not expose external target content`);
+  }
+
+  const matchingPath = path.join(tempRoot, "openapi-check-matching", "openapi.yaml");
+  await writeText(matchingPath, expectedSource);
+  const matchingResult = runTsx("check-openapi.mjs", ["--openapi-file", matchingPath]);
+  assert(matchingResult.status === 0, `check-openapi should pass a matching real file: ${outputOf(matchingResult)}`);
+  assert(outputOf(matchingResult).includes("OpenAPI drift check passed"), "matching real file should report PASS");
+
+  assertScopeFailure("a missing artifact", path.join(tempRoot, "openapi-check-missing", "openapi.yaml"));
+
+  const directoryPath = path.join(tempRoot, "openapi-check-directory", "openapi.yaml");
+  await mkdir(directoryPath, { recursive: true });
+  assertScopeFailure("a directory artifact", directoryPath);
+
+  const coherentSymlinkPath = path.join(tempRoot, "openapi-check-coherent-symlink", "openapi.yaml");
+  await mkdir(path.dirname(coherentSymlinkPath), { recursive: true });
+  await symlink(externalCoherentPath, coherentSymlinkPath, "file");
+  assertScopeFailure("a coherent symlink artifact", coherentSymlinkPath);
+
+  const markerSymlinkPath = path.join(tempRoot, "openapi-check-marker-symlink", "openapi.yaml");
+  await mkdir(path.dirname(markerSymlinkPath), { recursive: true });
+  await symlink(externalMarkerPath, markerSymlinkPath, "file");
+  assertScopeFailure("a marker symlink artifact", markerSymlinkPath);
+
+  const danglingSymlinkPath = path.join(tempRoot, "openapi-check-dangling-symlink", "openapi.yaml");
+  await mkdir(path.dirname(danglingSymlinkPath), { recursive: true });
+  await symlink(path.join(externalRoot, "missing.yaml"), danglingSymlinkPath, "file");
+  assertScopeFailure("a dangling symlink artifact", danglingSymlinkPath);
+
+  const fifoPath = path.join(tempRoot, "openapi-check-fifo", "openapi.yaml");
+  await mkdir(path.dirname(fifoPath), { recursive: true });
+  const fifoResult = spawnSync("mkfifo", [fifoPath], { encoding: "utf8" });
+  assert(fifoResult.status === 0, "script harness requires mkfifo on the supported macOS/Linux runtime");
+  if (fifoResult.status === 0) {
+    assertScopeFailure("a FIFO artifact", fifoPath, { timeout: 5_000 });
+  }
 }
 
 async function testOpenApiGenerationPublishesAtomically() {
@@ -1355,6 +1420,7 @@ try {
   await testSsotIndexDetectsDuplicateSsotId();
   await testSsotIndexInvalidScopesFailClosed();
   await testOpenApiDriftDetection();
+  await testOpenApiArtifactTargetFailsClosed();
   await testOpenApiGenerationPublishesAtomically();
 } finally {
   await rm(tempRoot, { force: true, recursive: true });

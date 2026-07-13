@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4140 OpenAPI drift artifact target fail-closed — FINALIZED
+
+- clean baseline `bc4994f`。byte-identical external targetへのartifact symlinkと`/dev/stdin` indirect inputがdrift checkerでPASSするMEDIUM API-contract false-greenを再現。tracked artifactはregular/clean。
+- exact5でlstat分類とsame-handle `O_NOFOLLOW|O_NONBLOCK` stat/read/closeを実装中。WP-4139 generator atomic publication、renderer/artifact/contractsは不変。
+- mapper/planner APPROVED_WITH_PINS、integrated domain reviewとindependent verifier APPROVED、findingsなし。checker/harness syntax、script harness(FIFO nonhang)、live OpenAPI、SSOT173、secrets、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。generator/renderer/tracked artifact/docs差分なし。implementation landing pending。
+
 ### WP-4139 OpenAPI generation atomic publication — FINALIZED
 
 - clean baseline `d714725`。generator output symlinkがsynthetic external targetを実際に上書きするMEDIUM file-integrity gapをtemp fixtureで再現。tracked artifactはregular/cleanで未変更。
