@@ -2471,6 +2471,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused patient-search36、web284、API227 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `066ca00` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent/domain reviewとfull gates PASS、patient appendのexact cursor self-loopをpartial commit前にfail-closed拒否。
 
+- [x] WP-4116 bind repository patient-search cursor to exact consumed offset(R2 pagination/data integrity) — FINALIZED
+  - 発見根拠: patient search APIはrequest cursorを内部offsetへdecodeする一方、repositoryの`nextCursor`をrequest位置・返却件数へ再拘束せず署名できた。faulty adapterがsame/backward/forward-skip/empty continuationをauthenticated tokenへ昇格でき、loop・重複・患者候補欠落を生じうる。
+  - scope: exact5 `apps/api/src/server.ts`, `apps/api/src/server.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。contracts/OpenAPI/cursor codec/repository/SQL/DB/migration/SSOT/web/UI/package/lockは変更しない。
+  - implementation: over-limit→全result schema→page PatientId一意性の既存precedence後、encode前にdefined next cursorへnonempty page、safeな`(requested offset ?? 0) + validatedResults.length`、returned offsetとのexact一致を要求。違反は固定non-echo errorで全体拒否し、補正/clamp/filter/requery/partial response/cursor発行なし。
+  - acceptance: initial empty+offset0、continued same/backward/forward-skip、safe-integer overflowを500/no-store/encode zeroで拒否。exact consumed offset、正常first/second/terminal、incoming cursor binding、over-limit/duplicate precedenceを維持し、PHI/raw cursorをerrorへ出さない。
+  - review_results: read-only mapper/pre-plan後、independent verifierとAPI/data-integrity/security/privacy/medical/DB-boundary review APPROVED、findingsなし。APPROVED API-001のopaque wire contractを変えず、current internal offset adapter invariantをfail-closed補強しhuman gate不要。
+  - validation_results: focused server73、API233 + PostgreSQL14 expected skips、web284、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: pending exact-stage commit and push; implementation/review/full gates PASS。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

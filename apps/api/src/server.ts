@@ -59,6 +59,8 @@ export const patientSearchResultLimitInvariantErrorMessage =
   'Patient repository returned more results than requested';
 export const patientSearchDuplicateIdentityInvariantErrorMessage =
   'Patient repository returned duplicate patient identities';
+export const patientSearchCursorProgressInvariantErrorMessage =
+  'Patient repository returned an invalid next cursor';
 export const receptionInvalidRequestErrorCode = RECEPTION_INVALID_REQUEST_ERROR_CODE;
 export const receptionPatientNotFoundErrorCode = RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE;
 export const receptionIdempotencyConflictErrorCode = RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE;
@@ -252,6 +254,16 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           throw new Error(patientSearchDuplicateIdentityInvariantErrorMessage);
         }
         patientIds.add(result.patientId);
+      }
+      if (page.nextCursor !== undefined) {
+        const expectedNextOffset = (cursor?.offset ?? 0) + validatedResults.length;
+        if (
+          validatedResults.length === 0 ||
+          !Number.isSafeInteger(expectedNextOffset) ||
+          page.nextCursor.offset !== expectedNextOffset
+        ) {
+          throw new Error(patientSearchCursorProgressInvariantErrorMessage);
+        }
       }
 
       return patientSearchResponseSchema.parse({

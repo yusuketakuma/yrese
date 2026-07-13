@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4116 repository patient cursor consumed-offset binding — VERIFIED / LANDING_PENDING
+
+- clean baseline `52f6436`。repository next cursorをrequest offset/返却件数へ拘束せずAPIが署名できる実在R2 pagination/data-integrity gapをexact5で修正中。
+- over-limit/schema/duplicate precedence後、defined continuationへnonempty、safe exact consumed offsetを要求。same/backward/skip/empty/overflowはfixed non-echo 500/no-store、encode zero、補正/partial responseなし。
+- independent verifierとAPI/data/security/privacy/medical/DB-boundary review APPROVED、findingsなし。focused server73、API233 + PostgreSQL14 expected skips、web284、audit183、workspace typecheck/test/buildと全gate PASS。exact-stage landingのみpending。
+
 ### WP-4115 patient append cursor self-loop rejection — LANDED
 
 - clean baseline `1c1133b`。append cursor Cがdistinct/empty pageと同じ`nextCursor:C`を返すとpartial rowsをcommitしたままpaginationが停止/loopする実在R1 gapをexact5で修正。

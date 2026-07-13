@@ -17,6 +17,7 @@ import {
   apiVersion,
   buildServer,
   patientSearchInvalidQueryErrorCode,
+  patientSearchCursorProgressInvariantErrorMessage,
   patientSearchDuplicateIdentityInvariantErrorMessage,
   patientSearchResultLimitInvariantErrorMessage,
   receptionIdempotencyConflictErrorCode,
@@ -687,6 +688,133 @@ describe('buildServer', () => {
       }
     },
   );
+
+  it.each([
+    ['initial empty page repeats offset zero', undefined, 0, 0],
+    ['continued page repeats the requested offset', 2, 1, 2],
+    ['continued page moves backwards', 2, 1, 1],
+    ['continued page skips a patient position', 2, 1, 4],
+    ['continued page overflows the safe offset range', Number.MAX_SAFE_INTEGER, 1, Number.MAX_SAFE_INTEGER],
+  ] as const)(
+    'rejects a repository next cursor that %s',
+    async (_label, requestedOffset, resultCount, returnedOffset) => {
+      const results = Array.from({ length: resultCount }, (_, index) => ({
+        patientId: `patient-cursor-sensitive-${index}`,
+        name: `合成カーソル患者${index}`,
+        kana: `ゴウセイカーソルカンジャ${index}`,
+        birthDate: '1990-01-01',
+        sex: 'unknown' as const,
+        patientNumber: `CURSOR-SENSITIVE-${index}`,
+        eligibilityStatus: 'NOT_CHECKED' as const,
+      }));
+      const search = vi.fn<PatientRepository['search']>(async () => ({
+        results,
+        nextCursor: { offset: returnedOffset },
+      }));
+      const encode = vi.fn(() => {
+        throw new Error('cursor encoding must not run for an invalid repository cursor');
+      });
+      const rawCursor = 'opaque-sensitive-cursor';
+      const decode = vi.fn(() =>
+        requestedOffset === undefined ? undefined : { offset: requestedOffset },
+      );
+      const server = buildDevTestServer({
+        patientRepository: {
+          search,
+          findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        },
+        patientSearchCursorCodec: { encode, decode },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url:
+          requestedOffset === undefined
+            ? '/patients/search?q=synthetic&limit=2'
+            : `/patients/search?q=synthetic&limit=2&cursor=${rawCursor}`,
+        headers: tenantOnePatientReadHeaders,
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(search).toHaveBeenCalledWith({
+        tenantId: tenantOnePatientReadHeaders['x-dev-tenant'],
+        pharmacyId: tenantOnePatientReadHeaders['x-dev-pharmacy'],
+        q: 'synthetic',
+        limit: 2,
+        ...(requestedOffset === undefined ? {} : { cursor: { offset: requestedOffset } }),
+      });
+      expect(encode).not.toHaveBeenCalled();
+      expect(response.json()).toEqual({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: patientSearchCursorProgressInvariantErrorMessage,
+      });
+      expect(response.body).not.toContain(rawCursor);
+      for (const result of results) {
+        for (const sensitiveValue of [
+          result.patientId,
+          result.name,
+          result.kana,
+          result.birthDate,
+          result.patientNumber,
+          result.eligibilityStatus,
+        ]) {
+          expect(response.body).not.toContain(sensitiveValue);
+        }
+      }
+    },
+  );
+
+  it('allows a repository cursor at the exact next consumed offset', async () => {
+    const result = {
+      patientId: 'patient-cursor-valid-001',
+      name: '合成カーソル正常患者',
+      kana: 'ゴウセイカーソルセイジョウカンジャ',
+      birthDate: '1990-01-01',
+      sex: 'unknown' as const,
+      patientNumber: 'CURSOR-VALID-001',
+      eligibilityStatus: 'NOT_CHECKED' as const,
+    };
+    const encode = vi.fn(() => 'signed-next-cursor');
+    const server = buildDevTestServer({
+      patientRepository: {
+        search: vi.fn(async () => ({
+          results: [result],
+          nextCursor: { offset: 3 },
+        })),
+        findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+      },
+      patientSearchCursorCodec: {
+        encode,
+        decode: vi.fn(() => ({ offset: 2 })),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/patients/search?q=synthetic&limit=2&cursor=current-cursor',
+      headers: tenantOnePatientReadHeaders,
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      results: [result],
+      nextCursor: 'signed-next-cursor',
+    });
+    expect(encode).toHaveBeenCalledWith(
+      {
+        tenantId: tenantOnePatientReadHeaders['x-dev-tenant'],
+        pharmacyId: tenantOnePatientReadHeaders['x-dev-pharmacy'],
+        q: 'synthetic',
+      },
+      { offset: 3 },
+    );
+  });
 
   it('allows distinct patient identities with the same display attributes', async () => {
     const sharedDisplay = {
