@@ -8,6 +8,11 @@
 
 ## 2026-07-13
 
+### WP-4134 MigrationStateError raw-result enumeration — FINALIZED
+
+- clean baseline `12c4397`。escaped message外でenumerable raw resultが再表示されるMEDIUM diagnostic integrity gapをexact5で修正中。
+- `.result` access/identityを維持しhidden immutable own property化。initial test expectationをmessage/raw-field境界へ修正後、domain/independent review APPROVED、findingsなし。runner12、API268 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。
+
 ### WP-4133 migration loader protected-scope fail-closed — FINALIZED
 
 - clean baseline `7b165e1`。empty inventoryの`0/0 up_to_date`化とvalid-name symlink外部SQL読込を防ぐloader-only exact5を実装中。DB操作・SQL/history/runner/SSOT変更なし。

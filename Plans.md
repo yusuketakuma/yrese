@@ -2636,6 +2636,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: exact5 revert。DB/data/artifact migration不要。
   - landing_record: implementation commit `89a2d03` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、full gates、domain/independent review PASS。DB操作なしでempty inventoryとscope外symlink SQL ingestionをfail closed化。
 
+- [x] WP-4134 hide raw migration state from default Error enumeration(MEDIUM operations/security) — FINALIZED
+  - 発見根拠: `MigrationStateError`のconstructor parameter property `result`がenumerableで、escaped one-line message後にdefault Node Error inspectionがDB由来version/nameをraw再表示し、WP-4129のdiagnostic escape境界を迂回できた。
+  - scope: exact5 `apps/api/src/db/migration-runner.ts`, `apps/api/src/db/migration-runner.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。logger/formatter/result union/reconciliation、SQL/schema/history/DB、SSOT/package/lock/CIは不変。
+  - implementation: public typed `.result`とinput identityを維持し、non-enumerable/non-writable/non-configurable own propertyとして定義。name/message/stack/throw/client lifecycleは不変。
+  - acceptance: descriptor exact、Object.keys/spread/JSON/default inspectにraw result fieldなし、escaped one-line message維持、既存initial/final rejection不変。focused/full/domain/independent後FINALIZED。
+  - review_results: mapper推奨、planner再裁定APPROVED_WITH_PINS、integrated domain reviewとindependent verifier APPROVED、findingsなし、human gate不要。
+  - validation_results: initial test expectation 1件をmessageとraw fieldの境界に修正後、focused runner12、API268 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - rollback: exact5 revert。DB/data rollback不要。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

@@ -25,9 +25,17 @@ export interface ApplyMigrationsResult {
 }
 
 export class MigrationStateError extends Error {
-  constructor(readonly result: Extract<MigrationCheckResult, { ok: false }>) {
+  declare readonly result: Extract<MigrationCheckResult, { ok: false }>;
+
+  constructor(result: Extract<MigrationCheckResult, { ok: false }>) {
     super(formatMigrationCheckResult(result));
     this.name = 'MigrationStateError';
+    Object.defineProperty(this, 'result', {
+      value: result,
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    });
   }
 }
 

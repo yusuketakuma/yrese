@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { inspect } from 'node:util';
 import type { Pool, PoolClient } from 'pg';
 
 import { applyPendingMigrations, MigrationStateError } from './migration-runner.js';
@@ -67,6 +68,37 @@ async function captureRejection(run: () => Promise<unknown>): Promise<unknown> {
 }
 
 describe('applyPendingMigrations client lifecycle', () => {
+  it('keeps raw migration state accessible but hidden from default error enumeration', () => {
+    const marker = 'synthetic-raw-state-marker';
+    const result = {
+      ok: false as const,
+      status: 'version_mismatch' as const,
+      appliedCount: 1,
+      availableCount: 1,
+      expectedVersion: '000001',
+      actualVersion: `${marker}\nforged\tvaluenext line paragraph`,
+    };
+    const error = new MigrationStateError(result);
+
+    expect(error.result).toBe(result);
+    expect(Object.getOwnPropertyDescriptor(error, 'result')).toEqual({
+      value: result,
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    });
+    expect(Object.keys(error)).not.toContain('result');
+    expect({ ...error }).not.toHaveProperty('result');
+    expect(JSON.stringify(error)).not.toContain(marker);
+    const rendered = inspect(error);
+    expect(rendered).not.toContain('actualVersion');
+    expect(rendered).not.toContain('\u0085');
+    expect(rendered).not.toContain('\u2028');
+    expect(rendered).not.toContain('\u2029');
+    expect(error.message).toContain(`${marker}\\nforged\\tvalue\\u0085next\\u2028line\\u2029paragraph`);
+    expect(error.message).not.toContain('\n');
+    expect(error.message).not.toContain('\t');
+  });
   it('rejects migration version drift before acquiring an operation client or running SQL', async () => {
     const initialCheck = createCheckClient([
       {
