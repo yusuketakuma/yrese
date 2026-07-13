@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readdir, readFile } from "node:fs/promises";
+import { lstat, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 const rootDir = path.resolve(process.argv[2] ?? process.cwd());
@@ -12,6 +12,13 @@ const markdownExtension = ".md";
 // docs/ui-ux-refresh/: UI/UX 監査・SSOT再構築の作業/証跡ワークスペース(規範SSOTは docs/uiux/ 側が正本)。
 const nonSsotDirPrefixes = ["docs/research/", "docs/ui-ux-refresh/"];
 const violations = [];
+const scopeErrorMessage = "SSOT index check could not validate the protected documentation scope.";
+
+class ProtectedScopeError extends Error {}
+
+function failScope() {
+  throw new ProtectedScopeError(scopeErrorMessage);
+}
 
 function isNonSsotDoc(relativePath) {
   return nonSsotDirPrefixes.some((prefix) => relativePath.startsWith(prefix));
@@ -26,11 +33,19 @@ function toPosix(filePath) {
 }
 
 async function listMarkdownFiles(dir) {
-  const entries = await readdir(dir, { withFileTypes: true });
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch {
+    failScope();
+  }
   const files = [];
 
   for (const entry of entries) {
     const entryPath = path.join(dir, entry.name);
+    if (entry.isSymbolicLink()) {
+      failScope();
+    }
     if (entry.isDirectory()) {
       files.push(...(await listMarkdownFiles(entryPath)));
       continue;
@@ -38,10 +53,32 @@ async function listMarkdownFiles(dir) {
 
     if (entry.isFile() && path.extname(entry.name) === markdownExtension) {
       files.push(entryPath);
+    } else if (!entry.isFile()) {
+      failScope();
     }
   }
 
   return files;
+}
+
+async function requireRealPath(targetPath, kind) {
+  let entry;
+  try {
+    entry = await lstat(targetPath);
+  } catch {
+    failScope();
+  }
+  if (entry.isSymbolicLink() || (kind === "directory" ? !entry.isDirectory() : !entry.isFile())) {
+    failScope();
+  }
+}
+
+async function readProtectedFile(filePath) {
+  try {
+    return await readFile(filePath, "utf8");
+  } catch {
+    failScope();
+  }
 }
 
 function stripInlineComment(value) {
@@ -189,6 +226,9 @@ function checkDuplicates(label, entries, getValue, formatEntry) {
 }
 
 async function main() {
+  await requireRealPath(rootDir, "directory");
+  await requireRealPath(docsDir, "directory");
+  await requireRealPath(indexPath, "file");
   const markdownFiles = (await listMarkdownFiles(docsDir))
     .map((filePath) => ({
       absolutePath: filePath,
@@ -197,10 +237,11 @@ async function main() {
     .filter((file) => file.relativePath !== indexRelativePath)
     .filter((file) => !isNonSsotDoc(file.relativePath))
     .sort((left, right) => left.relativePath.localeCompare(right.relativePath));
+  if (markdownFiles.length === 0) failScope();
 
   const documentEntries = [];
   for (const file of markdownFiles) {
-    const metadata = parseFrontmatter(await readFile(file.absolutePath, "utf8"), file.relativePath);
+    const metadata = parseFrontmatter(await readProtectedFile(file.absolutePath), file.relativePath);
     if (metadata !== undefined) {
       documentEntries.push({
         ...metadata,
@@ -209,7 +250,7 @@ async function main() {
     }
   }
 
-  const index = parseIndex(await readFile(indexPath, "utf8"));
+  const index = parseIndex(await readProtectedFile(indexPath));
   const indexByPath = new Map(index.entries.map((entry) => [entry.relativePath, entry]));
   const documentByPath = new Map(documentEntries.map((entry) => [entry.relativePath, entry]));
 
@@ -259,8 +300,17 @@ async function main() {
     console.error("Run the approved SSOT index regeneration workflow before committing document changes.");
     process.exitCode = 1;
   } else {
+    if (index.entries.length === 0) {
+      failScope();
+    }
     console.log(`SSOT index check passed: ${markdownFiles.length} document(s).`);
   }
 }
 
-await main();
+try {
+  await main();
+} catch (error) {
+  if (!(error instanceof ProtectedScopeError)) throw error;
+  console.error(scopeErrorMessage);
+  process.exitCode = 1;
+}

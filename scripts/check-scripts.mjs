@@ -1094,6 +1094,7 @@ async function testSsotIndexCleanFixturePasses() {
   await writeText(path.join(root, "docs", "architecture", "system_context.md"), ssotDoc("ARC-001", "APPROVED"));
   await writeText(path.join(root, "docs", "product", "mvp_scope.md"), ssotDoc("PRD-001", "APPROVED"));
   await writeText(path.join(root, "docs", "product", "non_mvp_scope.md"), ssotDoc("PRD-002", "PROPOSED"));
+  await writeText(path.join(root, "docs", "api", "openapi.yaml"), "openapi: 3.1.0\n");
   await writeText(
     path.join(root, "docs", "ssot_index.md"),
     ssotIndex([
@@ -1121,6 +1122,22 @@ async function testSsotIndexDetectsMissingDocumentRow() {
   assert(result.status === 1, "check-ssot-index should fail when a document is missing from the index");
   assert(output.includes("missing from docs/ssot_index.md"), "missing row finding should name the index drift");
   assert(output.includes("regenerate the SSOT index"), "missing row finding should point to index regeneration");
+}
+
+async function testSsotIndexPreservesZeroRowSemanticDiagnostics() {
+  const root = path.join(tempRoot, "ssot-index-zero-rows");
+  await writeText(path.join(root, "docs", "product", "mvp_scope.md"), ssotDoc("PRD-001", "APPROVED"));
+  await writeText(path.join(root, "docs", "ssot_index.md"), ssotIndex([]));
+
+  const result = runNode("check-ssot-index.mjs", [root]);
+  const output = outputOf(result);
+  assert(result.status === 1, "check-ssot-index should reject an index with zero recognized rows");
+  assert(output.includes("missing from docs/ssot_index.md"), "zero-row index should preserve missing-row diagnostics");
+  assert(output.includes("regenerate the SSOT index"), "zero-row index should preserve regeneration guidance");
+  assert(
+    !output.includes("could not validate the protected documentation scope"),
+    "zero-row semantic drift should not be misclassified as a protected-scope failure",
+  );
 }
 
 async function testSsotIndexDetectsStatusMismatch() {
@@ -1153,6 +1170,94 @@ async function testSsotIndexDetectsDuplicateSsotId() {
   assert(outputOf(result).includes("duplicate PRD-001"), "duplicate finding should name the repeated ssot_id");
 }
 
+async function testSsotIndexInvalidScopesFailClosed() {
+  const fixedMessage = "SSOT index check could not validate the protected documentation scope.";
+  const externalMarker = "DO_NOT_ECHO_EXTERNAL_SSOT_TARGET";
+  const externalDirectory = path.join(tempRoot, "ssot-index-external-directory");
+
+  async function createValidFixture(root) {
+    await writeText(path.join(root, "docs", "product", "mvp_scope.md"), ssotDoc("PRD-001", "APPROVED"));
+    await writeText(
+      path.join(root, "docs", "ssot_index.md"),
+      ssotIndex([{ ssotId: "PRD-001", linkPath: "product/mvp_scope.md", status: "APPROVED" }]),
+    );
+  }
+
+  async function assertScopeFailure(label, root) {
+    const result = runNode("check-ssot-index.mjs", [root]);
+    const output = outputOf(result);
+    assert(result.status === 1, `check-ssot-index should reject ${label}`);
+    assert(output.includes(fixedMessage), `check-ssot-index ${label} should use the fixed scope error`);
+    assert(!output.includes("SSOT index check passed"), `check-ssot-index ${label} should not report PASS`);
+    assert(!output.includes(root), `check-ssot-index ${label} should not expose the supplied root path`);
+    assert(!output.includes(externalDirectory), `check-ssot-index ${label} should not expose an external target path`);
+    assert(!output.includes(externalMarker), `check-ssot-index ${label} should not expose external target content`);
+  }
+
+  await assertScopeFailure("a missing root", path.join(tempRoot, "ssot-index-missing-root"));
+
+  const rootFile = path.join(tempRoot, "ssot-index-root-file");
+  await writeText(rootFile, "not a directory\n");
+  await assertScopeFailure("a root that is not a directory", rootFile);
+
+  const missingDocs = path.join(tempRoot, "ssot-index-missing-docs");
+  await mkdir(missingDocs, { recursive: true });
+  await assertScopeFailure("a missing docs directory", missingDocs);
+
+  const docsFile = path.join(tempRoot, "ssot-index-docs-file");
+  await writeText(path.join(docsFile, "docs"), "not a directory\n");
+  await assertScopeFailure("docs that is not a directory", docsFile);
+
+  const missingIndex = path.join(tempRoot, "ssot-index-missing-index");
+  await writeText(path.join(missingIndex, "docs", "product", "mvp_scope.md"), ssotDoc("PRD-001", "APPROVED"));
+  await assertScopeFailure("a missing index", missingIndex);
+
+  const indexDirectory = path.join(tempRoot, "ssot-index-index-directory");
+  await writeText(path.join(indexDirectory, "docs", "product", "mvp_scope.md"), ssotDoc("PRD-001", "APPROVED"));
+  await mkdir(path.join(indexDirectory, "docs", "ssot_index.md"), { recursive: true });
+  await assertScopeFailure("an index that is not a regular file", indexDirectory);
+
+  const indexOnly = path.join(tempRoot, "ssot-index-index-only");
+  await writeText(path.join(indexOnly, "docs", "ssot_index.md"), ssotIndex([]));
+  await assertScopeFailure("an index-only corpus", indexOnly);
+
+  const excludedOnly = path.join(tempRoot, "ssot-index-excluded-only");
+  await writeText(path.join(excludedOnly, "docs", "research", "notes.md"), "# Non-SSOT research\n");
+  await writeText(path.join(excludedOnly, "docs", "ssot_index.md"), ssotIndex([]));
+  await assertScopeFailure("a corpus with only excluded documents", excludedOnly);
+
+  await writeText(path.join(externalDirectory, "target.md"), externalMarker);
+
+  const rootSymlink = path.join(tempRoot, "ssot-index-root-symlink");
+  await symlink(externalDirectory, rootSymlink, "dir");
+  await assertScopeFailure("a symlinked root", rootSymlink);
+
+  const docsSymlink = path.join(tempRoot, "ssot-index-docs-symlink");
+  await mkdir(docsSymlink, { recursive: true });
+  await symlink(externalDirectory, path.join(docsSymlink, "docs"), "dir");
+  await assertScopeFailure("a symlinked docs directory", docsSymlink);
+
+  const indexSymlink = path.join(tempRoot, "ssot-index-index-symlink");
+  await writeText(path.join(indexSymlink, "docs", "product", "mvp_scope.md"), ssotDoc("PRD-001", "APPROVED"));
+  await symlink(path.join(externalDirectory, "target.md"), path.join(indexSymlink, "docs", "ssot_index.md"), "file");
+  await assertScopeFailure("a symlinked index", indexSymlink);
+
+  const nestedFileSymlink = path.join(tempRoot, "ssot-index-nested-file-symlink");
+  await createValidFixture(nestedFileSymlink);
+  await symlink(
+    path.join(externalDirectory, "target.md"),
+    path.join(nestedFileSymlink, "docs", "product", "linked.md"),
+    "file",
+  );
+  await assertScopeFailure("a nested file symlink", nestedFileSymlink);
+
+  const excludedDirectorySymlink = path.join(tempRoot, "ssot-index-excluded-directory-symlink");
+  await createValidFixture(excludedDirectorySymlink);
+  await mkdir(path.join(excludedDirectorySymlink, "docs", "research"), { recursive: true });
+  await symlink(externalDirectory, path.join(excludedDirectorySymlink, "docs", "research", "linked"), "dir");
+  await assertScopeFailure("a directory symlink in an excluded subtree", excludedDirectorySymlink);
+}
+
 async function testOpenApiDriftDetection() {
   const root = path.join(tempRoot, "openapi-drift");
   const driftPath = path.join(root, "openapi.yaml");
@@ -1182,8 +1287,10 @@ try {
   await testSbomGenerationFixture();
   await testSsotIndexCleanFixturePasses();
   await testSsotIndexDetectsMissingDocumentRow();
+  await testSsotIndexPreservesZeroRowSemanticDiagnostics();
   await testSsotIndexDetectsStatusMismatch();
   await testSsotIndexDetectsDuplicateSsotId();
+  await testSsotIndexInvalidScopesFailClosed();
   await testOpenApiDriftDetection();
 } finally {
   await rm(tempRoot, { force: true, recursive: true });
