@@ -2532,7 +2532,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - acceptance: same version/checksum/different name、db-ahead comparable prefix driftを拒否。checksum+name mismatchはchecksum優先。exact/up-to-date、prefix-compatible db-ahead、true unapplied apply、client release/error preservationを維持しhistory repair/rename/DMLなし。
   - review_results: mapper/pre-plan後、independent verifier runtime APPROVED。domain LOW(DB-sourced nameのcontrol文字log injection)をJSON escaping+regression testで修正しdomain final APPROVED。verifier LOW ledger count/trail指摘を本finalizationで修正。remaining findingsなし、DB write/human gate不要。
   - validation_results: focused migration-state8 + runner5 = 13、API248 + PostgreSQL14 expected skips、web307、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
-  - landing_record: pending exact-stage commit and push; implementation/review/full gates PASS。
+  - landing_record: implementation commit `f7e9475` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact7、independent/domain reviewとfull gates PASS、applied migration name driftをDB mutation前にfail-closed拒否。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
