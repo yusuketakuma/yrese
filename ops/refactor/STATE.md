@@ -4,7 +4,7 @@ This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
 - Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. Remaining57 classification, WP-0020〜0023 reconciliation, W31 and WP-4081 are LANDED.
-- Current task: WP-4118 reception queue client canonical ordering VERIFIED / LANDING_PENDING. Exact5 only: `apps/web/app/reception-dashboard.tsx`, `apps/web/app/reception-dashboard.test.tsx`, `Plans.md`, `State.md`, this file. Independent + reception/data/API/frontend/accessibility/medical/privacy/security review APPROVED; focused reception web54, web294, API233 + PostgreSQL14 expected skips, audit183, workspace typecheck/test/build and all gates PASS. Exact-stage commit/push remains. WP-4092 CI VERIFY_REQUIRED; WP-4057/WP-4050 human-gated.
+- Current task: WP-4118 reception queue client canonical ordering LANDED in `7eb4038`. Independent + reception/data/API/frontend/accessibility/medical/privacy/security review APPROVED; focused reception web54, web294, API233 + PostgreSQL14 expected skips, audit183, workspace typecheck/test/build and all gates PASS. Select the next non-gated code slice by fresh read-only mapping/pre-plan. WP-4092 CI VERIFY_REQUIRED; WP-4057/WP-4050 human-gated.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation

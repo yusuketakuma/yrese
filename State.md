@@ -8,11 +8,12 @@
 
 ## 2026-07-13
 
-### WP-4118 reception queue client canonical ordering — VERIFIED / LANDING_PENDING
+### WP-4118 reception queue client canonical ordering — LANDED
 
 - clean baseline `7f4475d`。API-006がclient責務とするacceptedAt+ReceptionId安定順をbrowserが適用せず、transport順でPHI-rich受付queueを表示できる実在R2 workflow gapをexact5で修正中。
 - duplicate検査後、copied entriesをexact UTC acceptedAt asc、equal instantはcode-unit ReceptionId ascへsort。arbitrary fractional秒、source非mutation、entry/date/UI semanticsを維持。
-- independent verifierとreception/data/API/frontend/accessibility/medical/privacy/security review APPROVED、findingsなし。focused reception web54、web294、API233 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/buildと全gate PASS。exact-stage landingのみpending。
+- independent verifierとreception/data/API/frontend/accessibility/medical/privacy/security review APPROVED、findingsなし。focused reception web54、web294、API233 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/buildと全gate PASS。
+- exact5 implementation commit `7eb4038`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。contracts/OpenAPI/API/repository/DB/SSOT/UI/ARIA/human gates不変。
 
 ### WP-4117 healthy audit browser chronology validation — LANDED
 
