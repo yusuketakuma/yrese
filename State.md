@@ -12,7 +12,8 @@
 
 - clean baseline `f12e46d`。SSOT semantic gateがinvalid/empty protected scopeでgreenになり得るMEDIUM governance/tooling gapをexact5で修正中。`docs/**`本文/indexは変更しない。
 - root/docs/index実体、全docs tree entry kind、in-scope文書とindex rowのnonempty条件、固定非機密scope errorを追加。content exclusionと既存173件semantic rulesは維持。
-- domain initial LOW semantic precedence findingとLOW ledger wording findingを修正し、final re-reviewとindependent verifier APPROVED、remaining findingsなし。post-fix node syntax、script harness、live SSOT index173、live secrets、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。implementation landing pending。
+- domain initial LOW semantic precedence findingとLOW ledger wording findingを修正し、final re-reviewとindependent verifier APPROVED、remaining findingsなし。post-fix node syntax、script harness、live SSOT index173、live secrets、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。
+- exact5 implementation commit `98e51e0` を対象feature branchへpush済み。
 
 ### WP-4137 secret scan protected-scope fail-closed — FINALIZED
 
