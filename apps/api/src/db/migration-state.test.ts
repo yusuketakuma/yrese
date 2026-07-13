@@ -66,6 +66,75 @@ describe('reconcileMigrationState', () => {
     });
   });
 
+  it('fails closed with a distinct result when an applied migration version differs', () => {
+    const result = reconcileMigrationState({
+      availableMigrations: [migration('000001', 'a'.repeat(64))],
+      appliedMigrations: [applied('000002', 'a'.repeat(64))],
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      status: 'version_mismatch',
+      appliedCount: 1,
+      availableCount: 1,
+      expectedVersion: '000001',
+      actualVersion: '000002',
+    });
+    expect(formatMigrationCheckResult(result)).toBe(
+      'DB migration version mismatch: expected "000001", actual "000002"',
+    );
+  });
+
+  it('escapes DB-sourced migration versions in diagnostics', () => {
+    const result = reconcileMigrationState({
+      availableMigrations: [migration('000001', 'a'.repeat(64))],
+      appliedMigrations: [applied('000002\nforged\tversion', 'a'.repeat(64))],
+    });
+
+    expect(result).toMatchObject({ ok: false, status: 'version_mismatch' });
+    const message = formatMigrationCheckResult(result);
+    expect(message).toContain('actual "000002\\nforged\\tversion"');
+    expect(message).not.toContain('\n');
+    expect(message).not.toContain('\t');
+  });
+
+  it('escapes Unicode line separators from DB-sourced migration versions', () => {
+    const result = reconcileMigrationState({
+      availableMigrations: [migration('000001', 'a'.repeat(64))],
+      appliedMigrations: [applied('000002\u0085next\u2028line\u2029paragraph', 'a'.repeat(64))],
+    });
+
+    const message = formatMigrationCheckResult(result);
+    expect(message).toContain('actual "000002\\u0085next\\u2028line\\u2029paragraph"');
+    expect(message).not.toContain('\u0085');
+    expect(message).not.toContain('\u2028');
+    expect(message).not.toContain('\u2029');
+  });
+
+  it('keeps version mismatch authoritative when version, checksum, and name all differ', () => {
+    const result = reconcileMigrationState({
+      availableMigrations: [migration('000001', 'a'.repeat(64))],
+      appliedMigrations: [
+        {
+          ...applied('000002', 'b'.repeat(64)),
+          name: 'renamed_migration_000002',
+        },
+      ],
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      status: 'version_mismatch',
+      appliedCount: 1,
+      availableCount: 1,
+      expectedVersion: '000001',
+      actualVersion: '000002',
+    });
+    const message = formatMigrationCheckResult(result);
+    expect(message).not.toContain('checksum');
+    expect(message).not.toContain('renamed_migration_000002');
+  });
+
   it('fails closed when an applied migration name differs from immutable repository history', () => {
     const available = migration('000001', 'a'.repeat(64));
     const result = reconcileMigrationState({
@@ -110,6 +179,24 @@ describe('reconcileMigrationState', () => {
     expect(message).not.toContain('\t');
   });
 
+  it('escapes Unicode line separators from DB-sourced migration names', () => {
+    const result = reconcileMigrationState({
+      availableMigrations: [migration('000001', 'a'.repeat(64))],
+      appliedMigrations: [
+        {
+          ...applied('000001', 'a'.repeat(64)),
+          name: 'renamed\u0085next\u2028line\u2029paragraph',
+        },
+      ],
+    });
+
+    const message = formatMigrationCheckResult(result);
+    expect(message).toContain('actual "renamed\\u0085next\\u2028line\\u2029paragraph"');
+    expect(message).not.toContain('\u0085');
+    expect(message).not.toContain('\u2028');
+    expect(message).not.toContain('\u2029');
+  });
+
   it('keeps checksum mismatch authoritative when both checksum and name differ', () => {
     const result = reconcileMigrationState({
       availableMigrations: [migration('000001', 'a'.repeat(64))],
@@ -141,6 +228,23 @@ describe('reconcileMigrationState', () => {
       ok: false,
       status: 'name_mismatch',
       version: '000001',
+    });
+  });
+
+  it('rejects a version mismatch in the comparable prefix before reporting DB ahead', () => {
+    const result = reconcileMigrationState({
+      availableMigrations: [migration('000001', 'a'.repeat(64))],
+      appliedMigrations: [
+        applied('000009', 'a'.repeat(64)),
+        applied('000010', 'b'.repeat(64)),
+      ],
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: 'version_mismatch',
+      expectedVersion: '000001',
+      actualVersion: '000009',
     });
   });
 

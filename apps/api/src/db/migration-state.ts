@@ -16,6 +16,14 @@ export type MigrationCheckResult =
     }
   | {
       readonly ok: false;
+      readonly status: 'version_mismatch';
+      readonly appliedCount: number;
+      readonly availableCount: number;
+      readonly expectedVersion: string;
+      readonly actualVersion: string;
+    }
+  | {
+      readonly ok: false;
       readonly status: 'checksum_mismatch';
       readonly appliedCount: number;
       readonly availableCount: number;
@@ -54,7 +62,17 @@ export function reconcileMigrationState(input: {
       throw new Error('migration reconciliation index is unexpectedly out of range');
     }
 
-    if (applied.version !== available.version || applied.checksumSha256 !== available.checksumSha256) {
+    if (applied.version !== available.version) {
+      return {
+        ok: false,
+        status: 'version_mismatch',
+        appliedCount: appliedMigrations.length,
+        availableCount: availableMigrations.length,
+        expectedVersion: available.version,
+        actualVersion: applied.version,
+      };
+    }
+    if (applied.checksumSha256 !== available.checksumSha256) {
       return {
         ok: false,
         status: 'checksum_mismatch',
@@ -107,6 +125,12 @@ export function reconcileMigrationState(input: {
   };
 }
 
+function quoteMigrationDiagnosticValue(value: string): string {
+  return JSON.stringify(value).replace(/[\u0085\u2028\u2029]/gu, (separator) =>
+    `\\u${separator.charCodeAt(0).toString(16).padStart(4, '0')}`,
+  );
+}
+
 export function formatMigrationCheckResult(result: MigrationCheckResult): string {
   if (result.ok) {
     if (result.status === 'db_ahead') {
@@ -115,12 +139,16 @@ export function formatMigrationCheckResult(result: MigrationCheckResult): string
     return `DB schema is up to date (${result.appliedCount}/${result.availableCount}).`;
   }
 
+  if (result.status === 'version_mismatch') {
+    return `DB migration version mismatch: expected ${quoteMigrationDiagnosticValue(result.expectedVersion)}, actual ${quoteMigrationDiagnosticValue(result.actualVersion)}`;
+  }
+
   if (result.status === 'checksum_mismatch') {
     return `DB schema checksum mismatch at ${result.version}: expected ${result.expectedChecksumSha256}, actual ${result.actualChecksumSha256}`;
   }
 
   if (result.status === 'name_mismatch') {
-    return `DB migration name mismatch at ${result.version}: expected ${JSON.stringify(result.expectedName)}, actual ${JSON.stringify(result.actualName)}`;
+    return `DB migration name mismatch at ${result.version}: expected ${quoteMigrationDiagnosticValue(result.expectedName)}, actual ${quoteMigrationDiagnosticValue(result.actualName)}`;
   }
 
   return `DB schema requires explicit migration apply before startup: ${result.pendingVersions.join(', ')}`;

@@ -67,6 +67,39 @@ async function captureRejection(run: () => Promise<unknown>): Promise<unknown> {
 }
 
 describe('applyPendingMigrations client lifecycle', () => {
+  it('rejects migration version drift before acquiring an operation client or running SQL', async () => {
+    const initialCheck = createCheckClient([
+      {
+        version: '000009',
+        name: migrations[0]?.name,
+        checksum_sha256: migrations[0]?.checksumSha256,
+      },
+    ]);
+    const { pool, connect } = createPool([initialCheck]);
+
+    const error = await captureRejection(() =>
+      applyPendingMigrations(pool, migrations.slice(0, 1), {
+        appliedBy: 'synthetic-migration-test',
+      }),
+    );
+
+    expect(error).toBeInstanceOf(MigrationStateError);
+    expect((error as MigrationStateError).result).toEqual({
+      ok: false,
+      status: 'version_mismatch',
+      appliedCount: 1,
+      availableCount: 1,
+      expectedVersion: '000001',
+      actualVersion: '000009',
+    });
+    expect((error as Error).message).toBe(
+      'DB migration version mismatch: expected "000001", actual "000009"',
+    );
+    expect(connect).toHaveBeenCalledOnce();
+    expect(initialCheck.query).toHaveBeenCalledOnce();
+    expect(initialCheck.release.mock.calls).toEqual([[]]);
+  });
+
   it('rejects migration name drift before acquiring an operation client or running SQL', async () => {
     const initialCheck = createCheckClient([
       {
@@ -134,6 +167,24 @@ describe('applyPendingMigrations client lifecycle', () => {
   });
 
   it.each([
+    {
+      label: 'version drift',
+      finalRows: [
+        {
+          version: '000009',
+          name: migrations[0]?.name,
+          checksum_sha256: migrations[0]?.checksumSha256,
+        },
+      ],
+      expectedResult: {
+        ok: false,
+        status: 'version_mismatch',
+        appliedCount: 1,
+        availableCount: 1,
+        expectedVersion: '000001',
+        actualVersion: '000009',
+      },
+    },
     {
       label: 'checksum drift',
       finalRows: [

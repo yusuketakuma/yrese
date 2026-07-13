@@ -2588,6 +2588,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused reception-dashboard69、web335、API256 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `237000e` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、independent/domain reviewとfull gates PASS、unsupported queue 2xxをbody parse/state commit前にfail-closed拒否し、exact200 date/identity/orderとrunner state semanticsを維持。
 
+- [x] WP-4129 distinguish migration version drift from checksum drift(R1 operations/data integrity) — FINALIZED
+  - 発見根拠: APPROVED DB-002はprefix-compatible DB aheadと同一version checksum driftを区別するが、pure reconciliationはcomparable indexのversion不一致をchecksum不一致とOR結合し、同一checksumでも`checksum_mismatch`として誤診した。startup/applyは既にnon-okをfail-closed拒否するためpermission/data bypassではなく運用診断整合性gap。
+  - scope: exact6 `apps/api/src/db/migration-state.ts`, `apps/api/src/db/migration-state.test.ts`, `apps/api/src/db/migration-runner.test.ts`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。runner production logic、CLI、migration loader/files/SQL、schema/history repair、DB操作、contracts/OpenAPI/web/SSOT、package/lockは変更しない。
+  - implementation: closed result unionへdistinct `version_mismatch(expectedVersion, actualVersion)`を追加。comparable prefixをversion→checksum→nameのfull precedenceで照合後にdb_ahead/unapplied/up_to_dateを判定。formatterは両versionをJSON quote/escapeし、checksum/name/SQL/appliedBy/connection情報を含めない。runner production codeは既存non-ok拒否を維持。
+  - acceptance: version-only/all-field driftはversion優先、same-version checksum+name driftはchecksum、name-onlyはname。comparable-prefix version driftはdb_ahead前に拒否。initial runnerはSELECT/release後operation client/SQL zero、final driftはcommit済みoperationをundo/retryせずexact error。history repair/apply/DMLなし。
+  - review_results: mapper APPROVED、planner APPROVED_WITH_PINS。Domain initial LOW(U+0085/U+2028/U+2029がliteralのままで一行診断を破れる)をshared diagnostic quote+version/name regression testsで修正し、DB/data-integrity/operations/security/privacy/test/medical domain re-reviewとindependent verifierはAPPROVED、findingsなし、human apply gate不要。
+  - validation_results: focused migration state14 + runner11 = 25、API264 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
+  - landing_record: exact6 implementation landing pending。version driftをfail-closedのままdistinct one-line escaped diagnosticへ分離し、runner/DB behaviorは不変。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
