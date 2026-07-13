@@ -24,6 +24,7 @@ import {
   receptionInvalidRequestErrorCode,
   receptionPatientIdentityMismatchErrorMessage,
   receptionPatientSchemaInvariantErrorMessage,
+  receptionQueueBusinessDateInvariantErrorMessage,
   receptionQueueDuplicateIdentityInvariantErrorMessage,
   receptionCreatedStatusInvariantErrorMessage,
   receptionCreatedAcceptedAtInvariantErrorMessage,
@@ -1068,6 +1069,147 @@ describe('buildServer', () => {
     ]);
   });
 
+  it('accepts an entry whose UTC date differs but whose JST business date matches the request', async () => {
+    const boundaryEntry = {
+      receptionId: 'reception-jst-boundary',
+      acceptedAt: '2026-07-09T15:00:00.000Z',
+      receptionStatus: 'WAITING' as const,
+      prescriptionIntakeType: 'paper' as const,
+      patient: {
+        patientId: 'patient-jst-boundary',
+        name: '合成 境界患者',
+        kana: 'ゴウセイ キョウカイカンジャ',
+        birthDate: '1990-01-01',
+        sex: 'unknown' as const,
+        patientNumber: 'JST-BOUNDARY-001',
+        eligibilityStatus: 'NOT_CHECKED' as const,
+      },
+    };
+    const list = vi.fn<ReceptionRepository['list']>(async () => [boundaryEntry]);
+    const server = buildDevTestServer({
+      receptionRepository: { list, create: vi.fn<ReceptionRepository['create']>() },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-10',
+      headers: tenantOneReceptionReadHeaders,
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ date: '2026-07-10', entries: [boundaryEntry] });
+  });
+
+  it.each([
+    ['previous', '2026-07-08T14:59:59.999Z'],
+    ['next', '2026-07-09T15:00:00.000Z'],
+  ] as const)('rejects a schema-valid entry from the %s JST business date without echoing PHI', async (_label, acceptedAt) => {
+    const wrongDateEntry = {
+      receptionId: 'reception-wrong-date-sensitive',
+      acceptedAt,
+      receptionStatus: 'WAITING' as const,
+      prescriptionIntakeType: 'paper' as const,
+      patient: {
+        patientId: 'patient-wrong-date-sensitive',
+        name: '合成 別日患者',
+        kana: 'ゴウセイ ベツジツカンジャ',
+        birthDate: '1990-01-01',
+        sex: 'unknown' as const,
+        patientNumber: 'WRONG-DATE-SECRET-001',
+        eligibilityStatus: 'NOT_CHECKED' as const,
+      },
+    };
+    const list = vi.fn<ReceptionRepository['list']>(async () => [wrongDateEntry]);
+    const server = buildDevTestServer({
+      receptionRepository: { list, create: vi.fn<ReceptionRepository['create']>() },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-09',
+      headers: tenantOneReceptionReadHeaders,
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({
+      statusCode: 500,
+      error: 'Internal Server Error',
+      message: receptionQueueBusinessDateInvariantErrorMessage,
+    });
+    for (const sensitiveValue of [
+      '2026-07-09',
+      wrongDateEntry.receptionId,
+      wrongDateEntry.acceptedAt,
+      wrongDateEntry.receptionStatus,
+      wrongDateEntry.patient.patientId,
+      wrongDateEntry.patient.name,
+      wrongDateEntry.patient.kana,
+      wrongDateEntry.patient.patientNumber,
+    ]) {
+      expect(response.body).not.toContain(sensitiveValue);
+    }
+  });
+
+  it('rejects a mixed-date queue without returning the otherwise-valid row', async () => {
+    const valid = {
+      receptionId: 'reception-valid-sensitive',
+      acceptedAt: '2026-07-09T00:15:00.000Z',
+      receptionStatus: 'WAITING' as const,
+      prescriptionIntakeType: 'paper' as const,
+      patient: {
+        patientId: 'patient-valid-sensitive',
+        name: '合成 当日患者',
+        kana: 'ゴウセイ トウジツカンジャ',
+        birthDate: '1990-01-01',
+        sex: 'unknown' as const,
+        patientNumber: 'VALID-DATE-SECRET-001',
+        eligibilityStatus: 'NOT_CHECKED' as const,
+      },
+    };
+    const wrongDate = {
+      ...valid,
+      receptionId: 'reception-mixed-wrong-date',
+      acceptedAt: '2026-07-09T15:00:00.000Z',
+      patient: {
+        ...valid.patient,
+        patientId: 'patient-mixed-wrong-date',
+        patientNumber: 'MIXED-WRONG-SECRET-001',
+      },
+    };
+    const server = buildDevTestServer({
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => [valid, wrongDate]),
+        create: vi.fn<ReceptionRepository['create']>(),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-09',
+      headers: tenantOneReceptionReadHeaders,
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.body).toContain(receptionQueueBusinessDateInvariantErrorMessage);
+    for (const sensitiveValue of [
+      valid.receptionId,
+      valid.patient.patientId,
+      valid.patient.patientNumber,
+      wrongDate.receptionId,
+      wrongDate.patient.patientId,
+      wrongDate.patient.patientNumber,
+    ]) {
+      expect(response.body).not.toContain(sensitiveValue);
+    }
+  });
+
   it.each([
     ['identical', false],
     ['conflicting', true],
@@ -1093,7 +1235,7 @@ describe('buildServer', () => {
       const second = conflicting
         ? {
             ...first,
-            acceptedAt: '2026-07-09T01:15:00.000Z',
+            acceptedAt: '2026-07-09T15:00:00.000Z',
             receptionStatus: 'IN_PROGRESS' as const,
             patient: {
               ...first.patient,

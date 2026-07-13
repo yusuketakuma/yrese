@@ -50,7 +50,11 @@ import {
 } from './plugins/tenant-context.js';
 import { InMemoryAuditRepository, type AuditRepository } from './audit-repository.js';
 import { InMemoryPatientRepository, type PatientRepository } from './patient-repository.js';
-import { InMemoryReceptionRepository, type ReceptionRepository } from './reception-repository.js';
+import {
+  businessDateFromAcceptedAt,
+  InMemoryReceptionRepository,
+  type ReceptionRepository,
+} from './reception-repository.js';
 
 export type { HealthResponse } from '@yrese/contracts';
 
@@ -79,6 +83,8 @@ export const receptionCreatedAcceptedAtInvariantErrorMessage =
   'Created reception did not preserve the server-issued acceptance time';
 export const receptionQueueDuplicateIdentityInvariantErrorMessage =
   'Reception repository returned duplicate reception identities';
+export const receptionQueueBusinessDateInvariantErrorMessage =
+  'Reception repository returned entries outside the requested business date';
 const auditLogProjectionInvariantErrorMessage =
   'Audit event display projection failed for a verified hash chain';
 export const auditLogScopeInvariantErrorMessage =
@@ -369,6 +375,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           throw new Error(receptionQueueDuplicateIdentityInvariantErrorMessage);
         }
         receptionIds.add(entry.receptionId);
+      }
+      for (const entry of response.entries) {
+        if (businessDateFromAcceptedAt(new Date(entry.acceptedAt)) !== query.data.date) {
+          throw new Error(receptionQueueBusinessDateInvariantErrorMessage);
+        }
       }
       return response;
     },
