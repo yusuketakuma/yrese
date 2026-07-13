@@ -13,6 +13,7 @@
 - clean baseline `8a06899`。missing/unavailable apps/packagesを空scopeとして全architecture rule未実行でもPASSするMEDIUM control-plane gapをexact5で修正中。
 - real non-symlink protected scopes、workspace manifest、source coverageを先行検証し、scope/traversal/read/JSON/symlink failureは固定非機密errorで拒否。既存boundary rule/regex/violation messageは不変。
 - mapper CONCUR、pre-plan APPROVED_WITH_PINS、integrated domain review APPROVED。independent verifier initial MEDIUM ignored-name file gapを修正し、re-verification APPROVED、remaining findingsなし。修正後node syntax、script harness、live boundaries、API264 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。
+- exact5 implementation commit `b4de089` を対象feature branchへpush済み。
 
 ### WP-4131 common credential and shell extension secret scan — FINALIZED
 
