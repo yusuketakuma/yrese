@@ -40,6 +40,24 @@ export type AuditLogRefreshState =
 
 export const auditLogResponseInvariantErrorMessage =
   "Audit response contains inconsistent verification counts";
+export const auditLogResponseOrderInvariantErrorMessage =
+  "Verified audit response is not ordered newest first";
+
+function compareUtcIsoInstants(left: string, right: string): number {
+  const leftSecond = left.slice(0, 19);
+  const rightSecond = right.slice(0, 19);
+  if (leftSecond !== rightSecond) {
+    return leftSecond < rightSecond ? -1 : 1;
+  }
+
+  const leftFraction = left.endsWith("Z") && left[19] === "." ? left.slice(20, -1) : "";
+  const rightFraction = right.endsWith("Z") && right[19] === "." ? right.slice(20, -1) : "";
+  const width = Math.max(leftFraction.length, rightFraction.length);
+  const normalizedLeft = leftFraction.padEnd(width, "0");
+  const normalizedRight = rightFraction.padEnd(width, "0");
+  if (normalizedLeft === normalizedRight) return 0;
+  return normalizedLeft < normalizedRight ? -1 : 1;
+}
 
 function auditLogErrorNotice(error: unknown): ErrorNoticeProps {
   return typeof error === "object" && error !== null && "notice" in error
@@ -94,6 +112,18 @@ export async function fetchAuditLog(
       parsed.chainVerification.breakIndex < parsed.totalCount;
   if (parsed.entries.length > parsed.totalCount || !countsAreConsistent) {
     throw new Error(auditLogResponseInvariantErrorMessage);
+  }
+  if (parsed.chainVerification.ok) {
+    for (let index = 1; index < parsed.entries.length; index += 1) {
+      if (
+        compareUtcIsoInstants(
+          parsed.entries[index - 1]!.wallClock,
+          parsed.entries[index]!.wallClock,
+        ) < 0
+      ) {
+        throw new Error(auditLogResponseOrderInvariantErrorMessage);
+      }
+    }
   }
   return parsed;
 }

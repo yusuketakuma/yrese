@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4117 healthy audit browser chronology validation — VERIFIED / LANDING_PENDING
+
+- clean baseline `f28c6fa`。schema-valid healthy responseのwallClock順序違反をbrowserがverifiedな最新証跡として表示できる実在R2 audit-evidence gapをexact5で修正中。
+- duplicate/count precedence後、healthyだけをsub-millisecond精度のexact UTC instantでnon-increasing検査。equal許可、違反はfixed non-echo全体拒否。broken raw-window/CRITICAL、sortなし、last verified/retryを維持。
+- independent verifierとaudit/data/security/privacy/API/frontend/accessibility/medical review APPROVED、findingsなし。focused audit web38、web290、API233 + PostgreSQL14 expected skips、audit183、workspace typecheck/test/buildと全gate PASS。exact-stage landingのみpending。
+
 ### WP-4116 repository patient cursor consumed-offset binding — LANDED
 
 - clean baseline `52f6436`。repository next cursorをrequest offset/返却件数へ拘束せずAPIが署名できる実在R2 pagination/data-integrity gapをexact5で修正中。

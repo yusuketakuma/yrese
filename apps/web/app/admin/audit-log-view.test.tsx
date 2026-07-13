@@ -10,6 +10,7 @@ import {
   AuditLogView,
   ChainVerificationNotice,
   auditLogResponseInvariantErrorMessage,
+  auditLogResponseOrderInvariantErrorMessage,
   createAuditLogRunner,
   fetchAuditLog,
   type AuditLogState,
@@ -541,6 +542,63 @@ describe("createAuditLogRunner (latest-only / lifecycle invalidation)", () => {
     }
   });
 
+  it("retains the last verified view when refresh order is invalid, then installs a valid retry", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const outOfOrder: AuditLogResponse = {
+      ...SAMPLE,
+      entries: [SAMPLE.entries[1]!, SAMPLE.entries[0]!],
+    };
+    const replacement: AuditLogResponse = {
+      ...SAMPLE,
+      entries: [SAMPLE.entries[0]!],
+      totalCount: 1,
+      chainVerification: { ok: true, checkedCount: 1 },
+    };
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(outOfOrder), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(replacement), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    const recorder = createStateRecorder({
+      kind: "loaded",
+      data: SAMPLE,
+      refreshState: { kind: "idle" },
+    });
+    const runner = createAuditLogRunner(() => fetchAuditLog(fetchImpl), recorder.emit);
+
+    try {
+      await runner.run();
+      const failed = recorder.current();
+      expect(failed.kind).toBe("loaded");
+      if (failed.kind !== "loaded") throw new Error("expected retained audit view");
+      expect(failed.data).toBe(SAMPLE);
+      expect(failed.refreshState).toMatchObject({
+        kind: "error",
+        notice: { message: "監査ログの処理に失敗しました。" },
+      });
+      expect(JSON.stringify(failed)).not.toContain(auditLogResponseOrderInvariantErrorMessage);
+
+      await runner.run();
+      expect(recorder.current()).toEqual({
+        kind: "loaded",
+        data: replacement,
+        refreshState: { kind: "idle" },
+      });
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("keeps initial failure top-level and retries with initial loading semantics", async () => {
     const fetcher = vi
       .fn<() => Promise<AuditLogResponse>>()
@@ -671,6 +729,142 @@ describe("fetchAuditLog transport contract", () => {
           ),
         ),
       ).resolves.toEqual(duplicateBroken);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it.each([
+    [
+      "reverses the newest-first order",
+      [SAMPLE.entries[1]!, SAMPLE.entries[0]!],
+    ],
+    [
+      "contains a newer event after a descending prefix",
+      [
+        { ...SAMPLE.entries[0]!, wallClock: "2026-07-11T03:00:00.000000Z" },
+        { ...SAMPLE.entries[1]!, wallClock: "2026-07-11T01:00:00.000001Z" },
+        {
+          ...SAMPLE.entries[1]!,
+          eventId: "evt-order-sensitive-003",
+          wallClock: "2026-07-11T01:00:00.000002Z",
+        },
+      ],
+    ],
+  ] as const)("rejects a healthy response that %s without echoing audit evidence", async (_label, entries) => {
+    vi.stubEnv("NODE_ENV", "development");
+    const body = {
+      entries,
+      totalCount: entries.length,
+      chainVerification: { ok: true as const, checkedCount: entries.length },
+    };
+    try {
+      await expect(
+        fetchAuditLog(
+          vi.fn().mockResolvedValue(
+            new Response(JSON.stringify(body), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        ),
+      ).rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe(auditLogResponseOrderInvariantErrorMessage);
+        for (const entry of entries) {
+          for (const sensitiveValue of [
+            entry.eventId,
+            entry.wallClock,
+            entry.actorId,
+            entry.targetRef.id,
+          ]) {
+            expect((error as Error).message).not.toContain(sensitiveValue);
+          }
+        }
+        return true;
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("keeps count validation authoritative over a healthy order inversion", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const body = {
+      ...SAMPLE,
+      entries: [SAMPLE.entries[1]!, SAMPLE.entries[0]!],
+      chainVerification: { ok: true as const, checkedCount: 1 },
+    };
+    try {
+      await expect(
+        fetchAuditLog(
+          vi.fn().mockResolvedValue(
+            new Response(JSON.stringify(body), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        ),
+      ).rejects.toThrow(auditLogResponseInvariantErrorMessage);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("accepts exact descending and equal sub-millisecond healthy instants unchanged", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const body: AuditLogResponse = {
+      entries: [
+        { ...SAMPLE.entries[0]!, wallClock: "2026-07-11T01:00:00.000002Z" },
+        { ...SAMPLE.entries[1]!, wallClock: "2026-07-11T01:00:00.000001Z" },
+        {
+          ...SAMPLE.entries[1]!,
+          eventId: "evt-equal-instant-003",
+          wallClock: "2026-07-11T01:00:00.0000010Z",
+        },
+      ],
+      totalCount: 3,
+      chainVerification: { ok: true, checkedCount: 3 },
+    };
+    try {
+      await expect(
+        fetchAuditLog(
+          vi.fn().mockResolvedValue(
+            new Response(JSON.stringify(body), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        ),
+      ).resolves.toEqual(body);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("keeps out-of-order wallClocks visible when the response is already a broken chain", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const body: AuditLogResponse = {
+      ...SAMPLE,
+      entries: [SAMPLE.entries[1]!, SAMPLE.entries[0]!],
+      chainVerification: {
+        ok: false,
+        checkedCount: 1,
+        breakIndex: 1,
+        reason: "entry_hash_mismatch",
+      },
+    };
+    try {
+      await expect(
+        fetchAuditLog(
+          vi.fn().mockResolvedValue(
+            new Response(JSON.stringify(body), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+          ),
+        ),
+      ).resolves.toEqual(body);
     } finally {
       vi.unstubAllEnvs();
     }
