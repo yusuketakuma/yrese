@@ -12,6 +12,7 @@
 
 - clean baseline `9f221b2`。empty rootでeligible scan 0件でもPASSするMEDIUM security control gapをexact5で修正中。SSOT scope候補は有効だが次順位へ延期。
 - root/entry/symlink/ignored-kind/nonempty/read validationを追加。initial self-scan synthetic literal findingをruntime splitへ修正後、domain/independent review APPROVED、findingsなし。script harness/live secrets/node syntax、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。
+- exact5 implementation commit `8c9509e` を対象feature branchへpush済み。
 
 ### WP-4136 invalid migration filename Unicode separator escape — FINALIZED
 

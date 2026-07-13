@@ -4,7 +4,7 @@ This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
 - Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. Remaining57 classification, WP-0020〜0023 reconciliation, W31 and WP-4081 are LANDED.
-- Current task: WP-4137 secret scan protected-scope fail-closed FINALIZED at clean baseline `9f221b2`. Exact5 only. Require real non-symlink root、valid visited/ignored entry kinds、eligible text >=1、fail-closed traversal/read before unchanged secret patterns/findings。Mapper/pre-plan/domain/independent verifier APPROVED、findingsなし。Initial self-scan fixture literal finding fixed; script harness/live secrets/node syntax、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build and all gates PASS。Next: exact-path landing then SSOT scope candidate fresh pre-plan。WP-4092 CI VERIFY_REQUIRED and WP-4057/WP-4050 remain human-gated.
+- Current task: WP-4137 secret scan protected-scope fail-closed LANDED in `8c9509e`. Exact5 only. Real protected scope and eligible nonempty inventory now precede unchanged secret patterns/findings。Mapper/pre-plan/domain/independent verifier APPROVED、findingsなし、full gates PASS。Next: fresh mapping/pre-plan with SSOT index scope MEDIUM candidate。WP-4092 CI VERIFY_REQUIRED and WP-4057/WP-4050 remain human-gated.
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation

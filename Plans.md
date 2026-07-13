@@ -2674,6 +2674,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - review_results: mapper direct repro、planner re-adjudication APPROVED_WITH_PINS、integrated domain reviewとindependent verifier APPROVED、findingsなし、human gate不要。
   - validation_results: self-scan fixture literal修正後、script harness/live secrets/node syntax、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/deps high0 critical0/SBOM231/diff全PASS。
   - rollback: exact5 revert。実secret発見時のremoval/rotationは別human gate。
+  - landing_record: implementation commit `8c9509e` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、full gates、domain/independent review PASS。secret detection semantics不変でzero-input false greenを解消。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
