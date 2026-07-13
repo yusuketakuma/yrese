@@ -458,6 +458,59 @@ async function testSecretAllowlistAndDetection() {
     allowedSqlResult.status === 0,
     `check-secrets should honor a same-line SQL allow marker: ${outputOf(allowedSqlResult)}`,
   );
+
+  const syntheticShellSecret = ["Synthetic", "Shell", "Credential", "1234"].join("_");
+  for (const extension of [".sh", ".bash", ".zsh"]) {
+    const shellRoot = path.join(tempRoot, `secrets-shell-${extension.slice(1)}`);
+    const relativePath = `fixture${extension}`;
+    await writeText(path.join(shellRoot, relativePath), `api_key='${syntheticShellSecret}'\n`);
+    const result = runNode("check-secrets.mjs", [], { cwd: shellRoot });
+    const output = outputOf(result);
+    assert(result.status === 1, `check-secrets should scan ${extension} generic assignments`);
+    assert(
+      output.includes(`${relativePath}:1: Generic secret assignment`),
+      `${extension} finding should include relative path, line, and pattern name`,
+    );
+    assert(!output.includes(syntheticShellSecret), `${extension} finding must not expose the raw synthetic value`);
+
+    const allowRoot = path.join(tempRoot, `secrets-shell-allow-${extension.slice(1)}`);
+    await writeText(
+      path.join(allowRoot, relativePath),
+      `api_key='${syntheticShellSecret}' # secret-scan: allow\n`,
+    );
+    const allowResult = runNode("check-secrets.mjs", [], { cwd: allowRoot });
+    assert(allowResult.status === 0, `check-secrets should honor ${extension} same-line allow markers`);
+  }
+
+  const privateKeyHeader = ["-----BEGIN", "PRIVATE KEY-----"].join(" ");
+  for (const extension of [".pem", ".key"]) {
+    const keyRoot = path.join(tempRoot, `secrets-key-${extension.slice(1)}`);
+    const relativePath = `fixture${extension}`;
+    await writeText(path.join(keyRoot, relativePath), `${privateKeyHeader}\nsynthetic fixture only\n`);
+    const result = runNode("check-secrets.mjs", [], { cwd: keyRoot });
+    const output = outputOf(result);
+    assert(result.status === 1, `check-secrets should scan ${extension} private-key headers`);
+    assert(
+      output.includes(`${relativePath}:1: Private key block`),
+      `${extension} finding should include relative path, line, and pattern name`,
+    );
+    assert(!output.includes("synthetic fixture only"), `${extension} finding must not expose fixture content`);
+
+    const allowRoot = path.join(tempRoot, `secrets-key-allow-${extension.slice(1)}`);
+    await writeText(path.join(allowRoot, relativePath), `${privateKeyHeader} # secret-scan: allow\n`);
+    const allowResult = runNode("check-secrets.mjs", [], { cwd: allowRoot });
+    assert(allowResult.status === 0, `check-secrets should honor ${extension} same-line allow markers`);
+  }
+
+  const cleanShellRoot = path.join(tempRoot, "secrets-shell-clean");
+  await writeText(path.join(cleanShellRoot, "fixture.sh"), "echo 'synthetic fixture'\n");
+  await writeText(path.join(cleanShellRoot, "certificate.pem"), "-----BEGIN CERTIFICATE-----\nfixture\n");
+  await writeText(path.join(cleanShellRoot, "public.key"), "-----BEGIN PUBLIC KEY-----\nfixture\n");
+  const cleanShellResult = runNode("check-secrets.mjs", [], { cwd: cleanShellRoot });
+  assert(
+    cleanShellResult.status === 0,
+    `check-secrets should preserve clean shell/certificate/public-key boundaries: ${outputOf(cleanShellResult)}`,
+  );
 }
 
 async function testCleanRemovesGeneratedArtifacts() {

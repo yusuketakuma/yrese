@@ -37,6 +37,7 @@ const secretPatterns = [
 ];
 
 const textExtensions = new Set([
+  ".bash",
   ".cjs",
   ".css",
   ".env",
@@ -44,15 +45,19 @@ const textExtensions = new Set([
   ".js",
   ".json",
   ".jsx",
+  ".key",
   ".md",
   ".mjs",
   ".mts",
+  ".pem",
+  ".sh",
   ".sql",
   ".ts",
   ".tsx",
   ".txt",
   ".yaml",
   ".yml",
+  ".zsh",
 ]);
 
 function isLikelySecretValue(value) {

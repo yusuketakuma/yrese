@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4131 common credential and shell extension secret scan — FINALIZED
+
+- clean baseline `3fbace9`。既存secret patternが`.pem/.key/.sh/.bash/.zsh`を拡張子allow-list外として走査しないHIGH CI security gapをexact5で修正中。
+- extension allow-listだけへ5種を追加し、synthetic shell assignment/private-key headerの検出、relative location/type、raw value非echo、allow marker、clean certificate/public-key境界を回帰固定。regex/探索/symlink/ignored scope/runtime/DB/API/SSOTは不変。
+- mapper HIGH、pre-plan再裁定APPROVED_WITH_PINS、integrated domain reviewとindependent verifier APPROVED、findingsなし。node syntax、script harness、live secret gate、API264 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。
+
 ### WP-4130 calculation-purity scan-scope fail-closed — FINALIZED
 
 - clean baseline `358f115`。missing/unreadable/empty `packages/calculation`をproduction source 0件としてPASSするMEDIUM CAL-010/tooling gapをexact5で修正中。
