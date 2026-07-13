@@ -12,6 +12,7 @@
 
 - clean baseline `fe7ebb0`。allowed DB-ahead success diagnosticのraw DB version joinを既存one-line quote helperへ統合するexact5を実装中。
 - raw result/order/reconcile/startup semantics不変。domain/independent review APPROVED、findingsなし。state15、API269 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。
+- exact5 implementation commit `5709f3b` を対象feature branchへpush済み。
 
 ### WP-4134 MigrationStateError raw-result enumeration — FINALIZED
 
