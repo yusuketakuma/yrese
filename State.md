@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4130 calculation-purity scan-scope fail-closed — FINALIZED
+
+- clean baseline `358f115`。missing/unreadable/empty `packages/calculation`をproduction source 0件としてPASSするMEDIUM CAL-010/tooling gapをexact5で修正中。
+- real non-symlink target、fail-closed traversal/read、production source >=1を要求。missing/file/empty/test-only/ignored-only/target+nested symlinkをfixed non-sensitive errorで拒否し、既存5 forbidden patternsと除外規則は維持。
+- mapper APPROVED、pre-plan再裁定APPROVED_WITH_PINS、integrated domain reviewとindependent verifier APPROVED、findingsなし。node syntax、script harness、live calculation-purity、API264 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。exact5 landing pending。
+
 ### WP-4129 migration version-drift diagnostic — FINALIZED
 
 - clean baseline `23e0647`。comparable migration version driftをchecksum driftとして誤診するR1 operations/data-integrity gapをAPI exact6で修正中。startup/applyのfail-closed自体は既存維持。

@@ -2597,6 +2597,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - validation_results: focused migration state14 + runner11 = 25、API264 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/scripts/diff全PASS。
   - landing_record: implementation commit `17a94f8` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact6、independent/domain reviewとfull gates PASS、version driftをfail-closedのままdistinct one-line escaped diagnosticへ分離し、runner/DB behaviorは不変。
 
+- [x] WP-4130 make calculation-purity scan scope fail closed(MEDIUM calculation safety/tooling) — FINALIZED
+  - 発見根拠: APPROVED CAL-010の非緩和pure-function gate `scripts/check-calculation-purity.mjs`はprotected targetへの全`stat` failure/missingを空配列へ変換し、production source 0件でもPASSした。missing supplied rootでexit0/PASSをlive再現し、package削除・rename・unreadable/empty scopeでCI control自体がsilent失効する実在gap。
+  - scope: exact5 `scripts/check-calculation-purity.mjs`, `scripts/check-scripts.mjs`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。calculation source、CAL-010/docs/SSOT、package/lock、CI、API/web/DB/migrationsは変更しない。
+  - implementation: exact targetをreal directoryかつnon-symlinkとして検証し、traversal/read error、nested symlink/special entry、eligible production source 0件を固定non-sensitive errorでexit1。valid nonempty scopeだけを既存5 forbidden patternsへ通し、comment/test/spec/ignored-dir除外と全件violation収集を維持。
+  - acceptance: missing root/target、target file/symlink、empty/test-only/ignored-only、nested symlinkはFAIL/no PASS、absolute path/OS error/source marker非echo。clean sourceはPASS、既存forbidden matrixはexact evidence付きFAIL。target validation→traversal/read→nonempty→scan/reportのprecedenceを維持。
+  - review_results: mapper APPROVED、planner再裁定APPROVED_WITH_PINS。calculation/CAL-010/test/tooling/security/operations/medical/claims/privacy domain reviewとindependent verifierはAPPROVED、findingsなし、human gate不要。静的5-pattern gateは完全な意味論的純粋性証明とは主張しない。
+  - validation_results: node syntax checks、script harness、live calculation-purity、API264 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、OpenAPI/boundaries/SSOT173/secrets/deps high0 critical0/SBOM231/diff全PASS。
+  - landing_record: exact5 implementation landing pending。protected calculation scope欠落/不正/空をsilent PASSさせず、既存CAL-010 detector semanticsを維持。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -344,6 +344,67 @@ async function testCalculationPurityViolationDetection() {
   }
   assert(output.includes("comments are ignored"), "purity violation output should document comment handling");
   assert(output.includes("test/spec files are excluded"), "purity violation output should document test handling");
+}
+
+async function testCalculationPurityInvalidScopesFailClosed() {
+  const fixedMessage =
+    "Calculation purity check failed: protected source scope is unavailable or contains no production source files.";
+  const fixtures = [];
+
+  fixtures.push({ label: "missing root", root: path.join(tempRoot, "purity-missing-root") });
+
+  const missingTargetRoot = path.join(tempRoot, "purity-missing-target");
+  await mkdir(missingTargetRoot, { recursive: true });
+  fixtures.push({ label: "missing target", root: missingTargetRoot });
+
+  const targetFileRoot = path.join(tempRoot, "purity-target-file");
+  await writeText(path.join(targetFileRoot, "packages", "calculation"), "not a directory\n");
+  fixtures.push({ label: "target file", root: targetFileRoot });
+
+  const emptyRoot = path.join(tempRoot, "purity-empty");
+  await mkdir(path.join(emptyRoot, "packages", "calculation"), { recursive: true });
+  fixtures.push({ label: "empty target", root: emptyRoot });
+
+  const testsOnlyRoot = path.join(tempRoot, "purity-tests-only");
+  await writeText(
+    path.join(testsOnlyRoot, "packages", "calculation", "src", "only.test.ts"),
+    "expect(Date.now()).toBeGreaterThan(0);\n",
+  );
+  fixtures.push({ label: "test-only target", root: testsOnlyRoot });
+
+  const ignoredOnlyRoot = path.join(tempRoot, "purity-ignored-only");
+  await writeText(
+    path.join(ignoredOnlyRoot, "packages", "calculation", "dist", "generated.ts"),
+    "export const marker = 'ignored';\n",
+  );
+  fixtures.push({ label: "ignored-only target", root: ignoredOnlyRoot });
+
+  const targetSymlinkRoot = path.join(tempRoot, "purity-target-symlink");
+  const targetSymlinkExternal = path.join(tempRoot, "purity-target-symlink-external");
+  await writeText(path.join(targetSymlinkExternal, "index.ts"), "export const sensitiveMarker = 'do-not-echo';\n");
+  await mkdir(path.join(targetSymlinkRoot, "packages"), { recursive: true });
+  await symlink(targetSymlinkExternal, path.join(targetSymlinkRoot, "packages", "calculation"));
+  fixtures.push({ label: "target symlink", root: targetSymlinkRoot });
+
+  const nestedSymlinkRoot = path.join(tempRoot, "purity-nested-symlink");
+  const nestedSymlinkExternal = path.join(tempRoot, "purity-nested-symlink-external");
+  await writeText(path.join(nestedSymlinkRoot, "packages", "calculation", "src", "index.ts"), "export const value = 1;\n");
+  await writeText(path.join(nestedSymlinkExternal, "secret.ts"), "export const sensitiveMarker = 'do-not-echo';\n");
+  await symlink(
+    nestedSymlinkExternal,
+    path.join(nestedSymlinkRoot, "packages", "calculation", "linked-source"),
+  );
+  fixtures.push({ label: "nested symlink", root: nestedSymlinkRoot });
+
+  for (const fixture of fixtures) {
+    const result = runNode("check-calculation-purity.mjs", [fixture.root]);
+    const output = outputOf(result);
+    assert(result.status === 1, `check-calculation-purity should fail for ${fixture.label}`);
+    assert(output.includes(fixedMessage), `${fixture.label} should use the fixed scope error`);
+    assert(!output.includes("Calculation purity check passed."), `${fixture.label} must not report PASS`);
+    assert(!output.includes(fixture.root), `${fixture.label} must not echo the absolute fixture path`);
+    assert(!output.includes("do-not-echo"), `${fixture.label} must not echo nested source content`);
+  }
 }
 
 async function testSecretAllowlistAndDetection() {
@@ -922,6 +983,7 @@ try {
   await testDuplicateContractAndKernelConstDetectionAcrossApps();
   await testCalculationPurityCleanFixturePasses();
   await testCalculationPurityViolationDetection();
+  await testCalculationPurityInvalidScopesFailClosed();
   await testSecretAllowlistAndDetection();
   await testCleanRemovesGeneratedArtifacts();
   await testDependencyAuditWrapper();

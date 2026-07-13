@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-import { readdir, readFile, stat } from "node:fs/promises";
+import { lstat, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 const rootDir = path.resolve(process.argv[2] ?? process.cwd());
 const targetDir = path.join(rootDir, "packages", "calculation");
 const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"]);
 const ignoredDirs = new Set([".git", ".next", "coverage", "dist", "node_modules"]);
+const invalidScopeMessage =
+  "Calculation purity check failed: protected source scope is unavailable or contains no production source files.";
 
 const forbiddenPatterns = [
   {
@@ -41,24 +43,14 @@ function toPosix(filePath) {
   return filePath.split(path.sep).join("/");
 }
 
-async function pathExists(filePath) {
-  try {
-    await stat(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 async function listFiles(dir) {
-  if (!(await pathExists(dir))) {
-    return [];
-  }
-
   const files = [];
   const entries = await readdir(dir, { withFileTypes: true });
   for (const entry of entries) {
     const entryPath = path.join(dir, entry.name);
+    if (entry.isSymbolicLink()) {
+      throw new Error("symbolic links are not allowed in the protected source scope");
+    }
     if (entry.isDirectory()) {
       if (!ignoredDirs.has(entry.name)) {
         files.push(...(await listFiles(entryPath)));
@@ -68,6 +60,10 @@ async function listFiles(dir) {
 
     if (entry.isFile() && sourceExtensions.has(path.extname(entryPath)) && !isTestSourceFile(entryPath)) {
       files.push(entryPath);
+      continue;
+    }
+    if (!entry.isFile()) {
+      throw new Error("unsupported filesystem entry in the protected source scope");
     }
   }
 
@@ -162,9 +158,23 @@ async function checkFile(filePath) {
 }
 
 async function main() {
-  const files = await listFiles(targetDir);
-  for (const filePath of files) {
-    await checkFile(filePath);
+  try {
+    const targetMetadata = await lstat(targetDir);
+    if (!targetMetadata.isDirectory() || targetMetadata.isSymbolicLink()) {
+      throw new Error("protected source scope must be a real directory");
+    }
+
+    const files = await listFiles(targetDir);
+    if (files.length === 0) {
+      throw new Error("protected source scope has no production source files");
+    }
+    for (const filePath of files) {
+      await checkFile(filePath);
+    }
+  } catch {
+    console.error(invalidScopeMessage);
+    process.exitCode = 1;
+    return;
   }
 
   if (violations.length > 0) {
