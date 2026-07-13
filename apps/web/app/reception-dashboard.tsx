@@ -110,7 +110,17 @@ export async function fetchReceptionQueue(
       errorCode,
     );
   }
+  if (res.status !== 200) {
+    throw new ReceptionError(
+      `受付一覧の取得に失敗しました(HTTP ${res.status})。`,
+      "再試行してください。解消しない場合は同期状態画面で外部接続状態を確認してください。",
+    );
+  }
   const parsed = receptionQueueResponseSchema.parse(await res.json());
+  if (parsed.date !== date) {
+    const notice = queueResponseDateMismatchNotice();
+    throw new ReceptionError(notice.message, notice.nextAction);
+  }
   const receptionIds = new Set<string>();
   for (const entry of parsed.entries) {
     if (receptionIds.has(entry.receptionId)) {

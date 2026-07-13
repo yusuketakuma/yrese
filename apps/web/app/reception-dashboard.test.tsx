@@ -228,6 +228,178 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(response.entries).toEqual([]);
   });
 
+  it.each([201, 202, 204, 206])(
+    "rejects unsupported queue HTTP %s before reading a PHI-rich body",
+    async (status) => {
+      const sensitiveEntry = entry({
+        receptionId: "reception-status-sensitive",
+        acceptedAt: "2026-07-09T01:23:45.000Z",
+        patient: patient({
+          patientId: "patient-status-sensitive",
+          name: "合成 HTTP状態",
+          kana: "ゴウセイ エイチティーティーピージョウタイ",
+          patientNumber: "HTTP-QUEUE-SECRET",
+        }),
+      });
+      const json = vi.fn().mockResolvedValue(
+        queueResponse("2099-12-31", [sensitiveEntry, { ...sensitiveEntry }]),
+      );
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValue({ ok: true, status, json } as unknown as Response);
+
+      let caught: unknown;
+      try {
+        await withNodeEnv("development", () =>
+          fetchReceptionQueue("2026-07-09", fetchImpl),
+        );
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(json).not.toHaveBeenCalled();
+      expect(caught).toBeInstanceOf(ReceptionError);
+      expect((caught as ReceptionError).toNotice()).toEqual({
+        message: `受付一覧の取得に失敗しました(HTTP ${status})。`,
+        nextAction:
+          "再試行してください。解消しない場合は同期状態画面で外部接続状態を確認してください。",
+      });
+      const serialized = JSON.stringify((caught as ReceptionError).toNotice());
+      for (const sensitiveValue of [
+        "2099-12-31",
+        sensitiveEntry.receptionId,
+        sensitiveEntry.acceptedAt,
+        sensitiveEntry.receptionStatus,
+        sensitiveEntry.patient.patientId,
+        sensitiveEntry.patient.name,
+        sensitiveEntry.patient.kana,
+        sensitiveEntry.patient.patientNumber,
+      ]) {
+        expect(serialized).not.toContain(sensitiveValue);
+      }
+    },
+  );
+
+  it("binds an exact-200 queue body to the requested date before duplicate validation", async () => {
+    const duplicate = entry({ receptionId: "wrong-date-duplicate-sensitive" });
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(200, queueResponse("2099-12-31", [duplicate, { ...duplicate }])),
+    );
+
+    let caught: unknown;
+    try {
+      await withNodeEnv("development", () =>
+        fetchReceptionQueue("2026-07-09", fetchImpl),
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ReceptionError);
+    expect((caught as ReceptionError).toNotice()).toEqual({
+      message: "受付一覧の応答日付が要求日付と一致しません。",
+      nextAction:
+        "表示日付を確認して再表示してください。解消しない場合はシステム管理者へ連絡してください。",
+    });
+    expect(JSON.stringify((caught as ReceptionError).toNotice())).not.toContain(
+      "2099-12-31",
+    );
+    expect((caught as Error).message).not.toContain(duplicate.receptionId);
+  });
+
+  it("keeps initial and refresh state fail-closed across unsupported queue statuses and retry", async () => {
+    const retained = queueResponse("2026-07-09", [entry({ receptionId: "retained" })]);
+    const replacement = queueResponse("2026-07-10", [entry({ receptionId: "replacement" })]);
+    const unsupportedJson = vi.fn().mockResolvedValue(replacement);
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        { ok: true, status: 202, json: unsupportedJson } as unknown as Response,
+      )
+      .mockResolvedValueOnce(jsonResponse(200, retained))
+      .mockResolvedValueOnce(
+        { ok: true, status: 206, json: unsupportedJson } as unknown as Response,
+      )
+      .mockResolvedValueOnce(jsonResponse(200, replacement));
+    const states: QueueState[] = [{ kind: "loading" }];
+    const run = createReceptionQueueRunner(
+      (targetDate) => fetchReceptionQueue(targetDate, fetchImpl),
+      (update) => states.push(update(states.at(-1)!)),
+    );
+
+    await withNodeEnv("development", () => run("2026-07-09"));
+    expect(states.at(-1)).toMatchObject({
+      kind: "error",
+      notice: { message: "受付一覧の取得に失敗しました(HTTP 202)。" },
+    });
+    expect(JSON.stringify(states.at(-1))).not.toContain("replacement");
+
+    await withNodeEnv("development", () => run("2026-07-09"));
+    const loaded = states.at(-1)!;
+    expect(loaded).toMatchObject({ kind: "loaded", response: retained });
+    if (loaded.kind !== "loaded") throw new Error("expected loaded queue state");
+    const loadedAt = loaded.loadedAt;
+
+    await withNodeEnv("development", () => run("2026-07-10"));
+    expect(states.at(-1)).toMatchObject({
+      kind: "loaded",
+      response: retained,
+      loadedAt,
+      refreshState: {
+        kind: "error",
+        requestTarget: "2026-07-10",
+        notice: { message: "受付一覧の取得に失敗しました(HTTP 206)。" },
+      },
+    });
+    expect(JSON.stringify(states.at(-1))).not.toContain("replacement");
+
+    await withNodeEnv("development", () => run("2026-07-10"));
+    expect(states.at(-1)).toMatchObject({
+      kind: "loaded",
+      response: replacement,
+      refreshState: { kind: "idle" },
+    });
+    expect(unsupportedJson).not.toHaveBeenCalled();
+  });
+
+  it("suppresses a stale unsupported queue response after a newer exact-200 result", async () => {
+    const staleResponse = deferredValue<Response>();
+    const staleJson = vi.fn().mockResolvedValue(
+      queueResponse("2026-07-09", [entry({ receptionId: "stale-sensitive" })]),
+    );
+    const fetchImpl = vi
+      .fn()
+      .mockImplementationOnce(() => staleResponse.promise)
+      .mockResolvedValueOnce(
+        jsonResponse(
+          200,
+          queueResponse("2026-07-10", [entry({ receptionId: "current" })]),
+        ),
+      );
+    const states: QueueState[] = [{ kind: "loading" }];
+    const run = createReceptionQueueRunner(
+      (targetDate) => fetchReceptionQueue(targetDate, fetchImpl),
+      (update) => states.push(update(states.at(-1)!)),
+    );
+
+    const stale = withNodeEnv("development", () => run("2026-07-09"));
+    await withNodeEnv("development", () => run("2026-07-10"));
+    const countAfterCurrent = states.length;
+    staleResponse.resolve(
+      { ok: true, status: 202, json: staleJson } as unknown as Response,
+    );
+    await stale;
+
+    expect(staleJson).not.toHaveBeenCalled();
+    expect(states).toHaveLength(countAfterCurrent);
+    expect(states.at(-1)).toMatchObject({
+      kind: "loaded",
+      response: { date: "2026-07-10", entries: [{ receptionId: "current" }] },
+      refreshState: { kind: "idle" },
+    });
+    expect(JSON.stringify(states.at(-1))).not.toContain("stale-sensitive");
+  });
+
   it.each([
     ["identical", false],
     ["conflicting", true],
