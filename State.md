@@ -8,6 +8,12 @@
 
 ## 2026-07-13
 
+### WP-4141 `.npmrc` registry credential scan — FINALIZED
+
+- clean baseline `4a44798`。extensionなしの`.npmrc`がscan対象外で、npm固有`_authToken` / `_auth` / `_password`のactive/commented credential materialがCIを通過できるMEDIUM security-control gapを確認。tracked/worktree `.npmrc`とcurrent incidentは未検出。
+- exact5でexact basename対象化、file-specific detector、active/`#`/`;` comment、environment placeholder、near-miss、allow marker、raw-value非echo、nested/symlink fixtureを実装。package/lock/CI/SSOT/API/DB/runtime/user-global config/rotationは不変。
+- root mappingとALIGN-01を完了し、PLAN-01 `APPROVED_WITH_PINS`のcommented credential findingを反映。SCOUT-01は範囲過大で中断し成果未採用。integrated domain reviewのinitial LOW newline-crossing findingをhorizontal-only whitespaceと先頭空行/standalone comment fixtureで修正し、final domain reviewとindependent verifierはいずれもAPPROVED、remaining findingsなし。post-fix syntax/script harness/live secrets/diff、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231を含むfull regressionは全PASS。landingのみpending。
+
 ### WP-4140 OpenAPI drift artifact target fail-closed — FINALIZED
 
 - clean baseline `bc4994f`。byte-identical external targetへのartifact symlinkと`/dev/stdin` indirect inputがdrift checkerでPASSするMEDIUM API-contract false-greenを再現。tracked artifactはregular/clean。

@@ -650,6 +650,86 @@ async function testSecretAllowlistAndDetection() {
     cleanShellResult.status === 0,
     `check-secrets should preserve clean shell/certificate/public-key boundaries: ${outputOf(cleanShellResult)}`,
   );
+
+  const cleanNpmrcRoot = path.join(tempRoot, "secrets-npmrc-clean");
+  await writeText(
+    path.join(cleanNpmrcRoot, ".npmrc"),
+    [
+      "registry=https://registry.npmjs.org/",
+      "always-auth=false",
+      "//registry.npmjs.org/:_authToken=${NPM_TOKEN}",
+      "# _authToken=commented-example",
+      "; _auth=commented-placeholder",
+      "_authTokenName=SyntheticNpmTokenName1234567890",
+      "_auth=short",
+      "_password=example-placeholder-value",
+      "",
+    ].join("\n"),
+  );
+  const cleanNpmrcResult = runNode("check-secrets.mjs", [], { cwd: cleanNpmrcRoot });
+  assert(
+    cleanNpmrcResult.status === 0,
+    `check-secrets should pass a clean standalone .npmrc: ${outputOf(cleanNpmrcResult)}`,
+  );
+
+  const syntheticNpmToken = ["Synthetic", "Npm", "Token", "1234567890"].join("");
+  const syntheticNpmAuth = ["Synthetic", "Npm", "Auth", "1234567890"].join("");
+  const syntheticNpmPassword = ["Synthetic", "Npm", "Password", "1234567890"].join("");
+  const npmrcLeakRoot = path.join(tempRoot, "secrets-npmrc-leak");
+  await writeText(
+    path.join(npmrcLeakRoot, "config", ".npmrc"),
+    [
+      "",
+      `//registry.npmjs.org/:_authToken=${syntheticNpmToken}`,
+      `_auth = '${syntheticNpmAuth}'`,
+      `//registry.example.invalid/team/:_password="${syntheticNpmPassword}"`,
+      `# //registry.npmjs.org/:_authToken=${syntheticNpmToken}`,
+      `; _password=${syntheticNpmPassword}`,
+      "",
+    ].join("\n"),
+  );
+  const npmrcLeakResult = runNode("check-secrets.mjs", [], { cwd: npmrcLeakRoot });
+  const npmrcLeakOutput = outputOf(npmrcLeakResult);
+  assert(npmrcLeakResult.status === 1, "check-secrets should reject npm credentials in nested .npmrc files");
+  assert(
+    npmrcLeakOutput.includes("config/.npmrc:2: npm auth token"),
+    "npm token finding should include the relative path, line, and pattern name",
+  );
+  assert(
+    npmrcLeakOutput.includes("config/.npmrc:3: npm auth credential") &&
+      npmrcLeakOutput.includes("config/.npmrc:4: npm auth credential") &&
+      npmrcLeakOutput.includes("config/.npmrc:5: npm auth token") &&
+      npmrcLeakOutput.includes("config/.npmrc:6: npm auth credential"),
+    "npm auth findings should include each relative line and pattern name",
+  );
+  for (const credential of [syntheticNpmToken, syntheticNpmAuth, syntheticNpmPassword]) {
+    assert(!npmrcLeakOutput.includes(credential), "npm findings must not expose raw synthetic values");
+  }
+
+  const allowedNpmrcRoot = path.join(tempRoot, "secrets-npmrc-allow");
+  await writeText(
+    path.join(allowedNpmrcRoot, ".npmrc"),
+    [
+      "#",
+      ";",
+      `//registry.npmjs.org/:_authToken=${syntheticNpmToken} # secret-scan: allow`,
+      "",
+    ].join("\n"),
+  );
+  const allowedNpmrcResult = runNode("check-secrets.mjs", [], { cwd: allowedNpmrcRoot });
+  assert(allowedNpmrcResult.status === 0, "check-secrets should honor .npmrc same-line allow markers");
+
+  const npmrcSymlinkRoot = path.join(tempRoot, "secrets-npmrc-symlink");
+  const externalNpmrc = path.join(tempRoot, "secrets-external-npmrc");
+  await writeText(path.join(npmrcSymlinkRoot, "README.md"), "clean eligible text\n");
+  await writeText(externalNpmrc, `_authToken=${syntheticNpmToken}\n`);
+  await symlink(externalNpmrc, path.join(npmrcSymlinkRoot, ".npmrc"));
+  const npmrcSymlinkResult = runNode("check-secrets.mjs", [], { cwd: npmrcSymlinkRoot });
+  const npmrcSymlinkOutput = outputOf(npmrcSymlinkResult);
+  assert(npmrcSymlinkResult.status === 1, "check-secrets should reject a symlinked .npmrc");
+  assert(npmrcSymlinkOutput.includes(fixedScopeMessage), "symlinked .npmrc should use the fixed scope error");
+  assert(!npmrcSymlinkOutput.includes(externalNpmrc), "symlinked .npmrc must not expose its target path");
+  assert(!npmrcSymlinkOutput.includes(syntheticNpmToken), "symlinked .npmrc must not expose target content");
 }
 
 async function testCleanRemovesGeneratedArtifacts() {

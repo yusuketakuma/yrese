@@ -21,6 +21,7 @@ const ignoredDirs = new Set([
   "out",
 ]);
 const ignoredFiles = new Set(["pnpm-lock.yaml"]);
+const exactTextBasenames = new Set([".npmrc"]);
 const scopeErrorMessage = "Secret scan could not validate the protected repository scope.";
 class ProtectedScopeError extends Error {}
 function failScope() { throw new ProtectedScopeError(scopeErrorMessage); }
@@ -36,6 +37,20 @@ const secretPatterns = [
     pattern:
       /\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|password|secret|token)\b\s*[:=]\s*["']?([A-Za-z0-9_./+=-]{16,})["']?/gi,
     validate: (match) => isLikelySecretValue(match[1] ?? ""),
+  },
+  {
+    name: "npm auth token",
+    pattern:
+      /^[^\S\r\n]*(?:[#;][^\S\r\n]*)?(?:\/\/[^\r\n=]*\/:)?_authToken[^\S\r\n]*=[^\S\r\n]*["']?([A-Za-z0-9_./+=-]{16,})["']?/gm,
+    validate: (match) => isLikelySecretValue(match[1] ?? ""),
+    appliesTo: (filePath) => path.basename(filePath) === ".npmrc",
+  },
+  {
+    name: "npm auth credential",
+    pattern:
+      /^[^\S\r\n]*(?:[#;][^\S\r\n]*)?(?:\/\/[^\r\n=]*\/:)?_(?:auth|password)[^\S\r\n]*=[^\S\r\n]*["']?([A-Za-z0-9_./+=-]{16,})["']?/gm,
+    validate: (match) => isLikelySecretValue(match[1] ?? ""),
+    appliesTo: (filePath) => path.basename(filePath) === ".npmrc",
   },
 ];
 
@@ -98,6 +113,9 @@ function isTextFile(filePath) {
   if (basename.startsWith(".env")) {
     return true;
   }
+  if (exactTextBasenames.has(basename)) {
+    return true;
+  }
   return textExtensions.has(path.extname(filePath));
 }
 
@@ -152,7 +170,10 @@ const findings = [];
 for (const filePath of files) {
   let source;
   try { source = await readFile(filePath, "utf8"); } catch { failScope(); }
-  for (const { name, pattern, validate } of secretPatterns) {
+  for (const { name, pattern, validate, appliesTo } of secretPatterns) {
+    if (typeof appliesTo === "function" && !appliesTo(filePath)) {
+      continue;
+    }
     pattern.lastIndex = 0;
     let match;
     while ((match = pattern.exec(source)) !== null) {

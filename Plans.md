@@ -2706,6 +2706,16 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: exact5 revert。artifact/contract/data rollback不要。
   - landing_record: implementation commit `0030774` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、full gates、domain/independent review PASS。regular artifact bytes/semantics不変でsymlink/special targetのcontract-gate false greenを解消。
 
+- [x] WP-4141 scan npm registry credentials in `.npmrc`(MEDIUM security/tooling) — FINALIZED
+  - 発見根拠: HEADのsecret scannerはextension allow-list依存でexact basename `.npmrc`を読まず、generic assignmentもnpm固有の`_authToken` / `_auth` / `_password`を検出しない。npm公式仕様はこれらをregistry-scoped auth設定として定義し、`#` / `;` commentも認める。tracked/worktree `.npmrc`とcurrent incidentは未検出。
+  - scope: exact5 `scripts/check-secrets.mjs`, `scripts/check-scripts.mjs`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。package/lock/CI/SSOT、apps/packages、API/DB/runtime、user/global npm config、credential rotationは変更しない。
+  - implementation: `.npmrc`をexact text basenameとしてscan対象化し、file-specific likely-secret patternsでscoped/unscoped active行と`#` / `;` commented行を検査する。findingは既存どおりrelative path/line/typeのみでraw valueを出さない。environment interpolation、placeholder/example/short値、near-miss、same-line allowは維持する。
+  - acceptance: root/nested active/commented npm auth materialをsynthetic fixtureでFAILし、raw value/absolute path/target content非echo。clean standalone、environment placeholder、allow markerはPASS。symlinkは既存fixed scope errorでtarget未読。既存patterns/extensions/ignored scope/finding schema/zero-input fail-closed不変。full/domain/independent後にFINALIZED。
+  - review_results: root read-only mappingとfull-stack alignment scanを完了。planner `APPROVED_WITH_PINS`を受け、commented credential gapを実装へ追加。dedicated scoutは範囲過大のため中断し成果未採用。integrated security/privacy/test domain reviewのinitial LOW newline-crossing findingをhorizontal-only whitespaceと先頭空行/standalone comment fixtureで修正し、final domain reviewとindependent verifierはいずれもAPPROVED、remaining findingsなし、human gate不要。
+  - validation_results: post-fix checker/harness syntax、script harness、live secret gate、diff check、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、OpenAPI/calculation-purity/boundaries/SSOT173/deps high0 critical0/SBOM231を含むfull regressionが全PASS。
+  - rollback: exact5 revert。実credential発見時のrevoke/rotationは別human gateであり、code rollbackで代替しない。
+  - landing_record: implementation finalized; pending exact-stage commit and safe feature-branch push。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
