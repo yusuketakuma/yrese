@@ -12,7 +12,7 @@
 
 - clean baseline `23e0647`。comparable migration version driftをchecksum driftとして誤診するR1 operations/data-integrity gapをAPI exact6で修正中。startup/applyのfail-closed自体は既存維持。
 - distinct `version_mismatch`とversion→checksum→name→count precedenceを追加し、DB由来versionはJSON escape。runner production logic、SQL/DB/history/SSOTは不変。
-- mapper APPROVED、pre-plan APPROVED_WITH_PINS。Domain initial LOW Unicode line-separator findingをshared diagnostic quote+version/name testsで修正し、integrated domain re-reviewとindependent verifier APPROVED、findingsなし。focused migration state14 + runner11 = 25、API264 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。exact6 landing pending。
+- mapper APPROVED、pre-plan APPROVED_WITH_PINS。Domain initial LOW Unicode line-separator findingをshared diagnostic quote+version/name testsで修正し、integrated domain re-reviewとindependent verifier APPROVED、findingsなし。focused migration state14 + runner11 = 25、API264 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。exact6 implementation commit `17a94f8` を対象branchへpush済み。
 
 ### WP-4128 reception queue exact HTTP 200 binding — FINALIZED
 
