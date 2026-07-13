@@ -12,7 +12,7 @@
 
 - clean baseline `358f115`。missing/unreadable/empty `packages/calculation`をproduction source 0件としてPASSするMEDIUM CAL-010/tooling gapをexact5で修正中。
 - real non-symlink target、fail-closed traversal/read、production source >=1を要求。missing/file/empty/test-only/ignored-only/target+nested symlinkをfixed non-sensitive errorで拒否し、既存5 forbidden patternsと除外規則は維持。
-- mapper APPROVED、pre-plan再裁定APPROVED_WITH_PINS、integrated domain reviewとindependent verifier APPROVED、findingsなし。node syntax、script harness、live calculation-purity、API264 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。exact5 landing pending。
+- mapper APPROVED、pre-plan再裁定APPROVED_WITH_PINS、integrated domain reviewとindependent verifier APPROVED、findingsなし。node syntax、script harness、live calculation-purity、API264 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/buildと全gate PASS。exact5 implementation commit `00e072b` を対象branchへpush済み。
 
 ### WP-4129 migration version-drift diagnostic — FINALIZED
 
