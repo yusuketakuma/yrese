@@ -8,11 +8,12 @@
 
 ## 2026-07-16
 
-### WP-4151a reception queue refresh failure / retention / retry — LOCAL_READY / INDEPENDENT_PASS_WITH_NOTE
+### WP-4151a reception queue refresh failure / retention / retry — LOCAL_LANDED / INDEPENDENT_PASS_WITH_NOTE
 
 - synthetic queue 200(retained `SYN-001`)→native「表示」→exact HTTP 500(raw sentinel)→native「表示」→200(replacement `SYN-002`)をbrowser実行。失敗時はretained row/date/last-updated、fixed HTTP500 error、stale qualifier、next actionを保持し、raw sentinel/replacement false-successなし。復旧時はrequest count 1→2→3、replacementへ置換、error/stale clear、console/page errors空。focused reception dashboard 70/70 PASS。
 - queue refresh以外の受付登録POST failure/retry、production API/auth/DBは未証明。runtime/code/contracts/API/DB/SSOT変更なしで、docs exact6はread-only independent verifier確認後にlandingする。
 - read-only independent verifierもfresh sessionでsame row/date/timestamp保持、fixed HTTP500、raw/errorCode非表示、native retry request増加、error clear、console/page error空、70/70をPASS。shared mockがreplacement状態だったためSYN-001→SYN-002とabsolute 1→2→3はroot capture依存というnoteを保持する。
+- exact6 evidence docsは`e95328c`でsafe feature branchへpush済み。次のbounded gapは受付登録POST failure/retryで、production/DB/auth/repository-wide demo gateは未解除。
 
 ### WP-4151 audit refresh failure / retention / retry browser follow-up — LOCAL_LANDED / INDEPENDENT_PASS_WITH_NOTE
 
