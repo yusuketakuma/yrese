@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4209 patient-search cursor encoder output authority — FINALIZED / INDEPENDENT_PASS
+
+- encode例外のraw反射、`undefined`のfalse terminal、空tokenの200発行、object/oversize/hostile outputのZod detail反射を修正。page/progress検証後だけfrozen binding/cursorでencode onceとし、throwとinvalid returnを別fixed500へ閉じた。
+- nonempty primitive stringかつmax512だけをacceptし、coercion/await/roundtripは不使用。raw query/token/患者PHI/sentinel非echo、Proxy trap0、length1/max512 exact200、先行失敗時encode0を固定した。
+- server277、API526 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/security/privacy review READY。codec/HMAC/contracts/DB/WP-4057は未変更。implementation `c7e338c`はlocal-only、pushなし。
+
 ### WP-4208 decoded patient-search cursor authority — FINALIZED / INDEPENDENT_PASS
 
 - decode例外のraw反射とdecoded cursor offsetの二重readを修正。tokenあり時だけfrozen bindingでdecode onceとし、undefinedは既存PAT-0001、内部例外/invalid graphはfixed500へ分離した。
