@@ -176,28 +176,184 @@ async function runRepositoryOperationOrThrowFixed<T>(
   }
 }
 
-function readReceptionCreateResultKind(value: unknown): ReceptionCreateResult['kind'] {
-  let descriptor: PropertyDescriptor | undefined;
+type OwnDataPropertySnapshot =
+  | { readonly present: false }
+  | { readonly present: true; readonly value: unknown };
+
+function readOwnEnumerableDataProperty(
+  value: unknown,
+  key: string,
+  invariantErrorMessage: string,
+): OwnDataPropertySnapshot {
   try {
     if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-      throw new Error(receptionResultKindInvariantErrorMessage);
+      throw new Error(invariantErrorMessage);
     }
-    descriptor = Object.getOwnPropertyDescriptor(value, 'kind');
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor === undefined) return Object.freeze({ present: false });
+    if (descriptor.enumerable !== true || !('value' in descriptor)) {
+      throw new Error(invariantErrorMessage);
+    }
+    return Object.freeze({ present: true, value: descriptor.value });
   } catch {
-    throw new Error(receptionResultKindInvariantErrorMessage);
+    throw new Error(invariantErrorMessage);
   }
+}
 
+function readRequiredOwnEnumerableDataProperty(
+  value: unknown,
+  key: string,
+  invariantErrorMessage: string,
+): unknown {
+  const property = readOwnEnumerableDataProperty(value, key, invariantErrorMessage);
+  if (!property.present) throw new Error(invariantErrorMessage);
+  return property.value;
+}
+
+function readReceptionCreateResultKind(value: unknown): ReceptionCreateResult['kind'] {
+  const kind = readRequiredOwnEnumerableDataProperty(
+    value,
+    'kind',
+    receptionResultKindInvariantErrorMessage,
+  );
   if (
-    descriptor === undefined ||
-    descriptor.enumerable !== true ||
-    !('value' in descriptor) ||
-    (descriptor.value !== 'created' &&
-      descriptor.value !== 'existing' &&
-      descriptor.value !== 'idempotency_conflict')
+    kind !== 'created' &&
+    kind !== 'existing' &&
+    kind !== 'idempotency_conflict'
   ) {
     throw new Error(receptionResultKindInvariantErrorMessage);
   }
-  return descriptor.value;
+  return kind;
+}
+
+function snapshotReceptionCreateProvenance(value: unknown) {
+  return Object.freeze({
+    tenantId: readRequiredOwnEnumerableDataProperty(
+      value,
+      'tenantId',
+      receptionResultIdempotencyProvenanceMismatchErrorMessage,
+    ),
+    pharmacyId: readRequiredOwnEnumerableDataProperty(
+      value,
+      'pharmacyId',
+      receptionResultIdempotencyProvenanceMismatchErrorMessage,
+    ),
+    idempotencyKey: readRequiredOwnEnumerableDataProperty(
+      value,
+      'idempotencyKey',
+      receptionResultIdempotencyProvenanceMismatchErrorMessage,
+    ),
+    receptionId: readRequiredOwnEnumerableDataProperty(
+      value,
+      'receptionId',
+      receptionResultIdempotencyProvenanceMismatchErrorMessage,
+    ),
+    patientId: readRequiredOwnEnumerableDataProperty(
+      value,
+      'patientId',
+      receptionResultIdempotencyProvenanceMismatchErrorMessage,
+    ),
+  });
+}
+
+function snapshotReceptionCreateEntryIdentity(value: unknown) {
+  const receptionIdentity = readRequiredOwnEnumerableDataProperty(
+    value,
+    'receptionId',
+    receptionResultIdempotencyProvenanceMismatchErrorMessage,
+  );
+  const rawPatient = readRequiredOwnEnumerableDataProperty(
+    value,
+    'patient',
+    receptionResultIdempotencyProvenanceMismatchErrorMessage,
+  );
+  const patientIdentity = readRequiredOwnEnumerableDataProperty(
+    rawPatient,
+    'patientId',
+    receptionResultIdempotencyProvenanceMismatchErrorMessage,
+  );
+  return Object.freeze({
+    receptionId: receptionIdentity,
+    rawPatient,
+    patientId: patientIdentity,
+  });
+}
+
+function snapshotReceptionCreateEntry(
+  value: unknown,
+  identity: ReturnType<typeof snapshotReceptionCreateEntryIdentity>,
+) {
+  const eligibilityCheckedAt = readOwnEnumerableDataProperty(
+    identity.rawPatient,
+    'eligibilityCheckedAt',
+    receptionResultSchemaInvariantErrorMessage,
+  );
+  const patientSnapshot = Object.freeze({
+    patientId: identity.patientId,
+    name: readRequiredOwnEnumerableDataProperty(
+      identity.rawPatient,
+      'name',
+      receptionResultSchemaInvariantErrorMessage,
+    ),
+    kana: readRequiredOwnEnumerableDataProperty(
+      identity.rawPatient,
+      'kana',
+      receptionResultSchemaInvariantErrorMessage,
+    ),
+    birthDate: readRequiredOwnEnumerableDataProperty(
+      identity.rawPatient,
+      'birthDate',
+      receptionResultSchemaInvariantErrorMessage,
+    ),
+    sex: readRequiredOwnEnumerableDataProperty(
+      identity.rawPatient,
+      'sex',
+      receptionResultSchemaInvariantErrorMessage,
+    ),
+    patientNumber: readRequiredOwnEnumerableDataProperty(
+      identity.rawPatient,
+      'patientNumber',
+      receptionResultSchemaInvariantErrorMessage,
+    ),
+    eligibilityStatus: readRequiredOwnEnumerableDataProperty(
+      identity.rawPatient,
+      'eligibilityStatus',
+      receptionResultSchemaInvariantErrorMessage,
+    ),
+    ...(eligibilityCheckedAt.present
+      ? { eligibilityCheckedAt: eligibilityCheckedAt.value }
+      : {}),
+  });
+
+  return Object.freeze({
+    receptionId: identity.receptionId,
+    patient: patientSnapshot,
+    acceptedAt: readRequiredOwnEnumerableDataProperty(
+      value,
+      'acceptedAt',
+      receptionResultSchemaInvariantErrorMessage,
+    ),
+    receptionStatus: readRequiredOwnEnumerableDataProperty(
+      value,
+      'receptionStatus',
+      receptionResultSchemaInvariantErrorMessage,
+    ),
+    prescriptionIntakeType: readRequiredOwnEnumerableDataProperty(
+      value,
+      'prescriptionIntakeType',
+      receptionResultSchemaInvariantErrorMessage,
+    ),
+  });
+}
+
+function parseReceptionCreateEntrySnapshot(value: unknown): ReceptionQueueEntry {
+  try {
+    const parsed = receptionQueueEntrySchema.safeParse(value);
+    if (!parsed.success) throw new Error(receptionResultSchemaInvariantErrorMessage);
+    return parsed.data;
+  } catch {
+    throw new Error(receptionResultSchemaInvariantErrorMessage);
+  }
 }
 
 function invalidReceptionRequestResponse() {
@@ -542,7 +698,12 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       );
       const resultKind = readReceptionCreateResultKind(result);
 
-      const provenance = result.provenance;
+      const rawProvenance = readRequiredOwnEnumerableDataProperty(
+        result,
+        'provenance',
+        receptionResultIdempotencyProvenanceMismatchErrorMessage,
+      );
+      const provenance = snapshotReceptionCreateProvenance(rawProvenance);
       if (
         provenance?.tenantId !== tenantContext.tenantId ||
         provenance.pharmacyId !== tenantContext.pharmacyId ||
@@ -565,31 +726,27 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         }
         return reply.code(409).send(receptionIdempotencyConflictResponse());
       }
-      const rawEntryValue = (result as { readonly entry?: unknown }).entry;
-      if (typeof rawEntryValue !== 'object' || rawEntryValue === null) {
-        throw new Error(receptionResultIdempotencyProvenanceMismatchErrorMessage);
-      }
-      const rawEntry = rawEntryValue as {
-        readonly receptionId?: unknown;
-        readonly patient?: { readonly patientId?: unknown };
-      };
+      const rawEntryValue = readRequiredOwnEnumerableDataProperty(
+        result,
+        'entry',
+        receptionResultIdempotencyProvenanceMismatchErrorMessage,
+      );
+      const entryIdentity = snapshotReceptionCreateEntryIdentity(rawEntryValue);
       if (
-        provenance.receptionId !== rawEntry.receptionId ||
-        provenance.patientId !== rawEntry.patient?.patientId
+        provenance.receptionId !== entryIdentity.receptionId ||
+        provenance.patientId !== entryIdentity.patientId
       ) {
         throw new Error(receptionResultIdempotencyProvenanceMismatchErrorMessage);
       }
-      const parsedEntry = receptionQueueEntrySchema.safeParse(rawEntryValue);
-      if (!parsedEntry.success) {
-        throw new Error(receptionResultSchemaInvariantErrorMessage);
-      }
-      if (parsedEntry.data.patient.patientId !== parsedPatientId) {
+      const entrySnapshot = snapshotReceptionCreateEntry(rawEntryValue, entryIdentity);
+      const parsedEntry = parseReceptionCreateEntrySnapshot(entrySnapshot);
+      if (parsedEntry.patient.patientId !== parsedPatientId) {
         throw new Error(receptionResultPatientIdentityMismatchErrorMessage);
       }
-      if (resultKind === 'created' && parsedEntry.data.receptionStatus !== 'WAITING') {
+      if (resultKind === 'created' && parsedEntry.receptionStatus !== 'WAITING') {
         throw new Error(receptionCreatedStatusInvariantErrorMessage);
       }
-      if (resultKind === 'created' && parsedEntry.data.acceptedAt !== acceptedAtIso) {
+      if (resultKind === 'created' && parsedEntry.acceptedAt !== acceptedAtIso) {
         throw new Error(receptionCreatedAcceptedAtInvariantErrorMessage);
       }
 
@@ -603,7 +760,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         const auditIntent = Object.freeze({
           actorId: userId(tenantContext.actorId),
           auditEventType: 'reception.created',
-          targetRef: Object.freeze({ kind: 'reception', id: parsedEntry.data.receptionId }),
+          targetRef: Object.freeze({ kind: 'reception', id: parsedEntry.receptionId }),
           outcome: 'success' as const,
           wallClock: now().toISOString(),
         });
@@ -619,7 +776,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         }, receptionCreatedAuditInvariantErrorMessage);
       }
 
-      return reply.code(resultKind === 'created' ? 201 : 200).send(parsedEntry.data);
+      return reply.code(resultKind === 'created' ? 201 : 200).send(parsedEntry);
     },
   );
 

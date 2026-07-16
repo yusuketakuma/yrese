@@ -1887,6 +1887,350 @@ describe('buildServer', () => {
   });
 
   it.each([
+    ['result provenance', 'result', 'provenance', receptionResultIdempotencyProvenanceMismatchErrorMessage],
+    ['provenance tenant', 'provenance', 'tenantId', receptionResultIdempotencyProvenanceMismatchErrorMessage],
+    ['provenance pharmacy', 'provenance', 'pharmacyId', receptionResultIdempotencyProvenanceMismatchErrorMessage],
+    ['provenance key', 'provenance', 'idempotencyKey', receptionResultIdempotencyProvenanceMismatchErrorMessage],
+    ['provenance reception', 'provenance', 'receptionId', receptionResultIdempotencyProvenanceMismatchErrorMessage],
+    ['provenance patient', 'provenance', 'patientId', receptionResultIdempotencyProvenanceMismatchErrorMessage],
+    ['result entry', 'result', 'entry', receptionResultIdempotencyProvenanceMismatchErrorMessage],
+    ['entry reception', 'entry', 'receptionId', receptionResultIdempotencyProvenanceMismatchErrorMessage],
+    ['entry patient', 'entry', 'patient', receptionResultIdempotencyProvenanceMismatchErrorMessage],
+    ['patient identity', 'patient', 'patientId', receptionResultIdempotencyProvenanceMismatchErrorMessage],
+    ['entry acceptedAt', 'entry', 'acceptedAt', receptionResultSchemaInvariantErrorMessage],
+    ['entry status', 'entry', 'receptionStatus', receptionResultSchemaInvariantErrorMessage],
+    ['entry intake type', 'entry', 'prescriptionIntakeType', receptionResultSchemaInvariantErrorMessage],
+    ['patient name', 'patient', 'name', receptionResultSchemaInvariantErrorMessage],
+    ['patient kana', 'patient', 'kana', receptionResultSchemaInvariantErrorMessage],
+    ['patient birth date', 'patient', 'birthDate', receptionResultSchemaInvariantErrorMessage],
+    ['patient sex', 'patient', 'sex', receptionResultSchemaInvariantErrorMessage],
+    ['patient number', 'patient', 'patientNumber', receptionResultSchemaInvariantErrorMessage],
+    ['patient eligibility', 'patient', 'eligibilityStatus', receptionResultSchemaInvariantErrorMessage],
+    ['patient eligibility time', 'patient', 'eligibilityCheckedAt', receptionResultSchemaInvariantErrorMessage],
+  ] as const)(
+    'rejects a fulfilled reception result with a %s accessor without invoking it',
+    async (_label, layer, key, expectedMessage) => {
+      const acceptedAt = new Date('2026-07-09T09:00:00.000Z');
+      const idempotencyKey = `reception-result-accessor-${layer}-${key}-4199`;
+      const rawSentinel = `raw fulfilled reception ${layer}.${key} patient secret 4199`;
+      const getterRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const server = buildDevTestServer({
+        now: () => acceptedAt,
+        receptionRepository: {
+          list: vi.fn<ReceptionRepository['list']>(async () => []),
+          create: vi.fn<ReceptionRepository['create']>(async (input) => {
+            const provenance: Record<string, unknown> = {
+              ...receptionProvenance(input, 'reception-result-accessor-4199'),
+            };
+            const patient: Record<string, unknown> = { ...input.patient };
+            const entry: Record<string, unknown> = {
+              receptionId: 'reception-result-accessor-4199',
+              acceptedAt: acceptedAt.toISOString(),
+              receptionStatus: 'WAITING',
+              prescriptionIntakeType: 'paper',
+              patient,
+            };
+            const result: Record<string, unknown> = { kind: 'created', provenance, entry };
+            const container =
+              layer === 'result'
+                ? result
+                : layer === 'provenance'
+                  ? provenance
+                  : layer === 'entry'
+                    ? entry
+                    : patient;
+            Object.defineProperty(container, key, { enumerable: true, get: getterRead });
+            return result as unknown as ReceptionCreateResult;
+          }),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/reception',
+        headers: tenantOneReceptionWriteHeaders,
+        payload: { patientId: 'patient-syn-004', idempotencyKey },
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toMatchObject({ message: expectedMessage });
+      for (const sensitiveValue of [rawSentinel, 'patient-syn-004', idempotencyKey]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+      expect(getterRead).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['result provenance', 'result', receptionResultIdempotencyProvenanceMismatchErrorMessage],
+    ['nested provenance', 'provenance', receptionResultIdempotencyProvenanceMismatchErrorMessage],
+    ['nested entry', 'entry', receptionResultIdempotencyProvenanceMismatchErrorMessage],
+    ['nested patient', 'patient', receptionResultIdempotencyProvenanceMismatchErrorMessage],
+  ] as const)(
+    'normalizes a throwing %s descriptor Proxy without direct semantic inspection',
+    async (_label, layer, expectedMessage) => {
+      const acceptedAt = new Date('2026-07-09T09:00:00.000Z');
+      const rawSentinel = `raw fulfilled reception ${layer} descriptor trap secret 4199`;
+      const directRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const descriptorRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const hostileProxy = new Proxy(
+        {},
+        {
+          get(_target, property) {
+            if (property === 'then') return undefined;
+            return directRead();
+          },
+          has: directRead,
+          getPrototypeOf: directRead,
+          ownKeys: directRead,
+          getOwnPropertyDescriptor: descriptorRead,
+        },
+      );
+      const idempotencyKey = `reception-result-${layer}-descriptor-secret-4199`;
+      const server = buildDevTestServer({
+        now: () => acceptedAt,
+        receptionRepository: {
+          list: vi.fn<ReceptionRepository['list']>(async () => []),
+          create: vi.fn<ReceptionRepository['create']>((input) => {
+            const provenance: Record<string, unknown> = {
+              ...receptionProvenance(input, 'reception-result-descriptor-4199'),
+            };
+            const patient: Record<string, unknown> = { ...input.patient };
+            const entry: Record<string, unknown> = {
+              receptionId: 'reception-result-descriptor-4199',
+              acceptedAt: acceptedAt.toISOString(),
+              receptionStatus: 'WAITING',
+              prescriptionIntakeType: 'paper',
+              patient: layer === 'patient' ? hostileProxy : patient,
+            };
+            const result: Record<string, unknown> = {
+              kind: 'created',
+              provenance: layer === 'provenance' ? hostileProxy : provenance,
+              entry: layer === 'entry' ? hostileProxy : entry,
+            };
+            const resultWithHostileProvenanceDescriptor = new Proxy(result, {
+              get(currentTarget, property, receiver) {
+                if (property === 'then') return undefined;
+                return Reflect.get(currentTarget, property, receiver);
+              },
+              getOwnPropertyDescriptor(currentTarget, property) {
+                if (property === 'kind') {
+                  return Reflect.getOwnPropertyDescriptor(currentTarget, property);
+                }
+                return descriptorRead();
+              },
+            });
+            return Promise.resolve(
+              (layer === 'result'
+                ? resultWithHostileProvenanceDescriptor
+                : result) as ReceptionCreateResult,
+            );
+          }),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/reception',
+        headers: tenantOneReceptionWriteHeaders,
+        payload: { patientId: 'patient-syn-004', idempotencyKey },
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toMatchObject({ message: expectedMessage });
+      expect(response.body).not.toContain(rawSentinel);
+      expect(descriptorRead).toHaveBeenCalledOnce();
+      expect(directRead).not.toHaveBeenCalled();
+    },
+  );
+
+  it('hydrates one fulfilled reception result descriptor graph without semantic direct reads', async () => {
+    const acceptedAt = new Date('2026-07-09T09:00:00.000Z');
+    const directRead = vi.fn((property: PropertyKey) => {
+      throw new Error(`raw direct reception result read ${String(property)} 4199`);
+    });
+    const descriptorRead = vi.fn();
+    const descriptorProxy = <T extends object>(target: T, allowThen = false): T =>
+      new Proxy(target, {
+        get(currentTarget, property) {
+          if (allowThen && property === 'then') return undefined;
+          return directRead(property);
+        },
+        has(_currentTarget, property) {
+          return directRead(property);
+        },
+        getPrototypeOf() {
+          return directRead('getPrototypeOf');
+        },
+        ownKeys() {
+          return directRead('ownKeys');
+        },
+        getOwnPropertyDescriptor(currentTarget, property) {
+          descriptorRead(property);
+          return Reflect.getOwnPropertyDescriptor(currentTarget, property);
+        },
+      });
+    const server = buildDevTestServer({
+      now: () => acceptedAt,
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => []),
+        create: vi.fn<ReceptionRepository['create']>((input) => {
+          const patient = descriptorProxy({
+            ...input.patient,
+            eligibilityCheckedAt: '2026-07-09T08:59:00.000Z',
+          });
+          const entry = descriptorProxy({
+            receptionId: 'reception-descriptor-graph-4199',
+            acceptedAt: acceptedAt.toISOString(),
+            receptionStatus: 'WAITING',
+            prescriptionIntakeType: 'paper',
+            patient,
+          });
+          const provenance = descriptorProxy(
+            receptionProvenance(input, 'reception-descriptor-graph-4199'),
+          );
+          return Promise.resolve(
+            descriptorProxy(
+              { kind: 'created', provenance, entry },
+              true,
+            ) as unknown as ReceptionCreateResult,
+          );
+        }),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-004',
+        idempotencyKey: 'reception-descriptor-graph-4199',
+      },
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({
+      receptionId: 'reception-descriptor-graph-4199',
+      patient: { eligibilityCheckedAt: '2026-07-09T08:59:00.000Z' },
+    });
+    expect(descriptorRead).toHaveBeenCalledTimes(21);
+    expect(directRead).not.toHaveBeenCalled();
+  });
+
+  it('uses the captured entry descriptor after the repository backing value mutates', async () => {
+    const acceptedAt = new Date('2026-07-09T09:00:00.000Z');
+    const mutatedAcceptedAt = 'raw-mutated-accepted-at-secret-4199';
+    const acceptedAtDescriptorRead = vi.fn();
+    const directRead = vi.fn(() => {
+      throw new Error(mutatedAcceptedAt);
+    });
+    const server = buildDevTestServer({
+      now: () => acceptedAt,
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => []),
+        create: vi.fn<ReceptionRepository['create']>(async (input) => {
+          const entryTarget = {
+            receptionId: 'reception-entry-snapshot-4199',
+            acceptedAt: acceptedAt.toISOString(),
+            receptionStatus: 'WAITING' as const,
+            prescriptionIntakeType: 'paper' as const,
+            patient: input.patient,
+          };
+          const entry = new Proxy(entryTarget, {
+            get: directRead,
+            getOwnPropertyDescriptor(currentTarget, property) {
+              const descriptor = Reflect.getOwnPropertyDescriptor(currentTarget, property);
+              if (property === 'acceptedAt') {
+                acceptedAtDescriptorRead();
+                currentTarget.acceptedAt = mutatedAcceptedAt;
+              }
+              return descriptor;
+            },
+          });
+          return {
+            kind: 'created',
+            provenance: receptionProvenance(input, 'reception-entry-snapshot-4199'),
+            entry,
+          };
+        }),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-004',
+        idempotencyKey: 'reception-entry-snapshot-4199',
+      },
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({
+      receptionId: 'reception-entry-snapshot-4199',
+      acceptedAt: acceptedAt.toISOString(),
+    });
+    expect(response.body).not.toContain(mutatedAcceptedAt);
+    expect(acceptedAtDescriptorRead).toHaveBeenCalledOnce();
+    expect(directRead).not.toHaveBeenCalled();
+  });
+
+  it('does not inspect a hostile entry when a valid provenance snapshot selects conflict', async () => {
+    const entryRead = vi.fn(() => {
+      throw new Error('raw conflict entry secret 4199');
+    });
+    const server = buildDevTestServer({
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => []),
+        create: vi.fn<ReceptionRepository['create']>(async (input) => {
+          const result = {
+            kind: 'idempotency_conflict' as const,
+            provenance: receptionProvenance(
+              input,
+              'reception-conflict-entry-unread-4199',
+              'patient-other-conflict-4199',
+            ),
+          };
+          Object.defineProperty(result, 'entry', { enumerable: true, get: entryRead });
+          return result;
+        }),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-004',
+        idempotencyKey: 'reception-conflict-entry-unread-4199',
+      },
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      errorCode: receptionIdempotencyConflictErrorCode,
+      message: 'Reception idempotency conflict',
+    });
+    expect(entryRead).not.toHaveBeenCalled();
+  });
+
+  it.each([
     [
       'Error',
       (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) =>
