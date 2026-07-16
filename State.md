@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4187 App Router error-boundary property trust — FINALIZED / INDEPENDENT_PASS
+
+- route/global error boundaryから未信頼`error.name`/`digest`のDOM・console投影を除去し、error objectをproperty/descriptor/enumeration/serializationなしでidentity dependencyとしてだけ扱う。effectは固定signal1引数だけをexactly once記録する。
+- hostile Proxyとname/digest/message/stack throwing accessorをrender+effectでread zeroに固定。provenance不明の参照コードを削除しつつ、固定copy、ERROR/alert、reset、global `html/body`と既存相当のretry上余白を維持した。初回reviewのeffect coverage/spacing指摘は修正済み。
+- focused9、Web433、API328 + integration14 expected skips、workspace typecheck/test、Web build、全標準gate、tracked-snapshot exact4 overlay secret scanをPASS。independent/plan/frontend/accessibility/security/privacy review APPROVED。implementation `e0547af`はlocal-only、pushなし。
+
 ### WP-4186 patient-search nominal error notice authority — FINALIZED / INDEPENDENT_PASS
 
 - search runnerの任意error `instanceof`/`toNotice()` authorityをmodule-private factory+WeakMap frozen snapshotへ置換。hostile Proxyのraw escape、captured prototype/constructor forge、trusted field mutationを遮断し、未登録receiverはfrozen genericへ収束する。
