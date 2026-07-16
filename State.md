@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4207 created reception patient snapshot binding — FINALIZED / INDEPENDENT_PASS
+
+- same patientIdのままcreated受付結果のPatientSummaryを差し替えると201＋`reception.created`成功監査になる実バグを修正。preflight済み患者をexpected/repository用の別frozen snapshotへ複製し、createdだけ全8 fieldとoptional own-property presenceを一致必須にした。
+- entry schema→patientId→full patient snapshot→WAITING→acceptedAt→audit順を固定。field drift、eligibilityCheckedAt追加/明示undefined/削除/変更、repository mutationをfixed non-echo 500/no-store・create1・audit0へ閉じた。existing historical snapshotとconflict/idempotencyは不変。
+- server234、API483 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。review指摘3点を修正後、independent mapper/plan/security/privacy/data/audit review READY。post-create commit/key消費とrollback/readback/retryはWP-4050/WP-4151cで未解決。implementation `52d1acc`はlocal-only、pushなし。
+
 ### WP-4206 audit event list root authority — FINALIZED / INDEPENDENT_PASS
 
 - audit listのgeneric async wrapper二次thenable assimilationを修正し、route-local direct await/catch後にfulfilled rootをuncapped dense own-data arrayへsnapshotした。最後のcallsite消滅によりgeneric wrapperも削除した。
