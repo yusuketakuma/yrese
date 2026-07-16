@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4196 audit-log repository failure normalization — FINALIZED / INDEPENDENT_PASS
+
+- audit list rejectionを固定500/no-storeへ正規化し、audit event/target識別子やadapter detailを含み得るraw error反射を遮断した。scope freezeとlist後のchain/view/projection順序は不変。
+- sync/async/hostile rejection、frozen exact scope/list once、property read zero、raw event/target detail非echoを固定。recordは非spy backingのみで、failure-time `audit.viewed` policyを新たに固定していない。
+- focused183、API381 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/audit/API/security/privacy/data review APPROVED。implementation `75b8526`はlocal-only、pushなし。
+
 ### WP-4195 reception-queue repository failure normalization — FINALIZED / INDEPENDENT_PASS
 
 - queue list rejectionを固定500/no-storeへ正規化し、患者summary/driver detailを含み得るraw error反射を遮断した。auth/dateはcatch前、schema/duplicate/JST business-date guardsはcatch後のまま。
