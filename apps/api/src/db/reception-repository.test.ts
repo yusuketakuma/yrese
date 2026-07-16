@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Pool, PoolClient } from 'pg';
 
+import type { PatientSearchResult } from '@yrese/contracts';
 import { patientId, pharmacyId, tenantId } from '@yrese/shared-kernel';
 
 import {
   InMemoryReceptionRepository,
   inMemoryReceptionIdempotencyInvariantErrorMessage,
+  inMemoryReceptionPatientSnapshotInvariantErrorMessage,
   inMemoryReceptionTimestampInvariantErrorMessage,
 } from '../reception-repository.js';
 import {
@@ -1373,6 +1375,223 @@ describe('PostgresReceptionRepository client lifecycle', () => {
 });
 
 describe('InMemoryReceptionRepository idempotency index integrity', () => {
+  it('stores a detached patient snapshot across caller mutation, list, and existing replay', async () => {
+    const repository = new InMemoryReceptionRepository();
+    const mutablePatient: PatientSearchResult = {
+      ...patient,
+      eligibilityCheckedAt: '2026-07-13T00:00:00.000Z',
+    };
+    const created = await repository.create({ ...input, patient: mutablePatient });
+    expect(created.kind).toBe('created');
+    if (created.kind !== 'created') throw new Error('expected a created reception');
+
+    mutablePatient.patientId = patientId('patient-mutated-after-create-4223');
+    mutablePatient.name = '作成後に変更された合成患者';
+    mutablePatient.kana = 'サクセイゴニヘンコウサレタゴウセイカンジャ';
+    mutablePatient.birthDate = '1999-12-31';
+    mutablePatient.sex = 'female';
+    mutablePatient.patientNumber = 'MUTATED-4223';
+    mutablePatient.eligibilityStatus = 'VERIFIED';
+    mutablePatient.eligibilityCheckedAt = '2026-07-13T00:00:00.001Z';
+
+    const listed = await repository.list({
+      tenantId: input.tenantId,
+      pharmacyId: input.pharmacyId,
+      date: '2026-07-13',
+    });
+    const existing = await repository.create({
+      ...input,
+      patient: {
+        ...mutablePatient,
+        patientId: patient.patientId,
+      },
+    });
+
+    expect(listed).toContainEqual(created.entry);
+    expect(existing).toEqual({
+      kind: 'existing',
+      entry: created.entry,
+      provenance: created.provenance,
+    });
+    expect(existing.kind === 'existing' && existing.entry.patient).toEqual({
+      ...patient,
+      eligibilityCheckedAt: '2026-07-13T00:00:00.000Z',
+    });
+    expect(existing.provenance.patientId).toBe(patient.patientId);
+
+    const conflict = await repository.create({ ...input, patient: mutablePatient });
+    expect(conflict).toEqual({
+      kind: 'idempotency_conflict',
+      provenance: created.provenance,
+    });
+  });
+
+  it('keeps optional eligibility timestamp presence detached from caller changes', async () => {
+    const repository = new InMemoryReceptionRepository();
+    const mutablePatient: Record<string, unknown> = { ...patient };
+    const created = await repository.create({
+      ...input,
+      patient: mutablePatient as typeof patient,
+    });
+    delete mutablePatient.eligibilityCheckedAt;
+    mutablePatient.eligibilityCheckedAt = '2026-07-13T00:00:00.000Z';
+
+    const existing = await repository.create(input);
+    expect(existing.kind).toBe('existing');
+    if (existing.kind !== 'existing') throw new Error('expected an existing reception');
+    expect(Object.hasOwn(existing.entry.patient, 'eligibilityCheckedAt')).toBe(false);
+    expect(existing.entry.patient.eligibilityCheckedAt).toBeUndefined();
+    expect(created.kind === 'created' && created.entry).toEqual(existing.entry);
+
+    const explicitUndefinedRepository = new InMemoryReceptionRepository();
+    const explicitUndefinedPatient = { ...patient, eligibilityCheckedAt: undefined };
+    const explicitUndefined = await explicitUndefinedRepository.create({
+      ...input,
+      patient: explicitUndefinedPatient,
+    });
+    expect(explicitUndefined.kind).toBe('created');
+    if (explicitUndefined.kind !== 'created') throw new Error('expected a created reception');
+    expect(Object.hasOwn(explicitUndefined.entry.patient, 'eligibilityCheckedAt')).toBe(true);
+    expect(explicitUndefined.entry.patient.eligibilityCheckedAt).toBeUndefined();
+  });
+
+  it('does not retain mutable created or list result projections', async () => {
+    const repository = new InMemoryReceptionRepository();
+    const created = await repository.create(input);
+    expect(created.kind).toBe('created');
+    if (created.kind !== 'created') throw new Error('expected a created reception');
+    (created.entry.patient as { name: string }).name = '変更された返却患者';
+
+    const listed = await repository.list({
+      tenantId: input.tenantId,
+      pharmacyId: input.pharmacyId,
+      date: '2026-07-13',
+    });
+    expect(listed).toHaveLength(1);
+    expect(listed[0]?.patient.name).toBe(patient.name);
+    (listed[0]?.patient as { name: string }).name = '変更された一覧患者';
+
+    const existing = await repository.create(input);
+    expect(existing.kind).toBe('existing');
+    if (existing.kind !== 'existing') throw new Error('expected an existing reception');
+    expect(existing.entry.patient.name).toBe(patient.name);
+  });
+
+  it.each([
+    ['name', undefined],
+    ['kana', undefined],
+    ['birthDate', '2026-02-30'],
+    ['sex', 'invalid'],
+    ['patientNumber', ''],
+    ['eligibilityStatus', 'invalid'],
+    ['eligibilityCheckedAt', 'not-an-instant'],
+  ] as const)('rejects an invalid new patient snapshot in %s without mutation', async (field, value) => {
+    const repository = new InMemoryReceptionRepository();
+    const internals = repository as unknown as {
+      readonly records: unknown[];
+      readonly idempotencyRecords: Map<string, unknown>;
+      readonly nextSequence: number;
+    };
+    const initialRecordCount = internals.records.length;
+
+    await expect(
+      repository.create({
+        ...input,
+        patient: { ...patient, [field]: value },
+      }),
+    ).rejects.toThrow(inMemoryReceptionPatientSnapshotInvariantErrorMessage);
+    expect(internals.records).toHaveLength(initialRecordCount);
+    expect(internals.idempotencyRecords.size).toBe(0);
+    expect(internals.nextSequence).toBe(4);
+
+    const created = await repository.create(input);
+    expect(created.kind === 'created' && created.entry.receptionId).toBe('reception-000004');
+  });
+
+  it('rejects inherited, accessor, Proxy, and stateful patient authority without mutation', async () => {
+    let accessorReads = 0;
+    let proxyTraps = 0;
+    const inherited = Object.assign(Object.create({ name: patient.name }), patient);
+    delete inherited.name;
+    const accessor = { ...patient };
+    Object.defineProperty(accessor, 'name', {
+      get() {
+        accessorReads += 1;
+        throw new Error('raw in-memory patient PHI accessor secret 4223');
+      },
+    });
+    const statefulIdentity = { ...patient };
+    Object.defineProperty(statefulIdentity, 'patientId', {
+      get() {
+        accessorReads += 1;
+        return accessorReads === 1 ? patient.patientId : patientId('patient-stateful-4223');
+      },
+    });
+    const proxied = new Proxy(
+      { ...patient },
+      {
+        get() {
+          proxyTraps += 1;
+          throw new Error('raw in-memory patient Proxy PHI secret 4223');
+        },
+        getOwnPropertyDescriptor() {
+          proxyTraps += 1;
+          throw new Error('raw in-memory patient descriptor PHI secret 4223');
+        },
+      },
+    );
+
+    for (const invalidPatient of [inherited, accessor, statefulIdentity, proxied]) {
+      const repository = new InMemoryReceptionRepository();
+      await expect(
+        repository.create({ ...input, patient: invalidPatient }),
+      ).rejects.toThrow(inMemoryReceptionPatientSnapshotInvariantErrorMessage);
+      const internals = repository as unknown as {
+        readonly records: unknown[];
+        readonly idempotencyRecords: Map<string, unknown>;
+        readonly nextSequence: number;
+      };
+      expect(internals.records).toHaveLength(3);
+      expect(internals.idempotencyRecords.size).toBe(0);
+      expect(internals.nextSequence).toBe(4);
+    }
+    expect(accessorReads).toBe(0);
+    expect(proxyTraps).toBe(0);
+  });
+
+  it('keeps non-identity patient fields unread for existing and conflict results', async () => {
+    const repository = new InMemoryReceptionRepository();
+    const created = await repository.create(input);
+    let nonIdentityReads = 0;
+    const replayPatient = { ...patient };
+    Object.defineProperty(replayPatient, 'name', {
+      get() {
+        nonIdentityReads += 1;
+        throw new Error('existing patient field must stay unread');
+      },
+    });
+
+    const existing = await repository.create({ ...input, patient: replayPatient });
+    const conflictPatient = {
+      ...patient,
+      patientId: patientId('patient-conflict-unread-4223'),
+    };
+    Object.defineProperty(conflictPatient, 'name', {
+      get() {
+        nonIdentityReads += 1;
+        throw new Error('conflict patient field must stay unread');
+      },
+    });
+    const conflict = await repository.create({ ...input, patient: conflictPatient });
+
+    expect(existing.kind).toBe('existing');
+    expect(conflict).toEqual({
+      kind: 'idempotency_conflict',
+      provenance: created.provenance,
+    });
+    expect(nonIdentityReads).toBe(0);
+  });
+
   it('snapshots a genuine create Date intrinsically and derives a matching JST business date', async () => {
     const repository = new InMemoryReceptionRepository();
     const acceptedAt = new Date('2026-07-09T14:59:59.999Z');

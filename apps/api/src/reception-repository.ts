@@ -1,5 +1,8 @@
+import { isProxy } from 'node:util/types';
+
 import {
   receptionQueueEntrySchema,
+  patientSearchResultSchema,
   type PatientSearchResult,
   type ReceptionQueueEntry,
   type ReceptionStatus,
@@ -19,6 +22,8 @@ import { snapshotDateInstant } from './instant.js';
 
 export const inMemoryReceptionTimestampInvariantErrorMessage =
   'in-memory reception acceptedAt must be a valid Date';
+export const inMemoryReceptionPatientSnapshotInvariantErrorMessage =
+  'In-memory reception patient snapshot is invalid';
 
 export interface ReceptionListInput {
   readonly tenantId: TenantId;
@@ -150,6 +155,77 @@ function toIdempotencyKey(input: {
   return `${input.tenantId}\u001f${input.pharmacyId}\u001f${input.idempotencyKey}`;
 }
 
+function readInMemoryPatientOwnDataProperty(
+  patient: unknown,
+  property: keyof PatientSearchResult,
+): { readonly present: boolean; readonly value?: unknown } {
+  if (
+    (typeof patient !== 'object' && typeof patient !== 'function') ||
+    patient === null ||
+    isProxy(patient)
+  ) {
+    throw new Error(inMemoryReceptionPatientSnapshotInvariantErrorMessage);
+  }
+  let descriptor: PropertyDescriptor | undefined;
+  try {
+    descriptor = Object.getOwnPropertyDescriptor(patient, property);
+  } catch {
+    throw new Error(inMemoryReceptionPatientSnapshotInvariantErrorMessage);
+  }
+  if (descriptor === undefined) return { present: false };
+  if (!('value' in descriptor)) {
+    throw new Error(inMemoryReceptionPatientSnapshotInvariantErrorMessage);
+  }
+  return { present: true, value: descriptor.value };
+}
+
+function captureInMemoryPatientId(patient: unknown): PatientId {
+  const property = readInMemoryPatientOwnDataProperty(patient, 'patientId');
+  if (!property.present || typeof property.value !== 'string') {
+    throw new Error(inMemoryReceptionPatientSnapshotInvariantErrorMessage);
+  }
+  try {
+    return patientId(property.value);
+  } catch {
+    throw new Error(inMemoryReceptionPatientSnapshotInvariantErrorMessage);
+  }
+}
+
+function snapshotInMemoryPatient(
+  patient: unknown,
+  capturedPatientId: PatientId,
+): Readonly<PatientSearchResult> {
+  const readRequired = (property: keyof PatientSearchResult): unknown => {
+    const value = readInMemoryPatientOwnDataProperty(patient, property);
+    if (!value.present) {
+      throw new Error(inMemoryReceptionPatientSnapshotInvariantErrorMessage);
+    }
+    return value.value;
+  };
+  const eligibilityCheckedAt = readInMemoryPatientOwnDataProperty(
+    patient,
+    'eligibilityCheckedAt',
+  );
+  try {
+    return Object.freeze(
+      patientSearchResultSchema.parse({
+        patientId: capturedPatientId,
+        name: readRequired('name'),
+        kana: readRequired('kana'),
+        birthDate: readRequired('birthDate'),
+        sex: readRequired('sex'),
+        patientNumber: readRequired('patientNumber'),
+        eligibilityStatus: readRequired('eligibilityStatus'),
+        ...(eligibilityCheckedAt.present
+          ? { eligibilityCheckedAt: eligibilityCheckedAt.value }
+          : {}),
+      }),
+    );
+  } catch {
+    throw new Error(inMemoryReceptionPatientSnapshotInvariantErrorMessage);
+  }
+}
+
 function toEntry(record: ReceptionRecord): ReceptionQueueEntry {
   return receptionQueueEntrySchema.parse({
     receptionId: record.receptionId,
@@ -222,7 +298,7 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
   }
 
   async create(input: ReceptionCreateInput): Promise<ReceptionCreateResult> {
-    const inputPatientId = patientId(input.patient.patientId);
+    const inputPatientId = captureInMemoryPatientId(input.patient);
     const idempotencyKey = toIdempotencyKey(input);
     const existing = this.idempotencyRecords.get(idempotencyKey);
     if (existing !== undefined) {
@@ -262,12 +338,13 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
       input.acceptedAt,
       inMemoryReceptionTimestampInvariantErrorMessage,
     );
+    const patientSnapshot = snapshotInMemoryPatient(input.patient, inputPatientId);
     const record: ReceptionRecord = {
       tenantId: input.tenantId,
       pharmacyId: input.pharmacyId,
       receptionId: receptionId(`reception-${String(this.nextSequence).padStart(6, '0')}`),
       patientId: inputPatientId,
-      patient: input.patient,
+      patient: patientSnapshot,
       acceptedAt,
       date: businessDateFromAcceptedAt(new Date(acceptedAt)),
       receptionStatus: 'WAITING',
