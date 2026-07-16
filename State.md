@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4200 date-time primitive string authority — FINALIZED / INDEPENDENT_PASS
+
+- CalendarDate/ClaimMonthのRegExp暗黙ToStringを修正し、3 clinical wrapperを含む全5 factoryでprimitive stringだけをruntime authorityにした。既存のformat RangeError、regex、暦日・請求月 semanticsは不変。
+- boxed String、coercible object、hostile/revoked Proxyをzero-coercion/zero-trapで拒否。public signature、timezone、現在時刻規律、fromParts/fromCalendarDateは変更していない。
+- date-time13/typecheck/build、calculation87/typecheck、API422 + integration14 expected skips、Web454、workspace typecheck/test/build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/security/data/medical review APPROVED。implementation `e14a7cb`はlocal-only、pushなし。
+
 ### WP-4199 fulfilled reception-create result snapshot authority — FINALIZED / INDEPENDENT_PASS
 
 - fulfilled resultのprovenance/entry/patient accessor・Proxy raw反射とTOCTOUを修正。known fieldをown enumerable data descriptorから一度だけ段階snapshotし、raw repository graphをZod/audit/response authorityから除外した。
