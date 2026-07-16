@@ -3380,9 +3380,11 @@ Primary-source URLs to fingerprint in WP-0054c (not a substitute for source file
   - evidence/result(2026-07-16): `docs/research/rececon_v0_7_external_source_fingerprints_20260716.md`へofficial/public 10、HL7 6、JAHIS/NSIPS 4、AWS Bedrock 4、vendor 14の計38 sourceを登録。全件live web確認、HTTP 200、decoded-body SHA-256取得済み。authority/right/watch/applicabilityを分類し、linked PDF/package/terminology/restricted specificationへlanding hashを流用していない。vendorはPriority C、NSIPSはrestricted、AWSはdynamic service docsとしてfail-closed。evidence_id昇格は0。
   - commit_push: `70c3813`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。independent verification、exact-artifact license review、human evidence promotionは未完了。
   - exact_next_action: artifact landing後、WP-0054dでPriority Aのみをeffective date/jurisdiction/applicability/control/test/human sign-offへ写像する。linked PDF/packageの個別取得/hash/license reviewは別evidence WPで継続する。
-- [ ] WP-0054d Legal / regulatory / clinical compliance matrix(R4 human authority)
+- [~] WP-0054d Legal / regulatory / clinical compliance matrix(R4 human authority) — LOCAL_READY、INDEPENDENT_VERIFY_REQUIRED、HUMAN_SIGN_OFF_BLOCKED
   - scope: 調剤、保存、電子記録、請求、資格、PMH、電子処方箋、オンライン服薬指導/配送、医療安全、privacy/securityをrequirement→control→evidence→testへ写像する。
   - acceptance: effective date、jurisdiction、applicability、official source、human legal/pharmacist/claim/security sign-off、change watchを必須とし、未確定はBLOCKED。
+  - evidence/result(2026-07-16): `docs/research/rececon_v0_7_compliance_matrix_20260716.md`へ18 controlを作成し、要求12領域を12/12 coverage。各行にeffective date/jurisdiction/applicability、proposed control、evidence/test contract、human sign-off、watchを設定した。2026-07-16時点の薬剤師法API本文は処方箋・調剤録3年保存、将来改正は5年であるため`TIME_SPLIT_REQUIRED`とし、具体的施行日・経過措置の人間確認なしに上書きしない。個人情報ガイダンス令和8年4月版、安全管理GL 7.0、令和8年度checklist、事業者GL 2.0、SaMD 2023-03-31改正版を公式sourceで再確認。実装許可0、evidence_id発行0、18/18がexact-artifactまたはhuman review blocker。
+  - exact_next_action: artifact landing後、WP-0054eで本matrixのblocker/dependencyだけをP0〜P3/Gate 0〜5 DAGへ入力する。REG-003改版、REG-004 blocker解除、実装開始はexact artifact取得・evidence promotion・human sign-offまで禁止する。
 - [ ] WP-0054e Priority / Release Gate / dependency DAG
   - scope: P0〜P3とGate 0〜5をpatient safety、legal/claim、data authority、migration reversibility、commercial value、dependencyで再採点する。
   - acceptance: 各WPにpriority/risk/dependencies/entry/exit/rollback/demo/owner/verifier/human gateがあり、循環依存とGate bypassが0。
