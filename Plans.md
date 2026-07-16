@@ -3378,6 +3378,7 @@ Primary-source URLs to fingerprint in WP-0054c (not a substitute for source file
   - scope: 法令、通知、公式仕様、package、vendor public claimを一次情報URL、取得日、版、hash、利用/転載条件、適用範囲、expiry/watch owner付きで登録する。
   - acceptance: competitor claimはedition/option不明を明示し、法令/請求/患者安全をvendor資料だけで確定しない。PMDA/JAHIS/NSIPS/official artifactのlicenseをfail-closed判定する。
   - evidence/result(2026-07-16): `docs/research/rececon_v0_7_external_source_fingerprints_20260716.md`へofficial/public 10、HL7 6、JAHIS/NSIPS 4、AWS Bedrock 4、vendor 14の計38 sourceを登録。全件live web確認、HTTP 200、decoded-body SHA-256取得済み。authority/right/watch/applicabilityを分類し、linked PDF/package/terminology/restricted specificationへlanding hashを流用していない。vendorはPriority C、NSIPSはrestricted、AWSはdynamic service docsとしてfail-closed。evidence_id昇格は0。
+  - commit_push: `70c3813`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。independent verification、exact-artifact license review、human evidence promotionは未完了。
   - exact_next_action: artifact landing後、WP-0054dでPriority Aのみをeffective date/jurisdiction/applicability/control/test/human sign-offへ写像する。linked PDF/packageの個別取得/hash/license reviewは別evidence WPで継続する。
 - [ ] WP-0054d Legal / regulatory / clinical compliance matrix(R4 human authority)
   - scope: 調剤、保存、電子記録、請求、資格、PMH、電子処方箋、オンライン服薬指導/配送、医療安全、privacy/securityをrequirement→control→evidence→testへ写像する。
