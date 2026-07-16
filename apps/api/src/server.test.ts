@@ -47,6 +47,7 @@ import {
   receptionQueueRepositoryErrorMessage,
   receptionQueueSchemaInvariantErrorMessage,
   receptionCreateRepositoryErrorMessage,
+  receptionCreatedPatientSnapshotMismatchErrorMessage,
   receptionCreatedStatusInvariantErrorMessage,
   receptionCreatedAcceptedAtInvariantErrorMessage,
   receptionCreatedAuditInvariantErrorMessage,
@@ -3183,10 +3184,7 @@ describe('buildServer', () => {
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
         create: vi.fn<ReceptionRepository['create']>((input) => {
-          const patient = descriptorProxy({
-            ...input.patient,
-            eligibilityCheckedAt: '2026-07-09T08:59:00.000Z',
-          });
+          const patient = descriptorProxy({ ...input.patient });
           const entry = descriptorProxy({
             receptionId: 'reception-descriptor-graph-4199',
             acceptedAt: acceptedAt.toISOString(),
@@ -3212,7 +3210,7 @@ describe('buildServer', () => {
       url: '/reception',
       headers: tenantOneReceptionWriteHeaders,
       payload: {
-        patientId: 'patient-syn-004',
+        patientId: 'patient-syn-001',
         idempotencyKey: 'reception-descriptor-graph-4199',
       },
     });
@@ -3221,7 +3219,7 @@ describe('buildServer', () => {
     expect(response.statusCode).toBe(201);
     expect(response.json()).toMatchObject({
       receptionId: 'reception-descriptor-graph-4199',
-      patient: { eligibilityCheckedAt: '2026-07-09T08:59:00.000Z' },
+      patient: { eligibilityCheckedAt: '2026-07-09T08:16:15.000Z' },
     });
     expect(descriptorRead).toHaveBeenCalledTimes(21);
     expect(directRead).not.toHaveBeenCalled();
@@ -4151,6 +4149,257 @@ describe('buildServer', () => {
     },
   );
 
+  it.each([
+    ['name', { name: '合成差替氏名4207' }],
+    ['kana', { kana: 'ゴウセイサシカエシメイヨンニイチゼロ' }],
+    ['birthDate', { birthDate: '1965-04-05' }],
+    ['sex', { sex: 'male' as const }],
+    ['patientNumber', { patientNumber: 'DRIFT-4207' }],
+    ['eligibilityStatus', { eligibilityStatus: 'VERIFIED' as const }],
+    ['eligibilityCheckedAt added', { eligibilityCheckedAt: '2026-07-09T08:59:00.000Z' }],
+    ['eligibilityCheckedAt present undefined', { eligibilityCheckedAt: undefined }],
+  ] as const)(
+    'rejects a created reception whose validated patient %s drifted before success audit',
+    async (_label, patientMutation) => {
+      const auditRecord = vi.fn<AuditRepository['record']>();
+      const idempotencyKey = `reception-created-patient-drift-${_label}`;
+      const create = vi.fn<ReceptionRepository['create']>(async (input) => ({
+        kind: 'created',
+        provenance: receptionProvenance(input, 'reception-created-patient-drift-4207'),
+        entry: {
+          receptionId: 'reception-created-patient-drift-4207',
+          acceptedAt: input.acceptedAt.toISOString(),
+          receptionStatus: 'WAITING' as const,
+          prescriptionIntakeType: 'paper' as const,
+          patient: { ...input.patient, ...patientMutation },
+        },
+      }));
+      const server = buildDevTestServer({
+        receptionRepository: {
+          list: vi.fn<ReceptionRepository['list']>(async () => []),
+          create,
+        },
+        auditRepository: {
+          record: auditRecord,
+          list: vi.fn<AuditRepository['list']>(async () => []),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/reception',
+        headers: tenantOneReceptionWriteHeaders,
+        payload: { patientId: 'patient-syn-004', idempotencyKey },
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toMatchObject({
+        message: receptionCreatedPatientSnapshotMismatchErrorMessage,
+      });
+      expect(create).toHaveBeenCalledOnce();
+      expect(auditRecord).not.toHaveBeenCalled();
+      for (const sensitiveValue of [
+        'patient-syn-004',
+        idempotencyKey,
+        'reception-created-patient-drift-4207',
+      ]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+      for (const sensitiveValue of Object.values(patientMutation)) {
+        if (typeof sensitiveValue === 'string') {
+          expect(response.body).not.toContain(sensitiveValue);
+        }
+      }
+    },
+  );
+
+  it.each([
+    [
+      'removed',
+      (patient: Record<string, unknown>) => {
+        delete patient.eligibilityCheckedAt;
+      },
+    ],
+    [
+      'changed',
+      (patient: Record<string, unknown>) => {
+        patient.eligibilityCheckedAt = '2026-07-09T08:59:00.001Z';
+      },
+    ],
+  ] as const)(
+    'rejects a created reception whose eligibilityCheckedAt was %s',
+    async (_label, mutatePatient) => {
+      const lookupPatient: PatientSearchResult = {
+        patientId: patientId('patient-created-eligibility-drift-4207'),
+        name: '合成資格差替患者',
+        kana: 'ゴウセイシカクサシカエカンジャ',
+        birthDate: '1985-04-10',
+        sex: 'female',
+        patientNumber: 'ELIGIBILITY-4207',
+        eligibilityStatus: 'VERIFIED',
+        eligibilityCheckedAt: '2026-07-09T08:59:00.000Z',
+      };
+      const auditRecord = vi.fn<AuditRepository['record']>();
+      const create = vi.fn<ReceptionRepository['create']>(async (input) => {
+        const returnedPatient = { ...input.patient } as Record<string, unknown>;
+        mutatePatient(returnedPatient);
+        return {
+          kind: 'created' as const,
+          provenance: receptionProvenance(input, 'reception-created-eligibility-drift-4207'),
+          entry: {
+            receptionId: 'reception-created-eligibility-drift-4207',
+            acceptedAt: input.acceptedAt.toISOString(),
+            receptionStatus: 'WAITING' as const,
+            prescriptionIntakeType: 'paper' as const,
+            patient: returnedPatient as unknown as PatientSearchResult,
+          },
+        };
+      });
+      const server = buildDevTestServer({
+        patientRepository: {
+          search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
+          findById: vi.fn<PatientRepository['findById']>(async () => lookupPatient),
+        },
+        receptionRepository: {
+          list: vi.fn<ReceptionRepository['list']>(async () => []),
+          create,
+        },
+        auditRepository: {
+          record: auditRecord,
+          list: vi.fn<AuditRepository['list']>(async () => []),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/reception',
+        headers: tenantOneReceptionWriteHeaders,
+        payload: {
+          patientId: lookupPatient.patientId,
+          idempotencyKey: `reception-created-eligibility-${_label}`,
+        },
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json()).toMatchObject({
+        message: receptionCreatedPatientSnapshotMismatchErrorMessage,
+      });
+      expect(create).toHaveBeenCalledOnce();
+      expect(auditRecord).not.toHaveBeenCalled();
+      expect(response.body).not.toContain(lookupPatient.patientId);
+      expect(response.body).not.toContain(lookupPatient.patientNumber);
+      expect(response.body).not.toContain(lookupPatient.eligibilityCheckedAt!);
+    },
+  );
+
+  it('uses detached frozen patient snapshots and rejects repository-side patient drift', async () => {
+    const lookupPatient: PatientSearchResult = {
+      patientId: patientId('patient-created-detached-4207'),
+      name: '合成固定患者',
+      kana: 'ゴウセイコテイカンジャ',
+      birthDate: '1981-04-10',
+      sex: 'unknown',
+      patientNumber: 'DETACHED-4207',
+      eligibilityStatus: 'NOT_CHECKED',
+    };
+    const auditRecord = vi.fn<AuditRepository['record']>();
+    const create = vi.fn<ReceptionRepository['create']>(async (input) => {
+      expect(input.patient).not.toBe(lookupPatient);
+      expect(Object.isFrozen(input.patient)).toBe(true);
+      expect(Reflect.set(input.patient, 'name', '合成直接変異4207')).toBe(false);
+      return {
+        kind: 'created',
+        provenance: receptionProvenance(input, 'reception-created-detached-4207'),
+        entry: {
+          receptionId: 'reception-created-detached-4207',
+          acceptedAt: input.acceptedAt.toISOString(),
+          receptionStatus: 'WAITING',
+          prescriptionIntakeType: 'paper',
+          patient: { ...input.patient, name: '合成返却差替4207' },
+        },
+      };
+    });
+    const server = buildDevTestServer({
+      patientRepository: {
+        search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
+        findById: vi.fn<PatientRepository['findById']>(async () => lookupPatient),
+      },
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => []),
+        create,
+      },
+      auditRepository: {
+        record: auditRecord,
+        list: vi.fn<AuditRepository['list']>(async () => []),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: lookupPatient.patientId,
+        idempotencyKey: 'reception-created-detached-4207',
+      },
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toMatchObject({
+      message: receptionCreatedPatientSnapshotMismatchErrorMessage,
+    });
+    expect(create).toHaveBeenCalledOnce();
+    expect(auditRecord).not.toHaveBeenCalled();
+    expect(lookupPatient.name).toBe('合成固定患者');
+    expect(response.body).not.toContain('合成直接変異4207');
+    expect(response.body).not.toContain('合成返却差替4207');
+  });
+
+  it('prioritizes created patient snapshot drift over status and acceptance-time drift', async () => {
+    const auditRecord = vi.fn<AuditRepository['record']>();
+    const server = buildDevTestServer({
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => []),
+        create: vi.fn<ReceptionRepository['create']>(async (input) => ({
+          kind: 'created',
+          provenance: receptionProvenance(input, 'reception-created-precedence-4207'),
+          entry: {
+            receptionId: 'reception-created-precedence-4207',
+            acceptedAt: '2026-07-09T09:00:00.001Z',
+            receptionStatus: 'COMPLETED',
+            prescriptionIntakeType: 'paper',
+            patient: { ...input.patient, patientNumber: 'PRECEDENCE-DRIFT-4207' },
+          },
+        })),
+      },
+      auditRepository: {
+        record: auditRecord,
+        list: vi.fn<AuditRepository['list']>(async () => []),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-004',
+        idempotencyKey: 'reception-created-precedence-4207',
+      },
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toMatchObject({
+      message: receptionCreatedPatientSnapshotMismatchErrorMessage,
+    });
+    expect(auditRecord).not.toHaveBeenCalled();
+  });
+
   it.each(['created', 'existing'] as const)(
     'rejects a schema-invalid %s reception result before audit and response',
     async (resultKind) => {
@@ -4240,15 +4489,7 @@ describe('buildServer', () => {
               acceptedAt: '2026-07-09T09:00:00.000Z',
               receptionStatus,
               prescriptionIntakeType: 'paper',
-              patient: {
-                patientId: 'patient-syn-004',
-                name: '合成状態患者',
-                kana: 'ゴウセイジョウタイカンジャ',
-                birthDate: '1990-01-01',
-                sex: 'unknown',
-                patientNumber: 'STATUS-SENSITIVE-001',
-                eligibilityStatus: 'NOT_CHECKED',
-              },
+              patient: input.patient,
             },
           })),
         },
@@ -4281,9 +4522,6 @@ describe('buildServer', () => {
       for (const sensitiveValue of [
         'reception-created-status-sensitive',
         'patient-syn-004',
-        '合成状態患者',
-        'ゴウセイジョウタイカンジャ',
-        'STATUS-SENSITIVE-001',
         receptionStatus,
       ]) {
         expect(response.body).not.toContain(sensitiveValue);

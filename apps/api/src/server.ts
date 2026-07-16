@@ -87,6 +87,8 @@ export const receptionPatientSchemaInvariantErrorMessage =
   'Patient lookup returned an invalid patient snapshot';
 export const receptionResultPatientIdentityMismatchErrorMessage =
   'Reception repository returned a mismatched patient identity';
+export const receptionCreatedPatientSnapshotMismatchErrorMessage =
+  'Created reception did not preserve the validated patient snapshot';
 export const receptionResultIdempotencyProvenanceMismatchErrorMessage =
   'Reception repository returned mismatched idempotency provenance';
 export const receptionResultKindInvariantErrorMessage =
@@ -323,6 +325,40 @@ function parsePatientSearchResultSnapshot(
   } catch {
     throw new Error(invariantErrorMessage);
   }
+}
+
+function cloneFrozenPatientSearchResult(value: PatientSearchResult): PatientSearchResult {
+  const eligibilityCheckedAtPresent = Object.hasOwn(value, 'eligibilityCheckedAt');
+  return Object.freeze({
+    patientId: value.patientId,
+    name: value.name,
+    kana: value.kana,
+    birthDate: value.birthDate,
+    sex: value.sex,
+    patientNumber: value.patientNumber,
+    eligibilityStatus: value.eligibilityStatus,
+    ...(eligibilityCheckedAtPresent
+      ? { eligibilityCheckedAt: value.eligibilityCheckedAt }
+      : {}),
+  });
+}
+
+function patientSnapshotsMatch(
+  left: PatientSearchResult,
+  right: PatientSearchResult,
+): boolean {
+  return (
+    left.patientId === right.patientId &&
+    left.name === right.name &&
+    left.kana === right.kana &&
+    left.birthDate === right.birthDate &&
+    left.sex === right.sex &&
+    left.patientNumber === right.patientNumber &&
+    left.eligibilityStatus === right.eligibilityStatus &&
+    Object.hasOwn(left, 'eligibilityCheckedAt') ===
+      Object.hasOwn(right, 'eligibilityCheckedAt') &&
+    left.eligibilityCheckedAt === right.eligibilityCheckedAt
+  );
 }
 
 function snapshotDenseArray(
@@ -838,6 +874,8 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         patientSnapshot,
         receptionPatientSchemaInvariantErrorMessage,
       );
+      const expectedCreatedPatient = cloneFrozenPatientSearchResult(parsedPatient);
+      const repositoryPatient = cloneFrozenPatientSearchResult(parsedPatient);
 
       const acceptedAt = now();
       const acceptedAtIso = acceptedAt.toISOString();
@@ -846,7 +884,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         result = await receptionRepository.create({
           tenantId: tenantContext.tenantId,
           pharmacyId: tenantContext.pharmacyId,
-          patient: parsedPatient,
+          patient: repositoryPatient,
           idempotencyKey: body.data.idempotencyKey,
           acceptedAt,
         });
@@ -909,6 +947,12 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       );
       if (parsedEntry.patient.patientId !== parsedPatientId) {
         throw new Error(receptionResultPatientIdentityMismatchErrorMessage);
+      }
+      if (
+        resultKind === 'created' &&
+        !patientSnapshotsMatch(parsedEntry.patient, expectedCreatedPatient)
+      ) {
+        throw new Error(receptionCreatedPatientSnapshotMismatchErrorMessage);
       }
       if (resultKind === 'created' && parsedEntry.receptionStatus !== 'WAITING') {
         throw new Error(receptionCreatedStatusInvariantErrorMessage);
