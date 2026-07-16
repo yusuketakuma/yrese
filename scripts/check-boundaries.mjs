@@ -9,6 +9,7 @@ const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", 
 const ignoredDirs = new Set([".git", ".next", "coverage", "dist", "node_modules"]);
 const scopeError = "Boundary check could not validate the protected workspace scope.";
 const sourceFileCache = new Map();
+const dependencySections = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"];
 const pureCorePackageNames = new Set([
   "audit",
   "calculation",
@@ -49,6 +50,50 @@ function toPosix(filePath) {
 
 async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, "utf8"));
+}
+
+function validateManifestShape(manifest) {
+  if (manifest === null || typeof manifest !== "object" || Array.isArray(manifest)) {
+    throw new Error(scopeError);
+  }
+  if (typeof manifest.name !== "string" || manifest.name.trim() === "" || manifest.name !== manifest.name.trim()) {
+    throw new Error(scopeError);
+  }
+
+  for (const section of dependencySections) {
+    const dependencies = manifest[section];
+    if (dependencies === undefined) {
+      continue;
+    }
+    if (dependencies === null || typeof dependencies !== "object" || Array.isArray(dependencies)) {
+      throw new Error(scopeError);
+    }
+    for (const [name, specifier] of Object.entries(dependencies)) {
+      if (name.trim() === "" || name !== name.trim()) {
+        throw new Error(scopeError);
+      }
+      if (typeof specifier !== "string" || specifier.trim() === "" || specifier !== specifier.trim()) {
+        throw new Error(scopeError);
+      }
+    }
+  }
+}
+
+async function readWorkspaceManifests(workspacePackageDirs) {
+  const manifests = new Map();
+  const packageNames = new Set();
+
+  for (const dir of workspacePackageDirs) {
+    const manifest = await readJson(path.join(dir, "package.json"));
+    validateManifestShape(manifest);
+    if (packageNames.has(manifest.name)) {
+      throw new Error(scopeError);
+    }
+    packageNames.add(manifest.name);
+    manifests.set(dir, manifest);
+  }
+
+  return manifests;
 }
 
 async function listFiles(dir, predicate = () => true) {
@@ -379,9 +424,8 @@ async function checkImportBoundaries(packageNameByDir, appPackageNames) {
 }
 
 function workspaceDependencies(packageJson) {
-  const sections = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"];
   const deps = [];
-  for (const section of sections) {
+  for (const section of dependencySections) {
     const values = packageJson[section] ?? {};
     for (const [name, specifier] of Object.entries(values)) {
       if (typeof specifier === "string" && specifier.startsWith("workspace:")) {
@@ -392,14 +436,10 @@ function workspaceDependencies(packageJson) {
   return deps;
 }
 
-async function checkWorkspaceCycles(workspacePackageDirs) {
+function checkWorkspaceCycles(workspaceManifests) {
   const graph = new Map();
 
-  for (const dir of workspacePackageDirs) {
-    const packageJson = await readJson(path.join(dir, "package.json"));
-    if (typeof packageJson.name !== "string") {
-      continue;
-    }
+  for (const packageJson of workspaceManifests.values()) {
     graph.set(packageJson.name, workspaceDependencies(packageJson));
   }
 
@@ -511,14 +551,12 @@ async function checkDuplicateConstArrays() {
 async function main() {
   await validateProtectedScopes();
   const workspacePackageDirs = await listWorkspacePackageDirs();
+  const workspaceManifests = await readWorkspaceManifests(workspacePackageDirs);
   const packageNameByDir = new Map();
   const appPackageNames = new Map();
 
   for (const dir of workspacePackageDirs) {
-    const packageJson = await readJson(path.join(dir, "package.json"));
-    if (typeof packageJson.name !== "string") {
-      continue;
-    }
+    const packageJson = workspaceManifests.get(dir);
     packageNameByDir.set(dir, packageJson.name);
     if (toPosix(path.relative(rootDir, dir)).startsWith("apps/")) {
       appPackageNames.set(packageJson.name, path.basename(dir));
@@ -526,7 +564,7 @@ async function main() {
   }
 
   await checkImportBoundaries(packageNameByDir, appPackageNames);
-  await checkWorkspaceCycles(workspacePackageDirs);
+  checkWorkspaceCycles(workspaceManifests);
   await checkDuplicateConstArrays();
 
   if (violations.length > 0) {

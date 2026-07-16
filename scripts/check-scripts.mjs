@@ -491,6 +491,18 @@ async function testBoundaryScopeValidationFailsClosed() {
   const fixedMessage = "Boundary check could not validate the protected workspace scope.";
   const fixtures = [];
 
+  const createSemanticFixture = async (label, appManifest, packageManifests = [{ name: "@fixture/core" }]) => {
+    const root = path.join(tempRoot, `boundary-${label}`);
+    await writeText(path.join(root, "apps", "web", "package.json"), JSON.stringify(appManifest));
+    await writeText(path.join(root, "apps", "web", "src", "index.ts"), "export const app = true;\n");
+    for (const [index, manifest] of packageManifests.entries()) {
+      const packageDir = index === 0 ? "core" : `core-${index + 1}`;
+      await writeText(path.join(root, "packages", packageDir, "package.json"), JSON.stringify(manifest));
+      await writeText(path.join(root, "packages", packageDir, "src", "index.ts"), "export const core = true;\n");
+    }
+    fixtures.push({ label, root, exactOutput: true });
+  };
+
   fixtures.push({ label: "missing root", root: path.join(tempRoot, "boundary-missing-root") });
 
   const missingApps = path.join(tempRoot, "boundary-missing-apps");
@@ -531,6 +543,39 @@ async function testBoundaryScopeValidationFailsClosed() {
   await writeText(path.join(malformedManifest, "packages", "core", "src", "index.ts"), "export const core = true;\n");
   fixtures.push({ label: "malformed manifest", root: malformedManifest });
 
+  await createSemanticFixture("missing-manifest-name", {}, [{ name: "@fixture/core" }]);
+  await createSemanticFixture("array-manifest", [], [{ name: "@fixture/core" }]);
+  await createSemanticFixture("blank-manifest-name", { name: "   " });
+  await createSemanticFixture("padded-manifest-name", { name: " @fixture/web " });
+  await createSemanticFixture(
+    "duplicate-manifest-name",
+    { name: "@fixture/duplicate" },
+    [{ name: "@fixture/duplicate" }],
+  );
+  await createSemanticFixture("null-dependency-section", {
+    name: "@fixture/web",
+    dependencies: null,
+  });
+  await createSemanticFixture("array-dependency-section", {
+    name: "@fixture/web",
+    devDependencies: [],
+  });
+  await createSemanticFixture("blank-dependency-name", {
+    name: "@fixture/web",
+    dependencies: { "   ": "workspace:*" },
+  });
+  await createSemanticFixture("non-string-dependency-specifier", {
+    name: "@fixture/web",
+    dependencies: { "@fixture/core": 1 },
+  });
+  await createSemanticFixture("blank-dependency-specifier", {
+    name: "@fixture/web",
+    dependencies: { "@fixture/core": "   " },
+  });
+  await createSemanticFixture("padded-dependency-specifier", {
+    name: "@fixture/web",
+    dependencies: { "@fixture/core": " workspace:* " },
+  });
   const symlinkScope = path.join(tempRoot, "boundary-symlink-scope");
   const symlinkTarget = path.join(tempRoot, "boundary-symlink-target");
   await writeText(path.join(symlinkTarget, "web", "package.json"), JSON.stringify({ name: "@fixture/web" }));
