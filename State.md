@@ -8,6 +8,12 @@
 
 ## 2026-07-16
 
+### WP-4166 arbitrary in-memory reception seed seam removal — FINALIZED / INDEPENDENT_PASS
+
+- `InMemoryReceptionRepository`の未使用public seed parameterを削除し、constructorをzero-argumentへ制限した。固定synthetic recordsのinstanceごとのarray clone、非export `ReceptionRecord`、stable list order、初回ID `reception-000004`、JST業務日、same-key replay、different-patient conflict、audit/API responseは不変。tracked class consumerはserverの1件、argument-passing consumerは0件。
+- focused受付不変条件4/4、API272 + PostgreSQL14 expected skips、Web337、audit183、calculation87、workspace typecheck/test/build、lint、script harness、OpenAPI、purity、boundaries、SSOT173、deps high0 critical0、SBOM231、tracked-snapshot secret scan、diffをPASS。live secret scanは既存user-owned ignored `.codegraph` symlinkでprotected scopeをfail-closedとし、対象外symlinkへは触れていない。
+- read-only plan reviewerはR1/READY、independent diff verifierとsecurity/privacy/medical/data-integrity/API/DB reviewerはPASS/APPROVED。contracts/OpenAPI/PostgreSQL/migration/SSOT/Web/package/lock/CIは未変更で、WP-4151c human gateも未解除。implementation exact1 `7c366ea`はlocal-only、pushなし。
+
 ### WP-4151 / WP-4151a / WP-4151b terminal status reconciliation — FINALIZED / INDEPENDENT_PASS_WITH_NOTE
 
 - `Plans.md`のactive statusだけが独立検証・follow-up landing後も未完了だったため、current artifact、commit ancestry、independent noteをfresh read-only再照合し、3 bounded evidence sliceをFINALIZEDへ整合した。runtime/code/contracts/API/DB/SSOT/package/lock/CI変更なし。
