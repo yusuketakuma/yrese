@@ -1827,6 +1827,81 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(String(init.body)).toContain('"idempotencyKey":"key-1"');
   });
 
+  it.each([
+    ["queue", 400, "RCV-0001", "AUTH-0003"],
+    ["queue", 403, "AUTH-0003", "RCV-0003"],
+    ["create", 400, "RCV-0001", "RCV-0002"],
+    ["create", 403, "AUTH-0003", "RCV-0001"],
+    ["create", 404, "RCV-0002", "PAT-0001"],
+    ["create", 409, "RCV-0003", "AUTH-0003"],
+  ] as const)(
+    "binds %s HTTP %s error codes to the API-006 tuple",
+    async (operation, status, expectedCode, wrongRegisteredCode) => {
+      const invoke = (errorCode: string) => {
+        const fetchImpl = vi
+          .fn()
+          .mockResolvedValue(jsonResponse(status, {
+            errorCode,
+            message: "raw reception error body",
+          }));
+        return operation === "queue"
+          ? withNodeEnv("development", () =>
+              fetchReceptionQueue("2026-07-10", fetchImpl),
+            )
+          : withNodeEnv("development", () =>
+              createReception("patient-test-001", fetchImpl, "key-status-binding"),
+            );
+      };
+
+      await expect(invoke(expectedCode)).rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(ReceptionError);
+        const notice = (error as ReceptionError).toNotice();
+        expect(notice.errorCode).toBe(expectedCode);
+        expect(JSON.stringify(notice)).not.toContain("raw reception error body");
+        return true;
+      });
+      await expect(invoke(wrongRegisteredCode)).rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(ReceptionError);
+        const notice = (error as ReceptionError).toNotice();
+        expect(notice.errorCode).toBeUndefined();
+        expect(JSON.stringify(notice)).not.toContain(wrongRegisteredCode);
+        expect(JSON.stringify(notice)).not.toContain("raw reception error body");
+        return true;
+      });
+    },
+  );
+
+  it.each([
+    ["queue", 404, "RCV-0002"],
+    ["queue", 409, "RCV-0003"],
+    ["queue", 500, "AUTH-0003"],
+    ["create", 500, "RCV-0003"],
+  ] as const)(
+    "omits registered codes for contract-unsupported %s HTTP %s responses",
+    async (operation, status, errorCode) => {
+      const fetchImpl = vi.fn().mockResolvedValue(
+        jsonResponse(status, { errorCode, message: "raw unsupported status body" }),
+      );
+      const request =
+        operation === "queue"
+          ? withNodeEnv("development", () =>
+              fetchReceptionQueue("2026-07-10", fetchImpl),
+            )
+          : withNodeEnv("development", () =>
+              createReception("patient-test-001", fetchImpl, "key-unsupported-status"),
+            );
+
+      await expect(request).rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(ReceptionError);
+        const notice = (error as ReceptionError).toNotice();
+        expect(notice.errorCode).toBeUndefined();
+        expect(JSON.stringify(notice)).not.toContain(errorCode);
+        expect(JSON.stringify(notice)).not.toContain("raw unsupported status body");
+        return true;
+      });
+    },
+  );
+
   it("preserves fixed queue guidance when error JSON throws synchronously", async () => {
     const rawSentinel = "raw synchronous queue error body";
     const json = vi.fn(() => {

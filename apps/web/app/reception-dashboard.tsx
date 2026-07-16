@@ -9,7 +9,14 @@ import {
   type ReceptionQueueResponse,
   type ReceptionStatus,
 } from "@yrese/contracts";
-import { permissionScope, type PermissionScope } from "@yrese/shared-kernel";
+import {
+  AUTH_PERMISSION_DENIED_ERROR_CODE,
+  RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE,
+  RECEPTION_INVALID_REQUEST_ERROR_CODE,
+  RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE,
+  permissionScope,
+  type PermissionScope,
+} from "@yrese/shared-kernel";
 
 import { resolveWebApiUrl } from "./api-transport";
 import {
@@ -99,14 +106,37 @@ function trustedReceptionErrorNotice(error: unknown): ErrorNoticeProps | undefin
     : undefined;
 }
 
-async function extractErrorCode(res: Response): Promise<string | undefined> {
+type ReceptionErrorOperation = "queue" | "create";
+
+function expectedReceptionErrorCode(
+  operation: ReceptionErrorOperation,
+  status: number,
+): string | undefined {
+  if (operation === "queue") {
+    if (status === 400) return RECEPTION_INVALID_REQUEST_ERROR_CODE;
+    if (status === 403) return AUTH_PERMISSION_DENIED_ERROR_CODE;
+    return undefined;
+  }
+  if (status === 400) return RECEPTION_INVALID_REQUEST_ERROR_CODE;
+  if (status === 403) return AUTH_PERMISSION_DENIED_ERROR_CODE;
+  if (status === 404) return RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE;
+  if (status === 409) return RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE;
+  return undefined;
+}
+
+async function extractErrorCode(
+  res: Response,
+  operation: ReceptionErrorOperation,
+): Promise<string | undefined> {
   try {
     const body: unknown = await res.json();
     if (typeof body !== "object" || body === null) return undefined;
     const descriptor = Object.getOwnPropertyDescriptor(body, "errorCode");
     if (descriptor === undefined || !("value" in descriptor)) return undefined;
     // registry 未登録/形式外のコードは表示しない(異常値の verbatim 出力防止)
-    return registeredErrorCodeOrUndefined(descriptor.value);
+    const registeredCode = registeredErrorCodeOrUndefined(descriptor.value);
+    const expectedCode = expectedReceptionErrorCode(operation, res.status);
+    return registeredCode === expectedCode ? registeredCode : undefined;
   } catch {
     return undefined;
   }
@@ -125,7 +155,7 @@ export async function fetchReceptionQueue(
     ...(signal !== undefined ? { signal } : {}),
   });
   if (!res.ok) {
-    const errorCode = await extractErrorCode(res);
+    const errorCode = await extractErrorCode(res, "queue");
     if (res.status === 403) {
       throw createTrustedReceptionError(
         "権限がありません。",
@@ -209,7 +239,7 @@ export async function createReception(
     body: JSON.stringify({ patientId: patientIdValue, idempotencyKey }),
   });
   if (!res.ok) {
-    const errorCode = await extractErrorCode(res);
+    const errorCode = await extractErrorCode(res, "create");
     if (res.status === 409) {
       throw createTrustedReceptionError(
         "同じ操作キーが別の患者で再利用されました(二重操作の可能性)。",
