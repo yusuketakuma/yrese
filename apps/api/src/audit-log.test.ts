@@ -1,6 +1,11 @@
 import { randomBytes } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { createAuditEvent, verifyAuditHashChain } from '@yrese/audit';
+import {
+  createAuditEvent,
+  verifyAuditHashChain,
+  type AuditEvent,
+  type CreateAuditEventInput,
+} from '@yrese/audit';
 import type { AuditLogResponse } from '@yrese/contracts';
 import { pharmacyId, tenantId, userId } from '@yrese/shared-kernel';
 
@@ -13,6 +18,7 @@ import {
   auditLogDuplicateIdentityInvariantErrorMessage,
   auditLogSequenceInvariantErrorMessage,
   auditLogScopeInvariantErrorMessage,
+  auditLogViewAuditInvariantErrorMessage,
   buildServer,
   type BuildServerOptions,
 } from './server.js';
@@ -50,6 +56,14 @@ function receptionCreated(id: string, wallClock: string) {
     outcome: 'success' as const,
     wallClock,
   };
+}
+
+function rebuildAuditEvent(
+  event: AuditEvent,
+  overrides: Partial<CreateAuditEventInput>,
+): AuditEvent {
+  const { entryHash: _entryHash, ...input } = event;
+  return createAuditEvent({ ...input, ...overrides });
 }
 
 async function seedEvents(repository: InMemoryAuditRepository, count: number): Promise<void> {
@@ -101,6 +115,287 @@ describe('GET /audit/events (SCR-028)', () => {
     expect(secondBody.totalCount).toBe(1);
     expect(secondBody.entries[0]?.auditEventType).toBe('audit.viewed');
     expect(secondBody.entries[0]?.actorId).toBe('user-001');
+  });
+
+  it('normalizes a rejected audit-view append without exposing raw failure detail', async () => {
+    const rawSentinel = 'raw-audit-view-rejection-secret-4192';
+    const record = vi.fn<AuditRepository['record']>(async () => {
+      throw new Error(rawSentinel);
+    });
+    const server = buildDevTestServer({
+      auditRepository: {
+        list: vi.fn<AuditRepository['list']>(async () => []),
+        record,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events',
+      headers: auditReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(record).toHaveBeenCalledOnce();
+    expect(response.json()).toMatchObject({
+      statusCode: 500,
+      error: 'Internal Server Error',
+      message: auditLogViewAuditInvariantErrorMessage,
+    });
+    expect(response.body).not.toContain(rawSentinel);
+  });
+
+  it.each([
+    [
+      'tenant',
+      (event: AuditEvent) =>
+        rebuildAuditEvent(event, { tenantId: tenantId('tenant-foreign-audit-view') }),
+      'tenant-foreign-audit-view',
+    ],
+    [
+      'pharmacy',
+      (event: AuditEvent) =>
+        rebuildAuditEvent(event, { pharmacyId: pharmacyId('pharmacy-foreign-audit-view') }),
+      'pharmacy-foreign-audit-view',
+    ],
+    [
+      'actor',
+      (event: AuditEvent) =>
+        rebuildAuditEvent(event, { actorId: userId('user-foreign-audit-view') }),
+      'user-foreign-audit-view',
+    ],
+    [
+      'event type',
+      (event: AuditEvent) => rebuildAuditEvent(event, { auditEventType: 'reception.created' }),
+      'reception.created',
+    ],
+    [
+      'target kind',
+      (event: AuditEvent) =>
+        rebuildAuditEvent(event, {
+          targetRef: { kind: 'reception', id: event.targetRef.id },
+          aggregateType: 'reception',
+        }),
+      'reception',
+    ],
+    [
+      'target id',
+      (event: AuditEvent) =>
+        rebuildAuditEvent(event, {
+          targetRef: { kind: 'audit_log', id: 'view:999' },
+          aggregateId: 'view:999',
+        }),
+      'view:999',
+    ],
+    [
+      'outcome',
+      (event: AuditEvent) => rebuildAuditEvent(event, { outcome: 'failed' }),
+      'failed',
+    ],
+    [
+      'wall clock',
+      (event: AuditEvent) =>
+        rebuildAuditEvent(event, { wallClock: '2026-07-17T00:00:00.999Z' }),
+      '2026-07-17T00:00:00.999Z',
+    ],
+    [
+      'aggregate type',
+      (event: AuditEvent) => rebuildAuditEvent(event, { aggregateType: 'reception' }),
+      'reception',
+    ],
+    [
+      'aggregate id',
+      (event: AuditEvent) => rebuildAuditEvent(event, { aggregateId: 'view:foreign' }),
+      'view:foreign',
+    ],
+    [
+      'reason code',
+      (event: AuditEvent) => rebuildAuditEvent(event, { reasonCode: 'AUTH-0003' }),
+      'AUTH-0003',
+    ],
+    [
+      'business reason',
+      (event: AuditEvent) =>
+        rebuildAuditEvent(event, {
+          businessReason: { code: 'SYNTHETIC_AUDIT_VIEW_CONTRADICTION' },
+        }),
+      'SYNTHETIC_AUDIT_VIEW_CONTRADICTION',
+    ],
+  ] as const)(
+    'rejects a hash-valid audit-view result with mismatched %s before 200',
+    async (_label, mutateAudit, rawSentinel) => {
+      const backing = new InMemoryAuditRepository();
+      const record = vi.fn<AuditRepository['record']>(async (scope, input) =>
+        mutateAudit(await backing.record(scope, input)),
+      );
+      const server = buildDevTestServer({
+        now: () => new Date('2026-07-17T00:00:00.000Z'),
+        auditRepository: {
+          list: vi.fn<AuditRepository['list']>(async () => []),
+          record,
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/audit/events',
+        headers: auditReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(record).toHaveBeenCalledOnce();
+      expect(response.json()).toMatchObject({ message: auditLogViewAuditInvariantErrorMessage });
+      expect(response.body).not.toContain(rawSentinel);
+    },
+  );
+
+  it.each([
+    ['null', (_event: AuditEvent): null => null],
+    [
+      'corrupted entry hash',
+      (event: AuditEvent): AuditEvent =>
+        Object.freeze({ ...event, entryHash: '0'.repeat(64) }),
+    ],
+  ] as const)('rejects a malformed audit-view result (%s)', async (_label, resultOf) => {
+    const backing = new InMemoryAuditRepository();
+    const record = vi.fn<AuditRepository['record']>(async (scope, input) =>
+      resultOf(await backing.record(scope, input)) as AuditEvent,
+    );
+    const server = buildDevTestServer({
+      auditRepository: {
+        list: vi.fn<AuditRepository['list']>(async () => []),
+        record,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events',
+      headers: auditReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toMatchObject({ message: auditLogViewAuditInvariantErrorMessage });
+  });
+
+  it('rejects an accessor-bearing audit-view result without invoking its getter', async () => {
+    const rawSentinel = 'raw-audit-view-accessor-4192';
+    const getter = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const backing = new InMemoryAuditRepository();
+    const record = vi.fn<AuditRepository['record']>(async (scope, input) => {
+      const result = { ...(await backing.record(scope, input)) } as Record<string, unknown>;
+      Object.defineProperty(result, 'actorId', { enumerable: true, get: getter });
+      return result as unknown as AuditEvent;
+    });
+    const server = buildDevTestServer({
+      auditRepository: {
+        list: vi.fn<AuditRepository['list']>(async () => []),
+        record,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events',
+      headers: auditReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(getter).not.toHaveBeenCalled();
+    expect(response.json()).toMatchObject({ message: auditLogViewAuditInvariantErrorMessage });
+    expect(response.body).not.toContain(rawSentinel);
+  });
+
+  it.each(['getPrototypeOf', 'ownKeys', 'getOwnPropertyDescriptor'] as const)(
+    'normalizes a throwing audit-view Proxy %s trap',
+    async (trapName) => {
+      const rawSentinel = `raw-audit-view-proxy-${trapName}-4192`;
+      const backing = new InMemoryAuditRepository();
+      const record = vi.fn<AuditRepository['record']>(async (scope, input) => {
+        const event = await backing.record(scope, input);
+        const handler: ProxyHandler<AuditEvent> = {};
+        handler[trapName] = (() => {
+          throw new Error(rawSentinel);
+        }) as never;
+        return new Proxy(event, handler);
+      });
+      const server = buildDevTestServer({
+        auditRepository: {
+          list: vi.fn<AuditRepository['list']>(async () => []),
+          record,
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/audit/events',
+        headers: auditReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json()).toMatchObject({ message: auditLogViewAuditInvariantErrorMessage });
+      expect(response.body).not.toContain(rawSentinel);
+    },
+  );
+
+  it('hydrates one audit-view result snapshot without raw get/has reads', async () => {
+    const backing = new InMemoryAuditRepository();
+    const now = vi.fn(() => new Date('2026-07-17T00:00:00.000Z'));
+    let thenReads = 0;
+    let rawGetCalls = 0;
+    let rawHasCalls = 0;
+    const record = vi.fn<AuditRepository['record']>(async (scope, input) => {
+      expect(Object.isFrozen(scope)).toBe(true);
+      expect(Object.isFrozen(input)).toBe(true);
+      expect(Object.isFrozen(input.targetRef)).toBe(true);
+      const event = await backing.record(scope, input);
+      return new Proxy(event, {
+        get(_target, property) {
+          if (property === 'then') {
+            thenReads += 1;
+            return undefined;
+          }
+          rawGetCalls += 1;
+          throw new Error('raw audit-view get must not run');
+        },
+        has() {
+          rawHasCalls += 1;
+          throw new Error('raw audit-view has must not run');
+        },
+      });
+    });
+    const server = buildDevTestServer({
+      now,
+      auditRepository: {
+        list: vi.fn<AuditRepository['list']>(async () => []),
+        record,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events',
+      headers: auditReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({ entries: [], totalCount: 0 });
+    expect(record).toHaveBeenCalledOnce();
+    expect(now).toHaveBeenCalledOnce();
+    expect(thenReads).toBe(1);
+    expect(rawGetCalls).toBe(0);
+    expect(rawHasCalls).toBe(0);
   });
 
   it('returns events newest-first, applies limit, and verifies the full chain', async () => {
@@ -374,7 +669,10 @@ describe('GET /audit/events (SCR-028)', () => {
       ...duplicate,
       prevHash: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
     };
-    const record = vi.fn<AuditRepository['record']>(async () => first);
+    const viewAuditRepository = new InMemoryAuditRepository();
+    const record = vi.fn<AuditRepository['record']>((scope, input) =>
+      viewAuditRepository.record(scope, input),
+    );
     const server = buildDevTestServer({
       auditRepository: {
         list: vi.fn(async () => [first, brokenDuplicate]),

@@ -98,6 +98,8 @@ export const auditLogDuplicateIdentityInvariantErrorMessage =
   'Verified audit chain contains duplicate event identities';
 export const auditLogSequenceInvariantErrorMessage =
   'Verified audit chain contains a non-contiguous event sequence';
+export const auditLogViewAuditInvariantErrorMessage =
+  'Audit repository returned mismatched audit view evidence';
 
 export interface BuildServerOptions {
   readonly patientRepository?: PatientRepository;
@@ -120,12 +122,13 @@ function assertRecordedAuditMatchesIntent(
     readonly outcome: string;
     readonly wallClock: string;
   },
+  invariantErrorMessage: string,
 ): void {
   let event: AuditEvent;
   try {
     event = hydrateAuditEvent(value);
   } catch {
-    throw new Error(receptionCreatedAuditInvariantErrorMessage);
+    throw new Error(invariantErrorMessage);
   }
 
   if (
@@ -142,7 +145,7 @@ function assertRecordedAuditMatchesIntent(
     event.reasonCode !== undefined ||
     event.businessReason !== undefined
   ) {
-    throw new Error(receptionCreatedAuditInvariantErrorMessage);
+    throw new Error(invariantErrorMessage);
   }
 }
 
@@ -548,7 +551,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         assertRecordedAuditMatchesIntent(recordedAudit, {
           ...auditScope,
           ...auditIntent,
-        });
+        }, receptionCreatedAuditInvariantErrorMessage);
       }
 
       return reply.code(result.kind === 'created' ? 201 : 200).send(parsedEntry.data);
@@ -572,7 +575,10 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         return reply.code(400).send(invalidAuditLogQueryResponse());
       }
 
-      const scope = { tenantId: tenantContext.tenantId, pharmacyId: tenantContext.pharmacyId };
+      const scope = Object.freeze({
+        tenantId: tenantContext.tenantId,
+        pharmacyId: tenantContext.pharmacyId,
+      });
       const events = await auditRepository.list(scope);
       if (
         events.some(
@@ -601,13 +607,25 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       }
 
       // 監査ログの閲覧自体を監査する(audit.viewed)。今回の応答には含めない(閲覧後に追記)。
-      await auditRepository.record(scope, {
+      const viewTarget = Object.freeze({ kind: 'audit_log', id: `view:${events.length}` });
+      const viewIntent = Object.freeze({
         actorId: userId(tenantContext.actorId),
         auditEventType: 'audit.viewed',
-        targetRef: { kind: 'audit_log', id: `view:${events.length}` },
+        targetRef: viewTarget,
         outcome: 'success',
         wallClock: now().toISOString(),
       });
+      let recordedViewAudit: unknown;
+      try {
+        recordedViewAudit = await auditRepository.record(scope, viewIntent);
+      } catch {
+        throw new Error(auditLogViewAuditInvariantErrorMessage);
+      }
+      assertRecordedAuditMatchesIntent(
+        recordedViewAudit,
+        { ...scope, ...viewIntent },
+        auditLogViewAuditInvariantErrorMessage,
+      );
 
       // 検証済みchainは公開契約どおりwallClock降順。同時刻は後のappendを先にする。
       // 破損chainはwallClockを信頼せず、WP-4093のraw append window/no-backfillを維持する。
