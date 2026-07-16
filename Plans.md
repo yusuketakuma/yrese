@@ -3390,6 +3390,7 @@ Primary-source URLs to fingerprint in WP-0054c (not a substitute for source file
   - scope: P0〜P3とGate 0〜5をpatient safety、legal/claim、data authority、migration reversibility、commercial value、dependencyで再採点する。
   - acceptance: 各WPにpriority/risk/dependencies/entry/exit/rollback/demo/owner/verifier/human gateがあり、循環依存とGate bypassが0。
   - evidence/result(2026-07-16): `docs/research/rececon_v0_7_priority_release_dag_20260716.md`へGate 0〜5の40 WPを分解し、patient safety/legal-claim/data authority/migration reversibility/commercial/dependency centralityで再採点。全WPにscore/priority/risk/dependencies/entry/exit/rollback/synthetic demo/owner-verifier/human gateを設定した。machine-auditable edge 83件をtopological検査しcycle=0、unknown endpoint=0、Gate 1〜5 ancestry bypass=0。Dispensing Workflowはproduction patient journeyの安全完結に必須なためP1→P0へ再評価。電子処方箋2.04/セルフチェック4.2、PMH公開spec/test/checklist/master、JAHIS 1.11をlive再確認し、public artifact/test設計とauthorized connectionを別WPに分離した。実装権限は0。
+  - commit_push: `9975a81`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。independent verification、product/human Gate 0 approval、Gate 1 WP reissueは未完了。
   - exact_next_action: artifact landing後、WP-0054fで40 WP/83 edgeを5層・3 plane・22 domain・public/partner/control API・event/package/tenant/store/authority境界へ写像する。Gate 1 codeはG0-08 human approval/reissueまで禁止する。
 - [ ] WP-0054f Domain boundary / API / module architecture
   - scope: 5層、FHIR/Technical/Adapter 3-plane、日本固有domain、22 domain、event、public/partner/control APIs、authority、tenant/store境界を確定する。
