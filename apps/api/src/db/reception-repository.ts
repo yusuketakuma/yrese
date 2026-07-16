@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
-import { receptionQueueEntrySchema, type ReceptionQueueEntry } from '@yrese/contracts';
+import {
+  patientSearchResultSchema,
+  receptionQueueEntrySchema,
+  type PatientSearchResult,
+  type ReceptionQueueEntry,
+} from '@yrese/contracts';
 import { patientId, pharmacyId, receptionId, tenantId } from '@yrese/shared-kernel';
 
 import {
@@ -54,6 +59,64 @@ export const databaseReceptionCreatedStatusInvariantErrorMessage =
   'Reception database returned an invalid created status';
 export const databaseReceptionCreatedAcceptedAtInvariantErrorMessage =
   'Reception database returned an invalid created timestamp';
+export const databaseReceptionCommandProvenanceInvariantErrorMessage =
+  'Reception database returned mismatched command provenance';
+export const databaseReceptionEntryIdentityInvariantErrorMessage =
+  'Reception database returned mismatched entry identity';
+export const databaseReceptionCreatedPatientSnapshotInvariantErrorMessage =
+  'Reception database returned a mismatched created patient snapshot';
+
+function snapshotCreatePatient(patient: ReceptionCreateInput['patient']): PatientSearchResult {
+  const readPatientProperty = (property: keyof PatientSearchResult): unknown =>
+    readDatabaseRowOwnDataProperty(
+      patient,
+      property,
+      databaseReceptionCreatedPatientSnapshotInvariantErrorMessage,
+    );
+  const patientIdValue = readPatientProperty('patientId');
+  const name = readPatientProperty('name');
+  const kana = readPatientProperty('kana');
+  const birthDate = readPatientProperty('birthDate');
+  const sex = readPatientProperty('sex');
+  const patientNumber = readPatientProperty('patientNumber');
+  const eligibilityStatus = readPatientProperty('eligibilityStatus');
+  const hasEligibilityCheckedAt = Object.hasOwn(patient, 'eligibilityCheckedAt');
+  const eligibilityCheckedAt = hasEligibilityCheckedAt
+    ? readPatientProperty('eligibilityCheckedAt')
+    : undefined;
+  try {
+    return patientSearchResultSchema.parse({
+      patientId: patientIdValue,
+      name,
+      kana,
+      birthDate,
+      sex,
+      patientNumber,
+      eligibilityStatus,
+      ...(hasEligibilityCheckedAt ? { eligibilityCheckedAt } : {}),
+    });
+  } catch {
+    throw new Error(databaseReceptionCreatedPatientSnapshotInvariantErrorMessage);
+  }
+}
+
+function patientSnapshotsMatch(
+  actual: PatientSearchResult,
+  expected: PatientSearchResult,
+): boolean {
+  return (
+    actual.patientId === expected.patientId &&
+    actual.name === expected.name &&
+    actual.kana === expected.kana &&
+    actual.birthDate === expected.birthDate &&
+    actual.sex === expected.sex &&
+    actual.patientNumber === expected.patientNumber &&
+    actual.eligibilityStatus === expected.eligibilityStatus &&
+    Object.hasOwn(actual, 'eligibilityCheckedAt') ===
+      Object.hasOwn(expected, 'eligibilityCheckedAt') &&
+    actual.eligibilityCheckedAt === expected.eligibilityCheckedAt
+  );
+}
 
 function rowToEntry(row: ReceptionEntryRow): ReceptionQueueEntry {
   const receptionIdValue = readDatabaseRowOwnDataProperty(
@@ -187,6 +250,10 @@ export class PostgresReceptionRepository implements ReceptionRepository {
   }
 
   async create(input: ReceptionCreateInput): Promise<ReceptionCreateResult> {
+    const commandTenantId = input.tenantId;
+    const commandPharmacyId = input.pharmacyId;
+    const commandIdempotencyKey = input.idempotencyKey;
+    const commandPatient = snapshotCreatePatient(input.patient);
     const acceptedAt = snapshotDateInstant(
       input.acceptedAt,
       databaseReceptionTimestampInvariantErrorMessage,
@@ -229,27 +296,45 @@ export class PostgresReceptionRepository implements ReceptionRepository {
            $13::text AS eligibility_status,
            $14::timestamptz AS eligibility_checked_at`,
         [
-          input.tenantId,
-          input.pharmacyId,
+          commandTenantId,
+          commandPharmacyId,
           newReceptionId,
-          input.patient.patientId,
+          commandPatient.patientId,
           acceptedAt,
           businessDate,
-          input.idempotencyKey,
-          input.patient.name,
-          input.patient.kana,
-          input.patient.birthDate,
-          input.patient.sex,
-          input.patient.patientNumber,
-          input.patient.eligibilityStatus,
-          input.patient.eligibilityCheckedAt ?? null,
+          commandIdempotencyKey,
+          commandPatient.name,
+          commandPatient.kana,
+          commandPatient.birthDate,
+          commandPatient.sex,
+          commandPatient.patientNumber,
+          commandPatient.eligibilityStatus,
+          commandPatient.eligibilityCheckedAt ?? null,
         ],
       );
 
       const insertedRow = inserted.rows[0];
       if (insertedRow !== undefined) {
         const provenance = rowToProvenance(insertedRow);
+        if (
+          provenance.tenantId !== commandTenantId ||
+          provenance.pharmacyId !== commandPharmacyId ||
+          provenance.idempotencyKey !== commandIdempotencyKey ||
+          provenance.receptionId !== newReceptionId ||
+          provenance.patientId !== commandPatient.patientId
+        ) {
+          throw new Error(databaseReceptionCommandProvenanceInvariantErrorMessage);
+        }
         const entry = rowToEntry(insertedRow);
+        if (
+          entry.receptionId !== provenance.receptionId ||
+          entry.patient.patientId !== provenance.patientId
+        ) {
+          throw new Error(databaseReceptionEntryIdentityInvariantErrorMessage);
+        }
+        if (!patientSnapshotsMatch(entry.patient, commandPatient)) {
+          throw new Error(databaseReceptionCreatedPatientSnapshotInvariantErrorMessage);
+        }
         if (entry.receptionStatus !== 'WAITING') {
           throw new Error(databaseReceptionCreatedStatusInvariantErrorMessage);
         }
@@ -264,18 +349,35 @@ export class PostgresReceptionRepository implements ReceptionRepository {
         };
       }
 
-      const existing = await selectByIdempotencyKey(client, input);
+      const existing = await selectByIdempotencyKey(client, {
+        tenantId: commandTenantId,
+        pharmacyId: commandPharmacyId,
+        idempotencyKey: commandIdempotencyKey,
+      });
       if (existing === undefined) {
         throw new Error('idempotency conflict row was not visible after unique constraint conflict');
       }
 
       const provenance = rowToProvenance(existing);
-      if (provenance.patientId !== input.patient.patientId) {
+      if (
+        provenance.tenantId !== commandTenantId ||
+        provenance.pharmacyId !== commandPharmacyId ||
+        provenance.idempotencyKey !== commandIdempotencyKey
+      ) {
+        throw new Error(databaseReceptionCommandProvenanceInvariantErrorMessage);
+      }
+      if (provenance.patientId !== commandPatient.patientId) {
         await client.query('COMMIT');
         return { kind: 'idempotency_conflict', provenance };
       }
 
       const entry = rowToEntry(existing);
+      if (
+        entry.receptionId !== provenance.receptionId ||
+        entry.patient.patientId !== provenance.patientId
+      ) {
+        throw new Error(databaseReceptionEntryIdentityInvariantErrorMessage);
+      }
       await client.query('COMMIT');
       return {
         kind: 'existing',

@@ -10,8 +10,11 @@ import {
 } from '../reception-repository.js';
 import {
   PostgresReceptionRepository,
+  databaseReceptionCommandProvenanceInvariantErrorMessage,
   databaseReceptionCreatedAcceptedAtInvariantErrorMessage,
+  databaseReceptionCreatedPatientSnapshotInvariantErrorMessage,
   databaseReceptionCreatedStatusInvariantErrorMessage,
+  databaseReceptionEntryIdentityInvariantErrorMessage,
   databaseReceptionProvenanceInvariantErrorMessage,
   databaseReceptionRowInvariantErrorMessage,
   databaseReceptionTimestampInvariantErrorMessage,
@@ -53,6 +56,26 @@ const storedRow = {
   eligibility_checked_at: null,
 };
 
+function createdRowFromInsertValues(values: readonly unknown[] | undefined) {
+  return {
+    ...storedRow,
+    stored_tenant_id: values?.[0],
+    stored_pharmacy_id: values?.[1],
+    reception_id: values?.[2],
+    stored_patient_id: values?.[3],
+    accepted_at: values?.[4],
+    stored_idempotency_key: values?.[6],
+    patient_id: values?.[3],
+    name: values?.[7],
+    kana: values?.[8],
+    birth_date: values?.[9],
+    sex: values?.[10],
+    patient_number: values?.[11],
+    eligibility_status: values?.[12],
+    eligibility_checked_at: values?.[13],
+  };
+}
+
 type Scenario = 'created' | 'existing' | 'conflict' | 'operation_failure';
 
 function createRepository(options: {
@@ -64,7 +87,7 @@ function createRepository(options: {
 }) {
   const release = vi.fn();
   const transformRow = (row: Record<string, unknown>) => options.rowTransform?.(row) ?? row;
-  const query = vi.fn(async (sql: string) => {
+  const query = vi.fn(async (sql: string, values?: readonly unknown[]) => {
     const normalized = sql.trim();
     if (normalized.startsWith('INSERT INTO reception_entries')) {
       if (options.operationError !== undefined) throw options.operationError;
@@ -73,8 +96,7 @@ function createRepository(options: {
           options.scenario === 'created'
             ? [
                 transformRow({
-                  ...storedRow,
-                  accepted_at: input.acceptedAt.toISOString(),
+                  ...createdRowFromInsertValues(values),
                   ...options.provenanceOverride,
                 }),
               ]
@@ -166,6 +188,8 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     const { repository, query, release } = createRepository({ scenario: 'created' });
 
     const result = await repository.create(input);
+    const insertCall = query.mock.calls.find(([sql]) => String(sql).includes('INSERT'));
+    const generatedReceptionId = insertCall?.[1]?.[2];
 
     expect(result.kind).toBe('created');
     expect(result).toMatchObject({
@@ -173,13 +197,12 @@ describe('PostgresReceptionRepository client lifecycle', () => {
         tenantId: input.tenantId,
         pharmacyId: input.pharmacyId,
         idempotencyKey: input.idempotencyKey,
-        receptionId: storedRow.reception_id,
+        receptionId: generatedReceptionId,
         patientId: patient.patientId,
       },
+      entry: { receptionId: generatedReceptionId },
     });
-    const insertSql = String(
-      query.mock.calls.find(([sql]) => String(sql).includes('INSERT'))?.[0],
-    );
+    const insertSql = String(insertCall?.[0]);
     expect(insertSql).toContain('tenant_id AS stored_tenant_id');
     expect(insertSql).toContain('pharmacy_id AS stored_pharmacy_id');
     expect(insertSql).toContain('idempotency_key AS stored_idempotency_key');
@@ -187,6 +210,206 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(insertSql).not.toMatch(/\$[1247]\s*(?:::text)?\s+AS stored_/);
     expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT']);
     expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it.each([
+    ['stored_tenant_id', 'tenant-command-drift-4222'],
+    ['stored_pharmacy_id', 'pharmacy-command-drift-4222'],
+    ['stored_idempotency_key', 'idempotency-command-drift-4222'],
+    ['stored_patient_id', 'patient-command-drift-4222'],
+    ['reception_id', 'reception-command-drift-4222'],
+  ] as const)('rolls back created command provenance drift in %s', async (column, value) => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: { [column]: value },
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      databaseReceptionCommandProvenanceInvariantErrorMessage,
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('prioritizes created patient snapshot binding before status and acceptedAt', async () => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: {
+        name: '合成患者snapshot優先差分',
+        reception_status: 'COMPLETED',
+        accepted_at: '2026-07-13T00:59:59.999Z',
+      },
+    });
+
+    await expect(repository.create(input)).rejects.toEqual(
+      new Error(databaseReceptionCreatedPatientSnapshotInvariantErrorMessage),
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('rolls back a created entry patient identity mismatch before snapshot checks', async () => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: {
+        patient_id: 'patient-entry-drift-4222',
+        name: '合成別患者',
+      },
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      databaseReceptionEntryIdentityInvariantErrorMessage,
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it.each([
+    ['name', '合成患者氏名差分'],
+    ['kana', 'ゴウセイカンジャシメイサブン'],
+    ['birth_date', '1981-02-03'],
+    ['sex', 'female'],
+    ['patient_number', 'SYN-RECEPTION-DRIFT-4222'],
+    ['eligibility_status', 'VERIFIED'],
+  ] as const)('rolls back a created patient snapshot drift in %s', async (column, value) => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: { [column]: value },
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      databaseReceptionCreatedPatientSnapshotInvariantErrorMessage,
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('binds optional eligibility timestamp presence and value for a created patient', async () => {
+    const added = createRepository({
+      scenario: 'created',
+      provenanceOverride: { eligibility_checked_at: '2026-07-13T00:00:00.000Z' },
+    });
+    await expect(added.repository.create(input)).rejects.toThrow(
+      databaseReceptionCreatedPatientSnapshotInvariantErrorMessage,
+    );
+    expect(queryLabels(added.query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+
+    const inputWithEligibility = {
+      ...input,
+      patient: {
+        ...input.patient,
+        eligibilityCheckedAt: '2026-07-13T00:00:00.000Z',
+      },
+    };
+    const removed = createRepository({
+      scenario: 'created',
+      provenanceOverride: { eligibility_checked_at: null },
+    });
+    await expect(removed.repository.create(inputWithEligibility)).rejects.toThrow(
+      databaseReceptionCreatedPatientSnapshotInvariantErrorMessage,
+    );
+
+    const changed = createRepository({
+      scenario: 'created',
+      provenanceOverride: { eligibility_checked_at: '2026-07-13T00:00:00.001Z' },
+    });
+    await expect(changed.repository.create(inputWithEligibility)).rejects.toThrow(
+      databaseReceptionCreatedPatientSnapshotInvariantErrorMessage,
+    );
+
+    const equivalent = createRepository({
+      scenario: 'created',
+      provenanceOverride: { eligibility_checked_at: '2026-07-13T09:00:00+09:00' },
+    });
+    await expect(equivalent.repository.create(inputWithEligibility)).resolves.toMatchObject({
+      kind: 'created',
+      entry: { patient: { eligibilityCheckedAt: '2026-07-13T00:00:00.000Z' } },
+    });
+    expect(queryLabels(equivalent.query)).toEqual(['BEGIN', 'INSERT', 'COMMIT']);
+  });
+
+  it('captures the patient command before awaiting a DB connection', async () => {
+    const mutablePatient = { ...input.patient };
+    const query = vi.fn(async (sql: string, values?: readonly unknown[]) => ({
+      rows: sql.trim().startsWith('INSERT') ? [createdRowFromInsertValues(values)] : [],
+    }));
+    const release = vi.fn();
+    const client = { query: query as unknown as PoolClient['query'], release } as unknown as PoolClient;
+    let resolveConnect: ((value: PoolClient) => void) | undefined;
+    const connect = vi.fn(
+      () =>
+        new Promise<PoolClient>((resolve) => {
+          resolveConnect = resolve;
+        }),
+    );
+    const repository = new PostgresReceptionRepository({ connect } as unknown as Pool);
+
+    const resultPromise = repository.create({ ...input, patient: mutablePatient });
+    mutablePatient.name = '接続待機中に変更された患者名';
+    mutablePatient.patientNumber = 'MUTATED-4222';
+    resolveConnect?.(client);
+    const result = await resultPromise;
+
+    const insertValues = query.mock.calls.find(([sql]) => String(sql).trim().startsWith('INSERT'))?.[1];
+    expect(insertValues?.[7]).toBe(patient.name);
+    expect(insertValues?.[11]).toBe(patient.patientNumber);
+    expect(result).toMatchObject({
+      kind: 'created',
+      entry: { patient: { name: patient.name, patientNumber: patient.patientNumber } },
+    });
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('rejects hostile patient command authorities before acquiring a DB connection', async () => {
+    let accessorReads = 0;
+    let proxyTraps = 0;
+    const accessorPatient = { ...input.patient };
+    Object.defineProperty(accessorPatient, 'name', {
+      get() {
+        accessorReads += 1;
+        throw new Error('raw patient command accessor PHI secret 4222');
+      },
+    });
+    const proxiedPatient = new Proxy(
+      { ...input.patient },
+      {
+        get() {
+          proxyTraps += 1;
+          throw new Error('raw patient command Proxy PHI secret 4222');
+        },
+        getOwnPropertyDescriptor() {
+          proxyTraps += 1;
+          throw new Error('raw patient command descriptor PHI secret 4222');
+        },
+      },
+    );
+
+    for (const patientCommand of [accessorPatient, proxiedPatient]) {
+      const { repository, connect, query, release } = createRepository({ scenario: 'created' });
+      await expect(
+        repository.create({ ...input, patient: patientCommand }),
+      ).rejects.toThrow(databaseReceptionCreatedPatientSnapshotInvariantErrorMessage);
+      expect(connect).not.toHaveBeenCalled();
+      expect(query).not.toHaveBeenCalled();
+      expect(release).not.toHaveBeenCalled();
+    }
+    expect(accessorReads).toBe(0);
+    expect(proxyTraps).toBe(0);
+  });
+
+  it('preserves the command provenance invariant when rollback fails', async () => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: { stored_tenant_id: 'tenant-command-rollback-drift-4222' },
+      rollbackError: new Error('synthetic command provenance rollback failure'),
+    });
+
+    await expect(repository.create(input)).rejects.toEqual(
+      new Error(databaseReceptionCommandProvenanceInvariantErrorMessage),
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[true]]);
   });
 
   it.each(['IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const)(
@@ -316,6 +539,42 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     },
   );
 
+  it.each([
+    ['existing', 'stored_tenant_id', 'tenant-existing-drift-4222'],
+    ['existing', 'stored_pharmacy_id', 'pharmacy-existing-drift-4222'],
+    ['existing', 'stored_idempotency_key', 'key-existing-drift-4222'],
+    ['conflict', 'stored_tenant_id', 'tenant-conflict-drift-4222'],
+    ['conflict', 'stored_pharmacy_id', 'pharmacy-conflict-drift-4222'],
+    ['conflict', 'stored_idempotency_key', 'key-conflict-drift-4222'],
+  ] as const)(
+    'rolls back %s command provenance drift in %s',
+    async (scenario, column, value) => {
+      const { repository, query, release } = createRepository({
+        scenario,
+        provenanceOverride: { [column]: value },
+      });
+
+      await expect(repository.create(input)).rejects.toThrow(
+        databaseReceptionCommandProvenanceInvariantErrorMessage,
+      );
+      expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'ROLLBACK']);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it('rolls back an existing entry/provenance patient identity mismatch', async () => {
+    const { repository, query, release } = createRepository({
+      scenario: 'existing',
+      provenanceOverride: { patient_id: 'patient-existing-entry-drift-4222' },
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      databaseReceptionEntryIdentityInvariantErrorMessage,
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
   it('commits a different-patient idempotency conflict without returning an entry', async () => {
     const { repository, query, release } = createRepository({ scenario: 'conflict' });
 
@@ -346,8 +605,10 @@ describe('PostgresReceptionRepository client lifecycle', () => {
         throw new Error('raw create timestamp method secret 4214');
       },
     });
-    const operationQuery = vi.fn(async (sql: string, _values?: readonly unknown[]) => ({
-      rows: sql.trim().startsWith('INSERT') ? [{ ...storedRow, accepted_at: capturedIso }] : [],
+    const operationQuery = vi.fn(async (sql: string, values?: readonly unknown[]) => ({
+      rows: sql.trim().startsWith('INSERT')
+        ? [{ ...createdRowFromInsertValues(values), accepted_at: capturedIso }]
+        : [],
     }));
     const operationRelease = vi.fn();
     const operationClient = {

@@ -353,10 +353,15 @@ describe('Postgres patient eligibility timestamp adapter', () => {
   it.each(['created', 'existing'] as const)(
     'rolls back a reception %s result with an invalid nested eligibility timestamp',
     async (scenario) => {
-      const query = vi.fn(async (sql: string) => {
+      const query = vi.fn(async (sql: string, values?: readonly unknown[]) => {
         const normalized = sql.trim();
         if (normalized.startsWith('INSERT')) {
-          return { rows: scenario === 'created' ? [receptionRow('patient-db-4215')] : [] };
+          return {
+            rows:
+              scenario === 'created'
+                ? [{ ...receptionRow('patient-db-4215'), reception_id: values?.[2] }]
+                : [],
+          };
         }
         if (normalized.startsWith('SELECT')) {
           return { rows: [receptionRow('patient-db-4215')] };
@@ -396,10 +401,20 @@ describe('Postgres patient eligibility timestamp adapter', () => {
           throw new Error('raw nested patient name PHI secret 4219');
         },
       });
-      const query = vi.fn(async (sql: string) => {
+      const query = vi.fn(async (sql: string, values?: readonly unknown[]) => {
         const normalized = sql.trim();
         if (normalized.startsWith('INSERT')) {
-          return { rows: scenario === 'created' ? [storedReceptionRow] : [] };
+          if (scenario === 'created') {
+            Object.defineProperty(storedReceptionRow, 'reception_id', {
+              value: values?.[2],
+              enumerable: true,
+              configurable: true,
+              writable: true,
+            });
+          }
+          return {
+            rows: scenario === 'created' ? [storedReceptionRow] : [],
+          };
         }
         if (normalized.startsWith('SELECT')) return { rows: [storedReceptionRow] };
         return { rows: [] };
