@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4218 PostgreSQL reception idempotency provenance authority — FINALIZED / INDEPENDENT_PASS
+
+- 受付create/existing/conflictのprovenance 5列multi-readにより、accessor raw leak、inherited false success、stateful値で分岐/返却が分裂したままCOMMITできる問題を修正。各列をown-dataから一度だけcaptureし、existing/conflictは同一snapshotで分岐・返却した。
+- missing/inherited/accessor/Proxyはfixed non-echo・getter/trap0、先行invalidで後続projection未読。invalidはrollback、rollback failureはfixed原errorを保持してclient破棄、valid conflictはentry未読COMMITを維持した。
+- patient9+reception50、API598 + integration14 expected skips、Web454、workspace typecheck/test/build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent verifier PASS/APPROVED。SQL/API-006/contracts/SSOT/audit/idempotency lifecycle不変、実DB操作なし。implementation `10cf5c6`はlocal-only、pushなし。
+
 ### WP-4217 PostgreSQL reception accepted_at row authority — FINALIZED / INDEPENDENT_PASS
 
 - DB受付rowの`accepted_at` own accessor raw executionとinherited value false authorityを修正。DB internal own-data readerを抽出し、patient eligibilityの既存descriptor処理も重複なく機械的移設した。
