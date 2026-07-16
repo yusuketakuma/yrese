@@ -16,6 +16,7 @@ import {
   ReceptionQueueTable,
   ReceptionQueueView,
   createReception,
+  createReceptionDashboardLifecycle,
   createReceptionQueueRunner,
   createReceptionQueueTargetTracker,
   createReceptionRegistrationRunner,
@@ -314,6 +315,22 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
       "x-dev-scopes": "reception:read,patient:read",
     });
     expect(response.entries).toEqual([]);
+  });
+
+  it("forwards an optional abort signal only to the reception queue GET", async () => {
+    const controller = new AbortController();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(200, queueResponse("2026-07-01")));
+
+    await withNodeEnv("development", () =>
+      fetchReceptionQueue("2026-07-01", fetchImpl, controller.signal),
+    );
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "/_yrese-api/reception/queue?date=2026-07-01",
+      expect.objectContaining({ signal: controller.signal }),
+    );
   });
 
   it.each([201, 202, 204, 206])(
@@ -813,7 +830,10 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
         expect(retried.loadedAt).toBe("12:34");
         expect(retried.refreshState).toEqual({ kind: "idle" });
       }
-      expect(fetcher.mock.calls).toEqual([["2026-07-11"], ["2026-07-11"]]);
+      expect(fetcher.mock.calls.map(([target]) => target)).toEqual([
+        "2026-07-11",
+        "2026-07-11",
+      ]);
     } finally {
       vi.useRealTimers();
     }
@@ -1146,6 +1166,199 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(states.at(-1)).toMatchObject({
       kind: "loaded",
       response: { date: "2026-07-10", entries: [{ receptionId: "current-a" }] },
+    });
+  });
+
+  it("aborts superseded A-B-A queue transports while ignored abort settlements emit nothing", async () => {
+    const firstA = deferredValue<ReceptionQueueResponse>();
+    const b = deferredValue<ReceptionQueueResponse>();
+    const finalA = deferredValue<ReceptionQueueResponse>();
+    const signals: AbortSignal[] = [];
+    const fetcher = vi
+      .fn((_target: string, signal: AbortSignal) => {
+        signals.push(signal);
+        return firstA.promise;
+      })
+      .mockImplementationOnce((_target, signal) => {
+        signals.push(signal);
+        return firstA.promise;
+      })
+      .mockImplementationOnce((_target, signal) => {
+        signals.push(signal);
+        return b.promise;
+      })
+      .mockImplementationOnce((_target, signal) => {
+        signals.push(signal);
+        return finalA.promise;
+      });
+    const states: QueueState[] = [{ kind: "loading" }];
+    const run = createReceptionQueueRunner(fetcher, (update) => {
+      states.push(update(states.at(-1)!));
+    });
+
+    const oldA = run("2026-07-10");
+    const oldB = run("2026-07-11");
+    const currentA = run("2026-07-10");
+
+    expect(signals).toHaveLength(3);
+    expect(signals[0]?.aborted).toBe(true);
+    expect(signals[1]?.aborted).toBe(true);
+    expect(signals[2]?.aborted).toBe(false);
+    finalA.resolve(queueResponse("2026-07-10", [entry({ receptionId: "current" })]));
+    await currentA;
+    const countAfterCurrent = states.length;
+    firstA.resolve(queueResponse("2026-07-10", [entry({ receptionId: "stale-a" })]));
+    b.reject(new Error("stale B ignored-abort failure"));
+    await Promise.all([oldA, oldB]);
+
+    expect(states).toHaveLength(countAfterCurrent);
+    expect(states.at(-1)).toMatchObject({
+      kind: "loaded",
+      response: { entries: [{ receptionId: "current" }] },
+    });
+  });
+
+  it("keeps buffered stale loading and terminal updaters as exact no-ops", async () => {
+    const staleOutcomes: Array<() => Promise<ReceptionQueueResponse>> = [
+      () => Promise.resolve(queueResponse("2026-07-10")),
+      () => Promise.resolve(queueResponse("2099-12-31")),
+      () => Promise.reject(new Error("buffered stale failure")),
+    ];
+
+    for (const staleOutcome of staleOutcomes) {
+      const updates: Array<(prev: QueueState) => QueueState> = [];
+      const fetcher = vi
+        .fn<() => Promise<ReceptionQueueResponse>>()
+        .mockImplementationOnce(staleOutcome)
+        .mockResolvedValueOnce(
+          queueResponse("2026-07-11", [entry({ receptionId: "authoritative" })]),
+        );
+      const run = createReceptionQueueRunner(fetcher, (update) => updates.push(update));
+
+      await run("2026-07-10");
+      const staleUpdates = updates.splice(0);
+      await run("2026-07-11");
+      const currentUpdates = updates.splice(0);
+      let state: QueueState = {
+        kind: "loaded",
+        response: queueResponse("2026-07-09"),
+        loadedAt: "08:15",
+        refreshState: { kind: "idle" },
+      };
+      for (const update of currentUpdates) state = update(state);
+      const authoritative = state;
+      expect(authoritative).toMatchObject({
+        kind: "loaded",
+        response: { date: "2026-07-11", entries: [{ receptionId: "authoritative" }] },
+      });
+      for (const update of staleUpdates) {
+        expect(update(authoritative)).toBe(authoritative);
+      }
+    }
+  });
+
+  it("publishes the replacement owner before abort-listener re-entry", async () => {
+    const old = deferredValue<ReceptionQueueResponse>();
+    const replacement = deferredValue<ReceptionQueueResponse>();
+    let run!: ReturnType<typeof createReceptionQueueRunner>;
+    let reentrantJoin: Promise<void> | undefined;
+    const fetcher = vi
+      .fn((_target: string, signal: AbortSignal) => {
+        signal.addEventListener("abort", () => {
+          reentrantJoin = run("2026-07-11");
+        });
+        return old.promise;
+      })
+      .mockImplementationOnce((_target, signal) => {
+        signal.addEventListener("abort", () => {
+          reentrantJoin = run("2026-07-11");
+        });
+        return old.promise;
+      })
+      .mockImplementationOnce(() => replacement.promise);
+    run = createReceptionQueueRunner(fetcher, () => undefined);
+
+    const obsolete = run("2026-07-10");
+    const owner = run("2026-07-11");
+
+    expect(reentrantJoin).toBe(owner);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    replacement.resolve(queueResponse("2026-07-11"));
+    old.resolve(queueResponse("2026-07-10"));
+    await Promise.all([obsolete, owner, reentrantJoin]);
+  });
+
+  it("does not abort a settled signal during terminal-emit re-entry", async () => {
+    const replacement = deferredValue<ReceptionQueueResponse>();
+    const signals: AbortSignal[] = [];
+    const fetcher = vi
+      .fn((_target: string, signal: AbortSignal) => {
+        signals.push(signal);
+        return Promise.resolve(queueResponse("2026-07-10"));
+      })
+      .mockImplementationOnce((_target, signal) => {
+        signals.push(signal);
+        return Promise.resolve(queueResponse("2026-07-10"));
+      })
+      .mockImplementationOnce((_target, signal) => {
+        signals.push(signal);
+        return replacement.promise;
+      });
+    let run!: ReturnType<typeof createReceptionQueueRunner>;
+    let replacementRun: Promise<void> | undefined;
+    let emitCount = 0;
+    run = createReceptionQueueRunner(fetcher, () => {
+      emitCount += 1;
+      if (emitCount === 2) replacementRun = run("2026-07-11");
+    });
+
+    const settled = run("2026-07-10");
+    await Promise.resolve();
+
+    expect(signals[0]?.aborted).toBe(false);
+    expect(signals[1]?.aborted).toBe(false);
+    replacement.resolve(queueResponse("2026-07-11"));
+    await Promise.all([settled, replacementRun]);
+  });
+
+  it("cancels active work without emit, blocks abort-listener re-entry, and remains reusable", async () => {
+    const states: QueueState[] = [{ kind: "loading" }];
+    let run!: ReturnType<typeof createReceptionQueueRunner>;
+    let reentrantDuringCancel: Promise<void> | undefined;
+    const fetcher = vi.fn(
+      (target: string, signal: AbortSignal): Promise<ReceptionQueueResponse> => {
+        if (target === "2026-07-10") {
+          return new Promise((_resolve, reject) => {
+            signal.addEventListener("abort", () => {
+              reentrantDuringCancel = run("2026-07-11");
+              reject(new DOMException("Aborted", "AbortError"));
+            });
+          });
+        }
+        return Promise.resolve(queueResponse(target));
+      },
+    );
+    run = createReceptionQueueRunner(fetcher, (update) => {
+      states.push(update(states.at(-1)!));
+    });
+
+    const active = run("2026-07-10");
+    const countBeforeCancel = states.length;
+    run.cancelActive();
+    run.cancelActive();
+    await active;
+    await reentrantDuringCancel;
+
+    expect(fetcher.mock.calls.map(([target]) => target)).toEqual(["2026-07-10"]);
+    expect(states).toHaveLength(countBeforeCancel);
+    await run("2026-07-12");
+    expect(fetcher.mock.calls.map(([target]) => target)).toEqual([
+      "2026-07-10",
+      "2026-07-12",
+    ]);
+    expect(states.at(-1)).toMatchObject({
+      kind: "loaded",
+      response: { date: "2026-07-12" },
     });
   });
 
@@ -1656,7 +1869,10 @@ describe("createReceptionRegistrationRunner (same-flight duplicate prevention)",
     post.resolve();
     await registration;
 
-    expect(queueFetch.mock.calls).toEqual([["2026-07-11"], ["2026-07-11"]]);
+    expect(queueFetch.mock.calls.map(([target]) => target)).toEqual([
+      "2026-07-11",
+      "2026-07-11",
+    ]);
     const last = states[states.length - 1]!;
     expect(last.kind).toBe("loaded");
     if (last.kind === "loaded") {
@@ -1678,6 +1894,48 @@ describe("createReceptionRegistrationRunner (same-flight duplicate prevention)",
 
     expect(load).toHaveBeenCalledOnce();
     expect(tracker.current()).toBe("2026-07-10");
+  });
+
+  it("lets a late POST settle after unmount without resuming queue or UI work", async () => {
+    const post = deferredValue<ReceptionQueueEntry>();
+    const lifecycle = createReceptionDashboardLifecycle();
+    const runner = createReceptionRegistrationRunner();
+    const queueReload = vi.fn().mockResolvedValue(undefined);
+    const uiContinuation = vi.fn();
+    const postCall = vi.fn(() => post.promise);
+    lifecycle.mount();
+
+    const registration = runner.run(async () => {
+      const created = await postCall();
+      if (!lifecycle.isMounted()) return;
+      uiContinuation(created);
+      await queueReload();
+    });
+    lifecycle.unmount();
+    post.resolve(entry({ receptionId: "server-completed-after-unmount" }));
+    await registration;
+
+    expect(postCall).toHaveBeenCalledOnce();
+    expect(uiContinuation).not.toHaveBeenCalled();
+    expect(queueReload).not.toHaveBeenCalled();
+    expect(runner.isRunning()).toBe(false);
+  });
+
+  it("restores lifecycle admission after a StrictMode-like cleanup and setup", async () => {
+    const lifecycle = createReceptionDashboardLifecycle();
+    const runner = createReceptionRegistrationRunner();
+    const queueReload = vi.fn().mockResolvedValue(undefined);
+
+    lifecycle.mount();
+    lifecycle.unmount();
+    lifecycle.mount();
+    await runner.run(async () => {
+      if (!lifecycle.isMounted()) return;
+      await queueReload("2026-07-11");
+    });
+
+    expect(queueReload).toHaveBeenCalledOnce();
+    expect(queueReload).toHaveBeenCalledWith("2026-07-11");
   });
 });
 

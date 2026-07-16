@@ -85,12 +85,14 @@ async function extractErrorCode(res: Response): Promise<string | undefined> {
 export async function fetchReceptionQueue(
   date: string,
   fetchImpl: typeof fetch = fetch,
+  signal?: AbortSignal,
 ): Promise<ReceptionQueueResponse> {
   const params = new URLSearchParams({ date });
   const url = resolveWebApiUrl(`/reception/queue?${params}`);
   const res = await fetchImpl(url, {
     headers: devTenantHeaders(RECEPTION_QUEUE_DEV_SCOPES),
     cache: "no-store",
+    ...(signal !== undefined ? { signal } : {}),
   });
   if (!res.ok) {
     const errorCode = await extractErrorCode(res);
@@ -303,51 +305,90 @@ function queueResponseDateMismatchNotice(): ErrorNoticeProps {
   };
 }
 
+export interface ReceptionQueueRunner {
+  (targetDate: string): Promise<void>;
+  cancelActive(): void;
+}
+
 export function createReceptionQueueRunner(
-  fetcher: (targetDate: string) => Promise<ReceptionQueueResponse>,
+  fetcher: (
+    targetDate: string,
+    signal: AbortSignal,
+  ) => Promise<ReceptionQueueResponse>,
   emit: (update: QueueStateUpdate) => void,
-): (targetDate: string) => Promise<void> {
+): ReceptionQueueRunner {
   let generation = 0;
   let latestFlight:
     | {
         readonly targetDate: string;
         readonly ownerToken: object;
         readonly sharedPromise: Promise<void>;
+        readonly controller?: AbortController;
       }
     | undefined;
-  return (targetDate) => {
+  let isCancelling = false;
+
+  const run: ReceptionQueueRunner = (targetDate) => {
+    if (isCancelling) {
+      return Promise.resolve();
+    }
     if (latestFlight?.targetDate === targetDate) {
       return latestFlight.sharedPromise;
     }
 
+    const previousFlight = latestFlight;
     const ownerToken = {};
+    const controller = new AbortController();
     let resolveShared!: () => void;
     let rejectShared!: (reason?: unknown) => void;
     const sharedPromise = new Promise<void>((resolve, reject) => {
       resolveShared = resolve;
       rejectShared = reject;
     });
-    latestFlight = { targetDate, ownerToken, sharedPromise };
     const gen = ++generation;
+    latestFlight = { targetDate, ownerToken, sharedPromise, controller };
+    previousFlight?.controller?.abort();
 
     const execute = async () => {
-      emit((prev) =>
-        prev.kind === "loaded"
+      if (gen !== generation) return;
+      emit((prev) => {
+        if (gen !== generation) return prev;
+        return prev.kind === "loaded"
           ? {
               ...prev,
               refreshState: { kind: "loading", requestTarget: targetDate },
             }
-          : { kind: "loading" },
-      );
+          : { kind: "loading" };
+      });
+      if (gen !== generation) return;
+
+      let outcome:
+        | { readonly kind: "success"; readonly response: ReceptionQueueResponse }
+        | { readonly kind: "failure"; readonly error: unknown };
       try {
-        const response = await fetcher(targetDate);
-        if (gen !== generation) {
-          return;
-        }
+        outcome = {
+          kind: "success",
+          response: await fetcher(targetDate, controller.signal),
+        };
+      } catch (error) {
+        outcome = { kind: "failure", error };
+      }
+      if (gen !== generation) return;
+
+      // The request has settled, so a re-entrant replacement must not abort its
+      // completed signal. Keep the shared flight joinable until terminal emit settles.
+      if (latestFlight?.ownerToken === ownerToken) {
+        latestFlight = { targetDate, ownerToken, sharedPromise };
+      }
+      if (gen !== generation) return;
+
+      if (outcome.kind === "success") {
+        const response = outcome.response;
         if (response.date !== targetDate) {
           const notice = queueResponseDateMismatchNotice();
-          emit((prev) =>
-            prev.kind === "loaded"
+          emit((prev) => {
+            if (gen !== generation) return prev;
+            return prev.kind === "loaded"
               ? {
                   ...prev,
                   refreshState: {
@@ -356,31 +397,34 @@ export function createReceptionQueueRunner(
                     notice,
                   },
                 }
-              : { kind: "error", notice },
-          );
+              : { kind: "error", notice };
+          });
           return;
         }
         // 最終取得時刻(JST)。古い一覧を最新と誤認させない(監査 S-02)
-        emit(() => ({
-          kind: "loaded",
-          response,
-          loadedAt: formatAcceptedTime(new Date().toISOString()),
-          refreshState: { kind: "idle" },
-        }));
-      } catch (error) {
-        if (gen !== generation) {
-          return;
-        }
-        const notice = queueLoadErrorNotice(error);
         emit((prev) =>
-          prev.kind === "loaded"
+          gen === generation
             ? {
-                ...prev,
-                refreshState: { kind: "error", requestTarget: targetDate, notice },
+                kind: "loaded",
+                response,
+                loadedAt: formatAcceptedTime(new Date().toISOString()),
+                refreshState: { kind: "idle" },
               }
-            : { kind: "error", notice },
+            : prev,
         );
+        return;
       }
+
+      const notice = queueLoadErrorNotice(outcome.error);
+      emit((prev) => {
+        if (gen !== generation) return prev;
+        return prev.kind === "loaded"
+          ? {
+              ...prev,
+              refreshState: { kind: "error", requestTarget: targetDate, notice },
+            }
+          : { kind: "error", notice };
+      });
     };
 
     const cleanupOwner = () => {
@@ -399,6 +443,34 @@ export function createReceptionQueueRunner(
       },
     );
     return sharedPromise;
+  };
+
+  run.cancelActive = () => {
+    if (isCancelling) return;
+    isCancelling = true;
+    try {
+      generation += 1;
+      const previousFlight = latestFlight;
+      latestFlight = undefined;
+      previousFlight?.controller?.abort();
+    } finally {
+      isCancelling = false;
+    }
+  };
+
+  return run;
+}
+
+export function createReceptionDashboardLifecycle() {
+  let mounted = false;
+  return {
+    isMounted: () => mounted,
+    mount() {
+      mounted = true;
+    },
+    unmount() {
+      mounted = false;
+    },
   };
 }
 
@@ -566,6 +638,9 @@ export function ReceptionDashboard() {
   const loadRunner = useRef<ReturnType<typeof createReceptionQueueRunner> | null>(
     null,
   );
+  const lifecycleRef = useRef<ReturnType<
+    typeof createReceptionDashboardLifecycle
+  > | null>(null);
   const registrationRunner = useRef<ReturnType<
     typeof createReceptionRegistrationRunner
   > | null>(null);
@@ -575,28 +650,38 @@ export function ReceptionDashboard() {
   if (registrationRunner.current === null) {
     registrationRunner.current = createReceptionRegistrationRunner();
   }
+  if (lifecycleRef.current === null) {
+    lifecycleRef.current = createReceptionDashboardLifecycle();
+  }
   if (queueTargetTrackerRef.current === null) {
     queueTargetTrackerRef.current = createReceptionQueueTargetTracker(date);
   }
   const queueTargetTracker = queueTargetTrackerRef.current;
+  const lifecycle = lifecycleRef.current;
 
   const load = useCallback(async (targetDate: string) => {
+    if (!lifecycle.isMounted()) return;
     queueTargetTracker.mark(targetDate);
     if (loadRunner.current === null) {
-      loadRunner.current = createReceptionQueueRunner(fetchReceptionQueue, (update) =>
-        setQueue((prev) => update(prev)),
+      loadRunner.current = createReceptionQueueRunner(
+        (requestedDate, signal) =>
+          fetchReceptionQueue(requestedDate, fetch, signal),
+        (update) => setQueue((prev) => update(prev)),
       );
     }
+    if (!lifecycle.isMounted()) return;
     // 業務日付(非PHI)を URL に反映して共有・リロード復元を可能にする(監査 S-03)
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("date", targetDate);
       window.history.replaceState(null, "", url);
     }
+    if (!lifecycle.isMounted()) return;
     await loadRunner.current(targetDate);
   }, []);
 
   useEffect(() => {
+    lifecycle.mount();
     // 初回のみ URL の ?date= を復元。以降は明示の「表示」操作で反映する
     const fromUrl =
       typeof window !== "undefined" ? parseDateParam(window.location.search) : undefined;
@@ -604,6 +689,10 @@ export function ReceptionDashboard() {
       setDate(fromUrl);
     }
     void load(fromUrl ?? date);
+    return () => {
+      lifecycle.unmount();
+      loadRunner.current?.cancelActive();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -636,6 +725,7 @@ export function ReceptionDashboard() {
       setRegisterNotice(null);
       try {
         const entry = await createReception(submittedPatientId);
+        if (!lifecycle.isMounted()) return;
         setRegistered(entry);
         const patientChangeNotice = registrationPatientChangeNotice(
           selectedPatientIdRef.current,
@@ -647,6 +737,7 @@ export function ReceptionDashboard() {
         }
         await load(queueTargetTracker.current());
       } catch (error) {
+        if (!lifecycle.isMounted()) return;
         const patientChangeNotice = registrationPatientChangeNotice(
           selectedPatientIdRef.current,
           submittedPatientId,
@@ -663,10 +754,12 @@ export function ReceptionDashboard() {
                 }),
         );
       } finally {
-        setSubmitting(false);
+        if (lifecycle.isMounted()) {
+          setSubmitting(false);
+        }
       }
     });
-  }, [selectedPatient?.patientId, load, queueTargetTracker]);
+  }, [selectedPatient?.patientId, lifecycle, load, queueTargetTracker]);
 
   return (
     <section aria-label="受付ダッシュボード">
