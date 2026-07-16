@@ -10,6 +10,7 @@ import { parseDocument } from "yaml";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const tempRoot = await mkdtemp(path.join(os.tmpdir(), "yrese-script-tests-"));
 const failures = [];
+const expectedPnpmVersion = "11.13.1";
 
 function scriptPath(name) {
   return path.join(repoRoot, "scripts", name);
@@ -197,6 +198,75 @@ function validateCiWorkflowTrustBoundary(workflowSource) {
   return findings;
 }
 
+function validatePnpmToolchainAuthority(packageSource, workspaceSource, workflowSource) {
+  const findings = [];
+  const check = (condition, message) => {
+    if (!condition) findings.push(message);
+  };
+  const isRecord = (value) =>
+    typeof value === "object" && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
+  const parseMapping = (source, label) => {
+    try {
+      const document = parseDocument(source, { uniqueKeys: true });
+      check(document.errors.length === 0, `${label} should be valid with unique keys`);
+      const value = document.toJS();
+      check(isRecord(value), `${label} root should be a mapping`);
+      return isRecord(value) ? value : undefined;
+    } catch {
+      check(false, `${label} should be parseable`);
+      return undefined;
+    }
+  };
+
+  const manifest = parseMapping(packageSource, "package.json");
+  const workspace = parseMapping(workspaceSource, "pnpm-workspace.yaml");
+  const workflow = parseMapping(workflowSource, "CI workflow");
+
+  check(
+    isRecord(manifest?.engines) && manifest.engines.pnpm === expectedPnpmVersion,
+    `engines.pnpm should be exactly ${expectedPnpmVersion}`,
+  );
+  check(
+    manifest?.packageManager === `pnpm@${expectedPnpmVersion}`,
+    `packageManager should be exactly pnpm@${expectedPnpmVersion}`,
+  );
+  check(workspace?.pmOnFail === "error", "pnpm version mismatch policy should be exactly pmOnFail: error");
+  check(
+    isRecord(workspace?.allowBuilds) &&
+      Object.keys(workspace.allowBuilds).sort().join(",") === "esbuild,sharp" &&
+      workspace.allowBuilds.esbuild === true &&
+      workspace.allowBuilds.sharp === true,
+    "pnpm build allow-list should remain exactly esbuild and sharp",
+  );
+  check(
+    workspace?.dangerouslyAllowAllBuilds !== true,
+    "pnpm should not allow all dependency build scripts",
+  );
+  check(
+    workspace?.strictDepBuilds !== false,
+    "pnpm should fail rather than warn for unreviewed dependency build scripts",
+  );
+
+  const setupSteps = [];
+  if (isRecord(workflow?.jobs)) {
+    for (const job of Object.values(workflow.jobs)) {
+      if (!isRecord(job) || !Array.isArray(job.steps)) continue;
+      for (const step of job.steps) {
+        if (isRecord(step) && typeof step.uses === "string" && step.uses.startsWith("pnpm/action-setup@")) {
+          setupSteps.push(step);
+        }
+      }
+    }
+  }
+  check(setupSteps.length === 1, "CI should contain exactly one pnpm/action-setup step");
+  check(
+    setupSteps.length === 1 && isRecord(setupSteps[0].with) && setupSteps[0].with.version === expectedPnpmVersion,
+    `CI pnpm/action-setup version should be exactly ${expectedPnpmVersion}`,
+  );
+
+  return findings;
+}
+
 async function testCiWorkflowTrustBoundary() {
   const workflowSource = await readFile(path.join(repoRoot, ".github", "workflows", "ci.yml"), "utf8");
   for (const finding of validateCiWorkflowTrustBoundary(workflowSource)) {
@@ -267,6 +337,108 @@ async function testCiWorkflowTrustBoundary() {
     validateCiWorkflowTrustBoundary(flowJobPermission).length > 0,
     "CI trust check should reject flow-style job-level permissions",
   );
+}
+
+async function testPnpmToolchainAuthority() {
+  const packageSource = await readFile(path.join(repoRoot, "package.json"), "utf8");
+  const workspaceSource = await readFile(path.join(repoRoot, "pnpm-workspace.yaml"), "utf8");
+  const workflowSource = await readFile(path.join(repoRoot, ".github", "workflows", "ci.yml"), "utf8");
+  for (const finding of validatePnpmToolchainAuthority(packageSource, workspaceSource, workflowSource)) {
+    assert(false, finding);
+  }
+
+  const permissiveEngine = packageSource.replace('"pnpm": "11.13.1"', '"pnpm": ">=11"');
+  assert(
+    validatePnpmToolchainAuthority(permissiveEngine, workspaceSource, workflowSource).length > 0,
+    "pnpm toolchain check should reject a permissive engine range",
+  );
+
+  const mismatchedPackageManager = packageSource.replace("pnpm@11.13.1", "pnpm@11.13.0");
+  assert(
+    validatePnpmToolchainAuthority(mismatchedPackageManager, workspaceSource, workflowSource).length > 0,
+    "pnpm toolchain check should reject a mismatched packageManager pin",
+  );
+
+  const missingMismatchPolicy = workspaceSource.replace("pmOnFail: error\n", "");
+  assert(
+    validatePnpmToolchainAuthority(packageSource, missingMismatchPolicy, workflowSource).length > 0,
+    "pnpm toolchain check should reject a missing mismatch policy",
+  );
+
+  const nonFailingMismatchPolicy = workspaceSource.replace("pmOnFail: error", "pmOnFail: warn");
+  assert(
+    validatePnpmToolchainAuthority(packageSource, nonFailingMismatchPolicy, workflowSource).length > 0,
+    "pnpm toolchain check should reject a non-failing mismatch policy",
+  );
+
+  const widenedBuildAllowList = workspaceSource.replace(
+    "  sharp: true\n",
+    "  sharp: true\n  unreviewed-build: true\n",
+  );
+  assert(
+    validatePnpmToolchainAuthority(packageSource, widenedBuildAllowList, workflowSource).length > 0,
+    "pnpm toolchain check should reject a widened build allow-list",
+  );
+
+  for (const [label, weakening] of [
+    ["allow-all dependency builds", "dangerouslyAllowAllBuilds: true\n"],
+    ["non-strict dependency builds", "strictDepBuilds: false\n"],
+  ]) {
+    assert(
+      validatePnpmToolchainAuthority(packageSource, `${workspaceSource}${weakening}`, workflowSource).length > 0,
+      `pnpm toolchain check should reject ${label}`,
+    );
+  }
+
+  const mismatchedCiVersion = workflowSource.replace("version: 11.13.1", "version: 11.13.0");
+  assert(
+    validatePnpmToolchainAuthority(packageSource, workspaceSource, mismatchedCiVersion).length > 0,
+    "pnpm toolchain check should reject a mismatched CI setup version",
+  );
+
+  const coordinatedPackageDrift = packageSource
+    .replace('"pnpm": "11.13.1"', '"pnpm": "11.13.0"')
+    .replace("pnpm@11.13.1", "pnpm@11.13.0");
+  assert(
+    validatePnpmToolchainAuthority(coordinatedPackageDrift, workspaceSource, mismatchedCiVersion).length > 0,
+    "pnpm toolchain check should reject coordinated manifest and CI version drift",
+  );
+
+  const malformedPackage = packageSource.replace('"pnpm": "11.13.1"', '"pnpm": [}');
+  const duplicatePackageKey = packageSource.replace(
+    '"pnpm": "11.13.1"',
+    '"pnpm": "11.13.1", "pnpm": "11.13.1"',
+  );
+  const duplicateWorkspaceKey = `${workspaceSource}pmOnFail: error\n`;
+  const malformedWorkflow = workflowSource.replace("jobs:\n", "jobs: [}\n");
+  for (const [label, candidatePackage, candidateWorkspace, candidateWorkflow] of [
+    ["malformed package JSON", malformedPackage, workspaceSource, workflowSource],
+    ["duplicate package key", duplicatePackageKey, workspaceSource, workflowSource],
+    ["duplicate workspace key", packageSource, duplicateWorkspaceKey, workflowSource],
+    ["malformed CI YAML", packageSource, workspaceSource, malformedWorkflow],
+  ]) {
+    assert(
+      validatePnpmToolchainAuthority(candidatePackage, candidateWorkspace, candidateWorkflow).length > 0,
+      `pnpm toolchain check should reject ${label}`,
+    );
+  }
+
+  const setupStepBlock = workflowSource.match(
+    /      - uses: pnpm\/action-setup@[^\n]+\n        with:\n          version: 11\.13\.1\n/,
+  )?.[0];
+  assert(setupStepBlock !== undefined, "pnpm toolchain fixture should find the reviewed CI setup step");
+  if (setupStepBlock !== undefined) {
+    const missingSetupStep = workflowSource.replace(setupStepBlock, "");
+    const duplicateSetupStep = workflowSource.replace(setupStepBlock, `${setupStepBlock}${setupStepBlock}`);
+    assert(
+      validatePnpmToolchainAuthority(packageSource, workspaceSource, missingSetupStep).length > 0,
+      "pnpm toolchain check should reject a missing CI setup step",
+    );
+    assert(
+      validatePnpmToolchainAuthority(packageSource, workspaceSource, duplicateSetupStep).length > 0,
+      "pnpm toolchain check should reject duplicate CI setup steps",
+    );
+  }
 }
 
 async function testBoundaryViolationDetection() {
@@ -2118,6 +2290,7 @@ async function testOpenApiGenerationPublishesAtomically() {
 
 try {
   await testCiWorkflowTrustBoundary();
+  await testPnpmToolchainAuthority();
   await testBoundaryViolationDetection();
   await testBoundaryCleanFixturePasses();
   await testBoundaryWorkspaceAliasPasses();

@@ -5,7 +5,7 @@
   "description": "調剤用レセプトコンピューター MVP — Cloud Core + Pharmacy Edge Node",
   "engines": {
     "node": ">=24",
-    "pnpm": ">=10"
+    "pnpm": "11.13.1"
   },
   "packageManager": "pnpm@11.13.1",
   "scripts": {
