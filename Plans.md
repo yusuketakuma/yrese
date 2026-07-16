@@ -2775,6 +2775,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: implementation commit `3d731e3` と後続ledger commitをrevertし、pnpm 10 audit endpoint復旧または別のfail-closed audit経路を用意する。lock/data rollback不要。
   - landing_record: implementation commit `3d731e3` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact2 implementationとfrozen-install/full-gate proof済み、independent verification pending。
 
+- [~] WP-4148 refresh full-stack alignment and final-demo evidence(LOW documentation/resume integrity) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+  - 発見根拠: objective-required `FULLSTACK_ALIGNMENT.md` / `FINAL_DEMO.md`が存在せず、`CODE_MAP.md` / `VERIFICATION.md`は2026-07-11のpnpm 10・API161/Web99証跡のままcurrent treeとdriftしていた。
+  - scope: exact7 `ops/refactor/CODE_MAP.md`, `ops/refactor/FULLSTACK_ALIGNMENT.md`, `ops/refactor/FINAL_DEMO.md`, `ops/refactor/VERIFICATION.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。code/contracts/OpenAPI/SSOT/package/lock/CI/DB/runtimeは変更しない。
+  - implementation: API 7 surfaceとreachable screenをlive sourceから分類。患者search/get、受付queue/create、audit eventsはALIGNED、healthはoperational one-sided、whoamiはreal-auth bootstrap判断待ち、他画面はunlock gate付きintentional placeholderとして記録。final demoは未実施を`DEMO_REQUIRED`で固定し、automated evidenceと未検証journeyを分離した。
+  - verification: exact route/client search、placeholder copy、Plans blockerを照合。SSOT index173、tracked snapshot secret scan、diff check PASS。code/runtime semantic claimは追加せず、PostgreSQL14 skip、live `.codegraph` secret-scope failure、browser/demo未実施を明記。
+  - review_status: root cold-path mapping済み。current topologyでは別agent verifier未実施のためFINALIZEDを主張しない。
+  - rollback: implementation commit `2bea7a4` と後続ledger commitをrevertする。code/data rollback不要。
+  - landing_record: implementation commit `2bea7a4` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 artifact refresh landed、independent verification pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

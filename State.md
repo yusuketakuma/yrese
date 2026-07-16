@@ -8,6 +8,12 @@
 
 ## 2026-07-16
 
+### WP-4148 full-stack alignment / final-demo evidence refresh — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+
+- missing alignment/demo artifactsとstale 2026-07-11 verification/code mapをcurrent live treeへ同期。API 7 surfaceとWeb consumer/placeholderを分類し、unblocked business APIは接続済み、whoamiはauth bootstrap判断待ち、blocked placeholderを実装済みに見せないことを固定。
+- `FINAL_DEMO.md`は自動gateと未実施browser/PostgreSQL/auth/tenant/accessibility journeyを分離して`DEMO_REQUIRED`を維持。exact4 implementation commit `2bea7a4` をfeature branchへpush済み。
+- SSOT index173、tracked snapshot secret scan、diff check PASS。別agent verifierはcurrent topology制約により未実施。
+
 ### WP-4146 workspace manifest semantic validation — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
 - baseline `3d731e3`。workspace manifestのmissing/blank/duplicate nameとmalformed dependency section/key/specifierがboundary graphから黙って欠落し得るMEDIUM tooling-control gapを確認。live 10 manifestはvalid。
