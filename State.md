@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4191 patient-search error-code status binding — FINALIZED / INDEPENDENT_PASS
+
+- patient-searchの登録済みerrorCodeをAPI-001の`400/PAT-0001`と`403/AUTH-0003`へcanonical constantsで拘束した。wrong tuple、404/409/500、未登録/非文字列は固定案内を変えずcodeだけ省略する。
+- positive/mismatch/unsupported statusとraw message非echoを固定。body exactly-once、own descriptor/Proxy/accessor防御、trusted notice、query/limit/cursor、page/append/stale/cancel/retry、selection/PatientContextは不変。
+- focused82、Web454、API348 + integration14 expected skips、workspace typecheck/test、Web build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/API/security/privacy/medical review APPROVED。implementation `0e1bf05`はlocal-only、pushなし。
+
 ### WP-4190 hostile patient not-found response normalization — FINALIZED / INDEPENDENT_PASS
 
 - 404 bodyをZodへ直接渡す境界をown enumerable data descriptorからのplain snapshotへrefactorし、Proxy/accessor/descriptor/parse例外を固定non-echo errorへ統一した。non-object/array/inherited/accessorは拒否し、exact `PAT-0002`だけが患者解除authorityのまま。
