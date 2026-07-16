@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4188 reception audit acknowledgement authority — FINALIZED / INDEPENDENT_PASS
+
+- 受付created後のaudit append返却を捨てるfalse-201境界を修正。scope/intent/targetとaudit時刻をsingle frozen snapshot化し、`hydrateAuditEvent`後のhash検証済みfrozen eventだけをscope/actor/type/target/outcome/wallClock/aggregateへ照合する。未要求reason/businessも拒否する。
+- hash-valid contradictory event、malformed/hash corruption、accessor/Proxy、raw rejectionを固定non-echo 500/no-storeへ収束し、raw/PHI/identifierを応答しない。正常201/audit once/now twice、existing200/audit zero、idempotency conflictとreception provenance checksは維持。atomic rollback/repair/retryは非主張でhuman gateを保持した。
+- focused127、API348 + integration14 expected skips、Web433、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent/plan/API/data-integrity/security/privacy review APPROVED。implementation `b412538`はlocal-only、pushなし。
+
 ### WP-4187 App Router error-boundary property trust — FINALIZED / INDEPENDENT_PASS
 
 - route/global error boundaryから未信頼`error.name`/`digest`のDOM・console投影を除去し、error objectをproperty/descriptor/enumeration/serializationなしでidentity dependencyとしてだけ扱う。effectは固定signal1引数だけをexactly once記録する。
