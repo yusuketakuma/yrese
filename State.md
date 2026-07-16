@@ -8,6 +8,13 @@
 
 ## 2026-07-16
 
+### WP-0054 v0.7 comprehensive pharmacy platform plan — PLANNED / GATE0_HUMAN_REVIEW_REQUIRED
+
+- ユーザー提供「yrese・PH-OS 調剤レセコン総合機能計画 v0.7」§1〜38を`Plans.md`へ変換。5層/6原則、22 domain、P0〜P3、Release Gate 0〜5、dependency DAG、Guided/Expert UX、共通module、22 requested SSOT、KPI、stop gateをWP-0054a-oおよびD01〜D22へ写像した。
+- 公式/一次情報としてMHLW安全管理v7.0・FY2026統合checklist、資格確認、電子処方箋、薬剤師法/電子文書、Digital Agency PMH、支払基金claim、PMDA recall、GS1、AWS Bedrock lifecycle/retention/region/guardrails、7 vendor公開pageを確認。版/適用/許諾/human authority未確定の事項は実装根拠へ昇格していない。
+- fresh scanでは既存foundation/calculation/patient/receptionをPARTIAL、FHIR Native serverをDOC_ONLY/BLOCKED、その他domainをslice別PARTIAL/MISSING/UNKNOWNとした。Release Gate 0はdocs/evidenceのみで、runtime/DB/external/production変更なし。22 domain heading、22 requested SSOT、90 representative requirement、Gate/priority、SSOT index173、boundary、tracked snapshot secret scan、diff checkはPASS。live secret scanは既知の`.codegraph` symlinkでfail-closed。独立agent verifierは現行topology上未実施。
+- plan commit `ce9fcde` (`WP-0054: decompose comprehensive pharmacy platform`) を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。Gate 0 human reviewとWP-0054a-iのevidence作成は未完了であり、D01〜D22 runtimeは全て`BLOCKED_GATE0`を維持する。
+
 ### WP-4160 priority Profile cardinality / Must Support decisions — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
 - JP Core 1.2.0のpriority 7 candidate Profileについてdifferential cardinality、direct binding、reference target、invariantとsnapshot Must Supportを分離して集計した。Must Supportは全候補0件だが、公式guidanceが原則として派生projectへ付与を委ねるため、対応不要ではなくyrese/PH-OS IGのproducer/consumer/missing-data責務が未決定である証拠とした。

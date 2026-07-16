@@ -17,6 +17,7 @@ Updated on 2026-07-16. This file is the durable index for the active repository-
 
 | Work package | Implementation evidence | Ledger evidence | Result |
 |---|---|---|---|
+| WP-0054 | `ce9fcde` | `Plans.md` v0.7 section | 38 sections mapped to Gate 0, D01–D22, cross-cutting work and stop gates; runtime remains blocked |
 | WP-0053 | `050df59` | `Plans.md` FHIR Native v0.5 section | Phase 0 through Phase 5 work split landed; approval gates remain closed |
 | WP-4149 | `7ba1003` | `30bca4a` | Reception registration accepts only the selected Patient Context |
 | WP-4150 | `87b5c41` | `f28921a` | Patient selection action remains reachable at narrow widths |
