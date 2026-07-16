@@ -3798,3 +3798,66 @@ Dependency DAG (all edges are prerequisites, not authorization):
 6. JAHIS/NSIPS等のrestricted specificationやvendor behaviorを無許諾で取得・複製・推測実装しない。
 7. applicable Gateのcommand、environment、oracle、artifactが欠落する場合はPASSにせずFAILまたはhuman-approved N/Aとする。
 8. requirement→WP→SSOT→code→test→evidence coverageにunmapped、orphan implementation、duplicate authority、unsupported compliance claim、failing gateが1件でもあれば停止する。
+
+### v0.8 Functional Specification Variant Reconciliation (2026-07-16)
+
+#### Decision and source lineage
+
+WP-0055 addendum status: `CHANGES_REQUIRED / DRAFT_NO_GO継続 / CODEX_ONLY_REVIEW`。これは`Plans.md`内の既存WP-0055に対する補足であり、同じIDの別Work Packageを発行しない。
+
+  - decision: 今回入力された`yrese・PH-OS 詳細機能仕様書 v0.8`は、既存WP-0055がreviewした`yrese・PH-OS 詳細システム仕様書 v0.8`を上書きしない。同じ版名だがtitle、requirement unit、count、本文可用性が異なるため、raw-to-raw比較まで別source variantとして扱う。
+  - routing: fable5、Claude、Opus、model固有mode/laneはactive owner、approver、reviewer、Gate evidenceに使用しない。Codex root、sole maintainer、変更を行わないCodex independent verifier、Codex domain reviewerをtechnical roleとし、pharmacist/claims/legal/FHIR/privacy/security/data-integrity/accessibility/operations等のhuman authorityを別Gateとして維持する。
+  - authority: 両variantともDraft inputで、implementation/SSOT/API/DB/UI/package/production authority=0。Gate 0=`NO_GO`、Gate 1 reissue=0、human decision=0/18、WP-0054q/VF-01=openを変更しない。
+
+| source_variant_id | observed source / temporary locator | observed inventory | byte-preserving artifact | relationship |
+|---|---|---|---|---|
+| `V08-R1-DETAILED-SYSTEM` | user-provided `詳細システム仕様書 v0.8`; conversation observation `obs_00mrneqc828e0269a94a1a9e32` (`UNVERIFIED_CONVERSATION_SOURCE`) | 22 domain / 234 unique MUST / 66 acceptance / 141 test / 132 UI label | missing; conversation observation only | `UNRESOLVED` |
+| `V08-R2-DETAILED-FUNCTIONAL-SUMMARY` | user-provided `詳細機能仕様書 v0.8` summary; conversation observation `obs_00mrnfpwusce7e3c66406e3545` (`UNVERIFIED_CONVERSATION_SOURCE`) | 22 domain / `approximately 178` use-case claim; individual IDs/body/locator unavailable | `sandbox:/mnt/data/yrese_phos_detailed_functional_spec_v0_8.md` is not present in repository or accessible workspace path | `UNRESOLVED` |
+
+`approximately 178`は検証済み件数ではなくsource claimである。R1の234 MUSTとR2のuse caseは単位が異なり、算術差もsemantic deltaとして扱わない(`INCOMPARABLE_UNITS / NOT_A_DELTA`)。置換、追加、削除、要約関係のいずれもraw取得前に推定しない。`supersedes / extends / summarizes / conflicts`は全件crosswalkとsource authority判断後だけ確定する。
+
+#### Variant delta findings
+
+| Priority | Finding | Required disposition | Existing target |
+|---|---|---|---|
+| P0 | R2 raw、hash、exact use-case ID/本文/locatorがなく、約178件を再現できない | `source_variant_id`、title、created/generated time、SHA-256、source locator、unit、predecessor relationを固定し、R1/R2を個別抽出後にmany-to-many crosswalkする | WP-0055a |
+| P0 | `PRE_RECEIVED → ... → PAYMENT_COMPLETE / UNPAID_RECORDED → HANDOVER_COMPLETE`が受付、本人/処方確認、調剤、監査、会計、交付を単一state axisへ混在させる | 各stateを`REUSE / PROJECTION_ONLY / MAP_TO_DOMAIN_EVENT / REJECT_DUPLICATE / HUMAN_DECISION`へ分類し、reception/identity/prescription/dispensing/audit/counseling/accounting/handoverの直交軸へ分離する | WP-0054-D02/D05/D09、WP-0055b |
+| P0 | `CLAIM_CANDIDATE / VALIDATED / SNAPSHOTTED / FILE_GENERATED / HANDED_OFF / SETTLED`がR1とAPPROVED claim authorityのstate意味を置換し得る | owner、entry/exit、external authority、immutable snapshot、allowed transition、R1/current stateとのsemantic crosswalkを作り、外部hand-offとsubmitted/acceptedを混同しない | WP-0054-D08、WP-0055b/d |
+| P0 | `Patient.link`がmerge/split完了手順のように読める | link assertionとmerge commandを分離し、survivor/non-survivor、identifier/Consent/Coverage、reverse reference、search、unlink/rollback、concurrency、auditを定義する | WP-0054-D01、WP-0055c/d |
+| P0 | LOCAL_ONLYの「会計の許可範囲」と`PAYMENT_COMPLETE / UNPAID_RECORDED`がfinal/provisional/receipt/handoverを区別しない | Charge、Payment、Allocation、Receipt、Unpaid、Handoverをoperation単位で`FINAL / PROVISIONAL / PENDING / FORBIDDEN / RECOVERY_ONLY`へ分類し、二重効果・未入金領収・false success=0を証明する | WP-0054h、WP-0055d |
+| P0 | 「必須AI」10機能がR1のmandatory/staged区分と異なり、`AI_DRAFT / FAILED / EXPIRED`がR2 summary stateから欠落する | use caseごとに`MANDATORY / STAGED / NON_AI_REQUIRED / REJECTED`、PHI allow-list、Region/retention/training、grounding/schema、approve/reject/undo、failure/expiry、non-AI fallbackを決定する | WP-0054-D22、WP-0055e、HD-14 |
+| P0 | 主な利用者の記述だけではserver-side authorizationにならない | 全use caseにcommand/resource/action、tenant/pharmacy/patient scope、purpose、Consent/legal exception、data class、break-glass、AuditEvent、negative testを付与する | WP-0055e |
+| P1 | 約178 use caseにexecutable acceptance/testが提示されていない | use-case→journey step→shared command/read projection→domain transition→view/region→acceptance/testを100% mappingし、orphan=0。ledgerに`risk_tier / required_test_layers / e2e_scenario_id / n_a_reason / n_a_approver`を持たせ、pure/property、contract/integration、bounded critical E2Eを機械判定する | WP-0055f |
+| P1 | Guided/Expert、accessibility、performanceが旧laneの担当名に留まる | interactive use caseごとにshared `command_id`、presentation、focus/keyboard/status announcement/context/error recovery/mode switchを定義し、schema/validation/permission/idempotency/concurrency/resource version/state/API/audit/outcome diff=0。critical operationへPHI-free timerとreal-device baselineを接続する | WP-0054j/k、WP-0055f |
+
+#### Official-source deltas found during review
+
+以下はcandidate external evidenceであり、URL閲覧だけではSSOT/evidence promotionにならない。exact artifact、resolved URL、version/effective date、hash、license/applicability、human decisionをWP-0054c/pへ登録する。
+
+| Official source | Review evidence | Required plan delta |
+|---|---|---|
+| [MHLW 電子処方箋システムベンダ向け](https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/denshishohousen_systemvendor.html) / [電子処方箋の現況と令和7年度の対応](https://www.mhlw.go.jp/content/11121000/001428602.pdf) | 薬局の最小機能は受付/取消/回収/リフィル/重複投薬等check/同意/署名付き調剤結果登録/取消を分離する。要求成功後に応答を受け取れない場合の処方箋ID・調剤結果ID検索も示す | Official Adapterに`AMBIGUOUS_EXTERNAL_RESULT`、status inquiry、idempotent reconciliationを追加し、blind retry/成功推測を禁止する |
+| [デジタル庁 PMH](https://www.digital.go.jp/policies/health/public-medical-hub) | 2026-07-15時点でAPI/ファイル設計、error code、制度master、checklist等が更新され、医療機関・薬局向け利用規約と利用開始条件も別artifact | PMHを静的master扱いせず、artifact family・更新日・利用規約・participation/applicability・Edge配布をversion watchへ登録する |
+| [MHLW 医療費助成オンライン資格確認](https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryou/iryouhijosei.html) | PMH仕様・PIA・利用規約のauthoritative artifactはデジタル庁側も参照し、参加自治体/施設の実運用状況と制度移管情報は別に管理される | MHLW/Digital Agency/自治体のsource authorityとeffective intervalを分離し、未参加・未確認をsuccessにしない |
+| [FHIR R4 Patient](https://hl7.org/fhir/R4/patient.html) | `Patient.link`は同一人物を指す複数resource間のlinkage assertionであり、reference migration等の完全なmerge procedureではない | patient merge/splitをFHIR linkだけで完了扱いせず、identity graphと全reference consumerのcontractを追加する |
+| [JP Core MedicationDispense 1.2.0](https://jpfhir.jp/fhir/core/1.2.0/StructureDefinition-jp-medicationdispense.html) | MedicationDispenseは処方を正当化するMedicationRequest参照、required status/identifier、量・daysSupply等のprofile制約を持ち、調剤workflow全体のTask状態とは別責務 | FHIR clinical factとoperational Task/audit/device stateを分離し、declared profile/search/identifier/roundtripをconformance test化する |
+| [支払基金 電子レセプトの作成](https://www.ssk.or.jp/smph/seikyushiharai/iryokikan/iryokikan_02.html) / [レセ電通信](https://www.ssk.or.jp/smph/user_ippan/vendor/vendor_01.html) | 調剤の令和8年6月版記録条件/標準/返戻再請求仕様が公開され、2026-06-30にも記載要領変更に伴う調剤通知が出ている | claim month/effective interval、record-condition edition、master、notification watch、golden fixtureを一体管理し、summary例を算定根拠にしない |
+
+#### Amendments to existing WP-0055 execution plan
+
+- WP-0055a: R1/R2の2 source variantを別々にcaptureする。R2 raw取得前のuse-case count statusは`APPROXIMATE_UNVERIFIED`。R1/R2/v0.7のprovenanceを混ぜず、raw-to-raw crosswalk前に優先版を決めない。
+- WP-0055b: reception、claim、AI、system/offline stateのvariant crosswalkを追加する。monolithic lifecycle enumを作らず、domain state、business fact、external result、UI projectionを分離する。
+- WP-0055c: Patient merge/link/splitとMedicationRequest/MedicationDispense/Taskのwrite owner、profile、reference、search、version/history contractを追加する。
+- WP-0055d: electronic-prescription ambiguous-result inquiry、LOCAL_ONLY accounting/handover、outbox/inbox reconciliationのcrash/retry/reorder/duplicate testsを追加する。
+- WP-0055e: R2 use case全件のauthorization/purpose/Consent/data-class matrixとAI disposition/DPIAを追加する。clinical PHI invocation=0はhuman gateまで維持する。
+- WP-0055f: exact R2 use case取得後に100% traceabilityを作る。各use caseのrisk tierと必須test layerを機械検証し、R4/finalization/offline recovery/cross-tenant/financial use caseはbounded critical E2Eまたはhuman-approved N/Aを要求する。Guided/Expertは同一commandとschema/validation/permission/idempotency/concurrency/version/audit/outcome、accessibilityはjourney acceptance、performanceはinteraction/business completion別operationとして検証する。
+- WP-0055g: `R1/R2 precedence and relationship`をhuman source-authority decisionへ追加する。両variant、WP-0054q/VF-01、official evidence、PRC-007、HD-01〜18が閉じるまでG0-08を発行しない。
+
+exact_next_action: WP-0055aでR1/R2を別sourceとしてbyte-preserving captureし、R2 raw取得またはhuman source-authorityによる明示的source-gap判断までcrosswalk、state adoption、SSOT amendmentを開始しない。
+
+#### Additional stop gates
+
+1. R2 raw file、SHA-256、exact use-case ID/locatorがない状態で`178/178`、`semantic delta=56`、superseded、completeを宣言しない。
+2. reception/claim/AI stateを既存registryへ直接追加せず、orthogonal axisとsemantic crosswalkを先に承認する。
+3. Patient.linkだけでmerge完了、external timeoutで未処理、PMH未参加自治体でverified、LOCAL_ONLYで入金/領収/外部送信成功を表示しない。
+4. fable5/Claude/Opus/model modeをactive routingまたはapproval evidenceとして再導入しない。Codex technical reviewもhuman authorityを代替しない。
