@@ -21,6 +21,8 @@ import {
   auditLogSequenceInvariantErrorMessage,
   auditLogScopeInvariantErrorMessage,
   auditLogViewAuditInvariantErrorMessage,
+  auditLogViewClockInvariantErrorMessage,
+  auditLogViewClockReadErrorMessage,
   buildServer,
   type BuildServerOptions,
 } from './server.js';
@@ -166,8 +168,10 @@ describe('GET /audit/events (SCR-028)', () => {
     ['non-array root', {}],
     ['sparse array', new Array(1)],
   ] as const)('rejects an audit event list with a %s before view audit', async (_label, events) => {
+    const now = vi.fn(() => new Date('2026-07-17T00:00:00.000Z'));
     const record = vi.fn<AuditRepository['record']>();
     const server = buildDevTestServer({
+      now,
       auditRepository: {
         list: vi.fn<AuditRepository['list']>(async () => events as never),
         record,
@@ -184,6 +188,7 @@ describe('GET /audit/events (SCR-028)', () => {
     expect(response.statusCode).toBe(500);
     expect(response.headers['cache-control']).toBe('no-store');
     expect(response.json()).toMatchObject({ message: auditLogListSchemaInvariantErrorMessage });
+    expect(now).not.toHaveBeenCalled();
     expect(record).not.toHaveBeenCalled();
   });
 
@@ -312,6 +317,199 @@ describe('GET /audit/events (SCR-028)', () => {
     }
     expect(directRead).not.toHaveBeenCalled();
     expect(record).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['Error', (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) => new Error(rawSentinel)],
+    ['non-Error string', (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) => rawSentinel],
+    [
+      'non-Error object',
+      (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) => ({
+        message: rawSentinel,
+        eventId: 'audit-clock-event-secret-4210',
+      }),
+    ],
+    [
+      'hostile Proxy',
+      (_rawSentinel: string, propertyRead: ReturnType<typeof vi.fn>) =>
+        new Proxy({}, { get: propertyRead, has: propertyRead, getPrototypeOf: propertyRead }),
+    ],
+  ] as const)(
+    'normalizes an audit-view clock throw from %s without inspecting it',
+    async (_label, createThrownValue) => {
+      const rawSentinel = 'raw audit view clock throw target secret 4210';
+      const propertyRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const thrownValue = createThrownValue(rawSentinel, propertyRead);
+      const now = vi.fn(() => {
+        throw thrownValue;
+      });
+      const record = vi.fn<AuditRepository['record']>();
+      const server = buildDevTestServer({
+        now,
+        auditRepository: {
+          list: vi.fn<AuditRepository['list']>(async () => []),
+          record,
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/audit/events',
+        headers: auditReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toMatchObject({ message: auditLogViewClockReadErrorMessage });
+      expect(now).toHaveBeenCalledOnce();
+      expect(record).not.toHaveBeenCalled();
+      expect(propertyRead).not.toHaveBeenCalled();
+      for (const sensitiveValue of [
+        rawSentinel,
+        'audit-clock-event-secret-4210',
+        'target secret 4210',
+      ]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+    },
+  );
+
+  it.each([
+    ['undefined', undefined],
+    ['null', null],
+    ['string', '2026-07-17T00:00:00.000Z'],
+    ['number', 0],
+    ['boolean', true],
+    ['bigint', 0n],
+    ['symbol', Symbol('audit-view-clock-4210')],
+    ['function', () => new Date()],
+    ['array', [new Date()]],
+    ['plain object', {}],
+    ['Promise', Promise.resolve(new Date())],
+    ['invalid Date', new Date(Number.NaN)],
+    ['Date prototype spoof', Object.create(Date.prototype) as object],
+  ] as const)(
+    'rejects an invalid audit-view clock authority (%s) before record',
+    async (_label, clockValue) => {
+      const now = vi.fn(() => clockValue as never);
+      const record = vi.fn<AuditRepository['record']>();
+      const server = buildDevTestServer({
+        now,
+        auditRepository: {
+          list: vi.fn<AuditRepository['list']>(async () => []),
+          record,
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/audit/events',
+        headers: auditReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toMatchObject({ message: auditLogViewClockInvariantErrorMessage });
+      expect(now).toHaveBeenCalledOnce();
+      expect(record).not.toHaveBeenCalled();
+      expect(response.body).not.toContain('Invalid time value');
+    },
+  );
+
+  it.each(['hostile Date Proxy', 'revoked Date Proxy'] as const)(
+    'rejects a %s without invoking semantic traps',
+    async (variant) => {
+      const rawSentinel = `raw ${variant} secret 4210`;
+      const semanticRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      let clockValue: object;
+      if (variant === 'revoked Date Proxy') {
+        const revocable = Proxy.revocable(new Date('2026-07-17T00:00:00.000Z'), {});
+        clockValue = revocable.proxy;
+        revocable.revoke();
+      } else {
+        clockValue = new Proxy(new Date('2026-07-17T00:00:00.000Z'), {
+          get: semanticRead,
+          has: semanticRead,
+          getPrototypeOf: semanticRead,
+          ownKeys: semanticRead,
+          getOwnPropertyDescriptor: semanticRead,
+        });
+      }
+      const record = vi.fn<AuditRepository['record']>();
+      const server = buildDevTestServer({
+        now: () => clockValue as never,
+        auditRepository: {
+          list: vi.fn<AuditRepository['list']>(async () => []),
+          record,
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/audit/events',
+        headers: auditReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json()).toMatchObject({ message: auditLogViewClockInvariantErrorMessage });
+      expect(record).not.toHaveBeenCalled();
+      expect(semanticRead).not.toHaveBeenCalled();
+      expect(response.body).not.toContain(rawSentinel);
+      expect(response.body).not.toContain('Cannot perform');
+    },
+  );
+
+  it('uses the intrinsic Date snapshot once and ignores an own toISOString accessor', async () => {
+    const clock = new Date('2026-07-17T00:00:00.123Z');
+    const ownToISOStringRead = vi.fn(() => {
+      throw new Error('raw own toISOString accessor secret 4210');
+    });
+    Object.defineProperty(clock, 'toISOString', {
+      configurable: true,
+      get: ownToISOStringRead,
+    });
+    const calls: string[] = [];
+    const now = vi.fn(() => {
+      calls.push('now');
+      return clock;
+    });
+    const backing = new InMemoryAuditRepository();
+    const record = vi.fn<AuditRepository['record']>(async (scope, input) => {
+      calls.push('record');
+      expect(Object.isFrozen(scope)).toBe(true);
+      expect(Object.isFrozen(input)).toBe(true);
+      expect(Object.isFrozen(input.targetRef)).toBe(true);
+      expect(input.wallClock).toBe('2026-07-17T00:00:00.123Z');
+      return backing.record(scope, input);
+    });
+    const server = buildDevTestServer({
+      now,
+      auditRepository: {
+        list: vi.fn<AuditRepository['list']>(async () => []),
+        record,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events',
+      headers: auditReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(now).toHaveBeenCalledOnce();
+    expect(record).toHaveBeenCalledOnce();
+    expect(ownToISOStringRead).not.toHaveBeenCalled();
+    expect(calls).toEqual(['now', 'record']);
+    expect(response.body).not.toContain('raw own toISOString accessor secret 4210');
   });
 
   it('returns an empty verified log and audits the view itself (audit.viewed)', async () => {
@@ -730,7 +928,9 @@ describe('GET /audit/events (SCR-028)', () => {
         checkedCount: 2,
       });
       const record = vi.fn<AuditRepository['record']>(async () => first);
+      const now = vi.fn(() => new Date('2026-07-17T00:00:00.000Z'));
       const server = buildDevTestServer({
+        now,
         auditRepository: {
           list: vi.fn(async () => [first, duplicate]),
           record,
@@ -747,6 +947,7 @@ describe('GET /audit/events (SCR-028)', () => {
 
       expect(response.statusCode).toBe(500);
       expect(response.headers['cache-control']).toBe('no-store');
+      expect(now).not.toHaveBeenCalled();
       expect(record).not.toHaveBeenCalled();
       expect(response.json()).toMatchObject({
         statusCode: 500,
@@ -796,7 +997,9 @@ describe('GET /audit/events (SCR-028)', () => {
         checkedCount: events.length,
       });
       const record = vi.fn<AuditRepository['record']>(async () => events[0]!);
+      const now = vi.fn(() => new Date('2026-07-17T00:00:00.000Z'));
       const server = buildDevTestServer({
+        now,
         auditRepository: {
           list: vi.fn(async () => events),
           record,
@@ -813,6 +1016,7 @@ describe('GET /audit/events (SCR-028)', () => {
 
       expect(response.statusCode).toBe(500);
       expect(response.headers['cache-control']).toBe('no-store');
+      expect(now).not.toHaveBeenCalled();
       expect(record).not.toHaveBeenCalled();
       expect(response.json()).toMatchObject({
         statusCode: 500,
@@ -1140,8 +1344,9 @@ describe('GET /audit/events (SCR-028)', () => {
       });
       const foreignEvents = await foreignRepository.list(foreignScope);
       const record = vi.fn<AuditRepository['record']>();
+      const now = vi.fn(() => new Date('2026-07-17T00:00:00.000Z'));
       const list = vi.fn<AuditRepository['list']>(async () => foreignEvents);
-      const server = buildDevTestServer({ auditRepository: { list, record } });
+      const server = buildDevTestServer({ now, auditRepository: { list, record } });
 
       const response = await server.inject({
         method: 'GET',
@@ -1155,6 +1360,7 @@ describe('GET /audit/events (SCR-028)', () => {
       expect(response.headers['cache-control']).toBe('no-store');
       expect(list).toHaveBeenCalledOnce();
       expect(list).toHaveBeenCalledWith(SCOPE);
+      expect(now).not.toHaveBeenCalled();
       expect(record).not.toHaveBeenCalled();
       expect(response.json()).toMatchObject({
         statusCode: 500,

@@ -1,4 +1,4 @@
-import { isProxy } from 'node:util/types';
+import { isDate, isProxy } from 'node:util/types';
 
 import Fastify, { type FastifyInstance, type onRequestHookHandler } from 'fastify';
 import { hydrateAuditEvent, verifyAuditHashChain, type AuditEvent } from '@yrese/audit';
@@ -131,6 +131,9 @@ export const auditLogSequenceInvariantErrorMessage =
   'Verified audit chain contains a non-contiguous event sequence';
 export const auditLogViewAuditInvariantErrorMessage =
   'Audit repository returned mismatched audit view evidence';
+export const auditLogViewClockReadErrorMessage = 'Audit view clock read failed';
+export const auditLogViewClockInvariantErrorMessage =
+  'Audit view clock returned an invalid instant';
 
 export interface BuildServerOptions {
   readonly patientRepository?: PatientRepository;
@@ -177,6 +180,23 @@ function assertRecordedAuditMatchesIntent(
     event.businessReason !== undefined
   ) {
     throw new Error(invariantErrorMessage);
+  }
+}
+
+function snapshotAuditViewWallClock(now: () => Date): string {
+  let value: unknown;
+  try {
+    value = now();
+  } catch {
+    throw new Error(auditLogViewClockReadErrorMessage);
+  }
+  if (!isDate(value)) {
+    throw new Error(auditLogViewClockInvariantErrorMessage);
+  }
+  try {
+    return Date.prototype.toISOString.call(value);
+  } catch {
+    throw new Error(auditLogViewClockInvariantErrorMessage);
   }
 }
 
@@ -1101,13 +1121,14 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       }
 
       // 監査ログの閲覧自体を監査する(audit.viewed)。今回の応答には含めない(閲覧後に追記)。
+      const viewWallClock = snapshotAuditViewWallClock(now);
       const viewTarget = Object.freeze({ kind: 'audit_log', id: `view:${events.length}` });
       const viewIntent = Object.freeze({
         actorId: userId(tenantContext.actorId),
         auditEventType: 'audit.viewed',
         targetRef: viewTarget,
         outcome: 'success',
-        wallClock: now().toISOString(),
+        wallClock: viewWallClock,
       });
       let recordedViewAudit: unknown;
       try {
