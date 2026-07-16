@@ -221,25 +221,31 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
   });
 
   it.each([
-    ["AUTH-0003", "AUTH-0003"],
-    ["PAT-0001", "PAT-0001"],
-    ["SYSTEM-9999", undefined],
-    [403, undefined],
-  ])("projects only registered own error code %j", async (rawErrorCode, expected) => {
-    const { error } = await captureSearchFailure(403, () => ({
-      errorCode: rawErrorCode,
-      message: "raw message must not render",
-    }));
+    [400, "PAT-0001", "PAT-0001"],
+    [400, "AUTH-0003", undefined],
+    [403, "AUTH-0003", "AUTH-0003"],
+    [403, "PAT-0001", undefined],
+    [404, "PAT-0002", undefined],
+    [409, "RCV-0003", undefined],
+    [500, "AUTH-0003", undefined],
+    [403, "SYSTEM-9999", undefined],
+    [403, 403, undefined],
+  ] as const)(
+    "binds HTTP %s error code %j to the API-001 search tuple",
+    async (status, rawErrorCode, expected) => {
+      const { error } = await captureSearchFailure(status, () => ({
+        errorCode: rawErrorCode,
+        message: "raw message must not render",
+      }));
 
-    expect(error).toMatchObject({
-      message: "権限がありません。",
-      nextAction: "管理者に権限(patient:read)の付与状況を確認してください。",
-      errorCode: expected,
-    });
-    expect(JSON.stringify(error, Object.getOwnPropertyNames(error))).not.toContain(
-      "raw message must not render",
-    );
-  });
+      expect(error).toMatchObject({ errorCode: expected });
+      const serialized = JSON.stringify(error, Object.getOwnPropertyNames(error));
+      expect(serialized).not.toContain("raw message must not render");
+      if (expected === undefined && typeof rawErrorCode === "string") {
+        expect(serialized).not.toContain(rawErrorCode);
+      }
+    },
+  );
 
   it("accepts a page at the requested default limit", async () => {
     vi.stubEnv("NODE_ENV", "development");

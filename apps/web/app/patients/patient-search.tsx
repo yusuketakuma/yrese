@@ -7,7 +7,11 @@ import {
   patientSearchResponseSchema,
   type PatientSearchResult,
 } from "@yrese/contracts";
-import { patientId } from "@yrese/shared-kernel";
+import {
+  AUTH_PERMISSION_DENIED_ERROR_CODE,
+  PATIENT_SEARCH_INVALID_QUERY_ERROR_CODE,
+  patientId,
+} from "@yrese/shared-kernel";
 
 import { devTenantHeaders } from "../dev-tenant";
 
@@ -113,6 +117,12 @@ function trustedSearchErrorNotice(error: unknown): ErrorNoticeProps | undefined 
     : undefined;
 }
 
+function expectedPatientSearchErrorCode(status: number): string | undefined {
+  if (status === 400) return PATIENT_SEARCH_INVALID_QUERY_ERROR_CODE;
+  if (status === 403) return AUTH_PERMISSION_DENIED_ERROR_CODE;
+  return undefined;
+}
+
 export async function fetchSearch(
   q: string,
   cursor?: string,
@@ -140,7 +150,9 @@ export async function fetchSearch(
         const descriptor = Object.getOwnPropertyDescriptor(body, "errorCode");
         if (descriptor !== undefined && "value" in descriptor) {
           // registry 未登録/形式外のコードは表示しない(異常値の verbatim 出力防止)
-          errorCode = registeredErrorCodeOrUndefined(descriptor.value);
+          const registeredCode = registeredErrorCodeOrUndefined(descriptor.value);
+          const expectedCode = expectedPatientSearchErrorCode(res.status);
+          errorCode = registeredCode === expectedCode ? registeredCode : undefined;
         }
       }
     } catch {
