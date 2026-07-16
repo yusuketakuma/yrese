@@ -8,6 +8,13 @@
 
 ## 2026-07-16
 
+### WP-4151b reception registration known-non-commit failure / retry — LOCAL_EVIDENCE / INDEPENDENT_PASS_WITH_NOTE
+
+- synthetic患者を検索・選択しnative登録を実行。初回はサーバ非commitが既知のexact HTTP 500で、送信中`登録中…`/disabled、失敗後successなし・queue再取得なし・患者context/受付対象保持・fixed error/next action・再試行可能を確認。raw sentinel/errorCode/stackは非表示。2回目は201/WAITING、success、authoritative queue再取得、対象行表示、error clear、console/page errors空。POST=2、queue GET=2(initial+success)、body patient一致、key各36文字/nonblank/control-characterなし。focused Web 139/139 PASS。
+- 2回のidempotency keyは不一致。現行は呼出しごとにfresh UUIDを生成するため、commit済みresponse-loss等のambiguous outcomeではduplicate受付を防げない可能性がある。WP-4151cを`BLOCKED_HUMAN_REVIEW / SSOT_UPDATE_REQUIRED`として分離し、本証拠はknown-non-commit synthetic 500だけに限定する。
+- PatientHeaderは既存test/契約どおり`data-patient-id`をDOM属性へ持つためpatient identifierのDOM不在は主張しない。failure raw payloadの非表示とは分離し、公開DOM属性の必要性はprivacy review対象として残す。runtime/code/contracts/API/DB/SSOT変更なし。exact6の独立検証・landing前は完了扱いにしない。
+- read-only independent verifierはbounded claim、fresh-key risk、WP-4151c human gate、focused 139/139、diff、SSOT173、boundaryを`PASS_WITH_FINDINGS`。mock終了後のためbrowser absolute count/pending/raw抑止はroot capture依存というnoteを維持し、exact6 landing前は完了扱いにしない。
+
 ### WP-4151a reception queue refresh failure / retention / retry — LOCAL_LANDED / INDEPENDENT_PASS_WITH_NOTE
 
 - synthetic queue 200(retained `SYN-001`)→native「表示」→exact HTTP 500(raw sentinel)→native「表示」→200(replacement `SYN-002`)をbrowser実行。失敗時はretained row/date/last-updated、fixed HTTP500 error、stale qualifier、next actionを保持し、raw sentinel/replacement false-successなし。復旧時はrequest count 1→2→3、replacementへ置換、error/stale clear、console/page errors空。focused reception dashboard 70/70 PASS。
