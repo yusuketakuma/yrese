@@ -2865,7 +2865,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - evidence: JP Core source repoのlicense metadata/file不在とofficial usage noticeを確認。1.4.0 artifactの203 terminology resourcesはcopyrightあり146/なし57で、排他的text分類はAll Rights Reserved 17、CC BY-ND 4、CC0 2、LOINC license 3、その他明示120、記載なし57。current IP reviewは別versionのため1.4.0 clearanceへ流用しない。
   - acceptance/review: reachable terminologyだけを対象に、rightsholder/terms/versionとvalidation cache/runtime/display/export/public IG/sandbox/SDK/Bulk Data別の許諾・表示・再配布条件を記録するlegal matrixを定義する。copyright記載または欠如をgrantと解釈せず、legal + terminology + clinical/claim review前にlock/runtime/publicationしない。別agent verifier未実施。
   - rollback: docs-only evidence commitと後続ledger commitをrevertする。runtime/data/artifact rollback不要。
-  - landing_record: implementation commitはlanding後に記録する。independent verification pending。
+  - landing_record: implementation commit `f8edc1c` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 terminology-rights evidence landed、independent verification pending。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
