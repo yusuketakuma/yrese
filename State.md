@@ -8,6 +8,11 @@
 
 ## 2026-07-17
 
+### WP-4177 captured dependency-audit output non-echo — FINALIZED / INDEPENDENT_PASS
+
+- `--from-audit-error`のraw stderr replayを廃止し、内容はallowlisted transient分類だけに使用。recognizedは固定warning/status0、unrecognizedとmissing/unreadable fileは固定error/status1へ収束し、raw URL/token/path/CRLF/ANSI/cause/stackを出力しない。live transientも同一fixed constantへ整理した。
+- synthetic adversarial fixturesでstdout empty、exact stderr 1行、raw sentinel/path/control zeroを固定。allowlist、live pnpm audit、JSON/count/advisory/high-critical semantics、CI/package/lockは不変。script harness、deps high0 critical0、workspace typecheck/testと標準gate、tracked-snapshot overlay secret scanをPASS。independent/plan/security/supply-chain review APPROVED。implementation `7dbe31d`はlocal-only、pushなし。
+
 ### WP-4176 patient-search page-limit consumer binding — FINALIZED / INDEPENDENT_PASS
 
 - contractsの`PATIENT_SEARCH_DEFAULT_LIMIT=20`をquery schemaとbrowserで共用し、initial/append GETへ`limit=20`を明示。exact200 schema parse後に1page 21件以上を固定non-PHI/non-echo errorで全件拒否し、truncate/filter/partial commitを行わない。initialはselectable PHI zero、appendはverified results/query/cursorを保持しsame cursor retry可能。response schema/OpenAPI/API limit1..50は不変。
