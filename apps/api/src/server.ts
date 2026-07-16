@@ -107,6 +107,10 @@ export const receptionCreatedStatusInvariantErrorMessage =
   'Created reception did not start in WAITING status';
 export const receptionCreatedAcceptedAtInvariantErrorMessage =
   'Created reception did not preserve the server-issued acceptance time';
+export const receptionAcceptedAtClockReadErrorMessage =
+  'Reception acceptance clock read failed';
+export const receptionAcceptedAtClockInvariantErrorMessage =
+  'Reception acceptance clock returned an invalid instant';
 export const receptionCreatedAuditInvariantErrorMessage =
   'Audit repository returned mismatched reception creation evidence';
 export const receptionQueueDuplicateIdentityInvariantErrorMessage =
@@ -183,20 +187,24 @@ function assertRecordedAuditMatchesIntent(
   }
 }
 
-function snapshotAuditViewWallClock(now: () => Date): string {
+function snapshotWallClock(
+  now: () => Date,
+  readErrorMessage: string,
+  invariantErrorMessage: string,
+): string {
   let value: unknown;
   try {
     value = now();
   } catch {
-    throw new Error(auditLogViewClockReadErrorMessage);
+    throw new Error(readErrorMessage);
   }
   if (!isDate(value)) {
-    throw new Error(auditLogViewClockInvariantErrorMessage);
+    throw new Error(invariantErrorMessage);
   }
   try {
     return Date.prototype.toISOString.call(value);
   } catch {
-    throw new Error(auditLogViewClockInvariantErrorMessage);
+    throw new Error(invariantErrorMessage);
   }
 }
 
@@ -949,8 +957,12 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       const expectedCreatedPatient = cloneFrozenPatientSearchResult(parsedPatient);
       const repositoryPatient = cloneFrozenPatientSearchResult(parsedPatient);
 
-      const acceptedAt = now();
-      const acceptedAtIso = acceptedAt.toISOString();
+      const acceptedAtIso = snapshotWallClock(
+        now,
+        receptionAcceptedAtClockReadErrorMessage,
+        receptionAcceptedAtClockInvariantErrorMessage,
+      );
+      const acceptedAt = new Date(acceptedAtIso);
       let result: ReceptionCreateResult;
       try {
         result = await receptionRepository.create({
@@ -1121,7 +1133,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       }
 
       // 監査ログの閲覧自体を監査する(audit.viewed)。今回の応答には含めない(閲覧後に追記)。
-      const viewWallClock = snapshotAuditViewWallClock(now);
+      const viewWallClock = snapshotWallClock(
+        now,
+        auditLogViewClockReadErrorMessage,
+        auditLogViewClockInvariantErrorMessage,
+      );
       const viewTarget = Object.freeze({ kind: 'audit_log', id: `view:${events.length}` });
       const viewIntent = Object.freeze({
         actorId: userId(tenantContext.actorId),
