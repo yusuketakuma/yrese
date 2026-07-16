@@ -2876,6 +2876,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: docs-only evidence commitと後続ledger commitをrevertする。temp artifactは削除し、runtime/data/package rollback不要。
   - landing_record: implementation commit `7375cbf` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 profile/reachability evidence landed、independent verification pending。
 
+- [~] WP-4160 map priority Profile cardinality / Must Support decisions(LOW read-only conformance evidence) — LOCAL_READY / INDEPENDENT_VERIFY_REQUIRED
+  - 発見根拠: WP-4159でPatient/Coverage/MedicationRequest/MedicationDispenseの候補Profileは特定したが、候補間の構造差とJP Coreが派生IGへ委ねるMust Support責務が未分離だった。snapshotの`mustSupport=true`が0件であることを「対応不要」と誤解すると、producer/consumer・欠損・保存再応答契約が未定義のままになる。
+  - scope: exact4 `ops/refactor/EVIDENCE.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。Profile選定、Must Support付与、identifier mapping、clinical/claim判断、`meta.profile`、package/lock、SSOT/IG/CI/runtime/codeは変更しない。
+  - evidence: official JP Core 1.2.0 guidanceはMust Support付与を原則派生projectへ委ねる。priority 7 candidate Profileは全てsnapshot/differential Must Support 0。differential element/cardinality/direct-binding/reference-target/invariant rowsはPatient `53/5/0/5/0`、Coverage `40/9/0/6/0`、MedicationRequest general `65/16/4/10/1`、injection `62/13/3/11/1`、MedicationDispense base `38/11/0/8/0`、general `8/4/1/1/0`、injection `4/0/0/2/0`。sliceの反復pathを含む機械行数であり、必須業務項目数ではない。
+  - acceptance/review: JP Core guidance、candidate hierarchy、cardinality、direct binding、targetProfile、invariantとMust Support不在を別軸で記録し、general/injection/base、identifier、cross-server Reference、preferred/example terminology、producer/consumer/missing-dataの決定質問をhuman reviewへ明示する。0件をMust Support不要、cardinalityだけをsemantic completeness、narrative guidanceを機械制約、候補差分を採用済みcontractへ昇格しない。別agent verifier未実施。
+  - validation: JP Core artifact SHA-256と7 Profile集計fixture再計算PASS、`pnpm check:ssot-index` PASS(173)、tracked snapshot + exact4 overlay secret scan PASS、`git diff --check` PASS。live `pnpm check:secrets`は既知のuntracked `.codegraph` symlinkでprotected scopeを検証できずfail-closed。
+  - rollback: docs-only evidence commitと後続ledger commitをrevertする。temp artifactは削除し、runtime/data/package rollback不要。
+  - landing_record: pending implementation commit and push verification。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
@@ -3217,8 +3226,8 @@ v0.2.0の最上位方針:
   - root_cause/evidence: 現DOM-006はcanonical↔FHIR mapping前提であり、v0.5のFHIR正本ではprofile/extension/terminology registryが直接write contractとなる。
   - dependencies: WP-0053b-d。acceptance: 全Phase1 Resourceのprofile/meta.profile/Must Support producer-consumer/missing-data/terminology binding/extension justification/conformance fixtureが登録され、台帳外実装をCIが拒否する。
   - owner/verification: Codex root / official StructureDefinition・ValueSet validation、terminology license、no duplicate model review。
-  - prelock_evidence(2026-07-16): WP-4159でPhase 1候補19 Resource typeをJP Core 1.2.0 packageへ照合し、14 type / 32 constraint Profile、5 typeのProfile不在、MedicationRequest/MedicationDispense/Condition/Observationの複数候補を記録。candidate snapshotの直接ValueSet binding 417行 / 128 unique URLはfingerprint済み4 packageへ解決したが、これはProfile採用・実運用到達性・CodeSystem closure・法的clearanceではない。
-  - demo/rollback/commit: synthetic examplesのみ、registry entry単位revert、SSOT commit/push。human_review: FHIR/terminology/clinical/legal。exact_next_action: Patient/Coverage/MedicationRequest/MedicationDispenseについてMust Support・cardinality・直接binding・用途適合の差分表を作り、general/injection/base Profileの選択質問をhuman reviewへ提出する。
+  - prelock_evidence(2026-07-16): WP-4159でPhase 1候補19 Resource typeをJP Core 1.2.0 packageへ照合し、14 type / 32 constraint Profile、5 typeのProfile不在、MedicationRequest/MedicationDispense/Condition/Observationの複数候補を記録。candidate snapshotの直接ValueSet binding 417行 / 128 unique URLはfingerprint済み4 packageへ解決した。WP-4160でpriority 7 candidateのcardinality/binding/reference/invariant差分とMust Support 0件を分離し、公式guidanceどおり派生IGのproducer/consumer責務を未決定に維持した。いずれもProfile採用・実運用到達性・CodeSystem closure・法的clearanceではない。
+  - demo/rollback/commit: synthetic examplesのみ、registry entry単位revert、SSOT commit/push。human_review: FHIR/terminology/clinical/legal。exact_next_action: Patient/Coverage/MedicationRequest/MedicationDispenseのuse-case×element producer/consumer/missing-data matrixとgeneral/injection/base・identifier・cross-server Referenceのdecision packetをhuman authorityへ提出する。
 
 - [!] WP-0053f FHIR persistence/search/history/identity policies(BLOCKED_WP-0053d/e、R4 DB)
   - scope: `fhir_persistence_policy.md`、`fhir_search_projection_policy.md`、`fhir_history_policy.md`、`fhir_resource_identity_policy.md`。DB-001..005/WP-6001 proposalを再評価し、engine-neutral invariantsを先に固定する。
