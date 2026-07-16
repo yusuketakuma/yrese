@@ -24,6 +24,14 @@ const calendarDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/;
 const claimMonthPattern = /^(\d{4})-(\d{2})$/;
 const minimumYear = 1;
 const maximumYear = 9999;
+const calendarDateFormatErrorMessage = "CalendarDate must be formatted as YYYY-MM-DD";
+const claimMonthFormatErrorMessage = "ClaimMonth must be formatted as YYYY-MM";
+
+function assertPrimitiveString(value: unknown, errorMessage: string): asserts value is string {
+  if (typeof value !== "string") {
+    throw new RangeError(errorMessage);
+  }
+}
 
 function assertInteger(value: number, label: string): void {
   if (!Number.isSafeInteger(value)) {
@@ -118,9 +126,10 @@ export class CalendarDate {
   ) {}
 
   static fromString(value: string): CalendarDate {
+    assertPrimitiveString(value, calendarDateFormatErrorMessage);
     const match = calendarDatePattern.exec(value);
     if (!match) {
-      throw new RangeError("CalendarDate must be formatted as YYYY-MM-DD");
+      throw new RangeError(calendarDateFormatErrorMessage);
     }
 
     return CalendarDate.fromParts({
@@ -239,9 +248,10 @@ export class ClaimMonth {
   ) {}
 
   static fromString(value: string): ClaimMonth {
+    assertPrimitiveString(value, claimMonthFormatErrorMessage);
     const match = claimMonthPattern.exec(value);
     if (!match) {
-      throw new RangeError("ClaimMonth must be formatted as YYYY-MM");
+      throw new RangeError(claimMonthFormatErrorMessage);
     }
 
     return ClaimMonth.fromParts({

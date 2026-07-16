@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   CalendarDate,
@@ -21,6 +21,83 @@ function assertClinicalDateWrappersAreNominal(): void {
 }
 
 void assertClinicalDateWrappersAreNominal;
+
+const stringFactories = [
+  [
+    "CalendarDate",
+    (value: string) => CalendarDate.fromString(value),
+    "CalendarDate must be formatted as YYYY-MM-DD",
+  ],
+  [
+    "PrescriptionDate",
+    (value: string) => PrescriptionDate.fromString(value),
+    "CalendarDate must be formatted as YYYY-MM-DD",
+  ],
+  [
+    "DispensingDate",
+    (value: string) => DispensingDate.fromString(value),
+    "CalendarDate must be formatted as YYYY-MM-DD",
+  ],
+  [
+    "ReceptionDate",
+    (value: string) => ReceptionDate.fromString(value),
+    "CalendarDate must be formatted as YYYY-MM-DD",
+  ],
+  [
+    "ClaimMonth",
+    (value: string) => ClaimMonth.fromString(value),
+    "ClaimMonth must be formatted as YYYY-MM",
+  ],
+] as const;
+
+describe("runtime string input authority", () => {
+  it.each(stringFactories)(
+    "%s rejects type-erased non-strings without coercion",
+    (factoryName, factory, expectedMessage) => {
+      const isClaimMonth = expectedMessage.includes("ClaimMonth");
+      const coercionRead = vi.fn(() => (isClaimMonth ? "2026-07" : "2026-07-09"));
+      const hostileObject = {
+        [Symbol.toPrimitive]: coercionRead,
+        toString: coercionRead,
+        valueOf: coercionRead,
+      };
+      const proxyRead = vi.fn(() => {
+        throw new Error(`raw ${factoryName} coercion trap`);
+      });
+      const hostileProxy = new Proxy(
+        {},
+        {
+          get: proxyRead,
+          has: proxyRead,
+          getPrototypeOf: proxyRead,
+          ownKeys: proxyRead,
+          getOwnPropertyDescriptor: proxyRead,
+        },
+      );
+      const { proxy: revokedProxy, revoke } = Proxy.revocable({}, {});
+      revoke();
+
+      for (const value of [
+        null,
+        undefined,
+        20260709,
+        true,
+        20260709n,
+        Symbol("2026-07-09"),
+        [isClaimMonth ? "2026-07" : "2026-07-09"],
+        new String(isClaimMonth ? "2026-07" : "2026-07-09"),
+        hostileObject,
+        hostileProxy,
+        revokedProxy,
+      ]) {
+        expect(() => factory(value as never)).toThrow(new RangeError(expectedMessage));
+      }
+
+      expect(coercionRead).not.toHaveBeenCalled();
+      expect(proxyRead).not.toHaveBeenCalled();
+    },
+  );
+});
 
 describe("CalendarDate", () => {
   it("constructs from YYYY-MM-DD strings and integer parts", () => {
