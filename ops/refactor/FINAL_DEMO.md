@@ -19,6 +19,7 @@
 - Patient search, patient selection, reception registration, queue reflection and patient-context clear were completed through the browser. Registration exposed no freeform Patient ID and disabled submission after context clear.
 - Viewports 375, 768 and 1280 had no page-level horizontal overflow. The selected-patient mobile form was visually inspected; browser console and page-error capture were empty.
 - After a synthetic reception create, the `/admin` browser journey displayed `reception.created` and `audit.viewed` with a normal verified hash chain.
+- A controlled synthetic `/admin` refresh sequence returned 200 with two verified rows, exact HTTP 500 with a raw sentinel, then 200 with one replacement row. After the 500, the browser retained the two verified rows and normal chain, displayed the stale-data qualifier, fixed error and retry, and did not expose the raw sentinel. Retry cleared the error, installed the one-row response and restored the idle refresh action. The browser command's native ref/semantic click and Enter did not dispatch this session, so the application retry was invoked with a page-context DOM click and is not keyboard/native-input evidence.
 - Production Web clean sequence passed: a dev-format `.next` was rejected by `next start`, then `next build` generated 12 static pages, `next start` became ready in 237 ms, `/sync-status` rendered its explicit disconnected/not-synced state, and shutdown completed normally.
 - These are bounded development journeys plus a production Web static-route startup check; they do not prove PostgreSQL, production API/authentication, tenant isolation, clinical production journeys or repository-wide release readiness.
 
@@ -28,7 +29,7 @@
 - Production API startup/health/restart and a production Web clinical journey. Production Web build/start/static-route/shutdown alone is demonstrated.
 - Real authentication callback/cancel/session expiry/logout and role allow/deny.
 - Tenant-crossing runtime attempts against a disposable DB.
-- Browser audit refresh error retention and reception error/retry journeys. The audit success path is demonstrated; error retention remains component-test-only because browser automation stopped responding during both synthetic failure attempts.
+- Reception error/retry journeys. Audit refresh retention/recovery is now browser-demonstrated, but native pointer/keyboard activation for that retry remains part of the broader input/accessibility gap below.
 - Complete keyboard/focus/200%-zoom/forced-colors/reduced-motion, detailed network inspection and hydration checks. Existing table horizontal-scroll behavior remains a documented P2 responsive risk.
 - Offline/sync/upload flows; these are not implemented and must not be simulated as passing.
 - Placeholder routes for prescription, checkout, claim check, masters and closing; their domain/SSOT gates remain unresolved.
@@ -37,5 +38,5 @@
 
 1. Provide a disposable PostgreSQL URL and run the integration suite with zero skips.
 2. Add a disposable production-like API/auth environment, then execute the production Web clinical journey and restart checks. Web build/start/static placeholder proof is already recorded.
-3. Complete the remaining audit/error/retry journeys with a stable browser harness, then keyboard/focus/zoom/forced-colors/network/accessibility evidence.
+3. Complete reception error/retry plus native keyboard/focus/zoom/forced-colors/network/accessibility evidence.
 4. Keep blocked placeholder journeys marked not implemented; do not substitute mock success.
