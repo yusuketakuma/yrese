@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4211 reception acceptedAt clock authority — FINALIZED / INDEPENDENT_PASS
+
+- 受付POST create前clockのraw throw反射、非Date fake methodによる201、own method mutationによるresponse/repository時刻分裂を修正。patient検証後にgenuine Dateをintrinsic ISOへsnapshotし、captured scalarをserver authority、detached plain Dateをrepository adapterとした。
+- throw/invalid/spoof/Proxyはfixed non-echo 500/no-store・create0・audit0。own accessor/trap0、valid detached instant、invalid body now0、existing now1、created→resend/conflict total now3と201/200/409 semanticsを固定した。
+- server285+audit-log71、API554 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。LOW note是正後independent mapper/plan/security/privacy review READY。post-create audit clockはWP-4050/WP-4151c human gateへ残し、idempotency lifecycle/repository/DB/contracts/SSOTは未変更。implementation `42d55f6`はlocal-only、pushなし。
+
 ### WP-4210 audit.viewed wall-clock authority — FINALIZED / INDEPENDENT_PASS
 
 - audit.viewed clockのraw throw反射とraw method dispatchを修正。full-chain/healthy guard後かつrecord前にnow onceでsnapshotし、throwとinvalid instantを別fixed500へ閉じた。
