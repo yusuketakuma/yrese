@@ -117,6 +117,20 @@ function queryLabels(query: ReturnType<typeof vi.fn>): string[] {
 }
 
 type InvalidAcceptedAtAuthority = 'accessor' | 'inherited' | 'missing';
+type ProvenanceColumn =
+  | 'stored_tenant_id'
+  | 'stored_pharmacy_id'
+  | 'stored_idempotency_key'
+  | 'reception_id'
+  | 'stored_patient_id';
+
+const provenanceColumns: readonly ProvenanceColumn[] = [
+  'stored_tenant_id',
+  'stored_pharmacy_id',
+  'stored_idempotency_key',
+  'reception_id',
+  'stored_patient_id',
+];
 
 function replaceAcceptedAtAuthority(
   row: Record<string, unknown>,
@@ -531,6 +545,174 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(accessorReads).toBe(0);
     expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
     expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('rejects missing, inherited, and accessor provenance columns without invoking accessors', async () => {
+    let accessorReads = 0;
+    for (const column of provenanceColumns) {
+      for (const authorityKind of ['accessor', 'inherited', 'missing'] as const) {
+        const { repository, query, release } = createRepository({
+          scenario: 'created',
+          rowTransform(row) {
+            if (authorityKind === 'accessor') {
+              Object.defineProperty(row, column, {
+                get() {
+                  accessorReads += 1;
+                  throw new Error('raw provenance accessor secret 4218');
+                },
+              });
+            } else {
+              const inheritedValue = row[column];
+              delete row[column];
+              if (authorityKind === 'inherited') {
+                Object.setPrototypeOf(row, { [column]: inheritedValue });
+              }
+            }
+            return row;
+          },
+        });
+
+        await expect(repository.create(input)).rejects.toThrow(
+          databaseReceptionProvenanceInvariantErrorMessage,
+        );
+        expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+        expect(release.mock.calls).toEqual([[]]);
+      }
+    }
+    expect(accessorReads).toBe(0);
+  });
+
+  it('rejects hostile and revoked provenance row Proxies without invoking traps', async () => {
+    let proxyTraps = 0;
+    const hostileRow = new Proxy(
+      { ...storedRow },
+      {
+        get() {
+          proxyTraps += 1;
+          throw new Error('raw provenance row get secret 4218');
+        },
+        getOwnPropertyDescriptor() {
+          proxyTraps += 1;
+          throw new Error('raw provenance row descriptor secret 4218');
+        },
+      },
+    );
+    const revoked = Proxy.revocable({ ...storedRow }, {});
+    revoked.revoke();
+
+    for (const proxiedRow of [hostileRow, revoked.proxy]) {
+      const { repository, query, release } = createRepository({
+        scenario: 'created',
+        rowTransform: () => proxiedRow,
+      });
+      await expect(repository.create(input)).rejects.toThrow(
+        databaseReceptionProvenanceInvariantErrorMessage,
+      );
+      expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+      expect(release.mock.calls).toEqual([[]]);
+    }
+    expect(proxyTraps).toBe(0);
+  });
+
+  it('uses captured provenance for existing/conflict branching without reading an accessor', async () => {
+    let patientIdReads = 0;
+    const { repository, query, release } = createRepository({
+      scenario: 'conflict',
+      rowTransform(row) {
+        Object.defineProperty(row, 'stored_patient_id', {
+          get() {
+            patientIdReads += 1;
+            return patientIdReads === 1 ? 'patient-different' : patient.patientId;
+          },
+        });
+        return row;
+      },
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      databaseReceptionProvenanceInvariantErrorMessage,
+    );
+    expect(patientIdReads).toBe(0);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it.each(['created', 'existing', 'conflict'] as const)(
+    'accepts non-default own data descriptor flags for a %s result',
+    async (scenario) => {
+      const { repository, query, release } = createRepository({
+        scenario,
+        rowTransform(row) {
+          Object.defineProperty(row, 'stored_tenant_id', {
+            value: input.tenantId,
+            enumerable: false,
+            configurable: false,
+            writable: false,
+          });
+          return row;
+        },
+      });
+
+      const result = await repository.create(input);
+
+      expect(result.kind).toBe(
+        scenario === 'conflict' ? 'idempotency_conflict' : scenario,
+      );
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(scenario === 'created' ? [] : ['SELECT']),
+        'COMMIT',
+      ]);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it('stops after the first invalid provenance field and leaves later projections unread', async () => {
+    let laterReads = 0;
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      rowTransform(row) {
+        Object.defineProperty(row, 'stored_tenant_id', { value: 0 });
+        for (const column of provenanceColumns.slice(1)) {
+          Object.defineProperty(row, column, {
+            get() {
+              laterReads += 1;
+              throw new Error('later provenance field must remain unread');
+            },
+          });
+        }
+        Object.defineProperty(row, 'accepted_at', {
+          get() {
+            laterReads += 1;
+            throw new Error('entry projection must remain unread');
+          },
+        });
+        return row;
+      },
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      databaseReceptionProvenanceInvariantErrorMessage,
+    );
+    expect(laterReads).toBe(0);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('destroys the client after provenance rollback fails without masking the fixed error', async () => {
+    const rollbackError = new Error('synthetic provenance rollback failure');
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: { stored_tenant_id: undefined },
+      rollbackError,
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      databaseReceptionProvenanceInvariantErrorMessage,
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[true]]);
   });
 
   it.each([

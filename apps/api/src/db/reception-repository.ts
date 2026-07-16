@@ -67,22 +67,29 @@ function rowToEntry(row: ReceptionEntryRow): ReceptionQueueEntry {
 }
 
 function rowToProvenance(row: ReceptionCreateRow) {
-  if (
-    typeof row.stored_tenant_id !== 'string' ||
-    typeof row.stored_pharmacy_id !== 'string' ||
-    typeof row.stored_idempotency_key !== 'string' ||
-    typeof row.reception_id !== 'string' ||
-    typeof row.stored_patient_id !== 'string'
-  ) {
-    throw new Error(databaseReceptionProvenanceInvariantErrorMessage);
-  }
+  const readProvenanceString = (property: keyof ReceptionCreateRow): string => {
+    const value = readDatabaseRowOwnDataProperty(
+      row,
+      property,
+      databaseReceptionProvenanceInvariantErrorMessage,
+    );
+    if (typeof value !== 'string') {
+      throw new Error(databaseReceptionProvenanceInvariantErrorMessage);
+    }
+    return value;
+  };
+  const storedTenantId = readProvenanceString('stored_tenant_id');
+  const storedPharmacyId = readProvenanceString('stored_pharmacy_id');
+  const storedIdempotencyKey = readProvenanceString('stored_idempotency_key');
+  const storedReceptionId = readProvenanceString('reception_id');
+  const storedPatientId = readProvenanceString('stored_patient_id');
   try {
     return {
-      tenantId: tenantId(row.stored_tenant_id),
-      pharmacyId: pharmacyId(row.stored_pharmacy_id),
-      idempotencyKey: row.stored_idempotency_key,
-      receptionId: receptionId(row.reception_id),
-      patientId: patientId(row.stored_patient_id),
+      tenantId: tenantId(storedTenantId),
+      pharmacyId: pharmacyId(storedPharmacyId),
+      idempotencyKey: storedIdempotencyKey,
+      receptionId: receptionId(storedReceptionId),
+      patientId: patientId(storedPatientId),
     };
   } catch {
     throw new Error(databaseReceptionProvenanceInvariantErrorMessage);
@@ -228,13 +235,12 @@ export class PostgresReceptionRepository implements ReceptionRepository {
         throw new Error('idempotency conflict row was not visible after unique constraint conflict');
       }
 
-      if (existing.stored_patient_id !== input.patient.patientId) {
-        const provenance = rowToProvenance(existing);
+      const provenance = rowToProvenance(existing);
+      if (provenance.patientId !== input.patient.patientId) {
         await client.query('COMMIT');
         return { kind: 'idempotency_conflict', provenance };
       }
 
-      const provenance = rowToProvenance(existing);
       const entry = rowToEntry(existing);
       await client.query('COMMIT');
       return {
