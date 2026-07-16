@@ -848,17 +848,18 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
       const acceptedAt = now();
       const acceptedAtIso = acceptedAt.toISOString();
-      const result = await runRepositoryOperationOrThrowFixed(
-        () =>
-          receptionRepository.create({
-            tenantId: tenantContext.tenantId,
-            pharmacyId: tenantContext.pharmacyId,
-            patient: parsedPatient,
-            idempotencyKey: body.data.idempotencyKey,
-            acceptedAt,
-          }),
-        receptionCreateRepositoryErrorMessage,
-      );
+      let result: ReceptionCreateResult;
+      try {
+        result = await receptionRepository.create({
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+          patient: parsedPatient,
+          idempotencyKey: body.data.idempotencyKey,
+          acceptedAt,
+        });
+      } catch {
+        throw new Error(receptionCreateRepositoryErrorMessage);
+      }
       const resultKind = readReceptionCreateResultKind(result);
 
       const rawProvenance = readRequiredOwnEnumerableDataProperty(

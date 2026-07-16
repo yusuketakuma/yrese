@@ -2572,6 +2572,165 @@ describe('buildServer', () => {
     },
   );
 
+  it('does not re-assimilate a fulfilled reception create result thenable', async () => {
+    const acceptedAt = new Date('2026-07-09T09:00:00.000Z');
+    const rawSentinel = 'raw second reception result then read secret 4204';
+    const thenRead = vi.fn(() => {
+      if (thenRead.mock.calls.length > 1) throw new Error(rawSentinel);
+      return undefined;
+    });
+    const directRead = vi.fn((property: PropertyKey) => {
+      throw new Error(`raw reception result semantic read ${String(property)} 4204`);
+    });
+    const create = vi.fn<ReceptionRepository['create']>((input) => {
+      const result = new Proxy(
+        {
+          kind: 'idempotency_conflict' as const,
+          provenance: receptionProvenance(
+            input,
+            'reception-thenable-result-4204',
+            'patient-thenable-conflict-4204',
+          ),
+        },
+        {
+          get(_target, property) {
+            if (property === 'then') return thenRead();
+            return directRead(property);
+          },
+          has(_target, property) {
+            return directRead(property);
+          },
+          getPrototypeOf() {
+            return directRead('getPrototypeOf');
+          },
+          ownKeys() {
+            return directRead('ownKeys');
+          },
+          getOwnPropertyDescriptor(target, property) {
+            return Reflect.getOwnPropertyDescriptor(target, property);
+          },
+        },
+      );
+      return Promise.resolve(result as ReceptionCreateResult);
+    });
+    const auditRecord = vi.fn<AuditRepository['record']>();
+    const server = buildDevTestServer({
+      now: () => acceptedAt,
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => []),
+        create,
+      },
+      auditRepository: {
+        list: vi.fn<AuditRepository['list']>(async () => []),
+        record: auditRecord,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-004',
+        idempotencyKey: 'reception-thenable-result-4204',
+      },
+    });
+    await server.close();
+
+    expect({
+      statusCode: response.statusCode,
+      body: response.json(),
+      thenReads: thenRead.mock.calls.length,
+      directReads: directRead.mock.calls.length,
+    }).toEqual({
+      statusCode: 409,
+      body: {
+        errorCode: receptionIdempotencyConflictErrorCode,
+        message: 'Reception idempotency conflict',
+      },
+      thenReads: 1,
+      directReads: 0,
+    });
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.body).not.toContain(rawSentinel);
+    expect(create).toHaveBeenCalledOnce();
+    expect(thenRead).toHaveBeenCalledOnce();
+    expect(directRead).not.toHaveBeenCalled();
+    expect(auditRecord).not.toHaveBeenCalled();
+  });
+
+  it('normalizes a fulfilled revoked reception create result as a kind invariant', async () => {
+    const acceptedAt = new Date('2026-07-09T09:00:00.000Z');
+    const idempotencyKey = 'reception-revoked-result-secret-4204';
+    const directRead = vi.fn(() => {
+      throw new Error('raw revoked reception result trap secret 4204');
+    });
+    const create = vi.fn<ReceptionRepository['create']>((input) => {
+      const { proxy: result, revoke } = Proxy.revocable(
+        {
+          kind: 'created' as const,
+          provenance: receptionProvenance(input, 'reception-revoked-result-4204'),
+          entry: {
+            receptionId: 'reception-revoked-result-4204',
+            acceptedAt: acceptedAt.toISOString(),
+            receptionStatus: 'WAITING' as const,
+            prescriptionIntakeType: 'paper' as const,
+            patient: input.patient,
+          },
+        },
+        {
+          get(_target, property) {
+            if (property === 'then') return undefined;
+            return directRead();
+          },
+          has: directRead,
+          getPrototypeOf: directRead,
+          ownKeys: directRead,
+          getOwnPropertyDescriptor: directRead,
+        },
+      );
+      return new Promise<ReceptionCreateResult>((resolve) => {
+        resolve(result);
+        revoke();
+      });
+    });
+    const auditRecord = vi.fn<AuditRepository['record']>();
+    const server = buildDevTestServer({
+      now: () => acceptedAt,
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => []),
+        create,
+      },
+      auditRepository: {
+        list: vi.fn<AuditRepository['list']>(async () => []),
+        record: auditRecord,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: { patientId: 'patient-syn-004', idempotencyKey },
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({ message: receptionResultKindInvariantErrorMessage });
+    for (const sensitiveValue of [
+      idempotencyKey,
+      'reception-revoked-result-4204',
+      'Cannot perform',
+      'raw revoked reception result trap secret 4204',
+    ]) {
+      expect(response.body).not.toContain(sensitiveValue);
+    }
+    expect(create).toHaveBeenCalledOnce();
+    expect(directRead).not.toHaveBeenCalled();
+    expect(auditRecord).not.toHaveBeenCalled();
+  });
+
   it('rejects an unknown reception result kind instead of treating it as an existing success', async () => {
     const acceptedAt = new Date('2026-07-09T09:00:00.000Z');
     const idempotencyKey = 'reception-unknown-kind-secret-4198';
