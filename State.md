@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4175 selected-patient removal error binding — FINALIZED / INDEPENDENT_PASS
+
+- `GET /patients/:patientId`の任意404を患者削除扱いしていたconsumer bugを修正し、bodyをexactly once読み、contracts `errorResponseSchema`とshared-kernelのexact `PAT-0002`、nonempty messageが揃う場合だけ`null`/onRemovedへ進める。bodyless/invalid JSON/read failure、message/code不正、別registered codeは固定non-PHI/non-echo errorで拒否し、active selectionを保持して既存stale経路へ送る。
+- 初回独立レビューで`res.json().catch(...)`が同期throwを捕捉せずraw detailをescapeし得るMEDIUM gapを検出。`try/await/catch`とfile-local fixed errorへrefactorし、sync/async read failure、exactly-once、current onFailure、clear後late callback zeroをfixture化。standard API PAT-0002、200 schema/identity、status precedence、Abort/generation/owner、UI copy/DOM/ARIA、reception POST/idempotency/queue reload/auditは不変。
+- focused45、Web382、contracts95、API290 + PostgreSQL14 expected skips、workspace typecheck/test、Web build、全標準gate、tracked-snapshot+exact2 overlay secret scanをPASS。live secret scanは既存ignored symlinkでfail-closed。independent verifier、security/privacy/medical/API reviewはPASS/APPROVED。implementation `22067fd`はlocal-only、pushなし。mounted Provider一体fixtureなしはLOW/non-blocking。
+
 ### WP-4174 reception queue JST business-date consumer binding — FINALIZED / INDEPENDENT_PASS
 
 - browser `fetchReceptionQueue`で、schema/top-level requested date/full duplicate pass後、全entryの`acceptedAt`をexplicit `Asia/Tokyo`暦日へ変換してrequested dateへ拘束し、copied sort前にall-or-nothing検証する。drifted/alternate backend・proxy/mock等からのschema-valid別日PHI rowを最終consumer境界で拒否し、filter/re-date/partial acceptanceは行わない。
