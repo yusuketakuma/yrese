@@ -62,6 +62,16 @@ Terminology dependency follow-up:
 | IG identity | `ImplementationGuide-jpfhir-terminology.json`: active, dated 2025-06-15, packageId `jpfhir-terminology`, title identifies the artifact as the JP Core 1.2.x compatible edition |
 | License evidence | package metadata contains no license field and the archive contains no standalone license/licence/copying/notice file; legal clearance remains unresolved |
 
+Declared HL7 dependency artifacts were retrieved through the HL7-documented secondary FHIR package registry on 2026-07-16:
+
+| Package | SHA-256 / size | Package metadata | HTTP validators |
+|---|---|---|---|
+| `hl7.fhir.r4.core#4.0.1` | `b090bf929e1f665cf2c91583720849695bc38d2892a7c5037c56cb00817fb091` / 4,531,911 bytes | FHIR `4.0.1`, canonical `http://hl7.org/fhir`, license `CC0-1.0` | `Last-Modified` 2026-02-14; ETag `6990a86a-4526c7` |
+| `hl7.terminology.r4#7.0.0` | `7f93189014349fa2640c970fadd1a266af217188b42e421ae5b7978e5fdcef63` / 4,763,018 bytes | FHIR `4.0.1`, canonical `http://terminology.hl7.org`, license `CC0-1.0`; depends on core 4.0.1 and extensions 5.2.0 | `Last-Modified` 2026-02-14; ETag `6990aece-48ad8a` |
+| `hl7.fhir.uv.extensions.r4#5.2.0` | `b406e75575f05676559d0759770c5939d023ee72fb2ef38e0b3259328487720a` / 1,302,452 bytes | FHIR `4.0.1`, canonical `http://hl7.org/fhir/extensions`, license `CC0-1.0`; depends on core 4.0.1 | `Last-Modified` 2026-02-14; ETag `6990ace9-13dfb4` |
+
+Registry request form: `https://packages2.fhir.org/packages/{package}/{version}`, which redirects to the corresponding versioned `.tgz`. Artifacts were inspected in a temporary directory and deleted after verification.
+
 Pre-lock discrepancies and stops:
 
 - The official terminology artifact resolves the canonical package identity to `jpfhir-terminology#1.4.0`; `.r4` belongs to the distributed archive filename, not its package `name`. The JP Core archive dependency key `jpfhir-terminology.r4` therefore does not match the downloaded dependency package identity or the rendered dependency table. This upstream metadata mismatch must be reviewed rather than silently normalized.
@@ -69,7 +79,7 @@ Pre-lock discrepancies and stops:
 - The archive `url` field contains a publisher build-machine `file://` path rather than the public canonical.
 - The QA report shows zero errors/warnings but also reports suppressed issues, an unpublished publication status and missing version-history metadata. A green QA summary alone is insufficient approval evidence.
 - The download URL is not content-addressed. Future retrieval must compare hash, byte length, HTTP validators and package metadata before accepting the same semantic version.
-- FHIR/JP Core specialist and legal/license review remain required before any lock or runtime/toolchain implementation. Fingerprints and license metadata for the remaining HL7 dependencies are still required.
+- FHIR/JP Core specialist and legal/license review remain required before any lock or runtime/toolchain implementation. All dependencies declared by the JP Core archive now have artifact fingerprints, but `hl7.fhir.uv.tools.r4#0.8.0` appears only in rendered/QA tooling metadata and still requires classification as build-only or lock-required.
 
 ## Evidence rules
 
