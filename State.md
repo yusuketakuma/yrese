@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4222 PostgreSQL reception command result binding — FINALIZED / INDEPENDENT_PASS
+
+- DB接続前に受付commandのscope/key/patient全8fieldをdetached snapshotし、SQLとpre-COMMIT照合へ再利用。createdのprovenance/generated ID、entry identity、patient snapshot、existingのscope/key/identity、conflictのscope/keyをbindし、post-COMMIT server 500/audit0となるambiguous completionをrollbackへ移した。
+- createdはcommand→entry identity→patient snapshot→status→acceptedAtの優先順を固定。optional eligibility timestampのpresence/value、await前mutation、hostile accessor/Proxy、rollback failure quarantineを検証。existing historical semanticsとconflict entry未読を維持し、test fixtureもcreatedだけgenerated IDを反映するよう修正した。
+- patient18+reception98、API655 + integration14 expected skips、Web454、workspace typecheck/test/build、全標準gate、tracked-snapshot exact3 overlay secret scanをPASS。independent plan/security verifier PASS/APPROVED。SQL/audit/idempotency lifecycle/contracts/schema/migration/SSOT不変、実DB操作なし。implementation `b32b01b`はlocal-only、pushなし。
+
 ### WP-4221 PostgreSQL created reception fact binding — FINALIZED / INDEPENDENT_PASS
 
 - created DB rowのschema-valid status/acceptedAt mismatchをCOMMIT後server 500にしていた問題を修正。created projection後、status WAITING→captured acceptedAtの順にpre-COMMIT照合し、不一致をrollbackへ移した。
