@@ -9,7 +9,7 @@ Validated against the live tree on 2026-07-16. This file records current wiring;
 | `GET /patients/search` | `/patients` patient search | `patient:read`, tenant/pharmacy scoped, no-store | in-memory or PostgreSQL patient repository | ALIGNED | `patient-search.tsx` parses `patientSearchResponseSchema`; API validates query/cursor/identity/limit. |
 | `GET /patients/:patientId` | cross-screen `PatientContextProvider` refresh | `patient:read`, tenant/pharmacy scoped, no-store | in-memory or PostgreSQL patient repository | ALIGNED | client requires exact 200/404 and response identity; API binds repository identity before response. |
 | `GET /reception/queue` | `/` reception dashboard | `reception:read` + `patient:read`, tenant/pharmacy scoped, no-store | in-memory or PostgreSQL reception repository | ALIGNED | client and API parse the reception contract and independently reject identity/date/order drift. |
-| `POST /reception` | `/` reception dashboard create flow | `reception:write` + `patient:read`, tenant/pharmacy scoped, no-store | reception repository + append-only audit record | ALIGNED | Registration accepts only the globally selected `PatientContext`; there is no freeform clinical identifier input. Unselected state fails closed, selection changes clear stale results, and in-flight patient changes are reported without leaking the submitted identifier. 200/201/404/409 handling, idempotency, patient binding and duplicate-submit controls are covered. |
+| `POST /reception` | `/` reception dashboard create flow | `reception:write` + `patient:read`, tenant/pharmacy scoped, no-store | reception repository + append-only audit record | PARTIAL / HUMAN_GATED | Registration accepts only the globally selected `PatientContext`; there is no freeform clinical identifier input. Unselected state fails closed, selection changes clear stale results, and in-flight patient changes are reported without leaking the submitted identifier. Exact response handling, patient binding, native double-submit suppression and known-non-commit retry are covered. Business mutation/audit atomicity (WP-4050) and idempotency-key lifecycle for commit-before-response-loss or other ambiguous outcomes (WP-4151c) are not approved or implemented; do not infer end-to-end idempotency. |
 | `GET /audit/events` | `/admin` audit log panel | `audit-log:read`, tenant/pharmacy scoped, no-store | in-memory or PostgreSQL append-only audit repository | ALIGNED | full-chain verification precedes display projection; Web revalidates count/order/window/identity. |
 
 ## Reachable one-sided UI
@@ -26,7 +26,7 @@ Validated against the live tree on 2026-07-16. This file records current wiring;
 
 ## Mapping conclusion
 
-- No unblocked backend-only business capability lacks a required frontend.
-- No unblocked functional frontend lacks a backend. Reachable placeholders are intentionally non-functional and name their gates.
+- No unblocked backend-only business capability lacks a required frontend consumer.
+- No unblocked functional frontend lacks a backend path. Wiring does not prove transaction safety or ambiguous-outcome recovery: reception create remains `PARTIAL / HUMAN_GATED` until WP-4050 and WP-4151c are approved and implemented. Reachable placeholders are intentionally non-functional and name their gates.
 - `/whoami` remains the only non-operational one-sided API decision. It must not be wired speculatively before the real-auth bootstrap contract is approved.
-- Production authentication, PostgreSQL integration execution, offline/sync, claim/accounting/calculation evidence and placeholder journeys remain outside demonstrated readiness.
+- Production authentication, offline/sync, claim/accounting/calculation evidence and placeholder journeys remain outside demonstrated readiness. PostgreSQL CI integration now has direct zero-skip evidence, but production database operation and the reception transaction/idempotency gates remain outside demonstrated readiness.
