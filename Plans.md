@@ -3410,9 +3410,11 @@ Primary-source URLs to fingerprint in WP-0054c (not a substitute for source file
   - evidence/result(2026-07-16): `docs/research/rececon_v0_7_offline_security_migration_operations_matrix_20260716.md`へ既存ARC/SEC/OPS/ADPをfresh scanし、authority/LOCAL_ONLY会計/migration/RTO-retentionの7 conflictを抽出。MHLW 7.0/FY2026 checklist/manualとAWS DR/restore公式8 sourceをlive取得・hash化し、operation 36件をFINAL/PENDING/FORBIDDEN/RECOVERY/BLOCKEDへ写像、PHI runtime axisと7 control classを分離した。Edge manifest/resource/expiry/encryption、capability別RTO/RPO、restore RST-01〜10、migration M01〜10、support S01〜10、external fallback X01〜16、drill D01〜10を定義。v0.6/v0.6.1 raw不在はPARTIAL_SOURCE_BLOCKED、R4実装/production authorityは0。
   - commit_push: `387cabd`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。independent verification、R4 human authority、exact predecessor source、DR/restore/cutover/support rehearsalは未完了。
   - exact_next_action: artifact landing後、WP-0054iでWP-0054a-hのcoverage/delta/source/compliance/DAG/boundary/UX/BCP evidenceを1 decision packetへ統合し、human Gate 0のapprove/reject/amend/reissue入力を作る。CF-01〜07改版、DR/cutover/support/production rehearsalはhuman approvalまで禁止する。
-- [!] WP-0054i Gate 0 approval packet(BLOCKED_WP-0054a-h、R4)
+- [~] WP-0054i Gate 0 approval packet(DRAFT_NO_GO、HUMAN_DECISION_REQUIRED、INDEPENDENT_VERIFY_REQUIRED)
   - scope: coverage、追加機能、重複統合、priorities、gates、SSOT順、Codex WPs、人間review、BLOCKER、go/no-goを1つのdecision packetへまとめる。
   - acceptance: pharmacist、claim practitioner、legal、FHIR、security/privacy、data-integrity、operations/product authorityがscope/evidence/riskを承認し、Gate 1 WPsを再発行する。
+  - evidence/result(2026-07-16): `docs/research/rececon_v0_7_gate0_decision_packet_20260716.md`へWP-0054a〜hの8 artifact/hash/landing commit、22-domain coverage、追加機能、DI-01〜12統合判断、P0〜P3、Gate 0〜5、SSOT Batch A〜D、Codex-only WP、11 human review role、HD-01〜18 decision、14 BLOCKER、Go/No-Go algorithmを統合。artifact hash 8/8一致、要求初回出力を全てmapping済み。人間判断complete=0/18、independent verification=`NOT_EXECUTED`、Gate 1 reissue=0のためcurrent decisionは`NO_GO`。
+  - exact_next_action: predecessor raw artifactとPriority A exact official artifactをrights/hash付きで回復・昇格し、HD-01〜18をnamed human authorityへ回付、PRC-007 atomic amendment batchを未発効で準備し、独立検証後にG0-01〜08を再評価する。それまでGate 1〜5 runtime WPを再発行しない。
 
 Initial fresh-scan coverage snapshot (2026-07-16; not a readiness claim):
 
@@ -3563,13 +3565,16 @@ Dependency DAG (all edges are prerequisites, not authorization):
 
 ### 横断計画(§27〜35)
 
-- [ ] WP-0054j Medical UX system and three critical journeys(P0/P1)
+- [~] WP-0054j Medical UX system and three critical journeys(PLAN_READY、HUMAN_UX_REVIEW_BLOCKED)
+  - evidence/result(2026-07-16): WP-0054g artifactでshared command/state/audit、7 context header、7 orthogonal state axis、journey A01〜A16/B01〜B12/C01〜C12、keyboard/accessibility/error prevention、synthetic usability protocolまで計画済み。prototype実装と適合宣言はGate 1再発行とhuman UX/accessibility/pharmacist reviewまで禁止。
   - Guided/Expertを別state machineにせず、受付→会計、月次請求、yrese→PH-OS訪問の同一domain state上のpresentationとする。shortcut/command palette/continuous input、manual-free novice path、固定patient/store/month、pending/final labels、offline affordanceをprototype + usability protocol化する。
-- [ ] WP-0054k Performance budget / SLO calibration(P1)
+- [~] WP-0054k Performance budget / SLO calibration(PLAN_READY、REAL_DEVICE_BASELINE_BLOCKED)
+  - evidence/result(2026-07-16): WP-0054g artifactで34 KPIのnumerator/denominator/clock/authority/exclusionとinteraction/business latencyの分離、candidate SLOのconflictを登録済み。WP-0054h artifactでcapability別RTO/RPO・external fallbackと接続。SLO確定、error budget運用、品質公開はreal-device/Edge/load baselineとhuman operations/product/statistics approval後のみ。
   - candidate: interaction p95 300ms、patient search 500ms、prescription/calculation/accounting 1s、QR mapping 1.5s。実機/Edge/network/data-volume/tenant別baseline、測定点、cold/warm、error budgetを決めるまでSLOと宣言しない。
-- [ ] WP-0054l Common module convergence(P0)
+- [~] WP-0054l Common module convergence(BOUNDARY_PLAN_READY、SSOT_AMENDMENT_BLOCKED)
+  - evidence/result(2026-07-16): WP-0054f artifactで5 layer/3 plane/22 domain/5 API class/40 WPのauthority・package・tenant/store境界とno-direct-DB/no-hidden-clinical-API/no-duplicate-authorityを定義。candidate packageは新設決定ではなく、Gate 1再発行時にexisting authorityとdependency directionを検証する。
   - existing authorities: `shared-kernel`, `money`, `date-time`, `trace`, `events`, `contracts`, `calculation`, `audit`を先に再利用する。candidate `fhir/terminology/patient-identity/prescription/dispensing/claim/accounting/documents/inventory/integration/edge-sync/security/ai/analytics/test-fixtures`はdependency/boundary review後のみ追加し、`shared-types`で既存authorityを複製しない。
-- [ ] WP-0054m SSOT creation/amendment order(P0)
+- [~] WP-0054m SSOT creation/amendment order(ORDER_READY、PRC-007_HUMAN_APPROVAL_BLOCKED)
   - order 1: `rececon_comprehensive_feature_map`, coverage/priority/release gate/API boundary。
   - order 2: identity/reception/prescription/dispensing/safety/calculation/claim/accounting/document/inventory authority。
   - order 3: device/official adapter/home/patient engagement/multistore/master/FHIR/migration/security/AI。
@@ -3601,8 +3606,11 @@ Dependency DAG (all edges are prerequisites, not authorization):
   | `medical_ux_acceptance_criteria.md` | AMEND/compose `docs/uiux/usability_acceptance_criteria.md`, principles, workflow, and performance budget |
   | `release_gate_policy.md` | CREATE only if no indexed authority exists after WP-0054b; align review gate matrix and construction spec |
   | `go_no_go_checklist.md` | AMEND existing `docs/operations/go_no_go_checklist.md` through PRC-007 |
-- [ ] WP-0054n Human review matrix(R4)
+
+  - evidence/result(2026-07-16): WP-0054i packetでBatch A〜Dの依存順、existing-authority-first、new/index/amend/composeの処分、PRC-007 atomic activationを明示。APPROVED SSOTは未改変で、packet承認とindependent verificationなしに個別発効しない。
+- [~] WP-0054n Human review matrix(R4)(ROUTING_READY、HUMAN_DECISION_REQUIRED)
   - pharmacist: identity/prescription/dispensing/safety/home/UX。claim practitioner: calculation/claim/public/PMH/accounting。legal/privacy: consent/retention/e-delivery/remote/AI/portability。FHIR: profile/terminology/API/sync。security/ops/data: auth/Edge/device/restore/migration/multistore/Bedrock。各reviewはdecision, dissent, evidence, approver role, date, expiryを残す。
+  - evidence/result(2026-07-16): WP-0054i packetで11 authority/review routeとHD-01〜18をscope/evidence/decision/dissent/approver/date/expiry付きで定義。current completionは0/18であり、Codexは代理承認しない。
 - [!] WP-0054o Release Gate 1〜5 execution train(BLOCKED_WP-0054i、R4)
   - Gate 1 Foundation: WP-0053/6004/5009/2210、Patient/Prescription/Master/Audit/Auth/Edge skeleton/Calculation skeleton/UI shell。
   - Gate 2 Single-store Regulatory MVP: D01/03/04/07/08/09/10/13/17/20/21のP0 slices、LOCAL_ONLY、migration、golden tests。
