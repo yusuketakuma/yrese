@@ -4,7 +4,7 @@ This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
 - Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. Remaining57 classification, WP-0020〜0023 reconciliation, W31 and WP-4081 are LANDED.
-- Current task: WP-4161 CI pnpm toolchain alignmentはsource `c688d4b`でLOCAL_LANDED / INDEPENDENT_PASS。GitHub Actionsのpnpm 10.33.2固定をrepository pin 11.13.1へexact1で整合し、trigger/service/Node/env/step順/gate/deployは不変。local full gatesはAPI270 + PostgreSQL14 expected skips、Web336、audit183、calculation87を含めPASS。feature-branch pushではrun未発生のためREMOTE_CI_VERIFY_REQUIRED、WP-4092/WP-4143は未完了。exact nextはP1監査findingの台帳同期と、human-gated境界を侵さないsafe verification/implementation sliceの再選定。Gate 0は`NO_GO`、VF-01/human 0/18/Gate 1 reissue 0/live `.codegraph`/production gapsも未解消。
+- Current task: P1 audit findingsを台帳同期中。WP-4050は`reception.created`配線済みだがreception commit後の別audit appendで、失敗時に受付だけが残りsame-key `existing`再送でも補修しないatomicity/reconciliation gapへ訂正。WP-4162はpatient search/get/queueのmandatory `patient.viewed`未配線をBLOCKED_HUMAN_REVIEW / SSOT_UPDATE_REQUIREDで登録。WP-4151c ambiguous retryも既存human gateを維持。runtime/API/DB/SSOT変更なし。WP-4161は`c688d4b`/`b7ada27`でLANDED、remote CI/PostgreSQL 0 skipは未証明。exact nextは本台帳syncの独立検証/landing後、別のnon-gated safe sliceをfresh mappingする。Gate 0は`NO_GO`、VF-01/human 0/18/Gate 1 reissue 0/live `.codegraph`/production gapsも未解消。
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation

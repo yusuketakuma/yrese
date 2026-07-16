@@ -2039,11 +2039,12 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - 想定スコープ: `docs/modules/common_module_inventory.md`, `docs/modules/common_module_boundary.md`, `docs/modules/validation_schema_policy.md`。必要なら `docs/ssot_index.md`。各文書は status 不変、version +0.0.1、変更履歴1行、根拠は WP-3009-BE/93aefa1。
   - 検証: `rg -n "health / error / patients/search / whoami|ReceptionId|RECEPTION_STATUSES|reception queue|テスト" docs/modules`, `pnpm check:ssot-index`, `git diff --check`。
 
-- [ ] WP-4050 reception audit event persistence boundary(codex 提案 SELF-SCAN-20260709-29、SEC-007高リスク隣接)
-  - 発見根拠: MOD-008 v0.2.3 と `@yrese/audit` には `reception.created` / `reception.cancelled` が登録済みだが、WP-3009-BE/93aefa1 の `apps/api` は `POST /reception` の受付作成時に監査イベントを永続化・出力していない。`docs/uiux/stability_slo_policy.md` は「監査対象操作は監査ログ書き込み成功を操作完了条件にする」としており、監査台帳とAPI実装の間に配線境界が残っている。
-  - 目的と現行routing: 受付作成・将来の受付取消を、監査イベント台帳だけでなくAPI実行時のaudit sinkへ接続する境界を定義する。Codex rootがmapper evidenceを基に、SEC-007/WP-2009未完了時のsynthetic in-memory/test adapterと本番BLOCKERを分離した計画を作り、pre-plan reviewerがAPPROVED SSOT・偽tamper-evidence禁止・fail-closed条件を確認してからsole maintainerへ割り当てる。
-  - 想定スコープとreview gate: `docs/security/audit_log_design.md`または後続audit implementation plan、`apps/api`のaudit adapter interface、必要なら`packages/audit`の作成helper。実装後はindependent verifier、`security_critic`、`privacy_compliance_reviewer`、`medical_safety_reviewer`、`db_steward`、`data_integrity_auditor`がread-only reviewする。監査payload/retentionの法務判断、患者安全・薬局業務上の最終判断、production security/risk acceptance、migration/production writeはlegal/pharmacist/security/data-governanceのhuman authorityが別途承認する。
-  - 検証: 受付作成成功時の audit event 生成/書込テスト、audit 書込失敗時の fail-closed テスト、PHIを audit payload に含めないテスト、`pnpm --filter @yrese/api test`, `pnpm --filter @yrese/audit test`, `pnpm check:boundaries`, `git diff --check`。
+- [ ] WP-4050 reception/audit atomic persistence and repair boundary(HIGH data integrity/audit) — PARTIAL / BLOCKED_HUMAN_REVIEW / SSOT_UPDATE_REQUIRED
+  - 現行事実: `apps/api/src/server.ts:427-465`の`POST /reception`は新規受付に対して`reception.created`をaudit repositoryへ配線済み。ただし`apps/api/src/db/reception-repository.ts:162-166`のreception DB `COMMIT`が先行し、その後に別audit appendをawaitする。audit append失敗時は受付だけが永続化してHTTP失敗となり、同一key再送は`existing`となる一方、現行codeは`created`だけを監査するため欠落イベントを補修しない。
+  - root cause/impact: 業務mutationと監査appendに共通のdurable transaction/outbox/reconciliation境界がない。受付済みだが監査証跡が欠落した状態を恒久化し、blind retry・監査完全性・運用復旧を不整合にする。
+  - required decision: transaction/outbox/repairのcanonical設計、`existing`再送時の補修規律、audit sink障害時のAPI outcome、idempotency lifecycle、observability/recovery/rollbackをAPPROVED SSOTへ確定する。AIだけでaudit semantics、DB migration、残存riskを確定しない。
+  - review/human gate: 実装前にR3 scope reviewとsecurity/privacy/data-integrity/medical-safety authorityを要求。migration適用、production write、監査制約緩和は別の明示human approvalなしに行わない。
+  - acceptance: create commit後audit append失敗、response loss、同key existing retry、process restartをsynthetic/DB integrationで固定し、受付と`reception.created`が各1件へ収束する。PHI-free identifier-only targetRef、tenant/pharmacy/actor、append-only chain、error non-leakageを維持し、`pnpm --filter @yrese/api test`、PostgreSQL integration、audit tests、boundaries/secrets/full regressionをPASSする。
 
 - [x] WP-4051 reception idempotency durability boundary(codex 提案 SELF-SCAN-20260709-30、WP-5003実装済み・PostgreSQL CI実証完了)
   - 実装現状: WP-5003 と `000002_create_patient_and_reception_tables.sql` で `reception_entries`、`(tenant_id, pharmacy_id, idempotency_key)` UNIQUE、transaction内 `INSERT ... ON CONFLICT DO NOTHING` + scoped既存行取得は実装済み。同一scope/key/同一patientは元の受付を返し、別patientだけを conflict とする永続挙動を持つ。
@@ -2911,6 +2912,13 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - remote_boundary: feature-branch push単独では現triggerが発火しない。PR/main run URLと全step green、PostgreSQL integration 0 skipを取得するまでWP-4092/WP-4143 remote proofを完了扱いにしない。
   - rollback: implementation commit `c688d4b` と後続ledger commitをrevertする。dependency/data/DB rollback不要。
   - landing_record: implementation commit `c688d4b` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; ledger syncは後続commit。remote CI proofはpending。
+
+- [ ] WP-4162 wire mandatory patient-view audit across PHI read surfaces(HIGH privacy/security/audit) — BLOCKED_HUMAN_REVIEW / SSOT_UPDATE_REQUIRED
+  - finding: APPROVED MOD-008/SEC-007は要配慮情報閲覧を`patient.viewed`で必須記録し、outcome必須・targetRefはPHIを含まないID参照のみと定める。一方、`apps/api/src/server.ts:223-299`の`GET /patients/search`、`:302-333`の`GET /patients/:patientId`、`:336-385`の患者投影を含む`GET /reception/queue`はtenant/scope/no-storeを実装済みだがaudit appendへ未接続。
+  - impact: 誰がどの患者情報へアクセスしたかを追跡できず、不正閲覧調査、privacy accountability、監査完全性が未達。既決の「閲覧監査必須」「PHI-free identifier-only targetRef」「outcome必須」はhuman reviewで緩和しない。
+  - required decision: search/bulk/listのevent粒度、0件/denied/failedの記録境界、ordering、audit sink障害時のread可否、retry/reconciliation、identifier集合のdata minimization、retention/observabilityをprivacy/security/data-integrity/medical-safety authorityが承認する。
+  - stop conditions: human-approved SSOT/plan前にruntime/API/DB/migrationを変更しない。患者氏名・カナ・生年月日・検索語をaudit payload/targetRef/logへ含めない。audit失敗を成功として隠さず、既存tenant/permission/no-store境界を弱めない。
+  - acceptance: approved policyに従いsearch/get/queueのsuccess/denied/failedとbulk cardinalityをsynthetic testsで固定し、targetRefはidentifier-only、tenant/pharmacy/actor/outcome/chainを検証。audit append/recoveryのDB integration、privacy/security/medical-safety review、full gates、local browser journey後にのみ完了扱いとする。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。

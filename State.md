@@ -8,6 +8,12 @@
 
 ## 2026-07-16
 
+### P1 audit/data-integrity boundary reconciliation — BLOCKED_HUMAN_REVIEW / SSOT_UPDATE_REQUIRED
+
+- read-only security/medical/privacy/data-integrity auditで、受付作成と`reception.created`が非原子的かつ欠落補修不能である事実を確認。WP-4050を「未配線」から「配線済み・atomic persistence/reconciliation未解決」へ更新した。
+- MOD-008/SEC-007で必須の`patient.viewed`がpatient search/get-by-id/reception queueへ未配線であるためWP-4162を追加。閲覧監査必須、outcome必須、PHI-free identifier-only targetRefは既決事項として維持し、bulk粒度・失敗規律・recovery/retentionだけをhuman decisionへ送る。
+- ambiguous reception retryは既存WP-4151cで管理済み。いずれもruntime/DB/API/SSOTを変更せず、human-approved scope/evidence/risk判断前の実装を禁止する。
+
 ### WP-4161 CI pnpm toolchain alignment — LOCAL_LANDED / INDEPENDENT_PASS / REMOTE_CI_VERIFY_REQUIRED
 
 - repository pin pnpm 11.13.1に対しGitHub Actionsだけが10.33.2を固定し、WP-4147で確認済みのretired audit endpoint HTTP 410をremote gateへ再導入するdriftを修正。`.github/workflows/ci.yml`のsetup version 1行だけを11.13.1へ揃えた。
