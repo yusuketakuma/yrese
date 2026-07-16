@@ -57,8 +57,10 @@ function createRepository(options: {
   readonly operationError?: Error;
   readonly rollbackError?: Error;
   readonly provenanceOverride?: Readonly<Record<string, unknown>>;
+  readonly rowTransform?: (row: Record<string, unknown>) => Record<string, unknown>;
 }) {
   const release = vi.fn();
+  const transformRow = (row: Record<string, unknown>) => options.rowTransform?.(row) ?? row;
   const query = vi.fn(async (sql: string) => {
     const normalized = sql.trim();
     if (normalized.startsWith('INSERT INTO reception_entries')) {
@@ -66,19 +68,19 @@ function createRepository(options: {
       return {
         rows:
           options.scenario === 'created'
-            ? [{ ...storedRow, ...options.provenanceOverride }]
+            ? [transformRow({ ...storedRow, ...options.provenanceOverride })]
             : [],
       };
     }
     if (normalized.startsWith('SELECT')) {
       return {
         rows: [
-          {
+          transformRow({
             ...storedRow,
             stored_patient_id:
               options.scenario === 'conflict' ? 'patient-different' : patient.patientId,
             ...options.provenanceOverride,
-          },
+          }),
         ],
       };
     }
@@ -112,6 +114,28 @@ function queryLabels(query: ReturnType<typeof vi.fn>): string[] {
     if (normalized.startsWith('SELECT')) return 'SELECT';
     return normalized;
   });
+}
+
+type InvalidAcceptedAtAuthority = 'accessor' | 'inherited' | 'missing';
+
+function replaceAcceptedAtAuthority(
+  row: Record<string, unknown>,
+  authorityKind: InvalidAcceptedAtAuthority,
+  onAccessorRead: () => void,
+): void {
+  if (authorityKind === 'accessor') {
+    Object.defineProperty(row, 'accepted_at', {
+      get() {
+        onAccessorRead();
+        throw new Error('raw accepted_at accessor secret 4217');
+      },
+    });
+    return;
+  }
+  delete row.accepted_at;
+  if (authorityKind === 'inherited') {
+    Object.setPrototypeOf(row, { accepted_at: storedRow.accepted_at });
+  }
 }
 
 describe('PostgresReceptionRepository client lifecycle', () => {
@@ -318,6 +342,33 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(query).toHaveBeenCalledOnce();
   });
 
+  it.each(['accessor', 'inherited', 'missing'] as const)(
+    'rejects a mixed list with a non-own-data accepted_at %s without invoking it',
+    async (authorityKind) => {
+      let accessorReads = 0;
+      const invalidRow = { ...storedRow, reception_id: `reception-${authorityKind}-4217` } as Record<
+        string,
+        unknown
+      >;
+      replaceAcceptedAtAuthority(invalidRow, authorityKind, () => {
+        accessorReads += 1;
+      });
+      const query = vi.fn(async () => ({ rows: [storedRow, invalidRow] }));
+      const repository = new PostgresReceptionRepository({ query } as unknown as Pool);
+
+      await expect(
+        repository.list({
+          tenantId: input.tenantId,
+          pharmacyId: input.pharmacyId,
+          date: '2026-07-13',
+        }),
+      ).rejects.toThrow(databaseReceptionTimestampInvariantErrorMessage);
+
+      expect(accessorReads).toBe(0);
+      expect(query).toHaveBeenCalledOnce();
+    },
+  );
+
   it('rejects a mixed list when any DB timestamp authority is invalid', async () => {
     let fakeCoercions = 0;
     let proxyTraps = 0;
@@ -397,6 +448,42 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     },
   );
 
+  it.each([
+    ['created', 'accessor'],
+    ['created', 'inherited'],
+    ['created', 'missing'],
+    ['existing', 'accessor'],
+    ['existing', 'inherited'],
+    ['existing', 'missing'],
+  ] as const)(
+    'rolls back a %s result with a non-own-data accepted_at %s without invoking it',
+    async (scenario, authorityKind) => {
+      let accessorReads = 0;
+      const { repository, query, release } = createRepository({
+        scenario,
+        rowTransform(row) {
+          replaceAcceptedAtAuthority(row, authorityKind, () => {
+            accessorReads += 1;
+          });
+          return row;
+        },
+      });
+
+      await expect(repository.create(input)).rejects.toThrow(
+        databaseReceptionTimestampInvariantErrorMessage,
+      );
+
+      expect(accessorReads).toBe(0);
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(scenario === 'existing' ? ['SELECT'] : []),
+        'ROLLBACK',
+      ]);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
   it('does not inspect a DB timestamp for a different-patient idempotency conflict', async () => {
     let timestampTraps = 0;
     const hostileTimestamp = new Proxy(
@@ -418,6 +505,30 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(result.kind).toBe('idempotency_conflict');
     expect('entry' in result).toBe(false);
     expect(timestampTraps).toBe(0);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('does not invoke an accepted_at accessor for a different-patient idempotency conflict', async () => {
+    let accessorReads = 0;
+    const { repository, query, release } = createRepository({
+      scenario: 'conflict',
+      rowTransform(row) {
+        Object.defineProperty(row, 'accepted_at', {
+          get() {
+            accessorReads += 1;
+            throw new Error('raw conflict accepted_at accessor secret 4217');
+          },
+        });
+        return row;
+      },
+    });
+
+    const result = await repository.create(input);
+
+    expect(result.kind).toBe('idempotency_conflict');
+    expect('entry' in result).toBe(false);
+    expect(accessorReads).toBe(0);
     expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
     expect(release.mock.calls).toEqual([[]]);
   });

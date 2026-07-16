@@ -1,4 +1,3 @@
-import { isProxy } from 'node:util/types';
 import type { Pool } from 'pg';
 import { type PatientSearchResult, patientSearchResultSchema } from '@yrese/contracts';
 
@@ -9,6 +8,7 @@ import type {
   PatientSearchPage,
 } from '../patient-repository.js';
 import { snapshotDatabaseInstant } from '../instant.js';
+import { readDatabaseRowOwnDataProperty } from './database-row.js';
 
 interface PatientRow {
   readonly patient_id: string;
@@ -29,22 +29,15 @@ export const databasePatientEligibilityTimestampInvariantErrorMessage =
   'Patient database returned an invalid eligibility timestamp';
 
 function snapshotEligibilityCheckedAt(row: PatientRow): string | undefined {
-  if (isProxy(row)) {
-    throw new Error(databasePatientEligibilityTimestampInvariantErrorMessage);
-  }
-  let descriptor: PropertyDescriptor | undefined;
-  try {
-    descriptor = Object.getOwnPropertyDescriptor(row, 'eligibility_checked_at');
-  } catch {
-    throw new Error(databasePatientEligibilityTimestampInvariantErrorMessage);
-  }
-  if (descriptor === undefined || !('value' in descriptor)) {
-    throw new Error(databasePatientEligibilityTimestampInvariantErrorMessage);
-  }
-  return descriptor.value === null
+  const value = readDatabaseRowOwnDataProperty(
+    row,
+    'eligibility_checked_at',
+    databasePatientEligibilityTimestampInvariantErrorMessage,
+  );
+  return value === null
     ? undefined
     : snapshotDatabaseInstant(
-        descriptor.value,
+        value,
         databasePatientEligibilityTimestampInvariantErrorMessage,
       );
 }

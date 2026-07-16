@@ -11,6 +11,7 @@ import {
   type ReceptionRepository,
 } from '../reception-repository.js';
 import { snapshotDatabaseInstant, snapshotDateInstant } from '../instant.js';
+import { readDatabaseRowOwnDataProperty } from './database-row.js';
 import { patientRowToSearchResult } from './patient-repository.js';
 
 interface ReceptionEntryRow {
@@ -53,7 +54,11 @@ function rowToEntry(row: ReceptionEntryRow): ReceptionQueueEntry {
     receptionId: row.reception_id,
     patient: patientRowToSearchResult(row),
     acceptedAt: snapshotDatabaseInstant(
-      row.accepted_at,
+      readDatabaseRowOwnDataProperty(
+        row,
+        'accepted_at',
+        databaseReceptionTimestampInvariantErrorMessage,
+      ),
       databaseReceptionTimestampInvariantErrorMessage,
     ),
     receptionStatus: row.reception_status,
