@@ -30,7 +30,7 @@
 | ID | 優先 | 対象 | 現状 | 期待 | 影響 | 提案 | 層 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | L-01 | **P1** | shell(`layout.tsx`) | header に SystemModeBadge は固定。**PatientHeader は shell に無く**、患者文脈のある画面での常時固定表示が結線されていない | P-09/§11.7「患者を扱う全主要画面で一貫位置に PatientHeader 固定」 | 患者切替後の文脈喪失・取り違え(U4) | 患者文脈レイアウト(route group か per-page slot)で PatientHeader を固定表示する枠を用意 | Layout |
-| L-02 | **P2** | 受付キュー/検索結果テーブル | モバイル/タブレットのカラム優先・カード化・横スクロール方針が未実装(素の table) | §13.6 情報優先度に基づく responsive | 現場タブレットで薬剤名・患者識別が切れる恐れ | responsive table 方針を Foundations 化(単純縮小禁止) | Foundations+Component |
+| L-02 | **P2** | 受付キュー/検索結果テーブル | `.table-scroll`で患者識別を保持し、患者検索の選択操作は右stickyで狭幅でも到達可能。全tableのカラム優先・カード化は未実装 | §13.6 情報優先度に基づく responsive | 現場タブレットで非操作列の比較に横移動が残る | 実端末検証後に列優先/カード化を判断し、単純縮小・識別情報削除はしない | Foundations+Component |
 
 ### 横断状態の欠如
 

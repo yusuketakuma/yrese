@@ -371,7 +371,11 @@ export function PatientSearchResults({
               <th scope="col">生年月日</th>
               <th scope="col">性別</th>
               <th scope="col">資格確認状態</th>
-              {onSelect !== undefined && <th scope="col">操作</th>}
+              {onSelect !== undefined && (
+                <th scope="col" className="patient-search-action-column">
+                  操作
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -411,7 +415,7 @@ export function PatientSearchResults({
                     </span>
                   </td>
                   {onSelect !== undefined && (
-                    <td>
+                    <td className="patient-search-action-column">
                       <button type="button" onClick={() => onSelect(p)}>
                         この患者を選択
                       </button>

@@ -472,6 +472,21 @@ tr[data-duplicate-kana="true"] > td {
   background: #f0f2f5;
 }
 
+/* Keep the patient-safety action reachable while preserving full identifiers. */
+.patient-search-results .patient-search-action-column {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  min-width: 9.5rem;
+  background: var(--color-bg);
+  box-shadow: -2px 0 0 var(--color-border);
+}
+
+.patient-search-results thead .patient-search-action-column {
+  z-index: 2;
+  background: var(--color-surface);
+}
+
 /* 追加状態記号(色非依存の冗長エンコード補助。すべて aria-hidden) */
 .record-state span[aria-hidden],
 .prescription-change-arrow,

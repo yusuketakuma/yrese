@@ -31,7 +31,7 @@
 - Registry 実画面ロールアウト: 受付キュー状態セル → DomainStatusBadge。
 - 横断状態: loading / not-found / global-error(PHI非出力)。
 - a11y: 資格確認にも冗長 shape、forced-colors / reduced-motion CSS。
-- L-02: テーブル横スクロール(`.table-scroll`)。
+- L-02: テーブル横スクロール(`.table-scroll`)。2026-07-16に患者検索の選択操作列を右sticky化し、375/768/1280 browserで到達性を確認。全tableの列優先/カード化はP2継続。
 - S-02: 受付一覧の最終取得時刻(鮮度)。
 - S-03: 受付日付の URL 状態化(**非PHIのみ**。検索クエリ=氏名は PHI のため URL 非永続)。
 

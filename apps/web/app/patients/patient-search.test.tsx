@@ -1049,8 +1049,10 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
 
     expect(withSelect).toContain("この患者を選択");
     expect(withSelect).toContain("操作");
+    expect(withSelect.match(/patient-search-action-column/g)).toHaveLength(2);
     expect(withoutSelect).not.toContain("この患者を選択");
     expect(withoutSelect).not.toContain("操作");
+    expect(withoutSelect).not.toContain("patient-search-action-column");
   });
 });
 
