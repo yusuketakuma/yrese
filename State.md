@@ -8,6 +8,11 @@
 
 ## 2026-07-16
 
+### WP-4151 durable evidence index / audit demo extension — IMPLEMENTED / INDEPENDENT_VERIFY_REQUIRED
+
+- objective-required `ops/refactor/EVIDENCE.md`欠落を確認し、CODE_MAP/FULLSTACK/VERIFICATION/FINAL_DEMO/STATEをauthorityとして参照する証拠索引を追加。commit存在をverification/human gateの代替にしない規則を固定した。
+- synthetic patient→reception→admin browser journeyで`reception.created`/`audit.viewed`とnormal hash chainを確認。audit refresh failureは2種類の注入でbrowser automation session自体が停止したため未証明を維持し、component50 testsだけを代替証拠として記録。landing commit pending、別agent verifier未実施。
+
 ### WP-4150 narrow-table patient selection action — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
 - 375pxで患者検索の選択操作が横スクロール外へ隠れる既知P2を再現。患者識別列と横スクロールは保持し、選択操作列だけを右端へsticky固定した。

@@ -18,6 +18,7 @@
 - Synthetic-only development API/Web servers passed health and normal shutdown checks.
 - Patient search, patient selection, reception registration, queue reflection and patient-context clear were completed through the browser. Registration exposed no freeform Patient ID and disabled submission after context clear.
 - Viewports 375, 768 and 1280 had no page-level horizontal overflow. The selected-patient mobile form was visually inspected; browser console and page-error capture were empty.
+- After a synthetic reception create, the `/admin` browser journey displayed `reception.created` and `audit.viewed` with a normal verified hash chain.
 - This is a bounded development journey, not production-like startup, PostgreSQL, authentication, tenant-isolation or repository-wide release evidence.
 
 ## Not yet demonstrated
@@ -26,8 +27,8 @@
 - Production-like API/Web startup, health/readiness/restart/shutdown.
 - Real authentication callback/cancel/session expiry/logout and role allow/deny.
 - Tenant-crossing runtime attempts against a disposable DB.
-- Browser audit view/error retention and reception error/retry journeys.
-- Keyboard/focus/zoom/forced-colors, detailed network inspection and hydration checks. Existing table horizontal-scroll behavior remains a documented P2 responsive risk.
+- Browser audit refresh error retention and reception error/retry journeys. The audit success path is demonstrated; error retention remains component-test-only because browser automation stopped responding during both synthetic failure attempts.
+- Complete keyboard/focus/200%-zoom/forced-colors/reduced-motion, detailed network inspection and hydration checks. Existing table horizontal-scroll behavior remains a documented P2 responsive risk.
 - Offline/sync/upload flows; these are not implemented and must not be simulated as passing.
 - Placeholder routes for prescription, checkout, claim check, masters and closing; their domain/SSOT gates remain unresolved.
 
@@ -35,5 +36,5 @@
 
 1. Provide a disposable PostgreSQL URL and run the integration suite with zero skips.
 2. Start production builds locally with synthetic-only data and approved development authentication.
-3. Complete the remaining audit/error/retry journeys and keyboard/focus/zoom/forced-colors/network/accessibility evidence.
+3. Complete the remaining audit/error/retry journeys with a stable browser harness, then keyboard/focus/zoom/forced-colors/network/accessibility evidence.
 4. Keep blocked placeholder journeys marked not implemented; do not substitute mock success.
