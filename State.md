@@ -8,6 +8,12 @@
 
 ## 2026-07-16
 
+### WP-4169 PostgreSQL startup pool cleanup precedence — FINALIZED / INDEPENDENT_PASS
+
+- PostgreSQL modeのserver構築前failureで`pool.end()`失敗がprimary migration/config/server-construction errorを上書きする経路を修正した。cleanup成功時はexact original identity、rejection/synchronous throw/`undefined`時はmodule-private WeakMap所有のopaque envelopeでoriginal primaryとcleanup secondaryを分離し、outer handlerはexit1設定後に固定startup→database-pool-cleanup signalだけを出す。
+- 初回independent reviewでhostile Proxyへの`instanceof`がprototype trapを起動するMEDIUM bugと、cleanup resultのimpossible stateを許すLOW型不変条件を検出。trap-free WeakMap lookup、forged envelope非受理fixture、discriminated result unionへroot-cause refactorし、再reviewはindependent PASS、privacy/security/operations APPROVED。raw Error/message/stack/cause/code/env/URL/ID、migration/SQL/repository、listen/server close/success onClose lifecycleは不変。
+- focused18、API290 + PostgreSQL14 expected skips、API/workspace typecheck/test、API build、lint/script harness/OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/diff、tracked-snapshot secret scanをPASS。live secret scanは既存ignored symlinkでfail-closed。implementation `5a6a680`はlocal-only、pushなし。timeout/forced exit/OPS-009 structured observability/multiple-resource orchestrationは別scope。
+
 ### WP-4168 API startup failure cleanup hardening — FINALIZED / INDEPENDENT_PASS
 
 - startup catchをtest可能なhelperへ分離し、exit code 1をreport/cleanup前に設定、server closeを最大1回試行する。startupとcleanup failureは固定stderr signalだけを出し、raw Error/message/stack/cause/code/env/URL/IDをproduction reporterへ渡さない。original/cleanup/reporter error identityはhelper result内だけに保持し、mainは破棄する。
