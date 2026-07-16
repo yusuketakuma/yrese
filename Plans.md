@@ -3613,11 +3613,13 @@ Dependency DAG (all edges are prerequisites, not authorization):
   - pharmacist: identity/prescription/dispensing/safety/home/UX。claim practitioner: calculation/claim/public/PMH/accounting。legal/privacy: consent/retention/e-delivery/remote/AI/portability。FHIR: profile/terminology/API/sync。security/ops/data: auth/Edge/device/restore/migration/multistore/Bedrock。各reviewはdecision, dissent, evidence, approver role, date, expiryを残す。
   - evidence/result(2026-07-16): WP-0054i packetで11 authority/review routeとHD-01〜18をscope/evidence/decision/dissent/approver/date/expiry付きで定義。current completionは0/18であり、Codexは代理承認しない。
 - [!] WP-0054o Release Gate 1〜5 execution train(BLOCKED_WP-0054i、R4)
+  - evidence/result(2026-07-16): WP-0054eで40 bounded WP/83 edge、cycle=0、unknown endpoint=0、Gate ancestry bypass=0、WP-0054fで40/40 boundary mapping、WP-0054iでGate 0〜5 exitとGate 1 reissue templateを定義済み。execution trainは未計画ではなく、G0-01〜07がPASSでなくG0-08 reissue=0のためfail-closedで停止中。
   - Gate 1 Foundation: WP-0053/6004/5009/2210、Patient/Prescription/Master/Audit/Auth/Edge skeleton/Calculation skeleton/UI shell。
   - Gate 2 Single-store Regulatory MVP: D01/03/04/07/08/09/10/13/17/20/21のP0 slices、LOCAL_ONLY、migration、golden tests。
   - Gate 3 Production-ready Commercial MVP: D02/05/08-return/09-receivable-POS/11/12/21 support-SLO-restore、parallel/go-no-go。
   - Gate 4 Home Care/Patient: D14/15/facility + D22 mandatory use cases。
   - Gate 5 Chain/Open: D16/D18 SMART-sandbox-SDK-Bulk + D19 advanced + D11 advanced transfer/forecast + M&A。
+  - exact_next_action: HD-01〜18、exact official artifact promotion、PRC-007 atomic amendment、independent verificationを完了してG0-01〜07を全てPASSへ再評価した後だけ、G0-08でGate 1のexact scope/owner/verifier/rollback/demoを再発行する。
   - exit: each gate has 0 critical safety/claim defect、applicable golden/conformance 100%、rollback/restore evidence、independent verification、required human approval。candidate availability/SLO/KPI数値はbaseline後に承認する。
 
 ### v0.7 Requirement Coverage Audit
