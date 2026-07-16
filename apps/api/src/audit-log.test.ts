@@ -16,6 +16,7 @@ import {
 } from './patient-search-cursor.js';
 import {
   auditLogDuplicateIdentityInvariantErrorMessage,
+  auditLogListSchemaInvariantErrorMessage,
   auditLogRepositoryReadErrorMessage,
   auditLogSequenceInvariantErrorMessage,
   auditLogScopeInvariantErrorMessage,
@@ -160,6 +161,158 @@ describe('GET /audit/events (SCR-028)', () => {
       expect(propertyRead).not.toHaveBeenCalled();
     },
   );
+
+  it.each([
+    ['non-array root', {}],
+    ['sparse array', new Array(1)],
+  ] as const)('rejects an audit event list with a %s before view audit', async (_label, events) => {
+    const record = vi.fn<AuditRepository['record']>();
+    const server = buildDevTestServer({
+      auditRepository: {
+        list: vi.fn<AuditRepository['list']>(async () => events as never),
+        record,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events',
+      headers: auditReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({ message: auditLogListSchemaInvariantErrorMessage });
+    expect(record).not.toHaveBeenCalled();
+  });
+
+  it('rejects an audit event list index accessor without invoking it', async () => {
+    const rawSentinel = 'raw audit event index accessor secret 4206';
+    const getterRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const events: unknown[] = [];
+    Object.defineProperty(events, '0', { enumerable: true, get: getterRead });
+    const record = vi.fn<AuditRepository['record']>();
+    const server = buildDevTestServer({
+      auditRepository: {
+        list: vi.fn<AuditRepository['list']>(async () => events as never),
+        record,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events',
+      headers: auditReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({ message: auditLogListSchemaInvariantErrorMessage });
+    expect(response.body).not.toContain(rawSentinel);
+    expect(getterRead).not.toHaveBeenCalled();
+    expect(record).not.toHaveBeenCalled();
+  });
+
+  it('does not re-assimilate or inspect a fulfilled audit event list Proxy', async () => {
+    const rawSentinel = 'raw second audit list then read secret 4206';
+    const thenRead = vi.fn(() => {
+      if (thenRead.mock.calls.length > 1) throw new Error(rawSentinel);
+      return undefined;
+    });
+    const directRead = vi.fn((property: PropertyKey) => {
+      throw new Error(`raw audit list semantic read ${String(property)} 4206`);
+    });
+    const events = new Proxy([], {
+      get(_target, property) {
+        if (property === 'then') return thenRead();
+        return directRead(property);
+      },
+      has(_target, property) {
+        return directRead(property);
+      },
+      getPrototypeOf() {
+        return directRead('getPrototypeOf');
+      },
+      ownKeys() {
+        return directRead('ownKeys');
+      },
+      getOwnPropertyDescriptor(_target, property) {
+        return directRead(property);
+      },
+    });
+    const record = vi.fn<AuditRepository['record']>();
+    const server = buildDevTestServer({
+      auditRepository: {
+        list: vi.fn<AuditRepository['list']>(() => Promise.resolve(events as never)),
+        record,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events',
+      headers: auditReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({ message: auditLogListSchemaInvariantErrorMessage });
+    expect(response.body).not.toContain(rawSentinel);
+    expect(thenRead).toHaveBeenCalledOnce();
+    expect(directRead).not.toHaveBeenCalled();
+    expect(record).not.toHaveBeenCalled();
+  });
+
+  it('normalizes a fulfilled revoked audit event list without raw TypeError reflection', async () => {
+    const directRead = vi.fn(() => {
+      throw new Error('raw revoked audit list trap secret 4206');
+    });
+    const { proxy: events, revoke } = Proxy.revocable([], {
+      get(_target, property) {
+        if (property === 'then') return undefined;
+        return directRead();
+      },
+      has: directRead,
+      getPrototypeOf: directRead,
+      ownKeys: directRead,
+      getOwnPropertyDescriptor: directRead,
+    });
+    const fulfilledEvents = new Promise<readonly AuditEvent[]>((resolve) => {
+      resolve(events);
+      revoke();
+    });
+    const record = vi.fn<AuditRepository['record']>();
+    const server = buildDevTestServer({
+      auditRepository: {
+        list: vi.fn<AuditRepository['list']>(() => fulfilledEvents),
+        record,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events',
+      headers: auditReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({ message: auditLogListSchemaInvariantErrorMessage });
+    for (const sensitiveValue of [
+      'Cannot perform',
+      'raw revoked audit list trap secret 4206',
+    ]) {
+      expect(response.body).not.toContain(sensitiveValue);
+    }
+    expect(directRead).not.toHaveBeenCalled();
+    expect(record).not.toHaveBeenCalled();
+  });
 
   it('returns an empty verified log and audits the view itself (audit.viewed)', async () => {
     const repository = new InMemoryAuditRepository();

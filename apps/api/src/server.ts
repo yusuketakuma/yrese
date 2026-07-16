@@ -113,6 +113,8 @@ const auditLogProjectionInvariantErrorMessage =
 export const auditLogScopeInvariantErrorMessage =
   'Audit repository returned events outside the requested scope';
 export const auditLogRepositoryReadErrorMessage = 'Audit repository list failed';
+export const auditLogListSchemaInvariantErrorMessage =
+  'Audit repository returned an invalid event list';
 export const auditLogDuplicateIdentityInvariantErrorMessage =
   'Verified audit chain contains duplicate event identities';
 export const auditLogSequenceInvariantErrorMessage =
@@ -173,17 +175,6 @@ function invalidPatientSearchQueryResponse() {
     errorCode: patientSearchInvalidQueryErrorCode,
     message: 'Invalid patient search query',
   });
-}
-
-async function runRepositoryOperationOrThrowFixed<T>(
-  operation: () => Promise<T>,
-  invariantErrorMessage: string,
-): Promise<T> {
-  try {
-    return await operation();
-  } catch {
-    throw new Error(invariantErrorMessage);
-  }
 }
 
 type OwnDataPropertySnapshot =
@@ -977,10 +968,16 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         tenantId: tenantContext.tenantId,
         pharmacyId: tenantContext.pharmacyId,
       });
-      const events = await runRepositoryOperationOrThrowFixed(
-        () => auditRepository.list(scope),
-        auditLogRepositoryReadErrorMessage,
-      );
+      let rawEvents: readonly AuditEvent[];
+      try {
+        rawEvents = await auditRepository.list(scope);
+      } catch {
+        throw new Error(auditLogRepositoryReadErrorMessage);
+      }
+      const events = snapshotDenseArray(
+        rawEvents,
+        auditLogListSchemaInvariantErrorMessage,
+      ) as readonly AuditEvent[];
       if (
         events.some(
           (event) =>
