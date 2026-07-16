@@ -1,10 +1,18 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import RouteError from "../error";
 import { registeredErrorCodeOrUndefined } from "./error-code";
 import { ErrorNotice } from "./error-notice";
+
+vi.mock("react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react")>();
+  return {
+    ...actual,
+    useEffect: (effect: React.EffectCallback) => effect(),
+  };
+});
 
 (globalThis as { React?: typeof React }).React = React;
 
@@ -84,17 +92,47 @@ describe("cross-screen error display (WP-3007 / SCR-013)", () => {
     expect(blocker).toContain('role="alert"');
   });
 
-  it("RouteError never leaks error.message or stack to the screen", () => {
-    const error = Object.assign(new Error("PHI-LIKE-SECRET 山田太郎"), {
-      digest: "abc123",
-    });
-    const html = renderToStaticMarkup(<RouteError error={error} reset={() => {}} />);
+  it("RouteError never reads or renders untrusted error properties", () => {
+    const rawSentinels = [
+      "PHI-LIKE-MESSAGE 山田太郎",
+      "PHI-LIKE-NAME patient-secret-name",
+      "PHI-LIKE-DIGEST patient-secret-digest",
+      "PHI-LIKE-STACK patient-secret-stack",
+    ];
+    let propertyReads = 0;
+    const error = new Proxy(new Error(rawSentinels[0]), {
+      get() {
+        propertyReads += 1;
+        throw new Error("error property access must not run");
+      },
+      getOwnPropertyDescriptor() {
+        propertyReads += 1;
+        throw new Error("error descriptor access must not run");
+      },
+      ownKeys() {
+        propertyReads += 1;
+        throw new Error("error key enumeration must not run");
+      },
+    }) as Error & { digest?: string };
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    let html: string;
+    try {
+      html = renderToStaticMarkup(<RouteError error={error} reset={() => {}} />);
+      expect(consoleError).toHaveBeenCalledOnce();
+      expect(consoleError).toHaveBeenCalledWith("route error");
+    } finally {
+      consoleError.mockRestore();
+    }
 
-    expect(html).not.toContain("PHI-LIKE-SECRET");
-    expect(html).not.toContain("山田太郎");
+    expect(propertyReads).toBe(0);
+    for (const sentinel of rawSentinels) {
+      expect(html).not.toContain(sentinel);
+    }
     expect(html).toContain("予期しないエラーが発生しました");
     expect(html).toContain("次のアクション:");
-    expect(html).toContain("参照コード: abc123");
+    expect(html).not.toContain("参照コード");
+    expect(html).toContain('style="margin-top:var(--space-3)"');
+    expect(html).toContain(">再試行</button>");
     expect(html).toContain("再試行");
     // 技術例外は ERROR(CRITICAL は患者安全事象に温存 — UIX-001 §5)
     expect(html).toContain("[エラー(ERROR)]");

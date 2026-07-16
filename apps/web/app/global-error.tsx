@@ -7,8 +7,8 @@ import { useEffect } from "react";
  *
  * global-error は root layout を置換するため、独自の <html>/<body> を持ち、
  * globals.css のクラスに依存しない自己完結マークアップで表示する。
- * PHI・スタックトレースは画面に出さず、console には error.name / digest のみ記録する
- * (message は PHI を含みうるため出力しない — 医療情報の平文ログ禁止)。
+ * error object は任意の property に PHI・技術詳細や throwing accessor を含みうるため
+ * 参照せず、console には固定signalだけを記録する。
  */
 export default function GlobalError({
   error,
@@ -18,7 +18,7 @@ export default function GlobalError({
   readonly reset: () => void;
 }) {
   useEffect(() => {
-    console.error("global error", { name: error.name, digest: error.digest });
+    console.error("global error");
   }, [error]);
 
   return (
@@ -36,10 +36,11 @@ export default function GlobalError({
               次のアクション: 「再試行」を押してください。解消しない場合はシステム管理者へ連絡してください。
             </p>
           </div>
-          {error.digest !== undefined && (
-            <p style={{ fontSize: "0.9rem" }}>参照コード: {error.digest}</p>
-          )}
-          <button type="button" onClick={reset} style={{ fontSize: "1rem", padding: "0.4rem 1.2rem" }}>
+          <button
+            type="button"
+            onClick={reset}
+            style={{ fontSize: "1rem", marginTop: "1rem", padding: "0.4rem 1.2rem" }}
+          >
             再試行
           </button>
         </section>
