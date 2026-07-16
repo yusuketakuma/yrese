@@ -54,6 +54,7 @@ import { InMemoryPatientRepository, type PatientRepository } from './patient-rep
 import {
   businessDateFromAcceptedAt,
   InMemoryReceptionRepository,
+  type ReceptionCreateResult,
   type ReceptionRepository,
 } from './reception-repository.js';
 
@@ -80,6 +81,8 @@ export const receptionResultPatientIdentityMismatchErrorMessage =
   'Reception repository returned a mismatched patient identity';
 export const receptionResultIdempotencyProvenanceMismatchErrorMessage =
   'Reception repository returned mismatched idempotency provenance';
+export const receptionResultKindInvariantErrorMessage =
+  'Reception repository returned an invalid result kind';
 export const receptionResultSchemaInvariantErrorMessage =
   'Reception repository returned an invalid reception entry';
 export const receptionCreatedStatusInvariantErrorMessage =
@@ -171,6 +174,30 @@ async function runRepositoryOperationOrThrowFixed<T>(
   } catch {
     throw new Error(invariantErrorMessage);
   }
+}
+
+function readReceptionCreateResultKind(value: unknown): ReceptionCreateResult['kind'] {
+  let descriptor: PropertyDescriptor | undefined;
+  try {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error(receptionResultKindInvariantErrorMessage);
+    }
+    descriptor = Object.getOwnPropertyDescriptor(value, 'kind');
+  } catch {
+    throw new Error(receptionResultKindInvariantErrorMessage);
+  }
+
+  if (
+    descriptor === undefined ||
+    descriptor.enumerable !== true ||
+    !('value' in descriptor) ||
+    (descriptor.value !== 'created' &&
+      descriptor.value !== 'existing' &&
+      descriptor.value !== 'idempotency_conflict')
+  ) {
+    throw new Error(receptionResultKindInvariantErrorMessage);
+  }
+  return descriptor.value;
 }
 
 function invalidReceptionRequestResponse() {
@@ -513,6 +540,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           }),
         receptionCreateRepositoryErrorMessage,
       );
+      const resultKind = readReceptionCreateResultKind(result);
 
       const provenance = result.provenance;
       if (
@@ -531,7 +559,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         throw new Error(receptionResultIdempotencyProvenanceMismatchErrorMessage);
       }
 
-      if (result.kind === 'idempotency_conflict') {
+      if (resultKind === 'idempotency_conflict') {
         if (provenance.patientId === parsedPatientId) {
           throw new Error(receptionResultIdempotencyProvenanceMismatchErrorMessage);
         }
@@ -551,23 +579,23 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       ) {
         throw new Error(receptionResultIdempotencyProvenanceMismatchErrorMessage);
       }
-      const parsedEntry = receptionQueueEntrySchema.safeParse(result.entry);
+      const parsedEntry = receptionQueueEntrySchema.safeParse(rawEntryValue);
       if (!parsedEntry.success) {
         throw new Error(receptionResultSchemaInvariantErrorMessage);
       }
       if (parsedEntry.data.patient.patientId !== parsedPatientId) {
         throw new Error(receptionResultPatientIdentityMismatchErrorMessage);
       }
-      if (result.kind === 'created' && parsedEntry.data.receptionStatus !== 'WAITING') {
+      if (resultKind === 'created' && parsedEntry.data.receptionStatus !== 'WAITING') {
         throw new Error(receptionCreatedStatusInvariantErrorMessage);
       }
-      if (result.kind === 'created' && parsedEntry.data.acceptedAt !== acceptedAtIso) {
+      if (resultKind === 'created' && parsedEntry.data.acceptedAt !== acceptedAtIso) {
         throw new Error(receptionCreatedAcceptedAtInvariantErrorMessage);
       }
 
       // 監査証跡(who/when/what)。冪等再送(existing)では二重記録しない。
       // targetRef は識別子のみ(PHI 非含有)。
-      if (result.kind === 'created') {
+      if (resultKind === 'created') {
         const auditScope = Object.freeze({
           tenantId: tenantContext.tenantId,
           pharmacyId: tenantContext.pharmacyId,
@@ -591,7 +619,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         }, receptionCreatedAuditInvariantErrorMessage);
       }
 
-      return reply.code(result.kind === 'created' ? 201 : 200).send(parsedEntry.data);
+      return reply.code(resultKind === 'created' ? 201 : 200).send(parsedEntry.data);
     },
   );
 

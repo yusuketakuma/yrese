@@ -48,6 +48,7 @@ import {
   receptionCreatedAuditInvariantErrorMessage,
   receptionResultPatientIdentityMismatchErrorMessage,
   receptionResultIdempotencyProvenanceMismatchErrorMessage,
+  receptionResultKindInvariantErrorMessage,
   receptionResultSchemaInvariantErrorMessage,
   receptionPatientNotFoundErrorCode,
   type BuildServerOptions,
@@ -1632,6 +1633,258 @@ describe('buildServer', () => {
       expect(propertyRead).not.toHaveBeenCalled();
     },
   );
+
+  it('rejects an unknown reception result kind instead of treating it as an existing success', async () => {
+    const acceptedAt = new Date('2026-07-09T09:00:00.000Z');
+    const idempotencyKey = 'reception-unknown-kind-secret-4198';
+    const server = buildDevTestServer({
+      now: () => acceptedAt,
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => []),
+        create: vi.fn<ReceptionRepository['create']>(async (input) =>
+          ({
+            kind: 'forged_existing_kind',
+            provenance: receptionProvenance(input, 'reception-forged-kind-secret-4198'),
+            entry: {
+              receptionId: 'reception-forged-kind-secret-4198',
+              acceptedAt: acceptedAt.toISOString(),
+              receptionStatus: 'COMPLETED',
+              prescriptionIntakeType: 'paper',
+              patient: input.patient,
+            },
+          }) as unknown as ReceptionCreateResult,
+        ),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: { patientId: 'patient-syn-004', idempotencyKey },
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({
+      statusCode: 500,
+      error: 'Internal Server Error',
+      message: receptionResultKindInvariantErrorMessage,
+    });
+    for (const sensitiveValue of [
+      'forged_existing_kind',
+      'reception-forged-kind-secret-4198',
+      'patient-syn-004',
+      idempotencyKey,
+    ]) {
+      expect(response.body).not.toContain(sensitiveValue);
+    }
+  });
+
+  it.each([
+    [
+      'missing',
+      (_rawSentinel: string, _getterRead: ReturnType<typeof vi.fn>): unknown => ({}),
+    ],
+    [
+      'non-string',
+      (_rawSentinel: string, _getterRead: ReturnType<typeof vi.fn>): unknown => ({ kind: 42 }),
+    ],
+    [
+      'inherited',
+      (_rawSentinel: string, _getterRead: ReturnType<typeof vi.fn>): unknown =>
+        Object.create({ kind: 'existing' }) as object,
+    ],
+    [
+      'non-enumerable',
+      (_rawSentinel: string, _getterRead: ReturnType<typeof vi.fn>): unknown =>
+        Object.defineProperty({}, 'kind', { value: 'existing' }),
+    ],
+    [
+      'accessor',
+      (_rawSentinel: string, getterRead: ReturnType<typeof vi.fn>): unknown =>
+        Object.defineProperty({}, 'kind', { enumerable: true, get: getterRead }),
+    ],
+    [
+      'array root',
+      (_rawSentinel: string, _getterRead: ReturnType<typeof vi.fn>): unknown =>
+        Object.assign([], { kind: 'existing' }),
+    ],
+    [
+      'function root',
+      (_rawSentinel: string, _getterRead: ReturnType<typeof vi.fn>): unknown =>
+        Object.assign(() => undefined, { kind: 'existing' }),
+    ],
+    [
+      'null root',
+      (_rawSentinel: string, _getterRead: ReturnType<typeof vi.fn>): unknown => null,
+    ],
+  ] as const)(
+    'rejects a reception result with a %s kind authority before reading result detail',
+    async (_label, createInvalidResult) => {
+      const rawSentinel = `raw invalid reception kind detail ${_label} 4198`;
+      const getterRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const provenanceRead = vi.fn(() => {
+        throw new Error(`raw provenance ${rawSentinel}`);
+      });
+      const entryRead = vi.fn(() => {
+        throw new Error(`raw entry ${rawSentinel}`);
+      });
+      const invalidResult = createInvalidResult(rawSentinel, getterRead);
+      if (
+        invalidResult !== null &&
+        (typeof invalidResult === 'object' || typeof invalidResult === 'function')
+      ) {
+        Object.defineProperties(invalidResult, {
+          provenance: { enumerable: true, get: provenanceRead },
+          entry: { enumerable: true, get: entryRead },
+        });
+      }
+      const idempotencyKey = `reception-invalid-kind-${_label}-secret-4198`;
+      const server = buildDevTestServer({
+        receptionRepository: {
+          list: vi.fn<ReceptionRepository['list']>(async () => []),
+          create: vi.fn<ReceptionRepository['create']>(async () =>
+            invalidResult as ReceptionCreateResult,
+          ),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/reception',
+        headers: tenantOneReceptionWriteHeaders,
+        payload: { patientId: 'patient-syn-004', idempotencyKey },
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toMatchObject({ message: receptionResultKindInvariantErrorMessage });
+      for (const sensitiveValue of [rawSentinel, 'patient-syn-004', idempotencyKey]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+      expect(getterRead).not.toHaveBeenCalled();
+      expect(provenanceRead).not.toHaveBeenCalled();
+      expect(entryRead).not.toHaveBeenCalled();
+    },
+  );
+
+  it('normalizes a throwing result-kind descriptor trap without other Proxy inspection', async () => {
+    const rawSentinel = 'raw reception result kind descriptor trap secret 4198';
+    const directRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const descriptorRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const invalidResult = new Proxy(
+      {},
+      {
+        get(_target, property) {
+          if (property === 'then') return undefined;
+          return directRead();
+        },
+        has: directRead,
+        getPrototypeOf: directRead,
+        ownKeys: directRead,
+        getOwnPropertyDescriptor: descriptorRead,
+      },
+    );
+    const server = buildDevTestServer({
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => []),
+        create: vi.fn<ReceptionRepository['create']>(() => Promise.resolve(invalidResult as never)),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-004',
+        idempotencyKey: 'reception-kind-descriptor-trap-secret-4198',
+      },
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({ message: receptionResultKindInvariantErrorMessage });
+    for (const sensitiveValue of [
+      rawSentinel,
+      'patient-syn-004',
+      'reception-kind-descriptor-trap-secret-4198',
+    ]) {
+      expect(response.body).not.toContain(sensitiveValue);
+    }
+    expect(descriptorRead).toHaveBeenCalledOnce();
+    expect(directRead).not.toHaveBeenCalled();
+  });
+
+  it('uses one captured result kind for every later branch without a direct kind read', async () => {
+    const acceptedAt = new Date('2026-07-09T09:00:00.000Z');
+    const kindRead = vi.fn(() => {
+      throw new Error('raw direct kind read secret 4198');
+    });
+    const descriptorRead = vi.fn(() => ({
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value: 'created',
+    }));
+    const target = {
+      kind: 'existing',
+      provenance: undefined as unknown,
+      entry: undefined as unknown,
+    };
+    const result = new Proxy(target, {
+      get(currentTarget, property, receiver) {
+        if (property === 'kind') return kindRead();
+        return Reflect.get(currentTarget, property, receiver);
+      },
+      getOwnPropertyDescriptor(currentTarget, property) {
+        if (property === 'kind') return descriptorRead();
+        return Reflect.getOwnPropertyDescriptor(currentTarget, property);
+      },
+    });
+    const server = buildDevTestServer({
+      now: () => acceptedAt,
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => []),
+        create: vi.fn<ReceptionRepository['create']>(async (input) => {
+          target.provenance = receptionProvenance(input, 'reception-kind-snapshot-4198');
+          target.entry = {
+            receptionId: 'reception-kind-snapshot-4198',
+            acceptedAt: acceptedAt.toISOString(),
+            receptionStatus: 'WAITING',
+            prescriptionIntakeType: 'paper',
+            patient: input.patient,
+          };
+          return result as unknown as ReceptionCreateResult;
+        }),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-004',
+        idempotencyKey: 'reception-kind-snapshot-4198',
+      },
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(201);
+    expect(descriptorRead).toHaveBeenCalledOnce();
+    expect(kindRead).not.toHaveBeenCalled();
+  });
 
   it.each([
     [
