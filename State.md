@@ -8,6 +8,12 @@
 
 ## 2026-07-16
 
+### All branches → main consolidation — PUSHED / INDEPENDENT_PASS
+
+- `origin/main` `3045cd5`を基点に、`agent/reconcile-wp9002-w7c-20260712` tip `2ee9a79`へfast-forwardし、patch-equivalentだが未包含だった`agent/wp4147-pnpm-audit` tip `19eb555`をmerge commit `a77b29f`で明示統合した。`wp-9001-codex-only` tip `6198068`と`wp-9002-legacy-ssot-metadata` tip `b8aadfd`は既にancestorであり、local 5/5、live origin 2/2の未merged branchは0。`3045cd5..a77b29f`を`origin/main`へpush済み。
+- validationはscript harness、OpenAPI drift、calculation purity、boundaries、SSOT index 173、dependency audit high=0/critical=0、SBOM 231、workspace typecheck、workspace test（Web 337、API 270、DB integration expected skip 14、packages全件）、workspace build、lint entrypoint、`git diff --check`をPASS。live secret scanはGit対象外の既存`.codegraph` symlinkでprotected scopeをfail-closedとしたが、`git archive HEAD`で作成したtracked push snapshotのsecret scanはPASSした。
+- read-only branch/topology verifierとpush前UI/package/validation verifierはblocking finding 0。merge conflict、unmerged index、進行中merge、tracked dirty、conflict artifactは0。既存untracked `.omo/`はmain tree、commit、pushへ含めず保持した。
+
 ### WP-0055f Common Workbench UI/UX layout — DRAFT_PROPOSED / HUMAN_REVIEW_REQUIRED
 
 - 22 domain共通画面を3案比較し、上部Context Lockbar、左journey、中央primary task、右Evidence Spine、下部command領域からなるEvidence-rail workbenchを第一候補として`docs/research/rececon_v0_8_shared_workbench_layout_proposal_20260716.md`へ記録した。22 domain/132 UI labelをtop-level route化せず、既存業務順route内の共通shellへ集約する。
