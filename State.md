@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4212 public health clock authority — FINALIZED / INDEPENDENT_PASS
+
+- `/health`のraw clock detail反射とfake non-Dateによるfalse `status: ok` 200を修正。shared intrinsic snapshotへhealth専用fixed errorを渡し、genuine Date/canonical ISOだけを許可した。
+- throw/invalid/spoof/hostile-revoked Proxyは固定500・raw/native非echo、fake method/accessor/trap0。valid own-hostile Dateはgetter0のexact200。fixture側`vi.fn` Proxy観察バグもplain counterへ修正した。
+- server293+audit-log71、API562 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/security/privacy review READY。認証/cache/DB/readiness/contracts/OpenAPI/SSOTとpost-create audit clockは未変更。implementation `d23f374`はlocal-only、pushなし。
+
 ### WP-4211 reception acceptedAt clock authority — FINALIZED / INDEPENDENT_PASS
 
 - 受付POST create前clockのraw throw反射、非Date fake methodによる201、own method mutationによるresponse/repository時刻分裂を修正。patient検証後にgenuine Dateをintrinsic ISOへsnapshotし、captured scalarをserver authority、detached plain Dateをrepository adapterとした。
