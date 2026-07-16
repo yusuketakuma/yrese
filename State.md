@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4213 migration SQLSTATE authority — BLOCKED / CANDIDATE_REVERTED
+
+- inherited `code='42P01'`がmissing history tableへ誤分類され、fake client上で明示migrateがBEGIN/DDL/history INSERT/COMMITへ進む実バグを再現。Proxy trapによる元error置換も分離して確認した。
+- own data exact SQLSTATE限定のexact2 candidateはfocused14、API typecheck、workspace regression/標準gate、independent technical reviewをPASSしたが、APPROVED QUA-003のC3 migration semantics gateによりhuman authority＋SSOT deltaなしではlanding不可と確定した。
+- 実DB接続・migration適用・SQL変更なし。candidate code/testは自分の差分だけrevertし、worktreeを`.omo/`以外cleanへ復帰。DB-002/QUA-003準拠の承認後に再開する。
+
 ### WP-4212 public health clock authority — FINALIZED / INDEPENDENT_PASS
 
 - `/health`のraw clock detail反射とfake non-Dateによるfalse `status: ok` 200を修正。shared intrinsic snapshotへhealth専用fixed errorを渡し、genuine Date/canonical ISOだけを許可した。
