@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4176 patient-search page-limit consumer binding — FINALIZED / INDEPENDENT_PASS
+
+- contractsの`PATIENT_SEARCH_DEFAULT_LIMIT=20`をquery schemaとbrowserで共用し、initial/append GETへ`limit=20`を明示。exact200 schema parse後に1page 21件以上を固定non-PHI/non-echo errorで全件拒否し、truncate/filter/partial commitを行わない。initialはselectable PHI zero、appendはverified results/query/cursorを保持しsame cursor retry可能。response schema/OpenAPI/API limit1..50は不変。
+- plan reviewのblocking指摘を受け、real fetch経路のinitial20＋append20＝ordered40 fixtureを追加し、limitが累積結果ではなくpage-localであることを固定。q→limit→cursor URL、exact20、21件PHI-rich非echo、append retry、generic noticeを検証。API/server/repository/DB/cursor/cancellation/UI、reception POST/idempotency/auditは不変。
+- focused contracts21/patient-search58、contracts96、Web387、API290 + PostgreSQL14 expected skips、workspace typecheck/test、Web build、全標準gate、tracked-snapshot+exact4 overlay secret scanをPASS。live secret scanは既知ignored symlinkでfail-closed。independent/plan/security/privacy/medical/API reviewはPASS/APPROVED。implementation `e0eccd8`はlocal-only、pushなし。
+
 ### WP-4175 selected-patient removal error binding — FINALIZED / INDEPENDENT_PASS
 
 - `GET /patients/:patientId`の任意404を患者削除扱いしていたconsumer bugを修正し、bodyをexactly once読み、contracts `errorResponseSchema`とshared-kernelのexact `PAT-0002`、nonempty messageが揃う場合だけ`null`/onRemovedへ進める。bodyless/invalid JSON/read failure、message/code不正、別registered codeは固定non-PHI/non-echo errorで拒否し、active selectionを保持して既存stale経路へ送る。
