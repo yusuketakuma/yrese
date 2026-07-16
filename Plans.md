@@ -2784,6 +2784,15 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: implementation commit `2bea7a4` と後続ledger commitをrevertする。code/data rollback不要。
   - landing_record: implementation commit `2bea7a4` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 artifact refresh landed、independent verification pending。
 
+- [~] WP-4149 bind reception registration to selected Patient Context(HIGH patient safety) — IMPLEMENTED / INDEPENDENT_VERIFY_REQUIRED
+  - 発見根拠: 受付登録フォームが患者検索で確立したglobal Patient Contextとは別にfreeform Patient ID入力を受け付け、表示中患者と登録対象の不一致・転記誤りを起こせるwrong-patient surfaceになっていた。
+  - scope: exact9 `apps/web/app/reception-dashboard.tsx`, `apps/web/app/reception-dashboard.test.tsx`, `apps/web/app/globals.css`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`, `ops/refactor/FULLSTACK_ALIGNMENT.md`, `ops/refactor/FINAL_DEMO.md`, `ops/refactor/VERIFICATION.md`。API/contracts/DB/SSOT/package/lock/CIは変更しない。
+  - implementation: freeform Patient ID入力を廃止し、`PatientContextProvider`で選択済みの患者だけを受付登録対象にする。未選択時は登録をfail-closedで無効化し患者検索への導線を表示。選択変更時は旧結果を消去し、POST進行中の患者変更は成功・失敗ともsubmitted IDを露出しない固定警告へ分離してblind retryを防ぐ。
+  - verification: reception focused 70、Web 336、API270 + PostgreSQL14 expected skips、audit183、calculation87、workspace typecheck/test/build、OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/script harness/diffをPASS。tracked snapshot secret scan PASS、live scanは既知のuser-owned ignored `.codegraph` symlinkでfail-closed。synthetic dev browserで患者検索→選択→受付登録→queue反映→患者clear、375/768/1280のpage overflowなし、console/errorなしを確認。
+  - review_status: root cold-path reviewと`emil-design-eng`基準のUI review済み。current topologyでは別agent verifier未実施のためFINALIZEDを主張しない。既知のmobile table horizontal-scroll P2は本変更外で既存UI risk台帳に維持する。
+  - rollback: implementation commitと後続ledger commitをrevertする。API/DB/data migration rollback不要。
+  - landing_record: implementation commit pending; exact9 diff and validation proof ready、independent verification pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

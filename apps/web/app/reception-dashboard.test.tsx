@@ -12,9 +12,9 @@ import type {
 
 import {
   ReceptionError,
+  ReceptionRegistrationForm,
   ReceptionQueueTable,
   ReceptionQueueView,
-  clearRegistrationInputIfUnchanged,
   createReception,
   createReceptionQueueRunner,
   createReceptionQueueTargetTracker,
@@ -22,6 +22,7 @@ import {
   fetchReceptionQueue,
   formatAcceptedTime,
   parseDateParam,
+  registrationPatientChangeNotice,
   type QueueState,
   todayAsIsoDate,
 } from "./reception-dashboard";
@@ -89,6 +90,93 @@ async function withNodeEnv<T>(
 }
 
 describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
+  it("binds registration to the selected patient and shows identifying details", () => {
+    const html = renderToStaticMarkup(
+      <ReceptionRegistrationForm
+        patient={{
+          patientId: "patient-test-001",
+          name: "合成 太郎",
+          kana: "ゴウセイ タロウ",
+          birthDate: "1990-01-01",
+          sex: "male",
+          eligibilityStatus: "VERIFIED",
+        }}
+        submitting={false}
+        onSubmit={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("受付対象");
+    expect(html).toContain("ゴウセイ タロウ");
+    expect(html).toContain("合成 太郎");
+    expect(html).toContain("1990-01-01");
+    expect(html).toContain("この患者を受付登録");
+    expect(html).not.toContain("patient-test-001");
+    expect(html).not.toContain("患者ID");
+  });
+
+  it("blocks registration until a patient is selected and links to patient search", () => {
+    const html = renderToStaticMarkup(
+      <ReceptionRegistrationForm
+        patient={null}
+        submitting={false}
+        onSubmit={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("受付対象の患者を選択してください");
+    expect(html).toContain('href="/patients"');
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>この患者を受付登録<\/button>/);
+  });
+
+  it("does not report a patient change when the submitted patient remains selected", () => {
+    expect(
+      registrationPatientChangeNotice(
+        "patient-test-001",
+        "patient-test-001",
+        "success",
+      ),
+    ).toBeNull();
+    expect(
+      registrationPatientChangeNotice(
+        "patient-test-001",
+        "patient-test-001",
+        "failure",
+      ),
+    ).toBeNull();
+  });
+
+  it("separates a prior-patient success from the newly selected patient", () => {
+    expect(
+      registrationPatientChangeNotice(
+        "patient-test-002",
+        "patient-test-001",
+        "success",
+      ),
+    ).toEqual({
+      severity: "WARNING",
+      message: "受付処理中に選択患者が変更されました。",
+      nextAction:
+        "登録結果に表示された患者と受付一覧を確認してから、次の操作へ進んでください。",
+    });
+  });
+
+  it("prevents a prior-patient failure from being attributed to the newly selected patient", () => {
+    const notice = registrationPatientChangeNotice(
+      undefined,
+      "patient-test-001",
+      "failure",
+    );
+
+    expect(notice).toEqual({
+      severity: "WARNING",
+      message: "選択患者の変更前に開始した受付処理が完了しませんでした。",
+      nextAction:
+        "変更前の患者が受付済みか受付一覧で確認し、不明な場合は再登録せずシステム管理者へ連絡してください。",
+    });
+    expect(JSON.stringify(notice)).not.toContain("patient-test-001");
+  });
+
   it("fails before reception fetches when the production API base is missing (WP-4067)", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
@@ -1612,24 +1700,6 @@ describe("createReceptionQueueTargetTracker", () => {
     load(restored);
 
     expect(tracker.current()).toBe("2026-07-15");
-  });
-});
-
-describe("clearRegistrationInputIfUnchanged (next-patient input preservation)", () => {
-  it("clears the unchanged raw input after a successful registration", () => {
-    expect(clearRegistrationInputIfUnchanged("patient-A", "patient-A")).toBe("");
-  });
-
-  it("clears an unchanged whitespace-padded raw input", () => {
-    expect(clearRegistrationInputIfUnchanged("  patient-A  ", "  patient-A  ")).toBe("");
-  });
-
-  it("preserves a next-patient input typed while the prior registration is pending", () => {
-    expect(clearRegistrationInputIfUnchanged("patient-B", "patient-A")).toBe("patient-B");
-  });
-
-  it("uses exact raw equality rather than trimmed equivalence", () => {
-    expect(clearRegistrationInputIfUnchanged("patient-A", " patient-A ")).toBe("patient-A");
   });
 });
 

@@ -140,6 +140,57 @@ body {
   max-width: 1200px;
 }
 
+.reception-registration-form {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 42rem;
+  margin-block: var(--space-3);
+  padding: var(--space-3);
+  border: 2px solid var(--color-accent);
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+}
+
+.reception-registration-form h3,
+.reception-registration-form p {
+  margin: 0;
+}
+
+.reception-registration-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+.reception-registration-label {
+  flex-basis: 100%;
+  font-weight: 700;
+}
+
+.reception-registration-form button {
+  width: fit-content;
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1.5px solid var(--color-fg);
+  border-radius: 3px;
+  background: var(--color-accent);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reception-registration-form button:disabled {
+  background: var(--color-status-neutral-bg);
+  color: var(--color-fg);
+  cursor: not-allowed;
+}
+
+.reception-registration-empty a {
+  margin-inline-start: var(--space-2);
+}
+
 /* 患者ヘッダー(取り違え防止): 患者文脈のある画面で常時固定表示 */
 .patient-header {
   display: flex;

@@ -5,7 +5,7 @@
 | Command / evidence | Result |
 |---|---|
 | `pnpm -r typecheck` | PASS (all workspaces) |
-| `pnpm -r test` | PASS: API 270 + 14 expected PostgreSQL skips, Web 335, audit 183, calculation 87; all other packages PASS |
+| `pnpm -r test` | PASS: API 270 + 14 expected PostgreSQL skips, Web 336, audit 183, calculation 87; all other packages PASS |
 | `pnpm -r build` | PASS, including Next.js production build |
 | `pnpm install --frozen-lockfile` | PASS with pnpm 11.13.1; lockfile unchanged; only esbuild/sharp build scripts explicitly allowed |
 | `pnpm check:openapi` | PASS |
@@ -21,6 +21,6 @@
 ## Environment-limited checks
 
 - PostgreSQL integration: 14 expected local skips because `TEST_DATABASE_URL` is absent. No DB connection, migration or DML was performed in this goal run.
-- Final browser/local demo remains `DEMO_REQUIRED`; see `FINAL_DEMO.md`.
+- Synthetic development browser evidence now covers patient search/select, reception create/queue reflection/context clear, 375/768/1280 page-overflow checks and clean console/error capture. Production-like startup, audit/error/retry and accessibility coverage remain `DEMO_REQUIRED`; see `FINAL_DEMO.md`.
 - WP-3010a/WP-3011a are intentionally dormant fixture-only components. Browser/live API flow is not claimed; their parent tasks are BLOCKED with concrete unlock conditions.
 - Production HTTPS/HSTS, deploy, external systems, PHI production data and infrastructure were not exercised and remain human-gated.

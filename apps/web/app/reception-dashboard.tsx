@@ -12,6 +12,10 @@ import {
 import { permissionScope, type PermissionScope } from "@yrese/shared-kernel";
 
 import { resolveWebApiUrl } from "./api-transport";
+import {
+  type PatientContextData,
+  useOptionalPatientContext,
+} from "./components/patient-context";
 import { RECEPTION_STATUS_LABELS as RECEPTION_STATUS_LABELS_SSOT } from "./status/visual-status-registry";
 import { DomainStatusBadge } from "./components/domain-status-badge";
 import { EmptyState } from "./components/empty-state";
@@ -177,7 +181,7 @@ export async function createReception(
     if (res.status === 404) {
       throw new ReceptionError(
         "指定した患者がこの薬局に見つかりません。",
-        "患者検索画面で患者IDを確認してください。",
+        "患者検索画面で受付対象の患者を選択し直してください。",
         errorCode,
       );
     }
@@ -191,7 +195,7 @@ export async function createReception(
     if (res.status === 400) {
       throw new ReceptionError(
         "受付内容が不正です。",
-        "患者IDを確認して再度受付してください。",
+        "患者検索画面で受付対象の患者を選択し直してから、再度受付してください。",
         errorCode,
       );
     }
@@ -422,6 +426,29 @@ export function createReceptionRegistrationRunner() {
   };
 }
 
+export function registrationPatientChangeNotice(
+  currentPatientId: string | undefined,
+  submittedPatientId: string,
+  outcome: "success" | "failure",
+): ErrorNoticeProps | null {
+  if (currentPatientId === submittedPatientId) {
+    return null;
+  }
+  return outcome === "success"
+    ? {
+        severity: "WARNING",
+        message: "受付処理中に選択患者が変更されました。",
+        nextAction:
+          "登録結果に表示された患者と受付一覧を確認してから、次の操作へ進んでください。",
+      }
+    : {
+        severity: "WARNING",
+        message: "選択患者の変更前に開始した受付処理が完了しませんでした。",
+        nextAction:
+          "変更前の患者が受付済みか受付一覧で確認し、不明な場合は再登録せずシステム管理者へ連絡してください。",
+      };
+}
+
 export function createReceptionQueueTargetTracker(initialTarget: string) {
   let target = initialTarget;
   return {
@@ -430,14 +457,6 @@ export function createReceptionQueueTargetTracker(initialTarget: string) {
       target = nextTarget;
     },
   };
-}
-
-/** Clears a successful submission only when the operator has not prepared a new value. */
-export function clearRegistrationInputIfUnchanged(
-  currentInput: string,
-  submittedInput: string,
-): string {
-  return currentInput === submittedInput ? "" : currentInput;
 }
 
 export function ReceptionQueueView({ state }: { readonly state: QueueState }) {
@@ -535,12 +554,15 @@ export function parseDateParam(search: string): string | undefined {
 }
 
 export function ReceptionDashboard() {
+  const patientContext = useOptionalPatientContext();
+  const selectedPatient = patientContext?.patient ?? null;
   const [date, setDate] = useState(todayAsIsoDate);
   const [queue, setQueue] = useState<QueueState>({ kind: "loading" });
-  const [registerPatientId, setRegisterPatientId] = useState("");
   const [registerNotice, setRegisterNotice] = useState<ErrorNoticeProps | null>(null);
   const [registered, setRegistered] = useState<ReceptionQueueEntry | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const selectedPatientIdRef = useRef<string | undefined>(selectedPatient?.patientId);
+  selectedPatientIdRef.current = selectedPatient?.patientId;
   const loadRunner = useRef<ReturnType<typeof createReceptionQueueRunner> | null>(
     null,
   );
@@ -585,19 +607,26 @@ export function ReceptionDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    // A result or error for the previous patient must never remain beside a newly
+    // selected patient. In-flight submissions retain their captured identity and
+    // are handled explicitly below.
+    setRegistered(null);
+    setRegisterNotice(null);
+  }, [selectedPatient?.patientId]);
+
   const register = useCallback(async () => {
     const runner = registrationRunner.current;
     if (runner === null || runner.isRunning()) {
       return;
     }
-    const submittedInput = registerPatientId;
-    const trimmed = submittedInput.trim();
-    if (trimmed.length === 0) {
+    const submittedPatientId = selectedPatient?.patientId;
+    if (submittedPatientId === undefined) {
       setRegistered(null);
       setRegisterNotice({
         severity: "WARNING",
-        message: "患者IDが入力されていません。",
-        nextAction: "患者検索画面で患者を特定し、患者IDを入力してください。",
+        message: "受付対象の患者が選択されていません。",
+        nextAction: "患者検索画面で患者を特定し、業務対象として選択してください。",
       });
       return;
     }
@@ -606,27 +635,38 @@ export function ReceptionDashboard() {
       setSubmitting(true);
       setRegisterNotice(null);
       try {
-        const entry = await createReception(trimmed);
+        const entry = await createReception(submittedPatientId);
         setRegistered(entry);
-        setRegisterPatientId((currentInput) =>
-          clearRegistrationInputIfUnchanged(currentInput, submittedInput),
+        const patientChangeNotice = registrationPatientChangeNotice(
+          selectedPatientIdRef.current,
+          submittedPatientId,
+          "success",
         );
+        if (patientChangeNotice !== null) {
+          setRegisterNotice(patientChangeNotice);
+        }
         await load(queueTargetTracker.current());
       } catch (error) {
+        const patientChangeNotice = registrationPatientChangeNotice(
+          selectedPatientIdRef.current,
+          submittedPatientId,
+          "failure",
+        );
         setRegisterNotice(
-          error instanceof ReceptionError
-            ? error.toNotice()
-            : {
-                message: "受付の処理に失敗しました。",
-                nextAction:
-                  "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
-              },
+          patientChangeNotice ??
+            (error instanceof ReceptionError
+              ? error.toNotice()
+              : {
+                  message: "受付の処理に失敗しました。",
+                  nextAction:
+                    "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+                }),
         );
       } finally {
         setSubmitting(false);
       }
     });
-  }, [registerPatientId, load, queueTargetTracker]);
+  }, [selectedPatient?.patientId, load, queueTargetTracker]);
 
   return (
     <section aria-label="受付ダッシュボード">
@@ -647,25 +687,11 @@ export function ReceptionDashboard() {
         <button type="submit">表示</button>
       </form>
 
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          void register();
-        }}
-      >
-        <label>
-          患者ID
-          <input
-            type="text"
-            value={registerPatientId}
-            onChange={(event) => setRegisterPatientId(event.target.value)}
-            autoComplete="off"
-          />
-        </label>
-        <button type="submit" disabled={submitting}>
-          受付登録
-        </button>
-      </form>
+      <ReceptionRegistrationForm
+        patient={selectedPatient}
+        submitting={submitting}
+        onSubmit={register}
+      />
       {registerNotice !== null && <ErrorNotice {...registerNotice} />}
       {registered !== null && (
         <p role="status">
@@ -676,5 +702,43 @@ export function ReceptionDashboard() {
 
       <ReceptionQueueView state={queue} />
     </section>
+  );
+}
+
+export function ReceptionRegistrationForm({
+  patient,
+  submitting,
+  onSubmit,
+}: {
+  readonly patient: PatientContextData | null;
+  readonly submitting: boolean;
+  readonly onSubmit: () => void | Promise<void>;
+}) {
+  return (
+    <form
+      className="reception-registration-form"
+      aria-label="受付登録"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onSubmit();
+      }}
+    >
+      <h3>受付登録</h3>
+      {patient === null ? (
+        <p className="reception-registration-empty" role="status">
+          受付対象の患者を選択してください。<a href="/patients">患者検索へ</a>
+        </p>
+      ) : (
+        <div className="reception-registration-target">
+          <span className="reception-registration-label">受付対象</span>
+          <span className="patient-kana">{patient.kana}</span>
+          <strong className="patient-name">{patient.name}</strong>
+          <span className="patient-birth">{patient.birthDate}</span>
+        </div>
+      )}
+      <button type="submit" disabled={submitting || patient === null}>
+        {submitting ? "登録中…" : "この患者を受付登録"}
+      </button>
+    </form>
   );
 }

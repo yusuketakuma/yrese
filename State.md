@@ -8,6 +8,12 @@
 
 ## 2026-07-16
 
+### WP-4149 reception registration Patient Context binding — IMPLEMENTED / INDEPENDENT_VERIFY_REQUIRED
+
+- 受付登録のfreeform Patient ID入力を廃止し、患者検索で確立したglobal Patient Contextだけを登録対象に固定。未選択時はfail-closedで無効化し、患者検索導線と選択患者のカナ・氏名・生年月日を表示する。
+- POST中に患者選択が変わるraceを成功・失敗とも固定警告へ分離し、旧患者の結果を新患者の通常結果として表示せず、submitted Patient IDも露出しない。
+- focused 70、Web336、API270 + PostgreSQL14 expected skips、workspace typecheck/test/buildと全gate PASS。synthetic browserで患者検索→選択→登録→queue→clear、375/768/1280 page overflowなし、console/errorなしを確認。tracked snapshot secret scan PASS、live scanは既知の`.codegraph` symlinkでfail-closed。landing commit pending、別agent verifier未実施。
+
 ### WP-4148 full-stack alignment / final-demo evidence refresh — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
 - missing alignment/demo artifactsとstale 2026-07-11 verification/code mapをcurrent live treeへ同期。API 7 surfaceとWeb consumer/placeholderを分類し、unblocked business APIは接続済み、whoamiはauth bootstrap判断待ち、blocked placeholderを実装済みに見せないことを固定。
