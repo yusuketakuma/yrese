@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4223 In-memory reception patient ownership — FINALIZED / INDEPENDENT_PASS
+
+- new-createがcaller患者objectを保存していたため、create後mutationでlist/existing患者とprovenance patientIdが分裂する問題を修正。patientIdをown-dataから一度captureし、existing/conflict判定へ再利用。new-createはacceptedAt後・state更新前に全患者fieldをdetached schema snapshot/freezeして保存した。
+- 全field/optional presenceのcaller mutation、created/list返却object mutation、original-ID existing/changed-ID conflictを固定。invalid/inherited/accessor/stateful/Proxyはfixed non-echo・getter/trap0、records/index/sequence不変、採番非消費。existing/conflictではnon-ID fieldとacceptedAt未読を維持した。
+- reception110、API667 + integration14 expected skips、Web454、workspace typecheck/test/build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent plan/security/privacy/data/medical verifier PASS/APPROVED。audit/idempotency lifecycle/PostgreSQL/DB/contracts/SSOT不変、実DB操作なし。implementation `512e087`はlocal-only、pushなし。
+
 ### WP-4222 PostgreSQL reception command result binding — FINALIZED / INDEPENDENT_PASS
 
 - DB接続前に受付commandのscope/key/patient全8fieldをdetached snapshotし、SQLとpre-COMMIT照合へ再利用。createdのprovenance/generated ID、entry identity、patient snapshot、existingのscope/key/identity、conflictのscope/keyをbindし、post-COMMIT server 500/audit0となるambiguous completionをrollbackへ移した。
