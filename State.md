@@ -8,6 +8,11 @@
 
 ## 2026-07-16
 
+### WP-4158 JP Core terminology rights provenance — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+
+- JP Core 1.2.0のofficial usage noticeがterminology license解決を利用側のSHALLとすること、source repo/tagとterminology 1.4.0 packageにrepo/package-level license grantを確認できないことを記録した。
+- artifact内203 terminology resourcesを直接集計しcopyrightあり146/なし57、All Rights Reserved 17、CC BY-ND 4等を確認。current IP reviewは別versionであるため代替clearanceにせず、reachable terminology×validation/runtime/display/redistribution等のuse lane別legal matrixとhuman reviewまでlock/runtime/publication禁止を維持。exact4 implementation commitはlanding後に記録し、別agent verifier未実施。
+
 ### WP-4157 FHIR validator / IG Publisher / SUSHI compatibility candidates — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
 - JP Core 1.2.0のofficial tagged source/workflowとpublished QAを照合し、Publisher 2.0.17は特定できたがSUSHI/Nodeはfloatingだったため、historical exact reproduction不能を明示した。current candidatesのPublisher 2.2.11、validator 6.9.12、SUSHI 3.20.0は配布digest付きで候補に限定した。
