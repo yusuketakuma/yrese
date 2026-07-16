@@ -92,6 +92,8 @@ export const receptionQueueDuplicateIdentityInvariantErrorMessage =
   'Reception repository returned duplicate reception identities';
 export const receptionQueueBusinessDateInvariantErrorMessage =
   'Reception repository returned entries outside the requested business date';
+export const receptionQueueRepositoryErrorMessage =
+  'Reception repository queue lookup failed';
 const auditLogProjectionInvariantErrorMessage =
   'Audit event display projection failed for a verified hash chain';
 export const auditLogScopeInvariantErrorMessage =
@@ -425,11 +427,15 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         return reply.code(400).send(invalidReceptionRequestResponse());
       }
 
-      const entries = await receptionRepository.list({
-        tenantId: tenantContext.tenantId,
-        pharmacyId: tenantContext.pharmacyId,
-        date: query.data.date,
-      });
+      const entries = await runRepositoryOperationOrThrowFixed(
+        () =>
+          receptionRepository.list({
+            tenantId: tenantContext.tenantId,
+            pharmacyId: tenantContext.pharmacyId,
+            date: query.data.date,
+          }),
+        receptionQueueRepositoryErrorMessage,
+      );
 
       const response = receptionQueueResponseSchema.parse({
         date: query.data.date,

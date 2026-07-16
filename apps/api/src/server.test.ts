@@ -41,6 +41,7 @@ import {
   receptionPatientSchemaInvariantErrorMessage,
   receptionQueueBusinessDateInvariantErrorMessage,
   receptionQueueDuplicateIdentityInvariantErrorMessage,
+  receptionQueueRepositoryErrorMessage,
   receptionCreatedStatusInvariantErrorMessage,
   receptionCreatedAcceptedAtInvariantErrorMessage,
   receptionCreatedAuditInvariantErrorMessage,
@@ -1182,6 +1183,72 @@ describe('buildServer', () => {
       'reception-syn-003',
     ]);
   });
+
+  it.each([
+    [
+      'synchronous Error',
+      false,
+      (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) =>
+        new Error(rawSentinel),
+    ],
+    [
+      'asynchronous non-Error object',
+      true,
+      (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) => ({
+        message: rawSentinel,
+        patientNumber: 'QUEUE-PATIENT-SECRET-4195',
+      }),
+    ],
+    [
+      'hostile Proxy',
+      true,
+      (_rawSentinel: string, propertyRead: ReturnType<typeof vi.fn>) =>
+        new Proxy({}, { get: propertyRead, has: propertyRead, getPrototypeOf: propertyRead }),
+    ],
+  ] as const)(
+    'normalizes a reception queue repository rejection from %s without inspecting it',
+    async (_label, rejectAsPromise, createRejection) => {
+      const date = '2026-07-17';
+      const rawSentinel = `raw reception queue rejection ${date}`;
+      const propertyRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const rejection = createRejection(rawSentinel, propertyRead);
+      const list = vi.fn<ReceptionRepository['list']>(() => {
+        if (rejectAsPromise) return Promise.reject(rejection);
+        throw rejection;
+      });
+      const create = vi.fn<ReceptionRepository['create']>();
+      const server = buildDevTestServer({
+        receptionRepository: { list, create },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: `/reception/queue?date=${date}`,
+        headers: tenantOneReceptionReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(list).toHaveBeenCalledExactlyOnceWith({
+        tenantId: tenantId('tenant-001'),
+        pharmacyId: pharmacyId('pharmacy-001'),
+        date,
+      });
+      expect(create).not.toHaveBeenCalled();
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: receptionQueueRepositoryErrorMessage,
+      });
+      for (const sensitiveValue of [rawSentinel, date, 'QUEUE-PATIENT-SECRET-4195']) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+      expect(propertyRead).not.toHaveBeenCalled();
+    },
+  );
 
   it('accepts an entry whose UTC date differs but whose JST business date matches the request', async () => {
     const boundaryEntry = {
