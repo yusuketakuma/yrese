@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4184 patient-search non-ok extraction — FINALIZED / INDEPENDENT_PASS
+
+- patient-search error bodyをexactly onceの`try/await/catch`とown data descriptorへ拘束し、sync throw/async reject、継承getter、Proxy has/get、descriptor trapをcodeなしの既存400/403/other guidanceへfail-closed化。valid own registered `AUTH-0003`/`PAT-0001`だけを保持する。
+- raw body/message/query/PHI sentinelと未登録・形式外codeの非反射を固定。URL/query/limit/signal、exact200/page/cursor、append/stale/cancel/ownership/retry、selection/PatientContext、contracts/API/UIは不変。nominal client-error trustは別sliceへ分離した。
+- focused73、Web423、API328 + integration14 expected skips、workspace typecheck/test、Web build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。独立/計画/security/privacy/medical review APPROVED。implementation `7b3c72d`はlocal-only、pushなし。
+
 ### WP-4183 reception non-ok error extraction — FINALIZED / INDEPENDENT_PASS
 
 - queue GET／受付登録POSTのerror bodyをexactly onceの`try/await/catch`とown data descriptorへ拘束し、sync throw/async reject、継承getter、Proxy has/get、descriptor trapをcodeなしの既存status guidanceへfail-closed化。valid own registered `RCV-0003`だけは従来どおり保持する。
