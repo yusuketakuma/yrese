@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4206 audit event list root authority — FINALIZED / INDEPENDENT_PASS
+
+- audit listのgeneric async wrapper二次thenable assimilationを修正し、route-local direct await/catch後にfulfilled rootをuncapped dense own-data arrayへsnapshotした。最後のcallsite消滅によりgeneric wrapperも削除した。
+- non-array/sparse/index accessor、stateful thenable Proxy、revoked Proxyをfixed non-echo 500/no-storeへ閉じ、semantic trap/getter zero、root invalid時のaudit.viewed record zeroを固定。scope/hash/duplicate/sequence/view/projectionとbroken-chain 200/raw window/no-backfill semanticsは不変。
+- focused audit-log51+server222、API471 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/security/privacy review READY。security probeで残るevent getter raw反射とhash後targetRef TOCTOUを再現したが、本sliceではfail-visible意味論を変えない別のR3+ human-review候補として未変更。implementation `ce67e23`はlocal-only、pushなし。
+
 ### WP-4205 patient lookup handoff — FINALIZED / INDEPENDENT_PASS
 
 - GET patient-by-idと受付POST preflightで、generic async wrapperがfulfilled patientを再同化してraw sentinel/Proxy TypeErrorを漏らす実バグを修正。両findByIdをroute-local direct await/catchとし、rejection→404→identity→schema→response/create順を維持した。
