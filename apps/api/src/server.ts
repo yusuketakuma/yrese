@@ -98,6 +98,7 @@ const auditLogProjectionInvariantErrorMessage =
   'Audit event display projection failed for a verified hash chain';
 export const auditLogScopeInvariantErrorMessage =
   'Audit repository returned events outside the requested scope';
+export const auditLogRepositoryReadErrorMessage = 'Audit repository list failed';
 export const auditLogDuplicateIdentityInvariantErrorMessage =
   'Verified audit chain contains duplicate event identities';
 export const auditLogSequenceInvariantErrorMessage =
@@ -610,7 +611,10 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         tenantId: tenantContext.tenantId,
         pharmacyId: tenantContext.pharmacyId,
       });
-      const events = await auditRepository.list(scope);
+      const events = await runRepositoryOperationOrThrowFixed(
+        () => auditRepository.list(scope),
+        auditLogRepositoryReadErrorMessage,
+      );
       if (
         events.some(
           (event) =>

@@ -16,6 +16,7 @@ import {
 } from './patient-search-cursor.js';
 import {
   auditLogDuplicateIdentityInvariantErrorMessage,
+  auditLogRepositoryReadErrorMessage,
   auditLogSequenceInvariantErrorMessage,
   auditLogScopeInvariantErrorMessage,
   auditLogViewAuditInvariantErrorMessage,
@@ -88,6 +89,77 @@ describe('GET /audit/events (SCR-028)', () => {
     });
     expect(response.statusCode).toBe(403);
   });
+
+  it.each([
+    [
+      'synchronous Error',
+      false,
+      (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) =>
+        new Error(rawSentinel),
+    ],
+    [
+      'asynchronous non-Error object',
+      true,
+      (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) => ({
+        message: rawSentinel,
+        eventId: 'audit-event-secret-4196',
+      }),
+    ],
+    [
+      'hostile Proxy',
+      true,
+      (_rawSentinel: string, propertyRead: ReturnType<typeof vi.fn>) =>
+        new Proxy({}, { get: propertyRead, has: propertyRead, getPrototypeOf: propertyRead }),
+    ],
+  ] as const)(
+    'normalizes an audit repository list rejection from %s without inspecting it',
+    async (_label, rejectAsPromise, createRejection) => {
+      const rawSentinel = 'raw audit list rejection event-target-secret-4196';
+      const propertyRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const rejection = createRejection(rawSentinel, propertyRead);
+      const list = vi.fn<AuditRepository['list']>((scope) => {
+        expect(Object.isFrozen(scope)).toBe(true);
+        if (rejectAsPromise) return Promise.reject(rejection);
+        throw rejection;
+      });
+      const recordBacking = new InMemoryAuditRepository();
+      const server = buildDevTestServer({
+        auditRepository: {
+          list,
+          record: (scope, input) => recordBacking.record(scope, input),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/audit/events',
+        headers: auditReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(list).toHaveBeenCalledExactlyOnceWith({
+        tenantId: tenantId('tenant-001'),
+        pharmacyId: pharmacyId('pharmacy-001'),
+      });
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: auditLogRepositoryReadErrorMessage,
+      });
+      for (const sensitiveValue of [
+        rawSentinel,
+        'audit-event-secret-4196',
+        'event-target-secret-4196',
+      ]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+      expect(propertyRead).not.toHaveBeenCalled();
+    },
+  );
 
   it('returns an empty verified log and audits the view itself (audit.viewed)', async () => {
     const repository = new InMemoryAuditRepository();
