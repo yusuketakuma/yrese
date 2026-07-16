@@ -2757,24 +2757,24 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: exact5 revert。dependency/SSOT/data rollback不要。
   - landing_record: implementation commit `a5137f1` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、full gates、final domain/independent review PASS。TypeScript ASTでboundary importとduplicate constのlexical false positive/negativeを解消し、既存graph/rules/line-free messages/order/dedupeと意図的なsyntax-only境界をfixtureで固定。
 
-- [~] WP-4146 validate workspace manifest semantics(MEDIUM architecture/tooling-control integrity) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+- [x] WP-4146 validate workspace manifest semantics(MEDIUM architecture/tooling-control integrity) — FINALIZED / INDEPENDENT_PASS
   - 発見根拠: boundary checkerはworkspace manifestをJSON parseするだけで、missing/blank/duplicate `name`をskip/overwriteし、null/array dependency sectionやblank/non-string specifierをgraph外として扱い得た。現行10 manifestはvalidでlive違反なし。
   - scope: exact5 `scripts/check-boundaries.mjs`, `scripts/check-scripts.mjs`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。package manifests/lock/CI/SSOT/apps/packages/API/DB/runtimeは変更しない。
   - implementation: manifest root/name/dependency section/key/specifierを固定非echo scope errorでfail-closed検証し、workspace名重複を拒否する。validated manifest snapshotをapp identity mapとcycle graphへ再利用し、manifest再readを除去。workspace aliasの正当形を誤拒否しないためdependency target existenceはscope外。
   - acceptance: missing/array/blank/padded/duplicate name、null/array section、blank/padded key/specifier、non-string specifierをfixed error only/no PASS/path/content echoで拒否。live boundary、既存graph/import/duplicate-const rule/message/orderを維持する。
-  - verification: rootのcold-path再点検で単純workspace target一致案をalias false-positive riskとして撤回。focused boundary/script harness、workspace typecheck/test/build、API270 + PostgreSQL14 expected skips、web335、audit183、calculation87、OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/diffはPASS。tracked snapshot secret scanはPASS。ignored user-owned `.codegraph` symlinkを含むlive worktree secret scanは既存scope failureであり未変更。
-  - review_status: current instructions prohibit built-in subagents while project routing prohibits agmsg; independent verifierは未実施。別agent verificationまでFINALIZEDを主張しない。human/domain/DB/medical/privacy semantic gateは不要。
+  - verification: rootのcold-path再点検で単純workspace target一致案をalias false-positive riskとして撤回。focused boundary/script harness、workspace typecheck/test/build、API270 + PostgreSQL14 expected skips、web336、audit183、calculation87、OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/diffはPASS。tracked snapshot secret scanはPASS。ignored user-owned `.codegraph` symlinkを含むlive worktree secret scanは既存scope failureであり未変更。独立初回reviewで不足を指摘されたpadded dependency key、primitive dependency section、合法workspace aliasのpermanent fixtureを`f1b3ffa`で追加し、checker/runtime/package/lock/CI/SSOTを変更せず再検証した。
+  - review_status: read-only independent verifierはinitial `PASS_WITH_FINDINGS`、fixture follow-up後はexact1 diff、固定非echo failure、合法alias positive、既存regressionを`PASS`。human/domain/DB/medical/privacy semantic gateは不要。
   - rollback: implementation commit `8dec253` と後続ledger commitをrevertする。manifest/data/SSOT rollback不要。
-  - landing_record: implementation commit `8dec253` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact2 implementationはfull local regression済み、independent verification pending。
+  - landing_record: implementation commit `8dec253` とfixture follow-up `f1b3ffa`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。full local regressionとindependent verification PASS。
 
-- [~] WP-4147 restore dependency audit with pnpm 11(MEDIUM supply-chain/tooling) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+- [x] WP-4147 restore dependency audit with pnpm 11(MEDIUM supply-chain/tooling) — FINALIZED / INDEPENDENT_PASS
   - 発見根拠: full gate中にrepo pin pnpm 10.33.2とlatest-10 10.34.5がnpm registryのretired audit endpointsからHTTP 410を受け、`check:deps`がmetadata欠落を正しくfail-closedにした。pnpm 11.13.1は現行audit reportを取得した。
   - scope: exact5 `package.json`, `pnpm-workspace.yaml`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。`pnpm-lock.yaml`、dependency version/resolution、apps/packages/scripts/CI/SSOT/API/DB/runtimeは変更しない。
   - implementation: packageManager pinを11.13.1へ更新し、既存lockにあるbuild-script dependencyの`esbuild`と`sharp`だけを`allowBuilds: true`で明示する。任意build script許可やaudit skip/fallback-successは導入しない。
   - verification: isolated worktreeのfrozen installはlockfile無変更、esbuild/sharp build完了。workspace typecheck/test/build、API270 + PostgreSQL14 expected skips、web335、audit183、OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/script harness/diffをPASS。tracked snapshot secret scanはPASS。root再点検でlatest-10も410、11.13.1だけ現行metadata取得を再現。
-  - review_status: supply-chain許可は既存2 packageだけへ限定したが、current topologyでは別agent verifierを起動できずINDEPENDENT_VERIFY_REQUIREDを維持する。
+  - review_status: read-only independent verifierはexact2 diff、frozen install lock差分0、allowBuildsが既存`esbuild`/`sharp`だけ、audit high0/critical0、SBOM231、任意script許可/audit弱化なしを`PASS`。remote CI実行はWP-4161の別gateとして未証明を維持する。
   - rollback: implementation commit `3d731e3` と後続ledger commitをrevertし、pnpm 10 audit endpoint復旧または別のfail-closed audit経路を用意する。lock/data rollback不要。
-  - landing_record: implementation commit `3d731e3` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact2 implementationとfrozen-install/full-gate proof済み、independent verification pending。
+  - landing_record: implementation commit `3d731e3` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact2 implementation、frozen-install/full-gate、independent verification PASS。
 
 - [~] WP-4148 refresh full-stack alignment and final-demo evidence(LOW documentation/resume integrity) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
   - 発見根拠: objective-required `FULLSTACK_ALIGNMENT.md` / `FINAL_DEMO.md`が存在せず、`CODE_MAP.md` / `VERIFICATION.md`は2026-07-11のpnpm 10・API161/Web99証跡のままcurrent treeとdriftしていた。
@@ -2794,14 +2794,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: implementation commitと後続ledger commitをrevertする。API/DB/data migration rollback不要。
   - landing_record: implementation commit `7ba1003` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact9 implementation/docs and validation proof landed、independent verification pending。
 
-- [~] WP-4150 keep patient selection action reachable on narrow tables(P2 responsive/patient safety) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+- [x] WP-4150 keep patient selection action reachable on narrow tables(P2 responsive/patient safety) — FINALIZED / INDEPENDENT_PASS
   - 発見根拠: WP-4149 browser verificationの375px viewportで、患者検索結果の「この患者を選択」が初期表示範囲外となり、各行で横スクロールしなければ業務対象を確定できない既知R-RESPONSIVE gapを再現した。
   - scope: exact9 `apps/web/app/patients/patient-search.tsx`, `apps/web/app/patients/patient-search.test.tsx`, `apps/web/app/globals.css`, `docs/ui-ux-refresh/06-ui-ux-audit.md`, `docs/ui-ux-refresh/11-remaining-risks.md`, `docs/ui-ux-refresh/PROGRESS.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。API/contracts/DB/SSOT/package/lock/CIは変更しない。
   - implementation: 患者識別列を縮小・非表示にせず既存横スクロールを維持し、`onSelect`がある場合だけ操作header/cellへ専用classを付けて右端へsticky固定。背景・境界・z-index・最小幅を明示し、共通tableやread-only結果は変更しない。
-  - verification: patient-search focused 43、Web336、Web typecheck/build、diff PASS。synthetic browserで375pxのscrollLeft=0/192双方で2つの選択buttonがviewport内、768/1280 page overflowなし、全action cell viewport内、console/errorなしを確認。mobile screenshotをroot visual review済み。
-  - review_status: root cold-path reviewと`emil-design-eng`基準のBefore/After UI review済み。table全体の列優先/カード化は既存P2として残し、別agent verifier未実施のためFINALIZEDを主張しない。
+  - verification: patient-search focused 43、Web336、Web typecheck/build、diff PASS。read-only independent agent-browser verifierは375pxでpage overflow 0、table client width 343/content width 535/max scroll 192、scrollLeft=0/192双方で2つの選択button完全可視、3px focus ring、pointer選択後のカナ・氏名・生年月日一致、768/1280 page overflow 0、console/page errors 0を確認した。
+  - review_status: independent browser verdict `PASS`。Enterはautomation CLIの既知input制約で状態変化を証明できず、native button markupにkeyboard抑止はないがkeyboard activation claimには含めない。table全体の列優先/カード化と広域accessibilityは既存P2/demo gateとして残す。
   - rollback: implementation commitと後続ledger commitをrevertする。API/DB/data rollback不要。
-  - landing_record: implementation commit `87b5c41` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact9 implementation/docs and validation proof landed、independent verification pending。
+  - landing_record: implementation commit `87b5c41` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact9 implementation/docs、validation、independent browser verification PASS。
 
 - [~] WP-4151 establish durable evidence index and extend audit demo proof(LOW evidence/resume integrity) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
   - 発見根拠: objective-required `ops/refactor/EVIDENCE.md`が存在せず、automated validation・alignment・browser demo・landing proofの所在が複数文書へ分散していた。監査success browser journeyも`FINAL_DEMO.md`へ未記録だった。

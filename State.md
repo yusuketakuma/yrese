@@ -8,6 +8,12 @@
 
 ## 2026-07-16
 
+### WP-4146 / WP-4147 / WP-4150 independent verification wave — FINALIZED / INDEPENDENT_PASS
+
+- WP-4146は独立初回reviewのfixture不足を受け、padded dependency key、string/number/boolean dependency section、合法`workspace:@fixture/core@*` alias positiveを`f1b3ffa`でpermanent harnessへ追加。checker/runtime/package/lock/CI/SSOTを変えず、focused/full gateと最終独立reviewをPASSした。
+- WP-4147はindependent verifierがpnpm 11.13.1 exact pin、frozen install lock差分0、build許可が既存`esbuild`/`sharp`だけ、dependency audit high0/critical0、SBOM231、audit weakeningなしをPASS。remote CIはWP-4161の`REMOTE_CI_VERIFY_REQUIRED`として分離する。
+- WP-4150は独立agent-browserで375pxのtable client 343/content 535/max scroll 192、左右端で全選択button完全可視、Tab focus 3px、pointer選択identity一致、768/1280 page overflow 0、console/page errors 0をPASS。Enterはautomation CLI制約で未証明、広域accessibility/table redesignは既存demo/P2 gateを維持する。
+
 ### P1 audit/data-integrity boundary reconciliation — BLOCKED_HUMAN_REVIEW / SSOT_UPDATE_REQUIRED
 
 - read-only security/medical/privacy/data-integrity auditで、受付作成と`reception.created`が非原子的かつ欠落補修不能である事実を確認。WP-4050を「未配線」から「配線済み・atomic persistence/reconciliation未解決」へ更新した。
@@ -115,10 +121,10 @@
 - objective-required `ops/refactor/EVIDENCE.md`欠落を確認し、CODE_MAP/FULLSTACK/VERIFICATION/FINAL_DEMO/STATEをauthorityとして参照する証拠索引を追加。commit存在をverification/human gateの代替にしない規則を固定した。
 - synthetic patient→reception→admin browser journeyで`reception.created`/`audit.viewed`とnormal hash chainを確認。audit refresh failureは2種類の注入でbrowser automation session自体が停止したため未証明を維持し、component50 testsだけを代替証拠として記録。exact6 implementation commit `8cd8d18`をfeature branchへpush済み、別agent verifier未実施。
 
-### WP-4150 narrow-table patient selection action — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+### WP-4150 narrow-table patient selection action — FINALIZED / INDEPENDENT_PASS
 
 - 375pxで患者検索の選択操作が横スクロール外へ隠れる既知P2を再現。患者識別列と横スクロールは保持し、選択操作列だけを右端へsticky固定した。
-- focused43、Web336、Web typecheck/build、diff PASS。synthetic browserで375pxの初期/最大横スクロール、768/1280を確認し、選択buttonは常時viewport内、page overflow/console/errorなし。table全体の列優先/カード化はP2で継続。exact9 implementation commit `87b5c41`をfeature branchへpush済み、別agent verifier未実施。
+- focused43、Web336、Web typecheck/build、diff PASS。独立synthetic browserで375pxの初期/最大横スクロール、Tab focus、pointer選択、768/1280を確認し、選択buttonは常時完全可視、identity一致、page overflow/console/errorなし。table全体の列優先/カード化と広域accessibilityは既存P2/demo gateで継続。exact9 implementation commit `87b5c41`をfeature branchへpush済み。
 
 ### WP-4149 reception registration Patient Context binding — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
@@ -132,18 +138,18 @@
 - `FINAL_DEMO.md`は自動gateと未実施browser/PostgreSQL/auth/tenant/accessibility journeyを分離して`DEMO_REQUIRED`を維持。exact4 implementation commit `2bea7a4` をfeature branchへpush済み。
 - SSOT index173、tracked snapshot secret scan、diff check PASS。別agent verifierはcurrent topology制約により未実施。
 
-### WP-4146 workspace manifest semantic validation — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+### WP-4146 workspace manifest semantic validation — FINALIZED / INDEPENDENT_PASS
 
 - baseline `3d731e3`。workspace manifestのmissing/blank/duplicate nameとmalformed dependency section/key/specifierがboundary graphから黙って欠落し得るMEDIUM tooling-control gapを確認。live 10 manifestはvalid。
 - exact2でsemantic fail-closed validationとvalidated manifest snapshot再利用を実装し、array/padded/duplicate/null/non-string fixturesを固定。workspace alias false-positiveを避けるため単純target一致案はroot再点検で撤回。implementation commit `8dec253` をfeature branchへpush済み。
 - focused/full regressionはPASS: API270 + PostgreSQL14 expected skips、web335、audit183、calculation87、workspace typecheck/test/build、OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/script harness/diff。tracked snapshot secret scan PASS。ignored user-owned `.codegraph` symlinkを含むlive secret scanは既存scope failure。
-- built-in subagent禁止とproject agmsg禁止の同時制約により別agent verifierは未実施。root cold-path review済みだがFINALIZEDは主張しない。
+- independent初回reviewのfixture不足を`f1b3ffa`で補い、padded key、primitive section、合法workspace aliasを固定。最終independent verifierはexact diff、fixed nonecho failure、positive alias、既存regressionをPASS。
 
-### WP-4147 pnpm 11 dependency-audit baseline recovery — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+### WP-4147 pnpm 11 dependency-audit baseline recovery — FINALIZED / INDEPENDENT_PASS
 
 - pnpm 10.33.2 / 10.34.5のauditがretired npm endpointsのHTTP 410で恒久停止し、fail-closed `check:deps`が全landingをblockすることを再現。pnpm 11.13.1では現行report high0/critical0を取得。
 - exact2でpackageManager pinを11.13.1へ更新し、既存lockのbuild-script dependency `esbuild` / `sharp`だけを明示allow。isolated frozen installでlockfile差分なし、全workspace regressionとlive gatesをPASS。implementation commit `3d731e3` をfeature branchへpush済み。
-- supply-chain許可は2 package限定、任意script許可/audit skipなし。別agent verifierはcurrent topology制約により未実施のためFINALIZEDは保留。
+- supply-chain許可は2 package限定、任意script許可/audit skipなし。independent verifierはexact2、frozen install、lock差分0、deps high0/critical0、SBOM231をPASS。remote CIはWP-4161で別管理する。
 
 ## 2026-07-13
 

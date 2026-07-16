@@ -17,6 +17,9 @@ Updated on 2026-07-16. This file is the durable index for the active repository-
 
 | Work package | Implementation evidence | Ledger evidence | Result |
 |---|---|---|---|
+| WP-4150 | `87b5c41` | `Plans.md`; `State.md`; `FINAL_DEMO.md`; `VERIFICATION.md` | Independent agent-browser PASS: 375px table scroll 0/192 kept both actions fully visible, Tab focus and pointer selection passed, 768/1280 page overflow and console/page errors were zero; Enter remains an automation-input limitation |
+| WP-4147 | `3d731e3`; CI alignment `c688d4b` | `Plans.md`; `State.md`; `VERIFICATION.md` | Independent exact2/frozen-install/supply-chain review PASS; only esbuild/sharp build scripts allowed, dependency audit high=0/critical=0 and SBOM=231; remote CI stays WP-4161 pending |
+| WP-4146 | `8dec253`; fixture follow-up `f1b3ffa` | `Plans.md`; `State.md`; `VERIFICATION.md` | Independent final PASS after permanent padded-key, primitive-section and legal workspace-alias fixtures; checker/runtime/package/lock/CI/SSOT unchanged |
 | WP-4161 | `c688d4b` | `Plans.md`; `State.md`; `VERIFICATION.md` | CI pnpm setup now matches repository pin 11.13.1; local full gates and independent exact-diff review PASS; feature-branch push produced no run, so remote CI/PostgreSQL zero-skip remains `REMOTE_CI_VERIFY_REQUIRED` |
 | WP-4152 | `ac83520`; independent update `1d67fb6` | `FINAL_DEMO.md`; `VERIFICATION.md`; current production Web evidence below | Fresh production Web build/start/static `/sync-status`/shutdown independently `PASS_WITH_NOTE`; dev-format rejection root-captured; API/auth/clinical/restart remain unverified |
 | WP-4151b | `ff0e99e` | `FINAL_DEMO.md`; `VERIFICATION.md`; current browser evidence below | Known-non-commit reception-create exact-500 produced no false success/queue reload, retained patient context and recovered via native retry; independent `PASS_WITH_FINDINGS`, browser absolute values root-captured; keys differed, so ambiguous-outcome safety remains WP-4151c human-gated |
@@ -35,7 +38,6 @@ Updated on 2026-07-16. This file is the durable index for the active repository-
 | WP-0054 | `ce9fcde` | `Plans.md` v0.7 section | 38 sections mapped to Gate 0, D01–D22, cross-cutting work and stop gates; runtime remains blocked |
 | WP-0053 | `050df59` | `Plans.md` FHIR Native v0.5 section | Phase 0 through Phase 5 work split landed; approval gates remain closed |
 | WP-4149 | `7ba1003` | `30bca4a` | Reception registration accepts only the selected Patient Context |
-| WP-4150 | `87b5c41` | `f28921a` | Patient selection action remains reachable at narrow widths |
 
 All commits above are pushed to `origin/agent/reconcile-wp9002-w7c-20260712`. Commit presence does not satisfy independent verification, human approval or final-demo gates by itself.
 
@@ -44,6 +46,7 @@ All commits above are pushed to `origin/agent/reconcile-wp9002-w7c-20260712`. Co
 - Environment: development API and Web servers, in-memory repositories, explicit development-only tenant stub, synthetic fixtures only.
 - Patient/reception: patient search, selection, reception registration, queue reflection and context clear passed. The registration form has no freeform Patient ID input.
 - Responsive: 375, 768 and 1280 CSS-pixel viewports had no page-level overflow. At 375, the patient-selection action remained inside the viewport before and after horizontal table scrolling.
+- Independent responsive rerun: at 375px the table scroller measured 343px client width, 535px content width and 192px maximum horizontal scroll; both actions were fully visible at scroll 0 and 192. Tab reached the first action with a 3px focus ring, pointer selection preserved kana/name/birth identity, and 768/1280 page overflow plus console/page errors remained zero. Enter via the browser CLI did not change state and is excluded from the keyboard-activation claim.
 - Audit success path: after a synthetic reception was created, `/admin` displayed `reception.created` and `audit.viewed`; the displayed hash chain was verified as normal.
 - Audit refresh failure/recovery: controlled 200(two verified rows) → exact HTTP 500(raw sentinel) → 200(one replacement row) kept the verified table/normal chain and showed stale/fixed-error/retry after failure, suppressed the raw sentinel, then replaced data and cleared the error on retry. Focused component tests passed 50/50. Browser ref/semantic click and Enter did not dispatch in that automation session, so a page-context DOM click exercised the application retry handler; this is not native-input evidence.
 - Reception queue refresh failure/recovery: controlled 200(retained row) → exact HTTP 500(raw sentinel) → 200(replacement row), both refreshes via native `表示`. Failure retained row/date/last-updated, showed fixed error/stale qualifier/next action, suppressed raw and future replacement; recovery replaced the row and cleared error/stale state. Request count was 1→2→3, console/page errors empty, and focused tests passed 70/70.

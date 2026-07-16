@@ -18,10 +18,13 @@
 | `pnpm test:scripts` | PASS |
 | `git diff --check` | PASS before every landing |
 
+Independent bounded verification also passed for WP-4146 (including padded dependency key, primitive dependency section and legal workspace-alias fixtures), WP-4147 (exact pnpm pin, frozen install, allowBuilds scope and audit/SBOM evidence), and WP-4150 (375/768/1280 geometry, Tab focus, pointer selection and empty console/page-error capture).
+
 ## Environment-limited checks
 
 - PostgreSQL integration: 14 expected local skips because `TEST_DATABASE_URL` is absent. No DB connection, migration or DML was performed in this goal run.
 - Synthetic development browser evidence now covers patient search/select, reception create/queue reflection/context clear, reception queue exact-500 retention/raw-suppression/native retry/replacement, reception registration known-non-commit exact-500/no-false-success/native retry/queue reload, audit success/hash-chain status, and audit refresh exact-500 retention/raw-suppression/retry recovery. Focused audit 50/50, reception dashboard 70/70, and combined reception/patient-context 139/139 passed. Registration retry used different idempotency keys, so ambiguous committed outcomes remain unproved and human-gated. Audit retry native input, production-like API/auth and broader accessibility remain `DEMO_REQUIRED`. See `EVIDENCE.md` and `FINAL_DEMO.md`.
+- WP-4150 independent browser evidence covers 375px horizontal-scroll endpoints with both actions fully visible, 3px Tab focus, pointer-selected patient identity consistency, 768/1280 no page overflow and empty console/page errors. Browser-CLI Enter did not change state, so full keyboard activation remains inside the broader accessibility gap.
 - Production Web evidence covers root build/start (12 pages, ready 237ms) plus an independent fresh build (12 pages/6.10s), `next start` readiness 270ms, `/sync-status` HTTP200/31.983ms and exact disconnected-state rendering, browser console/page errors 0, normal shutdown and port release. Dev-format `.next` rejection remains root-captured. Fixed-NORMAL `通常稼働` is not treated as connected health detection. Production API/auth, clinical production journeys and restart remain unverified.
 - WP-3010a/WP-3011a are intentionally dormant fixture-only components. Browser/live API flow is not claimed; their parent tasks are BLOCKED with concrete unlock conditions.
 - Production HTTPS/HSTS, deploy, external systems, PHI production data and infrastructure were not exercised and remain human-gated.
