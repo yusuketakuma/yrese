@@ -11,7 +11,7 @@
 ### WP-4157 FHIR validator / IG Publisher / SUSHI compatibility candidates — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
 - JP Core 1.2.0のofficial tagged source/workflowとpublished QAを照合し、Publisher 2.0.17は特定できたがSUSHI/Nodeはfloatingだったため、historical exact reproduction不能を明示した。current candidatesのPublisher 2.2.11、validator 6.9.12、SUSHI 3.20.0は配布digest付きで候補に限定した。
-- 両Java toolはJava17 target、SUSHIはNode22推奨・18/20 supportで、yrese local/CI Node24とlocal Java不在は未適合。historical characterization / package validation / minimal IG buildの3-lane clean spikeと専門reviewまでinstall/lock/CI/SSOT/runtime変更は禁止を維持。exact4 implementation commitはlanding後に記録し、別agent verifier未実施。
+- 両Java toolはJava17 target、SUSHIはNode22推奨・18/20 supportで、yrese local/CI Node24とlocal Java不在は未適合。historical characterization / package validation / minimal IG buildの3-lane clean spikeと専門reviewまでinstall/lock/CI/SSOT/runtime変更は禁止を維持。exact4 implementation commit `42fa277`をpush済み、別agent verifier未実施。
 
 ### WP-4156 FHIR tooling internal dependency classification — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 

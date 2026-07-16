@@ -2857,7 +2857,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - evidence: official JP Core tag `1.2.0`→commit `c06f020…ef06`、workflow/QAのPublisher `2.0.17`を照合した一方、SUSHI/Nodeはfloatingでexact reproduction不能。2026-07-16 current candidatesはPublisher `2.2.11`、validator `6.9.12`、SUSHI `3.20.0`で配布digestを記録。両Java toolは17 target、SUSHIはNode22推奨・18/20 supportだが、yrese local/CIはNode24かつlocal Javaなし。
   - acceptance/review: historical characterization、locked-package validator、minimal yrese IG buildを別laneとして定義し、isolated cache/offline/terminology-networkを分離する。`latest`、floating npm、ambient cacheをlock evidenceにせず、clean matrix + FHIR/supply-chain/legal review前にversion選定しない。別agent verifier未実施。
   - rollback: docs-only evidence commitと後続ledger commitをrevertする。runtime/data/artifact rollback不要。
-  - landing_record: implementation commitはlanding後に記録する。independent verification pending。
+  - landing_record: implementation commit `42fa277` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 toolchain-matrix evidence landed、independent verification pending。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
