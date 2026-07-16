@@ -7,7 +7,7 @@ import type { PatientSearchResult } from "@yrese/contracts";
 import {
   PatientContextBar,
   PatientContextBarView,
-  createPatientClearHandler,
+  createPatientContextAuthorityController,
   createPatientRefreshRunner,
   fetchPatientById,
   toPatientContextData,
@@ -331,6 +331,135 @@ describe("fetchPatientById (GET /patients/:patientId 契約)", () => {
   });
 });
 
+describe("createPatientContextAuthorityController (selection authority)", () => {
+  const secondId = "22222222-2222-4222-8222-222222222222";
+
+  it("invalidates refresh authority synchronously for direct selection and clear", () => {
+    const order: string[] = [];
+    const controller = createPatientContextAuthorityController({
+      invalidate: () => order.push("invalidate"),
+    });
+
+    const selectedAuthority = controller.select(SAMPLE.patientId);
+    order.push("select-commit");
+    const selectedClaim = controller.capture(SAMPLE.patientId);
+    expect(selectedClaim).not.toBeNull();
+    expect(selectedAuthority).toBe(1);
+
+    controller.clear();
+    order.push("clear-commit");
+
+    expect(order).toEqual([
+      "invalidate",
+      "select-commit",
+      "invalidate",
+      "clear-commit",
+    ]);
+    expect(selectedClaim === null ? true : controller.isCurrent(selectedClaim)).toBe(false);
+  });
+
+  it("rejects old success, removal, and failure authority after a different patient is selected", () => {
+    const invalidate = vi.fn();
+    const controller = createPatientContextAuthorityController({ invalidate });
+    controller.select(SAMPLE.patientId);
+    const authorityA = controller.capture(SAMPLE.patientId);
+    expect(authorityA).not.toBeNull();
+
+    controller.select(secondId);
+
+    if (authorityA === null) throw new Error("expected patient A authority claim");
+    expect(controller.acceptFresh(authorityA, SAMPLE.patientId)).toBe(false);
+    expect(controller.acceptRemoval(authorityA)).toBeNull();
+    expect(controller.isCurrent(authorityA)).toBe(false);
+    expect(controller.capture(secondId)).not.toBeNull();
+    expect(invalidate).toHaveBeenCalledTimes(2);
+  });
+
+  it("invalidates an old refresh for same-ID direct reselection", () => {
+    const controller = createPatientContextAuthorityController({ invalidate: vi.fn() });
+    controller.select(SAMPLE.patientId);
+    const oldAuthority = controller.capture(SAMPLE.patientId);
+    controller.select(SAMPLE.patientId);
+
+    if (oldAuthority === null) throw new Error("expected old authority claim");
+    expect(controller.isCurrent(oldAuthority)).toBe(false);
+    expect(controller.acceptFresh(oldAuthority, SAMPLE.patientId)).toBe(false);
+    expect(controller.capture(SAMPLE.patientId)?.authority).toBe(2);
+  });
+
+  it("accepts a current same-patient refresh without self-invalidating", () => {
+    const invalidate = vi.fn();
+    const controller = createPatientContextAuthorityController({ invalidate });
+    controller.select(SAMPLE.patientId);
+    const currentAuthority = controller.capture(SAMPLE.patientId);
+
+    if (currentAuthority === null) throw new Error("expected current authority claim");
+    expect(controller.acceptFresh(currentAuthority, SAMPLE.patientId)).toBe(true);
+    expect(controller.isCurrent(currentAuthority)).toBe(true);
+    expect(controller.acceptFresh(currentAuthority, secondId)).toBe(false);
+    expect(invalidate).toHaveBeenCalledOnce();
+  });
+
+  it("accepts current removal exactly once and makes its authority obsolete", () => {
+    const controller = createPatientContextAuthorityController({ invalidate: vi.fn() });
+    controller.select(SAMPLE.patientId);
+    const currentAuthority = controller.capture(SAMPLE.patientId);
+
+    if (currentAuthority === null) throw new Error("expected current authority claim");
+    expect(controller.acceptRemoval(currentAuthority)).toBe(2);
+    expect(controller.acceptRemoval(currentAuthority)).toBeNull();
+    expect(controller.isCurrent(currentAuthority)).toBe(false);
+    expect(controller.capture(SAMPLE.patientId)).toBeNull();
+  });
+
+  it.each([
+    ["success", toPatientContextData(SAMPLE)],
+    ["removal", null],
+    ["failure", new Error("late patient A failure")],
+  ] as const)(
+    "suppresses a late A %s after direct B selection before React cleanup",
+    async (_kind, outcome) => {
+      let resolve!: (value: PatientContextData | null) => void;
+      let reject!: (reason: unknown) => void;
+      const pending = new Promise<PatientContextData | null>((resolvePromise, rejectPromise) => {
+        resolve = resolvePromise;
+        reject = rejectPromise;
+      });
+      const runner = createPatientRefreshRunner(() => pending);
+      const controller = createPatientContextAuthorityController(runner);
+      controller.select(SAMPLE.patientId);
+      const authorityA = controller.capture(SAMPLE.patientId);
+      if (authorityA === null) throw new Error("expected patient A authority claim");
+      const effects = {
+        fresh: vi.fn(),
+        removed: vi.fn(),
+        failed: vi.fn(),
+      };
+      const refreshA = runner.refresh(SAMPLE.patientId, {
+        onFresh: (fresh) => {
+          if (controller.acceptFresh(authorityA, fresh.patientId)) effects.fresh(fresh);
+        },
+        onRemoved: () => {
+          if (controller.acceptRemoval(authorityA) !== null) effects.removed();
+        },
+        onFailure: () => {
+          if (controller.isCurrent(authorityA)) effects.failed();
+        },
+      });
+
+      controller.select(secondId);
+      if (outcome instanceof Error) reject(outcome);
+      else resolve(outcome);
+      await refreshA;
+
+      expect(effects.fresh).not.toHaveBeenCalled();
+      expect(effects.removed).not.toHaveBeenCalled();
+      expect(effects.failed).not.toHaveBeenCalled();
+      expect(controller.capture(secondId)).not.toBeNull();
+    },
+  );
+});
+
 describe("createPatientRefreshRunner (患者切替・解除の競合防止)", () => {
   const deferred = <T,>() => {
     let resolve!: (value: T) => void;
@@ -352,29 +481,17 @@ describe("createPatientRefreshRunner (患者切替・解除の競合防止)", ()
     const pending = deferred<PatientContextData | null>();
     const events = callbacks();
     const runner = createPatientRefreshRunner(() => pending.promise);
+    const controller = createPatientContextAuthorityController(runner);
 
+    controller.select(SAMPLE.patientId);
     const refresh = runner.refresh(SAMPLE.patientId, events);
-    const clearPatient = vi.fn();
-    createPatientClearHandler(runner, clearPatient)();
+    controller.clear();
     pending.resolve(toPatientContextData(SAMPLE));
     await refresh;
 
-    expect(clearPatient).toHaveBeenCalledOnce();
     expect(events.onFresh).not.toHaveBeenCalled();
     expect(events.onRemoved).not.toHaveBeenCalled();
     expect(events.onFailure).not.toHaveBeenCalled();
-  });
-
-  it("invalidates the refresh before clearing the selected patient", () => {
-    const order: string[] = [];
-    const handler = createPatientClearHandler(
-      { invalidate: () => order.push("invalidate") },
-      () => order.push("clear"),
-    );
-
-    handler();
-
-    expect(order).toEqual(["invalidate", "clear"]);
   });
 
   it("ignores a late failure after the patient selection is cleared", async () => {

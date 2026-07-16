@@ -59,6 +59,29 @@ export interface PatientContextValue {
   readonly clearPatient: () => void;
 }
 
+interface PatientRefreshAuthorityClaim {
+  readonly authority: number;
+  readonly patientId: string;
+}
+
+interface InternalPatientContextValue extends PatientContextValue {
+  readonly selectionAuthority: number;
+  readonly refreshRunner: ReturnType<typeof createPatientRefreshRunner>;
+  readonly captureRefreshAuthority: (
+    patientId: string,
+  ) => PatientRefreshAuthorityClaim | null;
+  readonly commitRefreshedPatient: (
+    authorityClaim: PatientRefreshAuthorityClaim,
+    patient: PatientContextData,
+  ) => boolean;
+  readonly commitRefreshedRemoval: (
+    authorityClaim: PatientRefreshAuthorityClaim,
+  ) => boolean;
+  readonly isRefreshAuthorityCurrent: (
+    authorityClaim: PatientRefreshAuthorityClaim,
+  ) => boolean;
+}
+
 /** 検索結果/get-by-id 応答(PatientSummary)を横断患者文脈(表示投影)へ変換する(R-PATCTX)。 */
 export function toPatientContextData(p: PatientSearchResult): PatientContextData {
   return {
@@ -115,20 +138,96 @@ export async function fetchPatientById(
   return toPatientContextData(parsed);
 }
 
-const PatientContext = createContext<PatientContextValue | null>(null);
+const PatientContext = createContext<InternalPatientContextValue | null>(null);
 
 export function PatientContextProvider({ children }: { children: ReactNode }) {
-  const [patient, setPatient] = useState<PatientContextData | null>(null);
-  // selectPatient/clearPatient は安定参照(useState setter ベース)。
-  // 再取得 effect の依存に入っても再実行ループを起こさない。
-  const clearPatient = useCallback(() => setPatient(null), []);
-  const value = useMemo<PatientContextValue>(
+  const refreshRunnerRef = useRef<ReturnType<typeof createPatientRefreshRunner> | null>(null);
+  if (refreshRunnerRef.current === null) {
+    refreshRunnerRef.current = createPatientRefreshRunner();
+  }
+  const refreshRunner = refreshRunnerRef.current;
+  const authorityControllerRef = useRef<
+    ReturnType<typeof createPatientContextAuthorityController> | null
+  >(null);
+  if (authorityControllerRef.current === null) {
+    authorityControllerRef.current = createPatientContextAuthorityController(refreshRunner);
+  }
+  const authorityController = authorityControllerRef.current;
+  const [selection, setSelection] = useState<{
+    readonly patient: PatientContextData | null;
+    readonly authority: number;
+  }>({ patient: null, authority: authorityController.currentAuthority() });
+
+  // Public selection changes synchronously revoke the previous refresh authority before
+  // React schedules the visible state update. This also covers same-ID reselection.
+  const selectPatient = useCallback(
+    (patient: PatientContextData) => {
+      const authority = authorityController.select(patient.patientId);
+      setSelection({ patient, authority });
+    },
+    [authorityController],
+  );
+  const clearPatient = useCallback(() => {
+    const authority = authorityController.clear();
+    setSelection({ patient: null, authority });
+  }, [authorityController]);
+  const captureRefreshAuthority = useCallback(
+    (patientId: string) => authorityController.capture(patientId),
+    [authorityController],
+  );
+  const commitRefreshedPatient = useCallback(
+    (authorityClaim: PatientRefreshAuthorityClaim, patient: PatientContextData) => {
+      if (!authorityController.acceptFresh(authorityClaim, patient.patientId)) {
+        return false;
+      }
+      setSelection((previous) =>
+        previous.authority === authorityClaim.authority &&
+        previous.patient?.patientId === authorityClaim.patientId
+          ? { patient, authority: authorityClaim.authority }
+          : previous,
+      );
+      return true;
+    },
+    [authorityController],
+  );
+  const commitRefreshedRemoval = useCallback(
+    (authorityClaim: PatientRefreshAuthorityClaim) => {
+      const authority = authorityController.acceptRemoval(authorityClaim);
+      if (authority === null) {
+        return false;
+      }
+      setSelection({ patient: null, authority });
+      return true;
+    },
+    [authorityController],
+  );
+  const isRefreshAuthorityCurrent = useCallback(
+    (authorityClaim: PatientRefreshAuthorityClaim) =>
+      authorityController.isCurrent(authorityClaim),
+    [authorityController],
+  );
+  const value = useMemo<InternalPatientContextValue>(
     () => ({
-      patient,
-      selectPatient: setPatient,
+      patient: selection.patient,
+      selectPatient,
       clearPatient,
+      selectionAuthority: selection.authority,
+      refreshRunner,
+      captureRefreshAuthority,
+      commitRefreshedPatient,
+      commitRefreshedRemoval,
+      isRefreshAuthorityCurrent,
     }),
-    [patient, clearPatient],
+    [
+      selection,
+      selectPatient,
+      clearPatient,
+      refreshRunner,
+      captureRefreshAuthority,
+      commitRefreshedPatient,
+      commitRefreshedRemoval,
+      isRefreshAuthorityCurrent,
+    ],
   );
   return <PatientContext.Provider value={value}>{children}</PatientContext.Provider>;
 }
@@ -208,7 +307,7 @@ export function PatientContextBarView(props: PatientContextBarViewProps) {
  * (古い表示を最新に見せない)。
  */
 export function PatientContextBar() {
-  const ctx = useOptionalPatientContext();
+  const ctx = useContext(PatientContext);
   if (ctx === null) {
     return null;
   }
@@ -217,54 +316,64 @@ export function PatientContextBar() {
   return <PatientContextBarWithRefresh ctx={ctx} />;
 }
 
-function PatientContextBarWithRefresh({ ctx }: { readonly ctx: PatientContextValue }) {
+function PatientContextBarWithRefresh({ ctx }: { readonly ctx: InternalPatientContextValue }) {
   const pathname = usePathname();
-  const [stale, setStale] = useState(false);
+  const [staleAuthority, setStaleAuthority] = useState<PatientRefreshAuthorityClaim | null>(
+    null,
+  );
   const [removedNotice, setRemovedNotice] = useState<string | null>(null);
-  const refreshRunnerRef = useRef<ReturnType<typeof createPatientRefreshRunner> | null>(null);
-  if (refreshRunnerRef.current === null) {
-    refreshRunnerRef.current = createPatientRefreshRunner();
-  }
 
   const patientIdKey = ctx.patient?.patientId ?? null;
-  const selectPatient = ctx.selectPatient;
   const clearPatient = ctx.clearPatient;
-  const handleClear = useMemo(
-    () => createPatientClearHandler(refreshRunnerRef.current, clearPatient),
-    [clearPatient],
-  );
+  const handleClear = clearPatient;
 
   useEffect(() => {
-    const refreshRunner = refreshRunnerRef.current;
-    if (refreshRunner === null) {
-      return;
-    }
+    const refreshRunner = ctx.refreshRunner;
     if (patientIdKey === null) {
       refreshRunner.invalidate();
+      return;
+    }
+    const refreshAuthority = ctx.captureRefreshAuthority(patientIdKey);
+    if (refreshAuthority === null) {
       return;
     }
     setRemovedNotice(null);
     refreshRunner.refresh(patientIdKey, {
       onFresh: (fresh) => {
+        if (!ctx.commitRefreshedPatient(refreshAuthority, fresh)) {
+          return;
+        }
         setRemovedNotice(null);
-        setStale(false);
-        // effect 依存は ID とコールバック(安定参照)のみのため、この更新で再実行されない
-        selectPatient(fresh);
+        setStaleAuthority(null);
       },
       onRemoved: () => {
-        clearPatient();
+        if (!ctx.commitRefreshedRemoval(refreshAuthority)) {
+          return;
+        }
         setRemovedNotice(
           "選択中だった患者の情報が取得できなくなったため、選択を解除しました。患者検索から選択し直してください。",
         );
-        setStale(false);
+        setStaleAuthority(null);
       },
       onFailure: () => {
-        setStale(true); // 失敗時は選択を維持しつつ鮮度低下を明示
+        if (ctx.isRefreshAuthorityCurrent(refreshAuthority)) {
+          setStaleAuthority(refreshAuthority);
+        }
       },
     });
     // patientIdKey / pathname が変わるたびに再取得(同一患者でも遷移ごとに最新化)
     return () => refreshRunner.invalidate();
-  }, [patientIdKey, pathname, selectPatient, clearPatient]);
+    // selectionAuthority is intentionally not a dependency: same-ID direct selection revokes
+    // the old claim synchronously but does not add an extra refresh beyond pathname/ID changes.
+  }, [
+    patientIdKey,
+    pathname,
+    ctx.refreshRunner,
+    ctx.captureRefreshAuthority,
+    ctx.commitRefreshedPatient,
+    ctx.commitRefreshedRemoval,
+    ctx.isRefreshAuthorityCurrent,
+  ]);
 
   if (ctx.patient === null) {
     return removedNotice !== null ? (
@@ -273,6 +382,10 @@ function PatientContextBarWithRefresh({ ctx }: { readonly ctx: PatientContextVal
       </p>
     ) : null;
   }
+  const stale =
+    staleAuthority !== null &&
+    staleAuthority.authority === ctx.selectionAuthority &&
+    staleAuthority.patientId === ctx.patient.patientId;
   return <PatientContextBarView patient={ctx.patient} onClear={handleClear} stale={stale} />;
 }
 
@@ -286,14 +399,49 @@ interface PatientRefreshInvalidator {
   readonly invalidate: () => void;
 }
 
-/** Invalidates an in-flight refresh before clearing the selected patient. */
-export function createPatientClearHandler(
-  refreshRunner: PatientRefreshInvalidator | null,
-  clearPatient: () => void,
+/** Synchronous authority boundary shared by direct selection and refresh callbacks. */
+export function createPatientContextAuthorityController(
+  refreshInvalidator: PatientRefreshInvalidator,
 ) {
-  return () => {
-    refreshRunner?.invalidate();
-    clearPatient();
+  let authority = 0;
+  let currentPatientId: string | null = null;
+
+  const isCurrent = (authorityClaim: PatientRefreshAuthorityClaim) =>
+    authorityClaim.authority === authority &&
+    authorityClaim.patientId === currentPatientId;
+
+  return {
+    currentAuthority: () => authority,
+    select(patientId: string) {
+      refreshInvalidator.invalidate();
+      authority += 1;
+      currentPatientId = patientId;
+      return authority;
+    },
+    clear() {
+      refreshInvalidator.invalidate();
+      authority += 1;
+      currentPatientId = null;
+      return authority;
+    },
+    capture(patientId: string): PatientRefreshAuthorityClaim | null {
+      return currentPatientId === patientId ? { authority, patientId } : null;
+    },
+    isCurrent,
+    acceptFresh(
+      authorityClaim: PatientRefreshAuthorityClaim,
+      freshPatientId: string,
+    ) {
+      return freshPatientId === authorityClaim.patientId && isCurrent(authorityClaim);
+    },
+    acceptRemoval(authorityClaim: PatientRefreshAuthorityClaim): number | null {
+      if (!isCurrent(authorityClaim)) {
+        return null;
+      }
+      authority += 1;
+      currentPatientId = null;
+      return authority;
+    },
   };
 }
 
