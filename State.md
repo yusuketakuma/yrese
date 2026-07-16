@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4174 reception queue JST business-date consumer binding — FINALIZED / INDEPENDENT_PASS
+
+- browser `fetchReceptionQueue`で、schema/top-level requested date/full duplicate pass後、全entryの`acceptedAt`をexplicit `Asia/Tokyo`暦日へ変換してrequested dateへ拘束し、copied sort前にall-or-nothing検証する。drifted/alternate backend・proxy/mock等からのschema-valid別日PHI rowを最終consumer境界で拒否し、filter/re-date/partial acceptanceは行わない。
+- JST midnight/end-of-day 9桁fractionを受理し、previous/next JST date、mixed queueを固定non-PHI errorで拒否する。duplicate/date/schema precedence、source nonmutation/order、refresh時last verified response/loadedAt、retry replacementを維持。current serverの同一invariant、API/contracts/POST/idempotency/audit/cancellation、DOM/copy/ARIA/focusは不変。
+- focused83、Web371、API reception-queue6、API290 + PostgreSQL14 expected skips、workspace typecheck/test、Web build、全標準gate、tracked-snapshot secret scanをPASS。live secret scanは既存ignored symlinkでfail-closed。independent verifier、frontend/medical/API、privacy/security reviewはPASS/APPROVED。implementation `45eabe6`はlocal-only、pushなし。
+
 ### WP-4173 audit-log deferred updater authority — FINALIZED / INDEPENDENT_PASS
 
 - audit-log runnerのloading/success/failure全functional updaterへevaluation-time generation guardを追加し、obsolete updaterはexact previous state identityを返すようにした。Reactで遅延・再評価されたold healthy evidenceがnew broken-chain CRITICALを正常へ戻す、old broken/failure/loadingがreplacement evidenceを覆う競合をroot-cause修正した。
