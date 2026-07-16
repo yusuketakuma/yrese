@@ -256,6 +256,74 @@ function snapshotReceptionCreateProvenance(value: unknown) {
   });
 }
 
+function snapshotPatientSearchResultIdentity(
+  value: unknown,
+  invariantErrorMessage: string,
+): unknown {
+  return readRequiredOwnEnumerableDataProperty(value, 'patientId', invariantErrorMessage);
+}
+
+function snapshotPatientSearchResult(
+  value: unknown,
+  patientIdentity: unknown,
+  invariantErrorMessage: string,
+) {
+  const eligibilityCheckedAt = readOwnEnumerableDataProperty(
+    value,
+    'eligibilityCheckedAt',
+    invariantErrorMessage,
+  );
+  return Object.freeze({
+    patientId: patientIdentity,
+    name: readRequiredOwnEnumerableDataProperty(
+      value,
+      'name',
+      invariantErrorMessage,
+    ),
+    kana: readRequiredOwnEnumerableDataProperty(
+      value,
+      'kana',
+      invariantErrorMessage,
+    ),
+    birthDate: readRequiredOwnEnumerableDataProperty(
+      value,
+      'birthDate',
+      invariantErrorMessage,
+    ),
+    sex: readRequiredOwnEnumerableDataProperty(
+      value,
+      'sex',
+      invariantErrorMessage,
+    ),
+    patientNumber: readRequiredOwnEnumerableDataProperty(
+      value,
+      'patientNumber',
+      invariantErrorMessage,
+    ),
+    eligibilityStatus: readRequiredOwnEnumerableDataProperty(
+      value,
+      'eligibilityStatus',
+      invariantErrorMessage,
+    ),
+    ...(eligibilityCheckedAt.present
+      ? { eligibilityCheckedAt: eligibilityCheckedAt.value }
+      : {}),
+  });
+}
+
+function parsePatientSearchResultSnapshot(
+  value: unknown,
+  invariantErrorMessage: string,
+): PatientSearchResult {
+  try {
+    const parsed = patientSearchResultSchema.safeParse(value);
+    if (!parsed.success) throw new Error(invariantErrorMessage);
+    return parsed.data;
+  } catch {
+    throw new Error(invariantErrorMessage);
+  }
+}
+
 function snapshotReceptionCreateEntryIdentity(value: unknown) {
   const receptionIdentity = readRequiredOwnEnumerableDataProperty(
     value,
@@ -267,9 +335,8 @@ function snapshotReceptionCreateEntryIdentity(value: unknown) {
     'patient',
     receptionResultIdempotencyProvenanceMismatchErrorMessage,
   );
-  const patientIdentity = readRequiredOwnEnumerableDataProperty(
+  const patientIdentity = snapshotPatientSearchResultIdentity(
     rawPatient,
-    'patientId',
     receptionResultIdempotencyProvenanceMismatchErrorMessage,
   );
   return Object.freeze({
@@ -283,47 +350,11 @@ function snapshotReceptionCreateEntry(
   value: unknown,
   identity: ReturnType<typeof snapshotReceptionCreateEntryIdentity>,
 ) {
-  const eligibilityCheckedAt = readOwnEnumerableDataProperty(
+  const patientSnapshot = snapshotPatientSearchResult(
     identity.rawPatient,
-    'eligibilityCheckedAt',
+    identity.patientId,
     receptionResultSchemaInvariantErrorMessage,
   );
-  const patientSnapshot = Object.freeze({
-    patientId: identity.patientId,
-    name: readRequiredOwnEnumerableDataProperty(
-      identity.rawPatient,
-      'name',
-      receptionResultSchemaInvariantErrorMessage,
-    ),
-    kana: readRequiredOwnEnumerableDataProperty(
-      identity.rawPatient,
-      'kana',
-      receptionResultSchemaInvariantErrorMessage,
-    ),
-    birthDate: readRequiredOwnEnumerableDataProperty(
-      identity.rawPatient,
-      'birthDate',
-      receptionResultSchemaInvariantErrorMessage,
-    ),
-    sex: readRequiredOwnEnumerableDataProperty(
-      identity.rawPatient,
-      'sex',
-      receptionResultSchemaInvariantErrorMessage,
-    ),
-    patientNumber: readRequiredOwnEnumerableDataProperty(
-      identity.rawPatient,
-      'patientNumber',
-      receptionResultSchemaInvariantErrorMessage,
-    ),
-    eligibilityStatus: readRequiredOwnEnumerableDataProperty(
-      identity.rawPatient,
-      'eligibilityStatus',
-      receptionResultSchemaInvariantErrorMessage,
-    ),
-    ...(eligibilityCheckedAt.present
-      ? { eligibilityCheckedAt: eligibilityCheckedAt.value }
-      : {}),
-  });
 
   return Object.freeze({
     receptionId: identity.receptionId,
@@ -578,11 +609,23 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       if (patient === undefined) {
         return reply.code(404).send(patientNotFoundResponse());
       }
-      if (patient.patientId !== parsedPatientId) {
+      const patientIdentity = snapshotPatientSearchResultIdentity(
+        patient,
+        receptionPatientIdentityMismatchErrorMessage,
+      );
+      if (patientIdentity !== parsedPatientId) {
         throw new Error(receptionPatientIdentityMismatchErrorMessage);
       }
 
-      return patientSearchResultSchema.parse(patient);
+      const patientSnapshot = snapshotPatientSearchResult(
+        patient,
+        patientIdentity,
+        receptionPatientSchemaInvariantErrorMessage,
+      );
+      return parsePatientSearchResultSnapshot(
+        patientSnapshot,
+        receptionPatientSchemaInvariantErrorMessage,
+      );
     },
   );
 
@@ -675,13 +718,22 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       if (patient === undefined) {
         return reply.code(404).send(receptionPatientNotFoundResponse());
       }
-      if (patient.patientId !== parsedPatientId) {
+      const patientIdentity = snapshotPatientSearchResultIdentity(
+        patient,
+        receptionPatientIdentityMismatchErrorMessage,
+      );
+      if (patientIdentity !== parsedPatientId) {
         throw new Error(receptionPatientIdentityMismatchErrorMessage);
       }
-      const parsedPatient = patientSearchResultSchema.safeParse(patient);
-      if (!parsedPatient.success) {
-        throw new Error(receptionPatientSchemaInvariantErrorMessage);
-      }
+      const patientSnapshot = snapshotPatientSearchResult(
+        patient,
+        patientIdentity,
+        receptionPatientSchemaInvariantErrorMessage,
+      );
+      const parsedPatient = parsePatientSearchResultSnapshot(
+        patientSnapshot,
+        receptionPatientSchemaInvariantErrorMessage,
+      );
 
       const acceptedAt = now();
       const acceptedAtIso = acceptedAt.toISOString();
@@ -690,7 +742,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           receptionRepository.create({
             tenantId: tenantContext.tenantId,
             pharmacyId: tenantContext.pharmacyId,
-            patient: parsedPatient.data,
+            patient: parsedPatient,
             idempotencyKey: body.data.idempotencyKey,
             acceptedAt,
           }),

@@ -2292,6 +2292,321 @@ describe('buildServer', () => {
     },
   );
 
+  it.each([
+    ['patientId', receptionPatientIdentityMismatchErrorMessage],
+    ['name', receptionPatientSchemaInvariantErrorMessage],
+    ['kana', receptionPatientSchemaInvariantErrorMessage],
+    ['birthDate', receptionPatientSchemaInvariantErrorMessage],
+    ['sex', receptionPatientSchemaInvariantErrorMessage],
+    ['patientNumber', receptionPatientSchemaInvariantErrorMessage],
+    ['eligibilityStatus', receptionPatientSchemaInvariantErrorMessage],
+    ['eligibilityCheckedAt', receptionPatientSchemaInvariantErrorMessage],
+  ] as const)(
+    'rejects a reception patient lookup with a %s accessor without invoking it',
+    async (field, expectedMessage) => {
+      const requestedPatientId = 'patient-syn-004';
+      const idempotencyKey = `reception-patient-accessor-${field}-4201`;
+      const rawSentinel = `raw reception patient ${field} PHI secret 4201`;
+      const getterRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const patient: Record<string, unknown> = {
+        patientId: requestedPatientId,
+        name: '合成患者D',
+        kana: 'ゴウセイカンジャディー',
+        birthDate: '1965-04-04',
+        sex: 'female',
+        patientNumber: 'SYN-004',
+        eligibilityStatus: 'NOT_CHECKED',
+        eligibilityCheckedAt: '2026-07-09T08:59:00.000Z',
+      };
+      Object.defineProperty(patient, field, { enumerable: true, get: getterRead });
+      const create = vi.fn<ReceptionRepository['create']>();
+      const server = buildDevTestServer({
+        patientRepository: {
+          search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
+          findById: vi.fn<PatientRepository['findById']>(async () => patient as never),
+        },
+        receptionRepository: {
+          list: vi.fn<ReceptionRepository['list']>(async () => []),
+          create,
+        },
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/reception',
+        headers: tenantOneReceptionWriteHeaders,
+        payload: { patientId: requestedPatientId, idempotencyKey },
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toMatchObject({ message: expectedMessage });
+      for (const sensitiveValue of [
+        rawSentinel,
+        requestedPatientId,
+        idempotencyKey,
+        '合成患者D',
+        'SYN-004',
+      ]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+      expect(getterRead).not.toHaveBeenCalled();
+      expect(create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['patientId', receptionPatientIdentityMismatchErrorMessage],
+    ['name', receptionPatientSchemaInvariantErrorMessage],
+  ] as const)(
+    'rejects a patient GET lookup with a %s accessor without invoking it',
+    async (field, expectedMessage) => {
+      const requestedPatientId = 'patient-get-accessor-4201';
+      const rawSentinel = `raw patient GET ${field} PHI secret 4201`;
+      const getterRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const patient: Record<string, unknown> = {
+        patientId: requestedPatientId,
+        name: '合成GET患者',
+        kana: 'ゴウセイゲットカンジャ',
+        birthDate: '1970-01-01',
+        sex: 'unknown',
+        patientNumber: 'GET-4201',
+        eligibilityStatus: 'NOT_CHECKED',
+      };
+      Object.defineProperty(patient, field, { enumerable: true, get: getterRead });
+      const server = buildDevTestServer({
+        patientRepository: {
+          search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
+          findById: vi.fn<PatientRepository['findById']>(async () => patient as never),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: `/patients/${requestedPatientId}`,
+        headers: tenantOnePatientReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toMatchObject({ message: expectedMessage });
+      expect(response.body).not.toContain(rawSentinel);
+      expect(response.body).not.toContain(requestedPatientId);
+      expect(response.body).not.toContain('GET-4201');
+      expect(getterRead).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['GET', 200],
+    ['POST', 201],
+  ] as const)(
+    'hydrates one fulfilled patient descriptor snapshot for %s without semantic direct reads',
+    async (method, expectedStatus) => {
+      const acceptedAt = new Date('2026-07-09T09:00:00.000Z');
+      const requestedPatientId = 'patient-descriptor-snapshot-4201';
+      const idempotencyKey = 'reception-patient-descriptor-snapshot-4201';
+      const directRead = vi.fn((property: PropertyKey) => {
+        throw new Error(`raw patient direct read ${String(property)} 4201`);
+      });
+      const descriptorRead = vi.fn();
+      const patientTarget = {
+        patientId: requestedPatientId,
+        name: '合成descriptor患者',
+        kana: 'ゴウセイディスクリプタカンジャ',
+        birthDate: '1988-08-08',
+        sex: 'unknown' as const,
+        patientNumber: 'DESC-4201',
+        eligibilityStatus: 'NOT_CHECKED' as const,
+        eligibilityCheckedAt: '2026-07-09T08:59:00.000Z',
+      };
+      const patient = new Proxy(patientTarget, {
+        get(_target, property) {
+          if (property === 'then') return undefined;
+          return directRead(property);
+        },
+        has(_target, property) {
+          return directRead(property);
+        },
+        getPrototypeOf() {
+          return directRead('getPrototypeOf');
+        },
+        ownKeys() {
+          return directRead('ownKeys');
+        },
+        getOwnPropertyDescriptor(target, property) {
+          descriptorRead(property);
+          return Reflect.getOwnPropertyDescriptor(target, property);
+        },
+      });
+      const create = vi.fn<ReceptionRepository['create']>(async (input) => ({
+        kind: 'created',
+        provenance: receptionProvenance(input, 'reception-patient-snapshot-4201'),
+        entry: {
+          receptionId: 'reception-patient-snapshot-4201',
+          acceptedAt: acceptedAt.toISOString(),
+          receptionStatus: 'WAITING',
+          prescriptionIntakeType: 'paper',
+          patient: input.patient,
+        },
+      }));
+      const server = buildDevTestServer({
+        now: () => acceptedAt,
+        patientRepository: {
+          search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
+          findById: vi.fn<PatientRepository['findById']>(() => Promise.resolve(patient)),
+        },
+        receptionRepository: {
+          list: vi.fn<ReceptionRepository['list']>(async () => []),
+          create,
+        },
+      });
+
+      const response = await server.inject(
+        method === 'GET'
+          ? {
+              method,
+              url: `/patients/${requestedPatientId}`,
+              headers: tenantOnePatientReadHeaders,
+            }
+          : {
+              method,
+              url: '/reception',
+              headers: tenantOneReceptionWriteHeaders,
+              payload: { patientId: requestedPatientId, idempotencyKey },
+            },
+      );
+      await server.close();
+
+      expect(response.statusCode).toBe(expectedStatus);
+      expect(response.json()).toMatchObject(
+        method === 'GET'
+          ? {
+              patientId: requestedPatientId,
+              eligibilityCheckedAt: '2026-07-09T08:59:00.000Z',
+            }
+          : {
+              patient: {
+                patientId: requestedPatientId,
+                eligibilityCheckedAt: '2026-07-09T08:59:00.000Z',
+              },
+            },
+      );
+      expect(descriptorRead).toHaveBeenCalledTimes(8);
+      expect(directRead).not.toHaveBeenCalled();
+      if (method === 'POST') {
+        expect(create).toHaveBeenCalledOnce();
+        expect(create.mock.calls[0]?.[0].patient).toEqual(patientTarget);
+        expect(Object.is(create.mock.calls[0]?.[0].patient, patient)).toBe(false);
+      } else {
+        expect(create).not.toHaveBeenCalled();
+      }
+    },
+  );
+
+  it('keeps a captured patient identity authoritative after repository backing mutation', async () => {
+    const requestedPatientId = 'patient-identity-snapshot-4201';
+    const mutatedPatientId = 'patient-mutated-after-descriptor-secret-4201';
+    const identityDescriptorRead = vi.fn();
+    const directRead = vi.fn(() => {
+      throw new Error(mutatedPatientId);
+    });
+    const patientTarget = {
+      patientId: requestedPatientId,
+      name: '合成snapshot患者',
+      kana: 'ゴウセイスナップショットカンジャ',
+      birthDate: '1999-09-09',
+      sex: 'unknown' as const,
+      patientNumber: 'SNAP-4201',
+      eligibilityStatus: 'NOT_CHECKED' as const,
+    };
+    const patient = new Proxy(patientTarget, {
+      get(_target, property) {
+        if (property === 'then') return undefined;
+        return directRead();
+      },
+      getOwnPropertyDescriptor(target, property) {
+        const descriptor = Reflect.getOwnPropertyDescriptor(target, property);
+        if (property === 'patientId') {
+          identityDescriptorRead();
+          target.patientId = mutatedPatientId;
+        }
+        return descriptor;
+      },
+    });
+    const server = buildDevTestServer({
+      patientRepository: {
+        search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
+        findById: vi.fn<PatientRepository['findById']>(() => Promise.resolve(patient)),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: `/patients/${requestedPatientId}`,
+      headers: tenantOnePatientReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ patientId: requestedPatientId });
+    expect(response.body).not.toContain(mutatedPatientId);
+    expect(identityDescriptorRead).toHaveBeenCalledOnce();
+    expect(directRead).not.toHaveBeenCalled();
+  });
+
+  it('rejects a mismatched patient identity before inspecting other patient fields', async () => {
+    const requestedPatientId = 'patient-requested-precedence-4201';
+    const returnedPatientId = 'patient-returned-precedence-secret-4201';
+    const nameRead = vi.fn(() => {
+      throw new Error('raw mismatched patient name secret 4201');
+    });
+    const patient: Record<string, unknown> = {
+      patientId: returnedPatientId,
+      kana: 'ゴウセイフイッチカンジャ',
+      birthDate: '1980-01-01',
+      sex: 'unknown',
+      patientNumber: 'MISMATCH-4201',
+      eligibilityStatus: 'NOT_CHECKED',
+    };
+    Object.defineProperty(patient, 'name', { enumerable: true, get: nameRead });
+    const create = vi.fn<ReceptionRepository['create']>();
+    const server = buildDevTestServer({
+      patientRepository: {
+        search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
+        findById: vi.fn<PatientRepository['findById']>(async () => patient as never),
+      },
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => []),
+        create,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: requestedPatientId,
+        idempotencyKey: 'reception-patient-precedence-4201',
+      },
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toMatchObject({ message: receptionPatientIdentityMismatchErrorMessage });
+    expect(response.body).not.toContain(returnedPatientId);
+    expect(response.body).not.toContain('MISMATCH-4201');
+    expect(nameRead).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it('stops reception creation and audit after a patient lookup rejection', async () => {
     const requestedPatientId = 'patient-reception-lookup-secret-4193';
     const idempotencyKey = 'reception-lookup-rejection-key-secret-4193';
