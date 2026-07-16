@@ -8,6 +8,11 @@
 
 ## 2026-07-16
 
+### WP-4159 Phase 1 JP Core Profile / terminology reachability — LOCAL_READY / INDEPENDENT_VERIFY_REQUIRED
+
+- JP Core 1.2.0 packageの19対象Resource typeを再集計し、14 type / 32 constraint Profile、5 typeのProfile不在、MedicationRequest 2・MedicationDispense 3・Condition 2・Observation 15の複数候補を記録した。Observation候補1件はdraftであり、候補列挙を採用判断へ昇格していない。
+- candidate snapshotの直接ValueSet bindingは417 profile-path行 / 128 unique URLで、JP Core local 22/15、JP terminology 1.4.0 50/25、FHIR core 329/80、FHIR coreとHL7 terminology双方16/8へ全件解決。4 artifact hash/count再計算、SSOT index 173、tracked snapshot secret scan、diff checkはPASS。live secret scanは既知の`.codegraph` symlinkでfail-closed。継承・候補重複を含むため、Profile選択、実運用到達性、CodeSystem closure、許諾、Must Support適合はhuman reviewまで未解決。exact4 docs-only evidence、landing commit/pushは未実施、別agent verifier未実施。
+
 ### WP-4158 JP Core terminology rights provenance — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
 - JP Core 1.2.0のofficial usage noticeがterminology license解決を利用側のSHALLとすること、source repo/tagとterminology 1.4.0 packageにrepo/package-level license grantを確認できないことを記録した。
