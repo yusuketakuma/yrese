@@ -161,11 +161,11 @@
 - POST中に患者選択が変わるraceを成功・失敗とも固定警告へ分離し、旧患者の結果を新患者の通常結果として表示せず、submitted Patient IDも露出しない。
 - focused 70、Web336、API270 + PostgreSQL14 expected skips、workspace typecheck/test/buildと全gate PASS。独立synthetic browserで患者検索→選択→native double-click登録1回→queue→clear、identity一致、375/768/1280 page overflowなし、console/errorなしを確認。瞬間pending/raceはbrowser未証明。tracked snapshot secret scan PASS、live scanは既知の`.codegraph` symlinkでfail-closed。exact9 implementation commit `7ba1003` をfeature branchへpush済み。
 
-### WP-4148 full-stack alignment / final-demo evidence refresh — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+### WP-4148 full-stack alignment / final-demo evidence refresh — FINALIZED / INDEPENDENT_PASS
 
-- missing alignment/demo artifactsとstale 2026-07-11 verification/code mapをcurrent live treeへ同期。API 7 surfaceとWeb consumer/placeholderを分類し、unblocked business APIは接続済み、whoamiはauth bootstrap判断待ち、blocked placeholderを実装済みに見せないことを固定。
-- `FINAL_DEMO.md`は自動gateと未実施browser/PostgreSQL/auth/tenant/accessibility journeyを分離して`DEMO_REQUIRED`を維持。exact4 implementation commit `2bea7a4` をfeature branchへpush済み。
-- SSOT index173、tracked snapshot secret scan、diff check PASS。別agent verifierはcurrent topology制約により未実施。
+- missing alignment/demo artifactsとstale verification/code mapをcurrent live treeへ同期し、`bed34ba`でremote PostgreSQL CI証拠と受付create境界を再照合。受付createは単なるWeb/API wiringとtransaction/idempotency safetyを分離し、WP-4050/WP-4151c未承認のため`PARTIAL / HUMAN_GATED`へ補正した。
+- GitHub Actions run `29499861743` / job `87625797181`はrepository7、audit5、migration2、API286、Web337、全step green。local API272 + PostgreSQL14 expected skipsも再実測し、production DB/API/auth/tenant/clinical readinessへ一般化していない。
+- CI/branch/runtime、medical/security/data-integrity、UI/browserの独立3 reviewが最終PASS。SSOT index173、boundaries、diff check PASS。`DEMO_REQUIRED`とhuman gateを維持。original `2bea7a4`は既存remote、reconciliation `bed34ba`はlocal-onlyでpushしていない。
 
 ### WP-4146 workspace manifest semantic validation — FINALIZED / INDEPENDENT_PASS
 

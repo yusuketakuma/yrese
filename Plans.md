@@ -2776,14 +2776,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: implementation commit `3d731e3` と後続ledger commitをrevertし、pnpm 10 audit endpoint復旧または別のfail-closed audit経路を用意する。lock/data rollback不要。
   - landing_record: implementation commit `3d731e3` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact2 implementation、frozen-install/full-gate、independent verification PASS。
 
-- [~] WP-4148 refresh full-stack alignment and final-demo evidence(LOW documentation/resume integrity) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+- [x] WP-4148 refresh full-stack alignment and final-demo evidence(LOW documentation/resume integrity) — FINALIZED / INDEPENDENT_PASS
   - 発見根拠: objective-required `FULLSTACK_ALIGNMENT.md` / `FINAL_DEMO.md`が存在せず、`CODE_MAP.md` / `VERIFICATION.md`は2026-07-11のpnpm 10・API161/Web99証跡のままcurrent treeとdriftしていた。
-  - scope: exact7 `ops/refactor/CODE_MAP.md`, `ops/refactor/FULLSTACK_ALIGNMENT.md`, `ops/refactor/FINAL_DEMO.md`, `ops/refactor/VERIFICATION.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。code/contracts/OpenAPI/SSOT/package/lock/CI/DB/runtimeは変更しない。
-  - implementation: API 7 surfaceとreachable screenをlive sourceから分類。患者search/get、受付queue/create、audit eventsはALIGNED、healthはoperational one-sided、whoamiはreal-auth bootstrap判断待ち、他画面はunlock gate付きintentional placeholderとして記録。final demoは未実施を`DEMO_REQUIRED`で固定し、automated evidenceと未検証journeyを分離した。
-  - verification: exact route/client search、placeholder copy、Plans blockerを照合。SSOT index173、tracked snapshot secret scan、diff check PASS。code/runtime semantic claimは追加せず、PostgreSQL14 skip、live `.codegraph` secret-scope failure、browser/demo未実施を明記。
-  - review_status: root cold-path mapping済み。current topologyでは別agent verifier未実施のためFINALIZEDを主張しない。
-  - rollback: implementation commit `2bea7a4` と後続ledger commitをrevertする。code/data rollback不要。
-  - landing_record: implementation commit `2bea7a4` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 artifact refresh landed、independent verification pending。
+  - scope: original exact7に`ops/refactor/EVIDENCE.md`を追加したreconciliation exact8 `ops/refactor/CODE_MAP.md`, `ops/refactor/EVIDENCE.md`, `ops/refactor/FULLSTACK_ALIGNMENT.md`, `ops/refactor/FINAL_DEMO.md`, `ops/refactor/VERIFICATION.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。code/contracts/OpenAPI/SSOT/package/lock/CI/DB/runtimeは変更しない。
+  - implementation: API 7 surfaceとreachable screenをlive sourceから分類。患者search/get、受付queue、audit eventsはALIGNED、受付createはWeb/API wiring済みだがWP-4050 atomicityとWP-4151c ambiguous retry未承認のため`PARTIAL / HUMAN_GATED`へ補正。healthはoperational one-sided、whoamiはreal-auth bootstrap判断待ち、他画面はunlock gate付きintentional placeholderとして記録。final demoは`DEMO_REQUIRED`を維持し、local expected skips、remote PostgreSQL zero-skip CI、production未証明を分離した。
+  - verification: live GitHub Actions run `29499861743` / job `87625797181` / head `1d2a2da`を再取得し、repository7、audit5、migration2、API286、Web337、全step greenを確認。local APIはcurrent HEADで272 pass + PostgreSQL14 expected skipsを再実測。SSOT index173、boundaries、diff check PASS。
+  - review_status: CI/branch/runtime mapper、medical/security/data-integrity reviewer、UI/browser evidence reviewerの3系統がexact-five diffを独立再読して最終PASS。初回指摘のlocal API count 270→272と暗黙in-memory default表現を修正後に再検証し、WP-4050/WP-4151c、production/auth/tenant、browser/accessibility、`DEMO_REQUIRED`を維持した。
+  - rollback: original implementation `2bea7a4`とreconciliation `bed34ba`、後続ledger commitをrevertする。code/data rollback不要。
+  - landing_record: original `2bea7a4`は`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。reconciliation `bed34ba`はlocal commitのみで、明示的なuser instructionなしにpushしない。
 
 - [x] WP-4149 bind reception registration to selected Patient Context(HIGH patient safety) — FINALIZED / INDEPENDENT_PASS_WITH_NOTE
   - 発見根拠: 受付登録フォームが患者検索で確立したglobal Patient Contextとは別にfreeform Patient ID入力を受け付け、表示中患者と登録対象の不一致・転記誤りを起こせるwrong-patient surfaceになっていた。

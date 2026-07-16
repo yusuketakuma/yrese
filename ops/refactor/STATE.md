@@ -4,7 +4,7 @@ This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
 - Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. Remaining57 classification, WP-0020〜0023 reconciliation, W31 and WP-4081 are LANDED.
-- Current task: WP-4164 `01e8260`/`1d2a2da`はdraft PR #1 run `29499861743` job `87625797181`で全step green。audit5、migration2、PostgreSQL repository7、API286をzero-skip PASSし、WP-4092/WP-4143/WP-4161 remote proofもFINALIZED。ledger finalizationをローカルcommit後、pushせず次のnon-gated safe sliceをfresh mappingする。WP-4050/WP-4162/WP-4151cはhuman-gated、Gate 0は`NO_GO`、VF-01/human 0/18/Gate 1 reissue 0/live `.codegraph`/production gapsも未解消。
+- Current task: WP-4148は`bed34ba`でfull-stack/demo/evidenceをcurrent treeへ再同期し、独立3 review PASS。受付createを`PARTIAL / HUMAN_GATED`へ補正し、WP-4164 remote PostgreSQL zero-skip proofとlocal14 expected skips、production未証明を分離した。次候補はfresh mapping最上位のGitHub Actions trust-surface最小化であり、official SHA/least-privilegeのread-only pre-planを完了後、正式なWPとacceptanceを`Plans.md`へ登録するまでworkflowを編集しない。pushは明示的user instruction時のみ。WP-4050/WP-4162/WP-4151cはhuman-gated、Gate 0は`NO_GO`、VF-01/human 0/18/Gate 1 reissue 0/live `.codegraph`/production gapsも未解消。
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -28,7 +28,7 @@ This is the resume entrypoint for the active repository reconciliation goal.
   - WP-4077 must APPROVED-amend DB-005 before WP-5004b / WP-7001 M3b.
   - Production/external/migration/DML/deploy operations remain human-gated and were not run.
 - Validation baseline (2026-07-11): workspace typecheck/test PASS; audit 182, trace 37, contracts 86, web 99, API 161 + 9 expected PostgreSQL skips without `TEST_DATABASE_URL`; web/full builds PASS; OpenAPI, SSOT index 173, boundaries, secrets, dependency audit high=0/critical=0, SBOM 231, calculation purity, script harness and diff check PASS.
-- Git resume check: run `git status -sb`, `git rev-list --left-right --count origin/main...HEAD`, and `git log -5 --oneline`. Preserve any new unrelated dirty paths. Root alone stages exact task paths and pushes because the active Goal explicitly requests grouped commit/push.
+- Git resume check: run `git status -sb`, `git rev-list --left-right --count origin/main...HEAD`, and `git log -5 --oneline`. Preserve any new unrelated dirty paths. Root alone stages exact task paths. Local commits are allowed for verified slices; push only after an explicit user instruction.
 - W5B landing checkpoint: commit `05edac6` pushed to `origin/main`; inventory 173/108/65; exact14; ten bodies and non-target `19207/de1e4127…` unchanged; nine reviews/full gates PASS; IDX v0.4.7 APPROVED.
 - W5C landing checkpoint: commit `86319a4` pushed to `origin/main`; inventory 173/106/67; exact6; two bodies and non-target `19429/6d777f91…` unchanged; nine reviews/full gates PASS; IDX v0.4.8 APPROVED.
 - W5D landing checkpoint: commit `ea2ddf2` pushed to `origin/main`; inventory 173/104/69; exact6; two bodies and non-target `19224/a70313e7…` unchanged; nine reviews/full gates PASS; IDX v0.4.9 APPROVED.
