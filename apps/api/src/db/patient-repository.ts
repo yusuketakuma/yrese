@@ -8,7 +8,7 @@ import type {
   PatientSearchInput,
   PatientSearchPage,
 } from '../patient-repository.js';
-import { snapshotDatabaseInstant } from './database-instant.js';
+import { snapshotDatabaseInstant } from '../instant.js';
 
 interface PatientRow {
   readonly patient_id: string;

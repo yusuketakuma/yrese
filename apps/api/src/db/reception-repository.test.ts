@@ -6,6 +6,7 @@ import { patientId, pharmacyId, tenantId } from '@yrese/shared-kernel';
 import {
   InMemoryReceptionRepository,
   inMemoryReceptionIdempotencyInvariantErrorMessage,
+  inMemoryReceptionTimestampInvariantErrorMessage,
 } from '../reception-repository.js';
 import {
   PostgresReceptionRepository,
@@ -486,13 +487,127 @@ describe('PostgresReceptionRepository client lifecycle', () => {
 });
 
 describe('InMemoryReceptionRepository idempotency index integrity', () => {
+  it('snapshots a genuine create Date intrinsically and derives a matching JST business date', async () => {
+    const repository = new InMemoryReceptionRepository();
+    const acceptedAt = new Date('2026-07-09T14:59:59.999Z');
+    let ownMethodReads = 0;
+    Object.defineProperty(acceptedAt, 'toISOString', {
+      get() {
+        ownMethodReads += 1;
+        throw new Error('raw in-memory timestamp method secret 4216');
+      },
+    });
+
+    const result = await repository.create({ ...input, acceptedAt });
+
+    expect(result.kind).toBe('created');
+    if (result.kind !== 'created') throw new Error('expected a created reception');
+    expect(result.entry).toMatchObject({
+      receptionId: 'reception-000004',
+      acceptedAt: '2026-07-09T14:59:59.999Z',
+    });
+    expect(
+      await repository.list({
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+        date: '2026-07-09',
+      }),
+    ).toContainEqual(result.entry);
+    expect(
+      await repository.list({
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+        date: '2026-07-10',
+      }),
+    ).not.toContainEqual(result.entry);
+    expect(ownMethodReads).toBe(0);
+  });
+
+  it('rejects invalid new-create timestamps without mutation, coercion, or Date Proxy traps', async () => {
+    let fakeCoercions = 0;
+    let proxyTraps = 0;
+    const fakeInstant = {
+      toISOString() {
+        fakeCoercions += 1;
+        return input.acceptedAt.toISOString();
+      },
+      [Symbol.toPrimitive]() {
+        fakeCoercions += 1;
+        return input.acceptedAt.toISOString();
+      },
+    };
+    const hostileDateProxy = new Proxy(input.acceptedAt, {
+      get() {
+        proxyTraps += 1;
+        throw new Error('raw in-memory timestamp Proxy secret 4216');
+      },
+      getPrototypeOf() {
+        proxyTraps += 1;
+        throw new Error('raw in-memory timestamp prototype secret 4216');
+      },
+    });
+    const revoked = Proxy.revocable(input.acceptedAt, {});
+    revoked.revoke();
+    const invalidValues: readonly unknown[] = [
+      undefined,
+      null,
+      input.acceptedAt.toISOString(),
+      fakeInstant,
+      Promise.resolve(input.acceptedAt),
+      new Date(Number.NaN),
+      Object.create(Date.prototype),
+      hostileDateProxy,
+      revoked.proxy,
+    ];
+
+    for (const invalidValue of invalidValues) {
+      const repository = new InMemoryReceptionRepository();
+      const internals = repository as unknown as {
+        readonly records: unknown[];
+        readonly idempotencyRecords: Map<string, unknown>;
+        readonly nextSequence: number;
+      };
+      const initialRecordCount = internals.records.length;
+      const initialSequence = internals.nextSequence;
+
+      await expect(
+        repository.create({ ...input, acceptedAt: invalidValue as Date }),
+      ).rejects.toThrow(inMemoryReceptionTimestampInvariantErrorMessage);
+      expect(internals.records).toHaveLength(initialRecordCount);
+      expect(internals.idempotencyRecords.size).toBe(0);
+      expect(internals.nextSequence).toBe(initialSequence);
+
+      const created = await repository.create(input);
+      expect(created.kind).toBe('created');
+      if (created.kind !== 'created') throw new Error('expected a created reception');
+      expect(created.entry.receptionId).toBe('reception-000004');
+      expect(internals.records).toHaveLength(initialRecordCount + 1);
+      expect(internals.idempotencyRecords.size).toBe(1);
+    }
+
+    expect(fakeCoercions).toBe(0);
+    expect(proxyTraps).toBe(0);
+  });
+
   it('binds created, existing, and conflict results to one stored reception identity', async () => {
     const repository = new InMemoryReceptionRepository();
     const created = await repository.create(input);
-    const existing = await repository.create(input);
+    let acceptedAtReads = 0;
+    const unreadableAcceptedAt = new Proxy(input.acceptedAt, {
+      get() {
+        acceptedAtReads += 1;
+        throw new Error('existing reception must not inspect acceptedAt');
+      },
+      getPrototypeOf() {
+        acceptedAtReads += 1;
+        throw new Error('existing reception must not inspect acceptedAt prototype');
+      },
+    });
+    const existing = await repository.create({ ...input, acceptedAt: unreadableAcceptedAt });
     const conflict = await repository.create({
       ...input,
       patient: { ...patient, patientId: patientId('patient-reception-client-conflict') },
+      acceptedAt: unreadableAcceptedAt,
     });
 
     expect(created.kind).toBe('created');
@@ -511,6 +626,7 @@ describe('InMemoryReceptionRepository idempotency index integrity', () => {
     expect(existing.provenance).toEqual(created.provenance);
     expect(existing.entry).toEqual(created.entry);
     expect(conflict.provenance).toEqual(created.provenance);
+    expect(acceptedAtReads).toBe(0);
   });
 
   it('fails closed without creating a duplicate when an index points to a missing record', async () => {
@@ -522,11 +638,19 @@ describe('InMemoryReceptionRepository idempotency index integrity', () => {
     };
     internals.records.splice(0);
 
-    await expect(repository.create(input)).rejects.toThrow(
+    let acceptedAtReads = 0;
+    const acceptedAt = new Proxy(input.acceptedAt, {
+      get() {
+        acceptedAtReads += 1;
+        throw new Error('corrupt index must win before acceptedAt');
+      },
+    });
+    await expect(repository.create({ ...input, acceptedAt })).rejects.toThrow(
       inMemoryReceptionIdempotencyInvariantErrorMessage,
     );
     expect(internals.records).toHaveLength(0);
     expect(internals.idempotencyRecords.size).toBe(1);
+    expect(acceptedAtReads).toBe(0);
   });
 
   it('fails closed without creating a duplicate when a stored record is missing its index', async () => {
@@ -539,10 +663,18 @@ describe('InMemoryReceptionRepository idempotency index integrity', () => {
     const recordCount = internals.records.length;
     internals.idempotencyRecords.clear();
 
-    await expect(repository.create(input)).rejects.toThrow(
+    let acceptedAtReads = 0;
+    const acceptedAt = new Proxy(input.acceptedAt, {
+      get() {
+        acceptedAtReads += 1;
+        throw new Error('unindexed record must win before acceptedAt');
+      },
+    });
+    await expect(repository.create({ ...input, acceptedAt })).rejects.toThrow(
       inMemoryReceptionIdempotencyInvariantErrorMessage,
     );
     expect(internals.records).toHaveLength(recordCount);
     expect(internals.idempotencyRecords.size).toBe(0);
+    expect(acceptedAtReads).toBe(0);
   });
 });

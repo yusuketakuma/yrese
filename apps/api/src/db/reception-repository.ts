@@ -10,8 +10,8 @@ import {
   type ReceptionListInput,
   type ReceptionRepository,
 } from '../reception-repository.js';
+import { snapshotDatabaseInstant, snapshotDateInstant } from '../instant.js';
 import { patientRowToSearchResult } from './patient-repository.js';
-import { snapshotDatabaseInstant, snapshotDateInstant } from './database-instant.js';
 
 interface ReceptionEntryRow {
   readonly reception_id: string;

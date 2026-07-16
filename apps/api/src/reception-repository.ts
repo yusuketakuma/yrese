@@ -15,6 +15,11 @@ import {
   type TenantId,
 } from '@yrese/shared-kernel';
 
+import { snapshotDateInstant } from './instant.js';
+
+export const inMemoryReceptionTimestampInvariantErrorMessage =
+  'in-memory reception acceptedAt must be a valid Date';
+
 export interface ReceptionListInput {
   readonly tenantId: TenantId;
   readonly pharmacyId: PharmacyId;
@@ -253,7 +258,10 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
       throw new Error(inMemoryReceptionIdempotencyInvariantErrorMessage);
     }
 
-    const acceptedAt = input.acceptedAt.toISOString();
+    const acceptedAt = snapshotDateInstant(
+      input.acceptedAt,
+      inMemoryReceptionTimestampInvariantErrorMessage,
+    );
     const record: ReceptionRecord = {
       tenantId: input.tenantId,
       pharmacyId: input.pharmacyId,
@@ -261,7 +269,7 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
       patientId: inputPatientId,
       patient: input.patient,
       acceptedAt,
-      date: businessDateFromAcceptedAt(input.acceptedAt),
+      date: businessDateFromAcceptedAt(new Date(acceptedAt)),
       receptionStatus: 'WAITING',
       idempotencyKey: input.idempotencyKey,
     };
