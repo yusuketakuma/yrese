@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4192 audit-view acknowledgement authority — FINALIZED / INDEPENDENT_PASS
+
+- `GET /audit/events`のview append返却を捨てるfalse-200境界とraw rejection漏えいを修正。scope/intent/target/timeをfreezeし、hydrated eventを`audit.viewed`の全semantic field・aggregate alias・reason/business absenceへ拘束した。
+- hash-valid contradiction12種、malformed/hash、accessor/Proxy、valid snapshot、freeze/now onceを固定。無関係eventをack返却していた既存broken-chain fixtureも正しいview backingへ修正し、broken-chain表示 semanticsを維持した。
+- focused170、API368 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/audit/API/security/privacy/data-integrity review APPROVED。implementation `299356b`はlocal-only、pushなし。
+
 ### WP-4191 patient-search error-code status binding — FINALIZED / INDEPENDENT_PASS
 
 - patient-searchの登録済みerrorCodeをAPI-001の`400/PAT-0001`と`403/AUTH-0003`へcanonical constantsで拘束した。wrong tuple、404/409/500、未登録/非文字列は固定案内を変えずcodeだけ省略する。
