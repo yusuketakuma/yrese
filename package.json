@@ -7,7 +7,7 @@
     "node": ">=24",
     "pnpm": ">=10"
   },
-  "packageManager": "pnpm@10.33.2",
+  "packageManager": "pnpm@11.13.1",
   "scripts": {
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "check:calculation-purity": "node scripts/check-calculation-purity.mjs",
