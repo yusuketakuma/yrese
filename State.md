@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4178 browser patient-search empty continuation binding — FINALIZED / INDEPENDENT_PASS
+
+- exact200 schema・page limit検証後、`results=[]`かつ`nextCursor`ありだけを固定non-echo errorで拒否。initialはuntrusted cursor/resultsをcommitせず、appendはverified rows/query/requested cursorを保持してsame-cursor retry可能。empty terminalは正常受理し、appendでは既存rowsを保持してcursorを消費する。
+- direct/initial/append/terminalをreal fetchで固定し、query/raw cursor非echo、generic notice、retry replacementを確認。current server invariantをconsumerでmirrorするdefense-in-depthに限定し、contracts/OpenAPI/API/server/DB/cursor/UI/cancellation、reception POST/idempotency/auditは不変。
+- focused63、Web392、API cursor6、API290 + PostgreSQL14 expected skips、contracts96、workspace typecheck/test、Web build、全標準gate、tracked-snapshot overlay secret scanをPASS。independent/plan/security/privacy/medical/API review APPROVED。implementation `8976d2e`はlocal-only、pushなし。
+
 ### WP-4177 captured dependency-audit output non-echo — FINALIZED / INDEPENDENT_PASS
 
 - `--from-audit-error`のraw stderr replayを廃止し、内容はallowlisted transient分類だけに使用。recognizedは固定warning/status0、unrecognizedとmissing/unreadable fileは固定error/status1へ収束し、raw URL/token/path/CRLF/ANSI/cause/stackを出力しない。live transientも同一fixed constantへ整理した。
