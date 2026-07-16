@@ -3362,9 +3362,11 @@ Primary-source URLs to fingerprint in WP-0054c (not a substitute for source file
 
 ### Release Gate 0 — 仕様・根拠・境界の確定(コード実装禁止)
 
-- [ ] WP-0054a Draft intake / normative delta registry
+- [~] WP-0054a Draft intake / normative delta registry(PARTIAL_SOURCE_BLOCKED)
   - scope: v0.5/v0.6/v0.6.1/v0.3/v0.2.1とAPPROVED SSOTのrequirement-by-requirement差分、矛盾、廃止、未決、PRC-007対象を登録する。
   - acceptance: source/version/section/requirement/authority/status/decision/owner/review/target WPを持ち、v0.7全38節のunclassified=0。
+  - evidence/result(2026-07-16): `docs/research/rececon_v0_7_normative_delta_registry_20260716.md`でV07-01..38をcurrent APPROVED SSOTへ分類し、immediate amendment queue、preserved invariants、human decisionsを記録。38/38、unclassified=0。v0.7/v0.5原文とv0.6/v0.6.1/v0.3/v0.2.1のversioned raw artifactがrepositoryにないため前提仕様間exact deltaは`BLOCKED_SOURCE`であり、DONEにしない。
+  - exact_next_action: WP-0054bのpath-level current-state coverageを進め、並行してmissing source artifactを安全に取得・hash化した後、本matrixを再計算する。
 - [ ] WP-0054b Current-state coverage matrix
   - scope: 22 domainごとにAPPROVED SSOT、Draft、code、contract、test、fixture、runtime、external dependencyを`IMPLEMENTED/PARTIAL/DOC_ONLY/MISSING/DUPLICATE/BLOCKED/OUT_OF_SCOPE`でfresh scanする。
   - acceptance: evidence path/lineまたはcommand、gap、risk、dependency、next WPを持ち、推測でimplemented判定しない。
