@@ -10,6 +10,7 @@
 
 ### WP-0054 v0.7 comprehensive pharmacy platform plan — PLANNED / GATE0_HUMAN_REVIEW_REQUIRED
 
+- WP-0054aでv0.7 §1〜38をV07-01..38としてcurrent APPROVED SSOTへ38/38分類し、unclassified=0、immediate amendment queue、preserved invariants、human decisionを`docs/research/rececon_v0_7_normative_delta_registry_20260716.md`へ記録した。v0.7/v0.5原文およびv0.6/v0.6.1/v0.3/v0.2.1のversioned raw artifactはrepositoryに存在しないため、前提仕様間のexact deltaは`PARTIAL_SOURCE_BLOCKED`を維持する。runtime/DB/external/production/SSOT/index変更なし。commit `7c790fd`をsafe feature branchへpush済みで、source completion、human review、independent verificationは未完了。
 - ユーザー提供「yrese・PH-OS 調剤レセコン総合機能計画 v0.7」§1〜38を`Plans.md`へ変換。5層/6原則、22 domain、P0〜P3、Release Gate 0〜5、dependency DAG、Guided/Expert UX、共通module、22 requested SSOT、KPI、stop gateをWP-0054a-oおよびD01〜D22へ写像した。
 - 公式/一次情報としてMHLW安全管理v7.0・FY2026統合checklist、資格確認、電子処方箋、薬剤師法/電子文書、Digital Agency PMH、支払基金claim、PMDA recall、GS1、AWS Bedrock lifecycle/retention/region/guardrails、7 vendor公開pageを確認。版/適用/許諾/human authority未確定の事項は実装根拠へ昇格していない。
 - fresh scanでは既存foundation/calculation/patient/receptionをPARTIAL、FHIR Native serverをDOC_ONLY/BLOCKED、その他domainをslice別PARTIAL/MISSING/UNKNOWNとした。Release Gate 0はdocs/evidenceのみで、runtime/DB/external/production変更なし。22 domain heading、22 requested SSOT、90 representative requirement、Gate/priority、SSOT index173、boundary、tracked snapshot secret scan、diff checkはPASS。live secret scanは既知の`.codegraph` symlinkでfail-closed。独立agent verifierは現行topology上未実施。

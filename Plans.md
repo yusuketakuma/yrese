@@ -3366,6 +3366,7 @@ Primary-source URLs to fingerprint in WP-0054c (not a substitute for source file
   - scope: v0.5/v0.6/v0.6.1/v0.3/v0.2.1とAPPROVED SSOTのrequirement-by-requirement差分、矛盾、廃止、未決、PRC-007対象を登録する。
   - acceptance: source/version/section/requirement/authority/status/decision/owner/review/target WPを持ち、v0.7全38節のunclassified=0。
   - evidence/result(2026-07-16): `docs/research/rececon_v0_7_normative_delta_registry_20260716.md`でV07-01..38をcurrent APPROVED SSOTへ分類し、immediate amendment queue、preserved invariants、human decisionsを記録。38/38、unclassified=0。v0.7/v0.5原文とv0.6/v0.6.1/v0.3/v0.2.1のversioned raw artifactがrepositoryにないため前提仕様間exact deltaは`BLOCKED_SOURCE`であり、DONEにしない。
+  - commit_push: `7c790fd`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。source completion、human review、independent verificationは未完了。
   - exact_next_action: WP-0054bのpath-level current-state coverageを進め、並行してmissing source artifactを安全に取得・hash化した後、本matrixを再計算する。
 - [ ] WP-0054b Current-state coverage matrix
   - scope: 22 domainごとにAPPROVED SSOT、Draft、code、contract、test、fixture、runtime、external dependencyを`IMPLEMENTED/PARTIAL/DOC_ONLY/MISSING/DUPLICATE/BLOCKED/OUT_OF_SCOPE`でfresh scanする。
