@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4179 patient refresh selection authority — FINALIZED / INDEPENDENT_PASS
+
+- Providerへrefresh runnerとmonotonic selection authorityを集約し、public select/clearをReact commit前の同期invalidateへ変更。A refresh中のB直接選択後にlate A success/PAT-0002/failureがA復元・B解除・B stale化するraceと、same-ID新snapshotを旧refreshが上書きするraceを遮断した。
+- refresh callbackはauthority+PatientId claim付きinternal commitだけを使用し、fresh successはself-invalidateせずfunctional updaterでもauthorityを再確認。stale表示もauthorityへ拘束し、旧Bar専用clear helperを削除して権限経路を一本化。public Context、refresh頻度、WP-4104/4171/4175、reception POST/idempotency/auditは不変。
+- focused52、Web399、workspace typecheck/test、API290 + PostgreSQL14 expected skips、contracts96、Web build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。独立/計画/security/privacy/medical/reception review APPROVED。implementation `4c7cd44`はlocal-only、pushなし。
+
 ### WP-4178 browser patient-search empty continuation binding — FINALIZED / INDEPENDENT_PASS
 
 - exact200 schema・page limit検証後、`results=[]`かつ`nextCursor`ありだけを固定non-echo errorで拒否。initialはuntrusted cursor/resultsをcommitせず、appendはverified rows/query/requested cursorを保持してsame-cursor retry可能。empty terminalは正常受理し、appendでは既存rowsを保持してcursorを消費する。
