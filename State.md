@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4208 decoded patient-search cursor authority — FINALIZED / INDEPENDENT_PASS
+
+- decode例外のraw反射とdecoded cursor offsetの二重readを修正。tokenあり時だけfrozen bindingでdecode onceとし、undefinedは既存PAT-0001、内部例外/invalid graphはfixed500へ分離した。
+- offsetをown data descriptorから一度だけ取得し、detached frozen plain cursorをrepositoryへ渡してcaptured scalarだけでprogress計算。旧実装でrepository offset2/server offset100→next101を200発行した実バグを、repository2/encode3へ固定した。invalid時search/encode zero、raw token/query/trap detail非echo。
+- server255、cursor codec8、API504 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/security/privacy review READY。encoder/token/HMAC/DB/WP-4057は未変更。implementation `5b2c66d`はlocal-only、pushなし。
+
 ### WP-4207 created reception patient snapshot binding — FINALIZED / INDEPENDENT_PASS
 
 - same patientIdのままcreated受付結果のPatientSummaryを差し替えると201＋`reception.created`成功監査になる実バグを修正。preflight済み患者をexpected/repository用の別frozen snapshotへ複製し、createdだけ全8 fieldとoptional own-property presenceを一致必須にした。
