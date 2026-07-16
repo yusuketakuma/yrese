@@ -8,6 +8,12 @@
 
 ## 2026-07-16
 
+### WP-4167 exact pnpm toolchain authority — FINALIZED / INDEPENDENT_PASS
+
+- root `engines.pnpm`の既知にgateを通せない`>=10`をexact `11.13.1`へ揃え、`pnpm-workspace.yaml`へ`pmOnFail: error`を追加した。`packageManager`とCI setupの11.13.1、review済みCI action SHA、`allowBuilds`の`esbuild`/`sharp`、lock/dependency graphは不変。非11.13.1 pnpmはimplicit downloadせずfail-closedになる。
+- semantic harnessはmanifest/workspace/CIをunique-key parseし、permissive/mismatched/coordinated pin、missing/warn policy、malformed/duplicate config、missing/duplicate CI setup、allow-list拡大、allow-all/non-strict build policyをnegative fixtureで拒否する。初回independent/supply-chain findingsを反映後、最終PASS/APPROVED。
+- pnpm 11.13.1 frozen installはlock差分0。Web337、API272 + PostgreSQL14 expected skips、audit183、calculation87、workspace typecheck/test/build、lint、script harness、OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231、tracked-snapshot secret scan、diffをPASS。live secret scanは既存user-owned ignored `.codegraph` symlinkでfail-closed。implementation `b27af80`はlocal-only、pushなし。
+
 ### WP-4166 arbitrary in-memory reception seed seam removal — FINALIZED / INDEPENDENT_PASS
 
 - `InMemoryReceptionRepository`の未使用public seed parameterを削除し、constructorをzero-argumentへ制限した。固定synthetic recordsのinstanceごとのarray clone、非export `ReceptionRecord`、stable list order、初回ID `reception-000004`、JST業務日、same-key replay、different-patient conflict、audit/API responseは不変。tracked class consumerはserverの1件、argument-passing consumerは0件。
