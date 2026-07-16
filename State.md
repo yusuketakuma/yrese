@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4195 reception-queue repository failure normalization — FINALIZED / INDEPENDENT_PASS
+
+- queue list rejectionを固定500/no-storeへ正規化し、患者summary/driver detailを含み得るraw error反射を遮断した。auth/dateはcatch前、schema/duplicate/JST business-date guardsはcatch後のまま。
+- sync/async/hostile rejection、scoped list once、property read zero、raw/date/patient number非echo、POST create zeroを固定。reviewでWP-4162へ越境するaudit-zero assertionを検出し、audit fixture/assertionを完全削除後に再承認された。
+- focused137、API378 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/API/security/privacy/medical/data review APPROVED。implementation `d5a1e1d`はlocal-only、pushなし。
+
 ### WP-4194 patient-search repository failure normalization — FINALIZED / INDEPENDENT_PASS
 
 - free-text患者検索のrepository rejectionを固定500/no-storeへ正規化し、raw query・患者番号様値・adapter detailのAPI反射を遮断した。WP-4193 helperをgeneric化したが、2つのfindById境界は同じ固定message/input/return semanticsを維持する。
