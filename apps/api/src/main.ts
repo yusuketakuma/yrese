@@ -17,6 +17,7 @@ import {
   patientSearchCursorHmacKeyByteLength,
 } from './patient-search-cursor.js';
 import { buildServer } from './server.js';
+import { handleStartupFailure } from './startup-failure.js';
 
 async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServer>> {
   const databaseUrl = parseDatabaseUrl(process.env.DATABASE_URL);
@@ -81,10 +82,12 @@ try {
   const address = await server.listen({ host: '0.0.0.0', port });
   server.log.info({ address }, 'API server listening');
 } catch (error) {
-  if (server !== undefined) {
-    server.log.error(error, 'API server failed to start');
-    await server.close().catch(() => undefined);
-  }
-  console.error(error);
-  process.exitCode = 1;
+  await handleStartupFailure({
+    originalError: error,
+    server,
+    report: (message) => console.error(message),
+    setExitCode: (exitCode) => {
+      process.exitCode = exitCode;
+    },
+  });
 }
