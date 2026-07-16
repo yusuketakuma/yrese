@@ -1,7 +1,12 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
+import {
+  createAuditEvent,
+  type AuditEvent,
+  type CreateAuditEventInput,
+} from '@yrese/audit';
 import { PATIENT_SEARCH_CURSOR_MAX_LENGTH } from '@yrese/contracts';
-import { patientId, receptionId } from '@yrese/shared-kernel';
+import { patientId, pharmacyId, receptionId, tenantId, userId } from '@yrese/shared-kernel';
 
 import {
   devTenantContextConfigurationErrorMessage,
@@ -33,6 +38,7 @@ import {
   receptionQueueDuplicateIdentityInvariantErrorMessage,
   receptionCreatedStatusInvariantErrorMessage,
   receptionCreatedAcceptedAtInvariantErrorMessage,
+  receptionCreatedAuditInvariantErrorMessage,
   receptionResultPatientIdentityMismatchErrorMessage,
   receptionResultIdempotencyProvenanceMismatchErrorMessage,
   receptionResultSchemaInvariantErrorMessage,
@@ -53,6 +59,14 @@ function receptionProvenance(
     receptionId: receptionId(receptionIdentity),
     patientId: patientId(patientIdentity),
   };
+}
+
+function rebuildAuditEvent(
+  event: AuditEvent,
+  overrides: Partial<CreateAuditEventInput>,
+): AuditEvent {
+  const { entryHash: _entryHash, ...input } = event;
+  return createAuditEvent({ ...input, ...overrides });
 }
 
 function buildDevTestServer(
@@ -1912,9 +1926,12 @@ describe('buildServer', () => {
       },
     }));
     const backingAuditRepository = new InMemoryAuditRepository();
-    const auditRecord = vi.fn<AuditRepository['record']>(
-      backingAuditRepository.record.bind(backingAuditRepository),
-    );
+    const auditRecord = vi.fn<AuditRepository['record']>(async (scope, input) => {
+      expect(Object.isFrozen(scope)).toBe(true);
+      expect(Object.isFrozen(input)).toBe(true);
+      expect(Object.isFrozen(input.targetRef)).toBe(true);
+      return backingAuditRepository.record(scope, input);
+    });
     const server = buildDevTestServer({
       now,
       receptionRepository: {
@@ -1952,6 +1969,331 @@ describe('buildServer', () => {
       wallClock: auditAt.toISOString(),
     });
     expect(now).toHaveBeenCalledTimes(2);
+  });
+
+  it('normalizes a rejected reception audit append without exposing raw failure detail', async () => {
+    const rawSentinel = 'raw-audit-rejection-patient-secret-4188';
+    const auditRecord = vi.fn<AuditRepository['record']>(async () => {
+      throw new Error(rawSentinel);
+    });
+    const server = buildDevTestServer({
+      now: () => new Date('2026-07-09T09:00:00.000Z'),
+      auditRepository: {
+        record: auditRecord,
+        list: vi.fn<AuditRepository['list']>(async () => []),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-004',
+        idempotencyKey: 'reception-audit-rejection-4188',
+      },
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(auditRecord).toHaveBeenCalledOnce();
+    expect(response.json()).toMatchObject({
+      statusCode: 500,
+      error: 'Internal Server Error',
+      message: receptionCreatedAuditInvariantErrorMessage,
+    });
+    expect(response.body).not.toContain(rawSentinel);
+    expect(response.body).not.toContain('patient-syn-004');
+  });
+
+  it.each([
+    [
+      'tenant',
+      (event: AuditEvent) =>
+        rebuildAuditEvent(event, { tenantId: tenantId('tenant-foreign-audit-4188') }),
+      'tenant-foreign-audit-4188',
+    ],
+    [
+      'pharmacy',
+      (event: AuditEvent) =>
+        rebuildAuditEvent(event, { pharmacyId: pharmacyId('pharmacy-foreign-audit-4188') }),
+      'pharmacy-foreign-audit-4188',
+    ],
+    [
+      'actor',
+      (event: AuditEvent) =>
+        rebuildAuditEvent(event, { actorId: userId('user-foreign-audit-4188') }),
+      'user-foreign-audit-4188',
+    ],
+    [
+      'event type',
+      (event: AuditEvent) => rebuildAuditEvent(event, { auditEventType: 'audit.viewed' }),
+      'audit.viewed',
+    ],
+    [
+      'target kind',
+      (event: AuditEvent) =>
+        rebuildAuditEvent(event, {
+          targetRef: { kind: 'audit_log', id: event.targetRef.id },
+          aggregateType: 'audit_log',
+        }),
+      'audit_log',
+    ],
+    [
+      'target id',
+      (event: AuditEvent) =>
+        rebuildAuditEvent(event, {
+          targetRef: { kind: 'reception', id: 'reception-foreign-audit-4188' },
+          aggregateId: 'reception-foreign-audit-4188',
+        }),
+      'reception-foreign-audit-4188',
+    ],
+    [
+      'outcome',
+      (event: AuditEvent) => rebuildAuditEvent(event, { outcome: 'failed' }),
+      'failed',
+    ],
+    [
+      'wall clock',
+      (event: AuditEvent) =>
+        rebuildAuditEvent(event, { wallClock: '2026-07-09T09:00:00.999Z' }),
+      '2026-07-09T09:00:00.999Z',
+    ],
+    [
+      'aggregate type',
+      (event: AuditEvent) => rebuildAuditEvent(event, { aggregateType: 'audit_log' }),
+      'audit_log',
+    ],
+    [
+      'aggregate id',
+      (event: AuditEvent) =>
+        rebuildAuditEvent(event, { aggregateId: 'reception-foreign-aggregate-4188' }),
+      'reception-foreign-aggregate-4188',
+    ],
+    [
+      'reason code',
+      (event: AuditEvent) => rebuildAuditEvent(event, { reasonCode: 'AUTH-0003' }),
+      'AUTH-0003',
+    ],
+    [
+      'business reason',
+      (event: AuditEvent) =>
+        rebuildAuditEvent(event, {
+          businessReason: { code: 'SYNTHETIC_AUDIT_CONTRADICTION' },
+        }),
+      'SYNTHETIC_AUDIT_CONTRADICTION',
+    ],
+  ] as const)(
+    'rejects a hash-valid reception audit result with mismatched %s before 201',
+    async (_label, mutateAudit, rawSentinel) => {
+      const backingAuditRepository = new InMemoryAuditRepository();
+      const auditRecord = vi.fn<AuditRepository['record']>(async (scope, input) =>
+        mutateAudit(await backingAuditRepository.record(scope, input)),
+      );
+      const server = buildDevTestServer({
+        now: () => new Date('2026-07-09T09:00:00.000Z'),
+        auditRepository: {
+          record: auditRecord,
+          list: vi.fn<AuditRepository['list']>(async () => []),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/reception',
+        headers: tenantOneReceptionWriteHeaders,
+        payload: {
+          patientId: 'patient-syn-004',
+          idempotencyKey: `reception-audit-mismatch-${_label}`,
+        },
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(auditRecord).toHaveBeenCalledOnce();
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: receptionCreatedAuditInvariantErrorMessage,
+      });
+      expect(response.body).not.toContain(rawSentinel);
+      expect(response.body).not.toContain('patient-syn-004');
+    },
+  );
+
+  it.each([
+    ['null', (_event: AuditEvent): null => null],
+    [
+      'corrupted entry hash',
+      (event: AuditEvent): AuditEvent =>
+        Object.freeze({ ...event, entryHash: '0'.repeat(64) }),
+    ],
+  ] as const)(
+    'rejects a malformed reception audit result (%s) before 201',
+    async (_label, resultOf) => {
+      const backingAuditRepository = new InMemoryAuditRepository();
+      const auditRecord = vi.fn<AuditRepository['record']>(async (scope, input) =>
+        resultOf(await backingAuditRepository.record(scope, input)) as AuditEvent,
+      );
+      const server = buildDevTestServer({
+        now: () => new Date('2026-07-09T09:00:00.000Z'),
+        auditRepository: {
+          record: auditRecord,
+          list: vi.fn<AuditRepository['list']>(async () => []),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/reception',
+        headers: tenantOneReceptionWriteHeaders,
+        payload: {
+          patientId: 'patient-syn-004',
+          idempotencyKey: `reception-audit-malformed-${_label}`,
+        },
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(auditRecord).toHaveBeenCalledOnce();
+      expect(response.json()).toMatchObject({ message: receptionCreatedAuditInvariantErrorMessage });
+    },
+  );
+
+  it('rejects an accessor-bearing audit result without invoking its getter', async () => {
+    const rawSentinel = 'raw-audit-accessor-4188';
+    let getterCalls = 0;
+    const backingAuditRepository = new InMemoryAuditRepository();
+    const auditRecord = vi.fn<AuditRepository['record']>(async (scope, input) => {
+      const event = await backingAuditRepository.record(scope, input);
+      const result = { ...event } as Record<string, unknown>;
+      Object.defineProperty(result, 'actorId', {
+        enumerable: true,
+        get() {
+          getterCalls += 1;
+          throw new Error(rawSentinel);
+        },
+      });
+      return result as unknown as AuditEvent;
+    });
+    const server = buildDevTestServer({
+      now: () => new Date('2026-07-09T09:00:00.000Z'),
+      auditRepository: {
+        record: auditRecord,
+        list: vi.fn<AuditRepository['list']>(async () => []),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-004',
+        idempotencyKey: 'reception-audit-accessor-4188',
+      },
+    });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(getterCalls).toBe(0);
+    expect(response.json()).toMatchObject({ message: receptionCreatedAuditInvariantErrorMessage });
+    expect(response.body).not.toContain(rawSentinel);
+  });
+
+  it.each(['getPrototypeOf', 'ownKeys', 'getOwnPropertyDescriptor'] as const)(
+    'normalizes a throwing audit-result Proxy %s trap to the fixed invariant error',
+    async (trapName) => {
+      const rawSentinel = `raw-audit-proxy-${trapName}-4188`;
+      const backingAuditRepository = new InMemoryAuditRepository();
+      const auditRecord = vi.fn<AuditRepository['record']>(async (scope, input) => {
+        const event = await backingAuditRepository.record(scope, input);
+        const handler: ProxyHandler<AuditEvent> = {};
+        handler[trapName] = (() => {
+          throw new Error(rawSentinel);
+        }) as never;
+        return new Proxy(event, handler);
+      });
+      const server = buildDevTestServer({
+        now: () => new Date('2026-07-09T09:00:00.000Z'),
+        auditRepository: {
+          record: auditRecord,
+          list: vi.fn<AuditRepository['list']>(async () => []),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/reception',
+        headers: tenantOneReceptionWriteHeaders,
+        payload: {
+          patientId: 'patient-syn-004',
+          idempotencyKey: `reception-audit-proxy-${trapName}`,
+        },
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json()).toMatchObject({ message: receptionCreatedAuditInvariantErrorMessage });
+      expect(response.body).not.toContain(rawSentinel);
+    },
+  );
+
+  it('hydrates a data-descriptor Proxy once and never directly reads the raw audit result', async () => {
+    let thenReads = 0;
+    let rawGetCalls = 0;
+    let rawHasCalls = 0;
+    const backingAuditRepository = new InMemoryAuditRepository();
+    const auditRecord = vi.fn<AuditRepository['record']>(async (scope, input) => {
+      const event = await backingAuditRepository.record(scope, input);
+      return new Proxy(event, {
+        get(_target, property) {
+          if (property === 'then') {
+            thenReads += 1;
+            return undefined;
+          }
+          rawGetCalls += 1;
+          throw new Error('raw audit get must not run');
+        },
+        has() {
+          rawHasCalls += 1;
+          throw new Error('raw audit has must not run');
+        },
+      });
+    });
+    const server = buildDevTestServer({
+      now: () => new Date('2026-07-09T09:00:00.000Z'),
+      auditRepository: {
+        record: auditRecord,
+        list: vi.fn<AuditRepository['list']>(async () => []),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: {
+        patientId: 'patient-syn-004',
+        idempotencyKey: 'reception-audit-data-descriptor-proxy-4188',
+      },
+    });
+
+    await server.close();
+
+    expect(thenReads).toBe(1);
+    expect(rawGetCalls).toBe(0);
+    expect(rawHasCalls).toBe(0);
+    expect(response.statusCode).toBe(201);
+    expect(auditRecord).toHaveBeenCalledOnce();
   });
 
   it('allows an existing reception to retain an advanced status without a duplicate audit', async () => {

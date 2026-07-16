@@ -1,5 +1,5 @@
 import Fastify, { type FastifyInstance, type onRequestHookHandler } from 'fastify';
-import { verifyAuditHashChain, type AuditEvent } from '@yrese/audit';
+import { hydrateAuditEvent, verifyAuditHashChain, type AuditEvent } from '@yrese/audit';
 import {
   auditLogEntrySchema,
   auditLogQuerySchema,
@@ -84,6 +84,8 @@ export const receptionCreatedStatusInvariantErrorMessage =
   'Created reception did not start in WAITING status';
 export const receptionCreatedAcceptedAtInvariantErrorMessage =
   'Created reception did not preserve the server-issued acceptance time';
+export const receptionCreatedAuditInvariantErrorMessage =
+  'Audit repository returned mismatched reception creation evidence';
 export const receptionQueueDuplicateIdentityInvariantErrorMessage =
   'Reception repository returned duplicate reception identities';
 export const receptionQueueBusinessDateInvariantErrorMessage =
@@ -105,6 +107,43 @@ export interface BuildServerOptions {
   readonly repositoryMode?: ApiRepositoryMode;
   readonly tenantContextMode?: TenantContextMode;
   readonly patientSearchCursorCodec?: PatientSearchCursorCodec;
+}
+
+function assertRecordedAuditMatchesIntent(
+  value: unknown,
+  expected: {
+    readonly tenantId: string;
+    readonly pharmacyId: string;
+    readonly actorId: string;
+    readonly auditEventType: string;
+    readonly targetRef: { readonly kind: string; readonly id: string };
+    readonly outcome: string;
+    readonly wallClock: string;
+  },
+): void {
+  let event: AuditEvent;
+  try {
+    event = hydrateAuditEvent(value);
+  } catch {
+    throw new Error(receptionCreatedAuditInvariantErrorMessage);
+  }
+
+  if (
+    event.tenantId !== expected.tenantId ||
+    event.pharmacyId !== expected.pharmacyId ||
+    event.actorId !== expected.actorId ||
+    event.auditEventType !== expected.auditEventType ||
+    event.targetRef.kind !== expected.targetRef.kind ||
+    event.targetRef.id !== expected.targetRef.id ||
+    event.outcome !== expected.outcome ||
+    event.wallClock !== expected.wallClock ||
+    event.aggregateType !== expected.targetRef.kind ||
+    event.aggregateId !== expected.targetRef.id ||
+    event.reasonCode !== undefined ||
+    event.businessReason !== undefined
+  ) {
+    throw new Error(receptionCreatedAuditInvariantErrorMessage);
+  }
 }
 
 function invalidPatientSearchQueryResponse() {
@@ -489,16 +528,27 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       // 監査証跡(who/when/what)。冪等再送(existing)では二重記録しない。
       // targetRef は識別子のみ(PHI 非含有)。
       if (result.kind === 'created') {
-        await auditRepository.record(
-          { tenantId: tenantContext.tenantId, pharmacyId: tenantContext.pharmacyId },
-          {
-            actorId: userId(tenantContext.actorId),
-            auditEventType: 'reception.created',
-            targetRef: { kind: 'reception', id: parsedEntry.data.receptionId },
-            outcome: 'success',
-            wallClock: now().toISOString(),
-          },
-        );
+        const auditScope = Object.freeze({
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+        });
+        const auditIntent = Object.freeze({
+          actorId: userId(tenantContext.actorId),
+          auditEventType: 'reception.created',
+          targetRef: Object.freeze({ kind: 'reception', id: parsedEntry.data.receptionId }),
+          outcome: 'success' as const,
+          wallClock: now().toISOString(),
+        });
+        let recordedAudit: unknown;
+        try {
+          recordedAudit = await auditRepository.record(auditScope, auditIntent);
+        } catch {
+          throw new Error(receptionCreatedAuditInvariantErrorMessage);
+        }
+        assertRecordedAuditMatchesIntent(recordedAudit, {
+          ...auditScope,
+          ...auditIntent,
+        });
       }
 
       return reply.code(result.kind === 'created' ? 201 : 200).send(parsedEntry.data);
