@@ -2819,13 +2819,13 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: docs-only implementation commitと後続ledger commitをrevertする。runtime/data rollback不要。
   - landing_record: implementation commit `ac83520` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact6 production Web evidence records landed、independent verification pending。
 
-- [~] WP-4153 collect JP Core 1.2.0 package pre-lock evidence(LOW read-only supply-chain research) — IMPLEMENTED / INDEPENDENT_VERIFY_REQUIRED
+- [~] WP-4153 collect JP Core 1.2.0 package pre-lock evidence(LOW read-only supply-chain research) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
   - 発見根拠: WP-0053bのlock前提であるofficial artifact fingerprint/license/dependency metadataがrepositoryに未記録で、公開ガイダンスとarchive package metadataのterminology package IDが一致しなかった。
   - scope: exact4 `ops/refactor/EVIDENCE.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。package/lock/runtime/code/SSOT/CI/toolchainは変更しない。
   - evidence: official `package.tgz`をtemp取得しSHA-256 `6094c8b9ebd975cb738c66cc999774c06a0aacf4480c068a8465e597117e52a3`、2,391,515 bytes、ETag/Last-Modified、`jpfhir.jp.core#1.2.0`/FHIR4.0.1/dependencies/license metadataを確認。archiveは`jpfhir-terminology.r4`、rendered tableは`jpfhir-terminology`、archive `url`はpublisherの`file://` path、standalone license fileなし、QAにsuppressed/unpublished/history警告あり。
   - acceptance/review: evidenceとdiscrepancyを記録し、lock/APPROVED/JP Core準拠を主張しない。FHIR specialist + legal/licenseがterminology artifactとlicenseを確認するまでWP-0053b実装開始なし。別agent verifier未実施。
   - rollback: docs-only evidence commitと後続ledger commitをrevertする。artifactはtemp削除済み、runtime/data rollback不要。
-  - landing_record: implementation commit pending; exact4 pre-lock evidence ready、independent verification pending。
+  - landing_record: implementation commit `553dbdb` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 pre-lock evidence landed、independent verification pending。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
