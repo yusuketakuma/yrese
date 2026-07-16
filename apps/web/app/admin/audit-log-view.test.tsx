@@ -295,6 +295,86 @@ describe("createAuditLogRunner (latest-only / lifecycle invalidation)", () => {
     expect(recorder.states).toEqual([{ kind: "loading" }]);
   });
 
+  it.each([
+    { label: "healthy with broken", stale: SAMPLE, current: broken },
+    { label: "broken with healthy", stale: broken, current: SAMPLE },
+  ])(
+    "keeps buffered stale loading/success updaters from replacing $label evidence",
+    async ({ stale, current }) => {
+      const buffered: Array<(prev: AuditLogState) => AuditLogState> = [];
+      const fetcher = vi
+        .fn<() => Promise<AuditLogResponse>>()
+        .mockResolvedValueOnce(stale)
+        .mockResolvedValueOnce(current);
+      const runner = createAuditLogRunner(fetcher, (update) => buffered.push(update));
+
+      await runner.run();
+      const staleUpdates = buffered.splice(0);
+      await runner.run();
+      const currentUpdates = buffered.splice(0);
+      let state: AuditLogState = { kind: "loading" };
+      for (const update of currentUpdates) state = update(state);
+      const authoritative = state;
+
+      expect(authoritative).toEqual({
+        kind: "loaded",
+        data: current,
+        refreshState: { kind: "idle" },
+      });
+      for (const update of staleUpdates) {
+        expect(update(authoritative)).toBe(authoritative);
+      }
+      expect(fetcher).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("keeps a buffered stale failure updater from masking replacement evidence", async () => {
+    const buffered: Array<(prev: AuditLogState) => AuditLogState> = [];
+    const fetcher = vi
+      .fn<() => Promise<AuditLogResponse>>()
+      .mockRejectedValueOnce(new Error("stale raw audit failure"))
+      .mockResolvedValueOnce(broken);
+    const runner = createAuditLogRunner(fetcher, (update) => buffered.push(update));
+
+    await runner.run();
+    const staleUpdates = buffered.splice(0);
+    await runner.run();
+    const currentUpdates = buffered.splice(0);
+    let state: AuditLogState = { kind: "loading" };
+    for (const update of currentUpdates) state = update(state);
+    const authoritative = state;
+
+    expect(authoritative).toEqual({
+      kind: "loaded",
+      data: broken,
+      refreshState: { kind: "idle" },
+    });
+    for (const update of staleUpdates) {
+      expect(update(authoritative)).toBe(authoritative);
+    }
+    expect(JSON.stringify(authoritative)).not.toContain("stale raw audit failure");
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("makes buffered loading and success exact no-ops after invalidation", async () => {
+    const buffered: Array<(prev: AuditLogState) => AuditLogState> = [];
+    const fetcher = vi.fn<() => Promise<AuditLogResponse>>().mockResolvedValue(SAMPLE);
+    const runner = createAuditLogRunner(fetcher, (update) => buffered.push(update));
+
+    await runner.run();
+    runner.invalidate();
+    const authoritative: AuditLogState = {
+      kind: "loaded",
+      data: broken,
+      refreshState: { kind: "idle" },
+    };
+
+    for (const update of buffered) {
+      expect(update(authoritative)).toBe(authoritative);
+    }
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+
   it("shares a synchronous loading-emit rejection, cleans ownership, and admits retry", async () => {
     const emitFailure = new Error("synthetic loading emit failure");
     let failEmit = true;

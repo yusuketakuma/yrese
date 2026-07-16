@@ -182,24 +182,30 @@ export function createAuditLogRunner(
       activeFlight = { ownerToken, sharedPromise };
       const currentGeneration = ++generation;
       const execute = async () => {
-        emit((prev) =>
-          prev.kind === "loaded"
+        emit((prev) => {
+          if (currentGeneration !== generation) return prev;
+          return prev.kind === "loaded"
             ? { ...prev, refreshState: { kind: "loading" } }
-            : { kind: "loading" },
-        );
+            : { kind: "loading" };
+        });
         try {
           const data = await fetcher();
           if (currentGeneration === generation) {
-            emit(() => ({ kind: "loaded", data, refreshState: { kind: "idle" } }));
+            emit((prev) =>
+              currentGeneration === generation
+                ? { kind: "loaded", data, refreshState: { kind: "idle" } }
+                : prev,
+            );
           }
         } catch (error) {
           if (currentGeneration === generation) {
             const notice = auditLogErrorNotice(error);
-            emit((prev) =>
-              prev.kind === "loaded"
+            emit((prev) => {
+              if (currentGeneration !== generation) return prev;
+              return prev.kind === "loaded"
                 ? { ...prev, refreshState: { kind: "error", notice } }
-                : { kind: "error", notice },
-            );
+                : { kind: "error", notice };
+            });
           }
         }
       };
