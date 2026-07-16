@@ -248,6 +248,126 @@ describe("fetchPatientById (GET /patients/:patientId 契約)", () => {
     });
   });
 
+  it("accepts a valid own-data 404 Proxy without invoking get or has traps", async () => {
+    await withDevEnv(async () => {
+      const propertyRead = vi.fn(() => {
+        throw new Error("raw valid patient proxy property trap");
+      });
+      const body = new Proxy(
+        { errorCode: "PAT-0002", message: "Patient unavailable" },
+        {
+          get(target, property, receiver) {
+            return property === "errorCode" || property === "message"
+              ? propertyRead()
+              : Reflect.get(target, property, receiver);
+          },
+          has(_target, property) {
+            return property === "errorCode" || property === "message"
+              ? propertyRead()
+              : false;
+          },
+        },
+      );
+      const json = vi.fn(() => body);
+      const stub: typeof fetch = async () =>
+        ({ status: 404, json }) as unknown as Response;
+
+      await expect(fetchPatientById(SAMPLE.patientId, stub)).resolves.toBeNull();
+      expect(json).toHaveBeenCalledOnce();
+      expect(propertyRead).not.toHaveBeenCalled();
+    });
+  });
+
+  it.each([
+    [
+      "a throwing own accessor",
+      (trap: () => never) =>
+        Object.defineProperty(
+          { message: "Patient unavailable" },
+          "errorCode",
+          { enumerable: true, get: trap },
+        ),
+    ],
+    [
+      "a throwing descriptor Proxy",
+      (trap: () => never) =>
+        new Proxy(
+          { errorCode: "PAT-0002", message: "Patient unavailable" },
+          { getOwnPropertyDescriptor: trap },
+        ),
+    ],
+  ] as const)(
+    "normalizes 404 with %s without exposing hostile body details",
+    async (_label, createBody) => {
+      await withDevEnv(async () => {
+        const rawSentinel = `raw hostile 404 ${SAMPLE.patientId} PAT-0002`;
+        const trap = vi.fn((): never => {
+          throw new Error(rawSentinel);
+        });
+        const body = createBody(trap);
+        const stub: typeof fetch = async () =>
+          ({ status: 404, json: () => body }) as unknown as Response;
+
+        let thrown: unknown;
+        try {
+          await fetchPatientById(SAMPLE.patientId, stub);
+        } catch (error) {
+          thrown = error;
+        }
+
+        expect(thrown).toBeInstanceOf(Error);
+        expect((thrown as Error).message).toBe(
+          "Patient refresh not-found response invalid",
+        );
+        expect(JSON.stringify(thrown, Object.getOwnPropertyNames(thrown))).not.toContain(
+          rawSentinel,
+        );
+        expect(trap).toHaveBeenCalledTimes(
+          _label === "a throwing descriptor Proxy" ? 1 : 0,
+        );
+      });
+    },
+  );
+
+  it("rejects inherited 404 fields without reading inherited accessors", async () => {
+    await withDevEnv(async () => {
+      const getter = vi.fn(() => {
+        throw new Error("raw inherited patient response getter");
+      });
+      const prototype = Object.defineProperties({}, {
+        errorCode: { enumerable: true, get: getter },
+        message: { enumerable: true, get: getter },
+      });
+      const body = Object.create(prototype);
+
+      await expect(
+        fetchPatientById(
+          SAMPLE.patientId,
+          async () =>
+            ({ status: 404, json: () => body }) as unknown as Response,
+        ),
+      ).rejects.toThrow("Patient refresh not-found response invalid");
+      expect(getter).not.toHaveBeenCalled();
+    });
+  });
+
+  it("rejects an array root even when it carries valid own-data fields", async () => {
+    await withDevEnv(async () => {
+      const body = Object.assign([], {
+        errorCode: "PAT-0002",
+        message: "Patient unavailable",
+      });
+
+      await expect(
+        fetchPatientById(
+          SAMPLE.patientId,
+          async () =>
+            ({ status: 404, json: () => body }) as unknown as Response,
+        ),
+      ).rejects.toThrow("Patient refresh not-found response invalid");
+    });
+  });
+
   it("throws on other failures (呼び出し側が stale 扱いを判断)", async () => {
     await withDevEnv(async () => {
       const stub: typeof fetch = async () => jsonResponse(500, {});
@@ -819,6 +939,35 @@ describe("createPatientRefreshRunner (患者切替・解除の競合防止)", ()
             throw new Error("raw synchronous patient response failure");
           },
         }) as unknown as Response;
+      const runner = createPatientRefreshRunner((id) =>
+        fetchPatientById(id, fetchImpl),
+      );
+      const events = callbacks();
+
+      await runner.refresh(SAMPLE.patientId, events);
+
+      expect(events.onFailure).toHaveBeenCalledOnce();
+      expect(events.onFresh).not.toHaveBeenCalled();
+      expect(events.onRemoved).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("routes a hostile current 404 body only to onFailure", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    try {
+      const rawSentinel = `raw runner patient body ${SAMPLE.patientId}`;
+      const body = new Proxy(
+        { errorCode: "PAT-0002", message: "Patient not found" },
+        {
+          getOwnPropertyDescriptor() {
+            throw new Error(rawSentinel);
+          },
+        },
+      );
+      const fetchImpl: typeof fetch = async () =>
+        ({ status: 404, json: () => body }) as unknown as Response;
       const runner = createPatientRefreshRunner((id) =>
         fetchPatientById(id, fetchImpl),
       );

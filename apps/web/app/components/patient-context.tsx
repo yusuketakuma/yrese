@@ -113,13 +113,31 @@ export async function fetchPatientById(
     ...(signal !== undefined ? { signal } : {}),
   });
   if (res.status === 404) {
-    let body: unknown;
+    let parsedError: ReturnType<typeof errorResponseSchema.safeParse>;
     try {
-      body = await res.json();
+      const body: unknown = await res.json();
+      if (typeof body !== "object" || body === null || Array.isArray(body)) {
+        throw new Error(invalidPatientNotFoundResponseErrorMessage);
+      }
+      const errorCodeDescriptor = Object.getOwnPropertyDescriptor(body, "errorCode");
+      const messageDescriptor = Object.getOwnPropertyDescriptor(body, "message");
+      if (
+        errorCodeDescriptor === undefined ||
+        !("value" in errorCodeDescriptor) ||
+        !errorCodeDescriptor.enumerable ||
+        messageDescriptor === undefined ||
+        !("value" in messageDescriptor) ||
+        !messageDescriptor.enumerable
+      ) {
+        throw new Error(invalidPatientNotFoundResponseErrorMessage);
+      }
+      parsedError = errorResponseSchema.safeParse({
+        errorCode: errorCodeDescriptor.value,
+        message: messageDescriptor.value,
+      });
     } catch {
       throw new Error(invalidPatientNotFoundResponseErrorMessage);
     }
-    const parsedError = errorResponseSchema.safeParse(body);
     if (
       !parsedError.success ||
       parsedError.data.errorCode !== PATIENT_NOT_FOUND_ERROR_CODE
