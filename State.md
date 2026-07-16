@@ -13,6 +13,7 @@
 - main push後のGitHub Actions run `29498358296`はPostgreSQL実DBで初めて隠れていた2欠陥を検出した。audit lock keyのruntime NULがSQLSTATE `22021`となりaudit integration 5件を停止し、migration full-history期待の`000004`欠落が正常な4版適用を失敗扱いした。人間gate対象を除外したfresh mappingで、本件を唯一の即時実装可能P0/R2 sliceとして選定した。
 - `buildAuditScopeAdvisoryLockKey()`をdomain-separated JSON tupleへ変更し、production repositoryとobserved-concurrency blocker testの重複key生成を統合した。NUL非生成、UTF-8 roundtrip、quote/backslash/Unicode、曖昧連結とscope swapの非衝突をmock非依存unit testで固定。migration testはfull-historyのversion/rowだけを`000004`へ同期し、legacy rollback、migration SQL/checksum、API/contracts、audit schema/transaction/seedは不変。
 - focused unit 28、API 272 + PostgreSQL14 expected skips、API typecheck/build、boundaries、diffをPASS。security/medical/privacy/data-integrity reviewはcanonical tuple、非ログ、hash collision影響境界、WP-4050非解決を確認して方針APPROVED。ローカルPostgreSQL runtimeは存在しないため、safe feature branchのPR CIでaudit 5 + migration 2のzero-skipと全step greenを得るまで完了扱いにしない。
+- implementation `01e8260`をsafe feature branchへpushしdraft PR #1/run `29499482385`を実行。NUL起因だったaudit 4件とmigration2件はzero-skip PASSし、observed-concurrency 1件のみ`application_name`間接観測が3秒timeoutした。PostgreSQL公式`pg_locks`のbigint advisory identityに従い、blocker自身の`database/classid/objid/objsubid=1`を取得して同一resourceのwaiter 2件を直接数えるtest-only follow-upへ変更。production lock/transaction/schema/APIは不変で、再CI green待ち。
 
 ### All branches → main consolidation — PUSHED / INDEPENDENT_PASS
 

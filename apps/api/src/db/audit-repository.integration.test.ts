@@ -24,7 +24,6 @@ function createTestSchemaName(): string {
 
 interface MigratedSchemaOptions {
   readonly poolMax?: number;
-  readonly applicationName?: string;
 }
 
 async function withMigratedSchema(
@@ -42,9 +41,7 @@ async function withMigratedSchema(
 
   const pool = createDbPool(testDatabaseUrl, {
     max: options.poolMax ?? 1,
-    options: `-c search_path=${schemaName}${
-      options.applicationName === undefined ? '' : ` -c application_name=${options.applicationName}`
-    }`,
+    options: `-c search_path=${schemaName}`,
   });
   try {
     await applyPendingMigrations(pool, await loadMigrationFiles(), {
@@ -63,21 +60,53 @@ async function withMigratedSchema(
   }
 }
 
+interface AdvisoryLockIdentity {
+  readonly database_oid: string;
+  readonly class_id: string;
+  readonly object_id: string;
+  readonly object_sub_id: number;
+}
+
+async function readGrantedAdvisoryLockIdentity(
+  client: PoolClient,
+): Promise<AdvisoryLockIdentity> {
+  const result = await client.query<AdvisoryLockIdentity>(
+    `SELECT database::text AS database_oid,
+            classid::text AS class_id,
+            objid::text AS object_id,
+            objsubid AS object_sub_id
+       FROM pg_locks
+      WHERE pid = pg_backend_pid()
+        AND locktype = 'advisory'
+        AND granted = true`,
+  );
+  if (
+    result.rows.length !== 1 ||
+    result.rows[0] === undefined ||
+    result.rows[0].object_sub_id !== 1
+  ) {
+    throw new Error('expected exactly one granted advisory lock for the blocker connection');
+  }
+  return result.rows[0];
+}
+
 async function waitForAdvisoryLockWaiters(
   client: PoolClient,
-  applicationName: string,
+  lock: AdvisoryLockIdentity,
   expectedCount: number,
 ): Promise<void> {
   const deadline = Date.now() + 3_000;
   while (Date.now() < deadline) {
     const result = await client.query<{ waiting_count: number }>(
       `SELECT count(*)::int AS waiting_count
-         FROM pg_locks AS locks
-         JOIN pg_stat_activity AS activity ON activity.pid = locks.pid
-        WHERE locks.locktype = 'advisory'
-          AND locks.granted = false
-          AND activity.application_name = $1`,
-      [applicationName],
+         FROM pg_locks
+        WHERE locktype = 'advisory'
+          AND granted = false
+          AND database::text = $1
+          AND classid::text = $2
+          AND objid::text = $3
+          AND objsubid = $4`,
+      [lock.database_oid, lock.class_id, lock.object_id, lock.object_sub_id],
     );
     if (result.rows[0]?.waiting_count === expectedCount) {
       return;
@@ -175,7 +204,6 @@ describePostgres('PostgresAuditRepository (migrations/000004)', () => {
   it(
     'serializes two observed concurrent appends into one verifiable scoped chain',
     async () => {
-      const applicationName = `yrese_audit_${process.pid}_${Math.random().toString(36).slice(2)}`;
       await withMigratedSchema(
         async (pool) => {
           const repository = new PostgresAuditRepository(pool);
@@ -190,6 +218,7 @@ describePostgres('PostgresAuditRepository (migrations/000004)', () => {
               'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
               [buildAuditScopeAdvisoryLockKey(SCOPE)],
             );
+            const blockerLock = await readGrantedAdvisoryLockIdentity(blocker);
 
             appends = [
               repository.record(
@@ -201,7 +230,7 @@ describePostgres('PostgresAuditRepository (migrations/000004)', () => {
                 receptionCreated('reception-concurrent-b', '2026-07-11T04:00:01.000Z'),
               ),
             ];
-            await waitForAdvisoryLockWaiters(blocker, applicationName, 2);
+            await waitForAdvisoryLockWaiters(blocker, blockerLock, 2);
 
             await blocker.query('COMMIT');
             blockerTransactionOpen = false;
@@ -237,7 +266,7 @@ describePostgres('PostgresAuditRepository (migrations/000004)', () => {
             await Promise.allSettled(appends);
           }
         },
-        { poolMax: 3, applicationName },
+        { poolMax: 3 },
       );
     },
     10_000,
