@@ -8,6 +8,12 @@
 
 ## 2026-07-16
 
+### WP-4164 PostgreSQL audit advisory-lock / migration CI repair — LOCAL_IMPLEMENTED / REMOTE_CI_VERIFY_REQUIRED
+
+- main push後のGitHub Actions run `29498358296`はPostgreSQL実DBで初めて隠れていた2欠陥を検出した。audit lock keyのruntime NULがSQLSTATE `22021`となりaudit integration 5件を停止し、migration full-history期待の`000004`欠落が正常な4版適用を失敗扱いした。人間gate対象を除外したfresh mappingで、本件を唯一の即時実装可能P0/R2 sliceとして選定した。
+- `buildAuditScopeAdvisoryLockKey()`をdomain-separated JSON tupleへ変更し、production repositoryとobserved-concurrency blocker testの重複key生成を統合した。NUL非生成、UTF-8 roundtrip、quote/backslash/Unicode、曖昧連結とscope swapの非衝突をmock非依存unit testで固定。migration testはfull-historyのversion/rowだけを`000004`へ同期し、legacy rollback、migration SQL/checksum、API/contracts、audit schema/transaction/seedは不変。
+- focused unit 28、API 272 + PostgreSQL14 expected skips、API typecheck/build、boundaries、diffをPASS。security/medical/privacy/data-integrity reviewはcanonical tuple、非ログ、hash collision影響境界、WP-4050非解決を確認して方針APPROVED。ローカルPostgreSQL runtimeは存在しないため、safe feature branchのPR CIでaudit 5 + migration 2のzero-skipと全step greenを得るまで完了扱いにしない。
+
 ### All branches → main consolidation — PUSHED / INDEPENDENT_PASS
 
 - `origin/main` `3045cd5`を基点に、`agent/reconcile-wp9002-w7c-20260712` tip `2ee9a79`へfast-forwardし、patch-equivalentだが未包含だった`agent/wp4147-pnpm-audit` tip `19eb555`をmerge commit `a77b29f`で明示統合した。`wp-9001-codex-only` tip `6198068`と`wp-9002-legacy-ssot-metadata` tip `b8aadfd`は既にancestorであり、local 5/5、live origin 2/2の未merged branchは0。`3045cd5..a77b29f`を`origin/main`へpush済み。

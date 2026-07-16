@@ -3,7 +3,10 @@ import type { Pool, PoolClient } from 'pg';
 
 import { pharmacyId, tenantId, userId } from '@yrese/shared-kernel';
 
-import { PostgresAuditRepository } from './audit-repository.js';
+import {
+  buildAuditScopeAdvisoryLockKey,
+  PostgresAuditRepository,
+} from './audit-repository.js';
 
 const scope = {
   tenantId: tenantId('tenant-audit-client-test'),
@@ -82,5 +85,39 @@ describe('PostgresAuditRepository client lifecycle', () => {
     expect(query.mock.calls.map(([sql]) => String(sql).trim())).toContain('COMMIT');
     expect(query.mock.calls.map(([sql]) => String(sql).trim())).not.toContain('ROLLBACK');
     expect(release.mock.calls).toEqual([[]]);
+  });
+});
+
+describe('buildAuditScopeAdvisoryLockKey', () => {
+  it('produces a valid NUL-free UTF-8 tuple key', () => {
+    const key = buildAuditScopeAdvisoryLockKey({
+      tenantId: tenantId('tenant-\\-"-薬局'),
+      pharmacyId: pharmacyId('pharmacy-\\-"-一号'),
+    });
+
+    expect(key).not.toContain('\u0000');
+    expect(Buffer.from(key, 'utf8').toString('utf8')).toBe(key);
+    expect(JSON.parse(key)).toEqual([
+      'yrese.audit.scope.v1',
+      'tenant-\\-"-薬局',
+      'pharmacy-\\-"-一号',
+    ]);
+  });
+
+  it('keeps ambiguous concatenations and swapped scopes distinct', () => {
+    const first = buildAuditScopeAdvisoryLockKey({
+      tenantId: tenantId('tenant:a'),
+      pharmacyId: pharmacyId('b:c'),
+    });
+    const second = buildAuditScopeAdvisoryLockKey({
+      tenantId: tenantId('tenant:a:b'),
+      pharmacyId: pharmacyId('c'),
+    });
+    const swapped = buildAuditScopeAdvisoryLockKey({
+      tenantId: tenantId('b:c'),
+      pharmacyId: pharmacyId('tenant:a'),
+    });
+
+    expect(new Set([first, second, swapped]).size).toBe(3);
   });
 });

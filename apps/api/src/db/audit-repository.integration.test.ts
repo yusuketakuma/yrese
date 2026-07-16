@@ -4,7 +4,10 @@ import type { Pool, PoolClient } from 'pg';
 import { AUDIT_GENESIS_PREV_HASH, verifyAuditHashChain } from '@yrese/audit';
 import { pharmacyId, tenantId, userId } from '@yrese/shared-kernel';
 
-import { PostgresAuditRepository } from './audit-repository.js';
+import {
+  buildAuditScopeAdvisoryLockKey,
+  PostgresAuditRepository,
+} from './audit-repository.js';
 import { applyPendingMigrations } from './migration-runner.js';
 import { loadMigrationFiles } from './migrations.js';
 import { createDbPool } from './pool.js';
@@ -185,7 +188,7 @@ describePostgres('PostgresAuditRepository (migrations/000004)', () => {
             blockerTransactionOpen = true;
             await blocker.query(
               'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
-              [`audit_events:${SCOPE.tenantId}\u0000${SCOPE.pharmacyId}`],
+              [buildAuditScopeAdvisoryLockKey(SCOPE)],
             );
 
             appends = [

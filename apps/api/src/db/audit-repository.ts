@@ -57,10 +57,14 @@ function rowToEvent(row: AuditEventRow): AuditEvent {
   }
 }
 
+export function buildAuditScopeAdvisoryLockKey(scope: AuditScope): string {
+  return JSON.stringify(['yrese.audit.scope.v1', scope.tenantId, scope.pharmacyId]);
+}
+
 async function lockScope(client: PoolClient, scope: AuditScope): Promise<void> {
   // (tenant, pharmacy) 単位で追記を直列化(hashtextextended は bigint を返す)
   await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
-    `audit_events:${scope.tenantId}\u0000${scope.pharmacyId}`,
+    buildAuditScopeAdvisoryLockKey(scope),
   ]);
 }
 

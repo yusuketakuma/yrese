@@ -4,7 +4,7 @@ This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
 - Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. Remaining57 classification, WP-0020〜0023 reconciliation, W31 and WP-4081 are LANDED.
-- Current task: WP-4149 bounded independent browserを`PASS_WITH_NOTE`で完了し、そこで発見したhydration failure時のpatient-query URL fallbackをWP-4163 exact2/`71fee96`でprivacy hardening済み。exact nextは本exact7 ledgerの独立検証/landing後、WP-4148 docs evidenceの独立確認または別のnon-gated safe sliceをfresh mappingする。WP-4050/WP-4162/WP-4151cはhuman-gated、WP-4161 remote CI/PostgreSQL 0 skipは未証明。Gate 0は`NO_GO`、VF-01/human 0/18/Gate 1 reissue 0/live `.codegraph`/production gapsも未解消。
+- Current task: main CI run `29498358296`で検出したPostgreSQL audit advisory-lock runtime NULとmigration `000004`期待値driftをWP-4164 exact7で修正中。canonical domain-separated JSON tuple helperをproduction/concurrency testで共有し、full-history expectationだけを同期。local focused/API/typecheck/build/boundary/diffはPASS、独立diff reviewとsafe feature branch PRのPostgreSQL zero-skip/full CI green待ち。WP-4050/WP-4162/WP-4151cはhuman-gatedで未変更、Gate 0は`NO_GO`、VF-01/human 0/18/Gate 1 reissue 0/live `.codegraph`/production gapsも未解消。
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
