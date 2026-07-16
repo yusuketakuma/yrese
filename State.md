@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4197 reception-create repository failure normalization — FINALIZED / INDEPENDENT_PASS
+
+- create rejectionを固定500/no-storeへ正規化し、患者情報・idempotency key・SQL/driver detailを含み得るraw error反射を遮断した。create input生成とfulfilled result/idempotency/audit判定順序は不変。
+- sync/async/hostile rejection、exact scoped create input once、property read zero、raw detail非echoを固定。audit spy/countやpersisted-state確認は置かず、commit/rollback/retry安全性とfailure-time audit policyを主張していない。
+- focused server140、API384 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/API/security/privacy/medical/audit/data review APPROVED。implementation `6b420ec`はlocal-only、pushなし。
+
 ### WP-4196 audit-log repository failure normalization — FINALIZED / INDEPENDENT_PASS
 
 - audit list rejectionを固定500/no-storeへ正規化し、audit event/target識別子やadapter detailを含み得るraw error反射を遮断した。scope freezeとlist後のchain/view/projection順序は不変。
