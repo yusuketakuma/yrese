@@ -8,6 +8,11 @@
 
 ## 2026-07-16
 
+### WP-4153 JP Core 1.2.0 package pre-lock evidence — IMPLEMENTED / INDEPENDENT_VERIFY_REQUIRED
+
+- official `package.tgz`をtemp取得しSHA-256/size/HTTP validatorsとpackage identity/FHIR/dependencies/license metadataを確認。artifactはtemp削除しrepo/package lock/runtimeは未変更。
+- terminology package IDのarchive/rendered-table drift、publisher `file://` URL、standalone license file欠如、QA suppressed/unpublished/history警告を記録。FHIR/legal review前のlock/準拠主張は禁止を維持。landing commit pending、別agent verifier未実施。
+
 ### WP-4152 production Web build/start boundary — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
 - dev-format `.next`を`next start`が拒否することを確認後、`next build`で12 static pages、production server ready 237ms、`/sync-status`の未接続≠同期済み表示、normal shutdownを実測。
