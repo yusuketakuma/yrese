@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4214 PostgreSQL reception timestamp adapter authority — FINALIZED / INDEPENDENT_PASS
+
+- DB accepted_atのcoercible fake/own method false authorityと、create時のacceptedAt/JST business date分裂を修正。create DateをDB接続前にintrinsic snapshotし、DB rowはgenuine Date/primitive stringだけをcanonical化した。
+- invalid createはDB client取得0、mixed invalid listは全体reject、created/existing invalid rowはCOMMIT前rollback、different-patient conflictはtimestamp未読でCOMMIT。deferred mutation、accessor/coercion/Proxy trap0を固定し、fixture helper/JS Date寛容parseのテストバグも修正した。
+- repository30、API569 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/security/privacy/data review READY。SQL/schema/migration/contracts/SSOT/idempotency/post-create audit不変、実DB操作なし。implementation `58b931d`はlocal-only、pushなし。
+
 ### WP-4213 migration SQLSTATE authority — BLOCKED / CANDIDATE_REVERTED
 
 - inherited `code='42P01'`がmissing history tableへ誤分類され、fake client上で明示migrateがBEGIN/DDL/history INSERT/COMMITへ進む実バグを再現。Proxy trapによる元error置換も分離して確認した。
