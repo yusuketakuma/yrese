@@ -31,6 +31,8 @@ import { InMemoryAuditRepository, type AuditRepository } from './audit-repositor
 import {
   apiVersion,
   buildServer,
+  healthClockReadErrorMessage,
+  healthClockInvariantErrorMessage,
   patientSearchInvalidQueryErrorCode,
   patientSearchRepositoryErrorMessage,
   patientSearchPageSchemaInvariantErrorMessage,
@@ -176,8 +178,9 @@ const sensitiveRouteCases = [
 describe('buildServer', () => {
   it('returns health status without PHI or database dependencies', async () => {
     const healthTimestamp = new Date('2026-07-09T10:20:00.000Z');
+    const now = vi.fn(() => healthTimestamp);
     const server = buildDefaultTestServer({
-      now: () => healthTimestamp,
+      now,
     });
 
     const response = await server.inject({
@@ -198,6 +201,165 @@ describe('buildServer', () => {
       version: apiVersion,
       timestamp: healthTimestamp.toISOString(),
     });
+    expect(now).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ['Error', new Error('raw health clock secret 4212')],
+    ['string', 'raw health clock secret 4212'],
+    ['object', { secret: 'raw health clock secret 4212' }],
+  ] as const)('normalizes a thrown health clock %s', async (_label, thrownValue) => {
+    const now = vi.fn(() => {
+      throw thrownValue;
+    });
+    const server = buildDefaultTestServer({ now });
+
+    const response = await server.inject({ method: 'GET', url: '/health' });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBeUndefined();
+    expect(response.json()).toMatchObject({ message: healthClockReadErrorMessage });
+    expect(now).toHaveBeenCalledOnce();
+    expect(response.body).not.toContain('raw health clock secret 4212');
+  });
+
+  it('does not inspect a hostile value thrown by the health clock', async () => {
+    let propertyReads = 0;
+    const thrownValue = new Proxy(
+      {},
+      {
+        get() {
+          propertyReads += 1;
+          throw new Error('raw hostile health clock secret 4212');
+        },
+      },
+    );
+    const now = vi.fn(() => {
+      throw thrownValue;
+    });
+    const server = buildDefaultTestServer({ now });
+
+    const response = await server.inject({ method: 'GET', url: '/health' });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toMatchObject({ message: healthClockReadErrorMessage });
+    expect(now).toHaveBeenCalledOnce();
+    expect(propertyReads).toBe(0);
+    expect(response.body).not.toContain('raw hostile health clock secret 4212');
+  });
+
+  it('rejects invalid health clock authorities instead of reporting ok', async () => {
+    const fakeToISOString = vi.fn(() => '2026-07-09T10:20:00.000Z');
+    const invalidValues: readonly unknown[] = [
+      undefined,
+      null,
+      '2026-07-09T10:20:00.000Z',
+      0,
+      false,
+      0n,
+      Symbol('health-clock'),
+      () => new Date(),
+      [],
+      { toISOString: fakeToISOString },
+      Promise.resolve(new Date()),
+      new Date(Number.NaN),
+      Object.create(Date.prototype),
+    ];
+
+    for (const invalidValue of invalidValues) {
+      const now = vi.fn(() => invalidValue as Date);
+      const server = buildDefaultTestServer({ now });
+
+      const response = await server.inject({ method: 'GET', url: '/health' });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBeUndefined();
+      expect(response.json()).toMatchObject({ message: healthClockInvariantErrorMessage });
+      expect(now).toHaveBeenCalledOnce();
+      expect(response.body).not.toContain('Invalid time value');
+      expect(response.body).not.toContain('2026-07-09T10:20:00.000Z');
+    }
+
+    expect(fakeToISOString).not.toHaveBeenCalled();
+  });
+
+  it.each(['hostile', 'revoked'] as const)(
+    'rejects a %s Date Proxy health clock without semantic traps',
+    async (mode) => {
+      let semanticTraps = 0;
+      const handler: ProxyHandler<Date> = {
+        get() {
+          semanticTraps += 1;
+          throw new Error('raw health Date Proxy secret 4212');
+        },
+        getPrototypeOf() {
+          semanticTraps += 1;
+          throw new Error('raw health Date Proxy prototype secret 4212');
+        },
+      };
+      const rawDate = new Date('2026-07-09T10:20:00.000Z');
+      let value: Date;
+      if (mode === 'revoked') {
+        const revocable = Proxy.revocable(rawDate, handler);
+        value = revocable.proxy;
+        revocable.revoke();
+      } else {
+        value = new Proxy(rawDate, handler);
+      }
+      let nowCalls = 0;
+      const now = () => {
+        nowCalls += 1;
+        return value;
+      };
+      const server = buildDefaultTestServer({ now });
+
+      const response = await server.inject({ method: 'GET', url: '/health' });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json()).toMatchObject({ message: healthClockInvariantErrorMessage });
+      expect(nowCalls).toBe(1);
+      expect(semanticTraps).toBe(0);
+      expect(response.body).not.toContain('raw health Date Proxy');
+      expect(response.body).not.toContain('Cannot perform');
+    },
+  );
+
+  it('uses the intrinsic timestamp without reading an own health clock method', async () => {
+    const healthTimestampIso = '2026-07-09T10:20:00.000Z';
+    const healthTimestamp = new Date(healthTimestampIso);
+    let ownMethodReads = 0;
+    Object.defineProperty(healthTimestamp, 'toISOString', {
+      get() {
+        ownMethodReads += 1;
+        throw new Error('raw own health clock method secret 4212');
+      },
+    });
+    const now = vi.fn(() => healthTimestamp);
+    const server = buildDefaultTestServer({ now });
+
+    const response = await server.inject({ method: 'GET', url: '/health' });
+
+    await server.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBeUndefined();
+    expect(response.json()).toEqual({
+      status: 'ok',
+      service: 'api',
+      version: apiVersion,
+      timestamp: healthTimestampIso,
+    });
+    expect(now).toHaveBeenCalledOnce();
+    expect(ownMethodReads).toBe(0);
+    expect(response.body).not.toContain('raw own health clock method secret 4212');
   });
 
   it('denies /whoami when dev tenant context headers are absent', async () => {

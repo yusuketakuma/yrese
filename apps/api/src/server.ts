@@ -69,6 +69,8 @@ import {
 export type { HealthResponse } from '@yrese/contracts';
 
 export const apiVersion = '0.0.1';
+export const healthClockReadErrorMessage = 'Health clock read failed';
+export const healthClockInvariantErrorMessage = 'Health clock returned an invalid instant';
 export const patientSearchInvalidQueryErrorCode = PATIENT_SEARCH_INVALID_QUERY_ERROR_CODE;
 export const patientSearchResultLimitInvariantErrorMessage =
   'Patient repository returned more results than requested';
@@ -617,7 +619,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       status: 'ok',
       service: 'api',
       version: apiVersion,
-      timestamp: now().toISOString(),
+      timestamp: snapshotWallClock(
+        now,
+        healthClockReadErrorMessage,
+        healthClockInvariantErrorMessage,
+      ),
     });
   });
 
