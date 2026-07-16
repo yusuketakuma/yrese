@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4181 audit-log nominal error notice trust — FINALIZED / INDEPENDENT_PASS
+
+- 任意の構造的`error.notice`を表示authorityにする経路を廃止し、module-private WeakMapへ登録した内部request errorだけが固定HTTP/403 noticeとallowlisted errorCodeを運べるようにした。その他のrejectionはpropertyを読まずfrozen generic noticeへ収束する。
+- non-ok JSONの同期throw/非同期rejectに加え、解決bodyはown data descriptorだけを読む。getter・継承値・malformed/unregistered codeを無視し、descriptor Proxy trapも固定status noticeへfail-closed化。初回reviewで残存したguard外`in`/property readを検出・修正後、独立/security再review PASS。
+- focused62、Web407、API328 + integration14 expected skips、workspace typecheck/test、Web build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。verified/broken audit evidence、CRITICAL表示、retry/lifecycle、`audit.viewed`、API/contracts/copy/DOM/ARIAは不変。implementation `a0a3ed4`はlocal-only、pushなし。
+
 ### WP-4180 reception result idempotency provenance — FINALIZED / INDEPENDENT_PASS
 
 - API-006の保存authorityをinternal resultへ投影し、created/existing/conflict全armを保存済みtenant/pharmacy/raw key/ReceptionId/PatientIdへ拘束。serverはbranch/schema/audit/response前に検証し、success entry identity混成とsame-patient false conflictを固定500/no-store/audit zeroで拒否する。
