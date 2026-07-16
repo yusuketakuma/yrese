@@ -27,6 +27,8 @@ function escapeLikePattern(value: string): string {
 
 export const databasePatientEligibilityTimestampInvariantErrorMessage =
   'Patient database returned an invalid eligibility timestamp';
+export const databasePatientRowInvariantErrorMessage =
+  'Patient database returned an invalid patient row';
 
 function snapshotEligibilityCheckedAt(row: PatientRow): string | undefined {
   const value = readDatabaseRowOwnDataProperty(
@@ -44,16 +46,38 @@ function snapshotEligibilityCheckedAt(row: PatientRow): string | undefined {
 
 export function patientRowToSearchResult(row: PatientRow): PatientSearchResult {
   const eligibilityCheckedAt = snapshotEligibilityCheckedAt(row);
-  return patientSearchResultSchema.parse({
-    patientId: row.patient_id,
-    name: row.name,
-    kana: row.kana,
-    birthDate: row.birth_date,
-    sex: row.sex,
-    patientNumber: row.patient_number,
-    eligibilityStatus: row.eligibility_status,
-    ...(eligibilityCheckedAt === undefined ? {} : { eligibilityCheckedAt }),
-  });
+  const readCoreString = (property: keyof PatientRow): string => {
+    const value = readDatabaseRowOwnDataProperty(
+      row,
+      property,
+      databasePatientRowInvariantErrorMessage,
+    );
+    if (typeof value !== 'string') {
+      throw new Error(databasePatientRowInvariantErrorMessage);
+    }
+    return value;
+  };
+  const patientIdValue = readCoreString('patient_id');
+  const name = readCoreString('name');
+  const kana = readCoreString('kana');
+  const birthDate = readCoreString('birth_date');
+  const sex = readCoreString('sex');
+  const patientNumber = readCoreString('patient_number');
+  const eligibilityStatus = readCoreString('eligibility_status');
+  try {
+    return patientSearchResultSchema.parse({
+      patientId: patientIdValue,
+      name,
+      kana,
+      birthDate,
+      sex,
+      patientNumber,
+      eligibilityStatus,
+      ...(eligibilityCheckedAt === undefined ? {} : { eligibilityCheckedAt }),
+    });
+  } catch {
+    throw new Error(databasePatientRowInvariantErrorMessage);
+  }
 }
 
 export class PostgresPatientRepository implements PatientRepository {
