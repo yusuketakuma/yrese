@@ -6,6 +6,21 @@
 
 ---
 
+## 2026-07-16
+
+### WP-4146 workspace manifest semantic validation — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+
+- baseline `3d731e3`。workspace manifestのmissing/blank/duplicate nameとmalformed dependency section/key/specifierがboundary graphから黙って欠落し得るMEDIUM tooling-control gapを確認。live 10 manifestはvalid。
+- exact2でsemantic fail-closed validationとvalidated manifest snapshot再利用を実装し、array/padded/duplicate/null/non-string fixturesを固定。workspace alias false-positiveを避けるため単純target一致案はroot再点検で撤回。implementation commit `8dec253` をfeature branchへpush済み。
+- focused/full regressionはPASS: API270 + PostgreSQL14 expected skips、web335、audit183、calculation87、workspace typecheck/test/build、OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/script harness/diff。tracked snapshot secret scan PASS。ignored user-owned `.codegraph` symlinkを含むlive secret scanは既存scope failure。
+- built-in subagent禁止とproject agmsg禁止の同時制約により別agent verifierは未実施。root cold-path review済みだがFINALIZEDは主張しない。
+
+### WP-4147 pnpm 11 dependency-audit baseline recovery — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+
+- pnpm 10.33.2 / 10.34.5のauditがretired npm endpointsのHTTP 410で恒久停止し、fail-closed `check:deps`が全landingをblockすることを再現。pnpm 11.13.1では現行report high0/critical0を取得。
+- exact2でpackageManager pinを11.13.1へ更新し、既存lockのbuild-script dependency `esbuild` / `sharp`だけを明示allow。isolated frozen installでlockfile差分なし、全workspace regressionとlive gatesをPASS。implementation commit `3d731e3` をfeature branchへpush済み。
+- supply-chain許可は2 package限定、任意script許可/audit skipなし。別agent verifierはcurrent topology制約により未実施のためFINALIZEDは保留。
+
 ## 2026-07-13
 
 ### WP-4145 workspace boundary syntax-aware scan — FINALIZED

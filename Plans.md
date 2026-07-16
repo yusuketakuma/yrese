@@ -2756,6 +2756,25 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: exact5 revert。dependency/SSOT/data rollback不要。
   - landing_record: implementation commit `a5137f1` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact5、full gates、final domain/independent review PASS。TypeScript ASTでboundary importとduplicate constのlexical false positive/negativeを解消し、既存graph/rules/line-free messages/order/dedupeと意図的なsyntax-only境界をfixtureで固定。
 
+- [~] WP-4146 validate workspace manifest semantics(MEDIUM architecture/tooling-control integrity) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+  - 発見根拠: boundary checkerはworkspace manifestをJSON parseするだけで、missing/blank/duplicate `name`をskip/overwriteし、null/array dependency sectionやblank/non-string specifierをgraph外として扱い得た。現行10 manifestはvalidでlive違反なし。
+  - scope: exact5 `scripts/check-boundaries.mjs`, `scripts/check-scripts.mjs`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。package manifests/lock/CI/SSOT/apps/packages/API/DB/runtimeは変更しない。
+  - implementation: manifest root/name/dependency section/key/specifierを固定非echo scope errorでfail-closed検証し、workspace名重複を拒否する。validated manifest snapshotをapp identity mapとcycle graphへ再利用し、manifest再readを除去。workspace aliasの正当形を誤拒否しないためdependency target existenceはscope外。
+  - acceptance: missing/array/blank/padded/duplicate name、null/array section、blank/padded key/specifier、non-string specifierをfixed error only/no PASS/path/content echoで拒否。live boundary、既存graph/import/duplicate-const rule/message/orderを維持する。
+  - verification: rootのcold-path再点検で単純workspace target一致案をalias false-positive riskとして撤回。focused boundary/script harness、workspace typecheck/test/build、API270 + PostgreSQL14 expected skips、web335、audit183、calculation87、OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/diffはPASS。tracked snapshot secret scanはPASS。ignored user-owned `.codegraph` symlinkを含むlive worktree secret scanは既存scope failureであり未変更。
+  - review_status: current instructions prohibit built-in subagents while project routing prohibits agmsg; independent verifierは未実施。別agent verificationまでFINALIZEDを主張しない。human/domain/DB/medical/privacy semantic gateは不要。
+  - rollback: implementation commit `8dec253` と後続ledger commitをrevertする。manifest/data/SSOT rollback不要。
+  - landing_record: implementation commit `8dec253` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact2 implementationはfull local regression済み、independent verification pending。
+
+- [~] WP-4147 restore dependency audit with pnpm 11(MEDIUM supply-chain/tooling) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+  - 発見根拠: full gate中にrepo pin pnpm 10.33.2とlatest-10 10.34.5がnpm registryのretired audit endpointsからHTTP 410を受け、`check:deps`がmetadata欠落を正しくfail-closedにした。pnpm 11.13.1は現行audit reportを取得した。
+  - scope: exact5 `package.json`, `pnpm-workspace.yaml`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。`pnpm-lock.yaml`、dependency version/resolution、apps/packages/scripts/CI/SSOT/API/DB/runtimeは変更しない。
+  - implementation: packageManager pinを11.13.1へ更新し、既存lockにあるbuild-script dependencyの`esbuild`と`sharp`だけを`allowBuilds: true`で明示する。任意build script許可やaudit skip/fallback-successは導入しない。
+  - verification: isolated worktreeのfrozen installはlockfile無変更、esbuild/sharp build完了。workspace typecheck/test/build、API270 + PostgreSQL14 expected skips、web335、audit183、OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/script harness/diffをPASS。tracked snapshot secret scanはPASS。root再点検でlatest-10も410、11.13.1だけ現行metadata取得を再現。
+  - review_status: supply-chain許可は既存2 packageだけへ限定したが、current topologyでは別agent verifierを起動できずINDEPENDENT_VERIFY_REQUIREDを維持する。
+  - rollback: implementation commit `3d731e3` と後続ledger commitをrevertし、pnpm 10 audit endpoint復旧または別のfail-closed audit経路を用意する。lock/data rollback不要。
+  - landing_record: implementation commit `3d731e3` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact2 implementationとfrozen-install/full-gate proof済み、independent verification pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
