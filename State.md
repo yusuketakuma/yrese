@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4219 PostgreSQL patient core row authority — FINALIZED / INDEPENDENT_PASS
+
+- patient DB core7列のraw accessor/継承/stateful authorityによりPHI error漏えいとmixed patient false successが検索/GET/受付/queueへ波及する問題を修正。timestamp-firstを維持し、各列をown-dataから一度だけcapture、schema failureも固定PHI-safe errorへ収束した。
+- 7列missing/inherited/accessor getter0、invalid schema非echo、find/search全体reject、lookahead未読。受付created/existingはrollback、conflictはcore未読COMMITを維持した。
+- patient18+reception50、API607 + integration14 expected skips、Web454、workspace typecheck/test/build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent verifier PASS/APPROVED。SQL/contracts/SSOT/audit/idempotency/transaction不変、実DB操作なし。implementation `d712d30`はlocal-only、pushなし。
+
 ### WP-4218 PostgreSQL reception idempotency provenance authority — FINALIZED / INDEPENDENT_PASS
 
 - 受付create/existing/conflictのprovenance 5列multi-readにより、accessor raw leak、inherited false success、stateful値で分岐/返却が分裂したままCOMMITできる問題を修正。各列をown-dataから一度だけcaptureし、existing/conflictは同一snapshotで分岐・返却した。
