@@ -3332,6 +3332,7 @@ v0.2.0の最上位方針:
   - outcome: FHIR/JP Core Clinical Data Platform、日本固有Transaction Core、Pharmacy Operations、Open Integration、Reliability/UX/AIの5層を、既存実装・SSOT・公式根拠に接続したRelease Gate 0〜5へ変換する。
   - invariants: FHIR clinical authority、日本固有算定/請求/会計分離、public API dogfooding、local-first、medical-grade UX、AI draft + human decisionを維持する。独自clinical DTO正本、直接DB連携、multi-master、外部形式のCore流入、AI/Cloud障害による業務停止を禁止する。
   - acceptance: §1〜38、22 domain、全機能列挙、P0〜P3、Gate 0〜5、依存関係、共通module、22新規SSOT候補、KPI、停止条件の各要件が少なくとも1つのWP/既存SSOT/human gateへ追跡可能で、unmapped=0、duplicate-authority=0、unsupported compliance claim=0。
+  - current_coverage_status(2026-07-16): `STRUCTURAL_SECTION_PASS / ITEMIZED_SEMANTIC_UNPROVEN`。§1〜38、22 domain、88 sliceの構造mappingは検証済みだが、90件はrepresentative requirementであり、全bullet/functionの一意ID付きsource inventoryは存在しない。従ってacceptanceのitemized `unmapped=0`は未達成で、WP-0054q閉塞まで完了宣言しない。
   - execution: Release Gate 0はdocs/evidenceのみ。R3+ runtime、DB、医療安全、請求、会計、外部接続、production変更は対応SSOTのAPPROVEDと明示human gate後に再発行する。
 
 ### WP-0054 Evidence baseline と計画上の補正
@@ -3413,7 +3414,7 @@ Primary-source URLs to fingerprint in WP-0054c (not a substitute for source file
 - [~] WP-0054i Gate 0 approval packet(DRAFT_NO_GO、HUMAN_DECISION_REQUIRED、INDEPENDENT_VERIFY_REQUIRED)
   - scope: coverage、追加機能、重複統合、priorities、gates、SSOT順、Codex WPs、人間review、BLOCKER、go/no-goを1つのdecision packetへまとめる。
   - acceptance: pharmacist、claim practitioner、legal、FHIR、security/privacy、data-integrity、operations/product authorityがscope/evidence/riskを承認し、Gate 1 WPsを再発行する。
-  - evidence/result(2026-07-16): `docs/research/rececon_v0_7_gate0_decision_packet_20260716.md`へWP-0054a〜hの8 artifact/hash/landing commit、22-domain coverage、追加機能、DI-01〜12統合判断、P0〜P3、Gate 0〜5、SSOT Batch A〜D、Codex-only WP、11 human review role、HD-01〜18 decision、14 BLOCKER、Go/No-Go algorithmを統合。artifact hash 8/8一致、要求初回出力を全てmapping済み。人間判断complete=0/18、independent verification=`NOT_EXECUTED`、Gate 1 reissue=0のためcurrent decisionは`NO_GO`。
+  - evidence/result(2026-07-16): `docs/research/rececon_v0_7_gate0_decision_packet_20260716.md`へWP-0054a〜hの8 artifact/hash/landing commit、22-domain coverage、追加機能、DI-01〜12統合判断、P0〜P3、Gate 0〜5、SSOT Batch A〜D、Codex-only WP、11 human review role、HD-01〜18 decision、14 BLOCKER、Go/No-Go algorithmを統合。independent verificationは`docs/research/rececon_v0_7_independent_verification_20260716.md`の`PASS_WITH_FINDINGS`。構造count/hash/DAG/NO_GOはPASS、VF-01 itemized semantic coverageはOPEN、VF-02 G5-03 dependencyは`dcdf64e`で修正しindependent re-verification PASS。人間判断complete=0/18、Gate 1 reissue=0のためcurrent decisionは引き続き`NO_GO`。
   - commit_push: decision packet本体とWP-0054i〜nのplan evidenceをcommit `4fc5658`で`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。APPROVED SSOT/runtime/UI/DB/external/production変更なし。
   - exact_next_action: predecessor raw artifactとPriority A exact official artifactをrights/hash付きで回復・昇格し、HD-01〜18をnamed human authorityへ回付、PRC-007 atomic amendment batchを未発効で準備し、独立検証後にG0-01〜08を再評価する。それまでGate 1〜5 runtime WPを再発行しない。
 
@@ -3621,6 +3622,11 @@ Dependency DAG (all edges are prerequisites, not authorization):
   - Gate 5 Chain/Open: D16/D18 SMART-sandbox-SDK-Bulk + D19 advanced + D11 advanced transfer/forecast + M&A。
   - exact_next_action: HD-01〜18、exact official artifact promotion、PRC-007 atomic amendment、independent verificationを完了してG0-01〜07を全てPASSへ再評価した後だけ、G0-08でGate 1のexact scope/owner/verifier/rollback/demoを再発行する。
   - exit: each gate has 0 critical safety/claim defect、applicable golden/conformance 100%、rollback/restore evidence、independent verification、required human approval。candidate availability/SLO/KPI数値はbaseline後に承認する。
+- [!] WP-0054q Itemized v0.7 semantic requirement inventory(BLOCKED_SOURCE_RAW、R3)
+  - scope: v0.7の全bullet・列挙機能・明示原則を1行1 requirement IDに分解し、source locator、domain、priority、target WP/SSOT/human gate、duplicate/unsupported statusへ追跡する。
+  - evidence/root_cause: `docs/research/rececon_v0_7_independent_verification_20260716.md` VF-01。現在は§1〜38構造mappingと90 representative requirementのみで、itemized `unmapped=0`を証明できない。tracked repo、git history、text attachmentにv0.7 byte-preserving rawがない。
+  - acceptance: versioned rawまたは明示human-accepted normalized transcriptionがsourceとしてhash固定され、unique requirement ID、source coverage、target existence、unmapped=0、duplicate-authority=0を機械検査し、independent verifierがPASSする。
+  - stop/next: 会話表示からraw byte/hashを捏造しない。ユーザーからversioned fileを受領するか、normalized transcriptionのsource gapをproduct/spec authorityが明示受容するまでBLOCKED。
 
 ### v0.7 Requirement Coverage Audit
 

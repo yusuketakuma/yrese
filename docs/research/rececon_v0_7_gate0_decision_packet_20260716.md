@@ -12,7 +12,7 @@ implementation_authority: 0
 gate1_reissue_authority: 0
 production_authority: 0
 evidence_promotion: 0
-independent_verification: NOT_EXECUTED
+independent_verification: PASS_WITH_FINDINGS
 supersedes: none
 ```
 
@@ -27,7 +27,7 @@ supersedes: none
 3. compliance control 18件は全件にexact artifactまたはhuman sign-off blockerがあり、法令・請求・患者安全の実装authorityは0である。
 4. 22 domainのruntime completionは0件であり、PARTIAL 8、DOC_ONLY 5、BLOCKED 3、OUT_OF_SCOPE 5、MISSING 1である。
 5. FHIR clinical authority、Edge/local authority、LOCAL_ONLY会計、migration scope等に未解消のAPPROVED/Draft conflictがある。
-6. Gate 0成果物はCodex single laneで作成され、independent verificationと各human authorityのdecision/dissent/expiryが未記録である。
+6. 独立技術検証は`PASS_WITH_FINDINGS`で、VF-01 itemized semantic coverageがOPEN。各human authorityのdecision/dissent/expiryも0/18である。
 7. real-device UX/performance、restore/DR、cutover rollback、official connection、PH-OS sync、AI fallbackは計画のみで実証されていない。
 
 `NO_GO`は計画失敗ではない。Gate 0が意図どおりfail-closedに機能している状態である。
@@ -46,7 +46,7 @@ supersedes: none
 | WP-0054b | `rececon_v0_7_current_state_coverage_20260716.md` | 159 / `eeef1bc4abcb741a55d4b8e465ec6e811b58a0703ced29e1dd7850831acb0eca` | `77f548f` | LOCAL_READY / INDEPENDENT_VERIFY_REQUIRED |
 | WP-0054c | `rececon_v0_7_external_source_fingerprints_20260716.md` | 162 / `cec54753732f03a9eda7e6d71d438c78809f2aaac18e65f88237fe9fab0bf0b8` | `70c3813` | 38 live fingerprints / promotion 0 |
 | WP-0054d | `rececon_v0_7_compliance_matrix_20260716.md` | 211 / `99f7421eee3dad5698fc61ac7d8af9e8e027a12e64b7ed9f9d095cae079cc630` | `08cf334` | 18/18 HUMAN_OR_ARTIFACT_BLOCKED |
-| WP-0054e | `rececon_v0_7_priority_release_dag_20260716.md` | 317 / `dfd4266a5d704dcabacfe8ca7c4252cf33ba1000db2bf4fdfbca5e71dcf195ce` | `9975a81` | 40 WP / 83 edge / cycle 0 |
+| WP-0054e | `rececon_v0_7_priority_release_dag_20260716.md` | 317 / `b4b0051f5f478f7498535e18b19b7767e53c1faceeef5263220d3b70379aef52` | `dcdf64e` | 40 WP / 83 edge / cycle 0 / G5-03 dependency aligned |
 | WP-0054f | `rececon_v0_7_domain_api_module_architecture_20260716.md` | 284 / `fb511a0a8e1eb10fd6f001b2a08dfde1cf583ec93aca47833979411cc999ebb9` | `20779f7` | 22 domain / 5 API class / amendment blocked |
 | WP-0054g | `rececon_v0_7_ux_performance_kpi_evidence_20260716.md` | 411 / `67e0baeedcfb510a37841fd99c7a819f1f7bf4168f79a40b95e5adfe5d0ce605` | `f3bc288` | A16/B12/C12 / 34 KPI / human blocked |
 | WP-0054h | `rececon_v0_7_offline_security_migration_operations_matrix_20260716.md` | 343 / `7bf01354fe660234a4806a97ad1ae4ad19e16aea555218801fee3257a169043c` | `387cabd` | O36/C7/RST10/M10/S10/X16/D10 / R4 blocked |
@@ -196,7 +196,7 @@ Existing APPROVED docs are amended/composed under PRC-007. Requested filenames d
 | G0-01 | missing raw source retrieval/hash/rights/precedence | read-only retrieval yes; authority change no |
 | G0-02 | linked official artifact + license + promotion packet | retrieval yes; promotion requires human |
 | G0-03 | compliance amendment candidates | draft yes; approval/implementation no |
-| G0-04 | independent DAG/product order review | independent topology unavailable in current lane; human review required |
+| G0-04 | independent DAG/product order review | technical DAG review PASS; VF-01 and product order human review remain |
 | G0-05 | architecture PRC-007 batch | draft amendment packet yes; merge/effect no |
 | G0-06 | synthetic prototype/test protocol | design/prototype only after exact approved scope; no workflow claim |
 | G0-07 | BIA/RTO/RPO/DR/support/cutover decisions | tabletop draft yes; production action no |
@@ -308,7 +308,7 @@ G0-04 PARTIAL
 G0-05 PARTIAL
 G0-06 PARTIAL
 G0-07 PARTIAL
-independent verification NOT_EXECUTED
+independent verification PASS_WITH_FINDINGS (VF-01 OPEN / VF-02 VERIFIED)
 human decisions 0/18 complete
 result NO_GO
 ```
@@ -341,8 +341,9 @@ result NO_GO
 | architecture domain/API/WP maps | 22 / 5 / 40 | 22 / 5 / 40 |
 | UX journey steps / KPI | 16+12+12 / 34 | 16+12+12 / 34 |
 | resilience operation/data/restore/migration/support/fallback/drill | 36/7/10/10/10/16/10 | 36/7/10/10/10/16/10 |
+| itemized semantic requirement coverage | all v0.7 functions / unmapped=0 | `ITEMIZED_SEMANTIC_UNPROVEN` |
 | human decisions complete | 18 | 0 |
-| independent verification | required | NOT_EXECUTED |
+| independent verification | required | `PASS_WITH_FINDINGS`; VF-01 OPEN, VF-02 VERIFIED |
 | Gate 1 reissue | required after approval | 0 |
 
 ## 19. Exact next action
@@ -351,7 +352,7 @@ result NO_GO
 2. Retrieve and promote only the named official artifacts needed for P0 decisions.
 3. Route HD-01〜18 to named human authorities and record decision/dissent/expiry.
 4. Prepare the PRC-007 atomic amendment batch but do not make it effective until approved.
-5. Obtain independent verification of a〜i artifacts and rerun all counts/hashes.
+5. Close VF-01 with an itemized source inventory and independently verify the resulting `unmapped=0` claim.
 6. Re-evaluate G0-01〜07. Only if all are PASS may G0-08 issue exact Gate 1 WPs.
 
 Until then, current APPROVED SSOT/runtime remain authoritative and all Gate 1〜5 execution stays `BLOCKED_GATE0`。
