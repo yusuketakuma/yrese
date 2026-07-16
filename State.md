@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4194 patient-search repository failure normalization — FINALIZED / INDEPENDENT_PASS
+
+- free-text患者検索のrepository rejectionを固定500/no-storeへ正規化し、raw query・患者番号様値・adapter detailのAPI反射を遮断した。WP-4193 helperをgeneric化したが、2つのfindById境界は同じ固定message/input/return semanticsを維持する。
+- sync Error、async non-Error、hostile Proxy、scoped args once、encode zero、property read zero、非echoを固定。query/cursor validationとpage/schema/duplicate/cursor invariantsはcatch外のまま。
+- focused138、API375 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/API/security/privacy/medical/data review APPROVED。implementation `585eb45`はlocal-only、pushなし。
+
 ### WP-4193 patient lookup repository failure normalization — FINALIZED / INDEPENDENT_PASS
 
 - GET patient refreshと受付POST preflightの2つの`findById` rejectionを共通helperで固定500/no-storeへ正規化し、Error/non-Error/hostile Proxyのraw message・患者ID・adapter detail露出を遮断した。
