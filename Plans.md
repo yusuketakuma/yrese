@@ -2876,14 +2876,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: docs-only evidence commitと後続ledger commitをrevertする。temp artifactは削除し、runtime/data/package rollback不要。
   - landing_record: implementation commit `7375cbf` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 profile/reachability evidence landed、independent verification pending。
 
-- [~] WP-4160 map priority Profile cardinality / Must Support decisions(LOW read-only conformance evidence) — LOCAL_READY / INDEPENDENT_VERIFY_REQUIRED
+- [~] WP-4160 map priority Profile cardinality / Must Support decisions(LOW read-only conformance evidence) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
   - 発見根拠: WP-4159でPatient/Coverage/MedicationRequest/MedicationDispenseの候補Profileは特定したが、候補間の構造差とJP Coreが派生IGへ委ねるMust Support責務が未分離だった。snapshotの`mustSupport=true`が0件であることを「対応不要」と誤解すると、producer/consumer・欠損・保存再応答契約が未定義のままになる。
   - scope: exact4 `ops/refactor/EVIDENCE.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。Profile選定、Must Support付与、identifier mapping、clinical/claim判断、`meta.profile`、package/lock、SSOT/IG/CI/runtime/codeは変更しない。
   - evidence: official JP Core 1.2.0 guidanceはMust Support付与を原則派生projectへ委ねる。priority 7 candidate Profileは全てsnapshot/differential Must Support 0。differential element/cardinality/direct-binding/reference-target/invariant rowsはPatient `53/5/0/5/0`、Coverage `40/9/0/6/0`、MedicationRequest general `65/16/4/10/1`、injection `62/13/3/11/1`、MedicationDispense base `38/11/0/8/0`、general `8/4/1/1/0`、injection `4/0/0/2/0`。sliceの反復pathを含む機械行数であり、必須業務項目数ではない。
   - acceptance/review: JP Core guidance、candidate hierarchy、cardinality、direct binding、targetProfile、invariantとMust Support不在を別軸で記録し、general/injection/base、identifier、cross-server Reference、preferred/example terminology、producer/consumer/missing-dataの決定質問をhuman reviewへ明示する。0件をMust Support不要、cardinalityだけをsemantic completeness、narrative guidanceを機械制約、候補差分を採用済みcontractへ昇格しない。別agent verifier未実施。
   - validation: JP Core artifact SHA-256と7 Profile集計fixture再計算PASS、`pnpm check:ssot-index` PASS(173)、tracked snapshot + exact4 overlay secret scan PASS、`git diff --check` PASS。live `pnpm check:secrets`は既知のuntracked `.codegraph` symlinkでprotected scopeを検証できずfail-closed。
   - rollback: docs-only evidence commitと後続ledger commitをrevertする。temp artifactは削除し、runtime/data/package rollback不要。
-  - landing_record: pending implementation commit and push verification。
+  - landing_record: implementation commit `b96d0ec` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 priority-profile obligation evidence landed、independent verification pending。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。

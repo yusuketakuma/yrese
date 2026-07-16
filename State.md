@@ -8,10 +8,10 @@
 
 ## 2026-07-16
 
-### WP-4160 priority Profile cardinality / Must Support decisions — LOCAL_READY / INDEPENDENT_VERIFY_REQUIRED
+### WP-4160 priority Profile cardinality / Must Support decisions — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
 - JP Core 1.2.0のpriority 7 candidate Profileについてdifferential cardinality、direct binding、reference target、invariantとsnapshot Must Supportを分離して集計した。Must Supportは全候補0件だが、公式guidanceが原則として派生projectへ付与を委ねるため、対応不要ではなくyrese/PH-OS IGのproducer/consumer/missing-data責務が未決定である証拠とした。
-- Patient identifier、Coverage optional slice、MedicationRequest general/injectionのidentifier・binding差、MedicationDispense base/general/injection hierarchyをdecision packet化。artifact hash/7 Profile fixture再計算、SSOT index 173、tracked snapshot secret scan、diff checkはPASS。live secret scanは既知の`.codegraph` symlinkでfail-closed。Profile選定、identifier authority、`meta.profile`、terminology許諾、cross-server Reference、clinical completenessはhuman reviewまで未解決。exact4 docs-only evidence、landing commit/pushは未実施、別agent verifier未実施。
+- Patient identifier、Coverage optional slice、MedicationRequest general/injectionのidentifier・binding差、MedicationDispense base/general/injection hierarchyをdecision packet化。artifact hash/7 Profile fixture再計算、SSOT index 173、tracked snapshot secret scan、diff checkはPASS。live secret scanは既知の`.codegraph` symlinkでfail-closed。Profile選定、identifier authority、`meta.profile`、terminology許諾、cross-server Reference、clinical completenessはhuman reviewまで未解決。exact4 implementation commit `b96d0ec`をpush済み、別agent verifier未実施。
 
 ### WP-4159 Phase 1 JP Core Profile / terminology reachability — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
