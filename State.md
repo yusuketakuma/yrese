@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4224 PostgreSQL patient query row-set authority — FINALIZED / INDEPENDENT_PASS
+
+- patient query resultのraw rows/index/slice/map/length authorityにより、find複数行の先頭採用や物理empty searchへの偽患者注入がHTTP 200へ到達する問題を修正。own rows/length/dense indexをdescriptor snapshotし、find max1・search max limit+1をpatient projection前にfail-closed化した。
+- missing/inherited/accessor/non-array、Proxy/revoked rows、sparse/inherited/accessor index、over-capは固定PHI-safe error・getter/trap0・row field未読。raw slice/map/iterator/coercionは未実行。正常0/1行、non-default descriptor、selected invalid全体reject、lookahead未読/cursor semanticsを維持した。
+- patient23、tracked HEAD API672 + integration14 expected skips、Web454、workspace typecheck/test/build、全標準gate、tracked-snapshot exact3 overlay secret scanをPASS。independent plan/API/security/privacy/data/medical verifier PASS/APPROVED。SQL/contracts/server/audit/SSOT不変、実DB操作なし。implementation `6c7bda1`はlocal-only、pushなし。concurrent reception exact2と`.omo/`は未編集・未stage。
+
 ### WP-4223 In-memory reception patient ownership — FINALIZED / INDEPENDENT_PASS
 
 - new-createがcaller患者objectを保存していたため、create後mutationでlist/existing患者とprovenance patientIdが分裂する問題を修正。patientIdをown-dataから一度captureし、existing/conflict判定へ再利用。new-createはacceptedAt後・state更新前に全患者fieldをdetached schema snapshot/freezeして保存した。
