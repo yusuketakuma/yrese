@@ -2849,7 +2849,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - evidence: artifact SHA-256 `95c0a27f…ae322`、148,918 bytes、FHIR4.0.1/canonical/license `CC0-1.0`を取得。JP Core IG resourceは`ig-internal-dependency = hl7.fhir.uv.tools.r4#0.8.0`を明示し、同extension定義は「IG resource validationには必要だがimplementerには不要」とする。JP Core package 112 files / 6 unique tools canonical referencesのうち5定義はartifact内に存在し、`resource-information`は不在だった。
   - acceptance/review: tools packageをclinical runtime dependencyと誤分類せずconformance/build lock候補に限定する。tools packageのtransitive terminology `6.5.0` / extensions `5.3.0-ballot-tc1`とJP Core declared `7.0.0` / `5.2.0`の衝突、missing canonical definitionを明示し、clean validator/IG Publisher resolutionとFHIR specialist review前にlockしない。別agent verifier未実施。
   - rollback: docs-only evidence commitと後続ledger commitをrevertする。artifactはtemp削除済み、runtime/data rollback不要。
-  - landing_record: implementation commitはlanding後に記録する。independent verification pending。
+  - landing_record: implementation commit `0c9747f` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 tooling-dependency evidence landed、independent verification pending。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
