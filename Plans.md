@@ -3069,3 +3069,154 @@ v0.2.0の最上位方針:
 2. WP-0044 / WP-0045 を第2波として、算定・イベント・24/365アーキテクチャの高リスク設計を固める。
 3. WP-0046 / WP-0047 を第3波として、API-first platformと監査・テナント分離の実装前ゲートを固める。
 4. 実装WPは、該当SSOTがAPPROVEDになり、AGT-018のmapper/pre-plan review、required independent/domain review、該当する人間薬剤師・請求実務・法務・security/product authorityのreviewが完了してからCodex rootが発行する。
+
+## v0.5 FHIR / JP Core Native 相互運用計画(ユーザー提供 Draft 2026-07-15、受理 2026-07-16)
+
+- [~] WP-0053 v0.5 FHIR / JP Core Native program(IN_PROGRESS、R4 architecture/data/security/medical)
+  - scope: yrese / PH-OS のClinical CoreをFHIR Resource正本とし、FHIR Clinical Data Plane / Technical Control Plane / Legacy・Official Adapter Planeへ分離する。yreseは処方・調剤、PH-OSは訪問・服薬実態のauthoritative serverとし、同一Resourceのmulti-master更新を禁止する。日本固有の算定・会計・請求Domainは非FHIR正本を維持し、FHIR Referenceで接続する。
+  - root_cause/evidence: APPROVED ARC-008は臨床FHIR格納正本を既に上位決定している一方、PRD-007/DOM-005本文、API-001/006、現行PostgreSQL Patient/Reception、API-008の一部は旧facade/独自clinical API前提を残す。v0.5はこの移行を3プレーン、ownership、IG/terminology/conformance、open ecosystemまで拡張するため、Plansだけで既存APPROVED SSOTを上書きせずPRC-007改版が必要。
+  - verified_baseline: 2026-07-16公式履歴でJP Core current release=`1.2.0`(2025-07-30)、base FHIR=`R4 4.0.1`、latest development=`1.3.0-dev`。Phase 0開始時に再確認し、開発版をproduction baselineにしない。FHIR R4 Subscriptionはmaturity level 3 / Trial Useのため、通知を正本にせずhistory/delta recoveryを必須化する。
+  - systemic_impact: clinical persistence/API/auth/tenant/terminology/audit/history/UI dogfooding/PH-OS sync/adapter/CI/partner contractを横断する。既存Patient/Receptionを即時撤去・二重writeせず、resource単位のsingle-authority cutoverを必須とする。
+  - dependencies: ARC-008、PRC-007、PRD-007、DOM-005/006、API-002/003/004/008、DB-001..005、SEC-006/007/008、MOD-009/013、WP-0035/0036、WP-5004/7001。
+  - acceptance: WP-0053a〜jのSSOTがAPPROVED、実装WPのDoR/stop condition/rollbackが確定、clinical/control/adapterの境界と全Resource ownerが一意、現行独自clinical APIの移行期限とconsumerが列挙、FHIR/JP Core package lock・validator・IG QA・CapabilityStatement consistency gateが定義されるまでimplementationを開始しない。
+  - owner: Codex root(sole editor/landing owner)。mapper/planner/verifier/domain reviewerはread-only、同時editorは1名。
+  - verification: `pnpm check:ssot-index`、SSOT 23-field/PRC-007 review、source/version fingerprint、dependency DAG、全resource/API/DB/consumer inventory、security/privacy/medical/data-integrity review。
+  - demo_coverage: Phase 0はsynthetic conformance fixturesのみ。production data、real patient、external sendなし。Phase 1以降はPartner Sandboxとsynthetic test patientでFHIR REST/history/transaction/deny/cross-tenantを実証する。
+  - rollback: Phase 0は文書revertのみ。実装以降はresource単位のexpand/verify/cutoverで旧authoritative pathを維持し、切替前は新storeを非正本、切替後rollback条件はWP-0053jで明文化する。
+  - commit_push: 本変更はtask分割だけを独立docs commitとしてlandingする。各childは独立commit、safe feature branchへpushし、SSOTとruntimeを同一commitに混ぜない。
+  - human_review: R4のため、architecture/product authority、薬剤師・patient safety、privacy/security、DB/data integrity、FHIR/JP Core specialist、必要に応じ法務・請求authorityの明示承認が実装開始gate。
+  - exact_next_action: WP-0053aでユーザー提供v0.5原文をDraft artifactとして保存し、ARC-008および現行APPROVED SSOTとの差分表を作る。
+
+### Phase 0A — 仕様受理・版固定・権威境界
+
+- [ ] WP-0053a v0.5 Draft保存とnormative delta matrix(READY、R3 SSOT)
+  - scope: `docs/spec/fhir_jp_core_native_interoperability_v0.5.md`へ原文をDraft保存し、ARC-008/PRD-007/DOM-005/006/API-004/008/DB-005/SEC-008との差分、矛盾、維持事項を1行1decisionで記録する。
+  - root_cause/evidence: 現在の正式製品仕様は`construction_prompt_v0.2.0.md`のみで、チャット本文はrepository SSOTではない。特にDOM-005の旧「canonical model ≠ FHIR」本文とv0.5が衝突する。
+  - dependencies: WP-0053。acceptance: 原文byte-preserving Draft、source/date/status、差分全件、未解決事項、PRC-007改版対象が揃い、DraftをAPPROVED扱いしない。
+  - owner/verification: Codex root / exact diff、`check:ssot-index`対象外Draft確認、secret/PHI scan、architecture/spec review。
+  - demo/rollback/commit: demo N/A、文書revert可、独立docs commit/push。human_review: product/architecture authority。exact_next_action: 保存先IDとindex扱いをPRC-007に照合する。
+
+- [ ] WP-0053b FHIR/JP Core/terminology package baseline lock(READY、R3 external-standard)
+  - scope: `fhir_version_baseline.md`、`jp_core_version_baseline.md`、`fhir_package_lock.md`、`terminology_package_lock.md`。FHIR R4 4.0.1 / JP Core 1.2.0を候補lockし、1.3.0-devはwatch-onlyとする。SMART/Bulk Data/CDS Hooks等は採用時に個別version/statusをlockする。
+  - root_cause/evidence: 版未固定ではmeta.profile、validator、SearchParameter、terminology、IG buildが再現不能。公式JP Core historyは1.2.0 current / 1.3.0-dev developmentを示す。
+  - dependencies: WP-0053a。acceptance: canonical package id/version/hash/source/retrieved_at/license/FHIR dependency/update policy/rollbackを固定し、floating/latest/dev dependencyをCIが拒否する。
+  - owner/verification: Codex root / official package metadata、clean install、checksum、FHIR Validator/IG Publisher/SUSHI互換性spike。
+  - demo/rollback/commit: synthetic validationだけ、lockfile revert可、SSOT commit/push。human_review: FHIR/JP Core specialist + legal/license。exact_next_action: official NPM package artifactsとlicenseを取得・fingerprintする。
+
+- [!] WP-0053c FHIR Native 3-plane architecture + PRC-007 cascade(BLOCKED_HUMAN_APPROVAL、R4)
+  - scope: `fhir_native_architecture_principles.md`、`fhir_clinical_data_plane.md`、`technical_control_plane.md`、`adapter_plane_policy.md`を起草し、ARC-008/PRD-007/DOM-005/API-002/004を改版する。独自APIをTechnical Control Planeへ限定し、clinical payloadのcontrol-plane二重保存を禁止する。
+  - root_cause/evidence: ARC-008はFHIR格納正本をAPPROVED済みだが、旧本文/現行APIにはfacade・BFF・独自Patient APIが残る。v0.5は正式な3プレーンとUI dogfoodingを要求する。
+  - dependencies: WP-0053a/b、PRC-007 10段フロー。acceptance: plane ownership/import direction/allowed API/forbidden duplication/failure boundary/PHI policyが一意で、既存SSOTのamendment noteが解除される。
+  - owner/verification: Codex root / dependency graph、API/DB inventory、architecture/security/privacy/medical/data review。
+  - demo/rollback/commit: architecture fixtureのみ、APPROVED前はruntime変更なし、exact SSOT batch commit/push。human_review: architecture/product/security/privacy/medical authority。exact_next_action: human scope approval後にPRC-007 review packetを発行する。
+
+- [!] WP-0053d Resource ownership/reference/sync policy(BLOCKED_WP-0053c、R4 data-integrity)
+  - scope: `yrese_fhir_resource_ownership.md`、`phos_fhir_resource_ownership.md`、`fhir_reference_policy.md`、`yrese_phos_fhir_sync_policy.md`。Resource typeだけでなくinstance creation authority、replica immutability、identifier namespace、logical ID、canonical reference、merge/partition ruleを定義する。
+  - root_cause/evidence: Consent/Provenance/AuditEventは両serverの候補に含まれ、type単位ownerだけではmulti-master禁止を証明できない。ReceptionのFHIR写像先も未決定。
+  - dependencies: WP-0053c。acceptance: 全対象Resourceにcreate/update/delete/history authorityが1つ、read-only replica制約、cross-server reference、Patient merge/unmerge、Consent/AuditEvent/Provenanceのinstance ownership、Reception mapping decisionが確定する。
+  - owner/verification: Codex root / exhaustive resource matrix、conflict/red-team scenarios、medical/privacy/audit/data-integrity review。
+  - demo/rollback/commit: synthetic ownership conflicts、文書revert可、SSOT commit/push。human_review: yrese/PH-OS product owners + clinical/privacy authority。exact_next_action: resource×operation×server matrixを作る。
+
+### Phase 0B — Conformance・persistence・security SSOT
+
+- [!] WP-0053e Profile/Extension/Terminology governance(BLOCKED_WP-0053b/c/d、R3)
+  - scope: `jp_core_profile_registry.md`、`yrese_phos_profile_registry.md`、`extension_governance_policy.md`、`terminology_governance_policy.md`。DOM-006をFHIR Resource正本前提へ改版し、CodeSystem/ValueSet/ConceptMap/SearchParameter/canonical namespaceを登録制にする。
+  - root_cause/evidence: 現DOM-006はcanonical↔FHIR mapping前提であり、v0.5のFHIR正本ではprofile/extension/terminology registryが直接write contractとなる。
+  - dependencies: WP-0053b-d。acceptance: 全Phase1 Resourceのprofile/meta.profile/Must Support producer-consumer/missing-data/terminology binding/extension justification/conformance fixtureが登録され、台帳外実装をCIが拒否する。
+  - owner/verification: Codex root / official StructureDefinition・ValueSet validation、terminology license、no duplicate model review。
+  - demo/rollback/commit: synthetic examplesのみ、registry entry単位revert、SSOT commit/push。human_review: FHIR/terminology/clinical/legal。exact_next_action: Patient/Coverage/MedicationRequest/MedicationDispense profile gap inventory。
+
+- [!] WP-0053f FHIR persistence/search/history/identity policies(BLOCKED_WP-0053d/e、R4 DB)
+  - scope: `fhir_persistence_policy.md`、`fhir_search_projection_policy.md`、`fhir_history_policy.md`、`fhir_resource_identity_policy.md`。DB-001..005/WP-6001 proposalを再評価し、engine-neutral invariantsを先に固定する。
+  - root_cause/evidence: 現PostgreSQL Patient/ReceptionとDynamoDB候補設計はFHIR Resource/history/meta.profileを正本としてまだ実証していない。projectionを正本化しない再構築可能性も未定義。
+  - dependencies: WP-0053c-e、WP-4077/5004/7001との非重複整理。acceptance: resource JSON/version/history/hash/tenant/pharmacy/deletion state、atomic transaction、search projection rebuild、ETag/If-Match、migration/capacity/backup/restore/rollbackを固定し、製品選定はaccess-patternとsecurity evidence後に行う。
+  - owner/verification: Codex root / disposable DB spike、concurrency/tenant/history/restore tests、DB/security/privacy/data-integrity review。
+  - demo/rollback/commit: synthetic disposable store、本番migrationなし、design/spike分離commit。human_review: infrastructure/security/data authority。exact_next_action: required access patternsとRPO/RTO未確定値を列挙する。
+
+- [!] WP-0053g FHIR REST/CapabilityStatement/Subscription policy(BLOCKED_WP-0053c-f、R4 API)
+  - scope: `capability_statement_policy.md`、`fhir_rest_interaction_policy.md`、`fhir_subscription_policy.md`を起草しAPI-008を改版。read/vread/search/history/create/update/transaction/batch/conditional interaction、OperationOutcome、content type、strict search、pagination、ETagをresource別に宣言し、R4 SubscriptionはTrial Useとしてhistory/delta recoveryと分離する。
+  - root_cause/evidence: API-008はPROPOSEDかつMVPでtransaction/batch/history-type等を未対応とし、API-001専用patient searchを残すためv0.5 targetと不一致。
+  - dependencies: WP-0053b-f。acceptance: `/fhir/r4/metadata`宣言とrouting/contract/testの単一生成元、unsupported fail-closed、SearchParameter allow-list、clinical custom API禁止/deprecation planが確定する。
+  - owner/verification: Codex root / FHIR R4 REST/TestScript、CapabilityStatement implementation diff、contract/security/medical review。
+  - demo/rollback/commit: synthetic FHIR requests、旧APIはcutoverまで維持、SSOT commit/push。human_review: external API/FHIR/security authority。exact_next_action:現API surfaceをclinical/control/adapterに分類する。
+
+- [!] WP-0053h Provenance/AuditEvent/Consent/security authority(BLOCKED_WP-0053c/d/f、R4 security/privacy)
+  - scope: `provenance_policy.md`、`audit_event_policy.md`、`fhir_security_policy.md`。SEC-006/007/008と整合し、FHIR Provenance/AuditEventのauthoritative範囲と内部tamper-evident ledgerの関係、Consent enforcement、SMART/OIDC/mTLS/purpose_of_useを確定する。
+  - root_cause/evidence: v0.5はProvenance/AuditEventを両serverの正本候補とする一方、ARC-008は内部監査hash chainを非FHIR正本、Provenanceを投影としている。概念を混同すると二重正本または監査弱体化になる。
+  - dependencies: WP-0053c/d/f、WP-5004/SEC-008。acceptance: event class別authoritative store、1:1 correlation、append-only/hash/retention、FHIR read/search監査、token audience/scope/tenant/pharmacy/patient/purpose、PHI非露出が一意で、制約緩和なし。
+  - owner/verification: Codex root / threat model、IDOR/cross-tenant/replay/consent/immutability tests、security/privacy/audit/medical review。
+  - demo/rollback/commit: synthetic auth/audit only、security relaxation rollback不可なら実装禁止、SSOT commit/push。human_review: security/privacy/legal/medical authority。exact_next_action: audit event taxonomyとdual-store禁止境界を作る。
+
+- [!] WP-0053i IG/conformance/version-migration/partner policy(BLOCKED_WP-0053b/e/g/h、R3)
+  - scope: `fhir_conformance_pipeline.md`、`fhir_version_migration_policy.md`、`partner_fhir_onboarding_policy.md`、`smart_on_fhir_policy.md`、`fhir_bulk_data_policy.md`、`cds_hooks_policy.md`と`yrese-phos.fhir.ig`構造。SUSHI/IG Publisher採否、validator、QA report、TestScript/TestPlan、sandbox、SDK、deprecation、および将来capabilityのversion/status/非MVP境界を定義する。
+  - root_cause/evidence: profile validation/CapabilityStatement consistency/terminology/transaction/subscription/roundtrip/SMART scope gatesが現在のCIに存在しない。
+  - dependencies: WP-0053b/e/g/h。acceptance: clean reproducible IG build、zero error QA policy、locked packages、synthetic examples、CI stop gate、partner kit、JP Core upgrade diff/revalidation/rollback手順が確定する。
+  - owner/verification: Codex root / clean toolchain build、validator negative fixtures、CI dry run、FHIR/test/legal review。
+  - demo/rollback/commit: public-safe synthetic artifactだけ、toolchain pin revert可、SSOT/tooling別commit。human_review: FHIR/OSS/legal/security。exact_next_action: toolchain license/runtime/version matrixを作る。
+
+- [!] WP-0053j Current-state migration/cutover plan(BLOCKED_WP-0053c-i、R4 data/medical)
+  - scope: 現`Patient`/`Reception`/独自API/PostgreSQL repository/Web consumerからFHIR正本へresource単位で移行するexpand→validate→shadow-read(non-authoritative)→consumer switch→authority cutover→legacy retire手順を定義する。
+  - root_cause/evidence: 現行`GET /patients/search`、`GET /patients/:id`、`POST/GET /reception`はtarget architectureでclinical custom APIとなる。即削除は主要journeyを破壊し、dual-writeはmulti-master禁止に反する。
+  - dependencies: WP-0053c-i、現行FULLSTACK_ALIGNMENT、WP-5002/5003。acceptance: field/resource mapping、loss report、ID/reference preservation、history bootstrap、audit/provenance、read comparison、zero-downtime cutover、rollback point、legacy API sunset date/consumer listが全て確定する。
+  - owner/verification: Codex root / anonymized migration rehearsal、record counts/hash/reference/tenant checks、browser/API/full regression、medical/privacy/data-integrity review。
+  - demo/rollback/commit: disposable DB + synthetic Bundle、production migrationは別human gate、migration codeとcutover docs分離commit。human_review: pharmacist/product/DB/security/privacy. exact_next_action:現Patient/Reception field-to-FHIR gap mapを作る。
+
+### Phase 1 — yrese FHIR Native Foundation(Phase 0 APPROVED後のみ)
+
+- [!] WP-6004 FHIR/JP Core toolchain and package-lock foundation(BLOCKED_PHASE0、R2 tooling)
+  - scope: locked validator/SUSHI/IG Publisher/package cache、synthetic examples、CI scripts。dependencies: WP-0053b/e/i APPROVED。
+  - acceptance/verification: clean install/build、negative profile/terminology fixture fail、no network-floating version、SBOM/license/secrets/boundaries PASS。
+  - owner/demo/rollback/commit/human: Codex root、synthetic CI demo、tooling commit単位revert、independent verifier + supply-chain/FHIR review。exact_next_action: Phase0 approval後にpackage manager/tool versionsをpinする。
+
+- [!] WP-5009 FHIR Resource Store + history/search projection foundation(BLOCKED_PHASE0、R4 DB)
+  - scope: encrypted tenant/pharmacy-scoped resource/version/history store、rebuildable search projection、transaction boundary、optimistic concurrency。dependencies: WP-0053f/h/j + DB/security human approval。
+  - acceptance/verification: synthetic Patientでcreate/read/vread/history/update conflict/search/rebuild/restore/cross-tenant deny、no dual authority、zero skipped disposable-DB tests。
+  - owner/demo/rollback/commit/human: Codex root、disposable store demo、cutover前はnon-authoritativeでdrop可、DB/security/privacy/data/medical review、production apply別承認。exact_next_action: engine selection spikeを実行する。
+
+- [!] WP-2210 FHIR REST + CapabilityStatement server foundation(BLOCKED_WP-5009、R3 API/security)
+  - scope: `/fhir/r4/metadata`、OperationOutcome、FHIR media type、ETag/If-Match、resource interaction/search allow-list、transaction Bundle。dependencies: WP-0053g/h、WP-5009。
+  - acceptance/verification: CapabilityStatementとrouteのmachine diff、unsupported interaction deny、auth/tenant/PHI/no-store/rate-limit tests、FHIR validator/TestScript PASS。
+  - owner/demo/rollback/commit/human: Codex root、synthetic API demo、feature-gated non-authoritative rollout、API/security/FHIR review。exact_next_action: Patient read/searchの最小vertical sliceをplan reviewする。
+
+- [!] WP-2211 yrese authoritative Resource rollout(BLOCKED_WP-2210、R4 clinical)
+  - scope: Patient→Coverage/Organization/Practitioner(Role)/Location→Medication→MedicationRequest→MedicationDispense→AllergyIntolerance/Condition/Consent→Provenance/AuditEventのrisk-ordered slices。各sliceはprofile/terminology/history/audit/ownershipを同時に満たす。
+  - dependencies: WP-0053d/e/h/j、WP-2210。acceptance/verification: resource別DoD、FHIR/JP Core validation、transaction/reference/tenant/concurrency/medical-safety tests、legacy authority cutover evidence。
+  - owner/demo/rollback/commit/human: Codex root、synthetic clinical journeys、resource単位rollback、slice別commit/push、pharmacist/FHIR/privacy/security review。exact_next_action: Patient sliceだけを独立WPへ再発行する。
+
+- [!] WP-3023 yrese Web FHIR API dogfooding migration(BLOCKED_WP-2211_PATIENT、R3 UI/medical)
+  - scope: patient search/context/reception等のWeb consumerを公開FHIR Data Planeへ移行し、内部専用clinical APIを廃止する。Technical Control Plane UIは独自APIを維持できる。
+  - dependencies: WP-0053g/j、該当Resource slice。acceptance/verification: selected-patient safety、loading/empty/error/stale/permission、mobile/keyboard、request/contract/browser evidence、旧consumerゼロ。
+  - owner/demo/rollback/commit/human: Codex root、synthetic browser journeys、consumer単位feature rollback、UI/API別commit、medical/accessibility/privacy review。exact_next_action: API-001 consumer inventoryを作る。
+
+### Phase 2+ — PH-OS sync / Adapter / Open ecosystem
+
+- [!] WP-2212 yrese↔PH-OS FHIR native synchronization(BLOCKED_PHASE1、R4 distributed-data)
+  - scope: REST/transaction Bundle/history deltaをrecovery正本、R4 Subscription/rest-hookを通知、control planeをretry/cursor/dead-letter/leaseに限定する。相手Resourceはread-only replica。
+  - dependencies: WP-0053d/g/h、両serverのauthoritative Resource実装。acceptance/verification: lost/duplicate/out-of-order notification、version conflict、offline rebase、idempotency、dead-letter recovery、no multi-master、cross-tenant deny。
+  - owner/demo/rollback/commit/human: cross-repo ownersを明示して各repo sole editor、synthetic two-server demo、subscription停止→history pull fallback、repo別commit、clinical/privacy/security/data review。exact_next_action: PH-OS側repo/SSOT/versionをlive確認する。
+
+- [!] WP-2213 Legacy / Official Adapter Plane FHIR ACL(BLOCKED_PHASE1、R4 regulatory)
+  - scope: JAHIS/NSIPS/電子処方箋/資格確認/PMHをACLでFHIR Resource/Bundleへ変換し、外部形式をClinical Coreへ漏らさない。レセ電・請求は日本固有Domain/official outputを維持する。
+  - dependencies: WP-0035、ARC-003/004、adapter source/license/evidence、該当FHIR profiles。acceptance/verification: approved mapping、roundtrip loss report、encoding/invalid input/PHI/audit、official-format conformance、FHIR validator PASS。
+  - owner/demo/rollback/commit/human: Codex root、synthetic fixtures only、adapter単位disable/rollback、adapter別commit、legal/regulatory/pharmacist/privacy review。exact_next_action: adapter×FHIR Resource applicability matrixを作る。
+
+- [!] WP-2214 Open ecosystem: SMART/Bulk Data/CDS Hooks/Partner Sandbox(BLOCKED_PHASE1、R4 external/security)
+  - scope: `smart_on_fhir_policy.md`、`fhir_bulk_data_policy.md`、`cds_hooks_policy.md`、sandbox/conformance kit/SDK。FHIR R4向けpublished versionsを個別lockし、STU/Trial Use statusを明示する。
+  - dependencies: WP-0053b/g/h/i、stable FHIR server。acceptance/verification: SMART discovery/PKCE/audience/scope、backend service auth、Bulk NDJSON async export/purpose/audit/expiry、CDS suggestion-only/pharmacist confirmation、partner contract tests。
+  - owner/demo/rollback/commit/human: Codex root、synthetic sandbox、capability別feature disable、capability別commit、security/privacy/legal/medical review。exact_next_action: MVP/non-MVP capability prioritizationをproduct authorityへ提示する。
+
+- [!] WP-2215 FHIR Native final conformance and cutover gate(BLOCKED_ALL_PREDECESSORS、R4 release)
+  - scope: IG QA、validator、terminology、CapabilityStatement、REST/transaction/history/Subscription、SMART/Bulk/CDS applicable gates、migration reconciliation、local demo、clean restart、legacy clinical API removalを統合判定する。
+  - dependencies: WP-0053a-j、WP-6004/5009/2210-2214/3023。acceptance/verification: v0.5 Definition of Done全項目、0 unmanaged P0/P1、0 clinical custom API consumer、0 multi-master/dual authority、zero-skip applicable tests、independent/human approval。
+  - owner/demo/rollback/commit/human: Codex root integration owner、synthetic end-to-end + partner sandbox、resource cutover rollback runbook実証、landing-record commit/push、architecture/product/FHIR/pharmacist/security/privacy/data/legal release gate。exact_next_action: predecessor completion後にrequirement-by-requirement auditを作る。
+
+### v0.5 実行順序と即時停止条件
+
+1. WP-0053a/bをread-only evidence優先で進める。
+2. WP-0053cはR4 human scope approval後、PRC-007の10段フローで実施する。
+3. WP-0053d/e/hをownership・clinical semantics・securityの同一decision batchとしてreviewし、その後f/g/i/jを確定する。
+4. Phase 0全SSOT APPROVED前にWP-6004以外のruntime実装を開始しない。toolchainもlock/ライセンス/CI plan承認前は追加しない。
+5. Phase 1はPatientの最小vertical sliceから始め、resource単位でverify/cutoverする。同一Resourceのdual-write/multi-masterを導入しない。
+6. PH-OS sync、Adapter、SMART/Bulk/CDSはPhase 1の安定したFHIR serverとownership evidence後に進める。
+7. 現行独自clinical APIはconsumer移行とrollback実証前に削除しないが、新規clinical capabilityを独自APIへ追加しない。
+8. JP Core 1.3.0-dev、R5、未lock package、未定義canonical URL、未登録Extension/Terminology、validatorなしの`JP Core準拠`訴求、control planeへのclinical payload複製、FHIRによる請求/会計正本置換はfail-closedで停止する。
