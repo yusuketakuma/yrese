@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4204 reception create result handoff — FINALIZED / INDEPENDENT_PASS
+
+- generic async wrapperがfulfilled create resultを再度thenable同化してraw sentinel/Proxy TypeErrorを固定error外へ漏らす実バグを修正。createをroute-local direct await/catchとし、repository rejectionとfulfilled kind/provenance invariantを分離した。
+- stateful resultはthen1回・semantic read0で409、revoked resultはfixed kind invariantへ収束。kind/provenance/entry/idempotency/acceptedAt/created-only audit順序を維持し、conflict/revokedではaudit zeroを固定したが、commit/rollback/readback/retryは主張していない。
+- focused server220、API464 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。独立reviewでaudit-order証跡を追加後、mapper/plan/API/security/privacy/data/medical/audit review READY。implementation `cb0b762`はlocal-only、pushなし。
+
 ### WP-4203 fulfilled patient search page graph authority — FINALIZED / INDEPENDENT_PASS
 
 - page.results二重readで`limit=1`から患者2件を200返却できた実バグを修正。results lengthを一度固定してindex/PHI前に既存limitを適用し、patient graphはplain snapshot後だけschema/duplicate判定へ渡した。
