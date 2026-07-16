@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4189 reception error-code operation/status binding — FINALIZED / INDEPENDENT_PASS
+
+- registry登録だけで受付errorCodeを表示していた境界を修正し、API-006のqueue 2 tuple / POST 4 tupleへcanonical constantsで拘束した。wrong registered code、他operation用code、契約外statusは固定案内を変えずcodeだけ省略する。
+- 6許可tupleのpositive/mismatch、queue 404/409/500、POST 500、raw body非echoを固定。own data descriptor、body exactly-once、Proxy/accessor/descriptor trap、trusted frozen notice、POST body/idempotency key/200・201、queue runner/retry/reload、backend audit semanticsは不変。
+- focused105、Web443、API348 + integration14 expected skips、workspace typecheck/test、Web build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/API/security/privacy review APPROVED。implementation `c8dd2b7`はlocal-only、pushなし。
+
 ### WP-4188 reception audit acknowledgement authority — FINALIZED / INDEPENDENT_PASS
 
 - 受付created後のaudit append返却を捨てるfalse-201境界を修正。scope/intent/targetとaudit時刻をsingle frozen snapshot化し、`hydrateAuditEvent`後のhash検証済みfrozen eventだけをscope/actor/type/target/outcome/wallClock/aggregateへ照合する。未要求reason/businessも拒否する。
