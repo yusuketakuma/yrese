@@ -5,7 +5,10 @@ import {
   type AuditEvent,
   type CreateAuditEventInput,
 } from '@yrese/audit';
-import { PATIENT_SEARCH_CURSOR_MAX_LENGTH } from '@yrese/contracts';
+import {
+  PATIENT_SEARCH_CURSOR_MAX_LENGTH,
+  PATIENT_SEARCH_DEFAULT_LIMIT,
+} from '@yrese/contracts';
 import { patientId, pharmacyId, receptionId, tenantId, userId } from '@yrese/shared-kernel';
 
 import {
@@ -27,6 +30,7 @@ import {
   apiVersion,
   buildServer,
   patientSearchInvalidQueryErrorCode,
+  patientSearchRepositoryErrorMessage,
   patientSearchCursorProgressInvariantErrorMessage,
   patientSearchDuplicateIdentityInvariantErrorMessage,
   patientSearchResultLimitInvariantErrorMessage,
@@ -547,6 +551,81 @@ describe('buildServer', () => {
       message: 'Invalid patient search query',
     });
   });
+
+  it.each([
+    [
+      'synchronous Error',
+      false,
+      (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) =>
+        new Error(rawSentinel),
+    ],
+    [
+      'asynchronous non-Error object',
+      true,
+      (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) => ({
+        message: rawSentinel,
+        patientNumber: 'PATIENT-SEARCH-REJECTION-SECRET',
+      }),
+    ],
+    [
+      'hostile Proxy',
+      true,
+      (_rawSentinel: string, propertyRead: ReturnType<typeof vi.fn>) =>
+        new Proxy({}, { get: propertyRead, has: propertyRead, getPrototypeOf: propertyRead }),
+    ],
+  ] as const)(
+    'normalizes a patient search repository rejection from %s without inspecting it',
+    async (_label, rejectAsPromise, createRejection) => {
+      const query = '合成患者番号SEARCH-SECRET-4194';
+      const rawSentinel = `raw patient search rejection ${query}`;
+      const propertyRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const rejection = createRejection(rawSentinel, propertyRead);
+      const search = vi.fn<PatientRepository['search']>(() => {
+        if (rejectAsPromise) return Promise.reject(rejection);
+        throw rejection;
+      });
+      const encode = vi.fn(() => 'must-not-encode-after-search-rejection');
+      const server = buildDevTestServer({
+        patientSearchCursorCodec: { encode, decode: vi.fn(() => undefined) },
+        patientRepository: {
+          search,
+          findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: `/patients/search?q=${encodeURIComponent(query)}`,
+        headers: tenantOnePatientReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(search).toHaveBeenCalledExactlyOnceWith({
+        tenantId: tenantId('tenant-001'),
+        pharmacyId: pharmacyId('pharmacy-001'),
+        q: query,
+        limit: PATIENT_SEARCH_DEFAULT_LIMIT,
+      });
+      expect(encode).not.toHaveBeenCalled();
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: patientSearchRepositoryErrorMessage,
+      });
+      for (const sensitiveValue of [
+        rawSentinel,
+        query,
+        'PATIENT-SEARCH-REJECTION-SECRET',
+      ]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+      expect(propertyRead).not.toHaveBeenCalled();
+    },
+  );
 
   it('returns patient search results with no-store and supports second-page cursor pagination', async () => {
     const server = buildDevTestServer();

@@ -67,6 +67,7 @@ export const patientSearchDuplicateIdentityInvariantErrorMessage =
   'Patient repository returned duplicate patient identities';
 export const patientSearchCursorProgressInvariantErrorMessage =
   'Patient repository returned an invalid next cursor';
+export const patientSearchRepositoryErrorMessage = 'Patient repository search failed';
 export const patientLookupRepositoryErrorMessage = 'Patient repository lookup failed';
 export const receptionInvalidRequestErrorCode = RECEPTION_INVALID_REQUEST_ERROR_CODE;
 export const receptionPatientNotFoundErrorCode = RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE;
@@ -157,13 +158,14 @@ function invalidPatientSearchQueryResponse() {
   });
 }
 
-async function findPatientByIdOrThrowFixed(
-  operation: () => Promise<PatientSearchResult | undefined>,
-): Promise<PatientSearchResult | undefined> {
+async function runRepositoryOperationOrThrowFixed<T>(
+  operation: () => Promise<T>,
+  invariantErrorMessage: string,
+): Promise<T> {
   try {
     return await operation();
   } catch {
-    throw new Error(patientLookupRepositoryErrorMessage);
+    throw new Error(invariantErrorMessage);
   }
 }
 
@@ -306,13 +308,17 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         return reply.code(400).send(invalidPatientSearchQueryResponse());
       }
 
-      const page = await patientRepository.search({
-        tenantId: tenantContext.tenantId,
-        pharmacyId: tenantContext.pharmacyId,
-        q: query.data.q,
-        limit: query.data.limit,
-        ...(cursor === undefined ? {} : { cursor }),
-      });
+      const page = await runRepositoryOperationOrThrowFixed(
+        () =>
+          patientRepository.search({
+            tenantId: tenantContext.tenantId,
+            pharmacyId: tenantContext.pharmacyId,
+            q: query.data.q,
+            limit: query.data.limit,
+            ...(cursor === undefined ? {} : { cursor }),
+          }),
+        patientSearchRepositoryErrorMessage,
+      );
       if (page.results.length > query.data.limit) {
         throw new Error(patientSearchResultLimitInvariantErrorMessage);
       }
@@ -373,12 +379,14 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       }
 
       const parsedPatientId = patientId(params.data.patientId);
-      const patient = await findPatientByIdOrThrowFixed(() =>
-        patientRepository.findById({
-          tenantId: tenantContext.tenantId,
-          pharmacyId: tenantContext.pharmacyId,
-          patientId: parsedPatientId,
-        }),
+      const patient = await runRepositoryOperationOrThrowFixed(
+        () =>
+          patientRepository.findById({
+            tenantId: tenantContext.tenantId,
+            pharmacyId: tenantContext.pharmacyId,
+            patientId: parsedPatientId,
+          }),
+        patientLookupRepositoryErrorMessage,
       );
       if (patient === undefined) {
         return reply.code(404).send(patientNotFoundResponse());
@@ -464,12 +472,14 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       }
 
       const parsedPatientId = patientId(body.data.patientId);
-      const patient = await findPatientByIdOrThrowFixed(() =>
-        patientRepository.findById({
-          tenantId: tenantContext.tenantId,
-          pharmacyId: tenantContext.pharmacyId,
-          patientId: parsedPatientId,
-        }),
+      const patient = await runRepositoryOperationOrThrowFixed(
+        () =>
+          patientRepository.findById({
+            tenantId: tenantContext.tenantId,
+            pharmacyId: tenantContext.pharmacyId,
+            patientId: parsedPatientId,
+          }),
+        patientLookupRepositoryErrorMessage,
       );
       if (patient === undefined) {
         return reply.code(404).send(receptionPatientNotFoundResponse());
