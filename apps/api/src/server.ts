@@ -67,6 +67,7 @@ export const patientSearchDuplicateIdentityInvariantErrorMessage =
   'Patient repository returned duplicate patient identities';
 export const patientSearchCursorProgressInvariantErrorMessage =
   'Patient repository returned an invalid next cursor';
+export const patientLookupRepositoryErrorMessage = 'Patient repository lookup failed';
 export const receptionInvalidRequestErrorCode = RECEPTION_INVALID_REQUEST_ERROR_CODE;
 export const receptionPatientNotFoundErrorCode = RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE;
 export const receptionIdempotencyConflictErrorCode = RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE;
@@ -154,6 +155,16 @@ function invalidPatientSearchQueryResponse() {
     errorCode: patientSearchInvalidQueryErrorCode,
     message: 'Invalid patient search query',
   });
+}
+
+async function findPatientByIdOrThrowFixed(
+  operation: () => Promise<PatientSearchResult | undefined>,
+): Promise<PatientSearchResult | undefined> {
+  try {
+    return await operation();
+  } catch {
+    throw new Error(patientLookupRepositoryErrorMessage);
+  }
 }
 
 function invalidReceptionRequestResponse() {
@@ -362,11 +373,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       }
 
       const parsedPatientId = patientId(params.data.patientId);
-      const patient = await patientRepository.findById({
-        tenantId: tenantContext.tenantId,
-        pharmacyId: tenantContext.pharmacyId,
-        patientId: parsedPatientId,
-      });
+      const patient = await findPatientByIdOrThrowFixed(() =>
+        patientRepository.findById({
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+          patientId: parsedPatientId,
+        }),
+      );
       if (patient === undefined) {
         return reply.code(404).send(patientNotFoundResponse());
       }
@@ -451,11 +464,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       }
 
       const parsedPatientId = patientId(body.data.patientId);
-      const patient = await patientRepository.findById({
-        tenantId: tenantContext.tenantId,
-        pharmacyId: tenantContext.pharmacyId,
-        patientId: parsedPatientId,
-      });
+      const patient = await findPatientByIdOrThrowFixed(() =>
+        patientRepository.findById({
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+          patientId: parsedPatientId,
+        }),
+      );
       if (patient === undefined) {
         return reply.code(404).send(receptionPatientNotFoundResponse());
       }

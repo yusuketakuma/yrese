@@ -30,6 +30,7 @@ import {
   patientSearchCursorProgressInvariantErrorMessage,
   patientSearchDuplicateIdentityInvariantErrorMessage,
   patientSearchResultLimitInvariantErrorMessage,
+  patientLookupRepositoryErrorMessage,
   receptionIdempotencyConflictErrorCode,
   receptionInvalidRequestErrorCode,
   receptionPatientIdentityMismatchErrorMessage,
@@ -1394,6 +1395,111 @@ describe('buildServer', () => {
     });
     expect(response.json()).not.toHaveProperty('provenance');
     expect(response.body).not.toContain('reception-create-001');
+  });
+
+  it.each([
+    [
+      'Error',
+      (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) =>
+        new Error(rawSentinel),
+    ],
+    [
+      'non-Error object',
+      (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) => ({
+        message: rawSentinel,
+        patientId: 'patient-rejection-object-secret',
+      }),
+    ],
+    [
+      'hostile Proxy',
+      (_rawSentinel: string, propertyRead: ReturnType<typeof vi.fn>) =>
+        new Proxy({}, { get: propertyRead, has: propertyRead, getPrototypeOf: propertyRead }),
+    ],
+  ] as const)(
+    'normalizes a patient GET repository rejection from %s without inspecting it',
+    async (_label, createRejection) => {
+      const requestedPatientId = 'patient-lookup-rejection-secret-4193';
+      const rawSentinel = `raw patient lookup rejection ${requestedPatientId}`;
+      const propertyRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const findById = vi.fn<PatientRepository['findById']>(() => {
+        throw createRejection(rawSentinel, propertyRead);
+      });
+      const server = buildDevTestServer({
+        patientRepository: {
+          search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
+          findById,
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: `/patients/${requestedPatientId}`,
+        headers: tenantOnePatientReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(findById).toHaveBeenCalledExactlyOnceWith({
+        tenantId: tenantId('tenant-001'),
+        pharmacyId: pharmacyId('pharmacy-001'),
+        patientId: patientId(requestedPatientId),
+      });
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: patientLookupRepositoryErrorMessage,
+      });
+      expect(response.body).not.toContain(rawSentinel);
+      expect(response.body).not.toContain(requestedPatientId);
+      expect(response.body).not.toContain('patient-rejection-object-secret');
+      expect(propertyRead).not.toHaveBeenCalled();
+    },
+  );
+
+  it('stops reception creation and audit after a patient lookup rejection', async () => {
+    const requestedPatientId = 'patient-reception-lookup-secret-4193';
+    const idempotencyKey = 'reception-lookup-rejection-key-secret-4193';
+    const rawSentinel = `raw reception patient lookup ${requestedPatientId}`;
+    const findById = vi.fn<PatientRepository['findById']>(async () => {
+      throw new Error(rawSentinel);
+    });
+    const receptionCreate = vi.fn<ReceptionRepository['create']>();
+    const auditRecord = vi.fn<AuditRepository['record']>();
+    const server = buildDevTestServer({
+      patientRepository: {
+        search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
+        findById,
+      },
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => []),
+        create: receptionCreate,
+      },
+      auditRepository: {
+        list: vi.fn<AuditRepository['list']>(async () => []),
+        record: auditRecord,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: { patientId: requestedPatientId, idempotencyKey },
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(findById).toHaveBeenCalledOnce();
+    expect(receptionCreate).not.toHaveBeenCalled();
+    expect(auditRecord).not.toHaveBeenCalled();
+    expect(response.json()).toMatchObject({ message: patientLookupRepositoryErrorMessage });
+    for (const sensitiveValue of [requestedPatientId, idempotencyKey, rawSentinel]) {
+      expect(response.body).not.toContain(sensitiveValue);
+    }
   });
 
   it('fails closed before reception creation when scoped patient lookup returns another identity', async () => {
