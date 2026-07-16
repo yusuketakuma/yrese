@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4173 audit-log deferred updater authority — FINALIZED / INDEPENDENT_PASS
+
+- audit-log runnerのloading/success/failure全functional updaterへevaluation-time generation guardを追加し、obsolete updaterはexact previous state identityを返すようにした。Reactで遅延・再評価されたold healthy evidenceがnew broken-chain CRITICALを正常へ戻す、old broken/failure/loadingがreplacement evidenceを覆う競合をroot-cause修正した。
+- `GET /audit/events`は`audit.viewed`をappendするためAbortSignal/cancellation/short-circuitを導入せず、same-active exact Promise、admitted GET回数、invalidate owner detach、exact-owner cleanup、retry/retained evidence、API/server/audit event/repository/DB/contracts/OpenAPI、DOM/copy/ARIA/focusを不変にした。
+- focused54、Web366、API audit-log23、API290 + PostgreSQL14 expected skips、workspace typecheck/test、Web build、全標準gate、tracked-snapshot secret scanをPASS。live secret scanは既存ignored symlinkでfail-closed。independent verifier、audit/frontend/accessibility、security/privacy/audit-integrity reviewはPASS/APPROVED。actual React concurrent scheduler harness不在はLOW residual。implementation `368f9c5`はlocal-only、pushなし。
+
 ### WP-4172 reception-queue GET cancellation — FINALIZED / INDEPENDENT_PASS
 
 - reception queue GETへfresh AbortSignalとsame-target exact Promise joinを導入し、different targetはnew owner/generation公開後にold GETをbest-effort abortする。loading/success/date-mismatch/failureの全functional updaterもevaluation時にgenerationを再確認し、abort無視settlementや遅延React updaterから旧日付のmulti-patient PHI stateが復活しないようroot-cause修正した。
