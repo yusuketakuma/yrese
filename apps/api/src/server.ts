@@ -687,15 +687,16 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       }
 
       const parsedPatientId = patientId(params.data.patientId);
-      const patient = await runRepositoryOperationOrThrowFixed(
-        () =>
-          patientRepository.findById({
-            tenantId: tenantContext.tenantId,
-            pharmacyId: tenantContext.pharmacyId,
-            patientId: parsedPatientId,
-          }),
-        patientLookupRepositoryErrorMessage,
-      );
+      let patient: PatientSearchResult | undefined;
+      try {
+        patient = await patientRepository.findById({
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+          patientId: parsedPatientId,
+        });
+      } catch {
+        throw new Error(patientLookupRepositoryErrorMessage);
+      }
       if (patient === undefined) {
         return reply.code(404).send(patientNotFoundResponse());
       }
@@ -817,15 +818,16 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       }
 
       const parsedPatientId = patientId(body.data.patientId);
-      const patient = await runRepositoryOperationOrThrowFixed(
-        () =>
-          patientRepository.findById({
-            tenantId: tenantContext.tenantId,
-            pharmacyId: tenantContext.pharmacyId,
-            patientId: parsedPatientId,
-          }),
-        patientLookupRepositoryErrorMessage,
-      );
+      let patient: PatientSearchResult | undefined;
+      try {
+        patient = await patientRepository.findById({
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+          patientId: parsedPatientId,
+        });
+      } catch {
+        throw new Error(patientLookupRepositoryErrorMessage);
+      }
       if (patient === undefined) {
         return reply.code(404).send(receptionPatientNotFoundResponse());
       }

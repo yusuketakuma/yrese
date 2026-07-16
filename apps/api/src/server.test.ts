@@ -8,6 +8,7 @@ import {
 import {
   PATIENT_SEARCH_CURSOR_MAX_LENGTH,
   PATIENT_SEARCH_DEFAULT_LIMIT,
+  type PatientSearchResult,
 } from '@yrese/contracts';
 import { patientId, pharmacyId, receptionId, tenantId, userId } from '@yrese/shared-kernel';
 
@@ -3512,6 +3513,11 @@ describe('buildServer', () => {
       const directRead = vi.fn((property: PropertyKey) => {
         throw new Error(`raw patient direct read ${String(property)} 4201`);
       });
+      const rawSecondThenSentinel = 'raw second patient then read secret 4205';
+      const thenRead = vi.fn(() => {
+        if (thenRead.mock.calls.length > 1) throw new Error(rawSecondThenSentinel);
+        return undefined;
+      });
       const descriptorRead = vi.fn();
       const patientTarget = {
         patientId: requestedPatientId,
@@ -3525,7 +3531,7 @@ describe('buildServer', () => {
       };
       const patient = new Proxy(patientTarget, {
         get(_target, property) {
-          if (property === 'then') return undefined;
+          if (property === 'then') return thenRead();
           return directRead(property);
         },
         has(_target, property) {
@@ -3596,7 +3602,9 @@ describe('buildServer', () => {
             },
       );
       expect(descriptorRead).toHaveBeenCalledTimes(8);
+      expect(thenRead).toHaveBeenCalledOnce();
       expect(directRead).not.toHaveBeenCalled();
+      expect(response.body).not.toContain(rawSecondThenSentinel);
       if (method === 'POST') {
         expect(create).toHaveBeenCalledOnce();
         expect(create.mock.calls[0]?.[0].patient).toEqual(patientTarget);
@@ -3604,6 +3612,92 @@ describe('buildServer', () => {
       } else {
         expect(create).not.toHaveBeenCalled();
       }
+    },
+  );
+
+  it.each(['GET', 'POST'] as const)(
+    'normalizes a fulfilled revoked patient lookup for %s without raw TypeError reflection',
+    async (method) => {
+      const requestedPatientId = 'patient-revoked-lookup-secret-4205';
+      const idempotencyKey = 'reception-revoked-lookup-secret-4205';
+      const directRead = vi.fn(() => {
+        throw new Error('raw revoked patient lookup trap secret 4205');
+      });
+      const { proxy: patient, revoke } = Proxy.revocable(
+        {
+          patientId: requestedPatientId,
+          name: '合成 revoked患者',
+          kana: 'ゴウセイ リボークドカンジャ',
+          birthDate: '1990-01-01',
+          sex: 'unknown' as const,
+          patientNumber: 'REVOKED-PATIENT-SECRET-4205',
+          eligibilityStatus: 'NOT_CHECKED' as const,
+        },
+        {
+          get(_target, property) {
+            if (property === 'then') return undefined;
+            return directRead();
+          },
+          has: directRead,
+          getPrototypeOf: directRead,
+          ownKeys: directRead,
+          getOwnPropertyDescriptor: directRead,
+        },
+      );
+      const fulfilledPatient = new Promise<PatientSearchResult>((resolve) => {
+        resolve(patient);
+        revoke();
+      });
+      const create = vi.fn<ReceptionRepository['create']>();
+      const auditRecord = vi.fn<AuditRepository['record']>();
+      const server = buildDevTestServer({
+        patientRepository: {
+          search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
+          findById: vi.fn<PatientRepository['findById']>(() => fulfilledPatient),
+        },
+        receptionRepository: {
+          list: vi.fn<ReceptionRepository['list']>(async () => []),
+          create,
+        },
+        auditRepository: {
+          list: vi.fn<AuditRepository['list']>(async () => []),
+          record: auditRecord,
+        },
+      });
+
+      const response = await server.inject(
+        method === 'GET'
+          ? {
+              method,
+              url: `/patients/${requestedPatientId}`,
+              headers: tenantOnePatientReadHeaders,
+            }
+          : {
+              method,
+              url: '/reception',
+              headers: tenantOneReceptionWriteHeaders,
+              payload: { patientId: requestedPatientId, idempotencyKey },
+            },
+      );
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toMatchObject({
+        message: receptionPatientIdentityMismatchErrorMessage,
+      });
+      for (const sensitiveValue of [
+        requestedPatientId,
+        idempotencyKey,
+        'REVOKED-PATIENT-SECRET-4205',
+        'Cannot perform',
+        'raw revoked patient lookup trap secret 4205',
+      ]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+      expect(directRead).not.toHaveBeenCalled();
+      expect(create).not.toHaveBeenCalled();
+      expect(auditRecord).not.toHaveBeenCalled();
     },
   );
 
