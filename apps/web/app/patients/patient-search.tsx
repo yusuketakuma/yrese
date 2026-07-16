@@ -82,12 +82,35 @@ class SearchError extends Error {
   }
 
   toNotice(): ErrorNoticeProps {
-    return {
-      message: this.message,
-      nextAction: this.nextAction,
-      ...(this.errorCode !== undefined ? { errorCode: this.errorCode } : {}),
-    };
+    return trustedSearchErrorNotices.get(this) ?? genericSearchErrorNotice;
   }
+}
+
+const trustedSearchErrorNotices = new WeakMap<object, ErrorNoticeProps>();
+const genericSearchErrorNotice = Object.freeze({
+  message: "検索結果の処理に失敗しました。",
+  nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+} satisfies ErrorNoticeProps);
+
+function createTrustedSearchError(
+  message: string,
+  nextAction: string,
+  errorCode?: string,
+): SearchError {
+  const error = new SearchError(message, nextAction, errorCode);
+  const notice = Object.freeze({
+    message,
+    nextAction,
+    ...(errorCode !== undefined ? { errorCode } : {}),
+  } satisfies ErrorNoticeProps);
+  trustedSearchErrorNotices.set(error, notice);
+  return error;
+}
+
+function trustedSearchErrorNotice(error: unknown): ErrorNoticeProps | undefined {
+  return (typeof error === "object" && error !== null) || typeof error === "function"
+    ? trustedSearchErrorNotices.get(error)
+    : undefined;
 }
 
 export async function fetchSearch(
@@ -124,27 +147,27 @@ export async function fetchSearch(
       errorCode = undefined;
     }
     if (res.status === 403) {
-      throw new SearchError(
+      throw createTrustedSearchError(
         "権限がありません。",
         "管理者に権限(patient:read)の付与状況を確認してください。",
         errorCode,
       );
     }
     if (res.status === 400) {
-      throw new SearchError(
+      throw createTrustedSearchError(
         "検索条件が不正です。",
         "入力内容を確認して再度検索してください。",
         errorCode,
       );
     }
-    throw new SearchError(
+    throw createTrustedSearchError(
       `検索に失敗しました(HTTP ${res.status})。`,
       "再試行してください。解消しない場合は同期状態画面で外部接続状態を確認してください。",
       errorCode,
     );
   }
   if (res.status !== 200) {
-    throw new SearchError(
+    throw createTrustedSearchError(
       `検索に失敗しました(HTTP ${res.status})。`,
       "再試行してください。解消しない場合は同期状態画面で外部接続状態を確認してください。",
     );
@@ -331,14 +354,7 @@ export function createSearchRunner(
         if (gen !== generation) {
           return; // 古いリクエストの失敗も破棄
         }
-        const notice =
-          error instanceof SearchError
-            ? error.toNotice()
-            : {
-                message: "検索結果の処理に失敗しました。",
-                nextAction:
-                  "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
-              };
+        const notice = trustedSearchErrorNotice(error) ?? genericSearchErrorNotice;
         emit((prev) => {
           if (gen !== generation) return prev;
           if (append) {

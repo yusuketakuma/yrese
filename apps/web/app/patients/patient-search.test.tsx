@@ -992,6 +992,183 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     }
   });
 
+  it("does not inspect a hostile initial error and admits retry", async () => {
+    const rawSentinel = "raw patient-search instanceof trap";
+    const propertyRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const hostileError = new Proxy(
+      {},
+      {
+        get: propertyRead,
+        has: propertyRead,
+        getPrototypeOf: propertyRead,
+      },
+    );
+    const fetcher = vi
+      .fn<() => Promise<SearchPage>>()
+      .mockRejectedValueOnce(hostileError)
+      .mockResolvedValueOnce({ results: [patient({ patientId: "patient-retry" })] });
+    const states: SearchState[] = [{ kind: "idle" }];
+    const run = createSearchRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    await run("合成");
+
+    expect(propertyRead).not.toHaveBeenCalled();
+    expect(states.at(-1)).toEqual({
+      kind: "error",
+      notice: {
+        message: "検索結果の処理に失敗しました。",
+        nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+      },
+    });
+    expect(JSON.stringify(states.at(-1))).not.toContain(rawSentinel);
+
+    await run("合成");
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(states.at(-1)).toMatchObject({ kind: "loaded", query: "合成" });
+  });
+
+  it("keeps the verified page when a hostile append error settles, then retries", async () => {
+    const rawSentinel = "raw patient-search append trap";
+    const propertyRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const hostileError = new Proxy(
+      {},
+      {
+        get: propertyRead,
+        has: propertyRead,
+        getPrototypeOf: propertyRead,
+      },
+    );
+    const fetcher = vi
+      .fn<(query: string, cursor?: string) => Promise<SearchPage>>()
+      .mockResolvedValueOnce({
+        results: [patient({ patientId: "patient-retained" })],
+        nextCursor: "cursor-hostile",
+      })
+      .mockRejectedValueOnce(hostileError)
+      .mockResolvedValueOnce({ results: [patient({ patientId: "patient-appended" })] });
+    const states: SearchState[] = [{ kind: "idle" }];
+    const run = createSearchRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    await run("合成");
+    await run("合成", "cursor-hostile", true);
+
+    expect(propertyRead).not.toHaveBeenCalled();
+    const failed = states.at(-1)!;
+    expect(failed.kind).toBe("loaded");
+    if (failed.kind !== "loaded") throw new Error("expected retained search page");
+    expect(failed.results.map((result) => result.patientId)).toEqual(["patient-retained"]);
+    expect(failed.query).toBe("合成");
+    expect(failed.nextCursor).toBe("cursor-hostile");
+    expect(failed.appendState).toEqual({
+      kind: "error",
+      notice: {
+        message: "検索結果の処理に失敗しました。",
+        nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+      },
+    });
+    expect(JSON.stringify(failed)).not.toContain(rawSentinel);
+
+    await run("合成", "cursor-hostile", true);
+    const retried = states.at(-1)!;
+    expect(retried.kind).toBe("loaded");
+    if (retried.kind !== "loaded") throw new Error("expected retried search page");
+    expect(retried.results.map((result) => result.patientId)).toEqual([
+      "patient-retained",
+      "patient-appended",
+    ]);
+    expect(retried.appendState).toEqual({ kind: "idle" });
+  });
+
+  it("does not trust captured prototype or constructor error for notice projection", async () => {
+    const { error: trustedError } = await captureSearchFailure(403, () => ({
+      errorCode: "AUTH-0003",
+    }));
+    expect(trustedError).toBeInstanceOf(Error);
+    const prototype = Object.getPrototypeOf(trustedError) as {
+      toNotice: (this: unknown) => unknown;
+    };
+    const SearchErrorConstructor = (trustedError as {
+      constructor: new (message: string, nextAction: string, errorCode?: string) => unknown;
+    }).constructor;
+    const untrustedErrors = [
+      Object.assign(Object.create(prototype), {
+        message: "raw forged search message",
+        nextAction: "raw forged search action",
+        errorCode: "AUTH-0003",
+      }),
+      new SearchErrorConstructor(
+        "raw external search message",
+        "raw external search action",
+        "AUTH-0003",
+      ),
+    ];
+
+    for (const untrustedError of untrustedErrors) {
+      const directNotice = prototype.toNotice.call(untrustedError);
+      expect(directNotice).toEqual({
+        message: "検索結果の処理に失敗しました。",
+        nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+      });
+      expect(Object.isFrozen(directNotice)).toBe(true);
+      const states: SearchState[] = [{ kind: "idle" }];
+      const run = createSearchRunner(
+        vi.fn<() => Promise<SearchPage>>().mockRejectedValue(untrustedError),
+        (update) => states.push(update(states[states.length - 1]!)),
+      );
+      await run("合成");
+      expect(states.at(-1)).toEqual({
+        kind: "error",
+        notice: {
+          message: "検索結果の処理に失敗しました。",
+          nextAction:
+            "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+        },
+      });
+      const serialized = JSON.stringify(states.at(-1));
+      expect(serialized).not.toContain("raw forged search");
+      expect(serialized).not.toContain("raw external search");
+      expect(serialized).not.toContain("AUTH-0003");
+    }
+  });
+
+  it("uses the frozen creation snapshot after a trusted search error is mutated", async () => {
+    const { error: trustedError } = await captureSearchFailure(403, () => ({
+      errorCode: "AUTH-0003",
+    }));
+    expect(trustedError).toBeInstanceOf(Error);
+    Object.assign(trustedError as object, {
+      message: "raw mutated search message",
+      nextAction: "raw mutated search action",
+      errorCode: "SYSTEM-9999",
+    });
+    const directNotice = (trustedError as { toNotice: () => unknown }).toNotice();
+    expect(directNotice).toEqual({
+      message: "権限がありません。",
+      nextAction: "管理者に権限(patient:read)の付与状況を確認してください。",
+      errorCode: "AUTH-0003",
+    });
+    expect(Object.isFrozen(directNotice)).toBe(true);
+    const states: SearchState[] = [{ kind: "idle" }];
+    const run = createSearchRunner(
+      vi.fn<() => Promise<SearchPage>>().mockRejectedValue(trustedError),
+      (update) => states.push(update(states[states.length - 1]!)),
+    );
+
+    await run("合成");
+
+    expect(states.at(-1)).toEqual({ kind: "error", notice: directNotice });
+    expect(JSON.stringify(states.at(-1))).not.toContain("raw mutated search");
+    expect(JSON.stringify(states.at(-1))).not.toContain("SYSTEM-9999");
+  });
+
   it("preserves loaded results and cursor when append fails, then retries the same page", async () => {
     const states: SearchState[] = [{ kind: "idle" }];
     const emit = (update: (prev: SearchState) => SearchState) => {
