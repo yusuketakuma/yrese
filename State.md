@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4180 reception result idempotency provenance — FINALIZED / INDEPENDENT_PASS
+
+- API-006の保存authorityをinternal resultへ投影し、created/existing/conflict全armを保存済みtenant/pharmacy/raw key/ReceptionId/PatientIdへ拘束。serverはbranch/schema/audit/response前に検証し、success entry identity混成とsame-patient false conflictを固定500/no-store/audit zeroで拒否する。
+- InMemoryは同一stored recordからentry/provenanceを生成しindex corruptionをfail-closed化。PostgreSQLはactual row columnsをRETURNING/SELECTし、5 field欠落をCOMMIT前にrollback。初回securityのentry identity未結合とplan noteのnull entry TypeErrorも修正後、独立/計画/security/privacy/medical/data-integrity reviewは最終PASS。
+- focused130、API326 + integration14 expected skips、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact6 overlay secret scanをPASS。PostgreSQL integration7件はDB未設定で未実行。HTTP/監査へのprovenance露出なし、created audit once・existing/conflict zeroを維持。WP-4050/4151cは未解決。implementation `78e86ec`はlocal-only、pushなし。
+
 ### WP-4179 patient refresh selection authority — FINALIZED / INDEPENDENT_PASS
 
 - Providerへrefresh runnerとmonotonic selection authorityを集約し、public select/clearをReact commit前の同期invalidateへ変更。A refresh中のB直接選択後にlate A success/PAT-0002/failureがA復元・B解除・B stale化するraceと、same-ID新snapshotを旧refreshが上書きするraceを遮断した。
