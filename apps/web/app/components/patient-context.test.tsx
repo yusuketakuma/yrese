@@ -148,11 +148,103 @@ describe("fetchPatientById (GET /patients/:patientId 契約)", () => {
     });
   });
 
-  it("returns null on 404 (対象患者が参照不能)", async () => {
+  it("returns null only for a contract-valid PAT-0002 response", async () => {
     await withDevEnv(async () => {
       const stub: typeof fetch = async () =>
-        jsonResponse(404, { errorCode: "PAT-0002", message: "x" });
+        jsonResponse(404, {
+          errorCode: "PAT-0002",
+          message: "Patient unavailable",
+        });
       expect(await fetchPatientById(SAMPLE.patientId, stub)).toBeNull();
+    });
+  });
+
+  it.each([
+    ["a bodyless response", () => new Response(null, { status: 404 })],
+    [
+      "invalid JSON",
+      () =>
+        new Response("{", {
+          status: 404,
+          headers: { "content-type": "application/json" },
+        }),
+    ],
+    ["a missing message", () => jsonResponse(404, { errorCode: "PAT-0002" })],
+    [
+      "a blank message",
+      () => jsonResponse(404, { errorCode: "PAT-0002", message: "" }),
+    ],
+    [
+      "a non-string message",
+      () => jsonResponse(404, { errorCode: "PAT-0002", message: 404 }),
+    ],
+    [
+      "a missing error code",
+      () => jsonResponse(404, { message: "Patient unavailable" }),
+    ],
+    [
+      "an unregistered error code",
+      () =>
+        jsonResponse(404, {
+          errorCode: "PAT-9999",
+          message: "Patient unavailable",
+        }),
+    ],
+    [
+      "a registered non-removal error code",
+      () =>
+        jsonResponse(404, {
+          errorCode: "PAT-0001",
+          message: "SECRET patient response detail",
+          patientId: SAMPLE.patientId,
+        }),
+    ],
+  ])("rejects 404 with %s using a fixed non-echo error", async (_label, response) => {
+    await withDevEnv(async () => {
+      let thrown: unknown;
+      try {
+        await fetchPatientById(SAMPLE.patientId, async () => response());
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toBe(
+        "Patient refresh not-found response invalid",
+      );
+      const serialized = JSON.stringify(thrown, Object.getOwnPropertyNames(thrown));
+      expect(serialized).not.toContain(SAMPLE.patientId);
+      expect(serialized).not.toContain("PAT-0001");
+      expect(serialized).not.toContain("PAT-9999");
+      expect(serialized).not.toContain("SECRET patient response detail");
+    });
+  });
+
+  it("normalizes a synchronous 404 body read failure and reads the body once", async () => {
+    await withDevEnv(async () => {
+      const rawSentinel = `raw response detail ${SAMPLE.patientId} PAT-0002`;
+      const json = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const stub: typeof fetch = async () =>
+        ({ status: 404, json }) as unknown as Response;
+
+      let thrown: unknown;
+      try {
+        await fetchPatientById(SAMPLE.patientId, stub);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(json).toHaveBeenCalledOnce();
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toBe(
+        "Patient refresh not-found response invalid",
+      );
+      const serialized = JSON.stringify(thrown, Object.getOwnPropertyNames(thrown));
+      expect(serialized).not.toContain(rawSentinel);
+      expect(serialized).not.toContain(SAMPLE.patientId);
+      expect(serialized).not.toContain("PAT-0002");
     });
   });
 
@@ -578,10 +670,13 @@ describe("createPatientRefreshRunner (患者切替・解除の競合防止)", ()
     vi.stubEnv("NODE_ENV", "development");
     try {
       const fetchImpl: typeof fetch = async () =>
-        new Response(JSON.stringify({ errorCode: "PAT-0002" }), {
-          status: 404,
-          headers: { "content-type": "application/json" },
-        });
+        new Response(
+          JSON.stringify({ errorCode: "PAT-0002", message: "Patient not found" }),
+          {
+            status: 404,
+            headers: { "content-type": "application/json" },
+          },
+        );
       const runner = createPatientRefreshRunner((id) =>
         fetchPatientById(id, fetchImpl),
       );
@@ -591,6 +686,60 @@ describe("createPatientRefreshRunner (患者切替・解除の競合防止)", ()
 
       expect(events.onRemoved).toHaveBeenCalledOnce();
       expect(events.onFresh).not.toHaveBeenCalled();
+      expect(events.onFailure).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("routes a current synchronous 404 body read failure only to onFailure", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    try {
+      const fetchImpl: typeof fetch = async () =>
+        ({
+          status: 404,
+          json: () => {
+            throw new Error("raw synchronous patient response failure");
+          },
+        }) as unknown as Response;
+      const runner = createPatientRefreshRunner((id) =>
+        fetchPatientById(id, fetchImpl),
+      );
+      const events = callbacks();
+
+      await runner.refresh(SAMPLE.patientId, events);
+
+      expect(events.onFailure).toHaveBeenCalledOnce();
+      expect(events.onFresh).not.toHaveBeenCalled();
+      expect(events.onRemoved).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("suppresses a late synchronous 404 body read failure after clear", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const pending = deferred<Response>();
+    try {
+      const runner = createPatientRefreshRunner((id) =>
+        fetchPatientById(id, () => pending.promise),
+      );
+      const events = callbacks();
+
+      const refresh = runner.refresh(SAMPLE.patientId, events);
+      runner.invalidate();
+      pending.resolve(
+        ({
+          status: 404,
+          json: () => {
+            throw new Error("raw late patient response failure");
+          },
+        }) as unknown as Response,
+      );
+      await refresh;
+
+      expect(events.onFresh).not.toHaveBeenCalled();
+      expect(events.onRemoved).not.toHaveBeenCalled();
       expect(events.onFailure).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllEnvs();

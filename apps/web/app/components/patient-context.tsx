@@ -13,16 +13,24 @@ import {
 } from "react";
 
 import {
+  errorResponseSchema,
   patientSearchResultSchema,
   type EligibilityStatus,
   type PatientSearchResult,
 } from "@yrese/contracts";
-import { patientId, permissionScope } from "@yrese/shared-kernel";
+import {
+  PATIENT_NOT_FOUND_ERROR_CODE,
+  patientId,
+  permissionScope,
+} from "@yrese/shared-kernel";
 
 import { resolveWebApiUrl } from "../api-transport";
 import { devTenantHeaders } from "../dev-tenant";
 import { DomainStatusBadge } from "./domain-status-badge";
 import { PatientHeader, computeAgeYears } from "./patient-header";
+
+const invalidPatientNotFoundResponseErrorMessage =
+  "Patient refresh not-found response invalid";
 
 /**
  * 患者文脈の横断保持(R-PATCTX 全画面横断固定 / H-01・H-02 取り違え防止)。
@@ -82,6 +90,19 @@ export async function fetchPatientById(
     ...(signal !== undefined ? { signal } : {}),
   });
   if (res.status === 404) {
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      throw new Error(invalidPatientNotFoundResponseErrorMessage);
+    }
+    const parsedError = errorResponseSchema.safeParse(body);
+    if (
+      !parsedError.success ||
+      parsedError.data.errorCode !== PATIENT_NOT_FOUND_ERROR_CODE
+    ) {
+      throw new Error(invalidPatientNotFoundResponseErrorMessage);
+    }
     return null;
   }
   if (res.status !== 200) {
