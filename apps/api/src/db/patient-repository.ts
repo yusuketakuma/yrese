@@ -8,7 +8,10 @@ import type {
   PatientSearchPage,
 } from '../patient-repository.js';
 import { snapshotDatabaseInstant } from '../instant.js';
-import { readDatabaseRowOwnDataProperty } from './database-row.js';
+import {
+  readDatabaseRowOwnDataProperty,
+  snapshotDatabaseQueryRows,
+} from './database-row.js';
 
 interface PatientRow {
   readonly patient_id: string;
@@ -29,6 +32,8 @@ export const databasePatientEligibilityTimestampInvariantErrorMessage =
   'Patient database returned an invalid eligibility timestamp';
 export const databasePatientRowInvariantErrorMessage =
   'Patient database returned an invalid patient row';
+export const databasePatientRowSetInvariantErrorMessage =
+  'Patient database returned an invalid patient row set';
 
 function snapshotEligibilityCheckedAt(row: PatientRow): string | undefined {
   const value = readDatabaseRowOwnDataProperty(
@@ -99,7 +104,12 @@ export class PostgresPatientRepository implements PatientRepository {
       [input.tenantId, input.pharmacyId, input.patientId],
     );
 
-    const row = result.rows[0];
+    const rows = snapshotDatabaseQueryRows<PatientRow>(
+      result,
+      1,
+      databasePatientRowSetInvariantErrorMessage,
+    );
+    const row = rows[0];
     return row === undefined ? undefined : patientRowToSearchResult(row);
   }
 
@@ -125,12 +135,17 @@ export class PostgresPatientRepository implements PatientRepository {
       [input.tenantId, input.pharmacyId, pattern, input.limit + 1, offset],
     );
 
-    const pageRows = result.rows.slice(0, input.limit);
+    const rows = snapshotDatabaseQueryRows<PatientRow>(
+      result,
+      input.limit + 1,
+      databasePatientRowSetInvariantErrorMessage,
+    );
+    const pageRows = rows.slice(0, input.limit);
     const nextOffset = offset + input.limit;
 
     return {
       results: pageRows.map(patientRowToSearchResult),
-      ...(result.rows.length > input.limit ? { nextCursor: { offset: nextOffset } } : {}),
+      ...(rows.length > input.limit ? { nextCursor: { offset: nextOffset } } : {}),
     };
   }
 }

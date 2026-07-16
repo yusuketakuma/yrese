@@ -6,6 +6,7 @@ import {
   PostgresPatientRepository,
   databasePatientEligibilityTimestampInvariantErrorMessage,
   databasePatientRowInvariantErrorMessage,
+  databasePatientRowSetInvariantErrorMessage,
   patientRowToSearchResult,
 } from './patient-repository.js';
 import { PostgresReceptionRepository } from './reception-repository.js';
@@ -274,6 +275,179 @@ describe('Postgres patient eligibility timestamp adapter', () => {
       invalidRepository.findById({ ...scope, patientId: patientId(patientRow.patient_id) }),
     ).rejects.toThrow(databasePatientEligibilityTimestampInvariantErrorMessage);
     expect(invalidQuery).toHaveBeenCalledOnce();
+  });
+
+  it('requires an own dense query row set for findById without invoking hostile authority', async () => {
+    let getterReads = 0;
+    let proxyTraps = 0;
+    const accessorResult = {};
+    Object.defineProperty(accessorResult, 'rows', {
+      get() {
+        getterReads += 1;
+        throw new Error('raw patient query rows accessor PHI secret 4224');
+      },
+    });
+    const inheritedResult = Object.create({ rows: [patientRow] });
+    const indexAccessorRows = [patientRow];
+    Object.defineProperty(indexAccessorRows, '0', {
+      get() {
+        getterReads += 1;
+        throw new Error('raw patient query index accessor PHI secret 4224');
+      },
+    });
+    const sparseRows = new Array(1);
+    const inheritedIndexRows = new Array(1);
+    Object.setPrototypeOf(inheritedIndexRows, { 0: patientRow });
+    const proxiedResult = new Proxy(
+      { rows: [patientRow] },
+      {
+        getOwnPropertyDescriptor() {
+          proxyTraps += 1;
+          throw new Error('raw patient query result Proxy secret 4224');
+        },
+      },
+    );
+    const proxiedRows = new Proxy(
+      [patientRow],
+      {
+        getOwnPropertyDescriptor() {
+          proxyTraps += 1;
+          throw new Error('raw patient query rows Proxy secret 4224');
+        },
+      },
+    );
+    const revokedRows = Proxy.revocable([patientRow], {});
+    revokedRows.revoke();
+    const invalidResults: readonly unknown[] = [
+      {},
+      { rows: 'not-an-array' },
+      accessorResult,
+      inheritedResult,
+      { rows: indexAccessorRows },
+      { rows: sparseRows },
+      { rows: inheritedIndexRows },
+      proxiedResult,
+      { rows: proxiedRows },
+      { rows: revokedRows.proxy },
+    ];
+
+    for (const invalidResult of invalidResults) {
+      const repository = new PostgresPatientRepository({
+        query: vi.fn(async () => invalidResult),
+      } as unknown as Pool);
+      await expect(
+        repository.findById({ ...scope, patientId: patientId(patientRow.patient_id) }),
+      ).rejects.toEqual(new Error(databasePatientRowSetInvariantErrorMessage));
+    }
+    expect(getterReads).toBe(0);
+    expect(proxyTraps).toBe(0);
+  });
+
+  it('rejects multiple findById rows before projecting patient fields', async () => {
+    let patientFieldReads = 0;
+    const firstRow = { ...patientRow };
+    Object.defineProperty(firstRow, 'eligibility_checked_at', {
+      get() {
+        patientFieldReads += 1;
+        throw new Error('over-cardinality patient PHI must stay unread 4224');
+      },
+    });
+    const repository = new PostgresPatientRepository({
+      query: vi.fn(async () => ({ rows: [firstRow, { ...patientRow }] })),
+    } as unknown as Pool);
+
+    await expect(
+      repository.findById({ ...scope, patientId: patientId(patientRow.patient_id) }),
+    ).rejects.toThrow(databasePatientRowSetInvariantErrorMessage);
+    expect(patientFieldReads).toBe(0);
+  });
+
+  it('accepts dense row sets with non-default own data descriptor flags', async () => {
+    const rows = [patientRow];
+    Object.defineProperty(rows, '0', {
+      value: patientRow,
+      enumerable: false,
+      configurable: false,
+      writable: false,
+    });
+    const queryResult = {};
+    Object.defineProperty(queryResult, 'rows', {
+      value: rows,
+      enumerable: false,
+      configurable: false,
+      writable: false,
+    });
+    const repository = new PostgresPatientRepository({
+      query: vi.fn(async () => queryResult),
+    } as unknown as Pool);
+
+    await expect(
+      repository.findById({ ...scope, patientId: patientId(patientRow.patient_id) }),
+    ).resolves.toMatchObject({ patientId: patientRow.patient_id });
+  });
+
+  it('ignores hostile raw row methods and returns the physical empty search page', async () => {
+    let methodCalls = 0;
+    const rows: unknown[] = [];
+    for (const method of ['slice', 'map'] as const) {
+      Object.defineProperty(rows, method, {
+        value() {
+          methodCalls += 1;
+          return [patientRow];
+        },
+      });
+    }
+    Object.defineProperty(rows, Symbol.iterator, {
+      value() {
+        methodCalls += 1;
+        throw new Error('raw patient rows iterator secret 4224');
+      },
+    });
+    Object.defineProperty(rows, Symbol.toPrimitive, {
+      value() {
+        methodCalls += 1;
+        throw new Error('raw patient rows coercion secret 4224');
+      },
+    });
+    const repository = new PostgresPatientRepository({
+      query: vi.fn(async () => ({ rows })),
+    } as unknown as Pool);
+
+    await expect(repository.search({ ...scope, q: '合成', limit: 1 })).resolves.toEqual({
+      results: [],
+    });
+    expect(methodCalls).toBe(0);
+  });
+
+  it('rejects hostile, sparse, and over-limit search row sets before projection', async () => {
+    let indexReads = 0;
+    let patientFieldReads = 0;
+    const accessorRows = [patientRow];
+    Object.defineProperty(accessorRows, '0', {
+      get() {
+        indexReads += 1;
+        return patientRow;
+      },
+    });
+    const overLimitRow = { ...patientRow };
+    Object.defineProperty(overLimitRow, 'name', {
+      get() {
+        patientFieldReads += 1;
+        throw new Error('over-limit patient PHI must stay unread 4224');
+      },
+    });
+    const invalidRows = [accessorRows, new Array(1), [overLimitRow, patientRow, patientRow]];
+
+    for (const rows of invalidRows) {
+      const repository = new PostgresPatientRepository({
+        query: vi.fn(async () => ({ rows })),
+      } as unknown as Pool);
+      await expect(
+        repository.search({ ...scope, q: '合成', limit: 1 }),
+      ).rejects.toEqual(new Error(databasePatientRowSetInvariantErrorMessage));
+    }
+    expect(indexReads).toBe(0);
+    expect(patientFieldReads).toBe(0);
   });
 
   it('fails the whole lookup on an invalid core patient row', async () => {
