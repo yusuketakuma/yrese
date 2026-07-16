@@ -3384,6 +3384,7 @@ Primary-source URLs to fingerprint in WP-0054c (not a substitute for source file
   - scope: 調剤、保存、電子記録、請求、資格、PMH、電子処方箋、オンライン服薬指導/配送、医療安全、privacy/securityをrequirement→control→evidence→testへ写像する。
   - acceptance: effective date、jurisdiction、applicability、official source、human legal/pharmacist/claim/security sign-off、change watchを必須とし、未確定はBLOCKED。
   - evidence/result(2026-07-16): `docs/research/rececon_v0_7_compliance_matrix_20260716.md`へ18 controlを作成し、要求12領域を12/12 coverage。各行にeffective date/jurisdiction/applicability、proposed control、evidence/test contract、human sign-off、watchを設定した。2026-07-16時点の薬剤師法API本文は処方箋・調剤録3年保存、将来改正は5年であるため`TIME_SPLIT_REQUIRED`とし、具体的施行日・経過措置の人間確認なしに上書きしない。個人情報ガイダンス令和8年4月版、安全管理GL 7.0、令和8年度checklist、事業者GL 2.0、SaMD 2023-03-31改正版を公式sourceで再確認。実装許可0、evidence_id発行0、18/18がexact-artifactまたはhuman review blocker。
+  - commit_push: `08cf334`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。independent verification、exact-artifact promotion、human sign-off、APPROVED SSOT改版は未完了。
   - exact_next_action: artifact landing後、WP-0054eで本matrixのblocker/dependencyだけをP0〜P3/Gate 0〜5 DAGへ入力する。REG-003改版、REG-004 blocker解除、実装開始はexact artifact取得・evidence promotion・human sign-offまで禁止する。
 - [ ] WP-0054e Priority / Release Gate / dependency DAG
   - scope: P0〜P3とGate 0〜5をpatient safety、legal/claim、data authority、migration reversibility、commercial value、dependencyで再採点する。
