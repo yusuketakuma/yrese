@@ -8,6 +8,12 @@
 
 ## 2026-07-16
 
+### WP-4161 CI pnpm toolchain alignment — LOCAL_LANDED / INDEPENDENT_PASS / REMOTE_CI_VERIFY_REQUIRED
+
+- repository pin pnpm 11.13.1に対しGitHub Actionsだけが10.33.2を固定し、WP-4147で確認済みのretired audit endpoint HTTP 410をremote gateへ再導入するdriftを修正。`.github/workflows/ci.yml`のsetup version 1行だけを11.13.1へ揃えた。
+- `actionlint`、frozen install(lock差分0)、script harness、workspace typecheck/test/build、OpenAPI/purity/boundaries/SSOT173、tracked-snapshot secrets、deps high0/critical0、SBOM231、diffをPASS。APIは270 PASS + PostgreSQL14 expected skips、Web336、audit183、calculation87。live secret scanは既知のignored user-owned `.codegraph` symlinkでfail-closed。
+- read-only independent verifierはexact1 diff、trigger/service/Node/env/step順/gate/deploy不変をPASS。implementation commit `c688d4b`をsafe feature branchへpush済み。feature-branch pushではCI runが発生しないため、remote green、PostgreSQL 0 skip、WP-4092/WP-4143完了は未証明。
+
 ### WP-4151b reception registration known-non-commit failure / retry — LOCAL_LANDED / INDEPENDENT_PASS_WITH_NOTE
 
 - synthetic患者を検索・選択しnative登録を実行。初回はサーバ非commitが既知のexact HTTP 500で、送信中`登録中…`/disabled、失敗後successなし・queue再取得なし・患者context/受付対象保持・fixed error/next action・再試行可能を確認。raw sentinel/errorCode/stackは非表示。2回目は201/WAITING、success、authoritative queue再取得、対象行表示、error clear、console/page errors空。POST=2、queue GET=2(initial+success)、body patient一致、key各36文字/nonblank/control-characterなし。focused Web 139/139 PASS。

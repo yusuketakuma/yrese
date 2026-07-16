@@ -2904,6 +2904,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: docs-only evidence commitと後続ledger commitをrevertする。temp artifactは削除し、runtime/data/package rollback不要。
   - landing_record: implementation commit `b96d0ec` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 priority-profile obligation evidence landed、independent verification pending。
 
+- [~] WP-4161 align CI pnpm toolchain with repository pin(MEDIUM CI/supply-chain control) — LOCAL_LANDED / INDEPENDENT_PASS / REMOTE_CI_VERIFY_REQUIRED
+  - 発見根拠: repositoryの`packageManager`はWP-4147でpnpm 11.13.1へ更新済みだが、GitHub Actionsはpnpm 10.33.2を固定していた。pnpm 10系のdependency audit endpointはHTTP 410でfail-closedとなるため、localとremoteでtoolchain/gate結果が分岐していた。
+  - scope: source exact1 `.github/workflows/ci.yml`。`pnpm/action-setup`のversion scalarだけを11.13.1へ更新し、trigger、PostgreSQL service、Node 24、step名・順序・command、env、package/lock/workspace manifest、deploy behaviorは不変。
+  - verification/review: `actionlint`、frozen install(lock差分0)、script harness、workspace typecheck/test/build、OpenAPI/purity/boundaries/SSOT173、tracked-snapshot secrets、deps high0/critical0、SBOM231、diffをPASS。live secret scanは既知のignored user-owned `.codegraph` symlinkでfail-closed。read-only independent verifierはexact1 diffと全workflow invariantをPASS。
+  - remote_boundary: feature-branch push単独では現triggerが発火しない。PR/main run URLと全step green、PostgreSQL integration 0 skipを取得するまでWP-4092/WP-4143 remote proofを完了扱いにしない。
+  - rollback: implementation commit `c688d4b` と後続ledger commitをrevertする。dependency/data/DB rollback不要。
+  - landing_record: implementation commit `c688d4b` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; ledger syncは後続commit。remote CI proofはpending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
