@@ -3704,3 +3704,97 @@ Dependency DAG (all edges are prerequisites, not authorization):
 6. 高risk機能は現行AGT-018のindependent verifierとdomain reviewerに加え、該当human authority承認がなければ進めない。旧Claude/Opus/model名をapproval evidenceとして扱わない。
 7. AIはDraft/assistに限定し、PHI eligibility、retention、Region、model lifecycle、human review、non-blocking fallbackが未確定ならclinical dataを送信しない。
 8. 各Release Gateでrequirement→WP→SSOT→code→test→evidenceのmachine-auditable coverageを再計算し、unmapped、orphan implementation、duplicate authority、failing applicable gateが1件でもあれば停止する。
+
+## v0.8 Detailed Specification Review (2026-07-16)
+
+### Review decision and authority boundary
+
+- [~] WP-0055 v0.8 detailed specification review(CHANGES_REQUIRED、DRAFT_NO_GO、BLOCKED_GATE0、R4)
+  - review input: user-provided `yrese・PH-OS 詳細システム仕様書 v0.8`。本review時点の観測値は22 domain、234 unique MUST、66 acceptance ID、141 test ID、132 UI label。原要件IDの重複は0だが、既存APPROVED SSOT IDとの衝突、意味的重複、evidence、applicability、実装targetの完全性は未証明。
+  - authority: v0.8は有用なDraft入力であり、`docs/spec/construction_prompt_v0.2.0.md`、APPROVED SSOT、WP-0054 Gate 0 packetを置換しない。runtime、DB、API、UI、package、SSOT activation、productionの権限は0。Gate 0は`NO_GO`、Gate 1 reissueは0、human decisionは0/18、VF-01はopenのままとする。
+  - program boundary: 新しい並行programを作らず、既存WP-0054-D01〜D22、40 release WP、83 dependency edge、HD-01〜18、WP-0054a〜qへ接続する詳細traceability layerとして扱う。v0.8の追加価値は、機能scopeの再宣言ではなくMUST/API/event/UI/failure/error/acceptance/test/SSOT候補のitemizationである。
+  - source limitation: 会話入力はreview sourceとして利用できるが、byte-preserving tracked artifactとhashではない。`234`はcurrent observed countであり、固定の法的・製品的要件数ではない。source capture後に再計算し、差異があれば台帳と本entryを更新する。
+  - reviewer routing: fable5、Claude lane、Opus review、model固有execution modeはactive routingに採用しない。ユーザー指定のGPT-5.6はtechnical review要求として記録するが、実行環境でmodel identityを検証できない場合は`independent technical reviewer`という役割名を正本とする。root/sole maintainer、変更を行わないindependent verifier、該当domain reviewerでmaker/checkerを分離する。
+  - human boundary: pharmacist、claims practitioner、legal/regulatory、FHIR/JP Core、privacy、security、data-integrity/DB、UX/accessibility、operations/product、statistics/qualityの人間authorityをtechnical reviewで代替しない。
+
+### GPT-5.6 technical review findings
+
+| Priority | Finding | Required correction | Existing authority / target |
+|---|---|---|---|
+| P0 | Draft本文のMUST、DoR、DoD、Release Gateがそのまま実装権限に見える | 全項目をresearch-only inventoryへ隔離し、authority=`0`、promotion status、human gateを明示する | WP-0054i/o/n、WP-0055a/g |
+| P0 | 234 MUSTにofficial artifact、exact version/effective date、applicability、license、evidence ID、human decisionがない | 1要件1行でofficial sourceと現行SSOTへ接続し、unsupported claimを0にする | WP-0054c/d/p、WP-0055a |
+| P0 | `CLM-*`、`ACC-*`、`MST-*`、`OPS-*`等のDraft IDが既存SSOT IDと衝突する | 原IDを`source_requirement_id`として保存し、台帳主キーを`V08-<domain>-<number>`へ名前空間分離する。既存SSOT IDは変更しない | `docs/ssot_index.md`、WP-0055a |
+| P0 | CommonMetadata、status、error、EventEnvelope、`shared-types`候補が既存authorityと競合する | 各項目を`REUSE / MAP / AMEND_PRC007 / REJECT_DUPLICATE / HUMAN_DECISION`へ分類する | `shared-kernel`、`events`、`contracts`、WP-0054l、WP-0055b |
+| P0 | `BLOCKED_MISSING_EVIDENCE`、`AI_DEGRADED`等が現行registryと一致しない | claimability、system mode、sync、verification、error/blockerをregistry単位で比較し、未知statusはfail-closedにする | WP-0054f/l、WP-0055b |
+| P0 | FHIR/JP CoreとDomain/Edge/PH-OSのsingle-writer、Profile/MustSupport、canonical/package/version/historyが未固定 | producer/consumer/write owner、profile、missing-data、validation、versioning、CapabilityStatement declared-vs-runtime contractを固定する | WP-0054-D18、WP-0055c |
+| P0 | DB更新、FHIR更新、AuditEvent、Outboxの原子性とambiguous outcome回復が未規定 | transaction boundary、transactional outbox、idempotency lifecycle、Inbox/dedupe/order/replay/reconciliation/quarantine/repairを定義する | WP-4050、WP-4151c、WP-4162、WP-0055d |
+| P0 | role表とOAuth/mTLS記述だけではoperation×tenant×pharmacy×purpose×consent×data classを証明できない | deny-by-default authorization matrix、SMART/OAuth BCP、session/revocation/support/break-glass/export/webhook/log/key controlsを作る | WP-0054-D21、WP-0055e |
+| P0 | AI必須機能とAI非依存継続の関係、PHI入力条件、provider/region/retention/training/guardrail/model lifecycleが未決定 | use-case別allow-list、non-AI fallback、grounding/schema、human approve/reject/undo、prompt-injection/evalを固定する。human gate前のclinical PHI invocationは0 | WP-0054-D22、HD-14、WP-0055e |
+| P1 | 66 acceptanceと141 testは名称のみでexecutable oracle、fixture、command、environment、artifactがない | negative/concurrency/replay/recovery/tenant/privacyを含むtest manifestへ変換し、missing commandはFAILまたは根拠付きN/Aにする | WP-0055f |
+| P1 | 132 UI labelにview ID、command、role/context/state/error/offline/keyboard contractがない | routeを132個作らず、`MERGED_REGION / DISTINCT_VIEW / DEFERRED / REJECTED`へ分類し、Guided/Expertのstate/API/audit差分を0にする | WP-0054j、WP-0055f |
+| P1 | candidate SLOが既存候補と衝突し、RUM/business-latency/実機baselineがない | operation registry、測定境界、cold/warm、data volume、Edge/LAN、real-device baseline後だけPRC-007でSLO化する | WP-0054k、WP-0055f |
+| P1 | DoDはlint/E2Eを要求するが、現行web script/CIでは実行可能Gateとして固定されていない | exact command、working directory、environment、artifact、timeout、ownerをGate manifestへ登録する | WP-0055f/g |
+| P1 | 113 SSOT候補行（110 unique、重複3）が既存authorityと重複し得る | 新規作成せずWP-0054mのNEW/AMEND/RENAME/COMPOSE/REJECT dispositionへ吸収する | WP-0054m、WP-0055b |
+
+### Official best-practice research baseline
+
+以下は2026-07-16にofficial primary sourceで確認したcandidate external evidenceである。URLだけをSSOT/evidence IDにせず、WP-0054c/pのfingerprint、exact artifact、license/applicability、human promotionを経て利用する。
+
+| Official source | Confirmed best practice | v0.8 correction / target |
+|---|---|---|
+| [MHLW 医療情報システムの安全管理に関するガイドライン 第7.0版](https://www.mhlw.go.jp/stf/shingi/0000516275_00006.html) | 5編、checklist、BCPを分離して公開し、Q&Aは改定中であることを明示 | security/privacy/BCPを単一の宣言で済ませずartifact/control/evidence単位へ分解。既存WP-0054pを再利用 |
+| [JP Core Implementation Guide 1.2.0](https://jpfhir.jp/fhir/core/1.2.0/guide-general.html) | FHIR R4を基盤とするJP Core 1.2.0 release IGとpackage/version/dependencyを明示 | `JP Core準拠`だけで完了にせず、exact package、derived profile、MustSupport、producer/consumer、validationをWP-0055cで固定 |
+| [FHIR R4 CapabilityStatement](https://hl7.org/fhir/R4/capabilitystatement.html) | resource、interaction、profile、versioning、search、security capabilityを機械可読に宣言 | declared-vs-runtime contract testとnegative conformanceを追加 |
+| [FHIR R4 Bundle](https://hl7.org/fhir/R4/bundle.html) | transaction Bundle、conditional reference、If-Match/ETag、OperationOutcomeを定義 | atomic transaction、optimistic concurrency、partial/ambiguous failure recoveryをWP-0055c/dへ追加 |
+| [FHIR R4 AuditEvent](https://hl7.org/fhir/R4/auditevent.html) | read/query/update等のsecurity auditを表現し、Provenanceと責務を分離 | AuditEventを通常業務resourceのように破壊更新せず、audit/provenance/eventの役割と原子性を固定 |
+| [SMART App Launch 2.2](https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html) | PKCE、state、audience、least-privilege scopeを要求 | Partner/portal/remote accessのauthorization flowとscope testをWP-0055c/eへ追加 |
+| [OAuth 2.0 Security Best Current Practice RFC 9700](https://www.rfc-editor.org/info/rfc9700/) | authorization code/token replay対策と権限制限をcurrent BCPとして整理 | OAuth2/OIDCという名称だけで完了せず、flow、PKCE、sender constraint、rotation/revocation、negative testsを固定 |
+| [OpenAPI 3.1.1](https://spec.openapis.org/oas/v3.1.1.html) | security scheme、webhook、callbackを含むmachine-readable contract | current generated OpenAPI 3.1.0との互換性reviewなしにpatch versionを上げず、contract-first/generator/conformanceを固定 |
+| [AWS Transactional Outbox Pattern](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html) | DB更新とeventを同じtransactionに保存し、consumerをidempotentにする | Outbox/Inboxの原子性、順序、重複、retry、reconciliationをWP-0055dのacceptanceへ追加 |
+| [WCAG 2.2](https://www.w3.org/TR/WCAG22/) | keyboard、focus not obscured、target size、redundant entry、accessible authentication、error preventionを規定 | UI共通文をview/command/testへ変換し、screen reader/zoom/forced colors/keyboardをjourney testへ追加 |
+| [NIST SSDF SP 800-218](https://csrc.nist.gov/pubs/sp/800/218/final) | secure practiceをSDLC、review、release evidenceへ統合 | securityを末尾checklistにせずDoR/DoD/Gate manifestへ接続 |
+| [NIST AI RMF Generative AI Profile](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf) | GenAI riskをgovern/map/measure/manageのlifecycleで扱う | use-case inventory、evaluation、incident、model change、human oversightをWP-0055eへ追加 |
+| [Amazon Bedrock Guardrails](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-how.html) | input/output双方でcontentとsensitive informationを評価できる | Guardrail名の記載だけでなくversion、input/output policy、block/fallback、audit、test corpusを固定 |
+
+### Review-closure work packages
+
+- [!] WP-0055a v0.8 source capture and itemized requirement ledger(BLOCKED_SOURCE_CAPTURE、P0、R3)
+  - scope: byte-preserving source artifactとSHA-256をresearch areaへ固定し、sourceからMUST/acceptance/test/UIを機械抽出する。production/clinical dataは含めない。
+  - ledger fields: `v08_requirement_id`、`source_requirement_id`、source locator、normative text、domain、priority、existing Dxx/WP/SSOT、official artifact/version/applicability、evidence status、authority、duplicate/conflict、human gate、acceptance/test target。
+  - acceptance: current observationの22 domain/234 MUST/66 acceptance/141 test/132 UIをsourceから再計算し、全source rowのlocator coverage=100%、namespaced ID unique=100%、target existence=100%。`unmapped=0`はindependent verification後だけ宣言する。
+  - stop: source未固定のまま件数を220等へ切り詰めない。v0.8 rawをAPPROVED SSOTへ昇格しない。
+- [!] WP-0055b normative registry, SSOT candidate, and routing reconciliation(BLOCKED_WP-0055a、P0、R4)
+  - scope: CommonMetadata、sync/verification/claimability/system mode、error/blocker、EventEnvelope、package、API、113 SSOT候補行（110 unique、重複は`device_adapter_registry.md`、`patient_notification_policy.md`、`data_portability_policy.md`）、legacy routingを既存authorityへdispositionする。
+  - acceptance: 全candidateが`REUSE / MAP / AMEND_PRC007 / REJECT_DUPLICATE / HUMAN_DECISION`のexactly one、duplicate authority=0、unknown success state=0、APPROVED SSOT silent replacement=0、active fable5/Claude/Opus routing=0。
+  - stop: PRC-007 atomic amendmentとhuman approval前に新status/error/package/SSOT authorityをruntimeへ追加しない。
+- [!] WP-0055c FHIR/JP Core/SMART/OpenAPI conformance contract(BLOCKED_EVIDENCE_AND_HUMAN_FHIR_REVIEW、P0、R4)
+  - scope: exact package/canonical/profile/MustSupport、producer/consumer/single writer、identifier/version/history、CapabilityStatement、OperationOutcome、transaction/If-Match、Terminology、SMART/RFC 9700、OpenAPI compatibilityを固定する。
+  - acceptance: profile/resource/operation単位のdeclared-vs-runtime matrix、positive/negative conformance、roundtrip、authorization、backward compatibility、missing-data behaviorを機械実行し、unknown profile/terminology/tenant-purpose accessはfail-closed。
+  - stop: WP-0054-D18のhuman FHIR reviewとofficial artifact promotion前に`JP Core準拠`またはPartner production-readyを宣言しない。
+- [!] WP-0055d transaction, audit, and offline recovery integrity(BLOCKED_DATA_INTEGRITY_REVIEW、P0、R4)
+  - scope: aggregate/resource single writer、DB/FHIR/AuditEvent/Outbox atomicity、idempotency key lifecycle、ambiguous external result、Inbox/dedupe/order/replay/reconciliation/quarantine/repair、LOCAL_ONLY番号とledgerを定義する。
+  - acceptance: crash point/retry/reorder/duplicate/conflict/recovery property testsでlost update=0、double financial/inventory effect=0、false success=0、audit gap=0。WP-4050/WP-4151c/WP-4162のopen gapと同じauthorityへ統合する。
+  - stop: last-write-wins、送信推測、未確認success、append-only ledger破壊更新を禁止する。
+- [!] WP-0055e security, privacy, AI, and operations control matrix(BLOCKED_HUMAN_SECURITY_PRIVACY_AI_REVIEW、P0、R4)
+  - scope: operation×role×tenant×pharmacy×purpose×consent×data-class、auth/session/token/support/break-glass/export/webhook/log/key/region/retention、AI use-case/input/output/model/guardrail/fallback/evaluationを定義する。
+  - acceptance: deny-by-default matrix coverage=100%、cross-tenant/purpose/consent bypass=0、PHI log=0、unauthorized export/support=0。AIはnamed use caseごとにinput allow-list、grounding/schema、human approve/reject/undo、prompt-injection test、non-AI fallbackを持つ。
+  - stop: HD-14とprovider/region/retention/training/guardrail/human-review decision前のclinical PHI invocation=0。AIは算定、請求、処方変更、監査、会計、外部送信を確定しない。
+- [!] WP-0055f UI/view, executable acceptance, and performance evidence(BLOCKED_VIEW_AND_MEASUREMENT_CONTRACT、P1、R3)
+  - scope: 132 UI labelをview/region/commandへ分類し、fixed context、role、state axis、error/offline/recovery、keyboard/accessibility、66 acceptance、141 test、performance operation registryへ接続する。
+  - acceptance: UI 132/132 classified、unmapped=0、duplicate view authority=0、Guided/Expertのdomain state/API/audit diff=0。testはexact command/environment/oracle/artifactを持ち、missing applicable commandはFAIL。WCAG 2.2 journey、screen reader、zoom、forced colors、keyboard-only、destructive/error-preventionを含む。
+  - performance: PHI-free RUM/business latency registryとreal-device/Edge/LAN/data-volume/cold-warm baseline後だけcandidateをSLOへ改版する。baseline前は`CANDIDATE_NOT_SLO`。
+- [!] WP-0055g Gate 0 packet revision and reissue(BLOCKED_WP-0055a-f_AND_HUMAN_18_OF_18、P0、R4)
+  - scope: WP-0055a〜fのverified resultを既存WP-0054i Gate 0 packetへ差分統合する。別Gate authorityを作らない。v0.7とv0.8のsource/version provenanceを分離し、v0.8 source captureをWP-0054qのv0.7 raw recoveryまたはVF-01 closureの代替にしない。
+  - acceptance: G0-01〜07=PASS、WP-0054qのv0.7 source recoveryとVF-01/related verification findings=CLOSED、v0.8 source capture independently verified、official evidence promotion complete、PRC-007 atomic amendment approved、human HD-01〜18=18/18、independent technical verification=PASS。続いてのみG0-08でGate 1のexact scope/owner/sole maintainer/verifier/rollback/demoを再発行する。
+  - stop: GPT-5.6 technical reviewまたは他のmodel名をhuman approvalの代替にせず、rootは自己承認しない。
+
+### v0.8 review stop gates
+
+1. v0.8はDraft inputであり、WP-0055g完了までimplementation authority=0、production authority=0、evidence promotion=0、Gate 0=`NO_GO`を維持する。
+2. sourceから再計算した全MUST、acceptance、test、UIがnamespaced inventoryへ入り、source/target/evidence/human gate coverageをindependent verifierが確認するまでruntimeへ転記しない。
+3. status、error、blocker、EventEnvelope、FHIR profile、package、API、SSOT候補はretain/map/amend/reject/human decisionを完了し、duplicate authority=0になるまで新authorityにしない。
+4. AI clinical PHI、official adapter、claims/calculation/accounting rule、migration apply、external send、certificate/secret、deploy/restore/failover/publicationはaction-specific human approvalなしに実行しない。
+5. GPT-5.6 technical reviewはpharmacist/claims/legal/FHIR/privacy/security/data/accessibility/operations/product authorityを代替しない。
+6. JAHIS/NSIPS等のrestricted specificationやvendor behaviorを無許諾で取得・複製・推測実装しない。
+7. applicable Gateのcommand、environment、oracle、artifactが欠落する場合はPASSにせずFAILまたはhuman-approved N/Aとする。
+8. requirement→WP→SSOT→code→test→evidence coverageにunmapped、orphan implementation、duplicate authority、unsupported compliance claim、failing gateが1件でもあれば停止する。
