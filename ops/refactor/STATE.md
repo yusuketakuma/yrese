@@ -4,7 +4,7 @@ This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
 - Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. Remaining57 classification, WP-0020〜0023 reconciliation, W31 and WP-4081 are LANDED.
-- Current task: WP-4151 audit refresh browser follow-upは`31a60f7`でLOCAL_LANDED、controlled exact-500 retention/recoveryとfocused 50/50、independent PASS_WITH_NOTEを記録。2行→1行値はroot capture、独立runは1行保持/recovery、native inputは未証明。exact nextは受付refresh/create error-retention/retry browser journey。WP-0054pは`9840ed5`/`dff14bc`でINDEPENDENT_PASS、Gate 0は`NO_GO`。VF-01、human 0/18、Gate 1 reissue 0、live `.codegraph`、PostgreSQL14 skips、production API/auth/tenant/accessibility demoも未解消。
+- Current task: WP-4151a reception queue refreshはcontrolled 200→exact 500→200をnative「表示」で実行し、retained row/date/last-updated、fixed error/stale/next action、raw/future replacement非表示、replacement/error clear、request 1→2→3、console/page error空、focused 70/70をPASS。independent verifierもsame-row retention/recovery、native request増加、raw非表示、console/page error空をPASS_WITH_NOTE。SYN-001→SYN-002とabsolute countはroot capture依存。runtime/code/contracts/API/DB/SSOT変更なしでexact6 docs landing待ち。audit follow-upは`31a60f7`/`14e56e8`でLANDED。exact nextは受付登録POST failure/retry。Gate 0は`NO_GO`、VF-01/human 0/18/Gate 1 reissue 0/live `.codegraph`/PostgreSQL14 skips/production gapsも未解消。
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation

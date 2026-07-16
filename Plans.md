@@ -2812,6 +2812,11 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - landing_record: implementation commit `8cd8d18` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact6 evidence index/demo records landed、independent verification pending。
   - followup_landing: audit refresh exact-500 retention/recovery evidenceとindependent PASS_WITH_NOTEは`31a60f7`で同branchへpush済み。runtime/code/contracts/DB/SSOT変更なし。2行→1行値はroot capture、独立runは1行保持/recovery、native inputは未証明という境界を維持。
 
+- [~] WP-4151a demonstrate reception queue refresh failure retention and retry(LOW demo integrity) — LOCAL_READY / INDEPENDENT_PASS_WITH_NOTE
+  - scope: exact6 `ops/refactor/EVIDENCE.md`, `ops/refactor/FINAL_DEMO.md`, `ops/refactor/VERIFICATION.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。runtime/code/contracts/API/DB/SSOT/package/lock/CIは変更しない。
+  - evidence: synthetic dev Webの正式proxy先でqueue 200(retained row)→native「表示」click→exact HTTP 500(raw sentinel body)→同じnative「表示」click→200(replacement row)を実行。失敗時はretained row/date/last-updatedを保持し、fixed error/stale qualifier/next actionを表示、raw sentinelとreplacement false-successを非表示。復旧時はold rowをreplacementへ置換しerror/staleをclear。request count 1→2→3、console/page errors空、focused `reception-dashboard.test.tsx` 70/70 PASS。
+  - stop/review: read-only independent verifierもfresh sessionでsame row/date/timestamp保持、exact 500固定copy、raw/errorCode非表示、native retry request増加、error clear、console/page error空、70/70をPASS。shared mockがreplacement状態だったためSYN-001→SYN-002とabsolute 1→2→3はroot capture依存。queue refreshだけの証拠で、受付登録POST failure/retry、production API/auth/DB、audit retry native inputを証明しない。docs exact6 landingまで完了扱いにしない。
+
 - [~] WP-4152 verify production Web build/start/static-route boundary(LOW demo/stability evidence) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
   - 発見根拠: final demoはproduction-like API/Web startupを全体未検証としていたが、Web単体のbuild/start/static route/shutdownはDB/auth承認なしに実測可能だった。
   - scope: exact6 `ops/refactor/EVIDENCE.md`, `ops/refactor/FINAL_DEMO.md`, `ops/refactor/VERIFICATION.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。runtime/code/contracts/DB/SSOT/package/lock/CIは変更しない。

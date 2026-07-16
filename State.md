@@ -8,6 +8,12 @@
 
 ## 2026-07-16
 
+### WP-4151a reception queue refresh failure / retention / retry — LOCAL_READY / INDEPENDENT_PASS_WITH_NOTE
+
+- synthetic queue 200(retained `SYN-001`)→native「表示」→exact HTTP 500(raw sentinel)→native「表示」→200(replacement `SYN-002`)をbrowser実行。失敗時はretained row/date/last-updated、fixed HTTP500 error、stale qualifier、next actionを保持し、raw sentinel/replacement false-successなし。復旧時はrequest count 1→2→3、replacementへ置換、error/stale clear、console/page errors空。focused reception dashboard 70/70 PASS。
+- queue refresh以外の受付登録POST failure/retry、production API/auth/DBは未証明。runtime/code/contracts/API/DB/SSOT変更なしで、docs exact6はread-only independent verifier確認後にlandingする。
+- read-only independent verifierもfresh sessionでsame row/date/timestamp保持、fixed HTTP500、raw/errorCode非表示、native retry request増加、error clear、console/page error空、70/70をPASS。shared mockがreplacement状態だったためSYN-001→SYN-002とabsolute 1→2→3はroot capture依存というnoteを保持する。
+
 ### WP-4151 audit refresh failure / retention / retry browser follow-up — LOCAL_LANDED / INDEPENDENT_PASS_WITH_NOTE
 
 - synthetic dev Web→API proxyで初回200(検証済み2件)→次回exact HTTP 500(raw sentinelをbodyへ含む)→再試行200(1件)を実行。失敗後も2件/normal chainを保持し、stale qualifier・固定HTTP 500 error・retryを表示、raw sentinelはDOM非表示。再試行後はrequest count 2→3、1件へ置換、error clear、idle button復帰、console/page error出力なしを確認。focused `audit-log-view.test.tsx` 50/50 PASS。
