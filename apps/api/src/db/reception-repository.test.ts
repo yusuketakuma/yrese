@@ -10,6 +10,8 @@ import {
 } from '../reception-repository.js';
 import {
   PostgresReceptionRepository,
+  databaseReceptionCreatedAcceptedAtInvariantErrorMessage,
+  databaseReceptionCreatedStatusInvariantErrorMessage,
   databaseReceptionProvenanceInvariantErrorMessage,
   databaseReceptionRowInvariantErrorMessage,
   databaseReceptionTimestampInvariantErrorMessage,
@@ -69,7 +71,13 @@ function createRepository(options: {
       return {
         rows:
           options.scenario === 'created'
-            ? [transformRow({ ...storedRow, ...options.provenanceOverride })]
+            ? [
+                transformRow({
+                  ...storedRow,
+                  accepted_at: input.acceptedAt.toISOString(),
+                  ...options.provenanceOverride,
+                }),
+              ]
             : [],
       };
     }
@@ -181,6 +189,84 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(release.mock.calls).toEqual([[]]);
   });
 
+  it.each(['IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const)(
+    'rolls back a created reception with schema-valid non-WAITING status %s',
+    async (receptionStatus) => {
+      const { repository, query, release } = createRepository({
+        scenario: 'created',
+        provenanceOverride: { reception_status: receptionStatus },
+      });
+
+      await expect(repository.create(input)).rejects.toThrow(
+        databaseReceptionCreatedStatusInvariantErrorMessage,
+      );
+      expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it.each([
+    '2026-07-13T00:59:59.999Z',
+    '2026-07-13T01:00:00.001Z',
+  ])('rolls back a created reception with mismatched acceptedAt %s', async (acceptedAt) => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: { accepted_at: acceptedAt },
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      databaseReceptionCreatedAcceptedAtInvariantErrorMessage,
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('accepts a canonically equivalent created acceptedAt offset string', async () => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: { accepted_at: '2026-07-13T10:00:00+09:00' },
+    });
+
+    const result = await repository.create(input);
+
+    expect(result).toMatchObject({
+      kind: 'created',
+      entry: { acceptedAt: input.acceptedAt.toISOString(), receptionStatus: 'WAITING' },
+    });
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('prioritizes the created status invariant when status and acceptedAt both mismatch', async () => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: {
+        reception_status: 'COMPLETED',
+        accepted_at: '2026-07-13T00:59:59.999Z',
+      },
+    });
+
+    await expect(repository.create(input)).rejects.toEqual(
+      new Error(databaseReceptionCreatedStatusInvariantErrorMessage),
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('destroys the client after a created semantic rollback failure without masking the invariant', async () => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: { reception_status: 'IN_PROGRESS' },
+      rollbackError: new Error('synthetic created semantic rollback failure'),
+    });
+
+    await expect(repository.create(input)).rejects.toEqual(
+      new Error(databaseReceptionCreatedStatusInvariantErrorMessage),
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[true]]);
+  });
+
   it('commits and returns the stored reception for a same-patient replay', async () => {
     const { repository, query, release } = createRepository({ scenario: 'existing' });
 
@@ -207,6 +293,28 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
     expect(release.mock.calls).toEqual([[]]);
   });
+
+  it.each(['IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const)(
+    'allows an existing reception with historical acceptedAt and advanced status %s',
+    async (receptionStatus) => {
+      const { repository, query, release } = createRepository({
+        scenario: 'existing',
+        provenanceOverride: { reception_status: receptionStatus },
+      });
+
+      const result = await repository.create(input);
+
+      expect(result).toMatchObject({
+        kind: 'existing',
+        entry: {
+          acceptedAt: storedRow.accepted_at,
+          receptionStatus,
+        },
+      });
+      expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
 
   it('commits a different-patient idempotency conflict without returning an entry', async () => {
     const { repository, query, release } = createRepository({ scenario: 'conflict' });

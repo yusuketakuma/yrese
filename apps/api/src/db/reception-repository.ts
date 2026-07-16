@@ -50,6 +50,10 @@ export const databaseReceptionTimestampInvariantErrorMessage =
   'Reception database returned an invalid timestamp';
 export const databaseReceptionRowInvariantErrorMessage =
   'Reception database returned an invalid reception row';
+export const databaseReceptionCreatedStatusInvariantErrorMessage =
+  'Reception database returned an invalid created status';
+export const databaseReceptionCreatedAcceptedAtInvariantErrorMessage =
+  'Reception database returned an invalid created timestamp';
 
 function rowToEntry(row: ReceptionEntryRow): ReceptionQueueEntry {
   const receptionIdValue = readDatabaseRowOwnDataProperty(
@@ -246,6 +250,12 @@ export class PostgresReceptionRepository implements ReceptionRepository {
       if (insertedRow !== undefined) {
         const provenance = rowToProvenance(insertedRow);
         const entry = rowToEntry(insertedRow);
+        if (entry.receptionStatus !== 'WAITING') {
+          throw new Error(databaseReceptionCreatedStatusInvariantErrorMessage);
+        }
+        if (entry.acceptedAt !== acceptedAt) {
+          throw new Error(databaseReceptionCreatedAcceptedAtInvariantErrorMessage);
+        }
         await client.query('COMMIT');
         return {
           kind: 'created',
