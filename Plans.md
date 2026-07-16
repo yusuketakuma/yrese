@@ -3374,9 +3374,11 @@ Primary-source URLs to fingerprint in WP-0054c (not a substitute for source file
   - evidence/result(2026-07-16): `docs/research/rececon_v0_7_current_state_coverage_20260716.md`で22/22 domainを8 evidence dimensionへ分類。`IMPLEMENTED=0`、`PARTIAL=8`、`DOC_ONLY=5`、`BLOCKED=3`、`OUT_OF_SCOPE=5`、`MISSING=1`、unclassified=0。40 existing path referenceと11 expected-absent packageを機械検査し、unexpected missing=0。runtimeはPatient/Reception/Auditと限定的Calculation foundationが中心で、文書・enum・fixture・placeholderをimplementedへ昇格していない。
   - commit_push: `77f548f`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。independent verificationは未完了。
   - exact_next_action: 本artifactをlanding後、WP-0054cでofficial/vendor primary sourceをretrieval date/version/hash/license/applicability付きでfingerprintし、vendor claimを法令・請求・医療安全の根拠へ昇格しない。
-- [ ] WP-0054c External evidence and benchmark registry
+- [~] WP-0054c External evidence and benchmark registry(LOCAL_READY、INDEPENDENT_VERIFY_REQUIRED)
   - scope: 法令、通知、公式仕様、package、vendor public claimを一次情報URL、取得日、版、hash、利用/転載条件、適用範囲、expiry/watch owner付きで登録する。
   - acceptance: competitor claimはedition/option不明を明示し、法令/請求/患者安全をvendor資料だけで確定しない。PMDA/JAHIS/NSIPS/official artifactのlicenseをfail-closed判定する。
+  - evidence/result(2026-07-16): `docs/research/rececon_v0_7_external_source_fingerprints_20260716.md`へofficial/public 10、HL7 6、JAHIS/NSIPS 4、AWS Bedrock 4、vendor 14の計38 sourceを登録。全件live web確認、HTTP 200、decoded-body SHA-256取得済み。authority/right/watch/applicabilityを分類し、linked PDF/package/terminology/restricted specificationへlanding hashを流用していない。vendorはPriority C、NSIPSはrestricted、AWSはdynamic service docsとしてfail-closed。evidence_id昇格は0。
+  - exact_next_action: artifact landing後、WP-0054dでPriority Aのみをeffective date/jurisdiction/applicability/control/test/human sign-offへ写像する。linked PDF/packageの個別取得/hash/license reviewは別evidence WPで継続する。
 - [ ] WP-0054d Legal / regulatory / clinical compliance matrix(R4 human authority)
   - scope: 調剤、保存、電子記録、請求、資格、PMH、電子処方箋、オンライン服薬指導/配送、医療安全、privacy/securityをrequirement→control→evidence→testへ写像する。
   - acceptance: effective date、jurisdiction、applicability、official source、human legal/pharmacist/claim/security sign-off、change watchを必須とし、未確定はBLOCKED。
