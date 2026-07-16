@@ -8,12 +8,13 @@
 
 ## 2026-07-16
 
-### WP-4164 PostgreSQL audit advisory-lock / migration CI repair — LOCAL_IMPLEMENTED / REMOTE_CI_VERIFY_REQUIRED
+### WP-4164 PostgreSQL audit advisory-lock / migration CI repair — FINALIZED / REMOTE_CI_PASS
 
 - main push後のGitHub Actions run `29498358296`はPostgreSQL実DBで初めて隠れていた2欠陥を検出した。audit lock keyのruntime NULがSQLSTATE `22021`となりaudit integration 5件を停止し、migration full-history期待の`000004`欠落が正常な4版適用を失敗扱いした。人間gate対象を除外したfresh mappingで、本件を唯一の即時実装可能P0/R2 sliceとして選定した。
 - `buildAuditScopeAdvisoryLockKey()`をdomain-separated JSON tupleへ変更し、production repositoryとobserved-concurrency blocker testの重複key生成を統合した。NUL非生成、UTF-8 roundtrip、quote/backslash/Unicode、曖昧連結とscope swapの非衝突をmock非依存unit testで固定。migration testはfull-historyのversion/rowだけを`000004`へ同期し、legacy rollback、migration SQL/checksum、API/contracts、audit schema/transaction/seedは不変。
 - focused unit 28、API 272 + PostgreSQL14 expected skips、API typecheck/build、boundaries、diffをPASS。security/medical/privacy/data-integrity reviewはcanonical tuple、非ログ、hash collision影響境界、WP-4050非解決を確認して方針APPROVED。ローカルPostgreSQL runtimeは存在しないため、safe feature branchのPR CIでaudit 5 + migration 2のzero-skipと全step greenを得るまで完了扱いにしない。
 - implementation `01e8260`をsafe feature branchへpushしdraft PR #1/run `29499482385`を実行。NUL起因だったaudit 4件とmigration2件はzero-skip PASSし、observed-concurrency 1件のみ`application_name`間接観測が3秒timeoutした。PostgreSQL公式`pg_locks`のbigint advisory identityに従い、blocker自身の`database/classid/objid/objsubid=1`を取得して同一resourceのwaiter 2件を直接数えるtest-only follow-upへ変更。production lock/transaction/schema/APIは不変で、再CI green待ち。
+- follow-up `1d2a2da`後のdraft PR #1 run `29499861743` job `87625797181`は2m16sでSUCCESS。audit integration 5/5、migration integration 2/2、PostgreSQL repository integration 7/7、API 286/286をzero-skip PASSし、workspace typecheck/test/build、script harness、OpenAPI、secrets、deps high0/critical0、SBOM231、boundaries、calculation purity、SSOT173を含む全stepがgreen。これによりWP-4092/WP-4143/WP-4161のremote proofも同時に完了した。
 
 ### All branches → main consolidation — PUSHED / INDEPENDENT_PASS
 
@@ -48,11 +49,11 @@
 - MOD-008/SEC-007で必須の`patient.viewed`がpatient search/get-by-id/reception queueへ未配線であるためWP-4162を追加。閲覧監査必須、outcome必須、PHI-free identifier-only targetRefは既決事項として維持し、bulk粒度・失敗規律・recovery/retentionだけをhuman decisionへ送る。
 - ambiguous reception retryは既存WP-4151cで管理済み。いずれもruntime/DB/API/SSOTを変更せず、human-approved scope/evidence/risk判断前の実装を禁止する。
 
-### WP-4161 CI pnpm toolchain alignment — LOCAL_LANDED / INDEPENDENT_PASS / REMOTE_CI_VERIFY_REQUIRED
+### WP-4161 CI pnpm toolchain alignment — FINALIZED / REMOTE_CI_PASS
 
 - repository pin pnpm 11.13.1に対しGitHub Actionsだけが10.33.2を固定し、WP-4147で確認済みのretired audit endpoint HTTP 410をremote gateへ再導入するdriftを修正。`.github/workflows/ci.yml`のsetup version 1行だけを11.13.1へ揃えた。
 - `actionlint`、frozen install(lock差分0)、script harness、workspace typecheck/test/build、OpenAPI/purity/boundaries/SSOT173、tracked-snapshot secrets、deps high0/critical0、SBOM231、diffをPASS。APIは270 PASS + PostgreSQL14 expected skips、Web336、audit183、calculation87。live secret scanは既知のignored user-owned `.codegraph` symlinkでfail-closed。
-- read-only independent verifierはexact1 diff、trigger/service/Node/env/step順/gate/deploy不変をPASS。implementation commit `c688d4b`をsafe feature branchへpush済み。feature-branch pushではCI runが発生しないため、remote green、PostgreSQL 0 skip、WP-4092/WP-4143完了は未証明。
+- read-only independent verifierはexact1 diff、trigger/service/Node/env/step順/gate/deploy不変をPASS。implementation commit `c688d4b`をsafe feature branchへpush済み。draft PR #1 run `29499861743`はpnpm 11.13.1で全step green、PostgreSQL 14/14 zero-skipとなりremote proofを完了。
 
 ### WP-4151b reception registration known-non-commit failure / retry — LOCAL_LANDED / INDEPENDENT_PASS_WITH_NOTE
 
@@ -193,12 +194,12 @@
 - exact7でTypeScript syntax-only AST、8拡張子のexplicit ScriptKind、既存5 familyのみのsyntactic matcherへ置換。comments/string/template raw/regex/JSX textを除外し、template/JSX expression、optional/static-computed、shadowed identifier、malformed source fail-closedをfixture化。calculation source/CAL-010/CI/apps/API/DB/runtimeは不変。
 - MAP-04 / PLAN-04 / PLAN-04Bは`APPROVED_WITH_PINS`。domain initial LOW fixture不足とindependent initial MEDIUM qualified receiver見逃しを修正し、final domain/independent reviewはいずれもAPPROVED、remaining findingsなし、human gate不要。frozen install、checker/harness syntax、live purity、expanded script harness、calculation87、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、全live gate/diff/cleanはPASS。exact7 implementation commit `014b3e6` を対象feature branchへpush済み。
 
-### WP-4143 repository script harness CI connection — LOCAL_LANDED / REMOTE_CI_VERIFY_REQUIRED
+### WP-4143 repository script harness CI connection — FINALIZED / REMOTE_CI_PASS
 
 - clean baseline `f842379`。root `test:scripts`のfixture harnessはCIから0回で、workspace tests/live gatesだけではsynthetic edge-case退行を見逃し得るMEDIUM CI-control gapを確認。WP-4011はharness作成のみで既存WP重複なし。
 - exact4で`Test`直後・`Build`直前に`Test repository scripts` / `pnpm test:scripts`を1件追加。package/lock/scripts/SSOT/apps/packages、workflow trigger/service/env/action pin/既存stepは不変。
-- MAP-03 / PLAN-03 `APPROVED_WITH_PINS`。final CI/security/tooling domain reviewとindependent verifierはいずれもAPPROVED、remaining findingsなし、human gate不要。YAML structure/count/order、Ruby parse、actionlint 1.7.12、test:scripts、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、全live gate/diffはPASS。feature-branch push単独では現triggerが起動しないため、PR/main run成功までremote CI proofはVERIFY_REQUIREDのまま。
-- exact4 implementation commit `10b92c5` を対象feature branchへpush済み。remote workflow runは未発生。
+- MAP-03 / PLAN-03 `APPROVED_WITH_PINS`。final CI/security/tooling domain reviewとindependent verifierはいずれもAPPROVED、remaining findingsなし、human gate不要。YAML structure/count/order、Ruby parse、actionlint 1.7.12、test:scripts、API270 + PostgreSQL14 expected skips、web335、audit183、workspace typecheck/test/build、全live gate/diffはPASS。draft PR #1 run `29499861743`で`Test repository scripts`と全CI stepがgreenとなりremote proofを完了。
+- exact4 implementation commit `10b92c5`はsafe feature branchへpush済み。remote workflow proofはrun `29499861743`。
 
 ### WP-4142 dev tenant helper ownership convergence — FINALIZED
 
@@ -536,12 +537,12 @@
 - malformed target/wallClock、no-backfill、valid neighbor、totalCount、non-echo、view auditを回帰固定。independent audit/data/security/privacy/API/frontend/medical review APPROVED。API193 + expected skip14、web215、audit183、workspace typecheck/test/buildと全gate PASS。
 - exact5 commit `888c449`をfeature branchへpush済み。chain verification/count/raw windowを保持し、display契約不能rowだけをfalse-chain時に省略する。
 
-### WP-4092 PostgreSQL audit append observed-concurrency proof — IN PROGRESS
+### WP-4092 PostgreSQL audit append observed-concurrency proof — FINALIZED / REMOTE_CI_PASS
 
 - clean HEAD `544c7f7`。audit integration pool `max:1`がrepository transactionをclient checkoutで直列化し、advisory lockの並行保証を未証明とmapper/plannerが確認。production defectではなくMEDIUM evidence gap。
 - test-only exact4でblocker + waiter2のDB-observed overlapとchain収束を追加する。local `TEST_DATABASE_URL`は未設定のため、local skipを完了扱いにせずCI zero-skipをlanding gateとする。
-- independent reviewはcode APPROVED / runtime VERIFY_REQUIRED。local focused5 skip、API191 + DB skip14、web215、audit183、workspace typecheck/test/buildと全gate PASS。candidate commit/push後もCI PostgreSQL実証までIN PROGRESSを維持する。
-- candidate exact4 commit `193024b`をfeature branchへpush済み。current branchにPRがなくCI runは生成されていないため、PostgreSQL zero-skip証拠待ち。production codeは不変。
+- independent reviewはcode APPROVED。local focused5 skip、API191 + DB skip14、web215、audit183、workspace typecheck/test/buildと全gate PASS。WP-4164でcanonical lock keyとexact `pg_locks` identity観測へ補正した後、draft PR #1 run `29499861743`でwaiter2、sequence 1/2、valid chainを含むaudit integration 5/5をzero-skip PASS。
+- original candidate `193024b`、WP-4164 `01e8260`/`1d2a2da`はsafe feature branchへpush済み。remote job `87625797181`の全step greenをもってFINALIZED。WP-4050の業務mutation/audit atomicityは別human gateで未解決。
 
 ### WP-4091 deterministic in-memory patient search field ordering — LANDED
 
