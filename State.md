@@ -8,6 +8,13 @@
 
 ## 2026-07-16
 
+### WP-4165 GitHub Actions trust-surface minimization — LOCAL_LANDED / INDEPENDENT_PASS / REMOTE_CI_VERIFY_REQUIRED
+
+- CIの3 external actionをmutable `@v4`からofficial v4 releaseのfull-length commit SHAへ固定し、workflow tokenを`contents: read`だけへ限定、checkoutのcredential persistenceを無効化した。trigger、PostgreSQL digest/service、Node 24、pnpm 11.13.1、cache、step/env/command/orderは不変。
+- root script harnessは既存direct devDependency `yaml`でworkflowをsemantic parseし、step/job/flow-styleの全`uses`、review済みaction exact-once、exact SHA、action行へ結合したversion comment、top-level exact permission、全job permission override禁止、checkout credential非永続を検証する。duplicate/missing、detached comment、mutable reusable workflow、flow action、block/scalar/flow permissionのnegative fixtureを固定した。
+- 初期regex案は独立reviewで改行空白、flow-style YAML、detached commentのfalse-negativeを検出され、semantic parserへreframe後にindependent verifierとsupply-chain/security reviewerが最終PASS。`actionlint`、script harness、workspace typecheck/test/build、OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231、tracked-snapshot secret scan、diffをPASS。Web337、API272 + PostgreSQL14 expected skips、audit183、calculation87。
+- exact3 implementation commit `1febf57`はlocal-only。明示的user instructionがないためpushせず、GitHub-hosted runnerでのaction解決、cache、PostgreSQL zero-skipを含むremote proofは`REMOTE_CI_VERIFY_REQUIRED`として残す。untracked `.omo/`は対象外。
+
 ### WP-4164 PostgreSQL audit advisory-lock / migration CI repair — FINALIZED / REMOTE_CI_PASS
 
 - main push後のGitHub Actions run `29498358296`はPostgreSQL実DBで初めて隠れていた2欠陥を検出した。audit lock keyのruntime NULがSQLSTATE `22021`となりaudit integration 5件を停止し、migration full-history期待の`000004`欠落が正常な4版適用を失敗扱いした。人間gate対象を除外したfresh mappingで、本件を唯一の即時実装可能P0/R2 sliceとして選定した。
