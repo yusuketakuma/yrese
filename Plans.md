@@ -2830,13 +2830,13 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - required_decision: attempt/session境界、同一key再利用期間、patient/date/prescription payload drift時の409/OperationOutcome相当、成功確認/失敗確定/取消後のkey rotation、Edge/offline復旧、監査・retention・UX copyをpatient-safety/data-integrity authorityが承認する。
   - acceptance: APPROVED contract/SSOTとrisk review後に、commit-before-response-loss、timeout、5xx、double-click、reload、patient change、stale retry、cross-tenant拒否をcontract/API/Web/browser testで固定する。human gate前はruntime変更を禁止し、WP-4151bのknown-non-commit synthetic proofを根拠に解除しない。
 
-- [~] WP-4152 verify production Web build/start/static-route boundary(LOW demo/stability evidence) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+- [~] WP-4152 verify production Web build/start/static-route boundary(LOW demo/stability evidence) — LOCAL_LANDED / INDEPENDENT_PASS_WITH_NOTE
   - 発見根拠: final demoはproduction-like API/Web startupを全体未検証としていたが、Web単体のbuild/start/static route/shutdownはDB/auth承認なしに実測可能だった。
   - scope: exact6 `ops/refactor/EVIDENCE.md`, `ops/refactor/FINAL_DEMO.md`, `ops/refactor/VERIFICATION.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。runtime/code/contracts/DB/SSOT/package/lock/CIは変更しない。
   - implementation/evidence: dev-format `.next`に対する`next start`拒否を確認後、`next build`で12 static pages生成、`next start` ready 237ms、production `/sync-status`の未接続≠同期済み表示、normal shutdownを確認。clinical rootはproduction API/auth未設定かつbrowser session停止のため成功証拠に含めない。
-  - verification/review: build/start/browser/static copy/shutdownとgit diffをroot確認。production API/auth/clinical/restartはDEMO_REQUIRED、別agent verifier未実施のためFINALIZEDを主張しない。
+  - verification/review: independent verifierがfresh `next build` 12 static pages/6.10s、production server 127.0.0.1:31852 ready 270ms、`/sync-status` HTTP200/31.983ms/22,809 bytes、browser reload responseStart 37.3ms/DCL 133.8ms/load 202.2ms、console/page error 0、normal shutdown/port release、tracked diff 0をPASS_WITH_NOTE。dev-format `.next`拒否はroot evidence依存。`通常稼働`はNORMAL固定の暫定表示で、隣接copyがbackend未接続を明示するためhealth detection成功証拠へ拡張しない。production API/auth/clinical/restartはDEMO_REQUIRED。
   - rollback: docs-only implementation commitと後続ledger commitをrevertする。runtime/data rollback不要。
-  - landing_record: implementation commit `ac83520` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact6 production Web evidence records landed、independent verification pending。
+  - landing_record: implementation commit `ac83520` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; original exact6 production Web evidence records landed。independent `PASS_WITH_NOTE` updateのlandingはpending。
 
 - [~] WP-4153 collect JP Core 1.2.0 package pre-lock evidence(LOW read-only supply-chain research) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
   - 発見根拠: WP-0053bのlock前提であるofficial artifact fingerprint/license/dependency metadataがrepositoryに未記録で、公開ガイダンスとarchive package metadataのterminology package IDが一致しなかった。

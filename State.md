@@ -92,10 +92,10 @@
 - official `package.tgz`をtemp取得しSHA-256/size/HTTP validatorsとpackage identity/FHIR/dependencies/license metadataを確認。artifactはtemp削除しrepo/package lock/runtimeは未変更。
 - terminology package IDのarchive/rendered-table drift、publisher `file://` URL、standalone license file欠如、QA suppressed/unpublished/history警告を記録。FHIR/legal review前のlock/準拠主張は禁止を維持。exact4 implementation commit `553dbdb`をfeature branchへpush済み、別agent verifier未実施。
 
-### WP-4152 production Web build/start boundary — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+### WP-4152 production Web build/start boundary — LOCAL_LANDED / INDEPENDENT_PASS_WITH_NOTE
 
 - dev-format `.next`を`next start`が拒否することを確認後、`next build`で12 static pages、production server ready 237ms、`/sync-status`の未接続≠同期済み表示、normal shutdownを実測。
-- production API/auth/clinical journey/restartは未検証を維持。runtime差分なし、exact6 implementation commit `ac83520`をfeature branchへpush済み、別agent verifier未実施。
+- independent verifierはfresh build 12 pages/6.10s、start ready 270ms、`/sync-status` HTTP200/31.983ms、backend未接続・未接続≠同期済みcopy、browser reload timing、console/page error 0、shutdown/port解放、tracked diff 0をPASS_WITH_NOTE。dev-format `.next`拒否はroot capture依存。`通常稼働`はNORMAL固定の暫定表示でhealth detection成功を意味しない。production API/auth/clinical journey/restartは未検証を維持。runtime差分なし、exact6 implementation commit `ac83520`はpush済み。
 
 ### WP-4151 durable evidence index / audit demo extension — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 

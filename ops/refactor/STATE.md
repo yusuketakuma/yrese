@@ -4,7 +4,7 @@ This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
 - Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. Remaining57 classification, WP-0020〜0023 reconciliation, W31 and WP-4081 are LANDED.
-- Current task: WP-4151b reception registrationはknown-non-commit synthetic exact-500→native retry 201/WAITING、queue reload、focused 139/139、independent PASS_WITH_FINDINGSを`ff0e99e`でLOCAL_LANDED。browser absolute count/pending/raw抑止はroot capture依存。retry間key不一致のduplicate riskはWP-4151c `BLOCKED_HUMAN_REVIEW / SSOT_UPDATE_REQUIRED`、PatientHeaderの既存`data-patient-id` DOM属性もprivacy review対象。runtime/code/contracts/API/DB/SSOT変更なし。exact nextは別のsafe bounded demo/evidence gapを選定する。Gate 0は`NO_GO`、VF-01/human 0/18/Gate 1 reissue 0/live `.codegraph`/PostgreSQL14 skips/production gapsも未解消。
+- Current task: WP-4152 production Web evidenceをindependent PASS_WITH_NOTEへ更新中。fresh build 12 pages/6.10s、start ready 270ms、`/sync-status` HTTP200/explicit backend-disconnected copy、browser console/page error 0、normal shutdown/port解放、tracked diff 0。dev-format `.next`拒否はroot evidence依存で、NORMAL固定の`通常稼働`をhealth detection成功へ拡張しない。production API/auth/clinical/restartはDEMO_REQUIRED。WP-4151bは`ff0e99e`/`2d612f2`でLANDED、WP-4151cはhuman-gated。Gate 0は`NO_GO`、VF-01/human 0/18/Gate 1 reissue 0/live `.codegraph`/PostgreSQL14 skips/production gapsも未解消。
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
