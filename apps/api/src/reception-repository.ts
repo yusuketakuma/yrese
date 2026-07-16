@@ -174,9 +174,9 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
   private readonly records: ReceptionRecord[];
   private readonly idempotencyRecords = new Map<string, IdempotencyRecord>();
 
-  constructor(records: readonly ReceptionRecord[] = syntheticReceptionRecords) {
-    this.records = [...records];
-    this.nextSequence = records.length + 1;
+  constructor() {
+    this.records = [...syntheticReceptionRecords];
+    this.nextSequence = syntheticReceptionRecords.length + 1;
   }
 
   async list(input: ReceptionListInput): Promise<readonly ReceptionQueueEntry[]> {
