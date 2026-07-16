@@ -94,6 +94,7 @@ export const receptionQueueBusinessDateInvariantErrorMessage =
   'Reception repository returned entries outside the requested business date';
 export const receptionQueueRepositoryErrorMessage =
   'Reception repository queue lookup failed';
+export const receptionCreateRepositoryErrorMessage = 'Reception repository create failed';
 const auditLogProjectionInvariantErrorMessage =
   'Audit event display projection failed for a verified hash chain';
 export const auditLogScopeInvariantErrorMessage =
@@ -501,13 +502,17 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
       const acceptedAt = now();
       const acceptedAtIso = acceptedAt.toISOString();
-      const result = await receptionRepository.create({
-        tenantId: tenantContext.tenantId,
-        pharmacyId: tenantContext.pharmacyId,
-        patient: parsedPatient.data,
-        idempotencyKey: body.data.idempotencyKey,
-        acceptedAt,
-      });
+      const result = await runRepositoryOperationOrThrowFixed(
+        () =>
+          receptionRepository.create({
+            tenantId: tenantContext.tenantId,
+            pharmacyId: tenantContext.pharmacyId,
+            patient: parsedPatient.data,
+            idempotencyKey: body.data.idempotencyKey,
+            acceptedAt,
+          }),
+        receptionCreateRepositoryErrorMessage,
+      );
 
       const provenance = result.provenance;
       if (

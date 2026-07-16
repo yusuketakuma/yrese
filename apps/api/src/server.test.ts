@@ -42,6 +42,7 @@ import {
   receptionQueueBusinessDateInvariantErrorMessage,
   receptionQueueDuplicateIdentityInvariantErrorMessage,
   receptionQueueRepositoryErrorMessage,
+  receptionCreateRepositoryErrorMessage,
   receptionCreatedStatusInvariantErrorMessage,
   receptionCreatedAcceptedAtInvariantErrorMessage,
   receptionCreatedAuditInvariantErrorMessage,
@@ -1542,6 +1543,95 @@ describe('buildServer', () => {
     expect(response.json()).not.toHaveProperty('provenance');
     expect(response.body).not.toContain('reception-create-001');
   });
+
+  it.each([
+    [
+      'synchronous Error',
+      false,
+      (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) =>
+        new Error(rawSentinel),
+    ],
+    [
+      'asynchronous non-Error object',
+      true,
+      (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) => ({
+        message: rawSentinel,
+        patientNumber: 'SYN-CREATE-REJECTION-SECRET',
+      }),
+    ],
+    [
+      'hostile Proxy',
+      true,
+      (_rawSentinel: string, propertyRead: ReturnType<typeof vi.fn>) =>
+        new Proxy({}, { get: propertyRead, has: propertyRead, getPrototypeOf: propertyRead }),
+    ],
+  ] as const)(
+    'normalizes a reception repository create rejection from %s without inspecting it',
+    async (_label, rejectAsPromise, createRejection) => {
+      const acceptedAt = new Date('2026-07-09T09:00:00.000Z');
+      const requestedPatientId = 'patient-syn-004';
+      const idempotencyKey = 'reception-create-rejection-key-secret-4197';
+      const rawSentinel = 'raw reception create rejection SQL driver secret 4197';
+      const propertyRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const rejection = createRejection(rawSentinel, propertyRead);
+      const create = vi.fn<ReceptionRepository['create']>(() => {
+        if (rejectAsPromise) return Promise.reject(rejection);
+        throw rejection;
+      });
+      const server = buildDevTestServer({
+        now: () => acceptedAt,
+        receptionRepository: {
+          list: vi.fn<ReceptionRepository['list']>(async () => []),
+          create,
+        },
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/reception',
+        headers: tenantOneReceptionWriteHeaders,
+        payload: { patientId: requestedPatientId, idempotencyKey },
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(create).toHaveBeenCalledExactlyOnceWith({
+        tenantId: tenantId('tenant-001'),
+        pharmacyId: pharmacyId('pharmacy-001'),
+        patient: {
+          patientId: patientId(requestedPatientId),
+          name: '合成患者D',
+          kana: 'ゴウセイカンジャディー',
+          birthDate: '1965-04-04',
+          sex: 'female',
+          patientNumber: 'SYN-004',
+          eligibilityStatus: 'NOT_CHECKED',
+        },
+        idempotencyKey,
+        acceptedAt,
+      });
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: receptionCreateRepositoryErrorMessage,
+      });
+      for (const sensitiveValue of [
+        rawSentinel,
+        requestedPatientId,
+        idempotencyKey,
+        '合成患者D',
+        'ゴウセイカンジャディー',
+        'SYN-004',
+        'SYN-CREATE-REJECTION-SECRET',
+      ]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+      expect(propertyRead).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     [
