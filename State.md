@@ -11,7 +11,7 @@
 ### WP-4155 declared HL7 FHIR package fingerprints — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
 - HL7-documented secondary FHIR package registryからJP Core archiveの残るdeclared dependencies 3件をtemp取得し、SHA-256/size/HTTP validators/package identity/FHIR4.0.1/canonical/dependencies/package-level `CC0-1.0` metadataを記録した。
-- versioned download URLはcontent-addressedと見なさずfuture retrieval時のhash照合を必須化。QA/rendered metadataだけに現れるtools packageの分類、jpfhir terminology rights、FHIR/legal reviewまでlock/SSOT/runtime/toolchain実装は禁止を維持。exact4 implementation commitはlanding後に記録し、別agent verifier未実施。
+- versioned download URLはcontent-addressedと見なさずfuture retrieval時のhash照合を必須化。QA/rendered metadataだけに現れるtools packageの分類、jpfhir terminology rights、FHIR/legal reviewまでlock/SSOT/runtime/toolchain実装は禁止を維持。exact4 implementation commit `4248d00`をfeature branchへpush済み、別agent verifier未実施。
 
 ### WP-4154 JP Core terminology artifact identity — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 

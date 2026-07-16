@@ -2841,7 +2841,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - evidence: HL7公式文書が案内するsecondary FHIR package registryから3 artifactをtemp取得。SHA-256はcore `b090bf92…fb091`、terminology `7f931890…cef63`、extensions `b406e755…7720a`。全package identity/FHIR4.0.1/canonical/dependency/license `CC0-1.0`、size、ETag/Last-Modifiedを記録した。
   - acceptance/review: JP Core archiveの全declared dependency artifactをversion/fingerprint/license metadataで追跡し、download URLをcontent-addressedと誤認しない。rendered/QAだけに現れる`hl7.fhir.uv.tools.r4#0.8.0`はbuild-onlyかlock対象か未分類を維持。FHIR specialist + legal/license review前にWP-0053b lock実装なし。別agent verifier未実施。
   - rollback: docs-only evidence commitと後続ledger commitをrevertする。artifactsはtemp削除済み、runtime/data rollback不要。
-  - landing_record: implementation commitはlanding後に記録する。independent verification pending。
+  - landing_record: implementation commit `4248d00` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 declared-dependency evidence landed、independent verification pending。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
