@@ -146,6 +146,35 @@ async function testBoundaryCleanFixturePasses() {
   assert(result.status === 0, `check-boundaries should pass for clean fixture: ${outputOf(result)}`);
 }
 
+async function testBoundaryWorkspaceAliasPasses() {
+  const root = path.join(tempRoot, "boundary-workspace-alias-pass");
+  await writeText(
+    path.join(root, "packages", "core", "package.json"),
+    JSON.stringify({ name: "@fixture/core", dependencies: {} }, null, 2),
+  );
+  await writeText(
+    path.join(root, "packages", "core", "src", "index.ts"),
+    "export const core = true;\n",
+  );
+  await writeText(
+    path.join(root, "apps", "web", "package.json"),
+    JSON.stringify(
+      {
+        name: "@fixture/web",
+        dependencies: { "@fixture/core-alias": "workspace:@fixture/core@*" },
+      },
+      null,
+      2,
+    ),
+  );
+  await writeText(path.join(root, "apps", "web", "src", "index.ts"), "export const app = true;\n");
+
+  const result = runNode("check-boundaries.mjs", [root]);
+  const output = outputOf(result);
+  assert(result.status === 0, `check-boundaries should allow a legal workspace alias: ${output}`);
+  assert(output.trim() === "Boundary check passed.", "legal workspace alias should return only the standard PASS output");
+}
+
 async function testPureCoreRejectsAwsAndDynamoDbImports() {
   const root = path.join(tempRoot, "pure-core-aws-violation");
   await writeText(path.join(root, "apps", "web", "package.json"), JSON.stringify({ name: "@fixture/web" }));
@@ -560,9 +589,25 @@ async function testBoundaryScopeValidationFailsClosed() {
     name: "@fixture/web",
     devDependencies: [],
   });
+  await createSemanticFixture("string-dependency-section", {
+    name: "@fixture/web",
+    dependencies: "do-not-echo",
+  });
+  await createSemanticFixture("number-dependency-section", {
+    name: "@fixture/web",
+    dependencies: 1,
+  });
+  await createSemanticFixture("boolean-dependency-section", {
+    name: "@fixture/web",
+    dependencies: false,
+  });
   await createSemanticFixture("blank-dependency-name", {
     name: "@fixture/web",
     dependencies: { "   ": "workspace:*" },
+  });
+  await createSemanticFixture("padded-dependency-name", {
+    name: "@fixture/web",
+    dependencies: { " @fixture/core ": "workspace:*" },
   });
   await createSemanticFixture("non-string-dependency-specifier", {
     name: "@fixture/web",
@@ -1912,6 +1957,7 @@ async function testOpenApiGenerationPublishesAtomically() {
 try {
   await testBoundaryViolationDetection();
   await testBoundaryCleanFixturePasses();
+  await testBoundaryWorkspaceAliasPasses();
   await testPureCoreRejectsAwsAndDynamoDbImports();
   await testPureCoreRejectsAwsAndDynamoDbImportsThroughNonStaticForms();
   await testBoundarySyntaxAwareImportExtraction();
