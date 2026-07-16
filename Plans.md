@@ -3386,9 +3386,11 @@ Primary-source URLs to fingerprint in WP-0054c (not a substitute for source file
   - evidence/result(2026-07-16): `docs/research/rececon_v0_7_compliance_matrix_20260716.md`へ18 controlを作成し、要求12領域を12/12 coverage。各行にeffective date/jurisdiction/applicability、proposed control、evidence/test contract、human sign-off、watchを設定した。2026-07-16時点の薬剤師法API本文は処方箋・調剤録3年保存、将来改正は5年であるため`TIME_SPLIT_REQUIRED`とし、具体的施行日・経過措置の人間確認なしに上書きしない。個人情報ガイダンス令和8年4月版、安全管理GL 7.0、令和8年度checklist、事業者GL 2.0、SaMD 2023-03-31改正版を公式sourceで再確認。実装許可0、evidence_id発行0、18/18がexact-artifactまたはhuman review blocker。
   - commit_push: `08cf334`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。independent verification、exact-artifact promotion、human sign-off、APPROVED SSOT改版は未完了。
   - exact_next_action: artifact landing後、WP-0054eで本matrixのblocker/dependencyだけをP0〜P3/Gate 0〜5 DAGへ入力する。REG-003改版、REG-004 blocker解除、実装開始はexact artifact取得・evidence promotion・human sign-offまで禁止する。
-- [ ] WP-0054e Priority / Release Gate / dependency DAG
+- [~] WP-0054e Priority / Release Gate / dependency DAG — LOCAL_READY、INDEPENDENT_VERIFY_REQUIRED、HUMAN_GATE0_BLOCKED
   - scope: P0〜P3とGate 0〜5をpatient safety、legal/claim、data authority、migration reversibility、commercial value、dependencyで再採点する。
   - acceptance: 各WPにpriority/risk/dependencies/entry/exit/rollback/demo/owner/verifier/human gateがあり、循環依存とGate bypassが0。
+  - evidence/result(2026-07-16): `docs/research/rececon_v0_7_priority_release_dag_20260716.md`へGate 0〜5の40 WPを分解し、patient safety/legal-claim/data authority/migration reversibility/commercial/dependency centralityで再採点。全WPにscore/priority/risk/dependencies/entry/exit/rollback/synthetic demo/owner-verifier/human gateを設定した。machine-auditable edge 83件をtopological検査しcycle=0、unknown endpoint=0、Gate 1〜5 ancestry bypass=0。Dispensing Workflowはproduction patient journeyの安全完結に必須なためP1→P0へ再評価。電子処方箋2.04/セルフチェック4.2、PMH公開spec/test/checklist/master、JAHIS 1.11をlive再確認し、public artifact/test設計とauthorized connectionを別WPに分離した。実装権限は0。
+  - exact_next_action: artifact landing後、WP-0054fで40 WP/83 edgeを5層・3 plane・22 domain・public/partner/control API・event/package/tenant/store/authority境界へ写像する。Gate 1 codeはG0-08 human approval/reissueまで禁止する。
 - [ ] WP-0054f Domain boundary / API / module architecture
   - scope: 5層、FHIR/Technical/Adapter 3-plane、日本固有domain、22 domain、event、public/partner/control APIs、authority、tenant/store境界を確定する。
   - acceptance: clinical public API=FHIR、business API=承認済みcontract、control API=OpenAPI、DB direct=0、duplicate enum/status/ID/money/date/audit/retry=0。
