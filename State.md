@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4216 In-memory reception timestamp authority — FINALIZED / INDEPENDENT_PASS
+
+- in-memory受付createのown Date method実行とraw value二重評価により、acceptedAtとJST業務日が分裂しても`created`になるfalse successを修正。Date helperをAPI内中立pathへ移し、new-createだけintrinsic single snapshot、captured ISOから業務日を導出した。
+- invalid/coercible/spoof/Proxyはfixed non-echo reject、records/index/sequence不変。existing/conflict/corrupt-indexはhostile acceptedAt未読のままidempotency precedenceを維持。DB2 consumerはimport-onlyでSQL/transaction不変。
+- patient9+reception32、API580 + integration14 expected skips、Web454、workspace typecheck/test/build、全標準gate、tracked-snapshot exact6 overlay secret scanをPASS。independent verifier PASS/READY。contracts/SSOT/audit/idempotency lifecycle不変、実DB操作なし。implementation `001e97a`はlocal-only、pushなし。
+
 ### WP-4215 PostgreSQL patient eligibility timestamp authority — FINALIZED / INDEPENDENT_PASS
 
 - patient資格確認時刻のDate own method/non-Date coercion false authorityと二重read TOCTOUを修正。WP-4214のDB Date validationを内部helperへ抽出し、eligibility列をown data descriptorから一度だけsnapshotした。
