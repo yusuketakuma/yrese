@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4217 PostgreSQL reception accepted_at row authority — FINALIZED / INDEPENDENT_PASS
+
+- DB受付rowの`accepted_at` own accessor raw executionとinherited value false authorityを修正。DB internal own-data readerを抽出し、patient eligibilityの既存descriptor処理も重複なく機械的移設した。
+- mixed listのaccessor/inherited/missingはgetter0・全体reject、created/existingはCOMMIT前rollback、different-patient conflictはcolumn未読COMMIT。whole-row/他column authorityはscope外で、SQL/transaction/idempotency precedenceは維持した。
+- patient9+reception42、API590 + integration14 expected skips、Web454、workspace typecheck/test/build、全標準gate、tracked-snapshot exact4 overlay secret scanをPASS。independent verifier PASS/APPROVED。contracts/SSOT/migration/audit不変、実DB操作なし。implementation `84019ce`はlocal-only、pushなし。
+
 ### WP-4216 In-memory reception timestamp authority — FINALIZED / INDEPENDENT_PASS
 
 - in-memory受付createのown Date method実行とraw value二重評価により、acceptedAtとJST業務日が分裂しても`created`になるfalse successを修正。Date helperをAPI内中立pathへ移し、new-createだけintrinsic single snapshot、captured ISOから業務日を導出した。
