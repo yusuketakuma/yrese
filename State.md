@@ -8,6 +8,12 @@
 
 ## 2026-07-16
 
+### WP-4168 API startup failure cleanup hardening — FINALIZED / INDEPENDENT_PASS
+
+- startup catchをtest可能なhelperへ分離し、exit code 1をreport/cleanup前に設定、server closeを最大1回試行する。startupとcleanup failureは固定stderr signalだけを出し、raw Error/message/stack/cause/code/env/URL/IDをproduction reporterへ渡さない。original/cleanup/reporter error identityはhelper result内だけに保持し、mainは破棄する。
+- 初回independent reviewで`throw/reject undefined`がcleanup成功sentinelと衝突するbugを検出。明示`cleanupFailed`へrefactorし、rejection/synchronous throw双方のundefined fixtureでown `cleanupError` propertyを固定した。focused7、API279 + PostgreSQL14 expected skips、API/workspace typecheck/test/buildと全標準gate、tracked-snapshot secret scanをPASS。
+- independent verifier PASS、privacy/security/operational reviewer APPROVED。OPS-009 structured observability complianceは非主張で既存gapを維持し、close timeout/forced exit、reporter自体のfailure、別`pool.end()` maskingは別scope。implementation `2ced725`はlocal-only、pushなし。
+
 ### WP-4167 exact pnpm toolchain authority — FINALIZED / INDEPENDENT_PASS
 
 - root `engines.pnpm`の既知にgateを通せない`>=10`をexact `11.13.1`へ揃え、`pnpm-workspace.yaml`へ`pmOnFail: error`を追加した。`packageManager`とCI setupの11.13.1、review済みCI action SHA、`allowBuilds`の`esbuild`/`sharp`、lock/dependency graphは不変。非11.13.1 pnpmはimplicit downloadせずfail-closedになる。
