@@ -2802,14 +2802,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: implementation commitと後続ledger commitをrevertする。API/DB/data rollback不要。
   - landing_record: implementation commit `87b5c41` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact9 implementation/docs and validation proof landed、independent verification pending。
 
-- [~] WP-4151 establish durable evidence index and extend audit demo proof(LOW evidence/resume integrity) — IMPLEMENTED / INDEPENDENT_VERIFY_REQUIRED
+- [~] WP-4151 establish durable evidence index and extend audit demo proof(LOW evidence/resume integrity) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
   - 発見根拠: objective-required `ops/refactor/EVIDENCE.md`が存在せず、automated validation・alignment・browser demo・landing proofの所在が複数文書へ分散していた。監査success browser journeyも`FINAL_DEMO.md`へ未記録だった。
   - scope: exact6 `ops/refactor/EVIDENCE.md`, `ops/refactor/FINAL_DEMO.md`, `ops/refactor/VERIFICATION.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。runtime/code/contracts/DB/SSOT/package/lock/CIは変更しない。
   - implementation: `EVIDENCE.md`を重複logではなくauthoritative artifactへの索引として追加し、landed commit、synthetic browser success、未取得証拠、tool failure、evidence rulesを分離。synthetic reception後のaudit view/hash-chain正常表示をdemo記録へ追加する。
   - verification: live browserでpatient→reception→adminを実行し`reception.created`/`audit.viewed`/normal chainを確認。audit refresh failureはnetwork abortとsynthetic fetch rejectionの双方でbrowser automation sessionが停止したため未証明を維持し、component50 testsだけを代替証拠として明記。SSOT index/diff/secret scanを実行する。
   - review_status: root cold-path evidence review済み。成功と未証明を分離し、DEMO_REQUIRED/VERIFY_REQUIRED/human gateを解除しない。別agent verifier未実施のためFINALIZEDを主張しない。
   - rollback: docs-only implementation commitと後続ledger commitをrevertする。runtime/data rollback不要。
-  - landing_record: implementation commit pending; exact6 evidence diff ready、independent verification pending。
+  - landing_record: implementation commit `8cd8d18` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact6 evidence index/demo records landed、independent verification pending。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
