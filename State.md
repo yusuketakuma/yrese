@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4203 fulfilled patient search page graph authority — FINALIZED / INDEPENDENT_PASS
+
+- page.results二重readで`limit=1`から患者2件を200返却できた実バグを修正。results lengthを一度固定してindex/PHI前に既存limitを適用し、patient graphはplain snapshot後だけschema/duplicate判定へ渡した。
+- duplicate成功後だけnextCursor/offsetを一度snapshotし、encoderにはcaptured expected offset由来のfrozen plain cursorだけを渡す。accessor/Proxy/raw反射、results/cursor TOCTOU、revoked page二次thenable assimilationも閉鎖し、queue/POST/audit/cursor codec/DB/SSOTは不変。
+- focused server218、API462 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。独立reviewで不足証跡を追加後、mapper/plan/API/security/privacy/data/medical/audit review READY。implementation `163c1d9`はlocal-only、pushなし。
+
 ### WP-4202 fulfilled reception queue graph authority — FINALIZED / INDEPENDENT_PASS
 
 - queue rootをnon-Proxy dense own-data arrayとしてsnapshotし、entry/patientもidentity-firstのplain graphへ固定してからschema/duplicate/JST dateへ渡した。raw fulfilled graphのaccessor/Proxy反射とTOCTOUを除去した。
