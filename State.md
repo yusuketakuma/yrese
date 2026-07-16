@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-07-17
+
+### WP-4172 reception-queue GET cancellation — FINALIZED / INDEPENDENT_PASS
+
+- reception queue GETへfresh AbortSignalとsame-target exact Promise joinを導入し、different targetはnew owner/generation公開後にold GETをbest-effort abortする。loading/success/date-mismatch/failureの全functional updaterもevaluation時にgenerationを再確認し、abort無視settlementや遅延React updaterから旧日付のmulti-patient PHI stateが復活しないようroot-cause修正した。
+- true unmount cleanupはactive GETをemitなしでcancelし、StrictMode setup後に同runnerを再利用できる。受付登録POSTは中断せずserver-side settleとregistration lock releaseを維持し、unmount後のUI/queue target/URL/GET continuationだけをmounted guardで停止する。POST body/idempotency key/audit/API/contracts/DOM/copy/ARIA/focusは不変。
+- focused78、Web362、API290 + PostgreSQL14 expected skips、workspace typecheck/test、Web build、lint/script harness/OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/diff、tracked-snapshot secret scanをPASS。live secret scanは既存ignored symlinkでfail-closed。independent verifier、frontend/accessibility/medical/API、privacy/security reviewerはPASS/APPROVED。browser toolと実component unmount harnessは未setupのため、static diff/pure lifecycle fixtureまでの証拠。implementation `3772dc9`はlocal-only、pushなし。
+
 ## 2026-07-16
 
 ### WP-4171 patient-context refresh cancellation — FINALIZED / INDEPENDENT_PASS
