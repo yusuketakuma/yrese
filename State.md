@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4215 PostgreSQL patient eligibility timestamp authority — FINALIZED / INDEPENDENT_PASS
+
+- patient資格確認時刻のDate own method/non-Date coercion false authorityと二重read TOCTOUを修正。WP-4214のDB Date validationを内部helperへ抽出し、eligibility列をown data descriptorから一度だけsnapshotした。
+- coercion/own method/row・Date Proxy trap0、null omit、Date/string canonical化、find/search全体reject、lookahead未読を固定。reception created/existing nested invalidはrollback、different-patient conflictはtimestamp未読COMMITを維持した。
+- patient9+reception30、API578 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact4 overlay secret scanをPASS。independent mapper/plan/security/privacy/data review READY。SQL/schema/migration/contracts/SSOT/eligibility semantics/audit不変、実DB操作なし。implementation `8d8b078`はlocal-only、pushなし。
+
 ### WP-4214 PostgreSQL reception timestamp adapter authority — FINALIZED / INDEPENDENT_PASS
 
 - DB accepted_atのcoercible fake/own method false authorityと、create時のacceptedAt/JST business date分裂を修正。create DateをDB接続前にintrinsic snapshotし、DB rowはgenuine Date/primitive stringだけをcanonical化した。
