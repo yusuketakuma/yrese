@@ -74,10 +74,12 @@ export function toPatientContextData(p: PatientSearchResult): PatientContextData
 export async function fetchPatientById(
   id: string,
   fetchImpl: typeof fetch = fetch,
+  signal?: AbortSignal,
 ): Promise<PatientContextData | null> {
   const res = await fetchImpl(resolveWebApiUrl(`/patients/${encodeURIComponent(id)}`), {
     headers: devTenantHeaders([permissionScope("patient", "read")]),
     cache: "no-store",
+    ...(signal !== undefined ? { signal } : {}),
   });
   if (res.status === 404) {
     return null;
@@ -276,27 +278,68 @@ export function createPatientClearHandler(
 
 /** Keeps only the latest patient refresh authoritative across clear, switch, and unmount. */
 export function createPatientRefreshRunner(
-  fetcher: (id: string) => Promise<PatientContextData | null> = fetchPatientById,
+  fetcher: (id: string, signal: AbortSignal) => Promise<PatientContextData | null> = (
+    id,
+    signal,
+  ) => fetchPatientById(id, fetch, signal),
 ) {
   let generation = 0;
+  let activeOwner:
+    | {
+        readonly controller: AbortController;
+      }
+    | undefined;
+  let isInvalidating = false;
   return {
     invalidate() {
-      generation += 1;
+      if (isInvalidating) return;
+      isInvalidating = true;
+      try {
+        generation += 1;
+        const previousOwner = activeOwner;
+        activeOwner = undefined;
+        previousOwner?.controller.abort();
+      } finally {
+        isInvalidating = false;
+      }
     },
     async refresh(id: string, callbacks: PatientRefreshCallbacks) {
+      if (isInvalidating) return;
       const currentGeneration = ++generation;
-      let fresh: PatientContextData | null;
-      try {
-        fresh = await fetcher(id);
-      } catch {
-        if (currentGeneration === generation) {
-          callbacks.onFailure();
+      const previousOwner = activeOwner;
+      const currentOwner = { controller: new AbortController() };
+      activeOwner = currentOwner;
+      previousOwner?.controller.abort();
+      if (currentGeneration !== generation) {
+        if (activeOwner === currentOwner) {
+          activeOwner = undefined;
         }
+        currentOwner.controller.abort();
         return;
+      }
+      let outcome:
+        | { readonly kind: "success"; readonly value: PatientContextData | null }
+        | { readonly kind: "failure" };
+      try {
+        outcome = {
+          kind: "success",
+          value: await fetcher(id, currentOwner.controller.signal),
+        };
+      } catch {
+        outcome = { kind: "failure" };
+      } finally {
+        if (activeOwner === currentOwner) {
+          activeOwner = undefined;
+        }
       }
       if (currentGeneration !== generation) {
         return;
       }
+      if (outcome.kind === "failure") {
+        callbacks.onFailure();
+        return;
+      }
+      const fresh = outcome.value;
       if (fresh === null) {
         callbacks.onRemoved();
         return;

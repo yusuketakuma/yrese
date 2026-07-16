@@ -163,6 +163,28 @@ describe("fetchPatientById (GET /patients/:patientId 契約)", () => {
     });
   });
 
+  it("forwards an optional abort signal only to the fetch transport", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(SAMPLE), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    const controller = new AbortController();
+
+    try {
+      await fetchPatientById(SAMPLE.patientId, fetchImpl, controller.signal);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    expect(fetchImpl).toHaveBeenCalledExactlyOnceWith(
+      expect.stringContaining(encodeURIComponent(SAMPLE.patientId)),
+      expect.objectContaining({ signal: controller.signal }),
+    );
+  });
+
   it.each([201, 202, 204, 206])(
     "rejects unsupported success status %i before reading the response body",
     async (status) => {
@@ -316,6 +338,216 @@ describe("createPatientRefreshRunner (患者切替・解除の競合防止)", ()
     expect(eventsA.onFresh).not.toHaveBeenCalled();
     expect(eventsA.onRemoved).not.toHaveBeenCalled();
     expect(eventsA.onFailure).not.toHaveBeenCalled();
+  });
+
+  it("aborts the previous patient refresh and gives the replacement a fresh signal", async () => {
+    const patientA = deferred<PatientContextData | null>();
+    const secondId = "22222222-2222-4222-8222-222222222222";
+    const signals: AbortSignal[] = [];
+    const eventsA = callbacks();
+    const eventsB = callbacks();
+    const runner = createPatientRefreshRunner((id, signal) => {
+      signals.push(signal);
+      return id === SAMPLE.patientId
+        ? patientA.promise
+        : Promise.resolve({ ...toPatientContextData(SAMPLE), patientId: secondId });
+    });
+
+    const refreshA = runner.refresh(SAMPLE.patientId, eventsA);
+    await runner.refresh(secondId, eventsB);
+    patientA.resolve(toPatientContextData(SAMPLE));
+    await refreshA;
+
+    expect(signals).toHaveLength(2);
+    expect(signals[0]?.aborted).toBe(true);
+    expect(signals[1]?.aborted).toBe(false);
+    expect(eventsA.onFresh).not.toHaveBeenCalled();
+    expect(eventsB.onFresh).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ patientId: secondId }),
+    );
+  });
+
+  it("suppresses abort rejection after clear and remains reusable", async () => {
+    const signals: AbortSignal[] = [];
+    const eventsBeforeClear = callbacks();
+    const eventsAfterClear = callbacks();
+    const runner = createPatientRefreshRunner((id, signal) => {
+      signals.push(signal);
+      if (id === SAMPLE.patientId) {
+        return new Promise<PatientContextData | null>((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+        });
+      }
+      return Promise.resolve({ ...toPatientContextData(SAMPLE), patientId: id });
+    });
+    const secondId = "22222222-2222-4222-8222-222222222222";
+
+    const beforeClear = runner.refresh(SAMPLE.patientId, eventsBeforeClear);
+    runner.invalidate();
+    runner.invalidate();
+    await beforeClear;
+
+    expect(signals[0]?.aborted).toBe(true);
+    expect(eventsBeforeClear.onFresh).not.toHaveBeenCalled();
+    expect(eventsBeforeClear.onRemoved).not.toHaveBeenCalled();
+    expect(eventsBeforeClear.onFailure).not.toHaveBeenCalled();
+
+    await runner.refresh(secondId, eventsAfterClear);
+    expect(signals[1]?.aborted).toBe(false);
+    expect(eventsAfterClear.onFresh).toHaveBeenCalledOnce();
+  });
+
+  it("drops refresh re-entry from invalidate abort listeners", async () => {
+    let runner!: ReturnType<typeof createPatientRefreshRunner>;
+    let reentrantRefresh: Promise<void> | undefined;
+    const events = callbacks();
+    const reentrantEvents = callbacks();
+    const fetcher = vi.fn(
+      (id: string, signal: AbortSignal) =>
+        new Promise<PatientContextData | null>((_resolve, reject) => {
+          signal.addEventListener("abort", () => {
+            reentrantRefresh = runner.refresh(`${id}-reentrant`, reentrantEvents);
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        }),
+    );
+    runner = createPatientRefreshRunner(fetcher);
+
+    const active = runner.refresh(SAMPLE.patientId, events);
+    runner.invalidate();
+    await active;
+    await reentrantRefresh;
+
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(reentrantEvents.onFresh).not.toHaveBeenCalled();
+    expect(reentrantEvents.onRemoved).not.toHaveBeenCalled();
+    expect(reentrantEvents.onFailure).not.toHaveBeenCalled();
+  });
+
+  it("does not start a superseded refresh after abort-listener re-entry", async () => {
+    let runner!: ReturnType<typeof createPatientRefreshRunner>;
+    let reentrantRefresh: Promise<void> | undefined;
+    const oldEvents = callbacks();
+    const outerEvents = callbacks();
+    const reentrantEvents = callbacks();
+    const fetcher = vi.fn((id: string, signal: AbortSignal) => {
+      if (id === SAMPLE.patientId) {
+        return new Promise<PatientContextData | null>((_resolve, reject) => {
+          signal.addEventListener("abort", () => {
+            reentrantRefresh = runner.refresh("reentrant-new", reentrantEvents);
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        });
+      }
+      return Promise.resolve({ ...toPatientContextData(SAMPLE), patientId: id });
+    });
+    runner = createPatientRefreshRunner(fetcher);
+
+    const old = runner.refresh(SAMPLE.patientId, oldEvents);
+    await runner.refresh("obsolete-outer", outerEvents);
+    await old;
+    await reentrantRefresh;
+
+    expect(fetcher.mock.calls.map(([id]) => id)).toEqual([
+      SAMPLE.patientId,
+      "reentrant-new",
+    ]);
+    expect(outerEvents.onFresh).not.toHaveBeenCalled();
+    expect(reentrantEvents.onFresh).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ patientId: "reentrant-new" }),
+    );
+  });
+
+  it("does not let stale settlement detach the replacement controller", async () => {
+    const oldResult = deferred<PatientContextData | null>();
+    const replacementResult = deferred<PatientContextData | null>();
+    let replacementSignal: AbortSignal | undefined;
+    const oldEvents = callbacks();
+    const replacementEvents = callbacks();
+    const secondId = "22222222-2222-4222-8222-222222222222";
+    const runner = createPatientRefreshRunner((id, signal) => {
+      if (id === SAMPLE.patientId) {
+        return oldResult.promise;
+      }
+      replacementSignal = signal;
+      return replacementResult.promise;
+    });
+
+    const old = runner.refresh(SAMPLE.patientId, oldEvents);
+    const replacement = runner.refresh(secondId, replacementEvents);
+    oldResult.resolve(toPatientContextData(SAMPLE));
+    await old;
+    runner.invalidate();
+
+    expect(replacementSignal?.aborted).toBe(true);
+    replacementResult.resolve({ ...toPatientContextData(SAMPLE), patientId: secondId });
+    await replacement;
+    expect(replacementEvents.onFresh).not.toHaveBeenCalled();
+    expect(replacementEvents.onRemoved).not.toHaveBeenCalled();
+    expect(replacementEvents.onFailure).not.toHaveBeenCalled();
+  });
+
+  it("does not abort a settled signal when its callback starts a new refresh", async () => {
+    const signals: AbortSignal[] = [];
+    const secondId = "22222222-2222-4222-8222-222222222222";
+    let callbackRefresh: Promise<void> | undefined;
+    const secondEvents = callbacks();
+    const runner = createPatientRefreshRunner((id, signal) => {
+      signals.push(signal);
+      return Promise.resolve({ ...toPatientContextData(SAMPLE), patientId: id });
+    });
+
+    await runner.refresh(SAMPLE.patientId, {
+      ...callbacks(),
+      onFresh: () => {
+        callbackRefresh = runner.refresh(secondId, secondEvents);
+      },
+    });
+    await callbackRefresh;
+
+    expect(signals).toHaveLength(2);
+    expect(signals[0]?.aborted).toBe(false);
+    expect(signals[1]?.aborted).toBe(false);
+    expect(secondEvents.onFresh).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ patientId: secondId }),
+    );
+  });
+
+  it("releases a failed owner before its callback starts a new refresh", async () => {
+    const signals: AbortSignal[] = [];
+    const secondId = "22222222-2222-4222-8222-222222222222";
+    let callbackRefresh: Promise<void> | undefined;
+    let abortReentry: Promise<void> | undefined;
+    const secondEvents = callbacks();
+    const reentryEvents = callbacks();
+    let runner!: ReturnType<typeof createPatientRefreshRunner>;
+    runner = createPatientRefreshRunner((id, signal) => {
+      signals.push(signal);
+      if (id === SAMPLE.patientId) {
+        signal.addEventListener("abort", () => {
+          abortReentry = runner.refresh("unexpected-abort-reentry", reentryEvents);
+        });
+        return Promise.reject(new Error("synthetic current refresh failure"));
+      }
+      return Promise.resolve({ ...toPatientContextData(SAMPLE), patientId: id });
+    });
+
+    await runner.refresh(SAMPLE.patientId, {
+      ...callbacks(),
+      onFailure: () => {
+        callbackRefresh = runner.refresh(secondId, secondEvents);
+      },
+    });
+    await callbackRefresh;
+    await abortReentry;
+
+    expect(signals).toHaveLength(2);
+    expect(signals[0]?.aborted).toBe(false);
+    expect(signals[1]?.aborted).toBe(false);
+    expect(secondEvents.onFresh).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ patientId: secondId }),
+    );
+    expect(reentryEvents.onFresh).not.toHaveBeenCalled();
   });
 
   it("routes a current bound-fetch identity mismatch only to onFailure", async () => {
