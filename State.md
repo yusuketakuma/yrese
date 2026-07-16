@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4183 reception non-ok error extraction — FINALIZED / INDEPENDENT_PASS
+
+- queue GET／受付登録POSTのerror bodyをexactly onceの`try/await/catch`とown data descriptorへ拘束し、sync throw/async reject、継承getter、Proxy has/get、descriptor trapをcodeなしの既存status guidanceへfail-closed化。valid own registered `RCV-0003`だけは従来どおり保持する。
+- queue 403とPOST 409を代表にfixed copy、raw non-echo、getter/trap zero、descriptor failureを回帰固定。URL/scope/body/idempotency key、same-flight、key reuse、selected-patient binding、queue reload、created audit、200/201 success、API/contracts/server/DB/DOM/ARIAは不変。
+- focused89、Web413、API328 + integration14 expected skips、workspace typecheck/test、Web build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。独立/計画/security/privacy/reception review APPROVED。implementation `e0485cf`はlocal-only、pushなし。
+
 ### WP-4182 dependency-audit JSON non-echo — FINALIZED / INDEPENDENT_PASS
 
 - captured/live dependency audit failureからadvisory module/GHSA、raw JSON/path/child output、stack/cause、CRLF/ANSI/U+2028/U+2029の再出力を廃止。threshold failureはsafe aggregate count+allowlisted levelの1行だけ、その他は固定generic1行/status1/stdout emptyへ収束し、合計overflowもfail-closed化した。
