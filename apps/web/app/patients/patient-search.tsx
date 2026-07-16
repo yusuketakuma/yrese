@@ -513,6 +513,8 @@ export function PatientSearch() {
       )}
       <form
         className="patient-search-form"
+        method="post"
+        action="/patients"
         onSubmit={(e) => {
           e.preventDefault();
           runSearch(q);
@@ -522,7 +524,6 @@ export function PatientSearch() {
         <div className="patient-search-row">
           <input
             id="patient-search-q"
-            name="q"
             type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}

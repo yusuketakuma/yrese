@@ -15,6 +15,7 @@ import {
   createSearchRunner,
   duplicateKanaSet,
   fetchSearch,
+  PatientSearch,
   PatientSearchResults,
   type SearchPage,
   type SearchState,
@@ -36,6 +37,18 @@ function patient(over: Partial<PatientSearchResult>): PatientSearchResult {
 }
 
 describe("patient search hardening (WP-3008 / SCR-002)", () => {
+  it("does not serialize a patient search query when hydration is unavailable", () => {
+    const html = renderToStaticMarkup(<PatientSearch />);
+    const formTag = html.match(/<form\b[^>]*class="patient-search-form"[^>]*>/)?.[0];
+    const inputTag = html.match(/<input\b[^>]*id="patient-search-q"[^>]*>/)?.[0];
+
+    expect(formTag).toBeDefined();
+    expect(formTag).toContain('action="/patients"');
+    expect(formTag).toContain('method="post"');
+    expect(inputTag).toBeDefined();
+    expect(inputTag).not.toMatch(/\sname=/);
+  });
+
   it("uses the same-origin development proxy for patient searches (WP-4067)", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
