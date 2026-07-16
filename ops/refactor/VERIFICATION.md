@@ -20,6 +20,8 @@
 
 Independent bounded verification also passed for WP-4146 (including padded dependency key, primitive dependency section and legal workspace-alias fixtures), WP-4147 (exact pnpm pin, frozen install, allowBuilds scope and audit/SBOM evidence), and WP-4150 (375/768/1280 geometry, Tab focus, pointer selection and empty console/page-error capture).
 
+WP-4163 validation passed: patient-search focused 44/44, Web 337/337, Web typecheck/build, boundaries, SSOT index 173 and diff check. Independent privacy/security review passed the exact2 source/test diff. Fresh hydrated pointer search kept `/patients` query-free; complete JavaScript-disabled native browser submission was unavailable in the browser tool.
+
 ## Environment-limited checks
 
 - PostgreSQL integration: 14 expected local skips because `TEST_DATABASE_URL` is absent. No DB connection, migration or DML was performed in this goal run.

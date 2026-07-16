@@ -2785,14 +2785,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: implementation commit `2bea7a4` と後続ledger commitをrevertする。code/data rollback不要。
   - landing_record: implementation commit `2bea7a4` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 artifact refresh landed、independent verification pending。
 
-- [~] WP-4149 bind reception registration to selected Patient Context(HIGH patient safety) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+- [x] WP-4149 bind reception registration to selected Patient Context(HIGH patient safety) — FINALIZED / INDEPENDENT_PASS_WITH_NOTE
   - 発見根拠: 受付登録フォームが患者検索で確立したglobal Patient Contextとは別にfreeform Patient ID入力を受け付け、表示中患者と登録対象の不一致・転記誤りを起こせるwrong-patient surfaceになっていた。
   - scope: exact9 `apps/web/app/reception-dashboard.tsx`, `apps/web/app/reception-dashboard.test.tsx`, `apps/web/app/globals.css`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`, `ops/refactor/FULLSTACK_ALIGNMENT.md`, `ops/refactor/FINAL_DEMO.md`, `ops/refactor/VERIFICATION.md`。API/contracts/DB/SSOT/package/lock/CIは変更しない。
   - implementation: freeform Patient ID入力を廃止し、`PatientContextProvider`で選択済みの患者だけを受付登録対象にする。未選択時は登録をfail-closedで無効化し患者検索への導線を表示。選択変更時は旧結果を消去し、POST進行中の患者変更は成功・失敗ともsubmitted IDを露出しない固定警告へ分離してblind retryを防ぐ。
   - verification: reception focused 70、Web 336、API270 + PostgreSQL14 expected skips、audit183、calculation87、workspace typecheck/test/build、OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/script harness/diffをPASS。tracked snapshot secret scan PASS、live scanは既知のuser-owned ignored `.codegraph` symlinkでfail-closed。synthetic dev browserで患者検索→選択→受付登録→queue反映→患者clear、375/768/1280のpage overflowなし、console/errorなしを確認。
-  - review_status: root cold-path reviewと`emil-design-eng`基準のUI review済み。current topologyでは別agent verifier未実施のためFINALIZEDを主張しない。既知のmobile table horizontal-scroll P2は本変更外で既存UI risk台帳に維持する。
+  - review_status: read-only independent agent-browserはsynthetic 2件検索、pointer選択、global context/受付対象identity一致、freeform patient ID/inputなし、native double-clickでPOST 1回/authoritative queue GET 1回、WAITING反映、context clear後disabled/result clear、375/768/1280 overflow 0、console/page errors 0を`PASS_WITH_NOTE`。local APIが速く瞬間pending表示とin-flight患者切替raceはbrowser未証明、static helper testsだけの証拠とする。ambiguous retryはWP-4151c human gateを維持する。
   - rollback: implementation commitと後続ledger commitをrevertする。API/DB/data migration rollback不要。
-  - landing_record: implementation commit `7ba1003` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact9 implementation/docs and validation proof landed、independent verification pending。
+  - landing_record: implementation commit `7ba1003` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact9 implementation/docs、validation、independent browser verification `PASS_WITH_NOTE`。
 
 - [x] WP-4150 keep patient selection action reachable on narrow tables(P2 responsive/patient safety) — FINALIZED / INDEPENDENT_PASS
   - 発見根拠: WP-4149 browser verificationの375px viewportで、患者検索結果の「この患者を選択」が初期表示範囲外となり、各行で横スクロールしなければ業務対象を確定できない既知R-RESPONSIVE gapを再現した。
@@ -2919,6 +2919,12 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - required decision: search/bulk/listのevent粒度、0件/denied/failedの記録境界、ordering、audit sink障害時のread可否、retry/reconciliation、identifier集合のdata minimization、retention/observabilityをprivacy/security/data-integrity/medical-safety authorityが承認する。
   - stop conditions: human-approved SSOT/plan前にruntime/API/DB/migrationを変更しない。患者氏名・カナ・生年月日・検索語をaudit payload/targetRef/logへ含めない。audit失敗を成功として隠さず、既存tenant/permission/no-store境界を弱めない。
   - acceptance: approved policyに従いsearch/get/queueのsuccess/denied/failedとbulk cardinalityをsynthetic testsで固定し、targetRefはidentifier-only、tenant/pharmacy/actor/outcome/chainを検証。audit append/recoveryのDB integration、privacy/security/medical-safety review、full gates、local browser journey後にのみ完了扱いとする。
+
+- [x] WP-4163 prevent patient-query URL fallback when hydration is unavailable(HIGH privacy / R2 implementation) — FINALIZED / INDEPENDENT_PASS_WITH_NOTE
+  - finding: WP-4149独立browserのstale `.next` hydration failure時、PatientSearchのReact `preventDefault()`が接続されず、named `q` inputがnative default GETでsynthetic検索語を`/patients?q=...`へserializeした。患者氏名・カナ・患者番号がaddress bar/history/bookmark/referrer/request-target logへ残り得て、R-URLSTATEのPHI query非永続方針に反する。
+  - scope/implementation: source exact2 `apps/web/app/patients/patient-search.tsx`, `apps/web/app/patients/patient-search.test.tsx`。formを`method="post" action="/patients"`へ固定しinputの`name`を除去。hydrated `preventDefault()`/`runSearch(q)`、label/id、Enter submit、focus、maxLength、loading guard、API/contracts/SSOTは不変。no-hydration fallbackはqueryをURL/bodyへ送らずPOST失敗へfail-closedする。
+  - verification/review: static markup regression、focused44、Web337、Web typecheck/build、boundaries、SSOT173、diff PASS。independent privacy/security reviewerはexact2、native successful-control非serialize、通常hydrated semantics/accessibility不変を`PASS`。fresh hydrated pointer searchは結果表示とURL `/patients`/query空をPASS。automationにJS-disableがなくCLI Enterが状態変化を証明しないため、完全なno-JS native browser submissionはnoteとして未証明。通常API GET `/patients/search?q=...`のrequest-target exposureは既存contractの別scope。
+  - rollback/landing: implementation commit `71fee96`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。revert時はhydration failureでPHI query URL persistenceが再発するためprivacy review必須。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。

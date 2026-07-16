@@ -8,6 +8,12 @@
 
 ## 2026-07-16
 
+### WP-4149 independent browser / WP-4163 hydration fallback privacy hardening — FINALIZED
+
+- WP-4149は独立synthetic browserで患者2件検索→pointer選択→受付遷移、global context/受付対象identity一致、freeform patient ID/inputなし、native double-clickでもPOST 1回/queue GET 1回、WAITING反映、context clear後disabled/result clear、375/768/1280 overflow 0、console/page errors 0を`PASS_WITH_NOTE`。瞬間pendingとin-flight患者切替raceはbrowser未証明、ambiguous retryはWP-4151c human gateを維持する。
+- 初回stale `.next` hydration failureでnative GET fallbackがsynthetic患者検索語をURLへ入れるprivacy gapを発見。WP-4163 exact2でformをPOST `/patients`へ固定しinputの`name`を除去、queryをnative URL/bodyへserializeせずfail-closedにした。通常hydrated search、label/Enter/focus/loading guard/API contractは不変。
+- focused44、Web337、Web typecheck/build、boundaries、SSOT173、diff、independent privacy/security reviewをPASS。fresh hydrated pointer searchもURL query空を確認。JS-disable/native fallbackの完全browser証拠はautomation制約で未取得。implementation `71fee96`をsafe feature branchへpush済み。
+
 ### WP-4146 / WP-4147 / WP-4150 independent verification wave — FINALIZED / INDEPENDENT_PASS
 
 - WP-4146は独立初回reviewのfixture不足を受け、padded dependency key、string/number/boolean dependency section、合法`workspace:@fixture/core@*` alias positiveを`f1b3ffa`でpermanent harnessへ追加。checker/runtime/package/lock/CI/SSOTを変えず、focused/full gateと最終独立reviewをPASSした。
@@ -126,11 +132,11 @@
 - 375pxで患者検索の選択操作が横スクロール外へ隠れる既知P2を再現。患者識別列と横スクロールは保持し、選択操作列だけを右端へsticky固定した。
 - focused43、Web336、Web typecheck/build、diff PASS。独立synthetic browserで375pxの初期/最大横スクロール、Tab focus、pointer選択、768/1280を確認し、選択buttonは常時完全可視、identity一致、page overflow/console/errorなし。table全体の列優先/カード化と広域accessibilityは既存P2/demo gateで継続。exact9 implementation commit `87b5c41`をfeature branchへpush済み。
 
-### WP-4149 reception registration Patient Context binding — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+### WP-4149 reception registration Patient Context binding — FINALIZED / INDEPENDENT_PASS_WITH_NOTE
 
 - 受付登録のfreeform Patient ID入力を廃止し、患者検索で確立したglobal Patient Contextだけを登録対象に固定。未選択時はfail-closedで無効化し、患者検索導線と選択患者のカナ・氏名・生年月日を表示する。
 - POST中に患者選択が変わるraceを成功・失敗とも固定警告へ分離し、旧患者の結果を新患者の通常結果として表示せず、submitted Patient IDも露出しない。
-- focused 70、Web336、API270 + PostgreSQL14 expected skips、workspace typecheck/test/buildと全gate PASS。synthetic browserで患者検索→選択→登録→queue→clear、375/768/1280 page overflowなし、console/errorなしを確認。tracked snapshot secret scan PASS、live scanは既知の`.codegraph` symlinkでfail-closed。exact9 implementation commit `7ba1003` をfeature branchへpush済み、別agent verifier未実施。
+- focused 70、Web336、API270 + PostgreSQL14 expected skips、workspace typecheck/test/buildと全gate PASS。独立synthetic browserで患者検索→選択→native double-click登録1回→queue→clear、identity一致、375/768/1280 page overflowなし、console/errorなしを確認。瞬間pending/raceはbrowser未証明。tracked snapshot secret scan PASS、live scanは既知の`.codegraph` symlinkでfail-closed。exact9 implementation commit `7ba1003` をfeature branchへpush済み。
 
 ### WP-4148 full-stack alignment / final-demo evidence refresh — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
