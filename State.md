@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4193 patient lookup repository failure normalization — FINALIZED / INDEPENDENT_PASS
+
+- GET patient refreshと受付POST preflightの2つの`findById` rejectionを共通helperで固定500/no-storeへ正規化し、Error/non-Error/hostile Proxyのraw message・患者ID・adapter detail露出を遮断した。
+- GET sync rejection matrixでscoped args、property read zero、非echoを固定。POST async rejectionはreception create/audit zeroとpatient/idempotency非echoを固定し、正常/404/identity/schema/idempotency/audit分岐は維持した。
+- focused135、API372 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/API/security/privacy/medical/data review APPROVED。implementation `28cd3f1`はlocal-only、pushなし。
+
 ### WP-4192 audit-view acknowledgement authority — FINALIZED / INDEPENDENT_PASS
 
 - `GET /audit/events`のview append返却を捨てるfalse-200境界とraw rejection漏えいを修正。scope/intent/target/timeをfreezeし、hydrated eventを`audit.viewed`の全semantic field・aggregate alias・reason/business absenceへ拘束した。
