@@ -1612,6 +1612,194 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(states.at(-1)?.kind).toBe("loaded");
   });
 
+  it("does not inspect a hostile rejected error and admits retry", async () => {
+    const rawSentinel = "raw reception instanceof trap";
+    const propertyRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const hostileError = new Proxy(
+      {},
+      {
+        get: propertyRead,
+        has: propertyRead,
+        getPrototypeOf: propertyRead,
+      },
+    );
+    const fetcher = vi
+      .fn<() => Promise<ReceptionQueueResponse>>()
+      .mockRejectedValueOnce(hostileError)
+      .mockResolvedValueOnce(queueResponse("2026-07-10"));
+    let state: QueueState = { kind: "loading" };
+    const run = createReceptionQueueRunner(fetcher, (update) => {
+      state = update(state);
+    });
+
+    await run("2026-07-10");
+
+    expect(propertyRead).not.toHaveBeenCalled();
+    expect(state).toEqual({
+      kind: "error",
+      notice: {
+        message: "受付一覧の処理に失敗しました。",
+        nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+      },
+    });
+    expect(JSON.stringify(state)).not.toContain(rawSentinel);
+
+    await run("2026-07-10");
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(state.kind).toBe("loaded");
+  });
+
+  it.each([
+    [
+      "prototype-forged error",
+      () =>
+        Object.assign(Object.create(ReceptionError.prototype), {
+          message: "raw forged reception message",
+          nextAction: "raw forged reception action",
+          errorCode: "AUTH-0003",
+        }),
+    ],
+    [
+      "externally constructed error",
+      () =>
+        new ReceptionError(
+          "raw external reception message",
+          "raw external reception action",
+          "AUTH-0003",
+        ),
+    ],
+  ])("does not trust a %s as queue notice authority", async (_case, createError) => {
+    const untrustedError = createError();
+    const directNotice = ReceptionError.prototype.toNotice.call(untrustedError);
+    expect(directNotice).toEqual({
+      message: "受付の処理に失敗しました。",
+      nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+    });
+    expect(Object.isFrozen(directNotice)).toBe(true);
+    const fetcher = vi.fn<() => Promise<ReceptionQueueResponse>>().mockRejectedValue(
+      untrustedError,
+    );
+    let state: QueueState = { kind: "loading" };
+    const run = createReceptionQueueRunner(fetcher, (update) => {
+      state = update(state);
+    });
+
+    await run("2026-07-10");
+
+    const finalState = state as QueueState;
+    expect(finalState).toEqual({
+      kind: "error",
+      notice: {
+        message: "受付一覧の処理に失敗しました。",
+        nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+      },
+    });
+    const serialized = JSON.stringify(state);
+    expect(serialized).not.toContain("raw forged reception");
+    expect(serialized).not.toContain("raw external reception");
+    expect(serialized).not.toContain("AUTH-0003");
+  });
+
+  it("does not inspect a hostile receiver passed directly to toNotice", () => {
+    const rawSentinel = "raw reception toNotice receiver trap";
+    const propertyRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const hostileReceiver = new Proxy(
+      {},
+      {
+        get: propertyRead,
+        has: propertyRead,
+        getPrototypeOf: propertyRead,
+      },
+    );
+
+    const notice = ReceptionError.prototype.toNotice.call(
+      hostileReceiver as ReceptionError,
+    );
+
+    expect(propertyRead).not.toHaveBeenCalled();
+    expect(notice).toEqual({
+      message: "受付の処理に失敗しました。",
+      nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+    });
+    expect(Object.isFrozen(notice)).toBe(true);
+    expect(JSON.stringify(notice)).not.toContain(rawSentinel);
+  });
+
+  it("does not invoke forged receiver getters through direct toNotice", () => {
+    const getter = vi.fn(() => {
+      throw new Error("raw forged reception getter");
+    });
+    const forgedReceiver = Object.create(ReceptionError.prototype);
+    for (const property of ["message", "nextAction", "errorCode"]) {
+      Object.defineProperty(forgedReceiver, property, { get: getter });
+    }
+
+    const notice = ReceptionError.prototype.toNotice.call(forgedReceiver);
+
+    expect(getter).not.toHaveBeenCalled();
+    expect(notice).toEqual({
+      message: "受付の処理に失敗しました。",
+      nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+    });
+    expect(Object.isFrozen(notice)).toBe(true);
+  });
+
+  it("uses the frozen creation snapshot after a trusted error is mutated", async () => {
+    let trustedError: unknown;
+    try {
+      await withNodeEnv("development", () =>
+        fetchReceptionQueue(
+          "2026-07-10",
+          vi.fn().mockResolvedValue(jsonResponse(403, { errorCode: "AUTH-0003" })),
+        ),
+      );
+    } catch (error) {
+      trustedError = error;
+    }
+    expect(trustedError).toBeInstanceOf(ReceptionError);
+    Object.assign(trustedError as object, {
+      message: "raw mutated reception message",
+      nextAction: "raw mutated reception action",
+      errorCode: "SYSTEM-9999",
+    });
+    const directNotice = (trustedError as ReceptionError).toNotice();
+    expect(directNotice).toEqual({
+      message: "権限がありません。",
+      nextAction:
+        "管理者に権限(reception:read / patient:read)の付与状況を確認してください。",
+      errorCode: "AUTH-0003",
+    });
+    expect(Object.isFrozen(directNotice)).toBe(true);
+    const fetcher = vi
+      .fn<() => Promise<ReceptionQueueResponse>>()
+      .mockRejectedValue(trustedError);
+    let state: QueueState = { kind: "loading" };
+    const run = createReceptionQueueRunner(fetcher, (update) => {
+      state = update(state);
+    });
+
+    await run("2026-07-10");
+
+    const finalState = state as QueueState;
+    expect(finalState).toEqual({
+      kind: "error",
+      notice: {
+        message: "権限がありません。",
+        nextAction:
+          "管理者に権限(reception:read / patient:read)の付与状況を確認してください。",
+        errorCode: "AUTH-0003",
+      },
+    });
+    if (finalState.kind !== "error") throw new Error("expected trusted queue failure");
+    expect(Object.isFrozen(finalState.notice)).toBe(true);
+    expect(JSON.stringify(finalState)).not.toContain("raw mutated reception");
+    expect(JSON.stringify(finalState)).not.toContain("SYSTEM-9999");
+  });
+
   it("maps 409 idempotency conflicts to a duplicate-operation notice (RCV-0003)", async () => {
     const fetchImpl = vi
       .fn()

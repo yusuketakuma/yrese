@@ -64,12 +64,39 @@ export class ReceptionError extends Error {
   }
 
   toNotice(): ErrorNoticeProps {
-    return {
-      message: this.message,
-      nextAction: this.nextAction,
-      ...(this.errorCode !== undefined ? { errorCode: this.errorCode } : {}),
-    };
+    return trustedReceptionErrorNotices.get(this) ?? genericRegistrationErrorNotice;
   }
+}
+
+const trustedReceptionErrorNotices = new WeakMap<object, ErrorNoticeProps>();
+const genericQueueErrorNotice = Object.freeze({
+  message: "受付一覧の処理に失敗しました。",
+  nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+} satisfies ErrorNoticeProps);
+const genericRegistrationErrorNotice = Object.freeze({
+  message: "受付の処理に失敗しました。",
+  nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+} satisfies ErrorNoticeProps);
+
+function createTrustedReceptionError(
+  message: string,
+  nextAction: string,
+  errorCode?: string,
+): ReceptionError {
+  const error = new ReceptionError(message, nextAction, errorCode);
+  const notice = Object.freeze({
+    message,
+    nextAction,
+    ...(errorCode !== undefined ? { errorCode } : {}),
+  } satisfies ErrorNoticeProps);
+  trustedReceptionErrorNotices.set(error, notice);
+  return error;
+}
+
+function trustedReceptionErrorNotice(error: unknown): ErrorNoticeProps | undefined {
+  return typeof error === "object" && error !== null
+    ? trustedReceptionErrorNotices.get(error)
+    : undefined;
 }
 
 async function extractErrorCode(res: Response): Promise<string | undefined> {
@@ -100,27 +127,27 @@ export async function fetchReceptionQueue(
   if (!res.ok) {
     const errorCode = await extractErrorCode(res);
     if (res.status === 403) {
-      throw new ReceptionError(
+      throw createTrustedReceptionError(
         "権限がありません。",
         "管理者に権限(reception:read / patient:read)の付与状況を確認してください。",
         errorCode,
       );
     }
     if (res.status === 400) {
-      throw new ReceptionError(
+      throw createTrustedReceptionError(
         "日付の指定が不正です。",
         "日付(YYYY-MM-DD)を確認して再表示してください。",
         errorCode,
       );
     }
-    throw new ReceptionError(
+    throw createTrustedReceptionError(
       `受付一覧の取得に失敗しました(HTTP ${res.status})。`,
       "再試行してください。解消しない場合は同期状態画面で外部接続状態を確認してください。",
       errorCode,
     );
   }
   if (res.status !== 200) {
-    throw new ReceptionError(
+    throw createTrustedReceptionError(
       `受付一覧の取得に失敗しました(HTTP ${res.status})。`,
       "再試行してください。解消しない場合は同期状態画面で外部接続状態を確認してください。",
     );
@@ -128,7 +155,7 @@ export async function fetchReceptionQueue(
   const parsed = receptionQueueResponseSchema.parse(await res.json());
   if (parsed.date !== date) {
     const notice = queueResponseDateMismatchNotice();
-    throw new ReceptionError(notice.message, notice.nextAction);
+    throw createTrustedReceptionError(notice.message, notice.nextAction);
   }
   const receptionIds = new Set<string>();
   for (const entry of parsed.entries) {
@@ -184,34 +211,34 @@ export async function createReception(
   if (!res.ok) {
     const errorCode = await extractErrorCode(res);
     if (res.status === 409) {
-      throw new ReceptionError(
+      throw createTrustedReceptionError(
         "同じ操作キーが別の患者で再利用されました(二重操作の可能性)。",
         "受付一覧を更新して受付状況を確認してください。解消しない場合はシステム管理者へ連絡してください。",
         errorCode,
       );
     }
     if (res.status === 404) {
-      throw new ReceptionError(
+      throw createTrustedReceptionError(
         "指定した患者がこの薬局に見つかりません。",
         "患者検索画面で受付対象の患者を選択し直してください。",
         errorCode,
       );
     }
     if (res.status === 403) {
-      throw new ReceptionError(
+      throw createTrustedReceptionError(
         "権限がありません。",
         "管理者に権限(reception:write / patient:read)の付与状況を確認してください。",
         errorCode,
       );
     }
     if (res.status === 400) {
-      throw new ReceptionError(
+      throw createTrustedReceptionError(
         "受付内容が不正です。",
         "患者検索画面で受付対象の患者を選択し直してから、再度受付してください。",
         errorCode,
       );
     }
-    throw new ReceptionError(
+    throw createTrustedReceptionError(
       `受付の登録に失敗しました(HTTP ${res.status})。`,
       "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
       errorCode,
@@ -298,13 +325,7 @@ export type QueueRefreshState =
 type QueueStateUpdate = (prev: QueueState) => QueueState;
 
 function queueLoadErrorNotice(error: unknown): ErrorNoticeProps {
-  return error instanceof ReceptionError
-    ? error.toNotice()
-    : {
-        message: "受付一覧の処理に失敗しました。",
-        nextAction:
-          "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
-      };
+  return trustedReceptionErrorNotice(error) ?? genericQueueErrorNotice;
 }
 
 function queueResponseDateMismatchNotice(): ErrorNoticeProps {
@@ -755,13 +776,8 @@ export function ReceptionDashboard() {
         );
         setRegisterNotice(
           patientChangeNotice ??
-            (error instanceof ReceptionError
-              ? error.toNotice()
-              : {
-                  message: "受付の処理に失敗しました。",
-                  nextAction:
-                    "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
-                }),
+            trustedReceptionErrorNotice(error) ??
+            genericRegistrationErrorNotice,
         );
       } finally {
         if (lifecycle.isMounted()) {
