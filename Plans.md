@@ -2803,23 +2803,23 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: implementation commitと後続ledger commitをrevertする。API/DB/data rollback不要。
   - landing_record: implementation commit `87b5c41` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact9 implementation/docs、validation、independent browser verification PASS。
 
-- [~] WP-4151 establish durable evidence index and extend audit demo proof(LOW evidence/resume integrity) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+- [x] WP-4151 establish durable evidence index and extend audit demo proof(LOW evidence/resume integrity) — FINALIZED / INDEPENDENT_PASS_WITH_NOTE
   - 発見根拠: objective-required `ops/refactor/EVIDENCE.md`が存在せず、automated validation・alignment・browser demo・landing proofの所在が複数文書へ分散していた。監査success browser journeyも`FINAL_DEMO.md`へ未記録だった。
   - scope: exact6 `ops/refactor/EVIDENCE.md`, `ops/refactor/FINAL_DEMO.md`, `ops/refactor/VERIFICATION.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。runtime/code/contracts/DB/SSOT/package/lock/CIは変更しない。
   - implementation: `EVIDENCE.md`を重複logではなくauthoritative artifactへの索引として追加し、landed commit、synthetic browser success、未取得証拠、tool failure、evidence rulesを分離。synthetic reception後のaudit view/hash-chain正常表示をdemo記録へ追加する。
   - verification: live browserでpatient→reception→adminを実行し`reception.created`/`audit.viewed`/normal chainを確認。2026-07-16 follow-upではdev Webの正式proxy先へsynthetic exact HTTP 500を1回だけ返し、検証済み2行/normal chainの保持、stale qualifier、fixed error、retry、raw sentinel非表示をDOM captureし、次の200で1行へ置換・error clear・idle復帰・request count 2→3を確認。agent-browser native ref/semantic click/Enterはrequestを発火せず、retryはpage-context DOM clickで検証したためkeyboard/native input証拠には数えない。focused component 50/50 PASS。
   - review_status: root cold-path evidence review済み。read-only independent verifierも別sessionでexact 500時のverified row/chain保持、fixed error/stale/retry、raw非表示、retry request増加、error clear、console/page error空、focused 50/50をPASS。独立runはshared mockが既に1行replacement状態だったため2行→1行の値だけはroot capture依存。native input/production/DB/auth等の未証明を分離し、DEMO_REQUIRED/human gateを解除しない。
   - rollback: docs-only implementation commitと後続ledger commitをrevertする。runtime/data rollback不要。
-  - landing_record: implementation commit `8cd8d18` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact6 evidence index/demo records landed、independent verification pending。
+  - landing_record: implementation commit `8cd8d18` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact6 evidence index/demo records landed。initial independent-pending stateは下記follow-upで解消済み。
   - followup_landing: audit refresh exact-500 retention/recovery evidenceとindependent PASS_WITH_NOTEは`31a60f7`で同branchへpush済み。runtime/code/contracts/DB/SSOT変更なし。2行→1行値はroot capture、独立runは1行保持/recovery、native inputは未証明という境界を維持。
 
-- [~] WP-4151a demonstrate reception queue refresh failure retention and retry(LOW demo integrity) — LOCAL_LANDED / INDEPENDENT_PASS_WITH_NOTE
+- [x] WP-4151a demonstrate reception queue refresh failure retention and retry(LOW demo integrity) — FINALIZED / INDEPENDENT_PASS_WITH_NOTE
   - scope: exact6 `ops/refactor/EVIDENCE.md`, `ops/refactor/FINAL_DEMO.md`, `ops/refactor/VERIFICATION.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。runtime/code/contracts/API/DB/SSOT/package/lock/CIは変更しない。
   - evidence: synthetic dev Webの正式proxy先でqueue 200(retained row)→native「表示」click→exact HTTP 500(raw sentinel body)→同じnative「表示」click→200(replacement row)を実行。失敗時はretained row/date/last-updatedを保持し、fixed error/stale qualifier/next actionを表示、raw sentinelとreplacement false-successを非表示。復旧時はold rowをreplacementへ置換しerror/staleをclear。request count 1→2→3、console/page errors空、focused `reception-dashboard.test.tsx` 70/70 PASS。
   - stop/review: read-only independent verifierもfresh sessionでsame row/date/timestamp保持、exact 500固定copy、raw/errorCode非表示、native retry request増加、error clear、console/page error空、70/70をPASS。shared mockがreplacement状態だったためSYN-001→SYN-002とabsolute 1→2→3はroot capture依存。queue refreshだけの証拠で、受付登録POST failure/retry、production API/auth/DB、audit retry native inputを証明しない。docs exact6 landingまで完了扱いにしない。
   - landing_record: exact6 evidence docsは`e95328c`でsafe feature branchへpush済み。runtime/code/contracts/API/DB/SSOT変更なし。queue refresh sliceはLANDEDだがrepository-wide demoは`DEMO_REQUIRED`を維持。
 
-- [~] WP-4151b demonstrate reception registration known-non-commit failure and retry(LOW demo integrity) — LOCAL_LANDED / INDEPENDENT_PASS_WITH_NOTE
+- [x] WP-4151b demonstrate reception registration known-non-commit failure and retry(LOW demo integrity) — FINALIZED / INDEPENDENT_PASS_WITH_NOTE
   - scope: exact6 `ops/refactor/EVIDENCE.md`, `ops/refactor/FINAL_DEMO.md`, `ops/refactor/VERIFICATION.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。runtime/code/contracts/API/DB/SSOT/package/lock/CIは変更しない。
   - evidence: synthetic patientを検索・選択し、同じ患者contextからnative submitを2回実行。初回POSTは**サーバ非commitが既知のsynthetic exact HTTP 500**で、送信中は`登録中…`/disabled、失敗後はsuccessなし、queue再取得なし、患者context/受付対象保持、fixed error/next action、button再有効化を確認。raw sentinel/errorCode/stackは表示しない。2回目POSTは201/WAITINGとなり、success表示、authoritative queue再取得1回、対象行表示、error clear、console/page errors空を確認。POST count=2、queue GET count=2(initial+success)、両bodyのpatient一致、opaque idempotency keyは各36文字/nonblank/control-characterなし。focused Web 139/139 PASS。
   - evidence_boundary: PatientHeaderは既存契約どおり`data-patient-id`をDOM属性へ持つため、patient identifierのDOM不在は主張しない。これはfailure payload/raw error漏えいではないが、公開DOM属性の必要性は別privacy review対象とする。production API/auth/DB/audit、400/403/404/409、keyboard/focus、通信切断後のcommit有無不明ケースは未証明。

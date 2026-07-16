@@ -8,6 +8,11 @@
 
 ## 2026-07-16
 
+### WP-4151 / WP-4151a / WP-4151b terminal status reconciliation — FINALIZED / INDEPENDENT_PASS_WITH_NOTE
+
+- `Plans.md`のactive statusだけが独立検証・follow-up landing後も未完了だったため、current artifact、commit ancestry、independent noteをfresh read-only再照合し、3 bounded evidence sliceをFINALIZEDへ整合した。runtime/code/contracts/API/DB/SSOT/package/lock/CI変更なし。
+- repository-wide `DEMO_REQUIRED`、production API/auth/DB、audit retryのnative input、absolute browser値のroot capture依存を維持する。known-non-commit retryをambiguous committed outcomeへ一般化せず、WP-4151cのhuman/SSOT gateは未解除。
+
 ### WP-4165 GitHub Actions trust-surface minimization — LOCAL_LANDED / INDEPENDENT_PASS / REMOTE_CI_VERIFY_REQUIRED
 
 - CIの3 external actionをmutable `@v4`からofficial v4 releaseのfull-length commit SHAへ固定し、workflow tokenを`contents: read`だけへ限定、checkoutのcredential persistenceを無効化した。trigger、PostgreSQL digest/service、Node 24、pnpm 11.13.1、cache、step/env/command/orderは不変。
@@ -62,7 +67,7 @@
 - `actionlint`、frozen install(lock差分0)、script harness、workspace typecheck/test/build、OpenAPI/purity/boundaries/SSOT173、tracked-snapshot secrets、deps high0/critical0、SBOM231、diffをPASS。APIは270 PASS + PostgreSQL14 expected skips、Web336、audit183、calculation87。live secret scanは既知のignored user-owned `.codegraph` symlinkでfail-closed。
 - read-only independent verifierはexact1 diff、trigger/service/Node/env/step順/gate/deploy不変をPASS。implementation commit `c688d4b`をsafe feature branchへpush済み。draft PR #1 run `29499861743`はpnpm 11.13.1で全step green、PostgreSQL 14/14 zero-skipとなりremote proofを完了。
 
-### WP-4151b reception registration known-non-commit failure / retry — LOCAL_LANDED / INDEPENDENT_PASS_WITH_NOTE
+### WP-4151b reception registration known-non-commit failure / retry — FINALIZED / INDEPENDENT_PASS_WITH_NOTE
 
 - synthetic患者を検索・選択しnative登録を実行。初回はサーバ非commitが既知のexact HTTP 500で、送信中`登録中…`/disabled、失敗後successなし・queue再取得なし・患者context/受付対象保持・fixed error/next action・再試行可能を確認。raw sentinel/errorCode/stackは非表示。2回目は201/WAITING、success、authoritative queue再取得、対象行表示、error clear、console/page errors空。POST=2、queue GET=2(initial+success)、body patient一致、key各36文字/nonblank/control-characterなし。focused Web 139/139 PASS。
 - 2回のidempotency keyは不一致。現行は呼出しごとにfresh UUIDを生成するため、commit済みresponse-loss等のambiguous outcomeではduplicate受付を防げない可能性がある。WP-4151cを`BLOCKED_HUMAN_REVIEW / SSOT_UPDATE_REQUIRED`として分離し、本証拠はknown-non-commit synthetic 500だけに限定する。
@@ -70,14 +75,14 @@
 - read-only independent verifierはbounded claim、fresh-key risk、WP-4151c human gate、focused 139/139、diff、SSOT173、boundaryを`PASS_WITH_FINDINGS`。mock終了後のためbrowser absolute count/pending/raw抑止はroot capture依存というnoteを維持し、exact6 landing前は完了扱いにしない。
 - exact6 evidence docsは`ff0e99e`でsafe feature branchへpush済み。known-non-commit retry sliceはLANDED。runtime/code/contracts/API/DB/SSOTは未変更で、WP-4151c ambiguous retryとrepository-wide demo gateは未解除。
 
-### WP-4151a reception queue refresh failure / retention / retry — LOCAL_LANDED / INDEPENDENT_PASS_WITH_NOTE
+### WP-4151a reception queue refresh failure / retention / retry — FINALIZED / INDEPENDENT_PASS_WITH_NOTE
 
 - synthetic queue 200(retained `SYN-001`)→native「表示」→exact HTTP 500(raw sentinel)→native「表示」→200(replacement `SYN-002`)をbrowser実行。失敗時はretained row/date/last-updated、fixed HTTP500 error、stale qualifier、next actionを保持し、raw sentinel/replacement false-successなし。復旧時はrequest count 1→2→3、replacementへ置換、error/stale clear、console/page errors空。focused reception dashboard 70/70 PASS。
 - queue refresh以外の受付登録POST failure/retry、production API/auth/DBは未証明。runtime/code/contracts/API/DB/SSOT変更なしで、docs exact6はread-only independent verifier確認後にlandingする。
 - read-only independent verifierもfresh sessionでsame row/date/timestamp保持、fixed HTTP500、raw/errorCode非表示、native retry request増加、error clear、console/page error空、70/70をPASS。shared mockがreplacement状態だったためSYN-001→SYN-002とabsolute 1→2→3はroot capture依存というnoteを保持する。
 - exact6 evidence docsは`e95328c`でsafe feature branchへpush済み。次のbounded gapは受付登録POST failure/retryで、production/DB/auth/repository-wide demo gateは未解除。
 
-### WP-4151 audit refresh failure / retention / retry browser follow-up — LOCAL_LANDED / INDEPENDENT_PASS_WITH_NOTE
+### WP-4151 audit refresh failure / retention / retry browser follow-up — FINALIZED / INDEPENDENT_PASS_WITH_NOTE
 
 - synthetic dev Web→API proxyで初回200(検証済み2件)→次回exact HTTP 500(raw sentinelをbodyへ含む)→再試行200(1件)を実行。失敗後も2件/normal chainを保持し、stale qualifier・固定HTTP 500 error・retryを表示、raw sentinelはDOM非表示。再試行後はrequest count 2→3、1件へ置換、error clear、idle button復帰、console/page error出力なしを確認。focused `audit-log-view.test.tsx` 50/50 PASS。
 - agent-browserのref/semantic clickとEnterは当該sessionでrequestを発火せず、page-context DOM clickでapplication handlerを検証した。よってbrowser state/recovery証拠には採用するがnative pointer/keyboard証拠には採用しない。runtime/code/contracts/DB/SSOT変更なしで、docs exact6とindependent verifier確認後にlandingする。
@@ -152,7 +157,7 @@
 - independent verifierはfresh build 12 pages/6.10s、start ready 270ms、`/sync-status` HTTP200/31.983ms、backend未接続・未接続≠同期済みcopy、browser reload timing、console/page error 0、shutdown/port解放、tracked diff 0をPASS_WITH_NOTE。dev-format `.next`拒否はroot capture依存。`通常稼働`はNORMAL固定の暫定表示でhealth detection成功を意味しない。production API/auth/clinical journey/restartは未検証を維持。runtime差分なし、exact6 implementation commit `ac83520`はpush済み。
 - independent verification updateは`1d67fb6`でsafe feature branchへpush済み。WP-4152はLOCAL_LANDED / INDEPENDENT_PASS_WITH_NOTE。
 
-### WP-4151 durable evidence index / audit demo extension — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+### WP-4151 durable evidence index / audit demo extension — FINALIZED / INDEPENDENT_PASS_WITH_NOTE
 
 - objective-required `ops/refactor/EVIDENCE.md`欠落を確認し、CODE_MAP/FULLSTACK/VERIFICATION/FINAL_DEMO/STATEをauthorityとして参照する証拠索引を追加。commit存在をverification/human gateの代替にしない規則を固定した。
 - synthetic patient→reception→admin browser journeyで`reception.created`/`audit.viewed`とnormal hash chainを確認。audit refresh failureは2種類の注入でbrowser automation session自体が停止したため未証明を維持し、component50 testsだけを代替証拠として記録。exact6 implementation commit `8cd8d18`をfeature branchへpush済み、別agent verifier未実施。

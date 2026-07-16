@@ -4,7 +4,7 @@ This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
 - Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. Remaining57 classification, WP-0020〜0023 reconciliation, W31 and WP-4081 are LANDED.
-- Current task: WP-4165は`1febf57`で3 external actionのofficial full SHA pin、`contents: read`、checkout credential非永続、semantic YAML trust regressionをlocal landingし、independent verifierとsupply-chain/security reviewはPASS。full local gateもPASSしたが、明示的user instructionなしにpushしないため`REMOTE_CI_VERIFY_REQUIRED`を維持する。次はledger exact3をlocal commit後、pushせずfresh read-only mappingで次のnon-gated safe sliceを選ぶ。WP-4050/WP-4162/WP-4151cはhuman-gated、Gate 0は`NO_GO`、VF-01/human 0/18/Gate 1 reissue 0/live `.codegraph`/production gapsも未解消。
+- Current task: WP-4165は`1febf57`/`e02859e`でlocal landingし、明示的user instructionなしにpushしないため`REMOTE_CI_VERIFY_REQUIRED`を維持する。fresh mappingでWP-4151/4151a/4151bのstale active statusを発見し、既存independent evidenceとlandingを再照合してterminal reconciliation中。次はledger exact3をlocal commit後、in-memory reception seed hydration invariantをread-only pre-planする。WP-4050/WP-4162/WP-4151cはhuman-gated、Gate 0は`NO_GO`、VF-01/human 0/18/Gate 1 reissue 0/live `.codegraph`/production gapsも未解消。
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
