@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4190 hostile patient not-found response normalization — FINALIZED / INDEPENDENT_PASS
+
+- 404 bodyをZodへ直接渡す境界をown enumerable data descriptorからのplain snapshotへrefactorし、Proxy/accessor/descriptor/parse例外を固定non-echo errorへ統一した。non-object/array/inherited/accessorは拒否し、exact `PAT-0002`だけが患者解除authorityのまま。
+- valid Proxy get/has zero、accessor getter zero、descriptor trap、inherited、array root、runner onFailure only/onRemoved zeroを固定。実経路を通っていなかった`JSON.stringify`/scope外helper由来のfalse-positive fixturesと、review指摘のarray authority拡張も修正した。
+- focused58、Web449、API348 + integration14 expected skips、workspace typecheck/test、Web build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/API/security/privacy/medical review APPROVED。implementation `cb04497`はlocal-only、pushなし。
+
 ### WP-4189 reception error-code operation/status binding — FINALIZED / INDEPENDENT_PASS
 
 - registry登録だけで受付errorCodeを表示していた境界を修正し、API-006のqueue 2 tuple / POST 4 tupleへcanonical constantsで拘束した。wrong registered code、他operation用code、契約外statusは固定案内を変えずcodeだけ省略する。
