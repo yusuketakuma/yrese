@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
+  PATIENT_SEARCH_DEFAULT_LIMIT,
   patientSearchResponseSchema,
   type PatientSearchResult,
 } from "@yrese/contracts";
@@ -42,6 +43,9 @@ const SEX_LABELS: Record<PatientSearchResult["sex"], string> = {
   female: "女",
   unknown: "不明",
 };
+
+const patientSearchPageLimitErrorMessage =
+  "Patient search response exceeded the requested page limit";
 
 export type SearchState =
   | { kind: "idle" }
@@ -90,7 +94,10 @@ export async function fetchSearch(
   fetchImpl: typeof fetch = fetch,
   signal?: AbortSignal,
 ): Promise<SearchPage> {
-  const params = new URLSearchParams({ q });
+  const params = new URLSearchParams({
+    q,
+    limit: String(PATIENT_SEARCH_DEFAULT_LIMIT),
+  });
   if (cursor !== undefined) {
     params.set("cursor", cursor);
   }
@@ -135,6 +142,9 @@ export async function fetchSearch(
     );
   }
   const parsed = patientSearchResponseSchema.parse(await res.json());
+  if (parsed.results.length > PATIENT_SEARCH_DEFAULT_LIMIT) {
+    throw new Error(patientSearchPageLimitErrorMessage);
+  }
   return {
     results: [...parsed.results],
     ...(parsed.nextCursor !== undefined ? { nextCursor: parsed.nextCursor } : {}),

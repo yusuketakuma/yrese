@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ELIGIBILITY_STATUSES,
   PATIENT_SEARCH_CURSOR_MAX_LENGTH,
+  PATIENT_SEARCH_DEFAULT_LIMIT,
   patientSearchQuerySchema,
   patientSearchResponseSchema,
   patientSearchResultSchema,
@@ -21,10 +22,14 @@ const validResult = {
 } as const;
 
 describe("patientSearchQuerySchema", () => {
+  it("exports the approved default page limit", () => {
+    expect(PATIENT_SEARCH_DEFAULT_LIMIT).toBe(20);
+  });
+
   it("trims q and applies the default limit", () => {
     expect(patientSearchQuerySchema.parse({ q: "  シケン  " })).toEqual({
       q: "シケン",
-      limit: 20,
+      limit: PATIENT_SEARCH_DEFAULT_LIMIT,
     });
   });
 
@@ -45,7 +50,7 @@ describe("patientSearchQuerySchema", () => {
 
     expect(patientSearchQuerySchema.parse({ q: "シケン", cursor })).toEqual({
       q: "シケン",
-      limit: 20,
+      limit: PATIENT_SEARCH_DEFAULT_LIMIT,
       cursor,
     });
   });

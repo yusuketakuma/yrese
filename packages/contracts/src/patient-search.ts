@@ -4,10 +4,11 @@ import { z } from "zod";
 import { patientIdWireSchema } from "./wire-id.js";
 
 export const PATIENT_SEARCH_CURSOR_MAX_LENGTH = 512;
+export const PATIENT_SEARCH_DEFAULT_LIMIT = 20;
 
 export const patientSearchQuerySchema = z.object({
   q: z.string().trim().min(1).max(100),
-  limit: z.coerce.number().int().min(1).max(50).default(20),
+  limit: z.coerce.number().int().min(1).max(50).default(PATIENT_SEARCH_DEFAULT_LIMIT),
   cursor: z.string().max(PATIENT_SEARCH_CURSOR_MAX_LENGTH).optional(),
 });
 

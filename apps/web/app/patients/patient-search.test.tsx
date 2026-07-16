@@ -2,7 +2,10 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import type { PatientSearchResult } from "@yrese/contracts";
+import {
+  PATIENT_SEARCH_DEFAULT_LIMIT,
+  type PatientSearchResult,
+} from "@yrese/contracts";
 
 import {
   ELIGIBILITY_LABELS,
@@ -66,7 +69,7 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(fetchImpl.mock.calls[0]![0]).toBe(
-      "/_yrese-api/patients/search?q=%E5%90%88%E6%88%90",
+      "/_yrese-api/patients/search?q=%E5%90%88%E6%88%90&limit=20",
     );
   });
 
@@ -87,9 +90,76 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     }
 
     expect(fetchImpl).toHaveBeenCalledExactlyOnceWith(
-      "/_yrese-api/patients/search?q=%E5%90%88%E6%88%90",
+      "/_yrese-api/patients/search?q=%E5%90%88%E6%88%90&limit=20",
       expect.objectContaining({ signal: controller.signal }),
     );
+  });
+
+  it("accepts a page at the requested default limit", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const results = Array.from({ length: PATIENT_SEARCH_DEFAULT_LIMIT }, (_, index) =>
+      patient({ patientId: `patient-exact-limit-${index}` }),
+    );
+    const fetchImpl: typeof fetch = async () =>
+      new Response(JSON.stringify({ results }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+
+    try {
+      await expect(fetchSearch("合成", undefined, fetchImpl)).resolves.toEqual({ results });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("rejects an over-limit page with a fixed non-echo error", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const sensitiveResult = patient({
+      patientId: "patient-over-limit-sensitive",
+      name: "秘密 患者",
+      kana: "ヒミツ カンジャ",
+      birthDate: "1970-12-31",
+      patientNumber: "SECRET-OVER-LIMIT-001",
+      eligibilityStatus: "PENDING_REVERIFY",
+    });
+    const results = Array.from(
+      { length: PATIENT_SEARCH_DEFAULT_LIMIT + 1 },
+      (_, index) =>
+        index === PATIENT_SEARCH_DEFAULT_LIMIT
+          ? sensitiveResult
+          : patient({ patientId: `patient-over-limit-${index}` }),
+    );
+    const fetchImpl: typeof fetch = async () =>
+      new Response(JSON.stringify({ results, nextCursor: "cursor-over-limit-sensitive" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+
+    let thrown: unknown;
+    try {
+      await fetchSearch("秘密検索語", undefined, fetchImpl);
+    } catch (error) {
+      thrown = error;
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toBe(
+      "Patient search response exceeded the requested page limit",
+    );
+    const serialized = JSON.stringify(thrown, Object.getOwnPropertyNames(thrown));
+    expect(serialized).not.toContain("秘密検索語");
+    expect(serialized).not.toContain("patient-over-limit-sensitive");
+    expect(serialized).not.toContain("秘密 患者");
+    expect(serialized).not.toContain("ヒミツ カンジャ");
+    expect(serialized).not.toContain("1970-12-31");
+    expect(serialized).not.toContain("SECRET-OVER-LIMIT-001");
+    expect(serialized).not.toContain("PENDING_REVERIFY");
+    expect(serialized).not.toContain("cursor-over-limit-sensitive");
   });
 
   it.each([201, 202, 204, 206])(
@@ -421,6 +491,38 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     const last = states[states.length - 1]!;
     expect(last.kind).toBe("error");
     expect(JSON.stringify(last)).not.toContain("patient-untrusted");
+  });
+
+  it("rejects a current over-limit page without committing selectable results", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const states: SearchState[] = [{ kind: "idle" }];
+    const results = Array.from(
+      { length: PATIENT_SEARCH_DEFAULT_LIMIT + 1 },
+      (_, index) => patient({ patientId: `patient-untrusted-over-limit-${index}` }),
+    );
+    const fetchImpl: typeof fetch = async () =>
+      new Response(JSON.stringify({ results }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    const run = createSearchRunner(
+      (query, cursor) => fetchSearch(query, cursor, fetchImpl),
+      (update) => states.push(update(states[states.length - 1]!)),
+    );
+
+    try {
+      await run("合成");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    const last = states[states.length - 1]!;
+    expect(last).toMatchObject({
+      kind: "error",
+      notice: { message: "検索結果の処理に失敗しました。" },
+    });
+    expect(JSON.stringify(last)).not.toContain("patient-untrusted-over-limit");
   });
 
   it("suppresses a stale unsupported search page after a newer exact-200 result", async () => {
@@ -757,6 +859,129 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
       expect(retried.appendState).toEqual({ kind: "idle" });
     }
     expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it("retains the verified page when an append exceeds its limit and permits retry", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const states: SearchState[] = [{ kind: "idle" }];
+    const retained = patient({ patientId: "patient-retained-over-limit" });
+    const untrustedResults = Array.from(
+      { length: PATIENT_SEARCH_DEFAULT_LIMIT + 1 },
+      (_, index) =>
+        patient({
+          patientId: `patient-untrusted-append-${index}`,
+          name: index === PATIENT_SEARCH_DEFAULT_LIMIT ? "秘密 追加患者" : "合成 患者",
+        }),
+    );
+    const replacement = patient({ patientId: "patient-retry-after-over-limit" });
+    const responses = [
+      new Response(
+        JSON.stringify({ results: [retained], nextCursor: "cursor-retained-over-limit" }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+      new Response(
+        JSON.stringify({
+          results: untrustedResults,
+          nextCursor: "cursor-untrusted-over-limit",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+      new Response(JSON.stringify({ results: [replacement] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    ];
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      const response = responses.shift();
+      if (response === undefined) throw new Error("unexpected search request");
+      return response;
+    });
+    const run = createSearchRunner(
+      (query, cursor) => fetchSearch(query, cursor, fetchImpl),
+      (update) => states.push(update(states[states.length - 1]!)),
+    );
+
+    try {
+      await run("合成");
+      await run("合成", "cursor-retained-over-limit", true);
+      const failed = states[states.length - 1]!;
+      expect(failed.kind).toBe("loaded");
+      if (failed.kind !== "loaded") throw new Error("expected retained loaded state");
+      expect(failed.results).toEqual([retained]);
+      expect(failed.nextCursor).toBe("cursor-retained-over-limit");
+      expect(failed.appendState).toMatchObject({
+        kind: "error",
+        notice: { message: "検索結果の処理に失敗しました。" },
+      });
+      expect(JSON.stringify(failed)).not.toContain("patient-untrusted-append");
+      expect(JSON.stringify(failed)).not.toContain("秘密 追加患者");
+      expect(JSON.stringify(failed)).not.toContain("cursor-untrusted-over-limit");
+
+      await run(failed.query, failed.nextCursor, true);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    const retried = states[states.length - 1]!;
+    expect(retried.kind).toBe("loaded");
+    if (retried.kind === "loaded") {
+      expect(retried.results).toEqual([retained, replacement]);
+      expect(retried.nextCursor).toBeUndefined();
+      expect(retried.appendState).toEqual({ kind: "idle" });
+    }
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl.mock.calls.map(([input]) => String(input))).toEqual([
+      "/_yrese-api/patients/search?q=%E5%90%88%E6%88%90&limit=20",
+      "/_yrese-api/patients/search?q=%E5%90%88%E6%88%90&limit=20&cursor=cursor-retained-over-limit",
+      "/_yrese-api/patients/search?q=%E5%90%88%E6%88%90&limit=20&cursor=cursor-retained-over-limit",
+    ]);
+  });
+
+  it("allows cumulative results to exceed the per-page limit", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const states: SearchState[] = [{ kind: "idle" }];
+    const firstPage = Array.from({ length: PATIENT_SEARCH_DEFAULT_LIMIT }, (_, index) =>
+      patient({ patientId: `patient-cumulative-${index}` }),
+    );
+    const secondPage = Array.from({ length: PATIENT_SEARCH_DEFAULT_LIMIT }, (_, index) =>
+      patient({ patientId: `patient-cumulative-${PATIENT_SEARCH_DEFAULT_LIMIT + index}` }),
+    );
+    const responses = [
+      new Response(
+        JSON.stringify({ results: firstPage, nextCursor: "cursor-cumulative" }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+      new Response(JSON.stringify({ results: secondPage }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    ];
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      const response = responses.shift();
+      if (response === undefined) throw new Error("unexpected search request");
+      return response;
+    });
+    const run = createSearchRunner(
+      (query, cursor) => fetchSearch(query, cursor, fetchImpl),
+      (update) => states.push(update(states[states.length - 1]!)),
+    );
+
+    try {
+      await run("合成");
+      await run("合成", "cursor-cumulative", true);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    const loaded = states[states.length - 1]!;
+    expect(loaded.kind).toBe("loaded");
+    if (loaded.kind !== "loaded") throw new Error("expected cumulative loaded state");
+    expect(loaded.results).toEqual([...firstPage, ...secondPage]);
+    expect(loaded.results).toHaveLength(PATIENT_SEARCH_DEFAULT_LIMIT * 2);
+    expect(loaded.nextCursor).toBeUndefined();
+    expect(loaded.appendState).toEqual({ kind: "idle" });
   });
 
   it.each([
