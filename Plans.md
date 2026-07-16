@@ -2836,7 +2836,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - implementation/evidence: dev-format `.next`に対する`next start`拒否を確認後、`next build`で12 static pages生成、`next start` ready 237ms、production `/sync-status`の未接続≠同期済み表示、normal shutdownを確認。clinical rootはproduction API/auth未設定かつbrowser session停止のため成功証拠に含めない。
   - verification/review: independent verifierがfresh `next build` 12 static pages/6.10s、production server 127.0.0.1:31852 ready 270ms、`/sync-status` HTTP200/31.983ms/22,809 bytes、browser reload responseStart 37.3ms/DCL 133.8ms/load 202.2ms、console/page error 0、normal shutdown/port release、tracked diff 0をPASS_WITH_NOTE。dev-format `.next`拒否はroot evidence依存。`通常稼働`はNORMAL固定の暫定表示で、隣接copyがbackend未接続を明示するためhealth detection成功証拠へ拡張しない。production API/auth/clinical/restartはDEMO_REQUIRED。
   - rollback: docs-only implementation commitと後続ledger commitをrevertする。runtime/data rollback不要。
-  - landing_record: implementation commit `ac83520` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; original exact6 production Web evidence records landed。independent `PASS_WITH_NOTE` updateのlandingはpending。
+  - landing_record: original evidence `ac83520`とindependent `PASS_WITH_NOTE` update `1d67fb6`を`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。
 
 - [~] WP-4153 collect JP Core 1.2.0 package pre-lock evidence(LOW read-only supply-chain research) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
   - 発見根拠: WP-0053bのlock前提であるofficial artifact fingerprint/license/dependency metadataがrepositoryに未記録で、公開ガイダンスとarchive package metadataのterminology package IDが一致しなかった。
