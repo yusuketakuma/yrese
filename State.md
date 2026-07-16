@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4221 PostgreSQL created reception fact binding — FINALIZED / INDEPENDENT_PASS
+
+- created DB rowのschema-valid status/acceptedAt mismatchをCOMMIT後server 500にしていた問題を修正。created projection後、status WAITING→captured acceptedAtの順にpre-COMMIT照合し、不一致をrollbackへ移した。
+- status3種・時刻±1ms・両方不一致・rollback failureを固定。canonical offset同一instantは成功。existingの過去時刻/進行status、conflict entry未読COMMITは維持した。
+- patient18+reception74、API631 + integration14 expected skips、Web454、workspace typecheck/test/build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent verifier PASS/APPROVED。SQL/audit/idempotency lifecycle不変、実DB操作なし。implementation `8d518a7`はlocal-only、pushなし。
+
 ### WP-4220 PostgreSQL reception entry core row authority — FINALIZED / INDEPENDENT_PASS
 
 - 受付entryの残存raw列`reception_id`/`reception_status`によるaccessor/継承/Proxy false authorityと、status偽装COMMITを修正。ID→patient→acceptedAt→status順を維持してown-data single snapshot化し、schema failureを固定errorへ収束した。
