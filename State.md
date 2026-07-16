@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4220 PostgreSQL reception entry core row authority — FINALIZED / INDEPENDENT_PASS
+
+- 受付entryの残存raw列`reception_id`/`reception_status`によるaccessor/継承/Proxy false authorityと、status偽装COMMITを修正。ID→patient→acceptedAt→status順を維持してown-data single snapshot化し、schema failureを固定errorへ収束した。
+- listはmissing/inherited/accessor/Proxyをgetter/trap0で全体reject。created/existing invalid statusはrollback、conflictはstatus/patient/acceptedAt未読COMMIT、invalid IDのprovenance先行errorを維持した。
+- patient18+reception63、API620 + integration14 expected skips、Web454、workspace typecheck/test/build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent verifier PASS/APPROVED。SQL/contracts/SSOT/audit/idempotency/transaction不変、実DB操作なし。implementation `ad40f47`はlocal-only、pushなし。plain own-data semantic mismatchは次候補へ残す。
+
 ### WP-4219 PostgreSQL patient core row authority — FINALIZED / INDEPENDENT_PASS
 
 - patient DB core7列のraw accessor/継承/stateful authorityによりPHI error漏えいとmixed patient false successが検索/GET/受付/queueへ波及する問題を修正。timestamp-firstを維持し、各列をown-dataから一度だけcapture、schema failureも固定PHI-safe errorへ収束した。
