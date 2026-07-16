@@ -409,4 +409,3 @@ WP-0054gは実UIを変更せず、後続WPのtestable packageを定義する。
 | human review/BLOCKER | §14〜15 |
 
 網羅性は計画項目の存在を示すだけで、実装、適合、臨床安全、請求正確性、performance達成を証明しない。
-
