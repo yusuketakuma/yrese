@@ -11,7 +11,7 @@
 ### WP-4154 JP Core terminology artifact identity — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
 - official `jpfhir-terminology.r4-1.4.0.tgz`をtemp取得し、SHA-256/size/HTTP validatorsとarchive package/IG identityを確認。package nameは`jpfhir-terminology`で、`.r4`は配布filenameだけに存在するため、JP Core archive dependency keyとの不一致をupstream metadata driftとして記録した。
-- package metadataにlicense fieldがなくstandalone license fileもないためlegal clearanceは未解決。残るHL7 dependency fingerprints、FHIR specialist、legal/license reviewまでlock/SSOT/runtime/toolchain実装は禁止を維持。exact4 implementation commitはlanding後に記録し、別agent verifier未実施。
+- package metadataにlicense fieldがなくstandalone license fileもないためlegal clearanceは未解決。残るHL7 dependency fingerprints、FHIR specialist、legal/license reviewまでlock/SSOT/runtime/toolchain実装は禁止を維持。exact4 implementation commit `921c3a4`をfeature branchへpush済み、別agent verifier未実施。
 
 ### WP-4153 JP Core 1.2.0 package pre-lock evidence — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
