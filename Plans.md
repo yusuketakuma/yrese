@@ -3627,9 +3627,10 @@ Dependency DAG (all edges are prerequisites, not authorization):
   - evidence/root_cause: `docs/research/rececon_v0_7_independent_verification_20260716.md` VF-01。現在は§1〜38構造mappingと90 representative requirementのみで、itemized `unmapped=0`を証明できない。tracked repo、git history、text attachmentにv0.7 byte-preserving rawがない。
   - acceptance: versioned rawまたは明示human-accepted normalized transcriptionがsourceとしてhash固定され、unique requirement ID、source coverage、target existence、unmapped=0、duplicate-authority=0を機械検査し、independent verifierがPASSする。
   - stop/next: 会話表示からraw byte/hashを捏造しない。ユーザーからversioned fileを受領するか、normalized transcriptionのsource gapをproduct/spec authorityが明示受容するまでBLOCKED。
-- [~] WP-0054p G0-02a MHLW Security GL 7.0 exact-artifact manifest(LOCAL_READY、HUMAN_PROMOTION_BLOCKED、R4)
+- [~] WP-0054p G0-02a MHLW Security GL 7.0 exact-artifact manifest(LOCAL_LANDED、INDEPENDENT_PASS、HUMAN_PROMOTION_BLOCKED、R4)
   - scope: MHLW Security Guideline 7.0の5編、FY2026医療機関/薬局checklist PDF/manual/2 workbook、策定noticeの計10 artifactをofficial landingから一時取得し、resolved URL、HTTP/MIME/bytes、SHA-256、title/version/date、rights/applicability/watchをnon-SSOT manifestへ固定する。
   - evidence/result(2026-07-16): `docs/research/mhlw_security_gl7_exact_artifact_manifest_20260716.md`。10/10 HTTP 200、PDF/OOXML signature、nonzero bytes、unique URL/hash、title/version/dateを確認。binaryはtempのみで削除済み。Q&Aはofficial pageが改版中と明記するため`NOT_INCLUDED`。rights=`LICENSE_HUMAN_REVIEW_REQUIRED`、applicability=`CANDIDATE_NOT_PROMOTED`、evidence promotion=0。
+  - commit/verification: artifactとplan entryは`9840ed5`でpush済み。read-only independent verifierが公式10 URLを再取得し、final URL、exact MIME、bytes、SHA-256を10/10一致、ID/URL/hash一意、repo binary 0、promotion/APPROVED/compliance過大主張なしとしてPASS。G0-02/CPL-015は10/10、G0-07は9 guideline/checklist artifact、策定noticeはG0-03へmapping。
   - acceptance/stop: 10 rowのID/URL/hash一意性、MIME/signature、landing label、watch、CPL-015/G0-02/G0-07 mapping、no binary/no APPROVED/evidence_id発行を機械検査。license/applicability/control mappingの人間承認とindependent re-retrievalまでREG/SEC昇格・runtime実装・準拠宣言を禁止。
 
 ### v0.7 Requirement Coverage Audit

@@ -8,6 +8,11 @@
 
 ## 2026-07-16
 
+### WP-0054p MHLW Security Guideline 7.0 exact-artifact manifest — LOCAL_LANDED / INDEPENDENT_PASS / HUMAN_PROMOTION_BLOCKED
+
+- 公式landingからSecurity Guideline 7.0の5編、FY2026医療機関・薬局checklist PDF/manual/2 workbook、策定noticeの計10 artifactをtemp取得し、resolved URL、HTTP/exact MIME/bytes、SHA-256、format/title/version/dateを`docs/research/mhlw_security_gl7_exact_artifact_manifest_20260716.md`へ固定した。binaryは削除しrepoへ収録していない。Q&Aは公式pageが改版中のため`NOT_INCLUDED`、rights=`LICENSE_HUMAN_REVIEW_REQUIRED`、applicability=`CANDIDATE_NOT_PROMOTED`、evidence promotion=0を維持。
+- read-only independent verifierが10 URLを再取得し、final URL/MIME/bytes/hash 10/10一致、ID/URL/hash一意、repo binary 0、過大なAPPROVED/compliance claimなしとしてPASS。artifact/planは`9840ed5`でpush済み。license/applicability/control mappingのhuman承認前はREG/SEC昇格・runtime実装・準拠宣言を禁止し、Gate 0は`NO_GO`のまま。
+
 ### WP-0054 v0.7 comprehensive pharmacy platform plan — PLANNED / GATE0_HUMAN_REVIEW_REQUIRED
 
 - read-only独立verifierがWP-0054a〜oを再検証し、artifact hash 8/8、22 domain/88 slice、V07-01..38、40 WP/83 edge、endpoint/cycle/bypass 0、DI12/HD18/BLOCKER14、`NO_GO`をPASS。VF-01で全bullet/functionのitemized semantic coverageは未証明と判定し、Plansに`STRUCTURAL_SECTION_PASS / ITEMIZED_SEMANTIC_UNPROVEN`とWP-0054q `BLOCKED_SOURCE_RAW`を追加。VF-02のG5-03 dependencyは`dcdf64e`で表/edgeを整合し、40/83/cycle0/bypass0とhash `b4b0051f...aef52`を独立再検証PASS。`docs/research/rececon_v0_7_independent_verification_20260716.md`とpacket整合を`046a4c3`でpush済み。VF-01、human 0/18、G0-01〜07非PASSのためGate 0は引き続き`NO_GO`。
