@@ -1628,16 +1628,50 @@ async function testDependencyAuditWrapper() {
     assert(result.status === 1, `check-deps should fail closed for invalid report ${name}`);
   }
 
-  const registryErrorPath = path.join(root, "registry-error.txt");
-  await writeText(registryErrorPath, "ERR_PNPM_META_FETCH_FAIL registry timeout\n");
+  const registryErrorPath = path.join(root, "registry-error-sensitive-path.txt");
+  const rawSentinel = "AUDIT_ERROR_RAW_SENTINEL_4177";
+  await writeText(
+    registryErrorPath,
+    `ERR_PNPM_META_FETCH_FAIL\r\nhttps://synthetic:${rawSentinel}@registry.example.invalid/private?token=${rawSentinel}\r\n\u001b[31m${rawSentinel}\u001b[0m`,
+  );
   const registryResult = runNode("check-deps.mjs", ["--from-audit-error", registryErrorPath]);
   assert(registryResult.status === 0, "check-deps should warn-only for registry/network outages");
-  assert(outputOf(registryResult).includes("non-blocking"), "registry outage should be reported as non-blocking");
+  assert(registryResult.stdout === "", "captured registry warning should not write stdout");
+  assert(
+    registryResult.stderr ===
+      "Dependency audit registry/network warning (non-blocking): recognized transient error code.\n",
+    "registry outage should use one fixed warning line",
+  );
+  assert(!outputOf(registryResult).includes(rawSentinel), "registry warning must not replay raw audit stderr");
+  assert(!outputOf(registryResult).includes(registryErrorPath), "registry warning must not expose the input path");
+  assert(!outputOf(registryResult).includes("\u001b"), "registry warning must not replay control characters");
 
-  const genericErrorPath = path.join(root, "generic-error.txt");
-  await writeText(genericErrorPath, "registry network socket timeout while validating policy\n");
+  const genericErrorPath = path.join(root, "generic-sensitive-error.txt");
+  await writeText(
+    genericErrorPath,
+    `registry network socket timeout while validating policy\r\n${rawSentinel}\u001b[31m`,
+  );
   const genericErrorResult = runNode("check-deps.mjs", ["--from-audit-error", genericErrorPath]);
   assert(genericErrorResult.status === 1, "check-deps should not treat generic network-like words as an outage");
+  assert(genericErrorResult.stdout === "", "captured failure should not write stdout");
+  assert(
+    genericErrorResult.stderr ===
+      "Dependency audit failed: captured audit error was not a recognized transient.\n",
+    "captured failure should use one fixed error line",
+  );
+  assert(!outputOf(genericErrorResult).includes(rawSentinel), "captured failure must not replay raw audit stderr");
+  assert(!outputOf(genericErrorResult).includes(genericErrorPath), "captured failure must not expose the input path");
+
+  const missingErrorPath = path.join(root, "missing-sensitive-error.txt");
+  const missingErrorResult = runNode("check-deps.mjs", ["--from-audit-error", missingErrorPath]);
+  assert(missingErrorResult.status === 1, "missing captured audit error should fail closed");
+  assert(missingErrorResult.stdout === "", "missing captured audit error should not write stdout");
+  assert(
+    missingErrorResult.stderr ===
+      "Dependency audit failed: captured audit error was not a recognized transient.\n",
+    "missing captured audit error should use one fixed error line",
+  );
+  assert(!outputOf(missingErrorResult).includes(missingErrorPath), "missing failure must not expose the input path");
 
   const fakeBin = path.join(root, "bin");
   const fakePnpmPath = path.join(fakeBin, "pnpm");

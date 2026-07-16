@@ -4,6 +4,10 @@ import { readFile } from "node:fs/promises";
 
 const SEVERITIES = ["info", "low", "moderate", "high", "critical"];
 const DEFAULT_AUDIT_LEVEL = "high";
+const CAPTURED_AUDIT_ERROR_MESSAGE =
+  "Dependency audit failed: captured audit error was not a recognized transient.";
+const REGISTRY_WARNING_MESSAGE =
+  "Dependency audit registry/network warning (non-blocking): recognized transient error code.";
 const REGISTRY_OR_NETWORK_ERROR_PATTERNS = [
   /\bERR_PNPM_META_FETCH_FAIL\b/i,
   /\bERR_PNPM_FETCH(?:_[A-Z0-9]+)*\b/i,
@@ -120,11 +124,20 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
 
   if (args.fromAuditError !== undefined) {
-    const output = await readFile(args.fromAuditError, "utf8");
-    if (!isRegistryOrNetworkError(output)) {
-      throw new Error(`dependency audit failed for non-registry error:\n${output.trim()}`);
+    let output;
+    try {
+      output = await readFile(args.fromAuditError, "utf8");
+    } catch {
+      console.error(CAPTURED_AUDIT_ERROR_MESSAGE);
+      process.exitCode = 1;
+      return;
     }
-    console.warn(`Dependency audit registry/network warning (non-blocking): ${output.trim()}`);
+    if (!isRegistryOrNetworkError(output)) {
+      console.error(CAPTURED_AUDIT_ERROR_MESSAGE);
+      process.exitCode = 1;
+      return;
+    }
+    console.warn(REGISTRY_WARNING_MESSAGE);
     return;
   }
 
@@ -160,7 +173,7 @@ async function main() {
   }
 
   if (result.status !== 0 && reportShapeError !== undefined && isRegistryOrNetworkError(output)) {
-    console.warn("Dependency audit registry/network warning (non-blocking): recognized transient error code.");
+    console.warn(REGISTRY_WARNING_MESSAGE);
     return;
   }
   if (reportShapeError !== undefined) {
