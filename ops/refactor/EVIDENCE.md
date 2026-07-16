@@ -51,13 +51,25 @@ Retrieved on 2026-07-16 for WP-0053b research only. This is not an approved pack
 | License metadata | archive `package.json` declares `CC0-1.0`; no standalone license/copying/notice file was present in the archive |
 | Official pages | `https://jpfhir.jp/fhir/core/1.2.0/download.html`, `guide-general.html`, and `qa.min.html` |
 
+Terminology dependency follow-up:
+
+| Item | Direct evidence |
+|---|---|
+| Official terminology artifact | `https://jpfhir.jp/fhir/core/terminology/jpfhir-terminology.r4-1.4.0.tgz` |
+| Artifact fingerprint | SHA-256 `cfeb76457774d5a4bf1eb907cb60d083b0dedf04cb92405effa6b4aeaf68d21f`; 7,444,937 bytes; server `Last-Modified` 2025-08-20; ETag `7199c9-63cc7561bc850` |
+| Package identity | archive `package/package.json`: `jpfhir-terminology#1.4.0`, FHIR `4.0.1`, canonical `http://jpfhir.jp/fhir/jpfhir-terminology` |
+| Declared dependency | `hl7.fhir.r4.core#4.0.1` |
+| IG identity | `ImplementationGuide-jpfhir-terminology.json`: active, dated 2025-06-15, packageId `jpfhir-terminology`, title identifies the artifact as the JP Core 1.2.x compatible edition |
+| License evidence | package metadata contains no license field and the archive contains no standalone license/licence/copying/notice file; legal clearance remains unresolved |
+
 Pre-lock discrepancies and stops:
 
-- The rendered dependency table names `jpfhir-terminology#1.4.0`, while the downloaded archive declares `jpfhir-terminology.r4#1.4.0`. The exact terminology artifact, source, fingerprint and license remain unresolved.
+- The official terminology artifact resolves the canonical package identity to `jpfhir-terminology#1.4.0`; `.r4` belongs to the distributed archive filename, not its package `name`. The JP Core archive dependency key `jpfhir-terminology.r4` therefore does not match the downloaded dependency package identity or the rendered dependency table. This upstream metadata mismatch must be reviewed rather than silently normalized.
+- The terminology artifact source and fingerprint are now known, but its archive provides neither package-level license metadata nor a standalone license file. Resource-level third-party terminology rights may differ, so this evidence does not provide legal clearance.
 - The archive `url` field contains a publisher build-machine `file://` path rather than the public canonical.
 - The QA report shows zero errors/warnings but also reports suppressed issues, an unpublished publication status and missing version-history metadata. A green QA summary alone is insufficient approval evidence.
 - The download URL is not content-addressed. Future retrieval must compare hash, byte length, HTTP validators and package metadata before accepting the same semantic version.
-- FHIR/JP Core specialist and legal/license review remain required before any lock or runtime/toolchain implementation.
+- FHIR/JP Core specialist and legal/license review remain required before any lock or runtime/toolchain implementation. Fingerprints and license metadata for the remaining HL7 dependencies are still required.
 
 ## Evidence rules
 

@@ -2827,6 +2827,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: docs-only evidence commitと後続ledger commitをrevertする。artifactはtemp削除済み、runtime/data rollback不要。
   - landing_record: implementation commit `553dbdb` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 pre-lock evidence landed、independent verification pending。
 
+- [~] WP-4154 resolve JP Core terminology artifact identity(LOW read-only supply-chain research) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+  - 発見根拠: WP-4153でJP Core archiveのdependency key `jpfhir-terminology.r4`とrendered dependency tableの`jpfhir-terminology`が不一致で、artifact identity/fingerprint/licenseが未確定だった。
+  - scope: exact4 `ops/refactor/EVIDENCE.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。package/lock/runtime/code/SSOT/CI/toolchainは変更しない。
+  - evidence: official `jpfhir-terminology.r4-1.4.0.tgz`をtemp取得し、SHA-256 `cfeb76457774d5a4bf1eb907cb60d083b0dedf04cb92405effa6b4aeaf68d21f`、7,444,937 bytes、ETag/Last-Modifiedを確認。archive package identityは`jpfhir-terminology#1.4.0`/FHIR4.0.1で、`.r4`は配布filenameだけに存在する。JP Core archive dependency keyは実package identityと不一致のupstream metadataとして維持する。
+  - acceptance/review: package identity driftをsilent normalizeせず、artifact source/fingerprintと未解決licenseを分離して記録。archive package metadataにlicense fieldがなくstandalone license fileもないためlegal clearanceを主張しない。FHIR specialist + legal/license reviewと残るHL7 dependenciesのfingerprint/license取得までWP-0053b lock実装なし。別agent verifier未実施。
+  - rollback: docs-only evidence commitと後続ledger commitをrevertする。artifactはtemp削除済み、runtime/data rollback不要。
+  - landing_record: implementation commitはlanding後に記録する。independent verification pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
@@ -3144,8 +3152,8 @@ v0.2.0の最上位方針:
   - root_cause/evidence: 版未固定ではmeta.profile、validator、SearchParameter、terminology、IG buildが再現不能。公式JP Core historyは1.2.0 current / 1.3.0-dev developmentを示す。
   - dependencies: WP-0053a。acceptance: canonical package id/version/hash/source/retrieved_at/license/FHIR dependency/update policy/rollbackを固定し、floating/latest/dev dependencyをCIが拒否する。
   - owner/verification: Codex root / official package metadata、clean install、checksum、FHIR Validator/IG Publisher/SUSHI互換性spike。
-  - prelock_evidence(2026-07-16): JP Core archive SHA-256/HTTP metadata/package dependencies/license metadataをWP-4153で取得。terminology package ID drift(`jpfhir-terminology.r4` vs rendered `jpfhir-terminology`)、publisher `file://` URL、standalone license file欠如、QA suppressed/unpublished/history警告を確認したため、FHIR/legal review前にlockしない。
-  - demo/rollback/commit: synthetic validationだけ、lockfile revert可、SSOT commit/push。human_review: FHIR/JP Core specialist + legal/license。exact_next_action: terminology package ID driftを公式配布元へ照合し、全dependency artifactのfingerprint/licenseを専門reviewへ提出する。
+  - prelock_evidence(2026-07-16): JP Core archive SHA-256/HTTP metadata/package dependencies/license metadataをWP-4153で取得。WP-4154でofficial terminology artifact `jpfhir-terminology.r4-1.4.0.tgz`をfingerprintし、実package identityは`jpfhir-terminology#1.4.0`、`.r4`はarchive filenameであることを確認した。JP Core archive dependency keyの不一致、publisher `file://` URL、JP Core QA suppressed/unpublished/history警告、terminology packageのlicense metadata/standalone license欠如が残るためFHIR/legal review前にlockしない。
+  - demo/rollback/commit: synthetic validationだけ、lockfile revert可、SSOT commit/push。human_review: FHIR/JP Core specialist + legal/license。exact_next_action: `hl7.fhir.r4.core#4.0.1`、`hl7.terminology.r4#7.0.0`、`hl7.fhir.uv.extensions.r4#5.2.0`のofficial artifact fingerprint/licenseを取得し、JP Core/terminology evidenceとともに専門reviewへ提出する。
 
 - [!] WP-0053c FHIR Native 3-plane architecture + PRC-007 cascade(BLOCKED_HUMAN_APPROVAL、R4)
   - scope: `fhir_native_architecture_principles.md`、`fhir_clinical_data_plane.md`、`technical_control_plane.md`、`adapter_plane_policy.md`を起草し、ARC-008/PRD-007/DOM-005/API-002/004を改版する。独自APIをTechnical Control Planeへ限定し、clinical payloadのcontrol-plane二重保存を禁止する。
