@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4185 reception nominal error notice authority — FINALIZED / INDEPENDENT_PASS
+
+- queue/registration catchの`instanceof`/arbitrary `toNotice()` authorityを廃止し、internal factoryが生成時引数から作るfrozen WeakMap snapshotだけをtrusted notice化。hostile Proxy、prototype forge、external constructorはcontext別genericへ収束し、raw message/action/codeをstateへ入れない。
+- 初回reviewでexported `toNotice()`自身の`this.*` direct bypassを検出。plan amendment後、methodもWeakMap-onlyへ変更し、Proxy/getter receiver zero、external/prototype generic、trusted public field mutation後もoriginal frozen snapshotを固定。class signature/throw typeは維持した。
+- focused95、Web429、API328 + integration14 expected skips、workspace typecheck/test、Web build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。独立/計画/security/privacy/reception review APPROVED。idempotency key/same-flight/queue reload/created audit/API contractsは不変。implementation `af39b3e`はlocal-only、pushなし。
+
 ### WP-4184 patient-search non-ok extraction — FINALIZED / INDEPENDENT_PASS
 
 - patient-search error bodyをexactly onceの`try/await/catch`とown data descriptorへ拘束し、sync throw/async reject、継承getter、Proxy has/get、descriptor trapをcodeなしの既存400/403/other guidanceへfail-closed化。valid own registered `AUTH-0003`/`PAT-0001`だけを保持する。
