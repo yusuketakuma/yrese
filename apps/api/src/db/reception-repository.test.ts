@@ -11,6 +11,7 @@ import {
 import {
   PostgresReceptionRepository,
   databaseReceptionProvenanceInvariantErrorMessage,
+  databaseReceptionRowInvariantErrorMessage,
   databaseReceptionTimestampInvariantErrorMessage,
 } from './reception-repository.js';
 
@@ -356,6 +357,159 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(query).toHaveBeenCalledOnce();
   });
 
+  it('requires own data authority for reception ID and status in list projection', async () => {
+    let accessorReads = 0;
+    for (const column of ['reception_id', 'reception_status'] as const) {
+      for (const authorityKind of ['accessor', 'inherited', 'missing'] as const) {
+        const invalidRow = { ...storedRow } as Record<string, unknown>;
+        if (authorityKind === 'accessor') {
+          Object.defineProperty(invalidRow, column, {
+            get() {
+              accessorReads += 1;
+              throw new Error('raw reception core accessor secret 4220');
+            },
+          });
+        } else {
+          const inheritedValue = invalidRow[column];
+          delete invalidRow[column];
+          if (authorityKind === 'inherited') {
+            Object.setPrototypeOf(invalidRow, { [column]: inheritedValue });
+          }
+        }
+        const query = vi.fn(async () => ({ rows: [storedRow, invalidRow] }));
+        const repository = new PostgresReceptionRepository({ query } as unknown as Pool);
+
+        await expect(
+          repository.list({
+            tenantId: input.tenantId,
+            pharmacyId: input.pharmacyId,
+            date: '2026-07-13',
+          }),
+        ).rejects.toThrow(databaseReceptionRowInvariantErrorMessage);
+        expect(query).toHaveBeenCalledOnce();
+      }
+    }
+    expect(accessorReads).toBe(0);
+  });
+
+  it.each([
+    ['reception_id', ''],
+    ['reception_status', 'NOT-A-STATUS'],
+  ] as const)('normalizes an invalid own-data %s schema value to the fixed row error', async (column, value) => {
+    const query = vi.fn(async () => ({ rows: [{ ...storedRow, [column]: value }] }));
+    const repository = new PostgresReceptionRepository({ query } as unknown as Pool);
+
+    await expect(
+      repository.list({
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+        date: '2026-07-13',
+      }),
+    ).rejects.toEqual(new Error(databaseReceptionRowInvariantErrorMessage));
+  });
+
+  it('accepts non-default own data descriptor flags for reception core columns', async () => {
+    const validRow = { ...storedRow } as Record<string, unknown>;
+    Object.defineProperty(validRow, 'reception_status', {
+      value: storedRow.reception_status,
+      enumerable: false,
+      configurable: false,
+      writable: false,
+    });
+    const repository = new PostgresReceptionRepository({
+      query: vi.fn(async () => ({ rows: [validRow] })),
+    } as unknown as Pool);
+
+    await expect(
+      repository.list({
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+        date: '2026-07-13',
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        receptionId: storedRow.reception_id,
+        receptionStatus: storedRow.reception_status,
+      }),
+    ]);
+  });
+
+  it('rejects hostile and revoked list row Proxies before invoking traps', async () => {
+    let proxyTraps = 0;
+    const hostileRow = new Proxy(
+      { ...storedRow },
+      {
+        get() {
+          proxyTraps += 1;
+          throw new Error('raw reception row get secret 4220');
+        },
+        getOwnPropertyDescriptor() {
+          proxyTraps += 1;
+          throw new Error('raw reception row descriptor secret 4220');
+        },
+      },
+    );
+    const revoked = Proxy.revocable({ ...storedRow }, {});
+    revoked.revoke();
+
+    for (const row of [hostileRow, revoked.proxy]) {
+      const repository = new PostgresReceptionRepository({
+        query: vi.fn(async () => ({ rows: [row] })),
+      } as unknown as Pool);
+      await expect(
+        repository.list({ ...input, date: '2026-07-13' }),
+      ).rejects.toThrow(databaseReceptionRowInvariantErrorMessage);
+    }
+    expect(proxyTraps).toBe(0);
+  });
+
+  it('preserves reception entry field error precedence and leaves later fields unread', async () => {
+    let laterReads = 0;
+    const invalidIdRow = { ...storedRow } as Record<string, unknown>;
+    Object.defineProperty(invalidIdRow, 'reception_id', {
+      get() {
+        laterReads += 1;
+        throw new Error('raw reception ID accessor secret 4220');
+      },
+    });
+    for (const column of ['eligibility_checked_at', 'accepted_at', 'reception_status']) {
+      Object.defineProperty(invalidIdRow, column, {
+        get() {
+          laterReads += 1;
+          throw new Error('later reception entry field must remain unread');
+        },
+      });
+    }
+    const idRepository = new PostgresReceptionRepository({
+      query: vi.fn(async () => ({ rows: [invalidIdRow] })),
+    } as unknown as Pool);
+    await expect(
+      idRepository.list({ ...input, date: '2026-07-13' }),
+    ).rejects.toThrow(databaseReceptionRowInvariantErrorMessage);
+    expect(laterReads).toBe(0);
+
+    const invalidTimestampRow = { ...storedRow } as Record<string, unknown>;
+    Object.defineProperty(invalidTimestampRow, 'accepted_at', {
+      get() {
+        laterReads += 1;
+        throw new Error('raw accepted_at accessor secret 4220');
+      },
+    });
+    Object.defineProperty(invalidTimestampRow, 'reception_status', {
+      get() {
+        laterReads += 1;
+        throw new Error('status must remain unread after accepted_at failure');
+      },
+    });
+    const timestampRepository = new PostgresReceptionRepository({
+      query: vi.fn(async () => ({ rows: [invalidTimestampRow] })),
+    } as unknown as Pool);
+    await expect(
+      timestampRepository.list({ ...input, date: '2026-07-13' }),
+    ).rejects.toThrow(databaseReceptionTimestampInvariantErrorMessage);
+    expect(laterReads).toBe(0);
+  });
+
   it.each(['accessor', 'inherited', 'missing'] as const)(
     'rejects a mixed list with a non-own-data accepted_at %s without invoking it',
     async (authorityKind) => {
@@ -498,6 +652,52 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     },
   );
 
+  it.each([
+    ['created', 'accessor'],
+    ['created', 'inherited'],
+    ['created', 'missing'],
+    ['existing', 'accessor'],
+    ['existing', 'inherited'],
+    ['existing', 'missing'],
+  ] as const)(
+    'rolls back a %s result with a non-own-data reception status %s',
+    async (scenario, authorityKind) => {
+      let statusReads = 0;
+      const { repository, query, release } = createRepository({
+        scenario,
+        rowTransform(row) {
+          if (authorityKind === 'accessor') {
+            Object.defineProperty(row, 'reception_status', {
+              get() {
+                statusReads += 1;
+                throw new Error('raw transaction status accessor secret 4220');
+              },
+            });
+          } else {
+            const inheritedValue = row.reception_status;
+            delete row.reception_status;
+            if (authorityKind === 'inherited') {
+              Object.setPrototypeOf(row, { reception_status: inheritedValue });
+            }
+          }
+          return row;
+        },
+      });
+
+      await expect(repository.create(input)).rejects.toThrow(
+        databaseReceptionRowInvariantErrorMessage,
+      );
+      expect(statusReads).toBe(0);
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(scenario === 'existing' ? ['SELECT'] : []),
+        'ROLLBACK',
+      ]);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
   it('does not inspect a DB timestamp for a different-patient idempotency conflict', async () => {
     let timestampTraps = 0;
     const hostileTimestamp = new Proxy(
@@ -543,6 +743,30 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(result.kind).toBe('idempotency_conflict');
     expect('entry' in result).toBe(false);
     expect(accessorReads).toBe(0);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('does not invoke a reception status accessor for a different-patient conflict', async () => {
+    let statusReads = 0;
+    const { repository, query, release } = createRepository({
+      scenario: 'conflict',
+      rowTransform(row) {
+        Object.defineProperty(row, 'reception_status', {
+          get() {
+            statusReads += 1;
+            throw new Error('conflict status must stay unread');
+          },
+        });
+        return row;
+      },
+    });
+
+    const result = await repository.create(input);
+
+    expect(result.kind).toBe('idempotency_conflict');
+    expect('entry' in result).toBe(false);
+    expect(statusReads).toBe(0);
     expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
     expect(release.mock.calls).toEqual([[]]);
   });

@@ -48,22 +48,46 @@ export const databaseReceptionProvenanceInvariantErrorMessage =
   'Reception database returned invalid idempotency provenance';
 export const databaseReceptionTimestampInvariantErrorMessage =
   'Reception database returned an invalid timestamp';
+export const databaseReceptionRowInvariantErrorMessage =
+  'Reception database returned an invalid reception row';
 
 function rowToEntry(row: ReceptionEntryRow): ReceptionQueueEntry {
-  return receptionQueueEntrySchema.parse({
-    receptionId: row.reception_id,
-    patient: patientRowToSearchResult(row),
-    acceptedAt: snapshotDatabaseInstant(
-      readDatabaseRowOwnDataProperty(
-        row,
-        'accepted_at',
-        databaseReceptionTimestampInvariantErrorMessage,
-      ),
+  const receptionIdValue = readDatabaseRowOwnDataProperty(
+    row,
+    'reception_id',
+    databaseReceptionRowInvariantErrorMessage,
+  );
+  if (typeof receptionIdValue !== 'string') {
+    throw new Error(databaseReceptionRowInvariantErrorMessage);
+  }
+  const patient = patientRowToSearchResult(row);
+  const acceptedAt = snapshotDatabaseInstant(
+    readDatabaseRowOwnDataProperty(
+      row,
+      'accepted_at',
       databaseReceptionTimestampInvariantErrorMessage,
     ),
-    receptionStatus: row.reception_status,
-    prescriptionIntakeType: 'paper',
-  });
+    databaseReceptionTimestampInvariantErrorMessage,
+  );
+  const receptionStatus = readDatabaseRowOwnDataProperty(
+    row,
+    'reception_status',
+    databaseReceptionRowInvariantErrorMessage,
+  );
+  if (typeof receptionStatus !== 'string') {
+    throw new Error(databaseReceptionRowInvariantErrorMessage);
+  }
+  try {
+    return receptionQueueEntrySchema.parse({
+      receptionId: receptionIdValue,
+      patient,
+      acceptedAt,
+      receptionStatus,
+      prescriptionIntakeType: 'paper',
+    });
+  } catch {
+    throw new Error(databaseReceptionRowInvariantErrorMessage);
+  }
 }
 
 function rowToProvenance(row: ReceptionCreateRow) {
