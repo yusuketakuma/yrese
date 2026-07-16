@@ -2867,14 +2867,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: docs-only evidence commitと後続ledger commitをrevertする。runtime/data/artifact rollback不要。
   - landing_record: implementation commit `f8edc1c` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 terminology-rights evidence landed、independent verification pending。
 
-- [~] WP-4159 map Phase 1 JP Core profile and terminology reachability(LOW read-only conformance evidence) — LOCAL_READY / INDEPENDENT_VERIFY_REQUIRED
+- [~] WP-4159 map Phase 1 JP Core profile and terminology reachability(LOW read-only conformance evidence) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
   - 発見根拠: WP-0053eの最初のgap inventoryに必要なPhase 1 Resource候補とJP Core 1.2.0 Profileの対応、および選択候補Profileから直接参照されるValueSetのpackage解決先が未記録だった。Profile名だけから採用Profileや許諾対象を決めると、複数候補・Profile不在・継承bindingを見落とす。
   - scope: exact4 `ops/refactor/EVIDENCE.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。Profile/terminology採用、`meta.profile`、package/lock、artifact保存、SSOT/IG/CI/runtime/codeは変更しない。
   - evidence: fingerprint済みJP Core 1.2.0 packageをtemp再取得し、19対象Resource typeに32 constraint Profileを確認。14 typeは候補あり、`Provenance` / `AuditEvent` / `DetectedIssue` / `Task` / `Communication`は候補なし。`MedicationRequest` 2、`MedicationDispense` 3、`Condition` 2、`Observation` 15で選択曖昧性があり、Observationの1件はdraft。candidate snapshot binding 417 profile-path行 / 128 unique ValueSet URLは、JP Core local 22/15、JP terminology 1.4.0 50/25、FHIR core 329/80、FHIR coreとHL7 terminologyの双方に収録16/8へ全件解決した。
   - acceptance/review: 対象typeの候補数、Profile不在、複数候補、status/baseDefinition境界、直接ValueSet bindingの解決先を再現可能に記録する。snapshotの全候補合算を採用済みProfile、実運用で到達済みterminology、transitive CodeSystem closure、法的clearanceまたはJP Core適合主張へ昇格しない。FHIR/terminology/clinical/legal reviewとWP-0053b-dのhuman gate前に選定・lock・実装しない。別agent verifier未実施。
   - validation: 4 artifact SHA-256再照合とprofile/binding count再計算PASS、`pnpm check:ssot-index` PASS(173)、tracked snapshot + exact4 overlay secret scan PASS、`git diff --check` PASS。live `pnpm check:secrets`は既知のuntracked `.codegraph` symlinkでprotected scopeを検証できずfail-closed。
   - rollback: docs-only evidence commitと後続ledger commitをrevertする。temp artifactは削除し、runtime/data/package rollback不要。
-  - landing_record: pending implementation commit and push verification。
+  - landing_record: implementation commit `7375cbf` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 profile/reachability evidence landed、independent verification pending。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
