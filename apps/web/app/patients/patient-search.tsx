@@ -46,6 +46,8 @@ const SEX_LABELS: Record<PatientSearchResult["sex"], string> = {
 
 const patientSearchPageLimitErrorMessage =
   "Patient search response exceeded the requested page limit";
+const patientSearchEmptyContinuationErrorMessage =
+  "Patient search response returned an empty continuation page";
 
 export type SearchState =
   | { kind: "idle" }
@@ -144,6 +146,9 @@ export async function fetchSearch(
   const parsed = patientSearchResponseSchema.parse(await res.json());
   if (parsed.results.length > PATIENT_SEARCH_DEFAULT_LIMIT) {
     throw new Error(patientSearchPageLimitErrorMessage);
+  }
+  if (parsed.results.length === 0 && parsed.nextCursor !== undefined) {
+    throw new Error(patientSearchEmptyContinuationErrorMessage);
   }
   return {
     results: [...parsed.results],

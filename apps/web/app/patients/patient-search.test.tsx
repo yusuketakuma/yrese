@@ -162,6 +162,53 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     expect(serialized).not.toContain("cursor-over-limit-sensitive");
   });
 
+  it("accepts an empty terminal page without a continuation cursor", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const fetchImpl: typeof fetch = async () =>
+      new Response(JSON.stringify({ results: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+
+    try {
+      await expect(fetchSearch("合成", undefined, fetchImpl)).resolves.toEqual({
+        results: [],
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("rejects an empty continuation page with a fixed non-echo error", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const sensitiveCursor = "cursor-empty-continuation-sensitive";
+    const sensitiveQuery = "秘密検索語";
+    const fetchImpl: typeof fetch = async () =>
+      new Response(JSON.stringify({ results: [], nextCursor: sensitiveCursor }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+
+    let thrown: unknown;
+    try {
+      await fetchSearch(sensitiveQuery, undefined, fetchImpl);
+    } catch (error) {
+      thrown = error;
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toBe(
+      "Patient search response returned an empty continuation page",
+    );
+    const serialized = JSON.stringify(thrown, Object.getOwnPropertyNames(thrown));
+    expect(serialized).not.toContain(sensitiveQuery);
+    expect(serialized).not.toContain(sensitiveCursor);
+  });
+
   it.each([201, 202, 204, 206])(
     "rejects unsupported patient-search success status %i before reading the body",
     async (status) => {
@@ -523,6 +570,54 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
       notice: { message: "検索結果の処理に失敗しました。" },
     });
     expect(JSON.stringify(last)).not.toContain("patient-untrusted-over-limit");
+  });
+
+  it("rejects an initial empty continuation page and permits retry", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const states: SearchState[] = [{ kind: "idle" }];
+    const responses = [
+      new Response(
+        JSON.stringify({ results: [], nextCursor: "cursor-untrusted-empty-initial" }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+      new Response(
+        JSON.stringify({ results: [patient({ patientId: "patient-initial-retry" })] }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    ];
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      const response = responses.shift();
+      if (response === undefined) throw new Error("unexpected search request");
+      return response;
+    });
+    const run = createSearchRunner(
+      (query, cursor) => fetchSearch(query, cursor, fetchImpl),
+      (update) => states.push(update(states[states.length - 1]!)),
+    );
+
+    try {
+      await run("合成");
+      const failed = states[states.length - 1]!;
+      expect(failed).toMatchObject({
+        kind: "error",
+        notice: { message: "検索結果の処理に失敗しました。" },
+      });
+      expect(JSON.stringify(failed)).not.toContain("cursor-untrusted-empty-initial");
+
+      await run("合成");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    const retried = states[states.length - 1]!;
+    expect(retried).toMatchObject({
+      kind: "loaded",
+      query: "合成",
+      results: [expect.objectContaining({ patientId: "patient-initial-retry" })],
+      appendState: { kind: "idle" },
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it("suppresses a stale unsupported search page after a newer exact-200 result", async () => {
@@ -936,6 +1031,106 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
       "/_yrese-api/patients/search?q=%E5%90%88%E6%88%90&limit=20&cursor=cursor-retained-over-limit",
       "/_yrese-api/patients/search?q=%E5%90%88%E6%88%90&limit=20&cursor=cursor-retained-over-limit",
     ]);
+  });
+
+  it("retains the verified page when an append returns an empty continuation", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const states: SearchState[] = [{ kind: "idle" }];
+    const retained = patient({ patientId: "patient-retained-empty-continuation" });
+    const replacement = patient({ patientId: "patient-retry-empty-continuation" });
+    const responses = [
+      new Response(
+        JSON.stringify({ results: [retained], nextCursor: "cursor-retained-empty" }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+      new Response(
+        JSON.stringify({ results: [], nextCursor: "cursor-untrusted-empty" }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+      new Response(JSON.stringify({ results: [replacement] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    ];
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      const response = responses.shift();
+      if (response === undefined) throw new Error("unexpected search request");
+      return response;
+    });
+    const run = createSearchRunner(
+      (query, cursor) => fetchSearch(query, cursor, fetchImpl),
+      (update) => states.push(update(states[states.length - 1]!)),
+    );
+
+    try {
+      await run("合成");
+      await run("合成", "cursor-retained-empty", true);
+      const failed = states[states.length - 1]!;
+      expect(failed.kind).toBe("loaded");
+      if (failed.kind !== "loaded") throw new Error("expected retained loaded state");
+      expect(failed.results).toEqual([retained]);
+      expect(failed.query).toBe("合成");
+      expect(failed.nextCursor).toBe("cursor-retained-empty");
+      expect(failed.appendState).toMatchObject({
+        kind: "error",
+        notice: { message: "検索結果の処理に失敗しました。" },
+      });
+      expect(JSON.stringify(failed)).not.toContain("cursor-untrusted-empty");
+
+      await run(failed.query, failed.nextCursor, true);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    const retried = states[states.length - 1]!;
+    expect(retried.kind).toBe("loaded");
+    if (retried.kind === "loaded") {
+      expect(retried.results).toEqual([retained, replacement]);
+      expect(retried.nextCursor).toBeUndefined();
+      expect(retried.appendState).toEqual({ kind: "idle" });
+    }
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it("accepts an empty terminal append and clears the consumed cursor", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const states: SearchState[] = [{ kind: "idle" }];
+    const retained = patient({ patientId: "patient-retained-empty-terminal" });
+    const responses = [
+      new Response(
+        JSON.stringify({ results: [retained], nextCursor: "cursor-empty-terminal" }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+      new Response(JSON.stringify({ results: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    ];
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      const response = responses.shift();
+      if (response === undefined) throw new Error("unexpected search request");
+      return response;
+    });
+    const run = createSearchRunner(
+      (query, cursor) => fetchSearch(query, cursor, fetchImpl),
+      (update) => states.push(update(states[states.length - 1]!)),
+    );
+
+    try {
+      await run("合成");
+      await run("合成", "cursor-empty-terminal", true);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    const loaded = states[states.length - 1]!;
+    expect(loaded.kind).toBe("loaded");
+    if (loaded.kind !== "loaded") throw new Error("expected loaded terminal state");
+    expect(loaded.results).toEqual([retained]);
+    expect(loaded.nextCursor).toBeUndefined();
+    expect(loaded.appendState).toEqual({ kind: "idle" });
   });
 
   it("allows cumulative results to exceed the per-page limit", async () => {
