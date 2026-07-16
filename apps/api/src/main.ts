@@ -17,7 +17,11 @@ import {
   patientSearchCursorHmacKeyByteLength,
 } from './patient-search-cursor.js';
 import { buildServer } from './server.js';
-import { handleStartupFailure } from './startup-failure.js';
+import {
+  handleStartupFailure,
+  normalizeStartupFailure,
+  preserveStartupFailureAcrossCleanup,
+} from './startup-failure.js';
 
 async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServer>> {
   const databaseUrl = parseDatabaseUrl(process.env.DATABASE_URL);
@@ -68,8 +72,10 @@ async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServe
     });
     return server;
   } catch (error) {
-    await pool.end();
-    throw error;
+    throw await preserveStartupFailureAcrossCleanup({
+      originalError: error,
+      cleanup: () => pool.end(),
+    });
   }
 }
 
@@ -82,12 +88,27 @@ try {
   const address = await server.listen({ host: '0.0.0.0', port });
   server.log.info({ address }, 'API server listening');
 } catch (error) {
-  await handleStartupFailure({
-    originalError: error,
-    server,
-    report: (message) => console.error(message),
-    setExitCode: (exitCode) => {
+  const startupFailure = normalizeStartupFailure(error);
+  const failureReporter = {
+    report: (message: string) => console.error(message),
+    setExitCode: (exitCode: number) => {
       process.exitCode = exitCode;
     },
-  });
+  };
+  if (server === undefined) {
+    await handleStartupFailure({
+      originalError: startupFailure.originalError,
+      server: undefined,
+      ...('priorCleanupFailure' in startupFailure
+        ? { priorCleanupFailure: startupFailure.priorCleanupFailure }
+        : {}),
+      ...failureReporter,
+    });
+  } else {
+    await handleStartupFailure({
+      originalError: startupFailure.originalError,
+      server,
+      ...failureReporter,
+    });
+  }
 }
