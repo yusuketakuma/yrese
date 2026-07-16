@@ -8,6 +8,15 @@
 
 ## 2026-07-16
 
+### WP-0055f Common Workbench UI/UX layout — DRAFT_PROPOSED / HUMAN_REVIEW_REQUIRED
+
+- 22 domain共通画面を3案比較し、上部Context Lockbar、左journey、中央primary task、右Evidence Spine、下部command領域からなるEvidence-rail workbenchを第一候補として`docs/research/rececon_v0_8_shared_workbench_layout_proposal_20260716.md`へ記録した。22 domain/132 UI labelをtop-level route化せず、既存業務順route内の共通shellへ集約する。
+- Guided/Expertは同じcommand ID/schema/validation/permission/idempotency/concurrency/resource version/domain state/API/audit/outcomeを使う。差分は説明量、表示密度、focus初期位置、review/根拠への移動、競合review済みshortcutに限定し、finalize/reverseを直接実行しない。patient/pharmacy/claim month/version、直交状態、LOCAL_ONLY、権限、privacy shield、FinalizeGate、200% zoom、keyboard、screen reader、forced colors、performance loading順をlayout contract候補へ含めた。
+- 革新的brush-upとして、Context SealからEvidence Spine、FinalizeGate、次の安全な操作を結ぶSafety Threadと、その末端で`いま / 次 / なぜ必要 / 完了条件`を示すSafe Next Beaconを追加した。Clinical Icon Grammarは既存Visual Status Registryを唯一の状態authorityとしてvisible labelを維持し、Quiet Motionはkeyboard、高頻度、context/status/BLOCKERを0ms、低頻度popover/modalだけ200ms以下のtransform/opacity候補に限定した。manual-freeをguardrail省略ではなく、Fix Path、Stable Verb、Recovery in Place、同位置のContextual Helpによる画面内理解・回復と定義し、新人/熟練者別の安全優先candidate acceptanceへ接続した。
+- W3C WCAG 2.2/APGのfocus/target/landmark/keyboard/animation/consistent help/identification、USWDSのicon一貫性とtext併記、GOV.UK task list、NHS warning/notificationの2026-07-16公開guidanceを参考確認した。外部guidanceは適合性・法令・薬剤師安全性の証明には使わず、APPROVED UI SSOT/runtime/contractsは変更していない。PlansへWP-0055f-UX proposal、execution slice、candidate acceptance、stop gateを追記した。
+- statusは`DRAFT_NO_AUTHORITY / HUMAN_UX_MEDICAL_REVIEW_REQUIRED / R3`。Gate 0=`NO_GO`、implementation/production/SSOT authority=0を維持する。次はR1/R2 byte-preserving capture、R2 raw取得または明示source-gap判断、independent verification後の132 UI label read-only分類と、non-executable wireframe/test protocol scopeの再発行である。clickable prototype/runtime UIはGate 1 exact scope再発行とrequired human reviewまで禁止する。
+- validationは`git diff --check`、SSOT index 173、boundary、22/22 domain coverage、参照path、変更3文書のfocused secret scan 0をPASS。repository全体の`pnpm check:secrets`は既存user-owned `.codegraph` symlinkによりprotected scopeを検証できずfail-closedで、今回差分によるsecret findingではない。read-only plan/SSOT、medical/privacy/security、UI/accessibility/performanceの独立reviewは修正後すべてPASS、blocking finding 0。
+
 ### WP-4149 independent browser / WP-4163 hydration fallback privacy hardening — FINALIZED
 
 - WP-4149は独立synthetic browserで患者2件検索→pointer選択→受付遷移、global context/受付対象identity一致、freeform patient ID/inputなし、native double-clickでもPOST 1回/queue GET 1回、WAITING反映、context clear後disabled/result clear、375/768/1280 overflow 0、console/page errors 0を`PASS_WITH_NOTE`。瞬間pendingとin-flight患者切替raceはbrowser未証明、ambiguous retryはWP-4151c human gateを維持する。
