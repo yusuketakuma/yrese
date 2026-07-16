@@ -419,6 +419,72 @@ describe("createAuditLogRunner (latest-only / lifecycle invalidation)", () => {
     expect(recorder.current().kind).toBe("loaded");
   });
 
+  it("does not trust a structurally valid forged notice on initial failure", async () => {
+    const rawSentinel = "raw forged audit notice must not render";
+    const recorder = createStateRecorder();
+    const runner = createAuditLogRunner(
+      () =>
+        Promise.reject({
+          notice: {
+            message: rawSentinel,
+            nextAction: `raw action ${rawSentinel}`,
+            severity: "CRITICAL",
+            errorCode: "AUD-0001",
+          },
+        }),
+      recorder.emit,
+    );
+
+    await runner.run();
+
+    expect(recorder.current()).toEqual({
+      kind: "error",
+      notice: {
+        message: "監査ログの処理に失敗しました。",
+        nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+      },
+    });
+    expect(JSON.stringify(recorder.current())).not.toContain(rawSentinel);
+    expect(JSON.stringify(recorder.current())).not.toContain("AUD-0001");
+  });
+
+  it("does not inspect arbitrary error properties while retaining verified evidence", async () => {
+    const rawSentinel = "raw hostile audit error getter";
+    const propertyRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const hostileError = new Proxy(
+      {},
+      {
+        get: propertyRead,
+        has: propertyRead,
+        getPrototypeOf: propertyRead,
+      },
+    );
+    const recorder = createStateRecorder({
+      kind: "loaded",
+      data: broken,
+      refreshState: { kind: "idle" },
+    });
+    const runner = createAuditLogRunner(() => Promise.reject(hostileError), recorder.emit);
+
+    await runner.run();
+
+    expect(propertyRead).not.toHaveBeenCalled();
+    const state = recorder.current();
+    expect(state.kind).toBe("loaded");
+    if (state.kind !== "loaded") throw new Error("expected retained audit evidence");
+    expect(state.data).toBe(broken);
+    expect(state.refreshState).toEqual({
+      kind: "error",
+      notice: {
+        message: "監査ログの処理に失敗しました。",
+        nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+      },
+    });
+    expect(JSON.stringify(state)).not.toContain(rawSentinel);
+  });
+
   it("cleans active ownership before settlement continuations start another refresh", async () => {
     const recorder = createStateRecorder();
     const fetcher = vi
@@ -899,6 +965,178 @@ describe("fetchAuditLog transport contract", () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+
+  it.each([
+    ["synchronous throw", () => {
+      throw {
+        notice: {
+          message: "raw synchronous audit body",
+          severity: "CRITICAL",
+          errorCode: "AUD-0001",
+        },
+      };
+    }],
+    ["asynchronous rejection", () =>
+      Promise.reject({
+        notice: {
+          message: "raw asynchronous audit body",
+          severity: "CRITICAL",
+          errorCode: "AUD-0001",
+        },
+      })],
+  ])("normalizes a non-ok JSON %s to the fixed HTTP notice", async (_case, json) => {
+    vi.stubEnv("NODE_ENV", "development");
+    const jsonMock = vi.fn(json);
+    const fetchImpl: typeof fetch = async () =>
+      ({ ok: false, status: 500, json: jsonMock }) as unknown as Response;
+    let current: AuditLogState = { kind: "loading" };
+    const runner = createAuditLogRunner(
+      () => fetchAuditLog(fetchImpl),
+      (update) => {
+        current = update(current);
+      },
+    );
+
+    try {
+      await runner.run();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    expect(current).toEqual({
+      kind: "error",
+      notice: {
+        message: "監査ログの取得に失敗しました(HTTP 500)。",
+        nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+      },
+    });
+    expect(JSON.stringify(current)).not.toContain("raw synchronous audit body");
+    expect(JSON.stringify(current)).not.toContain("raw asynchronous audit body");
+    expect(JSON.stringify(current)).not.toContain("AUD-0001");
+    expect(jsonMock).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["synchronous resolution", (body: unknown) => body],
+    ["asynchronous resolution", (body: unknown) => Promise.resolve(body)],
+  ])(
+    "normalizes hostile error-code access after a non-ok JSON %s",
+    async (_case, resolveBody) => {
+      vi.stubEnv("NODE_ENV", "development");
+      const rawSentinel = "raw hostile audit response body";
+      const propertyRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const hostileBody = new Proxy(
+        {},
+        {
+          get(target, property, receiver) {
+            return property === "errorCode"
+              ? propertyRead()
+              : Reflect.get(target, property, receiver);
+          },
+          has(_target, property) {
+            return property === "errorCode" ? propertyRead() : false;
+          },
+        },
+      );
+      const jsonMock = vi.fn(() => resolveBody(hostileBody));
+      const fetchImpl: typeof fetch = async () =>
+        ({ ok: false, status: 403, json: jsonMock }) as unknown as Response;
+      let current: AuditLogState = { kind: "loading" };
+      const runner = createAuditLogRunner(
+        () => fetchAuditLog(fetchImpl),
+        (update) => {
+          current = update(current);
+        },
+      );
+
+      try {
+        await runner.run();
+      } finally {
+        vi.unstubAllEnvs();
+      }
+
+      expect(current).toEqual({
+        kind: "error",
+        notice: {
+          message: "権限がありません。",
+          nextAction: "管理者に権限(audit-log:read)の付与状況を確認してください。",
+        },
+      });
+      expect(jsonMock).toHaveBeenCalledOnce();
+      expect(propertyRead).not.toHaveBeenCalled();
+      expect(JSON.stringify(current)).not.toContain(rawSentinel);
+    },
+  );
+
+  it("does not invoke an error-code getter from a non-ok response body", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const getter = vi.fn(() => {
+      throw new Error("raw audit error-code getter");
+    });
+    const body = Object.defineProperty({}, "errorCode", { enumerable: true, get: getter });
+    const fetchImpl: typeof fetch = async () =>
+      ({ ok: false, status: 403, json: vi.fn(() => body) }) as unknown as Response;
+    let current: AuditLogState = { kind: "loading" };
+    const runner = createAuditLogRunner(
+      () => fetchAuditLog(fetchImpl),
+      (update) => {
+        current = update(current);
+      },
+    );
+
+    try {
+      await runner.run();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    expect(getter).not.toHaveBeenCalled();
+    expect(current).toEqual({
+      kind: "error",
+      notice: {
+        message: "権限がありません。",
+        nextAction: "管理者に権限(audit-log:read)の付与状況を確認してください。",
+      },
+    });
+  });
+
+  it("normalizes a throwing error-code descriptor trap to the fixed HTTP notice", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const rawSentinel = "raw audit descriptor trap";
+    const descriptorRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const body = new Proxy({}, { getOwnPropertyDescriptor: descriptorRead });
+    const jsonMock = vi.fn(() => body);
+    const fetchImpl: typeof fetch = async () =>
+      ({ ok: false, status: 500, json: jsonMock }) as unknown as Response;
+    let current: AuditLogState = { kind: "loading" };
+    const runner = createAuditLogRunner(
+      () => fetchAuditLog(fetchImpl),
+      (update) => {
+        current = update(current);
+      },
+    );
+
+    try {
+      await runner.run();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    expect(jsonMock).toHaveBeenCalledOnce();
+    expect(descriptorRead).toHaveBeenCalledOnce();
+    expect(current).toEqual({
+      kind: "error",
+      notice: {
+        message: "監査ログの取得に失敗しました(HTTP 500)。",
+        nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+      },
+    });
+    expect(JSON.stringify(current)).not.toContain(rawSentinel);
   });
 
   it.each([201, 202, 204, 206])(

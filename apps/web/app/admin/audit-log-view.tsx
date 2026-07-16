@@ -50,6 +50,12 @@ export const auditLogResponseOrderInvariantErrorMessage =
 export const auditLogResponseWindowInvariantErrorMessage =
   "Audit response does not match the requested display window";
 
+const genericAuditLogErrorNotice = Object.freeze({
+  message: "監査ログの処理に失敗しました。",
+  nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+} satisfies ErrorNoticeProps);
+const trustedAuditLogErrorNotices = new WeakMap<object, ErrorNoticeProps>();
+
 function compareUtcIsoInstants(left: string, right: string): number {
   const leftSecond = left.slice(0, 19);
   const rightSecond = right.slice(0, 19);
@@ -67,12 +73,42 @@ function compareUtcIsoInstants(left: string, right: string): number {
 }
 
 function auditLogErrorNotice(error: unknown): ErrorNoticeProps {
-  return typeof error === "object" && error !== null && "notice" in error
-    ? (error as { notice: ErrorNoticeProps }).notice
-    : {
-        message: "監査ログの処理に失敗しました。",
-        nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
-      };
+  if (typeof error === "object" && error !== null) {
+    const trustedNotice = trustedAuditLogErrorNotices.get(error);
+    if (trustedNotice !== undefined) {
+      return trustedNotice;
+    }
+  }
+  return genericAuditLogErrorNotice;
+}
+
+function createAuditLogRequestError(
+  status: number,
+  errorCode?: ErrorNoticeProps["errorCode"],
+): Error {
+  const forbidden = status === 403;
+  const notice = Object.freeze({
+    message: forbidden
+      ? "権限がありません。"
+      : `監査ログの取得に失敗しました(HTTP ${status})。`,
+    nextAction: forbidden
+      ? "管理者に権限(audit-log:read)の付与状況を確認してください。"
+      : "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+    ...(errorCode !== undefined ? { errorCode } : {}),
+  } satisfies ErrorNoticeProps);
+  const error = Object.assign(
+    new Error(`監査ログの取得に失敗しました(HTTP ${status})。`),
+    { notice },
+  );
+  trustedAuditLogErrorNotices.set(error, notice);
+  return error;
+}
+
+function auditLogResponseErrorCode(body: unknown): ErrorNoticeProps["errorCode"] {
+  if (typeof body !== "object" || body === null) return undefined;
+  const descriptor = Object.getOwnPropertyDescriptor(body, "errorCode");
+  if (descriptor === undefined || !("value" in descriptor)) return undefined;
+  return registeredErrorCodeOrUndefined(descriptor.value);
 }
 
 export async function fetchAuditLog(
@@ -86,33 +122,17 @@ export async function fetchAuditLog(
     },
   );
   if (!res.ok) {
-    const body: unknown = await res.json().catch(() => null);
-    const rawErrorCode =
-      typeof body === "object" && body !== null && "errorCode" in body
-        ? (body as { errorCode: unknown }).errorCode
-        : undefined;
-    const errorCode = registeredErrorCodeOrUndefined(rawErrorCode);
-    throw Object.assign(new Error(`監査ログの取得に失敗しました(HTTP ${res.status})。`), {
-      notice: {
-        message:
-          res.status === 403
-            ? "権限がありません。"
-            : `監査ログの取得に失敗しました(HTTP ${res.status})。`,
-        nextAction:
-          res.status === 403
-            ? "管理者に権限(audit-log:read)の付与状況を確認してください。"
-            : "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
-        ...(errorCode !== undefined ? { errorCode } : {}),
-      } satisfies ErrorNoticeProps,
-    });
+    let errorCode: ErrorNoticeProps["errorCode"];
+    try {
+      const body: unknown = await res.json();
+      errorCode = auditLogResponseErrorCode(body);
+    } catch {
+      errorCode = undefined;
+    }
+    throw createAuditLogRequestError(res.status, errorCode);
   }
   if (res.status !== 200) {
-    throw Object.assign(new Error(`監査ログの取得に失敗しました(HTTP ${res.status})。`), {
-      notice: {
-        message: `監査ログの取得に失敗しました(HTTP ${res.status})。`,
-        nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
-      } satisfies ErrorNoticeProps,
-    });
+    throw createAuditLogRequestError(res.status);
   }
   const parsed = auditLogResponseSchema.parse(await res.json());
   if (parsed.chainVerification.ok) {
