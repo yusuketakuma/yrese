@@ -2810,6 +2810,7 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - review_status: root cold-path evidence review済み。read-only independent verifierも別sessionでexact 500時のverified row/chain保持、fixed error/stale/retry、raw非表示、retry request増加、error clear、console/page error空、focused 50/50をPASS。独立runはshared mockが既に1行replacement状態だったため2行→1行の値だけはroot capture依存。native input/production/DB/auth等の未証明を分離し、DEMO_REQUIRED/human gateを解除しない。
   - rollback: docs-only implementation commitと後続ledger commitをrevertする。runtime/data rollback不要。
   - landing_record: implementation commit `8cd8d18` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact6 evidence index/demo records landed、independent verification pending。
+  - followup_landing: audit refresh exact-500 retention/recovery evidenceとindependent PASS_WITH_NOTEは`31a60f7`で同branchへpush済み。runtime/code/contracts/DB/SSOT変更なし。2行→1行値はroot capture、独立runは1行保持/recovery、native inputは未証明という境界を維持。
 
 - [~] WP-4152 verify production Web build/start/static-route boundary(LOW demo/stability evidence) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
   - 発見根拠: final demoはproduction-like API/Web startupを全体未検証としていたが、Web単体のbuild/start/static route/shutdownはDB/auth承認なしに実測可能だった。

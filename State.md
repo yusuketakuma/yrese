@@ -8,11 +8,12 @@
 
 ## 2026-07-16
 
-### WP-4151 audit refresh failure / retention / retry browser follow-up — LOCAL_READY / INDEPENDENT_PASS_WITH_NOTE
+### WP-4151 audit refresh failure / retention / retry browser follow-up — LOCAL_LANDED / INDEPENDENT_PASS_WITH_NOTE
 
 - synthetic dev Web→API proxyで初回200(検証済み2件)→次回exact HTTP 500(raw sentinelをbodyへ含む)→再試行200(1件)を実行。失敗後も2件/normal chainを保持し、stale qualifier・固定HTTP 500 error・retryを表示、raw sentinelはDOM非表示。再試行後はrequest count 2→3、1件へ置換、error clear、idle button復帰、console/page error出力なしを確認。focused `audit-log-view.test.tsx` 50/50 PASS。
 - agent-browserのref/semantic clickとEnterは当該sessionでrequestを発火せず、page-context DOM clickでapplication handlerを検証した。よってbrowser state/recovery証拠には採用するがnative pointer/keyboard証拠には採用しない。runtime/code/contracts/DB/SSOT変更なしで、docs exact6とindependent verifier確認後にlandingする。
 - read-only independent verifierも別sessionで1行保持→exact 500→1行成功、request count増加、fixed error/stale/retry、raw非表示、error clear、console/page error空、focused 50/50をPASS。共有mockが既にreplacement状態だったため2行→1行の値はroot capture依存というnoteを保持する。別sessionでは後続native clickが発火したため、no-opはrootの当該sessionだけに限定し一般化しない。
+- exact6 evidence docsは`31a60f7`でsafe feature branchへpush済み。次のbounded demo gapは受付refresh/create error-retention/retryで、production/DB/auth/native accessibility gateは未解除。
 
 ### WP-0054p MHLW Security Guideline 7.0 exact-artifact manifest — LOCAL_LANDED / INDEPENDENT_PASS / HUMAN_PROMOTION_BLOCKED
 
