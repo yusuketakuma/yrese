@@ -70,6 +70,28 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     );
   });
 
+  it("forwards an optional abort signal only to the fetch transport", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ results: [] }),
+    } as unknown as Response);
+    const controller = new AbortController();
+
+    try {
+      await fetchSearch("合成", undefined, fetchImpl, controller.signal);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    expect(fetchImpl).toHaveBeenCalledExactlyOnceWith(
+      "/_yrese-api/patients/search?q=%E5%90%88%E6%88%90",
+      expect.objectContaining({ signal: controller.signal }),
+    );
+  });
+
   it.each([201, 202, 204, 206])(
     "rejects unsupported patient-search success status %i before reading the body",
     async (status) => {
@@ -253,6 +275,101 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     }
   });
 
+  it("aborts a superseded full search before committing the newer result", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    const signals: AbortSignal[] = [];
+    const fetcher = vi.fn(
+      (query: string, _cursor: string | undefined, signal: AbortSignal) => {
+        signals.push(signal);
+        if (query === "古い検索") {
+          return new Promise<SearchPage>((_resolve, reject) => {
+            signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+          });
+        }
+        return Promise.resolve({ results: [patient({ patientId: "patient-new" })] });
+      },
+    );
+    const run = createSearchRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    const oldSearch = run("古い検索");
+    await run("新しい検索");
+    await oldSearch;
+
+    expect(signals).toHaveLength(2);
+    expect(signals[0]?.aborted).toBe(true);
+    expect(signals[1]?.aborted).toBe(false);
+    expect(states[states.length - 1]).toMatchObject({
+      kind: "loaded",
+      query: "新しい検索",
+      results: [{ patientId: "patient-new" }],
+    });
+    expect(states.some((state) => state.kind === "error")).toBe(false);
+  });
+
+  it("does not start obsolete transport after an abort listener admits a newer search", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    let run!: ReturnType<typeof createSearchRunner>;
+    let reentrantSearch: Promise<void> | undefined;
+    const fetcher = vi.fn(
+      (query: string, _cursor: string | undefined, signal: AbortSignal) => {
+        if (query === "active-old") {
+          return new Promise<SearchPage>((_resolve, reject) => {
+            signal.addEventListener("abort", () => {
+              reentrantSearch = run("reentrant-new");
+              reject(new DOMException("Aborted", "AbortError"));
+            });
+          });
+        }
+        return Promise.resolve({ results: [patient({ patientId: `patient-${query}` })] });
+      },
+    );
+    run = createSearchRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    const old = run("active-old");
+    await run("obsolete-outer");
+    await old;
+    await reentrantSearch;
+
+    expect(fetcher.mock.calls.map(([query]) => query)).toEqual([
+      "active-old",
+      "reentrant-new",
+    ]);
+    expect(states[states.length - 1]).toMatchObject({
+      kind: "loaded",
+      query: "reentrant-new",
+    });
+  });
+
+  it("does not fetch after loading emission synchronously admits a newer search", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    let run!: ReturnType<typeof createSearchRunner>;
+    let reentrantSearch: Promise<void> | undefined;
+    let reenter = true;
+    const fetcher = vi.fn((query: string) =>
+      Promise.resolve({ results: [patient({ patientId: `patient-${query}` })] }),
+    );
+    run = createSearchRunner(fetcher, (update) => {
+      if (reenter) {
+        reenter = false;
+        reentrantSearch = run("newer-from-emit");
+      }
+      states.push(update(states[states.length - 1]!));
+    });
+
+    await run("obsolete-before-fetch");
+    await reentrantSearch;
+
+    expect(fetcher.mock.calls.map(([query]) => query)).toEqual(["newer-from-emit"]);
+    expect(states[states.length - 1]).toMatchObject({
+      kind: "loaded",
+      query: "newer-from-emit",
+    });
+  });
+
   it("discards stale failures so a late error does not mask newer results (WP-4037)", async () => {
     const states: SearchState[] = [{ kind: "idle" }];
     const emit = (update: (prev: SearchState) => SearchState) => {
@@ -420,6 +537,70 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     expect(states[states.length - 1]?.kind).toBe("error");
   });
 
+  it("aborts an active request before making a blank warning authoritative", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    let activeSignal: AbortSignal | undefined;
+    const fetcher = vi.fn(
+      (_query: string, _cursor: string | undefined, signal: AbortSignal) => {
+        activeSignal = signal;
+        return new Promise<SearchPage>((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+        });
+      },
+    );
+    const run = createSearchRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    const active = run("合成");
+    await run("   ");
+    await active;
+
+    expect(activeSignal?.aborted).toBe(true);
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(states[states.length - 1]).toMatchObject({
+      kind: "error",
+      notice: { severity: "WARNING", message: "検索語が入力されていません。" },
+    });
+  });
+
+  it("does not emit a blank warning when abort re-entry admits a newer search", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    let run!: ReturnType<typeof createSearchRunner>;
+    let reentrantSearch: Promise<void> | undefined;
+    const fetcher = vi.fn(
+      (query: string, _cursor: string | undefined, signal: AbortSignal) => {
+        if (query === "active-old") {
+          return new Promise<SearchPage>((_resolve, reject) => {
+            signal.addEventListener("abort", () => {
+              reentrantSearch = run("newer-from-abort");
+              reject(new DOMException("Aborted", "AbortError"));
+            });
+          });
+        }
+        return Promise.resolve({ results: [patient({ patientId: "newer-result" })] });
+      },
+    );
+    run = createSearchRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    const old = run("active-old");
+    await run("   ");
+    await old;
+    await reentrantSearch;
+
+    expect(fetcher.mock.calls.map(([query]) => query)).toEqual([
+      "active-old",
+      "newer-from-abort",
+    ]);
+    expect(states.some((state) => state.kind === "error")).toBe(false);
+    expect(states[states.length - 1]).toMatchObject({
+      kind: "loaded",
+      query: "newer-from-abort",
+    });
+  });
+
   it("discards a stale append so another query's continuation never mixes in (WP-4037 / opus F3)", async () => {
     const states: SearchState[] = [{ kind: "idle" }];
     const emit = (update: (prev: SearchState) => SearchState) => {
@@ -506,7 +687,7 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     expect(retried.results.map((result) => result.patientId)).toEqual(["p1", "p2"]);
     expect(retried.nextCursor).toBeUndefined();
     expect(retried.appendState).toEqual({ kind: "idle" });
-    expect(fetcher.mock.calls).toEqual([
+    expect(fetcher.mock.calls.map(([query, cursor]) => [query, cursor])).toEqual([
       ["合成", undefined],
       ["合成", "cursor-1"],
       ["合成", "cursor-1"],
@@ -684,7 +865,7 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
       expect(retried.results).toEqual([retained, replacement]);
       expect(retried.nextCursor).toBeUndefined();
       expect(retried.appendState).toEqual({ kind: "idle" });
-      expect(fetcher.mock.calls).toEqual([
+      expect(fetcher.mock.calls.map(([query, cursor]) => [query, cursor])).toEqual([
         ["合成", undefined],
         ["合成", "cursor-loop"],
         ["合成", "cursor-loop"],
@@ -750,6 +931,41 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     expect(last.results.map((result) => result.patientId)).toEqual(["p1", "p2"]);
   });
 
+  it("does not abort the owner of an exact active append duplicate", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    let resolveAppend!: (page: SearchPage) => void;
+    const signals: AbortSignal[] = [];
+    const fetcher = vi.fn(
+      (_query: string, cursor: string | undefined, signal: AbortSignal) => {
+        signals.push(signal);
+        return cursor === undefined
+          ? Promise.resolve({
+              results: [patient({ patientId: "p1" })],
+              nextCursor: "cursor-1",
+            })
+          : new Promise<SearchPage>((resolve) => {
+              resolveAppend = resolve;
+            });
+      },
+    );
+    const run = createSearchRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    await run("合成");
+    const owner = run(" 合成 ", "cursor-1", true);
+    await run("合成", "cursor-1", true);
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(signals[1]?.aborted).toBe(false);
+    resolveAppend({ results: [patient({ patientId: "p2" })] });
+    await owner;
+    expect(states[states.length - 1]).toMatchObject({
+      kind: "loaded",
+      results: [{ patientId: "p1" }, { patientId: "p2" }],
+    });
+  });
+
   it("admits the same append tuple again after a rejected self-loop owner cleans up", async () => {
     const states: SearchState[] = [{ kind: "idle" }];
     const fetcher = vi
@@ -771,7 +987,7 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     await run("合成", "cursor-1", true);
     await run("合成", "cursor-1", true);
 
-    expect(fetcher.mock.calls).toEqual([
+    expect(fetcher.mock.calls.map(([query, cursor]) => [query, cursor])).toEqual([
       ["合成", undefined],
       ["合成", "cursor-1"],
       ["合成", "cursor-1"],
@@ -879,7 +1095,7 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
       ]);
       expect(last.appendState).toEqual({ kind: "idle" });
     }
-    expect(fetcher.mock.calls).toEqual([
+    expect(fetcher.mock.calls.map(([query, cursor]) => [query, cursor])).toEqual([
       ["検索A", undefined],
       ["検索A", "cursor-a"],
       ["検索A", undefined],
@@ -897,7 +1113,7 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     void run("a\u0000b", "c", true);
     void run("a", undefined, true);
 
-    expect(fetcher.mock.calls).toEqual([
+    expect(fetcher.mock.calls.map(([query, cursor]) => [query, cursor])).toEqual([
       ["a", "b\u0000c"],
       ["a\u0000b", "c"],
       ["a", undefined],
@@ -967,6 +1183,89 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     await run("合成", "cursor-1", true);
 
     expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("cancels active work on cleanup without emitting and remains reusable", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    const signals: AbortSignal[] = [];
+    let resolveIgnoredAbort!: (page: SearchPage) => void;
+    const fetcher = vi
+      .fn((_query: string, _cursor: string | undefined, signal: AbortSignal) => {
+        signals.push(signal);
+        return new Promise<SearchPage>((resolve) => {
+          resolveIgnoredAbort = resolve;
+        });
+      })
+      .mockImplementationOnce((_query, _cursor, signal) => {
+        signals.push(signal);
+        return new Promise<SearchPage>((resolve) => {
+          resolveIgnoredAbort = resolve;
+        });
+      })
+      .mockImplementationOnce((_query, _cursor, signal) => {
+        signals.push(signal);
+        return Promise.resolve({ results: [patient({ patientId: "after-cleanup" })] });
+      });
+    const run = createSearchRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    const active = run("before cleanup");
+    const stateCountBeforeCleanup = states.length;
+    run.cancelActive();
+    run.cancelActive();
+    resolveIgnoredAbort({ results: [patient({ patientId: "stale-after-cleanup" })] });
+    await active;
+
+    expect(signals[0]?.aborted).toBe(true);
+    expect(states).toHaveLength(stateCountBeforeCleanup);
+    await run("after cleanup");
+    expect(signals[1]?.aborted).toBe(false);
+    expect(states[states.length - 1]).toMatchObject({
+      kind: "loaded",
+      results: [{ patientId: "after-cleanup" }],
+    });
+  });
+
+  it("drops abort-listener re-entry during cleanup and remains reusable afterward", async () => {
+    const states: SearchState[] = [{ kind: "idle" }];
+    let run!: ReturnType<typeof createSearchRunner>;
+    let reentrantDuringCancel: Promise<void> | undefined;
+    const fetcher = vi.fn(
+      (query: string, _cursor: string | undefined, signal: AbortSignal) => {
+        if (query === "active-before-cleanup") {
+          return new Promise<SearchPage>((_resolve, reject) => {
+            signal.addEventListener("abort", () => {
+              reentrantDuringCancel = run("reentrant-during-cancel");
+              reject(new DOMException("Aborted", "AbortError"));
+            });
+          });
+        }
+        return Promise.resolve({ results: [patient({ patientId: `patient-${query}` })] });
+      },
+    );
+    run = createSearchRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    const active = run("active-before-cleanup");
+    const stateCountBeforeCleanup = states.length;
+    run.cancelActive();
+    await active;
+    await reentrantDuringCancel;
+
+    expect(fetcher.mock.calls.map(([query]) => query)).toEqual(["active-before-cleanup"]);
+    expect(states).toHaveLength(stateCountBeforeCleanup);
+
+    await run("fresh-after-cleanup");
+    expect(fetcher.mock.calls.map(([query]) => query)).toEqual([
+      "active-before-cleanup",
+      "fresh-after-cleanup",
+    ]);
+    expect(states[states.length - 1]).toMatchObject({
+      kind: "loaded",
+      query: "fresh-after-cleanup",
+    });
   });
 
   it("renders retained rows, append error, incomplete warning, and explicit retry together", () => {

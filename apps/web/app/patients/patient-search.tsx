@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   patientSearchResponseSchema,
@@ -88,6 +88,7 @@ export async function fetchSearch(
   q: string,
   cursor?: string,
   fetchImpl: typeof fetch = fetch,
+  signal?: AbortSignal,
 ): Promise<SearchPage> {
   const params = new URLSearchParams({ q });
   if (cursor !== undefined) {
@@ -97,6 +98,7 @@ export async function fetchSearch(
   const res = await fetchImpl(url, {
     headers: devTenantHeaders(),
     cache: "no-store",
+    ...(signal !== undefined ? { signal } : {}),
   });
   if (!res.ok) {
     const body: unknown = await res.json().catch(() => null);
@@ -143,16 +145,33 @@ export async function fetchSearch(
  * 最後に発行した検索だけを状態へ反映する runner(WP-4037: stale response guard)。
  * 古いリクエストは成功・失敗のどちらも破棄し、連続検索で結果が巻き戻らないようにする。
  */
+export interface SearchRunner {
+  (query: string, cursor?: string, append?: boolean): Promise<void>;
+  cancelActive(): void;
+}
+
 export function createSearchRunner(
-  fetcher: (q: string, cursor?: string) => Promise<SearchPage>,
+  fetcher: (q: string, cursor: string | undefined, signal: AbortSignal) => Promise<SearchPage>,
   emit: (update: (prev: SearchState) => SearchState) => void,
-): (query: string, cursor?: string, append?: boolean) => Promise<void> {
+): SearchRunner {
   let generation = 0;
   const activeAppendOwners = new Map<
     string,
     Map<string | undefined, object>
   >();
-  return async (query, cursor, append = false) => {
+  const activeControllers = new Set<AbortController>();
+  let isCancelling = false;
+
+  const abortActiveControllers = () => {
+    const controllers = [...activeControllers];
+    activeControllers.clear();
+    for (const controller of controllers) {
+      controller.abort();
+    }
+  };
+
+  const run: SearchRunner = async (query, cursor, append = false) => {
+    if (isCancelling) return;
     const trimmed = query.trim();
     if (!append || trimmed.length === 0) {
       activeAppendOwners.clear();
@@ -170,21 +189,43 @@ export function createSearchRunner(
         cursorOwners.set(cursor, appendOwner);
       }
     }
+    const releaseAppendOwner = () => {
+      if (appendOwner === undefined) return;
+      const cursorOwners = activeAppendOwners.get(trimmed);
+      if (cursorOwners?.get(cursor) === appendOwner) {
+        cursorOwners.delete(cursor);
+        if (cursorOwners.size === 0) {
+          activeAppendOwners.delete(trimmed);
+        }
+      }
+    };
 
     const gen = ++generation;
-    if (trimmed.length === 0) {
-      emit(() => ({
-        kind: "error",
-        notice: {
-          severity: "WARNING",
-          message: "検索語が入力されていません。",
-          nextAction: "氏名・カナ・患者番号のいずれかを入力してください。",
-        },
-      }));
+    abortActiveControllers();
+    if (gen !== generation) {
+      releaseAppendOwner();
       return;
     }
+    if (trimmed.length === 0) {
+      emit((prev) =>
+        gen === generation
+          ? {
+              kind: "error",
+              notice: {
+                severity: "WARNING",
+                message: "検索語が入力されていません。",
+                nextAction: "氏名・カナ・患者番号のいずれかを入力してください。",
+              },
+            }
+          : prev,
+      );
+      return;
+    }
+    const controller = new AbortController();
+    activeControllers.add(controller);
     try {
       emit((prev) => {
+        if (gen !== generation) return prev;
         if (!append) return { kind: "loading" };
         return prev.kind === "loaded" &&
           prev.query === trimmed &&
@@ -192,8 +233,11 @@ export function createSearchRunner(
           ? { ...prev, appendState: { kind: "loading" } }
           : prev;
       });
+      if (gen !== generation) {
+        return;
+      }
       try {
-        const page = await fetcher(trimmed, cursor);
+        const page = await fetcher(trimmed, cursor, controller.signal);
         if (gen !== generation) {
           return; // 古い応答は破棄(最後の検索のみ反映)
         }
@@ -208,6 +252,7 @@ export function createSearchRunner(
           throw new Error("Patient search page returned duplicate patient identity");
         }
         emit((prev) => {
+          if (gen !== generation) return prev;
           if (append) {
             if (
               prev.kind !== "loaded" ||
@@ -274,6 +319,7 @@ export function createSearchRunner(
                   "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
               };
         emit((prev) => {
+          if (gen !== generation) return prev;
           if (append) {
             return prev.kind === "loaded" &&
               prev.query === trimmed &&
@@ -285,17 +331,24 @@ export function createSearchRunner(
         });
       }
     } finally {
-      if (appendOwner !== undefined) {
-        const cursorOwners = activeAppendOwners.get(trimmed);
-        if (cursorOwners?.get(cursor) === appendOwner) {
-          cursorOwners.delete(cursor);
-          if (cursorOwners.size === 0) {
-            activeAppendOwners.delete(trimmed);
-          }
-        }
-      }
+      activeControllers.delete(controller);
+      releaseAppendOwner();
     }
   };
+
+  run.cancelActive = () => {
+    if (isCancelling) return;
+    isCancelling = true;
+    try {
+      generation += 1;
+      activeAppendOwners.clear();
+      abortActiveControllers();
+    } finally {
+      isCancelling = false;
+    }
+  };
+
+  return run;
 }
 
 // 正本は patient-context.tsx(再取得経路と共用)。既存 import 互換のため再エクスポート。
@@ -459,8 +512,18 @@ export function PatientSearch() {
   const [localSelected, setLocalSelected] = useState<PatientContextData | null>(null);
   const runnerRef = useRef<ReturnType<typeof createSearchRunner> | null>(null);
   if (runnerRef.current === null) {
-    runnerRef.current = createSearchRunner(fetchSearch, setState);
+    runnerRef.current = createSearchRunner(
+      (query, cursor, signal) => fetchSearch(query, cursor, fetch, signal),
+      setState,
+    );
   }
+
+  useEffect(
+    () => () => {
+      runnerRef.current?.cancelActive();
+    },
+    [],
+  );
 
   const runSearch = useCallback(
     (query: string, cursor?: string, append = false) => {
