@@ -35,7 +35,9 @@ import {
   patientSearchRepositoryErrorMessage,
   patientSearchPageSchemaInvariantErrorMessage,
   patientSearchCursorDecodeErrorMessage,
+  patientSearchCursorEncodeErrorMessage,
   patientSearchDecodedCursorInvariantErrorMessage,
+  patientSearchEncodedCursorInvariantErrorMessage,
   patientSearchCursorProgressInvariantErrorMessage,
   patientSearchDuplicateIdentityInvariantErrorMessage,
   patientSearchResultLimitInvariantErrorMessage,
@@ -564,6 +566,7 @@ describe('buildServer', () => {
 
   it.each([
     ['Error', (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) => new Error(rawSentinel)],
+    ['non-Error string', (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) => rawSentinel],
     [
       'non-Error object',
       (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) => ({
@@ -901,6 +904,271 @@ describe('buildServer', () => {
     expect(Object.isFrozen(observedEncodedCursor)).toBe(true);
     expect(descriptorRead).toHaveBeenCalledOnce();
     expect(directRead).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['Error', (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) => new Error(rawSentinel)],
+    ['non-Error string', (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) => rawSentinel],
+    [
+      'non-Error object',
+      (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) => ({
+        message: rawSentinel,
+      }),
+    ],
+    [
+      'hostile Proxy',
+      (_rawSentinel: string, propertyRead: ReturnType<typeof vi.fn>) =>
+        new Proxy({}, { get: propertyRead, has: propertyRead, getPrototypeOf: propertyRead }),
+    ],
+  ] as const)(
+    'normalizes a patient search cursor encode throw from %s',
+    async (_label, createThrownValue) => {
+      const query = '合成encode秘密4209';
+      const incomingCursor = 'opaque-current-cursor-4209';
+      const patient = {
+        patientId: 'patient-encode-secret-4209',
+        name: '合成encode秘密患者',
+        kana: 'ゴウセイエンコードヒミツカンジャ',
+        birthDate: '1990-01-01',
+        sex: 'unknown' as const,
+        patientNumber: 'ENCODE-SECRET-4209',
+        eligibilityStatus: 'NOT_CHECKED' as const,
+      };
+      const rawSentinel = `raw encode ${query} ${incomingCursor} ${patient.patientNumber}`;
+      const propertyRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const thrownValue = createThrownValue(rawSentinel, propertyRead);
+      const encodeCalls = vi.fn();
+      const encode: PatientSearchCursorCodec['encode'] = () => {
+        encodeCalls();
+        throw thrownValue;
+      };
+      const search = vi.fn<PatientRepository['search']>(async () => ({
+        results: [patient],
+        nextCursor: { offset: 3 },
+      }));
+      const server = buildDevTestServer({
+        patientSearchCursorCodec: {
+          decode: vi.fn(() => ({ offset: 2 })),
+          encode,
+        },
+        patientRepository: {
+          search,
+          findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: `/patients/search?q=${encodeURIComponent(query)}&cursor=${incomingCursor}`,
+        headers: tenantOnePatientReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toMatchObject({ message: patientSearchCursorEncodeErrorMessage });
+      expect(search).toHaveBeenCalledOnce();
+      expect(encodeCalls).toHaveBeenCalledOnce();
+      expect(propertyRead).not.toHaveBeenCalled();
+      for (const sensitiveValue of [
+        query,
+        incomingCursor,
+        rawSentinel,
+        patient.patientId,
+        patient.name,
+        patient.kana,
+        patient.patientNumber,
+      ]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+    },
+  );
+
+  it.each([
+    ['undefined', undefined],
+    ['null', null],
+    ['number', 1],
+    ['boolean', true],
+    ['bigint', 1n],
+    ['symbol', Symbol('encoded-cursor-4209')],
+    ['function', () => 'encoded-cursor-4209'],
+    ['array', ['encoded-cursor-4209']],
+    ['object', { value: 'encoded-cursor-4209' }],
+    ['boxed String', new String('encoded-cursor-4209')],
+    ['Promise', Promise.resolve('encoded-cursor-4209')],
+    ['empty string', ''],
+    ['oversized string', 'x'.repeat(PATIENT_SEARCH_CURSOR_MAX_LENGTH + 1)],
+  ] as const)(
+    'rejects a patient search cursor encoder %s return value',
+    async (_label, encodedValue) => {
+      const encodeCalls = vi.fn();
+      const encode: PatientSearchCursorCodec['encode'] = () => {
+        encodeCalls();
+        return encodedValue as never;
+      };
+      const search = vi.fn<PatientRepository['search']>(async () => ({
+        results: [
+          {
+            patientId: 'patient-invalid-encoded-cursor-4209',
+            name: '合成invalid encoded患者',
+            kana: 'ゴウセイインバリッドエンコードカンジャ',
+            birthDate: '1990-01-01',
+            sex: 'unknown',
+            patientNumber: 'INVALID-ENCODED-4209',
+            eligibilityStatus: 'NOT_CHECKED',
+          },
+        ],
+        nextCursor: { offset: 1 },
+      }));
+      const server = buildDevTestServer({
+        patientSearchCursorCodec: { decode: vi.fn(() => undefined), encode },
+        patientRepository: {
+          search,
+          findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/patients/search?q=synthetic',
+        headers: tenantOnePatientReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toMatchObject({
+        message: patientSearchEncodedCursorInvariantErrorMessage,
+      });
+      expect(search).toHaveBeenCalledOnce();
+      expect(encodeCalls).toHaveBeenCalledOnce();
+      expect(response.body).not.toContain('patient-invalid-encoded-cursor-4209');
+      expect(response.body).not.toContain('INVALID-ENCODED-4209');
+    },
+  );
+
+  it.each(['hostile Proxy', 'revoked Proxy'] as const)(
+    'rejects a patient search cursor encoder %s return without inspecting it',
+    async (variant) => {
+      const rawSentinel = `raw encoded cursor ${variant} secret 4209`;
+      const semanticRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      let encodedValue: object;
+      if (variant === 'revoked Proxy') {
+        const revocable = Proxy.revocable({}, {});
+        encodedValue = revocable.proxy;
+        revocable.revoke();
+      } else {
+        encodedValue = new Proxy(
+          {},
+          {
+            get: semanticRead,
+            has: semanticRead,
+            getPrototypeOf: semanticRead,
+            ownKeys: semanticRead,
+            getOwnPropertyDescriptor: semanticRead,
+          },
+        );
+      }
+      const encodeCalls = vi.fn();
+      const encode: PatientSearchCursorCodec['encode'] = () => {
+        encodeCalls();
+        return encodedValue as never;
+      };
+      const server = buildDevTestServer({
+        patientSearchCursorCodec: { decode: vi.fn(() => undefined), encode },
+        patientRepository: {
+          search: vi.fn(async () => ({
+            results: [
+              {
+                patientId: 'patient-hostile-encoded-cursor-4209',
+                name: '合成hostile encoded患者',
+                kana: 'ゴウセイホスタイルエンコードカンジャ',
+                birthDate: '1990-01-01',
+                sex: 'unknown' as const,
+                patientNumber: 'HOSTILE-ENCODED-4209',
+                eligibilityStatus: 'NOT_CHECKED' as const,
+              },
+            ],
+            nextCursor: { offset: 1 },
+          })),
+          findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/patients/search?q=synthetic',
+        headers: tenantOnePatientReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json()).toMatchObject({
+        message: patientSearchEncodedCursorInvariantErrorMessage,
+      });
+      expect(encodeCalls).toHaveBeenCalledOnce();
+      expect(semanticRead).not.toHaveBeenCalled();
+      expect(response.body).not.toContain('patient-hostile-encoded-cursor-4209');
+      expect(response.body).not.toContain('HOSTILE-ENCODED-4209');
+      expect(response.body).not.toContain(rawSentinel);
+      expect(response.body).not.toContain('Cannot perform');
+    },
+  );
+
+  it.each([
+    ['one-character', 'x'],
+    ['maximum-length', 'x'.repeat(PATIENT_SEARCH_CURSOR_MAX_LENGTH)],
+  ] as const)('accepts a %s primitive encoded cursor with frozen inputs', async (_label, encodedCursor) => {
+    let observedBinding: unknown;
+    let observedCursor: unknown;
+    const encode = vi.fn<PatientSearchCursorCodec['encode']>((binding, cursor) => {
+      observedBinding = binding;
+      observedCursor = cursor;
+      return encodedCursor;
+    });
+    const server = buildDevTestServer({
+      patientSearchCursorCodec: { decode: vi.fn(() => undefined), encode },
+      patientRepository: {
+        search: vi.fn(async () => ({
+          results: [
+            {
+              patientId: 'patient-max-encoded-cursor-4209',
+              name: '合成max encoded患者',
+              kana: 'ゴウセイマックスエンコードカンジャ',
+              birthDate: '1990-01-01',
+              sex: 'unknown' as const,
+              patientNumber: 'MAX-ENCODED-4209',
+              eligibilityStatus: 'NOT_CHECKED' as const,
+            },
+          ],
+          nextCursor: { offset: 1 },
+        })),
+        findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/patients/search?q=synthetic',
+      headers: tenantOnePatientReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ nextCursor: encodedCursor });
+    expect(encode).toHaveBeenCalledOnce();
+    expect(observedBinding).toEqual({
+      tenantId: 'tenant-001',
+      pharmacyId: 'pharmacy-001',
+      q: 'synthetic',
+    });
+    expect(Object.isFrozen(observedBinding)).toBe(true);
+    expect(observedCursor).toEqual({ offset: 1 });
+    expect(Object.isFrozen(observedCursor)).toBe(true);
   });
 
   it.each([

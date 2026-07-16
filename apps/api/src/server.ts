@@ -3,6 +3,7 @@ import { isProxy } from 'node:util/types';
 import Fastify, { type FastifyInstance, type onRequestHookHandler } from 'fastify';
 import { hydrateAuditEvent, verifyAuditHashChain, type AuditEvent } from '@yrese/audit';
 import {
+  PATIENT_SEARCH_CURSOR_MAX_LENGTH,
   auditLogEntrySchema,
   auditLogQuerySchema,
   auditLogResponseSchema,
@@ -78,6 +79,9 @@ export const patientSearchCursorProgressInvariantErrorMessage =
 export const patientSearchCursorDecodeErrorMessage = 'Patient search cursor decode failed';
 export const patientSearchDecodedCursorInvariantErrorMessage =
   'Patient search cursor codec returned an invalid cursor';
+export const patientSearchCursorEncodeErrorMessage = 'Patient search cursor encode failed';
+export const patientSearchEncodedCursorInvariantErrorMessage =
+  'Patient search cursor codec returned an invalid encoded cursor';
 export const patientSearchRepositoryErrorMessage = 'Patient repository search failed';
 export const patientSearchPageSchemaInvariantErrorMessage =
   'Patient repository returned an invalid search page';
@@ -227,6 +231,17 @@ function snapshotDecodedPatientSearchCursor(value: unknown): PatientSearchCursor
     throw new Error(patientSearchDecodedCursorInvariantErrorMessage);
   }
   return Object.freeze({ offset });
+}
+
+function assertEncodedPatientSearchCursor(value: unknown): string {
+  if (
+    typeof value !== 'string' ||
+    value.length === 0 ||
+    value.length > PATIENT_SEARCH_CURSOR_MAX_LENGTH
+  ) {
+    throw new Error(patientSearchEncodedCursorInvariantErrorMessage);
+  }
+  return value;
 }
 
 function readReceptionCreateResultKind(value: unknown): ReceptionCreateResult['kind'] {
@@ -709,14 +724,21 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         ) {
           throw new Error(patientSearchCursorProgressInvariantErrorMessage);
         }
-        encodedNextCursor = patientSearchCursorCodec.encode(
-          {
-            tenantId: tenantContext.tenantId,
-            pharmacyId: tenantContext.pharmacyId,
-            q: query.data.q,
-          },
-          Object.freeze({ offset: expectedNextOffset }),
-        );
+        const encodeBinding = Object.freeze({
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+          q: query.data.q,
+        });
+        let rawEncodedCursor: unknown;
+        try {
+          rawEncodedCursor = patientSearchCursorCodec.encode(
+            encodeBinding,
+            Object.freeze({ offset: expectedNextOffset }),
+          );
+        } catch {
+          throw new Error(patientSearchCursorEncodeErrorMessage);
+        }
+        encodedNextCursor = assertEncodedPatientSearchCursor(rawEncodedCursor);
       }
 
       return patientSearchResponseSchema.parse({
