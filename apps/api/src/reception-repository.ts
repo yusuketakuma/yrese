@@ -29,13 +29,23 @@ export interface ReceptionCreateInput {
   readonly acceptedAt: Date;
 }
 
+export interface ReceptionCreateProvenance {
+  readonly tenantId: TenantId;
+  readonly pharmacyId: PharmacyId;
+  readonly idempotencyKey: string;
+  readonly receptionId: ReceptionId;
+  readonly patientId: PatientId;
+}
+
 export type ReceptionCreateResult =
   | {
       readonly kind: 'created' | 'existing';
       readonly entry: ReceptionQueueEntry;
+      readonly provenance: ReceptionCreateProvenance;
     }
   | {
       readonly kind: 'idempotency_conflict';
+      readonly provenance: ReceptionCreateProvenance;
     };
 
 export interface ReceptionRepository {
@@ -56,9 +66,11 @@ interface ReceptionRecord {
 }
 
 interface IdempotencyRecord {
-  readonly patientId: PatientId;
   readonly receptionId: ReceptionId;
 }
+
+export const inMemoryReceptionIdempotencyInvariantErrorMessage =
+  'In-memory reception idempotency index is inconsistent';
 
 const syntheticPatientA = {
   patientId: patientId('patient-syn-001'),
@@ -143,6 +155,19 @@ function toEntry(record: ReceptionRecord): ReceptionQueueEntry {
   });
 }
 
+function toProvenance(record: ReceptionRecord): ReceptionCreateProvenance {
+  if (record.idempotencyKey === undefined) {
+    throw new Error(inMemoryReceptionIdempotencyInvariantErrorMessage);
+  }
+  return {
+    tenantId: record.tenantId,
+    pharmacyId: record.pharmacyId,
+    idempotencyKey: record.idempotencyKey,
+    receptionId: record.receptionId,
+    patientId: record.patientId,
+  };
+}
+
 function sortRecords(left: ReceptionRecord, right: ReceptionRecord): number {
   const acceptedAtOrder = left.acceptedAt.localeCompare(right.acceptedAt);
   if (acceptedAtOrder !== 0) {
@@ -196,22 +221,36 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
     const idempotencyKey = toIdempotencyKey(input);
     const existing = this.idempotencyRecords.get(idempotencyKey);
     if (existing !== undefined) {
-      if (existing.patientId !== inputPatientId) {
-        return { kind: 'idempotency_conflict' };
-      }
-
       const existingRecord = this.records.find(
-        (record) =>
-          record.tenantId === input.tenantId &&
-          record.pharmacyId === input.pharmacyId &&
-          record.receptionId === existing.receptionId,
+        (record) => record.receptionId === existing.receptionId,
       );
-      if (existingRecord !== undefined) {
-        return {
-          kind: 'existing',
-          entry: toEntry(existingRecord),
-        };
+      if (
+        existingRecord === undefined ||
+        existingRecord.tenantId !== input.tenantId ||
+        existingRecord.pharmacyId !== input.pharmacyId ||
+        existingRecord.idempotencyKey !== input.idempotencyKey
+      ) {
+        throw new Error(inMemoryReceptionIdempotencyInvariantErrorMessage);
       }
+      const provenance = toProvenance(existingRecord);
+      if (existingRecord.patientId !== inputPatientId) {
+        return { kind: 'idempotency_conflict', provenance };
+      }
+      return {
+        kind: 'existing',
+        entry: toEntry(existingRecord),
+        provenance,
+      };
+    }
+
+    const unindexedRecord = this.records.find(
+      (record) =>
+        record.tenantId === input.tenantId &&
+        record.pharmacyId === input.pharmacyId &&
+        record.idempotencyKey === input.idempotencyKey,
+    );
+    if (unindexedRecord !== undefined) {
+      throw new Error(inMemoryReceptionIdempotencyInvariantErrorMessage);
     }
 
     const acceptedAt = input.acceptedAt.toISOString();
@@ -229,13 +268,13 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
     this.nextSequence += 1;
     this.records.push(record);
     this.idempotencyRecords.set(idempotencyKey, {
-      patientId: inputPatientId,
       receptionId: record.receptionId,
     });
 
     return {
       kind: 'created',
       entry: toEntry(record),
+      provenance: toProvenance(record),
     };
   }
 }

@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { PATIENT_SEARCH_CURSOR_MAX_LENGTH } from '@yrese/contracts';
+import { patientId, receptionId } from '@yrese/shared-kernel';
 
 import {
   devTenantContextConfigurationErrorMessage,
@@ -11,7 +12,11 @@ import {
   patientSearchCursorHmacKeyByteLength,
 } from './patient-search-cursor.js';
 import type { PatientRepository } from './patient-repository.js';
-import type { ReceptionRepository } from './reception-repository.js';
+import type {
+  ReceptionCreateInput,
+  ReceptionCreateResult,
+  ReceptionRepository,
+} from './reception-repository.js';
 import { InMemoryAuditRepository, type AuditRepository } from './audit-repository.js';
 import {
   apiVersion,
@@ -29,11 +34,26 @@ import {
   receptionCreatedStatusInvariantErrorMessage,
   receptionCreatedAcceptedAtInvariantErrorMessage,
   receptionResultPatientIdentityMismatchErrorMessage,
+  receptionResultIdempotencyProvenanceMismatchErrorMessage,
   receptionResultSchemaInvariantErrorMessage,
   receptionPatientNotFoundErrorCode,
   type BuildServerOptions,
   type HealthResponse,
 } from './server.js';
+
+function receptionProvenance(
+  input: ReceptionCreateInput,
+  receptionIdentity: string,
+  patientIdentity: string = input.patient.patientId,
+) {
+  return {
+    tenantId: input.tenantId,
+    pharmacyId: input.pharmacyId,
+    idempotencyKey: input.idempotencyKey,
+    receptionId: receptionId(receptionIdentity),
+    patientId: patientId(patientIdentity),
+  };
+}
 
 function buildDevTestServer(
   options: Omit<BuildServerOptions, 'repositoryMode' | 'tenantContextMode'> = {},
@@ -1187,7 +1207,6 @@ describe('buildServer', () => {
         create: vi.fn<ReceptionRepository['create']>(),
       },
     });
-
     const response = await server.inject({
       method: 'GET',
       url: '/reception/queue?date=2026-07-09',
@@ -1359,6 +1378,8 @@ describe('buildServer', () => {
         patientId: 'patient-syn-004',
       },
     });
+    expect(response.json()).not.toHaveProperty('provenance');
+    expect(response.body).not.toContain('reception-create-001');
   });
 
   it('fails closed before reception creation when scoped patient lookup returns another identity', async () => {
@@ -1477,6 +1498,126 @@ describe('buildServer', () => {
     }
   });
 
+  it.each([
+    ['created', 'tenantId'],
+    ['created', 'pharmacyId'],
+    ['created', 'idempotencyKey'],
+    ['created', 'receptionId'],
+    ['created', 'patientId'],
+    ['created', 'missingEntry'],
+    ['created', 'missing'],
+    ['existing', 'tenantId'],
+    ['existing', 'pharmacyId'],
+    ['existing', 'idempotencyKey'],
+    ['existing', 'receptionId'],
+    ['existing', 'patientId'],
+    ['existing', 'missingEntry'],
+    ['existing', 'missing'],
+    ['idempotency_conflict', 'tenantId'],
+    ['idempotency_conflict', 'pharmacyId'],
+    ['idempotency_conflict', 'idempotencyKey'],
+    ['idempotency_conflict', 'patientId'],
+    ['idempotency_conflict', 'invalidReceptionId'],
+    ['idempotency_conflict', 'missing'],
+  ] as const)(
+    'rejects %s repository result with %s provenance before branch, entry validation, audit, and response',
+    async (resultKind, mismatchField) => {
+      const acceptedAt = new Date('2026-07-09T09:00:00.000Z');
+      const requestedKey = `requested-sensitive-${resultKind}-${mismatchField}`;
+      const returnedSentinel = `stored-sensitive-${resultKind}-${mismatchField}`;
+      const auditRecord = vi.fn<AuditRepository['record']>();
+      const create = vi.fn<ReceptionRepository['create']>(async (input) => {
+        const matchingProvenance = receptionProvenance(
+          input,
+          resultKind === 'idempotency_conflict'
+            ? 'reception-conflict-provenance'
+            : 'reception-sensitive-provenance-mismatch',
+          resultKind === 'idempotency_conflict'
+            ? 'patient-other-provenance'
+            : input.patient.patientId,
+        );
+        let provenance: unknown;
+        if (mismatchField === 'missing') {
+          provenance = undefined;
+        } else if (mismatchField === 'invalidReceptionId') {
+          provenance = { ...matchingProvenance, receptionId: '' };
+        } else {
+          const mismatchValue =
+            resultKind === 'idempotency_conflict' && mismatchField === 'patientId'
+              ? input.patient.patientId
+              : returnedSentinel;
+          provenance = { ...matchingProvenance, [mismatchField]: mismatchValue };
+        }
+        let result: unknown;
+        if (resultKind === 'idempotency_conflict' || mismatchField === 'missingEntry') {
+          result = { kind: resultKind, provenance };
+        } else {
+          result = {
+            kind: resultKind,
+            provenance,
+            entry: {
+              receptionId: 'reception-sensitive-provenance-mismatch',
+              acceptedAt: 'invalid-sensitive-instant',
+              receptionStatus: 'WAITING',
+              prescriptionIntakeType: 'paper',
+              patient: {
+                patientId: 'patient-syn-004',
+                name: '合成由来不一致患者',
+                kana: 'ゴウセイユライフイッチカンジャ',
+                birthDate: '1990-01-01',
+                sex: 'unknown',
+                patientNumber: 'PROVENANCE-SENSITIVE-001',
+                eligibilityStatus: 'NOT_CHECKED',
+              },
+            },
+          };
+        }
+        return result as ReceptionCreateResult;
+      });
+      const server = buildDevTestServer({
+        now: () => acceptedAt,
+        receptionRepository: {
+          list: vi.fn<ReceptionRepository['list']>(async () => []),
+          create,
+        },
+        auditRepository: {
+          record: auditRecord,
+          list: vi.fn<AuditRepository['list']>(async () => []),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/reception',
+        headers: tenantOneReceptionWriteHeaders,
+        payload: { patientId: 'patient-syn-004', idempotencyKey: requestedKey },
+      });
+
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(auditRecord).not.toHaveBeenCalled();
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: receptionResultIdempotencyProvenanceMismatchErrorMessage,
+      });
+      for (const sensitiveValue of [
+        requestedKey,
+        returnedSentinel,
+        'reception-sensitive-provenance-mismatch',
+        'patient-syn-004',
+        '合成由来不一致患者',
+        'ゴウセイユライフイッチカンジャ',
+        'PROVENANCE-SENSITIVE-001',
+        'invalid-sensitive-instant',
+      ]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+    },
+  );
+
   it.each(['created', 'existing'] as const)(
     'fails closed before audit and response when a %s reception result belongs to another patient',
     async (resultKind) => {
@@ -1488,8 +1629,13 @@ describe('buildServer', () => {
       const server = buildDevTestServer({
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
-          create: vi.fn<ReceptionRepository['create']>(async () => ({
+          create: vi.fn<ReceptionRepository['create']>(async (input) => ({
             kind: resultKind,
+            provenance: receptionProvenance(
+              input,
+              'reception-mismatched-result-999',
+              mismatchedPatientId,
+            ),
             entry: {
               receptionId: 'reception-mismatched-result-999',
               acceptedAt: '2026-07-09T09:00:00.000Z',
@@ -1568,8 +1714,13 @@ describe('buildServer', () => {
       const server = buildDevTestServer({
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
-          create: vi.fn<ReceptionRepository['create']>(async () => ({
+          create: vi.fn<ReceptionRepository['create']>(async (input) => ({
             kind: resultKind,
+            provenance: receptionProvenance(
+              input,
+              sensitiveEntry.receptionId,
+              sensitiveEntry.patient.patientId,
+            ),
             entry: sensitiveEntry,
           })),
         },
@@ -1619,8 +1770,12 @@ describe('buildServer', () => {
       const server = buildDevTestServer({
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
-          create: vi.fn<ReceptionRepository['create']>(async (_input) => ({
+          create: vi.fn<ReceptionRepository['create']>(async (input) => ({
             kind: 'created',
+            provenance: receptionProvenance(
+              input,
+              'reception-created-status-sensitive',
+            ),
             entry: {
               receptionId: 'reception-created-status-sensitive',
               acceptedAt: '2026-07-09T09:00:00.000Z',
@@ -1691,6 +1846,10 @@ describe('buildServer', () => {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
           create: vi.fn<ReceptionRepository['create']>(async (input) => ({
             kind: 'created',
+            provenance: receptionProvenance(
+              input,
+              'reception-accepted-at-sensitive',
+            ),
             entry: {
               receptionId: 'reception-accepted-at-sensitive',
               acceptedAt: returnedAcceptedAt,
@@ -1743,6 +1902,7 @@ describe('buildServer', () => {
     const now = vi.fn().mockReturnValueOnce(acceptedAt).mockReturnValueOnce(auditAt);
     const receptionCreate = vi.fn<ReceptionRepository['create']>(async (input) => ({
       kind: 'created',
+      provenance: receptionProvenance(input, 'reception-valid-boundary'),
       entry: {
         receptionId: 'reception-valid-boundary',
         acceptedAt: acceptedAt.toISOString(),
@@ -1799,8 +1959,9 @@ describe('buildServer', () => {
     const server = buildDevTestServer({
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
-        create: vi.fn<ReceptionRepository['create']>(async () => ({
+        create: vi.fn<ReceptionRepository['create']>(async (input) => ({
           kind: 'existing',
+          provenance: receptionProvenance(input, 'reception-existing-advanced'),
           entry: {
             receptionId: 'reception-existing-advanced',
             acceptedAt: '2026-07-09T09:00:00.000Z',
@@ -1909,6 +2070,8 @@ describe('buildServer', () => {
     expect(created.statusCode).toBe(201);
     expect(resent.statusCode).toBe(200);
     expect(resent.json()).toEqual(created.json());
+    expect(created.json()).not.toHaveProperty('provenance');
+    expect(resent.body).not.toContain(payload.idempotencyKey);
   });
 
   it('returns RCV-0003 when an idempotency key is reused with a different patient', async () => {

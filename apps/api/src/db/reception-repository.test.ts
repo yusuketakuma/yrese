@@ -3,7 +3,14 @@ import type { Pool, PoolClient } from 'pg';
 
 import { patientId, pharmacyId, tenantId } from '@yrese/shared-kernel';
 
-import { PostgresReceptionRepository } from './reception-repository.js';
+import {
+  InMemoryReceptionRepository,
+  inMemoryReceptionIdempotencyInvariantErrorMessage,
+} from '../reception-repository.js';
+import {
+  PostgresReceptionRepository,
+  databaseReceptionProvenanceInvariantErrorMessage,
+} from './reception-repository.js';
 
 const patient = {
   patientId: patientId('patient-reception-client-test'),
@@ -24,6 +31,10 @@ const input = {
 };
 
 const storedRow = {
+  stored_tenant_id: input.tenantId,
+  stored_pharmacy_id: input.pharmacyId,
+  stored_idempotency_key: input.idempotencyKey,
+  stored_patient_id: patient.patientId,
   reception_id: 'reception-stored-001',
   accepted_at: '2026-07-13T00:30:00.000Z',
   reception_status: 'WAITING',
@@ -43,13 +54,19 @@ function createRepository(options: {
   readonly scenario: Scenario;
   readonly operationError?: Error;
   readonly rollbackError?: Error;
+  readonly provenanceOverride?: Readonly<Record<string, unknown>>;
 }) {
   const release = vi.fn();
   const query = vi.fn(async (sql: string) => {
     const normalized = sql.trim();
     if (normalized.startsWith('INSERT INTO reception_entries')) {
       if (options.operationError !== undefined) throw options.operationError;
-      return { rows: options.scenario === 'created' ? [storedRow] : [] };
+      return {
+        rows:
+          options.scenario === 'created'
+            ? [{ ...storedRow, ...options.provenanceOverride }]
+            : [],
+      };
     }
     if (normalized.startsWith('SELECT')) {
       return {
@@ -58,6 +75,7 @@ function createRepository(options: {
             ...storedRow,
             stored_patient_id:
               options.scenario === 'conflict' ? 'patient-different' : patient.patientId,
+            ...options.provenanceOverride,
           },
         ],
       };
@@ -100,6 +118,23 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     const result = await repository.create(input);
 
     expect(result.kind).toBe('created');
+    expect(result).toMatchObject({
+      provenance: {
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+        idempotencyKey: input.idempotencyKey,
+        receptionId: storedRow.reception_id,
+        patientId: patient.patientId,
+      },
+    });
+    const insertSql = String(
+      query.mock.calls.find(([sql]) => String(sql).includes('INSERT'))?.[0],
+    );
+    expect(insertSql).toContain('tenant_id AS stored_tenant_id');
+    expect(insertSql).toContain('pharmacy_id AS stored_pharmacy_id');
+    expect(insertSql).toContain('idempotency_key AS stored_idempotency_key');
+    expect(insertSql).toContain('patient_id AS stored_patient_id');
+    expect(insertSql).not.toMatch(/\$[1247]\s*(?:::text)?\s+AS stored_/);
     expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT']);
     expect(release.mock.calls).toEqual([[]]);
   });
@@ -112,7 +147,21 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(result).toMatchObject({
       kind: 'existing',
       entry: { receptionId: 'reception-stored-001', acceptedAt: storedRow.accepted_at },
+      provenance: {
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+        idempotencyKey: input.idempotencyKey,
+        receptionId: storedRow.reception_id,
+        patientId: patient.patientId,
+      },
     });
+    const selectSql = String(
+      query.mock.calls.find(([sql]) => String(sql).trim().startsWith('SELECT'))?.[0],
+    );
+    expect(selectSql).toContain('r.tenant_id AS stored_tenant_id');
+    expect(selectSql).toContain('r.pharmacy_id AS stored_pharmacy_id');
+    expect(selectSql).toContain('r.idempotency_key AS stored_idempotency_key');
+    expect(selectSql).toContain('r.patient_id AS stored_patient_id');
     expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
     expect(release.mock.calls).toEqual([[]]);
   });
@@ -122,11 +171,57 @@ describe('PostgresReceptionRepository client lifecycle', () => {
 
     const result = await repository.create(input);
 
-    expect(result).toEqual({ kind: 'idempotency_conflict' });
+    expect(result).toEqual({
+      kind: 'idempotency_conflict',
+      provenance: {
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+        idempotencyKey: input.idempotencyKey,
+        receptionId: storedRow.reception_id,
+        patientId: 'patient-different',
+      },
+    });
     expect('entry' in result).toBe(false);
     expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
     expect(release.mock.calls).toEqual([[]]);
   });
+
+  it.each([
+    ['created', 'stored_tenant_id'],
+    ['created', 'stored_pharmacy_id'],
+    ['created', 'stored_idempotency_key'],
+    ['created', 'reception_id'],
+    ['created', 'stored_patient_id'],
+    ['existing', 'stored_tenant_id'],
+    ['existing', 'stored_pharmacy_id'],
+    ['existing', 'stored_idempotency_key'],
+    ['existing', 'reception_id'],
+    ['existing', 'stored_patient_id'],
+    ['conflict', 'stored_tenant_id'],
+    ['conflict', 'stored_pharmacy_id'],
+    ['conflict', 'stored_idempotency_key'],
+    ['conflict', 'reception_id'],
+    ['conflict', 'stored_patient_id'],
+  ] as const)(
+    'rolls back a %s result with missing stored provenance column %s',
+    async (scenario, missingColumn) => {
+      const { repository, query, release } = createRepository({
+        scenario,
+        provenanceOverride: { [missingColumn]: undefined },
+      });
+
+      await expect(repository.create(input)).rejects.toThrow(
+        databaseReceptionProvenanceInvariantErrorMessage,
+      );
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(scenario === 'created' ? [] : ['SELECT']),
+        'ROLLBACK',
+      ]);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
 
   it('reuses the client after successful rollback and preserves the original error', async () => {
     const operationError = new Error('synthetic reception insert failure');
@@ -152,5 +247,67 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(await captureRejection(() => repository.create(input))).toBe(operationError);
     expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
     expect(release.mock.calls).toEqual([[true]]);
+  });
+});
+
+describe('InMemoryReceptionRepository idempotency index integrity', () => {
+  it('binds created, existing, and conflict results to one stored reception identity', async () => {
+    const repository = new InMemoryReceptionRepository();
+    const created = await repository.create(input);
+    const existing = await repository.create(input);
+    const conflict = await repository.create({
+      ...input,
+      patient: { ...patient, patientId: patientId('patient-reception-client-conflict') },
+    });
+
+    expect(created.kind).toBe('created');
+    expect(existing.kind).toBe('existing');
+    expect(conflict.kind).toBe('idempotency_conflict');
+    if (created.kind !== 'created' || existing.kind !== 'existing') {
+      throw new Error('expected created and existing reception results');
+    }
+    expect(created.provenance).toEqual({
+      tenantId: input.tenantId,
+      pharmacyId: input.pharmacyId,
+      idempotencyKey: input.idempotencyKey,
+      receptionId: created.entry.receptionId,
+      patientId: created.entry.patient.patientId,
+    });
+    expect(existing.provenance).toEqual(created.provenance);
+    expect(existing.entry).toEqual(created.entry);
+    expect(conflict.provenance).toEqual(created.provenance);
+  });
+
+  it('fails closed without creating a duplicate when an index points to a missing record', async () => {
+    const repository = new InMemoryReceptionRepository();
+    await repository.create(input);
+    const internals = repository as unknown as {
+      readonly records: unknown[];
+      readonly idempotencyRecords: Map<string, unknown>;
+    };
+    internals.records.splice(0);
+
+    await expect(repository.create(input)).rejects.toThrow(
+      inMemoryReceptionIdempotencyInvariantErrorMessage,
+    );
+    expect(internals.records).toHaveLength(0);
+    expect(internals.idempotencyRecords.size).toBe(1);
+  });
+
+  it('fails closed without creating a duplicate when a stored record is missing its index', async () => {
+    const repository = new InMemoryReceptionRepository();
+    await repository.create(input);
+    const internals = repository as unknown as {
+      readonly records: unknown[];
+      readonly idempotencyRecords: Map<string, unknown>;
+    };
+    const recordCount = internals.records.length;
+    internals.idempotencyRecords.clear();
+
+    await expect(repository.create(input)).rejects.toThrow(
+      inMemoryReceptionIdempotencyInvariantErrorMessage,
+    );
+    expect(internals.records).toHaveLength(recordCount);
+    expect(internals.idempotencyRecords.size).toBe(0);
   });
 });

@@ -34,6 +34,7 @@ import {
   RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE,
   patientId,
   permissionScope,
+  receptionId,
   userId,
 } from '@yrese/shared-kernel';
 
@@ -75,6 +76,8 @@ export const receptionPatientSchemaInvariantErrorMessage =
   'Patient lookup returned an invalid patient snapshot';
 export const receptionResultPatientIdentityMismatchErrorMessage =
   'Reception repository returned a mismatched patient identity';
+export const receptionResultIdempotencyProvenanceMismatchErrorMessage =
+  'Reception repository returned mismatched idempotency provenance';
 export const receptionResultSchemaInvariantErrorMessage =
   'Reception repository returned an invalid reception entry';
 export const receptionCreatedStatusInvariantErrorMessage =
@@ -432,8 +435,42 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         acceptedAt,
       });
 
+      const provenance = result.provenance;
+      if (
+        provenance?.tenantId !== tenantContext.tenantId ||
+        provenance.pharmacyId !== tenantContext.pharmacyId ||
+        provenance.idempotencyKey !== body.data.idempotencyKey ||
+        typeof provenance.receptionId !== 'string' ||
+        typeof provenance.patientId !== 'string'
+      ) {
+        throw new Error(receptionResultIdempotencyProvenanceMismatchErrorMessage);
+      }
+      try {
+        receptionId(provenance.receptionId);
+        patientId(provenance.patientId);
+      } catch {
+        throw new Error(receptionResultIdempotencyProvenanceMismatchErrorMessage);
+      }
+
       if (result.kind === 'idempotency_conflict') {
+        if (provenance.patientId === parsedPatientId) {
+          throw new Error(receptionResultIdempotencyProvenanceMismatchErrorMessage);
+        }
         return reply.code(409).send(receptionIdempotencyConflictResponse());
+      }
+      const rawEntryValue = (result as { readonly entry?: unknown }).entry;
+      if (typeof rawEntryValue !== 'object' || rawEntryValue === null) {
+        throw new Error(receptionResultIdempotencyProvenanceMismatchErrorMessage);
+      }
+      const rawEntry = rawEntryValue as {
+        readonly receptionId?: unknown;
+        readonly patient?: { readonly patientId?: unknown };
+      };
+      if (
+        provenance.receptionId !== rawEntry.receptionId ||
+        provenance.patientId !== rawEntry.patient?.patientId
+      ) {
+        throw new Error(receptionResultIdempotencyProvenanceMismatchErrorMessage);
       }
       const parsedEntry = receptionQueueEntrySchema.safeParse(result.entry);
       if (!parsedEntry.success) {

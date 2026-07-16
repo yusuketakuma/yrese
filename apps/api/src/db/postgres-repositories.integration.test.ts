@@ -116,6 +116,24 @@ function expectReceptionEntryResult(result: ReceptionCreateResult, expectedKind:
   return result;
 }
 
+function expectReceptionProvenance(
+  result: ReceptionCreateResult,
+  scope: { readonly tenantId: string; readonly pharmacyId: string },
+  idempotencyKey: string,
+): void {
+  expect(result.provenance).toMatchObject({
+    tenantId: scope.tenantId,
+    pharmacyId: scope.pharmacyId,
+    idempotencyKey,
+  });
+  expect(result.provenance.receptionId).not.toBe('');
+  expect(result.provenance.patientId).not.toBe('');
+  if (result.kind !== 'idempotency_conflict') {
+    expect(result.provenance.receptionId).toBe(result.entry.receptionId);
+    expect(result.provenance.patientId).toBe(result.entry.patient.patientId);
+  }
+}
+
 function normalizeInstant(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
@@ -309,6 +327,10 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
         }),
         'created',
       );
+      expectReceptionProvenance(created, {
+        tenantId: tenantId('tenant-001'),
+        pharmacyId: pharmacyId('pharmacy-001'),
+      }, 'db-idempotency-001');
       expect(created.entry.patient.patientId).toBe(firstPatient.patientId);
 
       const resent = expectReceptionEntryResult(
@@ -321,6 +343,10 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
         }),
         'existing',
       );
+      expectReceptionProvenance(resent, {
+        tenantId: tenantId('tenant-001'),
+        pharmacyId: pharmacyId('pharmacy-001'),
+      }, 'db-idempotency-001');
       expect(resent.entry.receptionId).toBe(created.entry.receptionId);
 
       const conflict = await receptionRepository.create({
@@ -331,6 +357,12 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
         acceptedAt,
       });
       expect(conflict.kind).toBe('idempotency_conflict');
+      expectReceptionProvenance(conflict, {
+        tenantId: tenantId('tenant-001'),
+        pharmacyId: pharmacyId('pharmacy-001'),
+      }, 'db-idempotency-001');
+      expect(conflict.provenance.receptionId).toBe(created.entry.receptionId);
+      expect(conflict.provenance.patientId).toBe(firstPatient.patientId);
 
       const secondCreated = expectReceptionEntryResult(
         await receptionRepository.create({
@@ -342,6 +374,10 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
         }),
         'created',
       );
+      expectReceptionProvenance(secondCreated, {
+        tenantId: tenantId('tenant-001'),
+        pharmacyId: pharmacyId('pharmacy-001'),
+      }, 'db-idempotency-002');
 
       const jstQueue = await receptionRepository.list({
         tenantId: tenantId('tenant-001'),
@@ -400,6 +436,10 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
           receptionRepository.create({ ...scope, patient, idempotencyKey, acceptedAt: acceptedAtA }),
           receptionRepository.create({ ...scope, patient, idempotencyKey, acceptedAt: acceptedAtB }),
         ]);
+
+        for (const result of results) {
+          expectReceptionProvenance(result, scope, idempotencyKey);
+        }
 
         expect(results.map((result) => result.kind).sort()).toEqual(['created', 'existing']);
         const entries = results.map((result) => {
@@ -492,7 +532,18 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
           throw new Error('concurrent different-patient results did not contain both expected outcomes');
         }
         const created = expectReceptionEntryResult(createdResult, 'created');
-        expect(conflict).toEqual({ kind: 'idempotency_conflict' });
+        expectReceptionProvenance(created, scope, idempotencyKey);
+        expectReceptionProvenance(conflict, scope, idempotencyKey);
+        expect(conflict).toEqual({
+          kind: 'idempotency_conflict',
+          provenance: {
+            tenantId: scope.tenantId,
+            pharmacyId: scope.pharmacyId,
+            idempotencyKey,
+            receptionId: created.entry.receptionId,
+            patientId: created.entry.patient.patientId,
+          },
+        });
         expect('entry' in conflict).toBe(false);
 
         const stored = await pool.query<StoredReceptionRow>(
@@ -542,6 +593,7 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
         }),
         'created',
       );
+      expectReceptionProvenance(created, scope, idempotencyKey);
 
       const reinstantiatedRepository = new PostgresReceptionRepository(pool);
       const existing = expectReceptionEntryResult(
@@ -553,6 +605,7 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
         }),
         'existing',
       );
+      expectReceptionProvenance(existing, scope, idempotencyKey);
       expect(existing.entry.receptionId).toBe(created.entry.receptionId);
       expect(existing.entry.acceptedAt).toBe(created.entry.acceptedAt);
 
@@ -629,6 +682,7 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
           }),
           'created',
         );
+        expectReceptionProvenance(created, prepared.scope, idempotencyKey);
         createdByScope.set(`${prepared.scope.tenantId}/${prepared.scope.pharmacyId}`, created.entry);
       }
 
@@ -670,6 +724,7 @@ describePostgres('PostgreSQL patient/reception repositories (set TEST_DATABASE_U
           }),
           'existing',
         );
+        expectReceptionProvenance(existing, prepared.scope, idempotencyKey);
         expect(existing.entry.receptionId).toBe(original.receptionId);
         expect(existing.entry.patient.patientId).toBe(prepared.patient.patientId);
         expect(existing.entry.acceptedAt).toBe(original.acceptedAt);

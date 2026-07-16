@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { receptionQueueEntrySchema, type ReceptionQueueEntry } from '@yrese/contracts';
-import { receptionId } from '@yrese/shared-kernel';
+import { patientId, pharmacyId, receptionId, tenantId } from '@yrese/shared-kernel';
 
 import {
   businessDateFromAcceptedAt,
@@ -28,7 +28,22 @@ interface ReceptionEntryRow {
 
 interface IdempotencyRow extends ReceptionEntryRow {
   readonly stored_patient_id: string;
+  readonly stored_tenant_id: string;
+  readonly stored_pharmacy_id: string;
+  readonly stored_idempotency_key: string;
 }
+
+type ReceptionCreateRow = ReceptionEntryRow &
+  Pick<
+    IdempotencyRow,
+    | 'stored_patient_id'
+    | 'stored_tenant_id'
+    | 'stored_pharmacy_id'
+    | 'stored_idempotency_key'
+  >;
+
+export const databaseReceptionProvenanceInvariantErrorMessage =
+  'Reception database returned invalid idempotency provenance';
 
 function instantToIso(value: Date | string): string {
   if (value instanceof Date) {
@@ -47,6 +62,29 @@ function rowToEntry(row: ReceptionEntryRow): ReceptionQueueEntry {
   });
 }
 
+function rowToProvenance(row: ReceptionCreateRow) {
+  if (
+    typeof row.stored_tenant_id !== 'string' ||
+    typeof row.stored_pharmacy_id !== 'string' ||
+    typeof row.stored_idempotency_key !== 'string' ||
+    typeof row.reception_id !== 'string' ||
+    typeof row.stored_patient_id !== 'string'
+  ) {
+    throw new Error(databaseReceptionProvenanceInvariantErrorMessage);
+  }
+  try {
+    return {
+      tenantId: tenantId(row.stored_tenant_id),
+      pharmacyId: pharmacyId(row.stored_pharmacy_id),
+      idempotencyKey: row.stored_idempotency_key,
+      receptionId: receptionId(row.reception_id),
+      patientId: patientId(row.stored_patient_id),
+    };
+  } catch {
+    throw new Error(databaseReceptionProvenanceInvariantErrorMessage);
+  }
+}
+
 async function selectByIdempotencyKey(
   client: PoolClient,
   input: Pick<ReceptionCreateInput, 'tenantId' | 'pharmacyId' | 'idempotencyKey'>,
@@ -54,6 +92,9 @@ async function selectByIdempotencyKey(
   const result = await client.query<IdempotencyRow>(
     `SELECT
        r.patient_id AS stored_patient_id,
+       r.tenant_id AS stored_tenant_id,
+       r.pharmacy_id AS stored_pharmacy_id,
+       r.idempotency_key AS stored_idempotency_key,
        r.reception_id,
        r.accepted_at,
        r.reception_status,
@@ -115,7 +156,7 @@ export class PostgresReceptionRepository implements ReceptionRepository {
       const acceptedAt = input.acceptedAt.toISOString();
       const businessDate = businessDateFromAcceptedAt(input.acceptedAt);
       const newReceptionId = receptionId(`reception-${randomUUID()}`);
-      const inserted = await client.query<ReceptionEntryRow>(
+      const inserted = await client.query<ReceptionCreateRow>(
         `INSERT INTO reception_entries (
            tenant_id,
            pharmacy_id,
@@ -130,6 +171,10 @@ export class PostgresReceptionRepository implements ReceptionRepository {
          VALUES ($1, $2, $3, $4, $5, $6::date, 'WAITING', 'paper', $7)
          ON CONFLICT (tenant_id, pharmacy_id, idempotency_key) DO NOTHING
          RETURNING
+           tenant_id AS stored_tenant_id,
+           pharmacy_id AS stored_pharmacy_id,
+           idempotency_key AS stored_idempotency_key,
+           patient_id AS stored_patient_id,
            reception_id,
            accepted_at,
            reception_status,
@@ -161,11 +206,13 @@ export class PostgresReceptionRepository implements ReceptionRepository {
 
       const insertedRow = inserted.rows[0];
       if (insertedRow !== undefined) {
+        const provenance = rowToProvenance(insertedRow);
         const entry = rowToEntry(insertedRow);
         await client.query('COMMIT');
         return {
           kind: 'created',
           entry,
+          provenance,
         };
       }
 
@@ -175,15 +222,18 @@ export class PostgresReceptionRepository implements ReceptionRepository {
       }
 
       if (existing.stored_patient_id !== input.patient.patientId) {
+        const provenance = rowToProvenance(existing);
         await client.query('COMMIT');
-        return { kind: 'idempotency_conflict' };
+        return { kind: 'idempotency_conflict', provenance };
       }
 
+      const provenance = rowToProvenance(existing);
       const entry = rowToEntry(existing);
       await client.query('COMMIT');
       return {
         kind: 'existing',
         entry,
+        provenance,
       };
     } catch (error) {
       try {
