@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4205 patient lookup handoff — FINALIZED / INDEPENDENT_PASS
+
+- GET patient-by-idと受付POST preflightで、generic async wrapperがfulfilled patientを再同化してraw sentinel/Proxy TypeErrorを漏らす実バグを修正。両findByIdをroute-local direct await/catchとし、rejection→404→identity→schema→response/create順を維持した。
+- valid GET/POSTはthen1回・descriptor8・semantic read0で200/201、POST createへplain cloneを渡す。revoked fulfilled patientはfixed identity invariantへ収束し、POST create/audit zero、raw/PHI/idempotency非echoを固定した。
+- focused server222+patient-get4、API466 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。mapper/plan/API/security/privacy/data/medical/audit review READY。implementation `7224580`はlocal-only、pushなし。
+
 ### WP-4204 reception create result handoff — FINALIZED / INDEPENDENT_PASS
 
 - generic async wrapperがfulfilled create resultを再度thenable同化してraw sentinel/Proxy TypeErrorを固定error外へ漏らす実バグを修正。createをroute-local direct await/catchとし、repository rejectionとfulfilled kind/provenance invariantを分離した。
