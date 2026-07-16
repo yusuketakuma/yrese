@@ -52,7 +52,11 @@ import {
   type TenantContextMode,
 } from './plugins/tenant-context.js';
 import { InMemoryAuditRepository, type AuditRepository } from './audit-repository.js';
-import { InMemoryPatientRepository, type PatientRepository } from './patient-repository.js';
+import {
+  InMemoryPatientRepository,
+  type PatientRepository,
+  type PatientSearchPage,
+} from './patient-repository.js';
 import {
   businessDateFromAcceptedAt,
   InMemoryReceptionRepository,
@@ -71,6 +75,8 @@ export const patientSearchDuplicateIdentityInvariantErrorMessage =
 export const patientSearchCursorProgressInvariantErrorMessage =
   'Patient repository returned an invalid next cursor';
 export const patientSearchRepositoryErrorMessage = 'Patient repository search failed';
+export const patientSearchPageSchemaInvariantErrorMessage =
+  'Patient repository returned an invalid search page';
 export const patientLookupRepositoryErrorMessage = 'Patient repository lookup failed';
 export const receptionInvalidRequestErrorCode = RECEPTION_INVALID_REQUEST_ERROR_CODE;
 export const receptionPatientNotFoundErrorCode = RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE;
@@ -328,7 +334,12 @@ function parsePatientSearchResultSnapshot(
   }
 }
 
-function snapshotDenseArray(value: unknown, invariantErrorMessage: string): readonly unknown[] {
+function snapshotDenseArray(
+  value: unknown,
+  invariantErrorMessage: string,
+  maximum?: { readonly length: number; readonly errorMessage: string },
+): readonly unknown[] {
+  let arrayLength: number;
   try {
     if (isProxy(value) || !Array.isArray(value)) throw new Error(invariantErrorMessage);
     const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
@@ -340,9 +351,18 @@ function snapshotDenseArray(value: unknown, invariantErrorMessage: string): read
     ) {
       throw new Error(invariantErrorMessage);
     }
+    arrayLength = lengthDescriptor.value;
+  } catch {
+    throw new Error(invariantErrorMessage);
+  }
 
+  if (maximum !== undefined && arrayLength > maximum.length) {
+    throw new Error(maximum.errorMessage);
+  }
+
+  try {
     const snapshot: unknown[] = [];
-    for (let index = 0; index < lengthDescriptor.value; index += 1) {
+    for (let index = 0; index < arrayLength; index += 1) {
       const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
       if (
         descriptor === undefined ||
@@ -565,23 +585,46 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         return reply.code(400).send(invalidPatientSearchQueryResponse());
       }
 
-      const page = await runRepositoryOperationOrThrowFixed(
-        () =>
-          patientRepository.search({
-            tenantId: tenantContext.tenantId,
-            pharmacyId: tenantContext.pharmacyId,
-            q: query.data.q,
-            limit: query.data.limit,
-            ...(cursor === undefined ? {} : { cursor }),
-          }),
-        patientSearchRepositoryErrorMessage,
-      );
-      if (page.results.length > query.data.limit) {
-        throw new Error(patientSearchResultLimitInvariantErrorMessage);
+      let page: PatientSearchPage;
+      try {
+        page = await patientRepository.search({
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+          q: query.data.q,
+          limit: query.data.limit,
+          ...(cursor === undefined ? {} : { cursor }),
+        });
+      } catch {
+        throw new Error(patientSearchRepositoryErrorMessage);
       }
-      const validatedResults = page.results.map((result) =>
-        patientSearchResultSchema.parse(result),
+      const rawResultsValue = readRequiredOwnEnumerableDataProperty(
+        page,
+        'results',
+        patientSearchPageSchemaInvariantErrorMessage,
       );
+      const rawResults = snapshotDenseArray(
+        rawResultsValue,
+        patientSearchPageSchemaInvariantErrorMessage,
+        {
+          length: query.data.limit,
+          errorMessage: patientSearchResultLimitInvariantErrorMessage,
+        },
+      );
+      const validatedResults = rawResults.map((result) => {
+        const patientIdentity = snapshotPatientSearchResultIdentity(
+          result,
+          patientSearchPageSchemaInvariantErrorMessage,
+        );
+        const patientSnapshot = snapshotPatientSearchResult(
+          result,
+          patientIdentity,
+          patientSearchPageSchemaInvariantErrorMessage,
+        );
+        return parsePatientSearchResultSnapshot(
+          patientSnapshot,
+          patientSearchPageSchemaInvariantErrorMessage,
+        );
+      });
       const patientIds = new Set<string>();
       for (const result of validatedResults) {
         if (patientIds.has(result.patientId)) {
@@ -589,31 +632,39 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         }
         patientIds.add(result.patientId);
       }
-      if (page.nextCursor !== undefined) {
+      const nextCursorProperty = readOwnEnumerableDataProperty(
+        page,
+        'nextCursor',
+        patientSearchCursorProgressInvariantErrorMessage,
+      );
+      let encodedNextCursor: string | undefined;
+      if (nextCursorProperty.present && nextCursorProperty.value !== undefined) {
+        const rawNextOffset = readRequiredOwnEnumerableDataProperty(
+          nextCursorProperty.value,
+          'offset',
+          patientSearchCursorProgressInvariantErrorMessage,
+        );
         const expectedNextOffset = (cursor?.offset ?? 0) + validatedResults.length;
         if (
           validatedResults.length === 0 ||
           !Number.isSafeInteger(expectedNextOffset) ||
-          page.nextCursor.offset !== expectedNextOffset
+          rawNextOffset !== expectedNextOffset
         ) {
           throw new Error(patientSearchCursorProgressInvariantErrorMessage);
         }
+        encodedNextCursor = patientSearchCursorCodec.encode(
+          {
+            tenantId: tenantContext.tenantId,
+            pharmacyId: tenantContext.pharmacyId,
+            q: query.data.q,
+          },
+          Object.freeze({ offset: expectedNextOffset }),
+        );
       }
 
       return patientSearchResponseSchema.parse({
         results: validatedResults,
-        ...(page.nextCursor === undefined
-          ? {}
-          : {
-              nextCursor: patientSearchCursorCodec.encode(
-                {
-                  tenantId: tenantContext.tenantId,
-                  pharmacyId: tenantContext.pharmacyId,
-                  q: query.data.q,
-                },
-                page.nextCursor,
-              ),
-            }),
+        ...(encodedNextCursor === undefined ? {} : { nextCursor: encodedNextCursor }),
       });
     },
   );
