@@ -5,6 +5,7 @@ import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseDocument } from "yaml";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const tempRoot = await mkdtemp(path.join(os.tmpdir(), "yrese-script-tests-"));
@@ -105,6 +106,167 @@ updated_at: 2026-07-09
 
 ${sections}
 `;
+}
+
+function validateCiWorkflowTrustBoundary(workflowSource) {
+  const findings = [];
+  const check = (condition, message) => {
+    if (!condition) findings.push(message);
+  };
+  const expectedActions = new Map([
+    ["actions/checkout", { ref: "34e114876b0b11c390a56381ad16ebd13914f8d5", version: "v4.3.1" }],
+    ["pnpm/action-setup", { ref: "fc06bc1257f339d1d5d8b3a19a8cae5388b55320", version: "v4.4.0" }],
+    ["actions/setup-node", { ref: "49933ea5288caeca8642d1e84afbd3f7d6820020", version: "v4.4.0" }],
+  ]);
+  const isRecord = (value) =>
+    typeof value === "object" && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
+  const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  let workflow;
+  try {
+    const document = parseDocument(workflowSource, { uniqueKeys: true });
+    check(document.errors.length === 0, "CI workflow should be valid YAML with unique keys");
+    workflow = document.toJS();
+  } catch {
+    check(false, "CI workflow should be parseable as YAML");
+  }
+  if (!isRecord(workflow)) {
+    check(false, "CI workflow root should be a mapping");
+    return findings;
+  }
+
+  const permissions = workflow.permissions;
+  check(
+    isRecord(permissions) &&
+      Object.keys(permissions).length === 1 &&
+      permissions.contents === "read",
+    "CI token permissions should be exactly contents: read",
+  );
+
+  const jobs = workflow.jobs;
+  check(isRecord(jobs), "CI jobs should be a mapping");
+  const actionUses = [];
+  if (isRecord(jobs)) {
+    for (const [jobName, job] of Object.entries(jobs)) {
+      check(isRecord(job), `CI job ${jobName} should be a mapping`);
+      if (!isRecord(job)) continue;
+      check(!Object.hasOwn(job, "permissions"), `CI job ${jobName} should not override token permissions`);
+      if (Object.hasOwn(job, "uses")) actionUses.push({ value: job.uses, step: job });
+      if (Object.hasOwn(job, "steps")) {
+        check(Array.isArray(job.steps), `CI job ${jobName} steps should be a sequence`);
+        if (Array.isArray(job.steps)) {
+          for (const step of job.steps) {
+            if (isRecord(step) && Object.hasOwn(step, "uses")) actionUses.push({ value: step.uses, step });
+          }
+        }
+      }
+    }
+  }
+
+  check(actionUses.length === expectedActions.size, "CI should use only the three reviewed external actions");
+  const seenActions = new Set();
+  for (const use of actionUses) {
+    check(typeof use.value === "string", "CI action reference should be a string");
+    if (typeof use.value !== "string") continue;
+    const separator = use.value.lastIndexOf("@");
+    const action = use.value.slice(0, separator);
+    const ref = separator >= 0 ? use.value.slice(separator + 1) : "";
+    const expected = expectedActions.get(action);
+    check(Boolean(expected), `CI action ${action} should be explicitly reviewed`);
+    check(!seenActions.has(action), `CI action ${action} should occur exactly once`);
+    seenActions.add(action);
+    check(/^[0-9a-f]{40}$/.test(ref ?? ""), `CI action ${action} should use a full-length commit SHA`);
+    check(ref === expected?.ref, `CI action ${action} should use its reviewed commit SHA`);
+    const reviewedLine = expected
+      ? new RegExp(
+          `^[ \\t]*(?:-[ \\t]+)?uses:[ \\t]+${escapeRegex(`${action}@${expected.ref}`)}[ \\t]+#[ \\t]+${escapeRegex(expected.version)}[ \\t]*$`,
+          "m",
+        )
+      : undefined;
+    check(Boolean(reviewedLine?.test(workflowSource)), `CI action ${action} should retain its reviewed version comment`);
+  }
+  for (const action of expectedActions.keys()) {
+    check(seenActions.has(action), `CI should retain reviewed action ${action}`);
+  }
+
+  const checkoutStep = actionUses.find((use) => use.value === `actions/checkout@${expectedActions.get("actions/checkout").ref}`)?.step;
+  check(
+    isRecord(checkoutStep?.with) && checkoutStep.with["persist-credentials"] === false,
+    "CI checkout should not persist GitHub credentials",
+  );
+  return findings;
+}
+
+async function testCiWorkflowTrustBoundary() {
+  const workflowSource = await readFile(path.join(repoRoot, ".github", "workflows", "ci.yml"), "utf8");
+  for (const finding of validateCiWorkflowTrustBoundary(workflowSource)) {
+    assert(false, finding);
+  }
+
+  const duplicateAction = workflowSource.replace(
+    /pnpm\/action-setup@[0-9a-f]{40} # v4\.4\.0/,
+    "actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1",
+  );
+  assert(
+    validateCiWorkflowTrustBoundary(duplicateAction).length > 0,
+    "CI trust check should reject duplicate reviewed actions and a missing expected action",
+  );
+
+  const checkoutPinWithVersion =
+    "actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1";
+  const relocatedVersionComment = `${workflowSource.replace(
+    checkoutPinWithVersion,
+    "actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5",
+  )}\n# ${checkoutPinWithVersion}\n`;
+  assert(
+    validateCiWorkflowTrustBoundary(relocatedVersionComment).length > 0,
+    "CI trust check should reject version comments detached from their action line",
+  );
+
+  const mutableJobAction = workflowSource.replace(
+    "jobs:\n",
+    "jobs:\n  reused:\n    uses: example/reusable/.github/workflows/check.yml@v1\n",
+  );
+  assert(
+    validateCiWorkflowTrustBoundary(mutableJobAction).length > 0,
+    "CI trust check should reject mutable job-level reusable workflows",
+  );
+
+  const flowStyleAction = workflowSource.replace(
+    "steps:\n",
+    "steps:\n      - { uses: example/unreviewed-action@v1 }\n",
+  );
+  assert(
+    validateCiWorkflowTrustBoundary(flowStyleAction).length > 0,
+    "CI trust check should reject flow-style unreviewed actions",
+  );
+
+  const widenedJobPermission = workflowSource.replace(
+    "jobs:\n",
+    "jobs:\n  widened:\n    permissions:\n      contents: write\n",
+  );
+  assert(
+    validateCiWorkflowTrustBoundary(widenedJobPermission).length > 0,
+    "CI trust check should reject job-level permission overrides",
+  );
+
+  const scalarJobPermission = workflowSource.replace(
+    "jobs:\n",
+    "jobs:\n  widened-scalar:\n    permissions: write-all\n",
+  );
+  assert(
+    validateCiWorkflowTrustBoundary(scalarJobPermission).length > 0,
+    "CI trust check should reject scalar job-level permissions",
+  );
+
+  const flowJobPermission = workflowSource.replace(
+    "jobs:\n",
+    "jobs:\n  widened-flow: { permissions: write-all, runs-on: ubuntu-latest, steps: [{ run: 'echo ok' }] }\n",
+  );
+  assert(
+    validateCiWorkflowTrustBoundary(flowJobPermission).length > 0,
+    "CI trust check should reject flow-style job-level permissions",
+  );
 }
 
 async function testBoundaryViolationDetection() {
@@ -1955,6 +2117,7 @@ async function testOpenApiGenerationPublishesAtomically() {
 }
 
 try {
+  await testCiWorkflowTrustBoundary();
   await testBoundaryViolationDetection();
   await testBoundaryCleanFixturePasses();
   await testBoundaryWorkspaceAliasPasses();
