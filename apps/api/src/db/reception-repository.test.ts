@@ -10,6 +10,7 @@ import {
 import {
   PostgresReceptionRepository,
   databaseReceptionProvenanceInvariantErrorMessage,
+  databaseReceptionTimestampInvariantErrorMessage,
 } from './reception-repository.js';
 
 const patient = {
@@ -89,8 +90,9 @@ function createRepository(options: {
     query: query as unknown as PoolClient['query'],
     release,
   } as unknown as PoolClient;
-  const pool = { connect: vi.fn(async () => client) } as unknown as Pool;
-  return { repository: new PostgresReceptionRepository(pool), query, release };
+  const connect = vi.fn(async () => client);
+  const pool = { connect } as unknown as Pool;
+  return { repository: new PostgresReceptionRepository(pool), connect, query, release };
 }
 
 async function captureRejection(run: () => Promise<unknown>): Promise<unknown> {
@@ -182,6 +184,239 @@ describe('PostgresReceptionRepository client lifecycle', () => {
       },
     });
     expect('entry' in result).toBe(false);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('snapshots the create instant before connection and derives one matching JST business date', async () => {
+    const capturedIso = '2026-07-09T14:59:59.999Z';
+    const acceptedAt = new Date(capturedIso);
+    let ownMethodReads = 0;
+    Object.defineProperty(acceptedAt, 'toISOString', {
+      get() {
+        ownMethodReads += 1;
+        throw new Error('raw create timestamp method secret 4214');
+      },
+    });
+    const operationQuery = vi.fn(async (sql: string, _values?: readonly unknown[]) => ({
+      rows: sql.trim().startsWith('INSERT') ? [{ ...storedRow, accepted_at: capturedIso }] : [],
+    }));
+    const operationRelease = vi.fn();
+    const operationClient = {
+      query: operationQuery as unknown as PoolClient['query'],
+      release: operationRelease,
+    } as unknown as PoolClient;
+    let resolveConnect: ((client: PoolClient) => void) | undefined;
+    const connect = vi.fn(
+      () =>
+        new Promise<PoolClient>((resolve) => {
+          resolveConnect = resolve;
+        }),
+    );
+    const repository = new PostgresReceptionRepository({ connect } as unknown as Pool);
+
+    const resultPromise = repository.create({ ...input, acceptedAt });
+    acceptedAt.setTime(new Date('2026-07-09T15:00:00.000Z').getTime());
+    resolveConnect?.(operationClient);
+    const result = await resultPromise;
+
+    expect(result.kind).toBe('created');
+    expect(ownMethodReads).toBe(0);
+    expect(connect).toHaveBeenCalledOnce();
+    const insertCall = operationQuery.mock.calls.find(([sql]) =>
+      String(sql).trim().startsWith('INSERT'),
+    );
+    expect(insertCall?.[1]?.[4]).toBe(capturedIso);
+    expect(insertCall?.[1]?.[5]).toBe('2026-07-09');
+    expect(operationRelease.mock.calls).toEqual([[]]);
+  });
+
+  it('rejects invalid create timestamp authorities before acquiring a DB client', async () => {
+    let fakeCoercions = 0;
+    let proxyTraps = 0;
+    const fakeInstant = {
+      toISOString() {
+        fakeCoercions += 1;
+        return input.acceptedAt.toISOString();
+      },
+      [Symbol.toPrimitive]() {
+        fakeCoercions += 1;
+        return input.acceptedAt.toISOString();
+      },
+    };
+    const hostileDateProxy = new Proxy(input.acceptedAt, {
+      get() {
+        proxyTraps += 1;
+        throw new Error('raw create timestamp Proxy secret 4214');
+      },
+      getPrototypeOf() {
+        proxyTraps += 1;
+        throw new Error('raw create timestamp prototype secret 4214');
+      },
+    });
+    const revoked = Proxy.revocable(input.acceptedAt, {});
+    revoked.revoke();
+    const invalidValues: readonly unknown[] = [
+      undefined,
+      null,
+      input.acceptedAt.toISOString(),
+      fakeInstant,
+      Promise.resolve(input.acceptedAt),
+      new Date(Number.NaN),
+      Object.create(Date.prototype),
+      hostileDateProxy,
+      revoked.proxy,
+    ];
+
+    for (const invalidValue of invalidValues) {
+      const { repository, connect, query, release } = createRepository({ scenario: 'created' });
+
+      await expect(
+        repository.create({ ...input, acceptedAt: invalidValue as Date }),
+      ).rejects.toThrow(databaseReceptionTimestampInvariantErrorMessage);
+
+      expect(connect).not.toHaveBeenCalled();
+      expect(query).not.toHaveBeenCalled();
+      expect(release).not.toHaveBeenCalled();
+    }
+
+    expect(fakeCoercions).toBe(0);
+    expect(proxyTraps).toBe(0);
+  });
+
+  it('normalizes genuine Date and primitive string DB timestamps without own method dispatch', async () => {
+    const dateIso = '2026-07-13T00:30:00.000Z';
+    const storedDate = new Date(dateIso);
+    let ownMethodReads = 0;
+    Object.defineProperty(storedDate, 'toISOString', {
+      get() {
+        ownMethodReads += 1;
+        throw new Error('raw stored timestamp method secret 4214');
+      },
+    });
+    const query = vi.fn(async () => ({
+      rows: [
+        { ...storedRow, reception_id: 'reception-date-4214', accepted_at: storedDate },
+        {
+          ...storedRow,
+          reception_id: 'reception-string-4214',
+          accepted_at: '2026-07-13T09:30:00+09:00',
+        },
+      ],
+    }));
+    const repository = new PostgresReceptionRepository({ query } as unknown as Pool);
+
+    const result = await repository.list({
+      tenantId: input.tenantId,
+      pharmacyId: input.pharmacyId,
+      date: '2026-07-13',
+    });
+
+    expect(result.map((entry) => entry.acceptedAt)).toEqual([dateIso, dateIso]);
+    expect(ownMethodReads).toBe(0);
+    expect(query).toHaveBeenCalledOnce();
+  });
+
+  it('rejects a mixed list when any DB timestamp authority is invalid', async () => {
+    let fakeCoercions = 0;
+    let proxyTraps = 0;
+    const fakeInstant = {
+      [Symbol.toPrimitive]() {
+        fakeCoercions += 1;
+        return storedRow.accepted_at;
+      },
+    };
+    const hostileDateProxy = new Proxy(new Date(storedRow.accepted_at), {
+      get() {
+        proxyTraps += 1;
+        throw new Error('raw stored timestamp Proxy secret 4214');
+      },
+      getPrototypeOf() {
+        proxyTraps += 1;
+        throw new Error('raw stored timestamp prototype secret 4214');
+      },
+    });
+    const revoked = Proxy.revocable(new Date(storedRow.accepted_at), {});
+    revoked.revoke();
+    const invalidValues: readonly unknown[] = [
+      undefined,
+      null,
+      0,
+      false,
+      fakeInstant,
+      new String(storedRow.accepted_at),
+      Promise.resolve(storedRow.accepted_at),
+      'not-an-instant',
+      new Date(Number.NaN),
+      Object.create(Date.prototype),
+      hostileDateProxy,
+      revoked.proxy,
+    ];
+
+    for (const invalidValue of invalidValues) {
+      const query = vi.fn(async () => ({
+        rows: [storedRow, { ...storedRow, reception_id: 'reception-invalid-4214', accepted_at: invalidValue }],
+      }));
+      const repository = new PostgresReceptionRepository({ query } as unknown as Pool);
+
+      await expect(
+        repository.list({
+          tenantId: input.tenantId,
+          pharmacyId: input.pharmacyId,
+          date: '2026-07-13',
+        }),
+      ).rejects.toThrow(databaseReceptionTimestampInvariantErrorMessage);
+      expect(query).toHaveBeenCalledOnce();
+    }
+
+    expect(fakeCoercions).toBe(0);
+    expect(proxyTraps).toBe(0);
+  });
+
+  it.each(['created', 'existing'] as const)(
+    'rolls back a %s result with an invalid DB timestamp before commit',
+    async (scenario) => {
+      const rawTimestamp = { toISOString: () => 'raw timestamp must not run' };
+      const { repository, query, release } = createRepository({
+        scenario,
+        provenanceOverride: { accepted_at: rawTimestamp },
+      });
+
+      await expect(repository.create(input)).rejects.toThrow(
+        databaseReceptionTimestampInvariantErrorMessage,
+      );
+
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(scenario === 'existing' ? ['SELECT'] : []),
+        'ROLLBACK',
+      ]);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it('does not inspect a DB timestamp for a different-patient idempotency conflict', async () => {
+    let timestampTraps = 0;
+    const hostileTimestamp = new Proxy(
+      {},
+      {
+        get() {
+          timestampTraps += 1;
+          throw new Error('raw conflict timestamp secret 4214');
+        },
+      },
+    );
+    const { repository, query, release } = createRepository({
+      scenario: 'conflict',
+      provenanceOverride: { accepted_at: hostileTimestamp },
+    });
+
+    const result = await repository.create(input);
+
+    expect(result.kind).toBe('idempotency_conflict');
+    expect('entry' in result).toBe(false);
+    expect(timestampTraps).toBe(0);
     expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
     expect(release.mock.calls).toEqual([[]]);
   });

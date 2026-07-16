@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { isDate } from 'node:util/types';
 import type { Pool, PoolClient } from 'pg';
 import { receptionQueueEntrySchema, type ReceptionQueueEntry } from '@yrese/contracts';
 import { patientId, pharmacyId, receptionId, tenantId } from '@yrese/shared-kernel';
@@ -44,19 +45,39 @@ type ReceptionCreateRow = ReceptionEntryRow &
 
 export const databaseReceptionProvenanceInvariantErrorMessage =
   'Reception database returned invalid idempotency provenance';
+export const databaseReceptionTimestampInvariantErrorMessage =
+  'Reception database returned an invalid timestamp';
 
-function instantToIso(value: Date | string): string {
-  if (value instanceof Date) {
-    return value.toISOString();
+function snapshotDateInstant(value: unknown): string {
+  if (!isDate(value)) {
+    throw new Error(databaseReceptionTimestampInvariantErrorMessage);
   }
-  return new Date(value).toISOString();
+  try {
+    return Date.prototype.toISOString.call(value);
+  } catch {
+    throw new Error(databaseReceptionTimestampInvariantErrorMessage);
+  }
+}
+
+function snapshotDatabaseInstant(value: unknown): string {
+  if (isDate(value)) {
+    return snapshotDateInstant(value);
+  }
+  if (typeof value !== 'string') {
+    throw new Error(databaseReceptionTimestampInvariantErrorMessage);
+  }
+  try {
+    return Date.prototype.toISOString.call(new Date(value));
+  } catch {
+    throw new Error(databaseReceptionTimestampInvariantErrorMessage);
+  }
 }
 
 function rowToEntry(row: ReceptionEntryRow): ReceptionQueueEntry {
   return receptionQueueEntrySchema.parse({
     receptionId: row.reception_id,
     patient: patientRowToSearchResult(row),
-    acceptedAt: instantToIso(row.accepted_at),
+    acceptedAt: snapshotDatabaseInstant(row.accepted_at),
     receptionStatus: row.reception_status,
     prescriptionIntakeType: 'paper',
   });
@@ -148,13 +169,13 @@ export class PostgresReceptionRepository implements ReceptionRepository {
   }
 
   async create(input: ReceptionCreateInput): Promise<ReceptionCreateResult> {
+    const acceptedAt = snapshotDateInstant(input.acceptedAt);
+    const businessDate = businessDateFromAcceptedAt(new Date(acceptedAt));
     const client = await this.pool.connect();
     let destroyClient = false;
     try {
       await client.query('BEGIN');
 
-      const acceptedAt = input.acceptedAt.toISOString();
-      const businessDate = businessDateFromAcceptedAt(input.acceptedAt);
       const newReceptionId = receptionId(`reception-${randomUUID()}`);
       const inserted = await client.query<ReceptionCreateRow>(
         `INSERT INTO reception_entries (
