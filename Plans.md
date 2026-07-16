@@ -3415,7 +3415,7 @@ Primary-source URLs to fingerprint in WP-0054c (not a substitute for source file
   - scope: coverage、追加機能、重複統合、priorities、gates、SSOT順、Codex WPs、人間review、BLOCKER、go/no-goを1つのdecision packetへまとめる。
   - acceptance: pharmacist、claim practitioner、legal、FHIR、security/privacy、data-integrity、operations/product authorityがscope/evidence/riskを承認し、Gate 1 WPsを再発行する。
   - evidence/result(2026-07-16): `docs/research/rececon_v0_7_gate0_decision_packet_20260716.md`へWP-0054a〜hの8 artifact/hash/landing commit、22-domain coverage、追加機能、DI-01〜12統合判断、P0〜P3、Gate 0〜5、SSOT Batch A〜D、Codex-only WP、11 human review role、HD-01〜18 decision、14 BLOCKER、Go/No-Go algorithmを統合。independent verificationは`docs/research/rececon_v0_7_independent_verification_20260716.md`の`PASS_WITH_FINDINGS`。構造count/hash/DAG/NO_GOはPASS、VF-01 itemized semantic coverageはOPEN、VF-02 G5-03 dependencyは`dcdf64e`で修正しindependent re-verification PASS。人間判断complete=0/18、Gate 1 reissue=0のためcurrent decisionは引き続き`NO_GO`。
-  - commit_push: decision packet本体とWP-0054i〜nのplan evidenceをcommit `4fc5658`で`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。APPROVED SSOT/runtime/UI/DB/external/production変更なし。
+  - commit_push: decision packet本体とWP-0054i〜nのplan evidenceは`4fc5658`、G5-03 dependency整合は`dcdf64e`、独立検証・VF-01/VF-02反映は`046a4c3`で`origin/agent/reconcile-wp9002-w7c-20260712`へpush済み。APPROVED SSOT/runtime/UI/DB/external/production変更なし。
   - exact_next_action: predecessor raw artifactとPriority A exact official artifactをrights/hash付きで回復・昇格し、HD-01〜18をnamed human authorityへ回付、PRC-007 atomic amendment batchを未発効で準備し、独立検証後にG0-01〜08を再評価する。それまでGate 1〜5 runtime WPを再発行しない。
 
 Initial fresh-scan coverage snapshot (2026-07-16; not a readiness claim):
