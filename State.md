@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4210 audit.viewed wall-clock authority — FINALIZED / INDEPENDENT_PASS
+
+- audit.viewed clockのraw throw反射とraw method dispatchを修正。full-chain/healthy guard後かつrecord前にnow onceでsnapshotし、throwとinvalid instantを別fixed500へ閉じた。
+- genuine Date internal slotだけを受理し、intrinsic ISO変換でown accessor・Date spoof・hostile/revoked Proxyを迂回。invalid時record0、valid時canonical ISOをfrozen scope/input/targetへexactに渡し、broken-chainの200/view append/raw window/no-backfillを維持した。
+- audit-log71+server277、API546 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/security/privacy review READY。event graph、hash/target TOCTOU、reception clock、audit core/DB/contracts/SSOTは未変更。implementation `81f8d97`はlocal-only、pushなし。
+
 ### WP-4209 patient-search cursor encoder output authority — FINALIZED / INDEPENDENT_PASS
 
 - encode例外のraw反射、`undefined`のfalse terminal、空tokenの200発行、object/oversize/hostile outputのZod detail反射を修正。page/progress検証後だけfrozen binding/cursorでencode onceとし、throwとinvalid returnを別fixed500へ閉じた。
