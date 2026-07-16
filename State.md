@@ -8,6 +8,11 @@
 
 ## 2026-07-16
 
+### WP-4156 FHIR tooling internal dependency classification — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+
+- `hl7.fhir.uv.tools.r4#0.8.0`をtemp取得してfingerprint/package metadataを確認。JP Core IG resourceの`ig-internal-dependency`宣言とtools側定義から、implementer/clinical runtime dependencyではなくIG resource validation用のconformance/build lock候補と分類した。
+- tools transitive terminology/extensions版はJP Core declared版と不一致で、JP Coreが参照する6 unique tools canonicalのうち`resource-information`定義はartifact内に見つからなかった。clean validator/IG Publisher resolutionとFHIR specialist reviewまでlock/SSOT/runtime/toolchain実装は禁止を維持。exact4 implementation commitはlanding後に記録し、別agent verifier未実施。
+
 ### WP-4155 declared HL7 FHIR package fingerprints — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
 - HL7-documented secondary FHIR package registryからJP Core archiveの残るdeclared dependencies 3件をtemp取得し、SHA-256/size/HTTP validators/package identity/FHIR4.0.1/canonical/dependencies/package-level `CC0-1.0` metadataを記録した。
