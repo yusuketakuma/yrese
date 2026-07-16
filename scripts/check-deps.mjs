@@ -4,6 +4,8 @@ import { readFile } from "node:fs/promises";
 
 const SEVERITIES = ["info", "low", "moderate", "high", "critical"];
 const DEFAULT_AUDIT_LEVEL = "high";
+const DEPENDENCY_AUDIT_FAILURE_MESSAGE =
+  "Dependency audit failed: audit report or command result was invalid.";
 const CAPTURED_AUDIT_ERROR_MESSAGE =
   "Dependency audit failed: captured audit error was not a recognized transient.";
 const REGISTRY_WARNING_MESSAGE =
@@ -19,6 +21,12 @@ const REGISTRY_OR_NETWORK_ERROR_PATTERNS = [
   /\bESOCKETTIMEDOUT\b/i,
 ];
 
+class DependencyAuditFailure extends Error {}
+
+function failDependencyAudit(message = DEPENDENCY_AUDIT_FAILURE_MESSAGE) {
+  throw new DependencyAuditFailure(message);
+}
+
 function parseArgs(argv) {
   const args = {
     auditLevel: DEFAULT_AUDIT_LEVEL,
@@ -28,20 +36,29 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--audit-level") {
-      args.auditLevel = argv.at(index + 1) ?? "";
+      const value = argv.at(index + 1);
+      if (value === undefined || value.startsWith("--")) failDependencyAudit();
+      args.auditLevel = value;
       index += 1;
     } else if (arg === "--from-audit-json") {
-      args.fromAuditJson = argv.at(index + 1);
+      const value = argv.at(index + 1);
+      if (value === undefined || value.startsWith("--")) failDependencyAudit();
+      args.fromAuditJson = value;
       index += 1;
     } else if (arg === "--from-audit-error") {
-      args.fromAuditError = argv.at(index + 1);
+      const value = argv.at(index + 1);
+      if (value === undefined || value.startsWith("--")) failDependencyAudit();
+      args.fromAuditError = value;
       index += 1;
     } else {
-      throw new Error(`unknown argument: ${arg}`);
+      failDependencyAudit();
     }
   }
+  if (args.fromAuditJson !== undefined && args.fromAuditError !== undefined) {
+    failDependencyAudit();
+  }
   if (!SEVERITIES.includes(args.auditLevel)) {
-    throw new Error(`invalid audit level: ${args.auditLevel}`);
+    failDependencyAudit();
   }
   return args;
 }
@@ -71,46 +88,40 @@ function validateVulnerabilityCounts(report) {
     !isPlainObject(report.metadata) ||
     !isPlainObject(report.metadata.vulnerabilities)
   ) {
-    throw new Error("invalid dependency audit report: expected pnpm vulnerability metadata");
+    failDependencyAudit();
   }
 
   const counts = report.metadata.vulnerabilities;
   for (const severity of SEVERITIES) {
     if (!Object.hasOwn(counts, severity) || !Number.isSafeInteger(counts[severity]) || counts[severity] < 0) {
-      throw new Error("invalid dependency audit report: vulnerability counts must be non-negative safe integers");
+      failDependencyAudit();
     }
   }
   return counts;
-}
-
-function advisorySummary(report, auditLevel) {
-  const severities = new Set(thresholdSeverities(auditLevel));
-  return Object.values(report?.advisories ?? {})
-    .filter((advisory) => severities.has(advisory?.severity))
-    .map((advisory) => {
-      const moduleName = advisory.module_name ?? "unknown-module";
-      const severity = advisory.severity ?? "unknown-severity";
-      const id = advisory.github_advisory_id ?? advisory.id ?? "unknown-id";
-      return `${moduleName} ${severity} ${id}`;
-    });
 }
 
 function isRegistryOrNetworkError(output) {
   return REGISTRY_OR_NETWORK_ERROR_PATTERNS.some((pattern) => pattern.test(output));
 }
 
-function assertNoThresholdVulnerabilities(report, counts, auditLevel) {
-  const vulnerableCount = thresholdSeverities(auditLevel).reduce((sum, severity) => sum + counts[severity], 0);
+function assertNoThresholdVulnerabilities(counts, auditLevel) {
+  let vulnerableCount = 0;
+  for (const severity of thresholdSeverities(auditLevel)) {
+    if (counts[severity] > Number.MAX_SAFE_INTEGER - vulnerableCount) {
+      failDependencyAudit();
+    }
+    vulnerableCount += counts[severity];
+  }
   if (vulnerableCount > 0) {
-    const summaries = advisorySummary(report, auditLevel);
-    const details = summaries.length > 0 ? `\n- ${summaries.join("\n- ")}` : "";
-    throw new Error(`dependency audit failed: ${vulnerableCount} ${auditLevel}+ vulnerabilit(ies) found${details}`);
+    failDependencyAudit(
+      `Dependency audit failed: ${vulnerableCount} ${auditLevel}+ vulnerabilities found.`,
+    );
   }
 }
 
 function inspectAuditReport(report, auditLevel) {
   const counts = validateVulnerabilityCounts(report);
-  assertNoThresholdVulnerabilities(report, counts, auditLevel);
+  assertNoThresholdVulnerabilities(counts, auditLevel);
   return counts;
 }
 
@@ -142,7 +153,12 @@ async function main() {
   }
 
   if (args.fromAuditJson !== undefined) {
-    const report = JSON.parse(await readFile(args.fromAuditJson, "utf8"));
+    let report;
+    try {
+      report = JSON.parse(await readFile(args.fromAuditJson, "utf8"));
+    } catch {
+      failDependencyAudit();
+    }
     reportAuditPass(inspectAuditReport(report, args.auditLevel), args.auditLevel);
     return;
   }
@@ -150,25 +166,25 @@ async function main() {
   const result = runPnpmAudit(args.auditLevel);
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
   if (result.error !== undefined) {
-    throw new Error("dependency audit command failed to execute");
+    failDependencyAudit();
   }
   if (result.signal !== null) {
-    throw new Error("dependency audit command terminated by signal");
+    failDependencyAudit();
   }
 
   let report;
   let reportShapeError;
   try {
     report = JSON.parse(result.stdout);
-  } catch (error) {
-    reportShapeError = new Error("invalid dependency audit report: pnpm audit did not return JSON", { cause: error });
+  } catch {
+    reportShapeError = true;
   }
   let counts;
   if (reportShapeError === undefined) {
     try {
       counts = validateVulnerabilityCounts(report);
-    } catch (error) {
-      reportShapeError = error;
+    } catch {
+      reportShapeError = true;
     }
   }
 
@@ -177,13 +193,22 @@ async function main() {
     return;
   }
   if (reportShapeError !== undefined) {
-    throw reportShapeError;
+    failDependencyAudit();
   }
-  assertNoThresholdVulnerabilities(report, counts, args.auditLevel);
+  assertNoThresholdVulnerabilities(counts, args.auditLevel);
   if (result.status !== 0) {
-    throw new Error("dependency audit command failed with a nonzero exit status");
+    failDependencyAudit();
   }
   reportAuditPass(counts, args.auditLevel);
 }
 
-await main();
+try {
+  await main();
+} catch (error) {
+  console.error(
+    error instanceof DependencyAuditFailure
+      ? error.message
+      : DEPENDENCY_AUDIT_FAILURE_MESSAGE,
+  );
+  process.exitCode = 1;
+}

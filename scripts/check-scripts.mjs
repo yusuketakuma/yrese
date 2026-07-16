@@ -1570,6 +1570,12 @@ async function testCleanRemovesGeneratedArtifacts() {
 
 async function testDependencyAuditWrapper() {
   const root = path.join(tempRoot, "dependency-audit");
+  const fixedFailure =
+    "Dependency audit failed: audit report or command result was invalid.\n";
+  const registryWarning =
+    "Dependency audit registry/network warning (non-blocking): recognized transient error code.\n";
+  const thresholdFailure = (count, level) =>
+    `Dependency audit failed: ${count} ${level}+ vulnerabilities found.\n`;
   const cleanCounts = { info: 0, low: 0, moderate: 0, high: 0, critical: 0 };
   const auditReport = (counts = cleanCounts, advisories = {}) => ({
     advisories,
@@ -1583,7 +1589,7 @@ async function testDependencyAuditWrapper() {
 
   const cleanReportPath = await writeAuditReport("audit-clean.json", auditReport());
   const cleanResult = runNode("check-deps.mjs", ["--from-audit-json", cleanReportPath]);
-  assert(cleanResult.status === 0, `check-deps should pass for a valid clean report: ${outputOf(cleanResult)}`);
+  assert(cleanResult.status === 0, "check-deps should pass for a valid clean report");
 
   const vulnerableReportPath = await writeAuditReport(
     "audit-vulnerable.json",
@@ -1591,9 +1597,11 @@ async function testDependencyAuditWrapper() {
       { ...cleanCounts, high: 1 },
       {
         "1": {
-          module_name: "example-package",
+          module_name:
+            "https://synthetic:token@registry.example.invalid/private\r\nINJECTED_LINE\u001b[31mAUDIT_JSON_RAW_SENTINEL_4182\u001b[0m\u2028\u2029" +
+            "x".repeat(1024),
           severity: "high",
-          github_advisory_id: "GHSA-example",
+          github_advisory_id: "GHSA-RAW-SENTINEL-4182",
         },
       },
     ),
@@ -1601,7 +1609,22 @@ async function testDependencyAuditWrapper() {
 
   const vulnerableResult = runNode("check-deps.mjs", ["--from-audit-json", vulnerableReportPath]);
   assert(vulnerableResult.status === 1, "check-deps should fail for high severity vulnerabilities");
-  assert(outputOf(vulnerableResult).includes("example-package"), "check-deps failure should include advisory summary");
+  assert(vulnerableResult.stdout === "", "vulnerable audit output should keep stdout empty");
+  assert(
+    vulnerableResult.stderr === thresholdFailure(1, "high"),
+    "vulnerable audit output should contain only the validated count and level",
+  );
+  for (const [sentinel, label] of [
+    ["AUDIT_JSON_RAW_SENTINEL_4182", "module sentinel"],
+    ["GHSA-RAW-SENTINEL-4182", "advisory sentinel"],
+    ["registry.example.invalid", "registry host"],
+    ["INJECTED_LINE", "injected line"],
+    ["\u001b", "ESC"],
+    ["\u2028", "U+2028"],
+    ["\u2029", "U+2029"],
+  ]) {
+    assert(!outputOf(vulnerableResult).includes(sentinel), `vulnerable audit output must omit ${label}`);
+  }
 
   const criticalReportPath = await writeAuditReport(
     "audit-critical.json",
@@ -1609,6 +1632,32 @@ async function testDependencyAuditWrapper() {
   );
   const criticalResult = runNode("check-deps.mjs", ["--from-audit-json", criticalReportPath]);
   assert(criticalResult.status === 1, "check-deps should fail for critical severity vulnerabilities");
+  assert(criticalResult.stderr === thresholdFailure(1, "high"), "critical count should retain the default high threshold");
+
+  const allSeverityReportPath = await writeAuditReport(
+    "audit-all-severities.json",
+    auditReport({ info: 1, low: 1, moderate: 1, high: 1, critical: 1 }, "malformed-advisories-ignored"),
+  );
+  for (const [level, count] of [["info", 5], ["low", 4], ["moderate", 3], ["high", 2], ["critical", 1]]) {
+    const result = runNode("check-deps.mjs", ["--audit-level", level, "--from-audit-json", allSeverityReportPath]);
+    assert(result.status === 1, `check-deps should retain the ${level} threshold`);
+    assert(result.stdout === "", `${level} threshold failure should keep stdout empty`);
+    assert(result.stderr === thresholdFailure(count, level), `${level} threshold should use a bounded numeric failure`);
+  }
+
+  const safeSumReportPath = await writeAuditReport(
+    "audit-safe-sum.json",
+    auditReport({ ...cleanCounts, high: Number.MAX_SAFE_INTEGER }),
+  );
+  const safeSumResult = runNode("check-deps.mjs", ["--from-audit-json", safeSumReportPath]);
+  assert(safeSumResult.stderr === thresholdFailure(Number.MAX_SAFE_INTEGER, "high"), "safe aggregate boundary should remain exact");
+  const overflowReportPath = await writeAuditReport(
+    "audit-overflow-sum.json",
+    auditReport({ ...cleanCounts, high: Number.MAX_SAFE_INTEGER, critical: 1 }),
+  );
+  const overflowResult = runNode("check-deps.mjs", ["--from-audit-json", overflowReportPath]);
+  assert(overflowResult.status === 1, "unsafe aggregate should fail closed");
+  assert(overflowResult.stderr === fixedFailure, "unsafe aggregate should not print an imprecise count");
 
   const invalidReports = [
     ["audit-empty.json", {}],
@@ -1626,6 +1675,46 @@ async function testDependencyAuditWrapper() {
     const reportPath = await writeAuditReport(name, report);
     const result = runNode("check-deps.mjs", ["--from-audit-json", reportPath]);
     assert(result.status === 1, `check-deps should fail closed for invalid report ${name}`);
+    assert(result.stdout === "", `invalid report ${name} should keep stdout empty`);
+    assert(result.stderr === fixedFailure, `invalid report ${name} should use one fixed failure line`);
+  }
+
+  const malformedJsonPath = path.join(root, "RAW_SENSITIVE_AUDIT_PATH_4182.json");
+  await writeText(malformedJsonPath, '{"raw":"AUDIT_PARSE_RAW_SENTINEL_4182\u001b[31m"');
+  for (const [inputPath, pathLabel] of [
+    [malformedJsonPath, "malformed fixture path"],
+    [path.join(root, "MISSING_SENSITIVE_AUDIT_PATH_4182.json"), "missing fixture path"],
+    [root, "unreadable fixture path"],
+  ]) {
+    const result = runNode("check-deps.mjs", ["--from-audit-json", inputPath]);
+    assert(result.status === 1, "unreadable or malformed captured JSON should fail closed");
+    assert(result.stdout === "", "captured JSON failure should keep stdout empty");
+    assert(result.stderr === fixedFailure, "captured JSON failure should use one fixed line");
+    for (const [sentinel, label] of [
+      [inputPath, pathLabel],
+      ["AUDIT_PARSE_RAW_SENTINEL_4182", "parse sentinel"],
+      ["RAW_SENSITIVE_AUDIT_PATH_4182", "malformed path basename"],
+      ["MISSING_SENSITIVE_AUDIT_PATH_4182", "missing path basename"],
+      ["\u001b", "ESC"],
+      ["SyntaxError", "parser type"],
+    ]) {
+      assert(!outputOf(result).includes(sentinel), `captured JSON failure must omit ${label}`);
+    }
+  }
+
+  for (const args of [
+    ["--from-audit-json"],
+    ["--from-audit-error"],
+    ["--audit-level"],
+    ["--audit-level", "RAW_LEVEL_SENTINEL_4182"],
+    ["--unknown-RAW_ARG_SENTINEL_4182"],
+  ]) {
+    const result = runNode("check-deps.mjs", args);
+    assert(result.status === 1, "missing or invalid arguments should fail closed");
+    assert(result.stdout === "", "argument failure should keep stdout empty");
+    assert(result.stderr === fixedFailure, "argument failure should use one fixed line");
+    assert(!outputOf(result).includes("RAW_LEVEL_SENTINEL_4182"), "invalid level must not be echoed");
+    assert(!outputOf(result).includes("RAW_ARG_SENTINEL_4182"), "unknown argument must not be echoed");
   }
 
   const registryErrorPath = path.join(root, "registry-error-sensitive-path.txt");
@@ -1645,6 +1734,24 @@ async function testDependencyAuditWrapper() {
   assert(!outputOf(registryResult).includes(rawSentinel), "registry warning must not replay raw audit stderr");
   assert(!outputOf(registryResult).includes(registryErrorPath), "registry warning must not expose the input path");
   assert(!outputOf(registryResult).includes("\u001b"), "registry warning must not replay control characters");
+
+  for (const args of [
+    ["--from-audit-json", vulnerableReportPath, "--from-audit-error", registryErrorPath],
+    ["--from-audit-error", registryErrorPath, "--from-audit-json", vulnerableReportPath],
+  ]) {
+    const result = runNode("check-deps.mjs", args);
+    assert(result.status === 1, "dual captured source modes should fail closed");
+    assert(result.stdout === "", "dual captured source failure should keep stdout empty");
+    assert(result.stderr === fixedFailure, "dual captured source failure should use one fixed line");
+    assert(!result.stderr.includes(registryWarning), "dual captured source failure must not warn-pass");
+    assert(!outputOf(result).includes("AUDIT_JSON_RAW_SENTINEL_4182"), "dual source failure must omit report sentinel");
+    assert(!outputOf(result).includes(rawSentinel), "dual source failure must omit error sentinel");
+    assert(!outputOf(result).includes(vulnerableReportPath), "dual source failure must omit report path");
+    assert(!outputOf(result).includes(registryErrorPath), "dual source failure must omit error path");
+    assert(!outputOf(result).includes("\u001b"), "dual source failure must omit ESC");
+    assert(!outputOf(result).includes("\u2028"), "dual source failure must omit U+2028");
+    assert(!outputOf(result).includes("\u2029"), "dual source failure must omit U+2029");
+  }
 
   const genericErrorPath = path.join(root, "generic-sensitive-error.txt");
   await writeText(
@@ -1685,9 +1792,48 @@ async function testDependencyAuditWrapper() {
     "check-deps should fail when pnpm returns parseable clean JSON with a nonzero status",
   );
   assert(
-    outputOf(parseableNonzeroResult).includes("nonzero exit status"),
-    "parseable nonzero failure should explain that the audit command failed",
+    parseableNonzeroResult.stderr === fixedFailure,
+    "parseable nonzero failure should use one fixed non-echo line",
   );
+
+  await writeText(
+    fakePnpmPath,
+    "#!/bin/sh\nprintf '%s\\n' 'not-json'\nprintf '%s\\n' 'ERR_PNPM_META_FETCH_FAIL RAW_LIVE_TRANSIENT_4182' >&2\nexit 1\n",
+  );
+  const liveTransientResult = runNode("check-deps.mjs", [], {
+    env: { ...process.env, PATH: `${fakeBin}${path.delimiter}${process.env.PATH ?? ""}` },
+  });
+  assert(liveTransientResult.status === 0, "recognized live transient should remain non-blocking");
+  assert(
+    liveTransientResult.stderr ===
+      "Dependency audit registry/network warning (non-blocking): recognized transient error code.\n",
+    "recognized live transient should retain the WP-4177 fixed warning",
+  );
+  assert(!outputOf(liveTransientResult).includes("RAW_LIVE_TRANSIENT_4182"), "live transient must not replay child output");
+
+  await writeText(
+    fakePnpmPath,
+    "#!/bin/sh\nprintf '%s\\n' 'RAW_LIVE_JSON_4182 {broken'\nprintf '%s\\n' 'RAW_LIVE_STDERR_4182' >&2\nexit 1\n",
+  );
+  const liveMalformedResult = runNode("check-deps.mjs", [], {
+    env: { ...process.env, PATH: `${fakeBin}${path.delimiter}${process.env.PATH ?? ""}` },
+  });
+  assert(liveMalformedResult.status === 1, "unrecognized live malformed output should fail closed");
+  assert(liveMalformedResult.stdout === "", "live malformed failure should keep wrapper stdout empty");
+  assert(liveMalformedResult.stderr === fixedFailure, "live malformed failure should use one fixed line");
+  assert(!outputOf(liveMalformedResult).includes("RAW_LIVE_JSON_4182"), "live malformed failure must not replay stdout");
+  assert(!outputOf(liveMalformedResult).includes("RAW_LIVE_STDERR_4182"), "live malformed failure must not replay stderr");
+
+  await writeText(
+    fakePnpmPath,
+    `#!/bin/sh\nprintf '%s\\n' '${JSON.stringify(auditReport({ ...cleanCounts, high: 1 }))}'\nexit 1\n`,
+  );
+  const liveVulnerableResult = runNode("check-deps.mjs", [], {
+    env: { ...process.env, PATH: `${fakeBin}${path.delimiter}${process.env.PATH ?? ""}` },
+  });
+  assert(liveVulnerableResult.status === 1, "live vulnerable report should remain blocking");
+  assert(liveVulnerableResult.stdout === "", "live vulnerable failure should keep stdout empty");
+  assert(liveVulnerableResult.stderr === thresholdFailure(1, "high"), "live vulnerable failure should use the bounded threshold line");
 }
 
 async function testSbomGenerationFixture() {
