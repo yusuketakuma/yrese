@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4201 fulfilled patient lookup snapshot authority — FINALIZED / INDEPENDENT_PASS
+
+- GET patient-by-idと受付POST preflightのraw fulfilled patient accessor/Proxy反射とTOCTOUを修正。patientIdを先に固定し、他PHIはidentity一致後だけsnapshot、Zod/response/createからraw repository objectを除外した。
+- POST全8 fields、GET代表2 fields、valid GET/POST Proxy8 reads、backing mutation、wrong-patient PHI unreadを固定。WP-4199 nested patientもshared helperへrefactorし、21 descriptor/orderを維持した。
+- focused196、API436 + integration14 expected skips、Web454、workspace typecheck/test、API build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。independent mapper/plan/API/security/privacy/data/medical/audit review APPROVED。implementation `5dde553`はlocal-only、pushなし。
+
 ### WP-4200 date-time primitive string authority — FINALIZED / INDEPENDENT_PASS
 
 - CalendarDate/ClaimMonthのRegExp暗黙ToStringを修正し、3 clinical wrapperを含む全5 factoryでprimitive stringだけをruntime authorityにした。既存のformat RangeError、regex、暦日・請求月 semanticsは不変。
