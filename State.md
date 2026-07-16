@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4186 patient-search nominal error notice authority — FINALIZED / INDEPENDENT_PASS
+
+- search runnerの任意error `instanceof`/`toNotice()` authorityをmodule-private factory+WeakMap frozen snapshotへ置換。hostile Proxyのraw escape、captured prototype/constructor forge、trusted field mutationを遮断し、未登録receiverはfrozen genericへ収束する。
+- initialはgeneric state+retry、appendはverified rows/query/cursor保持+same tuple retryを固定。trusted internal 400/403/other copy/registered code、WP-4184 extraction、pagination/stale/cancel/selection/PatientContextは不変。class/factory/helperのexportなし。
+- focused77、Web433、API328 + integration14 expected skips、workspace typecheck/test、Web build、全標準gate、tracked-snapshot exact2 overlay secret scanをPASS。独立/計画/security/privacy/medical review APPROVED。implementation `3d87e72`はlocal-only、pushなし。
+
 ### WP-4185 reception nominal error notice authority — FINALIZED / INDEPENDENT_PASS
 
 - queue/registration catchの`instanceof`/arbitrary `toNotice()` authorityを廃止し、internal factoryが生成時引数から作るfrozen WeakMap snapshotだけをtrusted notice化。hostile Proxy、prototype forge、external constructorはcontext別genericへ収束し、raw message/action/codeをstateへ入れない。
