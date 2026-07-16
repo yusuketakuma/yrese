@@ -8,6 +8,12 @@
 
 ## 2026-07-16
 
+### WP-4171 patient-context refresh cancellation — FINALIZED / INDEPENDENT_PASS
+
+- patient-context get-by-id refreshへfresh AbortSignalとsingle active ownerを導入し、new refreshはnew owner公開→old abort→generation再確認、invalidateはgeneration advance→owner detach→cancel barrier内abortとした。clear/switch/path change/unmount後のobsolete PHI transportをbest-effort削減しつつ、generationを唯一のcallback authority、404 removal/stale/identity/selection semanticsを不変にした。検索runnerとの共有抽象化はauthority差のため行わない。
+- 初回independent reviewでfailure callbackがexact-owner release前に動き、callback起点refreshがsettled signalのabort listener再入でreplacement authorityを失い得るMEDIUM bugを検出。success/failure discriminated outcomeをfinally release後にdispatchし、onFresh/onFailure callback re-entry、invalidate/supersession abort listener、stale finally replacement protectionをfixture化。最終independent PASS、frontend/accessibility/privacy/security/medical/API APPROVED。
+- focused34、Web354、API290 + PostgreSQL14 expected skips、workspace typecheck/test、Web build、全標準gate、tracked-snapshot secret scanをPASS。live secret scanは既存ignored symlinkでfail-closed。browser tool未setupのため実ブラウザ未検証。implementation `8424c3a`はlocal-only、pushなし。
+
 ### WP-4170 patient-search superseded transport cancellation — FINALIZED / INDEPENDENT_PASS
 
 - patient-searchの既存generation/query/cursor guardを唯一のstate authorityとして維持しつつ、admitted requestへfresh AbortSignalを渡し、新full/異なるappend/blank/unmount時にolder fetchをbest-effort abortする。exact active append duplicateはabort前にcoalesce、retryはfresh signal、cancel cleanupはemitなし・反復安全・StrictMode再利用可能。server処理/request log/audit/privacy erasureは非主張。
