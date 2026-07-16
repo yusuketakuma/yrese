@@ -134,6 +134,13 @@ export async function fetchReceptionQueue(
     }
     receptionIds.add(entry.receptionId);
   }
+  for (const entry of parsed.entries) {
+    if (todayAsIsoDate(new Date(entry.acceptedAt)) !== date) {
+      throw new Error(
+        "Reception queue response contains entries outside the requested business date",
+      );
+    }
+  }
   const compareUtcIsoInstants = (left: string, right: string): number => {
     const leftSecond = left.slice(0, 19);
     const rightSecond = right.slice(0, 19);

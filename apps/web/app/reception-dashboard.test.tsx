@@ -412,9 +412,105 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect((caught as Error).message).not.toContain(duplicate.receptionId);
   });
 
+  it("accepts queue entries at both boundaries of the requested JST business date", async () => {
+    const midnight = entry({
+      receptionId: "jst-midnight",
+      acceptedAt: "2026-07-09T15:00:00.000Z",
+    });
+    const endOfDay = entry({
+      receptionId: "jst-end-of-day",
+      acceptedAt: "2026-07-10T14:59:59.999999999Z",
+    });
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, queueResponse("2026-07-10", [endOfDay, midnight])),
+      );
+
+    const response = await withNodeEnv("development", () =>
+      fetchReceptionQueue("2026-07-10", fetchImpl),
+    );
+
+    expect(response.entries.map((queueEntry) => queueEntry.receptionId)).toEqual([
+      "jst-midnight",
+      "jst-end-of-day",
+    ]);
+  });
+
+  it.each([
+    ["previous", "2026-07-09T14:59:59.999Z"],
+    ["next", "2026-07-10T15:00:00.000Z"],
+  ] as const)(
+    "rejects a %s-JST-day queue entry without echoing PHI-rich response fields",
+    async (_boundary, acceptedAt) => {
+      const sensitive = entry({
+        receptionId: "reception-wrong-business-date-sensitive",
+        acceptedAt,
+        patient: patient({
+          patientId: "patient-wrong-business-date-sensitive",
+          name: "合成 業務日外",
+          kana: "ゴウセイ ギョウムビガイ",
+          patientNumber: "WRONG-DATE-SECRET",
+        }),
+      });
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(200, queueResponse("2026-07-10", [sensitive])),
+        );
+
+      let caught: unknown;
+      try {
+        await withNodeEnv("development", () =>
+          fetchReceptionQueue("2026-07-10", fetchImpl),
+        );
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(Error);
+      expect((caught as Error).message).toBe(
+        "Reception queue response contains entries outside the requested business date",
+      );
+      const serialized = JSON.stringify(caught, Object.getOwnPropertyNames(caught));
+      for (const sensitiveValue of [
+        sensitive.receptionId,
+        sensitive.acceptedAt,
+        sensitive.receptionStatus,
+        sensitive.patient.patientId,
+        sensitive.patient.name,
+        sensitive.patient.kana,
+        sensitive.patient.patientNumber,
+      ]) {
+        expect(serialized).not.toContain(sensitiveValue);
+      }
+    },
+  );
+
+  it("checks duplicate queue identities before business-date membership", async () => {
+    const duplicate = entry({
+      receptionId: "duplicate-before-business-date",
+      acceptedAt: "2026-07-10T15:00:00.000Z",
+    });
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(200, queueResponse("2026-07-10", [duplicate, { ...duplicate }])),
+    );
+
+    await expect(
+      withNodeEnv("development", () =>
+        fetchReceptionQueue("2026-07-10", fetchImpl),
+      ),
+    ).rejects.toThrow("Reception queue response contains duplicate reception identities");
+  });
+
   it("keeps initial and refresh state fail-closed across unsupported queue statuses and retry", async () => {
     const retained = queueResponse("2026-07-09", [entry({ receptionId: "retained" })]);
-    const replacement = queueResponse("2026-07-10", [entry({ receptionId: "replacement" })]);
+    const replacement = queueResponse("2026-07-10", [
+      entry({
+        receptionId: "replacement",
+        acceptedAt: "2026-07-10T00:15:00.000Z",
+      }),
+    ]);
     const unsupportedJson = vi.fn().mockResolvedValue(replacement);
     const fetchImpl = vi
       .fn()
@@ -478,7 +574,12 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
       .mockResolvedValueOnce(
         jsonResponse(
           200,
-          queueResponse("2026-07-10", [entry({ receptionId: "current" })]),
+          queueResponse("2026-07-10", [
+            entry({
+              receptionId: "current",
+              acceptedAt: "2026-07-10T00:15:00.000Z",
+            }),
+          ]),
         ),
       );
     const states: QueueState[] = [{ kind: "loading" }];
@@ -665,6 +766,64 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
       expect(retried.response).toEqual(replacement);
       expect(retried.refreshState).toEqual({ kind: "idle" });
     }
+  });
+
+  it("rejects a mixed-date refresh all-or-nothing, retains verified data, and allows retry", async () => {
+    const retained = queueResponse("2026-07-10", [
+      entry({ receptionId: "retained", acceptedAt: "2026-07-10T00:15:00.000Z" }),
+    ]);
+    const wrongDate = entry({
+      receptionId: "wrong-date-sensitive",
+      acceptedAt: "2026-07-10T15:00:00.000Z",
+      patient: patient({
+        patientId: "wrong-date-patient-sensitive",
+        name: "合成 別日",
+        kana: "ゴウセイ ベツビ",
+        patientNumber: "WRONG-DATE-PHI",
+      }),
+    });
+    const replacement = queueResponse("2026-07-10", [
+      entry({ receptionId: "replacement", acceptedAt: "2026-07-10T01:15:00.000Z" }),
+    ]);
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, retained))
+      .mockResolvedValueOnce(
+        jsonResponse(200, queueResponse("2026-07-10", [retained.entries[0]!, wrongDate])),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, replacement));
+    const states: QueueState[] = [{ kind: "loading" }];
+    const run = createReceptionQueueRunner(
+      (targetDate) => fetchReceptionQueue(targetDate, fetchImpl),
+      (update) => states.push(update(states.at(-1)!)),
+    );
+
+    await withNodeEnv("development", () => run("2026-07-10"));
+    const verified = states.at(-1)!;
+    expect(verified.kind).toBe("loaded");
+    if (verified.kind !== "loaded") throw new Error("expected verified queue state");
+    const loadedAt = verified.loadedAt;
+
+    await withNodeEnv("development", () => run("2026-07-10"));
+    const failed = states.at(-1)!;
+    expect(failed).toMatchObject({
+      kind: "loaded",
+      response: retained,
+      loadedAt,
+      refreshState: {
+        kind: "error",
+        notice: { message: "受付一覧の処理に失敗しました。" },
+      },
+    });
+    expect(JSON.stringify(failed)).not.toContain("wrong-date");
+    expect(JSON.stringify(failed)).not.toContain("WRONG-DATE-PHI");
+
+    await withNodeEnv("development", () => run("2026-07-10"));
+    expect(states.at(-1)).toMatchObject({
+      kind: "loaded",
+      response: replacement,
+      refreshState: { kind: "idle" },
+    });
   });
 
   it("discards stale queue responses so the last displayed date wins", async () => {
