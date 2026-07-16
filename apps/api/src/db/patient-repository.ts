@@ -1,3 +1,4 @@
+import { isProxy } from 'node:util/types';
 import type { Pool } from 'pg';
 import { type PatientSearchResult, patientSearchResultSchema } from '@yrese/contracts';
 
@@ -7,6 +8,7 @@ import type {
   PatientSearchInput,
   PatientSearchPage,
 } from '../patient-repository.js';
+import { snapshotDatabaseInstant } from './database-instant.js';
 
 interface PatientRow {
   readonly patient_id: string;
@@ -23,17 +25,32 @@ function escapeLikePattern(value: string): string {
   return value.replace(/[\\%_]/g, (match) => `\\${match}`);
 }
 
-function optionalInstantToIso(value: Date | string | null): string | undefined {
-  if (value === null) {
-    return undefined;
+export const databasePatientEligibilityTimestampInvariantErrorMessage =
+  'Patient database returned an invalid eligibility timestamp';
+
+function snapshotEligibilityCheckedAt(row: PatientRow): string | undefined {
+  if (isProxy(row)) {
+    throw new Error(databasePatientEligibilityTimestampInvariantErrorMessage);
   }
-  if (value instanceof Date) {
-    return value.toISOString();
+  let descriptor: PropertyDescriptor | undefined;
+  try {
+    descriptor = Object.getOwnPropertyDescriptor(row, 'eligibility_checked_at');
+  } catch {
+    throw new Error(databasePatientEligibilityTimestampInvariantErrorMessage);
   }
-  return new Date(value).toISOString();
+  if (descriptor === undefined || !('value' in descriptor)) {
+    throw new Error(databasePatientEligibilityTimestampInvariantErrorMessage);
+  }
+  return descriptor.value === null
+    ? undefined
+    : snapshotDatabaseInstant(
+        descriptor.value,
+        databasePatientEligibilityTimestampInvariantErrorMessage,
+      );
 }
 
 export function patientRowToSearchResult(row: PatientRow): PatientSearchResult {
+  const eligibilityCheckedAt = snapshotEligibilityCheckedAt(row);
   return patientSearchResultSchema.parse({
     patientId: row.patient_id,
     name: row.name,
@@ -42,7 +59,7 @@ export function patientRowToSearchResult(row: PatientRow): PatientSearchResult {
     sex: row.sex,
     patientNumber: row.patient_number,
     eligibilityStatus: row.eligibility_status,
-    ...(row.eligibility_checked_at === null ? {} : { eligibilityCheckedAt: optionalInstantToIso(row.eligibility_checked_at) }),
+    ...(eligibilityCheckedAt === undefined ? {} : { eligibilityCheckedAt }),
   });
 }
 

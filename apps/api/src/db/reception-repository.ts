@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { isDate } from 'node:util/types';
 import type { Pool, PoolClient } from 'pg';
 import { receptionQueueEntrySchema, type ReceptionQueueEntry } from '@yrese/contracts';
 import { patientId, pharmacyId, receptionId, tenantId } from '@yrese/shared-kernel';
@@ -12,6 +11,7 @@ import {
   type ReceptionRepository,
 } from '../reception-repository.js';
 import { patientRowToSearchResult } from './patient-repository.js';
+import { snapshotDatabaseInstant, snapshotDateInstant } from './database-instant.js';
 
 interface ReceptionEntryRow {
   readonly reception_id: string;
@@ -48,36 +48,14 @@ export const databaseReceptionProvenanceInvariantErrorMessage =
 export const databaseReceptionTimestampInvariantErrorMessage =
   'Reception database returned an invalid timestamp';
 
-function snapshotDateInstant(value: unknown): string {
-  if (!isDate(value)) {
-    throw new Error(databaseReceptionTimestampInvariantErrorMessage);
-  }
-  try {
-    return Date.prototype.toISOString.call(value);
-  } catch {
-    throw new Error(databaseReceptionTimestampInvariantErrorMessage);
-  }
-}
-
-function snapshotDatabaseInstant(value: unknown): string {
-  if (isDate(value)) {
-    return snapshotDateInstant(value);
-  }
-  if (typeof value !== 'string') {
-    throw new Error(databaseReceptionTimestampInvariantErrorMessage);
-  }
-  try {
-    return Date.prototype.toISOString.call(new Date(value));
-  } catch {
-    throw new Error(databaseReceptionTimestampInvariantErrorMessage);
-  }
-}
-
 function rowToEntry(row: ReceptionEntryRow): ReceptionQueueEntry {
   return receptionQueueEntrySchema.parse({
     receptionId: row.reception_id,
     patient: patientRowToSearchResult(row),
-    acceptedAt: snapshotDatabaseInstant(row.accepted_at),
+    acceptedAt: snapshotDatabaseInstant(
+      row.accepted_at,
+      databaseReceptionTimestampInvariantErrorMessage,
+    ),
     receptionStatus: row.reception_status,
     prescriptionIntakeType: 'paper',
   });
@@ -169,7 +147,10 @@ export class PostgresReceptionRepository implements ReceptionRepository {
   }
 
   async create(input: ReceptionCreateInput): Promise<ReceptionCreateResult> {
-    const acceptedAt = snapshotDateInstant(input.acceptedAt);
+    const acceptedAt = snapshotDateInstant(
+      input.acceptedAt,
+      databaseReceptionTimestampInvariantErrorMessage,
+    );
     const businessDate = businessDateFromAcceptedAt(new Date(acceptedAt));
     const client = await this.pool.connect();
     let destroyClient = false;
