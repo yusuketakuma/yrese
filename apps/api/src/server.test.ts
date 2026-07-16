@@ -34,6 +34,8 @@ import {
   patientSearchInvalidQueryErrorCode,
   patientSearchRepositoryErrorMessage,
   patientSearchPageSchemaInvariantErrorMessage,
+  patientSearchCursorDecodeErrorMessage,
+  patientSearchDecodedCursorInvariantErrorMessage,
   patientSearchCursorProgressInvariantErrorMessage,
   patientSearchDuplicateIdentityInvariantErrorMessage,
   patientSearchResultLimitInvariantErrorMessage,
@@ -558,6 +560,347 @@ describe('buildServer', () => {
       errorCode: patientSearchInvalidQueryErrorCode,
       message: 'Invalid patient search query',
     });
+  });
+
+  it.each([
+    ['Error', (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) => new Error(rawSentinel)],
+    [
+      'non-Error object',
+      (rawSentinel: string, _propertyRead: ReturnType<typeof vi.fn>) => ({
+        message: rawSentinel,
+      }),
+    ],
+    [
+      'hostile Proxy',
+      (_rawSentinel: string, propertyRead: ReturnType<typeof vi.fn>) =>
+        new Proxy({}, { get: propertyRead, has: propertyRead, getPrototypeOf: propertyRead }),
+    ],
+  ] as const)(
+    'normalizes a patient search cursor decode throw from %s',
+    async (_label, createThrownValue) => {
+      const query = '合成decode秘密4208';
+      const rawCursor = 'opaque-decode-secret-4208';
+      const rawSentinel = `raw decode failure ${query} ${rawCursor}`;
+      const propertyRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const thrownValue = createThrownValue(rawSentinel, propertyRead);
+      const decode = vi.fn<PatientSearchCursorCodec['decode']>(() => {
+        throw thrownValue;
+      });
+      const search = vi.fn<PatientRepository['search']>();
+      const encode = vi.fn<PatientSearchCursorCodec['encode']>();
+      const server = buildDevTestServer({
+        patientSearchCursorCodec: { decode, encode },
+        patientRepository: {
+          search,
+          findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: `/patients/search?q=${encodeURIComponent(query)}&cursor=${rawCursor}`,
+        headers: tenantOnePatientReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toMatchObject({ message: patientSearchCursorDecodeErrorMessage });
+      expect(decode).toHaveBeenCalledOnce();
+      expect(search).not.toHaveBeenCalled();
+      expect(encode).not.toHaveBeenCalled();
+      expect(propertyRead).not.toHaveBeenCalled();
+      for (const sensitiveValue of [query, rawCursor, rawSentinel]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+    },
+  );
+
+  it('keeps an undefined decoded cursor as PAT-0001 without repository access', async () => {
+    const rawCursor = 'opaque-invalid-cursor-4208';
+    const decode = vi.fn<PatientSearchCursorCodec['decode']>(() => undefined);
+    const search = vi.fn<PatientRepository['search']>();
+    const encode = vi.fn<PatientSearchCursorCodec['encode']>();
+    const server = buildDevTestServer({
+      patientSearchCursorCodec: { decode, encode },
+      patientRepository: {
+        search,
+        findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: `/patients/search?q=synthetic&cursor=${rawCursor}`,
+      headers: tenantOnePatientReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      errorCode: patientSearchInvalidQueryErrorCode,
+      message: 'Invalid patient search query',
+    });
+    expect(decode).toHaveBeenCalledOnce();
+    expect(search).not.toHaveBeenCalled();
+    expect(encode).not.toHaveBeenCalled();
+    expect(response.body).not.toContain(rawCursor);
+  });
+
+  it('does not invoke cursor decode when the search request has no cursor token', async () => {
+    const decode = vi.fn<PatientSearchCursorCodec['decode']>(() => {
+      throw new Error('cursor decode must not run without a token');
+    });
+    const search = vi.fn<PatientRepository['search']>(async () => ({ results: [] }));
+    const server = buildDevTestServer({
+      patientSearchCursorCodec: { decode, encode: vi.fn(() => 'unused') },
+      patientRepository: {
+        search,
+        findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/patients/search?q=synthetic',
+      headers: tenantOnePatientReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(decode).not.toHaveBeenCalled();
+    expect(search).toHaveBeenCalledOnce();
+    expect(search.mock.calls[0]?.[0]).not.toHaveProperty('cursor');
+  });
+
+  it.each([
+    ['null root', null],
+    ['array root', [{ offset: 2 }]],
+    ['function root', Object.assign(() => undefined, { offset: 2 })],
+    ['missing offset', {}],
+    ['inherited offset', Object.create({ offset: 2 }) as object],
+    [
+      'non-enumerable offset',
+      Object.defineProperty({}, 'offset', { enumerable: false, value: 2 }),
+    ],
+    ['string offset', { offset: '2' }],
+    ['NaN offset', { offset: Number.NaN }],
+    ['infinite offset', { offset: Number.POSITIVE_INFINITY }],
+    ['negative offset', { offset: -1 }],
+    ['fractional offset', { offset: 1.5 }],
+    ['unsafe offset', { offset: Number.MAX_SAFE_INTEGER + 1 }],
+  ] as const)(
+    'rejects a decoded patient search cursor with %s as an internal invariant',
+    async (_label, decodedCursor) => {
+      const rawCursor = `opaque-invalid-decoded-${_label}-4208`;
+      const search = vi.fn<PatientRepository['search']>();
+      const encode = vi.fn<PatientSearchCursorCodec['encode']>();
+      const server = buildDevTestServer({
+        patientSearchCursorCodec: {
+          decode: () => decodedCursor as never,
+          encode,
+        },
+        patientRepository: {
+          search,
+          findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: `/patients/search?q=synthetic&cursor=${encodeURIComponent(rawCursor)}`,
+        headers: tenantOnePatientReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toMatchObject({
+        message: patientSearchDecodedCursorInvariantErrorMessage,
+      });
+      expect(search).not.toHaveBeenCalled();
+      expect(encode).not.toHaveBeenCalled();
+      expect(response.body).not.toContain(rawCursor);
+    },
+  );
+
+  it('rejects a decoded cursor offset accessor without invoking it', async () => {
+    const rawSentinel = 'raw decoded cursor accessor secret 4208';
+    const getter = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const decodedCursor = Object.defineProperty({}, 'offset', {
+      enumerable: true,
+      get: getter,
+    });
+    const search = vi.fn<PatientRepository['search']>();
+    const encode = vi.fn<PatientSearchCursorCodec['encode']>();
+    const server = buildDevTestServer({
+      patientSearchCursorCodec: {
+        decode: vi.fn(() => decodedCursor as never),
+        encode,
+      },
+      patientRepository: {
+        search,
+        findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/patients/search?q=synthetic&cursor=opaque-accessor-4208',
+      headers: tenantOnePatientReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toMatchObject({
+      message: patientSearchDecodedCursorInvariantErrorMessage,
+    });
+    expect(getter).not.toHaveBeenCalled();
+    expect(search).not.toHaveBeenCalled();
+    expect(encode).not.toHaveBeenCalled();
+    expect(response.body).not.toContain(rawSentinel);
+  });
+
+  it.each(['throwing descriptor Proxy', 'revoked Proxy'] as const)(
+    'normalizes a decoded cursor %s without raw trap reflection',
+    async (variant) => {
+      const rawSentinel = `raw decoded cursor ${variant} secret 4208`;
+      const semanticRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      let decodedCursor: object;
+      if (variant === 'revoked Proxy') {
+        const revocable = Proxy.revocable({ offset: 2 }, {});
+        decodedCursor = revocable.proxy;
+        revocable.revoke();
+      } else {
+        decodedCursor = new Proxy(
+          { offset: 2 },
+          {
+            get: semanticRead,
+            has: semanticRead,
+            getPrototypeOf: semanticRead,
+            ownKeys: semanticRead,
+            getOwnPropertyDescriptor: semanticRead,
+          },
+        );
+      }
+      const search = vi.fn<PatientRepository['search']>();
+      const encode = vi.fn<PatientSearchCursorCodec['encode']>();
+      const server = buildDevTestServer({
+        patientSearchCursorCodec: {
+          decode: () => decodedCursor as never,
+          encode,
+        },
+        patientRepository: {
+          search,
+          findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/patients/search?q=synthetic&cursor=opaque-proxy-4208',
+        headers: tenantOnePatientReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json()).toMatchObject({
+        message: patientSearchDecodedCursorInvariantErrorMessage,
+      });
+      expect(search).not.toHaveBeenCalled();
+      expect(encode).not.toHaveBeenCalled();
+      if (variant === 'throwing descriptor Proxy') {
+        expect(semanticRead).toHaveBeenCalledOnce();
+      } else {
+        expect(semanticRead).not.toHaveBeenCalled();
+      }
+      expect(response.body).not.toContain(rawSentinel);
+      expect(response.body).not.toContain('Cannot perform');
+    },
+  );
+
+  it('uses one captured decoded offset for repository input and cursor progress', async () => {
+    const rawCursor = { offset: 2 };
+    const directRead = vi.fn(() => {
+      throw new Error('raw decoded cursor direct read secret 4208');
+    });
+    const descriptorRead = vi.fn(() => {
+      const descriptor = Reflect.getOwnPropertyDescriptor(rawCursor, 'offset');
+      rawCursor.offset = 100;
+      return descriptor;
+    });
+    const decodedCursor = new Proxy(rawCursor, {
+      get: directRead,
+      has: directRead,
+      getPrototypeOf: directRead,
+      ownKeys: directRead,
+      getOwnPropertyDescriptor(_target, property) {
+        if (property === 'offset') return descriptorRead();
+        return undefined;
+      },
+    });
+    const result = {
+      patientId: 'patient-decoded-cursor-4208',
+      name: '合成decoded cursor患者',
+      kana: 'ゴウセイデコードカーソルカンジャ',
+      birthDate: '1990-01-01',
+      sex: 'unknown' as const,
+      patientNumber: 'DECODED-CURSOR-4208',
+      eligibilityStatus: 'NOT_CHECKED' as const,
+    };
+    let observedSearchCursor: unknown;
+    const search = vi.fn<PatientRepository['search']>(async (input) => {
+      observedSearchCursor = input.cursor;
+      return { results: [result], nextCursor: { offset: 3 } };
+    });
+    let observedEncodedCursor: unknown;
+    const encode = vi.fn<PatientSearchCursorCodec['encode']>((_binding, cursor) => {
+      observedEncodedCursor = cursor;
+      return 'encoded-next-cursor-4208';
+    });
+    const decodeCalls = vi.fn();
+    const decode: PatientSearchCursorCodec['decode'] = (binding, token) => {
+      decodeCalls();
+      expect(Object.isFrozen(binding)).toBe(true);
+      expect(token).toBe('opaque-valid-cursor-4208');
+      return decodedCursor;
+    };
+    const server = buildDevTestServer({
+      patientSearchCursorCodec: { decode, encode },
+      patientRepository: {
+        search,
+        findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/patients/search?q=synthetic&limit=2&cursor=opaque-valid-cursor-4208',
+      headers: tenantOnePatientReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.json()).toMatchObject({
+      results: [{ patientId: result.patientId }],
+      nextCursor: 'encoded-next-cursor-4208',
+    });
+    expect(decodeCalls).toHaveBeenCalledOnce();
+    expect(search).toHaveBeenCalledOnce();
+    expect(encode).toHaveBeenCalledOnce();
+    expect(observedSearchCursor === decodedCursor).toBe(false);
+    expect(observedSearchCursor).toEqual({ offset: 2 });
+    expect(Object.isFrozen(observedSearchCursor)).toBe(true);
+    expect(observedEncodedCursor).toEqual({ offset: 3 });
+    expect(Object.isFrozen(observedEncodedCursor)).toBe(true);
+    expect(descriptorRead).toHaveBeenCalledOnce();
+    expect(directRead).not.toHaveBeenCalled();
   });
 
   it.each([

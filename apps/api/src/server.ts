@@ -55,6 +55,7 @@ import { InMemoryAuditRepository, type AuditRepository } from './audit-repositor
 import {
   InMemoryPatientRepository,
   type PatientRepository,
+  type PatientSearchCursor,
   type PatientSearchPage,
 } from './patient-repository.js';
 import {
@@ -74,6 +75,9 @@ export const patientSearchDuplicateIdentityInvariantErrorMessage =
   'Patient repository returned duplicate patient identities';
 export const patientSearchCursorProgressInvariantErrorMessage =
   'Patient repository returned an invalid next cursor';
+export const patientSearchCursorDecodeErrorMessage = 'Patient search cursor decode failed';
+export const patientSearchDecodedCursorInvariantErrorMessage =
+  'Patient search cursor codec returned an invalid cursor';
 export const patientSearchRepositoryErrorMessage = 'Patient repository search failed';
 export const patientSearchPageSchemaInvariantErrorMessage =
   'Patient repository returned an invalid search page';
@@ -211,6 +215,18 @@ function readRequiredOwnEnumerableDataProperty(
   const property = readOwnEnumerableDataProperty(value, key, invariantErrorMessage);
   if (!property.present) throw new Error(invariantErrorMessage);
   return property.value;
+}
+
+function snapshotDecodedPatientSearchCursor(value: unknown): PatientSearchCursor {
+  const offset = readRequiredOwnEnumerableDataProperty(
+    value,
+    'offset',
+    patientSearchDecodedCursorInvariantErrorMessage,
+  );
+  if (typeof offset !== 'number' || !Number.isSafeInteger(offset) || offset < 0) {
+    throw new Error(patientSearchDecodedCursorInvariantErrorMessage);
+  }
+  return Object.freeze({ offset });
 }
 
 function readReceptionCreateResultKind(value: unknown): ReceptionCreateResult['kind'] {
@@ -599,18 +615,32 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         return reply.code(400).send(invalidPatientSearchQueryResponse());
       }
 
-      const cursor =
-        query.data.cursor === undefined
-          ? undefined
-          : patientSearchCursorCodec.decode({
-              tenantId: tenantContext.tenantId,
-              pharmacyId: tenantContext.pharmacyId,
-              q: query.data.q,
-            }, query.data.cursor);
+      let cursor: PatientSearchCursor | undefined;
+      if (query.data.cursor !== undefined) {
+        const cursorBinding = Object.freeze({
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+          q: query.data.q,
+        });
+        let decodedCursor: PatientSearchCursor | undefined;
+        try {
+          decodedCursor = patientSearchCursorCodec.decode(
+            cursorBinding,
+            query.data.cursor,
+          );
+        } catch {
+          throw new Error(patientSearchCursorDecodeErrorMessage);
+        }
+        if (decodedCursor !== undefined) {
+          cursor = snapshotDecodedPatientSearchCursor(decodedCursor);
+        }
+      }
 
       if (query.data.cursor !== undefined && cursor === undefined) {
         return reply.code(400).send(invalidPatientSearchQueryResponse());
       }
+
+      const requestedOffset = cursor?.offset ?? 0;
 
       let page: PatientSearchPage;
       try {
@@ -671,7 +701,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           'offset',
           patientSearchCursorProgressInvariantErrorMessage,
         );
-        const expectedNextOffset = (cursor?.offset ?? 0) + validatedResults.length;
+        const expectedNextOffset = requestedOffset + validatedResults.length;
         if (
           validatedResults.length === 0 ||
           !Number.isSafeInteger(expectedNextOffset) ||
