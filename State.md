@@ -8,10 +8,10 @@
 
 ## 2026-07-16
 
-### WP-4150 narrow-table patient selection action — IMPLEMENTED / INDEPENDENT_VERIFY_REQUIRED
+### WP-4150 narrow-table patient selection action — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
 - 375pxで患者検索の選択操作が横スクロール外へ隠れる既知P2を再現。患者識別列と横スクロールは保持し、選択操作列だけを右端へsticky固定した。
-- focused43、Web336、Web typecheck/build、diff PASS。synthetic browserで375pxの初期/最大横スクロール、768/1280を確認し、選択buttonは常時viewport内、page overflow/console/errorなし。table全体の列優先/カード化はP2で継続、landing commit pending、別agent verifier未実施。
+- focused43、Web336、Web typecheck/build、diff PASS。synthetic browserで375pxの初期/最大横スクロール、768/1280を確認し、選択buttonは常時viewport内、page overflow/console/errorなし。table全体の列優先/カード化はP2で継続。exact9 implementation commit `87b5c41`をfeature branchへpush済み、別agent verifier未実施。
 
 ### WP-4149 reception registration Patient Context binding — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 

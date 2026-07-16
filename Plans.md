@@ -2793,14 +2793,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: implementation commitと後続ledger commitをrevertする。API/DB/data migration rollback不要。
   - landing_record: implementation commit `7ba1003` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact9 implementation/docs and validation proof landed、independent verification pending。
 
-- [~] WP-4150 keep patient selection action reachable on narrow tables(P2 responsive/patient safety) — IMPLEMENTED / INDEPENDENT_VERIFY_REQUIRED
+- [~] WP-4150 keep patient selection action reachable on narrow tables(P2 responsive/patient safety) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
   - 発見根拠: WP-4149 browser verificationの375px viewportで、患者検索結果の「この患者を選択」が初期表示範囲外となり、各行で横スクロールしなければ業務対象を確定できない既知R-RESPONSIVE gapを再現した。
   - scope: exact9 `apps/web/app/patients/patient-search.tsx`, `apps/web/app/patients/patient-search.test.tsx`, `apps/web/app/globals.css`, `docs/ui-ux-refresh/06-ui-ux-audit.md`, `docs/ui-ux-refresh/11-remaining-risks.md`, `docs/ui-ux-refresh/PROGRESS.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。API/contracts/DB/SSOT/package/lock/CIは変更しない。
   - implementation: 患者識別列を縮小・非表示にせず既存横スクロールを維持し、`onSelect`がある場合だけ操作header/cellへ専用classを付けて右端へsticky固定。背景・境界・z-index・最小幅を明示し、共通tableやread-only結果は変更しない。
   - verification: patient-search focused 43、Web336、Web typecheck/build、diff PASS。synthetic browserで375pxのscrollLeft=0/192双方で2つの選択buttonがviewport内、768/1280 page overflowなし、全action cell viewport内、console/errorなしを確認。mobile screenshotをroot visual review済み。
   - review_status: root cold-path reviewと`emil-design-eng`基準のBefore/After UI review済み。table全体の列優先/カード化は既存P2として残し、別agent verifier未実施のためFINALIZEDを主張しない。
   - rollback: implementation commitと後続ledger commitをrevertする。API/DB/data rollback不要。
-  - landing_record: implementation commit pending; exact9 diff and validation proof ready、independent verification pending。
+  - landing_record: implementation commit `87b5c41` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact9 implementation/docs and validation proof landed、independent verification pending。
 
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
