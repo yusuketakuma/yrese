@@ -39,6 +39,26 @@ function patient(over: Partial<PatientSearchResult>): PatientSearchResult {
   };
 }
 
+async function captureSearchFailure(
+  status: number,
+  json: () => unknown,
+): Promise<{ readonly error: unknown; readonly json: ReturnType<typeof vi.fn> }> {
+  vi.stubEnv("NODE_ENV", "development");
+  vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+  const jsonMock = vi.fn(json);
+  const fetchImpl: typeof fetch = async () =>
+    ({ ok: false, status, json: jsonMock }) as unknown as Response;
+  let error: unknown;
+  try {
+    await fetchSearch("秘密検索語", undefined, fetchImpl);
+  } catch (caught) {
+    error = caught;
+  } finally {
+    vi.unstubAllEnvs();
+  }
+  return { error, json: jsonMock };
+}
+
 describe("patient search hardening (WP-3008 / SCR-002)", () => {
   it("does not serialize a patient search query when hydration is unavailable", () => {
     const html = renderToStaticMarkup(<PatientSearch />);
@@ -92,6 +112,132 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     expect(fetchImpl).toHaveBeenCalledExactlyOnceWith(
       "/_yrese-api/patients/search?q=%E5%90%88%E6%88%90&limit=20",
       expect.objectContaining({ signal: controller.signal }),
+    );
+  });
+
+  it("preserves fixed permission guidance when error JSON throws synchronously", async () => {
+    const rawSentinel = "raw synchronous patient-search body";
+    const { error, json } = await captureSearchFailure(403, () => {
+      throw { errorCode: "AUTH-0003", message: rawSentinel };
+    });
+
+    expect(json).toHaveBeenCalledOnce();
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toMatchObject({
+      message: "権限がありません。",
+      nextAction: "管理者に権限(patient:read)の付与状況を確認してください。",
+      errorCode: undefined,
+    });
+    expect(JSON.stringify(error, Object.getOwnPropertyNames(error))).not.toContain(rawSentinel);
+  });
+
+  it("preserves fixed invalid-query guidance when error JSON rejects", async () => {
+    const rawSentinel = "raw asynchronous patient-search body";
+    const { error, json } = await captureSearchFailure(400, () =>
+      Promise.reject({ errorCode: "PAT-0001", message: rawSentinel }),
+    );
+
+    expect(json).toHaveBeenCalledOnce();
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toMatchObject({
+      message: "検索条件が不正です。",
+      nextAction: "入力内容を確認して再度検索してください。",
+      errorCode: undefined,
+    });
+    expect(JSON.stringify(error, Object.getOwnPropertyNames(error))).not.toContain(rawSentinel);
+  });
+
+  it.each([
+    ["synchronous resolution", (body: unknown) => body],
+    ["asynchronous resolution", (body: unknown) => Promise.resolve(body)],
+  ])(
+    "does not invoke error-code has/get traps after %s",
+    async (_case, resolveBody) => {
+      const rawSentinel = "raw patient-search error-code trap";
+      const propertyRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const body = new Proxy(
+        {},
+        {
+          get(target, property, receiver) {
+            return property === "errorCode"
+              ? propertyRead()
+              : Reflect.get(target, property, receiver);
+          },
+          has(_target, property) {
+            return property === "errorCode" ? propertyRead() : false;
+          },
+        },
+      );
+      const { error, json } = await captureSearchFailure(403, () => resolveBody(body));
+
+      expect(json).toHaveBeenCalledOnce();
+      expect(propertyRead).not.toHaveBeenCalled();
+      expect(error).toMatchObject({
+        message: "権限がありません。",
+        nextAction: "管理者に権限(patient:read)の付与状況を確認してください。",
+        errorCode: undefined,
+      });
+    },
+  );
+
+  it("ignores inherited and accessor error codes without invoking a getter", async () => {
+    const getter = vi.fn(() => {
+      throw new Error("raw patient-search error-code getter");
+    });
+    const bodies = [
+      Object.create({ errorCode: "AUTH-0003" }),
+      Object.defineProperty({}, "errorCode", { enumerable: true, get: getter }),
+    ];
+
+    for (const body of bodies) {
+      const { error } = await captureSearchFailure(403, () => body);
+      expect(error).toMatchObject({
+        message: "権限がありません。",
+        errorCode: undefined,
+      });
+    }
+    expect(getter).not.toHaveBeenCalled();
+  });
+
+  it("normalizes a throwing descriptor trap to fixed HTTP guidance", async () => {
+    const rawSentinel = "raw patient-search descriptor trap";
+    const descriptorRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const body = new Proxy({}, { getOwnPropertyDescriptor: descriptorRead });
+    const { error, json } = await captureSearchFailure(500, () => body);
+
+    expect(json).toHaveBeenCalledOnce();
+    expect(descriptorRead).toHaveBeenCalledOnce();
+    expect(error).toMatchObject({
+      message: "検索に失敗しました(HTTP 500)。",
+      nextAction:
+        "再試行してください。解消しない場合は同期状態画面で外部接続状態を確認してください。",
+      errorCode: undefined,
+    });
+    expect(JSON.stringify(error, Object.getOwnPropertyNames(error))).not.toContain(rawSentinel);
+  });
+
+  it.each([
+    ["AUTH-0003", "AUTH-0003"],
+    ["PAT-0001", "PAT-0001"],
+    ["SYSTEM-9999", undefined],
+    [403, undefined],
+  ])("projects only registered own error code %j", async (rawErrorCode, expected) => {
+    const { error } = await captureSearchFailure(403, () => ({
+      errorCode: rawErrorCode,
+      message: "raw message must not render",
+    }));
+
+    expect(error).toMatchObject({
+      message: "権限がありません。",
+      nextAction: "管理者に権限(patient:read)の付与状況を確認してください。",
+      errorCode: expected,
+    });
+    expect(JSON.stringify(error, Object.getOwnPropertyNames(error))).not.toContain(
+      "raw message must not render",
     );
   });
 

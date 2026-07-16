@@ -110,13 +110,19 @@ export async function fetchSearch(
     ...(signal !== undefined ? { signal } : {}),
   });
   if (!res.ok) {
-    const body: unknown = await res.json().catch(() => null);
-    const rawErrorCode =
-      typeof body === "object" && body !== null && "errorCode" in body
-        ? (body as { errorCode: unknown }).errorCode
-        : undefined;
-    // registry 未登録/形式外のコードは表示しない(異常値の verbatim 出力防止)
-    const errorCode = registeredErrorCodeOrUndefined(rawErrorCode);
+    let errorCode: string | undefined;
+    try {
+      const body: unknown = await res.json();
+      if (typeof body === "object" && body !== null) {
+        const descriptor = Object.getOwnPropertyDescriptor(body, "errorCode");
+        if (descriptor !== undefined && "value" in descriptor) {
+          // registry 未登録/形式外のコードは表示しない(異常値の verbatim 出力防止)
+          errorCode = registeredErrorCodeOrUndefined(descriptor.value);
+        }
+      }
+    } catch {
+      errorCode = undefined;
+    }
     if (res.status === 403) {
       throw new SearchError(
         "権限がありません。",
