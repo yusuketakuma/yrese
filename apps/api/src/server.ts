@@ -1,3 +1,5 @@
+import { isProxy } from 'node:util/types';
+
 import Fastify, { type FastifyInstance, type onRequestHookHandler } from 'fastify';
 import { hydrateAuditEvent, verifyAuditHashChain, type AuditEvent } from '@yrese/audit';
 import {
@@ -97,6 +99,8 @@ export const receptionQueueBusinessDateInvariantErrorMessage =
   'Reception repository returned entries outside the requested business date';
 export const receptionQueueRepositoryErrorMessage =
   'Reception repository queue lookup failed';
+export const receptionQueueSchemaInvariantErrorMessage =
+  'Reception repository returned invalid queue entries';
 export const receptionCreateRepositoryErrorMessage = 'Reception repository create failed';
 const auditLogProjectionInvariantErrorMessage =
   'Audit event display projection failed for a verified hash chain';
@@ -324,20 +328,51 @@ function parsePatientSearchResultSnapshot(
   }
 }
 
-function snapshotReceptionCreateEntryIdentity(value: unknown) {
+function snapshotDenseArray(value: unknown, invariantErrorMessage: string): readonly unknown[] {
+  try {
+    if (isProxy(value) || !Array.isArray(value)) throw new Error(invariantErrorMessage);
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+    if (
+      lengthDescriptor === undefined ||
+      !('value' in lengthDescriptor) ||
+      !Number.isSafeInteger(lengthDescriptor.value) ||
+      lengthDescriptor.value < 0
+    ) {
+      throw new Error(invariantErrorMessage);
+    }
+
+    const snapshot: unknown[] = [];
+    for (let index = 0; index < lengthDescriptor.value; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (
+        descriptor === undefined ||
+        descriptor.enumerable !== true ||
+        !('value' in descriptor)
+      ) {
+        throw new Error(invariantErrorMessage);
+      }
+      snapshot.push(descriptor.value);
+    }
+    return Object.freeze(snapshot);
+  } catch {
+    throw new Error(invariantErrorMessage);
+  }
+}
+
+function snapshotReceptionEntryIdentity(value: unknown, invariantErrorMessage: string) {
   const receptionIdentity = readRequiredOwnEnumerableDataProperty(
     value,
     'receptionId',
-    receptionResultIdempotencyProvenanceMismatchErrorMessage,
+    invariantErrorMessage,
   );
   const rawPatient = readRequiredOwnEnumerableDataProperty(
     value,
     'patient',
-    receptionResultIdempotencyProvenanceMismatchErrorMessage,
+    invariantErrorMessage,
   );
   const patientIdentity = snapshotPatientSearchResultIdentity(
     rawPatient,
-    receptionResultIdempotencyProvenanceMismatchErrorMessage,
+    invariantErrorMessage,
   );
   return Object.freeze({
     receptionId: receptionIdentity,
@@ -346,14 +381,15 @@ function snapshotReceptionCreateEntryIdentity(value: unknown) {
   });
 }
 
-function snapshotReceptionCreateEntry(
+function snapshotReceptionEntry(
   value: unknown,
-  identity: ReturnType<typeof snapshotReceptionCreateEntryIdentity>,
+  identity: ReturnType<typeof snapshotReceptionEntryIdentity>,
+  invariantErrorMessage: string,
 ) {
   const patientSnapshot = snapshotPatientSearchResult(
     identity.rawPatient,
     identity.patientId,
-    receptionResultSchemaInvariantErrorMessage,
+    invariantErrorMessage,
   );
 
   return Object.freeze({
@@ -362,28 +398,31 @@ function snapshotReceptionCreateEntry(
     acceptedAt: readRequiredOwnEnumerableDataProperty(
       value,
       'acceptedAt',
-      receptionResultSchemaInvariantErrorMessage,
+      invariantErrorMessage,
     ),
     receptionStatus: readRequiredOwnEnumerableDataProperty(
       value,
       'receptionStatus',
-      receptionResultSchemaInvariantErrorMessage,
+      invariantErrorMessage,
     ),
     prescriptionIntakeType: readRequiredOwnEnumerableDataProperty(
       value,
       'prescriptionIntakeType',
-      receptionResultSchemaInvariantErrorMessage,
+      invariantErrorMessage,
     ),
   });
 }
 
-function parseReceptionCreateEntrySnapshot(value: unknown): ReceptionQueueEntry {
+function parseReceptionEntrySnapshot(
+  value: unknown,
+  invariantErrorMessage: string,
+): ReceptionQueueEntry {
   try {
     const parsed = receptionQueueEntrySchema.safeParse(value);
-    if (!parsed.success) throw new Error(receptionResultSchemaInvariantErrorMessage);
+    if (!parsed.success) throw new Error(invariantErrorMessage);
     return parsed.data;
   } catch {
-    throw new Error(receptionResultSchemaInvariantErrorMessage);
+    throw new Error(invariantErrorMessage);
   }
 }
 
@@ -655,20 +694,41 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         return reply.code(400).send(invalidReceptionRequestResponse());
       }
 
-      const entries = await runRepositoryOperationOrThrowFixed(
-        () =>
-          receptionRepository.list({
-            tenantId: tenantContext.tenantId,
-            pharmacyId: tenantContext.pharmacyId,
-            date: query.data.date,
-          }),
-        receptionQueueRepositoryErrorMessage,
-      );
+      let entries: readonly ReceptionQueueEntry[];
+      try {
+        entries = await receptionRepository.list({
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+          date: query.data.date,
+        });
+      } catch {
+        throw new Error(receptionQueueRepositoryErrorMessage);
+      }
 
-      const response = receptionQueueResponseSchema.parse({
-        date: query.data.date,
-        entries,
+      const rawEntries = snapshotDenseArray(entries, receptionQueueSchemaInvariantErrorMessage);
+      const entrySnapshots = rawEntries.map((entry) => {
+        const identity = snapshotReceptionEntryIdentity(
+          entry,
+          receptionQueueSchemaInvariantErrorMessage,
+        );
+        const snapshot = snapshotReceptionEntry(
+          entry,
+          identity,
+          receptionQueueSchemaInvariantErrorMessage,
+        );
+        return parseReceptionEntrySnapshot(snapshot, receptionQueueSchemaInvariantErrorMessage);
       });
+      let response: ReceptionQueueResponse;
+      try {
+        const parsedResponse = receptionQueueResponseSchema.safeParse({
+          date: query.data.date,
+          entries: entrySnapshots,
+        });
+        if (!parsedResponse.success) throw new Error(receptionQueueSchemaInvariantErrorMessage);
+        response = parsedResponse.data;
+      } catch {
+        throw new Error(receptionQueueSchemaInvariantErrorMessage);
+      }
       const receptionIds = new Set<string>();
       for (const entry of response.entries) {
         if (receptionIds.has(entry.receptionId)) {
@@ -783,15 +843,25 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         'entry',
         receptionResultIdempotencyProvenanceMismatchErrorMessage,
       );
-      const entryIdentity = snapshotReceptionCreateEntryIdentity(rawEntryValue);
+      const entryIdentity = snapshotReceptionEntryIdentity(
+        rawEntryValue,
+        receptionResultIdempotencyProvenanceMismatchErrorMessage,
+      );
       if (
         provenance.receptionId !== entryIdentity.receptionId ||
         provenance.patientId !== entryIdentity.patientId
       ) {
         throw new Error(receptionResultIdempotencyProvenanceMismatchErrorMessage);
       }
-      const entrySnapshot = snapshotReceptionCreateEntry(rawEntryValue, entryIdentity);
-      const parsedEntry = parseReceptionCreateEntrySnapshot(entrySnapshot);
+      const entrySnapshot = snapshotReceptionEntry(
+        rawEntryValue,
+        entryIdentity,
+        receptionResultSchemaInvariantErrorMessage,
+      );
+      const parsedEntry = parseReceptionEntrySnapshot(
+        entrySnapshot,
+        receptionResultSchemaInvariantErrorMessage,
+      );
       if (parsedEntry.patient.patientId !== parsedPatientId) {
         throw new Error(receptionResultPatientIdentityMismatchErrorMessage);
       }

@@ -42,6 +42,7 @@ import {
   receptionQueueBusinessDateInvariantErrorMessage,
   receptionQueueDuplicateIdentityInvariantErrorMessage,
   receptionQueueRepositoryErrorMessage,
+  receptionQueueSchemaInvariantErrorMessage,
   receptionCreateRepositoryErrorMessage,
   receptionCreatedStatusInvariantErrorMessage,
   receptionCreatedAcceptedAtInvariantErrorMessage,
@@ -1252,6 +1253,305 @@ describe('buildServer', () => {
     },
   );
 
+  it.each([
+    ['non-array root', {}],
+    ['sparse array', new Array(1)],
+  ] as const)('rejects a fulfilled reception queue with a %s', async (_label, entries) => {
+    const server = buildDevTestServer({
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => entries as never),
+        create: vi.fn<ReceptionRepository['create']>(),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-09',
+      headers: tenantOneReceptionReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({
+      message: receptionQueueSchemaInvariantErrorMessage,
+    });
+  });
+
+  it('rejects a reception queue array index accessor without invoking it', async () => {
+    const rawSentinel = 'raw queue array accessor secret 4202';
+    const getterRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const entries: unknown[] = [];
+    Object.defineProperty(entries, '0', { enumerable: true, get: getterRead });
+    const server = buildDevTestServer({
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => entries as never),
+        create: vi.fn<ReceptionRepository['create']>(),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-09',
+      headers: tenantOneReceptionReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({ message: receptionQueueSchemaInvariantErrorMessage });
+    expect(response.body).not.toContain(rawSentinel);
+    expect(getterRead).not.toHaveBeenCalled();
+  });
+
+  it('rejects a fulfilled reception queue array Proxy without invoking its traps', async () => {
+    const rawSentinel = 'raw queue array Proxy trap secret 4202';
+    const directRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const descriptorRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const entries = new Proxy([], {
+      get(_target, property) {
+        if (property === 'then') return undefined;
+        return directRead();
+      },
+      has: directRead,
+      getPrototypeOf: directRead,
+      ownKeys: directRead,
+      getOwnPropertyDescriptor: descriptorRead,
+    });
+    const server = buildDevTestServer({
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(() => Promise.resolve(entries as never)),
+        create: vi.fn<ReceptionRepository['create']>(),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-09',
+      headers: tenantOneReceptionReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({ message: receptionQueueSchemaInvariantErrorMessage });
+    expect(response.body).not.toContain(rawSentinel);
+    expect(descriptorRead).not.toHaveBeenCalled();
+    expect(directRead).not.toHaveBeenCalled();
+  });
+
+  it('rejects a fulfilled revoked reception queue array Proxy without inspecting it', async () => {
+    const directRead = vi.fn(() => {
+      throw new Error('raw revoked queue array Proxy trap secret 4202');
+    });
+    const { proxy: entries, revoke } = Proxy.revocable([], {
+      get(_target, property) {
+        if (property === 'then') return undefined;
+        return directRead();
+      },
+      has: directRead,
+      getPrototypeOf: directRead,
+      ownKeys: directRead,
+      getOwnPropertyDescriptor: directRead,
+    });
+    const fulfilledEntries = new Promise<unknown>((resolve) => {
+      resolve(entries);
+      revoke();
+    });
+    const server = buildDevTestServer({
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(() => fulfilledEntries as never),
+        create: vi.fn<ReceptionRepository['create']>(),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-09',
+      headers: tenantOneReceptionReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({ message: receptionQueueSchemaInvariantErrorMessage });
+    expect(directRead).not.toHaveBeenCalled();
+  });
+
+  it('rejects a fulfilled reception queue entry accessor without invoking or echoing it', async () => {
+    const rawSentinel = 'raw queue acceptedAt accessor secret 4202';
+    const getterRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const entry = {
+      receptionId: 'reception-accessor-secret-4202',
+      patient: {
+        patientId: 'patient-accessor-secret-4202',
+        name: '合成 accessor患者',
+        kana: 'ゴウセイ アクセサーカンジャ',
+        birthDate: '1990-01-01',
+        sex: 'unknown' as const,
+        patientNumber: 'ACCESSOR-SECRET-4202',
+        eligibilityStatus: 'NOT_CHECKED' as const,
+      },
+      receptionStatus: 'WAITING' as const,
+      prescriptionIntakeType: 'paper' as const,
+    };
+    Object.defineProperty(entry, 'acceptedAt', { enumerable: true, get: getterRead });
+    const server = buildDevTestServer({
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => [entry] as never),
+        create: vi.fn<ReceptionRepository['create']>(),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-09',
+      headers: tenantOneReceptionReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({ message: receptionQueueSchemaInvariantErrorMessage });
+    for (const sensitiveValue of [
+      rawSentinel,
+      entry.receptionId,
+      entry.patient.patientId,
+      entry.patient.patientNumber,
+    ]) {
+      expect(response.body).not.toContain(sensitiveValue);
+    }
+    expect(getterRead).not.toHaveBeenCalled();
+  });
+
+  it('normalizes a throwing queue entry descriptor Proxy without direct inspection', async () => {
+    const rawSentinel = 'raw queue entry descriptor trap secret 4202';
+    const directRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const descriptorRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const entry = new Proxy(
+      {},
+      {
+        get: directRead,
+        has: directRead,
+        getPrototypeOf: directRead,
+        ownKeys: directRead,
+        getOwnPropertyDescriptor: descriptorRead,
+      },
+    );
+    const server = buildDevTestServer({
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => [entry] as never),
+        create: vi.fn<ReceptionRepository['create']>(),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-09',
+      headers: tenantOneReceptionReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({ message: receptionQueueSchemaInvariantErrorMessage });
+    expect(response.body).not.toContain(rawSentinel);
+    expect(descriptorRead).toHaveBeenCalledOnce();
+    expect(directRead).not.toHaveBeenCalled();
+  });
+
+  it('hydrates one fulfilled reception queue descriptor graph without semantic direct reads', async () => {
+    const directRead = vi.fn((property: PropertyKey) => {
+      throw new Error(`raw direct reception queue read ${String(property)} 4202`);
+    });
+    const descriptorRead = vi.fn();
+    const descriptorProxy = <T extends object>(target: T): T =>
+      new Proxy(target, {
+        get(_currentTarget, property) {
+          return directRead(property);
+        },
+        has(_currentTarget, property) {
+          return directRead(property);
+        },
+        getPrototypeOf() {
+          return directRead('getPrototypeOf');
+        },
+        ownKeys() {
+          return directRead('ownKeys');
+        },
+        getOwnPropertyDescriptor(currentTarget, property) {
+          descriptorRead(property);
+          return Reflect.getOwnPropertyDescriptor(currentTarget, property);
+        },
+      });
+    const patient = descriptorProxy({
+      patientId: 'patient-queue-descriptor-4202',
+      name: '合成 queue descriptor患者',
+      kana: 'ゴウセイ キューディスクリプタカンジャ',
+      birthDate: '1990-01-01',
+      sex: 'unknown' as const,
+      patientNumber: 'QUEUE-DESC-4202',
+      eligibilityStatus: 'NOT_CHECKED' as const,
+      eligibilityCheckedAt: '2026-07-09T08:59:00.000Z',
+    });
+    const entry = descriptorProxy({
+      receptionId: 'reception-queue-descriptor-4202',
+      patient,
+      acceptedAt: '2026-07-09T09:00:00.000Z',
+      receptionStatus: 'WAITING' as const,
+      prescriptionIntakeType: 'paper' as const,
+    });
+    const entries = [entry];
+    const list = vi.fn<ReceptionRepository['list']>(async () => entries as never);
+    const server = buildDevTestServer({
+      receptionRepository: { list, create: vi.fn<ReceptionRepository['create']>() },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-09',
+      headers: tenantOneReceptionReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      date: '2026-07-09',
+      entries: [
+        {
+          receptionId: 'reception-queue-descriptor-4202',
+          patient: {
+            patientId: 'patient-queue-descriptor-4202',
+            name: '合成 queue descriptor患者',
+            kana: 'ゴウセイ キューディスクリプタカンジャ',
+            birthDate: '1990-01-01',
+            sex: 'unknown',
+            patientNumber: 'QUEUE-DESC-4202',
+            eligibilityStatus: 'NOT_CHECKED',
+            eligibilityCheckedAt: '2026-07-09T08:59:00.000Z',
+          },
+          acceptedAt: '2026-07-09T09:00:00.000Z',
+          receptionStatus: 'WAITING',
+          prescriptionIntakeType: 'paper',
+        },
+      ],
+    });
+    expect(descriptorRead).toHaveBeenCalledTimes(13);
+    expect(directRead).not.toHaveBeenCalled();
+  });
+
   it('accepts an entry whose UTC date differs but whose JST business date matches the request', async () => {
     const boundaryEntry = {
       receptionId: 'reception-jst-boundary',
@@ -1472,6 +1772,61 @@ describe('buildServer', () => {
       }
     },
   );
+
+  it('prioritizes queue schema failure over a duplicate reception identity', async () => {
+    const receptionIdentity = 'reception-schema-before-duplicate-4202';
+    const valid = {
+      receptionId: receptionIdentity,
+      acceptedAt: '2026-07-09T09:00:00.000Z',
+      receptionStatus: 'WAITING' as const,
+      prescriptionIntakeType: 'paper' as const,
+      patient: {
+        patientId: 'patient-schema-before-duplicate-a-4202',
+        name: '合成 schema優先患者A',
+        kana: 'ゴウセイ スキーマユウセンカンジャエー',
+        birthDate: '1990-01-01',
+        sex: 'unknown' as const,
+        patientNumber: 'SCHEMA-FIRST-A-4202',
+        eligibilityStatus: 'NOT_CHECKED' as const,
+      },
+    };
+    const invalid = {
+      ...valid,
+      receptionStatus: 'RAW_INVALID_RECEPTION_STATUS_SECRET_4202',
+      patient: {
+        ...valid.patient,
+        patientId: 'patient-schema-before-duplicate-b-4202',
+        patientNumber: 'SCHEMA-FIRST-B-4202',
+      },
+    };
+    const server = buildDevTestServer({
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => [valid, invalid] as never),
+        create: vi.fn<ReceptionRepository['create']>(),
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-09',
+      headers: tenantOneReceptionReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({ message: receptionQueueSchemaInvariantErrorMessage });
+    for (const sensitiveValue of [
+      receptionIdentity,
+      invalid.receptionStatus,
+      valid.patient.patientId,
+      invalid.patient.patientId,
+      valid.patient.patientNumber,
+      invalid.patient.patientNumber,
+    ]) {
+      expect(response.body).not.toContain(sensitiveValue);
+    }
+  });
 
   it('denies /reception/queue when patient read scope is missing', async () => {
     const server = buildDevTestServer();
