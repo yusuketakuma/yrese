@@ -1639,6 +1639,163 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(String(init.body)).toContain('"idempotencyKey":"key-1"');
   });
 
+  it("preserves fixed queue guidance when error JSON throws synchronously", async () => {
+    const rawSentinel = "raw synchronous queue error body";
+    const json = vi.fn(() => {
+      throw { errorCode: "AUTH-0003", message: rawSentinel };
+    });
+    const fetchImpl: typeof fetch = async () =>
+      ({ ok: false, status: 403, json }) as unknown as Response;
+
+    let caught: unknown;
+    try {
+      await withNodeEnv("development", () =>
+        fetchReceptionQueue("2026-07-10", fetchImpl),
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(json).toHaveBeenCalledOnce();
+    expect(caught).toBeInstanceOf(ReceptionError);
+    expect((caught as ReceptionError).toNotice()).toEqual({
+      message: "権限がありません。",
+      nextAction:
+        "管理者に権限(reception:read / patient:read)の付与状況を確認してください。",
+    });
+    expect(JSON.stringify((caught as ReceptionError).toNotice())).not.toContain(rawSentinel);
+  });
+
+  it("preserves fixed idempotency-conflict guidance when error JSON rejects", async () => {
+    const rawSentinel = "raw asynchronous reception error body";
+    const json = vi.fn(() =>
+      Promise.reject({ errorCode: "RCV-0003", message: rawSentinel }),
+    );
+    const fetchImpl: typeof fetch = async () =>
+      ({ ok: false, status: 409, json }) as unknown as Response;
+
+    let caught: unknown;
+    try {
+      await withNodeEnv("development", () =>
+        createReception("patient-test-001", fetchImpl, "key-json-reject"),
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(json).toHaveBeenCalledOnce();
+    expect(caught).toBeInstanceOf(ReceptionError);
+    expect((caught as ReceptionError).toNotice()).toEqual({
+      message: "同じ操作キーが別の患者で再利用されました(二重操作の可能性)。",
+      nextAction:
+        "受付一覧を更新して受付状況を確認してください。解消しない場合はシステム管理者へ連絡してください。",
+    });
+    expect(JSON.stringify((caught as ReceptionError).toNotice())).not.toContain(rawSentinel);
+  });
+
+  it.each([
+    ["synchronous resolution", (body: unknown) => body],
+    ["asynchronous resolution", (body: unknown) => Promise.resolve(body)],
+  ])(
+    "does not invoke error-code has/get traps after %s",
+    async (_case, resolveBody) => {
+      const rawSentinel = "raw reception error-code trap";
+      const propertyRead = vi.fn(() => {
+        throw new Error(rawSentinel);
+      });
+      const body = new Proxy(
+        {},
+        {
+          get(target, property, receiver) {
+            return property === "errorCode"
+              ? propertyRead()
+              : Reflect.get(target, property, receiver);
+          },
+          has(_target, property) {
+            return property === "errorCode" ? propertyRead() : false;
+          },
+        },
+      );
+      const json = vi.fn(() => resolveBody(body));
+      const fetchImpl: typeof fetch = async () =>
+        ({ ok: false, status: 409, json }) as unknown as Response;
+
+      let caught: unknown;
+      try {
+        await withNodeEnv("development", () =>
+          createReception("patient-test-001", fetchImpl, "key-hostile-body"),
+        );
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(json).toHaveBeenCalledOnce();
+      expect(propertyRead).not.toHaveBeenCalled();
+      expect(caught).toBeInstanceOf(ReceptionError);
+      expect((caught as ReceptionError).toNotice()).toEqual({
+        message: "同じ操作キーが別の患者で再利用されました(二重操作の可能性)。",
+        nextAction:
+          "受付一覧を更新して受付状況を確認してください。解消しない場合はシステム管理者へ連絡してください。",
+      });
+    },
+  );
+
+  it("ignores inherited and accessor error codes without invoking a getter", async () => {
+    const getter = vi.fn(() => {
+      throw new Error("raw reception error-code getter");
+    });
+    const inheritedBody = Object.create({ errorCode: "RCV-0003" });
+    const accessorBody = Object.defineProperty({}, "errorCode", {
+      enumerable: true,
+      get: getter,
+    });
+
+    for (const [index, body] of [inheritedBody, accessorBody].entries()) {
+      const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(409, body));
+      await expect(
+        withNodeEnv("development", () =>
+          createReception("patient-test-001", fetchImpl, `key-untrusted-code-${index}`),
+        ),
+      ).rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(ReceptionError);
+        expect((error as ReceptionError).errorCode).toBeUndefined();
+        return true;
+      });
+    }
+
+    expect(getter).not.toHaveBeenCalled();
+  });
+
+  it("normalizes a throwing error-code descriptor trap to fixed conflict guidance", async () => {
+    const rawSentinel = "raw reception descriptor trap";
+    const descriptorRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    const body = new Proxy({}, { getOwnPropertyDescriptor: descriptorRead });
+    const json = vi.fn(() => body);
+    const fetchImpl: typeof fetch = async () =>
+      ({ ok: false, status: 409, json }) as unknown as Response;
+
+    let caught: unknown;
+    try {
+      await withNodeEnv("development", () =>
+        createReception("patient-test-001", fetchImpl, "key-descriptor-trap"),
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(json).toHaveBeenCalledOnce();
+    expect(descriptorRead).toHaveBeenCalledOnce();
+    expect(caught).toBeInstanceOf(ReceptionError);
+    expect((caught as ReceptionError).toNotice()).toEqual({
+      message: "同じ操作キーが別の患者で再利用されました(二重操作の可能性)。",
+      nextAction:
+        "受付一覧を更新して受付状況を確認してください。解消しない場合はシステム管理者へ連絡してください。",
+    });
+    expect(JSON.stringify((caught as ReceptionError).toNotice())).not.toContain(rawSentinel);
+  });
+
   it.each([200, 201])(
     "returns a matching reception response for HTTP %s",
     async (status) => {

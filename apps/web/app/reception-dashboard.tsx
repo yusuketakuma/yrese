@@ -73,13 +73,16 @@ export class ReceptionError extends Error {
 }
 
 async function extractErrorCode(res: Response): Promise<string | undefined> {
-  const body: unknown = await res.json().catch(() => null);
-  const raw =
-    typeof body === "object" && body !== null && "errorCode" in body
-      ? (body as { errorCode: unknown }).errorCode
-      : undefined;
-  // registry 未登録/形式外のコードは表示しない(異常値の verbatim 出力防止)
-  return registeredErrorCodeOrUndefined(raw);
+  try {
+    const body: unknown = await res.json();
+    if (typeof body !== "object" || body === null) return undefined;
+    const descriptor = Object.getOwnPropertyDescriptor(body, "errorCode");
+    if (descriptor === undefined || !("value" in descriptor)) return undefined;
+    // registry 未登録/形式外のコードは表示しない(異常値の verbatim 出力防止)
+    return registeredErrorCodeOrUndefined(descriptor.value);
+  } catch {
+    return undefined;
+  }
 }
 
 export async function fetchReceptionQueue(
