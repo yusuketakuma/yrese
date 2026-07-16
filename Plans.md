@@ -2851,6 +2851,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: docs-only evidence commitと後続ledger commitをrevertする。artifactはtemp削除済み、runtime/data rollback不要。
   - landing_record: implementation commit `0c9747f` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4 tooling-dependency evidence landed、independent verification pending。
 
+- [~] WP-4157 map FHIR validator / IG Publisher / SUSHI compatibility candidates(LOW read-only toolchain research) — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+  - 発見根拠: WP-4156後もclean compatibility spikeの実行版が未定で、JP Core 1.2.0の生成経路とcurrent tool candidatesを混同すると、再現不能な`latest` lockまたは未検証upgradeになる。
+  - scope: exact4 `ops/refactor/EVIDENCE.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。artifact download/install、package/lock/runtime/code/SSOT/CI/toolchain変更は行わない。
+  - evidence: official JP Core tag `1.2.0`→commit `c06f020…ef06`、workflow/QAのPublisher `2.0.17`を照合した一方、SUSHI/Nodeはfloatingでexact reproduction不能。2026-07-16 current candidatesはPublisher `2.2.11`、validator `6.9.12`、SUSHI `3.20.0`で配布digestを記録。両Java toolは17 target、SUSHIはNode22推奨・18/20 supportだが、yrese local/CIはNode24かつlocal Javaなし。
+  - acceptance/review: historical characterization、locked-package validator、minimal yrese IG buildを別laneとして定義し、isolated cache/offline/terminology-networkを分離する。`latest`、floating npm、ambient cacheをlock evidenceにせず、clean matrix + FHIR/supply-chain/legal review前にversion選定しない。別agent verifier未実施。
+  - rollback: docs-only evidence commitと後続ledger commitをrevertする。runtime/data/artifact rollback不要。
+  - landing_record: implementation commitはlanding後に記録する。independent verification pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。
@@ -3168,8 +3176,8 @@ v0.2.0の最上位方針:
   - root_cause/evidence: 版未固定ではmeta.profile、validator、SearchParameter、terminology、IG buildが再現不能。公式JP Core historyは1.2.0 current / 1.3.0-dev developmentを示す。
   - dependencies: WP-0053a。acceptance: canonical package id/version/hash/source/retrieved_at/license/FHIR dependency/update policy/rollbackを固定し、floating/latest/dev dependencyをCIが拒否する。
   - owner/verification: Codex root / official package metadata、clean install、checksum、FHIR Validator/IG Publisher/SUSHI互換性spike。
-  - prelock_evidence(2026-07-16): JP Core archive SHA-256/HTTP metadata/package dependencies/license metadataをWP-4153で取得。WP-4154でofficial terminology artifactをfingerprintし実package identityを確認。WP-4155でarchiveが宣言するHL7 core/terminology/extensions 3 artifactをfingerprint。WP-4156でtools 0.8.0をIG内部validation dependency / conformance-build lock候補と分類したが、transitive version conflictとmissing tools canonicalを確認した。JP Core archive dependency key不一致、publisher `file://` URL、JP Core QA suppressed/unpublished/history警告、jpfhir terminology packageのlicense metadata/standalone license欠如も残るためFHIR/legal review前にlockしない。
-  - demo/rollback/commit: synthetic validationだけ、lockfile revert可、SSOT commit/push。human_review: FHIR/JP Core specialist + legal/license。exact_next_action: WP-4153〜4156 evidenceを専門reviewへ提出し、terminology rights、tools transitive version resolution、missing canonical、validator/IG Publisher/SUSHI version matrixを確定する。
+  - prelock_evidence(2026-07-16): WP-4153〜4156でJP Core/terminology/HL7 dependency/tools artifactsをfingerprintし、metadata drift、license gap、transitive conflict、missing tools canonicalを記録。WP-4157でJP Core 1.2.0のPublisher 2.0.17生成経路とfloating SUSHI/Node、current Publisher 2.2.11 / validator 6.9.12 / SUSHI 3.20.0 candidatesを分離した。yrese local/CI Node24はSUSHI documented support外、local Javaなしのため、clean matrixとFHIR/legal review前にlockしない。
+  - demo/rollback/commit: synthetic validationだけ、lockfile revert可、SSOT commit/push。human_review: FHIR/JP Core specialist + legal/license。exact_next_action: WP-4153〜4157 evidenceを専門reviewへ提出し、terminology rights、tools resolution、historical/current toolchain selectionを確認後、Java17/Node22隔離環境で3-lane clean compatibility spikeを承認する。
 
 - [!] WP-0053c FHIR Native 3-plane architecture + PRC-007 cascade(BLOCKED_HUMAN_APPROVAL、R4)
   - scope: `fhir_native_architecture_principles.md`、`fhir_clinical_data_plane.md`、`technical_control_plane.md`、`adapter_plane_policy.md`を起草し、ARC-008/PRD-007/DOM-005/API-002/004を改版する。独自APIをTechnical Control Planeへ限定し、clinical payloadのcontrol-plane二重保存を禁止する。
