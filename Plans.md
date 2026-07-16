@@ -3323,3 +3323,297 @@ v0.2.0の最上位方針:
 6. PH-OS sync、Adapter、SMART/Bulk/CDSはPhase 1の安定したFHIR serverとownership evidence後に進める。
 7. 現行独自clinical APIはconsumer移行とrollback実証前に削除しないが、新規clinical capabilityを独自APIへ追加しない。
 8. JP Core 1.3.0-dev、R5、未lock package、未定義canonical URL、未登録Extension/Terminology、validatorなしの`JP Core準拠`訴求、control planeへのclinical payload複製、FHIRによる請求/会計正本置換はfail-closedで停止する。
+
+## v0.7 調剤レセコン総合機能計画(ユーザー提供 Draft 2026-07-16、受理 2026-07-16)
+
+> Normative status: 本節はユーザー提供v0.7を実行可能な計画へ変換した作業台帳であり、APPROVED SSOTではない。法令・公式仕様・`docs/spec/construction_prompt_v0.2.0.md`・APPROVED SSOTと競合する項目はPRC-007で改版・人間承認されるまで実装しない。v0.7 §31の旧team/model routingはAGT-018と競合するため、Codex root sole maintainer、変更を行わないindependent verifier、必要なdomain reviewer、人間authorityへ正規化する。
+
+- [~] WP-0054 v0.7 Comprehensive Pharmacy Platform program(PHASE0_PLANNING、R4)
+  - outcome: FHIR/JP Core Clinical Data Platform、日本固有Transaction Core、Pharmacy Operations、Open Integration、Reliability/UX/AIの5層を、既存実装・SSOT・公式根拠に接続したRelease Gate 0〜5へ変換する。
+  - invariants: FHIR clinical authority、日本固有算定/請求/会計分離、public API dogfooding、local-first、medical-grade UX、AI draft + human decisionを維持する。独自clinical DTO正本、直接DB連携、multi-master、外部形式のCore流入、AI/Cloud障害による業務停止を禁止する。
+  - acceptance: §1〜38、22 domain、全機能列挙、P0〜P3、Gate 0〜5、依存関係、共通module、22新規SSOT候補、KPI、停止条件の各要件が少なくとも1つのWP/既存SSOT/human gateへ追跡可能で、unmapped=0、duplicate-authority=0、unsupported compliance claim=0。
+  - execution: Release Gate 0はdocs/evidenceのみ。R3+ runtime、DB、医療安全、請求、会計、外部接続、production変更は対応SSOTのAPPROVEDと明示human gate後に再発行する。
+
+### WP-0054 Evidence baseline と計画上の補正
+
+| evidence/source (retrieved 2026-07-16) | confirmed fact | plan consequence |
+|---|---|---|
+| MHLW 安全管理ガイドライン第7.0版・令和8年度チェックリスト | 第7.0版は令和8年6月、医療機関/薬局チェックリストは令和8年度に統合 | 版、公開日、hash、要求、owner、evidence、gap、remediation、期限をSEC mappingへ持つ。「準拠」宣言だけではGateを通さない |
+| MHLW オンライン資格確認 | IC/資格確認書、スマホ対応端末、災害時/障害時運用があり端末世代・運用条件が変化する | official adapter capability、device generation、consent、snapshot、pending/fallback、recheckを別taskにする |
+| Digital Agency PMH | API/XML/test/masterが個別改版され、参加制度・自治体差がある | municipality participation +制度master version +紙併用を正本化し、全国一律利用を仮定しない |
+| MHLW 電子処方箋 | 受付/取消/回復、リフィル、重複確認、調剤結果/署名/再送等をofficial flowとして扱う | unofficial cloud direct connection禁止。接続試験/self-check/署名方式/結果状態をofficial adapter WPへ分離 |
+| 支払基金 電子レセプト/返戻再請求 | 記録条件仕様、返戻、再請求関連artifactは版更新される | claim format、return、resubmission、remittanceを別version lock、license/redistribution review付きで管理 |
+| 薬剤師法/療担規則・薬局内文書電子化資料 | 現行保存義務と真正性・見読性・保存性があり、保存期間改正動向もある | 保存年数をcodeへ固定せずeffective-date law registry + legal approval + migration/holdを設ける |
+| PMDA回収情報 / GS1 Japan | 回収にはGTIN/lot、class、終了状態があり、転載制約がある。調剤包装単位の識別規則がある | recall ingestion rights review、GTIN/lot trace、manual verification、source snapshot/hashを必須化 |
+| AWS Bedrock model lifecycle/data retention/region/guardrails | modelはActive/Legacy/EOL、retention modeとcross-region destinationがmodel/profileで異なる | model/region/mode registry、PHI eligibility、ZDR/retention、SCP/IAM、fallback、migration rehearsalが承認されるまでclinical PHIを送らない |
+| vendor public pages(MEDIXS/MAPs/Pharnes/P-CUBE n/Pharmy/GENNAI/調剤くんV8) | 受付、在庫、在宅、遠隔、AI、監査等の公開価値は確認できるがedition/option差がある | benchmark signalとしてのみ使用し、retrieval date/edition/option/claimを記録。内部実装や同等性を推測しない |
+
+Primary-source URLs to fingerprint in WP-0054c (not a substitute for source files or human approval):
+
+- MHLW security v7.0/checklist: `https://www.mhlw.go.jp/stf/shingi/0000516275_00006.html`
+- Online eligibility: `https://www.mhlw.go.jp/stf/newpage_08280.html`
+- PMH: `https://www.digital.go.jp/policies/health/public-medical-hub`
+- Electronic prescription: `https://www.mhlw.go.jp/stf/denshishohousen.html`
+- Electronic claims / return-resubmit: `https://www.ssk.or.jp/seikyushiharai/iryokikan/iryokikan_02.html`, `https://www.ssk.or.jp/seikyushiharai/iryokikan/iryokikan_h281214/index.html`
+- Electronic pharmacy documents / current law: `https://www.mhlw.go.jp/content/001279081.pdf`, `https://www.mhlw.go.jp/web/t_doc?dataId=81001000`
+- PMDA recalls / GS1 healthcare: `https://www.pmda.go.jp/safety/info-services/drugs/calling-attention/recall-info/0002.html`, `https://www.gs1jp.org/standard/healthcare/`
+- Bedrock lifecycle/retention/region/guardrails: `https://docs.aws.amazon.com/bedrock/latest/userguide/model-lifecycle.html`, `https://docs.aws.amazon.com/bedrock/latest/userguide/data-retention.html`, `https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html`, `https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-how.html`
+- Vendor benchmark entrypoints: `https://medixs.jp/product/function/`, `https://service.emsystems.co.jp/maps_series/for_pharmacy/`, `https://www.phchd.com/jp/medicom/pharmacies/pharnesx-mx`, `https://www.unike.co.jp/product/pharmacy/p-cuben/`, `https://www.moinetsystem.com/system/pharmy-feature/`, `https://dx.emedical.ne.jp/products/rececom/`, `https://chouzai-sys.nextit.co.jp/`
+
+### Release Gate 0 — 仕様・根拠・境界の確定(コード実装禁止)
+
+- [ ] WP-0054a Draft intake / normative delta registry
+  - scope: v0.5/v0.6/v0.6.1/v0.3/v0.2.1とAPPROVED SSOTのrequirement-by-requirement差分、矛盾、廃止、未決、PRC-007対象を登録する。
+  - acceptance: source/version/section/requirement/authority/status/decision/owner/review/target WPを持ち、v0.7全38節のunclassified=0。
+- [ ] WP-0054b Current-state coverage matrix
+  - scope: 22 domainごとにAPPROVED SSOT、Draft、code、contract、test、fixture、runtime、external dependencyを`IMPLEMENTED/PARTIAL/DOC_ONLY/MISSING/DUPLICATE/BLOCKED/OUT_OF_SCOPE`でfresh scanする。
+  - acceptance: evidence path/lineまたはcommand、gap、risk、dependency、next WPを持ち、推測でimplemented判定しない。
+- [ ] WP-0054c External evidence and benchmark registry
+  - scope: 法令、通知、公式仕様、package、vendor public claimを一次情報URL、取得日、版、hash、利用/転載条件、適用範囲、expiry/watch owner付きで登録する。
+  - acceptance: competitor claimはedition/option不明を明示し、法令/請求/患者安全をvendor資料だけで確定しない。PMDA/JAHIS/NSIPS/official artifactのlicenseをfail-closed判定する。
+- [ ] WP-0054d Legal / regulatory / clinical compliance matrix(R4 human authority)
+  - scope: 調剤、保存、電子記録、請求、資格、PMH、電子処方箋、オンライン服薬指導/配送、医療安全、privacy/securityをrequirement→control→evidence→testへ写像する。
+  - acceptance: effective date、jurisdiction、applicability、official source、human legal/pharmacist/claim/security sign-off、change watchを必須とし、未確定はBLOCKED。
+- [ ] WP-0054e Priority / Release Gate / dependency DAG
+  - scope: P0〜P3とGate 0〜5をpatient safety、legal/claim、data authority、migration reversibility、commercial value、dependencyで再採点する。
+  - acceptance: 各WPにpriority/risk/dependencies/entry/exit/rollback/demo/owner/verifier/human gateがあり、循環依存とGate bypassが0。
+- [ ] WP-0054f Domain boundary / API / module architecture
+  - scope: 5層、FHIR/Technical/Adapter 3-plane、日本固有domain、22 domain、event、public/partner/control APIs、authority、tenant/store境界を確定する。
+  - acceptance: clinical public API=FHIR、business API=承認済みcontract、control API=OpenAPI、DB direct=0、duplicate enum/status/ID/money/date/audit/retry=0。
+- [ ] WP-0054g UX workflow / performance / KPI evidence
+  - scope: Guided/Expert共通state、受付→会計、月次請求、在宅、offline/recovery、keyboard/accessibility、SLO候補、KPI定義をprototype/test planへする。
+  - acceptance: patient/store/claim-month固定表示、仮/確定/未確認/pending識別、色以外の表現、分母/除外/clock/source、実機baselineが定義される。
+- [ ] WP-0054h Offline / security / migration / operations matrices(R4)
+  - scope: operation×LOCAL_ONLY可否、PHI/data class、Edge bundle、RTO/RPO/SLO、restore、cutover/rollback、support access、external dependency fallbackを統合する。
+  - acceptance: cloud/AI/external unavailableで可能/禁止/pending/recovery後作業が一意。production rehearsalは別human approval。
+- [!] WP-0054i Gate 0 approval packet(BLOCKED_WP-0054a-h、R4)
+  - scope: coverage、追加機能、重複統合、priorities、gates、SSOT順、Codex WPs、人間review、BLOCKER、go/no-goを1つのdecision packetへまとめる。
+  - acceptance: pharmacist、claim practitioner、legal、FHIR、security/privacy、data-integrity、operations/product authorityがscope/evidence/riskを承認し、Gate 1 WPsを再発行する。
+
+Initial fresh-scan coverage snapshot (2026-07-16; not a readiness claim):
+
+| area | current evidence | initial classification / next decision |
+|---|---|---|
+| runtime-neutral foundations | `packages/shared-kernel`, `money`, `date-time`, `trace`, `events`, `contracts`, `audit` | IMPLEMENTED/PARTIAL; preserve as concept authorities and measure gaps in WP-0054b |
+| calculation | `packages/calculation` and calculation SSOT/tests | PARTIAL; official coverage, copayment/public/PMH/claim integration remains evidence-gated |
+| patient/reception/API/UI | API repositories/contracts and Web reception/patient/prescription shells exist | PARTIAL/LEGACY-TARGET; current custom clinical API cannot be called FHIR Native and must follow WP-0053j/3023 cutover |
+| FHIR/JP Core native server | WP-0053 and WP-6004/5009/2210-2215 plans; no `packages/fhir` runtime package | DOC_ONLY/BLOCKED_PHASE0 |
+| accounting/claim/operations/security/UIUX/migration | substantial indexed APPROVED/Draft docs; selected audit/API foundations | DOC_ONLY/PARTIAL by slice; no domain-wide implementation claim |
+| dispensing/inventory/device/home/patient engagement/multistore/AI/analytics | feature-level runtime authority not established by this scan | MISSING/PARTIAL-UNKNOWN; WP-0054b must produce path-level evidence before reprioritization |
+
+Scope delta summary:
+
+- reuse/amend: v0.5 FHIR foundation、existing calculation/audit/contracts、accounting SSOT群、claim matrices、Edge/offline、migration、security、UIUX、go/no-go。
+- add/expand: D01〜D22 end-to-end lifecycle、dispensing/inventory/device、official external operations、home/patient/multistore、partner ecosystem、analytics、Bedrock governance。
+- merge/delete candidates: duplicate benchmark/queue/accounting/migration/support/KPI/UX/release documents and future `shared-types`; authority diffなしに削除・renameしない。
+- human-only decisions: law/claim/pharmacy practice、patient safety、retention/e-signature、production/DB/external connection、security/privacy relaxation、Bedrock PHI eligibility、Release Gate approval。
+
+Dependency DAG (all edges are prerequisites, not authorization):
+
+| prerequisite | dependent domains/gates |
+|---|---|
+| WP-0053 FHIR/JP Core foundation + D17 terminology | D01, D03, D04, D06, D13, D14, D18; Gate 1+ |
+| D01 identity/consent + D21 security | D02, D03, D08–D10, D13–D16, D18–D20 |
+| D03 ingress + D04 prescription + D17 master | D05 dispensing, D06 safety, D07 calculation, D11 inventory, D13 e-prescription result, D14 visit |
+| D07 calculation | D08 claim, D09 accounting, D10 patient documents, D19 metrics/explanation |
+| D05 dispensing | D08 claim completion, D10 legal records, D11 stock posting, D12 devices, D13 result registration, D14/15 handover |
+| D12/D21 Edge/offline/recovery | LOCAL_ONLY accounting/printing, official adapters, PH-OS visit, device operation, Gate 2+ reliability |
+| D20 migration/portability | authority-specific cutover before Gate 2; every later gate must retain export/rollback evidence |
+| WP-0054a-i human-approved Gate 0 packet | all runtime WPs and Gate 1–5 |
+
+### 22 domain coverage と細分化Work Package
+
+以下の各domainは、`A=authority/model`, `B=workflow/rules`, `C=integration/UX`, `D=verification/migration/operations`の4 sliceを最小単位とする。全runtime sliceは対応SSOT APPROVED後まで`BLOCKED_GATE0`である。
+
+- [!] WP-0054-D01 Patient Identity / Consent(BLOCKED_GATE0、P0、R4)
+  - D01-A: Patient/RelatedPerson/Coverage/Organization/Location identifier、氏名(漢字/カナ/旧姓/通称)、生年月日、性別、住所/連絡先、家族/代理人/緊急連絡先、施設/医療機関ID、死亡/転居/終了model。
+  - D01-B: duplicate candidate、決定論的match、human merge/split、旧Resource ID/redirect/history、訂正/開示、Provenance/AuditEvent。氏名+生年月日だけの自動統合禁止。
+  - D01-C: Consent目的/共有先/撤回、代理受付/受取/支払、固定patient banner、取違え防止、tenant/store-crossing authorization。
+  - D01-D: synthetic false-positive/false-negative、merge rollback、split/relink、consent revoke、cross-tenant/IDOR、FHIR validation、migration reconciliation。
+- [!] WP-0054-D02 Reception / Queue / Appointment(BLOCKED_GATE0、P1、R3)
+  - D02-A: 来局/net/e-prescription/JAHIS QR/FAX-image/Web問診入口、受付番号/check-in、重複/期限/cancel、appointment、priority、緊急/在宅/施設/online区分。
+  - D02-B: `PRE_RECEIVED/CHECKED_IN/IDENTITY_PENDING/PRESCRIPTION_PENDING/QUALIFICATION_PENDING/READY_FOR_INPUT/DISPENSING/AUDIT_PENDING/COUNSELING_PENDING/PAYMENT_PENDING/READY_FOR_PICKUP/DELIVERY_PENDING/COMPLETED/CANCELLED/EXPIRED` state registry、allowed transition、actor/precondition/side effect/idempotency、内部状態と患者通知状態の分離。
+  - D02-C: 店頭/配送/locker/家族/online受取、wait/ready notification、Kanban/list、遅延理由、guided/expert keyboard journey。
+  - D02-D: concurrency/stale/duplicate/expiry/timezone/offline/notification failure、queue load/SLO、recovery and audit tests。
+- [!] WP-0054-D03 Prescription Ingress(BLOCKED_GATE0、P0、R4)
+  - D03-A: official e-prescription、JAHIS院外QR、お薬手帳QR、verified manual、external FHIR/PHR、OCR/image、migrationのsource/trust registry。
+  - D03-B: source hash/retention、split QR reconstruction、OCR confidence、paper diff、original scan、duplicate/e-prescription duplicate、drug code resolution、validation、pharmacist confirmation/correction history。
+  - D03-C: Adapter ACLでMedicationRequest/Dispense/Statementを意味別に生成し、患者提示/原本/official dataを混同しない。お薬手帳/OCRの自動正式昇格禁止。
+  - D03-D: malformed/encoding/partial/duplicate/loss report、roundtrip、FHIR/terminology/profile、PHI log、license and synthetic fixture tests。
+- [!] WP-0054-D04 Prescription Lifecycle(BLOCKED_GATE0、P0、R4)
+  - D04-A: RP、内服/外用/頓服/注射/材料、用法用量/日数/数量、一包化、不均等/漸増減/隔日/曜日、処方元/医師/診療科model。
+  - D04-B: refill、split/partial、long-term、generic、substitution、selected medical care、疑義照会、残薬/減数、変更/中止/再発行/期限/調剤済・未調剤/取消/訂正state and invariants。
+  - D04-C: 前回差分(追加/中止/増減)、理由、照会前後diff、original MedicationRequestとMedicationDispense分離、DetectedIssue/Task/Communication。
+  - D04-D: version/history/no destructive overwrite、complex dosage golden cases、concurrency、FHIR profile/terminology/medical review。
+- [!] WP-0054-D05 Dispensing Workflow(BLOCKED_GATE0、P1、R4)
+  - D05-A: instruction/picking/counting/powder/liquid/ointment/one-dose/preparation、controlled-drug caution、dispenser/auditor/counselor、completion/handover authority。
+  - D05-B: `NOT_STARTED/PICKING/COMPOUNDING/PACKAGING/DISPENSING_COMPLETE/AUDIT_PENDING/AUDIT_REJECTED/AUDIT_COMPLETE/COUNSELING_PENDING/HANDOVER_COMPLETE/CANCELLED` transition、barcode/GS1/weight/image/tablet/powder audit、reject/rework/redispense/waste/incident/near-miss。
+  - D05-C: packaging/inspection/scale/scanner/printer/POS device adapter events、capability/health/local retry/simulator。
+  - D05-D: wrong patient/drug/lot, double scan, device offline, duplicate event, segregation-of-duty, traceability and medical-safety tests。
+- [!] WP-0054-D06 Clinical Safety / Prescription Audit(BLOCKED_GATE0、P0、R4)
+  - D06-A: duplicate/class/component、contraindication/interaction/allergy/adverse reaction/disease、age/weight/renal/hepatic/pregnancy/lactation、dose/duration/route、high-risk/controlled drugs、OTC/supplement/other-provider data registry。
+  - D06-B: deterministic approved knowledge base、severity、unknown/not-checked/no-issue分離、override reason、warning vs claim blocker、external/e-prescription check provenance。
+  - D06-C: DetectedIssue/Task/Communication UX、progressive disclosure、alert fatigue measurement、rule/version/effective-date explainability。AI final judgment禁止。
+  - D06-D: sensitivity/specificity reference set、boundary/renal/dose tests、override audit、stale knowledge fail-closed、pharmacist/medical authority review。
+- [!] WP-0054-D07 Calculation Engine(BLOCKED_GATE0、P0、R4)
+  - D07-A: `Canonical Input → Master Resolution → Prescription Grouping → Candidate Fee Extraction → Rule Evaluation → Exclusion / Limit Resolution → Point Calculation → Copayment / Public Expense / PMH → Claimability → Calculation Trace` pipeline。
+  - D07-B: candidate/final、required record、薬歴整合、facility snapshot、monthly/patient limits、cross-reception aggregation、selected care/tax/public priority/PMH/provisional/recalculation/refund candidate。
+  - D07-C: reform simulation、event reprojection、result comparison、patient explanation。FHIR Referenceを持つがFHIRをbilling authorityにしない。
+  - D07-D: pure/deterministic integer-decimal、evidence/rule/master/claim-month/effective-date、golden/property/official examples、backward replay。
+- [!] WP-0054-D08 Claim Lifecycle(BLOCKED_GATE0、P0/P1、R4)
+  - D08-A: target extraction/precheck/monthly snapshot/finalize/lock/e-claim generation、record-condition/format/ASP、handoff/send/receipt result authority。
+  - D08-B: reduction/return/resubmit/review/withdraw/cancel、return CSV/reason structure、before-after diff、cross-month correction、immutable original and no auto-overwrite。
+  - D08-C: remittance import/reconciliation、normal vs resubmission、audit and action center。
+  - D08-D: calculation/record/facility/eligibility/public/PMH/patient/prescription/master/FHIR/external/MVP-scope checks、official format/version golden tests。
+- [!] WP-0054-D09 Accounting / Receivables / POS / Facility Billing(BLOCKED_GATE0、P0/P1、R4)
+  - D09-A: append-only `Charge/Payment/PaymentAllocation/Refund/Adjustment/WriteOff/Invoice/Receipt/Closing`、calculation separation、cash/card/e-money/QR/transfer。
+  - D09-B: partial/unpaid/overpayment/refund/difference/cancel/correction、invoice/receipt/detail/reissue、facility receivable/monthly/patient breakdown/bulk allocation。
+  - D09-C: POS/OTC/general goods/self-medication tax/consumption tax、daily close/cash variance/journal/accounting export、fee separation。
+  - D09-D: LOCAL_ONLY number uniqueness、partial receipt、original/reissue/cancel、double-ledger prevention、concurrency/reconciliation/restore tests。
+- [!] WP-0054-D10 Documents / Legal Records(BLOCKED_GATE0、P0、R4)
+  - D10-A: receipt/detail/dispensing record/bag/drug info/notebook/medication info/inquiry/home plan/report/facility invoice/unpaid/return/claim/daily cash/master/audit/disclosure/migration/BCP catalog。
+  - D10-B: DocumentReference/Composition/Binary、template/master/rule version、hash/signature candidate、issued-to/print/e-delivery/reissue/disposal provenance。
+  - D10-C: authenticity/readability/preservability、legal hold、retention effective-date registry、access/export/redaction、paper coexistence。
+  - D10-D: pixel/content/hash reproducibility、old-template rendering、migration readability、restore、print failure/idempotency、legal/privacy review。
+- [!] WP-0054-D11 Inventory / Procurement / Traceability(BLOCKED_GATE0、P1、R4)
+  - D11-A: adopted/current/bulk/package/unit-dose、receipt/dispense/adjust/count/order/delivery/shortage/reserve/preparation、lot/expiry/cold/controlled/return/waste/recall authority ledger。
+  - D11-B: reserve before dispense、confirm event posting、cancel/rework reverse entry、inter-store transfer/share/facility allocation、stockout/alternative no auto-reject。
+  - D11-C: dead stock/ABC/turnover/expiry/recall/action center、automatic order/demand forecast suggestion-only。
+  - D11-D: GTIN/lot/expiry trace、PMDA source rights/hash、negative/concurrent inventory policy、count/reconcile/recall drill/event idempotency tests。
+  - event catalog: `inventory.received`, `inventory.reserved`, `inventory.dispensed`, `inventory.adjusted`, `inventory.transferred`, `inventory.expiry_warning`, `inventory.recall_detected`, `inventory.wasted`, `inventory.stockout`。event名、payload、authority、idempotency key、reversal、FHIR ReferenceをD11-A/Bで確定する。
+- [!] WP-0054-D12 Device / Edge Integration(BLOCKED_GATE0、P1、R4)
+  - D12-A: qualification/card, QR/OCR/barcode, audit/packaging/scale, printers, POS/payment, reception/display/locker/delivery/signature capability registry。
+  - D12-B: device adapter→normalized technical/clinical-reference event、NSIPS Legacy/JAHIS Official isolation、vendor logic Core leakage=0。
+  - D12-C: simulator, health, local queue/retry/dedup, signed driver/config/version, remote diagnostics and support approval。
+  - D12-D: unplug/reconnect/partial print/duplicate scan/clock drift/update rollback/unsafe device response/security/supply-chain test matrix。
+- [!] WP-0054-D13 Eligibility / PMH / e-Prescription(BLOCKED_GATE0、P0、R4)
+  - D13-A: eligibility/card/smartphone/credential、coverage/share/limit、medication/medical/checkup consent、一括/claim-precheck/disaster/manual/final snapshot/insurance diff。
+  - D13-B: PMH municipality/system/income/eligibility/effective/public priority、paper coexistence、non-participant、import/update history。
+  - D13-C: e-prescription exchange number/receive/fetch/copy/check/refill/paper/HPKI/result/sign/send/retry/connect/self-check/error reason official adapter。
+  - D13-D: external unavailable=pending、no fabricated success、device generation/capability/version matrix、official sandbox/conformance/fallback/audit tests。
+- [!] WP-0054-D14 Home Care / Facility Operations / PH-OS(BLOCKED_GATE0、P2、R4)
+  - D14-A: home/facility patient, visit/round/actual, delivery/set/residual/adherence/vitals/observation/emergency/night/route/task/photo/document authority。
+  - D14-B: plan/report、doctor/care-manager/nurse/facility Communication、follow-up、facility billing/patient breakdown、offline visit workflow。
+  - D14-C: yrese authoritative Patient/Coverage/MedicationRequest/Dispense/Medication/Allergy/Condition replicas and PH-OS authoritative Encounter/Statement/Observation/Issue/CarePlan/Task/Communication/Document sync。
+  - D14-D: AI brief/report draft, pharmacist review, offline rebase/conflict, no multi-master, route/privacy/medical/facility reconciliation tests。
+- [!] WP-0054-D15 Patient Engagement / Online / Delivery(BLOCKED_GATE0、P2、R4)
+  - D15-A: pre-send/questionnaire/check-in/wait/ready/follow-up/online guidance/message/e-notebook/PHR/e-doc/payment link/patient portal/disclosure/consent/multilingual。
+  - D15-B: same-day/carrier/locker delivery, tracking/handover, patient/representative verification, misdelivery/non-return handling。
+  - D15-C: patient frontend API separation、FHIR Communication、LINE/partner adapter、app-independent fallback、minimum-PHI carrier contract。
+  - D15-D: notification failure != counseling complete、identity/consent/accessibility/localization/delivery exception/audit/privacy/legal tests。
+- [!] WP-0054-D16 Multi-store / Headquarters / Remote Input(BLOCKED_GATE0、P2/P3、R4)
+  - D16-A: corporation/brand/store/setting/delegation、cross-store search/history with consent/purpose、HQ/remote/help、inventory/share/master/feature flag/rollout/merger model。
+  - D16-B: HQ KPI(add-on/return/sales/generic/inventory/wait/unfinished/follow-up)、heterogeneous migration/aggregation、shift/time adapter。
+  - D16-C: active store/patient fixed banner、input/checker separation、pharmacist confirm、device/IP/session/least-PHI、operation audit not screen recording。
+  - D16-D: cross-tenant/store/role/consent/remote stale context、M&A merge/split、feature rollout/rollback、privacy/security/medical tests。
+- [!] WP-0054-D17 Master / Terminology / Regulatory Change(BLOCKED_GATE0、P0、R4)
+  - D17-A: drug/price/fee/comment/material/insurer/public/PMH/provider/pharmacy/practitioner/usage/JAHIS/FHIR terminology/facility/rule/template/claim/e-prescription/JP Core registry。
+  - D17-B: download→signature/hash→format/schema/effective/ref-integrity→terminology/calculation/claim/FHIR/UI regression→stage/approve/prod/edge/audit/rollback pipeline。
+  - D17-C: law/fee/Q&A/claim/JP Core/JAHIS/e-prescription/eligibility/PMH/recall/label/security watch, owner/SLA/impact notification。
+  - D17-D: atomic activation, future/backdated effective date, edge skew, rollback/replay, source/license/SBOM and regression evidence。
+- [!] WP-0054-D18 FHIR / API / Partner Ecosystem(BLOCKED_GATE0、P0/P3、R4)
+  - D18-A: FHIR REST/CapabilityStatement/IG/JP Core/profile/extension/terminology/transaction/subscription and ownership from WP-0053/2210-2215 reuse。
+  - D18-B: SMART/Bulk/CDS candidate、Control OpenAPI/webhook/event/partner registry、OAuth/OIDC/mTLS/scope/rate/deprecation/usage/audit/consent/purpose。
+  - D18-C: public/partner/internal-control contract分類、clinical internal API禁止、UI dogfooding、sandbox/test patient/contract kit/SDK/export。
+  - D18-D: FHIR validation/capability diff/backward compatibility/webhook retry/subscription recovery/tenant-purpose authorization/partner offboarding tests。
+- [!] WP-0054-D19 Analytics / Quality / Management(BLOCKED_GATE0、P2/P3、R3)
+  - D19-A: prescription/patient/new/wait/input/dispense/audit reject/handover/unfinished/follow-up/home/return/precheck/unpaid/refund/cash/inventory/generic/add-on/API/offline/conflict/AI KPI registry。
+  - D19-B: numerator/denominator/exclusion/window/clock/source/owner/refresh/quality/tenant aggregation/suppression and reproducible projection。
+  - D19-C: dashboard/action center/export、public availability/API SLO/sync/incident/change/anonymous claim-quality candidates。
+  - D19-D: re-identification/legal/statistical review、gaming/unsafe ranking guardrails、AI non-evaluation、golden metric and late-event correction tests。
+- [!] WP-0054-D20 Migration / Portability / Cutover(BLOCKED_GATE0、P0/P3、R4)
+  - D20-A: patient/coverage/public/provider/practitioner/drug/usage/history/dispense/record/unpaid/inventory/PDF/audit/NSIPS/CSV/TXT/claim/FHIR inventory and mapping rights。
+  - D20-B: code map/name match/dry-run/delta/parallel/cutover/rollback/legacy read-only/export and immutable migration certificate。
+  - D20-C: counts/amounts/FHIR/code/unmigrated/missing/sample/claim rehearsal/accounting balance/inventory reconciliation。
+  - D20-D: pharmacist/admin approval、no hidden loss/no PDF-as-complete、exit portability、repeatable synthetic rehearsal and production human gate。
+- [!] WP-0054-D21 Security / Operations / Support / Reliability(BLOCKED_GATE0、P0/P1、R4)
+  - D21-A: MFA/RBAC/ABAC/least privilege/break-glass、device/network/remote/MDS-SDS inventory、AuditEvent/CloudTrail/masking/KMS/secrets/cert/vulnerability/SBOM/scans/pentest/supply chain/retention/disposal/incident/reporting。
+  - D21-B: in-app/context help/runbooks/self-diagnostic/Edge-device-adapter test/approved remote support/case/SLA/status/maintenance/release/known issue/flag/rollback。
+  - D21-C: Multi-AZ/Edge/offline/outbox-inbox/blue-green/canary/expand-contract/PITR/DR/RTO-RPO/SLO/error budget/chaos/restore/external isolation。
+  - D21-D: MHLW v7.0 + FY2026 unified checklist control/evidence mapping、backup restore/DR/local-only/incident drill、zero hidden skip、human security/privacy/ops approval。
+- [!] WP-0054-D22 Amazon Bedrock AI Assist(BLOCKED_GATE0、P2、R4)
+  - D22-A: mandatory visit brief/in-visit aid/report/patient/prescription/interprofessional summaries; high-value residual/adherence/follow-up/share/inquiry/FHIR explanation/SSOT RAG/support/accounting explanation/quality/task candidates。
+  - D22-B: input minimization/de-identification eligibility、model/region/inference profile/retention/guardrail registry、prompt/output version、Provenance Draft、human reviewer/expiry。
+  - D22-C: AI cannot calculate/claim/change prescription/finalize audit/send externally; timeout/denial/EOL/quota/region outage falls back without workflow block。
+  - D22-D: PHI/data-residency/legal/security model approval、prompt injection/exfiltration/hallucination/unsafe suggestion/red-team、accept/reject/correction metrics、model migration rehearsal。
+
+### 横断計画(§27〜35)
+
+- [ ] WP-0054j Medical UX system and three critical journeys(P0/P1)
+  - Guided/Expertを別state machineにせず、受付→会計、月次請求、yrese→PH-OS訪問の同一domain state上のpresentationとする。shortcut/command palette/continuous input、manual-free novice path、固定patient/store/month、pending/final labels、offline affordanceをprototype + usability protocol化する。
+- [ ] WP-0054k Performance budget / SLO calibration(P1)
+  - candidate: interaction p95 300ms、patient search 500ms、prescription/calculation/accounting 1s、QR mapping 1.5s。実機/Edge/network/data-volume/tenant別baseline、測定点、cold/warm、error budgetを決めるまでSLOと宣言しない。
+- [ ] WP-0054l Common module convergence(P0)
+  - existing authorities: `shared-kernel`, `money`, `date-time`, `trace`, `events`, `contracts`, `calculation`, `audit`を先に再利用する。candidate `fhir/terminology/patient-identity/prescription/dispensing/claim/accounting/documents/inventory/integration/edge-sync/security/ai/analytics/test-fixtures`はdependency/boundary review後のみ追加し、`shared-types`で既存authorityを複製しない。
+- [ ] WP-0054m SSOT creation/amendment order(P0)
+  - order 1: `rececon_comprehensive_feature_map`, coverage/priority/release gate/API boundary。
+  - order 2: identity/reception/prescription/dispensing/safety/calculation/claim/accounting/document/inventory authority。
+  - order 3: device/official adapter/home/patient engagement/multistore/master/FHIR/migration/security/AI。
+  - order 4: UX/SLO/KPI/support/go-no-go。既存`go_no_go_checklist.md`等がある場合は新規重複を作らずAPPROVED docのcontrolled amendmentとする。
+
+  Requested SSOT disposition (final path/status is decided by WP-0054a/b and PRC-007):
+
+  | v0.7 requested name | disposition / existing authority candidate |
+  |---|---|
+  | `rececon_comprehensive_feature_map.md` | NEW index over D01–D22; it must not become a second product specification |
+  | `competitor_feature_benchmark.md` | AMEND/RENAME decision against `docs/product/rececon_feature_benchmark.md` |
+  | `feature_priority_matrix.md` | NEW derivative of WP-0054e; no normative rule content |
+  | `patient_identity_policy.md` | NEW after D01 authority review |
+  | `reception_workflow.md` | AMEND/derive from `docs/api/reception_queue_contract.md` without duplicate state authority |
+  | `prescription_lifecycle.md` | NEW after D03/D04 mapping |
+  | `dispensing_workflow.md` | NEW after D05 device/actor boundary review |
+  | `clinical_safety_policy.md` | NEW index; individual rule evidence stays in approved registries |
+  | `claim_lifecycle.md` | AMEND/compose `docs/claim/claim_scope_matrix.md` and `docs/architecture/claim_finalization_immutability_policy.md` |
+  | `accounting_ledger_policy.md` | AMEND/compose existing `docs/accounting/*`; do not replace their approved authorities silently |
+  | `document_and_record_policy.md` | NEW with law-version and retention registry dependencies |
+  | `inventory_ledger_policy.md` | NEW after D11 event/accounting boundary approval |
+  | `device_adapter_registry.md` | AMEND/derive from `docs/operations/device_compatibility_matrix.md` and adapter inventories |
+  | `patient_engagement_policy.md` | NEW after consent/delivery/online-guidance legal review |
+  | `headquarters_multistore_policy.md` | NEW after tenant/store/privacy authority review |
+  | `regulatory_change_watchlist.md` | AMEND/RENAME decision against `docs/regulatory/version_watchlist.md` |
+  | `migration_cutover_policy.md` | AMEND/compose `implementation_migration_plan`, `legacy_rececon_migration_matrix`, and `parallel_run_and_cutover_plan` |
+  | `support_operations_policy.md` | AMEND/RENAME decision against `docs/operations/support_operations_model.md` |
+  | `quality_kpi_registry.md` | AMEND/compose existing public/claim KPI policies; definition authority must remain singular |
+  | `medical_ux_acceptance_criteria.md` | AMEND/compose `docs/uiux/usability_acceptance_criteria.md`, principles, workflow, and performance budget |
+  | `release_gate_policy.md` | CREATE only if no indexed authority exists after WP-0054b; align review gate matrix and construction spec |
+  | `go_no_go_checklist.md` | AMEND existing `docs/operations/go_no_go_checklist.md` through PRC-007 |
+- [ ] WP-0054n Human review matrix(R4)
+  - pharmacist: identity/prescription/dispensing/safety/home/UX。claim practitioner: calculation/claim/public/PMH/accounting。legal/privacy: consent/retention/e-delivery/remote/AI/portability。FHIR: profile/terminology/API/sync。security/ops/data: auth/Edge/device/restore/migration/multistore/Bedrock。各reviewはdecision, dissent, evidence, approver role, date, expiryを残す。
+- [!] WP-0054o Release Gate 1〜5 execution train(BLOCKED_WP-0054i、R4)
+  - Gate 1 Foundation: WP-0053/6004/5009/2210、Patient/Prescription/Master/Audit/Auth/Edge skeleton/Calculation skeleton/UI shell。
+  - Gate 2 Single-store Regulatory MVP: D01/03/04/07/08/09/10/13/17/20/21のP0 slices、LOCAL_ONLY、migration、golden tests。
+  - Gate 3 Production-ready Commercial MVP: D02/05/08-return/09-receivable-POS/11/12/21 support-SLO-restore、parallel/go-no-go。
+  - Gate 4 Home Care/Patient: D14/15/facility + D22 mandatory use cases。
+  - Gate 5 Chain/Open: D16/D18 SMART-sandbox-SDK-Bulk + D19 advanced + D11 advanced transfer/forecast + M&A。
+  - exit: each gate has 0 critical safety/claim defect、applicable golden/conformance 100%、rollback/restore evidence、independent verification、required human approval。candidate availability/SLO/KPI数値はbaseline後に承認する。
+
+### v0.7 Requirement Coverage Audit
+
+| v0.7 sections | mapped plan |
+|---|---|
+| §1–2 conclusion/principles | WP-0054 invariants, WP-0054f/h/j/l |
+| §3 vendor signals | WP-0054c and Evidence baseline |
+| §4–26 22 domains | WP-0054-D01 through WP-0054-D22 |
+| §27 UX/SLO/journeys | WP-0054g/j/k |
+| §28 priority | WP-0054e, each domain P0–P3, WP-0054o |
+| §29 release stages | WP-0054i/o |
+| §30 dependencies | WP-0054e/f and domain A–D ordering |
+| §31 team allocation | AGT-018 normalization note, WP-0054n; obsolete model routing is not carried forward |
+| §32 common modules | WP-0054l |
+| §33 new SSOT | WP-0054m; existing documents are amended rather than duplicated |
+| §34 KPI | WP-0054g/k and D19 |
+| §35 stop conditions | WP-0054 stop gates below |
+| §36 initial output | WP-0054a-i and this coverage audit |
+| §37 references | WP-0054c evidence registry |
+| §38 product message | WP-0054 outcome and Gate 5 exit |
+
+### v0.7 Stop gates
+
+1. FHIR/JP Core Clinical authorityを崩す、clinical DTO/DB/adapter formatを正本化する、処方/調剤/服用を混同する変更は停止する。
+2. 算定/請求/e-prescription/eligibility/PMH/保存/配送のofficial evidenceまたはhuman authorityがない場合は実装しない。
+3. Calculationとaccounting ledger、unpaidとreceipted、provisional/pendingとsuccessを混同する変更は停止する。
+4. Cloud/AI/external outageで全業務停止、LOCAL_ONLY/recovery/restore/security mapping/migration scopeなし、未検証backupはGateを通さない。
+5. vendor closed behaviorの模倣、direct DB integration、CoreへのJAHIS/NSIPS/device leakage、同一concept/module/SSOTの重複を禁止する。
+6. 高risk機能は現行AGT-018のindependent verifierとdomain reviewerに加え、該当human authority承認がなければ進めない。旧Claude/Opus/model名をapproval evidenceとして扱わない。
+7. AIはDraft/assistに限定し、PHI eligibility、retention、Region、model lifecycle、human review、non-blocking fallbackが未確定ならclinical dataを送信しない。
+8. 各Release Gateでrequirement→WP→SSOT→code→test→evidenceのmachine-auditable coverageを再計算し、unmapped、orphan implementation、duplicate authority、failing applicable gateが1件でもあれば停止する。
