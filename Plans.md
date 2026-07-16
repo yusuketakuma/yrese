@@ -2811,6 +2811,14 @@ Codex rootはcurrent WPとdirty stateを確認し、read-only mapperでコード
   - rollback: docs-only implementation commitと後続ledger commitをrevertする。runtime/data rollback不要。
   - landing_record: implementation commit `8cd8d18` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact6 evidence index/demo records landed、independent verification pending。
 
+- [~] WP-4152 verify production Web build/start/static-route boundary(LOW demo/stability evidence) — IMPLEMENTED / INDEPENDENT_VERIFY_REQUIRED
+  - 発見根拠: final demoはproduction-like API/Web startupを全体未検証としていたが、Web単体のbuild/start/static route/shutdownはDB/auth承認なしに実測可能だった。
+  - scope: exact6 `ops/refactor/EVIDENCE.md`, `ops/refactor/FINAL_DEMO.md`, `ops/refactor/VERIFICATION.md`, `Plans.md`, `State.md`, `ops/refactor/STATE.md`。runtime/code/contracts/DB/SSOT/package/lock/CIは変更しない。
+  - implementation/evidence: dev-format `.next`に対する`next start`拒否を確認後、`next build`で12 static pages生成、`next start` ready 237ms、production `/sync-status`の未接続≠同期済み表示、normal shutdownを確認。clinical rootはproduction API/auth未設定かつbrowser session停止のため成功証拠に含めない。
+  - verification/review: build/start/browser/static copy/shutdownとgit diffをroot確認。production API/auth/clinical/restartはDEMO_REQUIRED、別agent verifier未実施のためFINALIZEDを主張しない。
+  - rollback: docs-only implementation commitと後続ledger commitをrevertする。runtime/data rollback不要。
+  - landing_record: implementation commit pending; exact6 evidence diff ready、independent verification pending。
+
 - [x] WP-4068 event/audit ISO instant calendar validation(codex 提案 SELF-SCAN-20260710-13、MEDIUM、fable5 PLAN_APPROVED、実装完了)
   - 発見根拠: `packages/events/src/index.ts` の `isoInstantPattern` は月ごとの実在日を検証せず、`2026-02-30T00:00:00Z` のような存在しない ISO 暦日を `wallClock` として受理する。`packages/audit/src/index.ts` は同じ形式確認後に `new Date(value).toISOString()` を使うため、存在しない日付を別の実在日時へ正規化してから audit hash を生成する。
   - 影響: 同一の不正 timestamp が sync event では原文のまま、audit event では正規化後の値として扱われ、監査証跡・同期順序・hash canonicalization の再現性と入力同一性を損なう可能性がある。

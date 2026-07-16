@@ -22,5 +22,6 @@
 
 - PostgreSQL integration: 14 expected local skips because `TEST_DATABASE_URL` is absent. No DB connection, migration or DML was performed in this goal run.
 - Synthetic development browser evidence now covers patient search/select, reception create/queue reflection/context clear, audit success display/hash-chain status, 375/768/1280 page-overflow checks and clean console/error capture on the completed journeys. Audit refresh failure retention remains component-test-only after two browser automation tool failures; production-like startup, error/retry and accessibility coverage remain `DEMO_REQUIRED`. See `EVIDENCE.md` and `FINAL_DEMO.md`.
+- Production Web evidence covers `next build` (12 static pages), `next start` readiness in 237 ms, `/sync-status` disconnected-state rendering and normal shutdown. Production API/auth, clinical production journeys and restart remain unverified.
 - WP-3010a/WP-3011a are intentionally dormant fixture-only components. Browser/live API flow is not claimed; their parent tasks are BLOCKED with concrete unlock conditions.
 - Production HTTPS/HSTS, deploy, external systems, PHI production data and infrastructure were not exercised and remain human-gated.

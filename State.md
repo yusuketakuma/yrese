@@ -8,6 +8,11 @@
 
 ## 2026-07-16
 
+### WP-4152 production Web build/start boundary — IMPLEMENTED / INDEPENDENT_VERIFY_REQUIRED
+
+- dev-format `.next`を`next start`が拒否することを確認後、`next build`で12 static pages、production server ready 237ms、`/sync-status`の未接続≠同期済み表示、normal shutdownを実測。
+- production API/auth/clinical journey/restartは未検証を維持。runtime差分なし、landing commit pending、別agent verifier未実施。
+
 ### WP-4151 durable evidence index / audit demo extension — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
 - objective-required `ops/refactor/EVIDENCE.md`欠落を確認し、CODE_MAP/FULLSTACK/VERIFICATION/FINAL_DEMO/STATEをauthorityとして参照する証拠索引を追加。commit存在をverification/human gateの代替にしない規則を固定した。

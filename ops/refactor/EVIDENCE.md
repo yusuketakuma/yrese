@@ -30,12 +30,13 @@ All commits above are pushed to `origin/agent/reconcile-wp9002-w7c-20260712`. Co
 - Responsive: 375, 768 and 1280 CSS-pixel viewports had no page-level overflow. At 375, the patient-selection action remained inside the viewport before and after horizontal table scrolling.
 - Audit success path: after a synthetic reception was created, `/admin` displayed `reception.created` and `audit.viewed`; the displayed hash chain was verified as normal.
 - Browser console/page-error capture was empty for the completed patient/reception and responsive journeys.
+- Production Web sequence: `next start` correctly rejected a preceding dev-format `.next`; `next build` then produced 12 static pages and `next start` became ready in 237 ms. `/sync-status` rendered its explicit disconnected/not-synced placeholder and the server shut down normally.
 
 ## Evidence not obtained
 
 - Audit refresh failure retention is covered by the 50-test `audit-log-view.test.tsx` component suite, but not by browser evidence. Both network-abort interception and an immediate synthetic `fetch` rejection caused the browser automation session itself to stop responding before post-failure DOM capture. Those attempts are tool failures, not application pass or fail evidence.
 - The reduced-motion browser setting did not report an active media query in the automation session, so no reduced-motion conformance claim is made. Forced-colors, 200% zoom focus flow and detailed network/hydration capture remain unverified.
-- PostgreSQL integration, real authentication, role/tenant denial, production-like startup and clean restart remain unverified. See `FINAL_DEMO.md`.
+- PostgreSQL integration, production API startup, real authentication, role/tenant denial and a production clinical journey remain unverified. The production Web static-route startup above is only partial evidence. See `FINAL_DEMO.md`.
 
 ## Evidence rules
 

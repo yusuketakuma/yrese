@@ -19,12 +19,13 @@
 - Patient search, patient selection, reception registration, queue reflection and patient-context clear were completed through the browser. Registration exposed no freeform Patient ID and disabled submission after context clear.
 - Viewports 375, 768 and 1280 had no page-level horizontal overflow. The selected-patient mobile form was visually inspected; browser console and page-error capture were empty.
 - After a synthetic reception create, the `/admin` browser journey displayed `reception.created` and `audit.viewed` with a normal verified hash chain.
-- This is a bounded development journey, not production-like startup, PostgreSQL, authentication, tenant-isolation or repository-wide release evidence.
+- Production Web clean sequence passed: a dev-format `.next` was rejected by `next start`, then `next build` generated 12 static pages, `next start` became ready in 237 ms, `/sync-status` rendered its explicit disconnected/not-synced state, and shutdown completed normally.
+- These are bounded development journeys plus a production Web static-route startup check; they do not prove PostgreSQL, production API/authentication, tenant isolation, clinical production journeys or repository-wide release readiness.
 
 ## Not yet demonstrated
 
 - Clean PostgreSQL migration/seed and zero-skip integration run.
-- Production-like API/Web startup, health/readiness/restart/shutdown.
+- Production API startup/health/restart and a production Web clinical journey. Production Web build/start/static-route/shutdown alone is demonstrated.
 - Real authentication callback/cancel/session expiry/logout and role allow/deny.
 - Tenant-crossing runtime attempts against a disposable DB.
 - Browser audit refresh error retention and reception error/retry journeys. The audit success path is demonstrated; error retention remains component-test-only because browser automation stopped responding during both synthetic failure attempts.
@@ -35,6 +36,6 @@
 ## Exact next demo gate
 
 1. Provide a disposable PostgreSQL URL and run the integration suite with zero skips.
-2. Start production builds locally with synthetic-only data and approved development authentication.
+2. Add a disposable production-like API/auth environment, then execute the production Web clinical journey and restart checks. Web build/start/static placeholder proof is already recorded.
 3. Complete the remaining audit/error/retry journeys with a stable browser harness, then keyboard/focus/zoom/forced-colors/network/accessibility evidence.
 4. Keep blocked placeholder journeys marked not implemented; do not substitute mock success.
