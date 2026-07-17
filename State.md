@@ -8,11 +8,11 @@
 
 ## 2026-07-17
 
-### WP-4230 Non-primitive branded ID rejection — VALIDATED / COMMIT_PENDING
+### WP-4230 Non-primitive branded ID rejection — FINALIZED / INDEPENDENT_PASS
 
 - shared-kernelの全12 branded ID factoryで、型消去されたboxed String/coercible object/hostile Proxy等がobjectのままbranded stringとして受理され得るruntime authority gapを修正した。共通validatorの全property access前にprimitive string guardを置き、既存label-only non-echo `RangeError`へfail-closed化した。
 - exact2: `packages/shared-kernel/src/branded-ids.ts`, `packages/shared-kernel/src/kernel.test.ts`。公開signature/export/brand、empty/blank/control拒否、whitespace/Unicode/任意長stringのexact preserveは不変。全12 factory、non-string matrix、coercion hooks、hostile/revoked Proxy trap0、既存valid/invalid grammarをsynthetic testで固定した。
-- PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION gateは各5 fresh contextで5/5 PASS。shared-kernel60、workspace1758 + local PostgreSQL14 expected skips(API767/Web454)、workspace test/typecheck/build、lint/OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/scripts/diff PASS。live secretsは既存workspace scopeでfail-closed、tracked HEAD+exact2 clean overlay PASS。DB/schema/API/contracts/audit/events/SSOT/package/lock不変、実DB/remote/prod/UI/browser/push非主張、`.omo/`除外。rollbackはimplementation＋ledger-only commit revertとfocused/standard revalidation。COMMIT gate待ち。
+- PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION/COMMIT gateは各5 fresh contextで5/5 PASS、post-commit independent reviewも5/5 PASS、finding 0。shared-kernel60、workspace1758 + local PostgreSQL14 expected skips(API767/Web454)、workspace test/typecheck/build、lint/OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/scripts/diff PASS。live secretsは既存workspace scopeでfail-closed、tracked HEAD+exact2 clean overlay PASS。DB/schema/API/contracts/audit/events/SSOT/package/lock不変、実DB/remote/prod/UI/browser/push非主張、`.omo/`除外。implementation `dde98cd`をexact6でlocal commit済み、FINALIZED / INDEPENDENT_PASS。rollbackは`dde98cd`＋ledger-only commit revertとfocused/standard revalidation、DB/schema/data rollback不要だが旧runtime riskが再開する。
 
 ### WP-4228 Reception list command authority parity — FINALIZED / INDEPENDENT_PASS
 
