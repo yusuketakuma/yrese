@@ -24,6 +24,7 @@ import {
   databaseReceptionEntryIdentityInvariantErrorMessage,
   databaseReceptionProvenanceInvariantErrorMessage,
   databaseReceptionRowInvariantErrorMessage,
+  databaseReceptionRowSetInvariantErrorMessage,
   databaseReceptionTimestampInvariantErrorMessage,
 } from './reception-repository.js';
 
@@ -176,6 +177,36 @@ function createRepository(options: {
   return { repository: new PostgresReceptionRepository(pool), connect, query, release };
 }
 
+function createRepositoryWithQueryResults(options: {
+  readonly insertResult: unknown | ((values?: readonly unknown[]) => unknown);
+  readonly selectResult?: unknown;
+  readonly rollbackError?: Error;
+}) {
+  const release = vi.fn();
+  const query = vi.fn(async (sql: string, values?: readonly unknown[]) => {
+    const normalized = sql.trim();
+    if (normalized.startsWith('INSERT INTO reception_entries')) {
+      return typeof options.insertResult === 'function'
+        ? options.insertResult(values)
+        : options.insertResult;
+    }
+    if (normalized.startsWith('SELECT')) {
+      return options.selectResult ?? { rows: [] };
+    }
+    if (normalized === 'ROLLBACK' && options.rollbackError !== undefined) {
+      throw options.rollbackError;
+    }
+    return { rows: [] };
+  });
+  const client = {
+    query: query as unknown as PoolClient['query'],
+    release,
+  } as unknown as PoolClient;
+  const connect = vi.fn(async () => client);
+  const pool = { connect } as unknown as Pool;
+  return { repository: new PostgresReceptionRepository(pool), connect, query, release };
+}
+
 async function captureRejection(run: () => Promise<unknown>): Promise<unknown> {
   try {
     await run();
@@ -257,6 +288,153 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(insertSql).not.toMatch(/\$[1247]\s*(?:::text)?\s+AS stored_/);
     expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT']);
     expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it.each(['INSERT', 'SELECT'] as const)(
+    'rejects multiple %s rows before projecting row fields',
+    async (callSite) => {
+      let rowReads = 0;
+      const unreadRow = { ...storedRow };
+      Object.defineProperty(unreadRow, 'stored_tenant_id', {
+        get() {
+          rowReads += 1;
+          throw new Error('raw duplicate reception row PHI secret 4226');
+        },
+      });
+      const duplicateResult = { rows: [unreadRow, { ...storedRow }] };
+      const { repository, query, release } = createRepositoryWithQueryResults({
+        insertResult: callSite === 'INSERT' ? duplicateResult : { rows: [] },
+        selectResult: callSite === 'SELECT' ? duplicateResult : undefined,
+      });
+
+      await expect(repository.create(input)).rejects.toEqual(
+        new Error(databaseReceptionRowSetInvariantErrorMessage),
+      );
+      expect(rowReads).toBe(0);
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(callSite === 'SELECT' ? ['SELECT'] : []),
+        'ROLLBACK',
+      ]);
+      expect(queryLabels(query)).not.toContain('COMMIT');
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it.each(['INSERT', 'SELECT'] as const)(
+    'rejects hostile %s row-set authority without invoking its accessor',
+    async (callSite) => {
+      let accessorReads = 0;
+      const hostileResult = {};
+      Object.defineProperty(hostileResult, 'rows', {
+        get() {
+          accessorReads += 1;
+          throw new Error('raw reception query rows PHI secret 4226');
+        },
+      });
+      const { repository, query, release } = createRepositoryWithQueryResults({
+        insertResult: callSite === 'INSERT' ? hostileResult : { rows: [] },
+        selectResult: callSite === 'SELECT' ? hostileResult : undefined,
+      });
+
+      await expect(repository.create(input)).rejects.toEqual(
+        new Error(databaseReceptionRowSetInvariantErrorMessage),
+      );
+      expect(accessorReads).toBe(0);
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(callSite === 'SELECT' ? ['SELECT'] : []),
+        'ROLLBACK',
+      ]);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it.each(['INSERT', 'SELECT'] as const)(
+    'rejects a sparse %s row set as malformed query authority',
+    async (callSite) => {
+      const sparseResult = { rows: Array(1) };
+      const { repository, query, release } = createRepositoryWithQueryResults({
+        insertResult: callSite === 'INSERT' ? sparseResult : { rows: [] },
+        selectResult: callSite === 'SELECT' ? sparseResult : undefined,
+      });
+
+      await expect(repository.create(input)).rejects.toEqual(
+        new Error(databaseReceptionRowSetInvariantErrorMessage),
+      );
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(callSite === 'SELECT' ? ['SELECT'] : []),
+        'ROLLBACK',
+      ]);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it.each(['INSERT', 'SELECT'] as const)(
+    'rejects a dense undefined %s row without treating it as an empty result',
+    async (callSite) => {
+      const undefinedRowResult = { rows: [undefined] };
+      const { repository, query, release } = createRepositoryWithQueryResults({
+        insertResult: callSite === 'INSERT' ? undefinedRowResult : { rows: [] },
+        selectResult: callSite === 'SELECT' ? undefinedRowResult : undefined,
+      });
+
+      await expect(repository.create(input)).rejects.toEqual(
+        new Error(databaseReceptionRowSetInvariantErrorMessage),
+      );
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(callSite === 'SELECT' ? ['SELECT'] : []),
+        'ROLLBACK',
+      ]);
+      expect(queryLabels(query)).not.toContain('COMMIT');
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it('rejects a revoked nested INSERT rows Proxy without invoking row authority', async () => {
+    const revokedRows = Proxy.revocable([storedRow], {});
+    revokedRows.revoke();
+    const { repository, query, release } = createRepositoryWithQueryResults({
+      insertResult: { rows: revokedRows.proxy },
+    });
+
+    await expect(repository.create(input)).rejects.toEqual(
+      new Error(databaseReceptionRowSetInvariantErrorMessage),
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('advances an empty INSERT result to SELECT and preserves empty SELECT semantics', async () => {
+    const { repository, query, release } = createRepositoryWithQueryResults({
+      insertResult: { rows: [] },
+      selectResult: { rows: [] },
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      'idempotency conflict row was not visible after unique constraint conflict',
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('preserves the row-set invariant and destroys the client when rollback fails', async () => {
+    const { repository, query, release } = createRepositoryWithQueryResults({
+      insertResult: { rows: [storedRow, { ...storedRow }] },
+      rollbackError: new Error('synthetic row-set rollback failure'),
+    });
+
+    await expect(repository.create(input)).rejects.toEqual(
+      new Error(databaseReceptionRowSetInvariantErrorMessage),
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[true]]);
   });
 
   it.each([

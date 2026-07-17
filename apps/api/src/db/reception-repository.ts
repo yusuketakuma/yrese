@@ -20,7 +20,10 @@ import {
 } from '../reception-repository.js';
 import { snapshotDatabaseInstant, snapshotDateInstant } from '../instant.js';
 import { createOwnDataPropertyReader } from '../own-data-property.js';
-import { readDatabaseRowOwnDataProperty } from './database-row.js';
+import {
+  readDatabaseRowOwnDataProperty,
+  snapshotDatabaseQueryRows,
+} from './database-row.js';
 import { patientRowToSearchResult } from './patient-repository.js';
 
 interface ReceptionEntryRow {
@@ -59,6 +62,8 @@ export const databaseReceptionTimestampInvariantErrorMessage =
   'Reception database returned an invalid timestamp';
 export const databaseReceptionRowInvariantErrorMessage =
   'Reception database returned an invalid reception row';
+export const databaseReceptionRowSetInvariantErrorMessage =
+  'Reception database returned an invalid reception row set';
 export const databaseReceptionCreatedStatusInvariantErrorMessage =
   'Reception database returned an invalid created status';
 export const databaseReceptionCreatedAcceptedAtInvariantErrorMessage =
@@ -226,7 +231,19 @@ async function selectByIdempotencyKey(
      WHERE r.tenant_id = $1 AND r.pharmacy_id = $2 AND r.idempotency_key = $3`,
     [input.tenantId, input.pharmacyId, input.idempotencyKey],
   );
-  return result.rows[0];
+  const rows = snapshotDatabaseQueryRows<IdempotencyRow>(
+    result,
+    1,
+    databaseReceptionRowSetInvariantErrorMessage,
+  );
+  if (rows.length === 0) {
+    return undefined;
+  }
+  const row = rows[0];
+  if (row === undefined) {
+    throw new Error(databaseReceptionRowSetInvariantErrorMessage);
+  }
+  return row;
 }
 
 export class PostgresReceptionRepository implements ReceptionRepository {
@@ -344,8 +361,16 @@ export class PostgresReceptionRepository implements ReceptionRepository {
         ],
       );
 
-      const insertedRow = inserted.rows[0];
-      if (insertedRow !== undefined) {
+      const insertedRows = snapshotDatabaseQueryRows<ReceptionCreateRow>(
+        inserted,
+        1,
+        databaseReceptionRowSetInvariantErrorMessage,
+      );
+      if (insertedRows.length === 1) {
+        const insertedRow = insertedRows[0];
+        if (insertedRow === undefined) {
+          throw new Error(databaseReceptionRowSetInvariantErrorMessage);
+        }
         const provenance = rowToProvenance(insertedRow);
         if (
           provenance.tenantId !== commandTenantId ||
