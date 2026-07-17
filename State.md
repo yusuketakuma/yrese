@@ -8,11 +8,11 @@
 
 ## 2026-07-17
 
-### WP-4227 Patient lookup/search command authority parity — VALIDATED / COMMIT_PENDING
+### WP-4227 Patient lookup/search command authority parity — FINALIZED / INDEPENDENT_PASS
 
 - InMemory/PostgreSQL patient lookup/search commandを、scan/query/await前のprovider-neutral one-shot detached snapshotへ統一した。tenant/pharmacy/patientId/q/limit/cursor offsetはown-data primitive authority、canonical shared-kernel IDsとcontracts query schema、安全整数境界でfail-closed化した。
 - exact7: `apps/api/src/repository-command.ts`, `apps/api/src/reception-repository.ts`, `apps/api/src/db/reception-repository.ts`, `apps/api/src/patient-repository.ts`, `apps/api/src/patient-repository.test.ts`, `apps/api/src/db/patient-repository.ts`, `apps/api/src/db/patient-repository.test.ts`。reception差分はscope helperの挙動同等抽出のみ。initial reviewで再投入不能な上限next cursorを返し得るP2を検出し、共通next-cursor snapshotとupper-bound fail-closed回帰で修正した。
-- PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION gateは各5/5 PASS。patient56 + reception166 = focused222、API758 + local PostgreSQL14 expected skips、Web454、workspace test/typecheck/build、lint/OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/scripts/diff PASS。live secretsは既存workspace scopeでfail-closed、tracked HEAD+exact7 clean overlay PASS。UI/browser N/A、実DB・remote/prod・pushなし、WP-4050/WP-4151c human gate不変、`.omo/`除外。exact11 commit gate待ち。
+- PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION/COMMIT gateは各5/5 PASS、post-commit independent reviewもrollback記録P2修正後5/5 PASS。patient56 + reception166 = focused222、API758 + local PostgreSQL14 expected skips、Web454、workspace test/typecheck/build、lint/OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/scripts/diff PASS。live secretsは既存workspace scopeでfail-closed、tracked HEAD+exact7 clean overlay PASS。UI/browser N/A、実DB・remote/prod・pushなし、WP-4050/WP-4151c human gate不変、`.omo/`除外。implementation `fa9ef5e`をexact11でlocal commit済み、FINALIZED / INDEPENDENT_PASS。rollbackは`fa9ef5e`と後続ledger-only commitをrevertしてfocused/standard gatesを再実行する。DB/schema/data rollbackは不要だが、raw command authorityと上限cursor riskが再開する。
 
 ### WP-4226 PostgreSQL reception create query row-set authority — FINALIZED / INDEPENDENT_PASS
 
