@@ -8,11 +8,11 @@
 
 ## 2026-07-17
 
-### WP-4225 Reception create command authority parity — VALIDATED / COMMIT_PENDING
+### WP-4225 Reception create command authority parity — FINALIZED / INDEPENDENT_PASS
 
 - provider-neutral staged own-data readerを導入し、InMemory/PostgreSQL createのroot、tenant/pharmacy、idempotency key、patient authorityを同じfail-closed境界へ揃えた。canonical shared-kernel scope factoryとcontracts key schemaを再利用し、DB row readerもneutral one-shot helperへ委譲した。
 - exact7: `apps/api/src/own-data-property.ts`, `apps/api/src/db/database-row.ts`, `apps/api/src/db/reception-repository.test.ts`, `apps/api/src/db/reception-repository.ts`, `apps/api/src/reception-repository.ts`, `packages/contracts/src/reception-queue.test.ts`, `packages/contracts/src/reception-queue.ts`。PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION gateは各5/5 PASS。invalid scope/key、重複helper、不要union/closure、provider precedence test gapは全て修正済み。
-- reception155、patient23、server293、API717 + local PostgreSQL14 expected skips、Web454、contracts97、audit183、workspace typecheck/test/build、lint/OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/scripts/diff PASS。local DBはzero-skip証拠ではない。live secretsは既存`.codegraph` symlinkでfail-closed、tracked HEAD+exact7 overlayはPASS。UI/browser N/A、実DB操作なし。WP-4050/WP-4151c human gate不変。local-only/push未承認、`.omo/`除外、commit前。
+- reception155、patient23、server293、API717 + local PostgreSQL14 expected skips、Web454、contracts97、audit183、workspace typecheck/test/build、lint/OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/scripts/diff PASS。local DBはzero-skip証拠ではない。live secretsは既存`.codegraph` symlinkでfail-closed、tracked HEAD+exact7 overlayはPASS。UI/browser N/A、実DB操作なし。WP-4050/WP-4151c human gate不変。implementation `32ea898`をexact11(code exact7 + ledger exact4)でlocal commit、post-commit independent re-review 5/5 PASS、push未承認、`.omo/`除外。
 
 ### WP-4224 PostgreSQL patient query row-set authority — FINALIZED / INDEPENDENT_PASS
 
