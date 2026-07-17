@@ -8,10 +8,10 @@
 
 ## 2026-07-18
 
-### WP-4233 / WP-4165 remote evidence reconciliation — COMMIT_GATE / REMOTE_EVIDENCE_VERIFIED
+### WP-4233 / WP-4165 remote evidence reconciliation — POST_COMMIT_REMEDIATION / PUSH_PENDING
 
 - safe feature branchのimplementation/remote-evidence head `020965f`にWP-4233 implementation `1f181c5`とWP-4165 implementation `1febf57`＋ledger `e02859e`が含まれること、local/origin/PR head一致、origin/main `27d6144`不変、deployments 0を確認した。draft PR #1 CI run `29601464612` / job `87954323760`はexact head `020965f`で3 pinned actionを解決し、PostgreSQL zero-skipを含む全workflow stepをSUCCESS。WP-4233/WP-4165を`REMOTE_CI_PASS`へ整合した。
-- 当該runは`020965f`のGitHub-hosted CI proofであり、この後のledger-only commit自体のexact-head proof、future upstream provenance、production DB/runtime、malformed provider row生成、browser、deploy、DoS/resource hardening、release readinessを主張しない。WP-4233/WP-4165個別statusは`REMOTE_CI_PASS`。reconciliation groupはPLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION_GATEをP2 remediation後各5/5で通過。exact4に対する`git diff --check`と`pnpm check:ssot-index`（173 documents）、`pnpm test:scripts`はPASS。live `pnpm check:secrets`は除外対象外の既存untracked protected scopeで意図どおりfail-closed、tracked HEAD＋exact4 overlay scanはPASS。現在COMMIT_GATE review中で、commit/pushを先取りしない。ledger rollbackは今回のexact4 docs commitだけをrevertする。WP-4165 security implementationは単独revertでmutable tagへ戻さず、review済みimmutable replacementまたはworkflow停止と再gateを要する。`.omo/`は除外。
+- 当該runは`020965f`のGitHub-hosted CI proofであり、ledger-only commit自体のexact-head proof、future upstream provenance、production DB/runtime、malformed provider row生成、browser、deploy、DoS/resource hardening、release readinessを主張しない。WP-4233/WP-4165個別statusは`REMOTE_CI_PASS`。reconciliation groupはPLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION/COMMIT_GATEをP2 remediation後各5/5で通過し、exact4 commit `86041cf`を作成した。exact4に対する`git diff --check`と`pnpm check:ssot-index`（173 documents）、`pnpm test:scripts`はPASS。live `pnpm check:secrets`は除外対象外の既存untracked protected scopeで意図どおりfail-closed、tracked HEAD＋exact4 overlay scanはPASS。post-commit reviewでdurable resume chronology P2を検出したため、このexact2をresume-safeなfollow-upとする。再開時にexact2がdirtyならvalidation→exact stage→commit、HEADに含まれてcleanならそのHEADのindependent reviewへ進む。follow-upを含むnew HEADのreview完了前にpushしない。ledger rollbackはreconciliation ledger commitsだけをrevertする。WP-4165 security implementationは単独revertでmutable tagへ戻さず、review済みimmutable replacementまたはworkflow停止と再gateを要する。`.omo/`は除外。
 
 ### WP-4233 PostgreSQL reception-list row-set authority — FINALIZED / INDEPENDENT_PASS / REMOTE_CI_PASS
 
