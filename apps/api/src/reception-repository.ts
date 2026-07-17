@@ -6,6 +6,7 @@ import {
   type ReceptionQueueEntry,
   type ReceptionStatus,
 } from '@yrese/contracts';
+import { CalendarDate } from '@yrese/date-time';
 import {
   patientId,
   pharmacyId,
@@ -33,11 +34,53 @@ export const inMemoryReceptionCommandSnapshotInvariantErrorMessage =
   'In-memory reception command snapshot is invalid';
 export const inMemoryReceptionPatientSnapshotInvariantErrorMessage =
   'In-memory reception patient snapshot is invalid';
+export const receptionListCommandSnapshotInvariantErrorMessage =
+  'Reception list command snapshot is invalid';
 
 export interface ReceptionListInput {
   readonly tenantId: TenantId;
   readonly pharmacyId: PharmacyId;
   readonly date: string;
+}
+
+interface ReceptionListCommandSnapshot {
+  readonly tenantId: TenantId;
+  readonly pharmacyId: PharmacyId;
+  readonly date: string;
+}
+
+function snapshotReceptionListDate(result: OwnDataPropertyRead): string {
+  if (!result.present || typeof result.value !== 'string') {
+    throw new Error(receptionListCommandSnapshotInvariantErrorMessage);
+  }
+  try {
+    return CalendarDate.fromString(result.value).toString();
+  } catch {
+    throw new Error(receptionListCommandSnapshotInvariantErrorMessage);
+  }
+}
+
+export function snapshotReceptionListCommand(
+  input: unknown,
+): ReceptionListCommandSnapshot {
+  const readProperty = createOwnDataPropertyReader(
+    input,
+    receptionListCommandSnapshotInvariantErrorMessage,
+  );
+  const commandTenantId = snapshotRepositoryTenantId(
+    readProperty('tenantId'),
+    receptionListCommandSnapshotInvariantErrorMessage,
+  );
+  const commandPharmacyId = snapshotRepositoryPharmacyId(
+    readProperty('pharmacyId'),
+    receptionListCommandSnapshotInvariantErrorMessage,
+  );
+  const date = snapshotReceptionListDate(readProperty('date'));
+  return Object.freeze({
+    tenantId: commandTenantId,
+    pharmacyId: commandPharmacyId,
+    date,
+  });
 }
 
 export interface ReceptionCreateInput {
@@ -298,12 +341,13 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
   }
 
   async list(input: ReceptionListInput): Promise<readonly ReceptionQueueEntry[]> {
+    const command = snapshotReceptionListCommand(input);
     return this.records
       .filter(
         (record) =>
-          record.tenantId === input.tenantId &&
-          record.pharmacyId === input.pharmacyId &&
-          record.date === input.date,
+          record.tenantId === command.tenantId &&
+          record.pharmacyId === command.pharmacyId &&
+          record.date === command.date,
       )
       .sort(sortRecords)
       .map(toEntry);

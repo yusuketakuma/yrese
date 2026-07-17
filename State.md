@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4228 Reception list command authority parity — VALIDATED / COMMIT_PENDING
+
+- InMemory/PostgreSQL reception list commandをscan/query前のprovider-neutral one-shot frozen snapshotへ統一し、tenant/pharmacy/dateの混在authorityをfail-closed化した。scopeはshared-kernel、dateはcanonical `CalendarDate`へ委譲し、既存filter/SQL/order/empty/projection semanticsを維持した。
+- exact3: `apps/api/src/reception-repository.ts`, `apps/api/src/db/reception-repository.ts`, `apps/api/src/db/reception-repository.test.ts`。invalid authorityは固定non-echo・getter/trap/scan/query 0、mixed tupleとstateful mutation、non-default descriptor、SQL parameterをsynthetic fixtureで固定。date authority/isolation/invalid matrixのP2は修正済み。
+- PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION gate各5/5 PASS。reception175、API767 + local PostgreSQL14 expected skips、Web454、workspace test/typecheck/buildと全標準gate PASS。live secretsは既存workspace scopeでfail-closed、tracked HEAD+exact3 clean overlay PASS。row-set cap/real DB/remote/prod/UI/browser/push非主張、WP-4050/WP-4151c不変、`.omo/`除外。exact7 commit gate待ち。rollbackはimplementation＋ledger-only commit revertとfocused/standard revalidation、DB/schema/data rollback不要、raw command/mixed-scope risk再開。
+
 ### WP-4227 Patient lookup/search command authority parity — FINALIZED / INDEPENDENT_PASS
 
 - InMemory/PostgreSQL patient lookup/search commandを、scan/query/await前のprovider-neutral one-shot detached snapshotへ統一した。tenant/pharmacy/patientId/q/limit/cursor offsetはown-data primitive authority、canonical shared-kernel IDsとcontracts query schema、安全整数境界でfail-closed化した。

@@ -11,6 +11,7 @@ import { patientId, pharmacyId, receptionId, tenantId } from '@yrese/shared-kern
 import {
   businessDateFromAcceptedAt,
   snapshotReceptionIdempotencyKey,
+  snapshotReceptionListCommand,
   type ReceptionCreateInput,
   type ReceptionCreateResult,
   type ReceptionListInput,
@@ -252,6 +253,7 @@ export class PostgresReceptionRepository implements ReceptionRepository {
   constructor(private readonly pool: Pool) {}
 
   async list(input: ReceptionListInput): Promise<readonly ReceptionQueueEntry[]> {
+    const command = snapshotReceptionListCommand(input);
     const result = await this.pool.query<ReceptionEntryRow>(
       `SELECT
          r.reception_id,
@@ -272,7 +274,7 @@ export class PostgresReceptionRepository implements ReceptionRepository {
         AND p.patient_id = r.patient_id
        WHERE r.tenant_id = $1 AND r.pharmacy_id = $2 AND r.business_date = $3::date
        ORDER BY r.accepted_at ASC, r.reception_id ASC`,
-      [input.tenantId, input.pharmacyId, input.date],
+      [command.tenantId, command.pharmacyId, command.date],
     );
 
     return result.rows.map(rowToEntry);
