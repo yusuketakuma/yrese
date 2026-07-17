@@ -26,7 +26,7 @@ export type WorkPackageId = Brand<string, "WorkPackageId">;
 
 /** ID として不正な値(空文字・空白のみ・制御文字)を拒否する */
 function assertValidId(value: string, label: string): void {
-  if (value.length === 0 || value.trim().length === 0) {
+  if (typeof value !== "string" || value.length === 0 || value.trim().length === 0) {
     throw new RangeError(`${label} must be a non-empty string`);
   }
   // eslint-disable-next-line no-control-regex

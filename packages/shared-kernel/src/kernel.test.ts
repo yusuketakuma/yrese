@@ -6,8 +6,15 @@ import {
   CONFLICT_REQUIRES_HUMAN_REVIEW,
   ErrorCodeRegistry,
   createKernelErrorCodeRegistry,
+  claimId,
+  deviceId,
+  dispensingId,
+  eventId,
+  evidenceId,
   PATIENT_SEARCH_INVALID_QUERY_ERROR_CODE,
   PROVISIONAL_STATUSES,
+  pharmacyId,
+  prescriptionId,
   RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE,
   RECEPTION_INVALID_REQUEST_ERROR_CODE,
   RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE,
@@ -27,17 +34,114 @@ import {
   permissionScope,
   receptionId,
   tenantId,
+  userId,
+  workPackageId,
 } from "./index.js";
 
 describe("branded ids", () => {
+  const factories = [
+    ["TenantId", tenantId],
+    ["PharmacyId", pharmacyId],
+    ["UserId", userId],
+    ["PatientId", patientId],
+    ["ReceptionId", receptionId],
+    ["PrescriptionId", prescriptionId],
+    ["DispensingId", dispensingId],
+    ["ClaimId", claimId],
+    ["EventId", eventId],
+    ["DeviceId", deviceId],
+    ["EvidenceId", evidenceId],
+    ["WorkPackageId", workPackageId],
+  ] as const;
+
   it("accepts non-empty ids and preserves the value", () => {
     expect(tenantId("t-001")).toBe("t-001");
     expect(patientId("p-123")).toBe("p-123");
     expect(receptionId("reception-001")).toBe("reception-001");
+    expect(tenantId("  tenant with whitespace  ")).toBe("  tenant with whitespace  ");
+    expect(tenantId(`tenant-${"x".repeat(256)}-患者`)).toBe(
+      `tenant-${"x".repeat(256)}-患者`,
+    );
   });
 
   it.each(["", "   ", "a\u0000b", "a\u001fb"])("rejects invalid id %j", (v) => {
     expect(() => tenantId(v)).toThrow(RangeError);
+  });
+
+  it.each(factories)("rejects non-string runtime values for %s", (label, factory) => {
+    const runtimeFactory = factory as (value: unknown) => string;
+    const invalidValues: readonly unknown[] = [
+      null,
+      undefined,
+      1,
+      true,
+      1n,
+      Symbol("raw-id-sentinel"),
+      () => "raw-id-sentinel",
+      [],
+      {},
+      new String("raw-id-sentinel"),
+      Promise.resolve("raw-id-sentinel"),
+    ];
+
+    for (const value of invalidValues) {
+      expect(() => runtimeFactory(value)).toThrow(
+        new RangeError(`${label} must be a non-empty string`),
+      );
+    }
+  });
+
+  it.each(factories)("does not coerce or inspect hostile values for %s", (label, factory) => {
+    const runtimeFactory = factory as (value: unknown) => string;
+    let coercionCalls = 0;
+    const coercible = {
+      length: 16,
+      trim: () => {
+        coercionCalls += 1;
+        return "raw-id-sentinel";
+      },
+      toString: () => {
+        coercionCalls += 1;
+        return "raw-id-sentinel";
+      },
+      valueOf: () => {
+        coercionCalls += 1;
+        return "raw-id-sentinel";
+      },
+      [Symbol.toPrimitive]: () => {
+        coercionCalls += 1;
+        return "raw-id-sentinel";
+      },
+    };
+    expect(() => runtimeFactory(coercible)).toThrow(
+      new RangeError(`${label} must be a non-empty string`),
+    );
+    expect(coercionCalls).toBe(0);
+
+    let trapCalls = 0;
+    const hostile = new Proxy(
+      {},
+      {
+        get: () => {
+          trapCalls += 1;
+          throw new Error("raw-proxy-sentinel");
+        },
+        getOwnPropertyDescriptor: () => {
+          trapCalls += 1;
+          throw new Error("raw-proxy-sentinel");
+        },
+      },
+    );
+    expect(() => runtimeFactory(hostile)).toThrow(
+      new RangeError(`${label} must be a non-empty string`),
+    );
+    expect(trapCalls).toBe(0);
+
+    const revocable = Proxy.revocable({}, {});
+    revocable.revoke();
+    expect(() => runtimeFactory(revocable.proxy)).toThrow(
+      new RangeError(`${label} must be a non-empty string`),
+    );
   });
 });
 
