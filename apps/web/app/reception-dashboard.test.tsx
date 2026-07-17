@@ -2555,12 +2555,34 @@ describe("parseDateParam (URL 状態は非PHIの業務日付のみ — S-03)", (
     expect(parseDateParam("?foo=1&date=2026-01-01")).toBe("2026-01-01");
   });
 
+  it.each([
+    "0001-01-01",
+    "0004-02-29",
+    "0099-12-31",
+    "0100-01-01",
+    "2000-02-29",
+    "9999-12-31",
+  ])("accepts CalendarDate boundary %s without timezone conversion", (value) => {
+    expect(parseDateParam(`?date=${value}`)).toBe(value);
+  });
+
   it("rejects missing / malformed / impossible dates (fail-closed)", () => {
     expect(parseDateParam("")).toBeUndefined();
+    expect(parseDateParam("?date=")).toBeUndefined();
+    expect(parseDateParam("?date=0000-01-01")).toBeUndefined();
+    expect(parseDateParam("?date=0001-02-29")).toBeUndefined();
+    expect(parseDateParam("?date=1900-02-29")).toBeUndefined();
     expect(parseDateParam("?date=2026/07/10")).toBeUndefined();
     expect(parseDateParam("?date=07-10-2026")).toBeUndefined();
     expect(parseDateParam("?date=2026-02-31")).toBeUndefined();
     // 患者名などの PHI らしき値は日付形式でないため復元されない(URLにPHIを載せない前提)
     expect(parseDateParam("?date=ヤマダタロウ")).toBeUndefined();
+  });
+
+  it("keeps the first duplicate date authoritative without fallback or raw-value echo", () => {
+    expect(parseDateParam("?date=0001-01-01&date=raw-phi-sentinel")).toBe(
+      "0001-01-01",
+    );
+    expect(parseDateParam("?date=raw-phi-sentinel&date=2026-07-10")).toBeUndefined();
   });
 });

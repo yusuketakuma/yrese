@@ -8,6 +8,12 @@
 
 ## 2026-07-17
 
+### WP-4231 Reception URL CalendarDate authority — VALIDATED / COMMIT_PENDING
+
+- reception dashboardのURL業務日付復元を、year 0..99補正を持つ独自`Date.UTC`往復検証からAPPROVED `@yrese/date-time`の`CalendarDate`へ統一した。`0001..0099`の正当な暦日を復元可能にし、timezone変換なしのcanonical文字列だけをqueue targetへ渡す。
+- exact5: `apps/web/app/reception-dashboard.tsx`, `apps/web/app/reception-dashboard.test.tsx`, `apps/web/package.json`, `apps/web/next.config.ts`, `pnpm-lock.yaml`。Web direct dependency、lock importer、Next transpileを整合。RangeErrorだけfail-closed、duplicate first-value/non-fallback、境界年/閏年/invalid/PHI-like non-echoを固定。DOM/copy/ARIA/CSS/animation/focus/lifecycleは変更なし。
+- PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION gate各5/5 PASS、finding 0。dashboard112/date-time13/Web461/workspace1765 + local PostgreSQL14 expected skips(API767)、frozen lock220、workspace test/typecheck/build、lint/OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/scripts/diff PASS。Next15.5は12/12 static pages、`/` First Load JS137kB/shared102kB。live secretsは既存workspace scopeでfail-closed、tracked HEAD+exact5 clean overlay PASS。browser/real DB/remote/prod/push非主張、`.omo/`除外。rollbackはimplementation＋ledger-only commit revertとfocused/standard revalidation。COMMIT gate待ち。
+
 ### WP-4230 Non-primitive branded ID rejection — FINALIZED / INDEPENDENT_PASS
 
 - shared-kernelの全12 branded ID factoryで、型消去されたboxed String/coercible object/hostile Proxy等がobjectのままbranded stringとして受理され得るruntime authority gapを修正した。共通validatorの全property access前にprimitive string guardを置き、既存label-only non-echo `RangeError`へfail-closed化した。

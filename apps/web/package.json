@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@yrese/contracts": "workspace:*",
+    "@yrese/date-time": "workspace:*",
     "@yrese/shared-kernel": "workspace:*",
     "next": "^15.3.0",
     "react": "^19.0.0",

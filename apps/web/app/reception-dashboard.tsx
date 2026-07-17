@@ -9,6 +9,7 @@ import {
   type ReceptionQueueResponse,
   type ReceptionStatus,
 } from "@yrese/contracts";
+import { CalendarDate } from "@yrese/date-time";
 import {
   AUTH_PERMISSION_DENIED_ERROR_CODE,
   RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE,
@@ -667,23 +668,17 @@ export function todayAsIsoDate(now: Date = new Date()): string {
  */
 export function parseDateParam(search: string): string | undefined {
   const value = new URLSearchParams(search).get("date");
-  if (value === null || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+  if (value === null) {
     return undefined;
   }
-  // 実在日付か(2026-02-31 等はロールオーバーするため Y-M-D の往復一致で弾く)
-  const parts = value.split("-");
-  const year = Number(parts[0]);
-  const month = Number(parts[1]);
-  const day = Number(parts[2]);
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-  if (
-    parsed.getUTCFullYear() !== year ||
-    parsed.getUTCMonth() !== month - 1 ||
-    parsed.getUTCDate() !== day
-  ) {
-    return undefined;
+  try {
+    return CalendarDate.fromString(value).toString();
+  } catch (error) {
+    if (error instanceof RangeError) {
+      return undefined;
+    }
+    throw error;
   }
-  return value;
 }
 
 export function ReceptionDashboard() {

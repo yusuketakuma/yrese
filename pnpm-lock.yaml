@@ -63,6 +63,9 @@ importers:
       '@yrese/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@yrese/date-time':
+        specifier: workspace:*
+        version: link:../../packages/date-time
       '@yrese/shared-kernel':
         specifier: workspace:*
         version: link:../../packages/shared-kernel
