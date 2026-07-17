@@ -8,11 +8,11 @@
 
 ## 2026-07-17
 
-### WP-4231 Reception URL CalendarDate authority — VALIDATED / COMMIT_PENDING
+### WP-4231 Reception URL CalendarDate authority — FINALIZED / INDEPENDENT_PASS
 
 - reception dashboardのURL業務日付復元を、year 0..99補正を持つ独自`Date.UTC`往復検証からAPPROVED `@yrese/date-time`の`CalendarDate`へ統一した。`0001..0099`の正当な暦日を復元可能にし、timezone変換なしのcanonical文字列だけをqueue targetへ渡す。
 - exact5: `apps/web/app/reception-dashboard.tsx`, `apps/web/app/reception-dashboard.test.tsx`, `apps/web/package.json`, `apps/web/next.config.ts`, `pnpm-lock.yaml`。Web direct dependency、lock importer、Next transpileを整合。RangeErrorだけfail-closed、duplicate first-value/non-fallback、境界年/閏年/invalid/PHI-like non-echoを固定。DOM/copy/ARIA/CSS/animation/focus/lifecycleは変更なし。
-- PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION gate各5/5 PASS、finding 0。dashboard112/date-time13/Web461/workspace1765 + local PostgreSQL14 expected skips(API767)、frozen lock220、workspace test/typecheck/build、lint/OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/scripts/diff PASS。Next15.5は12/12 static pages、`/` First Load JS137kB/shared102kB。live secretsは既存workspace scopeでfail-closed、tracked HEAD+exact5 clean overlay PASS。browser/real DB/remote/prod/push非主張、`.omo/`除外。rollbackはimplementation＋ledger-only commit revertとfocused/standard revalidation。COMMIT gate待ち。
+- PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION/COMMIT gate各5/5 PASS、post-commit independent reviewも5/5 PASS、finding 0。dashboard112/date-time13/Web461/workspace1765 + local PostgreSQL14 expected skips(API767)、frozen lock220、workspace test/typecheck/build、lint/OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/scripts/diff PASS。Next15.5は12/12 static pages、`/` First Load JS137kB/shared102kB。live secretsは既存workspace scopeでfail-closed、tracked HEAD+exact5 clean overlay PASS。browser/real DB/remote/prod/push非主張、`.omo/`除外。implementation `369f9c8`をexact9でlocal commit済み、FINALIZED / INDEPENDENT_PASS。rollbackは`369f9c8`＋ledger-only commit revertとfocused/standard revalidation、DB/schema/data rollback不要だが旧date riskが再開する。
 
 ### WP-4230 Non-primitive branded ID rejection — FINALIZED / INDEPENDENT_PASS
 
