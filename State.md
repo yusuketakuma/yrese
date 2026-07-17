@@ -8,10 +8,10 @@
 
 ## 2026-07-18
 
-### WP-4152 current-head production Web boundary — RUNTIME_EVIDENCE_CLOSURE / EXTERNAL_STATE_CONDITIONAL
+### WP-4152 current-head production Web boundary — FINALIZED / INDEPENDENT_PASS / REMOTE_CI_PASS / EXTERNAL_STATE_CONDITIONAL
 
 - runtime target `87aa747`でNext15.5.20 production buildをfresh実行し12/12 static pages、real19.98s、`/sync-status` 141B/First Load102kBを確認。BUILD_ID `GMvkAu8EW7gWyinpQPEln`とroute artifact 3件のSHA-256をbuild直後、run1後、run2後に照合し、再buildなしの同一artifactを127.0.0.1:31852で2回起動した。
-- run1はready1796ms・HTTP200/80.717ms/23,036 bytes、run2はready2.9s・HTTP200/297.738ms/23,036 bytes。両runでaccessibility-tree snapshot、backend未接続理由、未接続≠同期済みcopy、reload、console/page error 0を確認。各owned listener PIDだけをTERMし、process exitとport releaseを確認したためWeb same-artifact restart境界はdirect PASS。PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION/COMMIT_GATEはP2 remediation後各5/5。docs-only evidence commit `38ef35b`後のreviewでresume chronology P2を検出したため、tracked-clean conditional ledger targetを再reviewし、remote/PR ancestry確認後にfast-forward push、exact-head CI、PUSH_GATEへ進む。最初のexternal closure成立後に一度だけexact4 finalization ledgerを作る。その`[x]`/FINALIZED宣言はfinalization targetのexact-stage、independent review、conditional push、local/origin/PR parity、origin/main不変、deployments0、exact-head CI、final PUSH_GATE5/5の全成立時だけ有効で、成立前はFINALIZATION_PENDING、違反時は完了宣言を無効として修正gateへ戻る。最終PUSH_GATE成功後は追加ledger commitなしでfresh mappingへ進む。exact6は`git diff --check`、SSOT index 173件、script regression harness、tracked HEAD+exact6 overlay secret scanがPASS。live secret scanは既存user-owned `.codegraph` symlinkを含むprotected scopeを検証不能としてfail-closedし、31852 listenerは不在。historical dev-format rejectionは今回未反復、固定NORMALはhealth detectionではなく、API startup/restart・auth/tenant・clinical/DB/deploy/repository release/SLO・広範a11yは非主張。runtime/code/package/lock/SSOT差分なし、`.omo/`除外。
+- run1はready1796ms・HTTP200/80.717ms/23,036 bytes、run2はready2.9s・HTTP200/297.738ms/23,036 bytes。両runでaccessibility-tree snapshot、backend未接続理由、未接続≠同期済みcopy、reload、console/page error 0を確認。各owned listener PIDだけをTERMし、process exitとport releaseを確認したためWeb same-artifact restart境界はdirect PASS。PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION/COMMIT_GATEはP2 remediation後各5/5。docs evidence `38ef35b`とclosure target `09e058e`をpushし、parity/main不変/deployments0、CI `29611193923` / job `87986014157`全step SUCCESS、first PUSH_GATE5/5を確認。本exact4を含む最初のtracked-clean HEADをfinalization targetとし、その`[x]`/FINALIZED宣言はexact-stage、independent review、conditional push、local/origin/PR parity、origin/main不変、deployments0、exact-head CI、final PUSH_GATE5/5の全成立時だけ有効とする。成立前はFINALIZATION_PENDING、違反時は無効として修正gateへ戻り、最終成功後は追加ledger commitなしでfresh mappingへ進む。exact6は`git diff --check`、SSOT index 173件、script regression harness、tracked HEAD+exact6 overlay secret scanがPASS。live secret scanは既存user-owned `.codegraph` symlinkを含むprotected scopeを検証不能としてfail-closedし、31852 listenerは不在。historical dev-format rejectionは今回未反復、固定NORMALはhealth detectionではなく、API startup/restart・auth/tenant・clinical/DB/deploy/repository release/SLO・広範a11yは非主張。runtime/code/package/lock/SSOT差分なし、`.omo/`除外。
 
 ### WP-4233 / WP-4165 remote evidence reconciliation — REMOTE_EVIDENCE_RECONCILIATION / EXTERNAL_CLOSURE
 
@@ -567,11 +567,11 @@
 - official `package.tgz`をtemp取得しSHA-256/size/HTTP validatorsとpackage identity/FHIR/dependencies/license metadataを確認。artifactはtemp削除しrepo/package lock/runtimeは未変更。
 - terminology package IDのarchive/rendered-table drift、publisher `file://` URL、standalone license file欠如、QA suppressed/unpublished/history警告を記録。FHIR/legal review前のlock/準拠主張は禁止を維持。exact4 implementation commit `553dbdb`をfeature branchへpush済み、別agent verifier未実施。
 
-### WP-4152 production Web build/start boundary — RUNTIME_EVIDENCE_CLOSURE / EXTERNAL_STATE_CONDITIONAL
+### WP-4152 production Web build/start boundary — FINALIZED / INDEPENDENT_PASS / REMOTE_CI_PASS / EXTERNAL_STATE_CONDITIONAL
 
 - dev-format `.next`を`next start`が拒否することを確認後、`next build`で12 static pages、production server ready 237ms、`/sync-status`の未接続≠同期済み表示、normal shutdownを実測。
 - independent verifierはfresh build 12 pages/6.10s、start ready 270ms、`/sync-status` HTTP200/31.983ms、backend未接続・未接続≠同期済みcopy、browser reload timing、console/page error 0、shutdown/port解放、tracked diff 0をPASS_WITH_NOTE。dev-format `.next`拒否はroot capture依存。`通常稼働`はNORMAL固定の暫定表示でhealth detection成功を意味しない。production API/auth/clinical journey/restartは未検証を維持。runtime差分なし、exact6 implementation commit `ac83520`はpush済み。
-- independent verification updateは`1d67fb6`でsafe feature branchへpush済み。2026-07-18 current-head same-artifact two-start runtime evidenceはPASSし、docs-only evidence commit `38ef35b`後のresume chronology P2をconditional ledgerで補正中。closure targetのreview、conditional push、exact-head CI、PUSH_GATE前はFINALIZEDへ昇格しない。API/auth/clinical/DB/repository-wide demo gapは維持。
+- independent verification updateは`1d67fb6`でsafe feature branchへpush済み。2026-07-18 current-head same-artifact two-start runtime evidence、docs evidence `38ef35b`、closure target `09e058e`、exact-head CI `29611193923`、first PUSH_GATE5/5をPASS。本exact4 finalization targetの外部条件成立前はFINALIZATION_PENDINGとして完了宣言を無効とする。API/auth/clinical/DB/repository-wide demo gapは維持。
 
 ### WP-4151 durable evidence index / audit demo extension — FINALIZED / INDEPENDENT_PASS_WITH_NOTE
 
