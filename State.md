@@ -8,11 +8,16 @@
 
 ## 2026-07-18
 
-### WP-4233 PostgreSQL reception-list row-set authority — FINALIZED / INDEPENDENT_PASS / PUSH_PENDING
+### WP-4233 / WP-4165 remote evidence reconciliation — COMMIT_GATE / REMOTE_EVIDENCE_VERIFIED
+
+- safe feature branchのimplementation/remote-evidence head `020965f`にWP-4233 implementation `1f181c5`とWP-4165 implementation `1febf57`＋ledger `e02859e`が含まれること、local/origin/PR head一致、origin/main `27d6144`不変、deployments 0を確認した。draft PR #1 CI run `29601464612` / job `87954323760`はexact head `020965f`で3 pinned actionを解決し、PostgreSQL zero-skipを含む全workflow stepをSUCCESS。WP-4233/WP-4165を`REMOTE_CI_PASS`へ整合した。
+- 当該runは`020965f`のGitHub-hosted CI proofであり、この後のledger-only commit自体のexact-head proof、future upstream provenance、production DB/runtime、malformed provider row生成、browser、deploy、DoS/resource hardening、release readinessを主張しない。WP-4233/WP-4165個別statusは`REMOTE_CI_PASS`。reconciliation groupはPLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION_GATEをP2 remediation後各5/5で通過。exact4に対する`git diff --check`と`pnpm check:ssot-index`（173 documents）、`pnpm test:scripts`はPASS。live `pnpm check:secrets`は除外対象外の既存untracked protected scopeで意図どおりfail-closed、tracked HEAD＋exact4 overlay scanはPASS。現在COMMIT_GATE review中で、commit/pushを先取りしない。ledger rollbackは今回のexact4 docs commitだけをrevertする。WP-4165 security implementationは単独revertでmutable tagへ戻さず、review済みimmutable replacementまたはworkflow停止と再gateを要する。`.omo/`は除外。
+
+### WP-4233 PostgreSQL reception-list row-set authority — FINALIZED / INDEPENDENT_PASS / REMOTE_CI_PASS
 
 - PostgreSQL受付listだけがfulfilled query resultをraw `result.rows.map(rowToEntry)`で投影し、同repository create/patient queryのown-data dense snapshot authorityと不整合な残gapを採択した。malformed later indexより先にearlier rowのPHI-bearing fieldが読まれ得るため、row-set全体の構造検証をprojectionより先に完了させる。
 - code exact3=`apps/api/src/db/database-row.ts`, `apps/api/src/db/reception-repository.ts`, `apps/api/src/db/reception-repository.test.ts`。既存bounded helperのpublic signature/invalid-maximum precedence/bounded behaviorとconsumerを維持し、別名unbounded structural helperをprivate coreから追加。listは全snapshot→全件undefined prepass→projectionを行う。SQL/paramsとvalid dense-rowのorder/cardinality、unbounded list contract、schema/migration/API/UIは不変。malformed row-set semanticsはfail-closed拒否へ変更。
-- PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION/COMMIT gateとpost-commit independent reviewは各5 fresh contextで5/5 PASS。reviewでbounded runtime `undefined` precedence回帰、後方undefined prepass証拠不足、validation/ledger過剰表現を検出して修正。focused248、API807＋local PostgreSQL14 expected skips、Web485、workspace1829＋同14 skips、workspace typecheck/test/buildと実処理のある標準gate PASS。`pnpm lint`はworkspace lint task不在でexit0だがcoverageなし。live secretsは既存workspace protected scopeでfail-closed、tracked HEAD+exact7 overlay PASS。implementation `1f181c5`をexact7でlocal commit済み。`TEST_DATABASE_URL`不在、browser/UI N/A、remote/prod非主張、`.omo/`除外。unbounded DB/network/heapと追加O(n) costは残存、DoS/resource hardening非主張。rollbackはimplementation＋ledger commit revertとfocused/API/Web/workspace/standard revalidation、DB/schema/data rollback不要だがraw row-set/TOCTOU riskが再開する。
+- PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION/COMMIT/PUSH gateとpost-commit independent reviewは各5 fresh contextで5/5 PASS。reviewでbounded runtime `undefined` precedence回帰、後方undefined prepass証拠不足、validation/ledger過剰表現を検出して修正。focused248、API807＋local PostgreSQL14 expected skips、Web485、workspace1829＋同14 skips、workspace typecheck/test/buildと実処理のある標準gate PASS。`pnpm lint`はworkspace lint task不在でexit0だがcoverageなし。live secretsは既存workspace protected scopeでfail-closed、tracked HEAD+exact7 overlay PASS。implementation `1f181c5`＋ledger `020965f`をpushし、CI run `29601464612`は当該exact headでPostgreSQL zero-skipを含む全step SUCCESS。production/malformed provider row/browser/deploy/resource hardening非主張、`.omo/`除外。unbounded DB/network/heapと追加O(n) costは残存。rollback境界は上記reconciliation記録に従う。
 
 ## 2026-07-17
 
@@ -419,12 +424,12 @@
 - `Plans.md`のactive statusだけが独立検証・follow-up landing後も未完了だったため、current artifact、commit ancestry、independent noteをfresh read-only再照合し、3 bounded evidence sliceをFINALIZEDへ整合した。runtime/code/contracts/API/DB/SSOT/package/lock/CI変更なし。
 - repository-wide `DEMO_REQUIRED`、production API/auth/DB、audit retryのnative input、absolute browser値のroot capture依存を維持する。known-non-commit retryをambiguous committed outcomeへ一般化せず、WP-4151cのhuman/SSOT gateは未解除。
 
-### WP-4165 GitHub Actions trust-surface minimization — LOCAL_LANDED / INDEPENDENT_PASS / REMOTE_CI_VERIFY_REQUIRED
+### WP-4165 GitHub Actions trust-surface minimization — FINALIZED / INDEPENDENT_PASS / REMOTE_CI_PASS
 
 - CIの3 external actionをmutable `@v4`からofficial v4 releaseのfull-length commit SHAへ固定し、workflow tokenを`contents: read`だけへ限定、checkoutのcredential persistenceを無効化した。trigger、PostgreSQL digest/service、Node 24、pnpm 11.13.1、cache、step/env/command/orderは不変。
 - root script harnessは既存direct devDependency `yaml`でworkflowをsemantic parseし、step/job/flow-styleの全`uses`、review済みaction exact-once、exact SHA、action行へ結合したversion comment、top-level exact permission、全job permission override禁止、checkout credential非永続を検証する。duplicate/missing、detached comment、mutable reusable workflow、flow action、block/scalar/flow permissionのnegative fixtureを固定した。
 - 初期regex案は独立reviewで改行空白、flow-style YAML、detached commentのfalse-negativeを検出され、semantic parserへreframe後にindependent verifierとsupply-chain/security reviewerが最終PASS。`actionlint`、script harness、workspace typecheck/test/build、OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231、tracked-snapshot secret scan、diffをPASS。Web337、API272 + PostgreSQL14 expected skips、audit183、calculation87。
-- exact3 implementation commit `1febf57`はlocal-only。明示的user instructionがないためpushせず、GitHub-hosted runnerでのaction解決、cache、PostgreSQL zero-skipを含むremote proofは`REMOTE_CI_VERIFY_REQUIRED`として残す。untracked `.omo/`は対象外。
+- exact3 implementation `1febf57`とledger `e02859e`はremote-evidence head `020965f`のancestor。後続goal instructionによるsafe feature push後、draft PR #1 CI run `29601464612` / job `87954323760`がexact `020965f`でaction解決、cache/install、PostgreSQL zero-skipを含む全step SUCCESS。deployments 0、main不変。future provenance/production/deploy/release readinessは非主張。untracked `.omo/`は対象外。
 
 ### WP-4164 PostgreSQL audit advisory-lock / migration CI repair — FINALIZED / REMOTE_CI_PASS
 
