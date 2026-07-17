@@ -8,6 +8,11 @@
 
 ## 2026-07-18
 
+### WP-4153 JP Core 1.2.0 package pre-lock evidence — FINALIZED / INDEPENDENT_PASS_WITH_NOTE / REMOTE_CI_PASS / EXTERNAL_STATE_CONDITIONAL
+
+- official `https://jpfhir.jp/fhir/core/1.2.0/package.tgz`とdownload/general/QA pagesをHTTPS exact-origin・bounded transportでrepo外tempへfresh取得。artifact SHA-256 `6094c8b9ebd975cb738c66cc999774c06a0aacf4480c068a8465e597117e52a3`、2,391,515 bytes、ETag `247ddb-644a0ac73f2c0`、Last-Modified 2025-11-28は既存証拠と一致し、redirect 0だった。
+- archiveは展開せず403 entries/17,549,408 regular bytesを検査しunsafe/duplicate/link/device 0、license-like standalone file 0、exact `package/package.json`の`jpfhir.jp.core#1.2.0`/FHIR4.0.1/canonical/4 dependencies/CC0-1.0 field/`file://` publisher pathを再現。rendered `jpfhir-terminology#1.4.0`とのhistorical discrepancyとQA errors0/warn0、13 suppressed、unpublished、history gapを再現した。tempは削除済み、repo/package/lock/runtime/toolchain不変。WP-4154 identity、WP-4158 rights provenance authorityを維持し、legal clearance未成立、FHIR/legal human gate維持。PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION_GATE各5/5、diff/SSOT173/scripts/tracked-overlay secrets PASS、live secretsは既存`.codegraph`でfail-closed。COMMIT_GATE5/5後だけexact-stage/commitし、conditional完了宣言はfinalization target自身の全external gate成立前はFINALIZATION_PENDINGとして無効。
+
 ### WP-4152 current-head production Web boundary — FINALIZED / INDEPENDENT_PASS / REMOTE_CI_PASS / EXTERNAL_STATE_CONDITIONAL
 
 - runtime target `87aa747`でNext15.5.20 production buildをfresh実行し12/12 static pages、real19.98s、`/sync-status` 141B/First Load102kBを確認。BUILD_ID `GMvkAu8EW7gWyinpQPEln`とroute artifact 3件のSHA-256をbuild直後、run1後、run2後に照合し、再buildなしの同一artifactを127.0.0.1:31852で2回起動した。

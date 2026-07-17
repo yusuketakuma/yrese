@@ -76,7 +76,7 @@ The table records implementation/evidence commit identities; branch and remote s
 
 ## FHIR package pre-lock evidence
 
-Retrieved on 2026-07-16 for WP-0053b research only. This is not an approved package lock.
+Retrieved on 2026-07-16 and independently re-retrieved on 2026-07-18 for WP-0053b research only. This is not an approved package lock.
 
 | Item | Direct evidence |
 |---|---|
@@ -86,6 +86,8 @@ Retrieved on 2026-07-16 for WP-0053b research only. This is not an approved pack
 | Declared dependencies | `hl7.fhir.r4.core#4.0.1`, `hl7.terminology.r4#7.0.0`, `hl7.fhir.uv.extensions.r4#5.2.0`, `jpfhir-terminology.r4#1.4.0` |
 | License metadata | archive `package.json` declares `CC0-1.0`; no standalone license/copying/notice file was present in the archive |
 | Official pages | `https://jpfhir.jp/fhir/core/1.2.0/download.html`, `guide-general.html`, and `qa.min.html` |
+
+The 2026-07-18 independent retrieval used exact-origin HTTPS with no redirects and bounded downloads into a repository-external temporary directory. Raw bytes matched the recorded SHA-256, size, ETag and Last-Modified before parsing. A no-extraction inspection found 403 archive entries, 17,549,408 bytes across regular files, no unsafe/duplicate/link/device member, exactly one regular `package/package.json`, and no case-insensitive `LICENSE`, `LICENCE`, `COPYING` or `NOTICE` basename. Package identity, FHIR version, canonical, all four dependencies, `CC0-1.0` package field and publisher `file://` path matched. The rendered guide/QA still names `jpfhir-terminology#1.4.0`; QA still reports errors 0 / warnings 0 together with 13 suppressed issues, an unpublished publication state and unavailable version history. Temporary files were removed. Exact4 validation passed diff check, SSOT index 173, the script regression harness and tracked HEAD+exact4 overlay secret scan; the live secret scan failed closed on the pre-existing user-owned `.codegraph` symlink, and no archive remained in the repository. WP-4154 remains the authority for terminology artifact identity/fingerprint and WP-4158 for rights provenance; neither follow-up supplies legal clearance by itself. WP-4153 finalization is `EXTERNAL_STATE_CONDITIONAL`: until its exact target passes review, push/parity, exact-head CI and PUSH_GATE5/5, the completion declaration is ineffective as FINALIZATION_PENDING.
 
 Terminology dependency follow-up:
 
