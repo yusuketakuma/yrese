@@ -273,6 +273,25 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(formatAcceptedTime("2026-07-09T20:15:00.000Z")).toBe("05:15");
   });
 
+  it.each([
+    ["0001-01-01T00:00:00.000Z", "09:00"],
+    ["0099-12-31T14:59:59.999Z", "23:59"],
+    ["0099-12-31T15:00:00.000Z", "00:00"],
+    ["9999-12-31T14:59:59.999Z", "23:59"],
+  ] as const)("formats historical instant %s with fixed JST as %s", (instant, expected) => {
+    expect(formatAcceptedTime(instant)).toBe(expected);
+  });
+
+  it.each([
+    ["0000-01-01T00:00:00.000Z"],
+    ["9999-12-31T15:00:00.000Z"],
+    ["not-an-instant"],
+  ] as const)("rejects unsupported accepted time %s without echo", (instant) => {
+    expect(() => formatAcceptedTime(instant)).toThrow(
+      "Reception accepted time could not be formatted",
+    );
+  });
+
   it("shows EmptyState for an empty queue and ErrorNotice for errors", () => {
     const empty = renderToStaticMarkup(
       <ReceptionQueueView
@@ -436,6 +455,78 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
       "jst-end-of-day",
     ]);
   });
+
+  it.each([
+    ["0001-01-01", "0001-01-01T00:00:00.000Z"],
+    ["0099-12-31", "0099-12-31T14:59:59.999Z"],
+    ["0100-01-01", "0099-12-31T15:00:00.000Z"],
+    ["9999-12-31", "9999-12-31T14:59:59.999Z"],
+  ] as const)(
+    "accepts a queue entry on canonical JST business date %s",
+    async (date, acceptedAt) => {
+      const boundary = entry({
+        receptionId: `reception-calendar-${date}`,
+        acceptedAt,
+      });
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValue(jsonResponse(200, queueResponse(date, [boundary])));
+
+      const response = await withNodeEnv("development", () =>
+        fetchReceptionQueue(date, fetchImpl),
+      );
+
+      expect(response).toEqual(queueResponse(date, [boundary]));
+    },
+  );
+
+  it.each([
+    ["local BCE", "0001-01-01", "0000-01-01T00:00:00.000Z"],
+    ["JST year 10000", "9999-12-31", "9999-12-31T15:00:00.000Z"],
+  ] as const)(
+    "rejects %s queue evidence without echoing its fields",
+    async (_label, date, acceptedAt) => {
+      const sensitive = entry({
+        receptionId: "reception-calendar-sensitive-4232",
+        acceptedAt,
+        patient: patient({
+          patientId: "patient-calendar-sensitive-4232",
+          name: "合成 暦日機密患者",
+          kana: "ゴウセイ レキジツキミツカンジャ",
+          patientNumber: "CALENDAR-SECRET-4232",
+        }),
+      });
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValue(jsonResponse(200, queueResponse(date, [sensitive])));
+
+      let caught: unknown;
+      try {
+        await withNodeEnv("development", () =>
+          fetchReceptionQueue(date, fetchImpl),
+        );
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(Error);
+      expect((caught as Error).message).toBe(
+        "Reception queue response contains entries outside the requested business date",
+      );
+      const serialized = JSON.stringify(caught, Object.getOwnPropertyNames(caught));
+      for (const sensitiveValue of [
+        date,
+        acceptedAt,
+        sensitive.receptionId,
+        sensitive.patient.patientId,
+        sensitive.patient.name,
+        sensitive.patient.kana,
+        sensitive.patient.patientNumber,
+      ]) {
+        expect(serialized).not.toContain(sensitiveValue);
+      }
+    },
+  );
 
   it.each([
     ["previous", "2026-07-09T14:59:59.999Z"],
@@ -2546,6 +2637,87 @@ describe("business date is JST (WP-4053)", () => {
     expect(todayAsIsoDate(new Date("2026-07-09T20:00:00Z"))).toBe("2026-07-10");
     // 2026-07-09T02:00:00Z = JST 2026-07-09 11:00(同日)
     expect(todayAsIsoDate(new Date("2026-07-09T02:00:00Z"))).toBe("2026-07-09");
+  });
+
+  it.each([
+    ["0001-01-01T00:00:00.000Z", "0001-01-01"],
+    ["0004-02-28T15:00:00.000Z", "0004-02-29"],
+    ["0099-12-31T14:59:59.999Z", "0099-12-31"],
+    ["0099-12-31T15:00:00.000Z", "0100-01-01"],
+    ["9999-12-31T14:59:59.999Z", "9999-12-31"],
+    ["0000-12-31T15:00:00.000Z", "0001-01-01"],
+  ] as const)("canonicalizes JST boundary %s to %s", (instant, expected) => {
+    expect(todayAsIsoDate(new Date(instant))).toBe(expected);
+  });
+
+  it.each([
+    ["local BCE", new Date("0000-01-01T00:00:00.000Z")],
+    ["JST year 10000", new Date("9999-12-31T15:00:00.000Z")],
+    ["invalid Date", new Date(Number.NaN)],
+  ] as const)("rejects %s with one fixed non-echo error", (_label, value) => {
+    expect(() => todayAsIsoDate(value)).toThrow(
+      "Reception business date could not be derived",
+    );
+  });
+
+  it("rejects non-Date authorities without coercion or Proxy traps", () => {
+    let coercions = 0;
+    let traps = 0;
+    const coercible = {
+      valueOf() {
+        coercions += 1;
+        return Date.now();
+      },
+      [Symbol.toPrimitive]() {
+        coercions += 1;
+        return Date.now();
+      },
+    };
+    const hostileProxy = new Proxy(new Date(), {
+      get() {
+        traps += 1;
+        throw new Error("raw browser Date Proxy secret 4232");
+      },
+      getPrototypeOf() {
+        traps += 1;
+        throw new Error("raw browser Date prototype secret 4232");
+      },
+    });
+    const revoked = Proxy.revocable(new Date(), {});
+    revoked.revoke();
+
+    for (const value of [
+      undefined,
+      null,
+      Date.now(),
+      new String("2026-07-10T00:00:00.000Z"),
+      coercible,
+      Object.create(Date.prototype),
+      hostileProxy,
+      revoked.proxy,
+    ]) {
+      expect(() => todayAsIsoDate(value)).toThrow(
+        "Reception business date could not be derived",
+      );
+    }
+    expect(coercions).toBe(0);
+    expect(traps).toBe(0);
+  });
+
+  it("ignores poisoned own Date methods after intrinsic snapshot", () => {
+    const instant = new Date("0099-12-31T15:00:00.000Z");
+    let ownMethodReads = 0;
+    for (const property of ["getTime", "valueOf", "toISOString"] as const) {
+      Object.defineProperty(instant, property, {
+        get() {
+          ownMethodReads += 1;
+          throw new Error(`raw own Date ${property} secret 4232`);
+        },
+      });
+    }
+
+    expect(todayAsIsoDate(instant)).toBe("0100-01-01");
+    expect(ownMethodReads).toBe(0);
   });
 });
 

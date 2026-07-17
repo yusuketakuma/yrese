@@ -310,7 +310,10 @@ export class PostgresReceptionRepository implements ReceptionRepository {
       acceptedAtProperty.value,
       databaseReceptionTimestampInvariantErrorMessage,
     );
-    const businessDate = businessDateFromAcceptedAt(new Date(acceptedAt));
+    const businessDate = businessDateFromAcceptedAt(
+      new Date(acceptedAt),
+      databaseReceptionTimestampInvariantErrorMessage,
+    );
     const client = await this.pool.connect();
     let destroyClient = false;
     try {

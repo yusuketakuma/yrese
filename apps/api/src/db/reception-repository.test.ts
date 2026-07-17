@@ -8,6 +8,7 @@ import {
 import { patientId, pharmacyId, tenantId } from '@yrese/shared-kernel';
 
 import {
+  businessDateFromAcceptedAt,
   InMemoryReceptionRepository,
   inMemoryReceptionCommandSnapshotInvariantErrorMessage,
   inMemoryReceptionIdempotencyInvariantErrorMessage,
@@ -267,6 +268,96 @@ function replaceAcceptedAtAuthority(
     Object.setPrototypeOf(row, { accepted_at: storedRow.accepted_at });
   }
 }
+
+describe('reception Asia/Tokyo business-date authority', () => {
+  const invariantMessage = 'Synthetic reception business date invariant';
+
+  it.each([
+    ['0001-01-01T00:00:00.000Z', '0001-01-01'],
+    ['0004-02-28T15:00:00.000Z', '0004-02-29'],
+    ['0099-12-31T14:59:59.999Z', '0099-12-31'],
+    ['0099-12-31T15:00:00.000Z', '0100-01-01'],
+    ['9999-12-31T14:59:59.999Z', '9999-12-31'],
+    ['0000-12-31T15:00:00.000Z', '0001-01-01'],
+  ] as const)('canonicalizes %s to the JST CalendarDate %s', (instant, expected) => {
+    expect(
+      businessDateFromAcceptedAt(new Date(instant), invariantMessage),
+    ).toBe(expected);
+  });
+
+  it.each([
+    ['local BCE', new Date('0000-01-01T00:00:00.000Z')],
+    ['JST year 10000', new Date('9999-12-31T15:00:00.000Z')],
+    ['invalid Date', new Date(Number.NaN)],
+  ] as const)('rejects %s with one fixed non-echo error', (_label, value) => {
+    expect(() => businessDateFromAcceptedAt(value, invariantMessage)).toThrow(
+      invariantMessage,
+    );
+  });
+
+  it('rejects non-Date authorities without coercion or Proxy traps', () => {
+    let coercions = 0;
+    let traps = 0;
+    const coercible = {
+      valueOf() {
+        coercions += 1;
+        return input.acceptedAt.getTime();
+      },
+      [Symbol.toPrimitive]() {
+        coercions += 1;
+        return input.acceptedAt.getTime();
+      },
+    };
+    const hostileProxy = new Proxy(input.acceptedAt, {
+      get() {
+        traps += 1;
+        throw new Error('raw business-date Proxy secret 4232');
+      },
+      getPrototypeOf() {
+        traps += 1;
+        throw new Error('raw business-date prototype secret 4232');
+      },
+    });
+    const revoked = Proxy.revocable(input.acceptedAt, {});
+    revoked.revoke();
+
+    for (const value of [
+      undefined,
+      null,
+      input.acceptedAt.getTime(),
+      input.acceptedAt.toISOString(),
+      new String(input.acceptedAt.toISOString()),
+      coercible,
+      Object.create(Date.prototype),
+      hostileProxy,
+      revoked.proxy,
+    ]) {
+      expect(() => businessDateFromAcceptedAt(value, invariantMessage)).toThrow(
+        invariantMessage,
+      );
+    }
+    expect(coercions).toBe(0);
+    expect(traps).toBe(0);
+  });
+
+  it('ignores poisoned own Date methods after intrinsic snapshot', () => {
+    const acceptedAt = new Date('0099-12-31T15:00:00.000Z');
+    let ownMethodReads = 0;
+    for (const property of ['getTime', 'valueOf', 'toISOString'] as const) {
+      Object.defineProperty(acceptedAt, property, {
+        get() {
+          ownMethodReads += 1;
+          throw new Error(`raw own Date ${property} secret 4232`);
+        },
+      });
+    }
+
+    expect(businessDateFromAcceptedAt(acceptedAt, invariantMessage)).toBe(
+      '0100-01-01',
+    );
+    expect(ownMethodReads).toBe(0);
+  });
+});
 
 describe('PostgresReceptionRepository client lifecycle', () => {
   it('commits a created reception and reuses the client', async () => {
@@ -1017,6 +1108,48 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(insertCall?.[1]?.[5]).toBe('2026-07-09');
     expect(operationRelease.mock.calls).toEqual([[]]);
   });
+
+  it.each([
+    ['0001-01-01T00:00:00.000Z', '0001-01-01'],
+    ['0099-12-31T14:59:59.999Z', '0099-12-31'],
+    ['0099-12-31T15:00:00.000Z', '0100-01-01'],
+    ['9999-12-31T14:59:59.999Z', '9999-12-31'],
+  ] as const)(
+    'passes the canonical JST date %s -> %s to the PostgreSQL insert',
+    async (instant, expectedDate) => {
+      const { repository, query } = createRepository({ scenario: 'created' });
+
+      const result = await repository.create({
+        ...input,
+        idempotencyKey: `canonical-date-${instant}`,
+        acceptedAt: new Date(instant),
+      });
+
+      expect(result.kind).toBe('created');
+      const insertCall = query.mock.calls.find(([sql]) =>
+        String(sql).trim().startsWith('INSERT'),
+      );
+      expect(insertCall?.[1]?.[5]).toBe(expectedDate);
+    },
+  );
+
+  it.each([
+    ['local BCE', '0000-01-01T00:00:00.000Z'],
+    ['JST year 10000', '9999-12-31T15:00:00.000Z'],
+  ] as const)(
+    'rejects %s before acquiring a PostgreSQL client',
+    async (_label, instant) => {
+      const connect = vi.fn(async () => {
+        throw new Error('database connection must remain unused');
+      });
+      const repository = new PostgresReceptionRepository({ connect } as unknown as Pool);
+
+      await expect(
+        repository.create({ ...input, acceptedAt: new Date(instant) }),
+      ).rejects.toThrow(databaseReceptionTimestampInvariantErrorMessage);
+      expect(connect).not.toHaveBeenCalled();
+    },
+  );
 
   it('rejects invalid create timestamp authorities before acquiring a DB client', async () => {
     let fakeCoercions = 0;
@@ -2488,6 +2621,51 @@ describe('InMemoryReceptionRepository idempotency index integrity', () => {
     ).not.toContainEqual(result.entry);
     expect(ownMethodReads).toBe(0);
   });
+
+  it.each([
+    ['0001-01-01T00:00:00.000Z', '0001-01-01'],
+    ['0099-12-31T14:59:59.999Z', '0099-12-31'],
+    ['0099-12-31T15:00:00.000Z', '0100-01-01'],
+    ['9999-12-31T14:59:59.999Z', '9999-12-31'],
+  ] as const)(
+    'stores and lists the canonical in-memory JST date %s -> %s',
+    async (instant, expectedDate) => {
+      const repository = new InMemoryReceptionRepository();
+      const result = await repository.create({
+        ...input,
+        idempotencyKey: `in-memory-canonical-date-${instant}`,
+        acceptedAt: new Date(instant),
+      });
+
+      expect(result.kind).toBe('created');
+      if (result.kind !== 'created') throw new Error('expected a created reception');
+      await expect(
+        repository.list({ ...listInput, date: expectedDate }),
+      ).resolves.toContainEqual(result.entry);
+    },
+  );
+
+  it.each([
+    ['local BCE', '0000-01-01T00:00:00.000Z'],
+    ['JST year 10000', '9999-12-31T15:00:00.000Z'],
+  ] as const)(
+    'rejects %s before mutating in-memory reception state',
+    async (_label, instant) => {
+      const repository = new InMemoryReceptionRepository();
+      const internals = repository as unknown as {
+        readonly records: unknown[];
+        readonly idempotencyRecords: Map<string, unknown>;
+        readonly nextSequence: number;
+      };
+
+      await expect(
+        repository.create({ ...input, acceptedAt: new Date(instant) }),
+      ).rejects.toThrow(inMemoryReceptionTimestampInvariantErrorMessage);
+      expect(internals.records).toHaveLength(3);
+      expect(internals.idempotencyRecords.size).toBe(0);
+      expect(internals.nextSequence).toBe(4);
+    },
+  );
 
   it('rejects invalid new-create timestamps without mutation, coercion, or Date Proxy traps', async () => {
     let fakeCoercions = 0;

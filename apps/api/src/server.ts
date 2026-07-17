@@ -902,7 +902,12 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         receptionIds.add(entry.receptionId);
       }
       for (const entry of response.entries) {
-        if (businessDateFromAcceptedAt(new Date(entry.acceptedAt)) !== query.data.date) {
+        if (
+          businessDateFromAcceptedAt(
+            new Date(entry.acceptedAt),
+            receptionQueueBusinessDateInvariantErrorMessage,
+          ) !== query.data.date
+        ) {
           throw new Error(receptionQueueBusinessDateInvariantErrorMessage);
         }
       }

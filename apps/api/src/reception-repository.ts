@@ -312,22 +312,36 @@ function sortRecords(left: ReceptionRecord, right: ReceptionRecord): number {
   return left.receptionId.localeCompare(right.receptionId);
 }
 
-const JAPAN_BUSINESS_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'Asia/Tokyo',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-});
+// MOD-011 defines MVP business dates as fixed JST. IANA Asia/Tokyo applies
+// historical local-mean offsets to ancient years, so it is not authoritative here.
+const japanStandardTimeOffsetMilliseconds = 9 * 60 * 60 * 1_000;
 
-export function businessDateFromAcceptedAt(acceptedAt: Date): string {
-  const parts = JAPAN_BUSINESS_DATE_FORMATTER.formatToParts(acceptedAt);
-  const year = parts.find((part) => part.type === 'year')?.value;
-  const month = parts.find((part) => part.type === 'month')?.value;
-  const day = parts.find((part) => part.type === 'day')?.value;
-  if (year === undefined || month === undefined || day === undefined) {
-    throw new Error('failed to format acceptedAt as Asia/Tokyo business date');
+export function businessDateFromAcceptedAt(
+  acceptedAt: unknown,
+  invariantErrorMessage: string,
+): string {
+  try {
+    const epochMilliseconds = Date.prototype.getTime.call(acceptedAt);
+    if (!Number.isFinite(epochMilliseconds)) {
+      throw new Error(invariantErrorMessage);
+    }
+    const jstWallClock = new Date(
+      epochMilliseconds + japanStandardTimeOffsetMilliseconds,
+    );
+    const year = Date.prototype.getUTCFullYear.call(jstWallClock);
+    const month = Date.prototype.getUTCMonth.call(jstWallClock) + 1;
+    const day = Date.prototype.getUTCDate.call(jstWallClock);
+    if (![year, month, day].every(Number.isSafeInteger)) {
+      throw new Error(invariantErrorMessage);
+    }
+    return CalendarDate.fromParts({
+      year,
+      month,
+      day,
+    }).toString();
+  } catch {
+    throw new Error(invariantErrorMessage);
   }
-  return `${year}-${month}-${day}`;
 }
 
 export class InMemoryReceptionRepository implements ReceptionRepository {
@@ -435,7 +449,10 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
       patientId: inputPatientId,
       patient: patientSnapshot,
       acceptedAt,
-      date: businessDateFromAcceptedAt(new Date(acceptedAt)),
+      date: businessDateFromAcceptedAt(
+        new Date(acceptedAt),
+        inMemoryReceptionTimestampInvariantErrorMessage,
+      ),
       receptionStatus: 'WAITING',
       idempotencyKey: command.idempotencyKey,
     };

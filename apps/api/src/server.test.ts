@@ -2946,6 +2946,100 @@ describe('buildServer', () => {
   });
 
   it.each([
+    ['0001-01-01', '0001-01-01T00:00:00.000Z'],
+    ['0099-12-31', '0099-12-31T14:59:59.999Z'],
+    ['0100-01-01', '0099-12-31T15:00:00.000Z'],
+    ['9999-12-31', '9999-12-31T14:59:59.999Z'],
+  ] as const)(
+    'accepts canonical low/upper JST business date %s from %s',
+    async (date, acceptedAt) => {
+      const boundaryEntry = {
+        receptionId: `reception-canonical-${date}`,
+        acceptedAt,
+        receptionStatus: 'WAITING' as const,
+        prescriptionIntakeType: 'paper' as const,
+        patient: {
+          patientId: `patient-canonical-${date}`,
+          name: '合成 暦日境界患者',
+          kana: 'ゴウセイ レキジツキョウカイカンジャ',
+          birthDate: '1990-01-01',
+          sex: 'unknown' as const,
+          patientNumber: `CALENDAR-${date}`,
+          eligibilityStatus: 'NOT_CHECKED' as const,
+        },
+      };
+      const list = vi.fn<ReceptionRepository['list']>(async () => [boundaryEntry]);
+      const server = buildDevTestServer({
+        receptionRepository: { list, create: vi.fn<ReceptionRepository['create']>() },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: `/reception/queue?date=${date}`,
+        headers: tenantOneReceptionReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ date, entries: [boundaryEntry] });
+    },
+  );
+
+  it.each([
+    ['local BCE', '0001-01-01', '0000-01-01T00:00:00.000Z'],
+    ['JST year 10000', '9999-12-31', '9999-12-31T15:00:00.000Z'],
+  ] as const)(
+    'rejects %s queue evidence with the fixed non-PHI business-date invariant',
+    async (_label, requestedDate, acceptedAt) => {
+      const boundaryEntry = {
+        receptionId: 'reception-calendar-sensitive-4232',
+        acceptedAt,
+        receptionStatus: 'WAITING' as const,
+        prescriptionIntakeType: 'paper' as const,
+        patient: {
+          patientId: 'patient-calendar-sensitive-4232',
+          name: '合成 暦日機密患者',
+          kana: 'ゴウセイ レキジツキミツカンジャ',
+          birthDate: '1990-01-01',
+          sex: 'unknown' as const,
+          patientNumber: 'CALENDAR-SECRET-4232',
+          eligibilityStatus: 'NOT_CHECKED' as const,
+        },
+      };
+      const list = vi.fn<ReceptionRepository['list']>(async () => [boundaryEntry]);
+      const server = buildDevTestServer({
+        receptionRepository: { list, create: vi.fn<ReceptionRepository['create']>() },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: `/reception/queue?date=${requestedDate}`,
+        headers: tenantOneReceptionReadHeaders,
+      });
+      await server.close();
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toMatchObject({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: receptionQueueBusinessDateInvariantErrorMessage,
+      });
+      for (const sensitiveValue of [
+        requestedDate,
+        acceptedAt,
+        boundaryEntry.receptionId,
+        boundaryEntry.patient.patientId,
+        boundaryEntry.patient.name,
+        boundaryEntry.patient.kana,
+        boundaryEntry.patient.patientNumber,
+      ]) {
+        expect(response.body).not.toContain(sensitiveValue);
+      }
+    },
+  );
+
+  it.each([
     ['previous', '2026-07-08T14:59:59.999Z'],
     ['next', '2026-07-09T15:00:00.000Z'],
   ] as const)('rejects a schema-valid entry from the %s JST business date without echoing PHI', async (_label, acceptedAt) => {
