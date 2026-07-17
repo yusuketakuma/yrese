@@ -8,12 +8,12 @@
 
 ## 2026-07-17
 
-### WP-4232 Reception acceptedAt fixed-JST authority — COMMIT_READY
+### WP-4232 Reception acceptedAt fixed-JST authority — FINALIZED / INDEPENDENT_PASS / PUSH_PENDING
 
 - InMemory/PostgreSQL/API/Webの受付`acceptedAt`→業務日付変換を、hostのtimezoneやhistorical IANA offsetへ依存しないMOD-011固定JST(+09:00)へ統一し、shift後のUTC部品をAPPROVED `CalendarDate.fromParts()`でcanonical化した。genuine Dateのintrinsic snapshot、own method無視、invalid/Proxy/revoked/non-Date、local year 0000/10000を固定non-echoでfail-closed化した。
 - exact7: `apps/api/src/reception-repository.ts`, `apps/api/src/db/reception-repository.ts`, `apps/api/src/server.ts`, `apps/web/app/reception-dashboard.tsx`と対応test 3件。APIはrepository scan/query/connect前、server projection前に拒否し、Webはdefault today、queue membership、受付時刻表示を同じfixed-JST snapshot authorityへ統一。SQL/contracts/schema/migration/DB data、DOM/copy/ARIA/CSS/animation、reception lifecycle/idempotency/auditは不変。
 - PLAN gateとIMPLEMENTATION gateは各5 fresh contextで5/5 PASS。BUG_REFACTOR reviewでhistorical IANAによる受付時刻表示のauthority分裂P2とrollback/evidence記録P2を検出し修正した。current diffでfocused API497 + Web136、workspace1818 + `TEST_DATABASE_URL`不在のlocal PostgreSQL14 expected skips(実DBzero-skip非証明)、workspace typecheck/test/build、lint/OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/scripts/diff PASS。live secretsは既存workspace scopeでfail-closed、tracked HEAD+exact11 clean overlay PASS。root-observed ephemeral browser sessionで`?date=0001-01-01`のexact復元・日付input・空queue・alert 0を確認したが、screenshot/trace/console artifactは保存していない。
-- BUG_REFACTOR/VALIDATION gateは各5 fresh contextで5/5 PASS。architecture/integration/plan reviewerのP2とvalidation count P2は全てFIXED後に再review PASS、security/privacy/medical/data、performance/reliability、UI/operationsを含む残reviewerはfinding 0でPASS。COMMIT_READY、commit/pushなし。root exact-stage後にimplementation commitを作成し、COMMIT five-reviewへ進む。rollbackはimplementation commitとledger-only finalization commitをrevertし、focused API497/Web136と標準gateを再実行する。DB/schema/data rollbackは不要だが、historical IANA/host date authority riskが再開する。
+- BUG_REFACTOR/VALIDATION/COMMIT gateは各5 fresh contextで5/5 PASS。architecture/integration/plan reviewerのP2とvalidation count P2は全てFIXED後に再review PASS、security/privacy/medical/data、performance/reliability、UI/operationsを含む残reviewerはfinding 0でPASS。implementation `3ffdb14`をexact11でlocal commit済み、tracked tree clean、`.omo/`未追跡user artifactは除外。ledger-only finalizationは本exact4記録。FINALIZED / INDEPENDENT_PASS、PUSH_PENDING。rollbackは`3ffdb14`と本ledger-only finalization commitをrevertし、focused API497/Web136と標準gateを再実行する。DB/schema/data rollbackは不要だが、historical IANA/host date authority riskが再開する。
 
 ### WP-4231 Reception URL CalendarDate authority — FINALIZED / INDEPENDENT_PASS
 
