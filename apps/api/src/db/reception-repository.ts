@@ -26,6 +26,7 @@ import {
 import {
   readDatabaseRowOwnDataProperty,
   snapshotDatabaseQueryRows,
+  snapshotUnboundedDatabaseQueryRows,
 } from './database-row.js';
 import { patientRowToSearchResult } from './patient-repository.js';
 
@@ -277,7 +278,16 @@ export class PostgresReceptionRepository implements ReceptionRepository {
       [command.tenantId, command.pharmacyId, command.date],
     );
 
-    return result.rows.map(rowToEntry);
+    const rows = snapshotUnboundedDatabaseQueryRows<ReceptionEntryRow>(
+      result,
+      databaseReceptionRowSetInvariantErrorMessage,
+    );
+    for (const row of rows) {
+      if (row === undefined) {
+        throw new Error(databaseReceptionRowSetInvariantErrorMessage);
+      }
+    }
+    return rows.map(rowToEntry);
   }
 
   async create(input: ReceptionCreateInput): Promise<ReceptionCreateResult> {

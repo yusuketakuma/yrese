@@ -6,14 +6,22 @@
 
 ---
 
+## 2026-07-18
+
+### WP-4233 PostgreSQL reception-list row-set authority — IMPLEMENTED / VALIDATED / READY_TO_COMMIT
+
+- PostgreSQL受付listだけがfulfilled query resultをraw `result.rows.map(rowToEntry)`で投影し、同repository create/patient queryのown-data dense snapshot authorityと不整合な残gapを採択した。malformed later indexより先にearlier rowのPHI-bearing fieldが読まれ得るため、row-set全体の構造検証をprojectionより先に完了させる。
+- code exact3=`apps/api/src/db/database-row.ts`, `apps/api/src/db/reception-repository.ts`, `apps/api/src/db/reception-repository.test.ts`。既存bounded helperのpublic signature/invalid-maximum precedence/bounded behaviorとconsumerを維持し、別名unbounded structural helperをprivate coreから追加。listは全snapshot→全件undefined prepass→projectionを行う。SQL/paramsとvalid dense-rowのorder/cardinality、unbounded list contract、schema/migration/API/UIは不変。malformed row-set semanticsはfail-closed拒否へ変更。
+- PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION gateは各5 fresh contextで5/5 PASS。reviewでbounded runtime `undefined` precedence回帰、後方undefined prepass証拠不足、validation/ledger過剰表現を検出して修正。focused248、API807＋local PostgreSQL14 expected skips、Web485、workspace1829＋同14 skips、workspace typecheck/test/buildと実処理のある標準gate PASS。`pnpm lint`はworkspace lint task不在でexit0だがcoverageなし。live secretsは既存workspace protected scopeでfail-closed、tracked HEAD+exact7 overlay PASS。`TEST_DATABASE_URL`不在、browser/UI N/A、remote/prod非主張、`.omo/`除外。unbounded DB/network/heapと追加O(n) costは残存、DoS/resource hardening非主張。rollbackはimplementation＋ledger commit revertとfocused/API/Web/workspace/standard revalidation、DB/schema/data rollback不要だがraw row-set/TOCTOU riskが再開する。
+
 ## 2026-07-17
 
-### WP-4232 Reception acceptedAt fixed-JST authority — FINALIZED / INDEPENDENT_PASS / PUSH_PENDING
+### WP-4232 Reception acceptedAt fixed-JST authority — FINALIZED / INDEPENDENT_PASS / REMOTE_CI_PASS
 
 - InMemory/PostgreSQL/API/Webの受付`acceptedAt`→業務日付変換を、hostのtimezoneやhistorical IANA offsetへ依存しないMOD-011固定JST(+09:00)へ統一し、shift後のUTC部品をAPPROVED `CalendarDate.fromParts()`でcanonical化した。genuine Dateのintrinsic snapshot、own method無視、invalid/Proxy/revoked/non-Date、local year 0000/10000を固定non-echoでfail-closed化した。
 - exact7: `apps/api/src/reception-repository.ts`, `apps/api/src/db/reception-repository.ts`, `apps/api/src/server.ts`, `apps/web/app/reception-dashboard.tsx`と対応test 3件。APIはrepository scan/query/connect前、server projection前に拒否し、Webはdefault today、queue membership、受付時刻表示を同じfixed-JST snapshot authorityへ統一。SQL/contracts/schema/migration/DB data、DOM/copy/ARIA/CSS/animation、reception lifecycle/idempotency/auditは不変。
 - PLAN gateとIMPLEMENTATION gateは各5 fresh contextで5/5 PASS。BUG_REFACTOR reviewでhistorical IANAによる受付時刻表示のauthority分裂P2とrollback/evidence記録P2を検出し修正した。current diffでfocused API497 + Web136、workspace1818 + `TEST_DATABASE_URL`不在のlocal PostgreSQL14 expected skips(実DBzero-skip非証明)、workspace typecheck/test/build、lint/OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/scripts/diff PASS。live secretsは既存workspace scopeでfail-closed、tracked HEAD+exact11 clean overlay PASS。root-observed ephemeral browser sessionで`?date=0001-01-01`のexact復元・日付input・空queue・alert 0を確認したが、screenshot/trace/console artifactは保存していない。
-- BUG_REFACTOR/VALIDATION/COMMIT gateは各5 fresh contextで5/5 PASS。architecture/integration/plan reviewerのP2とvalidation count P2は全てFIXED後に再review PASS、security/privacy/medical/data、performance/reliability、UI/operationsを含む残reviewerはfinding 0でPASS。implementation `3ffdb14`をexact11でlocal commit済み、tracked tree clean、`.omo/`未追跡user artifactは除外。ledger-only finalizationは本exact4記録。FINALIZED / INDEPENDENT_PASS、PUSH_PENDING。rollbackは`3ffdb14`と本ledger-only finalization commitをrevertし、focused API497/Web136と標準gateを再実行する。DB/schema/data rollbackは不要だが、historical IANA/host date authority riskが再開する。
+- BUG_REFACTOR/VALIDATION/COMMIT/PUSH gateは各5 fresh contextで5/5 PASS。architecture/integration/plan reviewerのP2とvalidation count P2は全てFIXED後に再review PASS、security/privacy/medical/data、performance/reliability、UI/operationsを含む残reviewerはfinding 0でPASS。implementation `3ffdb14`＋ledger `151c059`をsafe feature branchへfast-forward pushし、local/remote parity、main不変、deployments 0を確認。draft PR #1のCI run `29587027626`はexact head `151c059`でPostgreSQL-backed test、secrets、buildを含む全step SUCCESS。`.omo/`除外。FINALIZED / INDEPENDENT_PASS / REMOTE_CI_PASS。rollbackは`151c059`、`3ffdb14`を順にrevertし、focused API497/Web136と標準gateを再実行する。DB/schema/data rollbackは不要だが、historical IANA/host date authority riskが再開する。
 
 ### WP-4231 Reception URL CalendarDate authority — FINALIZED / INDEPENDENT_PASS
 

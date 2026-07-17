@@ -14,12 +14,15 @@ export function readDatabaseRowOwnDataProperty(
   return result.value;
 }
 
-export function snapshotDatabaseQueryRows<T>(
+function snapshotDatabaseQueryRowsCore<T>(
   queryResult: unknown,
-  maximumRows: number,
+  maximumRows: number | undefined,
   errorMessage: string,
 ): readonly T[] {
-  if (!Number.isSafeInteger(maximumRows) || maximumRows < 0) {
+  if (
+    maximumRows !== undefined &&
+    (!Number.isSafeInteger(maximumRows) || maximumRows < 0)
+  ) {
     throw new Error(errorMessage);
   }
   const rows = readDatabaseRowOwnDataProperty(queryResult, 'rows', errorMessage);
@@ -33,7 +36,11 @@ export function snapshotDatabaseQueryRows<T>(
     throw new Error(errorMessage);
   }
   const length = lengthDescriptor?.value;
-  if (!Number.isSafeInteger(length) || length < 0 || length > maximumRows) {
+  if (
+    !Number.isSafeInteger(length) ||
+    length < 0 ||
+    (maximumRows !== undefined && length > maximumRows)
+  ) {
     throw new Error(errorMessage);
   }
   const snapshot: T[] = [];
@@ -43,4 +50,22 @@ export function snapshotDatabaseQueryRows<T>(
     );
   }
   return Object.freeze(snapshot);
+}
+
+export function snapshotDatabaseQueryRows<T>(
+  queryResult: unknown,
+  maximumRows: number,
+  errorMessage: string,
+): readonly T[] {
+  if (!Number.isSafeInteger(maximumRows) || maximumRows < 0) {
+    throw new Error(errorMessage);
+  }
+  return snapshotDatabaseQueryRowsCore<T>(queryResult, maximumRows, errorMessage);
+}
+
+export function snapshotUnboundedDatabaseQueryRows<T>(
+  queryResult: unknown,
+  errorMessage: string,
+): readonly T[] {
+  return snapshotDatabaseQueryRowsCore<T>(queryResult, undefined, errorMessage);
 }

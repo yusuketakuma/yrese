@@ -29,6 +29,10 @@ import {
   databaseReceptionRowSetInvariantErrorMessage,
   databaseReceptionTimestampInvariantErrorMessage,
 } from './reception-repository.js';
+import {
+  snapshotDatabaseQueryRows,
+  snapshotUnboundedDatabaseQueryRows,
+} from './database-row.js';
 
 const patient = {
   patientId: patientId('patient-reception-client-test'),
@@ -356,6 +360,147 @@ describe('reception Asia/Tokyo business-date authority', () => {
       '0100-01-01',
     );
     expect(ownMethodReads).toBe(0);
+  });
+});
+
+describe('unbounded database query row-set snapshot authority', () => {
+  const invariantMessage = 'Synthetic unbounded row-set invariant';
+
+  it('preserves bounded invalid-maximum precedence before query-result inspection', () => {
+    let proxyTraps = 0;
+    const hostileResult = new Proxy(
+      {},
+      {
+        getOwnPropertyDescriptor() {
+          proxyTraps += 1;
+          throw new Error('bounded query-result Proxy secret 4233');
+        },
+      },
+    );
+
+    expect(() =>
+      snapshotDatabaseQueryRows(
+        hostileResult,
+        undefined as unknown as number,
+        invariantMessage,
+      ),
+    ).toThrow(invariantMessage);
+    expect(proxyTraps).toBe(0);
+  });
+
+  it('returns a frozen dense container detached from raw indices without invoking raw methods', () => {
+    let methodCalls = 0;
+    const first = { id: 'first' };
+    const second = { id: 'second' };
+    const rows = [first, second];
+    Object.defineProperty(rows, '0', {
+      value: first,
+      enumerable: false,
+      configurable: true,
+      writable: true,
+    });
+    for (const property of ['slice', 'map'] as const) {
+      Object.defineProperty(rows, property, {
+        value() {
+          methodCalls += 1;
+          return [];
+        },
+      });
+    }
+    Object.defineProperty(rows, Symbol.iterator, {
+      value() {
+        methodCalls += 1;
+        throw new Error('raw row-set iterator secret 4233');
+      },
+    });
+    Object.defineProperty(rows, Symbol.toPrimitive, {
+      value() {
+        methodCalls += 1;
+        throw new Error('raw row-set coercion secret 4233');
+      },
+    });
+    const queryResult = {};
+    Object.defineProperty(queryResult, 'rows', {
+      value: rows,
+      enumerable: false,
+      configurable: false,
+      writable: false,
+    });
+
+    const snapshot = snapshotUnboundedDatabaseQueryRows<{ readonly id: string }>(
+      queryResult,
+      invariantMessage,
+    );
+    rows[0] = { id: 'replaced' };
+    rows.pop();
+
+    expect(snapshot).toEqual([first, second]);
+    expect(Object.isFrozen(snapshot)).toBe(true);
+    expect(Object.isFrozen(rows)).toBe(false);
+    expect(() => (snapshot as { id: string }[]).push({ id: 'third' })).toThrow();
+    expect(methodCalls).toBe(0);
+  });
+
+  it('rejects hostile row-set structure without invoking accessors or Proxy traps', () => {
+    let accessorReads = 0;
+    let proxyTraps = 0;
+    const accessorResult = {};
+    Object.defineProperty(accessorResult, 'rows', {
+      get() {
+        accessorReads += 1;
+        throw new Error('raw query rows accessor secret 4233');
+      },
+    });
+    const inheritedResult = Object.create({ rows: [] });
+    const accessorRows = [{}];
+    Object.defineProperty(accessorRows, '0', {
+      get() {
+        accessorReads += 1;
+        throw new Error('raw query index accessor secret 4233');
+      },
+    });
+    const inheritedRows = Array(1);
+    Object.setPrototypeOf(inheritedRows, { 0: {} });
+    const proxiedResult = new Proxy(
+      { rows: [] },
+      {
+        getOwnPropertyDescriptor() {
+          proxyTraps += 1;
+          throw new Error('raw query result Proxy secret 4233');
+        },
+      },
+    );
+    const proxiedRows = new Proxy(
+      [{}],
+      {
+        getOwnPropertyDescriptor() {
+          proxyTraps += 1;
+          throw new Error('raw query rows Proxy secret 4233');
+        },
+      },
+    );
+    const revokedRows = Proxy.revocable([{}], {});
+    revokedRows.revoke();
+    const invalidResults: readonly unknown[] = [
+      {},
+      { rows: 'not-an-array' },
+      accessorResult,
+      inheritedResult,
+      proxiedResult,
+      { rows: proxiedRows },
+      { rows: revokedRows.proxy },
+      { rows: Array(1) },
+      { rows: inheritedRows },
+      { rows: accessorRows },
+    ];
+
+    for (const invalidResult of invalidResults) {
+      expect(() =>
+        snapshotUnboundedDatabaseQueryRows(invalidResult, invariantMessage),
+      ).toThrow(invariantMessage);
+    }
+    expect(accessorReads).toBe(0);
+    expect(proxyTraps).toBe(0);
   });
 });
 
@@ -1235,6 +1380,106 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(result.map((entry) => entry.acceptedAt)).toEqual([dateIso, dateIso]);
     expect(ownMethodReads).toBe(0);
     expect(query).toHaveBeenCalledOnce();
+  });
+
+  it.each([0, 1, 2] as const)(
+    'rejects a dense undefined list row at index %s with the row-set invariant',
+    async (undefinedIndex) => {
+      const rows: unknown[] = [
+        { ...storedRow, reception_id: 'reception-before-4233' },
+        { ...storedRow, reception_id: 'reception-middle-4233' },
+        { ...storedRow, reception_id: 'reception-after-4233' },
+      ];
+      rows[undefinedIndex] = undefined;
+      const repository = new PostgresReceptionRepository({
+        query: vi.fn(async () => ({ rows })),
+      } as unknown as Pool);
+
+      await expect(repository.list(listInput)).rejects.toEqual(
+        new Error(databaseReceptionRowSetInvariantErrorMessage),
+      );
+    },
+  );
+
+  it('completes the undefined prepass before projecting an earlier row', async () => {
+    let rowFieldReads = 0;
+    const hostileEarlierRow = { ...storedRow };
+    Object.defineProperty(hostileEarlierRow, 'reception_id', {
+      get() {
+        rowFieldReads += 1;
+        throw new Error('earlier reception PHI must remain unread 4233');
+      },
+    });
+    const repository = new PostgresReceptionRepository({
+      query: vi.fn(async () => ({ rows: [hostileEarlierRow, undefined] })),
+    } as unknown as Pool);
+
+    await expect(repository.list(listInput)).rejects.toEqual(
+      new Error(databaseReceptionRowSetInvariantErrorMessage),
+    );
+    expect(rowFieldReads).toBe(0);
+  });
+
+  it.each(['sparse', 'accessor', 'inherited'] as const)(
+    'validates the complete %s list row-set before projecting earlier row fields',
+    async (authority) => {
+      let indexReads = 0;
+      let rowFieldReads = 0;
+      const hostileEarlierRow = { ...storedRow };
+      Object.defineProperty(hostileEarlierRow, 'reception_id', {
+        get() {
+          rowFieldReads += 1;
+          throw new Error('earlier reception PHI must remain unread 4233');
+        },
+      });
+      const rows = [hostileEarlierRow, { ...storedRow }];
+      if (authority === 'sparse') {
+        delete rows[1];
+      } else if (authority === 'accessor') {
+        Object.defineProperty(rows, '1', {
+          get() {
+            indexReads += 1;
+            throw new Error('later raw row index secret 4233');
+          },
+        });
+      } else {
+        delete rows[1];
+        Object.setPrototypeOf(rows, { 1: { ...storedRow } });
+      }
+      const repository = new PostgresReceptionRepository({
+        query: vi.fn(async () => ({ rows })),
+      } as unknown as Pool);
+
+      await expect(repository.list(listInput)).rejects.toEqual(
+        new Error(databaseReceptionRowSetInvariantErrorMessage),
+      );
+      expect(indexReads).toBe(0);
+      expect(rowFieldReads).toBe(0);
+    },
+  );
+
+  it('preserves list SQL, parameter order, physical row order, and cardinality', async () => {
+    const rows = [
+      { ...storedRow, reception_id: 'reception-first-4233' },
+      { ...storedRow, reception_id: 'reception-second-4233' },
+    ];
+    const query = vi.fn(async () => ({ rows }));
+    const repository = new PostgresReceptionRepository({ query } as unknown as Pool);
+
+    await expect(repository.list(listInput)).resolves.toEqual([
+      expect.objectContaining({ receptionId: 'reception-first-4233' }),
+      expect.objectContaining({ receptionId: 'reception-second-4233' }),
+    ]);
+    expect(query).toHaveBeenCalledOnce();
+    const firstCall = query.mock.calls[0] as unknown[] | undefined;
+    const sql = firstCall?.[0];
+    const values = firstCall?.[1];
+    expect(values).toEqual([listInput.tenantId, listInput.pharmacyId, listInput.date]);
+    expect(String(sql)).toContain(
+      'WHERE r.tenant_id = $1 AND r.pharmacy_id = $2 AND r.business_date = $3::date',
+    );
+    expect(String(sql)).toContain('ORDER BY r.accepted_at ASC, r.reception_id ASC');
+    expect(String(sql)).not.toMatch(/\b(?:LIMIT|OFFSET)\b/i);
   });
 
   it('requires own data authority for reception ID and status in list projection', async () => {
