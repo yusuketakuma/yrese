@@ -1,17 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Pool, PoolClient } from 'pg';
 
-import type { PatientSearchResult } from '@yrese/contracts';
+import {
+  RECEPTION_IDEMPOTENCY_KEY_MAX_LENGTH,
+  type PatientSearchResult,
+} from '@yrese/contracts';
 import { patientId, pharmacyId, tenantId } from '@yrese/shared-kernel';
 
 import {
   InMemoryReceptionRepository,
+  inMemoryReceptionCommandSnapshotInvariantErrorMessage,
   inMemoryReceptionIdempotencyInvariantErrorMessage,
   inMemoryReceptionPatientSnapshotInvariantErrorMessage,
   inMemoryReceptionTimestampInvariantErrorMessage,
 } from '../reception-repository.js';
 import {
   PostgresReceptionRepository,
+  databaseReceptionCommandSnapshotInvariantErrorMessage,
   databaseReceptionCommandProvenanceInvariantErrorMessage,
   databaseReceptionCreatedAcceptedAtInvariantErrorMessage,
   databaseReceptionCreatedPatientSnapshotInvariantErrorMessage,
@@ -39,6 +44,46 @@ const input = {
   idempotencyKey: 'synthetic-reception-client-test-key',
   acceptedAt: new Date('2026-07-13T01:00:00.000Z'),
 };
+
+type ReceptionCommandField = keyof typeof input;
+type InvalidCommandAuthority = 'missing' | 'inherited' | 'accessor';
+
+const invalidReceptionScopeValues = [
+  ['tenantId', ''],
+  ['tenantId', '   '],
+  ['tenantId', 'tenant\u0000invalid'],
+  ['pharmacyId', ''],
+  ['pharmacyId', '   '],
+  ['pharmacyId', 'pharmacy\u007finvalid'],
+  ['idempotencyKey', ''],
+  ['idempotencyKey', '   '],
+  ['idempotencyKey', 'key\tinvalid'],
+  ['idempotencyKey', 'x'.repeat(RECEPTION_IDEMPOTENCY_KEY_MAX_LENGTH + 1)],
+] as const satisfies readonly (readonly [
+  'tenantId' | 'pharmacyId' | 'idempotencyKey',
+  string,
+])[];
+
+function commandWithInvalidAuthority(
+  field: ReceptionCommandField,
+  authority: InvalidCommandAuthority,
+  onAccessorRead: () => void,
+): typeof input {
+  const command: Record<string, unknown> = { ...input };
+  const originalValue = command[field];
+  delete command[field];
+  if (authority === 'inherited') {
+    Object.setPrototypeOf(command, { [field]: originalValue });
+  } else if (authority === 'accessor') {
+    Object.defineProperty(command, field, {
+      get() {
+        onAccessorRead();
+        throw new Error('raw reception command accessor secret 4225');
+      },
+    });
+  }
+  return command as typeof input;
+}
 
 const storedRow = {
   stored_tenant_id: input.tenantId,
@@ -399,6 +444,152 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(accessorReads).toBe(0);
     expect(proxyTraps).toBe(0);
   });
+
+  it.each([
+    'tenantId',
+    'pharmacyId',
+    'idempotencyKey',
+    'patient',
+    'acceptedAt',
+  ] as const)(
+    'requires own data authority for outer command field %s before connecting',
+    async (field) => {
+      let accessorReads = 0;
+      for (const authority of ['missing', 'inherited', 'accessor'] as const) {
+        const { repository, connect, query, release } = createRepository({
+          scenario: 'created',
+        });
+        const command = commandWithInvalidAuthority(field, authority, () => {
+          accessorReads += 1;
+        });
+
+        await expect(repository.create(command)).rejects.toThrow(
+          databaseReceptionCommandSnapshotInvariantErrorMessage,
+        );
+        expect(connect).not.toHaveBeenCalled();
+        expect(query).not.toHaveBeenCalled();
+        expect(release).not.toHaveBeenCalled();
+      }
+      expect(accessorReads).toBe(0);
+    },
+  );
+
+  it('rejects root and revoked command Proxies without traps or DB acquisition', async () => {
+    let proxyTraps = 0;
+    const hostile = new Proxy(
+      { ...input },
+      {
+        get() {
+          proxyTraps += 1;
+          throw new Error('raw reception command Proxy secret 4225');
+        },
+        getOwnPropertyDescriptor() {
+          proxyTraps += 1;
+          throw new Error('raw reception command descriptor secret 4225');
+        },
+      },
+    );
+    const revoked = Proxy.revocable({ ...input }, {});
+    revoked.revoke();
+
+    for (const command of [hostile, revoked.proxy]) {
+      const { repository, connect, query, release } = createRepository({
+        scenario: 'created',
+      });
+      await expect(repository.create(command)).rejects.toThrow(
+        databaseReceptionCommandSnapshotInvariantErrorMessage,
+      );
+      expect(connect).not.toHaveBeenCalled();
+      expect(query).not.toHaveBeenCalled();
+      expect(release).not.toHaveBeenCalled();
+    }
+    expect(proxyTraps).toBe(0);
+  });
+
+  it('accepts non-default own data descriptors for every outer command field', async () => {
+    const command = {} as typeof input;
+    for (const field of Object.keys(input) as ReceptionCommandField[]) {
+      Object.defineProperty(command, field, {
+        value: input[field],
+        enumerable: false,
+        configurable: false,
+        writable: false,
+      });
+    }
+    const { repository, query, release } = createRepository({ scenario: 'created' });
+
+    await expect(repository.create(command)).resolves.toMatchObject({ kind: 'created' });
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it.each([
+    ['tenantId', ['pharmacyId', 'idempotencyKey', 'patient', 'acceptedAt']],
+    ['pharmacyId', ['idempotencyKey', 'patient', 'acceptedAt']],
+    ['idempotencyKey', ['patient', 'acceptedAt']],
+  ] as const)(
+    'stops Postgres command reads at invalid %s before DB acquisition',
+    async (invalidField, unreadFields) => {
+      let laterReads = 0;
+      const command = { ...input } as Record<string, unknown>;
+      Object.defineProperty(command, invalidField, { value: '   ' });
+      for (const field of unreadFields) {
+        Object.defineProperty(command, field, {
+          get() {
+            laterReads += 1;
+            throw new Error('later Postgres command field must remain unread');
+          },
+        });
+      }
+      const { repository, connect, query, release } = createRepository({
+        scenario: 'created',
+      });
+
+      await expect(repository.create(command as typeof input)).rejects.toThrow(
+        databaseReceptionCommandSnapshotInvariantErrorMessage,
+      );
+      expect(laterReads).toBe(0);
+      expect(connect).not.toHaveBeenCalled();
+      expect(query).not.toHaveBeenCalled();
+      expect(release).not.toHaveBeenCalled();
+    },
+  );
+
+  it('validates the complete patient snapshot before reading acceptedAt or connecting', async () => {
+    let acceptedAtReads = 0;
+    const command = { ...input, patient: { ...patient, name: '' } };
+    Object.defineProperty(command, 'acceptedAt', {
+      get() {
+        acceptedAtReads += 1;
+        throw new Error('acceptedAt must remain unread after invalid patient');
+      },
+    });
+    const { repository, connect, query, release } = createRepository({ scenario: 'created' });
+
+    await expect(repository.create(command)).rejects.toThrow(
+      databaseReceptionCreatedPatientSnapshotInvariantErrorMessage,
+    );
+    expect(acceptedAtReads).toBe(0);
+    expect(connect).not.toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalled();
+    expect(release).not.toHaveBeenCalled();
+  });
+
+  it.each(invalidReceptionScopeValues)(
+    'rejects invalid command scope %s=%j before connecting',
+    async (field, value) => {
+      const { repository, connect, query, release } = createRepository({
+        scenario: 'created',
+      });
+
+      await expect(repository.create({ ...input, [field]: value })).rejects.toThrow(
+        databaseReceptionCommandSnapshotInvariantErrorMessage,
+      );
+      expect(connect).not.toHaveBeenCalled();
+      expect(query).not.toHaveBeenCalled();
+      expect(release).not.toHaveBeenCalled();
+    },
+  );
 
   it('preserves the command provenance invariant when rollback fails', async () => {
     const { repository, query, release } = createRepository({
@@ -1375,6 +1566,171 @@ describe('PostgresReceptionRepository client lifecycle', () => {
 });
 
 describe('InMemoryReceptionRepository idempotency index integrity', () => {
+  it.each([
+    'tenantId',
+    'pharmacyId',
+    'idempotencyKey',
+    'patient',
+    'acceptedAt',
+  ] as const)('requires own data authority for outer command field %s without mutation', async (field) => {
+    let accessorReads = 0;
+    for (const authority of ['missing', 'inherited', 'accessor'] as const) {
+      const repository = new InMemoryReceptionRepository();
+      const internals = repository as unknown as {
+        readonly records: unknown[];
+        readonly idempotencyRecords: Map<string, unknown>;
+        readonly nextSequence: number;
+      };
+      const command = commandWithInvalidAuthority(field, authority, () => {
+        accessorReads += 1;
+      });
+
+      await expect(repository.create(command)).rejects.toThrow(
+        inMemoryReceptionCommandSnapshotInvariantErrorMessage,
+      );
+      expect(internals.records).toHaveLength(3);
+      expect(internals.idempotencyRecords.size).toBe(0);
+      expect(internals.nextSequence).toBe(4);
+    }
+    expect(accessorReads).toBe(0);
+  });
+
+  it('rejects root and revoked command Proxies without traps or mutation', async () => {
+    let proxyTraps = 0;
+    const hostile = new Proxy(
+      { ...input },
+      {
+        get() {
+          proxyTraps += 1;
+          throw new Error('raw in-memory command Proxy secret 4225');
+        },
+        getOwnPropertyDescriptor() {
+          proxyTraps += 1;
+          throw new Error('raw in-memory command descriptor secret 4225');
+        },
+      },
+    );
+    const revoked = Proxy.revocable({ ...input }, {});
+    revoked.revoke();
+
+    for (const invalidCommand of [hostile, revoked.proxy]) {
+      const repository = new InMemoryReceptionRepository();
+      const internals = repository as unknown as {
+        readonly records: unknown[];
+        readonly idempotencyRecords: Map<string, unknown>;
+        readonly nextSequence: number;
+      };
+      await expect(repository.create(invalidCommand)).rejects.toThrow(
+        inMemoryReceptionCommandSnapshotInvariantErrorMessage,
+      );
+      expect(internals.records).toHaveLength(3);
+      expect(internals.idempotencyRecords.size).toBe(0);
+      expect(internals.nextSequence).toBe(4);
+    }
+    expect(proxyTraps).toBe(0);
+  });
+
+  it('accepts non-default own data descriptors for every outer command field', async () => {
+    const command = {} as typeof input;
+    for (const field of Object.keys(input) as ReceptionCommandField[]) {
+      Object.defineProperty(command, field, {
+        value: input[field],
+        enumerable: false,
+        configurable: false,
+        writable: false,
+      });
+    }
+    const repository = new InMemoryReceptionRepository();
+
+    await expect(repository.create(command)).resolves.toMatchObject({ kind: 'created' });
+  });
+
+  it('reads patient identity before tenant and leaves later outer fields unread', async () => {
+    let laterReads = 0;
+    const command = { ...input, patient: { ...patient, patientId: 0 } } as Record<
+      string,
+      unknown
+    >;
+    for (const field of ['tenantId', 'pharmacyId', 'idempotencyKey', 'acceptedAt'] as const) {
+      Object.defineProperty(command, field, {
+        get() {
+          laterReads += 1;
+          throw new Error('outer field after patient identity must remain unread');
+        },
+      });
+    }
+    const repository = new InMemoryReceptionRepository();
+
+    await expect(repository.create(command as typeof input)).rejects.toThrow(
+      inMemoryReceptionPatientSnapshotInvariantErrorMessage,
+    );
+    expect(laterReads).toBe(0);
+  });
+
+  it.each([
+    ['tenantId', ['pharmacyId', 'idempotencyKey', 'acceptedAt']],
+    ['pharmacyId', ['idempotencyKey', 'acceptedAt']],
+    ['idempotencyKey', ['acceptedAt']],
+  ] as const)(
+    'stops InMemory command reads at invalid %s after patient identity without mutation',
+    async (invalidField, unreadOuterFields) => {
+      let laterReads = 0;
+      const patientWithUnreadNonIdentity = { ...patient };
+      Object.defineProperty(patientWithUnreadNonIdentity, 'name', {
+        get() {
+          laterReads += 1;
+          throw new Error('non-identity patient field must remain unread');
+        },
+      });
+      const command = {
+        ...input,
+        patient: patientWithUnreadNonIdentity,
+      } as Record<string, unknown>;
+      Object.defineProperty(command, invalidField, { value: '   ' });
+      for (const field of unreadOuterFields) {
+        Object.defineProperty(command, field, {
+          get() {
+            laterReads += 1;
+            throw new Error('later InMemory command field must remain unread');
+          },
+        });
+      }
+      const repository = new InMemoryReceptionRepository();
+      const internals = repository as unknown as {
+        readonly records: unknown[];
+        readonly idempotencyRecords: Map<string, unknown>;
+        readonly nextSequence: number;
+      };
+
+      await expect(repository.create(command as typeof input)).rejects.toThrow(
+        inMemoryReceptionCommandSnapshotInvariantErrorMessage,
+      );
+      expect(laterReads).toBe(0);
+      expect(internals.records).toHaveLength(3);
+      expect(internals.idempotencyRecords.size).toBe(0);
+      expect(internals.nextSequence).toBe(4);
+    },
+  );
+
+  it.each(invalidReceptionScopeValues)(
+    'rejects invalid command scope %s=%j without mutation',
+    async (field, value) => {
+      const repository = new InMemoryReceptionRepository();
+      const internals = repository as unknown as {
+        readonly records: unknown[];
+        readonly idempotencyRecords: Map<string, unknown>;
+        readonly nextSequence: number;
+      };
+
+      await expect(repository.create({ ...input, [field]: value })).rejects.toThrow(
+        inMemoryReceptionCommandSnapshotInvariantErrorMessage,
+      );
+      expect(internals.records).toHaveLength(3);
+      expect(internals.idempotencyRecords.size).toBe(0);
+      expect(internals.nextSequence).toBe(4);
+    },
+  );
+
   it('stores a detached patient snapshot across caller mutation, list, and existing replay', async () => {
     const repository = new InMemoryReceptionRepository();
     const mutablePatient: PatientSearchResult = {
@@ -1557,6 +1913,83 @@ describe('InMemoryReceptionRepository idempotency index integrity', () => {
     }
     expect(accessorReads).toBe(0);
     expect(proxyTraps).toBe(0);
+  });
+
+  it('validates acceptedAt before reading non-identity patient fields for a new create', async () => {
+    let patientNameReads = 0;
+    const patientWithUnreadName = { ...patient };
+    Object.defineProperty(patientWithUnreadName, 'name', {
+      get() {
+        patientNameReads += 1;
+        throw new Error('patient name must remain unread after invalid acceptedAt');
+      },
+    });
+    const repository = new InMemoryReceptionRepository();
+
+    await expect(
+      repository.create({
+        ...input,
+        patient: patientWithUnreadName,
+        acceptedAt: new Date(Number.NaN),
+      }),
+    ).rejects.toThrow(inMemoryReceptionTimestampInvariantErrorMessage);
+    expect(patientNameReads).toBe(0);
+  });
+
+  it('rejects an acceptedAt command accessor for new create without invoking it', async () => {
+    let acceptedAtReads = 0;
+    const command = { ...input };
+    Object.defineProperty(command, 'acceptedAt', {
+      get() {
+        acceptedAtReads += 1;
+        throw new Error('raw in-memory acceptedAt command secret 4223');
+      },
+    });
+    const repository = new InMemoryReceptionRepository();
+    const internals = repository as unknown as {
+      readonly records: unknown[];
+      readonly idempotencyRecords: Map<string, unknown>;
+      readonly nextSequence: number;
+    };
+
+    await expect(repository.create(command)).rejects.toThrow(
+      inMemoryReceptionCommandSnapshotInvariantErrorMessage,
+    );
+    expect(acceptedAtReads).toBe(0);
+    expect(internals.records).toHaveLength(3);
+    expect(internals.idempotencyRecords.size).toBe(0);
+    expect(internals.nextSequence).toBe(4);
+  });
+
+  it('keeps an acceptedAt command accessor unread for existing and conflict', async () => {
+    const repository = new InMemoryReceptionRepository();
+    const created = await repository.create(input);
+    let acceptedAtReads = 0;
+    const withUnreadAcceptedAt = (patientValue: PatientSearchResult) => {
+      const command = { ...input, patient: patientValue };
+      Object.defineProperty(command, 'acceptedAt', {
+        get() {
+          acceptedAtReads += 1;
+          throw new Error('existing and conflict must not read acceptedAt command');
+        },
+      });
+      return command;
+    };
+
+    const existing = await repository.create(withUnreadAcceptedAt(patient));
+    const conflict = await repository.create(
+      withUnreadAcceptedAt({
+        ...patient,
+        patientId: patientId('patient-accepted-at-command-conflict-4223'),
+      }),
+    );
+
+    expect(existing.kind).toBe('existing');
+    expect(conflict).toEqual({
+      kind: 'idempotency_conflict',
+      provenance: created.provenance,
+    });
+    expect(acceptedAtReads).toBe(0);
   });
 
   it('keeps non-identity patient fields unread for existing and conflict results', async () => {

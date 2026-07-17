@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   RECEPTION_IDEMPOTENCY_KEY_MAX_LENGTH,
   receptionCreateRequestSchema,
+  receptionIdempotencyKeySchema,
   receptionQueueEntrySchema,
   receptionQueueQuerySchema,
   receptionQueueResponseSchema,
@@ -86,6 +87,10 @@ describe("reception queue schemas", () => {
 });
 
 describe("receptionCreateRequestSchema", () => {
+  it("reuses the canonical reception idempotency key schema", () => {
+    expect(receptionCreateRequestSchema.shape.idempotencyKey).toBe(receptionIdempotencyKeySchema);
+  });
+
   it("accepts opaque idempotency keys", () => {
     expect(
       receptionCreateRequestSchema.parse({

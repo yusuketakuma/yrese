@@ -1,7 +1,6 @@
-import { isProxy } from 'node:util/types';
-
 import {
   receptionQueueEntrySchema,
+  receptionIdempotencyKeySchema,
   patientSearchResultSchema,
   type PatientSearchResult,
   type ReceptionQueueEntry,
@@ -19,9 +18,15 @@ import {
 } from '@yrese/shared-kernel';
 
 import { snapshotDateInstant } from './instant.js';
+import {
+  createOwnDataPropertyReader,
+  type OwnDataPropertyRead,
+} from './own-data-property.js';
 
 export const inMemoryReceptionTimestampInvariantErrorMessage =
   'in-memory reception acceptedAt must be a valid Date';
+export const inMemoryReceptionCommandSnapshotInvariantErrorMessage =
+  'In-memory reception command snapshot is invalid';
 export const inMemoryReceptionPatientSnapshotInvariantErrorMessage =
   'In-memory reception patient snapshot is invalid';
 
@@ -155,57 +160,82 @@ function toIdempotencyKey(input: {
   return `${input.tenantId}\u001f${input.pharmacyId}\u001f${input.idempotencyKey}`;
 }
 
-function readInMemoryPatientOwnDataProperty(
-  patient: unknown,
-  property: keyof PatientSearchResult,
-): { readonly present: boolean; readonly value?: unknown } {
-  if (
-    (typeof patient !== 'object' && typeof patient !== 'function') ||
-    patient === null ||
-    isProxy(patient)
-  ) {
-    throw new Error(inMemoryReceptionPatientSnapshotInvariantErrorMessage);
+function readReceptionScopeString(
+  result: OwnDataPropertyRead,
+  invariantErrorMessage: string,
+): string {
+  if (!result.present || typeof result.value !== 'string') {
+    throw new Error(invariantErrorMessage);
   }
-  let descriptor: PropertyDescriptor | undefined;
-  try {
-    descriptor = Object.getOwnPropertyDescriptor(patient, property);
-  } catch {
-    throw new Error(inMemoryReceptionPatientSnapshotInvariantErrorMessage);
-  }
-  if (descriptor === undefined) return { present: false };
-  if (!('value' in descriptor)) {
-    throw new Error(inMemoryReceptionPatientSnapshotInvariantErrorMessage);
-  }
-  return { present: true, value: descriptor.value };
+  return result.value;
 }
 
-function captureInMemoryPatientId(patient: unknown): PatientId {
-  const property = readInMemoryPatientOwnDataProperty(patient, 'patientId');
-  if (!property.present || typeof property.value !== 'string') {
+export function snapshotReceptionTenantId(
+  result: OwnDataPropertyRead,
+  invariantErrorMessage: string,
+): TenantId {
+  try {
+    return tenantId(readReceptionScopeString(result, invariantErrorMessage));
+  } catch {
+    throw new Error(invariantErrorMessage);
+  }
+}
+
+export function snapshotReceptionPharmacyId(
+  result: OwnDataPropertyRead,
+  invariantErrorMessage: string,
+): PharmacyId {
+  try {
+    return pharmacyId(readReceptionScopeString(result, invariantErrorMessage));
+  } catch {
+    throw new Error(invariantErrorMessage);
+  }
+}
+
+export function snapshotReceptionIdempotencyKey(
+  result: OwnDataPropertyRead,
+  invariantErrorMessage: string,
+): string {
+  const value = readReceptionScopeString(result, invariantErrorMessage);
+  const parsed = receptionIdempotencyKeySchema.safeParse(value);
+  if (!parsed.success) {
+    throw new Error(invariantErrorMessage);
+  }
+  return parsed.data;
+}
+
+function readRequiredOwnDataProperty(
+  readProperty: (property: PropertyKey) => OwnDataPropertyRead,
+  property: keyof PatientSearchResult,
+): unknown {
+  const result = readProperty(property);
+  if (!result.present) {
+    throw new Error(inMemoryReceptionPatientSnapshotInvariantErrorMessage);
+  }
+  return result.value;
+}
+
+function captureInMemoryPatientId(
+  readPatientProperty: (property: PropertyKey) => OwnDataPropertyRead,
+): PatientId {
+  const value = readRequiredOwnDataProperty(readPatientProperty, 'patientId');
+  if (typeof value !== 'string') {
     throw new Error(inMemoryReceptionPatientSnapshotInvariantErrorMessage);
   }
   try {
-    return patientId(property.value);
+    return patientId(value);
   } catch {
     throw new Error(inMemoryReceptionPatientSnapshotInvariantErrorMessage);
   }
 }
 
 function snapshotInMemoryPatient(
-  patient: unknown,
+  readPatientProperty: (property: PropertyKey) => OwnDataPropertyRead,
   capturedPatientId: PatientId,
 ): Readonly<PatientSearchResult> {
-  const readRequired = (property: keyof PatientSearchResult): unknown => {
-    const value = readInMemoryPatientOwnDataProperty(patient, property);
-    if (!value.present) {
-      throw new Error(inMemoryReceptionPatientSnapshotInvariantErrorMessage);
-    }
-    return value.value;
-  };
-  const eligibilityCheckedAt = readInMemoryPatientOwnDataProperty(
-    patient,
-    'eligibilityCheckedAt',
-  );
+  const readRequired = (property: keyof PatientSearchResult): unknown =>
+    readRequiredOwnDataProperty(readPatientProperty, property);
+  const eligibilityCheckedAt = readPatientProperty('eligibilityCheckedAt');
   try {
     return Object.freeze(
       patientSearchResultSchema.parse({
@@ -298,8 +328,37 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
   }
 
   async create(input: ReceptionCreateInput): Promise<ReceptionCreateResult> {
-    const inputPatientId = captureInMemoryPatientId(input.patient);
-    const idempotencyKey = toIdempotencyKey(input);
+    const readCommandProperty = createOwnDataPropertyReader(
+      input,
+      inMemoryReceptionCommandSnapshotInvariantErrorMessage,
+    );
+    const patientProperty = readCommandProperty('patient');
+    if (!patientProperty.present) {
+      throw new Error(inMemoryReceptionCommandSnapshotInvariantErrorMessage);
+    }
+    const readPatientProperty = createOwnDataPropertyReader(
+      patientProperty.value,
+      inMemoryReceptionPatientSnapshotInvariantErrorMessage,
+    );
+    const inputPatientId = captureInMemoryPatientId(readPatientProperty);
+    const tenantIdValue = snapshotReceptionTenantId(
+      readCommandProperty('tenantId'),
+      inMemoryReceptionCommandSnapshotInvariantErrorMessage,
+    );
+    const pharmacyIdValue = snapshotReceptionPharmacyId(
+      readCommandProperty('pharmacyId'),
+      inMemoryReceptionCommandSnapshotInvariantErrorMessage,
+    );
+    const idempotencyKeyValue = snapshotReceptionIdempotencyKey(
+      readCommandProperty('idempotencyKey'),
+      inMemoryReceptionCommandSnapshotInvariantErrorMessage,
+    );
+    const command = Object.freeze({
+      tenantId: tenantIdValue,
+      pharmacyId: pharmacyIdValue,
+      idempotencyKey: idempotencyKeyValue,
+    });
+    const idempotencyKey = toIdempotencyKey(command);
     const existing = this.idempotencyRecords.get(idempotencyKey);
     if (existing !== undefined) {
       const existingRecord = this.records.find(
@@ -307,9 +366,9 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
       );
       if (
         existingRecord === undefined ||
-        existingRecord.tenantId !== input.tenantId ||
-        existingRecord.pharmacyId !== input.pharmacyId ||
-        existingRecord.idempotencyKey !== input.idempotencyKey
+        existingRecord.tenantId !== command.tenantId ||
+        existingRecord.pharmacyId !== command.pharmacyId ||
+        existingRecord.idempotencyKey !== command.idempotencyKey
       ) {
         throw new Error(inMemoryReceptionIdempotencyInvariantErrorMessage);
       }
@@ -326,29 +385,33 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
 
     const unindexedRecord = this.records.find(
       (record) =>
-        record.tenantId === input.tenantId &&
-        record.pharmacyId === input.pharmacyId &&
-        record.idempotencyKey === input.idempotencyKey,
+        record.tenantId === command.tenantId &&
+        record.pharmacyId === command.pharmacyId &&
+        record.idempotencyKey === command.idempotencyKey,
     );
     if (unindexedRecord !== undefined) {
       throw new Error(inMemoryReceptionIdempotencyInvariantErrorMessage);
     }
 
+    const acceptedAtProperty = readCommandProperty('acceptedAt');
+    if (!acceptedAtProperty.present) {
+      throw new Error(inMemoryReceptionCommandSnapshotInvariantErrorMessage);
+    }
     const acceptedAt = snapshotDateInstant(
-      input.acceptedAt,
+      acceptedAtProperty.value,
       inMemoryReceptionTimestampInvariantErrorMessage,
     );
-    const patientSnapshot = snapshotInMemoryPatient(input.patient, inputPatientId);
+    const patientSnapshot = snapshotInMemoryPatient(readPatientProperty, inputPatientId);
     const record: ReceptionRecord = {
-      tenantId: input.tenantId,
-      pharmacyId: input.pharmacyId,
+      tenantId: command.tenantId,
+      pharmacyId: command.pharmacyId,
       receptionId: receptionId(`reception-${String(this.nextSequence).padStart(6, '0')}`),
       patientId: inputPatientId,
       patient: patientSnapshot,
       acceptedAt,
       date: businessDateFromAcceptedAt(new Date(acceptedAt)),
       receptionStatus: 'WAITING',
-      idempotencyKey: input.idempotencyKey,
+      idempotencyKey: command.idempotencyKey,
     };
     this.nextSequence += 1;
     this.records.push(record);

@@ -1,23 +1,17 @@
 import { isProxy } from 'node:util/types';
 
+import { readOwnDataProperty } from '../own-data-property.js';
+
 export function readDatabaseRowOwnDataProperty(
   row: unknown,
   property: PropertyKey,
   errorMessage: string,
 ): unknown {
-  if ((typeof row !== 'object' && typeof row !== 'function') || row === null || isProxy(row)) {
+  const result = readOwnDataProperty(row, property, errorMessage);
+  if (!result.present) {
     throw new Error(errorMessage);
   }
-  let descriptor: PropertyDescriptor | undefined;
-  try {
-    descriptor = Object.getOwnPropertyDescriptor(row, property);
-  } catch {
-    throw new Error(errorMessage);
-  }
-  if (descriptor === undefined || !('value' in descriptor)) {
-    throw new Error(errorMessage);
-  }
-  return descriptor.value;
+  return result.value;
 }
 
 export function snapshotDatabaseQueryRows<T>(

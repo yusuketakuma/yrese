@@ -10,12 +10,16 @@ import { patientId, pharmacyId, receptionId, tenantId } from '@yrese/shared-kern
 
 import {
   businessDateFromAcceptedAt,
+  snapshotReceptionIdempotencyKey,
+  snapshotReceptionPharmacyId,
+  snapshotReceptionTenantId,
   type ReceptionCreateInput,
   type ReceptionCreateResult,
   type ReceptionListInput,
   type ReceptionRepository,
 } from '../reception-repository.js';
 import { snapshotDatabaseInstant, snapshotDateInstant } from '../instant.js';
+import { createOwnDataPropertyReader } from '../own-data-property.js';
 import { readDatabaseRowOwnDataProperty } from './database-row.js';
 import { patientRowToSearchResult } from './patient-repository.js';
 
@@ -65,14 +69,21 @@ export const databaseReceptionEntryIdentityInvariantErrorMessage =
   'Reception database returned mismatched entry identity';
 export const databaseReceptionCreatedPatientSnapshotInvariantErrorMessage =
   'Reception database returned a mismatched created patient snapshot';
+export const databaseReceptionCommandSnapshotInvariantErrorMessage =
+  'Reception create command snapshot is invalid';
 
-function snapshotCreatePatient(patient: ReceptionCreateInput['patient']): PatientSearchResult {
-  const readPatientProperty = (property: keyof PatientSearchResult): unknown =>
-    readDatabaseRowOwnDataProperty(
-      patient,
-      property,
-      databaseReceptionCreatedPatientSnapshotInvariantErrorMessage,
-    );
+function snapshotCreatePatient(patient: unknown): PatientSearchResult {
+  const readOwnPatientProperty = createOwnDataPropertyReader(
+    patient,
+    databaseReceptionCreatedPatientSnapshotInvariantErrorMessage,
+  );
+  const readPatientProperty = (property: keyof PatientSearchResult): unknown => {
+    const result = readOwnPatientProperty(property);
+    if (!result.present) {
+      throw new Error(databaseReceptionCreatedPatientSnapshotInvariantErrorMessage);
+    }
+    return result.value;
+  };
   const patientIdValue = readPatientProperty('patientId');
   const name = readPatientProperty('name');
   const kana = readPatientProperty('kana');
@@ -80,10 +91,7 @@ function snapshotCreatePatient(patient: ReceptionCreateInput['patient']): Patien
   const sex = readPatientProperty('sex');
   const patientNumber = readPatientProperty('patientNumber');
   const eligibilityStatus = readPatientProperty('eligibilityStatus');
-  const hasEligibilityCheckedAt = Object.hasOwn(patient, 'eligibilityCheckedAt');
-  const eligibilityCheckedAt = hasEligibilityCheckedAt
-    ? readPatientProperty('eligibilityCheckedAt')
-    : undefined;
+  const eligibilityCheckedAtProperty = readOwnPatientProperty('eligibilityCheckedAt');
   try {
     return patientSearchResultSchema.parse({
       patientId: patientIdValue,
@@ -93,7 +101,9 @@ function snapshotCreatePatient(patient: ReceptionCreateInput['patient']): Patien
       sex,
       patientNumber,
       eligibilityStatus,
-      ...(hasEligibilityCheckedAt ? { eligibilityCheckedAt } : {}),
+      ...(eligibilityCheckedAtProperty.present
+        ? { eligibilityCheckedAt: eligibilityCheckedAtProperty.value }
+        : {}),
     });
   } catch {
     throw new Error(databaseReceptionCreatedPatientSnapshotInvariantErrorMessage);
@@ -250,12 +260,33 @@ export class PostgresReceptionRepository implements ReceptionRepository {
   }
 
   async create(input: ReceptionCreateInput): Promise<ReceptionCreateResult> {
-    const commandTenantId = input.tenantId;
-    const commandPharmacyId = input.pharmacyId;
-    const commandIdempotencyKey = input.idempotencyKey;
-    const commandPatient = snapshotCreatePatient(input.patient);
+    const readCommandProperty = createOwnDataPropertyReader(
+      input,
+      databaseReceptionCommandSnapshotInvariantErrorMessage,
+    );
+    const commandTenantId = snapshotReceptionTenantId(
+      readCommandProperty('tenantId'),
+      databaseReceptionCommandSnapshotInvariantErrorMessage,
+    );
+    const commandPharmacyId = snapshotReceptionPharmacyId(
+      readCommandProperty('pharmacyId'),
+      databaseReceptionCommandSnapshotInvariantErrorMessage,
+    );
+    const commandIdempotencyKey = snapshotReceptionIdempotencyKey(
+      readCommandProperty('idempotencyKey'),
+      databaseReceptionCommandSnapshotInvariantErrorMessage,
+    );
+    const patientProperty = readCommandProperty('patient');
+    if (!patientProperty.present) {
+      throw new Error(databaseReceptionCommandSnapshotInvariantErrorMessage);
+    }
+    const commandPatient = snapshotCreatePatient(patientProperty.value);
+    const acceptedAtProperty = readCommandProperty('acceptedAt');
+    if (!acceptedAtProperty.present) {
+      throw new Error(databaseReceptionCommandSnapshotInvariantErrorMessage);
+    }
     const acceptedAt = snapshotDateInstant(
-      input.acceptedAt,
+      acceptedAtProperty.value,
       databaseReceptionTimestampInvariantErrorMessage,
     );
     const businessDate = businessDateFromAcceptedAt(new Date(acceptedAt));

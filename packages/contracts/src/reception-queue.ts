@@ -20,6 +20,17 @@ export const receptionIdSchema = receptionIdWireSchema;
 
 export const receptionStatusSchema = z.enum(RECEPTION_STATUSES);
 
+export const receptionIdempotencyKeySchema = z
+  .string()
+  .min(1)
+  .max(RECEPTION_IDEMPOTENCY_KEY_MAX_LENGTH)
+  .refine((value) => value.trim().length > 0, {
+    message: "idempotencyKey must not be blank",
+  })
+  .refine(hasNoControlCharacters, {
+    message: "idempotencyKey must not contain control characters",
+  });
+
 export const receptionQueueEntrySchema = z.object({
   receptionId: receptionIdSchema,
   patient: patientSearchResultSchema,
@@ -35,16 +46,7 @@ export const receptionQueueResponseSchema = z.object({
 
 export const receptionCreateRequestSchema = z.object({
   patientId: patientIdWireSchema,
-  idempotencyKey: z
-    .string()
-    .min(1)
-    .max(RECEPTION_IDEMPOTENCY_KEY_MAX_LENGTH)
-    .refine((value) => value.trim().length > 0, {
-      message: "idempotencyKey must not be blank",
-    })
-    .refine(hasNoControlCharacters, {
-      message: "idempotencyKey must not contain control characters",
-    }),
+  idempotencyKey: receptionIdempotencyKeySchema,
 });
 
 export type ReceptionQueueQuery = z.infer<typeof receptionQueueQuerySchema>;
