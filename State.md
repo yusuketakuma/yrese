@@ -8,11 +8,11 @@
 
 ## 2026-07-17
 
-### WP-4226 PostgreSQL reception create query row-set authority — VALIDATED / COMMIT_PENDING
+### WP-4226 PostgreSQL reception create query row-set authority — FINALIZED / INDEPENDENT_PASS
 
 - PostgreSQL受付createの`INSERT ... RETURNING`とscoped idempotency `SELECT`結果を、row projection前にprovider-neutral own-data snapshotへ閉じ、どちらもmax1 rowを要求するfail-closed authorityへ揃えた。listはauthoritativeな有限上限がないため明示的に除外した。
 - exact2: `apps/api/src/db/reception-repository.ts`, `apps/api/src/db/reception-repository.test.ts`。missing/inherited/accessor/non-array/Proxy/revoked rows、sparse/inherited/accessor index、2-row resultを固定PHI-safe errorで拒否し、transaction中の異常はROLLBACK、rollback failureを含むclientは`release(true)`で隔離する。dense `[undefined]` がrow projectionまで進むP1をreviewで検出し、snapshot境界で拒否する回帰へ修正した。
-- PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION gateは各5/5 PASS。reception166、patient23、server293、API728 + local PostgreSQL14 expected skips、Web454、contracts97、audit183、workspace test/typecheck/build、lint/OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/scripts/diff PASS。live secretsは既存`.codegraph` symlinkでfail-closed、tracked HEAD+exact2 overlayはPASS。UI/browser N/A、実DB・remote/prod・pushなし。WP-4050/WP-4151c human gate不変、`.omo/`除外。pre-commit状態でありlanding/commit完了は非主張。
+- PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION gateは各5/5 PASS。reception166、patient23、server293、API728 + local PostgreSQL14 expected skips、Web454、contracts97、audit183、workspace test/typecheck/build、lint/OpenAPI/purity/boundaries/SSOT173/deps high0 critical0/SBOM231/scripts/diff PASS。live secretsは既存`.codegraph` symlinkでfail-closed、tracked HEAD+exact2 overlayはPASS。UI/browser N/A、実DB・remote/prod・pushなし。WP-4050/WP-4151c human gate不変、`.omo/`除外。implementation `3fc3c4e`をexact6(code exact2 + ledger exact4)でlocal commit済み、post-commit independent re-review 5/5 PASS。
 
 ### WP-4225 Reception create command authority parity — FINALIZED / INDEPENDENT_PASS
 
