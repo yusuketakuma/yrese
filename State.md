@@ -8,11 +8,11 @@
 
 ## 2026-07-18
 
-### WP-4233 PostgreSQL reception-list row-set authority — IMPLEMENTED / VALIDATED / READY_TO_COMMIT
+### WP-4233 PostgreSQL reception-list row-set authority — FINALIZED / INDEPENDENT_PASS / PUSH_PENDING
 
 - PostgreSQL受付listだけがfulfilled query resultをraw `result.rows.map(rowToEntry)`で投影し、同repository create/patient queryのown-data dense snapshot authorityと不整合な残gapを採択した。malformed later indexより先にearlier rowのPHI-bearing fieldが読まれ得るため、row-set全体の構造検証をprojectionより先に完了させる。
 - code exact3=`apps/api/src/db/database-row.ts`, `apps/api/src/db/reception-repository.ts`, `apps/api/src/db/reception-repository.test.ts`。既存bounded helperのpublic signature/invalid-maximum precedence/bounded behaviorとconsumerを維持し、別名unbounded structural helperをprivate coreから追加。listは全snapshot→全件undefined prepass→projectionを行う。SQL/paramsとvalid dense-rowのorder/cardinality、unbounded list contract、schema/migration/API/UIは不変。malformed row-set semanticsはfail-closed拒否へ変更。
-- PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION gateは各5 fresh contextで5/5 PASS。reviewでbounded runtime `undefined` precedence回帰、後方undefined prepass証拠不足、validation/ledger過剰表現を検出して修正。focused248、API807＋local PostgreSQL14 expected skips、Web485、workspace1829＋同14 skips、workspace typecheck/test/buildと実処理のある標準gate PASS。`pnpm lint`はworkspace lint task不在でexit0だがcoverageなし。live secretsは既存workspace protected scopeでfail-closed、tracked HEAD+exact7 overlay PASS。`TEST_DATABASE_URL`不在、browser/UI N/A、remote/prod非主張、`.omo/`除外。unbounded DB/network/heapと追加O(n) costは残存、DoS/resource hardening非主張。rollbackはimplementation＋ledger commit revertとfocused/API/Web/workspace/standard revalidation、DB/schema/data rollback不要だがraw row-set/TOCTOU riskが再開する。
+- PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATION/COMMIT gateとpost-commit independent reviewは各5 fresh contextで5/5 PASS。reviewでbounded runtime `undefined` precedence回帰、後方undefined prepass証拠不足、validation/ledger過剰表現を検出して修正。focused248、API807＋local PostgreSQL14 expected skips、Web485、workspace1829＋同14 skips、workspace typecheck/test/buildと実処理のある標準gate PASS。`pnpm lint`はworkspace lint task不在でexit0だがcoverageなし。live secretsは既存workspace protected scopeでfail-closed、tracked HEAD+exact7 overlay PASS。implementation `1f181c5`をexact7でlocal commit済み。`TEST_DATABASE_URL`不在、browser/UI N/A、remote/prod非主張、`.omo/`除外。unbounded DB/network/heapと追加O(n) costは残存、DoS/resource hardening非主張。rollbackはimplementation＋ledger commit revertとfocused/API/Web/workspace/standard revalidation、DB/schema/data rollback不要だがraw row-set/TOCTOU riskが再開する。
 
 ## 2026-07-17
 
