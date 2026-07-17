@@ -11,8 +11,6 @@ import { patientId, pharmacyId, receptionId, tenantId } from '@yrese/shared-kern
 import {
   businessDateFromAcceptedAt,
   snapshotReceptionIdempotencyKey,
-  snapshotReceptionPharmacyId,
-  snapshotReceptionTenantId,
   type ReceptionCreateInput,
   type ReceptionCreateResult,
   type ReceptionListInput,
@@ -20,6 +18,10 @@ import {
 } from '../reception-repository.js';
 import { snapshotDatabaseInstant, snapshotDateInstant } from '../instant.js';
 import { createOwnDataPropertyReader } from '../own-data-property.js';
+import {
+  snapshotRepositoryPharmacyId,
+  snapshotRepositoryTenantId,
+} from '../repository-command.js';
 import {
   readDatabaseRowOwnDataProperty,
   snapshotDatabaseQueryRows,
@@ -281,11 +283,11 @@ export class PostgresReceptionRepository implements ReceptionRepository {
       input,
       databaseReceptionCommandSnapshotInvariantErrorMessage,
     );
-    const commandTenantId = snapshotReceptionTenantId(
+    const commandTenantId = snapshotRepositoryTenantId(
       readCommandProperty('tenantId'),
       databaseReceptionCommandSnapshotInvariantErrorMessage,
     );
-    const commandPharmacyId = snapshotReceptionPharmacyId(
+    const commandPharmacyId = snapshotRepositoryPharmacyId(
       readCommandProperty('pharmacyId'),
       databaseReceptionCommandSnapshotInvariantErrorMessage,
     );

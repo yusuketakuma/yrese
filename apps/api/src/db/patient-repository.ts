@@ -1,11 +1,14 @@
 import type { Pool } from 'pg';
 import { type PatientSearchResult, patientSearchResultSchema } from '@yrese/contracts';
 
-import type {
-  PatientLookupInput,
-  PatientRepository,
-  PatientSearchInput,
-  PatientSearchPage,
+import {
+  snapshotPatientLookupCommand,
+  snapshotPatientNextCursor,
+  snapshotPatientSearchCommand,
+  type PatientLookupInput,
+  type PatientRepository,
+  type PatientSearchInput,
+  type PatientSearchPage,
 } from '../patient-repository.js';
 import { snapshotDatabaseInstant } from '../instant.js';
 import {
@@ -89,6 +92,7 @@ export class PostgresPatientRepository implements PatientRepository {
   constructor(private readonly pool: Pool) {}
 
   async findById(input: PatientLookupInput): Promise<PatientSearchResult | undefined> {
+    const command = snapshotPatientLookupCommand(input);
     const result = await this.pool.query<PatientRow>(
       `SELECT
          patient_id,
@@ -101,7 +105,7 @@ export class PostgresPatientRepository implements PatientRepository {
          eligibility_checked_at
        FROM patients
        WHERE tenant_id = $1 AND pharmacy_id = $2 AND patient_id = $3`,
-      [input.tenantId, input.pharmacyId, input.patientId],
+      [command.tenantId, command.pharmacyId, command.patientId],
     );
 
     const rows = snapshotDatabaseQueryRows<PatientRow>(
@@ -114,8 +118,8 @@ export class PostgresPatientRepository implements PatientRepository {
   }
 
   async search(input: PatientSearchInput): Promise<PatientSearchPage> {
-    const offset = input.cursor?.offset ?? 0;
-    const pattern = `%${escapeLikePattern(input.q.trim())}%`;
+    const command = snapshotPatientSearchCommand(input);
+    const pattern = `%${escapeLikePattern(command.q)}%`;
     const result = await this.pool.query<PatientRow>(
       `SELECT
          patient_id,
@@ -132,20 +136,26 @@ export class PostgresPatientRepository implements PatientRepository {
          AND (name ILIKE $3 ESCAPE '\\' OR kana ILIKE $3 ESCAPE '\\' OR patient_number ILIKE $3 ESCAPE '\\')
        ORDER BY patient_number ASC, patient_id ASC
        LIMIT $4 OFFSET $5`,
-      [input.tenantId, input.pharmacyId, pattern, input.limit + 1, offset],
+      [
+        command.tenantId,
+        command.pharmacyId,
+        pattern,
+        command.limit + 1,
+        command.offset,
+      ],
     );
 
     const rows = snapshotDatabaseQueryRows<PatientRow>(
       result,
-      input.limit + 1,
+      command.limit + 1,
       databasePatientRowSetInvariantErrorMessage,
     );
-    const pageRows = rows.slice(0, input.limit);
-    const nextOffset = offset + input.limit;
+    const pageRows = rows.slice(0, command.limit);
+    const nextCursor = snapshotPatientNextCursor(command, rows.length > command.limit);
 
     return {
       results: pageRows.map(patientRowToSearchResult),
-      ...(rows.length > input.limit ? { nextCursor: { offset: nextOffset } } : {}),
+      ...(nextCursor === undefined ? {} : { nextCursor }),
     };
   }
 }

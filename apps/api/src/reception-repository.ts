@@ -22,6 +22,10 @@ import {
   createOwnDataPropertyReader,
   type OwnDataPropertyRead,
 } from './own-data-property.js';
+import {
+  snapshotRepositoryPharmacyId,
+  snapshotRepositoryTenantId,
+} from './repository-command.js';
 
 export const inMemoryReceptionTimestampInvariantErrorMessage =
   'in-memory reception acceptedAt must be a valid Date';
@@ -168,28 +172,6 @@ function readReceptionScopeString(
     throw new Error(invariantErrorMessage);
   }
   return result.value;
-}
-
-export function snapshotReceptionTenantId(
-  result: OwnDataPropertyRead,
-  invariantErrorMessage: string,
-): TenantId {
-  try {
-    return tenantId(readReceptionScopeString(result, invariantErrorMessage));
-  } catch {
-    throw new Error(invariantErrorMessage);
-  }
-}
-
-export function snapshotReceptionPharmacyId(
-  result: OwnDataPropertyRead,
-  invariantErrorMessage: string,
-): PharmacyId {
-  try {
-    return pharmacyId(readReceptionScopeString(result, invariantErrorMessage));
-  } catch {
-    throw new Error(invariantErrorMessage);
-  }
 }
 
 export function snapshotReceptionIdempotencyKey(
@@ -341,11 +323,11 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
       inMemoryReceptionPatientSnapshotInvariantErrorMessage,
     );
     const inputPatientId = captureInMemoryPatientId(readPatientProperty);
-    const tenantIdValue = snapshotReceptionTenantId(
+    const tenantIdValue = snapshotRepositoryTenantId(
       readCommandProperty('tenantId'),
       inMemoryReceptionCommandSnapshotInvariantErrorMessage,
     );
-    const pharmacyIdValue = snapshotReceptionPharmacyId(
+    const pharmacyIdValue = snapshotRepositoryPharmacyId(
       readCommandProperty('pharmacyId'),
       inMemoryReceptionCommandSnapshotInvariantErrorMessage,
     );

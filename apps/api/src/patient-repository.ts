@@ -1,13 +1,158 @@
-import type { PatientSearchResult } from '@yrese/contracts';
-import { patientSearchResultSchema } from '@yrese/contracts';
+import {
+  patientSearchQuerySchema,
+  patientSearchResultSchema,
+  type PatientSearchResult,
+} from '@yrese/contracts';
 import {
   patientId,
   pharmacyId,
-  type PatientId,
   tenantId,
+  type PatientId,
   type PharmacyId,
   type TenantId,
 } from '@yrese/shared-kernel';
+
+import {
+  createOwnDataPropertyReader,
+  type OwnDataPropertyRead,
+} from './own-data-property.js';
+import {
+  snapshotRepositoryPharmacyId,
+  snapshotRepositoryTenantId,
+} from './repository-command.js';
+
+export const patientRepositoryCommandSnapshotInvariantErrorMessage =
+  'Patient repository command snapshot is invalid';
+export const patientRepositoryPaginationInvariantErrorMessage =
+  'Patient repository pagination snapshot is invalid';
+
+interface PatientLookupCommandSnapshot {
+  readonly tenantId: TenantId;
+  readonly pharmacyId: PharmacyId;
+  readonly patientId: PatientId;
+}
+
+interface PatientSearchCommandSnapshot {
+  readonly tenantId: TenantId;
+  readonly pharmacyId: PharmacyId;
+  readonly q: string;
+  readonly limit: number;
+  readonly offset: number;
+}
+
+export function snapshotPatientNextCursor(
+  command: Readonly<Pick<PatientSearchCommandSnapshot, 'limit' | 'offset'>>,
+  hasNext: boolean,
+): PatientSearchCursor | undefined {
+  if (!hasNext) return undefined;
+  const nextOffset = command.offset + command.limit;
+  if (nextOffset > Number.MAX_SAFE_INTEGER - command.limit) {
+    throw new Error(patientRepositoryPaginationInvariantErrorMessage);
+  }
+  return Object.freeze({ offset: nextOffset });
+}
+
+function snapshotPatientId(result: OwnDataPropertyRead): PatientId {
+  if (!result.present || typeof result.value !== 'string') {
+    throw new Error(patientRepositoryCommandSnapshotInvariantErrorMessage);
+  }
+  try {
+    return patientId(result.value);
+  } catch {
+    throw new Error(patientRepositoryCommandSnapshotInvariantErrorMessage);
+  }
+}
+
+export function snapshotPatientLookupCommand(input: unknown): PatientLookupCommandSnapshot {
+  const readProperty = createOwnDataPropertyReader(
+    input,
+    patientRepositoryCommandSnapshotInvariantErrorMessage,
+  );
+  const commandTenantId = snapshotRepositoryTenantId(
+    readProperty('tenantId'),
+    patientRepositoryCommandSnapshotInvariantErrorMessage,
+  );
+  const commandPharmacyId = snapshotRepositoryPharmacyId(
+    readProperty('pharmacyId'),
+    patientRepositoryCommandSnapshotInvariantErrorMessage,
+  );
+  const commandPatientId = snapshotPatientId(readProperty('patientId'));
+  return Object.freeze({
+    tenantId: commandTenantId,
+    pharmacyId: commandPharmacyId,
+    patientId: commandPatientId,
+  });
+}
+
+function snapshotSearchQuery(result: OwnDataPropertyRead): string {
+  if (!result.present || typeof result.value !== 'string') {
+    throw new Error(patientRepositoryCommandSnapshotInvariantErrorMessage);
+  }
+  const parsed = patientSearchQuerySchema.shape.q.safeParse(result.value);
+  if (!parsed.success) {
+    throw new Error(patientRepositoryCommandSnapshotInvariantErrorMessage);
+  }
+  return parsed.data;
+}
+
+function snapshotSearchLimit(result: OwnDataPropertyRead): number {
+  if (!result.present || typeof result.value !== 'number') {
+    throw new Error(patientRepositoryCommandSnapshotInvariantErrorMessage);
+  }
+  const parsed = patientSearchQuerySchema.shape.limit.safeParse(result.value);
+  if (!parsed.success) {
+    throw new Error(patientRepositoryCommandSnapshotInvariantErrorMessage);
+  }
+  return parsed.data;
+}
+
+function snapshotSearchOffset(result: OwnDataPropertyRead, limit: number): number {
+  if (!result.present || typeof result.value !== 'number') {
+    throw new Error(patientRepositoryCommandSnapshotInvariantErrorMessage);
+  }
+  const offset = result.value;
+  if (
+    !Number.isSafeInteger(offset) ||
+    offset < 0 ||
+    offset > Number.MAX_SAFE_INTEGER - limit
+  ) {
+    throw new Error(patientRepositoryCommandSnapshotInvariantErrorMessage);
+  }
+  return offset;
+}
+
+export function snapshotPatientSearchCommand(input: unknown): PatientSearchCommandSnapshot {
+  const readProperty = createOwnDataPropertyReader(
+    input,
+    patientRepositoryCommandSnapshotInvariantErrorMessage,
+  );
+  const commandTenantId = snapshotRepositoryTenantId(
+    readProperty('tenantId'),
+    patientRepositoryCommandSnapshotInvariantErrorMessage,
+  );
+  const commandPharmacyId = snapshotRepositoryPharmacyId(
+    readProperty('pharmacyId'),
+    patientRepositoryCommandSnapshotInvariantErrorMessage,
+  );
+  const q = snapshotSearchQuery(readProperty('q'));
+  const limit = snapshotSearchLimit(readProperty('limit'));
+  const cursor = readProperty('cursor');
+  let offset = 0;
+  if (cursor.present && cursor.value !== undefined) {
+    const readCursorProperty = createOwnDataPropertyReader(
+      cursor.value,
+      patientRepositoryCommandSnapshotInvariantErrorMessage,
+    );
+    offset = snapshotSearchOffset(readCursorProperty('offset'), limit);
+  }
+  return Object.freeze({
+    tenantId: commandTenantId,
+    pharmacyId: commandPharmacyId,
+    q,
+    limit,
+    offset,
+  });
+}
 
 export interface PatientSearchCursor {
   readonly offset: number;
@@ -216,33 +361,42 @@ export class InMemoryPatientRepository implements PatientRepository {
   constructor(private readonly records: readonly SyntheticPatientRecord[] = syntheticPatients) {}
 
   async findById(input: PatientLookupInput): Promise<PatientSearchResult | undefined> {
+    const command = snapshotPatientLookupCommand(input);
     const record = this.records.find(
       (candidate) =>
-        candidate.tenantId === input.tenantId &&
-        candidate.pharmacyId === input.pharmacyId &&
-        candidate.patientId === input.patientId,
+        candidate.tenantId === command.tenantId &&
+        candidate.pharmacyId === command.pharmacyId &&
+        candidate.patientId === command.patientId,
     );
 
     return record === undefined ? undefined : toSearchResult(record);
   }
 
   async search(input: PatientSearchInput): Promise<PatientSearchPage> {
-    const normalizedQuery = normalizeSearchText(input.q);
-    const offset = input.cursor?.offset ?? 0;
+    const command = snapshotPatientSearchCommand(input);
+    const normalizedQuery = normalizeSearchText(command.q);
     const matches = this.records
-      .filter((record) => record.tenantId === input.tenantId && record.pharmacyId === input.pharmacyId)
+      .filter(
+        (record) =>
+          record.tenantId === command.tenantId && record.pharmacyId === command.pharmacyId,
+      )
       .filter((record) =>
         [record.name, record.kana, record.patientNumber].some((value) =>
           normalizeSearchText(value).includes(normalizedQuery),
         ),
       )
       .sort(comparePatientSearchOrder);
-    const results = matches.slice(offset, offset + input.limit).map(toSearchResult);
-    const nextOffset = offset + input.limit;
+    const results = matches
+      .slice(command.offset, command.offset + command.limit)
+      .map(toSearchResult);
+    const nextCursor = snapshotPatientNextCursor(
+      command,
+      command.offset + command.limit < matches.length,
+    );
 
     return {
       results,
-      ...(nextOffset < matches.length ? { nextCursor: { offset: nextOffset } } : {}),
+      ...(nextCursor === undefined ? {} : { nextCursor }),
     };
   }
 }
