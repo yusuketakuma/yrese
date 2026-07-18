@@ -4,7 +4,7 @@ This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
 - Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. Remaining57 classification, WP-0020〜0023 reconciliation, W31 and WP-4081 are LANDED.
-- Current task: WP-4157 IMPLEMENTED / VALIDATION_REVIEW_PENDING。active goal、P1/R2、root sole editor、reviewers read-only。fresh20 PLAN 5/5。eighth S1 tree `27e834f…`はlive `WP4157_METADATA_PASS negatives=20`、IMPLEMENTATION 5/5 ledger `480dc314…`。first BUG_REFACTORはstale State exact-next-action 1件で1/5 ledger `c695d0e8…`、修正後fresh 5/5 ledger `6d769bcb…`。historical含めJava nonzero/no-usable wordingへ統一し、optimized modeをfail-closedで拒否、isolated interpreterとexplicit TLS contextでambient Python/user-site/CA override/key-logを遮断。known refs/worktrees不変。Exact Next Action: S1 validation matrix + VALIDATION_GATE 5/5のみCOMMIT_GATE。
+- Current task: WP-4157 S1_REMOTE_LANDED / S2_VALIDATION_REVIEW_PENDING。S1 all gates/CI/parity成立。current S2はallowed exact4のみdirty、real index clean。S2 PLAN 5/5 `c449766f…`、IMPLEMENTATION 4/5→5/5 `deb36643…`、BUG_REFACTOR誤指摘4/5→全artifact再照合fresh 5/5 `07ee101f…`。VALIDATIONは不足gate 4/5 `52dd0bf3…`、S1 bundle過大表現2/5 `efa30a62…`を修正中。known refs/worktrees不変。Exact Next Action: corrected S2 validation matrix + fresh VALIDATION_GATE 5/5のみCOMMIT_GATE。
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation

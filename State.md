@@ -8,12 +8,12 @@
 
 ## 2026-07-18
 
-### WP-4157 FHIR validator / IG Publisher / SUSHI compatibility candidates — IMPLEMENTED / VALIDATION_REVIEW_PENDING / INDEPENDENT_VERIFY_REQUIRED
+### WP-4157 FHIR validator / IG Publisher / SUSHI compatibility candidates — S1_REMOTE_LANDED / S2_VALIDATION_REVIEW_PENDING / INDEPENDENT_VERIFY_REQUIRED
 
-- run `goal-20260718` active。fresh20 PLAN 5/5 PASS。S1 implementationは`adf4319b…`0/5、`be099281…`0/5、`2ae68594…`2/5、`592d8931…`2/5、fifthはGitHub rate exhaustion中のlive no-auth evidence不足で2/5。historical Java-absence overclaimを修正し、optimized modeをfail-closedで拒否し、isolated interpreterとexplicit TLS contextでambient Python/user-site/CA override/key-logを遮断するeighth candidateはlive `WP4157_METADATA_PASS negatives=20`、IMPLEMENTATION 5/5 PASS（ledger `480dc314…`）。first BUG_REFACTORはstale exact-next-action 1件で1/5（ledger `c695d0e8…`）、修正後fresh 5/5 PASS（ledger `6d769bcb…`）。exact next action=validation matrix→VALIDATION_GATE、5/5前はCOMMITへ進まない。
+- run `goal-20260718` active。S1 `7180b9cb…`はall gates/CI/parity成立。S2 PLAN 5/5 `c449766f…`、IMPLEMENTATIONはstate ambiguity 4/5 `4e8fa90e…`→修正後5/5 `deb36643…`。BUG_REFACTORは誤ったartifact-misbinding指摘で4/5 `492967c9…`、全artifact再照合後fresh 5/5 `07ee101f…`。VALIDATIONは不足gate 4/5 `52dd0bf3…`、S1 bundle説明の過大表現2/5 `efa30a62…`を修正中。exact next action=corrected S2 validation matrix→fresh VALIDATION_GATE、5/5前はCOMMITへ進まない。
 - metadata、exact endpoint、typed expected fields、unsigned tagとdigest/SRIの保証限界、future retrieval minimum guardrail、3 execution lanes + 2 cross-lane gates、immutable candidate validationの唯一のauthorityは`ops/refactor/EVIDENCE.md`「WP-4157 canonical metadata reproduction and trust boundary」。binary/cache/runtime/package/lock/SSOT/CI/toolchain adoptionとWP-0053a/b human gateは未変更で、compatibility/conformance/license/adoption/unblockを非主張。
-- live integration: branch `fix/wp4092-postgres-ci`、upstream `e81d7ec58f2a4376ce5b43854fd995e8da94b917`、non-final evidence baseline `1e63e85257c6ea2def16934b55f564394c685e9e`、ahead1。fresh7 verifier由来のexact stale worktree registrations 3件だけをrootが`git worktree remove --force --force`でreconcileし、unrelated WP-4147/WP-9001/WP-9002 registrationsは保持した。validation ref `6eb663cdf4c480d722925f887f74588a50e1d43b`はfailure evidenceとしてpreserve中。worktreeはallowed exact4、user-owned `.omo/`/`.codegraph`はread-only/non-stage。
-- S1/S2 each required reviews後にexact-stage、ordinary push、attempt1 exact-head CI。custom state/comment/rollback protocolなし。exact next action=S1 validation matrix→VALIDATION_GATE→5/5、その後COMMIT_GATE。
+- live integration: S1 terminal checkpointはbranch `fix/wp4092-postgres-ci`、local/origin/PR=`7180b9cb…`、origin/main=`27d6144…`、deployments0、tracked clean。current S2 worktreeはallowed exact4のみdirty、real index clean。fresh7由来stale worktree registrations 3件だけreconcile済み、unrelated worktreesとfailure evidence ref `6eb663…`は保持。user-owned `.omo/`/`.codegraph`はread-only/non-stage。
+- S1 residual: local PostgreSQL integrationの14件のskipはCI zero-skipで補完、GitHub Actions Node runtime deprecation warning 1件はnonblocking maintenance、aggregate 120s expiryは制御フローreview、unsigned provenance/FHIR/legal/patient-safety/WP-0053a/b human gatesは未解除。S2はこのS1 landing factだけをtracked化し、自身のfuture push/CIを先取りしない。
 
 ### WP-4156 FHIR tooling internal dependency classification — FINALIZED / INDEPENDENT_PASS / REMOTE_CI_PASS / EXTERNAL_STATE_CONDITIONAL
 
