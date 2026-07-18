@@ -136,10 +136,10 @@ Primary sources: JP Core tag/workflow `https://github.com/jami-fhir-jp-wg/jp-cor
 | JP Core 1.2.0 source | Official tag `1.2.0` resolves to commit `c06f02059c2a8aed6a33d624c9eee6fe0669ef06` | Source identity is reproducible |
 | Historical IG Publisher | The tagged JP Core `main.yaml` requests `publisher.jar` release `2.0.17`; the published QA also reports v2.0.17. Release asset: 208,967,243 bytes, SHA-256 `878c78531058961fdf101a462af6657bfb79692a91c29623afac108963ae233d` | QA classifies v2.0.17 as a development version and reported v2.0.26 as the latest official release at generation time; do not treat the historical build as the production lock without specialist review |
 | Historical SUSHI / Node | The tagged workflow runs `actions/setup-node@v4` with `check-latest: true` and `npm install -g fsh-sushi`, with no Node or SUSHI version | Exact historical SUSHI/Node reproduction is impossible from the workflow alone |
-| Current IG Publisher candidate | Official latest release `2.2.11`, 230,671,837 bytes, SHA-256 `a981af86bca3f3a22ee15b9d4ee3c97d63219b7a14e49d0a525e10bbfc71a911`; source and container build target Java 17 | Candidate only; compatibility with JP Core 1.2.0 and the proposed yrese IG is untested |
-| Current validator candidate | Official latest `validator_cli.jar` release `6.9.12`, 187,081,756 bytes, SHA-256 `0e53ab1d1a6f1e35f505255c0b8ce10a35fcf27e6e96b503640f784cd07e5ad6`; source compiles for Java 17 | Candidate only; package resolution, profile and terminology negative fixtures remain unrun |
+| Current IG Publisher candidate | Official latest release `2.2.11`, 230,671,837 bytes, SHA-256 `a981af86bca3f3a22ee15b9d4ee3c97d63219b7a14e49d0a525e10bbfc71a911` | Candidate only; source/runtime prerequisites and compatibility with JP Core 1.2.0 and the proposed yrese IG are unverified |
+| Current validator candidate | Official latest `validator_cli.jar` release `6.9.12`, 187,081,756 bytes, SHA-256 `0e53ab1d1a6f1e35f505255c0b8ce10a35fcf27e6e96b503640f784cd07e5ad6` | Candidate only; source/runtime prerequisites, package resolution, profile and terminology negative fixtures remain unverified |
 | Current SUSHI candidate | Official `fsh-sushi#3.20.0`, Apache-2.0, npm SRI `sha512-fW5H+XANg75WoU2eikmDx62Cf8ow6whxy+3RX7SoRES4HxnCeQ6MMq3BlS5VLrKM010l6Tj8fmuJ0nwPETtC+Q==` | SUSHI recommends Node 22 and supports 18/20; yrese local/CI Node 24 is outside the documented support matrix |
-| yrese execution environment | Local Node `24.16.0`, pnpm `11.13.1`, no Java runtime; CI pins Node 24 and does not set up Java | No clean validator, publisher or SUSHI compatibility claim is possible in the current lane |
+| yrese execution environment | Local Node `24.16.0`, pnpm `11.13.1`; the current `java -version` invocation exits nonzero; CI pins Node 24 and does not set up Java | No usable local Java invocation or clean validator, publisher or SUSHI compatibility claim is demonstrated in the current lane |
 
 Required clean compatibility lanes before any toolchain lock:
 
@@ -149,7 +149,269 @@ Required clean compatibility lanes before any toolchain lock:
 4. Test both offline/package-cache-only behavior and terminology-server behavior separately; network success must not hide an incomplete lock.
 5. Require FHIR/JP Core, supply-chain and legal/license review before selecting versions or changing CI. A moving `latest` URL, an unpinned global npm install or an ambient user FHIR cache is not acceptable lock evidence.
 
-The 2026-07-18 independent metadata verification resolved the official JP Core annotated tag `1.2.0` to commit `c06f02059c2a8aed6a33d624c9eee6fe0669ef06`; its historical Publisher2.0.17 release asset is id `291251052`, `publisher.jar`, 208,967,243 bytes, SHA-256 `878c78531058961fdf101a462af6657bfb79692a91c29623afac108963ae233d`. Official GitHub release metadata recorded candidate Publisher2.2.11 asset id `478216867` `publisher.jar` 230,671,837 bytes / SHA-256 `a981af86bca3f3a22ee15b9d4ee3c97d63219b7a14e49d0a525e10bbfc71a911` and validator6.9.12 asset id `478124375` `validator_cli.jar` 187,081,756 bytes / SHA-256 `0e53ab1d1a6f1e35f505255c0b8ce10a35fcf27e6e96b503640f784cd07e5ad6`. Both source POMs declare Java17 compiler release/source/target. Official npm metadata reproduced SUSHI3.20.0 Apache-2.0 and its SRI above; its versioned README recommends Node22, supports18/20, and says above22 is not officially supported. This lane runs Node24.16.0/pnpm11.13.1 with no local Java, so it provides no compatibility proof. Release asset `HEAD` requests were HTTPS `github.com` 302 responses to `release-assets.githubusercontent.com`; any future binary retrieval must pin the release API asset id/name/size/digest first, allow precisely that HTTPS redirect once, cap at 256MiB with connect15s/total120s into a temporary directory, compare raw SHA-256 with API digest, move temp material to Trash, and never log a signed redirect query. This verification did not download/install binaries or reuse caches. It does not select versions, create a lock, prove a validator/Publisher/SUSHI run, legal clearance, runtime/toolchain adoption, or WP-0053b readiness.
+The 2026-07-18 independent metadata verification resolved the JP Core annotated tag `1.2.0` to commit `c06f02059c2a8aed6a33d624c9eee6fe0669ef06`; its historical Publisher2.0.17 release asset is id `291251052`, `publisher.jar`, 208,967,243 bytes, SHA-256 `878c78531058961fdf101a462af6657bfb79692a91c29623afac108963ae233d`. GitHub release metadata recorded candidate Publisher2.2.11 asset id `478216867` `publisher.jar` 230,671,837 bytes / SHA-256 `a981af86bca3f3a22ee15b9d4ee3c97d63219b7a14e49d0a525e10bbfc71a911` and validator6.9.12 asset id `478124375` `validator_cli.jar` 187,081,756 bytes / SHA-256 `0e53ab1d1a6f1e35f505255c0b8ce10a35fcf27e6e96b503640f784cd07e5ad6`. Source POM/container Java-target observations are prior, non-authoritative notes excluded from this verifier and from current acceptance; a later clean spike must reproduce runtime prerequisites before selecting either tool. npm metadata reproduced SUSHI3.20.0 Apache-2.0 and its SRI above; the README pinned to SUSHI tag `v3.20.0` commit `1e3717e6ae668918b4f90bfe3b6c55de6aeeff7f` recommends Node22, supports18/20, and says above22 is not officially supported. This lane runs Node24.16.0/pnpm11.13.1; `java -version` exits nonzero, which proves only that no usable Java invocation was demonstrated, not that Java is absent. This verification did not download/install FHIR binaries, reuse FHIR caches, select versions, create a lock, prove a validator/Publisher/SUSHI run, legal clearance, runtime/toolchain adoption, or WP-0053b readiness.
+
+### WP-4157 canonical metadata reproduction and trust boundary
+
+This section is the single authority for WP-4157 metadata reproduction. `Plans.md`, `State.md`, and `ops/refactor/STATE.md` project only status, ownership, non-claims, and a pointer here; they do not restate an executable retrieval design.
+
+The JP Core tag object `8b9780cbdb9086e6f41b35aa8935038bd884243e` peels to the expected commit, but GitHub reports `verification.verified=false` and `verification.reason=unsigned`. GitHub API digests, a raw SHA match from the same GitHub distribution channel, and npm SRI establish identity/integrity relative to those channel objects only. They do not establish publisher signature, attestation, provenance authenticity, absence of repository/release-process compromise, compatibility, FHIR conformance, license grant, adoption approval, or patient-safety suitability. Before WP-0053b selects or locks a version, a future supply-chain review must locate and verify available signatures/attestations or obtain explicit human supply-chain risk acceptance.
+
+| Assertion | Stable read-only endpoint | Required typed result |
+|---|---|---|
+| JP Core tag ref | `https://api.github.com/repos/jami-fhir-jp-wg/jp-core-v1x/git/ref/tags/1.2.0` | object type `tag`, SHA `8b9780cbdb9086e6f41b35aa8935038bd884243e` |
+| JP Core tag object | `https://api.github.com/repos/jami-fhir-jp-wg/jp-core-v1x/git/tags/8b9780cbdb9086e6f41b35aa8935038bd884243e` | object type `commit`, SHA `c06f02059c2a8aed6a33d624c9eee6fe0669ef06`, `verified=false`, reason `unsigned` |
+| Historical Publisher | `https://api.github.com/repos/HL7/fhir-ig-publisher/releases/tags/2.0.17` | tag `2.0.17`, `draft=false`, `prerelease=false`; exactly one asset named `publisher.jar`, with `state=uploaded`, id `291251052`, size `208967243`, digest `sha256:878c78531058961fdf101a462af6657bfb79692a91c29623afac108963ae233d`. Other differently named assets such as detached signatures do not violate target-name cardinality. |
+| Candidate Publisher | `https://api.github.com/repos/HL7/fhir-ig-publisher/releases/tags/2.2.11` | tag `2.2.11`, `draft=false`, `prerelease=false`; exactly one asset named `publisher.jar`, with `state=uploaded`, id `478216867`, size `230671837`, digest `sha256:a981af86bca3f3a22ee15b9d4ee3c97d63219b7a14e49d0a525e10bbfc71a911`. Other differently named assets do not violate target-name cardinality. |
+| Candidate validator | `https://api.github.com/repos/hapifhir/org.hl7.fhir.core/releases/tags/6.9.12` | tag `6.9.12`, `draft=false`, `prerelease=false`; exactly one asset named `validator_cli.jar`, with `state=uploaded`, id `478124375`, size `187081756`, digest `sha256:0e53ab1d1a6f1e35f505255c0b8ce10a35fcf27e6e96b503640f784cd07e5ad6`. Other differently named assets do not violate target-name cardinality. |
+| SUSHI package | `https://registry.npmjs.org/fsh-sushi/3.20.0` | name `fsh-sushi`, version `3.20.0`, license `Apache-2.0`, `dist.integrity=sha512-fW5H+XANg75WoU2eikmDx62Cf8ow6whxy+3RX7SoRES4HxnCeQ6MMq3BlS5VLrKM010l6Tj8fmuJ0nwPETtC+Q==` |
+| SUSHI tag ref / README | `https://api.github.com/repos/FHIR/sushi/git/ref/tags/v3.20.0` and `https://raw.githubusercontent.com/FHIR/sushi/1e3717e6ae668918b4f90bfe3b6c55de6aeeff7f/README.md` | tag resolves directly to pinned commit; README contains the Node22 recommendation, 18/20 support, and >22 unsupported statement |
+
+#### Current bounded metadata verifier
+
+Run this block from the repository root. It performs metadata-only HTTPS reads and deterministic local fixtures; it executes neither Node, Java nor any FHIR artifact.
+
+<!-- WP4157_METADATA_VERIFIER_BEGIN -->
+```bash
+python3 -I - <<'PY'
+import contextlib, copy, json, os, signal, ssl, sys, time, urllib.error, urllib.request
+
+MAX_JSON = 2 * 1024 * 1024
+MAX_TEXT = 512 * 1024
+MAX_ASSETS = 100
+DEADLINE = time.monotonic() + 120
+
+def fixed_excepthook(_kind, _value, _traceback):
+    print("WP4157_METADATA_FAIL", file=sys.stderr)
+
+sys.excepthook = fixed_excepthook
+
+if not __debug__:
+    raise RuntimeError("optimized mode is unsupported")
+
+class AggregateTimeout(BaseException):
+    pass
+
+class RequestTimeout(Exception):
+    pass
+
+def alarm_handler(_signum, _frame):
+    if time.monotonic() >= DEADLINE:
+        raise AggregateTimeout("aggregate wall clock")
+    raise RequestTimeout("request wall clock")
+
+signal.signal(signal.SIGALRM, alarm_handler)
+signal.setitimer(signal.ITIMER_REAL, 120)
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+def strict_pairs(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError(f"duplicate key: {key}")
+        out[key] = value
+    return out
+
+def strict_json(raw):
+    return json.loads(raw, object_pairs_hook=strict_pairs)
+
+for env_key in ("SSL_CERT_FILE", "SSL_CERT_DIR", "SSLKEYLOGFILE"):
+    os.environ.pop(env_key, None)
+TLS_CONTEXT = ssl.create_default_context()
+OPENER = urllib.request.build_opener(
+    urllib.request.ProxyHandler({}),
+    urllib.request.HTTPSHandler(context=TLS_CONTEXT),
+    NoRedirect(),
+)
+
+def remaining(cap):
+    value = min(cap, DEADLINE - time.monotonic())
+    if value <= 0:
+        raise AggregateTimeout("aggregate wall clock")
+    return value
+
+@contextlib.contextmanager
+def hard_timeout(cap):
+    signal.setitimer(signal.ITIMER_REAL, remaining(cap))
+    try:
+        yield
+    finally:
+        left = DEADLINE - time.monotonic()
+        signal.setitimer(signal.ITIMER_REAL, left if left > 0 else 0)
+
+def bounded_body(response, url, limit):
+    if response.status != 200 or response.geturl() != url:
+        raise ValueError("response identity")
+    raw = response.read(limit + 1)
+    if len(raw) > limit:
+        raise ValueError("response too large")
+    return raw
+
+def fetch(url, limit, as_json=True):
+    headers = {"Accept": "application/json" if as_json else "text/plain", "User-Agent": "yrese-wp4157"}
+    request = urllib.request.Request(url, headers=headers)
+    with hard_timeout(20):
+        with OPENER.open(request, timeout=remaining(20)) as response:
+            raw = bounded_body(response, url, limit)
+    return strict_json(raw) if as_json else raw.decode("utf-8", "strict")
+
+def exact(value, expected):
+    assert type(value) is type(expected) and value == expected
+
+def release(doc, tag, asset_id, name, size, digest):
+    exact(doc["tag_name"], tag); exact(doc["draft"], False); exact(doc["prerelease"], False)
+    assets = doc["assets"]; assert type(assets) is list and len(assets) <= MAX_ASSETS
+    assert all(type(asset) is dict for asset in assets)
+    name_matches = [asset for asset in assets if asset.get("name") == name]
+    id_matches = [asset for asset in assets if asset.get("id") == asset_id]
+    assert len(name_matches) == 1 and len(id_matches) == 1 and name_matches[0] is id_matches[0]
+    asset = name_matches[0]
+    exact(asset["id"], asset_id); exact(asset["name"], name); exact(asset["size"], size)
+    exact(asset["state"], "uploaded"); exact(asset["digest"], digest)
+
+tag_ref = fetch("https://api.github.com/repos/jami-fhir-jp-wg/jp-core-v1x/git/ref/tags/1.2.0", MAX_JSON)
+exact(tag_ref["object"]["type"], "tag"); exact(tag_ref["object"]["sha"], "8b9780cbdb9086e6f41b35aa8935038bd884243e")
+tag = fetch("https://api.github.com/repos/jami-fhir-jp-wg/jp-core-v1x/git/tags/8b9780cbdb9086e6f41b35aa8935038bd884243e", MAX_JSON)
+exact(tag["object"]["type"], "commit"); exact(tag["object"]["sha"], "c06f02059c2a8aed6a33d624c9eee6fe0669ef06")
+exact(tag["verification"]["verified"], False); exact(tag["verification"]["reason"], "unsigned")
+
+historical = fetch("https://api.github.com/repos/HL7/fhir-ig-publisher/releases/tags/2.0.17", MAX_JSON)
+release(historical, "2.0.17", 291251052, "publisher.jar", 208967243, "sha256:878c78531058961fdf101a462af6657bfb79692a91c29623afac108963ae233d")
+publisher = fetch("https://api.github.com/repos/HL7/fhir-ig-publisher/releases/tags/2.2.11", MAX_JSON)
+release(publisher, "2.2.11", 478216867, "publisher.jar", 230671837, "sha256:a981af86bca3f3a22ee15b9d4ee3c97d63219b7a14e49d0a525e10bbfc71a911")
+validator = fetch("https://api.github.com/repos/hapifhir/org.hl7.fhir.core/releases/tags/6.9.12", MAX_JSON)
+release(validator, "6.9.12", 478124375, "validator_cli.jar", 187081756, "sha256:0e53ab1d1a6f1e35f505255c0b8ce10a35fcf27e6e96b503640f784cd07e5ad6")
+
+npm = fetch("https://registry.npmjs.org/fsh-sushi/3.20.0", MAX_JSON)
+exact(npm["name"], "fsh-sushi"); exact(npm["version"], "3.20.0"); exact(npm["license"], "Apache-2.0")
+exact(npm["dist"]["integrity"], "sha512-fW5H+XANg75WoU2eikmDx62Cf8ow6whxy+3RX7SoRES4HxnCeQ6MMq3BlS5VLrKM010l6Tj8fmuJ0nwPETtC+Q==")
+sushi_ref = fetch("https://api.github.com/repos/FHIR/sushi/git/ref/tags/v3.20.0", MAX_JSON)
+exact(sushi_ref["object"]["type"], "commit"); exact(sushi_ref["object"]["sha"], "1e3717e6ae668918b4f90bfe3b6c55de6aeeff7f")
+readme = fetch("https://raw.githubusercontent.com/FHIR/sushi/1e3717e6ae668918b4f90bfe3b6c55de6aeeff7f/README.md", MAX_TEXT, False)
+for text in ("install Node.js 22", "supports_ Node.js 18 and 20", "versions > 22 and < 18 may work", "not officially supported"):
+    assert text in readme
+negative_count = 0
+def must_fail(call):
+    global negative_count
+    try: call()
+    except Exception: negative_count += 1
+    else: raise AssertionError("negative fixture passed")
+
+must_fail(lambda: strict_json(b'{"x":1,"x":2}'))
+must_fail(lambda: strict_json(b'{'))
+class FakeResponse:
+    def __init__(self, body, final_url="https://example.invalid/metadata"):
+        self.status = 200; self.body = body; self.final_url = final_url
+    def geturl(self): return self.final_url
+    def read(self, count): return self.body[:count]
+must_fail(lambda: bounded_body(FakeResponse(b"x" * 4), "https://example.invalid/metadata", 3))
+exact(bounded_body(FakeResponse(b"x" * 3), "https://example.invalid/metadata", 3), b"x" * 3)
+must_fail(lambda: bounded_body(FakeResponse(b"{}", "https://redirect.invalid/metadata"), "https://example.invalid/metadata", 3))
+class SlowResponse(FakeResponse):
+    def read(self, count):
+        time.sleep(0.1)
+        return super().read(count)
+def slow_fixture():
+    with hard_timeout(0.01):
+        bounded_body(SlowResponse(b"{}"), "https://example.invalid/metadata", 3)
+must_fail(slow_fixture)
+broken_ref = copy.deepcopy(tag_ref); broken_ref["object"]["type"] = None
+must_fail(lambda: (exact(broken_ref["object"]["type"], "tag"), exact(broken_ref["object"]["sha"], "8b9780cbdb9086e6f41b35aa8935038bd884243e")))
+broken_tag = copy.deepcopy(tag); broken_tag["verification"]["verified"] = True
+must_fail(lambda: (exact(broken_tag["verification"]["verified"], False), exact(broken_tag["verification"]["reason"], "unsigned")))
+publisher_target = next(asset for asset in publisher["assets"] if type(asset) is dict and asset.get("name") == "publisher.jar")
+publisher_target_index = publisher["assets"].index(publisher_target)
+for mutate in (
+    lambda d: d.update(draft=True), lambda d: d.update(prerelease=True),
+    lambda d: d["assets"].clear(), lambda d: d["assets"].append(copy.deepcopy(d["assets"][publisher_target_index])),
+    lambda d: d["assets"][publisher_target_index].update(id=None), lambda d: d["assets"][publisher_target_index].update(size="230671837"),
+    lambda d: d["assets"][publisher_target_index].update(state="new"), lambda d: d["assets"][publisher_target_index].update(digest=None),
+    lambda d: d["assets"].append("not-an-object"),
+    lambda d: d["assets"].append({"id": 478216867, "name": "different-name.asc"}),
+):
+    broken = copy.deepcopy(publisher); mutate(broken)
+    must_fail(lambda broken=broken: release(broken, "2.2.11", 478216867, "publisher.jar", 230671837, "sha256:a981af86bca3f3a22ee15b9d4ee3c97d63219b7a14e49d0a525e10bbfc71a911"))
+broken_npm = copy.deepcopy(npm); broken_npm["dist"]["integrity"] = None
+must_fail(lambda: exact(broken_npm["dist"]["integrity"], "sha512-fW5H+XANg75WoU2eikmDx62Cf8ow6whxy+3RX7SoRES4HxnCeQ6MMq3BlS5VLrKM010l6Tj8fmuJ0nwPETtC+Q=="))
+broken_npm_name = copy.deepcopy(npm); broken_npm_name["name"] = None
+must_fail(lambda: exact(broken_npm_name["name"], "fsh-sushi"))
+must_fail(lambda: exact("install Node.js 22" in "missing support text", True))
+print(f"WP4157_METADATA_PASS negatives={negative_count}")
+PY
+```
+<!-- WP4157_METADATA_VERIFIER_END -->
+
+The success line is `WP4157_METADATA_PASS negatives=20`. Node 24 and the nonzero `java -version` / no-usable-Java-invocation observations remain recorded outside this verifier; they are not re-executed by the gate and do not prove Java absence. Only a fresh run against the reviewed candidate is gate evidence; prior output is historical.
+
+Future binary retrieval is excluded from WP-4157. The observations below are minimum non-executable guardrails, not a complete downloader design: request bytes through `GET /repos/{owner}/{repo}/releases/assets/{asset_id}` with `Accept: application/octet-stream`, after strict metadata validation of the same asset snapshot; permit exactly one HTTPS redirect to `release-assets.githubusercontent.com` with no userinfo and default port; authenticate only the `api.github.com` request, then construct a fresh redirect request from an explicit safe-header allowlist that excludes `Authorization`, cookies, proxy credentials, original signed headers, and every credential-bearing header; never log or persist its signed query/headers; enforce the per-artifact 256MiB, connect15s, total120s bounds; and compare final raw size/SHA to that snapshot. The future WP-6004/locked-package spike owns retry/backoff, aggregate byte/disk budget, concurrency, owned-temp cleanup on every exit, cache isolation, and pre/post-download identity revalidation, with negative tests for credential/header forwarding, changed metadata, unexpected scheme/host/port, redirect count, oversize, interruption, partial files, and cache contamination.
+
+The clean compatibility plan is **3 execution lanes + 2 mandatory cross-lane gates**: (1) historical characterization, (2) isolated-cache locked validator, (3) Java17/Node22 minimal IG build; cross-lane gate A separates offline/cache-only from terminology-network behavior, and gate B requires FHIR/JP Core, supply-chain, and legal/license review. Only lane 1 metadata characterization is in WP-4157.
+
+#### Rejected fresh7 validation/landing draft (non-executable summary)
+
+Fresh7 attempted a WP-specific private-ref state machine and is rejected. Its review evidence is preserved by exact candidate OID `6eb663cdf4c480d722925f887f74588a50e1d43b`, parent `1e63e85257c6ea2def16934b55f564394c685e9e`, tree `1967725ad03916f27f5582e7cffbbb65bf4f2ea2`, the fresh7 verdict summary below, and Git history/diff. The executable draft has been removed so a search cannot mistake it for current procedure. Known defects were unconditional validation-ref deletion, `/var` versus `/private/var` cleanup false-green, partial state validation, mutable failed-CI evidence, incomplete taxonomy/interruption probes, CI run-set TOCTOU, and private-ref-only terminal projection.
+#### Fresh20 PLAN authority: scoped WP-4157 metadata closure
+
+WP-4157 has one outcome: reproduce the pinned metadata table and preserve every compatibility/conformance/lock/license/adoption non-claim. Scope is exact4 only; no artifact, cache, dependency, package, runtime, code, DB, UI, SSOT or CI/toolchain mutation and no PHI. Generic orchestration is outside this WP.
+
+##### Focused metadata verifier
+
+S1 replaces the rejected historical verifier with one self-contained Python 3 verifier embedded in this section. It accepts no arguments, downloads no artifact, uses no authentication, subprocess, shell, curl or `gh`, and contacts only the hard-coded public HTTPS metadata/README endpoints already listed in the canonical table. A `urllib` opener disables proxies and redirects; POSIX wall-clock timers bound each request, including DNS/open/body read, to 20 seconds and the whole verifier to 120 seconds. Each JSON response is capped at 2 MiB, README at 512 KiB and release assets at 100. JSON parsing rejects duplicate keys and validates exact types, singleton/cardinality, tag/asset identity, digest/SRI and support text. Failure emits only a fixed error ID; success emits one fixed summary. Deterministic fixtures cover malformed/duplicate JSON, boundary/oversize, redirect, slow body/deadline, wrong type/value/cardinality/digest/support text. Previously recorded Node 24 and nonzero `java -version` observations remain non-authoritative, demonstrate no usable Java invocation, do not prove Java absence, and are not re-executed by this verifier.
+
+##### Exact candidate and validation
+
+Before and after every validation command, root compares `git status --short`, the exact4 blob OIDs/modes, staged path set and all non-exact4 tracked working-tree/index status; any non-exact4 mutation or index drift stops. A disposable external `GIT_INDEX_FILE`, seeded from the slice parent and populated with exact4 only, provides the reviewed candidate tree without changing the real index. Immediately before commit, root exact-stages only exact4, rechecks that the staged tree equals the reviewed tree, and after commit requires the exact parent plus the NUL-delimited sorted output of `git -c diff.renames=false diff-tree -r --no-commit-id --name-only -z HEAD^ HEAD` to equal exactly the four paths. S1 parent is current `1e63e85257c6ea2def16934b55f564394c685e9e`; S2 parent is the pushed, CI-successful S1 head.
+
+Downstream equality uses full baseline `e81d7ec58f2a4376ce5b43854fd995e8da94b917`. Boundaries are complete Plans list items whose headings begin with exactly one of `[x]`, `[~]`, `[ ]` or `[!]`, from that `- [status] WP-ID` heading to the next such heading/EOF, and complete State sections from `### WP-ID` to the next `###`/EOF. Required singleton blocks and normative concatenation order are Plans WP-4158, WP-4159, WP-4160, WP-0053a, WP-0053b, WP-6004; then State WP-4158, WP-4159, WP-4160. Per file, canonical concatenation `ID + NUL + block` in that stated order has SHA-256 `1c5f51a361214102dacf70445bba633502c9e4601ff99a420765d544affd7b1e` for Plans and `daecab54bc67e3eb050ec5416769253347cdb4a29f1eefa2b252c29770783271` for State.
+
+Tracked residue validation rejects newly added tracked paths with case-insensitive FHIR/cache/package directory components or archive suffixes `.jar`, `.war`, `.zip`, `.tgz`, `.tar*`, `.gz`, `.bz2`, `.xz`, `.zst`, `.7z`, `.rar`. It does not scan evidence URLs as residue and makes no archive-magic or untracked/ignored-content claim.
+
+Both S1 and S2 run `git diff --check`, the exact4/non-exact4 isolation checks, normative downstream hashes, the focused verifier, `pnpm check:ssot-index`, `pnpm test:scripts`, candidate-scope secret scan and tracked-path residue scan. S2 also checks its concise landing record. Live `pnpm check:secrets` remains explicitly non-green if protected `.codegraph` prevents traversal.
+
+##### Two ordinary repository slices
+
+S1 is the substantive exact4 verifier/evidence/status change plus relabeling the old State heading as historical. After its required reviews, exact-stage commit, ordinary feature-branch push and exact-head CI success, S2 adds a concise exact4 landing record containing S1 commit/tree, validations, review results, CI identity, risks, rollback note and next action. S2 does not claim its own future push/CI result; those are reported by root from Git/GitHub after completion. No S3 or custom landing-state implementation is introduced.
+
+The user-required PLAN, IMPLEMENTATION, BUG_REFACTOR, VALIDATION, COMMIT and PUSH review gates each use exactly five fresh read-only contexts. Their candidate-bound ledgers are execution evidence for this goal, not a new repository feature or portable orchestration framework. BUG_REFACTOR records the inspected bug/security/performance surface even when no refactor is accepted.
+
+##### Ordinary landing evidence and rollback boundary
+
+For each slice, root verifies the expected remote/PR head, performs one explicit ordinary non-force feature-branch push, and stops on divergence or push failure. CI must be workflow id `309812329`, path `.github/workflows/ci.yml`, event `pull_request`, PR1, the exact pushed head, `run_attempt=1`, `completed/success`; a missing, duplicate, rerun, wrong-head or failed result does not pass. PUSH_GATE then checks local/origin/PR parity, origin/main still `27d61445350e40f2741583a07eb20936d9916992`, deployments count zero and no tracked changes. These Git commits, the PR, CI run and tracked S2 record are the durable/reconstructible landing evidence.
+
+After S2 PUSH_GATE 5/5, root posts or updates no repository data beyond the already-authorized branch/PR workflow; the final user report supplies S2 commit, CI and parity facts. If rollback is later explicitly requested, first fresh-map downstream dependencies, then revert only the WP-4157 exact4 commits in reverse chronological order with new reviewed commits and rerun then-current validation/CI. Historical `1e63e85`, `42fa277`, `ffa1fd0` are excluded absent separate approval. No rollback implementation or future schema is part of WP-4157.
+
+Unsigned provenance human acceptance and legal/license, FHIR baseline/lock/conformance, patient safety, architecture/product and WP-0053a/b gates remain unwaived.
+
+Fresh7 review result is 0/5 PASS. Reviewer1 found missing real interruption/reconciliation evidence, non-durable post-push records and L0 scope drift. Reviewer2 found the weak state decoder, stale-evidence deletion, failed-generation promotion, incomplete taxonomy probes, unchecked execution snapshot and unbounded Java invocation. Reviewer3 independently confirmed stale-ref deletion, weak canonical state validation, failed-generation reuse and probe undercoverage. Reviewer4 found live cleanup residue, prose-only review CAS, packed-ref blindness, CI TOCTOU and protected-path gaps. Reviewer5 found the same cleanup failure, missing durable gate projection, no failed-generation rollover and missing terminal run-set uniqueness. The three exact stale registrations created by the rejected verifier were reconciled with exact `git worktree remove --force --force` targets on 2026-07-18; unrelated WP-4147/WP-9001/WP-9002 registrations were preserved.
+
+Fresh8 review result is also 0/5 PASS. All reviewers identified the self-blocking lifecycle of preserved ref `6eb663c…`; additional findings required a literal taxonomy oracle, filesystem manifest schema, aggregate verifier timeout, removal of offline materialization, immutable first-attempt CI semantics, finite C1/C2 projection, concrete resume states, retained-ref versus transient-residue separation and explicit unsigned-provenance human acceptance. Fresh9 addressed those items but did not pass.
+
+Fresh9 review result is 0/5 PASS. The repeated P1 class was missing durable storage for pre-push baseline/reviewer/terminal evidence, ambiguous per-generation C1/C2 refs and failed-generation rollback, and an unsafe `node_modules` symlink excluded from the manifest. Fresh10 addressed those items but did not pass.
+
+Fresh10 review result is 0/5 PASS. Its remaining P1 findings were commit/journal non-atomicity, missing PUSH_INTENT and terminal failure phases, incomplete strict schema/partial review recovery, overbroad sandbox reads, ambiguous filesystem additions/run2, non-durable immediate C2 State projection and prefix-based generation inventory. Fresh11 addressed those items but did not pass.
+
+Fresh11 review result is 0/5 PASS. Its common P1 findings were absence of a PLAN review ledger/artifact binding, incomplete phase×field oracle, digest-only State projection, ambient tool identity, reviewer context replay, failed-lineage classification and unbounded corrective generations/retries. Fresh12 addressed those mechanics but did not pass.
+
+Fresh12 review result is 0/5 PASS and is durably recorded at review-ledger blob `34cbd9877f0dac74be5a5cb02d922c4593243967`, candidate tree `a6db72d195890e63921c5c22dc3edbd2cb7698f9`. Reviewer1's decisive proximity finding was that the generic landing framework had overtaken the LOW metadata WP. Other findings concerned incomplete gate bindings, projection durability, scanner/sandbox/tool trust, C1/C2 semantics and lineage. Fresh13 removes that framework from WP-4157 and returns to the scoped metadata outcome.
+
+Fresh13 review result is 0/5 PASS and is recorded at ledger blob `fdeddaf7cb9d11d78d9c093ced5115bf57179c40`, candidate tree `cfb817b99f581d46aef8f227d70119781c7a0766`. All reviewers accepted the scope reduction. Remaining findings were numeric verifier bounds, temp-index identity, finite downstream/residue literals, the omitted BUG_REFACTOR gate, slice-specific remote bases/CI selection, mutable terminal-comment binding and corrective lineage rollback. The historical Fresh14 candidate addressed only those scoped gaps.
+
+Fresh14 review result is 0/5 PASS and is recorded at ledger blob `d8e34a31b23ddae5eed0d47969263a422d21a264`, candidate tree `151bfd4e81b353d070ae42733c5df8190b0b9779`. Its remaining findings were S2 self-reference, missing generation-specific durable envelope and corrective re-gating, incomplete real-index/process-group/ambient-environment oracles, and terminal-comment identity/deletion/global-uniqueness checks. The historical Fresh15 candidate addressed only those bounded landing-evidence gaps.
+
+Fresh15 review result is 0/5 PASS and is recorded at ledger blob `b586355ecb3a1f7d153618c934cbe950c57f0c93`, candidate tree `00147649207f816f161041afeceb205e44c0ab58`. Its common blockers were an impossible all-fields-at-COMMIT envelope, missing candidate commit parent/tree binding, stale fresh14 projections and the comment-create crash window. Additional bounded findings were exact environment keys, finite corrective/comment pagination and rollback evidence. The historical Fresh16 candidate addressed those items.
+
+Fresh16 review result is 1/5 PASS and is recorded at ledger blob `94e3549b162afc779d16db1ee77fc25b7b069160`, candidate tree `1c27ebbc90df668edb9c10e0e2cd93d6fcfe4d15`. Scope/proximity passed. Remaining blockers were executable/transport identity, exact JSON types/canonicalization, durable CI deadline/polling, intent-before-POST stop semantics, rollback lifecycle and overclaimed descendant cleanup. The historical Fresh17 candidate addressed those bounded items.
+
+Fresh17 review result is 1/5 PASS and is recorded at ledger blob `83419165b2ca6bae1f75151cf9e2e40963907c4a`, candidate tree `0b0b05af4aa8910eb5d72e9e1f22dff57bc3f09e`. Scope/proximity passed. Remaining blockers were recursive diff-tree flags, push-before-deadline crash ordering, curl config and initial binary trust, normative downstream order, rollback schema/invariants and all-exit PGID cleanup. The historical Fresh18 candidate addressed those items.
+
+Fresh18 review result is 1/5 PASS and is recorded at ledger blob `3b3435c5b10ab6dff3237d497b94869052ffcd55`, candidate tree `e9bb1849b9ad4363521c947524aafa303f83ff48`. Security/supply-chain passed. Three reviewers independently found that the private landing/comment/rollback machinery again dominated the LOW metadata outcome; one also found the URL residue scan self-failing. Fresh19 removes that machinery and retains ordinary repository/PR/CI evidence only.
+
+Fresh19 review result is 0/5 PASS and is recorded at ledger blob `13c15874af85b144f479bdabfd09372feabeb134`, candidate tree `e1c2726327d09f64189f3993da66b89eff9ea7e5`. All five reviewers found the same two stale Plans clauses that still required a marker comment and overbroad lineage rollback; they found no other blocker. Fresh20 aligns those projections with the ordinary repository evidence authority above.
+
+Fresh20 PLAN review is 5/5 PASS at ledger blob `ebfa45368fefd0f7011d14635a4107a6d7482181`, candidate tree `86bfaec3a82e1c433e09c066539301e6d31b7add`. The first S1 implementation candidate output `WP4157_METADATA_PASS negatives=22 java_exit=nonzero` but failed IMPLEMENTATION_GATE 0/5 at ledger `adf4319bc500662304e1e8cb9f9fd8105daa4c94` because socket inactivity timeout did not enforce the promised wall clock and subprocess observations were not fully bounded. The second candidate output `WP4157_METADATA_PASS negatives=21` but failed 0/5 at ledger `be099281bd9068237c76d73ad3edda66424646c7` due stale Node/Java prose and an aggregate timeout that fixtures could catch. The third candidate separated aggregate/request expiry and passed technical review, but failed 2/5 at ledger `2ae68594f2e2caa83906463569d8414b9fb33392` because two phrases overclaimed Java absence. The fourth candidate fixed those but failed 2/5 at ledger `592d8931676ae5155b8e2c46b3ae452fa99f0e76` because the historical State checkpoint still said local Java was absent. The fifth candidate removed that overclaim but its live no-auth run was unavailable during GitHub rate exhaustion; root's subsequent adversarial inspection found that ambient Python optimized mode could disable `assert` checks. The sixth candidate rejected optimized mode; follow-up inspection found that normal interpreter startup could still import ambient user-site customization. The seventh candidate used isolated interpreter mode; the eighth also removes OpenSSL CA override and TLS key-log environment variables before creating an explicit default TLS context. Its candidate tree `27e834f188f326de50e1653d79887f2a6214545e` produced unauthenticated `WP4157_METADATA_PASS negatives=20` under hostile ambient variables and passed IMPLEMENTATION_GATE 5/5 at ledger `480dc3148b36bb4c22692be5ebc0290aba7173b4`. The first BUG_REFACTOR review failed 1/5 at ledger `c695d0e8c9f041c403dd58ccaec07c58267abd1c` because one State live-integration line still pointed back to IMPLEMENTATION; no reviewer found another in-scope bug or required refactor. After that line was corrected, fresh BUG_REFACTOR review passed 5/5 at ledger `6d769bcb13050770680e35b04347fd12acbf2cdc`.
 
 Terminology rights provenance follow-up captured on 2026-07-16:
 
@@ -249,7 +511,7 @@ Pre-lock discrepancies and stops:
 - The QA report shows zero errors/warnings but also reports suppressed issues, an unpublished publication status and missing version-history metadata. A green QA summary alone is insufficient approval evidence.
 - The download URL is not content-addressed. Future retrieval must compare hash, byte length, HTTP validators and package metadata before accepting the same semantic version.
 - FHIR/JP Core specialist and legal/license review remain required before any lock or runtime/toolchain implementation. `hl7.fhir.uv.tools.r4#0.8.0` is an explicit internal validation dependency and is therefore a conformance/build-lock candidate, not a clinical runtime dependency. Its transitive terminology/extensions versions conflict with JP Core's declared versions, and one referenced tools canonical is absent from the artifact; clean validator/IG Publisher resolution must be proven before locking it.
-- JP Core 1.2.0's published output proves the Publisher version but not its SUSHI/Node inputs. Current Publisher, validator and SUSHI releases are therefore compatibility candidates, not an implied upgrade or lock. The present yrese Node 24 / no-Java environment cannot execute the required matrix.
+- JP Core 1.2.0's published output proves the Publisher version but not its SUSHI/Node inputs. Current Publisher, validator and SUSHI releases are therefore compatibility candidates, not an implied upgrade or lock. The present yrese Node 24 environment and nonzero `java -version` result do not demonstrate a usable Java invocation or the required matrix.
 - The fingerprinted terminology package is not legally cleared by artifact availability, resource copyright text or the current-version IP review. Version-specific, use-specific legal decisions remain a hard gate before runtime use or redistribution.
 
 ## Evidence rules

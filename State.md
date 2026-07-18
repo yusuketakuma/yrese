@@ -8,12 +8,12 @@
 
 ## 2026-07-18
 
-### WP-4157 FHIR validator / IG Publisher / SUSHI compatibility candidates — LOCAL_LANDED / REVIEW_INFRA_BLOCKED / INDEPENDENT_VERIFY_REQUIRED
+### WP-4157 FHIR validator / IG Publisher / SUSHI compatibility candidates — IMPLEMENTED / VALIDATION_REVIEW_PENDING / INDEPENDENT_VERIFY_REQUIRED
 
-- official JP Core tag、GitHub release API、npm metadata、SUSHI v3.20.0 READMEをfresh再照合し、JP Core1.2.0→`c06f02059c2a8aed6a33d624c9eee6fe0669ef06`、historical Publisher2.0.17、candidate Publisher2.2.11/validator6.9.12のasset size/SHA-256、SUSHI3.20.0 Apache-2.0/SRIを再現。両Java source POMはJava17、SUSHIはNode22推奨・18/20 support・22超unsupportedで、yrese Node24/local Javaなしは互換性証明ではない。historical SUSHI/Nodeはfloatingのためexact reproduction不能を維持する。
-- current release asset IDsはPublisher2.2.11 `publisher.jar`=`478216867`、validator6.9.12 `validator_cli.jar`=`478124375`。future retrievalのasset pinに含める。
-- binaryを将来取得する場合はrelease APIのasset id/name/size/digestを先に固定し、HTTPS `github.com`→`release-assets.githubusercontent.com`の一回だけのredirect、256MiB/connect15s/total120s/temp→Trash/raw SHA照合を必須としsigned queryを記録しない。本WPはbinary download/install/cache reuseを行わない。historical characterization、isolated validator、Java17/Node22 minimal IG build、offline/cache-only/terminology-network、tools conflict/missing canonical、FHIR/supply-chain/legal review、WP-0053a/b human gateを未解決に維持し、lock/APPROVED/runtime/CI/SSOT/toolchain adoption/license grant/WP-0053b unblockを非主張。diff/SSOT173/scripts/path-index/archive0とtracked-overlay secret scanはPASS、live secretsは既存`.codegraph` protected-scope exit1でfail-closed/non-green。各five-review gate後だけcommitし、conditional完了宣言はfinalization target自身のpostcommit review、push/parity、main不変、deployments0、exact-head CI、PUSH_GATE5/5成立前はFINALIZATION_PENDINGとして無効。
-- 現在の実行環境はroot以外の独立reviewerを5名提供できないため、goalが要求する各Material Gateのfresh 5/5 PASSを成立させられない。WP-4157はREVIEW_INFRA_BLOCKEDであり、push・REMOTE_CI_PASS・FINALIZEDを主張しない。独立reviewer 5名が利用可能になった場合のみPLAN_GATEからfresh reviewを再開する。
+- run `goal-20260718` active。fresh20 PLAN 5/5 PASS。S1 implementationは`adf4319b…`0/5、`be099281…`0/5、`2ae68594…`2/5、`592d8931…`2/5、fifthはGitHub rate exhaustion中のlive no-auth evidence不足で2/5。historical Java-absence overclaimを修正し、optimized modeをfail-closedで拒否し、isolated interpreterとexplicit TLS contextでambient Python/user-site/CA override/key-logを遮断するeighth candidateはlive `WP4157_METADATA_PASS negatives=20`、IMPLEMENTATION 5/5 PASS（ledger `480dc314…`）。first BUG_REFACTORはstale exact-next-action 1件で1/5（ledger `c695d0e8…`）、修正後fresh 5/5 PASS（ledger `6d769bcb…`）。exact next action=validation matrix→VALIDATION_GATE、5/5前はCOMMITへ進まない。
+- metadata、exact endpoint、typed expected fields、unsigned tagとdigest/SRIの保証限界、future retrieval minimum guardrail、3 execution lanes + 2 cross-lane gates、immutable candidate validationの唯一のauthorityは`ops/refactor/EVIDENCE.md`「WP-4157 canonical metadata reproduction and trust boundary」。binary/cache/runtime/package/lock/SSOT/CI/toolchain adoptionとWP-0053a/b human gateは未変更で、compatibility/conformance/license/adoption/unblockを非主張。
+- live integration: branch `fix/wp4092-postgres-ci`、upstream `e81d7ec58f2a4376ce5b43854fd995e8da94b917`、non-final evidence baseline `1e63e85257c6ea2def16934b55f564394c685e9e`、ahead1。fresh7 verifier由来のexact stale worktree registrations 3件だけをrootが`git worktree remove --force --force`でreconcileし、unrelated WP-4147/WP-9001/WP-9002 registrationsは保持した。validation ref `6eb663cdf4c480d722925f887f74588a50e1d43b`はfailure evidenceとしてpreserve中。worktreeはallowed exact4、user-owned `.omo/`/`.codegraph`はread-only/non-stage。
+- S1/S2 each required reviews後にexact-stage、ordinary push、attempt1 exact-head CI。custom state/comment/rollback protocolなし。exact next action=S1 validation matrix→VALIDATION_GATE→5/5、その後COMMIT_GATE。
 
 ### WP-4156 FHIR tooling internal dependency classification — FINALIZED / INDEPENDENT_PASS / REMOTE_CI_PASS / EXTERNAL_STATE_CONDITIONAL
 
@@ -569,10 +569,10 @@
 - JP Core 1.2.0のofficial usage noticeがterminology license解決を利用側のSHALLとすること、source repo/tagとterminology 1.4.0 packageにrepo/package-level license grantを確認できないことを記録した。
 - artifact内203 terminology resourcesを直接集計しcopyrightあり146/なし57、All Rights Reserved 17、CC BY-ND 4等を確認。current IP reviewは別versionであるため代替clearanceにせず、reachable terminology×validation/runtime/display/redistribution等のuse lane別legal matrixとhuman reviewまでlock/runtime/publication禁止を維持。exact4 implementation commit `f8edc1c`をpush済み、別agent verifier未実施。
 
-### WP-4157 FHIR validator / IG Publisher / SUSHI compatibility candidates — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
+### Historical checkpoint — WP-4157 FHIR validator / IG Publisher / SUSHI compatibility candidates — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
 - JP Core 1.2.0のofficial tagged source/workflowとpublished QAを照合し、Publisher 2.0.17は特定できたがSUSHI/Nodeはfloatingだったため、historical exact reproduction不能を明示した。current candidatesのPublisher 2.2.11、validator 6.9.12、SUSHI 3.20.0は配布digest付きで候補に限定した。
-- 両Java toolはJava17 target、SUSHIはNode22推奨・18/20 supportで、yrese local/CI Node24とlocal Java不在は未適合。historical characterization / package validation / minimal IG buildの3-lane clean spikeと専門reviewまでinstall/lock/CI/SSOT/runtime変更は禁止を維持。exact4 implementation commit `42fa277`をpush済み、別agent verifier未実施。
+- 両Java toolはJava17 target、SUSHIはNode22推奨・18/20 supportで、yrese local/CI Node24とlocal `java -version` nonzero / usable Java invocation未実証は未適合。これはJava不在を証明しない。historical characterization / package validation / minimal IG buildの3-lane clean spikeと専門reviewまでinstall/lock/CI/SSOT/runtime変更は禁止を維持。exact4 implementation commit `42fa277`をpush済み、別agent verifier未実施。
 
 ### WP-4156 FHIR tooling internal dependency classification — LOCAL_LANDED / INDEPENDENT_VERIFY_REQUIRED
 
