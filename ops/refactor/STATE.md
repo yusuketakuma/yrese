@@ -4,7 +4,17 @@ This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
 - Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. Remaining57 classification, WP-0020〜0023 reconciliation, W31 and WP-4081 are LANDED.
-- Current task: WP-4157 S1_REMOTE_LANDED / S2_VALIDATION_REVIEW_PENDING。S1 all gates/CI/parity成立。current S2はallowed exact4のみdirty、real index clean。S2 PLAN 5/5 `c449766f…`、IMPLEMENTATION 4/5→5/5 `deb36643…`、BUG_REFACTOR誤指摘4/5→全artifact再照合fresh 5/5 `07ee101f…`。VALIDATIONは不足gate 4/5 `52dd0bf3…`、S1 bundle過大表現2/5 `efa30a62…`を修正中。known refs/worktrees不変。Exact Next Action: corrected S2 validation matrix + fresh VALIDATION_GATE 5/5のみCOMMIT_GATE。
+- Current task: WP-4158 S0_COMMIT_REVIEW。PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATIONは各fresh5/5 PASS。current exact4はAC9C用staged済み。Next=そのstaged treeへのfresh exactly5 COMMIT_GATE review-only、5/5のみcommit。
+- Historical BUG checkpoint: third generation `wp4158_bug3_r1..r3`はtree `952cb893…`を0/3 PASSし、stale five-probe projection、parent readiness write-FD lifecycle、State checkpoint time boundaryを検出・後続修正した。
+- Historical BUG checkpoint: fourth generation `wp4158_bug4_r1..r3`はtree `75be9c70…`を1/3 PASSし、actual return/exception cleanup、query/fragment single-boundary、EVIDENCE checkpoint time boundaryを検出・後続修正した。Current matrixはpositive2/negative95/cleanup10。
+- Historical first VALIDATION generation `wp4158_val_r1..r3`はtree `08e3d38c…`を2/3 PASSしstale projectionをblock・後続修正、fifth-generation 5/5でsuperseded済み。
+- Historical second VALIDATION generation `wp4158_val2_r1..r5`はtree `ef554473…`を4/5 PASSしEVIDENCE historyをblock・後続修正、fifth-generation 5/5でsuperseded済み。
+- Historical third VALIDATION generation `wp4158_val3_r1..r3`はtree `716bbfab…`を2/3 PASSしPlans historyをblock・後続修正、fifth-generation 5/5でsuperseded済み。
+- Historical fourth VALIDATION generation `wp4158_val4_r1..r3`はtree `d6cd4cfe…`を1/3 PASSしState/old resume historyをblock・後続修正、fifth-generation 5/5でsuperseded済み。
+- Historical first COMMIT generation `wp4158_commit_r1,r2`はtree `74142ce8…`を0/2 PASSで停止し、stale VALIDATION pendingとAC9C循環を検出・後続修正。
+- Historical second COMMIT generation `wp4158_commit2_r1,r2`はtree `f362d267…`を1/2 PASSで停止し、EVIDENCE旧precommit summaryを検出・後続修正。
+- Historical third COMMIT generation `wp4158_commit3_r1,r2`はtree `dc3b1142…`を1/2 PASSで停止し、stage後stale restage directiveを検出・後続修正。Current action=fresh COMMIT exactly5 review-only。
+- Historical fourth COMMIT generationはtree `70e8edb7…`でreviewer1/2b/3 PASS、reviewer4 FAIL、reviewer5未起動。無応答original reviewer2はcount外。general AC9C `EXPECTED_COMMIT` clauseとprecommit boundaryの衝突を検出し、base/tree/message対postcommit commitへ分離した。修正restageは完了済みで、Current action=fresh COMMIT exactly5 review-only。
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
@@ -233,4 +243,4 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - Remaining57 classification checkpoint: non-SSOT manifest partitions all documents into metadata-safe0/semantic-amendment18/human-authority39 with missing-field signatures and next gates; no index/status/approval change.
 - WP-4057 checkpoint: plaintext signed keyset anchors violate API-001 non-PHI cursor; AEAD cursor needs privacy/security contract amendment, while a non-PHI order key needs DB SSOT/migration approval. Keep v1 HMAC/OFFSET unchanged until human selection.
 - Remaining57 classification landing checkpoint: commit `e654938` pushed to `origin/agent/reconcile-wp9002-w7c-20260712`; exact4; independent/domain review accepted; all57 IDs/signatures match live frontmatter; metadata0/semantic18/human39, duplicates0/omissions0; no SSOT/index/code/readiness change.
-- Next action: fresh read-only mapping/pre-plan of the next non-gated code slice while WP-4057 awaits human choice. WP-4092 remote proof is FINALIZED by PR #1 run `29499861743`; WP-4050 remains a separate human-gated atomicity boundary.
+- Historical checkpoint next action at that time: fresh read-only mapping/pre-plan of the next non-gated code slice while WP-4057 awaited human choice. This is superseded by the current task at line 7. WP-4092 remote proof is FINALIZED by PR #1 run `29499861743`; WP-4050 remains a separate human-gated atomicity boundary.
