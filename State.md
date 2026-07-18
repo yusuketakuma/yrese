@@ -8,6 +8,13 @@
 
 ## 2026-07-18
 
+### WP-4157 FHIR validator / IG Publisher / SUSHI compatibility candidates — LOCAL_LANDED / REVIEW_INFRA_BLOCKED / INDEPENDENT_VERIFY_REQUIRED
+
+- official JP Core tag、GitHub release API、npm metadata、SUSHI v3.20.0 READMEをfresh再照合し、JP Core1.2.0→`c06f02059c2a8aed6a33d624c9eee6fe0669ef06`、historical Publisher2.0.17、candidate Publisher2.2.11/validator6.9.12のasset size/SHA-256、SUSHI3.20.0 Apache-2.0/SRIを再現。両Java source POMはJava17、SUSHIはNode22推奨・18/20 support・22超unsupportedで、yrese Node24/local Javaなしは互換性証明ではない。historical SUSHI/Nodeはfloatingのためexact reproduction不能を維持する。
+- current release asset IDsはPublisher2.2.11 `publisher.jar`=`478216867`、validator6.9.12 `validator_cli.jar`=`478124375`。future retrievalのasset pinに含める。
+- binaryを将来取得する場合はrelease APIのasset id/name/size/digestを先に固定し、HTTPS `github.com`→`release-assets.githubusercontent.com`の一回だけのredirect、256MiB/connect15s/total120s/temp→Trash/raw SHA照合を必須としsigned queryを記録しない。本WPはbinary download/install/cache reuseを行わない。historical characterization、isolated validator、Java17/Node22 minimal IG build、offline/cache-only/terminology-network、tools conflict/missing canonical、FHIR/supply-chain/legal review、WP-0053a/b human gateを未解決に維持し、lock/APPROVED/runtime/CI/SSOT/toolchain adoption/license grant/WP-0053b unblockを非主張。diff/SSOT173/scripts/path-index/archive0とtracked-overlay secret scanはPASS、live secretsは既存`.codegraph` protected-scope exit1でfail-closed/non-green。各five-review gate後だけcommitし、conditional完了宣言はfinalization target自身のpostcommit review、push/parity、main不変、deployments0、exact-head CI、PUSH_GATE5/5成立前はFINALIZATION_PENDINGとして無効。
+- 現在の実行環境はroot以外の独立reviewerを5名提供できないため、goalが要求する各Material Gateのfresh 5/5 PASSを成立させられない。WP-4157はREVIEW_INFRA_BLOCKEDであり、push・REMOTE_CI_PASS・FINALIZEDを主張しない。独立reviewer 5名が利用可能になった場合のみPLAN_GATEからfresh reviewを再開する。
+
 ### WP-4156 FHIR tooling internal dependency classification — FINALIZED / INDEPENDENT_PASS / REMOTE_CI_PASS / EXTERNAL_STATE_CONDITIONAL
 
 - `hl7.fhir.uv.tools.r4#0.8.0`をofficial secondary registryのHTTPS same-origin 302→direct artifact redirect 0でfresh再取得し、SHA-256 `95c0a27f2eb9181c32661b23accaccb4e6db3c504cc4579b6cc7e055161ae322`、148,918 bytes、ETag `"6990ade7-245b6"`、Last-Modified `Sat, 14 Feb 2026 17:16:23 GMT`、175 entries/1,514,386 regular bytes/largest 196,902 bytes、unsafe/duplicate/nonregular/license-like 0、singleton package metadataを再現した。duplicate-key拒否と型検査でFHIR4.0.1/canonical/package URL/type `IG`/license `CC0-1.0`とcore4.0.1＋terminology6.5.0＋extensions5.3.0-ballot-tc1 dependenciesを確認した。
