@@ -8,6 +8,11 @@
 
 ## 2026-07-18
 
+### WP-4155 declared HL7 FHIR package fingerprints — FINALIZED / INDEPENDENT_PASS / REMOTE_CI_PASS / EXTERNAL_STATE_CONDITIONAL
+
+- HL7 official packages pageが案内するsecondary registryをHTTPSでfresh確認し、3 requestのsame-origin 302→pinned direct artifactとdirect redirect 0を再現。core `b090bf929e1f665cf2c91583720849695bc38d2892a7c5037c56cb00817fb091`/4,531,911 bytes、terminology `7f93189014349fa2640c970fadd1a266af217188b42e421ae5b7978e5fdcef63`/4,763,018 bytes、extensions `b406e75575f05676559d0759770c5939d023ee72fb2ef38e0b3259328487720a`/1,302,452 bytesを再現した。archiveは展開せずcore 4,742/37,636,928/3,384,166、terminology 4,111/65,006,938/7,575,699、extensions 1,401/18,373,069/677,785を検査し、unsafe/duplicate/nonregular/license-like 0、tempはTrashへ移動済み。
+- duplicate-key拒否と型検査で3 packageのidentity/FHIR/canonical/versioned URL/type/license `CC0-1.0`をcross-checkし、core dependencies fieldなし、terminologyはcore4.0.1＋extensions5.2.0、extensionsはcore4.0.1だけと確認。URL/version/license metadataをlegal clearanceやlock/conformance/runtime adoptionへ昇格しない。WP-4156〜4160はlanded・independent pending、WP-4158 rights-provenance authority、WP-0053a/b FHIR/legal/human gateを維持し、lock/APPROVED/conformance/license grant/runtime/toolchain adoption/WP-0053b unblockを非主張。diff/SSOT173/scripts/path-index/archive0と、fail-fast overlay-cwd tracked HEAD+exact4 secret scanはPASS。live secretsは既存`.codegraph` protected-scope exit1でfail-closed/non-green。各five-review gate後だけcommitし、conditional完了宣言はfinalization target自身のpostcommit review、push/parity、main不変、deployments0、exact-head CI、PUSH_GATE5/5成立前はFINALIZATION_PENDINGとして無効。
+
 ### WP-4154 JP Core terminology artifact identity — FINALIZED / INDEPENDENT_PASS / REMOTE_CI_PASS / EXTERNAL_STATE_CONDITIONAL
 
 - official terminology artifactをexact-origin HTTPS・redirect 0・bounded transportでrepo外tempへfresh取得し、SHA-256 `cfeb76457774d5a4bf1eb907cb60d083b0dedf04cb92405effa6b4aeaf68d21f`、7,444,937 bytes、ETag `7199c9-63cc7561bc850`、Last-Modified 2025-08-20を再現した。archiveは展開せず206 entries/76,637,163 regular bytes/largest 23,756,698 bytesを検査し、unsafe/duplicate/nonregular 0、license-like standalone file 0、tempはTrashへ移動済み。
