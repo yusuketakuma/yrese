@@ -8,6 +8,11 @@
 
 ## 2026-07-18
 
+### WP-4156 FHIR tooling internal dependency classification — FINALIZED / INDEPENDENT_PASS / REMOTE_CI_PASS / EXTERNAL_STATE_CONDITIONAL
+
+- `hl7.fhir.uv.tools.r4#0.8.0`をofficial secondary registryのHTTPS same-origin 302→direct artifact redirect 0でfresh再取得し、SHA-256 `95c0a27f2eb9181c32661b23accaccb4e6db3c504cc4579b6cc7e055161ae322`、148,918 bytes、ETag `"6990ade7-245b6"`、Last-Modified `Sat, 14 Feb 2026 17:16:23 GMT`、175 entries/1,514,386 regular bytes/largest 196,902 bytes、unsafe/duplicate/nonregular/license-like 0、singleton package metadataを再現した。duplicate-key拒否と型検査でFHIR4.0.1/canonical/package URL/type `IG`/license `CC0-1.0`とcore4.0.1＋terminology6.5.0＋extensions5.3.0-ballot-tc1 dependenciesを確認した。
+- JP Core 1.2.0をfresh再照合し、`ig-internal-dependency`の「IG resource validationには必要、implementerには不要」の定義、112 file/6 canonical references、artifact内five解決と`resource-information`不在を再現。toolsはclinical runtime dependencyでなくconformance/build-lock candidateに限定し、transitive version conflict、missing canonical、clean validator/IG Publisher resolution、FHIR specialist review、WP-4157〜4160とWP-0053a/bのFHIR/legal/human gateを未解決のまま維持する。lock/APPROVED/conformance/runtime/toolchain adoption/license grant/WP-0053b unblockを非主張。diff/SSOT173/scripts/path-index/archive0とtracked-overlay secret scanはPASS、live secretsは既存`.codegraph` protected-scope exit1でfail-closed/non-green。各five-review gate後だけcommitし、conditional完了宣言はfinalization target自身のpostcommit review、push/parity、main不変、deployments0、exact-head CI、PUSH_GATE5/5成立前はFINALIZATION_PENDINGとして無効。
+
 ### WP-4155 declared HL7 FHIR package fingerprints — FINALIZED / INDEPENDENT_PASS / REMOTE_CI_PASS / EXTERNAL_STATE_CONDITIONAL
 
 - HL7 official packages pageが案内するsecondary registryをHTTPSでfresh確認し、3 requestのsame-origin 302→pinned direct artifactとdirect redirect 0を再現。core `b090bf929e1f665cf2c91583720849695bc38d2892a7c5037c56cb00817fb091`/4,531,911 bytes、terminology `7f93189014349fa2640c970fadd1a266af217188b42e421ae5b7978e5fdcef63`/4,763,018 bytes、extensions `b406e75575f05676559d0759770c5939d023ee72fb2ef38e0b3259328487720a`/1,302,452 bytesを再現した。archiveは展開せずcore 4,742/37,636,928/3,384,166、terminology 4,111/65,006,938/7,575,699、extensions 1,401/18,373,069/677,785を検査し、unsafe/duplicate/nonregular/license-like 0、tempはTrashへ移動済み。
