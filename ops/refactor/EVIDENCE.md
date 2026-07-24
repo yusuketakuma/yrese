@@ -461,9 +461,9 @@ The first COMMIT review generation (`wp4158_commit_r1,r2`) stopped at 0/2 PASS o
 
 The second COMMIT review generation (`wp4158_commit2_r1,r2`) stopped at 1/2 PASS on staged tree `f362d2676c5300813d119e16820e7f8911cba8cf`; no further slots were started. AC9C integrity passed both reviews. One reviewer found only the EVIDENCE summary below still required a pre-commit commit/parent/subject. It was separated into AC9C base/tree/message and post-commit AC9L/P commit/parent/subject; the restage required at that checkpoint is historical.
 
-The third COMMIT review generation (`wp4158_commit3_r1,r2`) stopped at 1/2 PASS on staged tree `dc3b1142b3f53ac04a1795277a7349dc35a03531`; no further slots were started. AC9C integrity passed both reviews. One reviewer found only that current projections still repeated an already-completed stage/restage action. They now make fresh-five review of the staged tree the sole current action; after the one restage needed to include this correction, the index remains immutable through review.
+The third COMMIT review generation (`wp4158_commit3_r1,r2`) stopped at 1/2 PASS on staged tree `dc3b1142b3f53ac04a1795277a7349dc35a03531`; no further slots were started. AC9C integrity passed both reviews. One reviewer found only that projections repeated an already-completed stage/restage action. That checkpoint action is superseded by the terminal S0 fifth-generation COMMIT/PUSH result.
 
-The fourth COMMIT review generation used staged tree `70e8edb7e895c803cd568534d498e8067135efd9`: reviewers 1, 2b and 3 passed, reviewer 4 failed, and reviewer 5 was not started. The original unresponsive reviewer 2 was interrupted and is not counted. Reviewer 4 found that the general oracle still read as requiring `EXPECTED_COMMIT` for AC9C, conflicting with the following pre-commit boundary. The authority now explicitly separates AC9C base/tree/message inputs from the post-commit AC9L/P commit input. The one restage for this correction is complete; the sole current action is a fresh five-reviewer read-only generation on the new staged tree.
+The fourth COMMIT review generation used staged tree `70e8edb7e895c803cd568534d498e8067135efd9`: reviewers 1, 2b and 3 passed, reviewer 4 failed, and reviewer 5 was not started. The original unresponsive reviewer 2 was interrupted and is not counted. Reviewer 4 found that the general oracle still read as requiring `EXPECTED_COMMIT` for AC9C, conflicting with the following pre-commit boundary. The authority explicitly separates AC9C base/tree/message inputs from the post-commit AC9L/P commit input. That checkpoint action is superseded by the terminal S0 fifth-generation COMMIT/PUSH result.
 
 #### WP-4158 three-slice validation authority
 
@@ -488,6 +488,2725 @@ The legal handoff is deterministic but makes no decision: the 25 candidate-direc
 Plans owns the slice matrix. Each slice has its own pre-implementation `PLAN_READY` artifact; S1 PLAN inspects landed S0 authority and does not execute the future verifier, while S2 PLAN binds landed S1 verifier SHA and landing-only scope. Direct command transcripts preserve exact candidate/path/index, repository-gate and tracked-overlay-secret results. S1/S2 add the exact self-test token and six live lines; AC9C/L/P separates commit, local prepush and terminal remote facts. No gate requires future evidence. Five fresh reviewers per material gate and all human gates remain.
 
 AC9 is executable without relying on an earlier WP. The pre-commit AC9C packet supplies 40-hex base/tree plus exact message and binds base, exact4, staged tree, message and clean unstaged state; it does not supply or infer a future commit. After commit creation, AC9L/P add the actual 40-hex commit and bind its parent, tree, subject and clean state. PUSH classifies the unique remote ref before and after its one allowed ordinary non-force mutation. Remote=base permits one push; ambiguous/nonzero output is followed only by read-only classification. Remote still at base permits a fresh-five retry; remote at commit enters an already-pushed recovery with fresh five, AC9L and AC9P but no second push; any other ref stops. A post-push material content finding or attempt-1 CI failure requires a new reviewed repair commit based on the pushed commit and all six gates, never reuse or rewrite. Context/API artifact loss alone uses the no-second-push recovery. AC9P then applies the bounded polling, parity, main, deployments, exact workflow/run/jobs/steps and clean-state oracle in Plans. Each generation has exactly five reviewers; it never grows to ten.
+
+S0 landed as commit `68470672bd0f5efff6cc06f42cfb374dc59dc0f7`, parent `9a3e715f49532ea2b57bda8ec715b0f6c06435c0`, tree `f955580a95c1866087ec456a11693488a16d0ae2`. The one ordinary push reached local/origin/PR parity while origin/main remained `27d61445350e40f2741583a07eb20936d9916992` and deployments remained zero. Exact-head workflow `309812329` run `29658334162`, attempt 1, completed successfully with its one job and all 22 steps successful. The same five PUSH_GATE contexts accepted AC9L and AC9P 5/5. These terminal facts authorize S1 evidence work only; they do not decide any terminology right or human gate.
+
+<!-- WP4158_VERIFIER_BEGIN -->
+```python
+from __future__ import annotations
+
+import argparse
+import ast
+import copy
+import ctypes
+import errno
+import hashlib
+import io
+import json
+import os
+import pathlib
+import select
+import shutil
+import signal
+import ssl
+import stat
+import subprocess
+import sys
+import tarfile
+import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+
+
+class VerificationError(Exception):
+    pass
+
+
+class ProbeSignal(BaseException):
+    def __init__(self, signum):
+        self.signum = signum
+
+
+MISSING = object()
+
+
+TAG = "8b9780cbdb9086e6f41b35aa8935038bd884243e"
+COMMIT = "c06f02059c2a8aed6a33d624c9eee6fe0669ef06"
+TREE = "1b2b378b78b6741e59b326d5232de82ff02caedc"
+NOTICE_SHA = "5c1830cf7733493f96042ceb8ec10cfc28ad66626c25849a510a24cb51d6ffbf"
+CORE_SHA = "6094c8b9ebd975cb738c66cc999774c06a0aacf4480c068a8465e597117e52a3"
+TERM_SHA = "cfeb76457774d5a4bf1eb907cb60d083b0dedf04cb92405effa6b4aeaf68d21f"
+IDENTITY_SHA = "4aa81de1eed952fc129702b7eb372c2202296217a5815b9ca749b9e197c1d9e9"
+CLASS_SHA = "2de1ce4600213c7f5f8d41d87735980243dcdf10e8d1177a45b2c0776736aaab"
+PROFILE_SHA = "104d16109bcc858cd71aadeb03be9b59c649860004ea4fa2aaf9c0ae86415413"
+RAW_SHA = "966164ba9c5fd1b40fd066941466170e7426e9170e1424618dae4a0685e3624a"
+UNIQUE_SHA = "c04fe6844af7b0cb8c2a7ba017a482cc0c6a96aacdfa9df2e086fcf974fdb858"
+CANON_SHA = "464b0a941bbf7940bc41664f7f87ee9cf0d1e195e3dbf841f6013fca7fb96395"
+DUP_SHA = "c2364f4bca5646ef17dc8e8ad634bacfdf6bfadd3ca748e5966a4de68be7b2da"
+HANDOFF_SHA = "1999669b561192d12e3567a096588a7a69dbb8a6c84e85ad3701acb21e2ae02d"
+REF_URL = "https://api.github.com/repos/jami-fhir-jp-wg/jp-core-v1x/git/ref/tags/1.2.0"
+TAG_URL = f"https://api.github.com/repos/jami-fhir-jp-wg/jp-core-v1x/git/tags/{TAG}"
+COMMIT_URL = f"https://api.github.com/repos/jami-fhir-jp-wg/jp-core-v1x/git/commits/{COMMIT}"
+TREE_URL = f"https://api.github.com/repos/jami-fhir-jp-wg/jp-core-v1x/git/trees/{TREE}?recursive=1"
+NOTICE_URL = "https://jpfhir.jp/fhir/core/1.2.0/guide-precautions.html"
+CORE_URL = "https://jpfhir.jp/fhir/core/1.2.0/package.tgz"
+TERM_URL = "https://jpfhir.jp/fhir/core/terminology/jpfhir-terminology.r4-1.4.0.tgz"
+ENDPOINTS = {REF_URL, TAG_URL, COMMIT_URL, TREE_URL, NOTICE_URL, CORE_URL, TERM_URL}
+TYPES = {"Patient", "Coverage", "Medication", "Practitioner", "PractitionerRole", "Organization", "Location", "AllergyIntolerance", "Consent", "DocumentReference", "MedicationRequest", "MedicationDispense", "Condition", "Observation", "Provenance", "AuditEvent", "DetectedIssue", "Task", "Communication"}
+LANES = ("private-ci-validation-cache", "runtime-terminology-service", "ui-display", "export", "public-ig-test-bundle", "partner-sandbox", "sdk", "bulk-data")
+HANDOFF_FIELDS = ("canonical", "lane", "terminologyVersion", "rightsholder", "authoritativeTermsUrl", "evidenceDate", "permittedUse", "attributionObligation", "redistributionObligation", "derivativeObligation", "updateObligation", "decision", "humanAuthority", "decisionDate")
+GIT_AMBIENT_KEYS = (
+    "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_CEILING_DIRECTORIES", "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+    "GIT_EXEC_PATH", "GIT_PREFIX", "GIT_CONFIG", "GIT_CONFIG_COUNT",
+    "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM",
+)
+
+
+def require(condition: bool, token: str) -> None:
+    if not condition:
+        raise VerificationError(token)
+
+
+def digest(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def framed(rows, *, multiset=False) -> bytes:
+    encoded = []
+    for row in rows:
+        fields = row if isinstance(row, (tuple, list)) else (row,)
+        values = []
+        for field in fields:
+            require(isinstance(field, str), "MANIFEST_FIELD_INVALID")
+            require("\x00" not in field and "\n" not in field, "MANIFEST_FIELD_INVALID")
+            values.append(field.encode("utf-8"))
+        encoded.append(b"\0".join(values))
+    if not multiset:
+        require(len(encoded) == len(set(encoded)), "MANIFEST_DUPLICATE")
+    encoded.sort()
+    return b"" if not encoded else b"\n".join(encoded) + b"\n"
+
+
+def pairs_object(pairs):
+    result = {}
+    for key, value in pairs:
+        require(key not in result, "JSON_DUPLICATE_KEY")
+        result[key] = value
+    return result
+
+
+def parse_json(data: bytes):
+    try:
+        return json.loads(data.decode("utf-8-sig"), object_pairs_hook=pairs_object)
+    except VerificationError:
+        raise
+    except Exception as exc:
+        raise VerificationError("JSON_INVALID") from exc
+
+
+def endpoint(url: str) -> None:
+    parsed = urllib.parse.urlsplit(url)
+    require(parsed.scheme == "https", "TRANSPORT_POLICY")
+    require(parsed.username is None and parsed.password is None, "TRANSPORT_POLICY")
+    require(parsed.hostname in {"api.github.com", "jpfhir.jp"}, "TRANSPORT_POLICY")
+    require((parsed.port or 443) == 443, "TRANSPORT_POLICY")
+    require(url in ENDPOINTS, "TRANSPORT_POLICY")
+
+
+def validate_effective_url(requested, effective):
+    require(requested == effective, "TRANSPORT_POLICY")
+
+
+def validate_deadlines(now, request_deadline, aggregate_deadline):
+    require(now < request_deadline and now < aggregate_deadline, "TRANSPORT_LIMIT")
+
+
+def path_identity_chain(path, token):
+    try:
+        current = pathlib.Path(path).resolve(strict=True)
+        chain = []
+        while True:
+            info = current.stat()
+            current_identity = (info.st_dev, info.st_ino)
+            chain.append(current_identity)
+            parent = current.parent
+            parent_info = parent.stat()
+            if (parent_info.st_dev, parent_info.st_ino) == current_identity:
+                return tuple(chain)
+            current = parent
+    except (OSError, RuntimeError) as exc:
+        raise VerificationError(token) from exc
+
+
+def paths_overlap(first, second, token):
+    first_chain = path_identity_chain(first, token)
+    second_chain = path_identity_chain(second, token)
+    return first_chain[0] in second_chain or second_chain[0] in first_chain
+
+
+def validate_temp_location(root, protected_paths, dir_mode, file_mode=0o600):
+    for protected in protected_paths:
+        require(not paths_overlap(root, protected, "TRANSPORT_POLICY"), "TRANSPORT_POLICY")
+    require(dir_mode == 0o700 and file_mode == 0o600, "TRANSPORT_POLICY")
+
+
+def validate_ambient(environment) -> None:
+    forbidden = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "all_proxy", "no_proxy", "NETRC", "SSL_CERT_FILE", "SSL_CERT_DIR", "SSLKEYLOGFILE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE", "AUTHORIZATION", "COOKIE")
+    require(not any(environment.get(key) for key in forbidden), "TRANSPORT_POLICY")
+    require(not any(key in environment for key in GIT_AMBIENT_KEYS), "TRANSPORT_POLICY")
+    require(not any(key.startswith("GIT_CONFIG_") for key in environment), "TRANSPORT_POLICY")
+
+
+def trusted_git_executable():
+    try:
+        discovered = shutil.which("git", path=os.defpath)
+        require(discovered is not None, "TRANSPORT_POLICY")
+        executable = pathlib.Path(discovered)
+        require(executable.is_absolute(), "TRANSPORT_POLICY")
+        executable = executable.resolve(strict=True)
+        info = executable.stat()
+        require(stat.S_ISREG(info.st_mode) and os.access(executable, os.X_OK), "TRANSPORT_POLICY")
+        return executable
+    except VerificationError:
+        raise
+    except (OSError, RuntimeError) as exc:
+        raise VerificationError("TRANSPORT_POLICY") from exc
+
+
+def bounded_git_roots(cwd, deadline):
+    cwd = pathlib.Path(cwd).resolve(strict=True)
+    executable = trusted_git_executable()
+    remaining = deadline - time.monotonic()
+    require(remaining > 0, "TRANSPORT_LIMIT")
+    environment = {
+        "LC_ALL": "C",
+        "LANG": "C",
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_TERMINAL_PROMPT": "0",
+    }
+    timeout = min(15, remaining)
+    try:
+        result = subprocess.run(
+            [str(executable), "rev-parse", "--show-toplevel", "--git-dir", "--git-common-dir"],
+            cwd=str(cwd),
+            env=environment,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=timeout,
+            check=False,
+            close_fds=True,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise VerificationError("TRANSPORT_LIMIT") from exc
+    except OSError as exc:
+        raise VerificationError("TRANSPORT_POLICY") from exc
+    require(time.monotonic() < deadline, "TRANSPORT_LIMIT")
+    require(result.returncode == 0 and result.stderr == b"", "TRANSPORT_POLICY")
+    output = result.stdout
+    require(output.endswith(b"\n") and b"\r" not in output and b"\x00" not in output, "TRANSPORT_POLICY")
+    encoded = output[:-1].split(b"\n")
+    require(len(encoded) == 3 and all(encoded), "TRANSPORT_POLICY")
+    try:
+        return tuple(value.decode("utf-8") for value in encoded)
+    except UnicodeDecodeError as exc:
+        raise VerificationError("TRANSPORT_POLICY") from exc
+
+
+def discover_git_roots(owner_root, cwd, deadline):
+    owner_root = pathlib.Path(owner_root).resolve(strict=True)
+    cwd = pathlib.Path(cwd).resolve(strict=True)
+    mode = stat.S_IMODE(owner_root.stat().st_mode)
+    validate_temp_location(owner_root, (cwd,), mode)
+    worktree_raw, gitdir_raw, common_raw = bounded_git_roots(cwd, deadline)
+    worktree = pathlib.Path(worktree_raw).resolve(strict=True)
+    gitdir_path = pathlib.Path(gitdir_raw)
+    common_path = pathlib.Path(common_raw)
+    gitdir = (cwd / gitdir_path).resolve(strict=True) if not gitdir_path.is_absolute() else gitdir_path.resolve(strict=True)
+    common = (cwd / common_path).resolve(strict=True) if not common_path.is_absolute() else common_path.resolve(strict=True)
+    validate_temp_location(owner_root, (cwd, worktree, gitdir, common), mode)
+    return worktree, gitdir, common
+
+
+class SignalState:
+    def __init__(self):
+        self.cleanup_active = False
+        self.deferred_signal = None
+        self.deferred_timeout = False
+
+    def record(self, signum):
+        if signum == signal.SIGALRM:
+            self.deferred_timeout = True
+        else:
+            self.deferred_signal = self.deferred_signal or signum
+
+
+def run_signal_transition(signals, state, operation, *, deadline=None, before_deactivate=None, restore=None):
+    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, signals)
+    result = None
+    failure = None
+    try:
+        result = operation()
+    except BaseException:
+        failure = sys.exc_info()
+    try:
+        pending = signal.sigpending() & set(signals)
+        for signum in pending:
+            signal.sigwait({signum})
+            state.record(signum)
+    except BaseException:
+        if failure is None: failure = sys.exc_info()
+        else: failure[1].add_note("secondary pending-signal drain failure")
+    try:
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+    except BaseException:
+        if failure is None: failure = sys.exc_info()
+        else: failure[1].add_note("secondary signal-mask restoration failure")
+    if restore is not None:
+        try:
+            restore()
+        except BaseException:
+            if failure is None: failure = sys.exc_info()
+            else: failure[1].add_note("secondary signal-state restoration failure")
+    state.cleanup_active = False
+    if failure is None:
+        try:
+            if state.deferred_timeout or (deadline is not None and time.monotonic() >= deadline):
+                raise VerificationError("TRANSPORT_LIMIT")
+            if state.deferred_signal is not None:
+                raise InterruptedError(state.deferred_signal)
+            if before_deactivate is not None:
+                before_deactivate()
+        except BaseException:
+            failure = sys.exc_info()
+    if failure is not None:
+        raise failure[1].with_traceback(failure[2])
+    return result
+
+
+def validate_response(declared, data, limit, exact_size, aggregate_before=0):
+    require(isinstance(declared, str) and declared.isascii() and declared.isdigit(), "TRANSPORT_LIMIT")
+    length = int(declared)
+    require(length <= limit and len(data) == length and len(data) <= limit, "TRANSPORT_LIMIT")
+    if exact_size is not None: require(length == exact_size, "TRANSPORT_LIMIT")
+    require(aggregate_before + len(data) <= 16 * 1024 * 1024, "TRANSPORT_LIMIT")
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise VerificationError("TRANSPORT_POLICY")
+
+
+class Transport:
+    def __init__(self, alarm_handler=None):
+        self.started = time.monotonic()
+        self.deadline = self.started + 120
+        self.total = 0
+        self.alarm_handler = alarm_handler or self._alarm
+        self.active = False
+        self.old_alarm_handler = None
+        self.old_alarm_timer = None
+        self.opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({}), NoRedirect(),
+            urllib.request.HTTPSHandler(context=ssl.create_default_context()),
+        )
+
+    def start(self):
+        require(not self.active, "TRANSPORT_POLICY")
+        previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+        try: signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
+        except BaseException:
+            failure = sys.exc_info()
+            try: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+            except BaseException: failure[1].add_note("secondary initial alarm-mask restoration failure")
+            raise failure[1].with_traceback(failure[2])
+        try:
+            self.old_alarm_handler = signal.getsignal(signal.SIGALRM)
+            self.old_alarm_timer = signal.getitimer(signal.ITIMER_REAL)
+            signal.signal(signal.SIGALRM, self.alarm_handler)
+            signal.setitimer(signal.ITIMER_REAL, 120)
+            self.active = True
+            signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        except BaseException:
+            failure = sys.exc_info()
+            try: signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
+            except BaseException: failure[1].add_note("secondary alarm-block rollback failure")
+            if self.old_alarm_timer is not None:
+                try: signal.setitimer(signal.ITIMER_REAL, *self.old_alarm_timer)
+                except BaseException: failure[1].add_note("secondary alarm-timer rollback failure")
+            if self.old_alarm_handler is not None:
+                try: signal.signal(signal.SIGALRM, self.old_alarm_handler)
+                except BaseException: failure[1].add_note("secondary alarm-handler rollback failure")
+            self.active = False
+            try: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+            except BaseException: failure[1].add_note("secondary alarm-mask rollback failure")
+            raise failure[1].with_traceback(failure[2])
+
+    def _alarm(self, _signum, _frame):
+        raise VerificationError("TRANSPORT_LIMIT")
+
+    def close(self):
+        if not self.active: return
+        previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+        failure = None
+        try: signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
+        except BaseException: failure = sys.exc_info()
+        try:
+            try: signal.setitimer(signal.ITIMER_REAL, *self.old_alarm_timer)
+            except BaseException:
+                if failure is None: failure = sys.exc_info()
+                else: failure[1].add_note("secondary alarm-timer restoration failure")
+            try: signal.signal(signal.SIGALRM, self.old_alarm_handler)
+            except BaseException:
+                if failure is None: failure = sys.exc_info()
+                else: failure[1].add_note("secondary alarm-handler restoration failure")
+            self.active = False
+        finally:
+            try: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+            except BaseException:
+                if failure is None: failure = sys.exc_info()
+                else: failure[1].add_note("secondary alarm-mask restoration failure")
+        if failure is not None: raise failure[1].with_traceback(failure[2])
+
+    def get(self, url: str, limit: int, exact_size=None) -> bytes:
+        require(self.active, "TRANSPORT_POLICY")
+        endpoint(url)
+        remaining = self.deadline - time.monotonic()
+        require(remaining > 0, "TRANSPORT_LIMIT")
+        request_deadline = time.monotonic() + min(15, remaining)
+        signal.setitimer(signal.ITIMER_REAL, min(15, remaining))
+        request = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json", "User-Agent": "yrese-wp4158/1"})
+        try:
+            with self.opener.open(request, timeout=15) as response:
+                validate_effective_url(url, response.geturl())
+                length = response.headers.get("Content-Length")
+                require(length is not None and length.isascii() and length.isdigit(), "TRANSPORT_LIMIT")
+                declared = int(length)
+                require(declared <= limit, "TRANSPORT_LIMIT")
+                if exact_size is not None:
+                    require(declared == exact_size, "TRANSPORT_LIMIT")
+                chunks, received = [], 0
+                while True:
+                    validate_deadlines(time.monotonic(), request_deadline, self.deadline)
+                    chunk = response.read(min(64 * 1024, limit + 1 - received))
+                    if not chunk: break
+                    chunks.append(chunk); received += len(chunk)
+                    require(received <= limit and self.total + received <= 16 * 1024 * 1024, "TRANSPORT_LIMIT")
+                data = b"".join(chunks)
+        except VerificationError:
+            raise
+        except Exception as exc:
+            raise VerificationError("TRANSPORT_LIMIT") from exc
+        finally:
+            remaining = self.deadline - time.monotonic()
+            signal.setitimer(signal.ITIMER_REAL, max(0, remaining))
+        validate_response(length, data, limit, exact_size, self.total)
+        self.total += len(data)
+        require(self.total <= 16 * 1024 * 1024 and time.monotonic() - self.started < 120, "TRANSPORT_LIMIT")
+        return data
+
+
+def validate_archive_members(members, expected_count: int, entry_cap: int, total_cap: int, largest_cap: int, allow_package_dir=False):
+    require(len(members) == expected_count and len(members) <= entry_cap, "ARCHIVE_UNSAFE")
+    seen, folded, total, largest = set(), set(), 0, 0
+    for member in members:
+        name = member.name
+        require(isinstance(name, str) and name and "\x00" not in name and "\\" not in name, "ARCHIVE_UNSAFE")
+        path = pathlib.PurePosixPath(name)
+        require(not path.is_absolute() and ".." not in path.parts, "ARCHIVE_UNSAFE")
+        require(name not in seen and name.casefold() not in folded, "ARCHIVE_UNSAFE")
+        seen.add(name); folded.add(name.casefold())
+        if member.isfile():
+            require(member.size >= 0, "ARCHIVE_UNSAFE")
+            total += member.size; largest = max(largest, member.size)
+        else:
+            require(allow_package_dir and name == "package" and member.isdir(), "ARCHIVE_UNSAFE")
+    require(total <= total_cap and largest <= largest_cap, "ARCHIVE_UNSAFE")
+
+
+def archive(data: bytes, expected_count: int, entry_cap: int, total_cap: int, largest_cap: int, allow_package_dir=False):
+    try:
+        handle = tarfile.open(fileobj=io.BytesIO(data), mode="r:gz")
+    except Exception as exc:
+        raise VerificationError("ARTIFACT_MISMATCH") from exc
+    members = handle.getmembers()
+    validate_archive_members(members, expected_count, entry_cap, total_cap, largest_cap, allow_package_dir)
+    return handle, members
+
+
+def member_bytes(handle, members, name: str) -> bytes:
+    matches = [m for m in members if m.name == name and m.isfile()]
+    require(len(matches) == 1, "ARTIFACT_MISMATCH")
+    stream = handle.extractfile(matches[0])
+    require(stream is not None, "ARTIFACT_MISMATCH")
+    return stream.read()
+
+
+def verify_blob(data, expected_size, expected_sha):
+    require(len(data) == expected_size and digest(data) == expected_sha, "ARTIFACT_MISMATCH")
+
+
+def validate_term_metadata(package, ig):
+    require(package.get("name") == "jpfhir-terminology" and package.get("version") == "1.4.0", "ARTIFACT_MISMATCH")
+    require(package.get("fhirVersions") == ["4.0.1"] and package.get("canonical") == "http://jpfhir.jp/fhir/jpfhir-terminology", "ARTIFACT_MISMATCH")
+    require(package.get("dependencies") == {"hl7.fhir.r4.core": "4.0.1"} and "license" not in package, "ARTIFACT_MISMATCH")
+    require((ig.get("resourceType"), ig.get("id"), ig.get("packageId"), ig.get("version"), ig.get("fhirVersion"), ig.get("url")) == ("ImplementationGuide", "jpfhir-terminology", "jpfhir-terminology", "1.4.0", ["4.0.1"], "http://jpfhir.jp/fhir/jpfhir-terminology/ImplementationGuide/jpfhir-terminology"), "ARTIFACT_MISMATCH")
+
+
+def validate_core_metadata(package):
+    require(package.get("name") == "jpfhir.jp.core" and package.get("version") == "1.2.0", "ARTIFACT_MISMATCH")
+
+
+def classify(value) -> str:
+    if value is MISSING or value == "":
+        return "absent"
+    require(isinstance(value, str), "RIGHTS_TYPE_INVALID")
+    folded = value.casefold()
+    hits = [token for token, needle in (("all-rights-reserved", "all rights reserved"), ("cc-by-nd", "cc by-nd"), ("cc0", "cc0"), ("loinc", "loinc")) if needle in folded]
+    require(len(hits) <= 1, "RIGHTS_OVERLAP")
+    return hits[0] if hits else "other-explicit"
+
+
+def validate_rights(resources, *, resource_count=203, identity_sha=IDENTITY_SHA, class_sha=CLASS_SHA, expected_counts=None, codesystem_count=106, valueset_count=97):
+    require(isinstance(resources, list) and len(resources) == resource_count, "RESOURCE_SHAPE")
+    identities, classified, urls = [], [], {}
+    counts = {key: 0 for key in ("all-rights-reserved", "cc-by-nd", "cc0", "loinc", "other-explicit", "absent")}
+    for resource in resources:
+        require(isinstance(resource, dict), "RESOURCE_SHAPE")
+        rt, url, rid = resource.get("resourceType"), resource.get("url"), resource.get("id")
+        version = resource.get("version", "")
+        require(rt in {"CodeSystem", "ValueSet"} and all(isinstance(x, str) and x for x in (url, rid)), "RESOURCE_SHAPE")
+        require(isinstance(version, str), "RESOURCE_SHAPE")
+        identity = (rt, url, version, rid); identities.append(identity)
+        category = classify(resource["copyright"] if "copyright" in resource else MISSING); counts[category] += 1
+        classified.append(identity + (category,))
+        if rt == "ValueSet":
+            require(url not in urls, "DIRECT_RESOLUTION_ERROR"); urls[url] = resource
+    require(len(set(identities)) == resource_count and digest(framed(identities)) == identity_sha, "RIGHTS_MANIFEST_MISMATCH")
+    target_counts = expected_counts or {"all-rights-reserved": 17, "cc-by-nd": 4, "cc0": 2, "loinc": 3, "other-explicit": 120, "absent": 57}
+    require(counts == target_counts, "RIGHTS_MANIFEST_MISMATCH")
+    require(digest(framed(classified)) == class_sha, "RIGHTS_MANIFEST_MISMATCH")
+    require(sum(r[0] == "CodeSystem" for r in identities) == codesystem_count and len(urls) == valueset_count, "RESOURCE_SHAPE")
+    return resources, urls
+
+
+def terminology(data: bytes):
+    verify_blob(data, 7444937, TERM_SHA)
+    handle, members = archive(data, 206, 256, 96 * 1024 * 1024, 32 * 1024 * 1024, True)
+    with handle:
+        package = parse_json(member_bytes(handle, members, "package/package.json"))
+        ig = parse_json(member_bytes(handle, members, "package/ImplementationGuide-jpfhir-terminology.json"))
+        validate_term_metadata(package, ig)
+        resources = []
+        for member in members:
+            if not member.isfile() or not member.name.startswith("package/") or not member.name.endswith(".json") or member.name in {"package/package.json", "package/ImplementationGuide-jpfhir-terminology.json"}:
+                continue
+            value = parse_json(member_bytes(handle, members, member.name))
+            if isinstance(value, dict) and value.get("resourceType") in {"CodeSystem", "ValueSet"}:
+                resources.append(value)
+    validated = validate_rights(resources)
+    validate_value_set_index(list(validated[1].items()))
+    return validated
+
+
+def validate_direct_profiles(profiles, value_sets, *, profile_count=32, profile_sha=PROFILE_SHA, raw_count=51, raw_sha=RAW_SHA, unique_count=50, unique_sha=UNIQUE_SHA, duplicate_sha=DUP_SHA, canonical_count=25, canonical_sha=CANON_SHA):
+    require(isinstance(profiles, list) and all(isinstance(profile, dict) for profile in profiles), "PROFILE_SHAPE_INVALID")
+    profile_rows, raw = [], []
+    for profile in profiles:
+        url, version, status_value, type_value = (profile.get(k) for k in ("url", "version", "status", "type"))
+        require(all(isinstance(x, str) and x for x in (url, version, status_value, type_value)), "PROFILE_SHAPE_INVALID")
+        profile_rows.append((url, version, status_value, type_value))
+        snapshot = profile.get("snapshot"); require(isinstance(snapshot, dict) and isinstance(snapshot.get("element"), list), "PROFILE_SHAPE_INVALID")
+        for element in snapshot["element"]:
+            require(isinstance(element, dict) and isinstance(element.get("path"), str) and element["path"], "PROFILE_SHAPE_INVALID")
+            if "binding" not in element:
+                continue
+            binding = element["binding"]; require(isinstance(binding, dict), "PROFILE_SHAPE_INVALID")
+            if "valueSet" not in binding:
+                continue
+            canonical, strength = binding["valueSet"], binding.get("strength")
+            require(isinstance(canonical, str) and canonical and isinstance(strength, str) and strength, "PROFILE_SHAPE_INVALID")
+            if "|" in canonical:
+                require(canonical.split("|", 1)[0] not in value_sets, "DIRECT_RESOLUTION_ERROR")
+                continue
+            if canonical in value_sets:
+                raw.append((url, version, status_value, type_value, element["path"], strength, canonical))
+    require(len(profiles) == profile_count and digest(framed(profile_rows)) == profile_sha, "PROFILE_UNIVERSE_MISMATCH")
+    require(len(raw) == raw_count and digest(framed(raw, multiset=True)) == raw_sha, "DIRECT_ROW_MISMATCH")
+    unique = set(raw); require(len(unique) == unique_count and digest(framed(unique)) == unique_sha, "DIRECT_ROW_MISMATCH")
+    duplicates = [row for row in unique if raw.count(row) == 2]
+    require(len(duplicates) == 1 and digest(framed(duplicates)) == duplicate_sha, "DIRECT_ROW_MISMATCH")
+    canonicals = {row[-1] for row in unique}
+    require(len(canonicals) == canonical_count and digest(framed(canonicals)) == canonical_sha, "DIRECT_URL_MISMATCH")
+    return canonicals
+
+
+def validate_value_set_index(entries, *, required=(), package_name="jpfhir-terminology"):
+    require(package_name == "jpfhir-terminology", "DIRECT_RESOLUTION_ERROR")
+    urls = [entry[0] for entry in entries]
+    require(len(urls) == len(set(urls)), "DIRECT_RESOLUTION_ERROR")
+    require(set(required).issubset(urls), "DIRECT_RESOLUTION_ERROR")
+
+
+def core_direct(data: bytes, value_sets):
+    verify_blob(data, 2391515, CORE_SHA)
+    handle, members = archive(data, 403, 512, 32 * 1024 * 1024, 8 * 1024 * 1024)
+    with handle:
+        package = parse_json(member_bytes(handle, members, "package/package.json"))
+        validate_core_metadata(package)
+        profiles = []
+        for member in members:
+            if not member.isfile() or not member.name.startswith("package/") or not member.name.endswith(".json"):
+                continue
+            resource = parse_json(member_bytes(handle, members, member.name))
+            if not isinstance(resource, dict):
+                continue
+            if resource.get("resourceType") == "StructureDefinition" and resource.get("kind") == "resource" and resource.get("derivation") == "constraint" and resource.get("type") in TYPES:
+                profiles.append(resource)
+    return validate_direct_profiles(profiles, value_sets)
+
+
+def validate_handoff_rows(rows, canonicals, *, expected_count=200, expected_sha=HANDOFF_SHA):
+    require(isinstance(rows, list) and len(rows) == expected_count, "HANDOFF_SCHEMA_MISMATCH")
+    require(all(isinstance(row, tuple) and len(row) == len(HANDOFF_FIELDS) for row in rows), "HANDOFF_SCHEMA_MISMATCH")
+    require(len(set(rows)) == len(rows), "HANDOFF_SCHEMA_MISMATCH")
+    expected_pairs = {(canonical, lane) for canonical in canonicals for lane in LANES}
+    require({(row[0], row[1]) for row in rows} == expected_pairs, "HANDOFF_SCHEMA_MISMATCH")
+    for row in rows:
+        require(row[2] == "1.4.0" and all(value == "UNRESOLVED" for value in row[3:12]) and row[12:] == ("", ""), "HANDOFF_NOT_UNRESOLVED")
+    require(digest(framed(rows)) == expected_sha, "HANDOFF_SCHEMA_MISMATCH")
+
+
+def handoff(canonicals):
+    rows = []
+    for canonical in canonicals:
+        for lane in LANES:
+            row = {field: "UNRESOLVED" for field in HANDOFF_FIELDS}
+            row.update(canonical=canonical, lane=lane, terminologyVersion="1.4.0", humanAuthority="", decisionDate="")
+            rows.append(tuple(row[field] for field in HANDOFF_FIELDS))
+    validate_handoff_rows(rows, canonicals)
+    return rows
+
+
+def validate_source_bundle(ref, tag, commit, tree, notice, *, notice_sha=NOTICE_SHA, notice_size=12931, anchors=None):
+    require(ref.get("object", {}).get("type") == "tag", "TAG_TYPE_DRIFT")
+    require(ref.get("object", {}).get("sha") == TAG, "SOURCE_IDENTITY_MISMATCH")
+    require(tag.get("object", {}).get("type") == "commit" and tag.get("object", {}).get("sha") == COMMIT, "SOURCE_IDENTITY_MISMATCH")
+    require(commit.get("tree", {}).get("sha") == TREE, "SOURCE_IDENTITY_MISMATCH")
+    require(tree.get("sha") == TREE, "SOURCE_IDENTITY_MISMATCH")
+    require(tree.get("truncated") is False, "TREE_TRUNCATED")
+    entries = tree.get("tree"); require(isinstance(entries, list) and len(entries) == 662, "TREE_PATH_INVALID")
+    paths = [entry.get("path") for entry in entries]
+    require(all(isinstance(path, str) and path for path in paths) and len(paths) == len(set(paths)), "TREE_PATH_INVALID")
+    require(not any(pathlib.PurePosixPath(path).name.casefold() in {"license", "licence", "notice", "copying"} for path in paths), "TREE_PATH_INVALID")
+    require(len(notice) == notice_size and digest(notice) == notice_sha, "NOTICE_MISMATCH")
+    text = notice.decode("utf-8")
+    required_anchors = anchors or ("jpfhir.jp.core#1.2.0", "用語ライセンス", "利用する側で用語に関するライセンス問題を解決を行なう必要がある", "SHALL", "用語の利用を保証するものではない")
+    for anchor in required_anchors:
+        require(anchor in text, "NOTICE_MISMATCH")
+
+
+def source_checks(transport: Transport):
+    ref = parse_json(transport.get(REF_URL, 4 * 1024 * 1024))
+    tag = parse_json(transport.get(TAG_URL, 4 * 1024 * 1024))
+    commit = parse_json(transport.get(COMMIT_URL, 4 * 1024 * 1024))
+    tree = parse_json(transport.get(TREE_URL, 4 * 1024 * 1024))
+    notice = transport.get(NOTICE_URL, 4 * 1024 * 1024, 12931)
+    validate_source_bundle(ref, tag, commit, tree, notice)
+
+
+NEGATIVE_FAMILIES = {
+    "SOURCE_IDENTITY_MISMATCH": "tag_ref_sha tag_target tree_body_identity",
+    "TAG_TYPE_DRIFT": "tag_type",
+    "TREE_TRUNCATED": "tree_truncated",
+    "TREE_PATH_INVALID": "tree_count tree_duplicate_path tree_license_basename",
+    "NOTICE_MISMATCH": "notice_digest notice_anchor",
+    "ARTIFACT_MISMATCH": "core_digest core_size terminology_digest terminology_size package_singleton package_identity ig_singleton ig_identity",
+    "ARCHIVE_UNSAFE": "core_entry_bound core_total_bound core_largest_bound terminology_entry_bound terminology_total_bound terminology_largest_bound absolute_path traversal_path backslash_path nul_path archive_duplicate_member casefold_collision nonregular_member",
+    "JSON_DUPLICATE_KEY": "duplicate_json_key",
+    "RESOURCE_SHAPE": "resource_count resource_object_type resource_type resource_url_type resource_id_type resource_version_type",
+    "RIGHTS_TYPE_INVALID": "copyright_nonstring",
+    "RIGHTS_OVERLAP": "category_overlap",
+    "RIGHTS_MANIFEST_MISMATCH": "unicode_confusable whitespace_drift punctuation_drift near_miss member_swap duplicate_identity",
+    "PROFILE_UNIVERSE_MISMATCH": "profile_manifest",
+    "PROFILE_SHAPE_INVALID": "profile_object_type profile_url_type profile_version_type profile_status_type profile_type_type snapshot_type element_type element_path_type binding_type valueset_type strength_type",
+    "DIRECT_ROW_MISMATCH": "row_manifest duplicate_multiplicity duplicate_key direct_duplicate_member",
+    "DIRECT_URL_MISMATCH": "url_manifest",
+    "DIRECT_RESOLUTION_ERROR": "missing_valueset duplicate_valueset version_alias wrong_package",
+    "HANDOFF_SCHEMA_MISMATCH": "missing_row duplicate_row lane_drift field_missing",
+    "HANDOFF_NOT_UNRESOLVED": "premature_decision",
+    "TRANSPORT_POLICY": "redirect downgrade other_origin wrong_path unexpected_query unexpected_fragment userinfo ambient_proxy ambient_credential ambient_netrc ambient_cookie ambient_ssl_override temp_inside_worktree temp_inside_gitdir temp_inside_commondir temp_dir_mode temp_file_mode",
+    "TRANSPORT_LIMIT": "content_length_missing content_length_mismatch body_bound request_timeout aggregate_timeout aggregate_bytes",
+}
+
+
+def expect_failure(token, operation):
+    try: operation()
+    except VerificationError as exc: require(str(exc) == token, "SELFTEST_MATRIX_INVALID")
+    else: raise VerificationError("SELFTEST_MATRIX_INVALID")
+
+
+def source_negative(name):
+    anchors = ("version", "license", "resolve", "SHALL", "guarantee")
+    notice = " ".join(anchors).encode()
+    bundle = {
+        "ref": {"object": {"type": "tag", "sha": TAG}},
+        "tag": {"object": {"type": "commit", "sha": COMMIT}},
+        "commit": {"tree": {"sha": TREE}},
+        "tree": {"sha": TREE, "truncated": False, "tree": [{"path": f"src/p{i}"} for i in range(662)]},
+        "notice": notice,
+    }
+    validate_source_bundle(bundle["ref"], bundle["tag"], bundle["commit"], bundle["tree"], bundle["notice"], notice_sha=digest(notice), notice_size=len(notice), anchors=anchors)
+    before = repr(bundle)
+    if name == "tag_ref_sha": bundle["ref"]["object"]["sha"] = "0" * 40
+    elif name == "tag_target": bundle["tag"]["object"]["sha"] = "0" * 40
+    elif name == "tree_body_identity": bundle["tree"]["sha"] = "0" * 40
+    elif name == "tag_type": bundle["ref"]["object"]["type"] = "commit"
+    elif name == "tree_truncated": bundle["tree"]["truncated"] = True
+    elif name == "tree_count": bundle["tree"]["tree"].pop()
+    elif name == "tree_duplicate_path": bundle["tree"]["tree"][-1]["path"] = bundle["tree"]["tree"][0]["path"]
+    elif name == "tree_license_basename": bundle["tree"]["tree"][-1]["path"] = "nested/LICENSE"
+    elif name == "notice_digest": bundle["notice"] = bundle["notice"].replace(b" ", b"!", 1)
+    elif name == "notice_anchor": bundle["notice"] = bundle["notice"].replace(b"SHALL", b"shall")
+    expected_sha = digest(bundle["notice"]) if name == "notice_anchor" else digest(notice)
+    require(repr(bundle) != before, "SELFTEST_NOT_SINGLE_BOUNDARY")
+    validate_source_bundle(bundle["ref"], bundle["tag"], bundle["commit"], bundle["tree"], bundle["notice"], notice_sha=expected_sha, notice_size=len(notice), anchors=anchors)
+
+
+def archive_negative(name):
+    members = [tarfile.TarInfo("package/a")]
+    members[0].size = 1
+    expected_count, entry_cap, total_cap, largest_cap = 1, 2, 2, 2
+    validate_archive_members(copy.deepcopy(members), expected_count, entry_cap, total_cap, largest_cap)
+    before = repr(([(m.name, m.type, m.size) for m in members], expected_count, entry_cap, total_cap, largest_cap))
+    if name in {"core_entry_bound", "terminology_entry_bound"}: entry_cap = 0
+    elif name in {"core_total_bound", "terminology_total_bound"}: total_cap = 0
+    elif name in {"core_largest_bound", "terminology_largest_bound"}: largest_cap = 0
+    elif name == "absolute_path": members[0].name = "/absolute"
+    elif name == "traversal_path": members[0].name = "package/../escape"
+    elif name == "backslash_path": members[0].name = "package\\escape"
+    elif name == "nul_path": members[0].name = "package/a\x00b"
+    elif name == "archive_duplicate_member": members.append(copy.copy(members[0])); expected_count = 2
+    elif name == "casefold_collision": members.append(tarfile.TarInfo("PACKAGE/A")); members[-1].size = 1; expected_count = 2
+    elif name == "nonregular_member": members[0].type = tarfile.SYMTYPE
+    require(repr(([(m.name, m.type, m.size) for m in members], expected_count, entry_cap, total_cap, largest_cap)) != before, "SELFTEST_NOT_SINGLE_BOUNDARY")
+    validate_archive_members(members, expected_count, entry_cap, total_cap, largest_cap)
+
+
+def rights_fixture():
+    resources = [
+        {"resourceType": "CodeSystem", "url": "https://example/cs", "version": "1", "id": "cs", "copyright": "CC0"},
+        {"resourceType": "CodeSystem", "url": "https://example/other", "version": "1", "id": "cs"},
+    ]
+    identities = [(r["resourceType"], r["url"], r["version"], r["id"]) for r in resources]
+    classified = [identity + (classify(resource["copyright"] if "copyright" in resource else MISSING),) for identity, resource in zip(identities, resources)]
+    counts = {key: 0 for key in ("all-rights-reserved", "cc-by-nd", "cc0", "loinc", "other-explicit", "absent")}
+    for resource in resources: counts[classify(resource["copyright"] if "copyright" in resource else MISSING)] += 1
+    return resources, dict(resource_count=2, identity_sha=digest(framed(identities)), class_sha=digest(framed(classified)), expected_counts=counts, codesystem_count=2, valueset_count=0)
+
+
+def rights_negative(name):
+    resources, expected = rights_fixture()
+    validate_rights(copy.deepcopy(resources), **expected)
+    before = repr(resources)
+    if name == "resource_count": resources.pop()
+    elif name == "resource_object_type": resources[0] = []
+    elif name == "resource_type": resources[0]["resourceType"] = "ConceptMap"
+    elif name == "resource_url_type": resources[0]["url"] = 1
+    elif name == "resource_id_type": resources[0]["id"] = 1
+    elif name == "resource_version_type": resources[0]["version"] = 1
+    elif name == "copyright_nonstring": resources[0]["copyright"] = None
+    elif name == "category_overlap": resources[0]["copyright"] = "CC0 LOINC"
+    elif name == "duplicate_identity": resources[1]["url"] = resources[0]["url"]
+    elif name == "member_swap": resources[0].pop("copyright"); resources[1]["copyright"] = "CC0"
+    elif name == "unicode_confusable": resources[0]["copyright"] = "CC０"
+    elif name == "whitespace_drift": resources[0]["copyright"] = "C C0"
+    elif name == "punctuation_drift": resources[0]["copyright"] = "CC-0"
+    elif name == "near_miss": resources[0]["copyright"] = "CCO"
+    require(repr(resources) != before, "SELFTEST_NOT_SINGLE_BOUNDARY")
+    validate_rights(resources, **expected)
+
+
+def direct_fixture():
+    profile = {"url": "https://example/profile", "version": "1", "status": "active", "type": "Patient", "snapshot": {"element": [
+        {"path": "Patient.code", "binding": {"strength": "required", "valueSet": "https://example/vs"}},
+        {"path": "Patient.code", "binding": {"strength": "required", "valueSet": "https://example/vs"}},
+        {"path": "Patient.other", "binding": {"strength": "extensible", "valueSet": "https://example/vs"}},
+    ]}}
+    prow = (profile["url"], profile["version"], profile["status"], profile["type"])
+    row = prow + ("Patient.code", "required", "https://example/vs")
+    other = prow + ("Patient.other", "extensible", "https://example/vs")
+    expected = dict(profile_count=1, profile_sha=digest(framed([prow])), raw_count=3, raw_sha=digest(framed([row, row, other], multiset=True)), unique_count=2, unique_sha=digest(framed([row, other])), duplicate_sha=digest(framed([row])), canonical_count=1, canonical_sha=digest(framed(["https://example/vs"])))
+    return [profile], {"https://example/vs": {}}, expected
+
+
+def direct_negative(name):
+    profiles, value_sets, expected = direct_fixture(); profile = profiles[0]; element = profile["snapshot"]["element"][0]
+    validate_direct_profiles(copy.deepcopy(profiles), copy.deepcopy(value_sets), **expected)
+    before = repr((profiles, value_sets))
+    if name == "profile_manifest": profile["url"] += "/drift"
+    elif name == "profile_object_type": profiles[0] = []
+    elif name == "profile_url_type": profile["url"] = 1
+    elif name == "profile_version_type": profile["version"] = 1
+    elif name == "profile_status_type": profile["status"] = 1
+    elif name == "profile_type_type": profile["type"] = 1
+    elif name == "snapshot_type": profile["snapshot"] = []
+    elif name == "element_type": profile["snapshot"]["element"][0] = []
+    elif name == "element_path_type": element["path"] = 1
+    elif name == "binding_type": element["binding"] = []
+    elif name == "valueset_type": element["binding"]["valueSet"] = 1
+    elif name == "strength_type": element["binding"]["strength"] = 1
+    elif name == "row_manifest": element["path"] += ".drift"
+    elif name == "duplicate_key": profile["snapshot"]["element"][2] = copy.deepcopy(element)
+    elif name == "direct_duplicate_member": profile["snapshot"]["element"].append(copy.deepcopy(profile["snapshot"]["element"][2]))
+    elif name == "duplicate_multiplicity": profile["snapshot"]["element"].pop(1)
+    elif name == "url_manifest":
+        for item in profile["snapshot"]["element"]: item["binding"]["valueSet"] = "https://example/other"
+        value_sets["https://example/other"] = {}
+        changed = (profile["url"], profile["version"], profile["status"], profile["type"], "Patient.code", "required", "https://example/other")
+        changed_other = (profile["url"], profile["version"], profile["status"], profile["type"], "Patient.other", "extensible", "https://example/other")
+        expected.update(raw_sha=digest(framed([changed, changed, changed_other], multiset=True)), unique_sha=digest(framed([changed, changed_other])), duplicate_sha=digest(framed([changed])))
+    elif name == "missing_valueset":
+        entries = []; require(repr(entries) != repr(list(value_sets.items())), "SELFTEST_NOT_SINGLE_BOUNDARY"); return validate_value_set_index(entries, required=("https://example/vs",))
+    elif name == "duplicate_valueset":
+        entries = [("https://example/vs", {}), ("https://example/vs", {})]; require(repr(entries) != repr(list(value_sets.items())), "SELFTEST_NOT_SINGLE_BOUNDARY"); return validate_value_set_index(entries)
+    elif name == "version_alias": element["binding"]["valueSet"] += "|1"
+    elif name == "wrong_package":
+        require("wrong" != "jpfhir-terminology", "SELFTEST_NOT_SINGLE_BOUNDARY"); return validate_value_set_index([("https://example/vs", {})], package_name="wrong")
+    require(repr((profiles, value_sets)) != before, "SELFTEST_NOT_SINGLE_BOUNDARY")
+    validate_direct_profiles(profiles, value_sets, **expected)
+
+
+def handoff_negative(name):
+    canonicals = {"https://example/vs"}
+    rows = []
+    for lane in LANES:
+        row = ["https://example/vs", lane, "1.4.0"] + ["UNRESOLVED"] * 9 + ["", ""]
+        rows.append(tuple(row))
+    expected_sha = digest(framed(rows))
+    validate_handoff_rows(copy.deepcopy(rows), canonicals, expected_count=8, expected_sha=expected_sha)
+    before = repr(rows)
+    if name == "missing_row": rows.pop()
+    elif name == "duplicate_row": rows[-1] = rows[0]
+    elif name == "lane_drift": rows[-1] = (rows[-1][0], "wrong-lane") + rows[-1][2:]
+    elif name == "field_missing": rows[-1] = rows[-1][:-1]
+    elif name == "premature_decision": rows[-1] = rows[-1][:11] + ("APPROVED",) + rows[-1][12:]
+    require(repr(rows) != before, "SELFTEST_NOT_SINGLE_BOUNDARY")
+    validate_handoff_rows(rows, canonicals, expected_count=8, expected_sha=expected_sha)
+
+
+def transport_negative(name):
+    endpoint(REF_URL); validate_effective_url(REF_URL, REF_URL); validate_ambient({})
+    validate_response("1", b"x", 2, None); validate_deadlines(0, 1, 1)
+    with tempfile.TemporaryDirectory(prefix="wp4158-transport-negative-") as parent:
+        parent_path = pathlib.Path(parent)
+        safe = parent_path / "safe"; safe.mkdir(mode=0o700)
+        protected = parent_path / "protected"; protected.mkdir(mode=0o700)
+        child = protected / "child"; child.mkdir(mode=0o700)
+        validate_temp_location(safe, (protected,), 0o700, 0o600)
+        if name == "redirect": validate_effective_url(REF_URL, REF_URL + "/moved")
+        elif name == "wrong_path": endpoint(REF_URL + "/moved")
+        elif name == "downgrade": endpoint(REF_URL.replace("https://", "http://"))
+        elif name == "other_origin": endpoint(REF_URL.replace("api.github.com", "example.com"))
+        elif name == "unexpected_query": endpoint(REF_URL + "?x=1")
+        elif name == "unexpected_fragment": endpoint(REF_URL + "#x")
+        elif name == "userinfo": endpoint(REF_URL.replace("https://", "https://user@"))
+        elif name.startswith("ambient_"):
+            key = {"ambient_proxy": "HTTPS_PROXY", "ambient_credential": "AUTHORIZATION", "ambient_netrc": "NETRC", "ambient_cookie": "COOKIE", "ambient_ssl_override": "SSLKEYLOGFILE"}[name]
+            validate_ambient({key: "hostile"})
+        elif name in {"temp_inside_worktree", "temp_inside_gitdir", "temp_inside_commondir"}:
+            validate_temp_location(child, (protected,), 0o700)
+        elif name == "temp_dir_mode": validate_temp_location(safe, (protected,), 0o755)
+        elif name == "temp_file_mode": validate_temp_location(safe, (protected,), 0o700, 0o644)
+        elif name == "content_length_missing": validate_response(None, b"x", 2, None)
+        elif name == "content_length_mismatch": validate_response("2", b"x", 2, None)
+        elif name == "body_bound": validate_response("2", b"xx", 1, None)
+        elif name == "request_timeout": validate_deadlines(2, 1, 3)
+        elif name == "aggregate_timeout": validate_deadlines(4, 5, 3)
+        elif name == "aggregate_bytes": validate_response("1", b"x", 2, None, 16 * 1024 * 1024)
+
+
+def negative_probe(name, token):
+    source_names = set("tag_ref_sha tag_target tree_body_identity tag_type tree_truncated tree_count tree_duplicate_path tree_license_basename notice_digest notice_anchor".split())
+    archive_names = set("core_entry_bound core_total_bound core_largest_bound terminology_entry_bound terminology_total_bound terminology_largest_bound absolute_path traversal_path backslash_path nul_path archive_duplicate_member casefold_collision nonregular_member".split())
+    rights_names = set("resource_count resource_object_type resource_type resource_url_type resource_id_type resource_version_type copyright_nonstring category_overlap unicode_confusable whitespace_drift punctuation_drift near_miss member_swap duplicate_identity".split())
+    direct_names = set("profile_manifest profile_object_type profile_url_type profile_version_type profile_status_type profile_type_type snapshot_type element_type element_path_type binding_type valueset_type strength_type row_manifest duplicate_multiplicity duplicate_key direct_duplicate_member url_manifest missing_valueset duplicate_valueset version_alias wrong_package".split())
+    handoff_names = set("missing_row duplicate_row lane_drift field_missing premature_decision".split())
+    transport_names = set(NEGATIVE_FAMILIES["TRANSPORT_POLICY"].split() + NEGATIVE_FAMILIES["TRANSPORT_LIMIT"].split())
+    if name in source_names: operation = lambda: source_negative(name)
+    elif name in archive_names: operation = lambda: archive_negative(name)
+    elif name == "duplicate_json_key": operation = json_duplicate_negative
+    elif name in rights_names: operation = lambda: rights_negative(name)
+    elif name in direct_names: operation = lambda: direct_negative(name)
+    elif name in handoff_names: operation = lambda: handoff_negative(name)
+    elif name in transport_names: operation = lambda: transport_negative(name)
+    elif name in {"core_digest", "terminology_digest"}: operation = lambda: blob_negative("digest")
+    elif name in {"core_size", "terminology_size"}: operation = lambda: blob_negative("size")
+    elif name in {"package_identity", "ig_identity"}: operation = lambda: metadata_negative(name)
+    elif name == "wrong_package": operation = lambda: validate_core_metadata({"name": "wrong"})
+    elif name in {"package_singleton", "ig_singleton"}: operation = lambda: singleton_negative(name)
+    else: raise VerificationError("SELFTEST_MATRIX_INVALID")
+    expect_failure(token, operation)
+
+
+def singleton_negative(name):
+    target = "package/package.json" if name == "package_singleton" else "package/ImplementationGuide-jpfhir-terminology.json"
+    baseline = io.BytesIO()
+    with tarfile.open(fileobj=baseline, mode="w") as writer:
+        member = tarfile.TarInfo(target); member.size = 2; writer.addfile(member, io.BytesIO(b"{}"))
+    baseline.seek(0)
+    with tarfile.open(fileobj=baseline, mode="r:") as reader:
+        require(member_bytes(reader, reader.getmembers(), target) == b"{}", "SELFTEST_MATRIX_INVALID")
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w") as writer:
+        for payload in (b"{}", b"{}"):
+            member = tarfile.TarInfo(target); member.size = len(payload); writer.addfile(member, io.BytesIO(payload))
+    buffer.seek(0)
+    with tarfile.open(fileobj=buffer, mode="r:") as reader:
+        member_bytes(reader, reader.getmembers(), target)
+
+
+def json_duplicate_negative():
+    require(parse_json(b'{"a":1}') == {"a": 1}, "SELFTEST_MATRIX_INVALID")
+    parse_json(b'{"a":1,"a":2}')
+
+
+def blob_negative(kind):
+    baseline = b"good"; verify_blob(baseline, len(baseline), digest(baseline))
+    if kind == "digest": verify_blob(b"bad!", len(baseline), digest(baseline))
+    else: verify_blob(baseline, len(baseline) + 1, digest(baseline))
+
+
+def metadata_negative(name):
+    package = {"name": "jpfhir-terminology", "version": "1.4.0", "fhirVersions": ["4.0.1"], "canonical": "http://jpfhir.jp/fhir/jpfhir-terminology", "dependencies": {"hl7.fhir.r4.core": "4.0.1"}}
+    ig = {"resourceType": "ImplementationGuide", "id": "jpfhir-terminology", "packageId": "jpfhir-terminology", "version": "1.4.0", "fhirVersion": ["4.0.1"], "url": "http://jpfhir.jp/fhir/jpfhir-terminology/ImplementationGuide/jpfhir-terminology"}
+    validate_term_metadata(copy.deepcopy(package), copy.deepcopy(ig))
+    if name == "package_identity": package["name"] = "wrong"
+    else: ig["id"] = "wrong"
+    validate_term_metadata(package, ig)
+
+
+def create_private_root(prefix, post_create=None):
+    temp_parent = pathlib.Path(tempfile.gettempdir()).resolve()
+    for _ in range(32):
+        candidate = temp_parent / f"{prefix}{os.urandom(16).hex()}"
+        if os.path.lexists(candidate):
+            continue
+        try:
+            os.mkdir(candidate, mode=0o700)
+            os.chmod(candidate, 0o700)
+            if post_create is not None: post_create(candidate)
+            return candidate
+        except BaseException:
+            created = None
+            try: created = candidate.lstat()
+            except FileNotFoundError: pass
+            if created is not None and stat.S_ISDIR(created.st_mode) and not stat.S_ISLNK(created.st_mode) and created.st_uid == os.getuid() and stat.S_IMODE(created.st_mode) & 0o077 == 0:
+                os.rmdir(candidate)
+            raise
+    raise VerificationError("TEMP_ROOT_ALLOCATION_FAILED")
+
+
+def entry_at(root_fd, name):
+    try: return os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+    except FileNotFoundError: return None
+
+
+def identity(info):
+    return (info.st_dev, info.st_ino)
+
+
+def identity_fds(target_identity, excluded=()):
+    descriptor_root = pathlib.Path("/dev/fd" if pathlib.Path("/dev/fd").is_dir() else "/proc/self/fd")
+    matches = []
+    for entry in descriptor_root.iterdir():
+        if not entry.name.isdigit(): continue
+        candidate_fd = int(entry.name)
+        if candidate_fd < 3 or candidate_fd in excluded: continue
+        try: candidate_identity = identity(os.fstat(candidate_fd))
+        except OSError: continue
+        if candidate_identity == target_identity: matches.append(candidate_fd)
+    return tuple(matches)
+
+
+def close_unassigned_identity(target_identity, excluded=()):
+    closed = 0
+    for candidate_fd in identity_fds(target_identity, excluded):
+        try: os.close(candidate_fd); closed += 1
+        except OSError: pass
+    return closed
+
+
+def open_owned_path(path):
+    root_info = path.lstat()
+    target_identity = identity(root_info)
+    existing_fds = identity_fds(target_identity)
+    fd = None
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        require(stat.S_ISDIR(root_info.st_mode) and identity(os.fstat(fd)) == target_identity, "TRANSPORT_POLICY")
+        return fd, target_identity
+    except BaseException:
+        if fd is not None:
+            try: os.close(fd)
+            except OSError: pass
+        else: close_unassigned_identity(target_identity, excluded=existing_fds)
+        raise
+
+
+def begin_owned_dir(parent_fd, name):
+    require(entry_at(parent_fd, name) is None, "CLEANUP_TARGET_EXISTS")
+    fd = None
+    try:
+        os.mkdir(name, mode=0o700, dir_fd=parent_fd)
+        os.chmod(name, 0o700, dir_fd=parent_fd, follow_symlinks=False)
+        info = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        require(stat.S_ISDIR(info.st_mode) and info.st_uid == os.getuid() and stat.S_IMODE(info.st_mode) == 0o700, "CLEANUP_OWNERSHIP_CHANGED")
+        fd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent_fd)
+        require(identity(os.fstat(fd)) == identity(info), "CLEANUP_OWNERSHIP_CHANGED")
+        return fd, identity(info)
+    except BaseException:
+        failure = sys.exc_info()
+        if fd is not None:
+            try: os.close(fd)
+            except OSError: failure[1].add_note("secondary owned-directory fd close failure")
+        current = entry_at(parent_fd, name)
+        if fd is None and current is not None: close_unassigned_identity(identity(current), excluded=(parent_fd,))
+        if current is not None and stat.S_ISDIR(current.st_mode) and current.st_uid == os.getuid() and stat.S_IMODE(current.st_mode) & 0o077 == 0:
+            try: os.rmdir(name, dir_fd=parent_fd)
+            except OSError: failure[1].add_note("secondary owned-directory rollback failure")
+        raise failure[1].with_traceback(failure[2])
+
+
+def require_owned_dir(parent_fd, name, owned_fd, owned_identity):
+    current = entry_at(parent_fd, name)
+    require(current is not None and stat.S_ISDIR(current.st_mode) and identity(current) == owned_identity, "CLEANUP_OWNERSHIP_CHANGED")
+    require(identity(os.fstat(owned_fd)) == owned_identity, "CLEANUP_OWNERSHIP_CHANGED")
+
+
+def remove_owned_file(parent_fd, name, expected_identity):
+    current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    require(stat.S_ISREG(current.st_mode) and identity(current) == expected_identity, "CLEANUP_OWNERSHIP_CHANGED")
+    os.unlink(name, dir_fd=parent_fd)
+
+
+def begin_owned_file(parent_fd, name):
+    fd = None
+    try:
+        fd = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=parent_fd)
+        fd_info = os.fstat(fd)
+        current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        require(stat.S_ISREG(current.st_mode) and identity(current) == identity(fd_info) and stat.S_IMODE(current.st_mode) == 0o600, "CLEANUP_OWNERSHIP_CHANGED")
+        return fd, identity(fd_info)
+    except BaseException:
+        if fd is not None:
+            try:
+                fd_info = os.fstat(fd)
+                current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+                if stat.S_ISREG(current.st_mode) and identity(current) == identity(fd_info): os.unlink(name, dir_fd=parent_fd)
+            except (FileNotFoundError, OSError): pass
+            try: os.close(fd)
+            except OSError: pass
+        else:
+            try:
+                current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+                closed = close_unassigned_identity(identity(current), excluded=(parent_fd,))
+                if closed and stat.S_ISREG(current.st_mode): os.unlink(name, dir_fd=parent_fd)
+            except (FileNotFoundError, OSError): pass
+        raise
+
+
+def remove_owned_dir(parent_fd, name, owned_fd, owned_identity):
+    require_owned_dir(parent_fd, name, owned_fd, owned_identity)
+    os.rmdir(name, dir_fd=parent_fd)
+
+
+def finalize_owned_dir(parent_fd, source, target, owned_fd, owned_identity):
+    require_owned_dir(parent_fd, source, owned_fd, owned_identity)
+    require(entry_at(parent_fd, target) is None, "CLEANUP_TARGET_EXISTS")
+    try:
+        rename_noreplace(parent_fd, source, target)
+    except BaseException:
+        failure = sys.exc_info()
+        source_info = entry_at(parent_fd, source)
+        target_info = entry_at(parent_fd, target)
+        if source_info is None and target_info is not None and identity(target_info) == owned_identity:
+            try: rename_noreplace(parent_fd, target, source)
+            except BaseException: failure[1].add_note("secondary owned-directory rename rollback failure")
+        raise failure[1].with_traceback(failure[2])
+    require_owned_dir(parent_fd, target, owned_fd, owned_identity)
+    return target
+
+
+def remove_probe_owned(pending, final):
+    shutil.rmtree(pending, ignore_errors=True)
+    shutil.rmtree(final, ignore_errors=True)
+
+
+def rename_noreplace(root_fd, source, target):
+    libc = ctypes.CDLL(None, use_errno=True)
+    source_bytes, target_bytes = source.encode(), target.encode()
+    if sys.platform == "darwin":
+        operation = getattr(libc, "renameatx_np", None)
+        require(operation is not None, "CLEANUP_NOREPLACE_UNAVAILABLE")
+        result = operation(root_fd, source_bytes, root_fd, target_bytes, 0x00000004)
+    else:
+        operation = getattr(libc, "renameat2", None)
+        require(operation is not None, "CLEANUP_NOREPLACE_UNAVAILABLE")
+        result = operation(root_fd, source_bytes, root_fd, target_bytes, 0x00000001)
+    if result != 0:
+        error = ctypes.get_errno()
+        if error in (errno.EEXIST, errno.ENOTDIR, errno.ENOTEMPTY): raise VerificationError("CLEANUP_TARGET_EXISTS")
+        raise VerificationError("CLEANUP_RENAME_FAILED")
+
+
+def validate_cleanup_child_args(args):
+    root = pathlib.Path(args.root or "")
+    require(root.is_absolute() and args.root_fd is not None and args.root_fd >= 3, "CLEANUP_PATH_INVALID")
+    root_lstat = root.lstat()
+    cwd = pathlib.Path.cwd().resolve()
+    resolved_root = root.resolve(strict=True)
+    require(stat.S_ISDIR(root_lstat.st_mode) and not stat.S_ISLNK(root_lstat.st_mode), "CLEANUP_PATH_INVALID")
+    require(root_lstat.st_uid == os.getuid() and stat.S_IMODE(root_lstat.st_mode) == 0o700, "CLEANUP_PATH_INVALID")
+    require(not paths_overlap(resolved_root, cwd, "CLEANUP_PATH_INVALID"), "CLEANUP_PATH_INVALID")
+    root_fd_stat = os.fstat(args.root_fd)
+    require(stat.S_ISDIR(root_fd_stat.st_mode) and identity(root_fd_stat) == identity(root_lstat), "CLEANUP_PATH_INVALID")
+    canary_lstat = entry_at(args.root_fd, "canary")
+    require(canary_lstat is not None, "CLEANUP_PATH_INVALID")
+    require(stat.S_ISREG(canary_lstat.st_mode) and not stat.S_ISLNK(canary_lstat.st_mode), "CLEANUP_PATH_INVALID")
+    canary_fd = os.open("canary", os.O_RDONLY | os.O_NOFOLLOW, dir_fd=args.root_fd)
+    try:
+        canary_bytes = os.read(canary_fd, len(b"canary") + 1)
+        canary_eof = os.read(canary_fd, 1)
+    finally: os.close(canary_fd)
+    require(canary_lstat.st_uid == os.getuid() and stat.S_IMODE(canary_lstat.st_mode) == 0o600 and canary_lstat.st_size == len(b"canary") and canary_bytes == b"canary" and canary_eof == b"", "CLEANUP_PATH_INVALID")
+    require(entry_at(args.root_fd, "pending") is None and entry_at(args.root_fd, "final") is None, "CLEANUP_PATH_INVALID")
+    inherited = (args.ready_fd, args.release_fd, args.cleanup_ready_fd, args.cleanup_go_fd, args.signal_ack_fd)
+    require(all(value is not None and value >= 3 for value in inherited), "CLEANUP_PATH_INVALID")
+    require(len({args.root_fd, *inherited}) == 6, "CLEANUP_PATH_INVALID")
+    require(all(stat.S_ISFIFO(os.fstat(value).st_mode) for value in inherited), "CLEANUP_PATH_INVALID")
+    return args.root_fd
+
+
+def cleanup_child(args):
+    root_fd = validate_cleanup_child_args(args)
+    phase = args.phase
+    owned_name = None
+    owned_identity = None
+    phase_fd = None
+    partial_fd = None
+    partial_identity = None
+    file_identity = None
+    cleanup_active = False
+    operation_complete = False
+    deferred_signal = None
+    catchable = {signal.SIGINT, signal.SIGTERM, signal.SIGHUP}
+    def clean(*_):
+        if owned_name is None: return
+        require_owned_dir(root_fd, owned_name, phase_fd, owned_identity)
+        require_owned_dir(phase_fd, "partial", partial_fd, partial_identity)
+        remove_owned_file(partial_fd, "download.part", file_identity)
+        remove_owned_dir(phase_fd, "partial", partial_fd, partial_identity)
+        remove_owned_dir(root_fd, owned_name, phase_fd, owned_identity)
+    def interrupted(signum, _frame):
+        nonlocal cleanup_active, deferred_signal
+        try: os.write(args.signal_ack_fd, b"S")
+        except OSError: pass
+        deferred_signal = deferred_signal or signum
+        if not cleanup_active:
+            cleanup_active = True
+            if sys.exc_info()[0] is not None or operation_complete: return
+            raise ProbeSignal(signum)
+        return
+    for sig in catchable:
+        signal.signal(sig, interrupted)
+    reason_name, exit_code = "NORMAL_RETURN", 0
+    try:
+        previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, catchable)
+        try:
+            owned_name = "pending"
+            phase_fd, owned_identity = begin_owned_dir(root_fd, owned_name)
+            partial_fd, partial_identity = begin_owned_dir(phase_fd, "partial")
+            fd, file_identity = begin_owned_file(partial_fd, "download.part")
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(b"wp4158-partial"); stream.flush(); os.fsync(stream.fileno())
+            os.fsync(partial_fd); os.fsync(phase_fd)
+            if phase == "final":
+                owned_name = finalize_owned_dir(root_fd, "pending", "final", phase_fd, owned_identity)
+            os.fsync(root_fd)
+        finally: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        os.write(args.ready_fd, b"P" if phase == "pending" else b"F"); os.close(args.ready_fd)
+        while os.read(args.release_fd, 1): pass
+        os.close(args.release_fd)
+        if args.reason == "operation_error": raise RuntimeError("synthetic operation failure")
+        operation_complete = True
+    except RuntimeError:
+        reason_name, exit_code = "OPERATION_EXCEPTION", 70
+    except ProbeSignal as exc:
+        reason_name = {signal.SIGINT: "SIGINT", signal.SIGTERM: "SIGTERM", signal.SIGHUP: "SIGHUP"}[exc.signum]
+        exit_code = 128 + exc.signum
+    finally:
+        for fd_name in ("ready_fd", "release_fd"):
+            fd_value = getattr(args, fd_name)
+            try: os.close(fd_value)
+            except OSError: pass
+        cleanup_active = True
+        os.write(args.cleanup_ready_fd, b"C"); os.close(args.cleanup_ready_fd); args.cleanup_ready_fd = -1
+        while os.read(args.cleanup_go_fd, 1): pass
+        os.close(args.cleanup_go_fd); args.cleanup_go_fd = -1
+        previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, catchable)
+        try: clean()
+        finally: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        cleanup_active = False
+        os.close(args.signal_ack_fd); args.signal_ack_fd = -1
+        for owned_fd in (partial_fd, phase_fd):
+            if owned_fd is not None:
+                try: os.close(owned_fd)
+                except OSError: pass
+    if deferred_signal is not None and reason_name == "NORMAL_RETURN":
+        reason_name = {signal.SIGINT: "SIGINT", signal.SIGTERM: "SIGTERM", signal.SIGHUP: "SIGHUP"}[deferred_signal]
+        exit_code = 128 + deferred_signal
+    probe_reason = {"NORMAL_RETURN": "normal", "OPERATION_EXCEPTION": "operation_error", "SIGINT": "sigint", "SIGTERM": "sigterm", "SIGHUP": "sighup"}[reason_name]
+    print(f"WP4158_CLEANUP_EXIT probe=cleanup_{phase}_{probe_reason} phase={phase} reason={reason_name}")
+    return exit_code
+
+
+def reap_probe_child(child, verified_pgid, token):
+    if child is None or child.poll() is not None:
+        return
+    try:
+        if verified_pgid is not None:
+            os.killpg(verified_pgid, signal.SIGTERM)
+        else:
+            child.terminate()
+    except ProcessLookupError:
+        pass
+    try:
+        child.wait(0.5)
+    except subprocess.TimeoutExpired:
+        try:
+            if verified_pgid is not None:
+                os.killpg(verified_pgid, signal.SIGKILL)
+            else:
+                child.kill()
+        except ProcessLookupError:
+            pass
+        try:
+            child.wait(1.5)
+        except subprocess.TimeoutExpired as exc:
+            raise VerificationError(token) from exc
+    require(child.poll() is not None, token)
+
+
+def cleanup_probe(phase, reason):
+    with tempfile.TemporaryDirectory(prefix="wp4158-cleanup-") as parent:
+        total_deadline = time.monotonic() + 10
+        os.chmod(parent, 0o700); root = pathlib.Path(parent)
+        pending, final, canary = root / "pending", root / "final", root / "canary"
+        canary.write_bytes(b"canary"); os.chmod(canary, 0o600)
+        ready_r, ready_w = os.pipe(); release_r, release_w = os.pipe()
+        cleanup_ready_r, cleanup_ready_w = os.pipe(); cleanup_go_r, cleanup_go_w = os.pipe()
+        signal_ack_r, signal_ack_w = os.pipe()
+        root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        command = [sys.executable, "-I", __file__, "--cleanup-child", "--phase", phase, "--reason", reason, "--root", str(root), "--root-fd", str(root_fd), "--ready-fd", str(ready_w), "--release-fd", str(release_r), "--cleanup-ready-fd", str(cleanup_ready_w), "--cleanup-go-fd", str(cleanup_go_r), "--signal-ack-fd", str(signal_ack_w)]
+        child = None
+        verified_pgid = None
+        try:
+            child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, pass_fds=(root_fd, ready_w, release_r, cleanup_ready_w, cleanup_go_r, signal_ack_w), start_new_session=True, text=False)
+            os.close(root_fd); root_fd = -1
+            os.close(ready_w); ready_w = -1
+            os.close(release_r); release_r = -1
+            os.close(cleanup_ready_w); cleanup_ready_w = -1
+            os.close(cleanup_go_r); cleanup_go_r = -1
+            os.close(signal_ack_w); signal_ack_w = -1
+            require(os.getpgid(child.pid) == child.pid and child.pid != os.getpgrp(), "CLEANUP_PROBE_FAILED")
+            verified_pgid = child.pid
+            startup_deadline = min(total_deadline, time.monotonic() + 2)
+            ready, ready_eof = b"", False
+            expected_ready = b"P" if phase == "pending" else b"F"
+            while not ready_eof:
+                remaining = startup_deadline - time.monotonic()
+                if remaining <= 0: break
+                readable, _, _ = select.select([ready_r], [], [], min(0.01, remaining))
+                if readable == [ready_r]:
+                    chunk = os.read(ready_r, 2)
+                    if chunk == b"": ready_eof = True
+                    else:
+                        ready += chunk
+                        require(len(ready) <= 1 and expected_ready.startswith(ready), "CLEANUP_PROBE_FAILED")
+            readiness_completed = time.monotonic()
+            require(ready == expected_ready and ready_eof and readiness_completed <= startup_deadline and readiness_completed < total_deadline, "CLEANUP_PROBE_FAILED")
+            target = pending if phase == "pending" else final
+            other = final if phase == "pending" else pending
+            nested, part = target / "partial", target / "partial/download.part"
+            require(target.is_dir() and not other.exists() and nested.is_dir() and part.read_bytes() == b"wp4158-partial" and canary.read_bytes() == b"canary", "CLEANUP_PROBE_FAILED")
+            require(stat.S_IMODE(target.stat().st_mode) == 0o700 and stat.S_IMODE(nested.stat().st_mode) == 0o700 and stat.S_IMODE(part.stat().st_mode) == 0o600, "CLEANUP_PROBE_FAILED")
+            require(target.stat().st_uid == os.getuid() == nested.stat().st_uid == part.stat().st_uid, "CLEANUP_PROBE_FAILED")
+            if reason in {"normal", "operation_error"}:
+                os.close(release_w); release_w = -1
+            else:
+                os.killpg(child.pid, {"sigint": signal.SIGINT, "sigterm": signal.SIGTERM, "sighup": signal.SIGHUP}[reason])
+                ack_remaining = total_deadline - time.monotonic()
+                require(ack_remaining > 0, "CLEANUP_PROBE_FAILED")
+                ack_readable, _, _ = select.select([signal_ack_r], [], [], min(2, ack_remaining))
+                require(ack_readable == [signal_ack_r] and os.read(signal_ack_r, 2) == b"S", "CLEANUP_PROBE_FAILED")
+            cleanup_deadline = min(total_deadline, time.monotonic() + 2)
+            cleanup_ready, cleanup_eof = b"", False
+            while not cleanup_eof:
+                cleanup_remaining = cleanup_deadline - time.monotonic()
+                if cleanup_remaining <= 0: break
+                cleanup_readable, _, _ = select.select([cleanup_ready_r], [], [], min(0.01, cleanup_remaining))
+                if cleanup_readable == [cleanup_ready_r]:
+                    chunk = os.read(cleanup_ready_r, 2)
+                    if chunk == b"": cleanup_eof = True
+                    else:
+                        cleanup_ready += chunk
+                        require(len(cleanup_ready) <= 1 and b"C".startswith(cleanup_ready), "CLEANUP_PROBE_FAILED")
+            cleanup_completed = time.monotonic()
+            require(cleanup_ready == b"C" and cleanup_eof and cleanup_completed <= cleanup_deadline and cleanup_completed < total_deadline, "CLEANUP_PROBE_FAILED")
+            os.close(cleanup_go_w); cleanup_go_w = -1
+            exit_remaining = total_deadline - time.monotonic()
+            require(exit_remaining > 0, "CLEANUP_PROBE_FAILED")
+            stdout, stderr = child.communicate(timeout=exit_remaining)
+            child_completed = time.monotonic()
+            require(child_completed < total_deadline, "CLEANUP_PROBE_FAILED")
+            expected_code = {"normal": 0, "operation_error": 70, "sigint": 130, "sigterm": 143, "sighup": 129}[reason]
+            require(child.returncode == expected_code and stderr == b"", "CLEANUP_PROBE_FAILED")
+            expected_reason = {"normal": "NORMAL_RETURN", "operation_error": "OPERATION_EXCEPTION", "sigint": "SIGINT", "sigterm": "SIGTERM", "sighup": "SIGHUP"}[reason]
+            expected = f"WP4158_CLEANUP_EXIT probe=cleanup_{phase}_{reason} phase={phase} reason={expected_reason}\n".encode()
+            require(stdout == expected, "CLEANUP_PROBE_FAILED")
+            require(not pending.exists() and not final.exists() and canary.read_bytes() == b"canary", "CLEANUP_PROBE_FAILED")
+            require(time.monotonic() < total_deadline, "CLEANUP_PROBE_FAILED")
+        finally:
+            for fd in (root_fd, ready_r, ready_w, release_r, release_w, cleanup_ready_r, cleanup_ready_w, cleanup_go_r, cleanup_go_w, signal_ack_r, signal_ack_w):
+                if fd >= 0:
+                    try: os.close(fd)
+                    except OSError: pass
+            reap_probe_child(child, verified_pgid, "CLEANUP_PROBE_FAILED")
+            if child is not None:
+                require(child.poll() is not None, "CLEANUP_PROBE_FAILED")
+            remove_probe_owned(pending, final)
+            require(canary.read_bytes() == b"canary", "CLEANUP_PROBE_FAILED")
+    require(time.monotonic() < total_deadline, "CLEANUP_PROBE_FAILED")
+
+
+def exact_pid_reap_guard():
+    with tempfile.TemporaryDirectory(prefix="wp4158-exact-pid-reap-") as root_text:
+        root = pathlib.Path(root_text)
+        os.chmod(root, 0o700)
+        root_identity = identity(root.lstat())
+        canary = root / "canary"
+        canary.write_bytes(b"canary")
+        os.chmod(canary, 0o600)
+        canary_identity = identity(canary.lstat())
+        child_source = (
+            "import os,signal,sys,time;"
+            "signal.signal(signal.SIGTERM,signal.SIG_IGN);"
+            "os.open(sys.argv[1],os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW);"
+            "os.write(1,b'R');"
+            "time.sleep(10)"
+        )
+        child = subprocess.Popen(
+            [str(pathlib.Path(sys.executable).resolve(strict=True)), "-I", "-c", child_source, str(root)],
+            cwd=str(pathlib.Path.cwd().resolve()),
+            env={"LC_ALL": "C", "LANG": "C"},
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            close_fds=True,
+            start_new_session=True,
+        )
+        started = time.monotonic()
+        try:
+            readable, _, _ = select.select([child.stdout], [], [], 1)
+            require(readable == [child.stdout] and os.read(child.stdout.fileno(), 2) == b"R", "CLEANUP_EXACT_PID_REAP_GUARD_FAILED")
+            reap_probe_child(child, None, "CLEANUP_EXACT_PID_REAP_GUARD_FAILED")
+            require(child.returncode == -signal.SIGKILL, "CLEANUP_EXACT_PID_REAP_GUARD_FAILED")
+            remaining_stdout, stderr = child.communicate(timeout=0.5)
+            require(remaining_stdout == b"" and stderr == b"", "CLEANUP_EXACT_PID_REAP_GUARD_FAILED")
+            require(time.monotonic() - started < 2, "CLEANUP_EXACT_PID_REAP_GUARD_FAILED")
+            require(root.is_dir() and identity(root.lstat()) == root_identity, "CLEANUP_EXACT_PID_REAP_GUARD_FAILED")
+            require(canary.read_bytes() == b"canary" and identity(canary.lstat()) == canary_identity, "CLEANUP_EXACT_PID_REAP_GUARD_FAILED")
+        finally:
+            if child.poll() is None:
+                child.kill()
+                try:
+                    child.wait(1)
+                except subprocess.TimeoutExpired as exc:
+                    raise VerificationError("CLEANUP_EXACT_PID_REAP_GUARD_FAILED") from exc
+    require(not root.exists(), "CLEANUP_EXACT_PID_REAP_GUARD_FAILED")
+
+
+def cleanup_path_guard_probe():
+    def rejected(root, phase="pending", cwd=None):
+        ready_r, ready_w = os.pipe(); release_r, release_w = os.pipe()
+        cleanup_ready_r, cleanup_ready_w = os.pipe(); cleanup_go_r, cleanup_go_w = os.pipe(); signal_ack_r, signal_ack_w = os.pipe()
+        root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        command = [sys.executable, "-I", __file__, "--cleanup-child", "--phase", phase, "--reason", "normal", "--root", str(root), "--root-fd", str(root_fd), "--ready-fd", str(ready_w), "--release-fd", str(release_r), "--cleanup-ready-fd", str(cleanup_ready_w), "--cleanup-go-fd", str(cleanup_go_r), "--signal-ack-fd", str(signal_ack_w)]
+        try:
+            return subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, pass_fds=(root_fd, ready_w, release_r, cleanup_ready_w, cleanup_go_r, signal_ack_w), timeout=2, cwd=cwd)
+        finally:
+            for fd in (root_fd, ready_r, ready_w, release_r, release_w, cleanup_ready_r, cleanup_ready_w, cleanup_go_r, cleanup_go_w, signal_ack_r, signal_ack_w):
+                try: os.close(fd)
+                except OSError: pass
+
+    with tempfile.TemporaryDirectory(prefix="wp4158-cleanup-guard-") as parent:
+        os.chmod(parent, 0o700); root = pathlib.Path(parent)
+        pending, final, canary = root / "pending", root / "final", root / "canary"
+        canary.write_bytes(b"canary"); os.chmod(canary, 0o600)
+        pending.mkdir(mode=0o700); sentinel = pending / "preexisting"; sentinel.write_bytes(b"must-survive"); os.chmod(sentinel, 0o600)
+        child = rejected(root)
+        require(child.returncode == 1 and child.stdout == b"" and child.stderr == b"CLEANUP_PATH_INVALID\n", "CLEANUP_PATH_GUARD_FAILED")
+        require(sentinel.read_bytes() == b"must-survive" and canary.read_bytes() == b"canary" and not final.exists(), "CLEANUP_PATH_GUARD_FAILED")
+
+    with tempfile.TemporaryDirectory(prefix="wp4158-cleanup-guard-") as parent:
+        os.chmod(parent, 0o700); root = pathlib.Path(parent)
+        canary = root / "canary"; canary.write_bytes(b"canary"); os.chmod(canary, 0o600)
+        dangling = root / "final"; dangling.symlink_to(root / "missing")
+        child = rejected(root, "final")
+        require(child.returncode == 1 and child.stdout == b"" and child.stderr == b"CLEANUP_PATH_INVALID\n" and dangling.is_symlink(), "CLEANUP_PATH_GUARD_FAILED")
+
+    with tempfile.TemporaryDirectory(prefix="wp4158-cleanup-guard-") as parent:
+        os.chmod(parent, 0o700); root = pathlib.Path(parent)
+        canary = root / "canary"; canary.write_bytes(b"canary-suffix"); os.chmod(canary, 0o600)
+        child = rejected(root)
+        require(child.returncode == 1 and child.stdout == b"" and child.stderr == b"CLEANUP_PATH_INVALID\n" and canary.read_bytes() == b"canary-suffix", "CLEANUP_PATH_GUARD_FAILED")
+
+    with tempfile.TemporaryDirectory(prefix="wp4158-cleanup-guard-") as parent:
+        os.chmod(parent, 0o700); root = pathlib.Path(parent)
+        canary = root / "canary"; canary.write_bytes(b"canary"); os.chmod(canary, 0o600)
+        nested_cwd = root / "nested/cwd"; nested_cwd.mkdir(parents=True, mode=0o700)
+        child = rejected(root, cwd=nested_cwd)
+        require(child.returncode == 1 and child.stdout == b"" and child.stderr == b"CLEANUP_PATH_INVALID\n" and canary.read_bytes() == b"canary", "CLEANUP_PATH_GUARD_FAILED")
+
+    with tempfile.TemporaryDirectory(prefix="wp4158-cleanup-guard-") as parent:
+        os.chmod(parent, 0o700); root = pathlib.Path(parent)
+        canary = root / "canary"; canary.write_bytes(b"canary"); os.chmod(canary, 0o600)
+        root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            os.mkdir("pending", 0o700, dir_fd=root_fd); os.mkdir("final", 0o700, dir_fd=root_fd)
+            pending_before = identity(entry_at(root_fd, "pending")); final_before = identity(entry_at(root_fd, "final"))
+            try: rename_noreplace(root_fd, "pending", "final")
+            except VerificationError as exc: require(str(exc) == "CLEANUP_TARGET_EXISTS", "CLEANUP_PATH_GUARD_FAILED")
+            else: raise VerificationError("CLEANUP_PATH_GUARD_FAILED")
+            require(identity(entry_at(root_fd, "pending")) == pending_before and identity(entry_at(root_fd, "final")) == final_before, "CLEANUP_PATH_GUARD_FAILED")
+        finally: os.close(root_fd)
+
+
+def live_context_cleanup_guard():
+    catchable = {signal.SIGINT, signal.SIGTERM, signal.SIGHUP}
+    context_signals = catchable | {signal.SIGALRM}
+    for delivered in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGALRM):
+        deferred = None
+        cleanup_active = True
+        old_handlers = {sig: signal.getsignal(sig) for sig in context_signals}
+        def defer(signum, _frame):
+            nonlocal deferred
+            if cleanup_active:
+                deferred = deferred or signum
+                return
+            raise ProbeSignal(signum)
+        for sig in context_signals: signal.signal(sig, defer)
+        owner_root = create_private_root("wp4158-live-cleanup-guard-"); (owner_root / "nested").mkdir(mode=0o700)
+        original_rmtree = shutil.rmtree
+        injected = False
+        def injecting_rmtree(path, *args, **kwargs):
+            nonlocal injected
+            if pathlib.Path(path) == owner_root and not injected:
+                injected = True
+                os.kill(os.getpid(), delivered)
+            return original_rmtree(path, *args, **kwargs)
+        shutil.rmtree = injecting_rmtree
+        previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, context_signals)
+        try: shutil.rmtree(owner_root)
+        finally:
+            shutil.rmtree = original_rmtree
+            signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        cleanup_active = False
+        for sig, handler in old_handlers.items(): signal.signal(sig, handler)
+        require(injected and deferred == delivered and not owner_root.exists(), "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    deferred_alarm = False
+    cleanup_active = True
+    old_alarm_handler = signal.getsignal(signal.SIGALRM)
+    def defer_alarm(signum, _frame):
+        nonlocal deferred_alarm
+        require(signum == signal.SIGALRM, "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+        if cleanup_active:
+            deferred_alarm = True
+            return
+        raise ProbeSignal(signum)
+    signal.signal(signal.SIGALRM, defer_alarm)
+    owner_root = create_private_root("wp4158-live-owned-cleanup-guard-")
+    pending, final = owner_root / "pending", owner_root / "final"
+    pending.mkdir(mode=0o700); (pending / "partial").write_bytes(b"synthetic")
+    original_rmtree = shutil.rmtree
+    injected = False
+    def injecting_owned_rmtree(path, *args, **kwargs):
+        nonlocal injected
+        if pathlib.Path(path) == pending and not injected:
+            injected = True
+            os.kill(os.getpid(), signal.SIGALRM)
+        return original_rmtree(path, *args, **kwargs)
+    shutil.rmtree = injecting_owned_rmtree
+    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
+    try: remove_probe_owned(pending, final)
+    finally:
+        shutil.rmtree = original_rmtree
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+    cleanup_active = False
+    signal.signal(signal.SIGALRM, old_alarm_handler)
+    require(injected and deferred_alarm and not pending.exists() and not final.exists(), "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    shutil.rmtree(owner_root)
+    for delivered in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        deferred = None
+        cleanup_active = True
+        old_handlers = {sig: signal.getsignal(sig) for sig in catchable}
+        def defer_allocation(signum, _frame):
+            nonlocal deferred
+            if cleanup_active:
+                deferred = deferred or signum
+                return
+            raise ProbeSignal(signum)
+        for sig in catchable: signal.signal(sig, defer_allocation)
+        allocated_root = None
+        def inject_allocation(path):
+            nonlocal allocated_root
+            allocated_root = path
+            os.kill(os.getpid(), delivered)
+        previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, catchable)
+        owner_root = None
+        try: owner_root = create_private_root("wp4158-live-allocation-guard-", inject_allocation)
+        finally: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, catchable)
+        try: shutil.rmtree(owner_root)
+        finally: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        cleanup_active = False
+        for sig, handler in old_handlers.items(): signal.signal(sig, handler)
+        require(deferred == delivered and allocated_root is not None and not allocated_root.exists(), "LIVE_ALLOCATION_CLEANUP_GUARD_FAILED")
+    deferred_timeout = False
+    transition_operation_complete = False
+    cleanup_active = True
+    post_timeout_operation = False
+    allocation_timeout_error = None
+    old_alarm_handler = signal.getsignal(signal.SIGALRM)
+    def defer_allocation_timeout(signum, _frame):
+        nonlocal deferred_timeout
+        require(signum == signal.SIGALRM, "LIVE_ALLOCATION_CLEANUP_GUARD_FAILED")
+        if cleanup_active:
+            deferred_timeout = True
+            return
+        raise ProbeSignal(signum)
+    signal.signal(signal.SIGALRM, defer_allocation_timeout)
+    allocated_root = None
+    def inject_allocation_timeout(path):
+        nonlocal allocated_root
+        allocated_root = path
+        os.kill(os.getpid(), signal.SIGALRM)
+    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
+    owner_root = None
+    try: owner_root = create_private_root("wp4158-live-allocation-timeout-guard-", inject_allocation_timeout)
+    finally: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+    try:
+        if deferred_timeout: raise VerificationError("TRANSPORT_LIMIT")
+        post_timeout_operation = True
+    except VerificationError as exc: allocation_timeout_error = str(exc)
+    finally:
+        previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
+        try: shutil.rmtree(owner_root)
+        finally: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        cleanup_active = False
+        signal.signal(signal.SIGALRM, old_alarm_handler)
+    require(allocation_timeout_error == "TRANSPORT_LIMIT" and deferred_timeout and not post_timeout_operation, "LIVE_ALLOCATION_CLEANUP_GUARD_FAILED")
+    require(allocated_root is not None and not allocated_root.exists(), "LIVE_ALLOCATION_CLEANUP_GUARD_FAILED")
+    cleanup_active = False
+    deferred_timeout = False
+    transition_primary = None
+    old_alarm_handler = signal.getsignal(signal.SIGALRM)
+    transition_root = create_private_root("wp4158-live-finally-transition-guard-")
+    def transition_stop(signum, _frame):
+        nonlocal cleanup_active, deferred_timeout
+        require(signum == signal.SIGALRM, "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+        if not cleanup_active:
+            cleanup_active = True
+            deferred_timeout = True
+            if sys.exc_info()[0] is not None or transition_operation_complete: return
+            raise VerificationError("TRANSPORT_LIMIT")
+        deferred_timeout = True
+    signal.signal(signal.SIGALRM, transition_stop)
+    try:
+        try: raise RuntimeError("synthetic primary operation failure")
+        finally:
+            os.kill(os.getpid(), signal.SIGALRM)
+            had_error = sys.exc_info()[0] is not None
+            previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
+            try: shutil.rmtree(transition_root)
+            finally: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+            require(had_error, "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    except RuntimeError as exc: transition_primary = str(exc)
+    finally:
+        cleanup_active = False
+        signal.signal(signal.SIGALRM, old_alarm_handler)
+    require(transition_primary == "synthetic primary operation failure" and deferred_timeout and not transition_root.exists(), "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    for delivered in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGALRM):
+        for primary in (False, True):
+            cleanup_active = False
+            transition_operation_complete = not primary
+            transition_primary = None
+            transition_deferred = None
+            transition_timeout = False
+            old_handler = signal.getsignal(delivered)
+            transition_root = create_private_root("wp4158-live-finally-all-signals-")
+            def transition_all(signum, _frame):
+                nonlocal cleanup_active, transition_deferred, transition_timeout
+                if signum == signal.SIGALRM: transition_timeout = True
+                else: transition_deferred = transition_deferred or signum
+                if not cleanup_active:
+                    cleanup_active = True
+                    if sys.exc_info()[0] is not None or transition_operation_complete: return
+                    raise ProbeSignal(signum)
+            signal.signal(delivered, transition_all)
+            try:
+                try:
+                    if primary: raise RuntimeError("synthetic transition primary")
+                finally:
+                    os.kill(os.getpid(), delivered)
+                    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {delivered})
+                    try: shutil.rmtree(transition_root)
+                    finally: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+            except RuntimeError as exc: transition_primary = str(exc)
+            finally:
+                cleanup_active = False
+                signal.signal(delivered, old_handler)
+            require(not transition_root.exists(), "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+            require((transition_timeout if delivered == signal.SIGALRM else transition_deferred == delivered), "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+            require(transition_primary == ("synthetic transition primary" if primary else None), "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    write_root = create_private_root("wp4158-live-write-failure-")
+    write_root_fd = os.open(write_root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    write_root_identity = identity(os.fstat(write_root_fd))
+    write_owned_fd, write_owned_identity = begin_owned_dir(write_root_fd, "pending")
+    write_files = {}
+    write_error = None
+    write_fd = None
+    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, context_signals)
+    try:
+        write_fd, write_identity = begin_owned_file(write_owned_fd, "partial.tgz")
+        write_files["partial.tgz"] = write_identity
+    finally: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+    try:
+        with os.fdopen(write_fd, "wb") as stream:
+            stream.write(b"partial")
+            stream.flush()
+            raise OSError("synthetic write failure")
+    except OSError as exc: write_error = str(exc)
+    finally:
+        previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, context_signals)
+        try:
+            for name, file_identity in write_files.items(): remove_owned_file(write_owned_fd, name, file_identity)
+            remove_owned_dir(write_root_fd, "pending", write_owned_fd, write_owned_identity)
+            os.close(write_owned_fd)
+            require(identity(write_root.lstat()) == write_root_identity, "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+            os.rmdir(write_root)
+        finally:
+            os.close(write_root_fd)
+            signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+    require(write_error == "synthetic write failure" and not write_root.exists(), "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    directory_root = create_private_root("wp4158-owned-dir-transaction-")
+    directory_root_fd = os.open(directory_root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    original_mkdir = os.mkdir
+    directory_error = None
+    def fail_after_owned_mkdir(path, mode=0o777, *, dir_fd=None):
+        original_mkdir(path, mode=mode, dir_fd=dir_fd)
+        raise MemoryError("synthetic owned mkdir-return failure")
+    os.mkdir = fail_after_owned_mkdir
+    try: begin_owned_dir(directory_root_fd, "pending")
+    except MemoryError as exc: directory_error = str(exc)
+    finally: os.mkdir = original_mkdir
+    require(directory_error == "synthetic owned mkdir-return failure" and entry_at(directory_root_fd, "pending") is None, "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    owned_fd, owned_identity = begin_owned_dir(directory_root_fd, "pending")
+    original_rename_noreplace = rename_noreplace
+    rename_error = None
+    def fail_after_owned_rename(parent_fd, source, target):
+        original_rename_noreplace(parent_fd, source, target)
+        raise MemoryError("synthetic owned rename-return failure")
+    globals()["rename_noreplace"] = fail_after_owned_rename
+    try: finalize_owned_dir(directory_root_fd, "pending", "final", owned_fd, owned_identity)
+    except MemoryError as exc: rename_error = str(exc)
+    finally: globals()["rename_noreplace"] = original_rename_noreplace
+    require(rename_error == "synthetic owned rename-return failure", "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    require_owned_dir(directory_root_fd, "pending", owned_fd, owned_identity)
+    require(entry_at(directory_root_fd, "final") is None, "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    remove_owned_dir(directory_root_fd, "pending", owned_fd, owned_identity)
+    os.close(owned_fd); os.close(directory_root_fd); os.rmdir(directory_root)
+    require(not directory_root.exists(), "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    umask_root = create_private_root("wp4158-owned-dir-umask-")
+    umask_root_fd = os.open(umask_root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    old_umask = os.umask(0o777)
+    try: umask_fd, umask_identity = begin_owned_dir(umask_root_fd, "pending")
+    finally: os.umask(old_umask)
+    require(stat.S_IMODE(entry_at(umask_root_fd, "pending").st_mode) == 0o700, "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    remove_owned_dir(umask_root_fd, "pending", umask_fd, umask_identity)
+    os.close(umask_fd)
+    original_mkdir = os.mkdir
+    restrictive_owned_error = None
+    def fail_after_restrictive_owned_mkdir(path, mode=0o777, *, dir_fd=None):
+        original_mkdir(path, mode=mode, dir_fd=dir_fd)
+        raise MemoryError("synthetic restrictive owned mkdir-return failure")
+    old_umask = os.umask(0o777)
+    os.mkdir = fail_after_restrictive_owned_mkdir
+    try: begin_owned_dir(umask_root_fd, "pending")
+    except MemoryError as exc: restrictive_owned_error = str(exc)
+    finally:
+        os.mkdir = original_mkdir
+        os.umask(old_umask)
+    require(restrictive_owned_error == "synthetic restrictive owned mkdir-return failure" and entry_at(umask_root_fd, "pending") is None, "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    os.close(umask_root_fd); os.rmdir(umask_root)
+    open_root = create_private_root("wp4158-owned-open-return-")
+    open_root_fd = os.open(open_root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    original_open = os.open
+    leaked_identity = None
+    directory_open_error = None
+    def fail_after_directory_open(path, flags, mode=0o777, *, dir_fd=None):
+        nonlocal leaked_identity
+        result = original_open(path, flags, mode, dir_fd=dir_fd)
+        if path == "pending" and dir_fd == open_root_fd:
+            leaked_identity = identity(os.fstat(result))
+            raise MemoryError("synthetic owned directory open-return failure")
+        return result
+    os.open = fail_after_directory_open
+    try: begin_owned_dir(open_root_fd, "pending")
+    except MemoryError as exc: directory_open_error = str(exc)
+    finally: os.open = original_open
+    require(directory_open_error == "synthetic owned directory open-return failure" and leaked_identity is not None, "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    require(entry_at(open_root_fd, "pending") is None and identity_fds(leaked_identity) == (), "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    file_parent_fd, file_parent_identity = begin_owned_dir(open_root_fd, "pending")
+    leaked_identity = None
+    file_open_error = None
+    def fail_after_file_open(path, flags, mode=0o777, *, dir_fd=None):
+        nonlocal leaked_identity
+        result = original_open(path, flags, mode, dir_fd=dir_fd)
+        if path == "partial.tgz" and dir_fd == file_parent_fd:
+            leaked_identity = identity(os.fstat(result))
+            raise MemoryError("synthetic owned file open-return failure")
+        return result
+    os.open = fail_after_file_open
+    try: begin_owned_file(file_parent_fd, "partial.tgz")
+    except MemoryError as exc: file_open_error = str(exc)
+    finally: os.open = original_open
+    require(file_open_error == "synthetic owned file open-return failure" and leaked_identity is not None, "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    require(entry_at(file_parent_fd, "partial.tgz") is None and identity_fds(leaked_identity) == (), "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    remove_owned_dir(open_root_fd, "pending", file_parent_fd, file_parent_identity)
+    os.close(file_parent_fd); os.close(open_root_fd); os.rmdir(open_root)
+    owner_open_root = create_private_root("wp4158-owner-open-return-")
+    leaked_identity = None
+    owner_open_error = None
+    def fail_after_owner_open(path, flags, mode=0o777, *, dir_fd=None):
+        nonlocal leaked_identity
+        result = original_open(path, flags, mode, dir_fd=dir_fd)
+        if pathlib.Path(path) == owner_open_root:
+            leaked_identity = identity(os.fstat(result))
+            raise MemoryError("synthetic owner open-return failure")
+        return result
+    os.open = fail_after_owner_open
+    try: open_owned_path(owner_open_root)
+    except MemoryError as exc: owner_open_error = str(exc)
+    finally: os.open = original_open
+    require(owner_open_error == "synthetic owner open-return failure" and leaked_identity is not None and identity_fds(leaked_identity) == (), "LIVE_CONTEXT_CLEANUP_GUARD_FAILED")
+    os.rmdir(owner_open_root)
+    attempted_root = None
+    preserved_error = None
+    def fail_after_create(path):
+        nonlocal attempted_root
+        attempted_root = path
+        raise MemoryError("synthetic post-mkdir failure")
+    try:
+        create_private_root("wp4158-live-allocation-error-", fail_after_create)
+    except MemoryError as exc: preserved_error = str(exc)
+    require(preserved_error == "synthetic post-mkdir failure" and attempted_root is not None and not attempted_root.exists(), "LIVE_ALLOCATION_CLEANUP_GUARD_FAILED")
+    call_boundary_root = None
+    call_boundary_error = None
+    original_mkdir = os.mkdir
+    def fail_before_mkdir_return(path, mode=0o777, *, dir_fd=None):
+        nonlocal call_boundary_root
+        original_mkdir(path, mode=mode, dir_fd=dir_fd)
+        call_boundary_root = pathlib.Path(path)
+        raise MemoryError("synthetic mkdir-return failure")
+    os.mkdir = fail_before_mkdir_return
+    try:
+        create_private_root("wp4158-live-mkdir-return-error-")
+    except MemoryError as exc: call_boundary_error = str(exc)
+    finally: os.mkdir = original_mkdir
+    require(call_boundary_error == "synthetic mkdir-return failure" and call_boundary_root is not None and not call_boundary_root.exists(), "LIVE_ALLOCATION_CLEANUP_GUARD_FAILED")
+    restrictive_root = None
+    restrictive_error = None
+    original_mkdir = os.mkdir
+    def fail_restrictive_mkdir_return(path, mode=0o777, *, dir_fd=None):
+        nonlocal restrictive_root
+        original_mkdir(path, mode=mode, dir_fd=dir_fd)
+        restrictive_root = pathlib.Path(path)
+        raise MemoryError("synthetic restrictive-mkdir-return failure")
+    old_umask = os.umask(0o777)
+    os.mkdir = fail_restrictive_mkdir_return
+    try:
+        create_private_root("wp4158-live-restrictive-mkdir-error-")
+    except MemoryError as exc: restrictive_error = str(exc)
+    finally:
+        os.mkdir = original_mkdir
+        os.umask(old_umask)
+    require(restrictive_error == "synthetic restrictive-mkdir-return failure" and restrictive_root is not None and not restrictive_root.exists(), "LIVE_ALLOCATION_CLEANUP_GUARD_FAILED")
+    collision_prefix = f"wp4158-live-collision-{os.urandom(8).hex()}-"
+    collision_bytes, success_bytes = b"\x00" * 16, b"\x01" * 16
+    temp_parent = pathlib.Path(tempfile.gettempdir()).resolve()
+    preexisting = temp_parent / f"{collision_prefix}{collision_bytes.hex()}"
+    preexisting.mkdir(mode=0o700); collision_sentinel = preexisting / "sentinel"; collision_sentinel.write_bytes(b"must-survive")
+    original_urandom = os.urandom
+    choices = [collision_bytes, success_bytes]
+    def collision_then_success(size):
+        return choices.pop(0) if choices else original_urandom(size)
+    os.urandom = collision_then_success
+    allocated = None
+    try: allocated = create_private_root(collision_prefix)
+    finally: os.urandom = original_urandom
+    require(collision_sentinel.read_bytes() == b"must-survive" and allocated.name == f"{collision_prefix}{success_bytes.hex()}", "LIVE_ALLOCATION_CLEANUP_GUARD_FAILED")
+    shutil.rmtree(allocated); shutil.rmtree(preexisting)
+    file_exists_root = None
+    file_exists_error = None
+    original_mkdir = os.mkdir
+    def fail_file_exists_before_return(path, mode=0o777, *, dir_fd=None):
+        nonlocal file_exists_root
+        original_mkdir(path, mode=mode, dir_fd=dir_fd)
+        file_exists_root = pathlib.Path(path)
+        raise FileExistsError("synthetic post-mkdir FileExistsError")
+    os.mkdir = fail_file_exists_before_return
+    try:
+        create_private_root("wp4158-live-file-exists-error-")
+    except FileExistsError as exc: file_exists_error = str(exc)
+    finally: os.mkdir = original_mkdir
+    require(file_exists_error == "synthetic post-mkdir FileExistsError" and file_exists_root is not None and not file_exists_root.exists(), "LIVE_ALLOCATION_CLEANUP_GUARD_FAILED")
+
+
+def signal_transition_guard():
+    context_signals = {signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGALRM}
+    system_handlers = {sig: signal.getsignal(sig) for sig in context_signals}
+    original_timer = signal.getitimer(signal.ITIMER_REAL)
+    original_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+    try:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        for site in ("allocation", "success_tail", "outer_finalizer"):
+            for delivered in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGALRM):
+                state = SignalState()
+                state.cleanup_active = True
+                post_transition_calls = 0
+                transition_error = None
+                restored_delivery = None
+                owner_root = create_private_root(f"wp4158-{site}-guard-")
+                owner_fd, owner_identity = open_owned_path(owner_root)
+                def restored_handler(signum, _frame):
+                    nonlocal restored_delivery
+                    restored_delivery = signum
+                    raise ProbeSignal(signum)
+                restored_handlers = {sig: restored_handler for sig in context_signals}
+                for sig, handler in restored_handlers.items(): signal.signal(sig, handler)
+                def transition_stop(signum, _frame):
+                    if state.cleanup_active:
+                        state.record(signum)
+                        return
+                    state.cleanup_active = True
+                    state.record(signum)
+                    if signum == signal.SIGALRM: raise VerificationError("TRANSPORT_LIMIT")
+                    raise InterruptedError(signum)
+                for sig in context_signals: signal.signal(sig, transition_stop)
+                def operation():
+                    nonlocal owner_fd
+                    if site != "allocation":
+                        os.close(owner_fd); owner_fd = None
+                        os.rmdir(owner_root)
+                def inject_after_decision():
+                    os.kill(os.getpid(), delivered)
+                def restore_handlers():
+                    for sig, handler in restored_handlers.items(): signal.signal(sig, handler)
+                try:
+                    run_signal_transition(
+                        context_signals,
+                        state,
+                        operation,
+                        before_deactivate=inject_after_decision,
+                        restore=restore_handlers if site != "allocation" else None,
+                    )
+                    post_transition_calls += 1
+                except VerificationError as exc:
+                    transition_error = ("timeout", str(exc))
+                except InterruptedError as exc:
+                    transition_error = ("signal", exc.args[0])
+                except ProbeSignal as exc:
+                    transition_error = ("restored", exc.signum)
+                finally:
+                    signal.pthread_sigmask(signal.SIG_BLOCK, context_signals)
+                    if owner_fd is not None: os.close(owner_fd)
+                    if owner_root.exists(): os.rmdir(owner_root)
+                    for sig, handler in system_handlers.items(): signal.signal(sig, handler)
+                    signal.pthread_sigmask(signal.SIG_SETMASK, original_mask)
+                expected = (
+                    ("timeout", "TRANSPORT_LIMIT") if delivered == signal.SIGALRM else ("signal", delivered)
+                ) if site == "allocation" else ("restored", delivered)
+                require(transition_error == expected and post_transition_calls == 0, "LIVE_SIGNAL_TRANSITION_GUARD_FAILED")
+                require((restored_delivery == delivered) == (site != "allocation"), "LIVE_SIGNAL_TRANSITION_GUARD_FAILED")
+                require(not owner_root.exists() and identity_fds(owner_identity) == (), "LIVE_SIGNAL_TRANSITION_GUARD_FAILED")
+                require(signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask, "LIVE_SIGNAL_TRANSITION_GUARD_FAILED")
+                require(all(signal.getsignal(sig) is system_handlers[sig] for sig in context_signals), "LIVE_SIGNAL_TRANSITION_GUARD_FAILED")
+                require(signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0), "LIVE_SIGNAL_TRANSITION_GUARD_FAILED")
+    finally:
+        signal.pthread_sigmask(signal.SIG_BLOCK, context_signals)
+        for sig, handler in system_handlers.items(): signal.signal(sig, handler)
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.pthread_sigmask(signal.SIG_SETMASK, original_mask)
+        signal.setitimer(signal.ITIMER_REAL, *original_timer)
+
+
+def transition_primary_child(args):
+    signal_names = {
+        "SIGINT": signal.SIGINT,
+        "SIGTERM": signal.SIGTERM,
+        "SIGHUP": signal.SIGHUP,
+        "SIGALRM": signal.SIGALRM,
+    }
+    context_signals = set(signal_names.values())
+    delivered = signal_names.get(args.signal_name)
+    require(delivered is not None and args.signal_phase in {"pre_snapshot", "post_snapshot"}, "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    expected_handlers = {
+        signal.SIGINT: signal.default_int_handler,
+        signal.SIGTERM: signal.SIG_DFL,
+        signal.SIGHUP: signal.SIG_DFL,
+        signal.SIGALRM: signal.SIG_DFL,
+    }
+    signal.pthread_sigmask(signal.SIG_SETMASK, context_signals)
+    for signum, handler in expected_handlers.items():
+        signal.signal(signum, handler)
+    require(not (signal.sigpending() & context_signals), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    signal.setitimer(signal.ITIMER_REAL, 0)
+    signal.pthread_sigmask(signal.SIG_SETMASK, set())
+    original_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+    original_timer = signal.getitimer(signal.ITIMER_REAL)
+    original_handlers = {signum: signal.getsignal(signum) for signum in context_signals}
+    require(original_mask == set() and original_timer == (0.0, 0.0), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    require(all(original_handlers[signum] is handler for signum, handler in expected_handlers.items()), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+
+    root = pathlib.Path(args.root or "")
+    require(root.is_absolute(), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    root_lstat = root.lstat()
+    require(stat.S_ISDIR(root_lstat.st_mode) and not stat.S_ISLNK(root_lstat.st_mode), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    require(root_lstat.st_uid == os.getuid() and stat.S_IMODE(root_lstat.st_mode) == 0o700, "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    require(not paths_overlap(root, pathlib.Path.cwd().resolve(), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED"), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    root_identity = identity(root_lstat)
+    require(identity(os.fstat(root_fd)) == root_identity, "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    canary_info = entry_at(root_fd, "canary")
+    require(canary_info is not None and stat.S_ISREG(canary_info.st_mode) and stat.S_IMODE(canary_info.st_mode) == 0o600, "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    canary_fd = os.open("canary", os.O_RDONLY | os.O_NOFOLLOW, dir_fd=root_fd)
+    try:
+        require(os.read(canary_fd, 7) == b"canary" and os.read(canary_fd, 1) == b"", "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    finally:
+        os.close(canary_fd)
+    require(entry_at(root_fd, "owned") is None, "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+
+    owned_fd = None
+    owned_identity = None
+    state = SignalState()
+    state.cleanup_active = True
+    primary_error = RuntimeError("synthetic transition primary")
+    raised_traceback = None
+    caught_primary = None
+    handler_deliveries = 0
+    snapshot_injections = 0
+    try:
+        owned_fd, owned_identity = begin_owned_dir(root_fd, "owned")
+        def transition_stop(signum, _frame):
+            nonlocal handler_deliveries
+            handler_deliveries += 1
+            if state.cleanup_active:
+                state.record(signum)
+                return
+            raise VerificationError("LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+        for signum in context_signals:
+            signal.signal(signum, transition_stop)
+        def primary_operation():
+            nonlocal raised_traceback
+            if args.signal_phase == "pre_snapshot":
+                os.kill(os.getpid(), delivered)
+            try:
+                raise primary_error
+            except RuntimeError as exc:
+                raised_traceback = exc.__traceback__
+                raise
+        def restore_handlers():
+            for signum, handler in original_handlers.items():
+                signal.signal(signum, handler)
+        original_sigpending = signal.sigpending
+        if args.signal_phase == "post_snapshot":
+            def inject_after_snapshot():
+                nonlocal snapshot_injections
+                snapshot = original_sigpending()
+                if snapshot_injections == 0:
+                    snapshot_injections += 1
+                    os.kill(os.getpid(), delivered)
+                return snapshot
+            signal.sigpending = inject_after_snapshot
+        try:
+            try:
+                run_signal_transition(context_signals, state, primary_operation, restore=restore_handlers)
+            except RuntimeError as exc:
+                current_traceback = exc.__traceback__
+                traceback_retained = False
+                while current_traceback is not None:
+                    if current_traceback is raised_traceback:
+                        traceback_retained = True
+                        break
+                    current_traceback = current_traceback.tb_next
+                caught_primary = (
+                    exc is primary_error,
+                    type(exc) is RuntimeError,
+                    str(exc),
+                    tuple(getattr(exc, "__notes__", ())),
+                    traceback_retained,
+                )
+        finally:
+            signal.sigpending = original_sigpending
+        require(caught_primary == (True, True, "synthetic transition primary", (), True), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+        require(snapshot_injections == (1 if args.signal_phase == "post_snapshot" else 0), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+        require(handler_deliveries == (1 if args.signal_phase == "post_snapshot" else 0), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+        require(not state.cleanup_active and not (signal.sigpending() & context_signals), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+        if delivered == signal.SIGALRM:
+            require(state.deferred_signal is None and state.deferred_timeout, "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+        else:
+            require(state.deferred_signal == delivered and not state.deferred_timeout, "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+        require(signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask, "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+        require(signal.getitimer(signal.ITIMER_REAL) == original_timer, "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+        require(all(signal.getsignal(signum) is original_handlers[signum] for signum in context_signals), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    finally:
+        signal.pthread_sigmask(signal.SIG_BLOCK, context_signals)
+        for signum, handler in original_handlers.items():
+            signal.signal(signum, handler)
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        try:
+            if owned_fd is not None and owned_identity is not None:
+                require_owned_dir(root_fd, "owned", owned_fd, owned_identity)
+                remove_owned_dir(root_fd, "owned", owned_fd, owned_identity)
+        finally:
+            if owned_fd is not None:
+                os.close(owned_fd)
+            os.close(root_fd)
+            signal.setitimer(signal.ITIMER_REAL, *original_timer)
+            signal.pthread_sigmask(signal.SIG_SETMASK, original_mask)
+    require(owned_identity is not None and identity_fds(owned_identity) == (), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    require(identity_fds(root_identity) == (), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    require(root.is_dir() and not (root / "owned").exists() and (root / "canary").read_bytes() == b"canary", "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    require(signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask, "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    require(signal.getitimer(signal.ITIMER_REAL) == original_timer, "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    require(all(signal.getsignal(signum) is original_handlers[signum] for signum in context_signals), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+    print(f"WP4158_SIGNAL_PRIMARY_PASS phase={args.signal_phase} signal={args.signal_name} residue=0")
+    return 0
+
+
+def default_signal_primary_guard():
+    aggregate_deadline = time.monotonic() + 10
+    executable = pathlib.Path(sys.executable).resolve(strict=True)
+    script = pathlib.Path(__file__).resolve(strict=True)
+    cwd = pathlib.Path.cwd().resolve()
+    for signal_phase in ("pre_snapshot", "post_snapshot"):
+        for signal_name in ("SIGINT", "SIGTERM", "SIGHUP", "SIGALRM"):
+            root_path = None
+            with tempfile.TemporaryDirectory(prefix="wp4158-transition-primary-") as root_text:
+                root_path = pathlib.Path(root_text)
+                os.chmod(root_path, 0o700)
+                root_identity = identity(root_path.lstat())
+                canary = root_path / "canary"
+                canary.write_bytes(b"canary")
+                os.chmod(canary, 0o600)
+                canary_identity = identity(canary.lstat())
+                remaining = aggregate_deadline - time.monotonic()
+                require(remaining > 0, "LIVE_SIGNAL_PRIMARY_GUARD_FAILED")
+                command = [
+                    str(executable), "-I", str(script),
+                    "--transition-primary-child", "--signal-phase", signal_phase,
+                    "--signal-name", signal_name, "--root", str(root_path),
+                ]
+                child = subprocess.Popen(
+                    command,
+                    cwd=str(cwd),
+                    env={"LC_ALL": "C", "LANG": "C"},
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    close_fds=True,
+                    start_new_session=True,
+                )
+                verified_pgid = None
+                try:
+                    require(os.getpgid(child.pid) == child.pid and child.pid != os.getpgrp(), "LIVE_SIGNAL_PRIMARY_GUARD_FAILED")
+                    verified_pgid = child.pid
+                    stdout, stderr = child.communicate(timeout=min(2, remaining))
+                except subprocess.TimeoutExpired as exc:
+                    reap_probe_child(child, verified_pgid, "LIVE_SIGNAL_PRIMARY_GUARD_FAILED")
+                    raise VerificationError("LIVE_SIGNAL_PRIMARY_GUARD_FAILED") from exc
+                finally:
+                    reap_probe_child(child, verified_pgid, "LIVE_SIGNAL_PRIMARY_GUARD_FAILED")
+                expected = f"WP4158_SIGNAL_PRIMARY_PASS phase={signal_phase} signal={signal_name} residue=0\n".encode()
+                require(child.returncode == 0 and stdout == expected and stderr == b"", "LIVE_SIGNAL_PRIMARY_GUARD_FAILED")
+                require(root_path.is_dir() and identity(root_path.lstat()) == root_identity, "LIVE_SIGNAL_PRIMARY_GUARD_FAILED")
+                require(not (root_path / "owned").exists(), "LIVE_SIGNAL_PRIMARY_GUARD_FAILED")
+                require(canary.read_bytes() == b"canary" and identity(canary.lstat()) == canary_identity, "LIVE_SIGNAL_PRIMARY_GUARD_FAILED")
+                require(time.monotonic() < aggregate_deadline, "LIVE_SIGNAL_PRIMARY_GUARD_FAILED")
+            require(root_path is not None and not root_path.exists(), "LIVE_SIGNAL_PRIMARY_GUARD_FAILED")
+
+
+def validate_live_transition_ast(tree):
+    live_nodes = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "live"]
+    require(len(live_nodes) == 1, "LIVE_TRANSITION_BINDING_FAILED")
+    live_node = live_nodes[0]
+    transition_calls = [
+        node for node in ast.walk(live_node)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "run_signal_transition"
+    ]
+    require(len(transition_calls) == 3, "LIVE_TRANSITION_BINDING_FAILED")
+    transition_calls.sort(key=lambda node: (node.lineno, node.col_offset))
+    callbacks = []
+    for call in transition_calls:
+        require(len(call.args) >= 3 and isinstance(call.args[2], ast.Name), "LIVE_TRANSITION_BINDING_FAILED")
+        callbacks.append(call.args[2].id)
+    require(callbacks == ["allocate_owner", "close_transport", "close_transport"], "LIVE_TRANSITION_BINDING_FAILED")
+    require(not any(
+        isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in {"allocate_owner", "close_transport"}
+        for node in ast.walk(live_node)
+    ), "LIVE_TRANSITION_BINDING_FAILED")
+    require(not any(keyword.arg == "restore" for keyword in transition_calls[0].keywords), "LIVE_TRANSITION_BINDING_FAILED")
+    for call in transition_calls[1:]:
+        restore_keywords = [keyword for keyword in call.keywords if keyword.arg == "restore"]
+        require(len(restore_keywords) == 1 and isinstance(restore_keywords[0].value, ast.Name) and restore_keywords[0].value.id == "restore_handlers", "LIVE_TRANSITION_BINDING_FAILED")
+    deadline_keywords = [keyword for keyword in transition_calls[1].keywords if keyword.arg == "deadline"]
+    require(len(deadline_keywords) == 1 and isinstance(deadline_keywords[0].value, ast.Name) and deadline_keywords[0].value.id == "deadline", "LIVE_TRANSITION_BINDING_FAILED")
+    require(not any(keyword.arg == "deadline" for keyword in transition_calls[2].keywords), "LIVE_TRANSITION_BINDING_FAILED")
+    create_calls = [
+        node for node in ast.walk(live_node)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "create_private_root"
+    ]
+    require(len(create_calls) == 1, "LIVE_TRANSITION_BINDING_FAILED")
+    allocate_nodes = [node for node in ast.walk(live_node) if isinstance(node, ast.FunctionDef) and node.name == "allocate_owner"]
+    require(len(allocate_nodes) == 1 and create_calls[0] in tuple(ast.walk(allocate_nodes[0])), "LIVE_TRANSITION_BINDING_FAILED")
+    for node in ast.walk(live_node):
+        if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+            continue
+        targets = node.targets if isinstance(node, ast.Assign) else (node.target,)
+        for target in targets:
+            if isinstance(target, ast.Attribute) and target.attr == "cleanup_active":
+                require(not isinstance(node.value, ast.Constant) or node.value.value is not False, "LIVE_TRANSITION_BINDING_FAILED")
+    return transition_calls
+
+
+def live_transition_binding_guard():
+    source_bytes = pathlib.Path(__file__).read_bytes()
+    require(source_bytes.endswith(b"\n"), "LIVE_TRANSITION_BINDING_FAILED")
+    tree = ast.parse(source_bytes, filename=__file__)
+    calls = validate_live_transition_ast(tree)
+    for target in (calls[0], calls[-1]):
+        mutant = copy.deepcopy(tree)
+        mutant_calls = [
+            node for node in ast.walk(mutant)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "run_signal_transition"
+        ]
+        index = calls.index(target)
+        mutant_calls[index].func.id = "bypass_signal_transition"
+        try: validate_live_transition_ast(mutant)
+        except VerificationError as exc: require(str(exc) == "LIVE_TRANSITION_BINDING_FAILED", "LIVE_TRANSITION_BINDING_FAILED")
+        else: raise VerificationError("LIVE_TRANSITION_BINDING_FAILED")
+
+
+def git_boundary_guard():
+    for key in GIT_AMBIENT_KEYS + ("GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0"):
+        for value in ("", "hostile"):
+            try: validate_ambient({key: value})
+            except VerificationError as exc: require(str(exc) == "TRANSPORT_POLICY", "GIT_BOUNDARY_GUARD_FAILED")
+            else: raise VerificationError("GIT_BOUNDARY_GUARD_FAILED")
+
+    original_run = subprocess.run
+    original_monotonic = time.monotonic
+    calls = []
+    with tempfile.TemporaryDirectory(prefix="wp4158-git-guard-") as parent:
+        parent_path = pathlib.Path(parent)
+        fake_bin = parent_path / "bin"; fake_bin.mkdir(mode=0o700)
+        fake_sentinel = parent_path / "fake-git-ran"
+        fake_git = fake_bin / "git"
+        fake_git.write_text(f"#!/bin/sh\nprintf ran > '{fake_sentinel}'\nexit 99\n")
+        os.chmod(fake_git, 0o700)
+        cwd = pathlib.Path.cwd().resolve()
+        def synthetic_run(argv, **kwargs):
+            calls.append((tuple(argv), kwargs))
+            require(pathlib.Path(argv[0]).resolve() != fake_git.resolve(), "GIT_BOUNDARY_GUARD_FAILED")
+            require(kwargs["cwd"] == str(cwd) and kwargs["stdin"] is subprocess.DEVNULL, "GIT_BOUNDARY_GUARD_FAILED")
+            require(kwargs["env"] == {"LC_ALL": "C", "LANG": "C", "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0"}, "GIT_BOUNDARY_GUARD_FAILED")
+            require(0 < kwargs["timeout"] <= 15 and kwargs["stdout"] is subprocess.PIPE and kwargs["stderr"] is subprocess.PIPE, "GIT_BOUNDARY_GUARD_FAILED")
+            return subprocess.CompletedProcess(argv, 0, f"{cwd}\n.git\n.git\n".encode(), b"")
+        original_path = os.environ.get("PATH")
+        os.environ["PATH"] = str(fake_bin)
+        subprocess.run = synthetic_run
+        try:
+            roots = bounded_git_roots(cwd, time.monotonic() + 30)
+        finally:
+            subprocess.run = original_run
+            if original_path is None: os.environ.pop("PATH", None)
+            else: os.environ["PATH"] = original_path
+        require(roots == (str(cwd), ".git", ".git") and len(calls) == 1 and not fake_sentinel.exists(), "GIT_BOUNDARY_GUARD_FAILED")
+
+        workspace = parent_path / "workspace"; workspace.mkdir(mode=0o700)
+        nested_cwd = workspace / "repo"; nested_cwd.mkdir(mode=0o700)
+        local_tmp = nested_cwd / "tmp"; local_tmp.mkdir(mode=0o700)
+        owner_root = local_tmp / "owner"; owner_root.mkdir(mode=0o700)
+        canary = nested_cwd / "canary"; canary.write_bytes(b"must-survive"); os.chmod(canary, 0o600)
+        calls.clear()
+        subprocess.run = synthetic_run
+        try:
+            try: discover_git_roots(owner_root, nested_cwd, time.monotonic() + 30)
+            except VerificationError as exc: require(str(exc) == "TRANSPORT_POLICY", "GIT_BOUNDARY_GUARD_FAILED")
+            else: raise VerificationError("GIT_BOUNDARY_GUARD_FAILED")
+        finally:
+            subprocess.run = original_run
+        require(calls == [] and canary.read_bytes() == b"must-survive", "GIT_BOUNDARY_GUARD_FAILED")
+        require(not (owner_root / "core.tgz").exists() and not (owner_root / "term.tgz").exists(), "GIT_BOUNDARY_GUARD_FAILED")
+
+        alias_cwd = None
+        cwd_parts = list(cwd.parts)
+        for index in range(1, len(cwd_parts)):
+            alternate = cwd_parts.copy()
+            alternate[index] = alternate[index].swapcase()
+            candidate = pathlib.Path(alternate[0]).joinpath(*alternate[1:])
+            try:
+                if candidate != cwd and os.path.samefile(candidate, cwd):
+                    alias_cwd = candidate
+                    break
+            except OSError:
+                continue
+        if alias_cwd is not None:
+            case_parent = cwd / f".wp4158-case-alias-{os.urandom(8).hex()}"
+            owner_actual = case_parent / "owner"
+            case_canary = case_parent / "canary"
+            case_parent.mkdir(mode=0o700)
+            owner_actual.mkdir(mode=0o700)
+            case_canary.write_bytes(b"must-survive"); os.chmod(case_canary, 0o600)
+            owner_alias = alias_cwd / case_parent.name / "owner"
+            calls.clear()
+            subprocess.run = synthetic_run
+            try:
+                try:
+                    try: discover_git_roots(owner_alias, cwd, time.monotonic() + 30)
+                    except VerificationError as exc: require(str(exc) == "TRANSPORT_POLICY", "GIT_BOUNDARY_GUARD_FAILED")
+                    else: raise VerificationError("GIT_BOUNDARY_GUARD_FAILED")
+                    require(calls == [] and case_canary.read_bytes() == b"must-survive", "GIT_BOUNDARY_GUARD_FAILED")
+                    require(not (owner_actual / "core.tgz").exists() and not (owner_actual / "term.tgz").exists(), "GIT_BOUNDARY_GUARD_FAILED")
+                finally:
+                    if case_canary.exists(): case_canary.unlink()
+                    if owner_actual.exists(): owner_actual.rmdir()
+                    if case_parent.exists(): case_parent.rmdir()
+            finally:
+                subprocess.run = original_run
+            require(not case_parent.exists(), "GIT_BOUNDARY_GUARD_FAILED")
+
+        calls.clear()
+        subprocess.run = synthetic_run
+        time.monotonic = lambda: 10.0
+        try:
+            try: bounded_git_roots(cwd, 10.0)
+            except VerificationError as exc: require(str(exc) == "TRANSPORT_LIMIT", "GIT_BOUNDARY_GUARD_FAILED")
+            else: raise VerificationError("GIT_BOUNDARY_GUARD_FAILED")
+        finally:
+            time.monotonic = original_monotonic
+            subprocess.run = original_run
+        require(calls == [], "GIT_BOUNDARY_GUARD_FAILED")
+
+        def timed_out_run(*args, **kwargs):
+            raise subprocess.TimeoutExpired(args[0], kwargs["timeout"])
+        subprocess.run = timed_out_run
+        try:
+            try: bounded_git_roots(cwd, time.monotonic() + 30)
+            except VerificationError as exc: require(str(exc) == "TRANSPORT_LIMIT", "GIT_BOUNDARY_GUARD_FAILED")
+            else: raise VerificationError("GIT_BOUNDARY_GUARD_FAILED")
+        finally: subprocess.run = original_run
+
+        monotonic_values = iter((1.0, 3.0))
+        time.monotonic = lambda: next(monotonic_values)
+        subprocess.run = synthetic_run
+        try:
+            try: bounded_git_roots(cwd, 2.0)
+            except VerificationError as exc: require(str(exc) == "TRANSPORT_LIMIT", "GIT_BOUNDARY_GUARD_FAILED")
+            else: raise VerificationError("GIT_BOUNDARY_GUARD_FAILED")
+        finally:
+            time.monotonic = original_monotonic
+            subprocess.run = original_run
+
+        malformed = (
+            subprocess.CompletedProcess([], 1, b"", b""),
+            subprocess.CompletedProcess([], 0, b"", b""),
+            subprocess.CompletedProcess([], 0, b"one\ntwo\n", b""),
+            subprocess.CompletedProcess([], 0, b"one\ntwo\nthree\nfour\n", b""),
+            subprocess.CompletedProcess([], 0, b"one\n\ntwo\n", b""),
+            subprocess.CompletedProcess([], 0, b"one\ntwo\x00\nthree\n", b""),
+            subprocess.CompletedProcess([], 0, b"\xff\ntwo\nthree\n", b""),
+            subprocess.CompletedProcess([], 0, b"one\ntwo\nthree\n", b"warning"),
+        )
+        for result in malformed:
+            subprocess.run = lambda *_args, _result=result, **_kwargs: _result
+            try:
+                try: bounded_git_roots(cwd, time.monotonic() + 30)
+                except VerificationError as exc: require(str(exc) == "TRANSPORT_POLICY", "GIT_BOUNDARY_GUARD_FAILED")
+                else: raise VerificationError("GIT_BOUNDARY_GUARD_FAILED")
+            finally: subprocess.run = original_run
+    require(subprocess.run is original_run and time.monotonic is original_monotonic, "GIT_BOUNDARY_GUARD_FAILED")
+
+
+def transport_constructor_guard():
+    original_context = ssl.create_default_context
+    original_opener = urllib.request.build_opener
+    original_pthread_sigmask = signal.pthread_sigmask
+    original_handler = signal.getsignal(signal.SIGALRM)
+    original_timer = signal.getitimer(signal.ITIMER_REAL)
+    marker = lambda _signum, _frame: None
+    try:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, marker)
+        for target in ("context", "opener"):
+            error = None
+            def fail_constructor(*_args, **_kwargs): raise MemoryError(f"synthetic {target} failure")
+            if target == "context": ssl.create_default_context = fail_constructor
+            else: urllib.request.build_opener = fail_constructor
+            try: Transport(marker)
+            except MemoryError as exc: error = str(exc)
+            finally:
+                ssl.create_default_context = original_context
+                urllib.request.build_opener = original_opener
+            require(error == f"synthetic {target} failure", "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+            require(signal.getsignal(signal.SIGALRM) is marker and signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0), "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+        transport = Transport(marker); transport.start(); transport.close()
+        require(signal.getsignal(signal.SIGALRM) is marker and signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0), "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+        original_setitimer = signal.setitimer
+        original_signal = signal.signal
+        original_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+        def raising_alarm(_signum, _frame): raise VerificationError("TRANSPORT_LIMIT")
+        transport = Transport(raising_alarm); transport.start()
+        double_start_error = None
+        def forbidden_signal_call(*_args, **_kwargs): raise MemoryError("double start touched signal state")
+        signal.setitimer = forbidden_signal_call
+        signal.signal = forbidden_signal_call
+        signal.pthread_sigmask = forbidden_signal_call
+        try: transport.start()
+        except VerificationError as exc: double_start_error = str(exc)
+        finally:
+            signal.setitimer = original_setitimer
+            signal.signal = original_signal
+            signal.pthread_sigmask = original_pthread_sigmask
+        require(double_start_error == "TRANSPORT_POLICY" and transport.active, "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+        transport.close()
+        require(signal.getsignal(signal.SIGALRM) is marker and signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0), "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+        require(signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask, "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+        for lifecycle in ("pre_start", "post_close"):
+            transport = Transport(raising_alarm)
+            if lifecycle == "post_close": transport.start(); transport.close()
+            lifecycle_error = None
+            transport.opener.open = forbidden_signal_call
+            signal.setitimer = forbidden_signal_call
+            signal.signal = forbidden_signal_call
+            signal.pthread_sigmask = forbidden_signal_call
+            try: transport.get(REF_URL, 1)
+            except VerificationError as exc: lifecycle_error = str(exc)
+            finally:
+                signal.setitimer = original_setitimer
+                signal.signal = original_signal
+                signal.pthread_sigmask = original_pthread_sigmask
+            require(lifecycle_error == "TRANSPORT_POLICY" and not transport.active, "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+            require(signal.getsignal(signal.SIGALRM) is marker and signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0), "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+            require(signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask, "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+        def arm_with_pending(which, seconds, interval=0):
+            result = original_setitimer(which, seconds, interval)
+            if which == signal.ITIMER_REAL and seconds == 120: os.kill(os.getpid(), signal.SIGALRM)
+            return result
+        transport = Transport(raising_alarm)
+        signal.setitimer = arm_with_pending
+        activation_error = None
+        try: transport.start()
+        except VerificationError as exc: activation_error = str(exc)
+        finally: signal.setitimer = original_setitimer
+        require(activation_error == "TRANSPORT_LIMIT" and not transport.active, "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+        require(signal.getsignal(signal.SIGALRM) is marker and signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0), "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+        require(signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask, "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+        for target in ("timer", "handler"):
+            transport = Transport(raising_alarm)
+            activation_error = None
+            activation_notes = []
+            def pending_with_timer_fault(which, seconds, interval=0):
+                result = original_setitimer(which, seconds, interval)
+                if which == signal.ITIMER_REAL and seconds == 120: os.kill(os.getpid(), signal.SIGALRM)
+                if target == "timer" and which == signal.ITIMER_REAL and seconds == 0: raise MemoryError("synthetic start rollback timer-return failure")
+                return result
+            def pending_with_handler_fault(signum, handler):
+                result = original_signal(signum, handler)
+                if target == "handler" and signum == signal.SIGALRM and handler is marker: raise MemoryError("synthetic start rollback handler-return failure")
+                return result
+            signal.setitimer = pending_with_timer_fault
+            signal.signal = pending_with_handler_fault
+            try: transport.start()
+            except VerificationError as exc:
+                activation_error = str(exc)
+                activation_notes = list(getattr(exc, "__notes__", ()))
+            finally:
+                signal.setitimer = original_setitimer
+                signal.signal = original_signal
+            require(activation_error == "TRANSPORT_LIMIT" and activation_notes == [f"secondary alarm-{target} rollback failure"] and not transport.active, "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+            require(signal.getsignal(signal.SIGALRM) is marker and signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0), "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+            require(signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask, "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+        transport = Transport(raising_alarm)
+        initial_mask_error = None
+        injected_mask = False
+        mask_failure_label = "start"
+        def fail_after_initial_mask(how, mask):
+            nonlocal injected_mask
+            result = original_pthread_sigmask(how, mask)
+            if how == signal.SIG_BLOCK and mask == {signal.SIGALRM} and not injected_mask:
+                injected_mask = True
+                raise MemoryError(f"synthetic {mask_failure_label} mask-return failure")
+            return result
+        signal.pthread_sigmask = fail_after_initial_mask
+        try: transport.start()
+        except MemoryError as exc: initial_mask_error = str(exc)
+        finally: signal.pthread_sigmask = original_pthread_sigmask
+        require(initial_mask_error == "synthetic start mask-return failure" and injected_mask and not transport.active, "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+        require(signal.getsignal(signal.SIGALRM) is marker and signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0), "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+        require(signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask, "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+        def active_alarm(_signum, _frame): raise VerificationError("TRANSPORT_LIMIT")
+        for target in ("timer", "handler"):
+            transport = Transport(active_alarm); transport.start()
+            close_error = None
+            if target == "timer":
+                def fail_after_timer(which, seconds, interval=0):
+                    result = original_setitimer(which, seconds, interval)
+                    if which == signal.ITIMER_REAL and seconds == 0: raise MemoryError("synthetic close timer-return failure")
+                    return result
+                signal.setitimer = fail_after_timer
+            else:
+                def fail_after_handler(signum, handler):
+                    result = original_signal(signum, handler)
+                    if signum == signal.SIGALRM and handler is marker: raise MemoryError("synthetic close handler-return failure")
+                    return result
+                signal.signal = fail_after_handler
+            try: transport.close()
+            except MemoryError as exc: close_error = str(exc)
+            finally:
+                signal.setitimer = original_setitimer
+                signal.signal = original_signal
+            require(close_error == f"synthetic close {target}-return failure" and not transport.active, "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+            require(signal.getsignal(signal.SIGALRM) is marker and signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0), "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+            require(signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask, "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+        transport = Transport(active_alarm); transport.start()
+        close_mask_error = None
+        injected_mask = False
+        mask_failure_label = "close"
+        signal.pthread_sigmask = fail_after_initial_mask
+        try: transport.close()
+        except MemoryError as exc: close_mask_error = str(exc)
+        finally: signal.pthread_sigmask = original_pthread_sigmask
+        require(close_mask_error == "synthetic close mask-return failure" and injected_mask and not transport.active, "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+        require(signal.getsignal(signal.SIGALRM) is marker and signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0), "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+        require(signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask, "TRANSPORT_CONSTRUCTOR_GUARD_FAILED")
+    finally:
+        ssl.create_default_context = original_context
+        urllib.request.build_opener = original_opener
+        signal.pthread_sigmask = original_pthread_sigmask
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, original_handler)
+        signal.setitimer(signal.ITIMER_REAL, *original_timer)
+
+
+def self_test():
+    rights, rights_expected = rights_fixture(); rights[0]["copyright"] = "cc0"; validate_rights(rights, **rights_expected)
+    profiles, value_sets, direct_expected = direct_fixture(); before_order = repr(profiles[0]["snapshot"]["element"]); profiles[0]["snapshot"]["element"].reverse(); require(repr(profiles[0]["snapshot"]["element"]) != before_order, "SELFTEST_POSITIVE_FAILED"); validate_direct_profiles(profiles, value_sets, **direct_expected)
+    for token, cases in NEGATIVE_FAMILIES.items():
+        for name in cases.split():
+            negative_probe(name, token)
+    cleanup_path_guard_probe()
+    exact_pid_reap_guard()
+    live_context_cleanup_guard()
+    signal_transition_guard()
+    default_signal_primary_guard()
+    live_transition_binding_guard()
+    git_boundary_guard()
+    transport_constructor_guard()
+    for phase in ("pending", "final"):
+        for reason in ("normal", "operation_error", "sigint", "sigterm", "sighup"):
+            cleanup_probe(phase, reason)
+    print("WP4158_SELFTEST_PASS positives=2 negatives=95 cleanup=10 residue=0")
+
+
+def live():
+    catchable = {signal.SIGINT, signal.SIGTERM, signal.SIGHUP}
+    tail_signals = catchable | {signal.SIGALRM}
+    original_handlers = {sig: signal.getsignal(sig) for sig in tail_signals}
+    state = SignalState()
+    operation_complete = False
+    def stop(signum, _frame):
+        if state.cleanup_active:
+            state.record(signum)
+            return
+        state.cleanup_active = True
+        state.record(signum)
+        if sys.exc_info()[0] is not None or operation_complete: return
+        if signum == signal.SIGALRM: raise VerificationError("TRANSPORT_LIMIT")
+        raise InterruptedError(signum)
+    for sig in catchable: signal.signal(sig, stop)
+    transport = None
+    def restore_handlers():
+        for sig, handler in original_handlers.items(): signal.signal(sig, handler)
+    def close_transport():
+        nonlocal transport
+        if transport is None: return
+        current = transport
+        try:
+            current.close()
+        finally:
+            if not current.active: transport = None
+            signal.signal(signal.SIGALRM, stop)
+    try:
+        validate_ambient(os.environ)
+        transport = Transport(stop); transport.start(); source_checks(transport)
+        owner_path = None
+        owner_root = None
+        owner_fd = None
+        owner_identity = None
+        owned_name = None
+        owned_fd = None
+        owned_identity = None
+        owned_files = {}
+        try:
+            state.cleanup_active = True
+            def register_owner(path):
+                nonlocal owner_path, owner_root, owner_fd, owner_identity
+                owner_path = path
+                owner_root = path.resolve()
+                owner_fd, owner_identity = open_owned_path(path)
+            def allocate_owner():
+                create_private_root("wp4158-live-", register_owner)
+            run_signal_transition(tail_signals, state, allocate_owner)
+            os.chmod(owner_root, 0o700); cwd = pathlib.Path.cwd().resolve()
+            discover_git_roots(owner_root, cwd, transport.deadline)
+            require(owner_root.stat().st_uid == os.getuid() and identity(owner_root.stat()) == owner_identity, "TRANSPORT_POLICY")
+            lifecycle_signals = tail_signals
+            previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, lifecycle_signals)
+            try:
+                owned_name = "pending"
+                owned_fd, owned_identity = begin_owned_dir(owner_fd, owned_name)
+            finally: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+            blobs = {}
+            for key, url, limit, size in (("core", CORE_URL, 4 * 1024 * 1024, 2391515), ("term", TERM_URL, 8 * 1024 * 1024, 7444937)):
+                data = transport.get(url, limit, size); name = f"{key}.tgz"
+                fd = None
+                file_signals = tail_signals
+                try:
+                    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, file_signals)
+                    try:
+                        fd, file_identity = begin_owned_file(owned_fd, name)
+                        owned_files[name] = file_identity
+                    finally: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+                except BaseException:
+                    if fd is not None:
+                        try: os.close(fd)
+                        except OSError: pass
+                    raise
+                with os.fdopen(fd, "wb") as stream: stream.write(data); stream.flush(); os.fsync(stream.fileno())
+                file_info = os.stat(name, dir_fd=owned_fd, follow_symlinks=False)
+                require(stat.S_ISREG(file_info.st_mode) and identity(file_info) == file_identity and stat.S_IMODE(file_info.st_mode) == 0o600, "TRANSPORT_POLICY")
+                blobs[key] = data
+            previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, lifecycle_signals)
+            try: owned_name = finalize_owned_dir(owner_fd, "pending", "final", owned_fd, owned_identity)
+            finally: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+            resources, value_sets = terminology(blobs["term"])
+            canonicals = core_direct(blobs["core"], value_sets); rows = handoff(canonicals)
+            operation_complete = True
+        finally:
+            state.cleanup_active = True
+            cleanup_signals = tail_signals
+            previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, cleanup_signals)
+            alarm_handler = signal.getsignal(signal.SIGALRM)
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            signal.signal(signal.SIGALRM, stop)
+            try:
+                if owned_name is not None and owned_fd is not None:
+                    require_owned_dir(owner_fd, owned_name, owned_fd, owned_identity)
+                    for name, file_identity in owned_files.items(): remove_owned_file(owned_fd, name, file_identity)
+                    remove_owned_dir(owner_fd, owned_name, owned_fd, owned_identity)
+                    os.close(owned_fd); owned_fd = None
+                if owner_path is not None and owner_fd is not None:
+                    current_root = owner_path.lstat()
+                    require(identity(current_root) == owner_identity and identity(os.fstat(owner_fd)) == owner_identity, "TRANSPORT_POLICY")
+                    os.rmdir(owner_path)
+            finally:
+                if owned_fd is not None:
+                    try: os.close(owned_fd)
+                    except OSError: pass
+                if owner_fd is not None:
+                    try: os.close(owner_fd)
+                    except OSError: pass
+                signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+                signal.signal(signal.SIGALRM, alarm_handler)
+            if owner_root is not None: require(not owner_root.exists(), "TRANSPORT_POLICY")
+        deadline = transport.deadline if transport is not None else None
+        run_signal_transition(tail_signals, state, close_transport, deadline=deadline, restore=restore_handlers)
+        print(f"WP4158_SOURCE_PASS tag={TAG} commit={COMMIT} tree={TREE} entries=662 notice={NOTICE_SHA}")
+        print(f"WP4158_ARTIFACT_PASS core={CORE_SHA} terminology={TERM_SHA} resources=203")
+        print(f"WP4158_RIGHTS_PASS codesystems=106 valuesets=97 present=146 absent=57 identity={IDENTITY_SHA} classification={CLASS_SHA}")
+        print(f"WP4158_DIRECT_PASS profiles=32 raw=51 unique=50 canonicals=25 duplicate=2 profile_sha={PROFILE_SHA}")
+        print(f"WP4158_HANDOFF_PASS rows={len(rows)} unresolved=200 digest={HANDOFF_SHA}")
+        print("WP4158_LIVE_PASS responses=7 redirects=0 residue=0")
+    finally:
+        primary = sys.exc_info()
+        state.cleanup_active = True
+        try:
+            run_signal_transition(tail_signals, state, close_transport, restore=restore_handlers)
+        except BaseException as exc:
+            if primary[1] is None: raise
+            primary[1].add_note(f"secondary final signal restoration failure: {type(exc).__name__}")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--live", action="store_true")
+    parser.add_argument("--cleanup-child", action="store_true")
+    parser.add_argument("--transition-primary-child", action="store_true")
+    parser.add_argument("--signal-name", choices=("SIGINT", "SIGTERM", "SIGHUP", "SIGALRM"))
+    parser.add_argument("--signal-phase", choices=("pre_snapshot", "post_snapshot"))
+    parser.add_argument("--phase", choices=("pending", "final"))
+    parser.add_argument("--reason", choices=("normal", "operation_error", "sigint", "sigterm", "sighup"))
+    parser.add_argument("--root"); parser.add_argument("--root-fd", type=int)
+    parser.add_argument("--ready-fd", type=int); parser.add_argument("--release-fd", type=int)
+    parser.add_argument("--cleanup-ready-fd", type=int); parser.add_argument("--cleanup-go-fd", type=int); parser.add_argument("--signal-ack-fd", type=int)
+    args = parser.parse_args()
+    require(sum((args.self_test, args.live, args.cleanup_child, args.transition_primary_child)) == 1, "MODE_INVALID")
+    if args.transition_primary_child:
+        return transition_primary_child(args)
+    if args.cleanup_child:
+        return cleanup_child(args)
+    self_test() if args.self_test else live()
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except VerificationError as exc:
+        print(str(exc), file=sys.stderr)
+        raise SystemExit(1)
+```
+<!-- WP4158_VERIFIER_END -->
+
+The first S1 IMPLEMENTATION review generation stopped at 0/2 PASS on candidate tree `2cf57a692341bd5b814bd8d1c02b89f6a1ae00d4`; slots 3-5 were not started. Both reviewers accepted exact4 binding, markers, AST and happy-path live structure, but found all 95 negatives were table-only expected-token raises, cleanup readiness and operation-error paths were synthetic/unbounded, and transport lacked planned signal/ambient/resolved-git-root guards.
+
+The second S1 IMPLEMENTATION generation stopped at 0/2 PASS on tree `c6659d0944dd532dfb29c992101ea1f2f0efc856`; slots 3-5 were not started. Reviewers confirmed all 95 mapped tokens came from production validators and cleanup mechanics improved, but blocked a no-op duplicate-order positive, missing mutation inequality/named direct boundaries, nonshared live cleanup, spawn/PGID recovery, during-read aggregate enforcement, `SSLKEYLOGFILE`, and production request-deadline wiring.
+
+The third IMPLEMENTATION generation passed tree `ab4617383d01669d9682716d2b95d2d2f665b27a` 1/2. All prior blockers were fixed; one reviewer found only that `notice_digest` appended a byte, changing size and digest so size failed first. The fourth source replaced one existing space with `!`, preserving size and all anchors while changing only bytes versus the passing SHA expectation.
+
+The fourth generation reviewed tree `efbb1219450563e7a2a37029622635d7eed67724`: reviewers 1, 2 and 4 passed, reviewer 3 failed, and reviewer 5 was not started. Its only blocker was explicit JSON null copyright being collapsed with missing by `.get()`. A unique sentinel now distinguishes field absence; only missing/exact empty is absent, while explicit null reaches `RIGHTS_TYPE_INVALID`, including the named negative.
+
+The fifth generation reviewed tree `08d361bc02e1279af0d404669688dfe7a61ddc51`: reviewers 1, 2 and 4 passed, reviewer 3 failed, and reviewer 5 was not started. Taxonomy passed; its only blocker was waiting just one 10ms interval for readiness EOF after the phase byte. The sixth source accumulated the byte and EOF but its review passed tree `f4b1926f9ce79c4477e32a66557c27248edb80d8` only 1/2: separate clock reads could produce a negative select timeout at the boundary, and final acceptance checked only the total deadline.
+
+The seventh source SHA-256 was `690304eb1fda92238dbdb49167df4c3596167c12570a443cacf3d1b7a0565f00` across 883 LF lines. Candidate tree `b534406011e666b3c6ea61db9217d381519db04b` passed reviewers 1 and 2, failed reviewers 3 and 4, and did not start reviewer 5. Its `communicate(timeout=max(0.01, remaining))` could grant up to 10ms beyond the total deadline, and it did not assert the total deadline immediately after completion.
+
+The eighth source SHA-256 was `c7e37a24ba51340325049400e00ea8efcb85cbc29c725d265846307d5d34323c` across 888 LF lines. Candidate tree `3e2de4cd12498ba3b410c1e0c313168f81fa28f0` passed reviewer 1 and failed reviewer 2, so reviewer 3 was interrupted and reviewers 4 and 5 were not started. Although it checked the deadline after child completion and owned-path removal, it did not check after the parent `finally` and `TemporaryDirectory` context exit, so final parent cleanup could exceed ten seconds without failing.
+
+The ninth source SHA-256 is `dcd5969f4fd225983730d9a54d8fe760e95e975364f56760a440c8d1ea21cdc4` across 889 LF lines. It additionally requires strict total-deadline compliance after the private temporary parent context has completed cleanup. Fresh reviewers 1 through 5 passed candidate tree `f00be4f442776dc991806442271f9c89b37f023e` 5/5, independently confirming exact4/source/index binding, executable positive2/negative95/cleanup10 oracles, startup and total deadlines through context cleanup, transport/provenance controls, security/privacy boundaries and nonclaims. That checkpoint advanced to BUG_REFACTOR review.
+
+The first BUG_REFACTOR generation stopped when reviewer 2 failed candidate tree `f890e90533f76cdb41e2d7d7529629427d7de2b5`; reviewer 1 was interrupted and reviewers 3 through 5 were not started. The cleanup child accepted unvalidated CLI paths and its unconditional `finally` removal could recursively delete a pre-existing pending or final path after creation failed.
+
+The second BUG_REFACTOR source SHA-256 was `047c65ea76548ca8dd171dd4e183e804d0478fe28388b1a856d4ae678d4383cc` across 947 LF lines. The child validated the repo-external private parent, fixed sibling basenames, UID/modes/canary, initial absence and inherited FIFO descriptors; create/rename ownership changes were signal-masked and cleanup removed only the phase path recorded as created by that child. A subprocess guard proved a pre-existing pending sentinel and canary survived with exact `CLEANUP_PATH_INVALID`; it was an uncounted security preflight, so the aggregate remained positive2/negative95/cleanup10. The following second-generation review found the remaining namespace blockers.
+
+The second BUG_REFACTOR candidate tree `318e29d68d83180dc6784edc0809d3446e2a5f11` failed reviewer 1, so reviewer 2 was interrupted and reviewers 3 through 5 were not started. `Path.exists()` missed dangling symlinks, validation remained separate from replacing rename/removal, ownership tracked only names rather than inode identities, and a repository-ancestor root was not rejected.
+
+The third BUG_REFACTOR source SHA-256 was `b4f5a3d5bdbcc44ea56911e22d954ee5824c691eaabb9e5108f67d7372a3cd02` across 1042 LF lines. Cleanup child path arguments were removed: the parent passed a no-follow private directory-FD capability, and the child used fixed dir-fd-relative names, lstat-style absence checks, cross-platform no-replace rename, held directory FDs and inode/device identities for exact unlink/rmdir. Guards covered a pre-existing directory, dangling symlink, repository-ancestor root, inserted rename target and owned-path replacement while preserving all pre-existing bytes. The aggregate remained positive2/negative95/cleanup10; the following review identified the overclaimed replacement threat and ancestor false-green.
+
+The third BUG_REFACTOR candidate tree `a5d432e501f1961ce12e20fd1e7d784cac4c9e73` failed reviewer 1, so reviewer 2 was interrupted and reviewers 3 through 5 were not started. It incorrectly treated a concurrent same-UID namespace replacement as defended even though portable POSIX/macOS deletion cannot condition unlink/rmdir on an inode identity, and its real repository-parent guard could still fail on the missing-canary condition if containment were removed.
+
+The fourth BUG_REFACTOR source SHA-256 was `99df167bbf45371705f072aa83c94b610a98bfccad8fc89a8d2abc5e29bcbdd9` across 1021 LF lines. Concurrent namespace replacement by a separate same-UID process inside the private root was explicitly excluded and not claimed; the misleading replacement probe was removed. The ancestor regression supplied a private 0700 root, valid UID/canary/FIFO/absence conditions and a nested synthetic working directory, isolating mutual containment as the only rejection boundary. Pre-existing directory, dangling entry and no-replace insertion guards remained, and the aggregate remained positive2/negative95/cleanup10; the following review found cleanup-signal timing and canary-length blockers.
+
+The fourth BUG_REFACTOR candidate tree `d608936ca9af205e1b808489bdc7139e720ff702` passed reviewer 1 and failed reviewer 2, so reviewers 3 through 5 were not started. A catchable signal delivered as a Python callback during deletion could still interrupt cleanup and leave residue because exact10 signalled only during the operation wait; canary validation also accepted a longer file with the correct prefix.
+
+The fifth BUG_REFACTOR source SHA-256 was `4ecd542cf729fe8605c28c8579dd68b0acacfd117c3edcfe18100d63eb8ef7ec` across 1074 LF lines. Cleanup-ready/go and signal-ack pipes moved all six INT/TERM/HUP probes into the active deletion phase; the handler deferred the acknowledged signal until exact owned cleanup completed and then emitted the original terminal reason/code. Live cleanup used the same defer-until-removed boundary. Canary validation required exact size, bytes and EOF, with a suffix regression guard. The following review found that the live boundary ended before owner-root context cleanup.
+
+The fifth BUG_REFACTOR candidate tree `2478c07bcbb8cd5373a325c6b64a4b572622032e` failed reviewer 1 and passed reviewer 2, so reviewers 3 through 5 were not started. Child cleanup signal timing and canary exactness were fixed, but live cleanup disabled deferral after pending/final removal and before the private owner context removed its root, allowing a catchable signal to leave the root behind.
+
+The sixth BUG_REFACTOR source SHA-256 was `d001acc19955f51ee4069261f2dd5696e0d1278237b10af699918ba581e81945` across 1120 LF lines. Live explicitly owned its temporary context and kept signal deferral/masking active through pending/final removal, owner cleanup and root-nonexistence assertion before re-raising a deferred signal. An uncounted live-context guard injected each INT/TERM/HUP during owner-root rmtree and required both deferral and root nonexistence. The following review found the preceding allocation/registration gap.
+
+The sixth BUG_REFACTOR candidate tree `d4b9d5cc5f7e02dcea50456b6f619bb4c4acf4d2` passed reviewer 1 and failed reviewer 2, so reviewers 3 through 5 were not started. A signal could still arrive after `TemporaryDirectory` created its root and before the cleanup-protected `try`, bypassing explicit owner cleanup.
+
+The seventh BUG_REFACTOR source SHA-256 was `d0c9275ce52629c2c05ec1953482cef5bc401c3971c74840258246d1e98fe318` across 1154 LF lines. Live activated cleanup deferral and blocked catchable signals before owner allocation, constructed and registered the owner inside the cleanup-protected outer try, and aborted operation on an allocation-deferred signal only after the same finally removed the owner and proved root nonexistence. Guards injected each INT/TERM/HUP immediately after `mkdtemp` returned in addition to the existing rmtree injections. The following review identified the composite-constructor non-signal gap.
+
+The seventh BUG_REFACTOR candidate tree `2de575daf8f84f056254f61ae00e73318c4565d5` failed reviewer 1, so reviewer 2 was interrupted and reviewers 3 through 5 were not started. `TemporaryDirectory` could create a root and then raise a non-signal exception before returning its owner object, leaving both owner and path unavailable to the outer cleanup.
+
+The eighth BUG_REFACTOR source SHA-256 was `63bee1c7c7625cafab7ae4f29a87c96716c266f722b667a0b3993d2f80448303` across 1162 LF lines. Live no longer used the composite `TemporaryDirectory` constructor: while signals were blocked it captured the direct `mkdtemp` path, and the outer finally owned explicit recursive removal by that path. A guard raised a synthetic `MemoryError` immediately after a captured path and required the original error text plus root nonexistence. The following review identified the stdlib allocator's pre-return gap.
+
+The eighth BUG_REFACTOR candidate tree `d130dbb0bb0c9ea2dff8edc2cc8f8e5c808f42e2` failed reviewer 1, so reviewer 2 was interrupted and reviewers 3 through 5 were not started. The standard `mkdtemp` can create its directory and then fail while forming/returning its absolute path, before the caller assignment captures that path.
+
+The ninth BUG_REFACTOR source SHA-256 was `2de02ba8c59f1e8eb6ea5c7cfa81d7aadc7e2b1d6ea6562b8a6680c92aebb263` across 1174 LF lines. A 32-attempt bounded exclusive allocator held each random candidate path before mkdir, created it 0700, and on every post-create `BaseException` removed that exact path before rethrowing. The allocation guard injected a synthetic `MemoryError` immediately after mkdir and before return, requiring original-error preservation and root nonexistence. The following review found that the mkdir call itself remained outside that cleanup region.
+
+The ninth BUG_REFACTOR candidate tree `098df9e0d8ef051b48256476822e801a95ea8e7c` failed reviewer 2, so reviewer 1 was interrupted and reviewers 3 through 5 were not started. A SIGALRM/Python callback exception after the real mkdir succeeded but before the call returned still occurred before the separate cleanup try and left the root behind.
+
+The tenth BUG_REFACTOR source SHA-256 was `79702b828eaff8d924f702a5d56511653156b5252929b47542542cdaaba1e1d9` across 1191 LF lines. The mkdir call itself was inside the single `BaseException` cleanup region; on error the known candidate was lstat-checked and only a same-UID exact-0700 directory was removed before the original exception was rethrown. A guard wrapped the real mkdir, raised `MemoryError` before the call returned, and required the same error plus root nonexistence. The following review identified restrictive-umask residue.
+
+The tenth BUG_REFACTOR candidate tree `9dbdbdf6fc5c4d9b8f99bc52998f93d7faea260a` failed reviewer 1, so reviewer 2 was interrupted and reviewers 3 through 5 were not started. Under a restrictive umask the root created by the same mkdir could be mode 000, causing the exact-0700 exception-cleanup condition to skip it.
+
+The eleventh BUG_REFACTOR source SHA-256 was `5a90f3569d7a7ab754f0998fab968011eec5abc78628ebbeaaa3730624af02b4` across 1209 LF lines. Successful allocation normalized the mode to 0700; exception cleanup accepted only a same-UID non-symlink directory with zero group/world permission bits. A restrictive-umask call-boundary guard ran the real mkdir, raised before return, required original-error preservation and root nonexistence, and restored the prior umask in `finally`. The following review found the FileExistsError origin conflation.
+
+The eleventh BUG_REFACTOR candidate tree `7d68892439875a75600b6266fe57791e77baa17f` failed reviewer 2; reviewer 1's context ended in a security-filter error and is noncount, and reviewers 3 through 5 were not started. A post-mkdir callback `FileExistsError` was incorrectly treated as a pre-existing collision and continued without cleanup.
+
+The twelfth BUG_REFACTOR source SHA-256 was `d3324089531c514aa1ab0a4536813eac95f112133826ba6617ccb11cc4d7b798` across 1238 LF lines. No-follow pre-existing collision detection occurred before mkdir; after creation began every `BaseException`, including `FileExistsError`, entered exact cleanup and was rethrown. Guards proved a pre-existing sentinel survived while allocation retried the second candidate, and a synthetic post-mkdir `FileExistsError` preserved its type/message with root nonexistence. The following review found the unmasked Transport SIGALRM cleanup gap.
+
+The twelfth BUG_REFACTOR candidate tree `ea22472704809c9071aa33c93298a74ec4931dd2` failed reviewer 2, so reviewer 1 was interrupted and reviewers 3 through 5 were not started. Collision/FileExists handling passed, but Transport's active SIGALRM remained unmasked during live cleanup and could interrupt rmtree with `TRANSPORT_LIMIT`, leaving residue. One generic cleanup failure in the initial direct repetition was not reproduced by 120 unchanged-source normal repetitions, 50 diagnostic repetitions or reviewer 2's fresh 30 repetitions; reviewer 2 did not treat that isolated event as a blocker, and this disclosure remains recorded.
+
+The thirteenth BUG_REFACTOR source SHA-256 was `f03932c87e5cc52bde4d55f920d906b250865ef71d6b1fd0cbf6efacf69f28c5` across 1281 LF lines. Live cleanup also blocked SIGALRM, canceled the active timer, temporarily routed it through the deferring handler, removed owned paths/root, and only then emitted `TRANSPORT_LIMIT` when the signal was pending or the aggregate deadline was due. Guards injected SIGALRM during both pending/final removal and owner-root rmtree and required deferral plus zero residue. The following review identified the remaining handler-transition and cleanup-readiness gaps.
+
+The thirteenth BUG_REFACTOR candidate tree `1c0fb60a5997178a9c20c23904c555cb0587f664` passed reviewer 1 and failed reviewer 2, so reviewers 3 through 5 were not started. Transport's throwing handler could still run before owner assignment or at cleanup-finally entry before the temporary defer transition, and cleanup readiness performed an unbounded EOF read after the first readable `C` byte.
+
+The fourteenth BUG_REFACTOR source SHA-256 was `89e3e650f99e7fa2d6602c429600cf91a60859e153b34831aac16d38e263ee1e` across 1297 LF lines. Transport used the common handler for its full active lifetime, owner path registration occurred inside the masked allocator callback, and cleanup-ready `C` plus EOF used a bounded loop. Candidate tree `4e6cfc15f0a12c38768f95b624dcacb4d3b093ff` failed reviewer 1, so reviewer 2 was interrupted and reviewers 3 through 5 were not started. TLS context/opener construction after alarm handler/timer activation could raise before `Transport` assignment and leak the replacement signal state.
+
+The fifteenth BUG_REFACTOR source SHA-256 was `53f597aa61d4620eef022c8967d7d1657ffae614c7e56fc927e35ab268792208` across 1344 LF lines. TLS context/opener construction preceded signal mutation and their fault guards passed. Candidate tree `b25839ccee740f31e1dd4119b8270283bc8edc42` failed reviewer 1, so reviewer 2 was interrupted and reviewers 3 through 5 were not started. A pending SIGALRM delivered while the constructor restored its mask could raise after activation rollback's protected region but before object return, leaving the replacement handler/timer without an object the caller could close.
+
+The sixteenth BUG_REFACTOR source SHA-256 was `9a697d822c6b04afa7832d479259c7e8e09698c0ed9c95179a431cfa7d96633a` across 1368 LF lines. Construction was signal-free and live owned the object before its activation transaction; queued-alarm rollback passed. Candidate tree `9493eb1db9547950f78205a5f060323586d9bed3` failed reviewer 1, so reviewer 2 was interrupted and reviewers 3 through 5 were not started. If close-time timer restoration completed its real effect and then raised, handler restoration and active-state clearing were skipped.
+
+The seventeenth BUG_REFACTOR source SHA-256 was `dd6f270f7a86088784d521265289a3a4bb03939ef9e5aa8f81527a9935c489f5` across 1403 LF lines. Close independently restored its signal state and its after-real-return guards passed. Candidate tree `ba897dd04fe164423a7b1f949d22d68c16aa8ec5` failed reviewer 1; reviewer 2 encountered a security-filter error and was noncount, and reviewers 3 through 5 were not started. A secondary timer error during start rollback replaced the primary activation error and skipped later handler, active-state and mask restoration.
+
+The eighteenth BUG_REFACTOR source SHA-256 was `37576051776f58fadd386086d1ec4c58afb0a8302dbabb007ccb0d7a74eb9d0b` across 1435 LF lines. Start rollback and its queued-alarm fault guards passed. Candidate tree `8f07e4434e4c483d790db43696d8a7c05cb24f3d` passed reviewer 1 and failed reviewer 2, so reviewers 3 through 5 were not started. Close's initial SIGALRM block remained outside its restoration transaction and an after-real-return exception left the mask, handler, timer and active state unrestored.
+
+The nineteenth BUG_REFACTOR source SHA-256 was `55f8008a8bc1f5344c686716cd6b3ea375155b5274543d395f766502dac12d7c` across 1476 LF lines. Initial mask restoration passed. Candidate tree `1381bcc5bf92f076861837226da2df01ded0b767` passed reviewer 1 and failed reviewer 2, so reviewers 3 through 5 were not started. A second start while active overwrote the original handler/timer snapshot with the Transport's own state, so one close left the replacement state installed. The first repetition's disclosed generic cleanup failure remained non-actionable after the recorded 370 unchanged-source passes and reviewer 1's additional fresh 20/20.
+
+The twentieth BUG_REFACTOR source SHA-256 was `05726c48652ad40fb99e380167fa3c1fbd70259485158b2574c96a1cf0d1abfe` across 1493 LF lines. Double-start rejection passed. Candidate tree `22abfa911e344af6e15943c65944d6947a2e1be0` passed reviewer 1 and failed reviewer 2, so reviewers 3 through 5 were not started. Get accepted an inactive pre-start or post-close object, armed an aggregate timer, and then inactive close was a no-op that left the timer installed.
+
+The twenty-first BUG_REFACTOR source SHA-256 was `433b3baf25037a095007652af8cd5c8b3f4878fdc162ee83a3269a4295968fec` across 1511 LF lines. Get lifecycle guards passed. Candidate tree `7678f329857aa9f1177e73e20fbea47a8fcce62d` passed reviewers 1 and 2 and failed reviewer 3, so reviewer 4 was interrupted and reviewer 5 was not started. The authoritative Plans heading and exact-next-action still displayed implementation review/gate in present tense despite the active BUG_REFACTOR gate.
+
+The twenty-second BUG_REFACTOR verifier source remained byte-identical at SHA-256 `433b3baf25037a095007652af8cd5c8b3f4878fdc162ee83a3269a4295968fec` across 1511 LF lines. Projection synchronization passed. Candidate tree `670bb3a65ff5990b450a7561050199d5a1e7717e` failed reviewers 1 and 2, so reviewers 3 through 5 were not started. A timeout deferred during owner allocation did not stop post-allocation Git subprocess work, and the tree response's top-level SHA was not bound to the pinned tree identity.
+
+The twenty-third BUG_REFACTOR source SHA-256 was `b1027623c8c04bb5bf726c109f53c0e97db544e067a939b5eaa5e12e4d724003` across 1547 LF lines. Timeout and tree identity fixes passed. Candidate tree `ce3d92259d2695c6775edb605766e4c2484d2642` passed reviewers 1, 2 and 4 and failed reviewer 3, so reviewer 5 was not started. Plans contained conflicting signal timing, and exact-ten signal probes entered cleanup via release EOF before sending the signal, leaving operation-wait interruption unproved.
+
+The twenty-fourth BUG_REFACTOR source SHA-256 was `9972b48b3c0f24d4e9bf945d3ea4ac719ef8e03bafa02d9871c2cf9f5282ae4f` across 1548 LF lines. Signal-origin exact-ten behavior passed. Candidate tree `a21b45a051cd58cb8b5d697035c75b1003716a1e` failed reviewers 1 and 2, so reviewers 3 through 5 were not started. Live retained an operation-to-finally SIGALRM race, and unlike the probe's dir-FD/identity/no-replace lifecycle it still used path-only rename and recursive ignore-errors removal.
+
+The twenty-fifth BUG_REFACTOR source SHA-256 was `2ee2d5060be1e3d56bf88478a8be6434d2a8c826aa966e3d7f062de19c5e2dff` across 1620 LF lines. Shared FD primitives passed. Candidate tree `cc71dc0069ebcaaa11ff67a729e19cfac5340dfd` failed reviewer 1, so reviewer 2 was interrupted and reviewers 3 through 5 were not started. Child/live still had success/catchable-signal finally-entry races, and live did not register a created file identity until after write completion, so a partial write failure could leave untracked residue.
+
+The twenty-sixth BUG_REFACTOR source SHA-256 was `f5532e88a4301994fb1e0a33db839045dfb9ab4ac3e48e5582895e7d524fad09` across 1721 LF lines. Finally and file-registration fixes passed. Candidate tree `f71505449668cdb265f6a434032076f0f6e317ce` failed reviewers 1 and 2, so reviewers 3 through 5 were not started. The outer transport-close/handler-restore tail could swallow deferred signals, begin-owned-directory lacked complete post-create rollback, and live create/rename projection changes were not signal transactions.
+
+The twenty-seventh BUG_REFACTOR source SHA-256 was `adcef7cde3aa5136f5d496873a4596a224d77168cd29f982bade06542c145387` across 1794 LF lines. Candidate tree `73a105fcbe6abdaa4e6d94c1c3a771397c9e13f7` failed reviewers 1 and 2, so reviewers 3 through 5 were not started. A restrictive umask could leave the owned directory mode 000 outside both the exact-0700 validation and rollback condition. Directory, file, and live-root opens could also leak an unassigned descriptor when an injected wrapper raised after the real open returned but before Python assignment.
+
+The twenty-eighth BUG_REFACTOR source SHA-256 was `943b91e6bf1c1b99083307f3c5ace00e7a3367266730229ad77ba0d286429522` across 1911 LF lines. Directory creation normalized the exact dir-FD-relative entry to mode 0700. Identity-matching descriptor enumeration recovered only newly unassigned descriptors, and live root registration used the same transactional helper. Dedicated guards covered restrictive-umask success and rollback plus directory, file, and root post-open-return failures, requiring exact entry and descriptor residue zero. Twenty unchanged-source self-test repetitions passed exactly. Candidate tree `970c5519a1cf7f93cd37b235f7d21b6b8282cbbe` failed reviewers 1 through 3, so reviewers 4 and 5 were not started. A signal could arrive after deferred-state checks but before cleanup deactivation and permit unbounded ambient Git work. Git locality overrides could also bypass the cwd/temp boundary, and the State heading omitted the completed IMPLEMENTATION gate.
+
+The twenty-ninth BUG_REFACTOR candidate tree `ef1fc1e6389a44a25e69c8c14526a24d8058e071` stopped after reviewers 1 and 2 failed and reviewer 3 passed; reviewers 4 and 5 were not started. The recorded `a71ff93680c8692b8c2753933497d1ed8cf2483d7e8bbb43360927be971c065f` omitted the canonical emitted terminal LF; the actual emitted SHA-256 was `7a42c9a5a23943f72c2c7e49808d65d6cfa2fd527e884415110b326d93eff071` across 2165 LF lines. A mutant moving the live allocation call outside the mask still passed because the guard modeled a separate transition. The success tail and outer finalizer retained the same unmask-before-deactivate race. On the case-insensitive macOS volume, a case-variant workspace alias also bypassed string-based temp containment.
+
+The thirtieth BUG_REFACTOR source SHA-256 was `7ac2e9837f3bf0ffd7866c19f5e979ed0c5889b87faafab1e3015d1df3718a01` across 2354 LF lines. The verifier required its own canonical final LF. One shared primitive owned signal blocking, protected operation, pending/deferred decision, cleanup deactivation, state restoration, and unmasking for live allocation, the success tail, the outer finalizer, and the runtime guard. An AST binding oracle plus controlled allocation and tail bypass mutants prevented call-site false-green. Existing path containment used strict device/inode same-file and bidirectional ancestor-chain checks; the actual macOS case-variant workspace-local temp oracle required zero Git calls, unchanged canary bytes, no artifacts, and zero root residue. The remaining legacy signal-set reference used the shared tail set. Twenty canonical-source self-test repetitions passed exactly. Candidate tree `c095e836707deafb20b9e883e693bf35ccddea22` failed reviewer 1 and passed reviewers 2 and 3, so reviewers 4 and 5 were not started. When a protected operation queued a signal and then raised its primary exception, the drain was skipped; restoring actual default handlers before unmask terminated the process for SIGTERM, SIGHUP, and SIGALRM. The custom `ProbeSignal` primary guard did not exercise that fatal path.
+
+The thirty-first BUG_REFACTOR source SHA-256 is `9661c715c218aa8c7ebcf4fdabb42125455fa6d2f30a9d08619b435a669d2e87` across 2544 LF lines. The transition now captures operation success or failure and then performs exactly one common pending-signal drain while the mask and transition handler remain active. A queued signal updates deferred state, but the exact operation exception identity, type, message, traceback and empty notes remain primary; only then does the transition deactivate, restore actual handlers, and unmask. Four independent fresh `python -I` children exercise Python's SIGINT default handler and `SIG_DFL` for SIGTERM, SIGHUP, and SIGALRM. Each requires the primary exception, exact deferred state, an empty pending set, and zero child-owned directory/FD, mask, handler, timer, canary, and parent-root residue. The former failure-drain omission mutant is rejected with `LIVE_SIGNAL_PRIMARY_GUARD_FAILED`; missing-terminal-LF plus allocation and tail bypass mutants remain rejected with `LIVE_TRANSITION_BINDING_FAILED`. Twenty canonical-source self-test repetitions passed exactly. The sanitized live verifier ultimately passed its exact six-line oracle and zero residue; one unchanged-source attempt first returned `TRANSPORT_LIMIT`, and a subsequent verifier exit-zero run exposed only an incorrect external harness expectation of 225 rather than the authoritative 200 handoff rows before the corrected exact oracle passed. Fresh exactly-five BUG_REFACTOR review is pending.
 
 Terminology rights provenance follow-up captured on 2026-07-16:
 

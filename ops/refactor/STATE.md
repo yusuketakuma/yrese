@@ -4,7 +4,7 @@ This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
 - Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. Remaining57 classification, WP-0020〜0023 reconciliation, W31 and WP-4081 are LANDED.
-- Current task: WP-4158 S0_COMMIT_REVIEW。PLAN/IMPLEMENTATION/BUG_REFACTOR/VALIDATIONは各fresh5/5 PASS。current exact4はAC9C用staged済み。Next=そのstaged treeへのfresh exactly5 COMMIT_GATE review-only、5/5のみcommit。
+- Current task: WP-4158 S1_BUG_REFACTOR_REVIEW。thirtieth BUG tree `c095e836…`はreviewer1 FAIL、reviewer2/3 PASS、reviewer4/5未起動。operation primary時のpending-drain skip、actual default TERM/HUP/ALRM fatal delivery、custom-handler guard false-greenをblock。thirty-first source SHA `9661c715…` / 2544 linesはone common pending drain、exact operation-primary precedence、fresh isolated actual-default four-signal guard、deferred/pending/root/FD/mask/handler/timer/canary residue0へ修正。known-bug/terminal-LF/call-site bypass mutations拒否、20/20 exact self-test、sanitized live exact six lines PASS。generic cleanup非再現履歴は保持。Next=fresh thirty-first-generation exactly5 BUG_REFACTOR_GATE review-only。
 - Historical BUG checkpoint: third generation `wp4158_bug3_r1..r3`はtree `952cb893…`を0/3 PASSし、stale five-probe projection、parent readiness write-FD lifecycle、State checkpoint time boundaryを検出・後続修正した。
 - Historical BUG checkpoint: fourth generation `wp4158_bug4_r1..r3`はtree `75be9c70…`を1/3 PASSし、actual return/exception cleanup、query/fragment single-boundary、EVIDENCE checkpoint time boundaryを検出・後続修正した。Current matrixはpositive2/negative95/cleanup10。
 - Historical first VALIDATION generation `wp4158_val_r1..r3`はtree `08e3d38c…`を2/3 PASSしstale projectionをblock・後続修正、fifth-generation 5/5でsuperseded済み。
@@ -13,8 +13,8 @@ This is the resume entrypoint for the active repository reconciliation goal.
 - Historical fourth VALIDATION generation `wp4158_val4_r1..r3`はtree `d6cd4cfe…`を1/3 PASSしState/old resume historyをblock・後続修正、fifth-generation 5/5でsuperseded済み。
 - Historical first COMMIT generation `wp4158_commit_r1,r2`はtree `74142ce8…`を0/2 PASSで停止し、stale VALIDATION pendingとAC9C循環を検出・後続修正。
 - Historical second COMMIT generation `wp4158_commit2_r1,r2`はtree `f362d267…`を1/2 PASSで停止し、EVIDENCE旧precommit summaryを検出・後続修正。
-- Historical third COMMIT generation `wp4158_commit3_r1,r2`はtree `dc3b1142…`を1/2 PASSで停止し、stage後stale restage directiveを検出・後続修正。Current action=fresh COMMIT exactly5 review-only。
-- Historical fourth COMMIT generationはtree `70e8edb7…`でreviewer1/2b/3 PASS、reviewer4 FAIL、reviewer5未起動。無応答original reviewer2はcount外。general AC9C `EXPECTED_COMMIT` clauseとprecommit boundaryの衝突を検出し、base/tree/message対postcommit commitへ分離した。修正restageは完了済みで、Current action=fresh COMMIT exactly5 review-only。
+- Historical third COMMIT generation `wp4158_commit3_r1,r2`はtree `dc3b1142…`を1/2 PASSで停止し、stage後stale restage directiveを検出・後続修正。そのcheckpoint actionはS0 terminalでsuperseded済み。
+- Historical fourth COMMIT generationはtree `70e8edb7…`でreviewer1/2b/3 PASS、reviewer4 FAIL、reviewer5未起動。無応答original reviewer2はcount外。general AC9C `EXPECTED_COMMIT` clauseとprecommit boundaryの衝突を検出し、base/tree/message対postcommit commitへ分離。そのcheckpoint actionはS0 terminalでsuperseded済み。
 - Last completed groups:
   - `7b99cb8` WP-4078 audit intent single-snapshot hardening
   - `276cdae` WP-3011a fixture-first calculation trace viewer foundation
