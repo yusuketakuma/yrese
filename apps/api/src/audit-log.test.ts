@@ -82,6 +82,18 @@ async function seedEvents(repository: InMemoryAuditRepository, count: number): P
   }
 }
 
+function createHostileProxy(propertyRead: ReturnType<typeof vi.fn>): object {
+  const read = propertyRead as unknown as () => never;
+  return new Proxy(
+    {},
+    {
+      get: read,
+      has: read,
+      getPrototypeOf: read,
+    },
+  );
+}
+
 describe('GET /audit/events (SCR-028)', () => {
   it('denies access without audit-log:read scope (deny-by-default)', async () => {
     const server = buildDevTestServer();
@@ -112,7 +124,7 @@ describe('GET /audit/events (SCR-028)', () => {
       'hostile Proxy',
       true,
       (_rawSentinel: string, propertyRead: ReturnType<typeof vi.fn>) =>
-        new Proxy({}, { get: propertyRead, has: propertyRead, getPrototypeOf: propertyRead }),
+        createHostileProxy(propertyRead),
     ],
   ] as const)(
     'normalizes an audit repository list rejection from %s without inspecting it',
@@ -332,7 +344,7 @@ describe('GET /audit/events (SCR-028)', () => {
     [
       'hostile Proxy',
       (_rawSentinel: string, propertyRead: ReturnType<typeof vi.fn>) =>
-        new Proxy({}, { get: propertyRead, has: propertyRead, getPrototypeOf: propertyRead }),
+        createHostileProxy(propertyRead),
     ],
   ] as const)(
     'normalizes an audit-view clock throw from %s without inspecting it',
@@ -342,9 +354,11 @@ describe('GET /audit/events (SCR-028)', () => {
         throw new Error(rawSentinel);
       });
       const thrownValue = createThrownValue(rawSentinel, propertyRead);
-      const now = vi.fn(() => {
+      const nowCalls = vi.fn();
+      const now = () => {
+        nowCalls();
         throw thrownValue;
-      });
+      };
       const record = vi.fn<AuditRepository['record']>();
       const server = buildDevTestServer({
         now,
@@ -364,7 +378,7 @@ describe('GET /audit/events (SCR-028)', () => {
       expect(response.statusCode).toBe(500);
       expect(response.headers['cache-control']).toBe('no-store');
       expect(response.json()).toMatchObject({ message: auditLogViewClockReadErrorMessage });
-      expect(now).toHaveBeenCalledOnce();
+      expect(nowCalls).toHaveBeenCalledOnce();
       expect(record).not.toHaveBeenCalled();
       expect(propertyRead).not.toHaveBeenCalled();
       for (const sensitiveValue of [

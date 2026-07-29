@@ -103,6 +103,18 @@ function buildDevTestServer(
   });
 }
 
+function createHostileProxy(propertyRead: ReturnType<typeof vi.fn>): object {
+  const read = propertyRead as unknown as () => never;
+  return new Proxy(
+    {},
+    {
+      get: read,
+      has: read,
+      getPrototypeOf: read,
+    },
+  );
+}
+
 function buildDefaultTestServer(options: BuildServerOptions = {}) {
   return buildServer({
     patientSearchCursorCodec: createPatientSearchCursorCodec(
@@ -740,7 +752,7 @@ describe('buildServer', () => {
     [
       'hostile Proxy',
       (_rawSentinel: string, propertyRead: ReturnType<typeof vi.fn>) =>
-        new Proxy({}, { get: propertyRead, has: propertyRead, getPrototypeOf: propertyRead }),
+        createHostileProxy(propertyRead),
     ],
   ] as const)(
     'normalizes a patient search cursor decode throw from %s',
@@ -752,9 +764,11 @@ describe('buildServer', () => {
         throw new Error(rawSentinel);
       });
       const thrownValue = createThrownValue(rawSentinel, propertyRead);
-      const decode = vi.fn<PatientSearchCursorCodec['decode']>(() => {
+      const decodeCalls = vi.fn();
+      const decode: PatientSearchCursorCodec['decode'] = () => {
+        decodeCalls();
         throw thrownValue;
-      });
+      };
       const search = vi.fn<PatientRepository['search']>();
       const encode = vi.fn<PatientSearchCursorCodec['encode']>();
       const server = buildDevTestServer({
@@ -775,7 +789,7 @@ describe('buildServer', () => {
       expect(response.statusCode).toBe(500);
       expect(response.headers['cache-control']).toBe('no-store');
       expect(response.json()).toMatchObject({ message: patientSearchCursorDecodeErrorMessage });
-      expect(decode).toHaveBeenCalledOnce();
+      expect(decodeCalls).toHaveBeenCalledOnce();
       expect(search).not.toHaveBeenCalled();
       expect(encode).not.toHaveBeenCalled();
       expect(propertyRead).not.toHaveBeenCalled();
@@ -1082,7 +1096,7 @@ describe('buildServer', () => {
     [
       'hostile Proxy',
       (_rawSentinel: string, propertyRead: ReturnType<typeof vi.fn>) =>
-        new Proxy({}, { get: propertyRead, has: propertyRead, getPrototypeOf: propertyRead }),
+        createHostileProxy(propertyRead),
     ],
   ] as const)(
     'normalizes a patient search cursor encode throw from %s',
@@ -1354,7 +1368,7 @@ describe('buildServer', () => {
       'hostile Proxy',
       true,
       (_rawSentinel: string, propertyRead: ReturnType<typeof vi.fn>) =>
-        new Proxy({}, { get: propertyRead, has: propertyRead, getPrototypeOf: propertyRead }),
+        createHostileProxy(propertyRead),
     ],
   ] as const)(
     'normalizes a patient search repository rejection from %s without inspecting it',
@@ -2566,7 +2580,7 @@ describe('buildServer', () => {
       'hostile Proxy',
       true,
       (_rawSentinel: string, propertyRead: ReturnType<typeof vi.fn>) =>
-        new Proxy({}, { get: propertyRead, has: propertyRead, getPrototypeOf: propertyRead }),
+        createHostileProxy(propertyRead),
     ],
   ] as const)(
     'normalizes a reception queue repository rejection from %s without inspecting it',
@@ -3373,7 +3387,7 @@ describe('buildServer', () => {
       'hostile Proxy',
       true,
       (_rawSentinel: string, propertyRead: ReturnType<typeof vi.fn>) =>
-        new Proxy({}, { get: propertyRead, has: propertyRead, getPrototypeOf: propertyRead }),
+        createHostileProxy(propertyRead),
     ],
   ] as const)(
     'normalizes a reception repository create rejection from %s without inspecting it',
@@ -3672,7 +3686,11 @@ describe('buildServer', () => {
     [
       'accessor',
       (_rawSentinel: string, getterRead: ReturnType<typeof vi.fn>): unknown =>
-        Object.defineProperty({}, 'kind', { enumerable: true, get: getterRead }),
+        Object.defineProperty(
+          {},
+          'kind',
+          { enumerable: true, get: getterRead as unknown as () => never },
+        ),
     ],
     [
       'array root',
@@ -4211,7 +4229,7 @@ describe('buildServer', () => {
     [
       'hostile Proxy',
       (_rawSentinel: string, propertyRead: ReturnType<typeof vi.fn>) =>
-        new Proxy({}, { get: propertyRead, has: propertyRead, getPrototypeOf: propertyRead }),
+        createHostileProxy(propertyRead),
     ],
   ] as const)(
     'normalizes a patient GET repository rejection from %s without inspecting it',
@@ -4221,9 +4239,11 @@ describe('buildServer', () => {
       const propertyRead = vi.fn(() => {
         throw new Error(rawSentinel);
       });
-      const findById = vi.fn<PatientRepository['findById']>(() => {
+      const findByIdCalls = vi.fn<PatientRepository['findById']>();
+      const findById: PatientRepository['findById'] = (scope) => {
+        findByIdCalls(scope);
         throw createRejection(rawSentinel, propertyRead);
-      });
+      };
       const server = buildDevTestServer({
         patientRepository: {
           search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
@@ -4240,7 +4260,7 @@ describe('buildServer', () => {
 
       expect(response.statusCode).toBe(500);
       expect(response.headers['cache-control']).toBe('no-store');
-      expect(findById).toHaveBeenCalledExactlyOnceWith({
+      expect(findByIdCalls).toHaveBeenCalledExactlyOnceWith({
         tenantId: tenantId('tenant-001'),
         pharmacyId: pharmacyId('pharmacy-001'),
         patientId: patientId(requestedPatientId),

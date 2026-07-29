@@ -6,11 +6,18 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseDocument } from "yaml";
+import ts from "@typescript/typescript6";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const tempRoot = await mkdtemp(path.join(os.tmpdir(), "yrese-script-tests-"));
 const failures = [];
-const expectedPnpmVersion = "11.13.1";
+const expectedPnpmVersion = "11.18.0";
+const expectedNodeVersion = "26.5.0";
+const expectedNodeEngine = "26.5.0";
+const expectedTypescriptCliSpecifier = "^7.0.2";
+const expectedTypescriptCompatSpecifier = "^6.0.2";
+const expectedPostgresImage =
+  "postgres:18.4@sha256:3a82e1f56c8f0f5616a11103ac3d47e632c3938698946a7ad26da0df1334744a";
 
 function scriptPath(name) {
   return path.join(repoRoot, "scripts", name);
@@ -115,9 +122,9 @@ function validateCiWorkflowTrustBoundary(workflowSource) {
     if (!condition) findings.push(message);
   };
   const expectedActions = new Map([
-    ["actions/checkout", { ref: "34e114876b0b11c390a56381ad16ebd13914f8d5", version: "v4.3.1" }],
-    ["pnpm/action-setup", { ref: "fc06bc1257f339d1d5d8b3a19a8cae5388b55320", version: "v4.4.0" }],
-    ["actions/setup-node", { ref: "49933ea5288caeca8642d1e84afbd3f7d6820020", version: "v4.4.0" }],
+    ["actions/checkout", { ref: "3d3c42e5aac5ba805825da76410c181273ba90b1", version: "v7.0.1" }],
+    ["pnpm/action-setup", { ref: "0ebf47130e4866e96fce0953f49152a61190b271", version: "v6.0.9" }],
+    ["actions/setup-node", { ref: "820762786026740c76f36085b0efc47a31fe5020", version: "v7.0.0" }],
   ]);
   const isRecord = (value) =>
     typeof value === "object" && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
@@ -147,11 +154,20 @@ function validateCiWorkflowTrustBoundary(workflowSource) {
   const jobs = workflow.jobs;
   check(isRecord(jobs), "CI jobs should be a mapping");
   const actionUses = [];
+  const serviceEntries = [];
   if (isRecord(jobs)) {
     for (const [jobName, job] of Object.entries(jobs)) {
       check(isRecord(job), `CI job ${jobName} should be a mapping`);
       if (!isRecord(job)) continue;
       check(!Object.hasOwn(job, "permissions"), `CI job ${jobName} should not override token permissions`);
+      if (Object.hasOwn(job, "services")) {
+        check(isRecord(job.services), `CI job ${jobName} services should be a mapping`);
+        if (isRecord(job.services)) {
+          for (const [serviceName, service] of Object.entries(job.services)) {
+            serviceEntries.push({ jobName, serviceName, service });
+          }
+        }
+      }
       if (Object.hasOwn(job, "uses")) actionUses.push({ value: job.uses, step: job });
       if (Object.hasOwn(job, "steps")) {
         check(Array.isArray(job.steps), `CI job ${jobName} steps should be a sequence`);
@@ -189,6 +205,17 @@ function validateCiWorkflowTrustBoundary(workflowSource) {
   for (const action of expectedActions.keys()) {
     check(seenActions.has(action), `CI should retain reviewed action ${action}`);
   }
+  check(
+    serviceEntries.length === 1 && serviceEntries[0]?.serviceName === "postgres",
+    "CI should contain only the one reviewed PostgreSQL service",
+  );
+  check(
+    serviceEntries.length === 1 &&
+      serviceEntries[0]?.serviceName === "postgres" &&
+      isRecord(serviceEntries[0].service) &&
+      serviceEntries[0].service.image === expectedPostgresImage,
+    "CI PostgreSQL service should use the reviewed stable version and digest",
+  );
 
   const checkoutStep = actionUses.find((use) => use.value === `actions/checkout@${expectedActions.get("actions/checkout").ref}`)?.step;
   check(
@@ -198,7 +225,7 @@ function validateCiWorkflowTrustBoundary(workflowSource) {
   return findings;
 }
 
-function validatePnpmToolchainAuthority(packageSource, workspaceSource, workflowSource) {
+function validatePnpmToolchainAuthority(packageSource, workspaceSource, workflowSource, nvmrcSource) {
   const findings = [];
   const check = (condition, message) => {
     if (!condition) findings.push(message);
@@ -227,8 +254,16 @@ function validatePnpmToolchainAuthority(packageSource, workspaceSource, workflow
     `engines.pnpm should be exactly ${expectedPnpmVersion}`,
   );
   check(
+    isRecord(manifest?.engines) && manifest.engines.node === expectedNodeEngine,
+    `engines.node should be exactly ${expectedNodeEngine}`,
+  );
+  check(
     manifest?.packageManager === `pnpm@${expectedPnpmVersion}`,
     `packageManager should be exactly pnpm@${expectedPnpmVersion}`,
+  );
+  check(
+    nvmrcSource === `${expectedNodeVersion}\n`,
+    `.nvmrc should contain only ${expectedNodeVersion} with a trailing newline`,
   );
   check(workspace?.pmOnFail === "error", "pnpm version mismatch policy should be exactly pmOnFail: error");
   check(
@@ -248,12 +283,16 @@ function validatePnpmToolchainAuthority(packageSource, workspaceSource, workflow
   );
 
   const setupSteps = [];
+  const nodeSetupSteps = [];
   if (isRecord(workflow?.jobs)) {
     for (const job of Object.values(workflow.jobs)) {
       if (!isRecord(job) || !Array.isArray(job.steps)) continue;
       for (const step of job.steps) {
         if (isRecord(step) && typeof step.uses === "string" && step.uses.startsWith("pnpm/action-setup@")) {
           setupSteps.push(step);
+        }
+        if (isRecord(step) && typeof step.uses === "string" && step.uses.startsWith("actions/setup-node@")) {
+          nodeSetupSteps.push(step);
         }
       }
     }
@@ -263,6 +302,100 @@ function validatePnpmToolchainAuthority(packageSource, workspaceSource, workflow
     setupSteps.length === 1 && isRecord(setupSteps[0].with) && setupSteps[0].with.version === expectedPnpmVersion,
     `CI pnpm/action-setup version should be exactly ${expectedPnpmVersion}`,
   );
+  check(nodeSetupSteps.length === 1, "CI should contain exactly one actions/setup-node step");
+  check(
+    nodeSetupSteps.length === 1 &&
+      isRecord(nodeSetupSteps[0].with) &&
+      nodeSetupSteps[0].with["node-version"] === expectedNodeVersion,
+    `CI Node version should be exactly ${expectedNodeVersion}`,
+  );
+
+  return findings;
+}
+
+function validateTypescriptCompilerAuthority(
+  rootPackageSource,
+  webPackageSource,
+  boundarySource,
+  calculationPuritySource,
+) {
+  const findings = [];
+  const check = (condition, message) => {
+    if (!condition) findings.push(message);
+  };
+  const isRecord = (value) =>
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.getPrototypeOf(value) === Object.prototype;
+  const parseManifest = (source, label) => {
+    try {
+      const document = parseDocument(source, { uniqueKeys: true });
+      check(document.errors.length === 0, `${label} should be valid with unique keys`);
+      const value = document.toJS();
+      check(isRecord(value), `${label} root should be a mapping`);
+      return isRecord(value) ? value : undefined;
+    } catch {
+      check(false, `${label} should be parseable`);
+      return undefined;
+    }
+  };
+
+  const rootManifest = parseManifest(rootPackageSource, "root package.json");
+  const webManifest = parseManifest(webPackageSource, "Web package.json");
+  const rootDevDependencies = isRecord(rootManifest?.devDependencies)
+    ? rootManifest.devDependencies
+    : undefined;
+  const webDevDependencies = isRecord(webManifest?.devDependencies)
+    ? webManifest.devDependencies
+    : undefined;
+
+  check(
+    rootDevDependencies?.typescript === expectedTypescriptCliSpecifier,
+    `root TypeScript CLI should be exactly ${expectedTypescriptCliSpecifier}`,
+  );
+  check(
+    rootDevDependencies?.["@typescript/typescript6"] === expectedTypescriptCompatSpecifier,
+    `root TypeScript compatibility package should be exactly ${expectedTypescriptCompatSpecifier}`,
+  );
+  check(
+    webDevDependencies?.["@typescript/native"] ===
+      `npm:typescript@${expectedTypescriptCliSpecifier}`,
+    "Web TypeScript CLI alias should resolve to the reviewed TypeScript 7 package",
+  );
+  check(
+    webDevDependencies?.typescript ===
+      `npm:@typescript/typescript6@${expectedTypescriptCompatSpecifier}`,
+    "Web typescript API alias should resolve to the reviewed TypeScript 6 compatibility package",
+  );
+  for (const [label, source] of [
+    ["boundary checker", boundarySource],
+    ["calculation-purity checker", calculationPuritySource],
+  ]) {
+    const sourceFile = ts.createSourceFile(
+      `${label}.mjs`,
+      source,
+      ts.ScriptTarget.Latest,
+      false,
+      ts.ScriptKind.JS,
+    );
+    const compilerImports = sourceFile.statements.filter(
+      (statement) =>
+        ts.isImportDeclaration(statement) &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        (statement.moduleSpecifier.text === "typescript" ||
+          statement.moduleSpecifier.text.startsWith("@typescript/")),
+    );
+    const compilerImport = compilerImports[0];
+    check(
+      compilerImports.length === 1 &&
+        compilerImport?.moduleSpecifier.text === "@typescript/typescript6" &&
+        compilerImport.importClause?.isTypeOnly === false &&
+        compilerImport.importClause.name?.text === "ts" &&
+        compilerImport.importClause.namedBindings === undefined,
+      `${label} should use one exact default import from the reviewed TypeScript 6 programmatic API`,
+    );
+  }
 
   return findings;
 }
@@ -274,8 +407,8 @@ async function testCiWorkflowTrustBoundary() {
   }
 
   const duplicateAction = workflowSource.replace(
-    /pnpm\/action-setup@[0-9a-f]{40} # v4\.4\.0/,
-    "actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1",
+    /pnpm\/action-setup@[0-9a-f]{40} # v6\.0\.9/,
+    "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
   );
   assert(
     validateCiWorkflowTrustBoundary(duplicateAction).length > 0,
@@ -283,10 +416,10 @@ async function testCiWorkflowTrustBoundary() {
   );
 
   const checkoutPinWithVersion =
-    "actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1";
+    "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1";
   const relocatedVersionComment = `${workflowSource.replace(
     checkoutPinWithVersion,
-    "actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5",
+    "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
   )}\n# ${checkoutPinWithVersion}\n`;
   assert(
     validateCiWorkflowTrustBoundary(relocatedVersionComment).length > 0,
@@ -301,6 +434,26 @@ async function testCiWorkflowTrustBoundary() {
     validateCiWorkflowTrustBoundary(mutableJobAction).length > 0,
     "CI trust check should reject mutable job-level reusable workflows",
   );
+
+  const mutablePostgresImage = workflowSource.replace(expectedPostgresImage, "postgres:18");
+  assert(
+    validateCiWorkflowTrustBoundary(mutablePostgresImage).length > 0,
+    "CI trust check should reject a mutable PostgreSQL image",
+  );
+
+  for (const [label, image] of [
+    ["mutable", "redis:8"],
+    ["digest-pinned", `redis:8@sha256:${"a".repeat(64)}`],
+  ]) {
+    const additionalService = workflowSource.replace(
+      "    services:\n      postgres:\n",
+      `    services:\n      cache:\n        image: ${image}\n      postgres:\n`,
+    );
+    assert(
+      validateCiWorkflowTrustBoundary(additionalService).length > 0,
+      `CI trust check should reject an additional ${label} service`,
+    );
+  }
 
   const flowStyleAction = workflowSource.replace(
     "steps:\n",
@@ -343,31 +496,144 @@ async function testPnpmToolchainAuthority() {
   const packageSource = await readFile(path.join(repoRoot, "package.json"), "utf8");
   const workspaceSource = await readFile(path.join(repoRoot, "pnpm-workspace.yaml"), "utf8");
   const workflowSource = await readFile(path.join(repoRoot, ".github", "workflows", "ci.yml"), "utf8");
-  for (const finding of validatePnpmToolchainAuthority(packageSource, workspaceSource, workflowSource)) {
+  const nvmrcSource = await readFile(path.join(repoRoot, ".nvmrc"), "utf8");
+  const webPackageSource = await readFile(path.join(repoRoot, "apps", "web", "package.json"), "utf8");
+  const boundarySource = await readFile(path.join(repoRoot, "scripts", "check-boundaries.mjs"), "utf8");
+  const calculationPuritySource = await readFile(
+    path.join(repoRoot, "scripts", "check-calculation-purity.mjs"),
+    "utf8",
+  );
+  for (const finding of validatePnpmToolchainAuthority(packageSource, workspaceSource, workflowSource, nvmrcSource)) {
+    assert(false, finding);
+  }
+  for (const finding of validateTypescriptCompilerAuthority(
+    packageSource,
+    webPackageSource,
+    boundarySource,
+    calculationPuritySource,
+  )) {
     assert(false, finding);
   }
 
-  const permissiveEngine = packageSource.replace('"pnpm": "11.13.1"', '"pnpm": ">=11"');
+  const permissiveEngine = packageSource.replace('"pnpm": "11.18.0"', '"pnpm": ">=11"');
   assert(
-    validatePnpmToolchainAuthority(permissiveEngine, workspaceSource, workflowSource).length > 0,
+    validatePnpmToolchainAuthority(permissiveEngine, workspaceSource, workflowSource, nvmrcSource).length > 0,
     "pnpm toolchain check should reject a permissive engine range",
   );
 
-  const mismatchedPackageManager = packageSource.replace("pnpm@11.13.1", "pnpm@11.13.0");
+  const staleNodeEngine = packageSource.replace(
+    `"node": "${expectedNodeEngine}"`,
+    '"node": ">=26 <27"',
+  );
   assert(
-    validatePnpmToolchainAuthority(mismatchedPackageManager, workspaceSource, workflowSource).length > 0,
+    validatePnpmToolchainAuthority(staleNodeEngine, workspaceSource, workflowSource, nvmrcSource).length > 0,
+    "toolchain check should reject a stale Node engine floor",
+  );
+
+  const staleNvmrc = nvmrcSource.replace(expectedNodeVersion, "26.4.0");
+  assert(
+    validatePnpmToolchainAuthority(packageSource, workspaceSource, workflowSource, staleNvmrc).length > 0,
+    "toolchain check should reject a stale .nvmrc version",
+  );
+
+  for (const [label, candidateRootPackage, candidateWebPackage, candidateBoundary, candidatePurity] of [
+    [
+      "root TypeScript CLI drift",
+      packageSource.replace(
+        `"typescript": "${expectedTypescriptCliSpecifier}"`,
+        '"typescript": "^6.0.2"',
+      ),
+      webPackageSource,
+      boundarySource,
+      calculationPuritySource,
+    ],
+    [
+      "root TypeScript compatibility drift",
+      packageSource.replace(
+        `"@typescript/typescript6": "${expectedTypescriptCompatSpecifier}"`,
+        '"@typescript/typescript6": "^7.0.2"',
+      ),
+      webPackageSource,
+      boundarySource,
+      calculationPuritySource,
+    ],
+    [
+      "Web TypeScript CLI alias drift",
+      packageSource,
+      webPackageSource.replace(
+        `"@typescript/native": "npm:typescript@${expectedTypescriptCliSpecifier}"`,
+        `"@typescript/native": "npm:@typescript/typescript6@${expectedTypescriptCompatSpecifier}"`,
+      ),
+      boundarySource,
+      calculationPuritySource,
+    ],
+    [
+      "Web TypeScript API alias drift",
+      packageSource,
+      webPackageSource.replace(
+        `"typescript": "npm:@typescript/typescript6@${expectedTypescriptCompatSpecifier}"`,
+        `"typescript": "npm:typescript@${expectedTypescriptCliSpecifier}"`,
+      ),
+      boundarySource,
+      calculationPuritySource,
+    ],
+    [
+      "boundary checker compiler drift",
+      packageSource,
+      webPackageSource,
+      boundarySource.replace(
+        'import ts from "@typescript/typescript6";',
+        'import ts from "typescript";',
+      ),
+      calculationPuritySource,
+    ],
+    [
+      "commented compiler-import decoy",
+      packageSource,
+      webPackageSource,
+      `// import ts from "@typescript/typescript6";\n${boundarySource.replace(
+        'import ts from "@typescript/typescript6";',
+        'import ts from "typescript";',
+      )}`,
+      calculationPuritySource,
+    ],
+    [
+      "calculation-purity checker compiler drift",
+      packageSource,
+      webPackageSource,
+      boundarySource,
+      calculationPuritySource.replace(
+        'import ts from "@typescript/typescript6";',
+        'import ts from "typescript";',
+      ),
+    ],
+  ]) {
+    assert(
+      validateTypescriptCompilerAuthority(
+        candidateRootPackage,
+        candidateWebPackage,
+        candidateBoundary,
+        candidatePurity,
+      ).length > 0,
+      `toolchain check should reject ${label}`,
+    );
+  }
+
+  const mismatchedPackageManager = packageSource.replace("pnpm@11.18.0", "pnpm@11.17.0");
+  assert(
+    validatePnpmToolchainAuthority(mismatchedPackageManager, workspaceSource, workflowSource, nvmrcSource).length > 0,
     "pnpm toolchain check should reject a mismatched packageManager pin",
   );
 
   const missingMismatchPolicy = workspaceSource.replace("pmOnFail: error\n", "");
   assert(
-    validatePnpmToolchainAuthority(packageSource, missingMismatchPolicy, workflowSource).length > 0,
+    validatePnpmToolchainAuthority(packageSource, missingMismatchPolicy, workflowSource, nvmrcSource).length > 0,
     "pnpm toolchain check should reject a missing mismatch policy",
   );
 
   const nonFailingMismatchPolicy = workspaceSource.replace("pmOnFail: error", "pmOnFail: warn");
   assert(
-    validatePnpmToolchainAuthority(packageSource, nonFailingMismatchPolicy, workflowSource).length > 0,
+    validatePnpmToolchainAuthority(packageSource, nonFailingMismatchPolicy, workflowSource, nvmrcSource).length > 0,
     "pnpm toolchain check should reject a non-failing mismatch policy",
   );
 
@@ -376,7 +642,7 @@ async function testPnpmToolchainAuthority() {
     "  sharp: true\n  unreviewed-build: true\n",
   );
   assert(
-    validatePnpmToolchainAuthority(packageSource, widenedBuildAllowList, workflowSource).length > 0,
+    validatePnpmToolchainAuthority(packageSource, widenedBuildAllowList, workflowSource, nvmrcSource).length > 0,
     "pnpm toolchain check should reject a widened build allow-list",
   );
 
@@ -385,29 +651,38 @@ async function testPnpmToolchainAuthority() {
     ["non-strict dependency builds", "strictDepBuilds: false\n"],
   ]) {
     assert(
-      validatePnpmToolchainAuthority(packageSource, `${workspaceSource}${weakening}`, workflowSource).length > 0,
+      validatePnpmToolchainAuthority(packageSource, `${workspaceSource}${weakening}`, workflowSource, nvmrcSource).length > 0,
       `pnpm toolchain check should reject ${label}`,
     );
   }
 
-  const mismatchedCiVersion = workflowSource.replace("version: 11.13.1", "version: 11.13.0");
+  const mismatchedCiVersion = workflowSource.replace("version: 11.18.0", "version: 11.17.0");
   assert(
-    validatePnpmToolchainAuthority(packageSource, workspaceSource, mismatchedCiVersion).length > 0,
+    validatePnpmToolchainAuthority(packageSource, workspaceSource, mismatchedCiVersion, nvmrcSource).length > 0,
     "pnpm toolchain check should reject a mismatched CI setup version",
   );
 
-  const coordinatedPackageDrift = packageSource
-    .replace('"pnpm": "11.13.1"', '"pnpm": "11.13.0"')
-    .replace("pnpm@11.13.1", "pnpm@11.13.0");
+  const staleCiNodeVersion = workflowSource.replace(
+    `node-version: ${expectedNodeVersion}`,
+    "node-version: 26",
+  );
   assert(
-    validatePnpmToolchainAuthority(coordinatedPackageDrift, workspaceSource, mismatchedCiVersion).length > 0,
+    validatePnpmToolchainAuthority(packageSource, workspaceSource, staleCiNodeVersion, nvmrcSource).length > 0,
+    "toolchain check should reject a stale CI Node version",
+  );
+
+  const coordinatedPackageDrift = packageSource
+    .replace('"pnpm": "11.18.0"', '"pnpm": "11.17.0"')
+    .replace("pnpm@11.18.0", "pnpm@11.17.0");
+  assert(
+    validatePnpmToolchainAuthority(coordinatedPackageDrift, workspaceSource, mismatchedCiVersion, nvmrcSource).length > 0,
     "pnpm toolchain check should reject coordinated manifest and CI version drift",
   );
 
-  const malformedPackage = packageSource.replace('"pnpm": "11.13.1"', '"pnpm": [}');
+  const malformedPackage = packageSource.replace('"pnpm": "11.18.0"', '"pnpm": [}');
   const duplicatePackageKey = packageSource.replace(
-    '"pnpm": "11.13.1"',
-    '"pnpm": "11.13.1", "pnpm": "11.13.1"',
+    '"pnpm": "11.18.0"',
+    '"pnpm": "11.18.0", "pnpm": "11.18.0"',
   );
   const duplicateWorkspaceKey = `${workspaceSource}pmOnFail: error\n`;
   const malformedWorkflow = workflowSource.replace("jobs:\n", "jobs: [}\n");
@@ -418,24 +693,24 @@ async function testPnpmToolchainAuthority() {
     ["malformed CI YAML", packageSource, workspaceSource, malformedWorkflow],
   ]) {
     assert(
-      validatePnpmToolchainAuthority(candidatePackage, candidateWorkspace, candidateWorkflow).length > 0,
+      validatePnpmToolchainAuthority(candidatePackage, candidateWorkspace, candidateWorkflow, nvmrcSource).length > 0,
       `pnpm toolchain check should reject ${label}`,
     );
   }
 
   const setupStepBlock = workflowSource.match(
-    /      - uses: pnpm\/action-setup@[^\n]+\n        with:\n          version: 11\.13\.1\n/,
+    /      - uses: pnpm\/action-setup@[^\n]+\n        with:\n          version: 11\.18\.0\n/,
   )?.[0];
   assert(setupStepBlock !== undefined, "pnpm toolchain fixture should find the reviewed CI setup step");
   if (setupStepBlock !== undefined) {
     const missingSetupStep = workflowSource.replace(setupStepBlock, "");
     const duplicateSetupStep = workflowSource.replace(setupStepBlock, `${setupStepBlock}${setupStepBlock}`);
     assert(
-      validatePnpmToolchainAuthority(packageSource, workspaceSource, missingSetupStep).length > 0,
+      validatePnpmToolchainAuthority(packageSource, workspaceSource, missingSetupStep, nvmrcSource).length > 0,
       "pnpm toolchain check should reject a missing CI setup step",
     );
     assert(
-      validatePnpmToolchainAuthority(packageSource, workspaceSource, duplicateSetupStep).length > 0,
+      validatePnpmToolchainAuthority(packageSource, workspaceSource, duplicateSetupStep, nvmrcSource).length > 0,
       "pnpm toolchain check should reject duplicate CI setup steps",
     );
   }

@@ -24,11 +24,11 @@
   "dependencies": {
     "@yrese/shared-kernel": "workspace:*",
     "@yrese/trace": "workspace:*",
-    "zod": "^4.0.0"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "typescript": "^5.7.3",
-    "vitest": "^3.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10",
     "zod-openapi": "^6.0.0"
   }
 }
