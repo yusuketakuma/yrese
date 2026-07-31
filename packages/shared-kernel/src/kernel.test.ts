@@ -68,6 +68,29 @@ describe("branded ids", () => {
     expect(() => tenantId(v)).toThrow(RangeError);
   });
 
+  it.each(factories)("rejects the key delimiter in %s", (label, factory) => {
+    const runtimeFactory = factory as (value: string) => string;
+    for (const invalid of ["a#b", "#leading", "trailing#", "#", "A#PHARMACY#B"]) {
+      expect(() => runtimeFactory(invalid)).toThrow(
+        new RangeError(`${label} must not contain #`),
+      );
+    }
+  });
+
+  it("prevents composite-key prefix ambiguity between distinct id pairs", () => {
+    // `TENANT#{tenantId}#PHARMACY#{pharmacyId}` 形式では、`#` を含む ID を許すと
+    // 異なる (tenant, pharmacy) の組が同一キーを生み、prefix ベースの認可
+    // (IAM `dynamodb:LeadingKeys` 等)がテナント境界を保証できなくなる。
+    const compositeKey = (tenant: string, pharmacy: string): string =>
+      `TENANT#${tenant}#PHARMACY#${pharmacy}`;
+
+    // 生成時点で拒否しなければ、この 2 組は同一キーへ衝突する。
+    expect(compositeKey("A#PHARMACY#B", "C")).toBe(compositeKey("A", "B#PHARMACY#C"));
+
+    expect(() => tenantId("A#PHARMACY#B")).toThrow(RangeError);
+    expect(() => pharmacyId("B#PHARMACY#C")).toThrow(RangeError);
+  });
+
   it.each(factories)("rejects non-string runtime values for %s", (label, factory) => {
     const runtimeFactory = factory as (value: unknown) => string;
     const invalidValues: readonly unknown[] = [
