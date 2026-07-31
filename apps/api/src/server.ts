@@ -147,6 +147,17 @@ export const auditLogSequenceInvariantErrorMessage =
   'Verified audit chain contains a non-contiguous event sequence';
 export const auditLogViewAuditInvariantErrorMessage =
   'Audit repository returned mismatched audit view evidence';
+export const patientSearchAuditInvariantErrorMessage =
+  'Audit repository returned mismatched patient search evidence';
+export const patientSearchAuditClockReadErrorMessage = 'Patient search audit clock read failed';
+export const patientSearchAuditClockInvariantErrorMessage =
+  'Patient search audit clock returned an invalid instant';
+export const receptionQueueAuditInvariantErrorMessage =
+  'Audit repository returned mismatched reception queue view evidence';
+export const receptionQueueAuditClockReadErrorMessage =
+  'Reception queue audit clock read failed';
+export const receptionQueueAuditClockInvariantErrorMessage =
+  'Reception queue audit clock returned an invalid instant';
 export const patientViewAuditInvariantErrorMessage =
   'Audit repository returned mismatched patient view evidence';
 export const patientViewClockReadErrorMessage = 'Patient view clock read failed';
@@ -809,10 +820,54 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         encodedNextCursor = assertEncodedPatientSearchCursor(rawEncodedCursor);
       }
 
-      return patientSearchResponseSchema.parse({
+      const searchResponseSnapshot = patientSearchResponseSchema.parse({
         results: validatedResults,
         ...(encodedNextCursor === undefined ? {} : { nextCursor: encodedNextCursor }),
       });
+
+      // WP-4162: 検索は要配慮情報の列挙アクセス(patient.searched — MOD-008 0.2.4)。
+      // データ最小化: 検索クエリ文字列・氏名・カナ・生年月日を監査ペイロードへ
+      // 入れない(targetRef は件数のみ)。0 件でも検索実行の事実を 1 件記録する。
+      // 記録失敗は 500 で PHI 非返却(fail-closed)。
+      const searchWallClock = snapshotWallClock(
+        now,
+        patientSearchAuditClockReadErrorMessage,
+        patientSearchAuditClockInvariantErrorMessage,
+      );
+      const searchTarget = Object.freeze({
+        kind: 'patient_search',
+        id: `results:${validatedResults.length}`,
+      });
+      const searchIntent = Object.freeze({
+        actorId: userId(tenantContext.actorId),
+        auditEventType: 'patient.searched',
+        targetRef: searchTarget,
+        outcome: 'success',
+        wallClock: searchWallClock,
+      });
+      let recordedSearchAudit: unknown;
+      try {
+        recordedSearchAudit = await auditRepository.record(
+          Object.freeze({
+            tenantId: tenantContext.tenantId,
+            pharmacyId: tenantContext.pharmacyId,
+          }),
+          searchIntent,
+        );
+      } catch {
+        throw new Error(patientSearchAuditInvariantErrorMessage);
+      }
+      assertRecordedAuditMatchesIntent(
+        recordedSearchAudit,
+        {
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+          ...searchIntent,
+        },
+        patientSearchAuditInvariantErrorMessage,
+      );
+
+      return searchResponseSnapshot;
     },
   );
 
@@ -989,6 +1044,48 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           throw new Error(receptionQueueBusinessDateInvariantErrorMessage);
         }
       }
+
+      // WP-4162: 受付キュー閲覧は要配慮情報の列挙アクセス
+      // (reception.queue.viewed — MOD-008 0.2.4)。payload は業務日付+件数のみ
+      // (PHI 非含有)。0 件でも 1 件記録。記録失敗は 500 で PHI 非返却。
+      const queueViewWallClock = snapshotWallClock(
+        now,
+        receptionQueueAuditClockReadErrorMessage,
+        receptionQueueAuditClockInvariantErrorMessage,
+      );
+      const queueViewTarget = Object.freeze({
+        kind: 'reception_queue',
+        id: `${query.data.date}:results:${response.entries.length}`,
+      });
+      const queueViewIntent = Object.freeze({
+        actorId: userId(tenantContext.actorId),
+        auditEventType: 'reception.queue.viewed',
+        targetRef: queueViewTarget,
+        outcome: 'success',
+        wallClock: queueViewWallClock,
+      });
+      let recordedQueueViewAudit: unknown;
+      try {
+        recordedQueueViewAudit = await auditRepository.record(
+          Object.freeze({
+            tenantId: tenantContext.tenantId,
+            pharmacyId: tenantContext.pharmacyId,
+          }),
+          queueViewIntent,
+        );
+      } catch {
+        throw new Error(receptionQueueAuditInvariantErrorMessage);
+      }
+      assertRecordedAuditMatchesIntent(
+        recordedQueueViewAudit,
+        {
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+          ...queueViewIntent,
+        },
+        receptionQueueAuditInvariantErrorMessage,
+      );
+
       return response;
     },
   );

@@ -8,9 +8,9 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.2.3
+version: 0.2.4
 created_at: 2026-07-09
-updated_at: 2026-07-11
+updated_at: 2026-07-31
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 effective_from: null
@@ -41,6 +41,7 @@ open_questions:
 change_log:
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
+  - 0.2.4 (2026-07-31): WP-4162(全 PHI 読取り監査)に基づき、列挙アクセスの監査イベント `patient.searched` / `reception.queue.viewed` を追加(命名文法準拠: patient は単一リソースで resource 省略、reception は queue リソースを明示)。データ最小化規律(クエリ文字列・PHI をペイロードへ入れない)を備考へ明記。文法・既存種別・必須属性は不変更。承認: direct user instruction 2026-07-31(ヒューマンゲート包括許可)。独立レビューは codex lane 復帰(2026-08-05)後に実施予定と記録。
   - 0.2.3 (2026-07-09): WP-3009-BE / API-006 v0.2.0 に基づき、受付キュー操作の監査イベント `reception.created` / `reception.cancelled` を追加。`reception.cancelled` は action=cancelled の既存規律により businessReason 必須。
   - 0.2.2 (2026-07-09): WP-4043 実装状態 drift 整備。MOD-008 台帳の実装先を `@yrese/audit` 実装済みとして記録し、旧予定の記述を現行 packages/* 実態へ同期(命名文法・イベント種別・必須属性は不変更)。
   - 0.2.1 (2026-07-09) SEC-008 §4 反映 — breakglass.ended を追加し、businessReasonRequiredEventTypes に breakglass.used を登録。終了イベントは発動イベントと同一 correlationId で紐づける。
@@ -65,7 +66,9 @@ blockers: []
 | 種別(文法準拠) | 対象操作 | outcome必須 | 備考 |
 |---|---|---|---|
 | patient.viewed / patient.created / patient.updated / patient.deleted | 要配慮情報アクセス・CRUD | ○ | viewed は要配慮情報アクセス記録 |
+| patient.searched | 患者検索(要配慮情報の列挙アクセス) | ○ | 1 検索リクエスト=1 イベント。payload は件数等の識別子情報のみ — **検索クエリ文字列・氏名・カナ・生年月日を監査ペイロードへ入れない**(データ最小化。0.2.4) |
 | reception.created / reception.cancelled | 受付キュー登録・取消 | ○ | API-006。cancelled は businessReason 必須(action 規律) |
+| reception.queue.viewed | 受付キュー閲覧(要配慮情報の列挙アクセス) | ○ | 1 閲覧リクエスト=1 イベント。payload は業務日付+件数のみ(PHI 非含有。0.2.4) |
 | insurance.viewed / insurance.updated | 保険・公費情報 | ○ | public-expense を含む【要確認 — 分離要否】 |
 | prescription.created / prescription.updated | 処方入力 | ○ | |
 | dispensing.confirmed | 薬剤師確認 | ○ | actor は薬剤師(人間責任の明示) |
