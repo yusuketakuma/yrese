@@ -147,6 +147,11 @@ export const auditLogSequenceInvariantErrorMessage =
   'Verified audit chain contains a non-contiguous event sequence';
 export const auditLogViewAuditInvariantErrorMessage =
   'Audit repository returned mismatched audit view evidence';
+export const patientViewAuditInvariantErrorMessage =
+  'Audit repository returned mismatched patient view evidence';
+export const patientViewClockReadErrorMessage = 'Patient view clock read failed';
+export const patientViewClockInvariantErrorMessage =
+  'Patient view clock returned an invalid instant';
 export const auditLogViewClockReadErrorMessage = 'Audit view clock read failed';
 export const auditLogViewClockInvariantErrorMessage =
   'Audit view clock returned an invalid instant';
@@ -855,10 +860,54 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         patientIdentity,
         receptionPatientSchemaInvariantErrorMessage,
       );
-      return parsePatientSearchResultSnapshot(
+      const responseSnapshot = parsePatientSearchResultSnapshot(
         patientSnapshot,
         receptionPatientSchemaInvariantErrorMessage,
       );
+
+      // WP-4162: 単一患者の全属性開示は要配慮情報アクセスであり、durable な
+      // patient.viewed(MOD-008 既登録)なしに PHI を返さない。targetRef は
+      // 識別子のみ(氏名・カナ・生年月日・患者番号を監査ペイロードへ入れない)。
+      // 記録失敗は 500 で PHI 非返却(fail-closed)。404 / 拒否 / 検索・キューの
+      // 列挙監査は MOD-008 に対応 event type が未登録のため本スライスでは
+      // 記録せず、SSOT_UPDATE_REQUIRED として WP-4162 残余に留まる。
+      const viewWallClock = snapshotWallClock(
+        now,
+        patientViewClockReadErrorMessage,
+        patientViewClockInvariantErrorMessage,
+      );
+      // patientIdentity === parsedPatientId は上で検証済み(branded string を使う)。
+      const viewTarget = Object.freeze({ kind: 'patient', id: parsedPatientId });
+      const viewIntent = Object.freeze({
+        actorId: userId(tenantContext.actorId),
+        auditEventType: 'patient.viewed',
+        targetRef: viewTarget,
+        outcome: 'success',
+        wallClock: viewWallClock,
+      });
+      let recordedViewAudit: unknown;
+      try {
+        recordedViewAudit = await auditRepository.record(
+          Object.freeze({
+            tenantId: tenantContext.tenantId,
+            pharmacyId: tenantContext.pharmacyId,
+          }),
+          viewIntent,
+        );
+      } catch {
+        throw new Error(patientViewAuditInvariantErrorMessage);
+      }
+      assertRecordedAuditMatchesIntent(
+        recordedViewAudit,
+        {
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+          ...viewIntent,
+        },
+        patientViewAuditInvariantErrorMessage,
+      );
+
+      return responseSnapshot;
     },
   );
 
