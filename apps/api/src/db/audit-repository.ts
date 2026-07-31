@@ -68,6 +68,51 @@ async function lockScope(client: PoolClient, scope: AuditScope): Promise<void> {
   ]);
 }
 
+/**
+ * 呼び出し側が所有するトランザクション内で hash chain へ1件追記する
+ * (BEGIN/COMMIT は呼び出し側の責務)。advisory xact lock で (tenant, pharmacy)
+ * 単位に追記を直列化する。WP-4050 の原子コマンド境界と record() が共用する。
+ */
+export async function appendAuditEventWithinTransaction(
+  client: PoolClient,
+  scope: AuditScope,
+  input: RecordAuditInput,
+): Promise<AuditEvent> {
+  await lockScope(client, scope);
+
+  const last = await client.query<{ entry_hash: string; sequence_number: string }>(
+    `SELECT entry_hash, sequence_number
+       FROM audit_events
+      WHERE tenant_id = $1 AND pharmacy_id = $2
+      ORDER BY sequence_number DESC
+      LIMIT 1`,
+    [scope.tenantId, scope.pharmacyId],
+  );
+  const previous = last.rows[0];
+  const sequenceNumber =
+    previous === undefined ? 1n : BigInt(previous.sequence_number) + 1n;
+
+  const event = buildChainedAuditEvent(scope, input, previous?.entry_hash, sequenceNumber);
+
+  await client.query(
+    `INSERT INTO audit_events
+       (tenant_id, pharmacy_id, sequence_number, event_id, prev_hash, entry_hash, wall_clock, event_body)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)`,
+    [
+      scope.tenantId,
+      scope.pharmacyId,
+      sequenceNumber.toString(),
+      event.eventId,
+      event.prevHash,
+      event.entryHash,
+      event.wallClock,
+      serializeEvent(event),
+    ],
+  );
+
+  return event;
+}
+
 export class PostgresAuditRepository implements AuditRepository {
   constructor(private readonly pool: Pool) {}
 
@@ -76,38 +121,7 @@ export class PostgresAuditRepository implements AuditRepository {
     let destroyClient = false;
     try {
       await client.query('BEGIN');
-      await lockScope(client, scope);
-
-      const last = await client.query<{ entry_hash: string; sequence_number: string }>(
-        `SELECT entry_hash, sequence_number
-           FROM audit_events
-          WHERE tenant_id = $1 AND pharmacy_id = $2
-          ORDER BY sequence_number DESC
-          LIMIT 1`,
-        [scope.tenantId, scope.pharmacyId],
-      );
-      const previous = last.rows[0];
-      const sequenceNumber =
-        previous === undefined ? 1n : BigInt(previous.sequence_number) + 1n;
-
-      const event = buildChainedAuditEvent(scope, input, previous?.entry_hash, sequenceNumber);
-
-      await client.query(
-        `INSERT INTO audit_events
-           (tenant_id, pharmacy_id, sequence_number, event_id, prev_hash, entry_hash, wall_clock, event_body)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)`,
-        [
-          scope.tenantId,
-          scope.pharmacyId,
-          sequenceNumber.toString(),
-          event.eventId,
-          event.prevHash,
-          event.entryHash,
-          event.wallClock,
-          serializeEvent(event),
-        ],
-      );
-
+      const event = await appendAuditEventWithinTransaction(client, scope, input);
       await client.query('COMMIT');
       return event;
     } catch (error) {

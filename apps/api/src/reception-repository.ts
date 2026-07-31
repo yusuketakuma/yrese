@@ -468,4 +468,34 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
       provenance: toProvenance(record),
     };
   }
+
+  /**
+   * WP-4050: in-memory unit of work の補償専用。直前に create した受付を、
+   * 監査/outbox 追記が失敗した同一 unit of work 内でだけ取り消す。
+   * provenance 全体が一致しない取り消しは整合性違反として拒否する。
+   * (Postgres 実装はトランザクションで巻き戻すため、この補償を持たない。)
+   */
+  rollbackCreated(provenance: ReceptionCreateProvenance): void {
+    const index = this.records.findIndex(
+      (record) => record.receptionId === provenance.receptionId,
+    );
+    const record = this.records[index];
+    if (
+      record === undefined ||
+      record.tenantId !== provenance.tenantId ||
+      record.pharmacyId !== provenance.pharmacyId ||
+      record.idempotencyKey !== provenance.idempotencyKey ||
+      record.patientId !== provenance.patientId
+    ) {
+      throw new Error(inMemoryReceptionIdempotencyInvariantErrorMessage);
+    }
+    this.records.splice(index, 1);
+    this.idempotencyRecords.delete(
+      toIdempotencyKey({
+        tenantId: provenance.tenantId,
+        pharmacyId: provenance.pharmacyId,
+        idempotencyKey: provenance.idempotencyKey,
+      }),
+    );
+  }
 }

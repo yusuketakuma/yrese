@@ -11,6 +11,7 @@ import { assertMigrationStateAllowsStartup } from './db/migration-runner.js';
 import { loadMigrationFiles } from './db/migrations.js';
 import { PostgresPatientRepository } from './db/patient-repository.js';
 import { createDbPool } from './db/pool.js';
+import { PostgresReceptionCreateCommand } from './db/reception-command.js';
 import { PostgresReceptionRepository } from './db/reception-repository.js';
 import {
   createPatientSearchCursorCodec,
@@ -63,6 +64,8 @@ async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServe
       patientRepository: new PostgresPatientRepository(pool),
       receptionRepository: new PostgresReceptionRepository(pool),
       auditRepository: new PostgresAuditRepository(pool),
+      // WP-4050: 受付・監査・outbox を単一トランザクションで原子化する。
+      receptionCreateCommand: new PostgresReceptionCreateCommand(pool),
       repositoryMode,
       tenantContextMode,
       patientSearchCursorCodec,

@@ -184,6 +184,7 @@ describe('loadMigrationFiles', () => {
           '000002_create_patient_and_reception_tables.sql',
           '000003_add_patient_number_scope_unique.sql',
           '000004_create_audit_events.sql',
+          '000005_create_outbox_events.sql',
         ]);
       } finally {
         process.chdir(originalCwd);

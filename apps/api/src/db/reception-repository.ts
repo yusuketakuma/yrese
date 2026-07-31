@@ -250,6 +250,207 @@ async function selectByIdempotencyKey(
   return row;
 }
 
+export interface PostgresReceptionCreateSnapshot {
+  readonly tenantId: ReturnType<typeof tenantId>;
+  readonly pharmacyId: ReturnType<typeof pharmacyId>;
+  readonly idempotencyKey: string;
+  readonly patient: PatientSearchResult;
+  readonly acceptedAt: string;
+  readonly businessDate: string;
+}
+
+/** create コマンド入力の検証済みスナップショット(WP-4050 コマンド境界と共用)。 */
+export function snapshotPostgresReceptionCreate(
+  input: ReceptionCreateInput,
+): PostgresReceptionCreateSnapshot {
+  const readCommandProperty = createOwnDataPropertyReader(
+    input,
+    databaseReceptionCommandSnapshotInvariantErrorMessage,
+  );
+  const commandTenantId = snapshotRepositoryTenantId(
+    readCommandProperty('tenantId'),
+    databaseReceptionCommandSnapshotInvariantErrorMessage,
+  );
+  const commandPharmacyId = snapshotRepositoryPharmacyId(
+    readCommandProperty('pharmacyId'),
+    databaseReceptionCommandSnapshotInvariantErrorMessage,
+  );
+  const commandIdempotencyKey = snapshotReceptionIdempotencyKey(
+    readCommandProperty('idempotencyKey'),
+    databaseReceptionCommandSnapshotInvariantErrorMessage,
+  );
+  const patientProperty = readCommandProperty('patient');
+  if (!patientProperty.present) {
+    throw new Error(databaseReceptionCommandSnapshotInvariantErrorMessage);
+  }
+  const commandPatient = snapshotCreatePatient(patientProperty.value);
+  const acceptedAtProperty = readCommandProperty('acceptedAt');
+  if (!acceptedAtProperty.present) {
+    throw new Error(databaseReceptionCommandSnapshotInvariantErrorMessage);
+  }
+  const acceptedAt = snapshotDateInstant(
+    acceptedAtProperty.value,
+    databaseReceptionTimestampInvariantErrorMessage,
+  );
+  const businessDate = businessDateFromAcceptedAt(
+    new Date(acceptedAt),
+    databaseReceptionTimestampInvariantErrorMessage,
+  );
+  return {
+    tenantId: commandTenantId,
+    pharmacyId: commandPharmacyId,
+    idempotencyKey: commandIdempotencyKey,
+    patient: commandPatient,
+    acceptedAt,
+    businessDate,
+  };
+}
+
+/**
+ * 呼び出し側が所有するトランザクション内で受付 create を実行する
+ * (BEGIN/COMMIT/ROLLBACK は呼び出し側の責務)。結果検証を含む。
+ * PostgresReceptionRepository.create と WP-4050 の原子コマンド境界が共用する。
+ */
+export async function runReceptionCreateWithinTransaction(
+  client: PoolClient,
+  snapshot: PostgresReceptionCreateSnapshot,
+): Promise<ReceptionCreateResult> {
+  const {
+    tenantId: commandTenantId,
+    pharmacyId: commandPharmacyId,
+    idempotencyKey: commandIdempotencyKey,
+    patient: commandPatient,
+    acceptedAt,
+    businessDate,
+  } = snapshot;
+
+  const newReceptionId = receptionId(`reception-${randomUUID()}`);
+  const inserted = await client.query<ReceptionCreateRow>(
+    `INSERT INTO reception_entries (
+       tenant_id,
+       pharmacy_id,
+       reception_id,
+       patient_id,
+       accepted_at,
+       business_date,
+       reception_status,
+       prescription_intake_type,
+       idempotency_key
+     )
+     VALUES ($1, $2, $3, $4, $5, $6::date, 'WAITING', 'paper', $7)
+     ON CONFLICT (tenant_id, pharmacy_id, idempotency_key) DO NOTHING
+     RETURNING
+       tenant_id AS stored_tenant_id,
+       pharmacy_id AS stored_pharmacy_id,
+       idempotency_key AS stored_idempotency_key,
+       patient_id AS stored_patient_id,
+       reception_id,
+       accepted_at,
+       reception_status,
+       $4::text AS patient_id,
+       $8::text AS name,
+       $9::text AS kana,
+       $10::date::text AS birth_date,
+       $11::text AS sex,
+       $12::text AS patient_number,
+       $13::text AS eligibility_status,
+       $14::timestamptz AS eligibility_checked_at`,
+    [
+      commandTenantId,
+      commandPharmacyId,
+      newReceptionId,
+      commandPatient.patientId,
+      acceptedAt,
+      businessDate,
+      commandIdempotencyKey,
+      commandPatient.name,
+      commandPatient.kana,
+      commandPatient.birthDate,
+      commandPatient.sex,
+      commandPatient.patientNumber,
+      commandPatient.eligibilityStatus,
+      commandPatient.eligibilityCheckedAt ?? null,
+    ],
+  );
+
+  const insertedRows = snapshotDatabaseQueryRows<ReceptionCreateRow>(
+    inserted,
+    1,
+    databaseReceptionRowSetInvariantErrorMessage,
+  );
+  if (insertedRows.length === 1) {
+    const insertedRow = insertedRows[0];
+    if (insertedRow === undefined) {
+      throw new Error(databaseReceptionRowSetInvariantErrorMessage);
+    }
+    const provenance = rowToProvenance(insertedRow);
+    if (
+      provenance.tenantId !== commandTenantId ||
+      provenance.pharmacyId !== commandPharmacyId ||
+      provenance.idempotencyKey !== commandIdempotencyKey ||
+      provenance.receptionId !== newReceptionId ||
+      provenance.patientId !== commandPatient.patientId
+    ) {
+      throw new Error(databaseReceptionCommandProvenanceInvariantErrorMessage);
+    }
+    const entry = rowToEntry(insertedRow);
+    if (
+      entry.receptionId !== provenance.receptionId ||
+      entry.patient.patientId !== provenance.patientId
+    ) {
+      throw new Error(databaseReceptionEntryIdentityInvariantErrorMessage);
+    }
+    if (!patientSnapshotsMatch(entry.patient, commandPatient)) {
+      throw new Error(databaseReceptionCreatedPatientSnapshotInvariantErrorMessage);
+    }
+    if (entry.receptionStatus !== 'WAITING') {
+      throw new Error(databaseReceptionCreatedStatusInvariantErrorMessage);
+    }
+    if (entry.acceptedAt !== acceptedAt) {
+      throw new Error(databaseReceptionCreatedAcceptedAtInvariantErrorMessage);
+    }
+    return {
+      kind: 'created',
+      entry,
+      provenance,
+    };
+  }
+
+  const existing = await selectByIdempotencyKey(client, {
+    tenantId: commandTenantId,
+    pharmacyId: commandPharmacyId,
+    idempotencyKey: commandIdempotencyKey,
+  });
+  if (existing === undefined) {
+    throw new Error('idempotency conflict row was not visible after unique constraint conflict');
+  }
+
+  const provenance = rowToProvenance(existing);
+  if (
+    provenance.tenantId !== commandTenantId ||
+    provenance.pharmacyId !== commandPharmacyId ||
+    provenance.idempotencyKey !== commandIdempotencyKey
+  ) {
+    throw new Error(databaseReceptionCommandProvenanceInvariantErrorMessage);
+  }
+  if (provenance.patientId !== commandPatient.patientId) {
+    return { kind: 'idempotency_conflict', provenance };
+  }
+
+  const entry = rowToEntry(existing);
+  if (
+    entry.receptionId !== provenance.receptionId ||
+    entry.patient.patientId !== provenance.patientId
+  ) {
+    throw new Error(databaseReceptionEntryIdentityInvariantErrorMessage);
+  }
+  return {
+    kind: 'existing',
+    entry,
+    provenance,
+  };
+}
+
 export class PostgresReceptionRepository implements ReceptionRepository {
   constructor(private readonly pool: Pool) {}
 
@@ -291,172 +492,14 @@ export class PostgresReceptionRepository implements ReceptionRepository {
   }
 
   async create(input: ReceptionCreateInput): Promise<ReceptionCreateResult> {
-    const readCommandProperty = createOwnDataPropertyReader(
-      input,
-      databaseReceptionCommandSnapshotInvariantErrorMessage,
-    );
-    const commandTenantId = snapshotRepositoryTenantId(
-      readCommandProperty('tenantId'),
-      databaseReceptionCommandSnapshotInvariantErrorMessage,
-    );
-    const commandPharmacyId = snapshotRepositoryPharmacyId(
-      readCommandProperty('pharmacyId'),
-      databaseReceptionCommandSnapshotInvariantErrorMessage,
-    );
-    const commandIdempotencyKey = snapshotReceptionIdempotencyKey(
-      readCommandProperty('idempotencyKey'),
-      databaseReceptionCommandSnapshotInvariantErrorMessage,
-    );
-    const patientProperty = readCommandProperty('patient');
-    if (!patientProperty.present) {
-      throw new Error(databaseReceptionCommandSnapshotInvariantErrorMessage);
-    }
-    const commandPatient = snapshotCreatePatient(patientProperty.value);
-    const acceptedAtProperty = readCommandProperty('acceptedAt');
-    if (!acceptedAtProperty.present) {
-      throw new Error(databaseReceptionCommandSnapshotInvariantErrorMessage);
-    }
-    const acceptedAt = snapshotDateInstant(
-      acceptedAtProperty.value,
-      databaseReceptionTimestampInvariantErrorMessage,
-    );
-    const businessDate = businessDateFromAcceptedAt(
-      new Date(acceptedAt),
-      databaseReceptionTimestampInvariantErrorMessage,
-    );
+    const snapshot = snapshotPostgresReceptionCreate(input);
     const client = await this.pool.connect();
     let destroyClient = false;
     try {
       await client.query('BEGIN');
-
-      const newReceptionId = receptionId(`reception-${randomUUID()}`);
-      const inserted = await client.query<ReceptionCreateRow>(
-        `INSERT INTO reception_entries (
-           tenant_id,
-           pharmacy_id,
-           reception_id,
-           patient_id,
-           accepted_at,
-           business_date,
-           reception_status,
-           prescription_intake_type,
-           idempotency_key
-         )
-         VALUES ($1, $2, $3, $4, $5, $6::date, 'WAITING', 'paper', $7)
-         ON CONFLICT (tenant_id, pharmacy_id, idempotency_key) DO NOTHING
-         RETURNING
-           tenant_id AS stored_tenant_id,
-           pharmacy_id AS stored_pharmacy_id,
-           idempotency_key AS stored_idempotency_key,
-           patient_id AS stored_patient_id,
-           reception_id,
-           accepted_at,
-           reception_status,
-           $4::text AS patient_id,
-           $8::text AS name,
-           $9::text AS kana,
-           $10::date::text AS birth_date,
-           $11::text AS sex,
-           $12::text AS patient_number,
-           $13::text AS eligibility_status,
-           $14::timestamptz AS eligibility_checked_at`,
-        [
-          commandTenantId,
-          commandPharmacyId,
-          newReceptionId,
-          commandPatient.patientId,
-          acceptedAt,
-          businessDate,
-          commandIdempotencyKey,
-          commandPatient.name,
-          commandPatient.kana,
-          commandPatient.birthDate,
-          commandPatient.sex,
-          commandPatient.patientNumber,
-          commandPatient.eligibilityStatus,
-          commandPatient.eligibilityCheckedAt ?? null,
-        ],
-      );
-
-      const insertedRows = snapshotDatabaseQueryRows<ReceptionCreateRow>(
-        inserted,
-        1,
-        databaseReceptionRowSetInvariantErrorMessage,
-      );
-      if (insertedRows.length === 1) {
-        const insertedRow = insertedRows[0];
-        if (insertedRow === undefined) {
-          throw new Error(databaseReceptionRowSetInvariantErrorMessage);
-        }
-        const provenance = rowToProvenance(insertedRow);
-        if (
-          provenance.tenantId !== commandTenantId ||
-          provenance.pharmacyId !== commandPharmacyId ||
-          provenance.idempotencyKey !== commandIdempotencyKey ||
-          provenance.receptionId !== newReceptionId ||
-          provenance.patientId !== commandPatient.patientId
-        ) {
-          throw new Error(databaseReceptionCommandProvenanceInvariantErrorMessage);
-        }
-        const entry = rowToEntry(insertedRow);
-        if (
-          entry.receptionId !== provenance.receptionId ||
-          entry.patient.patientId !== provenance.patientId
-        ) {
-          throw new Error(databaseReceptionEntryIdentityInvariantErrorMessage);
-        }
-        if (!patientSnapshotsMatch(entry.patient, commandPatient)) {
-          throw new Error(databaseReceptionCreatedPatientSnapshotInvariantErrorMessage);
-        }
-        if (entry.receptionStatus !== 'WAITING') {
-          throw new Error(databaseReceptionCreatedStatusInvariantErrorMessage);
-        }
-        if (entry.acceptedAt !== acceptedAt) {
-          throw new Error(databaseReceptionCreatedAcceptedAtInvariantErrorMessage);
-        }
-        await client.query('COMMIT');
-        return {
-          kind: 'created',
-          entry,
-          provenance,
-        };
-      }
-
-      const existing = await selectByIdempotencyKey(client, {
-        tenantId: commandTenantId,
-        pharmacyId: commandPharmacyId,
-        idempotencyKey: commandIdempotencyKey,
-      });
-      if (existing === undefined) {
-        throw new Error('idempotency conflict row was not visible after unique constraint conflict');
-      }
-
-      const provenance = rowToProvenance(existing);
-      if (
-        provenance.tenantId !== commandTenantId ||
-        provenance.pharmacyId !== commandPharmacyId ||
-        provenance.idempotencyKey !== commandIdempotencyKey
-      ) {
-        throw new Error(databaseReceptionCommandProvenanceInvariantErrorMessage);
-      }
-      if (provenance.patientId !== commandPatient.patientId) {
-        await client.query('COMMIT');
-        return { kind: 'idempotency_conflict', provenance };
-      }
-
-      const entry = rowToEntry(existing);
-      if (
-        entry.receptionId !== provenance.receptionId ||
-        entry.patient.patientId !== provenance.patientId
-      ) {
-        throw new Error(databaseReceptionEntryIdentityInvariantErrorMessage);
-      }
+      const result = await runReceptionCreateWithinTransaction(client, snapshot);
       await client.query('COMMIT');
-      return {
-        kind: 'existing',
-        entry,
-        provenance,
-      };
+      return result;
     } catch (error) {
       try {
         await client.query('ROLLBACK');

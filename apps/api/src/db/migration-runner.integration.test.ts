@@ -49,7 +49,13 @@ describePostgres('PostgreSQL migration runner integration (set TEST_DATABASE_URL
         appliedBy: 'vitest',
         appliedAt: new Date('2026-07-09T00:00:00.000Z'),
       });
-      expect(applied.appliedVersions).toEqual(['000001', '000002', '000003', '000004']);
+      expect(applied.appliedVersions).toEqual([
+        '000001',
+        '000002',
+        '000003',
+        '000004',
+        '000005',
+      ]);
 
       const startupCheck = await assertMigrationStateAllowsStartup(pool, migrations);
       expect(startupCheck).toMatchObject({
@@ -63,6 +69,7 @@ describePostgres('PostgreSQL migration runner integration (set TEST_DATABASE_URL
         { version: '000002', applied_by: 'vitest' },
         { version: '000003', applied_by: 'vitest' },
         { version: '000004', applied_by: 'vitest' },
+        { version: '000005', applied_by: 'vitest' },
       ]);
     });
   });

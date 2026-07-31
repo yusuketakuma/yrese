@@ -54,6 +54,14 @@ import {
 } from './plugins/tenant-context.js';
 import { InMemoryAuditRepository, type AuditRepository } from './audit-repository.js';
 import {
+  InMemoryReceptionOutbox,
+  composeDefaultReceptionCreateCommand,
+  isReceptionAuditAppendError,
+  isReceptionOutboxAppendError,
+  type ReceptionCreateCommand,
+  type ReceptionCreateExecuteResult,
+} from './reception-command.js';
+import {
   InMemoryPatientRepository,
   type PatientRepository,
   type PatientSearchCursor,
@@ -62,7 +70,7 @@ import {
 import {
   businessDateFromAcceptedAt,
   InMemoryReceptionRepository,
-  type ReceptionCreateResult,
+  type ReceptionCreateProvenance,
   type ReceptionRepository,
 } from './reception-repository.js';
 
@@ -124,6 +132,8 @@ export const receptionQueueRepositoryErrorMessage =
 export const receptionQueueSchemaInvariantErrorMessage =
   'Reception repository returned invalid queue entries';
 export const receptionCreateRepositoryErrorMessage = 'Reception repository create failed';
+export const receptionCreatedOutboxInvariantErrorMessage =
+  'Reception outbox intent could not be recorded';
 const auditLogProjectionInvariantErrorMessage =
   'Audit event display projection failed for a verified hash chain';
 export const auditLogScopeInvariantErrorMessage =
@@ -145,6 +155,13 @@ export interface BuildServerOptions {
   readonly patientRepository?: PatientRepository;
   readonly receptionRepository?: ReceptionRepository;
   readonly auditRepository?: AuditRepository;
+  /**
+   * WP-4050: 受付コマンド境界。未指定なら receptionRepository / auditRepository を
+   * 合成した in-memory unit of work を使う(Postgres 構成は main.ts が
+   * PostgresReceptionCreateCommand を注入する)。
+   */
+  readonly receptionCreateCommand?: ReceptionCreateCommand;
+  readonly receptionOutbox?: InMemoryReceptionOutbox;
   readonly now?: () => Date;
   readonly repositoryMode?: ApiRepositoryMode;
   readonly tenantContextMode?: TenantContextMode;
@@ -274,7 +291,9 @@ function assertEncodedPatientSearchCursor(value: unknown): string {
   return value;
 }
 
-function readReceptionCreateResultKind(value: unknown): ReceptionCreateResult['kind'] {
+function readReceptionCreateResultKind(
+  value: unknown,
+): 'created' | 'existing' | 'existing_complete' | 'legacy_orphan' | 'idempotency_conflict' {
   const kind = readRequiredOwnEnumerableDataProperty(
     value,
     'kind',
@@ -283,6 +302,8 @@ function readReceptionCreateResultKind(value: unknown): ReceptionCreateResult['k
   if (
     kind !== 'created' &&
     kind !== 'existing' &&
+    kind !== 'existing_complete' &&
+    kind !== 'legacy_orphan' &&
     kind !== 'idempotency_conflict'
   ) {
     throw new Error(receptionResultKindInvariantErrorMessage);
@@ -607,6 +628,14 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const patientRepository = options.patientRepository ?? new InMemoryPatientRepository();
   const receptionRepository = options.receptionRepository ?? new InMemoryReceptionRepository();
   const auditRepository = options.auditRepository ?? new InMemoryAuditRepository();
+  const receptionOutbox = options.receptionOutbox ?? new InMemoryReceptionOutbox();
+  const receptionCreateCommand =
+    options.receptionCreateCommand ??
+    composeDefaultReceptionCreateCommand({
+      receptionRepository,
+      auditRepository,
+      outbox: receptionOutbox,
+    });
   const now = options.now ?? (() => new Date());
   const server = Fastify({
     logger: false,
@@ -974,16 +1003,33 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         receptionAcceptedAtClockInvariantErrorMessage,
       );
       const acceptedAt = new Date(acceptedAtIso);
-      let result: ReceptionCreateResult;
+      // WP-4050: 受付・監査・outbox は1つのコマンド境界(unit of work)で書く。
+      // 監査/outbox の追記失敗は受付ごと巻き戻る(受付だけが durable に残らない)。
+      // 時計は created 経路でだけ1回読む(existing / conflict では読まない)。
+      let auditWallClockUsed: string | undefined;
+      let result: ReceptionCreateExecuteResult;
       try {
-        result = await receptionRepository.create({
+        result = await receptionCreateCommand.execute({
           tenantId: tenantContext.tenantId,
           pharmacyId: tenantContext.pharmacyId,
           patient: repositoryPatient,
           idempotencyKey: body.data.idempotencyKey,
           acceptedAt,
+          actorId: userId(tenantContext.actorId),
+          auditWallClock: () => {
+            const wallClock = now().toISOString();
+            auditWallClockUsed = wallClock;
+            return wallClock;
+          },
         });
-      } catch {
+      } catch (error) {
+        // WeakSet 恒等判定のみ(hostile な例外値を一切検査しない)。
+        if (isReceptionAuditAppendError(error)) {
+          throw new Error(receptionCreatedAuditInvariantErrorMessage);
+        }
+        if (isReceptionOutboxAppendError(error)) {
+          throw new Error(receptionCreatedOutboxInvariantErrorMessage);
+        }
         throw new Error(receptionCreateRepositoryErrorMessage);
       }
       const resultKind = readReceptionCreateResultKind(result);
@@ -1056,30 +1102,68 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         throw new Error(receptionCreatedAcceptedAtInvariantErrorMessage);
       }
 
-      // 監査証跡(who/when/what)。冪等再送(existing)では二重記録しない。
-      // targetRef は識別子のみ(PHI 非含有)。
+      // 全フィールド検証済みのソースからだけ typed provenance を組み立てる
+      // (snapshot の静的型は unknown のままにし、hostile 入力を型で信用しない)。
+      const validatedProvenance: ReceptionCreateProvenance = {
+        tenantId: tenantContext.tenantId,
+        pharmacyId: tenantContext.pharmacyId,
+        idempotencyKey: body.data.idempotencyKey,
+        receptionId: receptionId(parsedEntry.receptionId),
+        patientId: patientId(parsedEntry.patient.patientId),
+      };
+
+      // 素通し 'existing' 結果(in-memory 経路)は、検証済み provenance を使って
+      // outbox intent の有無で existing_complete / legacy_orphan へ分類する。
+      // legacy_orphan は照合証跡であり、元の actor / 時刻を捏造する修復はしない
+      // (wire 応答は既存契約どおり 200 のまま)。
+      if (resultKind === 'existing') {
+        try {
+          await receptionCreateCommand.classifyExisting(validatedProvenance);
+        } catch {
+          throw new Error(receptionCreateRepositoryErrorMessage);
+        }
+      }
+
+      // 監査証跡(who/when/what)。冪等再送(existing 系)では二重記録しない。
+      // targetRef は識別子のみ(PHI 非含有)。created の evidence 確定は
+      // コマンド境界の責務(Postgres はトランザクション内で確定済み、
+      // in-memory は失敗時に受付ごと補償)で、意図一致検証はここで行う。
       if (resultKind === 'created') {
-        const auditScope = Object.freeze({
-          tenantId: tenantContext.tenantId,
-          pharmacyId: tenantContext.pharmacyId,
-        });
-        const auditIntent = Object.freeze({
-          actorId: userId(tenantContext.actorId),
-          auditEventType: 'reception.created',
-          targetRef: Object.freeze({ kind: 'reception', id: parsedEntry.receptionId }),
-          outcome: 'success' as const,
-          wallClock: now().toISOString(),
-        });
+        const auditWallClock = auditWallClockUsed ?? now().toISOString();
         let recordedAudit: unknown;
         try {
-          recordedAudit = await auditRepository.record(auditScope, auditIntent);
-        } catch {
+          recordedAudit = await receptionCreateCommand.ensureCreatedEvidence({
+            result,
+            provenance: validatedProvenance,
+            actorId: userId(tenantContext.actorId),
+            wallClock: auditWallClock,
+          });
+        } catch (error) {
+          // WeakSet 恒等判定のみ(hostile な失敗値を一切検査しない)。
+          if (isReceptionOutboxAppendError(error)) {
+            throw new Error(receptionCreatedOutboxInvariantErrorMessage);
+          }
+          // 監査追記失敗: outbox intent と受付を巻き戻してから正規化 500。
+          // 巻き戻し自体の失敗も同じ 500 に吸収する(状態は fail-visible)。
+          try {
+            await receptionCreateCommand.rollbackCreatedEvidence(validatedProvenance);
+          } catch {
+            // fall through to the normalized 500
+          }
           throw new Error(receptionCreatedAuditInvariantErrorMessage);
         }
         assertRecordedAuditMatchesIntent(recordedAudit, {
-          ...auditScope,
-          ...auditIntent,
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+          actorId: userId(tenantContext.actorId),
+          auditEventType: 'reception.created',
+          targetRef: Object.freeze({ kind: 'reception', id: parsedEntry.receptionId }),
+          outcome: 'success',
+          wallClock: auditWallClock,
         }, receptionCreatedAuditInvariantErrorMessage);
+      } else if (auditWallClockUsed !== undefined) {
+        // 非 created 経路で監査時計が読まれたなら unit of work の規律違反。
+        throw new Error(receptionCreatedAuditInvariantErrorMessage);
       }
 
       return reply.code(resultKind === 'created' ? 201 : 200).send(parsedEntry);
