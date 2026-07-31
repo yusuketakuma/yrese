@@ -2,8 +2,10 @@ import "zod-openapi";
 
 import { createDocument, type ZodOpenApiObject } from "zod-openapi";
 
+import { z } from "zod";
+
 import { auditLogQuerySchema, auditLogResponseSchema } from "./audit-log.js";
-import { errorResponseSchema } from "./error.js";
+import { errorResponseSchema, frameworkErrorResponseSchema } from "./error.js";
 import { healthResponseSchema } from "./health.js";
 import {
   patientGetParamsSchema,
@@ -24,6 +26,44 @@ const jsonContentType = "application/json";
 const errorResponseOpenApiSchema = errorResponseSchema.meta({
   id: "ErrorResponse",
   description: "PHI-free API error response",
+});
+
+const frameworkErrorResponseOpenApiSchema = frameworkErrorResponseSchema.meta({
+  id: "FrameworkErrorResponse",
+  description:
+    "Normalized framework-shaped error (JSON body parse 400 with `code`, unknown-route 404, internal 500). Message is a constant safe string; never a raw exception, never PHI.",
+});
+
+const receptionCreateBadRequestOpenApiSchema = z
+  .union([errorResponseSchema, frameworkErrorResponseSchema])
+  .meta({
+    id: "ReceptionCreateBadRequest",
+    description:
+      "Validation failure (RCV-0001) or JSON body parse failure (framework shape with code FST_ERR_CTP_INVALID_JSON_BODY). Non-JSON content types are coerced through validation and fail as RCV-0001.",
+  });
+
+/**
+ * WP-9008: PHI を運ぶルートは onRequest フックにより **全 status** の応答へ
+ * Cache-Control: no-store を付ける(エラー・パーサ 400 を含む)。宣言は代表として
+ * 成功応答と 500 に付与し、適用範囲はこの説明とルート description を正とする。
+ */
+const noStoreHeaders = {
+  "Cache-Control": {
+    description:
+      "Always `no-store` on this PHI-bearing route — applied to every status including errors.",
+    schema: { type: "string" as const, enum: ["no-store"] },
+  },
+};
+
+const internalErrorResponse = (options: { readonly noStore: boolean }) => ({
+  description:
+    "Normalized internal error. Constant invariant message; no raw exception detail, no PHI.",
+  ...(options.noStore ? { headers: noStoreHeaders } : {}),
+  content: {
+    [jsonContentType]: {
+      schema: frameworkErrorResponseOpenApiSchema,
+    },
+  },
 });
 
 const healthResponseOpenApiSchema = healthResponseSchema.meta({
@@ -93,7 +133,11 @@ const openApiDefinition = {
   info: {
     title: "yrese Pharmacy Integration API",
     version: "0.0.1",
-    description: "@yrese/contracts zod schemas are the source of truth for this generated OpenAPI document.",
+    description:
+      "@yrese/contracts zod schemas are the source of truth for this generated OpenAPI document. " +
+      "Error model (WP-9008): domain errors use ErrorResponse ({errorCode, message}); parser 400 / unknown-route 404 / normalized 500 use FrameworkErrorResponse with constant safe messages (no raw detail, no PHI). " +
+      "Authorization denial is uniformly 403 AUTH-0003 (deny-by-default). Authentication model: development uses explicit dev-header tenant context only; production authentication and its 401/WWW-Authenticate semantics are a separately gated release surface and are intentionally not declared here. " +
+      "PHI-bearing routes send Cache-Control: no-store on every status including errors.",
   },
   paths: {
     "/health": {
@@ -110,6 +154,7 @@ const openApiDefinition = {
               },
             },
           },
+          "500": internalErrorResponse({ noStore: false }),
         },
       },
     },
@@ -138,6 +183,7 @@ const openApiDefinition = {
               },
             },
           },
+          "500": internalErrorResponse({ noStore: false }),
         },
       },
     },
@@ -156,6 +202,7 @@ const openApiDefinition = {
         responses: {
           "200": {
             description: "Patient search results",
+            headers: noStoreHeaders,
             content: {
               [jsonContentType]: {
                 schema: patientSearchResponseOpenApiSchema,
@@ -178,6 +225,7 @@ const openApiDefinition = {
               },
             },
           },
+          "500": internalErrorResponse({ noStore: true }),
         },
       },
     },
@@ -196,6 +244,7 @@ const openApiDefinition = {
         responses: {
           "200": {
             description: "Patient summary (same projection as search results)",
+            headers: noStoreHeaders,
             content: {
               [jsonContentType]: {
                 schema: patientSummaryOpenApiSchema,
@@ -218,6 +267,7 @@ const openApiDefinition = {
               },
             },
           },
+          "500": internalErrorResponse({ noStore: true }),
           "404": {
             description: "Patient not found (PAT-0002)",
             content: {
@@ -244,6 +294,7 @@ const openApiDefinition = {
         responses: {
           "200": {
             description: "Reception queue entries in acceptedAt asc + receptionId asc order",
+            headers: noStoreHeaders,
             content: {
               [jsonContentType]: {
                 schema: receptionQueueResponseOpenApiSchema,
@@ -266,6 +317,7 @@ const openApiDefinition = {
               },
             },
           },
+          "500": internalErrorResponse({ noStore: true }),
         },
       },
     },
@@ -289,6 +341,7 @@ const openApiDefinition = {
         responses: {
           "201": {
             description: "Reception entry created",
+            headers: noStoreHeaders,
             content: {
               [jsonContentType]: {
                 schema: receptionQueueEntryOpenApiSchema,
@@ -297,6 +350,7 @@ const openApiDefinition = {
           },
           "200": {
             description: "Idempotent resend returned the existing reception entry",
+            headers: noStoreHeaders,
             content: {
               [jsonContentType]: {
                 schema: receptionQueueEntryOpenApiSchema,
@@ -304,10 +358,11 @@ const openApiDefinition = {
             },
           },
           "400": {
-            description: "Invalid reception create request (RCV-0001)",
+            description:
+              "Invalid reception create request (RCV-0001) or JSON body parse failure (framework shape)",
             content: {
               [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
+                schema: receptionCreateBadRequestOpenApiSchema,
               },
             },
           },
@@ -319,6 +374,7 @@ const openApiDefinition = {
               },
             },
           },
+          "500": internalErrorResponse({ noStore: true }),
           "404": {
             description: "Patient not found for reception (RCV-0002)",
             content: {
@@ -353,6 +409,7 @@ const openApiDefinition = {
         responses: {
           "200": {
             description: "Audit events and chain verification",
+            headers: noStoreHeaders,
             content: {
               [jsonContentType]: {
                 schema: auditLogResponseOpenApiSchema,
@@ -375,6 +432,7 @@ const openApiDefinition = {
               },
             },
           },
+          "500": internalErrorResponse({ noStore: true }),
         },
       },
     },

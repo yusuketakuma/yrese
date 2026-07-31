@@ -7,7 +7,12 @@ openapi: 3.1.0
 info:
   title: yrese Pharmacy Integration API
   version: 0.0.1
-  description: "@yrese/contracts zod schemas are the source of truth for this generated OpenAPI document."
+  description: "@yrese/contracts zod schemas are the source of truth for this generated OpenAPI document. Error model
+    (WP-9008): domain errors use ErrorResponse ({errorCode, message}); parser 400 / unknown-route 404 / normalized 500
+    use FrameworkErrorResponse with constant safe messages (no raw detail, no PHI). Authorization denial is uniformly
+    403 AUTH-0003 (deny-by-default). Authentication model: development uses explicit dev-header tenant context only;
+    production authentication and its 401/WWW-Authenticate semantics are a separately gated release surface and are
+    intentionally not declared here. PHI-bearing routes send Cache-Control: no-store on every status including errors."
 paths:
   /health:
     get:
@@ -22,6 +27,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
   /whoami:
     get:
       operationId: getWhoami
@@ -44,6 +55,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
   /patients/search:
     get:
       operationId: searchPatients
@@ -76,6 +93,13 @@ paths:
       responses:
         "200":
           description: Patient search results
+          headers: &a1
+            Cache-Control:
+              description: Always `no-store` on this PHI-bearing route — applied to every status including errors.
+              schema:
+                type: string
+                enum:
+                  - no-store
           content:
             application/json:
               schema:
@@ -92,6 +116,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
   /patients/{patientId}:
     get:
       operationId: getPatientById
@@ -113,6 +144,7 @@ paths:
       responses:
         "200":
           description: Patient summary (same projection as search results)
+          headers: *a1
           content:
             application/json:
               schema:
@@ -135,6 +167,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
   /reception/queue:
     get:
       operationId: getReceptionQueue
@@ -158,6 +197,7 @@ paths:
       responses:
         "200":
           description: Reception queue entries in acceptedAt asc + receptionId asc order
+          headers: *a1
           content:
             application/json:
               schema:
@@ -174,6 +214,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
   /reception:
     post:
       operationId: createReception
@@ -195,22 +242,24 @@ paths:
       responses:
         "200":
           description: Idempotent resend returned the existing reception entry
+          headers: *a1
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReceptionQueueEntry"
         "201":
           description: Reception entry created
+          headers: *a1
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReceptionQueueEntry"
         "400":
-          description: Invalid reception create request (RCV-0001)
+          description: Invalid reception create request (RCV-0001) or JSON body parse failure (framework shape)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/ReceptionCreateBadRequest"
         "403":
           description: Forbidden (AUTH-0003)
           content:
@@ -229,6 +278,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
   /audit/events:
     get:
       operationId: getAuditEvents
@@ -250,6 +306,7 @@ paths:
       responses:
         "200":
           description: Audit events and chain verification
+          headers: *a1
           content:
             application/json:
               schema:
@@ -266,6 +323,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
 components:
   schemas:
     ReceptionCreateRequest:
@@ -306,6 +370,29 @@ components:
         - timestamp
       additionalProperties: false
       description: Health check response
+    FrameworkErrorResponse:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          minimum: 400
+          maximum: 599
+        code:
+          type: string
+          minLength: 1
+        error:
+          type: string
+          minLength: 1
+        message:
+          type: string
+          minLength: 1
+      required:
+        - statusCode
+        - error
+        - message
+      additionalProperties: false
+      description: Normalized framework-shaped error (JSON body parse 400 with `code`, unknown-route 404, internal 500).
+        Message is a constant safe string; never a raw exception, never PHI.
     WhoamiResponse:
       type: object
       properties:
@@ -615,6 +702,42 @@ components:
         - prescriptionIntakeType
       additionalProperties: false
       description: Reception queue entry. Contains PatientSummary PHI and must not be logged in plaintext.
+    ReceptionCreateBadRequest:
+      anyOf:
+        - type: object
+          properties:
+            errorCode:
+              type: string
+              minLength: 1
+            message:
+              type: string
+              minLength: 1
+          required:
+            - errorCode
+            - message
+          additionalProperties: false
+        - type: object
+          properties:
+            statusCode:
+              type: integer
+              minimum: 400
+              maximum: 599
+            code:
+              type: string
+              minLength: 1
+            error:
+              type: string
+              minLength: 1
+            message:
+              type: string
+              minLength: 1
+          required:
+            - statusCode
+            - error
+            - message
+          additionalProperties: false
+      description: Validation failure (RCV-0001) or JSON body parse failure (framework shape with code
+        FST_ERR_CTP_INVALID_JSON_BODY). Non-JSON content types are coerced through validation and fail as RCV-0001.
     AuditLogResponse:
       type: object
       properties:
