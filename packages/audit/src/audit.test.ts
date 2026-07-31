@@ -551,3 +551,154 @@ describe("createAuditEvent", () => {
     expect("freeText" in auditEvent.businessReason!).toBe(false);
   });
 });
+
+describe("verifyAuditHashChain totality over corrupt persisted roots (WP-4236)", () => {
+  // 永続化層は破損行を隠さず raw のまま返す(fail-visible)。そのため検証入力には
+  // JSON null / scalar / array / 敵対的 graph が AuditEvent として到達しうる。
+  // 破断は throw ではなく構造的 hash_format_invalid として報告されなければならない。
+
+  it.each([
+    ["stored JSON null", null],
+    ["stored JSON number", 42],
+    ["stored JSON string", "corrupt-row"],
+    ["stored JSON boolean", true],
+    ["stored JSON array", []],
+  ])("reports %s as a structural break without throwing or echoing", (_label, corrupt) => {
+    const events = [corrupt] as unknown as readonly AuditEvent[];
+
+    let result: ReturnType<typeof verifyAuditHashChain> | undefined;
+    expect(() => {
+      result = verifyAuditHashChain(events);
+    }).not.toThrow();
+
+    // 非オブジェクト root は eventId を運搬できない: echo キー自体が存在しない。
+    expect(result).toEqual({
+      ok: false,
+      checkedCount: 0,
+      breakIndex: 0,
+      reason: "hash_format_invalid",
+    });
+  });
+
+  it("keeps the verified prefix count when a corrupt root follows valid events", () => {
+    const first = createAuditEvent(baseAuditEvent());
+    const events = [first, null] as unknown as readonly AuditEvent[];
+
+    expect(verifyAuditHashChain(events)).toEqual({
+      ok: false,
+      checkedCount: 1,
+      breakIndex: 1,
+      reason: "hash_format_invalid",
+    });
+  });
+
+  it("reports a throwing eventId accessor as a break without invoking it in the report", () => {
+    const valid = createAuditEvent(baseAuditEvent());
+    const hostile = { ...valid } as Record<string, unknown>;
+    Object.defineProperty(hostile, "eventId", {
+      enumerable: true,
+      configurable: true,
+      get() {
+        throw new Error("hostile eventId accessor");
+      },
+    });
+
+    let result: ReturnType<typeof verifyAuditHashChain> | undefined;
+    expect(() => {
+      result = verifyAuditHashChain([hostile] as unknown as readonly AuditEvent[]);
+    }).not.toThrow();
+
+    // accessor は own *data* property ではないため echo されない(起動もされない)。
+    expect(result).toEqual({
+      ok: false,
+      checkedCount: 0,
+      breakIndex: 0,
+      reason: "hash_format_invalid",
+    });
+  });
+
+  it("reports a hostile Proxy whose every trap throws as a break without throwing", () => {
+    const hostile = new Proxy(
+      {},
+      {
+        get() {
+          throw new Error("hostile get trap");
+        },
+        getOwnPropertyDescriptor() {
+          throw new Error("hostile descriptor trap");
+        },
+      },
+    );
+
+    let result: ReturnType<typeof verifyAuditHashChain> | undefined;
+    expect(() => {
+      result = verifyAuditHashChain([hostile] as unknown as readonly AuditEvent[]);
+    }).not.toThrow();
+
+    expect(result).toEqual({
+      ok: false,
+      checkedCount: 0,
+      breakIndex: 0,
+      reason: "hash_format_invalid",
+    });
+  });
+
+  it("reports a prevHash accessor that turns hostile after the format check as a break", () => {
+    const valid = createAuditEvent(baseAuditEvent());
+    let prevHashReads = 0;
+    const hostile = { ...valid } as Record<string, unknown>;
+    Object.defineProperty(hostile, "prevHash", {
+      enumerable: true,
+      configurable: true,
+      get() {
+        prevHashReads += 1;
+        if (prevHashReads > 1) {
+          throw new Error("hostile second read");
+        }
+        return valid.prevHash;
+      },
+    });
+
+    let result: ReturnType<typeof verifyAuditHashChain> | undefined;
+    expect(() => {
+      result = verifyAuditHashChain([hostile] as unknown as readonly AuditEvent[]);
+    }).not.toThrow();
+
+    expect(result).toMatchObject({
+      ok: false,
+      checkedCount: 0,
+      breakIndex: 0,
+      reason: "hash_format_invalid",
+    });
+  });
+
+  it("reports a mutating nested target graph deterministically without throwing", () => {
+    const valid = createAuditEvent(baseAuditEvent());
+    let targetReads = 0;
+    const hostile = { ...valid } as Record<string, unknown>;
+    Object.defineProperty(hostile, "targetRef", {
+      enumerable: true,
+      configurable: true,
+      get() {
+        targetReads += 1;
+        return { kind: "patient", id: `patient-mutated-${targetReads}` };
+      },
+    });
+
+    let result: ReturnType<typeof verifyAuditHashChain> | undefined;
+    expect(() => {
+      result = verifyAuditHashChain([hostile] as unknown as readonly AuditEvent[]);
+    }).not.toThrow();
+
+    // 変異する graph は保存 entryHash と一致し得ない: 破断として決定的に報告される。
+    expect(result).toMatchObject({
+      ok: false,
+      checkedCount: 0,
+      breakIndex: 0,
+    });
+    expect(result?.ok).toBe(false);
+    expect(["entry_hash_mismatch", "hash_format_invalid"]).toContain(
+      (result as { reason: string }).reason,
+    );
+  });
+});

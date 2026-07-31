@@ -272,3 +272,53 @@ describePostgres('PostgresAuditRepository (migrations/000004)', () => {
     10_000,
   );
 });
+
+describePostgres('WP-4236 corrupt event_body handling (set TEST_DATABASE_URL to run)', () => {
+  const scope: AuditScope = {
+    tenantId: tenantId('tenant-corrupt-4236'),
+    pharmacyId: pharmacyId('pharmacy-corrupt-4236'),
+  };
+  const dummyHash = 'a'.repeat(64);
+
+  function insertRawBody(pool: Pool, body: string) {
+    return pool.query(
+      `INSERT INTO audit_events
+         (tenant_id, pharmacy_id, sequence_number, event_id, prev_hash, entry_hash, wall_clock, event_body)
+       VALUES ($1, $2, 1, 'corrupt-event-4236', $3, $4, '2026-07-17T00:00:00.000Z', $5::jsonb)`,
+      [scope.tenantId, scope.pharmacyId, dummyHash, dummyHash, body],
+    );
+  }
+
+  it('rejects new non-object event bodies at the write boundary (forward constraint)', async () => {
+    await withMigratedSchema(async (pool) => {
+      for (const body of ['null', '42', '"corrupt"', '[]']) {
+        await expect(insertRawBody(pool, body)).rejects.toThrow(
+          /audit_events_event_body_object/,
+        );
+      }
+    });
+  });
+
+  it('reports a legacy non-object row as a structural break instead of crashing', async () => {
+    await withMigratedSchema(async (pool) => {
+      // 既存破損行の模擬: 制約導入前(NOT VALID)の legacy 行は残存しうる。
+      // 制約を一時的に外して挿入し、読出し経路の全域性だけを検証する。
+      await pool.query(
+        'ALTER TABLE audit_events DROP CONSTRAINT audit_events_event_body_object',
+      );
+      await insertRawBody(pool, 'null');
+
+      const repository = new PostgresAuditRepository(pool);
+      const events = await repository.list(scope);
+      expect(events).toHaveLength(1);
+
+      const verification = verifyAuditHashChain(events);
+      expect(verification).toEqual({
+        ok: false,
+        checkedCount: 0,
+        breakIndex: 0,
+        reason: 'hash_format_invalid',
+      });
+    });
+  });
+});

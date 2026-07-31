@@ -548,18 +548,42 @@ export function computeAuditEventIntentFingerprint(
   return computeAuditAppendIntentFingerprint(projectAuditEventIntentFingerprintInput(input));
 }
 
+/**
+ * WP-4236: 破断報告の全域性(totality)。
+ *
+ * 永続化層は破損行を隠さず raw のまま返すため(fail-visible)、検証入力には
+ * JSON null / scalar / array / 敵対的 accessor・Proxy graph が AuditEvent として
+ * 到達しうる。破断報告の構築自体が対象イベントのプロパティ読取りで throw すると、
+ * fail-visible な chain break が 500 へ転化する。eventId は own data property の
+ * 文字列である場合だけ、descriptor 経由(accessor を起動しない)で echo する。
+ */
+function readOwnStringEventId(value: unknown): string | undefined {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, "eventId");
+    if (descriptor !== undefined && "value" in descriptor && typeof descriptor.value === "string") {
+      return descriptor.value;
+    }
+  } catch {
+    // 敵対的 Proxy の descriptor trap も破断報告を妨げない
+  }
+  return undefined;
+}
+
 function hashFormatFailure(
   events: readonly AuditEvent[],
   index: number,
   checkedCount: number,
 ): AuditHashChainVerification {
-  const event = events[index];
+  const eventId = readOwnStringEventId(events[index]);
   return Object.freeze({
     ok: false,
     checkedCount,
     breakIndex: index,
     reason: "hash_format_invalid",
-    ...(event !== undefined ? { eventId: event.eventId } : {}),
+    ...(eventId !== undefined ? { eventId } : {}),
   });
 }
 
@@ -573,48 +597,52 @@ export function verifyAuditHashChain(events: readonly AuditEvent[]): AuditHashCh
       continue;
     }
 
+    // WP-4236: object 以外の root(JSON null / scalar / array)はプロパティへ
+    // 一切触れずに構造的破断として報告する(fail-visible / no-throw)。
+    if (event === null || typeof event !== "object" || Array.isArray(event)) {
+      return hashFormatFailure(events, index, checkedCount);
+    }
+
+    // WP-4236: 以降の全プロパティ読取り・正規化・比較を全域化する。敵対的
+    // accessor / Proxy / 変異する nested graph による throw は、例外の伝播では
+    // なく構造的 hash_format_invalid 破断として報告する。
     try {
       assertSha256Hex(event.prevHash, "prevHash");
       assertSha256Hex(event.entryHash, "entryHash");
-    } catch {
-      return hashFormatFailure(events, index, checkedCount);
-    }
 
-    if (event.prevHash !== expectedPrevHash) {
-      return Object.freeze({
-        ok: false,
-        checkedCount,
-        breakIndex: index,
-        eventId: event.eventId,
-        reason: "prev_hash_mismatch",
-        expectedPrevHash,
-        actualPrevHash: event.prevHash,
-      });
-    }
+      if (event.prevHash !== expectedPrevHash) {
+        return Object.freeze({
+          ok: false,
+          checkedCount,
+          breakIndex: index,
+          eventId: event.eventId,
+          reason: "prev_hash_mismatch",
+          expectedPrevHash,
+          actualPrevHash: event.prevHash,
+        });
+      }
 
-    let expectedEntryHash: string;
-    try {
-      expectedEntryHash = computeAuditEntryHash({
+      const expectedEntryHash = computeAuditEntryHash({
         prevHash: event.prevHash,
         canonicalJson: canonicalizeAuditEventPayload(event),
       });
+      if (event.entryHash !== expectedEntryHash) {
+        return Object.freeze({
+          ok: false,
+          checkedCount,
+          breakIndex: index,
+          eventId: event.eventId,
+          reason: "entry_hash_mismatch",
+          expectedEntryHash,
+          actualEntryHash: event.entryHash,
+        });
+      }
+
+      checkedCount += 1;
+      expectedPrevHash = event.entryHash;
     } catch {
       return hashFormatFailure(events, index, checkedCount);
     }
-    if (event.entryHash !== expectedEntryHash) {
-      return Object.freeze({
-        ok: false,
-        checkedCount,
-        breakIndex: index,
-        eventId: event.eventId,
-        reason: "entry_hash_mismatch",
-        expectedEntryHash,
-        actualEntryHash: event.entryHash,
-      });
-    }
-
-    checkedCount += 1;
-    expectedPrevHash = event.entryHash;
   }
 
   const result: { ok: true; checkedCount: number; lastEntryHash?: string } = {

@@ -1201,11 +1201,38 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         rawEvents,
         auditLogListSchemaInvariantErrorMessage,
       ) as readonly AuditEvent[];
+      // WP-4236: 破損行(JSON null / scalar / array / 敵対的 graph)は scope を
+      // 運搬できないため、この防衛的 scope 検査ではプロパティ読取り不能な要素を
+      // 検査対象外とし、直後の verifyAuditHashChain に構造的破断
+      // (hash_format_invalid)として報告させる。読取れて不一致なら従来どおり
+      // invariant 違反(行レベルの scope は永続化層の WHERE が別途強制している)。
+      const readOwnScopeString = (value: unknown, property: string): string | undefined => {
+        if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+          return undefined;
+        }
+        try {
+          const descriptor = Object.getOwnPropertyDescriptor(value, property);
+          if (
+            descriptor !== undefined &&
+            'value' in descriptor &&
+            typeof descriptor.value === 'string'
+          ) {
+            return descriptor.value;
+          }
+        } catch {
+          // 敵対的 descriptor trap は scope 検査を妨げない(verify が破断報告する)
+        }
+        return undefined;
+      };
       if (
-        events.some(
-          (event) =>
-            event.tenantId !== scope.tenantId || event.pharmacyId !== scope.pharmacyId,
-        )
+        events.some((event) => {
+          const eventTenantId = readOwnScopeString(event, 'tenantId');
+          const eventPharmacyId = readOwnScopeString(event, 'pharmacyId');
+          if (eventTenantId === undefined || eventPharmacyId === undefined) {
+            return false;
+          }
+          return eventTenantId !== scope.tenantId || eventPharmacyId !== scope.pharmacyId;
+        })
       ) {
         throw new Error(auditLogScopeInvariantErrorMessage);
       }
