@@ -541,6 +541,12 @@ describe('GET /audit/events (SCR-028)', () => {
     expect(firstBody.entries).toEqual([]);
     expect(firstBody.totalCount).toBe(0);
     expect(firstBody.chainVerification).toEqual({ ok: true, checkedCount: 0 });
+    const storedAfterFirstView = await repository.list(SCOPE);
+    expect(storedAfterFirstView).toHaveLength(1);
+    expect(storedAfterFirstView[0]?.auditEventType).toBe('audit.viewed');
+    expect(firstBody.entries).not.toContainEqual(
+      expect.objectContaining({ auditEventType: 'audit.viewed' }),
+    );
 
     // 監査ログの閲覧自体が監査される(2回目には audit.viewed が現れる)
     const second = await server.inject({
@@ -552,6 +558,55 @@ describe('GET /audit/events (SCR-028)', () => {
     expect(secondBody.totalCount).toBe(1);
     expect(secondBody.entries[0]?.auditEventType).toBe('audit.viewed');
     expect(secondBody.entries[0]?.actorId).toBe('user-001');
+  });
+
+  it('returns the listed snapshot when another writer appends before the view audit', async () => {
+    const repository = new InMemoryAuditRepository();
+    await seedEvents(repository, 2);
+    const listedCount = 2;
+    const interleavingTarget = 'reception-interleaving';
+    const record = vi.fn<AuditRepository['record']>(async (scope, input) => {
+      await repository.record(
+        scope,
+        receptionCreated(interleavingTarget, '2026-07-17T00:00:00.000Z'),
+      );
+      return repository.record(scope, input);
+    });
+    const server = buildDevTestServer({
+      now: () => new Date('2026-07-17T00:00:01.000Z'),
+      auditRepository: {
+        list: (scope) => repository.list(scope),
+        record,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events',
+      headers: auditReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as AuditLogResponse;
+    expect(body.totalCount).toBe(listedCount);
+    expect(body.chainVerification).toEqual({ ok: true, checkedCount: listedCount });
+    expect(body.entries.map((entry) => entry.targetRef.id)).not.toContain(interleavingTarget);
+    expect(body.entries.map((entry) => entry.auditEventType)).not.toContain('audit.viewed');
+    expect(record).toHaveBeenCalledOnce();
+
+    const persisted = await repository.list(SCOPE);
+    expect(persisted).toHaveLength(listedCount + 2);
+    expect(verifyAuditHashChain(persisted)).toMatchObject({
+      ok: true,
+      checkedCount: listedCount + 2,
+    });
+    expect(persisted.filter((event) => event.auditEventType === 'audit.viewed')).toHaveLength(1);
+    expect(persisted.at(-2)?.targetRef.id).toBe(interleavingTarget);
+    expect(persisted.at(-1)).toMatchObject({
+      auditEventType: 'audit.viewed',
+      targetRef: { kind: 'audit_log', id: `view:${listedCount}` },
+    });
   });
 
   it('normalizes a rejected audit-view append without exposing raw failure detail', async () => {
@@ -1299,6 +1354,45 @@ describe('GET /audit/events (SCR-028)', () => {
       },
     });
     expect(response.body).not.toContain(malformedWallClock);
+  });
+
+  it('fails before clock or view append when a verified event cannot enter the response schema', async () => {
+    const repository = new InMemoryAuditRepository();
+    const oversizedTargetId = `raw-verified-target-${'x'.repeat(109)}`;
+    expect(oversizedTargetId).toHaveLength(129);
+    await repository.record(
+      SCOPE,
+      receptionCreated(oversizedTargetId, '2026-07-11T01:00:00.000Z'),
+    );
+    const persistedBefore = await repository.list(SCOPE);
+    expect(persistedBefore).toHaveLength(1);
+    expect(verifyAuditHashChain(persistedBefore)).toMatchObject({ ok: true, checkedCount: 1 });
+
+    const now = vi.fn(() => new Date('2026-07-17T00:00:00.000Z'));
+    const record = vi.fn<AuditRepository['record']>((scope, input) =>
+      repository.record(scope, input),
+    );
+    const server = buildDevTestServer({
+      now,
+      auditRepository: {
+        list: (scope) => repository.list(scope),
+        record,
+      },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/audit/events',
+      headers: auditReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(500);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.body).not.toContain(oversizedTargetId);
+    expect(now).not.toHaveBeenCalled();
+    expect(record).not.toHaveBeenCalled();
+    expect(await repository.list(SCOPE)).toEqual(persistedBefore);
   });
 
   it('rejects invalid limits with AUD-0001', async () => {

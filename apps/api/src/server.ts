@@ -1227,32 +1227,6 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         }
       }
 
-      // 監査ログの閲覧自体を監査する(audit.viewed)。今回の応答には含めない(閲覧後に追記)。
-      const viewWallClock = snapshotWallClock(
-        now,
-        auditLogViewClockReadErrorMessage,
-        auditLogViewClockInvariantErrorMessage,
-      );
-      const viewTarget = Object.freeze({ kind: 'audit_log', id: `view:${events.length}` });
-      const viewIntent = Object.freeze({
-        actorId: userId(tenantContext.actorId),
-        auditEventType: 'audit.viewed',
-        targetRef: viewTarget,
-        outcome: 'success',
-        wallClock: viewWallClock,
-      });
-      let recordedViewAudit: unknown;
-      try {
-        recordedViewAudit = await auditRepository.record(scope, viewIntent);
-      } catch {
-        throw new Error(auditLogViewAuditInvariantErrorMessage);
-      }
-      assertRecordedAuditMatchesIntent(
-        recordedViewAudit,
-        { ...scope, ...viewIntent },
-        auditLogViewAuditInvariantErrorMessage,
-      );
-
       // 検証済みchainは公開契約どおりwallClock降順。同時刻は後のappendを先にする。
       // 破損chainはwallClockを信頼せず、WP-4093のraw append window/no-backfillを維持する。
       const displayCandidates = events.map((event, appendIndex) => ({ event, appendIndex }));
@@ -1279,7 +1253,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         throw new Error(auditLogProjectionInvariantErrorMessage);
       }
 
-      return auditLogResponseSchema.parse({
+      const responseSnapshot = auditLogResponseSchema.parse({
         entries,
         chainVerification: verification.ok
           ? { ok: true, checkedCount: verification.checkedCount }
@@ -1291,6 +1265,34 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
             },
         totalCount: events.length,
       });
+
+      // 監査ログの閲覧自体を監査する(audit.viewed)。事前検証済みの今回の応答には含めない。
+      const viewWallClock = snapshotWallClock(
+        now,
+        auditLogViewClockReadErrorMessage,
+        auditLogViewClockInvariantErrorMessage,
+      );
+      const viewTarget = Object.freeze({ kind: 'audit_log', id: `view:${events.length}` });
+      const viewIntent = Object.freeze({
+        actorId: userId(tenantContext.actorId),
+        auditEventType: 'audit.viewed',
+        targetRef: viewTarget,
+        outcome: 'success',
+        wallClock: viewWallClock,
+      });
+      let recordedViewAudit: unknown;
+      try {
+        recordedViewAudit = await auditRepository.record(scope, viewIntent);
+      } catch {
+        throw new Error(auditLogViewAuditInvariantErrorMessage);
+      }
+      assertRecordedAuditMatchesIntent(
+        recordedViewAudit,
+        { ...scope, ...viewIntent },
+        auditLogViewAuditInvariantErrorMessage,
+      );
+
+      return responseSnapshot;
     },
   );
 
