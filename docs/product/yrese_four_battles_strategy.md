@@ -5,16 +5,33 @@ ssot_id: PRD-009
 title: yrese 4つの戦い(業界閉塞への対抗戦略 各論)
 domain: product
 status: APPROVED
-approved_at: 2026-07-09
-approved_by: opus4.8 review + fable5
-owner: fable5
+approved_at: 2026-07-29
+approved_by: direct_user_instruction (2026-07-29 development-policy reset mandate); independent_verifier APPROVED; spec_guardian APPROVED; combined medical_safety/privacy/security/data_integrity read-only review APPROVED
+owner: codex_root
 reviewers:
-  - opus4.8
-version: 0.1.0
+  - independent_verifier
+  - spec_guardian
+  - medical_safety_reviewer
+  - privacy_compliance_reviewer
+  - security_critic
+  - data_integrity_auditor
+version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
-source_refs: [構築プロンプト v0.2.0 §2〜§8, PRD-006, PRD-007, PRD-008]
-impacts: [Plans.md 優先順位, WP-0042〜0047 SSOTパック]
+updated_at: 2026-07-29
+effective_from: 2026-07-29
+effective_to: null
+source_refs: [構築プロンプト v0.2.0 §2〜§8, PRD-006, PRD-007, PRD-008, human_instruction 2026-07-29 development-policy reset]
+depends_on: [PRD-008, SPEC-002]
+impacts: [DEVELOPMENT_POLICY.md, Plans.md 優先順位, WP-0042〜0047 SSOTパック]
+related_work_packages: [WP-4240, WP-4050, WP-4250]
+related_tests: [scripts/check-ssot-index.mjs]
+related_prs: []
+evidence_ids: []
+change_log:
+  - 0.2.0 2026-07-29 direct user instructionによりWP消化を成果指標から除外し、6〜12週の実行順序をDevelopment Policy Charterへ委譲
+  - 0.1.0 2026-07-09 4つの戦いの戦略各論を初版化
+open_questions: []
+blockers: []
 ```
 
 PRD-006 の4本柱を、v0.2.0 §4「yreseが戦う4つの閉塞」に対応する戦略各論として SSOT 化する。
@@ -53,8 +70,9 @@ PRD-006 の4本柱を、v0.2.0 §4「yreseが戦う4つの閉塞」に対応す�
 
 1. 4つの戦いは v0.2.0 §28 停止条件・PRD-008 D1(法令・医療安全・請求正確性)の上には立たない。
 2. ベンチマーク(PRD-004/005)は模倣リストではなく現在地の記録。差別化は本書で行う。
-3. 各戦いの進捗は Plans.md の WP 消化で測り、戦いに資する WP を同リスク・同コストの他 WP より優先する。
+3. 各戦いの進捗は完了したmilestone exitとend-to-end user journeyで測る。WP消化数、review数、record commit数を成果指標にしない。APPROVED SSOTに従属するnon-SSOT work-selection charter `DEVELOPMENT_POLICY.md` が現行6〜12週のwork selection、stop-doing、fallback、record modelを定め、各戦いの長期scopeを一度に実装queueへ展開しない。
 
 ## 変更履歴
 
+- 0.2.0 (2026-07-29): direct user instructionによりWP消化を成果指標から除外し、6〜12週の実行順序をDevelopment Policy Charterへ委譲。
 - 0.1.0 (2026-07-09): WP-0041 により起案(PROPOSED)。PRD-006 v1.1.0 の戦略具体化を各論として SSOT 化。
