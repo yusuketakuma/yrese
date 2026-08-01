@@ -177,6 +177,13 @@ const malformedDevIdHeaderCases = [
   ['x-dev-tenant', '   ', 'blank tenant id'],
   ['x-dev-pharmacy', 'pharmacy-001\t', 'control-character pharmacy id'],
   ['x-dev-actor', 'user-001\t', 'control-character actor id'],
+  // 複合キーの区切り文字を含む ID。`TENANT#{t}#PHARMACY#{p}` 形式では
+  // t='tenant-001#PHARMACY#tenant-002', p='x' と t='tenant-001', p='tenant-002#PHARMACY#x'
+  // が同一キー文字列へ衝突する。prefix でスコープを与える認可はこの曖昧性の下で
+  // テナント境界を保証できないため、ingress で fail-closed に拒否されなければならない。
+  ['x-dev-tenant', 'tenant-001#PHARMACY#tenant-002', 'key-delimiter tenant id'],
+  ['x-dev-pharmacy', 'pharmacy#001', 'key-delimiter pharmacy id'],
+  ['x-dev-actor', 'user#001', 'key-delimiter actor id'],
 ] as const;
 
 const sensitiveRouteCases = [

@@ -20,6 +20,15 @@ const pureCorePackageNames = new Set([
   "shared-kernel",
   "trace",
 ]);
+// 複合キーのテナント/薬局スコープ接頭辞。これらを含む文字列を組み立てる箇所は
+// DynamoDB の複合キーを構築している。`dynamodb:LeadingKeys` によるスコープダウンは
+// この接頭辞の prefix 一致に依存するため、セグメントが canonical form
+// (空でない・制御文字なし・`#` を含まない)であることを構築時点で検証しなければ
+// テナント境界を保証できない。branded ID factory は生成時点で `#` を拒否するが、
+// 生文字列から直接キーを組み立てる経路はその強制を迂回できる。したがって構築は
+// 承認済み key codec モジュールに限定し、それ以外の箇所を機械検知する。
+const compositeKeyScopeMarkers = ["TENANT#", "PHARMACY#"];
+const approvedKeyCodecPattern = /^apps\/[^/]+\/src\/dynamodb\/[^/]*key-codec\.[cm]?ts$/;
 const duplicateConstRules = [
   { constName: "SYSTEM_MODES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
   { constName: "PROVISIONAL_STATUSES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
@@ -548,6 +557,59 @@ async function checkDuplicateConstArrays() {
   }
 }
 
+function literalTextsIn(sourceFile) {
+  const texts = [];
+  function visit(node) {
+    if (
+      ts.isStringLiteral(node) ||
+      ts.isNoSubstitutionTemplateLiteral(node) ||
+      ts.isTemplateHead(node) ||
+      ts.isTemplateMiddle(node) ||
+      ts.isTemplateTail(node)
+    ) {
+      texts.push(node.text);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  return texts;
+}
+
+async function checkCompositeKeyConstruction() {
+  const sourcePredicate = (filePath) => {
+    const relative = toPosix(path.relative(rootDir, filePath));
+    const isPackageSource = /^packages\/[^/]+\/src\/.+\.[cm]?[jt]sx?$/.test(relative);
+    const isAppSource = /^apps\/[^/]+\/.+\.[cm]?[jt]sx?$/.test(relative);
+    if (!isPackageSource && !isAppSource) {
+      return false;
+    }
+    // テストは codec の出力を期待値として固定するために複合キー literal を書く。
+    // production 経路の検査が目的なので除外する。
+    return !isTestSourceFile(filePath);
+  };
+  const files = [
+    ...(await listFiles(path.join(rootDir, "packages"), sourcePredicate)),
+    ...(await listFiles(path.join(rootDir, "apps"), sourcePredicate)),
+  ];
+
+  for (const filePath of files) {
+    const relative = toPosix(path.relative(rootDir, filePath));
+    if (approvedKeyCodecPattern.test(relative)) {
+      continue;
+    }
+
+    const sourceFile = await parseSourceFile(filePath);
+    const texts = literalTextsIn(sourceFile);
+    for (const marker of compositeKeyScopeMarkers) {
+      if (texts.some((text) => text.includes(marker))) {
+        report(
+          `${relative}: composite key segment '${marker}' must be built in an approved DynamoDB key codec (apps/*/src/dynamodb/*key-codec.ts) that validates each segment, not inline`,
+        );
+      }
+    }
+  }
+}
+
 async function main() {
   await validateProtectedScopes();
   const workspacePackageDirs = await listWorkspacePackageDirs();
@@ -566,6 +628,7 @@ async function main() {
   await checkImportBoundaries(packageNameByDir, appPackageNames);
   checkWorkspaceCycles(workspaceManifests);
   await checkDuplicateConstArrays();
+  await checkCompositeKeyConstruction();
 
   if (violations.length > 0) {
     console.error(`Boundary check failed with ${violations.length} violation(s):`);

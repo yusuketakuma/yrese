@@ -1017,6 +1017,75 @@ async function testDuplicateRegistryConstDetection() {
   );
 }
 
+async function testInlineCompositeKeyConstructionDetection() {
+  const root = path.join(tempRoot, "inline-composite-key");
+  await writeText(
+    path.join(root, "packages", "shared-kernel", "package.json"),
+    JSON.stringify({ name: "@fixture/shared-kernel", dependencies: {} }, null, 2),
+  );
+  await writeText(path.join(root, "packages", "shared-kernel", "src", "index.ts"), "export const kernel = 'k';\n");
+  await writeText(
+    path.join(root, "apps", "api", "package.json"),
+    JSON.stringify({ name: "@fixture/api", dependencies: {} }, null, 2),
+  );
+  // 承認済み codec の外で複合キーを組み立てる — branded ID factory の `#` 拒否を迂回できる経路。
+  await writeText(
+    path.join(root, "apps", "api", "src", "reception-repository.ts"),
+    [
+      "export function scope(tenant: string, pharmacy: string): string {",
+      "  return `TENANT#${tenant}#PHARMACY#${pharmacy}#RECEPTION`;",
+      "}",
+      "",
+    ].join("\n"),
+  );
+
+  const result = runNode("check-boundaries.mjs", [root]);
+  const output = outputOf(result);
+  assert(result.status === 1, "check-boundaries should fail for inline composite key construction");
+  assert(
+    output.includes("apps/api/src/reception-repository.ts: composite key segment 'TENANT#'"),
+    "inline composite key finding should name the offending file and marker",
+  );
+  assert(
+    output.includes("approved DynamoDB key codec"),
+    "inline composite key finding should point at the approved key codec location",
+  );
+}
+
+async function testApprovedKeyCodecAndTestsMayBuildCompositeKeys() {
+  const root = path.join(tempRoot, "approved-composite-key");
+  await writeText(
+    path.join(root, "packages", "shared-kernel", "package.json"),
+    JSON.stringify({ name: "@fixture/shared-kernel", dependencies: {} }, null, 2),
+  );
+  await writeText(path.join(root, "packages", "shared-kernel", "src", "index.ts"), "export const kernel = 'k';\n");
+  await writeText(
+    path.join(root, "apps", "api", "package.json"),
+    JSON.stringify({ name: "@fixture/api", dependencies: {} }, null, 2),
+  );
+  // 承認済み codec 内での構築は許可される。
+  await writeText(
+    path.join(root, "apps", "api", "src", "dynamodb", "audit-persistence-key-codec.ts"),
+    [
+      "export function scope(tenant: string, pharmacy: string): string {",
+      "  return `TENANT#${tenant}#PHARMACY#${pharmacy}#AUDIT`;",
+      "}",
+      "",
+    ].join("\n"),
+  );
+  // テストは codec の出力を期待値として固定するため除外される。
+  await writeText(
+    path.join(root, "apps", "api", "src", "dynamodb", "key-shape.test.ts"),
+    "export const expected = 'TENANT#t#PHARMACY#p#AUDIT';\n",
+  );
+
+  const result = runNode("check-boundaries.mjs", [root]);
+  assert(
+    result.status === 0,
+    `check-boundaries should allow composite keys in an approved codec and in tests: ${outputOf(result)}`,
+  );
+}
+
 async function testDuplicateContractAndKernelConstDetectionAcrossApps() {
   const root = path.join(tempRoot, "duplicate-contracts");
   await writeText(
@@ -2757,6 +2826,8 @@ try {
   await testBoundarySyntaxAwareImportExtraction();
   await testAppAwsImportDoesNotTripPureCoreRule();
   await testDuplicateRegistryConstDetection();
+  await testInlineCompositeKeyConstructionDetection();
+  await testApprovedKeyCodecAndTestsMayBuildCompositeKeys();
   await testDuplicateContractAndKernelConstDetectionAcrossApps();
   await testDuplicateConstSyntaxBoundaries();
   await testBoundaryScopeValidationFailsClosed();
