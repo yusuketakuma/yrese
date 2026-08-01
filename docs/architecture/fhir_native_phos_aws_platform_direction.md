@@ -4,10 +4,10 @@
 ssot_id: ARC-008
 title: FHIR ネイティブ(ハイブリッド)・PH-OS 汎用投影・AWS プラットフォーム方針
 domain: architecture
-status: PROPOSED
-approved_at: null
-approved_by: null
-effective_from: null
+status: APPROVED
+approved_at: 2026-08-01
+approved_by: "direct human authority 2026-08-01 (WP-4258 全て承認); WP-4258 independent review on frozen packet 92c4765be23e4440b21d6022c0f50d7e3373dc729b6ac03a6803157b3f1c5e06 (base SHA a911a9911e50e2d56e3b7ebde4064e6c16ec2922, 276 lines) reproduced the hash and returned REQUEST_CHANGES with no HIGH finding; its one MEDIUM and two LOW findings were corrected inside the same revision; scope is the SSOT amendment only and no registered blocker is cleared by it; codex second opinion unavailable until 2026-08-05 and not counted as evidence"
+effective_from: 2026-08-01
 effective_to: null
 owner: codex_root
 reviewers:
@@ -38,6 +38,7 @@ related_tests: [pnpm check:ssot-index, git diff --check]
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.1.4 2026-08-01 WP-4258 finalization: 独立review(frozen packet 92c4765b…、HIGH 0)とdirect human approvalによりPROPOSED→APPROVED。本文semanticsは不変。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置きで、amendsも解除しない"
   - "0.1.4 2026-08-01 WP-4258 PROPOSED: round-5 verifier の deferred LOW を訂正。本文変更履歴で Revision 13 entry が Revision 10 と 9 の間に挿入されていた並び順を降順へ修正(frontmatter 側は元から正順)"
   - "0.1.3 2026-08-01 WP-4250 exact11 finalization: round-5の独立review三レーン完了(independent verifier PASS・本文HIGHなし)とdirect human approvalによりPROPOSED→APPROVED。本文semanticsは不変。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置き"
   - "0.1.3 2026-07-31 WP-4250 PROPOSED Revision 13: round-5 data-integrity re-reviewの同期。BLOCKED_RECUTOVER_DIVERGENCE_RESOLUTIONを登録し、BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENTの前提をlive code事実へ訂正(branded-ids.tsは`#`をnegative test付きで既に拒否。残余はキー構築経路のbranded型強制)"
@@ -272,6 +273,13 @@ PRC-007 §7の`amends`機構に従い、PROPOSED中に解決済みを先取り�
 
 ## 変更履歴
 
+- 0.1.4 (2026-08-01 finalization / WP-4258): 独立 review が frozen packet
+  `92c4765b…` の hash を再現したうえで **HIGH 0 の REQUEST_CHANGES** を返し、
+  その MEDIUM 1 件・LOW 2 件は同 revision 内で訂正済みであることを受け、
+  direct human approval により PROPOSED → APPROVED とした。**本文 semantics は
+  不変**である。承認範囲は SSOT 改版のみであり、実装着手・schema/data migration・
+  production action・conformance 主張・cutover を含まない。登録済み blocker は
+  1 件も解除しておらず、`amends` の予約も維持する。
 - 0.1.4 (2026-08-01 Revision 15 / WP-4258): round-5 verifier の deferred LOW を
   訂正。本文変更履歴で Revision 13 の entry が Revision 10 と Revision 9 の間に
   置かれていたため、revision 降順へ並べ替えた。frontmatter の change_log は

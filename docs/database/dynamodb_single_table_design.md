@@ -4,9 +4,9 @@
 ssot_id: DB-005
 title: DynamoDB single-table ストレージ設計(FHIR 格納正本・投影・append-only 監査/台帳)
 domain: database
-status: PROPOSED
-approved_at: null
-approved_by: null
+status: APPROVED
+approved_at: 2026-08-01
+approved_by: "direct human authority 2026-08-01 (WP-4258 全て承認); WP-4258 independent review on frozen packet 92c4765be23e4440b21d6022c0f50d7e3373dc729b6ac03a6803157b3f1c5e06 (base SHA a911a9911e50e2d56e3b7ebde4064e6c16ec2922, 276 lines) reproduced the hash and returned REQUEST_CHANGES with no HIGH finding; its one MEDIUM and two LOW findings were corrected inside the same revision; scope is the SSOT amendment only and no registered blocker is cleared by it; codex second opinion unavailable until 2026-08-05 and not counted as evidence"
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -19,8 +19,8 @@ reviewers:
   - human_pharmacist_product_authority
 version: 0.1.4
 created_at: 2026-07-10
-updated_at: 2026-07-31
-effective_from: null
+updated_at: 2026-08-01
+effective_from: 2026-08-01
 effective_to: null
 source_refs:
   - docs/architecture/fhir_native_phos_aws_platform_direction.md(ARC-008 v0.1.2 APPROVED — 方針正本)
@@ -60,6 +60,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.1.4 2026-08-01 WP-4258 finalization: 独立review(frozen packet 92c4765b…、HIGH 0)とdirect human approvalによりPROPOSED→APPROVED。本文semanticsは不変。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置き"
   - "0.1.4 2026-08-01 WP-4258 PROPOSED: round-5 verifier の deferred LOW を訂正。§3.2 の pair 全体削除特例を撤回(latest delta には superseding delta が存在せず、同節が新設した機械強制 ConditionCheck で表現できないため。規則が許し強制機構が表現できない状態は条件式なし Delete への圧力になる。tombstone delta 1 件/pair の残余は許容し、FHIRINDEXFENCE の commitSequence 一致を条件に加える将来経路のみ記録。§12 の「latest delta を削除する→実装禁止」との既存矛盾も解消)。§7 の限界記述を実測4変種(template literal / + 連結は検知、marker 分割 / 配列 join は通過)へ差し替え。frontmatter の BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT 注記を §7 本文へ同期し、解除条件 (a) が WP-4256 で充足済み・残余は (b) のみであることを反映。**WP-4258 独立 review(REQUEST_CHANGES、HIGH 0)の LOW 2件を同 revision 内で訂正**: §7 の (a) 充足日を 2026-07-31 から WP-4256 の実 commit 日 2026-08-01(`ab63db6`)へ是正(git で実測)、§3.2 の tombstone「有界」が distinct token 値の有界性を暗黙前提にしていた点を明示し、token churn 支配下では対数が書込履歴に概ね比例し得ることと §13(a) への計測項目追加を記載"
   - "0.1.3 2026-08-01 WP-4250 exact11 finalization: round-5の独立review三レーン完了(independent verifier PASS・本文HIGHなし)とdirect human approvalによりPROPOSED→APPROVED。本文semanticsは不変。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置き"
   - "0.1.3 2026-07-31 WP-4250 PROPOSED Revision 14: round-5 security/privacy re-reviewのfindings訂正。§11のPATIENTLINK SKを生patientIdからhmacPatientId(HKDF pharmacy+purpose分離、§5.2 guardと同一rotation規律)へ変更し「patientIdは非PHI」という無強制の前提への依存を解消(patient_idは自由形式TEXTでpatient_numberとの同値を禁じる制約がなく、移行運用で患者ID=患者番号がありうる)、最終epoch CASをmembership+cardinalityの合成として定義し余剰link検出を復号なしで成立化、§3.2の圧縮削除をConditionCheck(superseding delta実在+retentionExpiresAt経過)+Delete条件式で機械強制しdeltaへretentionExpiresAt属性を追加、圧縮roleのleast-privilege分離と運用監査を実装WP承認要件へ、§9へinternalPatientId/patientId生値のlog/APM/trace/metric/外部送信禁止をlogicalIdとparityで追加、§6.4の集約deny eventIdをkeyed HMAC導出(SK/dedupe keyに載るため無鍵hashでは総当たり逆引き可能)とし開放窓中の検知経路をSEC-007/008起票事項へ明示、§11 write grant棚卸しへbreak-glass/superuser/migration/運用者直接接続を列挙し乖離detector終了根拠を権限revoke証跡へ紐付け。§12停止条件とtest obligationsを同期。自己整合スイープで§9が用途分離鍵を列挙していなかったことを検出し、検索トークン/patientNumber guard/PATIENTLINK/idempotency lookup/集約deny eventIdの導出入力とローテ時の性質を§9の正本一覧表として追加。§7へBLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT (a)の機械強制実装(check:boundariesの複合キー構築検知)を記録し、残余を(b)既存永続値の検証のみへ縮小"
@@ -1999,6 +2000,13 @@ DynamoDB 製品確定の前提として計測する: (a) **単一 PK の WCU/RCU
 
 ## 変更履歴
 
+- 0.1.4 (2026-08-01 finalization / WP-4258): 独立 review が frozen packet
+  `92c4765b…` の hash を再現したうえで **HIGH 0 の REQUEST_CHANGES** を返し、
+  その MEDIUM 1 件・LOW 2 件は同 revision 内で訂正済みであることを受け、
+  direct human approval により PROPOSED → APPROVED とした。**本文 semantics は
+  不変**である。承認範囲は SSOT 改版のみであり、実装着手・schema/data migration・
+  production action・conformance 主張・cutover を含まない。登録済み blocker は
+  1 件も解除していない。
 - 0.1.4 (2026-08-01 Revision 15 / WP-4258): round-5 verifier の deferred LOW を
   訂正。**§3.2 の pair 全体削除特例を撤回した**。「latest が `present=false` で
   期限経過なら pair 全体を削除できる」という論拠(期限後の読取にとって latest
