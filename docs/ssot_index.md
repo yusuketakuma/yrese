@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.47
+version: 0.4.48
 created_at: 2026-07-09
 updated_at: 2026-07-31
 approved_at: 2026-08-01
@@ -153,7 +153,8 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
-  - "0.4.47 2026-08-01 WP-4250 exact11 finalization: round-5の独立review三レーン完了(independent verifier PASS・本文HIGHなし)とdirect human approvalにより、exact11の11文書をPROPOSED→APPROVEDへ同一batchで昇格(PRC-007 §4 step 8 / §97 atomic finalization)。本索引はIDX-001自身のstatus/approval/effectiveに加え、ARC-008・API-003・API-001・API-004・API-008・DOM-002・DOM-005・DOM-006・DB-005・PRD-007の**status行10件をPROPOSED→APPROVEDへ更新**した(index集計 APPROVED 131→141、PROPOSED 22→12、SUPERSEDED 17不変)。documentカウント173、ssot_id、文書パス、section件数、23-field移行inventoryは不変。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置き"
+  - "0.4.48 2026-08-01 WP-4258: round-5 verifier の deferred LOW 訂正のため DB-005 と ARC-008 を改版(0.1.3→0.1.4)。両文書の status 行を APPROVED→PROPOSED へ戻し、review 完了と human approval まで実装根拠にしない。本索引自体は派生記録であり APPROVED を維持する。documentカウント173・ssot_id・文書パス・section件数は不変。status 集計は APPROVED 143→141、PROPOSED 13→15、SUPERSEDED 17不変(合計173)。**0.4.47 entry の集計値は誤りであり本 entry で訂正する**: 当時の計数は ssot_id を `[A-Z]+-[0-9]+` で拾う正規表現で行っており、`SRC-FHIR-00x` のような複数セグメント ID の3行を取りこぼして合計170になっていた。正しい計数は `[A-Z][A-Z0-9-]*-[0-9]+` で173行である。あわせて 0.4.47 の基準の取り方も曖昧だった — 同 entry の数値は review 用に PROPOSED へ降格していた作業ツリーを基準としたもので、コミット済み索引は当該10行が元から APPROVED であったため 143/13/17 のまま不変だった。訂正後の正しい記述は「作業ツリー基準で APPROVED 133→143、PROPOSED 23→13」である。`check:ssot-index` は section 件数と総数を検証するが change_log の散文集計は検証対象外であり、この誤りを検出しない"
+  - "0.4.47 2026-08-01 WP-4250 exact11 finalization: round-5の独立review三レーン完了(independent verifier PASS・本文HIGHなし)とdirect human approvalにより、exact11の11文書をPROPOSED→APPROVEDへ同一batchで昇格(PRC-007 §4 step 8 / §97 atomic finalization)。本索引はIDX-001自身のstatus/approval/effectiveに加え、ARC-008・API-003・API-001・API-004・API-008・DOM-002・DOM-005・DOM-006・DB-005・PRD-007の**status行10件をPROPOSED→APPROVEDへ更新**した(**この集計値は誤り。0.4.48 entry で訂正済み — 正しくは作業ツリー基準で APPROVED 133→143、PROPOSED 23→13、合計173**)。documentカウント173、ssot_id、文書パス、section件数、23-field移行inventoryは不変。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置き"
   - 0.4.46 2026-07-31 WP-4250 PROPOSED Revisions 8-11をexact11 batchへ反映(round 1-4のre-review訂正: 認可応答分離、identity不変性の構造強制、集約deny intent、DLQ単一遷移、mechanical bookkeeping整合まで。round 4の設計findingsは未解決のままescalation維持 — Plans.md WP-4250参照)。本索引のssot_id/文書/status行・documentカウント173は不変
   - 0.4.46 2026-07-31 WP-4250 PROPOSED Revision 7でindependent domain reviewのHIGH 9件/MEDIUM 4件をexact11 batchへ訂正反映。single external write producer確定とintake command unselected、Patient create initially disabled、logical ID/tombstone境界、replay exactnessと保存response representation、lookup-key retirement unsupported、snapshot materialization bound、parse boundary、401/403分離と全response no-store、resource authority state/epoch束縛とcross-store atomicity禁止、audit intent→fact convergence、LeadingKeysのpharmacy粒度化、reception FK互換blocker、Prescription/MedicationRequest ownership blocker、package provenance未確立を追加。**本索引のssot_id/文書/status行は変更なし**(全対象文書はPROPOSEDのまま)。新規SSOT登録・削除・採番はなく、documentカウント173は不変。status/approval/amends/PENDING_REVISION、WP-4254/MOD-009 v0.4.45 semanticsも不変
   - 0.4.46 2026-07-30 WP-4250 PROPOSED Revision 6でdistinct BEFORE/AFTER search delta、precision-derived `_lastUpdated` interval、Patient cutover VERSION 1 `SYSTEM_CUTOVER` baseline/non-backfill、history `entry.fullUrl`、LIVE ENABLED Allow/CapabilityStatement、mandatory Patient PUT Idempotency-Key、parameterized wildcard Acceptとplanned fixturesをexact11 batchへ同期。status/approval/amends/PENDING_REVISION、WP-4254/MOD-009 v0.4.45 semanticsは不変
@@ -307,7 +308,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | ARC-010 | [always_on_rececon_architecture.md](architecture/always_on_rececon_architecture.md) | APPROVED |
 | ARC-007 | [claim_finalization_immutability_policy.md](architecture/claim_finalization_immutability_policy.md) | APPROVED |
 | ARC-005 | [event_sourcing_architecture.md](architecture/event_sourcing_architecture.md) | APPROVED |
-| ARC-008 | [fhir_native_phos_aws_platform_direction.md](architecture/fhir_native_phos_aws_platform_direction.md) | APPROVED |
+| ARC-008 | [fhir_native_phos_aws_platform_direction.md](architecture/fhir_native_phos_aws_platform_direction.md) | PROPOSED |
 | ARC-004 | [legacy_adapter_s3_lambda_policy.md](architecture/legacy_adapter_s3_lambda_policy.md) | APPROVED |
 | ARC-011 | [no_nightly_batch_policy.md](architecture/no_nightly_batch_policy.md) | APPROVED |
 | ARC-003 | [nsips_quarantine_architecture.md](architecture/nsips_quarantine_architecture.md) | APPROVED |
@@ -346,7 +347,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | DB-004 | [db_retention_and_deletion_policy.md](database/db_retention_and_deletion_policy.md) | APPROVED |
 | DB-001 | [db_schema_design_standards.md](database/db_schema_design_standards.md) | APPROVED |
 | DB-003 | [db_tenant_isolation_ddl_policy.md](database/db_tenant_isolation_ddl_policy.md) | APPROVED |
-| DB-005 | [dynamodb_single_table_design.md](database/dynamodb_single_table_design.md) | APPROVED |
+| DB-005 | [dynamodb_single_table_design.md](database/dynamodb_single_table_design.md) | PROPOSED |
 
 ## docs/domain/ (6件)
 

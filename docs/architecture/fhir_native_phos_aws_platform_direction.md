@@ -4,10 +4,10 @@
 ssot_id: ARC-008
 title: FHIR ネイティブ(ハイブリッド)・PH-OS 汎用投影・AWS プラットフォーム方針
 domain: architecture
-status: APPROVED
-approved_at: 2026-08-01
-approved_by: "direct human authority 2026-08-01 (WP-4250 exact11 全て承認); round-5 independent verifier PASS on packet body with no HIGH finding (frozen packet ab086c9f8d6e6bfd26e32fbfe9daa21a3b8b6ccd3f324f413b4d2975731cfab6, base SHA 9d8dbc0c3f5201c762dbb39fd9b15fc3ddc4b875); round-5 security/privacy findings closed in Revision 14; round-5 data-integrity findings closed in Revision 13; codex second opinion unavailable until 2026-08-05 and not counted as evidence"
-effective_from: 2026-08-01
+status: PROPOSED
+approved_at: null
+approved_by: null
+effective_from: null
 effective_to: null
 owner: codex_root
 reviewers:
@@ -19,7 +19,7 @@ reviewers:
   - privacy_compliance_reviewer
   - medical_safety_reviewer
   - human_pharmacist_product_authority
-version: 0.1.3
+version: 0.1.4
 created_at: 2026-07-10
 updated_at: 2026-07-31
 source_refs:
@@ -38,6 +38,7 @@ related_tests: [pnpm check:ssot-index, git diff --check]
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.1.4 2026-08-01 WP-4258 PROPOSED: round-5 verifier の deferred LOW を訂正。本文変更履歴で Revision 13 entry が Revision 10 と 9 の間に挿入されていた並び順を降順へ修正(frontmatter 側は元から正順)"
   - "0.1.3 2026-08-01 WP-4250 exact11 finalization: round-5の独立review三レーン完了(independent verifier PASS・本文HIGHなし)とdirect human approvalによりPROPOSED→APPROVED。本文semanticsは不変。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置き"
   - "0.1.3 2026-07-31 WP-4250 PROPOSED Revision 13: round-5 data-integrity re-reviewの同期。BLOCKED_RECUTOVER_DIVERGENCE_RESOLUTIONを登録し、BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENTの前提をlive code事実へ訂正(branded-ids.tsは`#`をnegative test付きで既に拒否。残余はキー構築経路のbranded型強制)"
   - "0.1.3 2026-07-31 WP-4250 PROPOSED Revision 10: re-review round 3のHIGH 3件訂正を同期し、BLOCKED_AUDIT_PAYLOAD_RETENTION_POLICYを登録"
@@ -271,16 +272,15 @@ PRC-007 §7の`amends`機構に従い、PROPOSED中に解決済みを先取り�
 
 ## 変更履歴
 
+- 0.1.4 (2026-08-01 Revision 15 / WP-4258): round-5 verifier の deferred LOW を
+  訂正。本文変更履歴で Revision 13 の entry が Revision 10 と Revision 9 の間に
+  置かれていたため、revision 降順へ並べ替えた。frontmatter の change_log は
+  元から正順であり、本文だけが食い違っていた。内容の変更はない。
 - 0.1.3 (2026-08-01 finalization): round-5 の独立 review 三レーン完了
   (independent verifier は packet 本文 PASS・HIGH なし)と direct human approval に
   より PROPOSED → APPROVED。**本文 semantics は不変**。承認範囲は SSOT 改版のみで
   あり、実装着手・schema/data migration・production action・conformance 主張は
   含まない。登録済み blocker は全て据え置きである。
-- 0.1.3 (2026-07-31 Revision 10): independent re-review round 3 の HIGH 3 件の
-  訂正を同期。Patient identity 不変性が TWI の条件式で構造的に強制されること、
-  deny quota が無記録の窓を作らず集約 intent へ縮退すること、audit payload の
-  破棄が時間経過ではなく収束で駆動されることを反映し、収束しない DLQ payload の
-  保存年限を `BLOCKED_AUDIT_PAYLOAD_RETENTION_POLICY` として登録。
 - 0.1.3 (2026-07-31 Revision 13): round-5 独立 data-integrity re-review の同期。
   rollback を経た再 cutover には、rollback 期間中の PostgreSQL 側変更(属性
   変更・統合・削除)を FHIR authority へ反映する経路が存在せず、PATIENTLINK も
@@ -291,6 +291,11 @@ PRC-007 §7の`amends`機構に従い、PROPOSED中に解決済みを先取り�
   訂正した: branded ID factory は `#` を negative test 付きで既に拒否しており、
   残余はキー構築経路が branded 型を経由することの保証である。範囲は縮んだが
   conservative 側は維持する。
+- 0.1.3 (2026-07-31 Revision 10): independent re-review round 3 の HIGH 3 件の
+  訂正を同期。Patient identity 不変性が TWI の条件式で構造的に強制されること、
+  deny quota が無記録の窓を作らず集約 intent へ縮退すること、audit payload の
+  破棄が時間経過ではなく収束で駆動されることを反映し、収束しない DLQ payload の
+  保存年限を `BLOCKED_AUDIT_PAYLOAD_RETENTION_POLICY` として登録。
 - 0.1.3 (2026-07-31 Revision 9): independent re-review round 2 の訂正。
   `writerFenceToken` の自己保持が DynamoDB 層で強制できないこと、および audit
   payload の外部 store 参照が書込順序・digest 検証・失敗時 semantics・budget

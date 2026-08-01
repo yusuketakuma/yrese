@@ -182,6 +182,25 @@
   freshly executed PASS) and found **no recurrence** of the reference-side drift
   that failed rounds 1–4. `BLOCKED_INDEPENDENT_VERIFIER_LANE_UNAVAILABLE` is
   therefore cleared.
+- **WP-4258 (2026-08-01):** the three LOW findings WP-4250's round-5 verifier
+  deferred are now folded in. DB-005 and ARC-008 are back at **PROPOSED**
+  (0.1.3 → 0.1.4) pending approval; IDX-001 stays APPROVED at 0.4.48 as a
+  derived record. The §3.2 whole-pair deletion special case is **withdrawn**
+  because Revision 14's mechanical ConditionCheck cannot express it (a latest
+  delta has no superseding delta), which also resolves the standing
+  contradiction with §12's "deleting the latest delta is prohibited". An
+  independent lane reviewed frozen packet `ef2db67b…`, reproduced the hash, and
+  returned REQUEST_CHANGES with **no HIGH** — it re-ran all four detection
+  variants against its own fixtures and confirmed the §7 table exactly. Its one
+  MEDIUM was **my own bookkeeping error**: the counting regex I used
+  (`[A-Z]+-[0-9]+`) silently dropped three multi-segment ids such as
+  `SRC-FHIR-00x`, so the index tallies I wrote in 0.4.47 and 0.4.48 were wrong
+  and summed to 170 against a stated total of 173. Correct counts are
+  143/13/17 → 141/15/17. `check:ssot-index` validates section counts and the
+  total but not prose tallies, so it passes either way. Both entries are
+  corrected. Re-frozen packet:
+  `92c4765be23e4440b21d6022c0f50d7e3373dc729b6ac03a6803157b3f1c5e06`
+  (base `a911a99…`, 276 lines).
 - **Next action:** human decision. The maker/checker separation R4 requires is
   now satisfied by three delivered lanes; what remains is **final human SSOT
   approval** of the exact11 PROPOSED batch, plus a scope decision on the

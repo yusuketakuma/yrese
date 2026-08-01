@@ -714,6 +714,98 @@ the two applicable gates were executed directly through `node` and `git`.
   action belongs to this decision packet.
 - **Dirty ownership / landing:** the same Codex root owns the existing WP-4254 IDX-001 delta; whole-file IDX ownership is resolved for cumulative review. Pre-edit `git diff -- docs/ssot_index.md` SHA-256 was `88c2ab2c375b8a8b7edbff9ec5cd2a21670cd58da4a1b5ef83fd0cdaf80b1f79`; all WP-4254/MOD-009 semantics/hunks must remain. WP-4250 owns only this active block, the active pointer snapshot, and the exact11 PROPOSED additions. No landing is authorized; cumulative exact-path landing remains separately gated after review/finalization.
 
+### WP-4258 — round-5 deferred LOW の改版(2026-08-01)/ **APPROVAL_PENDING**
+
+- **Status:** PROPOSED / INDEPENDENT_REVIEW_DONE / CORRECTIONS_APPLIED /
+  **FINAL_HUMAN_APPROVAL_REQUIRED**
+- **対象:** DB-005(0.1.3→0.1.4)、ARC-008(0.1.3→0.1.4)、IDX-001(0.4.47→0.4.48)
+- **Risk:** P2 / R2。撤回と記述精緻化のみで、capability の追加・制約の緩和はない。
+
+WP-4250 round-5 verifier が packet 本文外として deferred した LOW 3件を畳んだ。
+
+| 項目 | 訂正 |
+|---|---|
+| (c) §3.2 pair 全体削除特例 | **撤回**。特例の論拠(期限後は latest false と delta 不在が membership 上等価)は正しいが、Revision 14 が新設した機械強制は superseding delta `s` の実在を ConditionCheck で要求し、`s` を持たない latest delta の削除を表現できる条件式が存在しない。規則が許し強制機構が表現できない状態は条件式なし Delete への圧力になる。tombstone 1件/pair を許容し、将来経路(`FHIRINDEXFENCE` の `commitSequence` 一致)は記録のみ。**§12 が既に定めていた「latest delta を削除する→実装禁止」との既存矛盾も解消**した |
+| (d) §7 限界記述 | 実測4変種の表へ差し替え(template literal と `+` 連結は検知、marker 分割と配列 join は通過) |
+| (a) frontmatter blocker 注記 | §7 本文へ同期。解除条件 (a) は WP-4256 で充足済み、残余は (b) のみ |
+| (b) ARC-008 本文変更履歴 | Revision 13 entry の位置を降順へ是正 |
+
+**独立 review 結果(frozen packet `ef2db67b…` / 245行、hash 独立再現一致)**:
+**REQUEST_CHANGES(HIGH 0 / MEDIUM 1 / LOW 2)**。撤回の論理・実測表・並び順・
+参照側同期・メタデータは**すべて正しい**と確認された。verifier は §7 の実測表を
+**自作 fixture で4変種すべて実走**して表と完全一致を確認し、WP-4256 の実装実在と
+`check-scripts.mjs` の PASS、`FHIRINDEXFENCE` 引用が §4.1 実定義と文字列一致する
+ことも確認している。
+
+指摘3件はいずれも**記録側**であり、同 revision 内で訂正した。
+
+1. **[MEDIUM] IDX-001 の集計値が誤り**。0.4.48 entry の「APPROVED 141→139、
+   PROPOSED 12→14」は実測と不一致で、合計170が同 entry の「documentカウント173」
+   と自己矛盾していた。原因は**私が使った計数正規表現 `[A-Z]+-[0-9]+` が
+   `SRC-FHIR-00x` のような複数セグメント ID の3行を取りこぼしていた**こと。
+   正しい計数(`[A-Z][A-Z0-9-]*-[0-9]+`)では 143/13/17 → 141/15/17(合計173)。
+   さらに 0.4.47 entry の基準の取り方も曖昧で、その誤値を無検証で引き継いでいた。
+   両 entry を訂正し、0.4.47 側には訂正への参照を付けた(履歴の数値自体は
+   書き換えない)。**`check:ssot-index` は section 件数と総数を検証するが
+   change_log の散文集計は検証しない**ため、この誤りは機械検査を素通りする。
+   round 1〜5 で繰り返した「記録と実体の乖離」クラスの再発であり、
+   **今回は自分が書いた記録で再発させた**。
+2. **[LOW] (a) 充足日の不一致**。§7 本文が 2026-07-31、frontmatter が 2026-08-01。
+   git 実測で WP-4256 commit `ab63db6` は 2026-08-01 であり、本文側が Revision 14
+   の残存だった。commit hash 付きで是正した。
+3. **[LOW] tombstone「有界」の暗黙前提**。distinct token 値が有界である場合に
+   限る旨を明示し、token churn 支配下では対数が書込履歴に概ね比例し得ること、
+   §13(a) へ distinct 対数と churn 率を計測項目として加えることを記載した。
+
+**再凍結後の packet**: base SHA `a911a9911e50e2d56e3b7ebde4064e6c16ec2922`、
+diff SHA-256 `92c4765be23e4440b21d6022c0f50d7e3373dc729b6ac03a6803157b3f1c5e06`、
+276行。検証: `check:ssot-index` PASS(173)、`git diff --check` PASS、
+status 集計 141/15/17(合計173)が記録と一致。
+
+**残る gate**: final human approval。承認まで DB-005 / ARC-008 は PROPOSED であり
+実装根拠にしない。
+
+### BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT 残余 (b) — 実行仕様(2026-08-01)
+
+解除条件 (a)(キー構築経路の強制)は WP-4256 で充足済み。残余は **(b) 既存永続値に
+`#` が含まれないことの検証**である。**DDL と実データ参照を伴うため人間承認ゲート
+であり、本 session では実行しない**。ここでは実行者が判断なしに走らせられるよう、
+対象と手順だけを確定する。
+
+**設計上の要点**: 別途 SELECT で棚卸しするより、**CHECK 制約の追加そのものを検証と
+する**のが強い。違反行が 1 件でもあれば `ALTER TABLE ... ADD CONSTRAINT` は失敗する
+ため、適用成功がそのまま「既存値に `#` なし」の証明になり、同時に将来の混入も
+DB 層で止まる。既存スキーマは各 ID 列に `length(x) > 0` の CHECK を既に持っており、
+`#` 排除は同じ場所に自然に収まる。
+
+**対象列**(`migrations/` の現行スキーマより。すべて `TEXT NOT NULL`):
+
+| テーブル | 列 |
+|---|---|
+| `patients` | `tenant_id`, `pharmacy_id`, `patient_id` |
+| `reception_entries` | `tenant_id`, `pharmacy_id`, `reception_id`, `patient_id` |
+| `audit_events` | `tenant_id`, `pharmacy_id`, `event_id` |
+| `outbox_events` | `tenant_id`, `pharmacy_id`, `outbox_event_id`, `aggregate_id`, `audit_event_id` |
+
+**手順**:
+
+1. **事前棚卸し(read-only、破壊的でない)**: 各列について
+   `SELECT count(*) FROM <t> WHERE position('#' in <col>) > 0;` を実行し、全て 0 で
+   あることを環境ごと(dev / staging / production)に記録する。0 でなければ
+   ここで停止し、値の由来と是正方針を人間判断へ返す。**この時点では何も変更しない**。
+2. **DDL 適用(要人間承認)**: 新規 migration で各列へ
+   `CHECK (position('#' in <col>) = 0)` を追加する。手順 1 が 0 件であることを
+   確認済みの環境にのみ適用する。適用失敗は「未検出の違反行が存在する」ことの
+   証拠であり、握りつぶさない。
+3. **DynamoDB 側**: 現時点で provisioning されておらず既存値が存在しないため
+   (b) の対象外。write 有効化前に同等の検証を設けるかは、DB-005 の該当 blocker が
+   解除される時点の判断事項とする。
+
+**この session で実行していないこと**: 上記 1 も 2 も未実行である。当環境には
+`DATABASE_URL` がなく接続先が存在しない(`pnpm db:check` が
+`DATABASE_URL is required` で停止することを確認済み)。したがって blocker は
+**維持**する。検証スクリプトを未検証のまま置くことは避け、仕様のみを確定した。
+
 ### WP-4257 — frontmatter を YAML として検証する(2026-08-01)
 
 - **Status:** COMPLETED_LOCAL / MACHINE_VALIDATED / LANDED

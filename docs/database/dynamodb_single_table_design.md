@@ -4,9 +4,9 @@
 ssot_id: DB-005
 title: DynamoDB single-table ストレージ設計(FHIR 格納正本・投影・append-only 監査/台帳)
 domain: database
-status: APPROVED
-approved_at: 2026-08-01
-approved_by: "direct human authority 2026-08-01 (WP-4250 exact11 全て承認); round-5 independent verifier PASS on packet body with no HIGH finding (frozen packet ab086c9f8d6e6bfd26e32fbfe9daa21a3b8b6ccd3f324f413b4d2975731cfab6, base SHA 9d8dbc0c3f5201c762dbb39fd9b15fc3ddc4b875); round-5 security/privacy findings closed in Revision 14; round-5 data-integrity findings closed in Revision 13; codex second opinion unavailable until 2026-08-05 and not counted as evidence"
+status: PROPOSED
+approved_at: null
+approved_by: null
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -17,10 +17,10 @@ reviewers:
   - privacy_compliance_reviewer
   - medical_safety_reviewer
   - human_pharmacist_product_authority
-version: 0.1.3
+version: 0.1.4
 created_at: 2026-07-10
 updated_at: 2026-07-31
-effective_from: 2026-08-01
+effective_from: null
 effective_to: null
 source_refs:
   - docs/architecture/fhir_native_phos_aws_platform_direction.md(ARC-008 v0.1.2 APPROVED — 方針正本)
@@ -60,6 +60,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.1.4 2026-08-01 WP-4258 PROPOSED: round-5 verifier の deferred LOW を訂正。§3.2 の pair 全体削除特例を撤回(latest delta には superseding delta が存在せず、同節が新設した機械強制 ConditionCheck で表現できないため。規則が許し強制機構が表現できない状態は条件式なし Delete への圧力になる。tombstone delta 1 件/pair の残余は許容し、FHIRINDEXFENCE の commitSequence 一致を条件に加える将来経路のみ記録。§12 の「latest delta を削除する→実装禁止」との既存矛盾も解消)。§7 の限界記述を実測4変種(template literal / + 連結は検知、marker 分割 / 配列 join は通過)へ差し替え。frontmatter の BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT 注記を §7 本文へ同期し、解除条件 (a) が WP-4256 で充足済み・残余は (b) のみであることを反映。**WP-4258 独立 review(REQUEST_CHANGES、HIGH 0)の LOW 2件を同 revision 内で訂正**: §7 の (a) 充足日を 2026-07-31 から WP-4256 の実 commit 日 2026-08-01(`ab63db6`)へ是正(git で実測)、§3.2 の tombstone「有界」が distinct token 値の有界性を暗黙前提にしていた点を明示し、token churn 支配下では対数が書込履歴に概ね比例し得ることと §13(a) への計測項目追加を記載"
   - "0.1.3 2026-08-01 WP-4250 exact11 finalization: round-5の独立review三レーン完了(independent verifier PASS・本文HIGHなし)とdirect human approvalによりPROPOSED→APPROVED。本文semanticsは不変。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置き"
   - "0.1.3 2026-07-31 WP-4250 PROPOSED Revision 14: round-5 security/privacy re-reviewのfindings訂正。§11のPATIENTLINK SKを生patientIdからhmacPatientId(HKDF pharmacy+purpose分離、§5.2 guardと同一rotation規律)へ変更し「patientIdは非PHI」という無強制の前提への依存を解消(patient_idは自由形式TEXTでpatient_numberとの同値を禁じる制約がなく、移行運用で患者ID=患者番号がありうる)、最終epoch CASをmembership+cardinalityの合成として定義し余剰link検出を復号なしで成立化、§3.2の圧縮削除をConditionCheck(superseding delta実在+retentionExpiresAt経過)+Delete条件式で機械強制しdeltaへretentionExpiresAt属性を追加、圧縮roleのleast-privilege分離と運用監査を実装WP承認要件へ、§9へinternalPatientId/patientId生値のlog/APM/trace/metric/外部送信禁止をlogicalIdとparityで追加、§6.4の集約deny eventIdをkeyed HMAC導出(SK/dedupe keyに載るため無鍵hashでは総当たり逆引き可能)とし開放窓中の検知経路をSEC-007/008起票事項へ明示、§11 write grant棚卸しへbreak-glass/superuser/migration/運用者直接接続を列挙し乖離detector終了根拠を権限revoke証跡へ紐付け。§12停止条件とtest obligationsを同期。自己整合スイープで§9が用途分離鍵を列挙していなかったことを検出し、検索トークン/patientNumber guard/PATIENTLINK/idempotency lookup/集約deny eventIdの導出入力とローテ時の性質を§9の正本一覧表として追加。§7へBLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT (a)の機械強制実装(check:boundariesの複合キー構築検知)を記録し、残余を(b)既存永続値の検証のみへ縮小"
   - "0.1.3 2026-07-31 WP-4250 PROPOSED Revision 13: round-5 data-integrity re-reviewのfindings訂正。§3.2圧縮の削除条件へsuperseding delta自身のretention経過を追加(HIGH: 旧条件はd.commit<=fence<s.commitのas-of snapshotからlogicalIdをsilentに欠落させ、同節のbarrier不変条件と矛盾)、§6.4へ平文属性intentKind/deliverableAfterを追加し集約intentの配送・reconciliation除外を復号なしで判定可能化、§11の最終epoch CASをmembership検査+ConsistentRead全ページ走査として定義しrotation CC込みの固定action=8を明示、rollback経由の再cutoverにおける乖離・余剰linkの解消経路不在をBLOCKED_RECUTOVER_DIVERGENCE_RESOLUTIONとして登録、CURRENTのinternalPatientId/identityDigest保存義務を明文化(Put置換禁止)、§7のBLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT前提をlive code事実へ訂正(branded-ids.tsは`#`をnegative test付きで既に拒否。残余は迂回経路の不在証明へ縮小、conservative維持)。§12停止条件を同期"
@@ -90,7 +91,7 @@ blockers:
   - BLOCKED_LOOKUP_KEY_RETIREMENT: version-addressable residual manifest が存在しないため lookup-key retirement を unsupported とする(§5.2)
   - BLOCKED_PATIENT_SEARCH_SCALE_BOUND: 候補集合フェッチ/復号の measured cap と非 PHI 粗インデックス代替の採否が確定するまで患者検索を production 適用しない(§3.4)
   - BLOCKED_POSTGRES_WRITER_FENCE_PRIMITIVE: §11 の PostgreSQL 側構造的 fence と cutover 後の乖離 detector が承認・実装されるまで Patient cutover を実行しない
-  - BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT: キー構築経路が branded 型を経由することが強制されていないため prefix 曖昧性に対して pharmacy 粒度分離を無条件に安全とは主張しない(§7)。branded ID factory 自体は `#` を negative test 付きで既に拒否しており(round-5 事実訂正)、残余は迂回経路の不在証明と既存永続値の検証。packages/ は本 WP の path allow-list 外であり別 WP の prerequisite。`GLOBAL` sentinel 衝突は §3 の別 prefix 空間化で本 batch 内に解消済み
+  - BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT: 既存永続値に `#` 含有がないことが未検証のため prefix 曖昧性に対して pharmacy 粒度分離を無条件に安全とは主張しない(§7)。branded ID factory は `#` を negative test 付きで既に拒否し、承認済み key codec 以外での複合キー構築は `check:boundaries` が機械検知する(WP-4256、2026-08-01 landed)。したがって解除条件 (a) は充足済みで、残余は (b) 既存永続値の検証のみである。`GLOBAL` sentinel 衝突は §3 の別 prefix 空間化で解消済み
   - BLOCKED_WRITER_FENCE_TOKEN_ISSUANCE: §5.1 の `writerFenceToken` 自己保持が DynamoDB 層で強制できないため、発行経路または自称不能属性への拘束が承認されるまで fence だけで fresh writer 排除を主張しない
   - BLOCKED_AUDIT_PAYLOAD_RETENTION_POLICY: 収束しないまま滞留する DLQ item の暗号化 payload は無期限に残る。その保存年限・WORM・消去手順は SEC-007/SEC-008 の管轄であり、timer で消して解決したことにしない(§6.4)
   - BLOCKED_AUDIT_PAYLOAD_EXTERNAL_STORE: §6.4 の audit payload を外部 store 参照で保持する場合の書込順序/digest 検証/失敗時 semantics/budget 算入が未定義のため inline 保持のみを許可する
@@ -299,10 +300,40 @@ SK = VALUE#{lastUpdated}#COMMIT#{zeroPad(indexCommitSequence)}#RESOURCE#{logical
     logicalId が **silent に欠落**する。これは本節末尾の barrier 不変条件
     (retention 期限より新しい as-of fence の結果を変えない)と数学的に矛盾する。
     `s` が期限を経過していれば、`d` を必要とする fence 区間は全て期限外である。
-  - latestが`present=false`でretention期限を経過した`(partition, logicalId)`は
-    pair全体を削除できる。期限後の新規読取にとって「latest false」と「delta
-    不在」はmembership上等価である。latest 以外の delta の削除可否は上記の
-    superseding-delta 条件に従う(pair 全体削除はその特例であり、例外ではない)。
+  - **pair 全体削除の特例は撤回する(round-5 LOW 訂正)**。以前の版は
+    「latest が `present=false` で retention 期限を経過した
+    `(partition, logicalId)` は pair 全体を削除できる」としていた。membership
+    上「latest false」と「delta 不在」が期限後の新規読取にとって等価である、
+    という**論拠自体は正しい**。しかしこの特例は**下記の機械強制と両立しない**:
+    削除条件は superseding delta `s` の実在を ConditionCheck で要求するが、
+    latest delta には定義上 `s` が存在しないため、pair 全体削除を表現できる
+    条件式が存在しない。規則としては削除を許し、強制機構としては表現できない
+    という状態は、実装が prose 側を読んで**条件式なしの Delete** を書く方向へ
+    圧力をかける。それは本節が閉じたはずの「破壊的操作を application の
+    自己抑制に委ねる」を再現する。
+    したがって **latest delta は `present=false` であっても削除しない**。
+    `(partition, logicalId)` ごとに tombstone delta が 1 件残る。これは
+    書込履歴に比例して増える per-version の蓄積ではなく、**かつて索引化された
+    distinct な `(partition, logicalId)` 対の数に比例する**残余であり、圧縮の
+    目的(per-version 蓄積の除去)は達成される。
+    **ただし「有界」と呼べる条件を明示する(round-5 verifier LOW 訂正)**。
+    残余が有界であるのは **distinct token 値の集合が有界である場合に限る**。
+    同一 resource の identifier が更新のたびに新しい値へ変わるような token
+    churn では、対ごとに新しい partition が生まれるため、対の数そのものが
+    書込履歴に概ね比例して増える。その場合 tombstone 残余も比例して増え、
+    per-version 蓄積を除いた利得は縮む。§13(a) の計測対象へ
+    **distinct `(partition, logicalId)` 対数と token churn 率**を含め、
+    実測が churn 支配的であることを示した場合は、pair 削除経路(下記の
+    `FHIRINDEXFENCE` 条件)の必要性を再評価する。現時点では churn を
+    仮定せず、削除しない側へ倒す。
+    pair 全体削除を将来可能にする経路は特定済みである: §4.1 の
+    `FHIRINDEXFENCE`(`PK=TENANT#{tenantId}#PHARMACY#{pharmacyId}#FHIRINDEXFENCE#{resourceType}`
+    / `SK=COMMIT_SEQUENCE`)は全 FHIR write が CAS するため、走査時に観測した
+    `commitSequence` との一致を ConditionCheck に含めれば「走査後に新しい delta が
+    生じていない」ことを機械的に担保できる。ただしこれは当該 resourceType への
+    **無関係な write でも compaction が abort する**ため liveness を犠牲にする。
+    採否と retry/backoff 規律は approved amendment の判断事項とし、本 batch では
+    設計しない。
   - 圧縮はclinical TWIの外で走る有界のbackground保守操作とする。§4.1と同型の
     実測bound(走査件数・削除件数・経過時間)を課し、超過時は中断して再開可能と
     する。削除対象はexact `(PK, SK)`で指定する。並行writerの新規deltaは必ず
@@ -1395,7 +1426,8 @@ AuthContextからのみ導出し、current/history/index/cursor/idempotency/refe
     `TENANT#...` を組み立てる経路が 1 つでもあれば factory の強制を迂回できる。
     解除には (a) キー構築が branded 型のみを入力に取ることの型・境界検査での
     強制、(b) 既存永続値に `#` 含有がないことの検証、を要する。
-  - **(a) は `check:boundaries` の機械検知として実装済みである(2026-07-31)**。
+  - **(a) は `check:boundaries` の機械検知として実装済みである(WP-4256、
+    commit `ab63db6`、2026-08-01 landed)**。
     `scripts/check-boundaries.mjs` は AST 走査で `TENANT#` / `PHARMACY#` を含む
     文字列 literal を検出し、**承認済み key codec**
     (`apps/*/src/dynamodb/*key-codec.ts`)以外の production source にあれば
@@ -1405,9 +1437,22 @@ AuthContextからのみ導出し、current/history/index/cursor/idempotency/refe
     期待値として固定するため対象外とする。`scripts/check-scripts.mjs` に
     positive/negative の両 fixture を持ち、規則の呼び出しを外すと negative test
     が落ちることを変異で確認済みである。
-    **限界**: 静的検知は literal を伴わない動的連結までは捕捉しない。したがって
-    これは「迂回経路が入り込んだら CI で落ちる」ことの保証であって、迂回経路が
-    数学的に存在しないことの証明ではない。
+    **限界(実測)**: 検知は文字列 literal に現れた marker に依存する。fixture で
+    4 変種を実測した結果は次のとおりである。
+
+    | 構築形 | 例 | 結果 |
+    |---|---|---|
+    | template literal | `` `TENANT#${t}#PHARMACY#x` `` | 検知 |
+    | `+` 連結 | `"TENANT#" + t + "#PHARMACY#x"` | 検知 |
+    | marker 分割 | `const P = "TENANT"; ` + `` `${P}#${t}` `` | **通過** |
+    | 配列 join | `["TENANT", t].join("#")` | **通過** |
+
+    すなわち、素直な連結(copy-paste で現実に生じる形)は捕捉するが、marker と
+    区切り文字を分けて組み立てる形は捕捉しない。marker の断片(`TENANT` 単体)を
+    検知対象へ加えれば後者も拾えるが、無関係な literal を大量に誤検知するため
+    採らない。したがってこれは **「迂回経路が入り込んだら CI で落ちる」ことの
+    保証であって、迂回経路が存在しないことの証明ではない**。証明側は (b) の
+    既存永続値検証と、キー構築を branded 型入力のみに限る型境界が担う。
   - 残余は **(b) 既存永続値の検証**である。これが完了するまで blocker を維持する。
   - 予約語 `GLOBAL` の拒否は sentinel 廃止により不要であり、factory も実装して
     いない。これは欠落ではなく設計どおりである。
@@ -1954,6 +1999,37 @@ DynamoDB 製品確定の前提として計測する: (a) **単一 PK の WCU/RCU
 
 ## 変更履歴
 
+- 0.1.4 (2026-08-01 Revision 15 / WP-4258): round-5 verifier の deferred LOW を
+  訂正。**§3.2 の pair 全体削除特例を撤回した**。「latest が `present=false` で
+  期限経過なら pair 全体を削除できる」という論拠(期限後の読取にとって latest
+  false と delta 不在は membership 上等価)自体は正しいが、同節が Revision 14 で
+  新設した機械強制は superseding delta `s` の実在を ConditionCheck で要求する
+  ため、`s` を持たない latest delta の削除を表現できる条件式が存在しない。
+  規則が削除を許し強制機構が表現できない状態は、実装を条件式なし Delete へ
+  誘導し、本節が閉じたはずの「破壊的操作を application の自己抑制に委ねる」を
+  再現する。したがって latest delta は `present=false` でも削除しない。残余は
+  `(partition, logicalId)` あたり tombstone 1 件であり、書込履歴に比例する
+  per-version 蓄積ではないため圧縮の目的は達成される。将来 pair 削除を可能に
+  する経路(`FHIRINDEXFENCE` の `commitSequence` 一致を ConditionCheck へ含める)
+  は特定済みだが、無関係な write でも abort する liveness 犠牲を伴うため採否は
+  approved amendment の判断とし本改版では設計しない。この撤回により、§12 が
+  既に定めていた「latest delta を削除する → 実装禁止」との矛盾も解消される。
+  **§7 の限界記述を実測へ差し替えた**: fixture で 4 変種を測り、template
+  literal と `+` 連結は検知、marker 分割(`const P = "TENANT"` からの補間)と
+  配列 join は通過することを表として記載した。marker 断片を検知対象へ加えれば
+  後者も拾えるが誤検知が増えるため採らない旨も明記した。あわせて frontmatter の
+  `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 注記を §7 本文と同期し、解除条件 (a)
+  がキー構築の機械検知(WP-4256、2026-08-01 landed)で充足済み、残余は (b) 既存
+  永続値の検証のみであることを反映した。blocker 自体は維持する。
+  **WP-4258 の独立 review(REQUEST_CHANGES、HIGH 0)を受けた同 revision 内の
+  訂正**: (1) §7 の (a) 充足日を 2026-07-31 から WP-4256 の実 commit 日
+  2026-08-01(`ab63db6`)へ是正した。前者は Revision 14 の記述が残ったもので、
+  git の実測と食い違っていた。(2) §3.2 の tombstone「有界」が **distinct token
+  値の有界性を暗黙の前提にしていた**点を明示した。identifier が更新のたびに
+  変わるような token churn では対の数自体が書込履歴に概ね比例して増えるため、
+  残余も比例する。§13(a) の計測対象へ distinct 対数と churn 率を加え、churn
+  支配的と実測された場合に pair 削除経路の必要性を再評価すると記載した。
+  現時点では churn を仮定せず削除しない側へ倒す方針は変えていない。
 - 0.1.3 (2026-08-01 finalization): round-5 の独立 review 三レーン完了
   (independent verifier は packet 本文 PASS・HIGH なし)と direct human approval に
   より PROPOSED → APPROVED。**本文 semantics は不変**。承認範囲は SSOT 改版のみで
