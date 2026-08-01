@@ -1,15 +1,20 @@
 # 04 — Screen and State Inventory (Phase 3)
 
-既存の正本 `docs/uiux/screen_inventory_draft.md`(UIX-007, 29画面 SCR-001..029)と
+既存の正本 `docs/uiux/screen_inventory_draft.md`(UIX-007, active 28画面 SCR-001..027 + SCR-029、SCR-028はretired tombstone)と
 `docs/uiux/workflow_map.md`(UIX-006)を**正本として参照**する。本書はそれを重複させず、
 (a) App Router 実装との対応、(b) UIX-007 に無い**状態(state)軸マトリクス**、(c) ジャーニー実在性、を補う。
 
+> **2026-07-29 current-fact correction:** WP-4254はSCR-028 Web viewerをsource削除し、
+> 監査確認画面をcompliance/clinical mitigationとして扱わない。UIX-006/UIX-007/SEC-007/SEC-008と
+> IDX-001のatomic approval、Web 423 tests、workspace 1,781 tests(PostgreSQL統合を含みskip 0)、
+> typecheck/build/CI相当gateをlocal検証済み。commit/push/production readinessは主張しない。
+
 ## 1. SSOT Discovery(現在のデザイン資産分類)
 
-### Normative SSOT(人間向け規範・APPROVED)
+### Normative SSOT(人間向け規範。WP-4254改版対象は2026-07-29 APPROVED)
 - `docs/uiux/medical_ui_ux_principles.md`(UIX-001 v0.1.1): 優先順位、原則 P-01..P-20、禁止15項、警告重要度§5。
 - `docs/uiux/workflow_map.md`(UIX-006): NORMAL / LOCAL_ONLY / RECOVERY_SYNC 導線、ロール別ホーム。
-- `docs/uiux/screen_inventory_draft.md`(UIX-007): 29画面、U0-U4 安全度、権限 scope 仮割当。
+- `docs/uiux/screen_inventory_draft.md`(UIX-007): active 28画面、retired SCR-028 tombstone、U0-U4 安全度、権限 scope 仮割当。
 - `docs/uiux/experience_quality_baseline.md` / `performance_budget.md` / `stability_slo_policy.md` /
   `usability_acceptance_criteria.md`: 体験品質・性能・安定性・受入基準。
 

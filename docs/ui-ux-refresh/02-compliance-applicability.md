@@ -43,7 +43,7 @@ Applicability: Mandatory / Applicable / Conditionally / N-A / Requires-{legal,cl
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | G1/G1' | 識別・認証(将来 二要素) | Applicable(令和9年度〜実質必須) | 薬局は医療機関等 | なりすまし・不正アクセス | ログイン UX に MFA 前提を織込む | 認証 SSOT / SessionStatus | SessionExpiryWarning / LoginForm(骨格) | ◐ UI/状態実装(H-10 事前警告・下書き保全)。**実接続・MFA・セキュリティレビュー 残** | auth-session tests | 高 | security |
 | G1/G1' | 職種別アクセス制御(最小権限) | Mandatory | RBAC 要求 | 権限外操作 | 権限状態を UI でも明示 | permissions.ts / P-14 | requirePermission(API)+403 UI | ◐ API deny-by-default | patient/reception tests | 中 | security |
-| G1/G1' | 監査ログ(who/when/what)+定期確認 | Mandatory | 改ざん検知 | 証跡欠落 | 監査ビュー(SCR-028) | audit-log:read | ✗ 未実装 | — | 高 | security+clinical |
+| G1/G1' | 監査ログ(who/when/what)+定期確認 | Mandatory | 改ざん検知 | 証跡欠落 | 一般業務Web画面を要件にしない。権限制御された監査・incident-response運用経路が必要 | SEC-007 / audit-log:read | ◐ repository上のexact tenant/pharmacy・IDs-only API contract、append-only保存、hash-chain検証は実装済み。SCR-028 Web viewerは2026-07-29のWP-4254でsource削除・local検証済みで、compliance/clinical mitigationとして扱わない。production認証・運用経路・保持期間全体の監査済み出力は未実装 | audit API/repository tests。production operational validationは未実施 | 高 | security+privacy+clinical |
 | G1/G6 | 電子保存 3基準(真正性・見読性・保存性) | Mandatory | 調剤録は法定記録準拠 | 記録の信頼性 | 確定/下書き/訂正履歴/確定者・日時の状態表示 | UIX-001 P-06,P-07,P-12 / RecordLifecycle | RecordStateBadge / VersionHistoryIndicator / AuditMetadata | ◐ 表示層実装(確定前後の識別・訂正履歴・確定者/日時/版)。**実記録データ配線・医療安全レビュー 残** | record/audit tests | 高 | clinical+legal |
 | G1 | 非常時の見読性(障害/災害) | Applicable | Edge/オフライン | 情報アクセス不能 | LOCAL_ONLY で可読・復旧手順明示 | UIX-001 P-19 / workflow_map §2 | ModeCapabilityView / EmergencyModeBanner | ◐ 可否+理由+復旧手順表示(EmergencyModeBanner 実装) | mode-capability / sync-indicator tests | 中 | clinical |
 | G2 | 責任分界・SLA・リスクコミュニケーション | Applicable(提供事業者) | Cloud+Edge 提供 | 障害通知漏れ | 障害/メンテ/インシデント通知 UI | SystemHealthBanner(設計) | SystemModeBadge(部分) | ◐ mode 固定 | — | 中 | security |
@@ -59,7 +59,10 @@ Applicability: Mandatory / Applicable / Conditionally / N-A / Requires-{legal,cl
 
 - 本 MVP は **G1/G2/G3(薬局サイバーセキュリティ)・G4(患者安全)・G5(WCAG)・G8(SaMD)** が中核適用。
 - 実装済みで整合が高いのは **PHI 非出力・fail-closed 請求・権限 deny-by-default・状態の色非依存表示**。
-- **2026-07-11 第2次実装**: 認証UI・記録ライフサイクル・臨床アラート/処方差分・同期/オフライン・非常時・監査/権限/閲覧専用の
+- **2026-07-11 第2次実装**: 認証UI・記録ライフサイクル・臨床アラート/処方差分・同期/オフライン・非常時・権限/閲覧専用の
   **表示層を実装**(§10 で test/typecheck/build 実測緑)。ただし **Residual は「高→中」に下がっただけで解消ではない**:
-  認証実接続・監査ログ実データ・臨床アラートの判定ロジックと医療安全レビュー・SaMD 該当性評価は**依然必要**(§11)。
+  認証実接続・臨床アラートの判定ロジックと医療安全レビュー・SaMD 該当性評価は**依然必要**(§11)。
+- **2026-07-29 current-fact correction**: SCR-028 Web viewerはWP-4254でsource削除・local検証済みであり、監査の安全・compliance gateではない。
+  監査証跡の生成・append-only保全・integrityとrepository API contractは維持するが、production tenant/authへ接続された
+  incident-response経路、保持期間全体の監査済み出力、bounded workの証明が完了するまで監査運用readyを主張しない。
 - 版・日付の一部(特に G1 第7.0版の逐条、G3 公表日、G7 逐条)は **NEEDS-CHECK**。人間による一次資料確認を推奨。

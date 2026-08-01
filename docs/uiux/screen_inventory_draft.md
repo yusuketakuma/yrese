@@ -2,26 +2,54 @@
 
 ```yaml
 ssot_id: UIX-007
-title: 画面台帳ドラフト
+title: 画面台帳
 domain: uiux
 status: APPROVED
-owner: fable5
+owner: codex_root
 reviewers:
-  - opus4.8
-  - human_review_required
-version: 0.1.0
+  - independent_verifier
+  - security_auditor
+  - data_integrity_reviewer
+  - privacy_compliance_reviewer
+  - medical_safety_reviewer
+  - human_product_authority
+version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-09
-approved_at: 2026-07-09
-approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-source_refs: 構築プロンプト v0.2.0 §7(必ず設計するもの)/ docs/plan/phase0_plan.md §5 / docs/uiux/workflow_map.md
-depends_on: [docs/uiux/medical_ui_ux_principles.md]
+updated_at: 2026-07-29
+approved_at: 2026-07-29
+approved_by: direct_user_instruction (human pharmacist/product authority, 2026-07-29); independent_verifier APPROVED; security_auditor APPROVED; data_integrity_reviewer APPROVED; privacy_compliance_reviewer APPROVED; medical_safety_reviewer APPROVED
+effective_from: 2026-07-29
+effective_to: null
+source_refs:
+  - docs/spec/construction_prompt_v0.2.0.md §16
+  - docs/plan/phase0_plan.md §5
+  - docs/uiux/workflow_map.md
+  - direct_user_instruction 2026-07-29 (user-facing audit confirmation is unnecessary)
+depends_on:
+  - UIX-001 medical_ui_ux_principles
+  - SEC-007 audit_log_design
+  - PRC-007 ssot_governance
+impacts:
+  - apps/web/app/admin
+  - docs/plan/uiux_development_plan.md
+related_work_packages:
+  - WP-4254
+related_tests:
+  - pnpm --filter @yrese/web test
+  - pnpm --filter @yrese/web typecheck
+  - pnpm check:ssot-index
+related_prs: []
+evidence_ids: []
+change_log:
+  - 0.2.0 2026-07-29 SCR-028をactive product screenから廃止。監査イベント生成・権限制御API・append-only保全・改ざん検知はSEC-007境界として維持
+  - 0.1.0 2026-07-09 初版をhuman reviewで承認
 open_questions:
   - 権限scopeの粒度(疑義照会・会計の専用scope要否)は permission_scope_registry で確定【要確認】
   - 画面統合の可否(SCR-006/007/008 の1画面化等)は Phase 1 設計で判断
+blockers: []
 ```
 
-ux_safety_level: U0=UI影響なし / U1=通常UI / U2=業務導線に影響 / U3=医療安全・請求事故に影響 / U4=患者取り違え・薬剤師確認・外部未確認状態・請求確定に影響(v0.2.0 §0.1.3.2)。
+本台帳は `ux_safety_level` を次のように定義する: U0=UI影響なし / U1=通常UI / U2=業務導線に影響 / U3=医療安全・請求事故に影響 / U4=患者取り違え・薬剤師確認・外部未確認状態・請求確定に影響。構築プロンプト v0.2.0 §16 のUI/UX・患者安全優先事項を、この台帳で実行可能な分類へ具体化したものである。
 
 scope は実装済み `@yrese/shared-kernel` permissions.ts(9ab039e)の `resource:action` 形式。**【要確認】付きは registry 未確定の仮割当**。
 
@@ -54,11 +82,17 @@ scope は実装済み `@yrese/shared-kernel` permissions.ts(9ab039e)の `resourc
 | SCR-025 | 同期状態 | Cloud/Edge 同期・キュー | バックログ / queue age / 失敗 | sync:read | U2 | ルート `/sync-status` shell 済み |
 | SCR-026 | LOCAL_ONLY モード画面 | 可能/不可能操作の明示 | 禁止操作一覧+理由 / 仮状態件数 | — (横断) | U4 | WP-3010aで3 shared guardのfixture-only禁止/未禁止基盤実装済み。全28操作/16禁止・live mode・件数・routeはWP-3010b/c待ちでBLOCKED |
 | SCR-027 | RECOVERY_SYNC 画面 | 要再検証一覧・競合解決 | 未解消件数 / CONFLICT_REQUIRES_HUMAN_REVIEW | sync:confirm【要確認】 | U4 | 未実装 |
-| SCR-028 | 監査ログ | 操作証跡の閲覧 | 改ざん検知状態 | audit-log:read | U2 | 未実装 |
 | SCR-029 | 管理者・権限管理 | ユーザー・ロール・薬局設定 | 権限変更履歴 | user:admin, tenant:admin | U3 | ルート `/admin` shell 済み |
+
+## 廃止済み画面ID
+
+| ID | 旧画面 | 状態 | 保持する境界 |
+|---|---|---|---|
+| SCR-028 | 監査ログ | RETIRED — 一般業務Webの監査確認画面は提供しない。WP-4254でsource削除・local検証済み(landing未要求)。IDは履歴・既存契約参照の互換用に予約し、再利用しない | SEC-007に従い、監査イベント生成、`audit-log:read`、権限制御された監査API、append-only保存、hash-chain検証を維持する |
 
 ## 運用ルール
 
-- U3/U4 画面の実装WPは、fable5 の UX 方針確定+opus4.8 の医療安全レビューを事前に受ける(v0.2.0 §0.1.3.3-7)
+- U3/U4 画面の実装WPは、AGT-018に従うread-only mapper / pre-plan reviewer / sole maintainer / independent verifierに加え、medical safety・privacy・accessibilityのrelevant reviewerと必要なhuman authorityの事前確認を受ける
 - 画面追加・統合は本台帳を更新してから実装する(台帳にない画面の実装禁止)
 - 「実装状態」列は実装WP完了時にコミットハッシュ付きで更新する
+- 廃止済みIDは再利用しない。SCR-028の互換参照は監査APIの存続を表すだけで、Web閲覧画面の実装根拠にしない

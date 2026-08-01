@@ -8,8 +8,8 @@ import { permissionScope, type PermissionScope } from "@yrese/shared-kernel";
  * startup時にfail-closedで拒否する(WP-4066 / SEC-006)。
  * 本番認証(OIDC等)は auth SSOT 承認後に置換する。
  *
- * 元は patient-search.tsx 所有だったが、複数画面(受付・監査ログ・患者文脈再取得)が
- * 使うため独立モジュール化。
+ * 元は patient-search.tsx 所有だったが、複数画面(受付・患者文脈再取得)が使うため
+ * 独立モジュール化。
  */
 
 export const PATIENT_SEARCH_DEV_SCOPES = [

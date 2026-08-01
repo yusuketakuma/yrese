@@ -83,11 +83,20 @@ describe("web shell smoke contracts", () => {
     ["月次締め", <MonthlyClosingPage />],
     ["マスター管理", <MastersPage />],
     ["同期状態", <SyncStatusPage />],
-    ["管理", <AdminPage />],
   ])("renders placeholder route heading: %s", (heading, element) => {
     const html = renderToStaticMarkup(element);
 
     expect(html).toContain(`<h2>${heading}</h2>`);
     expect(html).toMatch(/未実装|scaffold/);
+  });
+
+  it("keeps the admin route as the SCR-029 placeholder without the retired viewer", () => {
+    const html = renderToStaticMarkup(<AdminPage />);
+
+    expect(html).toContain("<h2>管理</h2>");
+    expect(html).toContain("テナント・薬局・ユーザー・権限管理は未実装");
+    expect(html).not.toContain(["監査", "ログ"].join(""));
+    expect(html).not.toContain(["SCR", "028"].join("-"));
+    expect(html).not.toContain(["audit", "log", "panel"].join("-"));
   });
 });

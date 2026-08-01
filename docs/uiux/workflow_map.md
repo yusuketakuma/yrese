@@ -5,25 +5,35 @@ ssot_id: UIX-006
 title: 業務導線マップ
 domain: uiux
 status: APPROVED
-owner: fable5
+owner: codex_root
 reviewers:
-  - opus4.8
-  - human_review_required
-version: 0.1.0
+  - independent_verifier
+  - security_auditor
+  - data_integrity_reviewer
+  - privacy_compliance_reviewer
+  - medical_safety_reviewer
+  - human_pharmacist_product_authority
+version: 0.2.0
 created_at: 2026-07-09
-updated_at: 2026-07-12
-approved_at: 2026-07-09
-approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-effective_from: null
+updated_at: 2026-07-29
+approved_at: 2026-07-29
+approved_by: direct_user_instruction (human pharmacist/product authority, 2026-07-29); independent_verifier APPROVED; security_auditor APPROVED; data_integrity_reviewer APPROVED; privacy_compliance_reviewer APPROVED; medical_safety_reviewer APPROVED
+effective_from: 2026-07-29
 effective_to: null
-source_refs: 構築プロンプト v0.2.0 §7, §13-16 / docs/plan/phase0_plan.md §5, §9.3
-depends_on: [docs/architecture/offline_mode_matrix.md, docs/architecture/recovery_sync_design.md, docs/product/mvp_scope.md]
+source_refs:
+  - docs/spec/construction_prompt_v0.2.0.md §12, §15, §16
+  - docs/plan/phase0_plan.md §5
+  - direct_user_instruction 2026-07-29 (user-facing audit confirmation is unnecessary)
+depends_on: [docs/architecture/offline_mode_matrix.md, docs/architecture/recovery_sync_design.md, docs/product/mvp_scope.md, SEC-007, UIX-007, PRC-007]
 impacts: [docs/uiux/medical_ui_ux_principles.md, docs/uiux/experience_quality_baseline.md, docs/uiux/usability_acceptance_criteria.md, docs/uiux/stability_slo_policy.md, docs/uiux/screen_inventory_draft.md, docs/architecture/offline_mode_matrix.md, docs/architecture/recovery_sync_design.md]
-related_work_packages: [WP-0016, WP-0032, WP-3001, WP-3007, WP-9002-W29]
-related_tests: []
+related_work_packages: [WP-0016, WP-0032, WP-3001, WP-3007, WP-9002-W29, WP-4254]
+related_tests:
+  - pnpm --filter @yrese/web test
+  - pnpm check:ssot-index
 related_prs: []
 evidence_ids: []
 change_log:
+  - 0.2.0 2026-07-29 管理者ホームから監査イベントWeb表示を廃止。監査証跡はSEC-007の非UI境界へ分離し、production incident-response経路は未実装のrelease blockerとして維持
   - 0.1.0 2026-07-09 初版APPROVED
   - 0.1.0 2026-07-12 WP-9002-W29 metadata-only migration; body and workflow authority unchanged
 open_questions:
@@ -32,6 +42,7 @@ open_questions:
 blockers:
   - BLOCKED_REGULATORY_REVIEW(電子処方箋・資格確認は各導線に必要なONS資料と接続境界、電子レセプトは記録条件仕様のevidence確定前にreleaseしない)
   - BLOCKED_NOT_READY(NORMAL/LOCAL_ONLY/RECOVERY_SYNC end-to-end、薬剤師/請求事務workflow、WP-0016/WP-0032 human validation前はworkflow/release readinessを主張しない)
+  - BLOCKED_SECURITY_REVIEW(production tenant/authで利用できる監査・incident-response運用経路と保持期間全体の監査済み出力は未実装)
 ```
 
 ## 1. 通常導線(NORMAL)
@@ -98,14 +109,16 @@ blockers:
 全件解消+承認 → NORMAL 復帰(完了まで月次締め解禁しない — ARC-002 ゲート)
 ```
 
-## 4. ロール別ホーム(v0.2.0 §9.9)
+## 4. ロール別ホーム
 
 | ロール | ホームで最優先表示 |
 |---|---|
 | 事務(clerk) | 受付キュー・入力中下書き・帳票失敗・未収 |
 | 薬剤師(pharmacist) | 薬剤師確認待ち・疑義照会中・CRITICAL警告・要再検証 |
-| 管理者(admin) | システムモード・同期状態・マスター版・月次締め状況・監査イベント |
+| 管理者(admin) | システムモード・同期状態・マスター版・月次締め状況 |
 | サポート(support) | (閲覧最小権限)障害状況・診断情報のみ。PHI 非表示 |
+
+監査イベントは一般業務Webのホームや`/admin`へ表示しない。repository上の`GET /audit/events`はdevelopment/test contract evidenceであり、production tenant/authで利用可能なincident-response経路とは扱わない。権限制御されたproduction運用経路と保持期間全体の監査済み出力は、別のAPPROVED security/operations contractと実装・検証が完了するまでrelease blockerとする。
 
 ## 5. 画面遷移の原則
 
