@@ -1013,6 +1013,52 @@ human gates. They are not claimable while WP-4250 review is WIP.
 
 ### P1
 
+#### BUG-4260 — 受付登録の冪等キーが再試行ごとに再生成され、応答喪失後に受付が重複する
+
+- **Classification:** Confirmed Bug。
+- **Status:** COMMITTED_LOCAL `fe03cf0` / PUSH_NOT_REQUESTED(2026-08-01。direct
+  user instruction「バグ探索・修復ミッション」に基づく実装。独立レビュー未取得)
+- **Confidence:** High。
+- **User / safety impact:** 中心ユーザーフロー(受付登録)。応答喪失・タイムアウト後に
+  薬剤師が再試行すると、同一患者・同一業務日に受付が2件作られる。受付一覧が実態と
+  ずれ、以降の調剤・請求証跡の起点が二重化する。
+- **Evidence:** `apps/web/app/reception-dashboard.tsx` の `createReception` は
+  `idempotencyKey: string = crypto.randomUUID()` を既定引数に持ち、
+  `ReceptionDashboard.register` は `createReception(submittedPatientId)` と
+  キー未指定で呼んでいた(= 呼び出しごとに新しいキー)。失敗時は
+  `finally` で `setSubmitting(false)` によりボタンが再有効化され、
+  `genericRegistrationErrorNotice.nextAction` は「再試行してください。」と案内する。
+  `apps/web/app/reception-dashboard.test.tsx` に冪等キーの再試行間安定性を
+  検証するテストは存在しなかった(明示キーを渡す 409 テストのみ)。
+- **Expected behavior:** `DEVELOPMENT_POLICY.md §6` — retryable な create は
+  安定した idempotency key を持つ。再試行はサーバー側の同一受付へ収束する。
+- **Actual behavior:** 再試行は新しいキーで送られ、サーバーの
+  `reception_entries_idempotency_unique` を素通りして別受付を作る。
+- **Root cause:** 冪等キーの寿命が「1回の HTTP 呼び出し」に束ねられており、
+  「未解決の登録意図」に束ねられていなかった。
+- **Fix:** 冪等キーを患者ごとの未解決意図として保持する
+  `createReceptionIdempotencyKeyStore` と、キー寿命を集約する
+  `submitReceptionRegistration` を追加。結果が確定した失敗(400/403/404/409 —
+  `isSettledReceptionCreateFailure`)でのみ退役させ、結果不明(ネットワーク失敗・
+  応答喪失・5xx・応答形式違反)では保持する。
+- **Out of scope:** サーバー側の冪等契約、reception 状態遷移、WP-4050 の
+  コマンド境界、タブ再読込をまたぐキー永続化。
+- **Regression evidence:** `apps/web/app/reception-dashboard.test.tsx` に
+  「reception create idempotency across retries (BUG-4260)」8 テストを追加。
+  修正を一時的に戻すと該当2テストが FAIL することを実測(2026-08-01)。
+- **Required verification:** `pnpm -r test`(Postgres 統合込み)、`pnpm typecheck`、
+  `pnpm lint`、`pnpm -r build`。
+- **Security / tenant / data risk:** なし(送信内容は既存契約のまま。PHI を
+  新たに保持・送出しない。キーは UUID でありセッション内メモリのみ)。
+- **Rollback condition:** 受付が意図せず 200(既存)に収束して新規受付を作れない
+  事象が観測された場合、`submitReceptionRegistration` の導入をまとめて revert する。
+- **Reason for prioritization:** P1 — 中心ユーザーフローの誤った受付状態と
+  データ整合性、かつ Milestone 1 exit「retry / response loss が duplicate なく
+  収束する」に直接対応する。
+- **既知の境界(未解決):** キー保持はタブのセッション内のみ。結果不明のまま
+  再読込した場合は新しいキーになるため、UI は受付一覧での確認を案内する。
+  永続化は別途判断が必要。
+
 #### WP-4162 — Audit every reachable PHI read without leaking PHI
 
 - **Status:** COMMITTED_LOCAL / MACHINE_VALIDATED / INDEPENDENT_REVIEW_PENDING
@@ -1080,6 +1126,99 @@ human gates. They are not claimable while WP-4250 review is WIP.
 
 ### P2
 
+#### BUG-4262 — 受付登録 POST に応答上限がなく、無応答時に操作不能で固着する
+
+- **Classification:** Strongly Supported Bug。
+- **Status:** COMMITTED_LOCAL `fe03cf0` / PUSH_NOT_REQUESTED(2026-08-01。
+  BUG-4260 と同一スライス・同一コミット。独立レビュー未取得)
+- **Confidence:** High。
+- **User / safety impact:** 応答が返らない場合、`submitting` が解除されず
+  「登録中…」のまま再試行も中止もできない。薬剤師は受付が成立したか判断できず、
+  画面再読込しか手段がない(再読込は冪等キーを失わせ、重複受付の温床になる)。
+- **Evidence:** 修正前の `createReception` は `AbortSignal` を受け取らず、
+  `register` も上限を設けずに `await` していた。`setSubmitting(false)` は
+  `finally` にあり、fetch が settle するまで実行されない。同一ファイルの
+  `fetchReceptionQueue` は `signal` を受け取り queue runner が abort する —
+  同一ファイル内で読み取り経路だけが中断可能という非対称が証拠。
+- **Expected behavior:** 結果が確定しない要求は有界時間で「結果不明」として
+  明示され、再試行が可能であること。
+- **Fix:** `createReception` に `signal?: AbortSignal` を追加し、
+  `submitReceptionRegistration` が `AbortSignal.timeout(RECEPTION_CREATE_TIMEOUT_MS)`
+  (30_000ms)で各試行を有界化。中断は例外値を検査せず、こちらが渡した
+  `signal.aborted` だけで判定して専用の「応答がありません」通知を返す。
+  中断は結果不明であり冪等キーを退役させない(BUG-4260 と組で収束する)。
+- **Assumption(記録):** 30 秒はクライアント側の運用既定値であり、SSOT 由来の
+  承認値ではない。算定・請求・帳票・法令 logic を含まないため
+  `SSOT_UPDATE_REQUIRED` としない。値は 1 定数の変更で可逆。
+- **Out of scope:** サーバー側のタイムアウト、retry の自動化、queue 経路。
+- **Regression evidence:** 「reception create response timeout (BUG-4262)」2 テスト
+  (中断時の通知内容・非確定分類、caller signal の透過)。
+- **Required verification:** BUG-4260 と同一(full gates)。
+- **Security / tenant / data risk:** なし。
+- **Rollback condition:** 正常な低速環境で誤って「応答がありません」が頻発する場合、
+  `RECEPTION_CREATE_TIMEOUT_MS` を引き上げるか signal 引数を外して revert する。
+- **Reason for prioritization:** P2 — 限定的だが再現性の高い操作不能。BUG-4260 の
+  収束保証があって初めて安全に有界化できるため同一スライスで実施した。
+
+#### BUG-4261 — secret scan が scope 違反時に原因を示さず、全ファイル未走査で hard-fail する
+
+- **Classification:** Confirmed Bug(診断可能性)。
+- **Status:** COMMITTED_LOCAL `6813750` / PUSH_NOT_REQUESTED(2026-08-01)。
+  **scope 定義そのものは未修正 — BUG-4263 参照**。
+- **Confidence:** High。
+- **User / safety impact:** `AGENTS.md` は Oracle 送信前と landing 前に
+  `pnpm check:secrets` を要求する。現 working tree ではこのゲートが
+  1 ファイルも走査せずに exit 1 するため、**ローカルの secret 走査カバレッジは 0**
+  であり、しかも原因が特定できなかった。
+- **Evidence:** `pnpm check:secrets` は `Secret scan could not validate the
+  protected repository scope.` のみを出力して exit 1(2026-08-01 実測)。
+  `scripts/check-secrets.mjs` の `listFiles` は `entry.isSymbolicLink()` で
+  即 `failScope()` し、`failScope` は引数を取らなかった。working tree 内で
+  この条件に該当するのは `./.codegraph`(→ `~/.omo/codegraph/...` への symlink)
+  1 件だけであることを走査スクリプトで実測。`.codegraph` は
+  `.git/info/exclude:7` によりリポジトリ内容から除外されている。
+- **Fix:** `ProtectedScopeError` に `offendingPath` を持たせ、`failScope` の
+  全呼び出し点(readdir 失敗 / symlink / ignored 名の種別違い / 非ファイル /
+  readFile 失敗)へ該当パスを渡す。出力はリポジトリ相対パス 1 行のみで、
+  絶対パス・symlink 先・ファイル内容は出さない(findings と同じ開示境界)。
+- **Regression evidence:** `scripts/check-scripts.mjs` に offendingPath 期待値を
+  追加し、nested directory symlink fixture を新設。診断行を一時的に外すと
+  4 アサーションが FAIL することを実測。`pnpm test:scripts` PASS。
+- **Verification:** 実測後も `pnpm check:secrets` は exit 1 のまま
+  (`Scope was broken by: .codegraph`)。ただし **リポジトリスコープの内容
+  (tracked + untracked-not-ignored、実在 450 ファイル)だけを別ディレクトリへ
+  複製して同スクリプトを走らせると `Secret scan passed.` / exit 0** を実測。
+  すなわち検出対象の secret は存在せず、失敗はスコープ定義に起因する。
+- **Security risk:** 本修正は開示面を広げない(相対パスのみ)。走査カバレッジは
+  変えない。
+- **Rollback condition:** 出力にリポジトリ外の情報が混入する事象があれば
+  診断行を落として revert する。
+- **Reason for prioritization:** P2 — CI は clean checkout のため影響を受けず
+  (`.github/workflows/ci.yml` の `Check secrets` step)、runtime・患者データへの
+  影響もない。一方でローカルの必須ゲートを実効ゼロにしている。
+
+#### BUG-4263 — secret scan の走査スコープが「リポジトリ内容」ではなく cwd 配下の実ファイル系である
+
+- **Classification:** Design Debt / **DECISION_REQUIRED**(未実装)。
+- **Status:** RECORDED_ONLY。
+- **Confidence:** High(現象と原因は実測済み — BUG-4261 の evidence を参照)。
+- **問題:** `scripts/check-secrets.mjs:13` は `rootDir = process.cwd()` を走査根と
+  し、`.gitignore` / `.git/info/exclude` を一切参照しない。したがって開発者ローカルの
+  ツール成果物(`.codegraph` symlink、`.claude/`、`.omc/`、`.harness-mem/`、`.omo/` 等)
+  が走査対象・scope 判定対象に含まれる。symlink は 1 件でもゲート全体を止める。
+- **なぜ自動修正しないか:** スコープを「リポジトリ内容」へ寄せると、現在走査対象で
+  ある gitignore 済みファイル(特に `.env`、`isTextFile` が明示的に対象化している)が
+  カバレッジから外れる。これは security posture の変更であり、`AGENTS.md`
+  「auth/security/privacy 制約の緩和は人間の明示承認なしに実行・自己承認しない」に
+  該当する。また既存 fixture は非 git の一時ディレクトリで実行されるため、
+  git 由来のスコープ判定を入れると本番経路が fixture で未検証になる。
+- **決定が必要な論点:** (a) 走査スコープの定義(リポジトリ内容 / cwd 配下 /
+  両方の和)、(b) gitignore 済み `.env` を走査対象に残すか、(c) 非 git ルートでの
+  フォールバック挙動と、その経路の fixture 追加。
+- **暫定回避:** 開発者は当該 symlink を退避するか、決定後の実装を待つ。
+- **Reason for prioritization:** P2 — BUG-4261 の上流原因。実害はローカルゲートに
+  限定されるが、決定なしに触れてはならない領域。
+
 #### WP-9008 — Align the reachable API error contract with runtime behavior
 
 - **Status:** COMMITTED_LOCAL / MACHINE_VALIDATED / INDEPENDENT_REVIEW_PENDING
@@ -1116,6 +1255,64 @@ human gates. They are not claimable while WP-4250 review is WIP.
   never relax authorization or error redaction.
 - **Stop and escalate:** any incompatible public-client behavior, security
   semantic change, or need to expose raw errors requires API/security approval.
+
+### P3
+
+#### BUG-4264 — created 経路の監査時計読取りが無防備で、in-memory unit of work に巻き戻し漏れがある
+
+- **Classification:** Strongly Supported Bug(**未実装 — 上流が human gate**)。
+- **Status:** RECORDED_ONLY。
+- **Confidence:** Medium-High(静的証拠は確定。到達条件が dev/test に限定)。
+- **Evidence:** `apps/api/src/server.ts` の created 経路は
+  `const auditWallClock = auditWallClockUsed ?? now().toISOString();` を
+  `ensureCreatedEvidence` の try ブロックの**外**で実行する。同ファイルの他 7 箇所は
+  `snapshotWallClock`(read 失敗・非 Date を専用 invariant へ正規化)を通しており、
+  ここだけが規律外。`ComposedReceptionCreateCommand.execute` は
+  `auditWallClock()` を呼ばないため、in-memory 構成では常にこのフォールバックを通る。
+- **Actual behavior:** ここで `now()` が throw / 非 Date を返すと、受付は
+  in-memory に作成済みのまま監査イベントも outbox intent も無く、
+  `rollbackCreatedEvidence` も呼ばれない(WP-4050 の不変条件
+  「成功した受付は 1 件の durable な reception.created 監査イベントなしに存在できない」
+  の穴)。
+- **到達性:** `resolveApiRepositoryMode` は production での `in_memory` を拒否し、
+  Postgres 構成では `PostgresReceptionCreateCommand.execute` が
+  `input.auditWallClock()` を必ず呼ぶため `auditWallClockUsed` が設定される。
+  したがって **Postgres デプロイでは到達しない**。dev/test で時計を注入した場合のみ。
+- **なぜ自動修正しないか:** 正しい修正は「outbox intent 未追記の状態でも受付を
+  補償する」ことだが、`InMemoryReceptionOutbox.rollbackUncommittedByAggregate` は
+  intent 不在で throw する意図的な不変条件を持つ。これを変えるには WP-4050 の
+  コマンド境界インターフェースへ手を入れる必要があり、WP-4050 は R3 human gate 下にある。
+- **Reason for prioritization:** P3 — 実運用構成で到達しないため。WP-4050 の
+  次の human-gated スライスで一緒に閉じるのが正しい。
+
+#### BUG-4265 — API サーバーのログが全面無効で、invariant 500 が一切記録されない
+
+- **Classification:** Confirmed Bug(観測可能性・**未実装**)。
+- **Status:** RECORDED_ONLY。
+- **Confidence:** High。
+- **Evidence:** `apps/api/src/server.ts::buildServer` は `Fastify({ logger: false })`
+  を固定している。`apps/api/src/main.ts` は
+  `server.log.info({ port }, 'API server port selected')` および
+  `server.log.info({ address }, 'API server listening')` を呼ぶが、これらは出力されない。
+  同時に Fastify の既定リクエスト/エラーログも出ないため、`server.ts` が定義する
+  30 種以上の invariant 500(例 `receptionCreatedAuditInvariantErrorMessage`)は
+  発生してもプロセスから何の痕跡も残さない。
+- **Impact:** 障害時に原因を特定できない。起動失敗経路だけが `console.error` で
+  可視(`startup-failure.ts`)という非対称。
+- **なぜ自動修正しないか:** ログ有効化は PHI・患者識別子・エラー本文の出力境界を
+  決める必要があり(`DEVELOPMENT_POLICY §6`「PHI は keys/URLs/metric labels/logs/
+  raw errors から除外」)、security/privacy の設計判断を伴う。
+- **Reason for prioritization:** P3 — 直接の障害を生んでいないが、pilot 前に
+  閉じるべき運用ブロッカー。SEC-007 の incident-response path と隣接する。
+
+#### 走査で除外した項目(重複・非バグ — 起票しない)
+
+| 観測 | 判定 | 根拠 |
+|---|---|---|
+| `GET /audit/events` が全保存イベントを毎回読み出し chain 全体を再検証し、かつ読取り自体が `audit.viewed` を追記して自己増殖する | **重複** — 起票しない | §7 に「Bounded audit verification, read-driven self-growth … known in SEC-007; do not duplicate as new tasks」として既登録。今回の走査は `packages/contracts/src/audit-log.ts` が `totalCount`/`chainVerification` を「全保存イベント」と契約で定義していることを確認しただけで、新規事実なし |
+| `apps/api` の Postgres 統合テスト 4 ファイル(25 テスト)が既定 skip | **Not a Bug** | `resolveTestDatabaseUrl` は `CI=true` で `TEST_DATABASE_URL` 欠落を throw し、`.github/workflows/ci.yml` は同変数を設定する。ローカルで同変数を与えて実行し 23 files / 880 tests 全 pass を実測(2026-08-01) |
+| `patient-search.tsx` のフォームが `method="post" action="/patients"` を持つ | **Not a Bug** | 入力に `name` 属性がなく、JS 無効時のネイティブ送信でも検索語(PHI)は送出されない |
+| `main.ts` の ephemeral cursor HMAC キーがプロセス起動ごとに変わる | **Not a Bug** | `resolvePatientSearchCursorHmacKey` は in_memory + development/test のみ ephemeral を返し、postgres 構成では設定必須で throw する(意図的な dev 限定挙動) |
 
 ### UIUX — 一枚盤面刷新パイプライン(WP-5101〜5124・全件 GATED / NOT_READY)
 
@@ -1411,3 +1608,19 @@ version of this note; it remains NONCLAIMABLE history.
   not refreshed because the Goal forbids external-service connection.
 - **Next scan cursor:** diff-first from `9d8dbc0`; reset the counter if a new
   High/Medium item or reprioritization appears.
+
+### 実行付きバグ走査(2026-08-01, base `4f4ba68` + working tree)
+
+前回までの走査と異なり、**runtime verification を実行した**上での走査である
+(direct user instruction「バグ探索・修復ミッション」)。上の「Known blind spots」
+のうち test/build/lint/typecheck/DB の項目はこの走査に限り解消している。
+
+| 項目 | 実測結果 |
+|---|---|
+| baseline gates | `typecheck` / `lint` / `check:boundaries` / `check:calculation-purity` / `check:deps` / `check:openapi` / `check:sbom` / `check:ssot-index` / `test:scripts` / `build` すべて exit 0 |
+| baseline tests | `pnpm -r test` exit 0。ローカル Postgres(compose.yaml)を起動し `TEST_DATABASE_URL` を与えて **skip 0**(apps/api 23 files / 880 tests、workspace 合計 1877 tests)を実測 |
+| 既存の失敗ゲート | `check:secrets` のみ exit 1 → BUG-4261 / BUG-4263 として起票 |
+| 走査範囲 | apps/api 全 src(server / plugins / db / audit / reception / patient / config / startup)、apps/web 全 app、packages 全 8、scripts 全 11、migrations 6、CI workflow |
+| 起票 | P1 1 件(BUG-4260)、P2 3 件(BUG-4261 / BUG-4262 / BUG-4263)、P3 2 件(BUG-4264 / BUG-4265)。重複 1 件・Not a Bug 3 件を明示除外 |
+| 実装 | Active Batch = BUG-4260 / BUG-4261 / BUG-4262。BUG-4260 と BUG-4262 は `fe03cf0`、BUG-4261 は `6813750` へ COMMITTED_LOCAL。回帰テスト付き、独立レビュー未取得、push 未要求 |
+| 未解決 | `check:secrets` は `.codegraph` により exit 1 のまま(BUG-4263 の決定待ち)。リポジトリスコープ内容 450 ファイルのみの走査は `Secret scan passed.` を実測 |

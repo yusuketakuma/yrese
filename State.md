@@ -411,6 +411,43 @@
 - **Commit/push:** not requested; exact11 finalization and cumulative landing are
   separately gated and were not performed.
 
+### Blockers carried past the 2026-08-01 grouped landing (base `4f4ba68`)
+
+Direct user instruction「全ての変更をグループごとにコミット」により、working tree
+全体を所有グループごとに local commit した。`Plans.md` §4 の BUG-4260 / BUG-4261 /
+BUG-4262 が正本であり、本節は landing 後も残る blocker だけを保持する。
+
+- **Landed groups (local commits, push 未要求):** `4d889d5` work-selection
+  charter と agent instruction、`7650cad` legacy refactor ledger の FROZEN 化、
+  `2db1ec1` WP-4254 SCR-028 監査画面の廃止、`f7eeb67` WP-4050 outbox intent
+  profile の PROPOSED 化、`fe03cf0` BUG-4260/BUG-4262、`6813750` BUG-4261。
+  台帳(`Plans.md` / `State.md` / `Plans.legacy-archive-20260731.md`)は最終
+  グループ。各グループは exact-path stage で分離しており、中間コミット単体では
+  gate 検証していない(検証は landing 直前の tree 全体に対して実施)。
+- **Verified implementation facts (2026-08-01 実測):**
+  - `pnpm typecheck` / `pnpm lint` / `pnpm -r build` exit 0。
+  - `pnpm -r test` exit 0。ローカル Postgres(`compose.yaml`、127.0.0.1:55432)へ
+    `TEST_DATABASE_URL` を与え、**skip 0** で apps/api 23 files / 880 tests、
+    workspace 合計 1877 tests が pass(Postgres 統合経路を含む)。
+  - `check:boundaries` / `check:calculation-purity` / `check:deps` /
+    `check:openapi` / `check:sbom` / `check:ssot-index` / `test:scripts` exit 0。
+  - BUG-4260 の回帰テストは、修正を一時的に戻すと 2 件 FAIL することを実測。
+    BUG-4261 の回帰アサーションは、診断行を外すと 4 件 FAIL することを実測。
+  - `package.json` が pin する pnpm 11.18.0 と Node 26.5.0 がローカルで一致
+    (上の「Environment blocker for validation」に記録された 11.17.0 ドリフトは
+    現時点では解消している)。
+- **Remaining blockers:**
+  - `pnpm check:secrets` は exit 1 のまま。原因は working tree 直下の
+    `.codegraph` symlink(`.git/info/exclude` 済み = リポジトリ内容外)。
+    走査スコープ定義の変更は security posture の変更を伴うため
+    `BUG-4263 / DECISION_REQUIRED` として人間判断待ち。
+    リポジトリスコープ内容(実在 450 ファイル)だけを複製して同スクリプトを
+    走らせると `Secret scan passed.` / exit 0 を実測しており、検出対象の
+    secret は存在しない。
+  - 独立レビュー未取得(maker/checker 分離未充足)。local commit 済みであることは
+    review evidence にならない。
+  - push は要求されておらず実行していない。`origin/main` との分岐は local 側のみ。
+
 ## FROZEN LEGACY ACTIVITY LOG — GIT_HISTORY_ONLY
 
 The content below is preserved for provenance. It is not a current task source
