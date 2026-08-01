@@ -1,10 +1,19 @@
+# FROZEN — GIT_HISTORY_ONLY
+
+This legacy reconciliation ledger is not an active resume point. Use
+`DEVELOPMENT_POLICY.md`, the active board at the top of `Plans.md`, and the
+pointer snapshot at the top of `State.md`. Preserve the content below for
+provenance; do not append routine progress or claim work from it.
+
+---
+
 # Repository reconciliation state
 
 This is the resume entrypoint for the active repository reconciliation goal.
 
 - Governance: APPROVED AGT-018 Codex-only lane. Root is the sole editor/landing owner; all mapper/reviewer roles are read-only. Do not use Claude/Opus routing or agmsg.
 - Current phase: WP-9002 W32 metadata-only eligibility is NO_ELIGIBLE at inventory 173/57/116; IDX remains v0.4.44 and WP-9002 stays IN_PROGRESS. Remaining57 classification, WP-0020〜0023 reconciliation, W31 and WP-4081 are LANDED.
-- Current task: WP-4158 S1_BUG_REFACTOR_REVIEW。thirtieth BUG tree `c095e836…`はreviewer1 FAIL、reviewer2/3 PASS、reviewer4/5未起動。operation primary時のpending-drain skip、actual default TERM/HUP/ALRM fatal delivery、custom-handler guard false-greenをblock。thirty-first source SHA `9661c715…` / 2544 linesはone common pending drain、exact operation-primary precedence、fresh isolated actual-default four-signal guard、deferred/pending/root/FD/mask/handler/timer/canary residue0へ修正。known-bug/terminal-LF/call-site bypass mutations拒否、20/20 exact self-test、sanitized live exact six lines PASS。generic cleanup非再現履歴は保持。Next=fresh thirty-first-generation exactly5 BUG_REFACTOR_GATE review-only。
+- Current task: WP-4158 S1_RECOVERY_IMPLEMENTATION + V13_CONTEXT_DRIFT_PLAN。Inline verifier source `2a759801…` / 10934 LFでsignal 40/24/54/11、V12 authority/Git/process/claim/result/lock/wait/launcher/AC9P、sentinel/bash、resume、GH実poll、live/persisted authority、ESRCH二回、classification/V2 upgrade、production one-shot monitorをatomic claimからAC9P terminalまで接続。同一lifecycle happy path/exact10 crash boundaries、claim orphan/nlink2/loser temp、binding guardはoffline実processでPASSし、crash時result0/residue0。両Python exact self-test、live read-only tool/config/base/remote、diff/SSOT173/scripts/tracked overlay secretsもPASS。V13 exact5 dev-literal memory candidate `0430d462…` / 10934 LFも両Python同token PASS、3 sample identity安定、temp/runParent residue0だがauthority/review非主張。Full workspace preflightはtypecheck、1829 tests（local PostgreSQL integration 14 expected skip）、lint entrypoint、OpenAPI、calculation purity、boundaries、SSOT173、SBOM232、buildをPASSしたが、`pnpm check:deps`はPostCSS 8.5.16 / GHSA-r28c-9q8g-f849（high=1、fixed >=8.5.18）でFAILしたためVALIDATIONはgreenでない。package/lockはexact4外なのでWP-4240へ分離し未変更。context dev driftはexact STOP/runParent未作成。Next=V13 PLAN + recovery IMPLEMENTATION independent review。approval/commit/push/postcommit human gateは未実施。
 - Historical BUG checkpoint: third generation `wp4158_bug3_r1..r3`はtree `952cb893…`を0/3 PASSし、stale five-probe projection、parent readiness write-FD lifecycle、State checkpoint time boundaryを検出・後続修正した。
 - Historical BUG checkpoint: fourth generation `wp4158_bug4_r1..r3`はtree `75be9c70…`を1/3 PASSし、actual return/exception cleanup、query/fragment single-boundary、EVIDENCE checkpoint time boundaryを検出・後続修正した。Current matrixはpositive2/negative95/cleanup10。
 - Historical first VALIDATION generation `wp4158_val_r1..r3`はtree `08e3d38c…`を2/3 PASSしstale projectionをblock・後続修正、fifth-generation 5/5でsuperseded済み。
@@ -32,6 +41,7 @@ This is the resume entrypoint for the active repository reconciliation goal.
   - `0b0b5ba` WP-9004a SAF-001 critical aggregate correction
   - `07bdc96` WP-9002-W6A PLAN-DB metadata migration
 - Verified blockers:
+  - WP-4240: PostCSS 8.5.16 is vulnerable to GHSA-r28c-9q8g-f849; `pnpm check:deps` fails high=1 until a separately scoped package/lock remediation reaches >=8.5.18.
   - WP-4079: R3 stored audit fingerprint version-before-deep-read; explicit human scope approval required.
   - WP-3010 parent: full ARC-001 capability source, live mode/count contract, route/UI flow and pharmacist/claims review.
   - WP-3011 parent: intermediate value trust boundary plus live endpoint/auth/tenant/route contract.

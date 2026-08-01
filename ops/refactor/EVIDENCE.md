@@ -1,3 +1,12 @@
+# FROZEN — GIT_HISTORY_ONLY
+
+This legacy evidence ledger is no longer an active validation or work-selection
+authority. Git diff, commit, and CI are the normal implementation/completion
+evidence. Preserve the content below for provenance; do not extend embedded
+generic verifiers or routine success records.
+
+---
+
 # Refactor evidence index
 
 Updated on 2026-07-18. This file is the durable index for the active repository-improvement goal. It points to authoritative records instead of duplicating their full command output.
@@ -429,7 +438,7 @@ WP-4157 S2 then passed corrected VALIDATION_GATE 5/5 at ledger `590e498b64ae46eb
 
 #### WP-4158 closure plan authority
 
-WP-4158 closes only a version-bound evidence gap. S0 records WP-4157's already-proven terminal state and this plan; S1 independently reproduces immutable source/notice/artifact identity, deterministic resource-rights taxonomy with a membership-manifest digest, and WP-4159's candidate-direct 50-row/25-canonical subset; S2 records S1's landing facts. These are separate exact4 commits and rollback boundaries. No slice changes package/lock/runtime/code/API/DB/UI/SSOT/CI/toolchain, persistently retains or stores an artifact in the repository, extracts an artifact, selects a Profile or terminology, or grants legal/FHIR/clinical/claim approval. S1 alone may download pinned bytes ephemerally to a repository-external private temp for no-extraction inspection and must clean them on normal/error/catchable INT/TERM/HUP; SIGKILL/kernel-loss cleanup is not claimed.
+WP-4158 closes only a version-bound evidence gap. S0 records WP-4157's already-proven terminal state and this plan; S1 independently reproduces immutable source/notice/artifact identity, deterministic resource-rights taxonomy with a membership-manifest digest, and WP-4159's candidate-direct 50-row/25-canonical subset; S2 records S1's landing facts. The original design required separate exact4 commits and rollback boundaries. Mixed commit `f4d0f8f71a62c3e55a57a79ad57092b10620cc70` violated that S1 path boundary and is INVALID/non-evidence for S1; the recovery path preserves its history and six non-ledger paths unchanged, then requires an exact4 repair relative to `f4d0f8f…`. Only the recovery commit's base-relative diff may claim no package/lock/runtime/code/API/DB/UI/SSOT/CI/toolchain change; no claim is made that `f4d0f8f…` itself preserved or received WP-4158 approval for those surfaces. No WP-4158 recovery persistently retains or stores an artifact in the repository, extracts an artifact, selects a Profile or terminology, or grants legal/FHIR/clinical/claim approval. S1 recovery alone may download pinned bytes ephemerally to a repository-external private temp for no-extraction inspection and must clean them on normal/error/catchable INT/TERM/HUP; SIGKILL/kernel-loss cleanup is not claimed.
 
 Later retries demonstrated that a tracked generic gate runner and pseudo-DSL were unnecessary S0 machinery. The final PLAN remediation added distinct per-probe cleanup terminal oracles. Fresh PLAN reviewers `wp4158_plan_oracle_r1..r5` then passed candidate tree `dfe2742acceec22b95c37459c2164735ecbb8cd6` 5/5: exact4, real-index cleanliness, direct validation, proximity/slices, the then-current 94+2+5 test matrix, six live lines, isolated cleanup, AC9, nonclaims and human gates were independently confirmed. At that checkpoint S0 became READY; the later fresh implementation generation separately passed the updated projection tree. Subsequent BUG_REFACTOR review found that the five cleanup probes exercised only the final-path phase, so the current authority expands cleanup to pending/final x normal/error/INT/TERM/HUP = ten isolated probes without changing the historical PLAN verdict.
 
@@ -487,7 +496,7 @@ The legal handoff is deterministic but makes no decision: the 25 candidate-direc
 
 Plans owns the slice matrix. Each slice has its own pre-implementation `PLAN_READY` artifact; S1 PLAN inspects landed S0 authority and does not execute the future verifier, while S2 PLAN binds landed S1 verifier SHA and landing-only scope. Direct command transcripts preserve exact candidate/path/index, repository-gate and tracked-overlay-secret results. S1/S2 add the exact self-test token and six live lines; AC9C/L/P separates commit, local prepush and terminal remote facts. No gate requires future evidence. Five fresh reviewers per material gate and all human gates remain.
 
-AC9 is executable without relying on an earlier WP. The pre-commit AC9C packet supplies 40-hex base/tree plus exact message and binds base, exact4, staged tree, message and clean unstaged state; it does not supply or infer a future commit. After commit creation, AC9L/P add the actual 40-hex commit and bind its parent, tree, subject and clean state. PUSH classifies the unique remote ref before and after its one allowed ordinary non-force mutation. Remote=base permits one push; ambiguous/nonzero output is followed only by read-only classification. Remote still at base permits a fresh-five retry; remote at commit enters an already-pushed recovery with fresh five, AC9L and AC9P but no second push; any other ref stops. A post-push material content finding or attempt-1 CI failure requires a new reviewed repair commit based on the pushed commit and all six gates, never reuse or rewrite. Context/API artifact loss alone uses the no-second-push recovery. AC9P then applies the bounded polling, parity, main, deployments, exact workflow/run/jobs/steps and clean-state oracle in Plans. Each generation has exactly five reviewers; it never grows to ten.
+Historical S0/original AC9 used one ordinary non-force branch mutation. Recovery AC9 is a separate authority defined only in Plans: pinned main URL/ref, exact expected-old fast-forward lease, commit-bound human approval, one-shot durable consumption, all-ref classification, and push-event CI. Historical branch/PR/fixed-main oracles do not authorize or constrain recovery. Each material generation still has exactly five reviewers.
 
 S0 landed as commit `68470672bd0f5efff6cc06f42cfb374dc59dc0f7`, parent `9a3e715f49532ea2b57bda8ec715b0f6c06435c0`, tree `f955580a95c1866087ec456a11693488a16d0ae2`. The one ordinary push reached local/origin/PR parity while origin/main remained `27d61445350e40f2741583a07eb20936d9916992` and deployments remained zero. Exact-head workflow `309812329` run `29658334162`, attempt 1, completed successfully with its one job and all 22 steps successful. The same five PUSH_GATE contexts accepted AC9L and AC9P 5/5. These terminal facts authorize S1 evidence work only; they do not decide any terminology right or human gate.
 
@@ -499,12 +508,16 @@ import argparse
 import ast
 import copy
 import ctypes
+import datetime
 import errno
+import fcntl
 import hashlib
 import io
+import itertools
 import json
 import os
 import pathlib
+import re
 import select
 import shutil
 import signal
@@ -564,6 +577,312 @@ GIT_AMBIENT_KEYS = (
     "GIT_EXEC_PATH", "GIT_PREFIX", "GIT_CONFIG", "GIT_CONFIG_COUNT",
     "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM",
 )
+RECOVERY_SIGNAL_NUMBERS = (2, 15, 1, 14)
+RECOVERY_REQUEST_FIELDS = (
+    "approvalVersion",
+    "nonce",
+    "issuedAtUtc",
+    "expiresAtUtc",
+    "monotonicIssuedNs",
+    "monotonicDeadlineNs",
+    "base",
+    "commit",
+    "commitObjectSha256",
+    "remote",
+    "ref",
+    "toolManifestSha256",
+    "localConfigSha256",
+    "executionContextSha256",
+    "bootSessionSha256",
+    "supervisorSourceSha256",
+    "supervisorLauncherArgvSha256",
+    "bootstrapLauncherArgvSha256",
+    "resumeLauncherArgvSha256",
+    "bashBootstrapLauncherArgvSha256",
+    "sentinelLauncherArgvSha256",
+    "sentinelForkSpecSha256",
+    "bashExecutorArgvSha256",
+    "spawnSpecSha256",
+    "wrapperSha256",
+    "argvSha256",
+    "envSha256",
+    "nonTargetRefsSha256",
+)
+RECOVERY_APPROVAL_BODY_KEYS = (
+    "request",
+    "nonce",
+    "base",
+    "commit",
+    "commit_object",
+    "refs",
+    "tools",
+    "config",
+    "context",
+    "boot_session",
+    "supervisor",
+    "supervisor_launcher",
+    "bootstrap_launcher",
+    "resume_launcher",
+    "bash_bootstrap_launcher",
+    "sentinel_launcher",
+    "sentinel_fork_spec",
+    "bash_executor",
+    "spawn_spec",
+    "wrapper",
+    "argv",
+    "env",
+    "issued",
+    "expires",
+    "mono_issued",
+    "mono_deadline",
+)
+RECOVERY_TOOL_MANIFEST_ROWS = (
+    ("bash.path", "/bin/bash"),
+    ("bash.sha256", "fde343ee184953c1fa1185abddeaa8be61c6acbebae4eb54db5d6b55b09a5755"),
+    ("bash.version", "GNU bash, version 3.2.57(1)-release (arm64-apple-darwin25)"),
+    ("env.path", "/usr/bin/env"),
+    ("env.sha256", "6e506aec3c0cff703ac1e66cedc6f1945354ad41339a38db4425c7c88227128f"),
+    ("git.path", "/usr/bin/git"),
+    ("git.sha256", "179301dcb41ea78accc3fa0048a7e6f6710d891945a751a34addd622020c1818"),
+    ("git.version", "git version 2.50.1 (Apple Git-155)"),
+    ("git.execPath", "/Library/Developer/CommandLineTools/usr/libexec/git-core"),
+    ("gitRemoteHttps.path", "/Library/Developer/CommandLineTools/usr/libexec/git-core/git-remote-https"),
+    ("gitRemoteHttps.sha256", "badb3dc6666bdffdc3c6eaf44346eb390bb43d69b1608da4d1f971bbdb2d2998"),
+    ("sh.path", "/bin/sh"),
+    ("sh.sha256", "ad5c194b05f83bc5e793c1cd67b148a4b680467b5a5730ab1a31fe4e6460ee9f"),
+    ("gh.path", "/opt/homebrew/bin/gh"),
+    ("gh.sha256", "02d2d4a85241c6a8c0b77ebb1ec76fc723caf7fb128e00915b306b968847cba1"),
+    ("gh.version", "gh version 2.96.0 (2026-07-02)"),
+    ("pythonSystem.invocation", "/usr/bin/python3"),
+    ("pythonSystem.invocationSha256", "179301dcb41ea78accc3fa0048a7e6f6710d891945a751a34addd622020c1818"),
+    ("pythonSystem.sysExecutable", "/Library/Developer/CommandLineTools/usr/bin/python3"),
+    ("pythonSystem.realpath", "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/bin/python3.9"),
+    ("pythonSystem.realpathSha256", "4b42b1a117605cafc8607b67b0892a609c2cd125012dd56288abeed8c89cdfb1"),
+    ("pythonSystem.version", "Python 3.9.6"),
+)
+RECOVERY_LOCAL_CONFIG_ROWS = (
+    ("core.repositoryformatversion", "0"),
+    ("core.filemode", "true"),
+    ("core.bare", "false"),
+    ("core.logallrefupdates", "true"),
+    ("core.ignorecase", "true"),
+    ("core.precomposeunicode", "true"),
+    ("remote.origin.url", "https://github.com/yusuketakuma/yrese.git"),
+    ("remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"),
+    ("branch.main.remote", "origin"),
+    ("branch.main.merge", "refs/heads/main"),
+)
+RECOVERY_RESULT_FIELDS = (
+    "stateVersion",
+    "remoteClass",
+    "base",
+    "commit",
+    "remoteMain",
+    "nonTargetRefsSha256",
+    "observedAtUtc",
+)
+RECOVERY_RESULT_V2_FIELDS = (
+    "stateVersion",
+    "priorResultSha256",
+    "remoteClass",
+    "base",
+    "commit",
+    "remoteMain",
+    "nonTargetRefsSha256",
+    "observedAtUtc",
+)
+RECOVERY_RECEIPT_FIELDS = (
+    "receiptVersion",
+    "userBodySha256",
+    "hostRole",
+    "sameConversation",
+    "observedAtUtc",
+    "requestSha256",
+)
+RECOVERY_APPROVED_STATE_FIELDS = (
+    "stateVersion",
+    "status",
+    "requestSha256",
+    "userBodySha256",
+    "observedAtUtc",
+    "base",
+    "commit",
+    "remote",
+    "ref",
+    "nonTargetRefsSha256",
+    "expiresAtUtc",
+    "monotonicDeadlineNs",
+    "approvalBodySha256",
+    "receiptSha256",
+)
+RECOVERY_CLAIM_FIELDS = (
+    "stateVersion",
+    "status",
+    "attempt",
+    "requestSha256",
+    "userBodySha256",
+    "base",
+    "commit",
+    "remote",
+    "ref",
+    "nonTargetRefsSha256",
+    "claimedAtUtc",
+    "claimedMonotonicNs",
+    "bootstrapCutoffNs",
+)
+RECOVERY_SENTINEL_INTENT_FIELDS = (
+    "stateVersion",
+    "status",
+    "pid",
+    "parentPid",
+    "releaseDeadlineNs",
+    "releaseReadFd",
+    "guardianReadFd",
+    "guardianChallengeSha256",
+)
+RECOVERY_SENTINEL_READY_FIELDS = (
+    "stateVersion",
+    "status",
+    "pid",
+    "pgid",
+    "parentPid",
+    "intentSha256",
+    "guardianFd",
+    "guardianChallengeSha256",
+    "releaseDeadlineNs",
+)
+RECOVERY_BASH_READY_FIELDS = (
+    "stateVersion",
+    "status",
+    "pid",
+    "pgid",
+    "startedMonotonicNs",
+    "releaseDeadlineNs",
+    "lockDev",
+    "lockIno",
+    "lockFd",
+)
+RECOVERY_MUTATION_STATE_FIELDS = (
+    "stateVersion",
+    "status",
+    "pid",
+    "pgid",
+    "readySha256",
+    "releaseDeadlineNs",
+    "mutationDeadlineNs",
+    "lockDev",
+    "lockIno",
+    "lockFd",
+)
+RECOVERY_LEAVES = {
+    "supervisor.py",
+    "approval.packet",
+    "approval.body",
+    "receipt.state",
+    "approved.state",
+    "claim",
+    "executor.ready",
+    "spawn.state",
+    "executor.release",
+    "executor.evidence",
+    "bash.ready",
+    "bash.release",
+    "mutation.state",
+    "sentinel.intent",
+    "sentinel.ready",
+    "sentinel.exit",
+    "monitor.lock",
+    "descendant.lock",
+    "result.state",
+    "result.state.v2",
+}
+RECOVERY_PUSH_ENV_ROWS = (
+    ("HOME", "/Users/yusuke"),
+    ("PATH", "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin"),
+    ("LC_ALL", "C"),
+    ("LANG", "C"),
+    ("GIT_CONFIG_NOSYSTEM", "1"),
+    ("GIT_CONFIG_SYSTEM", "/dev/null"),
+    ("GIT_CONFIG_GLOBAL", "/dev/null"),
+    ("GIT_EXEC_PATH", "/Library/Developer/CommandLineTools/usr/libexec/git-core"),
+    ("GIT_NO_REPLACE_OBJECTS", "1"),
+    ("GIT_TERMINAL_PROMPT", "0"),
+    ("GH_CONFIG_DIR", "/Users/yusuke/.config/gh"),
+)
+RECOVERY_BASE_COMMIT = "f4d0f8f71a62c3e55a57a79ad57092b10620cc70"
+RECOVERY_COMMIT_MESSAGE = "WP-4158: repair terminology rights S1 r0001"
+RECOVERY_EXACT4 = (
+    "Plans.md",
+    "State.md",
+    "ops/refactor/EVIDENCE.md",
+    "ops/refactor/STATE.md",
+)
+RECOVERY_FIXED_CONTEXT = (
+    (
+        "worktree",
+        "/Users/yusuke/workspace/yrese",
+        "directory",
+        "0755",
+        "501",
+        "20",
+        "16777233",
+        "239899247",
+    ),
+    (
+        "gitdir",
+        "/Users/yusuke/workspace/yrese/.git",
+        "directory",
+        "0755",
+        "501",
+        "20",
+        "16777233",
+        "239900068",
+    ),
+    (
+        "config",
+        "/Users/yusuke/workspace/yrese/.git/config",
+        "regular",
+        "0644",
+        "501",
+        "20",
+        "16777233",
+        "267521965",
+    ),
+    (
+        "codexParent",
+        "/Users/yusuke/.codex",
+        "directory",
+        "0700",
+        "501",
+        "20",
+        "16777233",
+        "628625",
+    ),
+)
+RECOVERY_FORK_SPEC_ROWS = (
+    ("schema", "WP4158_SENTINEL_FORK_SPEC_V12"),
+    ("runtime", "/usr/bin/python3@3.9.6"),
+    ("threading", "single"),
+    ("parentPreForkMask", "BLOCK-2-15-1-14"),
+    ("parentPostForkMask", "EMPTY"),
+    ("fdNormalization", "targets-empty,raw-to-backup-ge20,close-raw,backup-to-5-6-7-10,close-backup"),
+    ("releaseFds", "5,6"),
+    ("guardianFds", "7,10"),
+    ("reservedFd", "8"),
+    ("releaseByte", "R"),
+    ("guardianChallengeBytes", "32"),
+    ("guardianChallengeOrigin", "parent-post-fork"),
+    ("deadlineNs", "30000000000"),
+    ("deadlineOrigin", "parent-pre-fork-monotonic"),
+    ("childSignalTransition", "inherited-blocked,set-defaults,exec-blocked,sentinel-set-defaults,setmask-empty"),
+    ("signalDefaults", "2,15,1,14"),
+    ("childAction", "close-parent-fds,read-release,set-defaults,setpgid,exec-blocked"),
+    ("parentAction", "close-child-fds,restore-mask,generate-challenge,fsync-intent,write-guardian-challenge,write-release,hold-guardian"),
+)
+
+
+class DarwinTimeval(ctypes.Structure):
+    _fields_ = (("tv_sec", ctypes.c_long), ("tv_usec", ctypes.c_int))
 
 
 def require(condition: bool, token: str) -> None:
@@ -571,8 +890,6765 @@ def require(condition: bool, token: str) -> None:
         raise VerificationError(token)
 
 
+def append_exception_note(exc: BaseException, note: str) -> None:
+    native = getattr(exc, "add_note", None)
+    if callable(native):
+        native(note)
+        return
+    notes = getattr(exc, "__notes__", None)
+    if notes is None:
+        exc.__notes__ = [note]
+    elif isinstance(notes, list):
+        notes.append(note)
+    else:
+        raise TypeError("Cannot add note: __notes__ is not a list")
+
+
 def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def ordered_manifest(rows, failure_code="RECOVERY_MANIFEST_INVALID") -> bytes:
+    encoded = []
+    names = set()
+    for row in rows:
+        require(
+            isinstance(row, (tuple, list))
+            and len(row) == 2
+            and all(isinstance(value, str) for value in row),
+            failure_code,
+        )
+        name, value = row
+        require(
+            name
+            and name not in names
+            and "\x00" not in name
+            and "\n" not in name
+            and "\x00" not in value
+            and "\n" not in value,
+            failure_code,
+        )
+        names.add(name)
+        encoded.append(name.encode("utf-8") + b"\0" + value.encode("utf-8") + b"\n")
+    require(bool(encoded), failure_code)
+    return b"".join(encoded)
+
+
+def parse_ordered_manifest(data: bytes, expected_names, failure_code="RECOVERY_MANIFEST_INVALID"):
+    require(
+        isinstance(data, bytes)
+        and data.endswith(b"\n")
+        and b"\r" not in data,
+        failure_code,
+    )
+    records = data[:-1].split(b"\n")
+    require(len(records) == len(expected_names), failure_code)
+    result = {}
+    observed_names = []
+    for record in records:
+        require(record.count(b"\0") == 1, failure_code)
+        raw_name, raw_value = record.split(b"\0")
+        require(raw_name and b"\n" not in raw_value and b"\0" not in raw_value, failure_code)
+        try:
+            name = raw_name.decode("utf-8")
+            value = raw_value.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise VerificationError(failure_code) from exc
+        require(name not in result, failure_code)
+        observed_names.append(name)
+        result[name] = value
+    require(tuple(observed_names) == tuple(expected_names), failure_code)
+    return result
+
+
+def parse_utc_seconds(value: str, token: str):
+    require(isinstance(value, str), token)
+    try:
+        parsed = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError as exc:
+        raise VerificationError(token) from exc
+    require(parsed.strftime("%Y-%m-%dT%H:%M:%SZ") == value, token)
+    return parsed.replace(tzinfo=datetime.timezone.utc)
+
+
+def validate_recovery_request(
+    packet: bytes,
+    *,
+    observed_at_utc: datetime.datetime,
+    monotonic_now_ns: int,
+    boot_session_sha: str,
+):
+    values = parse_ordered_manifest(
+        packet,
+        RECOVERY_REQUEST_FIELDS,
+        "RECOVERY_REQUEST_INVALID",
+    )
+    require(values["approvalVersion"] == "WP4158_FORCE_LEASE_APPROVAL_V10", "RECOVERY_REQUEST_INVALID")
+    require(re.fullmatch(r"[0-9a-f]{64}", values["nonce"]) is not None, "RECOVERY_REQUEST_INVALID")
+    require(
+        re.fullmatch(r"[0-9a-f]{40}", values["base"]) is not None
+        and re.fullmatch(r"[0-9a-f]{40}", values["commit"]) is not None
+        and values["base"] != values["commit"],
+        "RECOVERY_REQUEST_INVALID",
+    )
+    require(
+        values["remote"] == "https://github.com/yusuketakuma/yrese.git"
+        and values["ref"] == "refs/heads/main",
+        "RECOVERY_REQUEST_INVALID",
+    )
+    digest_fields = tuple(
+        name
+        for name in RECOVERY_REQUEST_FIELDS
+        if name.endswith("Sha256")
+    )
+    require(
+        all(re.fullmatch(r"[0-9a-f]{64}", values[name]) is not None for name in digest_fields)
+        and values["bootSessionSha256"] == boot_session_sha,
+        "RECOVERY_REQUEST_INVALID",
+    )
+    require(
+        isinstance(observed_at_utc, datetime.datetime)
+        and observed_at_utc.tzinfo is not None
+        and observed_at_utc.utcoffset() == datetime.timedelta(0)
+        and isinstance(monotonic_now_ns, int)
+        and not isinstance(monotonic_now_ns, bool)
+        and monotonic_now_ns >= 0,
+        "RECOVERY_REQUEST_INVALID",
+    )
+    issued = parse_utc_seconds(values["issuedAtUtc"], "RECOVERY_REQUEST_INVALID")
+    expires = parse_utc_seconds(values["expiresAtUtc"], "RECOVERY_REQUEST_INVALID")
+    duration = int((expires - issued).total_seconds())
+    require(
+        1 <= duration <= 600
+        and issued <= observed_at_utc < expires
+        and re.fullmatch(r"(0|[1-9][0-9]*)", values["monotonicIssuedNs"]) is not None
+        and re.fullmatch(r"(0|[1-9][0-9]*)", values["monotonicDeadlineNs"]) is not None,
+        "RECOVERY_REQUEST_INVALID",
+    )
+    monotonic_issued = int(values["monotonicIssuedNs"])
+    monotonic_deadline = int(values["monotonicDeadlineNs"])
+    require(
+        monotonic_deadline - monotonic_issued == duration * 1_000_000_000
+        and monotonic_issued <= monotonic_now_ns < monotonic_deadline,
+        "RECOVERY_REQUEST_INVALID",
+    )
+    return values
+
+
+def validate_recovery_static_bindings(values, supervisor_source: bytes):
+    require(
+        tuple(values) == RECOVERY_REQUEST_FIELDS
+        and isinstance(supervisor_source, bytes)
+        and supervisor_source.endswith(b"\n"),
+        "RECOVERY_BINDING_INVALID",
+    )
+    launch = recovery_launch_artifacts(
+        nonce=values["nonce"],
+        base=values["base"],
+        commit=values["commit"],
+    )
+    require(
+        values["toolManifestSha256"] == digest(recovery_tool_manifest())
+        and values["localConfigSha256"] == digest(recovery_local_config_manifest())
+        and values["supervisorSourceSha256"] == digest(supervisor_source)
+        and values["nonTargetRefsSha256"]
+        == "4f3185217ec6f2309bab38a8fdbf25112b8f141204b139449686f993039899f2"
+        and all(
+            values[name] == expected
+            for name, expected in launch["hashes"].items()
+        ),
+        "RECOVERY_BINDING_INVALID",
+    )
+    return launch
+
+
+def recovery_approval_body(request_sha: str, values) -> bytes:
+    require(
+        re.fullmatch(r"[0-9a-f]{64}", request_sha) is not None
+        and tuple(values) == RECOVERY_REQUEST_FIELDS,
+        "RECOVERY_APPROVAL_BODY_INVALID",
+    )
+    body_values = (
+        request_sha,
+        values["nonce"],
+        values["base"],
+        values["commit"],
+        values["commitObjectSha256"],
+        values["nonTargetRefsSha256"],
+        values["toolManifestSha256"],
+        values["localConfigSha256"],
+        values["executionContextSha256"],
+        values["bootSessionSha256"],
+        values["supervisorSourceSha256"],
+        values["supervisorLauncherArgvSha256"],
+        values["bootstrapLauncherArgvSha256"],
+        values["resumeLauncherArgvSha256"],
+        values["bashBootstrapLauncherArgvSha256"],
+        values["sentinelLauncherArgvSha256"],
+        values["sentinelForkSpecSha256"],
+        values["bashExecutorArgvSha256"],
+        values["spawnSpecSha256"],
+        values["wrapperSha256"],
+        values["argvSha256"],
+        values["envSha256"],
+        values["issuedAtUtc"],
+        values["expiresAtUtc"],
+        values["monotonicIssuedNs"],
+        values["monotonicDeadlineNs"],
+    )
+    require(len(body_values) == len(RECOVERY_APPROVAL_BODY_KEYS), "RECOVERY_APPROVAL_BODY_INVALID")
+    fields = " ".join(
+        f"{name}={value}"
+        for name, value in zip(RECOVERY_APPROVAL_BODY_KEYS, body_values)
+    )
+    body = ("APPROVE_WP4158_FORCE_LEASE_V10 " + fields).encode("utf-8")
+    require(b"\0" not in body and b"\n" not in body, "RECOVERY_APPROVAL_BODY_INVALID")
+    return body
+
+
+def recovery_receipt_manifest(
+    *,
+    approval_body: bytes,
+    observed_at_utc: str,
+    request_sha: str,
+):
+    require(
+        isinstance(approval_body, bytes)
+        and b"\0" not in approval_body
+        and b"\n" not in approval_body
+        and re.fullmatch(r"[0-9a-f]{64}", request_sha) is not None,
+        "RECOVERY_RECEIPT_INVALID",
+    )
+    parse_utc_seconds(observed_at_utc, "RECOVERY_RECEIPT_INVALID")
+    return ordered_manifest(
+        (
+            ("receiptVersion", "WP4158_HOST_RECEIPT_V1"),
+            ("userBodySha256", digest(approval_body)),
+            ("hostRole", "user"),
+            ("sameConversation", "true"),
+            ("observedAtUtc", observed_at_utc),
+            ("requestSha256", request_sha),
+        ),
+        "RECOVERY_RECEIPT_INVALID",
+    )
+
+
+def validate_recovery_receipt(
+    request: bytes,
+    approval_body: bytes,
+    receipt: bytes,
+):
+    request_values = parse_ordered_manifest(
+        request,
+        RECOVERY_REQUEST_FIELDS,
+        "RECOVERY_RECEIPT_INVALID",
+    )
+    request_sha = digest(request)
+    require(
+        approval_body == recovery_approval_body(request_sha, request_values),
+        "RECOVERY_RECEIPT_INVALID",
+    )
+    values = parse_ordered_manifest(
+        receipt,
+        RECOVERY_RECEIPT_FIELDS,
+        "RECOVERY_RECEIPT_INVALID",
+    )
+    require(
+        values["receiptVersion"] == "WP4158_HOST_RECEIPT_V1"
+        and values["userBodySha256"] == digest(approval_body)
+        and values["hostRole"] == "user"
+        and values["sameConversation"] == "true"
+        and values["requestSha256"] == request_sha,
+        "RECOVERY_RECEIPT_INVALID",
+    )
+    parse_utc_seconds(values["observedAtUtc"], "RECOVERY_RECEIPT_INVALID")
+    return request_values, values
+
+
+def recovery_approved_state(request: bytes, approval_body: bytes, receipt: bytes):
+    request_values, receipt_values = validate_recovery_receipt(
+        request,
+        approval_body,
+        receipt,
+    )
+    rows = (
+        ("stateVersion", "WP4158_APPROVED_STATE_V4"),
+        ("status", "APPROVED"),
+        ("requestSha256", digest(request)),
+        ("userBodySha256", digest(approval_body)),
+        ("observedAtUtc", receipt_values["observedAtUtc"]),
+        ("base", request_values["base"]),
+        ("commit", request_values["commit"]),
+        ("remote", request_values["remote"]),
+        ("ref", request_values["ref"]),
+        ("nonTargetRefsSha256", request_values["nonTargetRefsSha256"]),
+        ("expiresAtUtc", request_values["expiresAtUtc"]),
+        ("monotonicDeadlineNs", request_values["monotonicDeadlineNs"]),
+        ("approvalBodySha256", digest(approval_body)),
+        ("receiptSha256", digest(receipt)),
+    )
+    return ordered_manifest(rows, "RECOVERY_APPROVED_STATE_INVALID")
+
+
+def validate_recovery_approved_state(
+    request: bytes,
+    approval_body: bytes,
+    receipt: bytes,
+    approved: bytes,
+):
+    expected = recovery_approved_state(request, approval_body, receipt)
+    require(approved == expected, "RECOVERY_APPROVED_STATE_INVALID")
+    return parse_ordered_manifest(
+        approved,
+        RECOVERY_APPROVED_STATE_FIELDS,
+        "RECOVERY_APPROVED_STATE_INVALID",
+    )
+
+
+def validate_recovery_authority_bundle(
+    *,
+    request: bytes,
+    approval_body: bytes,
+    receipt: bytes,
+    approved: bytes,
+    supervisor_source: bytes,
+    execution_context: bytes,
+    observed_at_utc: datetime.datetime,
+    monotonic_now_ns: int,
+    boot_session_sha: str,
+):
+    values = validate_recovery_request(
+        request,
+        observed_at_utc=observed_at_utc,
+        monotonic_now_ns=monotonic_now_ns,
+        boot_session_sha=boot_session_sha,
+    )
+    launch = validate_recovery_static_bindings(values, supervisor_source)
+    require(
+        isinstance(execution_context, bytes)
+        and execution_context.endswith(b"\n")
+        and values["executionContextSha256"] == digest(execution_context),
+        "RECOVERY_AUTHORITY_INVALID",
+    )
+    request_values, receipt_values = validate_recovery_receipt(
+        request,
+        approval_body,
+        receipt,
+    )
+    approved_values = validate_recovery_approved_state(
+        request,
+        approval_body,
+        receipt,
+        approved,
+    )
+    receipt_at = parse_utc_seconds(
+        receipt_values["observedAtUtc"],
+        "RECOVERY_AUTHORITY_INVALID",
+    )
+    issued = parse_utc_seconds(
+        values["issuedAtUtc"],
+        "RECOVERY_AUTHORITY_INVALID",
+    )
+    expires = parse_utc_seconds(
+        values["expiresAtUtc"],
+        "RECOVERY_AUTHORITY_INVALID",
+    )
+    require(
+        request_values == values
+        and issued <= receipt_at <= observed_at_utc < expires
+        and approved_values["observedAtUtc"] == receipt_values["observedAtUtc"]
+        and approved_values["requestSha256"] == digest(request)
+        and approved_values["approvalBodySha256"] == digest(approval_body)
+        and approved_values["receiptSha256"] == digest(receipt),
+        "RECOVERY_AUTHORITY_INVALID",
+    )
+    return values, launch
+
+
+def validate_recovery_persisted_authority(
+    *,
+    request: bytes,
+    approval_body: bytes,
+    receipt: bytes,
+    approved: bytes,
+    supervisor_source: bytes,
+    execution_context: bytes,
+):
+    request_values = parse_ordered_manifest(
+        request,
+        RECOVERY_REQUEST_FIELDS,
+        "RECOVERY_AUTHORITY_INVALID",
+    )
+    receipt_values = parse_ordered_manifest(
+        receipt,
+        RECOVERY_RECEIPT_FIELDS,
+        "RECOVERY_AUTHORITY_INVALID",
+    )
+    issued = parse_utc_seconds(
+        request_values["issuedAtUtc"],
+        "RECOVERY_AUTHORITY_INVALID",
+    )
+    receipt_at = parse_utc_seconds(
+        receipt_values["observedAtUtc"],
+        "RECOVERY_AUTHORITY_INVALID",
+    )
+    require(
+        receipt_at >= issued
+        and re.fullmatch(
+            r"(0|[1-9][0-9]*)",
+            request_values["monotonicIssuedNs"],
+        )
+        is not None,
+        "RECOVERY_AUTHORITY_INVALID",
+    )
+    elapsed_seconds = int((receipt_at - issued).total_seconds())
+    replay_monotonic = (
+        int(request_values["monotonicIssuedNs"])
+        + elapsed_seconds * 1_000_000_000
+    )
+    return validate_recovery_authority_bundle(
+        request=request,
+        approval_body=approval_body,
+        receipt=receipt,
+        approved=approved,
+        supervisor_source=supervisor_source,
+        execution_context=execution_context,
+        observed_at_utc=receipt_at,
+        monotonic_now_ns=replay_monotonic,
+        boot_session_sha=request_values["bootSessionSha256"],
+    )
+
+
+def recovery_authority_guard():
+    source = b"synthetic supervisor source\n"
+    context = b"synthetic execution context\n"
+    boot_sha = digest(b"synthetic boot session")
+    nonce = "1" * 64
+    base = RECOVERY_BASE_COMMIT
+    commit = "2" * 40
+    launch = recovery_launch_artifacts(
+        nonce=nonce,
+        base=base,
+        commit=commit,
+    )
+    issued = "2026-07-26T00:00:00Z"
+    expires = "2026-07-26T00:10:00Z"
+    rows = [
+        ("approvalVersion", "WP4158_FORCE_LEASE_APPROVAL_V10"),
+        ("nonce", nonce),
+        ("issuedAtUtc", issued),
+        ("expiresAtUtc", expires),
+        ("monotonicIssuedNs", "1000000000"),
+        ("monotonicDeadlineNs", "601000000000"),
+        ("base", base),
+        ("commit", commit),
+        ("commitObjectSha256", "3" * 64),
+        ("remote", "https://github.com/yusuketakuma/yrese.git"),
+        ("ref", "refs/heads/main"),
+        ("toolManifestSha256", digest(recovery_tool_manifest())),
+        ("localConfigSha256", digest(recovery_local_config_manifest())),
+        ("executionContextSha256", digest(context)),
+        ("bootSessionSha256", boot_sha),
+        ("supervisorSourceSha256", digest(source)),
+    ]
+    rows.extend(
+        (name, launch["hashes"][name])
+        for name in RECOVERY_REQUEST_FIELDS
+        if name in launch["hashes"]
+    )
+    rows.append(
+        (
+            "nonTargetRefsSha256",
+            "4f3185217ec6f2309bab38a8fdbf25112b8f141204b139449686f993039899f2",
+        )
+    )
+    row_map = dict(rows)
+    request = ordered_manifest(
+        tuple((name, row_map[name]) for name in RECOVERY_REQUEST_FIELDS),
+        "RECOVERY_AUTHORITY_GUARD_FAILED",
+    )
+    request_values = parse_ordered_manifest(
+        request,
+        RECOVERY_REQUEST_FIELDS,
+        "RECOVERY_AUTHORITY_GUARD_FAILED",
+    )
+    approval_body = recovery_approval_body(digest(request), request_values)
+    receipt = recovery_receipt_manifest(
+        approval_body=approval_body,
+        observed_at_utc="2026-07-26T00:00:01Z",
+        request_sha=digest(request),
+    )
+    approved = recovery_approved_state(
+        request,
+        approval_body,
+        receipt,
+    )
+    observed = datetime.datetime(
+        2026,
+        7,
+        26,
+        0,
+        0,
+        2,
+        tzinfo=datetime.timezone.utc,
+    )
+    values, observed_launch = validate_recovery_authority_bundle(
+        request=request,
+        approval_body=approval_body,
+        receipt=receipt,
+        approved=approved,
+        supervisor_source=source,
+        execution_context=context,
+        observed_at_utc=observed,
+        monotonic_now_ns=2_000_000_000,
+        boot_session_sha=boot_sha,
+    )
+    require(
+        values == request_values
+        and observed_launch["hashes"] == launch["hashes"],
+        "RECOVERY_AUTHORITY_GUARD_FAILED",
+    )
+    persisted_values, persisted_launch = validate_recovery_persisted_authority(
+        request=request,
+        approval_body=approval_body,
+        receipt=receipt,
+        approved=approved,
+        supervisor_source=source,
+        execution_context=context,
+    )
+    require(
+        persisted_values == request_values
+        and persisted_launch["hashes"] == launch["hashes"],
+        "RECOVERY_AUTHORITY_GUARD_FAILED",
+    )
+    expect_failure(
+        "RECOVERY_RECEIPT_INVALID",
+        lambda: validate_recovery_authority_bundle(
+            request=request,
+            approval_body=approval_body + b" ",
+            receipt=receipt,
+            approved=approved,
+            supervisor_source=source,
+            execution_context=context,
+            observed_at_utc=observed,
+            monotonic_now_ns=2_000_000_000,
+            boot_session_sha=boot_sha,
+        ),
+    )
+    expect_failure(
+        "RECOVERY_AUTHORITY_INVALID",
+        lambda: validate_recovery_authority_bundle(
+            request=request,
+            approval_body=approval_body,
+            receipt=receipt,
+            approved=approved,
+            supervisor_source=source,
+            execution_context=context + b"drift\n",
+            observed_at_utc=observed,
+            monotonic_now_ns=2_000_000_000,
+            boot_session_sha=boot_sha,
+        ),
+    )
+    expect_failure(
+        "RECOVERY_REQUEST_INVALID",
+        lambda: validate_recovery_authority_bundle(
+            request=request,
+            approval_body=approval_body,
+            receipt=receipt,
+            approved=approved,
+            supervisor_source=source,
+            execution_context=context,
+            observed_at_utc=datetime.datetime(
+                2026,
+                7,
+                26,
+                0,
+                10,
+                0,
+                tzinfo=datetime.timezone.utc,
+            ),
+            monotonic_now_ns=601_000_000_000,
+            boot_session_sha=boot_sha,
+        ),
+    )
+
+
+def recovery_claim_manifest(
+    request: bytes,
+    approval_body: bytes,
+    *,
+    attempt: str,
+    claimed_at_utc: str,
+    claimed_monotonic_ns: int,
+):
+    request_values = parse_ordered_manifest(
+        request,
+        RECOVERY_REQUEST_FIELDS,
+        "RECOVERY_CLAIM_INVALID",
+    )
+    require(
+        re.fullmatch(r"[0-9a-f]{64}", attempt) is not None
+        and isinstance(claimed_monotonic_ns, int)
+        and not isinstance(claimed_monotonic_ns, bool)
+        and claimed_monotonic_ns >= 0,
+        "RECOVERY_CLAIM_INVALID",
+    )
+    parse_utc_seconds(claimed_at_utc, "RECOVERY_CLAIM_INVALID")
+    cutoff = claimed_monotonic_ns + 30_000_000_000
+    rows = (
+        ("stateVersion", "WP4158_CLAIM_STATE_V4"),
+        ("status", "CONSUMED"),
+        ("attempt", attempt),
+        ("requestSha256", digest(request)),
+        ("userBodySha256", digest(approval_body)),
+        ("base", request_values["base"]),
+        ("commit", request_values["commit"]),
+        ("remote", request_values["remote"]),
+        ("ref", request_values["ref"]),
+        ("nonTargetRefsSha256", request_values["nonTargetRefsSha256"]),
+        ("claimedAtUtc", claimed_at_utc),
+        ("claimedMonotonicNs", str(claimed_monotonic_ns)),
+        ("bootstrapCutoffNs", str(cutoff)),
+    )
+    return ordered_manifest(rows, "RECOVERY_CLAIM_INVALID")
+
+
+def validate_recovery_claim(
+    request: bytes,
+    approval_body: bytes,
+    claim: bytes,
+):
+    request_values = parse_ordered_manifest(
+        request,
+        RECOVERY_REQUEST_FIELDS,
+        "RECOVERY_CLAIM_INVALID",
+    )
+    values = parse_ordered_manifest(
+        claim,
+        RECOVERY_CLAIM_FIELDS,
+        "RECOVERY_CLAIM_INVALID",
+    )
+    require(
+        values["stateVersion"] == "WP4158_CLAIM_STATE_V4"
+        and values["status"] == "CONSUMED"
+        and re.fullmatch(r"[0-9a-f]{64}", values["attempt"]) is not None
+        and values["requestSha256"] == digest(request)
+        and values["userBodySha256"] == digest(approval_body)
+        and all(
+            values[name] == request_values[name]
+            for name in ("base", "commit", "remote", "ref", "nonTargetRefsSha256")
+        )
+        and re.fullmatch(r"(0|[1-9][0-9]*)", values["claimedMonotonicNs"]) is not None
+        and re.fullmatch(r"(0|[1-9][0-9]*)", values["bootstrapCutoffNs"]) is not None,
+        "RECOVERY_CLAIM_INVALID",
+    )
+    parse_utc_seconds(values["claimedAtUtc"], "RECOVERY_CLAIM_INVALID")
+    require(
+        int(values["bootstrapCutoffNs"])
+        == int(values["claimedMonotonicNs"]) + 30_000_000_000,
+        "RECOVERY_CLAIM_INVALID",
+    )
+    return values
+
+
+def recovery_sentinel_intent_manifest(
+    *,
+    pid: int,
+    parent_pid: int,
+    release_deadline_ns: int,
+    challenge_sha: str,
+):
+    require(
+        all(
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and value > 0
+            for value in (pid, parent_pid, release_deadline_ns)
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", challenge_sha) is not None,
+        "RECOVERY_SENTINEL_INTENT_INVALID",
+    )
+    return ordered_manifest(
+        (
+            ("stateVersion", "WP4158_SENTINEL_INTENT_V12"),
+            ("status", "FENCED"),
+            ("pid", str(pid)),
+            ("parentPid", str(parent_pid)),
+            ("releaseDeadlineNs", str(release_deadline_ns)),
+            ("releaseReadFd", "5"),
+            ("guardianReadFd", "7"),
+            ("guardianChallengeSha256", challenge_sha),
+        ),
+        "RECOVERY_SENTINEL_INTENT_INVALID",
+    )
+
+
+def validate_recovery_sentinel_intent(data: bytes):
+    values = parse_ordered_manifest(
+        data,
+        RECOVERY_SENTINEL_INTENT_FIELDS,
+        "RECOVERY_SENTINEL_INTENT_INVALID",
+    )
+    require(
+        values["stateVersion"] == "WP4158_SENTINEL_INTENT_V12"
+        and values["status"] == "FENCED"
+        and values["releaseReadFd"] == "5"
+        and values["guardianReadFd"] == "7"
+        and all(
+            re.fullmatch(r"[1-9][0-9]*", values[name]) is not None
+            for name in ("pid", "parentPid", "releaseDeadlineNs")
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", values["guardianChallengeSha256"])
+        is not None,
+        "RECOVERY_SENTINEL_INTENT_INVALID",
+    )
+    return values
+
+
+def recovery_sentinel_ready_manifest(intent: bytes, *, pid: int):
+    intent_values = validate_recovery_sentinel_intent(intent)
+    require(
+        isinstance(pid, int)
+        and not isinstance(pid, bool)
+        and pid > 0
+        and str(pid) == intent_values["pid"],
+        "RECOVERY_SENTINEL_READY_INVALID",
+    )
+    return ordered_manifest(
+        (
+            ("stateVersion", "WP4158_SENTINEL_READY_V12"),
+            ("status", "READY"),
+            ("pid", str(pid)),
+            ("pgid", str(pid)),
+            ("parentPid", intent_values["parentPid"]),
+            ("intentSha256", digest(intent)),
+            ("guardianFd", "7"),
+            ("guardianChallengeSha256", intent_values["guardianChallengeSha256"]),
+            ("releaseDeadlineNs", intent_values["releaseDeadlineNs"]),
+        ),
+        "RECOVERY_SENTINEL_READY_INVALID",
+    )
+
+
+def validate_recovery_sentinel_ready(intent: bytes, ready: bytes):
+    intent_values = validate_recovery_sentinel_intent(intent)
+    values = parse_ordered_manifest(
+        ready,
+        RECOVERY_SENTINEL_READY_FIELDS,
+        "RECOVERY_SENTINEL_READY_INVALID",
+    )
+    require(
+        values["stateVersion"] == "WP4158_SENTINEL_READY_V12"
+        and values["status"] == "READY"
+        and values["pid"] == intent_values["pid"]
+        and values["pgid"] == intent_values["pid"]
+        and values["parentPid"] == intent_values["parentPid"]
+        and values["intentSha256"] == digest(intent)
+        and values["guardianFd"] == "7"
+        and values["guardianChallengeSha256"]
+        == intent_values["guardianChallengeSha256"]
+        and values["releaseDeadlineNs"] == intent_values["releaseDeadlineNs"],
+        "RECOVERY_SENTINEL_READY_INVALID",
+    )
+    return values
+
+
+def recovery_bash_ready_manifest(
+    *,
+    pid: int,
+    pgid: int,
+    started_ns: int,
+    lock_identity,
+):
+    require(
+        all(
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and value > 0
+            for value in (pid, pgid, started_ns)
+        )
+        and isinstance(lock_identity, tuple)
+        and len(lock_identity) == 2
+        and all(isinstance(value, int) and value >= 0 for value in lock_identity),
+        "RECOVERY_BASH_READY_INVALID",
+    )
+    release_deadline = started_ns + 30_000_000_000
+    return ordered_manifest(
+        (
+            ("stateVersion", "WP4158_BASH_READY_V7"),
+            ("status", "WAITING"),
+            ("pid", str(pid)),
+            ("pgid", str(pgid)),
+            ("startedMonotonicNs", str(started_ns)),
+            ("releaseDeadlineNs", str(release_deadline)),
+            ("lockDev", str(lock_identity[0])),
+            ("lockIno", str(lock_identity[1])),
+            ("lockFd", "9"),
+        ),
+        "RECOVERY_BASH_READY_INVALID",
+    )
+
+
+def validate_recovery_bash_ready(data: bytes):
+    values = parse_ordered_manifest(
+        data,
+        RECOVERY_BASH_READY_FIELDS,
+        "RECOVERY_BASH_READY_INVALID",
+    )
+    require(
+        values["stateVersion"] == "WP4158_BASH_READY_V7"
+        and values["status"] == "WAITING"
+        and values["lockFd"] == "9"
+        and all(
+            re.fullmatch(r"(0|[1-9][0-9]*)", values[name]) is not None
+            for name in (
+                "pid",
+                "pgid",
+                "startedMonotonicNs",
+                "releaseDeadlineNs",
+                "lockDev",
+                "lockIno",
+            )
+        )
+        and int(values["pid"]) > 0
+        and int(values["pgid"]) > 0
+        and int(values["startedMonotonicNs"]) > 0
+        and int(values["releaseDeadlineNs"])
+        == int(values["startedMonotonicNs"]) + 30_000_000_000,
+        "RECOVERY_BASH_READY_INVALID",
+    )
+    return values
+
+
+def recovery_mutation_state_manifest(ready: bytes):
+    ready_values = validate_recovery_bash_ready(ready)
+    release_deadline = int(ready_values["releaseDeadlineNs"])
+    return ordered_manifest(
+        (
+            ("stateVersion", "WP4158_MUTATION_STATE_V7"),
+            ("status", "FENCED"),
+            ("pid", ready_values["pid"]),
+            ("pgid", ready_values["pgid"]),
+            ("readySha256", digest(ready)),
+            ("releaseDeadlineNs", ready_values["releaseDeadlineNs"]),
+            ("mutationDeadlineNs", str(release_deadline + 150_000_000_000)),
+            ("lockDev", ready_values["lockDev"]),
+            ("lockIno", ready_values["lockIno"]),
+            ("lockFd", "9"),
+        ),
+        "RECOVERY_MUTATION_STATE_INVALID",
+    )
+
+
+def validate_recovery_mutation_state(ready: bytes, mutation: bytes):
+    expected = recovery_mutation_state_manifest(ready)
+    require(mutation == expected, "RECOVERY_MUTATION_STATE_INVALID")
+    return parse_ordered_manifest(
+        mutation,
+        RECOVERY_MUTATION_STATE_FIELDS,
+        "RECOVERY_MUTATION_STATE_INVALID",
+    )
+
+
+def recovery_resume_decision(
+    *,
+    boot_matches: bool,
+    monitor_lock: str,
+    descendant_lock: str,
+    intent_state: str,
+    ready_state: str,
+    before_ready_deadline: bool,
+    pid_esrch_samples=(),
+    group_esrch_samples=(),
+):
+    require(
+        isinstance(boot_matches, bool)
+        and monitor_lock in {"absent", "free", "busy", "drift"}
+        and descendant_lock in {"absent", "free", "busy", "drift"}
+        and intent_state in {"absent", "valid"}
+        and ready_state in {"absent", "partial", "valid"}
+        and isinstance(before_ready_deadline, bool)
+        and isinstance(pid_esrch_samples, (tuple, list))
+        and isinstance(group_esrch_samples, (tuple, list))
+        and all(isinstance(value, bool) for value in pid_esrch_samples)
+        and all(isinstance(value, bool) for value in group_esrch_samples),
+        "RECOVERY_RESUME_INVALID",
+    )
+    if monitor_lock in {"busy", "drift"} or descendant_lock in {"busy", "drift"}:
+        return "EXECUTOR_NOT_QUIESCENT"
+    if not boot_matches:
+        return "CLASSIFY_NO_MUTATION"
+    if intent_state == "absent":
+        require(ready_state == "absent", "RECOVERY_RESUME_INVALID")
+        return "CLASSIFY_NO_MUTATION"
+    if ready_state in {"absent", "partial"}:
+        if before_ready_deadline:
+            return "WAIT"
+        return (
+            "CLASSIFY_NO_MUTATION"
+            if tuple(pid_esrch_samples) == (True, True)
+            else "SENTINEL_NOT_QUIESCENT"
+        )
+    require(ready_state == "valid", "RECOVERY_RESUME_INVALID")
+    return (
+        "CLASSIFY_NO_MUTATION"
+        if tuple(group_esrch_samples) == (True, True)
+        else "EXECUTOR_NOT_QUIESCENT"
+    )
+
+
+def sample_recovery_esrch_twice(identity_value: int, *, probe, sleeper):
+    require(
+        isinstance(identity_value, int)
+        and not isinstance(identity_value, bool)
+        and identity_value > 0
+        and callable(probe)
+        and callable(sleeper),
+        "RECOVERY_ESRCH_PROBE_INVALID",
+    )
+    samples = []
+    for index in range(2):
+        try:
+            probe(identity_value)
+        except ProcessLookupError:
+            samples.append(True)
+        except PermissionError:
+            samples.append(False)
+        except OSError as exc:
+            if exc.errno == errno.ESRCH:
+                samples.append(True)
+            elif exc.errno == errno.EPERM:
+                samples.append(False)
+            else:
+                raise VerificationError("RECOVERY_ESRCH_PROBE_INVALID") from exc
+        else:
+            samples.append(False)
+        if index == 0:
+            sleeper(1)
+    return tuple(samples)
+
+
+def recovery_pid_esrch_twice(pid: int):
+    return sample_recovery_esrch_twice(
+        pid,
+        probe=lambda value: os.kill(value, 0),
+        sleeper=time.sleep,
+    ) == (True, True)
+
+
+def recovery_group_esrch_twice(pgid: int):
+    return sample_recovery_esrch_twice(
+        pgid,
+        probe=lambda value: os.killpg(value, 0),
+        sleeper=time.sleep,
+    ) == (True, True)
+
+
+def recovery_esrch_guard():
+    calls = []
+    sleeps = []
+
+    def missing(value):
+        calls.append(value)
+        raise ProcessLookupError(errno.ESRCH, "synthetic missing identity")
+
+    require(
+        sample_recovery_esrch_twice(
+            123,
+            probe=missing,
+            sleeper=lambda value: sleeps.append(value),
+        )
+        == (True, True)
+        and calls == [123, 123]
+        and sleeps == [1],
+        "RECOVERY_ESRCH_GUARD_FAILED",
+    )
+    calls.clear()
+    sleeps.clear()
+
+    def reused(value):
+        calls.append(value)
+        if len(calls) == 1:
+            raise ProcessLookupError(errno.ESRCH, "synthetic first miss")
+
+    require(
+        sample_recovery_esrch_twice(
+            456,
+            probe=reused,
+            sleeper=lambda value: sleeps.append(value),
+        )
+        == (True, False)
+        and calls == [456, 456]
+        and sleeps == [1],
+        "RECOVERY_ESRCH_GUARD_FAILED",
+    )
+    expect_failure(
+        "RECOVERY_ESRCH_PROBE_INVALID",
+        lambda: sample_recovery_esrch_twice(
+            789,
+            probe=lambda _value: (_ for _ in ()).throw(
+                OSError(errno.EIO, "synthetic probe failure")
+            ),
+            sleeper=lambda _value: None,
+        ),
+    )
+
+
+def recovery_resume_guard():
+    common = {
+        "monitor_lock": "free",
+        "descendant_lock": "free",
+        "intent_state": "valid",
+        "ready_state": "absent",
+    }
+    require(
+        recovery_resume_decision(
+            boot_matches=True,
+            before_ready_deadline=True,
+            **common,
+        )
+        == "WAIT"
+        and recovery_resume_decision(
+            boot_matches=True,
+            before_ready_deadline=False,
+            pid_esrch_samples=(True, True),
+            **common,
+        )
+        == "CLASSIFY_NO_MUTATION"
+        and recovery_resume_decision(
+            boot_matches=True,
+            before_ready_deadline=False,
+            pid_esrch_samples=(True, False),
+            **common,
+        )
+        == "SENTINEL_NOT_QUIESCENT"
+        and recovery_resume_decision(
+            boot_matches=False,
+            monitor_lock="absent",
+            descendant_lock="free",
+            intent_state="valid",
+            ready_state="partial",
+            before_ready_deadline=True,
+            pid_esrch_samples=(False, False),
+        )
+        == "CLASSIFY_NO_MUTATION"
+        and recovery_resume_decision(
+            boot_matches=True,
+            monitor_lock="free",
+            descendant_lock="free",
+            intent_state="valid",
+            ready_state="valid",
+            before_ready_deadline=False,
+            group_esrch_samples=(True, True),
+        )
+        == "CLASSIFY_NO_MUTATION"
+        and recovery_resume_decision(
+            boot_matches=True,
+            monitor_lock="busy",
+            descendant_lock="free",
+            intent_state="valid",
+            ready_state="valid",
+            before_ready_deadline=False,
+            group_esrch_samples=(True, True),
+        )
+        == "EXECUTOR_NOT_QUIESCENT",
+        "RECOVERY_RESUME_GUARD_FAILED",
+    )
+    expect_failure(
+        "RECOVERY_RESUME_INVALID",
+        lambda: recovery_resume_decision(
+            boot_matches=True,
+            monitor_lock="free",
+            descendant_lock="free",
+            intent_state="absent",
+            ready_state="valid",
+            before_ready_deadline=False,
+        ),
+    )
+
+
+def probe_recovery_lock_state(directory_fd: int, name: str):
+    require(name in {"monitor.lock", "descendant.lock"}, "RECOVERY_LOCK_INVALID")
+    current = entry_at(directory_fd, name)
+    if current is None:
+        return "absent", None
+    require(
+        stat.S_ISREG(current.st_mode)
+        and stat.S_IMODE(current.st_mode) == 0o600
+        and current.st_uid == os.getuid()
+        and current.st_size == 0,
+        "RECOVERY_LOCK_INVALID",
+    )
+    descriptor = os.open(
+        name,
+        os.O_RDWR | os.O_NOFOLLOW,
+        dir_fd=directory_fd,
+    )
+    try:
+        opened = os.fstat(descriptor)
+        require(
+            identity(opened) == identity(current),
+            "RECOVERY_LOCK_INVALID",
+        )
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return "busy", identity(opened)
+        return "free", identity(opened)
+    finally:
+        os.close(descriptor)
+
+
+def inspect_recovery_resume(
+    directory_fd: int,
+    *,
+    current_boot_sha: str,
+    request_boot_sha: str,
+    now_monotonic_ns: int,
+    pid_esrch_probe,
+    group_esrch_probe,
+    esrch_sleeper=time.sleep,
+):
+    require(
+        re.fullmatch(r"[0-9a-f]{64}", current_boot_sha) is not None
+        and re.fullmatch(r"[0-9a-f]{64}", request_boot_sha) is not None
+        and isinstance(now_monotonic_ns, int)
+        and not isinstance(now_monotonic_ns, bool)
+        and now_monotonic_ns >= 0
+        and callable(pid_esrch_probe)
+        and callable(group_esrch_probe)
+        and callable(esrch_sleeper),
+        "RECOVERY_RESUME_INVALID",
+    )
+    monitor_lock, _ = probe_recovery_lock_state(directory_fd, "monitor.lock")
+    descendant_lock, descendant_identity = probe_recovery_lock_state(
+        directory_fd,
+        "descendant.lock",
+    )
+    intent_entry = entry_at(directory_fd, "sentinel.intent")
+    ready_entry = entry_at(directory_fd, "sentinel.ready")
+    if intent_entry is None:
+        intent_state = "absent"
+        intent_values = None
+    else:
+        intent_bytes, _, _ = read_recovery_file(
+            directory_fd,
+            "sentinel.intent",
+        )
+        intent_values = validate_recovery_sentinel_intent(intent_bytes)
+        intent_state = "valid"
+    ready_values = None
+    if ready_entry is None:
+        ready_state = "absent"
+    else:
+        ready_bytes, _, _ = read_recovery_file(
+            directory_fd,
+            "sentinel.ready",
+        )
+        try:
+            require(intent_values is not None, "RECOVERY_SENTINEL_READY_INVALID")
+            ready_values = validate_recovery_sentinel_ready(
+                intent_bytes,
+                ready_bytes,
+            )
+        except VerificationError:
+            ready_state = "partial"
+        else:
+            ready_state = "valid"
+    bash_entry = entry_at(directory_fd, "bash.ready")
+    if bash_entry is not None:
+        bash_bytes, _, _ = read_recovery_file(
+            directory_fd,
+            "bash.ready",
+        )
+        bash_values = validate_recovery_bash_ready(bash_bytes)
+        recorded_lock = (
+            int(bash_values["lockDev"]),
+            int(bash_values["lockIno"]),
+        )
+        if (
+            descendant_identity is None
+            or recorded_lock != descendant_identity
+        ):
+            descendant_lock = "drift"
+    boot_matches = current_boot_sha == request_boot_sha
+    before_deadline = (
+        intent_values is not None
+        and now_monotonic_ns < int(intent_values["releaseDeadlineNs"])
+    )
+    pid_samples = ()
+    group_samples = ()
+    if (
+        boot_matches
+        and monitor_lock not in {"busy", "drift"}
+        and descendant_lock not in {"busy", "drift"}
+        and intent_state == "valid"
+        and ready_state in {"absent", "partial"}
+        and not before_deadline
+    ):
+        pid = int(intent_values["pid"])
+        pid_samples = (bool(pid_esrch_probe(pid)),)
+        esrch_sleeper(1)
+        pid_samples += (bool(pid_esrch_probe(pid)),)
+    elif (
+        boot_matches
+        and monitor_lock not in {"busy", "drift"}
+        and descendant_lock not in {"busy", "drift"}
+        and ready_state == "valid"
+    ):
+        pgid = int(ready_values["pgid"])
+        group_samples = (bool(group_esrch_probe(pgid)),)
+        esrch_sleeper(1)
+        group_samples += (bool(group_esrch_probe(pgid)),)
+    return recovery_resume_decision(
+        boot_matches=boot_matches,
+        monitor_lock=monitor_lock,
+        descendant_lock=descendant_lock,
+        intent_state=intent_state,
+        ready_state=ready_state,
+        before_ready_deadline=before_deadline,
+        pid_esrch_samples=pid_samples,
+        group_esrch_samples=group_samples,
+    )
+
+
+def recovery_resume_files_guard():
+    boot = "1" * 64
+    changed_boot = "2" * 64
+    with tempfile.TemporaryDirectory(prefix="wp4158-resume-") as root:
+        root_path = pathlib.Path(root)
+        os.chmod(root_path, 0o700)
+        root_fd = os.open(root_path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            forbidden_probe = lambda _identity: (_ for _ in ()).throw(
+                VerificationError("RECOVERY_RESUME_PROBE_CALLED")
+            )
+            require(
+                inspect_recovery_resume(
+                    root_fd,
+                    current_boot_sha=changed_boot,
+                    request_boot_sha=boot,
+                    now_monotonic_ns=1,
+                    pid_esrch_probe=forbidden_probe,
+                    group_esrch_probe=forbidden_probe,
+                )
+                == "CLASSIFY_NO_MUTATION",
+                "RECOVERY_RESUME_FILES_GUARD_FAILED",
+            )
+            intent = recovery_sentinel_intent_manifest(
+                pid=123,
+                parent_pid=122,
+                release_deadline_ns=100,
+                challenge_sha=digest(b"challenge"),
+            )
+            write_exclusive_recovery_file(
+                root_fd,
+                "sentinel.intent",
+                intent,
+            )
+            require(
+                inspect_recovery_resume(
+                    root_fd,
+                    current_boot_sha=boot,
+                    request_boot_sha=boot,
+                    now_monotonic_ns=99,
+                    pid_esrch_probe=forbidden_probe,
+                    group_esrch_probe=forbidden_probe,
+                )
+                == "WAIT",
+                "RECOVERY_RESUME_FILES_GUARD_FAILED",
+            )
+            pid_calls = []
+            require(
+                inspect_recovery_resume(
+                    root_fd,
+                    current_boot_sha=boot,
+                    request_boot_sha=boot,
+                    now_monotonic_ns=100,
+                    pid_esrch_probe=lambda pid: pid_calls.append(pid) or True,
+                    group_esrch_probe=forbidden_probe,
+                    esrch_sleeper=lambda _seconds: None,
+                )
+                == "CLASSIFY_NO_MUTATION"
+                and pid_calls == [123, 123],
+                "RECOVERY_RESUME_FILES_GUARD_FAILED",
+            )
+            write_exclusive_recovery_file(
+                root_fd,
+                "sentinel.ready",
+                b"partial-ready-state\n",
+            )
+            partial_calls = []
+            require(
+                inspect_recovery_resume(
+                    root_fd,
+                    current_boot_sha=boot,
+                    request_boot_sha=boot,
+                    now_monotonic_ns=100,
+                    pid_esrch_probe=lambda pid: partial_calls.append(pid) or True,
+                    group_esrch_probe=forbidden_probe,
+                    esrch_sleeper=lambda _seconds: None,
+                )
+                == "CLASSIFY_NO_MUTATION"
+                and partial_calls == [123, 123],
+                "RECOVERY_RESUME_FILES_GUARD_FAILED",
+            )
+            os.unlink("sentinel.ready", dir_fd=root_fd)
+            ready = recovery_sentinel_ready_manifest(intent, pid=123)
+            write_exclusive_recovery_file(
+                root_fd,
+                "sentinel.ready",
+                ready,
+            )
+            group_calls = []
+            require(
+                inspect_recovery_resume(
+                    root_fd,
+                    current_boot_sha=boot,
+                    request_boot_sha=boot,
+                    now_monotonic_ns=100,
+                    pid_esrch_probe=forbidden_probe,
+                    group_esrch_probe=lambda pgid: group_calls.append(pgid) or True,
+                    esrch_sleeper=lambda _seconds: None,
+                )
+                == "CLASSIFY_NO_MUTATION"
+                and group_calls == [123, 123],
+                "RECOVERY_RESUME_FILES_GUARD_FAILED",
+            )
+            drifted_bash = recovery_bash_ready_manifest(
+                pid=124,
+                pgid=123,
+                started_ns=1,
+                lock_identity=(1, 2),
+            )
+            write_exclusive_recovery_file(
+                root_fd,
+                "bash.ready",
+                drifted_bash,
+            )
+            require(
+                inspect_recovery_resume(
+                    root_fd,
+                    current_boot_sha=boot,
+                    request_boot_sha=boot,
+                    now_monotonic_ns=100,
+                    pid_esrch_probe=forbidden_probe,
+                    group_esrch_probe=forbidden_probe,
+                    esrch_sleeper=lambda _seconds: None,
+                )
+                == "EXECUTOR_NOT_QUIESCENT",
+                "RECOVERY_RESUME_FILES_GUARD_FAILED",
+            )
+            os.unlink("bash.ready", dir_fd=root_fd)
+            lock_fd, _ = open_recovery_lock(
+                root_fd,
+                "monitor.lock",
+                create=True,
+            )
+            try:
+                require(
+                    inspect_recovery_resume(
+                        root_fd,
+                        current_boot_sha=boot,
+                        request_boot_sha=boot,
+                        now_monotonic_ns=100,
+                        pid_esrch_probe=forbidden_probe,
+                        group_esrch_probe=forbidden_probe,
+                    )
+                    == "EXECUTOR_NOT_QUIESCENT",
+                    "RECOVERY_RESUME_FILES_GUARD_FAILED",
+                )
+            finally:
+                os.close(lock_fd)
+            for name in (
+                "monitor.lock",
+                "sentinel.ready",
+                "sentinel.intent",
+            ):
+                os.unlink(name, dir_fd=root_fd)
+            os.fsync(root_fd)
+        finally:
+            os.close(root_fd)
+        require(not tuple(root_path.iterdir()), "RECOVERY_RESUME_FILES_GUARD_FAILED")
+
+
+def classify_recovery_result(remote, *, base: str, commit: str, release_exists: bool):
+    require(
+        re.fullmatch(r"[0-9a-f]{40}", base) is not None
+        and re.fullmatch(r"[0-9a-f]{40}", commit) is not None
+        and base != commit
+        and isinstance(release_exists, bool),
+        "RECOVERY_RESULT_INVALID",
+    )
+    if remote is None:
+        return "REMOTE_UNKNOWN", "UNKNOWN", "UNKNOWN"
+    require(
+        isinstance(remote, dict)
+        and set(remote) >= {"main", "non_target_sha256"}
+        and re.fullmatch(r"[0-9a-f]{40}", remote["main"]) is not None
+        and re.fullmatch(r"[0-9a-f]{64}", remote["non_target_sha256"]) is not None,
+        "RECOVERY_RESULT_INVALID",
+    )
+    expected_refs = "4f3185217ec6f2309bab38a8fdbf25112b8f141204b139449686f993039899f2"
+    if remote["main"] == commit and remote["non_target_sha256"] == expected_refs:
+        return "REMOTE_COMMIT", commit, expected_refs
+    if remote["main"] == base and remote["non_target_sha256"] == expected_refs:
+        return (
+            "REMOTE_BASE_AMBIGUOUS" if release_exists else "REMOTE_BASE_UNATTEMPTED",
+            base,
+            expected_refs,
+        )
+    return (
+        "REMOTE_DIVERGED",
+        remote["main"],
+        remote["non_target_sha256"]
+        if remote["non_target_sha256"] == expected_refs
+        else "DRIFT",
+    )
+
+
+def recovery_terminal_outcome(remote_class: str, *, winner_exit):
+    require(
+        remote_class
+        in {
+            "REMOTE_COMMIT",
+            "REMOTE_BASE_AMBIGUOUS",
+            "REMOTE_BASE_UNATTEMPTED",
+            "REMOTE_DIVERGED",
+            "REMOTE_UNKNOWN",
+        }
+        and (
+            winner_exit is None
+            or (
+                isinstance(winner_exit, int)
+                and not isinstance(winner_exit, bool)
+            )
+            or winner_exit in {"TIMEOUT", "RESPONSE_LOSS", "NOT_SPAWNED"}
+        ),
+        "RECOVERY_OUTCOME_INVALID",
+    )
+    if remote_class == "REMOTE_COMMIT":
+        return "PUSH_APPLIED" if winner_exit == 0 else "ALREADY_PUSHED_RECOVERY"
+    if remote_class == "REMOTE_BASE_UNATTEMPTED":
+        require(
+            winner_exit in {None, "NOT_SPAWNED"},
+            "RECOVERY_OUTCOME_INVALID",
+        )
+        return "PUSH_NOT_APPLIED"
+    if remote_class == "REMOTE_DIVERGED":
+        return "REMOTE_DIVERGED"
+    return "REMOTE_STATE_UNKNOWN"
+
+
+def recovery_result_manifest(
+    *,
+    remote_class: str,
+    base: str,
+    commit: str,
+    remote_main: str,
+    non_target_refs_sha: str,
+    observed_at_utc: str,
+):
+    rows = (
+        ("stateVersion", "WP4158_RESULT_STATE_V10_INITIAL"),
+        ("remoteClass", remote_class),
+        ("base", base),
+        ("commit", commit),
+        ("remoteMain", remote_main),
+        ("nonTargetRefsSha256", non_target_refs_sha),
+        ("observedAtUtc", observed_at_utc),
+    )
+    manifest = ordered_manifest(rows, "RECOVERY_RESULT_INVALID")
+    validate_recovery_result_manifest(manifest)
+    return manifest
+
+
+def validate_recovery_result_manifest(data: bytes):
+    values = parse_ordered_manifest(
+        data,
+        RECOVERY_RESULT_FIELDS,
+        "RECOVERY_RESULT_INVALID",
+    )
+    require(
+        values["stateVersion"] == "WP4158_RESULT_STATE_V10_INITIAL"
+        and re.fullmatch(r"[0-9a-f]{40}", values["base"]) is not None
+        and re.fullmatch(r"[0-9a-f]{40}", values["commit"]) is not None
+        and values["base"] != values["commit"],
+        "RECOVERY_RESULT_INVALID",
+    )
+    parse_utc_seconds(values["observedAtUtc"], "RECOVERY_RESULT_INVALID")
+    remote_class = values["remoteClass"]
+    remote_main = values["remoteMain"]
+    refs = values["nonTargetRefsSha256"]
+    expected_refs = "4f3185217ec6f2309bab38a8fdbf25112b8f141204b139449686f993039899f2"
+    if remote_class == "REMOTE_COMMIT":
+        valid = remote_main == values["commit"] and refs == expected_refs
+    elif remote_class in {"REMOTE_BASE_AMBIGUOUS", "REMOTE_BASE_UNATTEMPTED"}:
+        valid = remote_main == values["base"] and refs == expected_refs
+    elif remote_class == "REMOTE_DIVERGED":
+        valid = (
+            (re.fullmatch(r"[0-9a-f]{40}", remote_main) is not None or remote_main == "MISSING")
+            and (re.fullmatch(r"[0-9a-f]{64}", refs) is not None or refs == "DRIFT")
+        )
+    elif remote_class == "REMOTE_UNKNOWN":
+        valid = remote_main == "UNKNOWN" and refs == "UNKNOWN"
+    else:
+        valid = False
+    require(valid, "RECOVERY_RESULT_INVALID")
+    return values
+
+
+def recovery_result_upgrade_manifest(
+    prior: bytes,
+    *,
+    remote,
+    observed_at_utc: str,
+):
+    prior_values = validate_recovery_result_manifest(prior)
+    require(
+        prior_values["remoteClass"] in {"REMOTE_BASE_AMBIGUOUS", "REMOTE_UNKNOWN"},
+        "RECOVERY_RESULT_UPGRADE_INVALID",
+    )
+    expected_refs = "4f3185217ec6f2309bab38a8fdbf25112b8f141204b139449686f993039899f2"
+    require(
+        isinstance(remote, dict)
+        and remote.get("main") == prior_values["commit"]
+        and remote.get("non_target_sha256") == expected_refs,
+        "RECOVERY_RESULT_UPGRADE_INVALID",
+    )
+    parse_utc_seconds(observed_at_utc, "RECOVERY_RESULT_UPGRADE_INVALID")
+    rows = (
+        ("stateVersion", "WP4158_RESULT_STATE_V10_COMMIT_UPGRADE"),
+        ("priorResultSha256", digest(prior)),
+        ("remoteClass", "REMOTE_COMMIT"),
+        ("base", prior_values["base"]),
+        ("commit", prior_values["commit"]),
+        ("remoteMain", prior_values["commit"]),
+        ("nonTargetRefsSha256", expected_refs),
+        ("observedAtUtc", observed_at_utc),
+    )
+    return ordered_manifest(rows, "RECOVERY_RESULT_UPGRADE_INVALID")
+
+
+def validate_recovery_result_upgrade(prior: bytes, upgrade: bytes, remote):
+    expected = recovery_result_upgrade_manifest(
+        prior,
+        remote=remote,
+        observed_at_utc=parse_ordered_manifest(
+            upgrade,
+            RECOVERY_RESULT_V2_FIELDS,
+            "RECOVERY_RESULT_UPGRADE_INVALID",
+        )["observedAtUtc"],
+    )
+    require(upgrade == expected, "RECOVERY_RESULT_UPGRADE_INVALID")
+    return parse_ordered_manifest(
+        upgrade,
+        RECOVERY_RESULT_V2_FIELDS,
+        "RECOVERY_RESULT_UPGRADE_INVALID",
+    )
+
+
+def persist_or_validate_recovery_result(
+    directory_fd: int,
+    desired: bytes,
+    *,
+    upgrade: bool,
+):
+    name = "result.state.v2" if upgrade else "result.state"
+    if upgrade:
+        parse_ordered_manifest(
+            desired,
+            RECOVERY_RESULT_V2_FIELDS,
+            "RECOVERY_RESULT_PERSIST_INVALID",
+        )
+    else:
+        validate_recovery_result_manifest(desired)
+    try:
+        write_exclusive_recovery_file(directory_fd, name, desired)
+        return "CREATED"
+    except VerificationError as exc:
+        if exc.__cause__ is None or not isinstance(exc.__cause__, FileExistsError):
+            raise
+    existing, _, _ = read_recovery_file(directory_fd, name)
+    if upgrade:
+        require(existing == desired, "RECOVERY_RESULT_PERSIST_INVALID")
+    else:
+        existing_values = validate_recovery_result_manifest(existing)
+        desired_values = validate_recovery_result_manifest(desired)
+        comparable = tuple(
+            name
+            for name in RECOVERY_RESULT_FIELDS
+            if name != "observedAtUtc"
+        )
+        require(
+            all(
+                existing_values[name] == desired_values[name]
+                for name in comparable
+            ),
+            "RECOVERY_RESULT_PERSIST_INVALID",
+        )
+    return "EXISTING"
+
+
+def classify_and_persist_recovery(
+    directory_fd: int,
+    *,
+    base: str,
+    commit: str,
+    release_exists: bool,
+    winner_exit,
+    observed_at_utc: str,
+    remote_observer,
+):
+    require(
+        callable(remote_observer),
+        "RECOVERY_CLASSIFICATION_INVALID",
+    )
+    parse_utc_seconds(observed_at_utc, "RECOVERY_CLASSIFICATION_INVALID")
+    try:
+        remote = remote_observer()
+    except VerificationError:
+        remote = None
+    remote_class, remote_main, refs = classify_recovery_result(
+        remote,
+        base=base,
+        commit=commit,
+        release_exists=release_exists,
+    )
+    outcome = recovery_terminal_outcome(
+        remote_class,
+        winner_exit=winner_exit,
+    )
+    desired = recovery_result_manifest(
+        remote_class=remote_class,
+        base=base,
+        commit=commit,
+        remote_main=remote_main,
+        non_target_refs_sha=refs,
+        observed_at_utc=observed_at_utc,
+    )
+    if (
+        entry_at(directory_fd, "result.state") is not None
+        and remote_class == "REMOTE_COMMIT"
+    ):
+        prior, _, _ = read_recovery_file(
+            directory_fd,
+            "result.state",
+        )
+        prior_values = validate_recovery_result_manifest(prior)
+        if prior_values["remoteClass"] in {
+            "REMOTE_BASE_AMBIGUOUS",
+            "REMOTE_UNKNOWN",
+        }:
+            upgrade = recovery_result_upgrade_manifest(
+                prior,
+                remote=remote,
+                observed_at_utc=observed_at_utc,
+            )
+            persistence = persist_or_validate_recovery_result(
+                directory_fd,
+                upgrade,
+                upgrade=True,
+            )
+            return {
+                "remote_class": remote_class,
+                "remote_main": remote_main,
+                "non_target_sha256": refs,
+                "outcome": outcome,
+                "persistence": persistence,
+                "result": upgrade,
+            }
+    persistence = persist_or_validate_recovery_result(
+        directory_fd,
+        desired,
+        upgrade=False,
+    )
+    return {
+        "remote_class": remote_class,
+        "remote_main": remote_main,
+        "non_target_sha256": refs,
+        "outcome": outcome,
+        "persistence": persistence,
+        "result": desired,
+    }
+
+
+def recovery_classification_guard():
+    base = "1" * 40
+    commit = "2" * 40
+    refs_sha = "4f3185217ec6f2309bab38a8fdbf25112b8f141204b139449686f993039899f2"
+    with tempfile.TemporaryDirectory(prefix="wp4158-classify-") as root:
+        root_path = pathlib.Path(root)
+        os.chmod(root_path, 0o700)
+        root_fd = os.open(root_path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        calls = []
+        try:
+            classified = classify_and_persist_recovery(
+                root_fd,
+                base=base,
+                commit=commit,
+                release_exists=False,
+                winner_exit="NOT_SPAWNED",
+                observed_at_utc="2026-07-26T00:00:01Z",
+                remote_observer=lambda: calls.append("base") or {
+                    "main": base,
+                    "non_target_sha256": refs_sha,
+                },
+            )
+            require(
+                calls == ["base"]
+                and classified["remote_class"] == "REMOTE_BASE_UNATTEMPTED"
+                and classified["outcome"] == "PUSH_NOT_APPLIED"
+                and classified["persistence"] == "CREATED",
+                "RECOVERY_CLASSIFICATION_GUARD_FAILED",
+            )
+            repeated = classify_and_persist_recovery(
+                root_fd,
+                base=base,
+                commit=commit,
+                release_exists=False,
+                winner_exit="NOT_SPAWNED",
+                observed_at_utc="2026-07-26T00:00:02Z",
+                remote_observer=lambda: calls.append("base-repeat") or {
+                    "main": base,
+                    "non_target_sha256": refs_sha,
+                },
+            )
+            require(
+                calls == ["base", "base-repeat"]
+                and repeated["persistence"] == "EXISTING",
+                "RECOVERY_CLASSIFICATION_GUARD_FAILED",
+            )
+            os.unlink("result.state", dir_fd=root_fd)
+            applied = classify_and_persist_recovery(
+                root_fd,
+                base=base,
+                commit=commit,
+                release_exists=True,
+                winner_exit=1,
+                observed_at_utc="2026-07-26T00:00:03Z",
+                remote_observer=lambda: {
+                    "main": commit,
+                    "non_target_sha256": refs_sha,
+                },
+            )
+            require(
+                applied["remote_class"] == "REMOTE_COMMIT"
+                and applied["outcome"] == "ALREADY_PUSHED_RECOVERY",
+                "RECOVERY_CLASSIFICATION_GUARD_FAILED",
+            )
+            os.unlink("result.state", dir_fd=root_fd)
+            ambiguous = classify_and_persist_recovery(
+                root_fd,
+                base=base,
+                commit=commit,
+                release_exists=True,
+                winner_exit="RESPONSE_LOSS",
+                observed_at_utc="2026-07-26T00:00:04Z",
+                remote_observer=lambda: {
+                    "main": base,
+                    "non_target_sha256": refs_sha,
+                },
+            )
+            upgraded = classify_and_persist_recovery(
+                root_fd,
+                base=base,
+                commit=commit,
+                release_exists=True,
+                winner_exit="RESPONSE_LOSS",
+                observed_at_utc="2026-07-26T00:00:05Z",
+                remote_observer=lambda: {
+                    "main": commit,
+                    "non_target_sha256": refs_sha,
+                },
+            )
+            require(
+                ambiguous["remote_class"] == "REMOTE_BASE_AMBIGUOUS"
+                and upgraded["remote_class"] == "REMOTE_COMMIT"
+                and upgraded["persistence"] == "CREATED"
+                and entry_at(root_fd, "result.state.v2") is not None,
+                "RECOVERY_CLASSIFICATION_GUARD_FAILED",
+            )
+            os.unlink("result.state.v2", dir_fd=root_fd)
+            os.unlink("result.state", dir_fd=root_fd)
+            unknown = classify_and_persist_recovery(
+                root_fd,
+                base=base,
+                commit=commit,
+                release_exists=True,
+                winner_exit="RESPONSE_LOSS",
+                observed_at_utc="2026-07-26T00:00:06Z",
+                remote_observer=lambda: (_ for _ in ()).throw(
+                    VerificationError("synthetic remote failure")
+                ),
+            )
+            require(
+                unknown["remote_class"] == "REMOTE_UNKNOWN"
+                and unknown["outcome"] == "REMOTE_STATE_UNKNOWN",
+                "RECOVERY_CLASSIFICATION_GUARD_FAILED",
+            )
+            os.unlink("result.state", dir_fd=root_fd)
+            os.fsync(root_fd)
+        finally:
+            os.close(root_fd)
+        require(not tuple(root_path.iterdir()), "RECOVERY_CLASSIFICATION_GUARD_FAILED")
+
+
+def recovery_result_file_guard():
+    base = "1" * 40
+    commit = "2" * 40
+    refs_sha = "4f3185217ec6f2309bab38a8fdbf25112b8f141204b139449686f993039899f2"
+    with tempfile.TemporaryDirectory(prefix="wp4158-result-") as root:
+        root_path = pathlib.Path(root)
+        os.chmod(root_path, 0o700)
+        root_fd = os.open(root_path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            first = recovery_result_manifest(
+                remote_class="REMOTE_BASE_AMBIGUOUS",
+                base=base,
+                commit=commit,
+                remote_main=base,
+                non_target_refs_sha=refs_sha,
+                observed_at_utc="2026-07-26T00:00:01Z",
+            )
+            second_observation = recovery_result_manifest(
+                remote_class="REMOTE_BASE_AMBIGUOUS",
+                base=base,
+                commit=commit,
+                remote_main=base,
+                non_target_refs_sha=refs_sha,
+                observed_at_utc="2026-07-26T00:00:02Z",
+            )
+            require(
+                persist_or_validate_recovery_result(
+                    root_fd,
+                    first,
+                    upgrade=False,
+                )
+                == "CREATED"
+                and persist_or_validate_recovery_result(
+                    root_fd,
+                    second_observation,
+                    upgrade=False,
+                )
+                == "EXISTING",
+                "RECOVERY_RESULT_PERSIST_INVALID",
+            )
+            expect_failure(
+                "RECOVERY_RESULT_PERSIST_INVALID",
+                lambda: persist_or_validate_recovery_result(
+                    root_fd,
+                    recovery_result_manifest(
+                        remote_class="REMOTE_UNKNOWN",
+                        base=base,
+                        commit=commit,
+                        remote_main="UNKNOWN",
+                        non_target_refs_sha="UNKNOWN",
+                        observed_at_utc="2026-07-26T00:00:03Z",
+                    ),
+                    upgrade=False,
+                ),
+            )
+            remote = {"main": commit, "non_target_sha256": refs_sha}
+            upgrade = recovery_result_upgrade_manifest(
+                first,
+                remote=remote,
+                observed_at_utc="2026-07-26T00:00:04Z",
+            )
+            require(
+                persist_or_validate_recovery_result(
+                    root_fd,
+                    upgrade,
+                    upgrade=True,
+                )
+                == "CREATED"
+                and persist_or_validate_recovery_result(
+                    root_fd,
+                    upgrade,
+                    upgrade=True,
+                )
+                == "EXISTING",
+                "RECOVERY_RESULT_PERSIST_INVALID",
+            )
+            different_upgrade = recovery_result_upgrade_manifest(
+                first,
+                remote=remote,
+                observed_at_utc="2026-07-26T00:00:05Z",
+            )
+            expect_failure(
+                "RECOVERY_RESULT_PERSIST_INVALID",
+                lambda: persist_or_validate_recovery_result(
+                    root_fd,
+                    different_upgrade,
+                    upgrade=True,
+                ),
+            )
+            for name in ("result.state.v2", "result.state"):
+                os.unlink(name, dir_fd=root_fd)
+            os.fsync(root_fd)
+        finally:
+            os.close(root_fd)
+        require(not tuple(root_path.iterdir()), "RECOVERY_RESULT_PERSIST_INVALID")
+
+
+def recovery_fork_spec() -> bytes:
+    return ordered_manifest(RECOVERY_FORK_SPEC_ROWS, "RECOVERY_FORK_SPEC_INVALID")
+
+
+def recovery_tool_manifest() -> bytes:
+    manifest = ordered_manifest(RECOVERY_TOOL_MANIFEST_ROWS, "RECOVERY_TOOL_MANIFEST_INVALID")
+    require(
+        len(RECOVERY_TOOL_MANIFEST_ROWS) == 22
+        and len(manifest) == 1364
+        and digest(manifest) == "54513a0642ce49b294f5db1de1caf84586b2eb26ec89ffec94eb10e72f7cd021",
+        "RECOVERY_TOOL_MANIFEST_INVALID",
+    )
+    return manifest
+
+
+def recovery_local_config_manifest() -> bytes:
+    manifest = ordered_manifest(RECOVERY_LOCAL_CONFIG_ROWS, "RECOVERY_LOCAL_CONFIG_INVALID")
+    require(
+        len(RECOVERY_LOCAL_CONFIG_ROWS) == 10
+        and digest(manifest) == "02146ac58e289564b567bde31586f03b35a9c9b404d8eff056595bdbdeee58f7",
+        "RECOVERY_LOCAL_CONFIG_INVALID",
+    )
+    return manifest
+
+
+def read_verified_file(path, token):
+    candidate = pathlib.Path(path)
+    require(candidate.is_absolute(), token)
+    try:
+        resolved = candidate.resolve(strict=True)
+        descriptor = os.open(resolved, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            before = os.fstat(descriptor)
+            require(stat.S_ISREG(before.st_mode), token)
+            chunks = []
+            while True:
+                chunk = os.read(descriptor, 1024 * 1024)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+            after = os.fstat(descriptor)
+            current = resolved.lstat()
+            require(
+                identity(before) == identity(after) == identity(current)
+                and stat.S_ISREG(current.st_mode),
+                token,
+            )
+            return b"".join(chunks), identity(before)
+        finally:
+            os.close(descriptor)
+    except VerificationError:
+        raise
+    except (OSError, RuntimeError) as exc:
+        raise VerificationError(token) from exc
+
+
+def require_no_symlink_chain(path: pathlib.Path):
+    require(path.is_absolute(), "RECOVERY_CONTEXT_INVALID")
+    current = pathlib.Path(path.anchor)
+    for component in path.parts[1:]:
+        current = current / component
+        info = current.lstat()
+        require(
+            not stat.S_ISLNK(info.st_mode),
+            "RECOVERY_CONTEXT_INVALID",
+        )
+    require(
+        path.resolve(strict=True) == path,
+        "RECOVERY_CONTEXT_INVALID",
+    )
+
+
+def observe_context_object(
+    prefix: str,
+    path_text: str,
+    expected_type: str,
+    expected_mode: str,
+    expected_uid: str,
+    expected_gid: str,
+    expected_device: str,
+    expected_inode: str,
+):
+    path = pathlib.Path(path_text)
+    try:
+        require_no_symlink_chain(path)
+        info = path.lstat()
+        kind = (
+            "directory"
+            if stat.S_ISDIR(info.st_mode)
+            else "regular"
+            if stat.S_ISREG(info.st_mode)
+            else "invalid"
+        )
+        flags = os.O_RDONLY | os.O_NOFOLLOW
+        if kind == "directory":
+            flags |= os.O_DIRECTORY
+        descriptor = os.open(path, flags)
+        try:
+            opened = os.fstat(descriptor)
+        finally:
+            os.close(descriptor)
+        observed = (
+            kind,
+            f"{stat.S_IMODE(info.st_mode):04o}",
+            str(info.st_uid),
+            str(info.st_gid),
+            str(info.st_dev),
+            str(info.st_ino),
+        )
+        require(
+            identity(info) == identity(opened)
+            and observed
+            == (
+                expected_type,
+                expected_mode,
+                expected_uid,
+                expected_gid,
+                expected_device,
+                expected_inode,
+            ),
+            "RECOVERY_CONTEXT_INVALID",
+        )
+        return (
+            (prefix + ".path", path_text),
+            (prefix + ".type", kind),
+            (prefix + ".mode", observed[1]),
+            (prefix + ".uid", observed[2]),
+            (prefix + ".gid", observed[3]),
+            (prefix + ".dev", observed[4]),
+            (prefix + ".ino", observed[5]),
+        )
+    except VerificationError:
+        raise
+    except (OSError, RuntimeError) as exc:
+        raise VerificationError("RECOVERY_CONTEXT_INVALID") from exc
+
+
+def recovery_execution_context_manifest():
+    require(os.getcwd() == "/", "RECOVERY_CONTEXT_INVALID")
+    rows = [("cwd", "/")]
+    for context in RECOVERY_FIXED_CONTEXT:
+        rows.extend(observe_context_object(*context))
+    run_parent = pathlib.Path("/Users/yusuke/.codex/run")
+    require_no_symlink_chain(run_parent)
+    run_info = run_parent.lstat()
+    rows.extend(
+        observe_context_object(
+            "runParent",
+            str(run_parent),
+            "directory",
+            "0700",
+            "501",
+            "20",
+            str(run_info.st_dev),
+            str(run_info.st_ino),
+        )
+    )
+    require(len(rows) == 36, "RECOVERY_CONTEXT_INVALID")
+    return ordered_manifest(rows, "RECOVERY_CONTEXT_INVALID")
+
+
+def recovery_context_static_guard():
+    require(
+        len(RECOVERY_FIXED_CONTEXT) == 4
+        and all(len(row) == 8 for row in RECOVERY_FIXED_CONTEXT)
+        and {row[0] for row in RECOVERY_FIXED_CONTEXT}
+        == {"worktree", "gitdir", "config", "codexParent"}
+        and all(row[6] == "16777233" for row in RECOVERY_FIXED_CONTEXT),
+        "RECOVERY_CONTEXT_STATIC_INVALID",
+    )
+
+
+def validate_recovery_leaf(name: str):
+    require(
+        isinstance(name, str)
+        and (
+            name in RECOVERY_LEAVES
+            or re.fullmatch(r"claim\.[0-9a-f]{64}\.tmp", name) is not None
+        ),
+        "RECOVERY_LEAF_INVALID",
+    )
+
+
+def write_exclusive_recovery_file(directory_fd: int, name: str, data: bytes):
+    validate_recovery_leaf(name)
+    require(
+        isinstance(directory_fd, int)
+        and directory_fd >= 0
+        and isinstance(data, bytes),
+        "RECOVERY_FILE_INVALID",
+    )
+    descriptor = None
+    try:
+        descriptor = os.open(
+            name,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+            0o600,
+            dir_fd=directory_fd,
+        )
+        offset = 0
+        while offset < len(data):
+            written = os.write(descriptor, data[offset:])
+            require(written > 0, "RECOVERY_FILE_INVALID")
+            offset += written
+        os.fsync(descriptor)
+        info = os.fstat(descriptor)
+        require(
+            stat.S_ISREG(info.st_mode)
+            and stat.S_IMODE(info.st_mode) == 0o600
+            and info.st_uid == os.getuid()
+            and info.st_size == len(data),
+            "RECOVERY_FILE_INVALID",
+        )
+        os.fsync(directory_fd)
+        return identity(info)
+    except VerificationError:
+        raise
+    except OSError as exc:
+        raise VerificationError("RECOVERY_FILE_INVALID") from exc
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+
+
+def read_recovery_file(directory_fd: int, name: str, expected_identity=None):
+    validate_recovery_leaf(name)
+    descriptor = None
+    try:
+        descriptor = os.open(
+            name,
+            os.O_RDONLY | os.O_NOFOLLOW,
+            dir_fd=directory_fd,
+        )
+        before = os.fstat(descriptor)
+        require(
+            stat.S_ISREG(before.st_mode)
+            and stat.S_IMODE(before.st_mode) == 0o600
+            and before.st_uid == os.getuid()
+            and (expected_identity is None or identity(before) == expected_identity),
+            "RECOVERY_FILE_INVALID",
+        )
+        chunks = []
+        while True:
+            chunk = os.read(descriptor, 65536)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        after = os.fstat(descriptor)
+        current = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        require(
+            identity(before) == identity(after) == identity(current)
+            and stat.S_ISREG(current.st_mode),
+            "RECOVERY_FILE_INVALID",
+        )
+        return b"".join(chunks), identity(before), before.st_nlink
+    except VerificationError:
+        raise
+    except OSError as exc:
+        raise VerificationError("RECOVERY_FILE_INVALID") from exc
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+
+
+def claim_recovery_once(directory_fd: int, attempt: str, claim_bytes: bytes):
+    require(re.fullmatch(r"[0-9a-f]{64}", attempt) is not None, "RECOVERY_CLAIM_FILE_INVALID")
+    temp_name = f"claim.{attempt}.tmp"
+    temp_identity = write_exclusive_recovery_file(
+        directory_fd,
+        temp_name,
+        claim_bytes,
+    )
+    won = False
+    try:
+        try:
+            os.link(
+                temp_name,
+                "claim",
+                src_dir_fd=directory_fd,
+                dst_dir_fd=directory_fd,
+                follow_symlinks=False,
+            )
+            won = True
+        except FileExistsError:
+            won = False
+        if won:
+            temp_data, observed_temp, temp_links = read_recovery_file(
+                directory_fd,
+                temp_name,
+                temp_identity,
+            )
+            claim_data, claim_identity, claim_links = read_recovery_file(
+                directory_fd,
+                "claim",
+                temp_identity,
+            )
+            require(
+                temp_data == claim_data == claim_bytes
+                and observed_temp == claim_identity == temp_identity
+                and temp_links == claim_links == 2,
+                "RECOVERY_CLAIM_FILE_INVALID",
+            )
+        else:
+            _, claim_identity, _ = read_recovery_file(directory_fd, "claim")
+            require(claim_identity != temp_identity, "RECOVERY_CLAIM_FILE_INVALID")
+        os.unlink(temp_name, dir_fd=directory_fd)
+        os.fsync(directory_fd)
+        if won:
+            claim_data, claim_identity, claim_links = read_recovery_file(
+                directory_fd,
+                "claim",
+                temp_identity,
+            )
+            require(
+                claim_data == claim_bytes
+                and claim_identity == temp_identity
+                and claim_links == 1,
+                "RECOVERY_CLAIM_FILE_INVALID",
+            )
+        return won
+    except BaseException:
+        try:
+            current = os.stat(temp_name, dir_fd=directory_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            pass
+        else:
+            if identity(current) == temp_identity:
+                os.unlink(temp_name, dir_fd=directory_fd)
+                os.fsync(directory_fd)
+        raise
+
+
+def reconcile_recovery_claim_aliases(
+    directory_fd: int,
+    request: bytes,
+    approval_body: bytes,
+):
+    require(
+        isinstance(directory_fd, int)
+        and directory_fd >= 0
+        and isinstance(request, bytes)
+        and isinstance(approval_body, bytes),
+        "RECOVERY_CLAIM_RECONCILE_INVALID",
+    )
+    names = tuple(sorted(os.listdir(directory_fd)))
+    temp_names = tuple(
+        name
+        for name in names
+        if re.fullmatch(r"claim\.[0-9a-f]{64}\.tmp", name)
+        is not None
+    )
+    require(
+        all(
+            not name.startswith("claim.")
+            or name in temp_names
+            for name in names
+        ),
+        "RECOVERY_CLAIM_RECONCILE_INVALID",
+    )
+    claim_entry = entry_at(directory_fd, "claim")
+    claim_data = None
+    claim_identity = None
+    claim_links = None
+    claim_values = None
+    if claim_entry is not None:
+        claim_data, claim_identity, claim_links = read_recovery_file(
+            directory_fd,
+            "claim",
+        )
+        claim_values = validate_recovery_claim(
+            request,
+            approval_body,
+            claim_data,
+        )
+    observed_temps = []
+    for name in temp_names:
+        data, file_identity, links = read_recovery_file(
+            directory_fd,
+            name,
+        )
+        values = validate_recovery_claim(
+            request,
+            approval_body,
+            data,
+        )
+        require(
+            name == f"claim.{values['attempt']}.tmp",
+            "RECOVERY_CLAIM_RECONCILE_INVALID",
+        )
+        observed_temps.append(
+            (name, data, file_identity, links, values)
+        )
+    same_aliases = [
+        row
+        for row in observed_temps
+        if claim_identity is not None and row[2] == claim_identity
+    ]
+    require(
+        len(same_aliases) <= 1,
+        "RECOVERY_CLAIM_RECONCILE_INVALID",
+    )
+    if claim_identity is None:
+        require(
+            all(row[3] == 1 for row in observed_temps),
+            "RECOVERY_CLAIM_RECONCILE_INVALID",
+        )
+    else:
+        require(
+            claim_links == (2 if same_aliases else 1)
+            and all(
+                (
+                    row[1] == claim_data
+                    and row[3] == 2
+                    and row[4] == claim_values
+                )
+                if row in same_aliases
+                else row[3] == 1
+                for row in observed_temps
+            ),
+            "RECOVERY_CLAIM_RECONCILE_INVALID",
+        )
+    for name, _data, _identity, _links, _values in observed_temps:
+        os.unlink(name, dir_fd=directory_fd)
+    if observed_temps:
+        os.fsync(directory_fd)
+    if claim_identity is not None:
+        current_data, current_identity, current_links = (
+            read_recovery_file(
+                directory_fd,
+                "claim",
+                claim_identity,
+            )
+        )
+        require(
+            current_data == claim_data
+            and current_identity == claim_identity
+            and current_links == 1,
+            "RECOVERY_CLAIM_RECONCILE_INVALID",
+        )
+        return current_data, claim_values
+    return None, None
+
+
+def recovery_claim_reconcile_guard():
+    fields = tuple(
+        (name, f"value-{index}")
+        for index, name in enumerate(RECOVERY_REQUEST_FIELDS)
+    )
+    request = ordered_manifest(
+        fields,
+        "RECOVERY_CLAIM_RECONCILE_GUARD_FAILED",
+    )
+    approval_body = b"synthetic approval"
+    with tempfile.TemporaryDirectory(
+        prefix="wp4158-claim-reconcile-"
+    ) as root:
+        root_path = pathlib.Path(root)
+        os.chmod(root_path, 0o700)
+        root_fd = os.open(
+            root_path,
+            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+        )
+        try:
+            first_attempt = "1" * 64
+            first = recovery_claim_manifest(
+                request,
+                approval_body,
+                attempt=first_attempt,
+                claimed_at_utc="2026-07-26T00:00:01Z",
+                claimed_monotonic_ns=1,
+            )
+            write_exclusive_recovery_file(
+                root_fd,
+                f"claim.{first_attempt}.tmp",
+                first,
+            )
+            require(
+                reconcile_recovery_claim_aliases(
+                    root_fd,
+                    request,
+                    approval_body,
+                )
+                == (None, None)
+                and not os.listdir(root_fd),
+                "RECOVERY_CLAIM_RECONCILE_GUARD_FAILED",
+            )
+            write_exclusive_recovery_file(
+                root_fd,
+                f"claim.{first_attempt}.tmp",
+                first,
+            )
+            os.link(
+                f"claim.{first_attempt}.tmp",
+                "claim",
+                src_dir_fd=root_fd,
+                dst_dir_fd=root_fd,
+                follow_symlinks=False,
+            )
+            os.fsync(root_fd)
+            claim_data, claim_values = reconcile_recovery_claim_aliases(
+                root_fd,
+                request,
+                approval_body,
+            )
+            require(
+                claim_data == first
+                and claim_values["attempt"] == first_attempt
+                and os.listdir(root_fd) == ["claim"],
+                "RECOVERY_CLAIM_RECONCILE_GUARD_FAILED",
+            )
+            second_attempt = "2" * 64
+            second = recovery_claim_manifest(
+                request,
+                approval_body,
+                attempt=second_attempt,
+                claimed_at_utc="2026-07-26T00:00:02Z",
+                claimed_monotonic_ns=2,
+            )
+            write_exclusive_recovery_file(
+                root_fd,
+                f"claim.{second_attempt}.tmp",
+                second,
+            )
+            repeated_data, repeated_values = (
+                reconcile_recovery_claim_aliases(
+                    root_fd,
+                    request,
+                    approval_body,
+                )
+            )
+            require(
+                repeated_data == first
+                and repeated_values["attempt"] == first_attempt
+                and os.listdir(root_fd) == ["claim"],
+                "RECOVERY_CLAIM_RECONCILE_GUARD_FAILED",
+            )
+            os.unlink("claim", dir_fd=root_fd)
+            os.fsync(root_fd)
+        finally:
+            os.close(root_fd)
+        require(
+            not tuple(root_path.iterdir()),
+            "RECOVERY_CLAIM_RECONCILE_GUARD_FAILED",
+        )
+
+
+def recovery_claim_file_guard():
+    with tempfile.TemporaryDirectory(prefix="wp4158-claim-") as root:
+        root_path = pathlib.Path(root)
+        os.chmod(root_path, 0o700)
+        root_fd = os.open(root_path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            first_attempt = "1" * 64
+            second_attempt = "2" * 64
+            require(
+                claim_recovery_once(root_fd, first_attempt, b"first-claim\n"),
+                "RECOVERY_CLAIM_FILE_INVALID",
+            )
+            require(
+                not claim_recovery_once(root_fd, second_attempt, b"second-claim\n"),
+                "RECOVERY_CLAIM_FILE_INVALID",
+            )
+            content, _, links = read_recovery_file(root_fd, "claim")
+            require(
+                content == b"first-claim\n"
+                and links == 1
+                and sorted(os.listdir(root_path)) == ["claim"],
+                "RECOVERY_CLAIM_FILE_INVALID",
+            )
+            expect_failure(
+                "RECOVERY_LEAF_INVALID",
+                lambda: write_exclusive_recovery_file(
+                    root_fd,
+                    "../outside",
+                    b"forbidden",
+                ),
+            )
+            os.unlink("claim", dir_fd=root_fd)
+            os.fsync(root_fd)
+        finally:
+            os.close(root_fd)
+        require(not tuple(root_path.iterdir()), "RECOVERY_CLAIM_FILE_INVALID")
+
+
+def open_recovery_lock(directory_fd: int, name: str, *, create: bool):
+    require(name in {"monitor.lock", "descendant.lock"}, "RECOVERY_LOCK_INVALID")
+    flags = os.O_RDWR | os.O_NOFOLLOW
+    if create:
+        flags |= os.O_CREAT | os.O_EXCL
+    descriptor = None
+    try:
+        descriptor = os.open(
+            name,
+            flags,
+            0o600,
+            dir_fd=directory_fd,
+        )
+        info = os.fstat(descriptor)
+        current = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        require(
+            stat.S_ISREG(info.st_mode)
+            and stat.S_IMODE(info.st_mode) == 0o600
+            and info.st_uid == os.getuid()
+            and info.st_size == 0
+            and identity(info) == identity(current),
+            "RECOVERY_LOCK_INVALID",
+        )
+        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if create:
+            os.fsync(descriptor)
+            os.fsync(directory_fd)
+        return descriptor, identity(info)
+    except VerificationError:
+        if descriptor is not None:
+            os.close(descriptor)
+        raise
+    except (BlockingIOError, OSError) as exc:
+        if descriptor is not None:
+            os.close(descriptor)
+        raise VerificationError("RECOVERY_LOCK_BUSY") from exc
+
+
+def recovery_lock_guard():
+    with tempfile.TemporaryDirectory(prefix="wp4158-lock-") as root:
+        root_path = pathlib.Path(root)
+        os.chmod(root_path, 0o700)
+        root_fd = os.open(root_path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        first = None
+        second = None
+        try:
+            first, first_identity = open_recovery_lock(
+                root_fd,
+                "monitor.lock",
+                create=True,
+            )
+            expect_failure(
+                "RECOVERY_LOCK_BUSY",
+                lambda: open_recovery_lock(
+                    root_fd,
+                    "monitor.lock",
+                    create=False,
+                ),
+            )
+            os.close(first)
+            first = None
+            second, second_identity = open_recovery_lock(
+                root_fd,
+                "monitor.lock",
+                create=False,
+            )
+            require(
+                second_identity == first_identity,
+                "RECOVERY_LOCK_INVALID",
+            )
+            os.close(second)
+            second = None
+            os.unlink("monitor.lock", dir_fd=root_fd)
+            os.fsync(root_fd)
+        finally:
+            for descriptor in (first, second):
+                if descriptor is not None:
+                    os.close(descriptor)
+            os.close(root_fd)
+        require(not tuple(root_path.iterdir()), "RECOVERY_LOCK_INVALID")
+
+
+def poll_exact_child(
+    pid: int,
+    state,
+    deadline: float,
+    *,
+    waitpid_fn=os.waitpid,
+    monotonic_fn=time.monotonic,
+):
+    require(
+        isinstance(pid, int)
+        and not isinstance(pid, bool)
+        and pid > 0
+        and isinstance(state, dict)
+        and set(state) == {"reaped", "status"}
+        and state["reaped"] is False
+        and state["status"] is None
+        and isinstance(deadline, (int, float)),
+        "RECOVERY_WAIT_INVALID",
+    )
+    while True:
+        require(monotonic_fn() < deadline, "RECOVERY_WAIT_TIMEOUT")
+        try:
+            observed_pid, status_value = waitpid_fn(pid, os.WNOHANG)
+        except InterruptedError:
+            continue
+        except (ChildProcessError, OSError) as exc:
+            if isinstance(exc, OSError) and exc.errno == errno.EINTR:
+                continue
+            raise VerificationError("RECOVERY_WAIT_IDENTITY_UNKNOWN") from exc
+        if observed_pid == 0:
+            return False
+        require(observed_pid == pid, "RECOVERY_WAIT_IDENTITY_UNKNOWN")
+        require(
+            isinstance(status_value, int) and not isinstance(status_value, bool),
+            "RECOVERY_WAIT_IDENTITY_UNKNOWN",
+        )
+        state["status"] = status_value
+        state["reaped"] = True
+        return True
+
+
+def recovery_wait_guard():
+    pid = 4242
+    calls = []
+    results = iter(
+        (
+            InterruptedError(),
+            OSError(errno.EINTR, "interrupted"),
+            (0, 0),
+        )
+    )
+    def interrupted_then_live(observed_pid, flags):
+        calls.append((observed_pid, flags))
+        result = next(results)
+        if isinstance(result, BaseException):
+            raise result
+        return result
+    state = {"reaped": False, "status": None}
+    require(
+        not poll_exact_child(
+            pid,
+            state,
+            2.0,
+            waitpid_fn=interrupted_then_live,
+            monotonic_fn=lambda: 1.0,
+        )
+        and state == {"reaped": False, "status": None}
+        and calls == [(pid, os.WNOHANG)] * 3,
+        "RECOVERY_WAIT_GUARD_FAILED",
+    )
+    completed_calls = []
+    def completed(observed_pid, flags):
+        completed_calls.append((observed_pid, flags))
+        return pid, 17920
+    require(
+        poll_exact_child(
+            pid,
+            state,
+            2.0,
+            waitpid_fn=completed,
+            monotonic_fn=lambda: 1.0,
+        )
+        and state == {"reaped": True, "status": 17920}
+        and completed_calls == [(pid, os.WNOHANG)],
+        "RECOVERY_WAIT_GUARD_FAILED",
+    )
+    expect_failure(
+        "RECOVERY_WAIT_INVALID",
+        lambda: poll_exact_child(
+            pid,
+            state,
+            2.0,
+            waitpid_fn=lambda *_args: (_ for _ in ()).throw(
+                VerificationError("RECOVERY_WAIT_GUARD_FAILED")
+            ),
+            monotonic_fn=lambda: 1.0,
+        ),
+    )
+    for wait_result, token in (
+        ((pid + 1, 0), "RECOVERY_WAIT_IDENTITY_UNKNOWN"),
+        (ChildProcessError(), "RECOVERY_WAIT_IDENTITY_UNKNOWN"),
+        (OSError(errno.ECHILD, "no child"), "RECOVERY_WAIT_IDENTITY_UNKNOWN"),
+    ):
+        def invalid_wait(_pid, _flags, result=wait_result):
+            if isinstance(result, BaseException):
+                raise result
+            return result
+        expect_failure(
+            token,
+            lambda call=invalid_wait: poll_exact_child(
+                pid,
+                {"reaped": False, "status": None},
+                2.0,
+                waitpid_fn=call,
+                monotonic_fn=lambda: 1.0,
+            ),
+        )
+    expect_failure(
+        "RECOVERY_WAIT_TIMEOUT",
+        lambda: poll_exact_child(
+            pid,
+            {"reaped": False, "status": None},
+            1.0,
+            waitpid_fn=lambda *_args: (0, 0),
+            monotonic_fn=lambda: 1.0,
+        ),
+    )
+
+
+def descriptor_is_closed(descriptor: int):
+    try:
+        fcntl.fcntl(descriptor, fcntl.F_GETFD)
+    except OSError as exc:
+        require(exc.errno == errno.EBADF, "RECOVERY_FORK_FD_INVALID")
+        return True
+    return False
+
+
+def normalize_fork_release_descriptors():
+    targets = (5, 6, 7, 8, 10)
+    require(all(descriptor_is_closed(fd) for fd in targets), "RECOVERY_FORK_FD_INVALID")
+    raw = ()
+    backups = []
+    expected_identities = ()
+    try:
+        release = os.pipe()
+        guardian = os.pipe()
+        raw = release + guardian
+        for descriptor in raw:
+            backup = fcntl.fcntl(descriptor, fcntl.F_DUPFD_CLOEXEC, 20)
+            require(backup >= 20 and backup not in backups, "RECOVERY_FORK_FD_INVALID")
+            backups.append(backup)
+        expected_identities = tuple(identity(os.fstat(fd)) for fd in backups)
+        for descriptor in raw:
+            os.close(descriptor)
+        raw = ()
+        for backup, target in zip(backups, (5, 6, 7, 10)):
+            os.dup2(backup, target, inheritable=False)
+        for backup in backups:
+            os.close(backup)
+        backups = []
+        require(
+            descriptor_is_closed(8)
+            and all(not descriptor_is_closed(fd) for fd in (5, 6, 7, 10))
+            and not os.get_inheritable(6)
+            and not os.get_inheritable(10),
+            "RECOVERY_FORK_FD_INVALID",
+        )
+        identities = tuple(identity(os.fstat(fd)) for fd in (5, 6, 7, 10))
+        require(
+            identities == expected_identities
+            and len(set(identities)) == 4
+            and tuple(
+                fcntl.fcntl(fd, fcntl.F_GETFL) & os.O_ACCMODE
+                for fd in (5, 6, 7, 10)
+            )
+            == (os.O_RDONLY, os.O_WRONLY, os.O_RDONLY, os.O_WRONLY),
+            "RECOVERY_FORK_FD_INVALID",
+        )
+        return 5, 6, 7, 10
+    except BaseException:
+        for descriptor in raw:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        for descriptor in backups:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        for descriptor in (5, 6, 7, 10):
+            if not descriptor_is_closed(descriptor):
+                os.close(descriptor)
+        raise
+
+
+def settle_probe_child(pid: int, state, deadline: float):
+    while not state["reaped"] and time.monotonic() < deadline:
+        if poll_exact_child(pid, state, deadline):
+            return
+        time.sleep(0.01)
+    if state["reaped"]:
+        return
+    for signum in (signal.SIGTERM, signal.SIGKILL):
+        try:
+            os.kill(pid, signum)
+        except ProcessLookupError:
+            pass
+        stage_deadline = time.monotonic() + 2
+        while not state["reaped"] and time.monotonic() < stage_deadline:
+            if poll_exact_child(pid, state, stage_deadline):
+                return
+            time.sleep(0.01)
+    require(state["reaped"], "RECOVERY_FORK_REAP_TIMEOUT")
+
+
+def fork_release_probe():
+    protected = {signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGALRM}
+    original_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+    require(original_mask == set(), "RECOVERY_FORK_SIGNAL_INVALID")
+    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, protected)
+    require(previous_mask == set(), "RECOVERY_FORK_SIGNAL_INVALID")
+    deadline = time.monotonic() + 3
+    release_read = release_write = guardian_read = guardian_write = None
+    child_pid = None
+    child_state = {"reaped": False, "status": None}
+    mask_restored = False
+    try:
+        release_read, release_write, guardian_read, guardian_write = normalize_fork_release_descriptors()
+        child_pid = os.fork()
+        if child_pid == 0:
+            try:
+                os.close(release_write)
+                os.close(guardian_write)
+                require(
+                    protected <= signal.pthread_sigmask(signal.SIG_BLOCK, set()),
+                    "RECOVERY_FORK_SIGNAL_INVALID",
+                )
+                remaining = deadline - time.monotonic()
+                require(remaining > 0, "RECOVERY_FORK_RELEASE_INVALID")
+                readable, _, _ = select.select((release_read,), (), (), remaining)
+                require(readable == [release_read], "RECOVERY_FORK_RELEASE_INVALID")
+                require(
+                    os.read(release_read, 2) == b"R"
+                    and os.read(release_read, 1) == b""
+                    and time.monotonic() < deadline,
+                    "RECOVERY_FORK_RELEASE_INVALID",
+                )
+                os.close(release_read)
+                os.setpgid(0, 0)
+                require(os.getpid() == os.getpgrp(), "RECOVERY_FORK_RELEASE_INVALID")
+                for signum in protected:
+                    signal.signal(signum, signal.SIG_DFL)
+                signal.pthread_sigmask(signal.SIG_SETMASK, set())
+                remaining = deadline - time.monotonic()
+                require(remaining > 0, "RECOVERY_FORK_GUARDIAN_INVALID")
+                readable, _, _ = select.select((guardian_read,), (), (), remaining)
+                require(readable == [guardian_read], "RECOVERY_FORK_GUARDIAN_INVALID")
+                challenge = b""
+                while len(challenge) < 32:
+                    chunk = os.read(guardian_read, 32 - len(challenge))
+                    require(chunk, "RECOVERY_FORK_GUARDIAN_INVALID")
+                    challenge += chunk
+                require(len(challenge) == 32, "RECOVERY_FORK_GUARDIAN_INVALID")
+                os.close(guardian_read)
+                os._exit(0)
+            except BaseException:
+                os._exit(70)
+        os.close(release_read)
+        release_read = None
+        os.close(guardian_read)
+        guardian_read = None
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        mask_restored = True
+        require(
+            signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask,
+            "RECOVERY_FORK_SIGNAL_INVALID",
+        )
+        challenge = os.urandom(32)
+        require(len(challenge) == 32 and time.monotonic() < deadline, "RECOVERY_FORK_GUARDIAN_INVALID")
+        offset = 0
+        while offset < len(challenge):
+            written = os.write(guardian_write, challenge[offset:])
+            require(written > 0, "RECOVERY_FORK_GUARDIAN_INVALID")
+            offset += written
+        require(time.monotonic() < deadline, "RECOVERY_FORK_RELEASE_INVALID")
+        require(os.write(release_write, b"R") == 1, "RECOVERY_FORK_RELEASE_INVALID")
+        os.close(release_write)
+        release_write = None
+        settle_probe_child(child_pid, child_state, time.monotonic() + 3)
+        require(
+            child_state["reaped"]
+            and os.WIFEXITED(child_state["status"])
+            and os.WEXITSTATUS(child_state["status"]) == 0,
+            "RECOVERY_FORK_RELEASE_INVALID",
+        )
+        os.close(guardian_write)
+        guardian_write = None
+        require(
+            all(descriptor_is_closed(fd) for fd in (5, 6, 7, 8, 10))
+            and signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask,
+            "RECOVERY_FORK_FD_INVALID",
+        )
+        print("WP4158_FORK_RELEASE_PASS release=R challenge=32 residue=0")
+        return 0
+    finally:
+        for descriptor in (release_read, release_write, guardian_read, guardian_write):
+            if descriptor is not None:
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
+        if child_pid is not None and child_pid > 0 and not child_state["reaped"]:
+            settle_probe_child(child_pid, child_state, time.monotonic() + 0.1)
+        if not mask_restored:
+            signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+
+
+def fork_release_guard():
+    result = run_capped_process(
+        (
+            str(pathlib.Path(sys.executable).resolve(strict=True)),
+            "-I",
+            str(pathlib.Path(__file__).resolve(strict=True)),
+            "--fork-release-probe",
+        ),
+        environment={"LC_ALL": "C", "LANG": "C"},
+        cwd="/",
+        deadline_seconds=10,
+        failure_code="RECOVERY_FORK_RELEASE_GUARD",
+    )
+    require(
+        result.returncode == 0
+        and result.stdout
+        == b"WP4158_FORK_RELEASE_PASS release=R challenge=32 residue=0\n"
+        and result.stderr == b"",
+        "RECOVERY_FORK_RELEASE_GUARD_FAILED",
+    )
+
+
+def group_sentinel(root_text: str):
+    protected = {signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGALRM}
+    inherited_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+    require(inherited_mask == protected, "RECOVERY_SENTINEL_SIGNAL_INVALID")
+    for signum in protected:
+        signal.signal(signum, signal.SIG_DFL)
+        require(signal.getsignal(signum) == signal.SIG_DFL, "RECOVERY_SENTINEL_SIGNAL_INVALID")
+    previous = signal.pthread_sigmask(signal.SIG_SETMASK, set())
+    require(
+        previous == protected
+        and signal.pthread_sigmask(signal.SIG_BLOCK, set()) == set()
+        and all(signal.getsignal(signum) == signal.SIG_DFL for signum in protected),
+        "RECOVERY_SENTINEL_SIGNAL_INVALID",
+    )
+    require(os.getcwd() == "/", "RECOVERY_SENTINEL_IDENTITY_INVALID")
+    pid = os.getpid()
+    require(pid == os.getpgrp(), "RECOVERY_SENTINEL_IDENTITY_INVALID")
+    root = pathlib.Path(root_text)
+    require(root.is_absolute(), "RECOVERY_SENTINEL_IDENTITY_INVALID")
+    root_info = root.lstat()
+    require(
+        stat.S_ISDIR(root_info.st_mode)
+        and not stat.S_ISLNK(root_info.st_mode)
+        and stat.S_IMODE(root_info.st_mode) == 0o700
+        and root_info.st_uid == os.getuid(),
+        "RECOVERY_SENTINEL_IDENTITY_INVALID",
+    )
+    root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        intent, _, _ = read_recovery_file(root_fd, "sentinel.intent")
+        intent_values = validate_recovery_sentinel_intent(intent)
+        require(
+            int(intent_values["pid"]) == pid
+            and int(intent_values["parentPid"]) == os.getppid()
+            and int(intent_values["releaseReadFd"]) == 5
+            and int(intent_values["guardianReadFd"]) == 7,
+            "RECOVERY_SENTINEL_IDENTITY_INVALID",
+        )
+        deadline_ns = int(intent_values["releaseDeadlineNs"])
+        require(time.monotonic_ns() < deadline_ns, "RECOVERY_SENTINEL_DEADLINE")
+        guardian_info = os.fstat(7)
+        require(
+            stat.S_ISFIFO(guardian_info.st_mode)
+            and (fcntl.fcntl(7, fcntl.F_GETFL) & os.O_ACCMODE) == os.O_RDONLY,
+            "RECOVERY_SENTINEL_GUARDIAN_INVALID",
+        )
+        challenge = b""
+        while len(challenge) < 32:
+            remaining = (deadline_ns - time.monotonic_ns()) / 1_000_000_000
+            require(remaining > 0, "RECOVERY_SENTINEL_DEADLINE")
+            readable, _, _ = select.select((7,), (), (), remaining)
+            require(readable == [7], "RECOVERY_SENTINEL_GUARDIAN_INVALID")
+            chunk = os.read(7, 32 - len(challenge))
+            require(chunk, "RECOVERY_SENTINEL_GUARDIAN_INVALID")
+            challenge += chunk
+        require(
+            digest(challenge) == intent_values["guardianChallengeSha256"],
+            "RECOVERY_SENTINEL_GUARDIAN_INVALID",
+        )
+        extra, _, _ = select.select((7,), (), (), 0)
+        require(not extra, "RECOVERY_SENTINEL_GUARDIAN_INVALID")
+        ready = recovery_sentinel_ready_manifest(intent, pid=pid)
+        write_exclusive_recovery_file(root_fd, "sentinel.ready", ready)
+        while True:
+            require(os.getppid() == int(intent_values["parentPid"]), "RECOVERY_SENTINEL_PARENT_DRIFT")
+            readable, _, _ = select.select((7,), (), (), 0.05)
+            if not readable:
+                continue
+            later = os.read(7, 1)
+            require(later == b"", "RECOVERY_SENTINEL_GUARDIAN_INVALID")
+            return 70
+    finally:
+        os.close(root_fd)
+        try:
+            os.close(7)
+        except OSError:
+            pass
+
+
+def bash_bootstrap_probe(root_text: str):
+    require(
+        os.getcwd() == "/"
+        and signal.pthread_sigmask(signal.SIG_BLOCK, set()) == set(),
+        "RECOVERY_BASH_BOOTSTRAP_INVALID",
+    )
+    root = pathlib.Path(root_text)
+    root_info = root.lstat()
+    require(
+        root.is_absolute()
+        and stat.S_ISDIR(root_info.st_mode)
+        and not stat.S_ISLNK(root_info.st_mode)
+        and stat.S_IMODE(root_info.st_mode) == 0o700
+        and root_info.st_uid == os.getuid(),
+        "RECOVERY_BASH_BOOTSTRAP_INVALID",
+    )
+    root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        sentinel_ready, _, _ = read_recovery_file(
+            root_fd,
+            "sentinel.ready",
+        )
+        sentinel_intent, _, _ = read_recovery_file(
+            root_fd,
+            "sentinel.intent",
+        )
+        sentinel_values = validate_recovery_sentinel_ready(
+            sentinel_intent,
+            sentinel_ready,
+        )
+        pid = os.getpid()
+        pgid = os.getpgrp()
+        require(
+            pid > 0
+            and pgid == int(sentinel_values["pgid"])
+            and pid != pgid,
+            "RECOVERY_BASH_BOOTSTRAP_INVALID",
+        )
+        lock_info = os.fstat(9)
+        lock_identity = identity(lock_info)
+        require(
+            stat.S_ISREG(lock_info.st_mode)
+            and stat.S_IMODE(lock_info.st_mode) == 0o600
+            and lock_info.st_uid == os.getuid()
+            and lock_info.st_size == 0,
+            "RECOVERY_BASH_BOOTSTRAP_INVALID",
+        )
+        expect_failure(
+            "RECOVERY_LOCK_BUSY",
+            lambda: open_recovery_lock(
+                root_fd,
+                "descendant.lock",
+                create=False,
+            ),
+        )
+        started_ns = time.monotonic_ns()
+        ready = recovery_bash_ready_manifest(
+            pid=pid,
+            pgid=pgid,
+            started_ns=started_ns,
+            lock_identity=lock_identity,
+        )
+        write_exclusive_recovery_file(root_fd, "bash.ready", ready)
+        ready_values = validate_recovery_bash_ready(ready)
+        release_deadline = int(ready_values["releaseDeadlineNs"])
+        while time.monotonic_ns() < release_deadline:
+            if entry_at(root_fd, "bash.release") is not None:
+                release, _, _ = read_recovery_file(
+                    root_fd,
+                    "bash.release",
+                )
+                require(release == b"", "RECOVERY_BASH_BOOTSTRAP_INVALID")
+                break
+            time.sleep(0.01)
+        else:
+            raise VerificationError("RECOVERY_BASH_RELEASE_TIMEOUT")
+        require(
+            time.monotonic_ns() < release_deadline
+            and identity(os.fstat(9)) == lock_identity
+            and os.getpgrp() == pgid,
+            "RECOVERY_BASH_BOOTSTRAP_INVALID",
+        )
+        mutation, _, _ = read_recovery_file(
+            root_fd,
+            "mutation.state",
+        )
+        validate_recovery_mutation_state(ready, mutation)
+        os.set_inheritable(9, True)
+        script = (
+            "exec /usr/bin/python3 -I -c "
+            "'import os,time; info=os.fstat(9); "
+            "assert info.st_size==0; time.sleep(0.2)'"
+        )
+        launcher = (
+            "/usr/bin/env",
+            "-i",
+            "HOME=/Users/yusuke",
+            "PATH=/usr/bin:/bin",
+            "LC_ALL=C",
+            "LANG=C",
+            "/bin/bash",
+            "--noprofile",
+            "--norc",
+            "-c",
+            script,
+        )
+        os.execve("/usr/bin/env", launcher, {})
+    finally:
+        os.close(root_fd)
+
+
+def bash_bootstrap(root_text: str):
+    require(
+        os.getcwd() == "/"
+        and os.environ
+        == {
+            "HOME": "/Users/yusuke",
+            "PATH": "/usr/bin:/bin",
+            "LC_ALL": "C",
+            "LANG": "C",
+        }
+        and signal.pthread_sigmask(signal.SIG_BLOCK, set()) == set(),
+        "RECOVERY_BASH_BOOTSTRAP_INVALID",
+    )
+    require(
+        signal.getsignal(signal.SIGINT)
+        in {signal.SIG_DFL, signal.default_int_handler}
+        and all(
+            signal.getsignal(signum) == signal.SIG_DFL
+            for signum in (signal.SIGTERM, signal.SIGHUP, signal.SIGALRM)
+        ),
+        "RECOVERY_BASH_BOOTSTRAP_INVALID",
+    )
+    for signum in RECOVERY_SIGNAL_NUMBERS:
+        signal.signal(signum, signal.SIG_DFL)
+    bundle = load_recovery_nonce_authority(
+        root_text,
+        require_claim=True,
+    )
+    root_fd = bundle["root_fd"]
+    try:
+        sentinel_intent, _, _ = read_recovery_file(
+            root_fd,
+            "sentinel.intent",
+        )
+        sentinel_ready, _, _ = read_recovery_file(
+            root_fd,
+            "sentinel.ready",
+        )
+        sentinel_values = validate_recovery_sentinel_ready(
+            sentinel_intent,
+            sentinel_ready,
+        )
+        pid = os.getpid()
+        pgid = os.getpgrp()
+        require(
+            pid > 0
+            and pgid == int(sentinel_values["pgid"])
+            and pid != pgid,
+            "RECOVERY_BASH_BOOTSTRAP_INVALID",
+        )
+        lock_info = os.fstat(9)
+        lock_identity = identity(lock_info)
+        require(
+            stat.S_ISREG(lock_info.st_mode)
+            and stat.S_IMODE(lock_info.st_mode) == 0o600
+            and lock_info.st_uid == os.getuid()
+            and lock_info.st_size == 0,
+            "RECOVERY_BASH_BOOTSTRAP_INVALID",
+        )
+        expect_failure(
+            "RECOVERY_LOCK_BUSY",
+            lambda: open_recovery_lock(
+                root_fd,
+                "descendant.lock",
+                create=False,
+            ),
+        )
+        started_ns = time.monotonic_ns()
+        ready = recovery_bash_ready_manifest(
+            pid=pid,
+            pgid=pgid,
+            started_ns=started_ns,
+            lock_identity=lock_identity,
+        )
+        write_exclusive_recovery_file(
+            root_fd,
+            "bash.ready",
+            ready,
+        )
+        ready_values = validate_recovery_bash_ready(ready)
+        release_deadline = int(ready_values["releaseDeadlineNs"])
+        while time.monotonic_ns() < release_deadline:
+            if entry_at(root_fd, "bash.release") is not None:
+                release, _, _ = read_recovery_file(
+                    root_fd,
+                    "bash.release",
+                )
+                require(
+                    release == b"",
+                    "RECOVERY_BASH_BOOTSTRAP_INVALID",
+                )
+                break
+            time.sleep(0.01)
+        else:
+            raise VerificationError("RECOVERY_BASH_RELEASE_TIMEOUT")
+        mutation, _, _ = read_recovery_file(
+            root_fd,
+            "mutation.state",
+        )
+        validate_recovery_mutation_state(ready, mutation)
+        current_claim, _, _ = read_recovery_file(
+            root_fd,
+            "claim",
+        )
+        require(
+            current_claim == bundle["claim"]
+            and identity(os.fstat(9)) == lock_identity
+            and os.getpgrp() == pgid
+            and time.monotonic_ns() < release_deadline,
+            "RECOVERY_BASH_BOOTSTRAP_INVALID",
+        )
+        current_context = recovery_execution_context_manifest()
+        boot_sha, _ = recovery_boot_session()
+        values, current_launch = validate_recovery_authority_bundle(
+            request=bundle["request"],
+            approval_body=bundle["approval_body"],
+            receipt=bundle["receipt"],
+            approved=bundle["approved"],
+            supervisor_source=bundle["source"],
+            execution_context=current_context,
+            observed_at_utc=datetime.datetime.now(datetime.timezone.utc),
+            monotonic_now_ns=time.monotonic_ns(),
+            boot_session_sha=boot_sha,
+        )
+        require(
+            current_launch["hashes"] == bundle["launch"]["hashes"]
+            and values == bundle["values"],
+            "RECOVERY_BASH_BOOTSTRAP_INVALID",
+        )
+        os.set_inheritable(9, True)
+        os.execve(
+            "/usr/bin/env",
+            bundle["launch"]["bashExecutor"],
+            {},
+        )
+    finally:
+        os.close(root_fd)
+
+
+def sentinel_ready_probe():
+    protected = {signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGALRM}
+    original_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+    require(original_mask == set(), "RECOVERY_SENTINEL_PROBE_INVALID")
+    root_context = tempfile.TemporaryDirectory(prefix="wp4158-sentinel-ready-")
+    root = pathlib.Path(root_context.name)
+    os.chmod(root, 0o700)
+    root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, protected)
+    require(previous_mask == set(), "RECOVERY_SENTINEL_PROBE_INVALID")
+    deadline_ns = time.monotonic_ns() + 10_000_000_000
+    release_read = release_write = guardian_read = guardian_write = None
+    child_pid = None
+    child_state = {"reaped": False, "status": None}
+    bash_pid = None
+    bash_state = {"reaped": False, "status": None}
+    descendant_fd = None
+    mask_restored = False
+    try:
+        release_read, release_write, guardian_read, guardian_write = normalize_fork_release_descriptors()
+        child_pid = os.fork()
+        if child_pid == 0:
+            try:
+                os.close(release_write)
+                os.close(guardian_write)
+                remaining = (deadline_ns - time.monotonic_ns()) / 1_000_000_000
+                require(remaining > 0, "RECOVERY_SENTINEL_PROBE_INVALID")
+                readable, _, _ = select.select((release_read,), (), (), remaining)
+                require(readable == [release_read], "RECOVERY_SENTINEL_PROBE_INVALID")
+                require(
+                    os.read(release_read, 2) == b"R"
+                    and os.read(release_read, 1) == b""
+                    and time.monotonic_ns() < deadline_ns,
+                    "RECOVERY_SENTINEL_PROBE_INVALID",
+                )
+                os.close(release_read)
+                os.set_inheritable(guardian_read, True)
+                os.setpgid(0, 0)
+                require(os.getpid() == os.getpgrp(), "RECOVERY_SENTINEL_PROBE_INVALID")
+                for signum in protected:
+                    signal.signal(signum, signal.SIG_DFL)
+                require(
+                    protected <= signal.pthread_sigmask(signal.SIG_BLOCK, set()),
+                    "RECOVERY_SENTINEL_PROBE_INVALID",
+                )
+                source = str(pathlib.Path(__file__).resolve(strict=True))
+                launcher = (
+                    "/usr/bin/env",
+                    "-i",
+                    "HOME=/Users/yusuke",
+                    "PATH=/usr/bin:/bin",
+                    "LC_ALL=C",
+                    "LANG=C",
+                    "/usr/bin/python3",
+                    "-I",
+                    source,
+                    "--group-sentinel",
+                    str(root),
+                )
+                os.execve("/usr/bin/env", launcher, {})
+            except BaseException:
+                os._exit(70)
+        os.close(release_read)
+        release_read = None
+        os.close(guardian_read)
+        guardian_read = None
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        mask_restored = True
+        require(
+            signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask,
+            "RECOVERY_SENTINEL_PROBE_INVALID",
+        )
+        challenge = os.urandom(32)
+        require(len(challenge) == 32, "RECOVERY_SENTINEL_PROBE_INVALID")
+        intent = recovery_sentinel_intent_manifest(
+            pid=child_pid,
+            parent_pid=os.getpid(),
+            release_deadline_ns=deadline_ns,
+            challenge_sha=digest(challenge),
+        )
+        write_exclusive_recovery_file(root_fd, "sentinel.intent", intent)
+        offset = 0
+        while offset < len(challenge):
+            written = os.write(guardian_write, challenge[offset:])
+            require(written > 0, "RECOVERY_SENTINEL_PROBE_INVALID")
+            offset += written
+        require(
+            time.monotonic_ns() < deadline_ns
+            and os.write(release_write, b"R") == 1,
+            "RECOVERY_SENTINEL_PROBE_INVALID",
+        )
+        os.close(release_write)
+        release_write = None
+        ready = None
+        while time.monotonic_ns() < deadline_ns:
+            if entry_at(root_fd, "sentinel.ready") is not None:
+                ready, _, _ = read_recovery_file(root_fd, "sentinel.ready")
+                break
+            if child_state["reaped"]:
+                break
+            if poll_exact_child(
+                child_pid,
+                child_state,
+                time.monotonic() + 0.1,
+            ):
+                break
+            time.sleep(0.01)
+        require(ready is not None, "RECOVERY_SENTINEL_PROBE_INVALID")
+        ready_values = validate_recovery_sentinel_ready(intent, ready)
+        require(
+            int(ready_values["pid"]) == child_pid
+            and os.getpgid(child_pid) == child_pid,
+            "RECOVERY_SENTINEL_PROBE_INVALID",
+        )
+        require(descriptor_is_closed(8), "RECOVERY_SENTINEL_PROBE_INVALID")
+        descendant_fd, descendant_identity = open_recovery_lock(
+            root_fd,
+            "descendant.lock",
+            create=True,
+        )
+        if descendant_fd != 8:
+            os.dup2(descendant_fd, 8, inheritable=True)
+            os.close(descendant_fd)
+            descendant_fd = None
+        else:
+            os.set_inheritable(8, True)
+            descendant_fd = None
+        require(
+            identity(os.fstat(8)) == descendant_identity,
+            "RECOVERY_SENTINEL_PROBE_INVALID",
+        )
+        source = str(pathlib.Path(__file__).resolve(strict=True))
+        bash_launcher = (
+            "/usr/bin/env",
+            "-i",
+            "HOME=/Users/yusuke",
+            "PATH=/usr/bin:/bin",
+            "LC_ALL=C",
+            "LANG=C",
+            "/usr/bin/python3",
+            "-I",
+            source,
+            "--bash-bootstrap-probe",
+            str(root),
+        )
+        bash_pid = os.posix_spawn(
+            "/usr/bin/env",
+            bash_launcher,
+            {},
+            file_actions=(
+                (os.POSIX_SPAWN_DUP2, 8, 9),
+                (os.POSIX_SPAWN_CLOSE, 8),
+            ),
+            setpgroup=child_pid,
+            resetids=False,
+            setsid=False,
+            setsigmask=(),
+            setsigdef=(
+                signal.SIGINT,
+                signal.SIGTERM,
+                signal.SIGHUP,
+                signal.SIGALRM,
+            ),
+        )
+        require(
+            isinstance(bash_pid, int)
+            and bash_pid > 0
+            and os.getpgid(bash_pid) == child_pid,
+            "RECOVERY_SENTINEL_PROBE_INVALID",
+        )
+        bash_ready = None
+        while time.monotonic_ns() < deadline_ns:
+            if entry_at(root_fd, "bash.ready") is not None:
+                bash_ready, _, _ = read_recovery_file(root_fd, "bash.ready")
+                break
+            if poll_exact_child(
+                bash_pid,
+                bash_state,
+                time.monotonic() + 0.1,
+            ):
+                break
+            time.sleep(0.01)
+        require(
+            bash_ready is not None
+            and not bash_state["reaped"],
+            "RECOVERY_SENTINEL_PROBE_INVALID",
+        )
+        bash_values = validate_recovery_bash_ready(bash_ready)
+        require(
+            int(bash_values["pid"]) == bash_pid
+            and int(bash_values["pgid"]) == child_pid
+            and (int(bash_values["lockDev"]), int(bash_values["lockIno"]))
+            == descendant_identity,
+            "RECOVERY_SENTINEL_PROBE_INVALID",
+        )
+        mutation = recovery_mutation_state_manifest(bash_ready)
+        write_exclusive_recovery_file(root_fd, "mutation.state", mutation)
+        os.close(8)
+        expect_failure(
+            "RECOVERY_LOCK_BUSY",
+            lambda: open_recovery_lock(
+                root_fd,
+                "descendant.lock",
+                create=False,
+            ),
+        )
+        write_exclusive_recovery_file(root_fd, "bash.release", b"")
+        settle_probe_child(
+            bash_pid,
+            bash_state,
+            time.monotonic() + 3,
+        )
+        require(
+            bash_state["reaped"]
+            and os.WIFEXITED(bash_state["status"])
+            and os.WEXITSTATUS(bash_state["status"]) == 0,
+            "RECOVERY_SENTINEL_PROBE_INVALID",
+        )
+        released_lock, released_identity = open_recovery_lock(
+            root_fd,
+            "descendant.lock",
+            create=False,
+        )
+        require(
+            released_identity == descendant_identity,
+            "RECOVERY_SENTINEL_PROBE_INVALID",
+        )
+        os.close(released_lock)
+        os.killpg(child_pid, signal.SIGTERM)
+        os.close(guardian_write)
+        guardian_write = None
+        settle_probe_child(child_pid, child_state, time.monotonic() + 3)
+        require(
+            child_state["reaped"]
+            and os.WIFSIGNALED(child_state["status"])
+            and os.WTERMSIG(child_state["status"]) == signal.SIGTERM,
+            "RECOVERY_SENTINEL_PROBE_INVALID",
+        )
+        try:
+            os.killpg(child_pid, 0)
+        except ProcessLookupError:
+            pass
+        else:
+            raise VerificationError("RECOVERY_SENTINEL_PROBE_INVALID")
+        for name in (
+            "bash.release",
+            "mutation.state",
+            "bash.ready",
+            "descendant.lock",
+            "sentinel.ready",
+            "sentinel.intent",
+        ):
+            os.unlink(name, dir_fd=root_fd)
+        os.fsync(root_fd)
+        os.close(root_fd)
+        root_fd = None
+        root_context.cleanup()
+        require(
+            not root.exists()
+            and all(descriptor_is_closed(fd) for fd in (5, 6, 7, 8, 10))
+            and signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask,
+            "RECOVERY_SENTINEL_PROBE_INVALID",
+        )
+        print("WP4158_SENTINEL_READY_PASS challenge=32 bash_group=1 lock_release=1 sentinel_last=15 residue=0")
+        return 0
+    finally:
+        for descriptor in (release_read, release_write, guardian_read, guardian_write):
+            if descriptor is not None:
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
+        if child_pid is not None and child_pid > 0 and not child_state["reaped"]:
+            if bash_pid is not None and not bash_state["reaped"]:
+                try:
+                    os.killpg(child_pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                settle_probe_child(
+                    bash_pid,
+                    bash_state,
+                    time.monotonic() + 0.1,
+                )
+            settle_probe_child(child_pid, child_state, time.monotonic() + 0.1)
+        elif bash_pid is not None and not bash_state["reaped"]:
+            settle_probe_child(bash_pid, bash_state, time.monotonic() + 0.1)
+        if descendant_fd is not None:
+            os.close(descendant_fd)
+        if not descriptor_is_closed(8):
+            os.close(8)
+        if not mask_restored:
+            signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        if root_fd is not None:
+            os.close(root_fd)
+        root_context.cleanup()
+
+
+def sentinel_ready_guard():
+    result = run_capped_process(
+        (
+            "/usr/bin/python3",
+            "-I",
+            str(pathlib.Path(__file__).resolve(strict=True)),
+            "--sentinel-ready-probe",
+        ),
+        environment={"LC_ALL": "C", "LANG": "C"},
+        cwd="/",
+        deadline_seconds=15,
+        failure_code="RECOVERY_SENTINEL_READY_GUARD",
+    )
+    require(
+        result.returncode == 0
+        and result.stdout
+        == b"WP4158_SENTINEL_READY_PASS challenge=32 bash_group=1 lock_release=1 sentinel_last=15 residue=0\n"
+        and result.stderr == b"",
+        "RECOVERY_SENTINEL_READY_GUARD_FAILED",
+    )
+
+
+def run_recovery_process_lifecycle(
+    *,
+    root_fd: int,
+    root_path: pathlib.Path,
+    sentinel_launcher,
+    bash_launcher,
+    pre_release,
+    fault_hook=None,
+):
+    require(
+        isinstance(root_fd, int)
+        and root_fd >= 0
+        and isinstance(root_path, pathlib.Path)
+        and root_path.is_absolute()
+        and isinstance(sentinel_launcher, (tuple, list))
+        and isinstance(bash_launcher, (tuple, list))
+        and sentinel_launcher
+        and bash_launcher
+        and all(
+            isinstance(value, str) and value and "\0" not in value
+            for value in tuple(sentinel_launcher) + tuple(bash_launcher)
+        )
+        and callable(pre_release)
+        and (fault_hook is None or callable(fault_hook))
+        and os.getcwd() == "/",
+        "RECOVERY_MONITOR_INVALID",
+    )
+    if fault_hook is None:
+        fault_hook = lambda _stage: None
+    protected = {
+        signal.SIGINT,
+        signal.SIGTERM,
+        signal.SIGHUP,
+        signal.SIGALRM,
+    }
+    original_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+    require(original_mask == set(), "RECOVERY_MONITOR_INVALID")
+    root_info = root_path.lstat()
+    require(
+        stat.S_ISDIR(root_info.st_mode)
+        and not stat.S_ISLNK(root_info.st_mode)
+        and stat.S_IMODE(root_info.st_mode) == 0o700
+        and root_info.st_uid == os.getuid()
+        and identity(root_info) == identity(os.fstat(root_fd)),
+        "RECOVERY_MONITOR_INVALID",
+    )
+    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, protected)
+    require(previous_mask == set(), "RECOVERY_MONITOR_INVALID")
+    release_read = release_write = guardian_read = guardian_write = None
+    sentinel_pid = None
+    sentinel_state = {"reaped": False, "status": None}
+    bash_pid = None
+    bash_state = {"reaped": False, "status": None}
+    descendant_fd = None
+    mask_restored = False
+    group_verified = False
+    lifecycle_complete = False
+    winner_exit = "RESPONSE_LOSS"
+    try:
+        deadline_ns = time.monotonic_ns() + 30_000_000_000
+        (
+            release_read,
+            release_write,
+            guardian_read,
+            guardian_write,
+        ) = normalize_fork_release_descriptors()
+        sentinel_pid = os.fork()
+        if sentinel_pid == 0:
+            try:
+                os.close(release_write)
+                os.close(guardian_write)
+                remaining = (
+                    deadline_ns - time.monotonic_ns()
+                ) / 1_000_000_000
+                require(remaining > 0, "RECOVERY_MONITOR_CHILD_INVALID")
+                readable, _, _ = select.select(
+                    (release_read,),
+                    (),
+                    (),
+                    remaining,
+                )
+                require(
+                    readable == [release_read]
+                    and os.read(release_read, 2) == b"R"
+                    and os.read(release_read, 1) == b""
+                    and time.monotonic_ns() < deadline_ns,
+                    "RECOVERY_MONITOR_CHILD_INVALID",
+                )
+                os.close(release_read)
+                os.set_inheritable(guardian_read, True)
+                os.setpgid(0, 0)
+                require(
+                    os.getpid() == os.getpgrp(),
+                    "RECOVERY_MONITOR_CHILD_INVALID",
+                )
+                for signum in protected:
+                    signal.signal(signum, signal.SIG_DFL)
+                require(
+                    protected
+                    <= signal.pthread_sigmask(signal.SIG_BLOCK, set()),
+                    "RECOVERY_MONITOR_CHILD_INVALID",
+                )
+                os.execve(
+                    sentinel_launcher[0],
+                    tuple(sentinel_launcher),
+                    {},
+                )
+            except BaseException:
+                os._exit(70)
+        fault_hook("after_fork_return_before_intent")
+        os.close(release_read)
+        release_read = None
+        os.close(guardian_read)
+        guardian_read = None
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        mask_restored = True
+        require(
+            signal.pthread_sigmask(signal.SIG_BLOCK, set())
+            == original_mask,
+            "RECOVERY_MONITOR_INVALID",
+        )
+        challenge = os.urandom(32)
+        require(len(challenge) == 32, "RECOVERY_MONITOR_INVALID")
+        intent = recovery_sentinel_intent_manifest(
+            pid=sentinel_pid,
+            parent_pid=os.getpid(),
+            release_deadline_ns=deadline_ns,
+            challenge_sha=digest(challenge),
+        )
+        write_exclusive_recovery_file(
+            root_fd,
+            "sentinel.intent",
+            intent,
+        )
+        fault_hook("after_intent_fsync_before_release")
+        offset = 0
+        while offset < len(challenge):
+            written = os.write(guardian_write, challenge[offset:])
+            require(written > 0, "RECOVERY_MONITOR_INVALID")
+            offset += written
+        require(
+            time.monotonic_ns() < deadline_ns
+            and os.write(release_write, b"R") == 1,
+            "RECOVERY_MONITOR_INVALID",
+        )
+        os.close(release_write)
+        release_write = None
+        ready = None
+        while time.monotonic_ns() < deadline_ns:
+            if entry_at(root_fd, "sentinel.ready") is not None:
+                ready, _, _ = read_recovery_file(
+                    root_fd,
+                    "sentinel.ready",
+                )
+                break
+            if poll_exact_child(
+                sentinel_pid,
+                sentinel_state,
+                time.monotonic() + 0.1,
+            ):
+                break
+            time.sleep(0.01)
+        require(
+            ready is not None
+            and not sentinel_state["reaped"],
+            "RECOVERY_MONITOR_SENTINEL_NOT_READY",
+        )
+        ready_values = validate_recovery_sentinel_ready(
+            intent,
+            ready,
+        )
+        require(
+            int(ready_values["pid"]) == sentinel_pid
+            and os.getpgid(sentinel_pid) == sentinel_pid,
+            "RECOVERY_MONITOR_SENTINEL_NOT_READY",
+        )
+        group_verified = True
+        fault_hook("after_sentinel_ready")
+        require(
+            descriptor_is_closed(8),
+            "RECOVERY_MONITOR_INVALID",
+        )
+        descendant_fd, descendant_identity = open_recovery_lock(
+            root_fd,
+            "descendant.lock",
+            create=True,
+        )
+        if descendant_fd != 8:
+            os.dup2(descendant_fd, 8, inheritable=True)
+            os.close(descendant_fd)
+            descendant_fd = None
+        else:
+            os.set_inheritable(8, True)
+            descendant_fd = None
+        require(
+            identity(os.fstat(8)) == descendant_identity,
+            "RECOVERY_MONITOR_INVALID",
+        )
+        bash_pid = os.posix_spawn(
+            bash_launcher[0],
+            tuple(bash_launcher),
+            {},
+            file_actions=(
+                (os.POSIX_SPAWN_DUP2, 8, 9),
+                (os.POSIX_SPAWN_CLOSE, 8),
+            ),
+            setpgroup=sentinel_pid,
+            resetids=False,
+            setsid=False,
+            setsigmask=(),
+            setsigdef=tuple(RECOVERY_SIGNAL_NUMBERS),
+        )
+        require(
+            isinstance(bash_pid, int)
+            and bash_pid > 0
+            and os.getpgid(bash_pid) == sentinel_pid,
+            "RECOVERY_MONITOR_BASH_NOT_READY",
+        )
+        fault_hook("after_bash_spawn_before_ready")
+        bash_ready = None
+        while time.monotonic_ns() < deadline_ns:
+            if entry_at(root_fd, "bash.ready") is not None:
+                bash_ready, _, _ = read_recovery_file(
+                    root_fd,
+                    "bash.ready",
+                )
+                break
+            if poll_exact_child(
+                bash_pid,
+                bash_state,
+                time.monotonic() + 0.1,
+            ):
+                break
+            time.sleep(0.01)
+        require(
+            bash_ready is not None
+            and not bash_state["reaped"],
+            "RECOVERY_MONITOR_BASH_NOT_READY",
+        )
+        bash_values = validate_recovery_bash_ready(bash_ready)
+        require(
+            int(bash_values["pid"]) == bash_pid
+            and int(bash_values["pgid"]) == sentinel_pid
+            and (
+                int(bash_values["lockDev"]),
+                int(bash_values["lockIno"]),
+            )
+            == descendant_identity,
+            "RECOVERY_MONITOR_BASH_NOT_READY",
+        )
+        fault_hook("after_bash_ready_before_pre_release")
+        pre_release()
+        fault_hook("after_pre_release_before_mutation")
+        mutation = recovery_mutation_state_manifest(bash_ready)
+        mutation_values = validate_recovery_mutation_state(
+            bash_ready,
+            mutation,
+        )
+        write_exclusive_recovery_file(
+            root_fd,
+            "mutation.state",
+            mutation,
+        )
+        fault_hook("after_mutation_before_release")
+        os.close(8)
+        expect_failure(
+            "RECOVERY_LOCK_BUSY",
+            lambda: open_recovery_lock(
+                root_fd,
+                "descendant.lock",
+                create=False,
+            ),
+        )
+        write_exclusive_recovery_file(
+            root_fd,
+            "bash.release",
+            b"",
+        )
+        fault_hook("after_release")
+        mutation_deadline = (
+            int(mutation_values["mutationDeadlineNs"])
+            / 1_000_000_000
+        )
+        while (
+            not bash_state["reaped"]
+            and time.monotonic() < mutation_deadline
+        ):
+            if poll_exact_child(
+                bash_pid,
+                bash_state,
+                min(mutation_deadline, time.monotonic() + 0.1),
+            ):
+                break
+            time.sleep(0.01)
+        if not bash_state["reaped"]:
+            winner_exit = "TIMEOUT"
+            for signum in (signal.SIGTERM, signal.SIGKILL):
+                require(
+                    not sentinel_state["reaped"],
+                    "RECOVERY_MONITOR_GROUP_IDENTITY_UNKNOWN",
+                )
+                try:
+                    os.killpg(sentinel_pid, signum)
+                except ProcessLookupError:
+                    pass
+                stage_deadline = time.monotonic() + 2
+                while (
+                    not bash_state["reaped"]
+                    and time.monotonic() < stage_deadline
+                ):
+                    if poll_exact_child(
+                        bash_pid,
+                        bash_state,
+                        stage_deadline,
+                    ):
+                        break
+                    time.sleep(0.01)
+                if bash_state["reaped"]:
+                    break
+            require(
+                bash_state["reaped"],
+                "RECOVERY_MONITOR_BASH_REAP_TIMEOUT",
+            )
+        else:
+            status_value = bash_state["status"]
+            if os.WIFEXITED(status_value):
+                winner_exit = os.WEXITSTATUS(status_value)
+            elif os.WIFSIGNALED(status_value):
+                winner_exit = -os.WTERMSIG(status_value)
+            else:
+                winner_exit = "RESPONSE_LOSS"
+        fault_hook("after_bash_reap")
+        if not sentinel_state["reaped"]:
+            try:
+                os.killpg(sentinel_pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+        if guardian_write is not None:
+            os.close(guardian_write)
+            guardian_write = None
+        settle_probe_child(
+            sentinel_pid,
+            sentinel_state,
+            time.monotonic() + 5,
+        )
+        require(
+            bash_state["reaped"]
+            and sentinel_state["reaped"],
+            "RECOVERY_MONITOR_REAP_TIMEOUT",
+        )
+        fault_hook("after_sentinel_reap")
+        released_lock, released_identity = open_recovery_lock(
+            root_fd,
+            "descendant.lock",
+            create=False,
+        )
+        require(
+            released_identity == descendant_identity,
+            "RECOVERY_MONITOR_GROUP_IDENTITY_UNKNOWN",
+        )
+        os.close(released_lock)
+        try:
+            os.killpg(sentinel_pid, 0)
+        except ProcessLookupError:
+            pass
+        else:
+            raise VerificationError(
+                "RECOVERY_MONITOR_GROUP_IDENTITY_UNKNOWN"
+            )
+        lifecycle_complete = True
+        return {
+            "winner_exit": winner_exit,
+            "sentinel_pid": sentinel_pid,
+            "bash_pid": bash_pid,
+            "sentinel_status": sentinel_state["status"],
+            "bash_status": bash_state["status"],
+        }
+    finally:
+        for descriptor in (
+            release_read,
+            release_write,
+            guardian_read,
+            guardian_write,
+        ):
+            if descriptor is not None:
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
+        if not descriptor_is_closed(8):
+            os.close(8)
+        if not mask_restored:
+            signal.pthread_sigmask(
+                signal.SIG_SETMASK,
+                previous_mask,
+            )
+        if (
+            not lifecycle_complete
+            and sentinel_pid is not None
+            and sentinel_pid > 0
+        ):
+            if (
+                group_verified
+                and not sentinel_state["reaped"]
+            ):
+                for signum in (signal.SIGTERM, signal.SIGKILL):
+                    try:
+                        os.killpg(sentinel_pid, signum)
+                    except ProcessLookupError:
+                        pass
+                    if (
+                        bash_pid is not None
+                        and not bash_state["reaped"]
+                    ):
+                        stage = time.monotonic() + 2
+                        while (
+                            not bash_state["reaped"]
+                            and time.monotonic() < stage
+                        ):
+                            if poll_exact_child(
+                                bash_pid,
+                                bash_state,
+                                stage,
+                            ):
+                                break
+                            time.sleep(0.01)
+                    if bash_state["reaped"]:
+                        break
+            elif not sentinel_state["reaped"]:
+                try:
+                    os.kill(sentinel_pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+            if (
+                bash_pid is not None
+                and not bash_state["reaped"]
+            ):
+                settle_probe_child(
+                    bash_pid,
+                    bash_state,
+                    time.monotonic() + 5,
+                )
+            if not sentinel_state["reaped"]:
+                settle_probe_child(
+                    sentinel_pid,
+                    sentinel_state,
+                    time.monotonic() + 5,
+                )
+
+
+def monitor_lifecycle_probe():
+    require(
+        os.getcwd() == "/",
+        "RECOVERY_MONITOR_PROBE_INVALID",
+    )
+    with tempfile.TemporaryDirectory(
+        prefix="wp4158-monitor-lifecycle-"
+    ) as root_text:
+        root = pathlib.Path(root_text)
+        os.chmod(root, 0o700)
+        root_fd = os.open(
+            root,
+            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+        )
+        try:
+            source = str(pathlib.Path(__file__).resolve(strict=True))
+            sentinel_launcher = (
+                "/usr/bin/env",
+                "-i",
+                "HOME=/Users/yusuke",
+                "PATH=/usr/bin:/bin",
+                "LC_ALL=C",
+                "LANG=C",
+                "/usr/bin/python3",
+                "-I",
+                source,
+                "--group-sentinel",
+                str(root),
+            )
+            bash_launcher = (
+                "/usr/bin/env",
+                "-i",
+                "HOME=/Users/yusuke",
+                "PATH=/usr/bin:/bin",
+                "LC_ALL=C",
+                "LANG=C",
+                "/usr/bin/python3",
+                "-I",
+                source,
+                "--bash-bootstrap-probe",
+                str(root),
+            )
+            releases = []
+            result = run_recovery_process_lifecycle(
+                root_fd=root_fd,
+                root_path=root,
+                sentinel_launcher=sentinel_launcher,
+                bash_launcher=bash_launcher,
+                pre_release=lambda: releases.append("checked"),
+            )
+            require(
+                releases == ["checked"]
+                and result["winner_exit"] == 0
+                and os.WIFEXITED(result["bash_status"])
+                and os.WEXITSTATUS(result["bash_status"]) == 0
+                and (
+                    os.WIFSIGNALED(result["sentinel_status"])
+                    or (
+                        os.WIFEXITED(result["sentinel_status"])
+                        and os.WEXITSTATUS(result["sentinel_status"]) == 70
+                    )
+                ),
+                "RECOVERY_MONITOR_PROBE_INVALID",
+            )
+            for name in (
+                "bash.release",
+                "mutation.state",
+                "bash.ready",
+                "descendant.lock",
+                "sentinel.ready",
+                "sentinel.intent",
+            ):
+                os.unlink(name, dir_fd=root_fd)
+            os.fsync(root_fd)
+        finally:
+            os.close(root_fd)
+        require(
+            not tuple(root.iterdir()),
+            "RECOVERY_MONITOR_PROBE_INVALID",
+        )
+    print(
+        "WP4158_MONITOR_LIFECYCLE_PASS "
+        "claim=external sentinel=1 bash=1 release=1 "
+        "reap=2 group_extinct=1 residue=0"
+    )
+    return 0
+
+
+def monitor_lifecycle_guard():
+    result = run_capped_process(
+        (
+            "/usr/bin/python3",
+            "-I",
+            str(pathlib.Path(__file__).resolve(strict=True)),
+            "--monitor-lifecycle-probe",
+        ),
+        environment={"LC_ALL": "C", "LANG": "C"},
+        cwd="/",
+        deadline_seconds=20,
+        failure_code="RECOVERY_MONITOR_GUARD",
+    )
+    require(
+        result.returncode == 0
+        and result.stdout
+        == (
+            b"WP4158_MONITOR_LIFECYCLE_PASS "
+            b"claim=external sentinel=1 bash=1 release=1 "
+            b"reap=2 group_extinct=1 residue=0\n"
+        )
+        and result.stderr == b"",
+        "RECOVERY_MONITOR_GUARD_FAILED",
+    )
+
+
+def monitor_crash_cut_probe():
+    require(
+        os.getcwd() == "/",
+        "RECOVERY_MONITOR_CRASH_GUARD_FAILED",
+    )
+    stages = (
+        "after_fork_return_before_intent",
+        "after_intent_fsync_before_release",
+        "after_sentinel_ready",
+        "after_bash_spawn_before_ready",
+        "after_bash_ready_before_pre_release",
+        "after_pre_release_before_mutation",
+        "after_mutation_before_release",
+        "after_release",
+        "after_bash_reap",
+        "after_sentinel_reap",
+    )
+    source = str(pathlib.Path(__file__).resolve(strict=True))
+    for expected_stage in stages:
+        with tempfile.TemporaryDirectory(
+            prefix="wp4158-monitor-crash-"
+        ) as root_text:
+            root = pathlib.Path(root_text)
+            os.chmod(root, 0o700)
+            root_fd = os.open(
+                root,
+                os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+            )
+            try:
+                sentinel_launcher = (
+                    "/usr/bin/env",
+                    "-i",
+                    "HOME=/Users/yusuke",
+                    "PATH=/usr/bin:/bin",
+                    "LC_ALL=C",
+                    "LANG=C",
+                    "/usr/bin/python3",
+                    "-I",
+                    source,
+                    "--group-sentinel",
+                    str(root),
+                )
+                bash_launcher = (
+                    "/usr/bin/env",
+                    "-i",
+                    "HOME=/Users/yusuke",
+                    "PATH=/usr/bin:/bin",
+                    "LC_ALL=C",
+                    "LANG=C",
+                    "/usr/bin/python3",
+                    "-I",
+                    source,
+                    "--bash-bootstrap-probe",
+                    str(root),
+                )
+
+                def inject(stage):
+                    if stage == expected_stage:
+                        raise VerificationError(
+                            "RECOVERY_MONITOR_SYNTHETIC_CRASH_"
+                            + stage
+                        )
+
+                expect_failure(
+                    "RECOVERY_MONITOR_SYNTHETIC_CRASH_"
+                    + expected_stage,
+                    lambda: run_recovery_process_lifecycle(
+                        root_fd=root_fd,
+                        root_path=root,
+                        sentinel_launcher=sentinel_launcher,
+                        bash_launcher=bash_launcher,
+                        pre_release=lambda: None,
+                        fault_hook=inject,
+                    ),
+                )
+                intent_entry = entry_at(root_fd, "sentinel.intent")
+                if intent_entry is not None:
+                    intent, _, _ = read_recovery_file(
+                        root_fd,
+                        "sentinel.intent",
+                    )
+                    sentinel_pid = int(
+                        validate_recovery_sentinel_intent(intent)["pid"]
+                    )
+                    require(
+                        probe_recovery_esrch_once(
+                            sentinel_pid,
+                            group=True,
+                        ),
+                        "RECOVERY_MONITOR_CRASH_GUARD_FAILED",
+                    )
+                lock_entry = entry_at(root_fd, "descendant.lock")
+                if lock_entry is not None:
+                    lock_fd, _ = open_recovery_lock(
+                        root_fd,
+                        "descendant.lock",
+                        create=False,
+                    )
+                    os.close(lock_fd)
+                names = tuple(sorted(os.listdir(root)))
+                require(
+                    all(name in RECOVERY_LEAVES for name in names)
+                    and "result.state" not in names
+                    and "result.state.v2" not in names,
+                    "RECOVERY_MONITOR_CRASH_GUARD_FAILED",
+                )
+                for name in names:
+                    os.unlink(name, dir_fd=root_fd)
+                os.fsync(root_fd)
+            finally:
+                os.close(root_fd)
+            require(
+                not tuple(root.iterdir()),
+                "RECOVERY_MONITOR_CRASH_GUARD_FAILED",
+            )
+    print(
+        "WP4158_MONITOR_CRASH_PASS "
+        "cuts=10 signals=bounded results=0 residue=0"
+    )
+    return 0
+
+
+def monitor_crash_cut_guard():
+    result = run_capped_process(
+        (
+            "/usr/bin/python3",
+            "-I",
+            str(pathlib.Path(__file__).resolve(strict=True)),
+            "--monitor-crash-cut-probe",
+        ),
+        environment={"LC_ALL": "C", "LANG": "C"},
+        cwd="/",
+        deadline_seconds=60,
+        failure_code="RECOVERY_MONITOR_CRASH_GUARD",
+    )
+    require(
+        result.returncode == 0
+        and result.stdout
+        == (
+            b"WP4158_MONITOR_CRASH_PASS "
+            b"cuts=10 signals=bounded results=0 residue=0\n"
+        )
+        and result.stderr == b"",
+        "RECOVERY_MONITOR_CRASH_GUARD_FAILED",
+    )
+
+
+def posix_spawn_probe():
+    require(
+        os.getcwd() == "/"
+        and hasattr(os, "posix_spawn")
+        and hasattr(os, "POSIX_SPAWN_DUP2")
+        and hasattr(os, "POSIX_SPAWN_CLOSE")
+        and descriptor_is_closed(8),
+        "RECOVERY_POSIX_SPAWN_INVALID",
+    )
+    with tempfile.TemporaryDirectory(prefix="wp4158-posix-spawn-") as root:
+        root_path = pathlib.Path(root)
+        os.chmod(root_path, 0o700)
+        root_fd = os.open(root_path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        lock_fd = None
+        child_pid = None
+        child_state = {"reaped": False, "status": None}
+        try:
+            lock_fd, lock_identity = open_recovery_lock(
+                root_fd,
+                "descendant.lock",
+                create=True,
+            )
+            os.dup2(lock_fd, 8, inheritable=True)
+            os.close(lock_fd)
+            lock_fd = None
+            require(
+                os.get_inheritable(8)
+                and identity(os.fstat(8)) == lock_identity,
+                "RECOVERY_POSIX_SPAWN_INVALID",
+            )
+            code = (
+                "import os,time;"
+                "assert os.getpid()==os.getpgrp();"
+                "info=os.fstat(9);"
+                "assert info.st_size==0;"
+                "time.sleep(0.5)"
+            )
+            argv = (
+                "/usr/bin/env",
+                "-i",
+                "HOME=/Users/yusuke",
+                "PATH=/usr/bin:/bin",
+                "LC_ALL=C",
+                "LANG=C",
+                "/usr/bin/python3",
+                "-I",
+                "-c",
+                code,
+            )
+            child_pid = os.posix_spawn(
+                "/usr/bin/env",
+                argv,
+                {},
+                file_actions=(
+                    (os.POSIX_SPAWN_DUP2, 8, 9),
+                    (os.POSIX_SPAWN_CLOSE, 8),
+                ),
+                setpgroup=0,
+                resetids=False,
+                setsid=False,
+                setsigmask=(),
+                setsigdef=(
+                    signal.SIGINT,
+                    signal.SIGTERM,
+                    signal.SIGHUP,
+                    signal.SIGALRM,
+                ),
+            )
+            require(
+                isinstance(child_pid, int)
+                and child_pid > 0
+                and os.getpgid(child_pid) == child_pid,
+                "RECOVERY_POSIX_SPAWN_INVALID",
+            )
+            os.close(8)
+            expect_failure(
+                "RECOVERY_LOCK_BUSY",
+                lambda: open_recovery_lock(
+                    root_fd,
+                    "descendant.lock",
+                    create=False,
+                ),
+            )
+            settle_probe_child(
+                child_pid,
+                child_state,
+                time.monotonic() + 3,
+            )
+            require(
+                child_state["reaped"]
+                and os.WIFEXITED(child_state["status"])
+                and os.WEXITSTATUS(child_state["status"]) == 0,
+                "RECOVERY_POSIX_SPAWN_INVALID",
+            )
+            second, second_identity = open_recovery_lock(
+                root_fd,
+                "descendant.lock",
+                create=False,
+            )
+            require(second_identity == lock_identity, "RECOVERY_POSIX_SPAWN_INVALID")
+            os.close(second)
+            os.unlink("descendant.lock", dir_fd=root_fd)
+            os.fsync(root_fd)
+        finally:
+            if lock_fd is not None:
+                os.close(lock_fd)
+            if not descriptor_is_closed(8):
+                os.close(8)
+            if child_pid is not None and not child_state["reaped"]:
+                settle_probe_child(
+                    child_pid,
+                    child_state,
+                    time.monotonic() + 0.1,
+                )
+            os.close(root_fd)
+        require(not tuple(root_path.iterdir()), "RECOVERY_POSIX_SPAWN_INVALID")
+    print("WP4158_POSIX_SPAWN_PASS fd8_to_fd9=1 lock_release=1 residue=0")
+    return 0
+
+
+def posix_spawn_guard():
+    result = run_capped_process(
+        (
+            "/usr/bin/python3",
+            "-I",
+            str(pathlib.Path(__file__).resolve(strict=True)),
+            "--posix-spawn-probe",
+        ),
+        environment={"LC_ALL": "C", "LANG": "C"},
+        cwd="/",
+        deadline_seconds=10,
+        failure_code="RECOVERY_POSIX_SPAWN_GUARD",
+    )
+    require(
+        result.returncode == 0
+        and result.stdout
+        == b"WP4158_POSIX_SPAWN_PASS fd8_to_fd9=1 lock_release=1 residue=0\n"
+        and result.stderr == b"",
+        "RECOVERY_POSIX_SPAWN_GUARD_FAILED",
+    )
+
+
+def verify_recovery_tools():
+    expected = dict(RECOVERY_TOOL_MANIFEST_ROWS)
+    file_fields = (
+        ("bash.path", "bash.sha256"),
+        ("env.path", "env.sha256"),
+        ("git.path", "git.sha256"),
+        ("gitRemoteHttps.path", "gitRemoteHttps.sha256"),
+        ("sh.path", "sh.sha256"),
+        ("gh.path", "gh.sha256"),
+        ("pythonSystem.invocation", "pythonSystem.invocationSha256"),
+        ("pythonSystem.realpath", "pythonSystem.realpathSha256"),
+    )
+    for path_field, sha_field in file_fields:
+        content, _ = read_verified_file(expected[path_field], "RECOVERY_TOOL_IDENTITY_INVALID")
+        require(digest(content) == expected[sha_field], "RECOVERY_TOOL_IDENTITY_INVALID")
+    minimal_environment = {
+        "HOME": "/Users/yusuke",
+        "PATH": "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin",
+        "LC_ALL": "C",
+        "LANG": "C",
+    }
+    commands = (
+        (("/bin/bash", "--version"), expected["bash.version"]),
+        (("/usr/bin/git", "--no-replace-objects", "--version"), expected["git.version"]),
+        (("/opt/homebrew/bin/gh", "version"), expected["gh.version"]),
+        (("/usr/bin/python3", "--version"), expected["pythonSystem.version"]),
+    )
+    for argv, version in commands:
+        result = run_capped_process(
+            argv,
+            environment=minimal_environment,
+            cwd="/",
+            deadline_seconds=15,
+            failure_code="RECOVERY_TOOL_IDENTITY_INVALID",
+        )
+        require(
+            result.returncode == 0
+            and result.stderr == b""
+            and result.stdout.splitlines()[:1] == [version.encode("utf-8")],
+            "RECOVERY_TOOL_IDENTITY_INVALID",
+        )
+    identity_result = run_capped_process(
+        (
+            "/usr/bin/python3",
+            "-I",
+            "-c",
+            "import os,sys; print(sys.executable); print(os.path.realpath(sys.executable))",
+        ),
+        environment=minimal_environment,
+        cwd="/",
+        deadline_seconds=15,
+        failure_code="RECOVERY_TOOL_IDENTITY_INVALID",
+    )
+    require(
+        identity_result.returncode == 0
+        and identity_result.stderr == b""
+        and identity_result.stdout
+        == (
+            expected["pythonSystem.sysExecutable"]
+            + "\n"
+            + expected["pythonSystem.realpath"]
+            + "\n"
+        ).encode("utf-8"),
+        "RECOVERY_TOOL_IDENTITY_INVALID",
+    )
+    return recovery_tool_manifest()
+
+
+def verify_recovery_local_config():
+    result = run_capped_process(
+        (
+            "/usr/bin/git",
+            "--no-replace-objects",
+            "config",
+            "--file",
+            "/Users/yusuke/workspace/yrese/.git/config",
+            "--no-includes",
+            "--null",
+            "--list",
+        ),
+        environment=recovery_git_environment(),
+        cwd="/",
+        deadline_seconds=15,
+        failure_code="RECOVERY_LOCAL_CONFIG_INVALID",
+    )
+    require(
+        result.returncode == 0 and result.stderr == b"",
+        "RECOVERY_LOCAL_CONFIG_INVALID",
+    )
+    return parse_git_config_null(result.stdout)
+
+
+def strict_process_result(result, token):
+    require(
+        result.returncode == 0
+        and result.stderr == b"",
+        token,
+    )
+    return result.stdout
+
+
+def recovery_local_git_argv(suffix):
+    require(
+        isinstance(suffix, (tuple, list))
+        and suffix
+        and all(isinstance(value, str) and value for value in suffix),
+        "RECOVERY_LOCAL_GIT_INVALID",
+    )
+    return (
+        "/usr/bin/git",
+        "--no-replace-objects",
+        "--git-dir=/Users/yusuke/workspace/yrese/.git",
+        "--work-tree=/Users/yusuke/workspace/yrese",
+    ) + tuple(suffix)
+
+
+def recovery_local_git(suffix, failure_code="RECOVERY_LOCAL_GIT_INVALID"):
+    result = run_capped_process(
+        recovery_local_git_argv(suffix),
+        environment=recovery_git_environment(),
+        cwd="/",
+        deadline_seconds=15,
+        failure_code=failure_code,
+    )
+    return strict_process_result(result, failure_code)
+
+
+def verify_no_replace_and_grafts():
+    refs = recovery_local_git(
+        (
+            "for-each-ref",
+            "--format=%(refname)%00%(objectname)",
+            "refs/replace",
+        ),
+        "RECOVERY_REPLACE_GRAFT_INVALID",
+    )
+    require(refs == b"", "RECOVERY_REPLACE_GRAFT_INVALID")
+    grafts = pathlib.Path("/Users/yusuke/workspace/yrese/.git/info/grafts")
+    try:
+        grafts.lstat()
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        raise VerificationError("RECOVERY_REPLACE_GRAFT_INVALID") from exc
+    else:
+        raise VerificationError("RECOVERY_REPLACE_GRAFT_INVALID")
+
+
+def observe_raw_commit(oid: str, expected_parent_count: int, expected_body: bytes):
+    require(re.fullmatch(r"[0-9a-f]{40}", oid) is not None, "RAW_COMMIT_INVALID")
+    object_type = recovery_local_git(("cat-file", "-t", oid), "RAW_COMMIT_INVALID")
+    require(object_type == b"commit\n", "RAW_COMMIT_INVALID")
+    raw = recovery_local_git(("cat-file", "commit", oid), "RAW_COMMIT_INVALID")
+    parsed = parse_raw_commit(raw, oid, expected_parent_count, expected_body)
+    tree_type = recovery_local_git(
+        ("cat-file", "-t", parsed["tree"]),
+        "RAW_COMMIT_INVALID",
+    )
+    require(tree_type == b"tree\n", "RAW_COMMIT_INVALID")
+    return parsed
+
+
+def recovery_local_observation_guard():
+    expected_prefix = (
+        "/usr/bin/git",
+        "--no-replace-objects",
+        "--git-dir=/Users/yusuke/workspace/yrese/.git",
+        "--work-tree=/Users/yusuke/workspace/yrese",
+    )
+    require(
+        recovery_local_git_argv(("status", "--porcelain=v1"))
+        == expected_prefix + ("status", "--porcelain=v1"),
+        "RECOVERY_LOCAL_GIT_INVALID",
+    )
+    expect_failure(
+        "RECOVERY_LOCAL_GIT_INVALID",
+        lambda: recovery_local_git_argv(()),
+    )
+    expect_failure(
+        "RECOVERY_LOCAL_GIT_INVALID",
+        lambda: recovery_local_git_argv(("status", "")),
+    )
+    require(
+        recovery_remote_git_argv()
+        == (
+            "/usr/bin/git",
+            "--no-replace-objects",
+            "-c",
+            "credential.helper=",
+            "-c",
+            "http.followRedirects=false",
+            "-c",
+            "http.extraHeader=",
+            "ls-remote",
+            "--refs",
+            "https://github.com/yusuketakuma/yrese.git",
+        )
+        and tuple(recovery_remote_git_environment())[-2:]
+        == ("GIT_EXEC_PATH", "GIT_TERMINAL_PROMPT"),
+        "RECOVERY_REMOTE_GIT_INVALID",
+    )
+    gh_endpoint = (
+        "/repos/yusuketakuma/yrese/actions/workflows/309812329/runs"
+        "?event=push&branch=main&head_sha="
+        + "1" * 40
+        + "&per_page=100&page=1"
+    )
+    require(
+        recovery_gh_argv(gh_endpoint)[-1] == gh_endpoint
+        and tuple(recovery_gh_environment())
+        == (
+            "HOME",
+            "PATH",
+            "LC_ALL",
+            "LANG",
+            "GH_CONFIG_DIR",
+            "GH_HOST",
+            "GH_PROMPT_DISABLED",
+            "NO_COLOR",
+        ),
+        "RECOVERY_GH_ENDPOINT_INVALID",
+    )
+    expect_failure(
+        "RECOVERY_GH_ENDPOINT_INVALID",
+        lambda: recovery_gh_argv(
+            "/repos/yusuketakuma/yrese/user"
+        ),
+    )
+
+
+def verify_recovery_postcommit_local(
+    values,
+    supervisor_source: bytes,
+    *,
+    require_boot_session=True,
+):
+    require(
+        tuple(values) == RECOVERY_REQUEST_FIELDS
+        and values["base"] == RECOVERY_BASE_COMMIT,
+        "RECOVERY_POSTCOMMIT_INVALID",
+    )
+    require(
+        isinstance(require_boot_session, bool),
+        "RECOVERY_POSTCOMMIT_INVALID",
+    )
+    validate_recovery_static_bindings(values, supervisor_source)
+    require(
+        digest(verify_recovery_tools()) == values["toolManifestSha256"]
+        and digest(verify_recovery_local_config())
+        == values["localConfigSha256"],
+        "RECOVERY_POSTCOMMIT_INVALID",
+    )
+    if require_boot_session:
+        boot_sha, _ = recovery_boot_session()
+        require(
+            boot_sha == values["bootSessionSha256"],
+            "RECOVERY_POSTCOMMIT_INVALID",
+        )
+    verify_no_replace_and_grafts()
+    head = recovery_local_git(
+        ("rev-parse", "--verify", "HEAD^{commit}"),
+        "RECOVERY_POSTCOMMIT_INVALID",
+    )
+    require(
+        head == (values["commit"] + "\n").encode("ascii"),
+        "RECOVERY_POSTCOMMIT_INVALID",
+    )
+    parsed = observe_raw_commit(
+        values["commit"],
+        1,
+        (RECOVERY_COMMIT_MESSAGE + "\n").encode("utf-8"),
+    )
+    require(
+        parsed["parents"] == (RECOVERY_BASE_COMMIT,)
+        and parsed["sha256"] == values["commitObjectSha256"],
+        "RECOVERY_POSTCOMMIT_INVALID",
+    )
+    status = recovery_local_git(
+        ("status", "--porcelain=v1", "--untracked-files=no"),
+        "RECOVERY_POSTCOMMIT_INVALID",
+    )
+    require(status == b"", "RECOVERY_POSTCOMMIT_INVALID")
+    changed = recovery_local_git(
+        (
+            "diff-tree",
+            "--no-commit-id",
+            "--name-status",
+            "-r",
+            RECOVERY_BASE_COMMIT,
+            values["commit"],
+        ),
+        "RECOVERY_POSTCOMMIT_INVALID",
+    )
+    expected_changed = b"".join(
+        b"M\t" + path.encode("utf-8") + b"\n"
+        for path in RECOVERY_EXACT4
+    )
+    require(changed == expected_changed, "RECOVERY_POSTCOMMIT_INVALID")
+    index_path = pathlib.Path("/Users/yusuke/workspace/yrese/.git/index")
+    index_info = index_path.lstat()
+    require(
+        stat.S_ISREG(index_info.st_mode)
+        and not stat.S_ISLNK(index_info.st_mode),
+        "RECOVERY_POSTCOMMIT_INVALID",
+    )
+    verify_no_replace_and_grafts()
+    return parsed
+
+
+def verify_recovery_preclaim_remote(values):
+    remote = observe_recovery_remote()
+    require(
+        remote["main"] == values["base"]
+        and remote["non_target_sha256"]
+        == values["nonTargetRefsSha256"]
+        == "4f3185217ec6f2309bab38a8fdbf25112b8f141204b139449686f993039899f2",
+        "RECOVERY_PRECLAIM_REMOTE_INVALID",
+    )
+    return remote
+
+
+def recovery_postcommit_static_guard():
+    expected_changed = b"".join(
+        b"M\t" + path.encode("utf-8") + b"\n"
+        for path in RECOVERY_EXACT4
+    )
+    require(
+        RECOVERY_BASE_COMMIT
+        == "f4d0f8f71a62c3e55a57a79ad57092b10620cc70"
+        and RECOVERY_COMMIT_MESSAGE
+        == "WP-4158: repair terminology rights S1 r0001"
+        and RECOVERY_EXACT4
+        == tuple(sorted(RECOVERY_EXACT4))
+        and expected_changed
+        == (
+            b"M\tPlans.md\n"
+            b"M\tState.md\n"
+            b"M\tops/refactor/EVIDENCE.md\n"
+            b"M\tops/refactor/STATE.md\n"
+        ),
+        "RECOVERY_POSTCOMMIT_STATIC_INVALID",
+    )
+
+
+def observe_recovery_remote():
+    result = run_capped_process(
+        recovery_remote_git_argv(),
+        environment=recovery_remote_git_environment(),
+        cwd="/",
+        deadline_seconds=15,
+        failure_code="RECOVERY_REMOTE_GIT_INVALID",
+    )
+    output = strict_process_result(result, "RECOVERY_REMOTE_GIT_INVALID")
+    return parse_remote_refs(output)
+
+
+def probe_recovery_esrch_once(identity_value: int, *, group: bool):
+    require(
+        isinstance(identity_value, int)
+        and not isinstance(identity_value, bool)
+        and identity_value > 0
+        and isinstance(group, bool),
+        "RECOVERY_ESRCH_PROBE_INVALID",
+    )
+    try:
+        if group:
+            os.killpg(identity_value, 0)
+        else:
+            os.kill(identity_value, 0)
+    except ProcessLookupError:
+        return True
+    except PermissionError:
+        return False
+    except OSError as exc:
+        if exc.errno == errno.ESRCH:
+            return True
+        if exc.errno == errno.EPERM:
+            return False
+        raise VerificationError("RECOVERY_ESRCH_PROBE_INVALID") from exc
+    return False
+
+
+def open_recovery_nonce_directory(root_text: str):
+    require(
+        isinstance(root_text, str)
+        and re.fullmatch(
+            r"/Users/yusuke/\.codex/run/wp4158-[0-9a-f]{64}",
+            root_text,
+        )
+        is not None,
+        "RECOVERY_NONCE_DIRECTORY_INVALID",
+    )
+    root = pathlib.Path(root_text)
+    descriptor = None
+    try:
+        require_no_symlink_chain(root)
+        info = root.lstat()
+        require(
+            stat.S_ISDIR(info.st_mode)
+            and not stat.S_ISLNK(info.st_mode)
+            and stat.S_IMODE(info.st_mode) == 0o700
+            and info.st_uid == os.getuid()
+            and info.st_gid == 20,
+            "RECOVERY_NONCE_DIRECTORY_INVALID",
+        )
+        descriptor = os.open(
+            root,
+            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+        )
+        opened = os.fstat(descriptor)
+        require(
+            identity(info) == identity(opened),
+            "RECOVERY_NONCE_DIRECTORY_INVALID",
+        )
+        return root, descriptor, identity(opened)
+    except VerificationError:
+        if descriptor is not None:
+            os.close(descriptor)
+        raise
+    except OSError as exc:
+        if descriptor is not None:
+            os.close(descriptor)
+        raise VerificationError("RECOVERY_NONCE_DIRECTORY_INVALID") from exc
+
+
+def load_recovery_nonce_authority(root_text: str, *, require_claim: bool):
+    require(os.getcwd() == "/", "RECOVERY_NONCE_AUTHORITY_INVALID")
+    require(
+        isinstance(require_claim, bool),
+        "RECOVERY_NONCE_AUTHORITY_INVALID",
+    )
+    root, root_fd, root_identity = open_recovery_nonce_directory(root_text)
+    try:
+        source, source_identity, _ = read_recovery_file(
+            root_fd,
+            "supervisor.py",
+        )
+        running_source = pathlib.Path(__file__).resolve(strict=True)
+        require(
+            running_source == root / "supervisor.py"
+            and identity(running_source.lstat()) == source_identity,
+            "RECOVERY_NONCE_AUTHORITY_INVALID",
+        )
+        request, _, _ = read_recovery_file(
+            root_fd,
+            "approval.packet",
+        )
+        approval_body, _, _ = read_recovery_file(
+            root_fd,
+            "approval.body",
+        )
+        receipt, _, _ = read_recovery_file(
+            root_fd,
+            "receipt.state",
+        )
+        approved, _, _ = read_recovery_file(
+            root_fd,
+            "approved.state",
+        )
+        execution_context = recovery_execution_context_manifest()
+        values, launch = validate_recovery_persisted_authority(
+            request=request,
+            approval_body=approval_body,
+            receipt=receipt,
+            approved=approved,
+            supervisor_source=source,
+            execution_context=execution_context,
+        )
+        require(
+            launch["nonceDir"] == root_text
+            and launch["supervisorPath"] == str(running_source)
+            and launch["packetPath"] == str(root / "approval.packet")
+            and root.name == "wp4158-" + values["nonce"],
+            "RECOVERY_NONCE_AUTHORITY_INVALID",
+        )
+        claim = None
+        claim_values = None
+        if require_claim:
+            claim, _, _ = read_recovery_file(
+                root_fd,
+                "claim",
+            )
+            claim_values = validate_recovery_claim(
+                request,
+                approval_body,
+                claim,
+            )
+        require(
+            identity(os.fstat(root_fd)) == root_identity,
+            "RECOVERY_NONCE_AUTHORITY_INVALID",
+        )
+        return {
+            "root": root,
+            "root_fd": root_fd,
+            "root_identity": root_identity,
+            "source": source,
+            "request": request,
+            "approval_body": approval_body,
+            "receipt": receipt,
+            "approved": approved,
+            "claim": claim,
+            "claim_values": claim_values,
+            "values": values,
+            "launch": launch,
+            "execution_context": execution_context,
+        }
+    except BaseException:
+        os.close(root_fd)
+        raise
+
+
+def recovery_push(packet_text: str):
+    require(
+        isinstance(packet_text, str)
+        and re.fullmatch(
+            r"/Users/yusuke/\.codex/run/wp4158-[0-9a-f]{64}/approval\.packet",
+            packet_text,
+        )
+        is not None,
+        "RECOVERY_PUSH_INVOCATION_INVALID",
+    )
+    root_text = str(pathlib.Path(packet_text).parent)
+    bundle = load_recovery_nonce_authority(
+        root_text,
+        require_claim=False,
+    )
+    root_fd = bundle["root_fd"]
+    monitor_fd = None
+    if entry_at(root_fd, "claim") is not None:
+        os.close(root_fd)
+        return classification_resume(root_text)
+    existing_claim, _ = reconcile_recovery_claim_aliases(
+        root_fd,
+        bundle["request"],
+        bundle["approval_body"],
+    )
+    require(
+        existing_claim is None,
+        "RECOVERY_PUSH_INVOCATION_INVALID",
+    )
+    try:
+        require(
+            packet_text == bundle["launch"]["packetPath"]
+            and entry_at(root_fd, "result.state") is None
+            and entry_at(root_fd, "result.state.v2") is None,
+            "RECOVERY_PUSH_INVOCATION_INVALID",
+        )
+        boot_sha, _ = recovery_boot_session()
+        values, launch = validate_recovery_authority_bundle(
+            request=bundle["request"],
+            approval_body=bundle["approval_body"],
+            receipt=bundle["receipt"],
+            approved=bundle["approved"],
+            supervisor_source=bundle["source"],
+            execution_context=bundle["execution_context"],
+            observed_at_utc=datetime.datetime.now(datetime.timezone.utc),
+            monotonic_now_ns=time.monotonic_ns(),
+            boot_session_sha=boot_sha,
+        )
+        require(
+            launch["hashes"] == bundle["launch"]["hashes"],
+            "RECOVERY_PUSH_INVOCATION_INVALID",
+        )
+        verify_recovery_postcommit_local(values, bundle["source"])
+        verify_recovery_preclaim_remote(values)
+        if entry_at(root_fd, "monitor.lock") is None:
+            monitor_fd, _ = open_recovery_lock(
+                root_fd,
+                "monitor.lock",
+                create=True,
+            )
+        else:
+            monitor_fd, _ = open_recovery_lock(
+                root_fd,
+                "monitor.lock",
+                create=False,
+            )
+        attempt = os.urandom(32).hex()
+        require(
+            re.fullmatch(r"[0-9a-f]{64}", attempt) is not None,
+            "RECOVERY_PUSH_INVOCATION_INVALID",
+        )
+        claimed_monotonic_ns = time.monotonic_ns()
+        claimed_at_utc = datetime.datetime.now(
+            datetime.timezone.utc
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+        claim = recovery_claim_manifest(
+            bundle["request"],
+            bundle["approval_body"],
+            attempt=attempt,
+            claimed_at_utc=claimed_at_utc,
+            claimed_monotonic_ns=claimed_monotonic_ns,
+        )
+        verify_recovery_postcommit_local(values, bundle["source"])
+        verify_recovery_preclaim_remote(values)
+        won = claim_recovery_once(
+            root_fd,
+            attempt,
+            claim,
+        )
+        if not won:
+            os.close(monitor_fd)
+            monitor_fd = None
+            os.close(root_fd)
+            root_fd = None
+            return classification_resume(root_text)
+        claim_values = validate_recovery_claim(
+            bundle["request"],
+            bundle["approval_body"],
+            claim,
+        )
+        bundle["claim"] = claim
+        bundle["claim_values"] = claim_values
+
+        def validate_pre_release():
+            current_claim, _, _ = read_recovery_file(
+                root_fd,
+                "claim",
+            )
+            require(
+                current_claim == claim,
+                "RECOVERY_PRE_RELEASE_INVALID",
+            )
+            current_context = recovery_execution_context_manifest()
+            current_boot_sha, _ = recovery_boot_session()
+            current_values, current_launch = (
+                validate_recovery_authority_bundle(
+                    request=bundle["request"],
+                    approval_body=bundle["approval_body"],
+                    receipt=bundle["receipt"],
+                    approved=bundle["approved"],
+                    supervisor_source=bundle["source"],
+                    execution_context=current_context,
+                    observed_at_utc=datetime.datetime.now(
+                        datetime.timezone.utc
+                    ),
+                    monotonic_now_ns=time.monotonic_ns(),
+                    boot_session_sha=current_boot_sha,
+                )
+            )
+            require(
+                current_values == values
+                and current_launch["hashes"] == launch["hashes"],
+                "RECOVERY_PRE_RELEASE_INVALID",
+            )
+            verify_recovery_postcommit_local(
+                current_values,
+                bundle["source"],
+            )
+            verify_recovery_preclaim_remote(current_values)
+
+        validate_pre_release()
+        lifecycle = run_recovery_process_lifecycle(
+            root_fd=root_fd,
+            root_path=bundle["root"],
+            sentinel_launcher=bundle["launch"]["sentinelLauncher"],
+            bash_launcher=bundle["launch"]["bashBootstrapLauncher"],
+            pre_release=validate_pre_release,
+        )
+        classified = classify_and_persist_recovery(
+            root_fd,
+            base=values["base"],
+            commit=values["commit"],
+            release_exists=True,
+            winner_exit=lifecycle["winner_exit"],
+            observed_at_utc=datetime.datetime.now(
+                datetime.timezone.utc
+            ).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            remote_observer=observe_recovery_remote,
+        )
+        if classified["remote_class"] != "REMOTE_COMMIT":
+            print(
+                "WP4158_RECOVERY_CLASSIFICATION "
+                f"outcome={classified['outcome']} "
+                f"remote={classified['remote_main']} "
+                f"refs={classified['non_target_sha256']}"
+            )
+            return 0
+        return complete_recovery_terminal(
+            values,
+            bundle["source"],
+        )
+    finally:
+        if monitor_fd is not None:
+            os.close(monitor_fd)
+        if root_fd is not None:
+            os.close(root_fd)
+
+
+def recovery_terminal_token(values, run_id: int):
+    require(
+        tuple(values) == RECOVERY_REQUEST_FIELDS
+        and isinstance(run_id, int)
+        and not isinstance(run_id, bool)
+        and run_id > 0,
+        "RECOVERY_TERMINAL_INVALID",
+    )
+    return (
+        "WP4158_RECOVERY_PUSH_PASS "
+        f"commit={values['commit']} "
+        f"base={values['base']} "
+        f"remote={values['remote']} "
+        f"ref={values['ref']} "
+        f"refs={values['nonTargetRefsSha256']} "
+        f"run={run_id} workflow=309812329 attempt=1 deployments=0"
+    )
+
+
+def complete_recovery_terminal(values, supervisor_source: bytes):
+    run_id = poll_recovery_ac9p(values["commit"])
+    terminal_remote = observe_recovery_remote()
+    require(
+        terminal_remote["main"] == values["commit"]
+        and terminal_remote["non_target_sha256"]
+        == values["nonTargetRefsSha256"],
+        "RECOVERY_TERMINAL_INVALID",
+    )
+    verify_recovery_postcommit_local(
+        values,
+        supervisor_source,
+        require_boot_session=False,
+    )
+    print(recovery_terminal_token(values, run_id))
+    return 0
+
+
+def classification_resume(root_text: str):
+    bundle = load_recovery_nonce_authority(
+        root_text,
+        require_claim=True,
+    )
+    root_fd = bundle["root_fd"]
+    try:
+        current_boot_sha, _ = recovery_boot_session()
+        decision = inspect_recovery_resume(
+            root_fd,
+            current_boot_sha=current_boot_sha,
+            request_boot_sha=bundle["values"]["bootSessionSha256"],
+            now_monotonic_ns=time.monotonic_ns(),
+            pid_esrch_probe=lambda pid: probe_recovery_esrch_once(
+                pid,
+                group=False,
+            ),
+            group_esrch_probe=lambda pgid: probe_recovery_esrch_once(
+                pgid,
+                group=True,
+            ),
+        )
+        require(
+            decision == "CLASSIFY_NO_MUTATION",
+            decision,
+        )
+        reconciled_claim, reconciled_values = (
+            reconcile_recovery_claim_aliases(
+                root_fd,
+                bundle["request"],
+                bundle["approval_body"],
+            )
+        )
+        require(
+            reconciled_claim == bundle["claim"]
+            and reconciled_values == bundle["claim_values"],
+            "RECOVERY_CLAIM_RECONCILE_INVALID",
+        )
+        release_exists = (
+            entry_at(root_fd, "bash.release") is not None
+            or entry_at(root_fd, "executor.release") is not None
+        )
+        classified = classify_and_persist_recovery(
+            root_fd,
+            base=bundle["values"]["base"],
+            commit=bundle["values"]["commit"],
+            release_exists=release_exists,
+            winner_exit="RESPONSE_LOSS" if release_exists else "NOT_SPAWNED",
+            observed_at_utc=datetime.datetime.now(
+                datetime.timezone.utc
+            ).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            remote_observer=observe_recovery_remote,
+        )
+        if classified["remote_class"] != "REMOTE_COMMIT":
+            print(
+                "WP4158_RECOVERY_CLASSIFICATION "
+                f"outcome={classified['outcome']} "
+                f"remote={classified['remote_main']} "
+                f"refs={classified['non_target_sha256']}"
+            )
+            return 0
+        return complete_recovery_terminal(
+            bundle["values"],
+            bundle["source"],
+        )
+    finally:
+        os.close(root_fd)
+
+
+def recovery_spawn_spec(bash_launcher_sha: str, fork_spec_sha: str) -> bytes:
+    require(re.fullmatch(r"[0-9a-f]{64}", bash_launcher_sha) is not None, "RECOVERY_SPAWN_SPEC_INVALID")
+    require(re.fullmatch(r"[0-9a-f]{64}", fork_spec_sha) is not None, "RECOVERY_SPAWN_SPEC_INVALID")
+    rows = (
+        ("schema", "WP4158_POSIX_SPAWN_SPEC_V11"),
+        ("sentinel.mode", "FORK_RELEASE"),
+        ("sentinel.forkSpecSha256", fork_spec_sha),
+        ("bash.path", "/usr/bin/env"),
+        ("bash.argvSha256", bash_launcher_sha),
+        ("bash.envSha256", hashlib.sha256(b"").hexdigest()),
+        ("bash.cwdInherited", "/"),
+        ("bash.fileActions", "DUP2:8:9,CLOSE:8"),
+        ("bash.setpgroup", "<sentinelPid>"),
+        ("bash.resetids", "false"),
+        ("bash.setsid", "false"),
+        ("bash.setsigmask", "EMPTY"),
+        ("bash.setsigdef", "2,15,1,14"),
+        ("bash.scheduler", "OMITTED"),
+    )
+    manifest = ordered_manifest(rows, "RECOVERY_SPAWN_SPEC_INVALID")
+    require(len(rows) == 14, "RECOVERY_SPAWN_SPEC_INVALID")
+    return manifest
+
+
+def argv_manifest(argv):
+    require(
+        isinstance(argv, (tuple, list))
+        and argv
+        and all(
+            isinstance(value, str)
+            and value
+            and "\0" not in value
+            for value in argv
+        ),
+        "RECOVERY_ARGV_INVALID",
+    )
+    return b"".join(value.encode("utf-8") + b"\0" for value in argv)
+
+
+def environment_manifest(rows):
+    return ordered_manifest(rows, "RECOVERY_ENV_INVALID")
+
+
+def shell_single_quote(value: str):
+    require(
+        isinstance(value, str)
+        and value
+        and "'" not in value
+        and "\0" not in value
+        and "\n" not in value,
+        "RECOVERY_WRAPPER_INVALID",
+    )
+    return "'" + value + "'"
+
+
+def recovery_launch_artifacts(
+    *,
+    nonce: str,
+    base: str,
+    commit: str,
+):
+    require(
+        re.fullmatch(r"[0-9a-f]{64}", nonce) is not None
+        and re.fullmatch(r"[0-9a-f]{40}", base) is not None
+        and re.fullmatch(r"[0-9a-f]{40}", commit) is not None
+        and base != commit,
+        "RECOVERY_LAUNCH_INVALID",
+    )
+    nonce_dir = f"/Users/yusuke/.codex/run/wp4158-{nonce}"
+    supervisor_path = nonce_dir + "/supervisor.py"
+    packet_path = nonce_dir + "/approval.packet"
+    clean_prefix = (
+        "/usr/bin/env",
+        "-i",
+        "HOME=/Users/yusuke",
+        "PATH=/usr/bin:/bin",
+        "LC_ALL=C",
+        "LANG=C",
+        "/usr/bin/python3",
+        "-I",
+        supervisor_path,
+    )
+    supervisor_launcher = (
+        "/usr/bin/env",
+        "-i",
+        "HOME=/Users/yusuke",
+        "PATH=/usr/bin:/bin:/usr/sbin:/sbin",
+        "LC_ALL=C",
+        "LANG=C",
+        "/usr/bin/python3",
+        "-I",
+        supervisor_path,
+        "--recovery-push",
+        packet_path,
+    )
+    bootstrap_launcher = clean_prefix + ("--executor-bootstrap", nonce_dir)
+    resume_launcher = clean_prefix + ("--classification-resume", nonce_dir)
+    bash_bootstrap_launcher = clean_prefix + ("--bash-bootstrap", nonce_dir)
+    sentinel_launcher = clean_prefix + ("--group-sentinel", nonce_dir)
+    git_argv = (
+        "/usr/bin/git",
+        "--no-replace-objects",
+        "--git-dir=/Users/yusuke/workspace/yrese/.git",
+        "--work-tree=/Users/yusuke/workspace/yrese",
+        "-c",
+        "credential.https://github.com.helper=",
+        "-c",
+        "credential.https://github.com.helper=!/opt/homebrew/bin/gh auth git-credential",
+        "-c",
+        "http.followRedirects=false",
+        "-c",
+        "http.extraHeader=",
+        "-c",
+        "push.followTags=false",
+        "-c",
+        "push.gpgSign=false",
+        "-c",
+        "push.useForceIfIncludes=false",
+        "push",
+        "--no-verify",
+        "--no-follow-tags",
+        "--recurse-submodules=no",
+        "--atomic",
+        f"--force-with-lease=refs/heads/main:{base}",
+        "https://github.com/yusuketakuma/yrese.git",
+        f"{commit}:refs/heads/main",
+    )
+    wrapper = (
+        "exec /usr/bin/env -i "
+        + " ".join(
+            shell_single_quote(name + "=" + value)
+            for name, value in RECOVERY_PUSH_ENV_ROWS
+        )
+        + " "
+        + " ".join(shell_single_quote(value) for value in git_argv)
+    ).encode("ascii")
+    require(b"\0" not in wrapper and b"\n" not in wrapper, "RECOVERY_WRAPPER_INVALID")
+    bash_executor = (
+        "/usr/bin/env",
+        "-i",
+        "HOME=/Users/yusuke",
+        "PATH=/usr/bin:/bin",
+        "LC_ALL=C",
+        "LANG=C",
+        "/bin/bash",
+        "--noprofile",
+        "--norc",
+        "-c",
+        wrapper.decode("ascii"),
+    )
+    fork_spec = recovery_fork_spec()
+    fork_sha = digest(fork_spec)
+    bash_bootstrap_sha = digest(argv_manifest(bash_bootstrap_launcher))
+    spawn_spec = recovery_spawn_spec(bash_bootstrap_sha, fork_sha)
+    artifacts = {
+        "supervisorLauncherArgvSha256": digest(argv_manifest(supervisor_launcher)),
+        "bootstrapLauncherArgvSha256": digest(argv_manifest(bootstrap_launcher)),
+        "resumeLauncherArgvSha256": digest(argv_manifest(resume_launcher)),
+        "bashBootstrapLauncherArgvSha256": bash_bootstrap_sha,
+        "sentinelLauncherArgvSha256": digest(argv_manifest(sentinel_launcher)),
+        "sentinelForkSpecSha256": fork_sha,
+        "bashExecutorArgvSha256": digest(argv_manifest(bash_executor)),
+        "spawnSpecSha256": digest(spawn_spec),
+        "wrapperSha256": digest(wrapper),
+        "argvSha256": digest(argv_manifest(git_argv)),
+        "envSha256": digest(environment_manifest(RECOVERY_PUSH_ENV_ROWS)),
+    }
+    return {
+        "nonceDir": nonce_dir,
+        "supervisorPath": supervisor_path,
+        "packetPath": packet_path,
+        "supervisorLauncher": supervisor_launcher,
+        "bootstrapLauncher": bootstrap_launcher,
+        "resumeLauncher": resume_launcher,
+        "bashBootstrapLauncher": bash_bootstrap_launcher,
+        "sentinelLauncher": sentinel_launcher,
+        "bashExecutor": bash_executor,
+        "gitArgv": git_argv,
+        "pushEnv": RECOVERY_PUSH_ENV_ROWS,
+        "wrapper": wrapper,
+        "forkSpec": fork_spec,
+        "spawnSpec": spawn_spec,
+        "hashes": artifacts,
+    }
+
+
+def boot_session_preimage(seconds: str, microseconds: str, session_uuid: str) -> bytes:
+    require(re.fullmatch(r"[1-9][0-9]*", seconds) is not None, "BOOT_SESSION_INVALID")
+    require(re.fullmatch(r"[0-9]{6}", microseconds) is not None, "BOOT_SESSION_INVALID")
+    require(
+        re.fullmatch(
+            r"[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}",
+            session_uuid,
+        )
+        is not None,
+        "BOOT_SESSION_INVALID",
+    )
+    return (
+        b"kern.boottime\0"
+        + seconds.encode("ascii")
+        + b"."
+        + microseconds.encode("ascii")
+        + b"\n"
+        + b"kern.bootsessionuuid\0"
+        + session_uuid.encode("ascii")
+        + b"\n"
+    )
+
+
+def recovery_boot_session():
+    require(
+        ctypes.sizeof(ctypes.c_long) == 8
+        and ctypes.sizeof(ctypes.c_int) == 4
+        and ctypes.sizeof(DarwinTimeval) == 16
+        and DarwinTimeval.tv_sec.offset == 0
+        and DarwinTimeval.tv_usec.offset == 8,
+        "BOOT_SESSION_INVALID",
+    )
+    try:
+        library = ctypes.CDLL("/usr/lib/libSystem.B.dylib", use_errno=True)
+        call = library.sysctlbyname
+        call.argtypes = (
+            ctypes.c_char_p,
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_size_t),
+            ctypes.c_void_p,
+            ctypes.c_size_t,
+        )
+        call.restype = ctypes.c_int
+    except (AttributeError, OSError) as exc:
+        raise VerificationError("BOOT_SESSION_INVALID") from exc
+
+    def timeval_sample():
+        value = DarwinTimeval()
+        length = ctypes.c_size_t(ctypes.sizeof(value))
+        ctypes.set_errno(0)
+        result = call(
+            b"kern.boottime",
+            ctypes.byref(value),
+            ctypes.byref(length),
+            None,
+            0,
+        )
+        raw = ctypes.string_at(ctypes.byref(value), ctypes.sizeof(value))
+        require(
+            result == 0
+            and ctypes.get_errno() == 0
+            and length.value == 16
+            and value.tv_sec > 0
+            and 0 <= value.tv_usec <= 999999
+            and raw[12:16] == b"\0\0\0\0",
+            "BOOT_SESSION_INVALID",
+        )
+        return value.tv_sec, value.tv_usec, raw
+
+    def uuid_sample():
+        length = ctypes.c_size_t(0)
+        ctypes.set_errno(0)
+        first = call(b"kern.bootsessionuuid", None, ctypes.byref(length), None, 0)
+        require(first == 0 and ctypes.get_errno() == 0 and length.value == 37, "BOOT_SESSION_INVALID")
+        buffer = ctypes.create_string_buffer(37)
+        returned = ctypes.c_size_t(37)
+        ctypes.set_errno(0)
+        second = call(
+            b"kern.bootsessionuuid",
+            ctypes.byref(buffer),
+            ctypes.byref(returned),
+            None,
+            0,
+        )
+        raw = bytes(buffer)
+        require(
+            second == 0
+            and ctypes.get_errno() == 0
+            and returned.value == 37
+            and raw[-1:] == b"\0"
+            and b"\0" not in raw[:-1],
+            "BOOT_SESSION_INVALID",
+        )
+        try:
+            text = raw[:-1].decode("ascii")
+        except UnicodeDecodeError as exc:
+            raise VerificationError("BOOT_SESSION_INVALID") from exc
+        require(
+            re.fullmatch(
+                r"[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}",
+                text,
+            )
+            is not None,
+            "BOOT_SESSION_INVALID",
+        )
+        return text, raw
+
+    first_time = timeval_sample()
+    second_time = timeval_sample()
+    first_uuid = uuid_sample()
+    second_uuid = uuid_sample()
+    require(first_time == second_time and first_uuid == second_uuid, "BOOT_SESSION_INVALID")
+    preimage = boot_session_preimage(
+        str(first_time[0]),
+        f"{first_time[1]:06d}",
+        first_uuid[0],
+    )
+    return digest(preimage), preimage
+
+
+def recovery_v12_manifest_guard():
+    tool_manifest = recovery_tool_manifest()
+    config_manifest = recovery_local_config_manifest()
+    require(
+        tool_manifest.count(b"\n") == 22
+        and config_manifest.count(b"\n") == 10,
+        "RECOVERY_MANIFEST_INVALID",
+    )
+    fork_manifest = recovery_fork_spec()
+    require(
+        fork_manifest.count(b"\n") == len(RECOVERY_FORK_SPEC_ROWS)
+        and fork_manifest.endswith(b"\n"),
+        "RECOVERY_FORK_SPEC_INVALID",
+    )
+    fork_sha = digest(fork_manifest)
+    bash_sha = digest(b"synthetic-bash-launcher\0")
+    spawn_manifest = recovery_spawn_spec(bash_sha, fork_sha)
+    require(spawn_manifest.count(b"\n") == 14 and spawn_manifest.endswith(b"\n"), "RECOVERY_SPAWN_SPEC_INVALID")
+    launch = recovery_launch_artifacts(
+        nonce="9" * 64,
+        base="1" * 40,
+        commit="2" * 40,
+    )
+    repeated_launch = recovery_launch_artifacts(
+        nonce="9" * 64,
+        base="1" * 40,
+        commit="2" * 40,
+    )
+    require(
+        launch["hashes"] == repeated_launch["hashes"]
+        and len(launch["hashes"]) == 11
+        and launch["gitArgv"][:2]
+        == ("/usr/bin/git", "--no-replace-objects")
+        and tuple(name for name, _ in launch["pushEnv"])[-3:]
+        == ("GIT_NO_REPLACE_OBJECTS", "GIT_TERMINAL_PROMPT", "GH_CONFIG_DIR")
+        and launch["wrapper"].startswith(b"exec /usr/bin/env -i ")
+        and launch["spawnSpec"].count(b"\n") == 14,
+        "RECOVERY_LAUNCH_INVALID",
+    )
+    changed_commit_launch = recovery_launch_artifacts(
+        nonce="9" * 64,
+        base="1" * 40,
+        commit="3" * 40,
+    )
+    require(
+        changed_commit_launch["hashes"]["argvSha256"]
+        != launch["hashes"]["argvSha256"]
+        and changed_commit_launch["hashes"]["wrapperSha256"]
+        != launch["hashes"]["wrapperSha256"]
+        and changed_commit_launch["hashes"]["bashExecutorArgvSha256"]
+        != launch["hashes"]["bashExecutorArgvSha256"],
+        "RECOVERY_LAUNCH_INVALID",
+    )
+    expect_failure(
+        "RECOVERY_MANIFEST_INVALID",
+        lambda: ordered_manifest((("a", "1"), ("a", "2"))),
+    )
+    expect_failure(
+        "RECOVERY_MANIFEST_INVALID",
+        lambda: ordered_manifest((("a\n", "1"),)),
+    )
+    for seconds, microseconds, session_uuid in (
+        ("+1", "000001", "01234567-89AB-CDEF-0123-456789ABCDEF"),
+        ("01", "000001", "01234567-89AB-CDEF-0123-456789ABCDEF"),
+        ("1", "1", "01234567-89AB-CDEF-0123-456789ABCDEF"),
+        ("1", "000001", "01234567-89ab-CDEF-0123-456789ABCDEF"),
+        ("1", "000001", "01234567-89AB-CDEF-0123-456789ABCDE"),
+    ):
+        expect_failure(
+            "BOOT_SESSION_INVALID",
+            lambda s=seconds, u=microseconds, value=session_uuid: boot_session_preimage(s, u, value),
+        )
+    boot_sha, boot_preimage = recovery_boot_session()
+    require(
+        re.fullmatch(r"[0-9a-f]{64}", boot_sha) is not None
+        and digest(boot_preimage) == boot_sha,
+        "BOOT_SESSION_INVALID",
+    )
+    issued = datetime.datetime(2026, 7, 26, 0, 0, 0, tzinfo=datetime.timezone.utc)
+    expires = issued + datetime.timedelta(seconds=600)
+    request_values = {}
+    for name in RECOVERY_REQUEST_FIELDS:
+        if name == "approvalVersion":
+            value = "WP4158_FORCE_LEASE_APPROVAL_V10"
+        elif name == "nonce":
+            value = "9" * 64
+        elif name == "issuedAtUtc":
+            value = issued.strftime("%Y-%m-%dT%H:%M:%SZ")
+        elif name == "expiresAtUtc":
+            value = expires.strftime("%Y-%m-%dT%H:%M:%SZ")
+        elif name == "monotonicIssuedNs":
+            value = "1000000000"
+        elif name == "monotonicDeadlineNs":
+            value = "601000000000"
+        elif name == "base":
+            value = "1" * 40
+        elif name == "commit":
+            value = "2" * 40
+        elif name == "remote":
+            value = "https://github.com/yusuketakuma/yrese.git"
+        elif name == "ref":
+            value = "refs/heads/main"
+        elif name == "bootSessionSha256":
+            value = boot_sha
+        else:
+            value = "3" * 64
+        request_values[name] = value
+    packet = ordered_manifest(tuple(request_values.items()), "RECOVERY_REQUEST_INVALID")
+    parsed_request = validate_recovery_request(
+        packet,
+        observed_at_utc=issued + datetime.timedelta(seconds=1),
+        monotonic_now_ns=2_000_000_000,
+        boot_session_sha=boot_sha,
+    )
+    supervisor_source = b"synthetic-supervisor-source\n"
+    bound_values = dict(parsed_request)
+    bound_values.update(launch["hashes"])
+    bound_values["toolManifestSha256"] = digest(tool_manifest)
+    bound_values["localConfigSha256"] = digest(config_manifest)
+    bound_values["supervisorSourceSha256"] = digest(supervisor_source)
+    bound_values["nonTargetRefsSha256"] = "4f3185217ec6f2309bab38a8fdbf25112b8f141204b139449686f993039899f2"
+    packet = ordered_manifest(
+        tuple(bound_values.items()),
+        "RECOVERY_REQUEST_INVALID",
+    )
+    parsed_request = validate_recovery_request(
+        packet,
+        observed_at_utc=issued + datetime.timedelta(seconds=1),
+        monotonic_now_ns=2_000_000_000,
+        boot_session_sha=boot_sha,
+    )
+    validate_recovery_static_bindings(parsed_request, supervisor_source)
+    approval_body = recovery_approval_body(digest(packet), parsed_request)
+    require(
+        approval_body.startswith(b"APPROVE_WP4158_FORCE_LEASE_V10 request=")
+        and b"\0" not in approval_body
+        and b"\n" not in approval_body,
+        "RECOVERY_APPROVAL_BODY_INVALID",
+    )
+    receipt = recovery_receipt_manifest(
+        approval_body=approval_body,
+        observed_at_utc="2026-07-26T00:00:02Z",
+        request_sha=digest(packet),
+    )
+    approved = recovery_approved_state(packet, approval_body, receipt)
+    validate_recovery_approved_state(packet, approval_body, receipt, approved)
+    claim = recovery_claim_manifest(
+        packet,
+        approval_body,
+        attempt="8" * 64,
+        claimed_at_utc="2026-07-26T00:00:03Z",
+        claimed_monotonic_ns=3_000_000_000,
+    )
+    claim_values = validate_recovery_claim(packet, approval_body, claim)
+    require(
+        claim_values["bootstrapCutoffNs"] == "33000000000",
+        "RECOVERY_CLAIM_INVALID",
+    )
+    expect_failure(
+        "RECOVERY_RECEIPT_INVALID",
+        lambda: validate_recovery_receipt(
+            packet,
+            approval_body,
+            receipt.replace(b"hostRole\0user\n", b"hostRole\0assistant\n", 1),
+        ),
+    )
+    expect_failure(
+        "RECOVERY_APPROVED_STATE_INVALID",
+        lambda: validate_recovery_approved_state(
+            packet,
+            approval_body,
+            receipt,
+            approved.replace(b"status\0APPROVED\n", b"status\0CONSUMED\n", 1),
+        ),
+    )
+    expect_failure(
+        "RECOVERY_CLAIM_INVALID",
+        lambda: validate_recovery_claim(
+            packet,
+            approval_body,
+            claim.replace(
+                b"bootstrapCutoffNs\0" + b"33000000000\n",
+                b"bootstrapCutoffNs\0" + b"33000000001\n",
+                1,
+            ),
+        ),
+    )
+    sentinel_intent = recovery_sentinel_intent_manifest(
+        pid=123,
+        parent_pid=122,
+        release_deadline_ns=33_000_000_000,
+        challenge_sha=digest(b"c" * 32),
+    )
+    sentinel_ready = recovery_sentinel_ready_manifest(
+        sentinel_intent,
+        pid=123,
+    )
+    validate_recovery_sentinel_ready(sentinel_intent, sentinel_ready)
+    expect_failure(
+        "RECOVERY_SENTINEL_READY_INVALID",
+        lambda: validate_recovery_sentinel_ready(
+            sentinel_intent,
+            sentinel_ready.replace(b"guardianFd\0" + b"7\n", b"guardianFd\0" + b"8\n", 1),
+        ),
+    )
+    bash_ready = recovery_bash_ready_manifest(
+        pid=124,
+        pgid=123,
+        started_ns=4_000_000_000,
+        lock_identity=(1, 2),
+    )
+    mutation_state = recovery_mutation_state_manifest(bash_ready)
+    mutation_values = validate_recovery_mutation_state(
+        bash_ready,
+        mutation_state,
+    )
+    require(
+        mutation_values["mutationDeadlineNs"] == "184000000000",
+        "RECOVERY_MUTATION_STATE_INVALID",
+    )
+    expect_failure(
+        "RECOVERY_MUTATION_STATE_INVALID",
+        lambda: validate_recovery_mutation_state(
+            bash_ready,
+            mutation_state.replace(b"lockFd\0" + b"9\n", b"lockFd\0" + b"8\n", 1),
+        ),
+    )
+    reversed_packet = ordered_manifest(
+        tuple(reversed(tuple(request_values.items()))),
+        "RECOVERY_REQUEST_INVALID",
+    )
+    expect_failure(
+        "RECOVERY_REQUEST_INVALID",
+        lambda: validate_recovery_request(
+            reversed_packet,
+            observed_at_utc=issued + datetime.timedelta(seconds=1),
+            monotonic_now_ns=2_000_000_000,
+            boot_session_sha=boot_sha,
+        ),
+    )
+    expect_failure(
+        "RECOVERY_REQUEST_INVALID",
+        lambda: validate_recovery_request(
+            packet,
+            observed_at_utc=expires,
+            monotonic_now_ns=2_000_000_000,
+            boot_session_sha=boot_sha,
+        ),
+    )
+    expect_failure(
+        "RECOVERY_REQUEST_INVALID",
+        lambda: validate_recovery_request(
+            packet,
+            observed_at_utc=issued + datetime.timedelta(seconds=1),
+            monotonic_now_ns=2_000_000_000,
+            boot_session_sha="4" * 64,
+        ),
+    )
+    mutated_binding = dict(parsed_request)
+    mutated_binding["argvSha256"] = "f" * 64
+    expect_failure(
+        "RECOVERY_BINDING_INVALID",
+        lambda: validate_recovery_static_bindings(
+            mutated_binding,
+            supervisor_source,
+        ),
+    )
+    base = "1" * 40
+    commit = "2" * 40
+    refs_sha = "4f3185217ec6f2309bab38a8fdbf25112b8f141204b139449686f993039899f2"
+    observation_time = "2026-07-26T00:00:01Z"
+    commit_remote = {"main": commit, "non_target_sha256": refs_sha}
+    base_remote = {"main": base, "non_target_sha256": refs_sha}
+    require(
+        classify_recovery_result(
+            commit_remote,
+            base=base,
+            commit=commit,
+            release_exists=True,
+        )[0]
+        == "REMOTE_COMMIT"
+        and classify_recovery_result(
+            base_remote,
+            base=base,
+            commit=commit,
+            release_exists=True,
+        )[0]
+        == "REMOTE_BASE_AMBIGUOUS"
+        and classify_recovery_result(
+            base_remote,
+            base=base,
+            commit=commit,
+            release_exists=False,
+        )[0]
+        == "REMOTE_BASE_UNATTEMPTED"
+        and classify_recovery_result(
+            None,
+            base=base,
+            commit=commit,
+            release_exists=False,
+        )[0]
+        == "REMOTE_UNKNOWN",
+        "RECOVERY_RESULT_INVALID",
+    )
+    require(
+        recovery_terminal_outcome("REMOTE_COMMIT", winner_exit=0)
+        == "PUSH_APPLIED"
+        and recovery_terminal_outcome("REMOTE_COMMIT", winner_exit="TIMEOUT")
+        == "ALREADY_PUSHED_RECOVERY"
+        and recovery_terminal_outcome(
+            "REMOTE_BASE_UNATTEMPTED",
+            winner_exit="NOT_SPAWNED",
+        )
+        == "PUSH_NOT_APPLIED"
+        and recovery_terminal_outcome(
+            "REMOTE_BASE_AMBIGUOUS",
+            winner_exit=0,
+        )
+        == "REMOTE_STATE_UNKNOWN",
+        "RECOVERY_OUTCOME_INVALID",
+    )
+    expect_failure(
+        "RECOVERY_OUTCOME_INVALID",
+        lambda: recovery_terminal_outcome(
+            "REMOTE_BASE_UNATTEMPTED",
+            winner_exit=0,
+        ),
+    )
+    ambiguous = recovery_result_manifest(
+        remote_class="REMOTE_BASE_AMBIGUOUS",
+        base=base,
+        commit=commit,
+        remote_main=base,
+        non_target_refs_sha=refs_sha,
+        observed_at_utc=observation_time,
+    )
+    upgrade = recovery_result_upgrade_manifest(
+        ambiguous,
+        remote=commit_remote,
+        observed_at_utc="2026-07-26T00:00:02Z",
+    )
+    validate_recovery_result_upgrade(ambiguous, upgrade, commit_remote)
+    for remote_class, remote_main, remote_refs in (
+        ("REMOTE_COMMIT", base, refs_sha),
+        ("REMOTE_BASE_AMBIGUOUS", commit, refs_sha),
+        ("REMOTE_UNKNOWN", "UNKNOWN", refs_sha),
+        ("REMOTE_DIVERGED", "UNKNOWN", "UNKNOWN"),
+    ):
+        expect_failure(
+            "RECOVERY_RESULT_INVALID",
+            lambda kind=remote_class, main=remote_main, refs=remote_refs: recovery_result_manifest(
+                remote_class=kind,
+                base=base,
+                commit=commit,
+                remote_main=main,
+                non_target_refs_sha=refs,
+                observed_at_utc=observation_time,
+            ),
+        )
+    unattempted = recovery_result_manifest(
+        remote_class="REMOTE_BASE_UNATTEMPTED",
+        base=base,
+        commit=commit,
+        remote_main=base,
+        non_target_refs_sha=refs_sha,
+        observed_at_utc=observation_time,
+    )
+    expect_failure(
+        "RECOVERY_RESULT_UPGRADE_INVALID",
+        lambda: recovery_result_upgrade_manifest(
+            unattempted,
+            remote=commit_remote,
+            observed_at_utc="2026-07-26T00:00:02Z",
+        ),
+    )
+
+
+def parse_raw_commit(raw: bytes, oid: str, expected_parent_count: int, expected_body: bytes):
+    require(
+        isinstance(raw, bytes)
+        and raw.endswith(b"\n")
+        and b"\0" not in raw
+        and b"\r" not in raw
+        and re.fullmatch(r"[0-9a-f]{40}", oid) is not None
+        and isinstance(expected_parent_count, int)
+        and not isinstance(expected_parent_count, bool)
+        and expected_parent_count >= 0
+        and isinstance(expected_body, bytes)
+        and expected_body.endswith(b"\n"),
+        "RAW_COMMIT_INVALID",
+    )
+    header = b"commit " + str(len(raw)).encode("ascii") + b"\0"
+    require(hashlib.sha1(header + raw).hexdigest() == oid, "RAW_COMMIT_INVALID")
+    sections = raw.split(b"\n\n")
+    require(len(sections) == 2 and sections[1] == expected_body, "RAW_COMMIT_INVALID")
+    headers = sections[0].split(b"\n")
+    require(headers and re.fullmatch(rb"tree [0-9a-f]{40}", headers[0]) is not None, "RAW_COMMIT_INVALID")
+    index = 1
+    parents = []
+    while index < len(headers) and headers[index].startswith(b"parent "):
+        require(re.fullmatch(rb"parent [0-9a-f]{40}", headers[index]) is not None, "RAW_COMMIT_INVALID")
+        parents.append(headers[index][7:].decode("ascii"))
+        index += 1
+    require(len(parents) == expected_parent_count, "RAW_COMMIT_INVALID")
+    require(
+        index + 2 == len(headers)
+        and headers[index].startswith(b"author ")
+        and len(headers[index]) > len(b"author ")
+        and headers[index + 1].startswith(b"committer ")
+        and len(headers[index + 1]) > len(b"committer ")
+        and not any(line.startswith(b" ") for line in headers),
+        "RAW_COMMIT_INVALID",
+    )
+    return {
+        "tree": headers[0][5:].decode("ascii"),
+        "parents": tuple(parents),
+        "body": expected_body,
+        "sha256": digest(raw),
+    }
+
+
+def raw_commit_guard():
+    tree = b"1" * 40
+    parent = b"2" * 40
+    body = b"WP-4158: synthetic raw commit\n"
+    raw = (
+        b"tree " + tree + b"\n"
+        + b"parent " + parent + b"\n"
+        + b"author Synthetic <synthetic@example.invalid> 1 +0000\n"
+        + b"committer Synthetic <synthetic@example.invalid> 1 +0000\n\n"
+        + body
+    )
+    oid = hashlib.sha1(b"commit " + str(len(raw)).encode("ascii") + b"\0" + raw).hexdigest()
+    parsed = parse_raw_commit(raw, oid, 1, body)
+    require(
+        parsed["tree"] == tree.decode("ascii")
+        and parsed["parents"] == (parent.decode("ascii"),)
+        and parsed["body"] == body
+        and parsed["sha256"] == digest(raw),
+        "RAW_COMMIT_INVALID",
+    )
+    mutants = (
+        raw.replace(b"tree ", b"Tree ", 1),
+        raw.replace(b"parent ", b"parent 0", 1),
+        raw.replace(b"author ", b"encoding ", 1),
+        raw.replace(b"\ncommitter ", b"\n committer ", 1),
+        raw.replace(b"\n\n", b"\ngpgsig forbidden\n\n", 1),
+        raw[:-1],
+        raw + b"\n",
+        raw.replace(body, b"WP-4158: another body\n", 1),
+    )
+    for mutant in mutants:
+        mutant_oid = hashlib.sha1(
+            b"commit " + str(len(mutant)).encode("ascii") + b"\0" + mutant
+        ).hexdigest()
+        expect_failure(
+            "RAW_COMMIT_INVALID",
+            lambda value=mutant, value_oid=mutant_oid: parse_raw_commit(
+                value,
+                value_oid,
+                1,
+                body,
+            ),
+        )
+    expect_failure(
+        "RAW_COMMIT_INVALID",
+        lambda: parse_raw_commit(raw, "0" * 40, 1, body),
+    )
+
+
+def parse_git_config_null(data: bytes):
+    require(
+        isinstance(data, bytes)
+        and data.endswith(b"\0")
+        and b"\r" not in data,
+        "RECOVERY_LOCAL_CONFIG_INVALID",
+    )
+    records = data[:-1].split(b"\0")
+    require(len(records) == len(RECOVERY_LOCAL_CONFIG_ROWS), "RECOVERY_LOCAL_CONFIG_INVALID")
+    rows = []
+    names = set()
+    for record in records:
+        require(record.count(b"\n") == 1, "RECOVERY_LOCAL_CONFIG_INVALID")
+        raw_name, raw_value = record.split(b"\n")
+        try:
+            name = raw_name.decode("utf-8")
+            value = raw_value.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise VerificationError("RECOVERY_LOCAL_CONFIG_INVALID") from exc
+        require(
+            name
+            and name == name.lower()
+            and name not in names
+            and "\0" not in value
+            and "\n" not in value,
+            "RECOVERY_LOCAL_CONFIG_INVALID",
+        )
+        names.add(name)
+        rows.append((name, value))
+    manifest = ordered_manifest(rows, "RECOVERY_LOCAL_CONFIG_INVALID")
+    require(
+        tuple(rows) == RECOVERY_LOCAL_CONFIG_ROWS
+        and digest(manifest) == "02146ac58e289564b567bde31586f03b35a9c9b404d8eff056595bdbdeee58f7",
+        "RECOVERY_LOCAL_CONFIG_INVALID",
+    )
+    return manifest
+
+
+def validate_recovery_ref_name(value: str):
+    require(isinstance(value, str), "REMOTE_REF_INVALID")
+    try:
+        encoded = value.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise VerificationError("REMOTE_REF_INVALID") from exc
+    components = value.split("/")
+    forbidden = set(" ~^:?*[\\")
+    require(
+        value.startswith("refs/")
+        and 6 <= len(encoded) <= 1024
+        and len(components) >= 2
+        and all(components)
+        and all(not component.startswith(".") for component in components)
+        and all(not component.lower().endswith(".lock") for component in components)
+        and not value.endswith(".")
+        and not value.endswith("/")
+        and ".." not in value
+        and "@{" not in value
+        and "//" not in value
+        and not any(ord(character) <= 0x1F or ord(character) == 0x7F for character in value)
+        and not any(character in forbidden for character in value),
+        "REMOTE_REF_INVALID",
+    )
+
+
+def parse_remote_refs(data: bytes):
+    require(
+        isinstance(data, bytes)
+        and data.endswith(b"\n")
+        and b"\r" not in data
+        and b"\0" not in data,
+        "REMOTE_REFS_INVALID",
+    )
+    records = data[:-1].split(b"\n")
+    require(1 <= len(records) <= 10000 and all(records), "REMOTE_REFS_INVALID")
+    parsed = []
+    names = set()
+    pairs = set()
+    for record in records:
+        require(record.count(b"\t") == 1, "REMOTE_REFS_INVALID")
+        raw_oid, raw_ref = record.split(b"\t")
+        try:
+            oid = raw_oid.decode("ascii")
+            ref = raw_ref.decode("utf-8")
+        except (UnicodeDecodeError, UnicodeEncodeError) as exc:
+            raise VerificationError("REMOTE_REFS_INVALID") from exc
+        require(re.fullmatch(r"[0-9a-f]{40}", oid) is not None, "REMOTE_REFS_INVALID")
+        validate_recovery_ref_name(ref)
+        require(ref not in names and (oid, ref) not in pairs, "REMOTE_REFS_INVALID")
+        names.add(ref)
+        pairs.add((oid, ref))
+        parsed.append((oid, ref))
+    main = [oid for oid, ref in parsed if ref == "refs/heads/main"]
+    require(len(main) == 1, "REMOTE_REFS_INVALID")
+    non_target = sorted(
+        oid.encode("ascii") + b"\t" + ref.encode("utf-8")
+        for oid, ref in parsed
+        if ref != "refs/heads/main"
+    )
+    non_target_bytes = b"" if not non_target else b"\n".join(non_target) + b"\n"
+    return {
+        "main": main[0],
+        "non_target": non_target_bytes,
+        "non_target_sha256": digest(non_target_bytes),
+        "count": len(parsed),
+    }
+
+
+def recovery_git_parser_guard():
+    config_data = b"".join(
+        name.encode("utf-8") + b"\n" + value.encode("utf-8") + b"\0"
+        for name, value in RECOVERY_LOCAL_CONFIG_ROWS
+    )
+    require(parse_git_config_null(config_data) == recovery_local_config_manifest(), "RECOVERY_GIT_PARSER_FAILED")
+    for mutant in (
+        config_data[:-1],
+        config_data.replace(b"core.filemode\ntrue", b"core.filemode\nfalse", 1),
+        config_data.replace(b"core.filemode", b"CORE.FILEMODE", 1),
+        config_data.replace(b"\0", b"\n", 1),
+    ):
+        expect_failure(
+            "RECOVERY_LOCAL_CONFIG_INVALID",
+            lambda value=mutant: parse_git_config_null(value),
+        )
+    refs = (
+        b"1" * 40 + b"\trefs/heads/main\n"
+        + b"2" * 40 + b"\trefs/pull/1/head\n"
+    )
+    parsed = parse_remote_refs(refs)
+    require(
+        parsed["main"] == "1" * 40
+        and parsed["non_target"] == b"2" * 40 + b"\trefs/pull/1/head\n"
+        and parsed["count"] == 2,
+        "RECOVERY_GIT_PARSER_FAILED",
+    )
+    for invalid_ref in (
+        "heads/main",
+        "refs//main",
+        "refs/.hidden/main",
+        "refs/heads/main.lock",
+        "refs/heads/ma..in",
+        "refs/heads/main@{1",
+        "refs/heads/main ",
+        "refs/heads/main~",
+        "refs/heads/main\\x7f",
+    ):
+        expect_failure(
+            "REMOTE_REF_INVALID",
+            lambda value=invalid_ref: validate_recovery_ref_name(value),
+        )
+    for mutant in (
+        refs[:-1],
+        refs + b"1" * 40 + b"\trefs/heads/main\n",
+        refs.replace(b"1" * 40, b"A" * 40, 1),
+        refs.replace(b"\t", b" ", 1),
+    ):
+        expect_failure(
+            "REMOTE_REFS_INVALID",
+            lambda value=mutant: parse_remote_refs(value),
+        )
+
+
+def require_positive_integer(value, token):
+    require(
+        isinstance(value, int)
+        and not isinstance(value, bool)
+        and value > 0,
+        token,
+    )
+
+
+def parse_ac9p_pages(page_bodies, list_key: str, item_validator, token: str):
+    require(
+        isinstance(page_bodies, (tuple, list))
+        and len(page_bodies) >= 1
+        and isinstance(list_key, str)
+        and list_key,
+        token,
+    )
+    expected_total = None
+    observed_ids = set()
+    items = []
+    saw_empty = False
+    for index, body in enumerate(page_bodies, 1):
+        document = parse_json(body)
+        require(
+            isinstance(document, dict)
+            and isinstance(document.get("total_count"), int)
+            and not isinstance(document.get("total_count"), bool)
+            and document["total_count"] >= 0
+            and isinstance(document.get(list_key), list),
+            token,
+        )
+        if expected_total is None:
+            expected_total = document["total_count"]
+        require(document["total_count"] == expected_total and not saw_empty, token)
+        page_items = document[list_key]
+        if not page_items:
+            saw_empty = True
+            require(index == len(page_bodies), token)
+            continue
+        for item in page_items:
+            item_validator(item, token)
+            item_id = item["id"]
+            require(item_id not in observed_ids, token)
+            observed_ids.add(item_id)
+            items.append(item)
+    require(
+        saw_empty and expected_total is not None and len(items) == expected_total,
+        token,
+    )
+    return items
+
+
+def validate_workflow_item(item, token):
+    require(isinstance(item, dict), token)
+    for name in ("id", "workflow_id", "run_attempt"):
+        require_positive_integer(item.get(name), token)
+    for name in ("path", "event", "head_branch", "head_sha", "status"):
+        require(isinstance(item.get(name), str), token)
+    require(
+        item.get("conclusion") is None or isinstance(item.get("conclusion"), str),
+        token,
+    )
+
+
+def validate_job_item(item, token):
+    require(isinstance(item, dict), token)
+    require_positive_integer(item.get("id"), token)
+    require(
+        isinstance(item.get("status"), str)
+        and isinstance(item.get("conclusion"), str)
+        and isinstance(item.get("steps"), list)
+        and item["steps"],
+        token,
+    )
+    step_numbers = set()
+    for step in item["steps"]:
+        require(isinstance(step, dict), token)
+        require_positive_integer(step.get("number"), token)
+        require(
+            step["number"] not in step_numbers
+            and isinstance(step.get("name"), str)
+            and isinstance(step.get("status"), str)
+            and isinstance(step.get("conclusion"), str),
+            token,
+        )
+        step_numbers.add(step["number"])
+
+
+def validate_ac9p_final(
+    workflow_pages,
+    jobs_pages,
+    deployments_body: bytes,
+    *,
+    commit: str,
+):
+    require(re.fullmatch(r"[0-9a-f]{40}", commit) is not None, "RECOVERY_AC9P_INVALID")
+    workflows = parse_ac9p_pages(
+        workflow_pages,
+        "workflow_runs",
+        validate_workflow_item,
+        "RECOVERY_AC9P_INVALID",
+    )
+    matches = [
+        item
+        for item in workflows
+        if item["workflow_id"] == 309812329
+        and item["path"] == ".github/workflows/ci.yml"
+        and item["event"] == "push"
+        and item["head_branch"] == "main"
+        and item["head_sha"] == commit
+        and item["run_attempt"] == 1
+    ]
+    require(
+        len(matches) == 1
+        and matches[0]["status"] == "completed"
+        and matches[0]["conclusion"] == "success",
+        "RECOVERY_AC9P_INVALID",
+    )
+    jobs = parse_ac9p_pages(
+        jobs_pages,
+        "jobs",
+        validate_job_item,
+        "RECOVERY_AC9P_INVALID",
+    )
+    require(
+        jobs
+        and all(
+            item["status"] == "completed"
+            and item["conclusion"] == "success"
+            and all(
+                step["status"] == "completed"
+                and step["conclusion"] == "success"
+                for step in item["steps"]
+            )
+            for item in jobs
+        ),
+        "RECOVERY_AC9P_INVALID",
+    )
+    deployments = parse_json(deployments_body)
+    require(deployments == [], "RECOVERY_AC9P_INVALID")
+    return matches[0]["id"]
+
+
+def workflow_matches(items, commit):
+    return [
+        item
+        for item in items
+        if item["workflow_id"] == 309812329
+        and item["path"] == ".github/workflows/ci.yml"
+        and item["event"] == "push"
+        and item["head_branch"] == "main"
+        and item["head_sha"] == commit
+        and item["run_attempt"] == 1
+    ]
+
+
+def validate_workflow_poll_cycles(cycles, *, commit: str):
+    require(
+        isinstance(cycles, (tuple, list))
+        and 1 <= len(cycles) <= 80
+        and re.fullmatch(r"[0-9a-f]{40}", commit) is not None,
+        "RECOVERY_AC9P_POLL_INVALID",
+    )
+    transient = {"requested", "waiting", "pending", "queued", "in_progress"}
+    pinned = None
+    completed = None
+    for pages in cycles:
+        items = parse_ac9p_pages(
+            pages,
+            "workflow_runs",
+            validate_workflow_item,
+            "RECOVERY_AC9P_POLL_INVALID",
+        )
+        matches = workflow_matches(items, commit)
+        if pinned is None and not matches:
+            continue
+        require(len(matches) == 1, "RECOVERY_AC9P_POLL_INVALID")
+        current = matches[0]
+        if pinned is None:
+            pinned = current["id"]
+        require(current["id"] == pinned, "RECOVERY_AC9P_POLL_INVALID")
+        if current["status"] in transient:
+            require(current["conclusion"] is None, "RECOVERY_AC9P_POLL_INVALID")
+            continue
+        require(
+            current["status"] == "completed"
+            and current["conclusion"] == "success",
+            "RECOVERY_AC9P_POLL_INVALID",
+        )
+        completed = current
+        break
+    require(completed is not None, "RECOVERY_AC9P_POLL_INVALID")
+    return completed["id"]
+
+
+def recovery_ac9p_guard():
+    commit = "1" * 40
+    workflow = {
+        "id": 101,
+        "workflow_id": 309812329,
+        "run_attempt": 1,
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "head_branch": "main",
+        "head_sha": commit,
+        "status": "completed",
+        "conclusion": "success",
+    }
+    job = {
+        "id": 201,
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+            {
+                "number": 1,
+                "name": "gate",
+                "status": "completed",
+                "conclusion": "success",
+            }
+        ],
+    }
+    workflow_pages = (
+        json.dumps({"total_count": 1, "workflow_runs": [workflow]}).encode(),
+        json.dumps({"total_count": 1, "workflow_runs": []}).encode(),
+    )
+    jobs_pages = (
+        json.dumps({"total_count": 1, "jobs": [job]}).encode(),
+        json.dumps({"total_count": 1, "jobs": []}).encode(),
+    )
+    require(
+        validate_ac9p_final(
+            workflow_pages,
+            jobs_pages,
+            b"[]",
+            commit=commit,
+        )
+        == 101,
+        "RECOVERY_AC9P_INVALID",
+    )
+    zero_cycle = (
+        json.dumps({"total_count": 0, "workflow_runs": []}).encode(),
+    )
+    queued_workflow = copy.deepcopy(workflow)
+    queued_workflow["status"] = "queued"
+    queued_workflow["conclusion"] = None
+    queued_cycle = (
+        json.dumps({"total_count": 1, "workflow_runs": [queued_workflow]}).encode(),
+        json.dumps({"total_count": 1, "workflow_runs": []}).encode(),
+    )
+    require(
+        validate_workflow_poll_cycles(
+            (zero_cycle, queued_cycle, workflow_pages),
+            commit=commit,
+        )
+        == 101,
+        "RECOVERY_AC9P_POLL_INVALID",
+    )
+    expect_failure(
+        "RECOVERY_AC9P_POLL_INVALID",
+        lambda: validate_workflow_poll_cycles(
+            (queued_cycle, zero_cycle),
+            commit=commit,
+        ),
+    )
+    drifted_workflow = copy.deepcopy(workflow)
+    drifted_workflow["id"] = 102
+    drifted_cycle = (
+        json.dumps({"total_count": 1, "workflow_runs": [drifted_workflow]}).encode(),
+        json.dumps({"total_count": 1, "workflow_runs": []}).encode(),
+    )
+    expect_failure(
+        "RECOVERY_AC9P_POLL_INVALID",
+        lambda: validate_workflow_poll_cycles(
+            (queued_cycle, drifted_cycle),
+            commit=commit,
+        ),
+    )
+    mutants = []
+    failed_workflow = copy.deepcopy(workflow)
+    failed_workflow["conclusion"] = "failure"
+    mutants.append(
+        (
+            (
+                json.dumps({"total_count": 1, "workflow_runs": [failed_workflow]}).encode(),
+                json.dumps({"total_count": 1, "workflow_runs": []}).encode(),
+            ),
+            jobs_pages,
+            b"[]",
+        )
+    )
+    mutants.append((workflow_pages[:-1], jobs_pages, b"[]"))
+    mutants.append((workflow_pages, jobs_pages, b"[{}]"))
+    duplicate_jobs = (
+        json.dumps({"total_count": 2, "jobs": [job, job]}).encode(),
+        json.dumps({"total_count": 2, "jobs": []}).encode(),
+    )
+    mutants.append((workflow_pages, duplicate_jobs, b"[]"))
+    for workflow_values, job_values, deployment_values in mutants:
+        expect_failure(
+            "RECOVERY_AC9P_INVALID",
+            lambda first=workflow_values, second=job_values, third=deployment_values: validate_ac9p_final(
+                first,
+                second,
+                third,
+                commit=commit,
+            ),
+        )
+
+
+def observe_gh_endpoint(endpoint: str, aggregate_deadline: float):
+    remaining = aggregate_deadline - time.monotonic()
+    require(remaining > 0, "RECOVERY_AC9P_DEADLINE")
+    result = run_capped_process(
+        recovery_gh_argv(endpoint),
+        environment=recovery_gh_environment(),
+        cwd="/",
+        deadline_seconds=min(15, remaining),
+        failure_code="RECOVERY_AC9P_REQUEST_FAILED",
+    )
+    return strict_process_result(result, "RECOVERY_AC9P_REQUEST_FAILED")
+
+
+def collect_gh_pages(
+    endpoint_builder,
+    *,
+    list_key: str,
+    item_validator,
+    aggregate_deadline: float,
+    observer=observe_gh_endpoint,
+    monotonic=time.monotonic,
+):
+    pages = []
+    expected_total = None
+    page = 1
+    while True:
+        require(monotonic() < aggregate_deadline, "RECOVERY_AC9P_DEADLINE")
+        body = observer(
+            endpoint_builder(page),
+            aggregate_deadline,
+        )
+        document = parse_json(body)
+        require(
+            isinstance(document, dict)
+            and isinstance(document.get("total_count"), int)
+            and not isinstance(document.get("total_count"), bool)
+            and document["total_count"] >= 0
+            and isinstance(document.get(list_key), list),
+            "RECOVERY_AC9P_INVALID",
+        )
+        if expected_total is None:
+            expected_total = document["total_count"]
+        require(document["total_count"] == expected_total, "RECOVERY_AC9P_INVALID")
+        pages.append(body)
+        if not document[list_key]:
+            break
+        require(
+            page <= expected_total + 1,
+            "RECOVERY_AC9P_INVALID",
+        )
+        page += 1
+    parse_ac9p_pages(
+        pages,
+        list_key,
+        item_validator,
+        "RECOVERY_AC9P_INVALID",
+    )
+    return tuple(pages)
+
+
+def poll_recovery_ac9p_core(
+    commit: str,
+    *,
+    observer,
+    monotonic,
+    sleeper,
+    deadline_seconds: int,
+    interval_seconds: int,
+    max_cycles: int,
+):
+    require(re.fullmatch(r"[0-9a-f]{40}", commit) is not None, "RECOVERY_AC9P_INVALID")
+    require(
+        callable(observer)
+        and callable(monotonic)
+        and callable(sleeper)
+        and isinstance(deadline_seconds, int)
+        and not isinstance(deadline_seconds, bool)
+        and deadline_seconds > 0
+        and isinstance(interval_seconds, int)
+        and not isinstance(interval_seconds, bool)
+        and interval_seconds > 0
+        and isinstance(max_cycles, int)
+        and not isinstance(max_cycles, bool)
+        and max_cycles > 0,
+        "RECOVERY_AC9P_INVALID",
+    )
+    aggregate_deadline = monotonic() + deadline_seconds
+    pinned_run = None
+    completed_pages = None
+    for cycle in range(1, max_cycles + 1):
+        pages = collect_gh_pages(
+            lambda page: (
+                "/repos/yusuketakuma/yrese/actions/workflows/309812329/runs"
+                f"?event=push&branch=main&head_sha={commit}&per_page=100&page={page}"
+            ),
+            list_key="workflow_runs",
+            item_validator=validate_workflow_item,
+            aggregate_deadline=aggregate_deadline,
+            observer=observer,
+            monotonic=monotonic,
+        )
+        workflows = parse_ac9p_pages(
+            pages,
+            "workflow_runs",
+            validate_workflow_item,
+            "RECOVERY_AC9P_INVALID",
+        )
+        matches = workflow_matches(workflows, commit)
+        if pinned_run is None and not matches:
+            pass
+        else:
+            require(len(matches) == 1, "RECOVERY_AC9P_INVALID")
+            current = matches[0]
+            if pinned_run is None:
+                pinned_run = current["id"]
+            require(current["id"] == pinned_run, "RECOVERY_AC9P_INVALID")
+            if current["status"] in {
+                "requested",
+                "waiting",
+                "pending",
+                "queued",
+                "in_progress",
+            }:
+                require(current["conclusion"] is None, "RECOVERY_AC9P_INVALID")
+            else:
+                require(
+                    current["status"] == "completed"
+                    and current["conclusion"] == "success",
+                    "RECOVERY_AC9P_INVALID",
+                )
+                completed_pages = pages
+                break
+        require(
+            cycle < max_cycles
+            and monotonic() + interval_seconds < aggregate_deadline,
+            "RECOVERY_AC9P_DEADLINE",
+        )
+        sleeper(interval_seconds)
+    require(
+        pinned_run is not None and completed_pages is not None,
+        "RECOVERY_AC9P_DEADLINE",
+    )
+    jobs_pages = collect_gh_pages(
+        lambda page: (
+            f"/repos/yusuketakuma/yrese/actions/runs/{pinned_run}/jobs"
+            f"?per_page=100&page={page}"
+        ),
+        list_key="jobs",
+        item_validator=validate_job_item,
+        aggregate_deadline=aggregate_deadline,
+        observer=observer,
+        monotonic=monotonic,
+    )
+    deployments = observer(
+        (
+            "/repos/yusuketakuma/yrese/deployments"
+            f"?sha={commit}&per_page=100&page=1"
+        ),
+        aggregate_deadline,
+    )
+    require(
+        validate_ac9p_final(
+            completed_pages,
+            jobs_pages,
+            deployments,
+            commit=commit,
+        )
+        == pinned_run,
+        "RECOVERY_AC9P_INVALID",
+    )
+    return pinned_run
+
+
+def poll_recovery_ac9p(commit: str):
+    return poll_recovery_ac9p_core(
+        commit,
+        observer=observe_gh_endpoint,
+        monotonic=time.monotonic,
+        sleeper=time.sleep,
+        deadline_seconds=1200,
+        interval_seconds=15,
+        max_cycles=80,
+    )
+
+
+def recovery_ac9p_execution_guard():
+    commit = "1" * 40
+    workflow = {
+        "id": 101,
+        "workflow_id": 309812329,
+        "run_attempt": 1,
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "head_branch": "main",
+        "head_sha": commit,
+        "status": "completed",
+        "conclusion": "success",
+    }
+    queued = copy.deepcopy(workflow)
+    queued["status"] = "queued"
+    queued["conclusion"] = None
+    job = {
+        "id": 201,
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+            {
+                "number": 1,
+                "name": "gate",
+                "status": "completed",
+                "conclusion": "success",
+            }
+        ],
+    }
+    workflow_cycles = [
+        {"total_count": 0, "workflow_runs": []},
+        {"total_count": 1, "workflow_runs": [queued]},
+        {"total_count": 1, "workflow_runs": [workflow]},
+    ]
+    workflow_cycle = [0]
+    calls = []
+
+    def observer(endpoint_value, aggregate_deadline):
+        require(
+            isinstance(endpoint_value, str)
+            and isinstance(aggregate_deadline, (int, float)),
+            "RECOVERY_AC9P_EXECUTION_GUARD_FAILED",
+        )
+        calls.append(endpoint_value)
+        if endpoint_value.startswith(
+            "/repos/yusuketakuma/yrese/actions/workflows/309812329/runs?"
+        ):
+            page_match = re.search(r"(?:^|&)page=([1-9][0-9]*)$", endpoint_value)
+            require(page_match is not None, "RECOVERY_AC9P_EXECUTION_GUARD_FAILED")
+            page = int(page_match.group(1))
+            require(
+                workflow_cycle[0] < len(workflow_cycles),
+                "RECOVERY_AC9P_EXECUTION_GUARD_FAILED",
+            )
+            current = workflow_cycles[workflow_cycle[0]]
+            if page == 1:
+                if current["workflow_runs"]:
+                    return json.dumps(current, separators=(",", ":")).encode()
+                workflow_cycle[0] += 1
+                return json.dumps(current, separators=(",", ":")).encode()
+            require(
+                page == 2 and current["workflow_runs"],
+                "RECOVERY_AC9P_EXECUTION_GUARD_FAILED",
+            )
+            workflow_cycle[0] += 1
+            return json.dumps(
+                {"total_count": current["total_count"], "workflow_runs": []},
+                separators=(",", ":"),
+            ).encode()
+        if endpoint_value.startswith(
+            "/repos/yusuketakuma/yrese/actions/runs/101/jobs?"
+        ):
+            if endpoint_value.endswith("&page=1"):
+                return json.dumps(
+                    {"total_count": 1, "jobs": [job]},
+                    separators=(",", ":"),
+                ).encode()
+            require(
+                endpoint_value.endswith("&page=2"),
+                "RECOVERY_AC9P_EXECUTION_GUARD_FAILED",
+            )
+            return b'{"total_count":1,"jobs":[]}'
+        require(
+            endpoint_value
+            == (
+                "/repos/yusuketakuma/yrese/deployments"
+                f"?sha={commit}&per_page=100&page=1"
+            ),
+            "RECOVERY_AC9P_EXECUTION_GUARD_FAILED",
+        )
+        return b"[]"
+
+    clock = [100.0]
+
+    def monotonic():
+        return clock[0]
+
+    def sleeper(seconds):
+        require(
+            seconds == 1,
+            "RECOVERY_AC9P_EXECUTION_GUARD_FAILED",
+        )
+        clock[0] += seconds
+
+    require(
+        poll_recovery_ac9p_core(
+            commit,
+            observer=observer,
+            monotonic=monotonic,
+            sleeper=sleeper,
+            deadline_seconds=100,
+            interval_seconds=1,
+            max_cycles=3,
+        )
+        == 101
+        and workflow_cycle == [3]
+        and len(calls) == 8
+        and calls[-1]
+        == (
+            "/repos/yusuketakuma/yrese/deployments"
+            f"?sha={commit}&per_page=100&page=1"
+        ),
+        "RECOVERY_AC9P_EXECUTION_GUARD_FAILED",
+    )
 
 
 def framed(rows, *, multiset=False) -> bytes:
@@ -663,13 +7739,14 @@ def validate_ambient(environment) -> None:
 
 def trusted_git_executable():
     try:
-        discovered = shutil.which("git", path=os.defpath)
-        require(discovered is not None, "TRANSPORT_POLICY")
-        executable = pathlib.Path(discovered)
-        require(executable.is_absolute(), "TRANSPORT_POLICY")
-        executable = executable.resolve(strict=True)
+        executable = pathlib.Path("/usr/bin/git")
         info = executable.stat()
-        require(stat.S_ISREG(info.st_mode) and os.access(executable, os.X_OK), "TRANSPORT_POLICY")
+        require(
+            executable.is_absolute()
+            and stat.S_ISREG(info.st_mode)
+            and os.access(executable, os.X_OK),
+            "TRANSPORT_POLICY",
+        )
         return executable
     except VerificationError:
         raise
@@ -677,21 +7754,321 @@ def trusted_git_executable():
         raise VerificationError("TRANSPORT_POLICY") from exc
 
 
+def recovery_git_environment():
+    return {
+        "HOME": "/Users/yusuke",
+        "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+        "LC_ALL": "C",
+        "LANG": "C",
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_SYSTEM": "/dev/null",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_NO_REPLACE_OBJECTS": "1",
+        "GIT_TERMINAL_PROMPT": "0",
+    }
+
+
+def recovery_remote_git_environment():
+    environment = recovery_git_environment()
+    ordered = {}
+    for key, value in environment.items():
+        if key == "GIT_TERMINAL_PROMPT":
+            ordered["GIT_EXEC_PATH"] = "/Library/Developer/CommandLineTools/usr/libexec/git-core"
+        ordered[key] = value
+    require(
+        tuple(ordered)
+        == (
+            "HOME",
+            "PATH",
+            "LC_ALL",
+            "LANG",
+            "GIT_CONFIG_NOSYSTEM",
+            "GIT_CONFIG_SYSTEM",
+            "GIT_CONFIG_GLOBAL",
+            "GIT_NO_REPLACE_OBJECTS",
+            "GIT_EXEC_PATH",
+            "GIT_TERMINAL_PROMPT",
+        ),
+        "RECOVERY_REMOTE_GIT_INVALID",
+    )
+    return ordered
+
+
+def recovery_remote_git_argv():
+    return (
+        "/usr/bin/git",
+        "--no-replace-objects",
+        "-c",
+        "credential.helper=",
+        "-c",
+        "http.followRedirects=false",
+        "-c",
+        "http.extraHeader=",
+        "ls-remote",
+        "--refs",
+        "https://github.com/yusuketakuma/yrese.git",
+    )
+
+
+def recovery_gh_environment():
+    return {
+        "HOME": "/Users/yusuke",
+        "PATH": "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin",
+        "LC_ALL": "C",
+        "LANG": "C",
+        "GH_CONFIG_DIR": "/Users/yusuke/.config/gh",
+        "GH_HOST": "github.com",
+        "GH_PROMPT_DISABLED": "1",
+        "NO_COLOR": "1",
+    }
+
+
+def recovery_gh_argv(endpoint: str):
+    require(
+        isinstance(endpoint, str)
+        and endpoint.startswith("/repos/yusuketakuma/yrese/")
+        and "\0" not in endpoint
+        and "\n" not in endpoint,
+        "RECOVERY_GH_ENDPOINT_INVALID",
+    )
+    workflow_pattern = (
+        r"/repos/yusuketakuma/yrese/actions/workflows/309812329/runs"
+        r"\?event=push&branch=main&head_sha=[0-9a-f]{40}&per_page=100&page=[1-9][0-9]*"
+    )
+    jobs_pattern = (
+        r"/repos/yusuketakuma/yrese/actions/runs/[1-9][0-9]*/jobs"
+        r"\?per_page=100&page=[1-9][0-9]*"
+    )
+    deployments_pattern = (
+        r"/repos/yusuketakuma/yrese/deployments"
+        r"\?sha=[0-9a-f]{40}&per_page=100&page=1"
+    )
+    require(
+        any(
+            re.fullmatch(pattern, endpoint) is not None
+            for pattern in (
+                workflow_pattern,
+                jobs_pattern,
+                deployments_pattern,
+            )
+        ),
+        "RECOVERY_GH_ENDPOINT_INVALID",
+    )
+    return (
+        "/opt/homebrew/bin/gh",
+        "api",
+        "--hostname",
+        "github.com",
+        "--method",
+        "GET",
+        "--header",
+        "Accept: application/vnd.github+json",
+        "--header",
+        "X-GitHub-Api-Version: 2022-11-28",
+        endpoint,
+    )
+
+
+def terminate_isolated_group(child, verified_pgid, token):
+    require(
+        verified_pgid is not None
+        and verified_pgid == child.pid
+        and verified_pgid != os.getpgrp(),
+        token,
+    )
+    if child.poll() is not None:
+        return
+    try:
+        os.killpg(verified_pgid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    term_deadline = time.monotonic() + 2
+    while child.poll() is None and time.monotonic() < term_deadline:
+        time.sleep(0.01)
+    if child.poll() is None:
+        try:
+            os.killpg(verified_pgid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        kill_deadline = time.monotonic() + 2
+        while child.poll() is None and time.monotonic() < kill_deadline:
+            time.sleep(0.01)
+    require(child.poll() is not None, token)
+
+
+def run_capped_process(
+    argv,
+    *,
+    environment,
+    cwd="/",
+    deadline_seconds=15,
+    output_cap=1024 * 1024,
+    failure_code="RECOVERY_SUBPROCESS_FAILED",
+):
+    require(
+        isinstance(argv, (tuple, list))
+        and argv
+        and all(isinstance(value, str) and value for value in argv)
+        and isinstance(environment, dict)
+        and all(
+            isinstance(key, str)
+            and isinstance(value, str)
+            and key
+            and "\0" not in key
+            and "\0" not in value
+            for key, value in environment.items()
+        )
+        and pathlib.Path(cwd).is_absolute()
+        and 0 < deadline_seconds <= 1500
+        and 0 < output_cap <= 1024 * 1024,
+        failure_code,
+    )
+    deadline = time.monotonic() + deadline_seconds
+    child = None
+    verified_pgid = None
+    stdout = bytearray()
+    stderr = bytearray()
+    streams = {}
+    failure = None
+    try:
+        child = subprocess.Popen(
+            list(argv),
+            cwd=cwd,
+            env=dict(environment),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            close_fds=True,
+            start_new_session=True,
+        )
+        require(
+            os.getpgid(child.pid) == child.pid and child.pid != os.getpgrp(),
+            failure_code,
+        )
+        verified_pgid = child.pid
+        require(child.stdout is not None and child.stderr is not None, failure_code)
+        for stream, target in ((child.stdout, stdout), (child.stderr, stderr)):
+            os.set_blocking(stream.fileno(), False)
+            streams[stream.fileno()] = (stream, target)
+        while streams or child.poll() is None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                failure = "timeout"
+                break
+            readable, _, _ = select.select(
+                tuple(streams),
+                (),
+                (),
+                min(0.05, remaining),
+            )
+            for descriptor in readable:
+                stream, target = streams[descriptor]
+                try:
+                    chunk = os.read(descriptor, min(65536, output_cap + 1 - len(target)))
+                except BlockingIOError:
+                    continue
+                if chunk:
+                    target.extend(chunk)
+                    if len(target) > output_cap:
+                        failure = "output_cap"
+                        break
+                else:
+                    stream.close()
+                    streams.pop(descriptor)
+            if failure is not None:
+                break
+        if failure is not None:
+            terminate_isolated_group(child, verified_pgid, failure_code)
+            raise VerificationError(failure_code + "_" + failure.upper())
+        require(child.poll() is not None, failure_code)
+        return subprocess.CompletedProcess(
+            list(argv),
+            child.returncode,
+            bytes(stdout),
+            bytes(stderr),
+        )
+    except VerificationError:
+        raise
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        raise VerificationError(failure_code) from exc
+    finally:
+        if child is not None:
+            if child.poll() is None:
+                terminate_isolated_group(child, verified_pgid, failure_code)
+            try:
+                child.wait(timeout=0)
+            except subprocess.TimeoutExpired:
+                terminate_isolated_group(child, verified_pgid, failure_code)
+            for stream in (child.stdout, child.stderr):
+                if stream is not None and not stream.closed:
+                    stream.close()
+
+
+def capped_process_guard():
+    executable = str(pathlib.Path(sys.executable).resolve(strict=True))
+    environment = {"LC_ALL": "C", "LANG": "C"}
+    result = run_capped_process(
+        (
+            executable,
+            "-I",
+            "-c",
+            "import os; os.write(1,b'out'); os.write(2,b'err')",
+        ),
+        environment=environment,
+        deadline_seconds=2,
+        output_cap=16,
+        failure_code="RECOVERY_PROCESS_GUARD",
+    )
+    require(
+        result.returncode == 0
+        and result.stdout == b"out"
+        and result.stderr == b"err",
+        "RECOVERY_PROCESS_GUARD_FAILED",
+    )
+    expect_failure(
+        "RECOVERY_PROCESS_GUARD_OUTPUT_CAP",
+        lambda: run_capped_process(
+            (
+                executable,
+                "-I",
+                "-c",
+                "import os; os.write(1,b'x'*17)",
+            ),
+            environment=environment,
+            deadline_seconds=2,
+            output_cap=16,
+            failure_code="RECOVERY_PROCESS_GUARD",
+        ),
+    )
+    expect_failure(
+        "RECOVERY_PROCESS_GUARD_TIMEOUT",
+        lambda: run_capped_process(
+            (executable, "-I", "-c", "import time; time.sleep(2)"),
+            environment=environment,
+            deadline_seconds=0.05,
+            output_cap=16,
+            failure_code="RECOVERY_PROCESS_GUARD",
+        ),
+    )
+
+
 def bounded_git_roots(cwd, deadline):
     cwd = pathlib.Path(cwd).resolve(strict=True)
     executable = trusted_git_executable()
     remaining = deadline - time.monotonic()
     require(remaining > 0, "TRANSPORT_LIMIT")
-    environment = {
-        "LC_ALL": "C",
-        "LANG": "C",
-        "GIT_CONFIG_NOSYSTEM": "1",
-        "GIT_TERMINAL_PROMPT": "0",
-    }
+    environment = recovery_git_environment()
     timeout = min(15, remaining)
     try:
         result = subprocess.run(
-            [str(executable), "rev-parse", "--show-toplevel", "--git-dir", "--git-common-dir"],
+            [
+                str(executable),
+                "--no-replace-objects",
+                "rev-parse",
+                "--show-toplevel",
+                "--git-dir",
+                "--git-common-dir",
+            ],
             cwd=str(cwd),
             env=environment,
             stdin=subprocess.DEVNULL,
@@ -735,54 +8112,111 @@ def discover_git_roots(owner_root, cwd, deadline):
 class SignalState:
     def __init__(self):
         self.cleanup_active = False
-        self.deferred_signal = None
+        self.deferred_signals = set()
         self.deferred_timeout = False
+
+    @property
+    def deferred_signal(self):
+        for signum in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            if signum in self.deferred_signals:
+                return signum
+        return None
 
     def record(self, signum):
         if signum == signal.SIGALRM:
             self.deferred_timeout = True
         else:
-            self.deferred_signal = self.deferred_signal or signum
+            self.deferred_signals.add(signum)
 
 
-def run_signal_transition(signals, state, operation, *, deadline=None, before_deactivate=None, restore=None):
-    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, signals)
+def run_signal_transition(
+    signals,
+    state,
+    operation,
+    *,
+    deadline=None,
+    before_deactivate=None,
+    restore=None,
+    transition_hooks=None,
+):
+    protected = set(signals)
+    hooks = transition_hooks or {}
+    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, protected)
     result = None
     failure = None
+
+    def capture_failure(note):
+        nonlocal failure
+        if failure is None:
+            failure = sys.exc_info()
+        else:
+            append_exception_note(failure[1], note)
+
+    def drain_pending(note):
+        try:
+            while True:
+                pending = signal.sigpending() & protected
+                if not pending:
+                    return
+                for signum in sorted(pending):
+                    signal.sigwait({signum})
+                    state.record(signum)
+        except BaseException:
+            capture_failure(note)
+
+    def run_hook(name):
+        hook = hooks.get(name)
+        if hook is None:
+            return
+        try:
+            hook()
+        except BaseException:
+            capture_failure(f"secondary {name} hook failure")
+
     try:
         result = operation()
     except BaseException:
         failure = sys.exc_info()
-    try:
-        pending = signal.sigpending() & set(signals)
-        for signum in pending:
-            signal.sigwait({signum})
-            state.record(signum)
-    except BaseException:
-        if failure is None: failure = sys.exc_info()
-        else: failure[1].add_note("secondary pending-signal drain failure")
-    try:
-        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
-    except BaseException:
-        if failure is None: failure = sys.exc_info()
-        else: failure[1].add_note("secondary signal-mask restoration failure")
+
+    run_hook("after_operation_before_drain1")
+    if before_deactivate is not None:
+        try:
+            before_deactivate()
+        except BaseException:
+            capture_failure("secondary pre-deactivation failure")
+
+    drain_pending("secondary first pending-signal drain failure")
+    run_hook("after_drain1_before_restore")
+
     if restore is not None:
         try:
             restore()
         except BaseException:
-            if failure is None: failure = sys.exc_info()
-            else: failure[1].add_note("secondary signal-state restoration failure")
+            capture_failure("secondary signal-state restoration failure")
+
+    run_hook("after_restore_before_drain2")
+    drain_pending("secondary second pending-signal drain failure")
+    run_hook("after_second_drain_before_deactivate")
+
     state.cleanup_active = False
+    run_hook("after_deactivate_before_outcome")
     if failure is None:
         try:
             if state.deferred_timeout or (deadline is not None and time.monotonic() >= deadline):
                 raise VerificationError("TRANSPORT_LIMIT")
             if state.deferred_signal is not None:
                 raise InterruptedError(state.deferred_signal)
-            if before_deactivate is not None:
-                before_deactivate()
         except BaseException:
             failure = sys.exc_info()
+
+    run_hook("after_outcome_before_unmask")
+    try:
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+    except KeyboardInterrupt:
+        raise
+    except BaseException:
+        capture_failure("secondary signal-mask restoration failure")
+
     if failure is not None:
         raise failure[1].with_traceback(failure[2])
     return result
@@ -822,7 +8256,7 @@ class Transport:
         except BaseException:
             failure = sys.exc_info()
             try: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
-            except BaseException: failure[1].add_note("secondary initial alarm-mask restoration failure")
+            except BaseException: append_exception_note(failure[1], "secondary initial alarm-mask restoration failure")
             raise failure[1].with_traceback(failure[2])
         try:
             self.old_alarm_handler = signal.getsignal(signal.SIGALRM)
@@ -834,16 +8268,16 @@ class Transport:
         except BaseException:
             failure = sys.exc_info()
             try: signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
-            except BaseException: failure[1].add_note("secondary alarm-block rollback failure")
+            except BaseException: append_exception_note(failure[1], "secondary alarm-block rollback failure")
             if self.old_alarm_timer is not None:
                 try: signal.setitimer(signal.ITIMER_REAL, *self.old_alarm_timer)
-                except BaseException: failure[1].add_note("secondary alarm-timer rollback failure")
+                except BaseException: append_exception_note(failure[1], "secondary alarm-timer rollback failure")
             if self.old_alarm_handler is not None:
                 try: signal.signal(signal.SIGALRM, self.old_alarm_handler)
-                except BaseException: failure[1].add_note("secondary alarm-handler rollback failure")
+                except BaseException: append_exception_note(failure[1], "secondary alarm-handler rollback failure")
             self.active = False
             try: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
-            except BaseException: failure[1].add_note("secondary alarm-mask rollback failure")
+            except BaseException: append_exception_note(failure[1], "secondary alarm-mask rollback failure")
             raise failure[1].with_traceback(failure[2])
 
     def _alarm(self, _signum, _frame):
@@ -859,17 +8293,17 @@ class Transport:
             try: signal.setitimer(signal.ITIMER_REAL, *self.old_alarm_timer)
             except BaseException:
                 if failure is None: failure = sys.exc_info()
-                else: failure[1].add_note("secondary alarm-timer restoration failure")
+                else: append_exception_note(failure[1], "secondary alarm-timer restoration failure")
             try: signal.signal(signal.SIGALRM, self.old_alarm_handler)
             except BaseException:
                 if failure is None: failure = sys.exc_info()
-                else: failure[1].add_note("secondary alarm-handler restoration failure")
+                else: append_exception_note(failure[1], "secondary alarm-handler restoration failure")
             self.active = False
         finally:
             try: signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
             except BaseException:
                 if failure is None: failure = sys.exc_info()
-                else: failure[1].add_note("secondary alarm-mask restoration failure")
+                else: append_exception_note(failure[1], "secondary alarm-mask restoration failure")
         if failure is not None: raise failure[1].with_traceback(failure[2])
 
     def get(self, url: str, limit: int, exact_size=None) -> bytes:
@@ -1473,12 +8907,12 @@ def begin_owned_dir(parent_fd, name):
         failure = sys.exc_info()
         if fd is not None:
             try: os.close(fd)
-            except OSError: failure[1].add_note("secondary owned-directory fd close failure")
+            except OSError: append_exception_note(failure[1], "secondary owned-directory fd close failure")
         current = entry_at(parent_fd, name)
         if fd is None and current is not None: close_unassigned_identity(identity(current), excluded=(parent_fd,))
         if current is not None and stat.S_ISDIR(current.st_mode) and current.st_uid == os.getuid() and stat.S_IMODE(current.st_mode) & 0o077 == 0:
             try: os.rmdir(name, dir_fd=parent_fd)
-            except OSError: failure[1].add_note("secondary owned-directory rollback failure")
+            except OSError: append_exception_note(failure[1], "secondary owned-directory rollback failure")
         raise failure[1].with_traceback(failure[2])
 
 
@@ -1536,7 +8970,7 @@ def finalize_owned_dir(parent_fd, source, target, owned_fd, owned_identity):
         target_info = entry_at(parent_fd, target)
         if source_info is None and target_info is not None and identity(target_info) == owned_identity:
             try: rename_noreplace(parent_fd, target, source)
-            except BaseException: failure[1].add_note("secondary owned-directory rename rollback failure")
+            except BaseException: append_exception_note(failure[1], "secondary owned-directory rename rollback failure")
         raise failure[1].with_traceback(failure[2])
     require_owned_dir(parent_fd, target, owned_fd, owned_identity)
     return target
@@ -2351,9 +9785,9 @@ def signal_transition_guard():
                     signal.pthread_sigmask(signal.SIG_SETMASK, original_mask)
                 expected = (
                     ("timeout", "TRANSPORT_LIMIT") if delivered == signal.SIGALRM else ("signal", delivered)
-                ) if site == "allocation" else ("restored", delivered)
+                )
                 require(transition_error == expected and post_transition_calls == 0, "LIVE_SIGNAL_TRANSITION_GUARD_FAILED")
-                require((restored_delivery == delivered) == (site != "allocation"), "LIVE_SIGNAL_TRANSITION_GUARD_FAILED")
+                require(restored_delivery is None, "LIVE_SIGNAL_TRANSITION_GUARD_FAILED")
                 require(not owner_root.exists() and identity_fds(owner_identity) == (), "LIVE_SIGNAL_TRANSITION_GUARD_FAILED")
                 require(signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask, "LIVE_SIGNAL_TRANSITION_GUARD_FAILED")
                 require(all(signal.getsignal(sig) is system_handlers[sig] for sig in context_signals), "LIVE_SIGNAL_TRANSITION_GUARD_FAILED")
@@ -2476,7 +9910,7 @@ def transition_primary_child(args):
             signal.sigpending = original_sigpending
         require(caught_primary == (True, True, "synthetic transition primary", (), True), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
         require(snapshot_injections == (1 if args.signal_phase == "post_snapshot" else 0), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
-        require(handler_deliveries == (1 if args.signal_phase == "post_snapshot" else 0), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
+        require(handler_deliveries == 0, "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
         require(not state.cleanup_active and not (signal.sigpending() & context_signals), "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
         if delivered == signal.SIGALRM:
             require(state.deferred_signal is None and state.deferred_timeout, "LIVE_SIGNAL_PRIMARY_CHILD_FAILED")
@@ -2562,6 +9996,131 @@ def default_signal_primary_guard():
             require(root_path is not None and not root_path.exists(), "LIVE_SIGNAL_PRIMARY_GUARD_FAILED")
 
 
+def validate_signal_transition_ast(tree):
+    nodes = [
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name == "run_signal_transition"
+    ]
+    require(len(nodes) == 1, "LIVE_SIGNAL_TRANSITION_BINDING_FAILED")
+    node = nodes[0]
+    calls = [
+        item
+        for item in ast.walk(node)
+        if isinstance(item, ast.Call)
+        and isinstance(item.func, ast.Name)
+        and item.func.id == "drain_pending"
+    ]
+    require(len(calls) == 2, "LIVE_SIGNAL_TRANSITION_BINDING_FAILED")
+    calls.sort(key=lambda item: (item.lineno, item.col_offset))
+    require(
+        all(
+            len(call.args) == 1
+            and isinstance(call.args[0], ast.Constant)
+            and call.args[0].value == expected
+            for call, expected in zip(
+                calls,
+                (
+                    "secondary first pending-signal drain failure",
+                    "secondary second pending-signal drain failure",
+                ),
+            )
+        ),
+        "LIVE_SIGNAL_TRANSITION_BINDING_FAILED",
+    )
+    restore_calls = [
+        item
+        for item in ast.walk(node)
+        if isinstance(item, ast.Call)
+        and isinstance(item.func, ast.Name)
+        and item.func.id == "restore"
+    ]
+    require(len(restore_calls) == 1, "LIVE_SIGNAL_TRANSITION_BINDING_FAILED")
+    mask_restore_calls = [
+        item
+        for item in ast.walk(node)
+        if isinstance(item, ast.Call)
+        and isinstance(item.func, ast.Attribute)
+        and isinstance(item.func.value, ast.Name)
+        and item.func.value.id == "signal"
+        and item.func.attr == "pthread_sigmask"
+        and len(item.args) >= 1
+        and isinstance(item.args[0], ast.Attribute)
+        and item.args[0].attr == "SIG_SETMASK"
+    ]
+    require(len(mask_restore_calls) == 1, "LIVE_SIGNAL_TRANSITION_BINDING_FAILED")
+    cleanup_false = [
+        item
+        for item in ast.walk(node)
+        if isinstance(item, ast.Assign)
+        and any(
+            isinstance(target, ast.Attribute)
+            and isinstance(target.value, ast.Name)
+            and target.value.id == "state"
+            and target.attr == "cleanup_active"
+            for target in item.targets
+        )
+        and isinstance(item.value, ast.Constant)
+        and item.value.value is False
+    ]
+    require(len(cleanup_false) == 1, "LIVE_SIGNAL_TRANSITION_BINDING_FAILED")
+    failure_reads = [
+        item
+        for item in node.body
+        if isinstance(item, ast.If)
+        and isinstance(item.test, ast.Compare)
+        and isinstance(item.test.left, ast.Name)
+        and item.test.left.id == "failure"
+        and len(item.test.ops) == 1
+        and isinstance(item.test.ops[0], ast.Is)
+        and len(item.test.comparators) == 1
+        and isinstance(item.test.comparators[0], ast.Constant)
+        and item.test.comparators[0].value is None
+    ]
+    require(len(failure_reads) == 1, "LIVE_SIGNAL_TRANSITION_BINDING_FAILED")
+    hook_lines = {}
+    for item in ast.walk(node):
+        if not (
+            isinstance(item, ast.Call)
+            and isinstance(item.func, ast.Name)
+            and item.func.id == "run_hook"
+            and len(item.args) == 1
+            and isinstance(item.args[0], ast.Constant)
+            and isinstance(item.args[0].value, str)
+        ):
+            continue
+        require(item.args[0].value not in hook_lines, "LIVE_SIGNAL_TRANSITION_BINDING_FAILED")
+        hook_lines[item.args[0].value] = item.lineno
+    required_hooks = (
+        "after_operation_before_drain1",
+        "after_drain1_before_restore",
+        "after_restore_before_drain2",
+        "after_second_drain_before_deactivate",
+        "after_deactivate_before_outcome",
+        "after_outcome_before_unmask",
+    )
+    require(set(hook_lines) == set(required_hooks), "LIVE_SIGNAL_TRANSITION_BINDING_FAILED")
+    ordered_lines = (
+        hook_lines["after_operation_before_drain1"],
+        calls[0].lineno,
+        hook_lines["after_drain1_before_restore"],
+        restore_calls[0].lineno,
+        hook_lines["after_restore_before_drain2"],
+        calls[1].lineno,
+        hook_lines["after_second_drain_before_deactivate"],
+        cleanup_false[0].lineno,
+        hook_lines["after_deactivate_before_outcome"],
+        failure_reads[0].lineno,
+        hook_lines["after_outcome_before_unmask"],
+        mask_restore_calls[0].lineno,
+    )
+    require(
+        all(first < second for first, second in zip(ordered_lines, ordered_lines[1:])),
+        "LIVE_SIGNAL_TRANSITION_BINDING_FAILED",
+    )
+    return node
+
+
 def validate_live_transition_ast(tree):
     live_nodes = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "live"]
     require(len(live_nodes) == 1, "LIVE_TRANSITION_BINDING_FAILED")
@@ -2609,18 +10168,75 @@ def live_transition_binding_guard():
     source_bytes = pathlib.Path(__file__).read_bytes()
     require(source_bytes.endswith(b"\n"), "LIVE_TRANSITION_BINDING_FAILED")
     tree = ast.parse(source_bytes, filename=__file__)
+    validate_signal_transition_ast(tree)
     calls = validate_live_transition_ast(tree)
-    for target in (calls[0], calls[-1]):
+    for target in calls:
         mutant = copy.deepcopy(tree)
+        mutant_live = [
+            node
+            for node in mutant.body
+            if isinstance(node, ast.FunctionDef) and node.name == "live"
+        ]
+        require(len(mutant_live) == 1, "LIVE_TRANSITION_BINDING_FAILED")
         mutant_calls = [
-            node for node in ast.walk(mutant)
+            node for node in ast.walk(mutant_live[0])
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "run_signal_transition"
         ]
+        mutant_calls.sort(key=lambda node: (node.lineno, node.col_offset))
         index = calls.index(target)
         mutant_calls[index].func.id = "bypass_signal_transition"
         try: validate_live_transition_ast(mutant)
         except VerificationError as exc: require(str(exc) == "LIVE_TRANSITION_BINDING_FAILED", "LIVE_TRANSITION_BINDING_FAILED")
         else: raise VerificationError("LIVE_TRANSITION_BINDING_FAILED")
+    try:
+        ast.parse(source_bytes[:-1], filename=__file__)
+        require(source_bytes[:-1].endswith(b"\n"), "LIVE_TRANSITION_BINDING_FAILED")
+    except VerificationError as exc:
+        require(str(exc) == "LIVE_TRANSITION_BINDING_FAILED", "LIVE_TRANSITION_BINDING_FAILED")
+    else:
+        raise VerificationError("LIVE_TRANSITION_BINDING_FAILED")
+
+
+def signal_transition_mutation_guard():
+    source = pathlib.Path(__file__).read_text(encoding="utf-8")
+    tree = ast.parse(source, filename=__file__)
+    node = validate_signal_transition_ast(tree)
+    lines = source.splitlines(keepends=True)
+    function_source = "".join(lines[node.lineno - 1 : node.end_lineno])
+    drain1 = '    drain_pending("secondary first pending-signal drain failure")\n'
+    drain2 = '    drain_pending("secondary second pending-signal drain failure")\n'
+    restore_call = "            restore()\n"
+    cleanup_false = "    state.cleanup_active = False\n"
+    outcome = "    if failure is None:\n"
+    unmask = "        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)\n"
+    early_unmask = "    signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)\n"
+    outcome_hook = '    run_hook("after_outcome_before_unmask")\n'
+    require(
+        all(
+            function_source.count(fragment) == 1
+            for fragment in (drain1, drain2, restore_call, cleanup_false, unmask, outcome_hook)
+        ),
+        "LIVE_SIGNAL_TRANSITION_BINDING_FAILED",
+    )
+    mutants = (
+        function_source.replace(drain1, "    pass  # drain1 bypass\n", 1),
+        function_source.replace(restore_call, "            bypass_restore()\n", 1),
+        function_source.replace(drain2, "    pass  # drain2 bypass\n", 1),
+        function_source.replace(drain2, cleanup_false + drain2, 1),
+        function_source.replace(drain2, "    if failure is None:\n        pass\n" + drain2, 1),
+        function_source.replace(drain2, early_unmask + drain2, 1),
+        function_source.replace(outcome_hook, early_unmask + outcome_hook, 1),
+    )
+    for mutant_source in mutants:
+        try:
+            validate_signal_transition_ast(ast.parse(mutant_source))
+        except VerificationError as exc:
+            require(
+                str(exc) == "LIVE_SIGNAL_TRANSITION_BINDING_FAILED",
+                "LIVE_SIGNAL_TRANSITION_BINDING_FAILED",
+            )
+        else:
+            raise VerificationError("LIVE_SIGNAL_TRANSITION_BINDING_FAILED")
 
 
 def git_boundary_guard():
@@ -2643,9 +10259,21 @@ def git_boundary_guard():
         cwd = pathlib.Path.cwd().resolve()
         def synthetic_run(argv, **kwargs):
             calls.append((tuple(argv), kwargs))
-            require(pathlib.Path(argv[0]).resolve() != fake_git.resolve(), "GIT_BOUNDARY_GUARD_FAILED")
+            require(
+                argv
+                == [
+                    "/usr/bin/git",
+                    "--no-replace-objects",
+                    "rev-parse",
+                    "--show-toplevel",
+                    "--git-dir",
+                    "--git-common-dir",
+                ]
+                and pathlib.Path(argv[0]) != fake_git,
+                "GIT_BOUNDARY_GUARD_FAILED",
+            )
             require(kwargs["cwd"] == str(cwd) and kwargs["stdin"] is subprocess.DEVNULL, "GIT_BOUNDARY_GUARD_FAILED")
-            require(kwargs["env"] == {"LC_ALL": "C", "LANG": "C", "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0"}, "GIT_BOUNDARY_GUARD_FAILED")
+            require(kwargs["env"] == recovery_git_environment(), "GIT_BOUNDARY_GUARD_FAILED")
             require(0 < kwargs["timeout"] <= 15 and kwargs["stdout"] is subprocess.PIPE and kwargs["stderr"] is subprocess.PIPE, "GIT_BOUNDARY_GUARD_FAILED")
             return subprocess.CompletedProcess(argv, 0, f"{cwd}\n.git\n.git\n".encode(), b"")
         original_path = os.environ.get("PATH")
@@ -2925,6 +10553,607 @@ def transport_constructor_guard():
         signal.setitimer(signal.ITIMER_REAL, *original_timer)
 
 
+def exception_note_compatibility_guard():
+    native = RuntimeError("native")
+    append_exception_note(native, "first")
+    require(tuple(getattr(native, "__notes__", ())) == ("first",), "EXCEPTION_NOTE_COMPATIBILITY_FAILED")
+
+    class LegacyNoteError(RuntimeError):
+        add_note = None
+
+    missing = LegacyNoteError("missing")
+    append_exception_note(missing, "first")
+    require(missing.__notes__ == ["first"], "EXCEPTION_NOTE_COMPATIBILITY_FAILED")
+    append_exception_note(missing, "second")
+    require(missing.__notes__ == ["first", "second"], "EXCEPTION_NOTE_COMPATIBILITY_FAILED")
+    invalid = LegacyNoteError("invalid")
+    invalid.__notes__ = ()
+    try:
+        append_exception_note(invalid, "blocked")
+    except TypeError as exc:
+        require(str(exc) == "Cannot add note: __notes__ is not a list", "EXCEPTION_NOTE_COMPATIBILITY_FAILED")
+    else:
+        raise VerificationError("EXCEPTION_NOTE_COMPATIBILITY_FAILED")
+
+
+def signal_combination_guard():
+    protected = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGALRM)
+    priority = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+
+    def expected(sequence):
+        values = set(sequence)
+        selected = next((signum for signum in priority if signum in values), None)
+        return signal.SIGALRM in values, selected
+
+    def execute(first_batch, second_batch, primary_expected):
+        context_signals = set(protected)
+        original_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+        original_handlers = {signum: signal.getsignal(signum) for signum in context_signals}
+        original_timer = signal.getitimer(signal.ITIMER_REAL)
+        state = SignalState()
+        state.cleanup_active = True
+        primary = RuntimeError("synthetic transition primary")
+        primary_tail = None
+        caught = None
+
+        def transition_stop(signum, _frame):
+            if state.cleanup_active:
+                state.record(signum)
+                return
+            raise VerificationError("LIVE_SIGNAL_COMBINATION_GUARD_FAILED")
+
+        def inject(batch):
+            for signum in batch:
+                os.kill(os.getpid(), signum)
+
+        def operation():
+            nonlocal primary_tail
+            if primary_expected:
+                try:
+                    raise primary
+                except RuntimeError as exc:
+                    primary_tail = exc.__traceback__
+                    raise
+            return "success"
+
+        def restore_handlers():
+            for signum, handler in original_handlers.items():
+                signal.signal(signum, handler)
+
+        for signum in context_signals:
+            signal.signal(signum, transition_stop)
+        try:
+            try:
+                run_signal_transition(
+                    context_signals,
+                    state,
+                    operation,
+                    restore=restore_handlers,
+                    transition_hooks={
+                        "after_operation_before_drain1": lambda: inject(first_batch),
+                        "after_restore_before_drain2": lambda: inject(second_batch),
+                    },
+                )
+            except (RuntimeError, VerificationError, InterruptedError) as exc:
+                caught = exc
+            expected_state = expected(first_batch + second_batch)
+            require(
+                (state.deferred_timeout, state.deferred_signal) == expected_state,
+                "LIVE_SIGNAL_COMBINATION_GUARD_FAILED",
+            )
+            if primary_expected:
+                require(caught is primary, "LIVE_SIGNAL_COMBINATION_GUARD_FAILED")
+                require(
+                    type(caught) is RuntimeError
+                    and str(caught) == "synthetic transition primary"
+                    and tuple(getattr(caught, "__notes__", ())) == (),
+                    "LIVE_SIGNAL_COMBINATION_GUARD_FAILED",
+                )
+                current = caught.__traceback__
+                retained = False
+                while current is not None:
+                    if current is primary_tail:
+                        retained = True
+                        break
+                    current = current.tb_next
+                require(retained, "LIVE_SIGNAL_COMBINATION_GUARD_FAILED")
+            elif expected_state[0]:
+                require(
+                    type(caught) is VerificationError and str(caught) == "TRANSPORT_LIMIT",
+                    "LIVE_SIGNAL_COMBINATION_GUARD_FAILED",
+                )
+            else:
+                require(
+                    type(caught) is InterruptedError and caught.args == (expected_state[1],),
+                    "LIVE_SIGNAL_COMBINATION_GUARD_FAILED",
+                )
+            require(not state.cleanup_active, "LIVE_SIGNAL_COMBINATION_GUARD_FAILED")
+            require(not (signal.sigpending() & context_signals), "LIVE_SIGNAL_COMBINATION_GUARD_FAILED")
+            require(
+                signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask,
+                "LIVE_SIGNAL_COMBINATION_GUARD_FAILED",
+            )
+            require(
+                all(signal.getsignal(signum) is original_handlers[signum] for signum in context_signals),
+                "LIVE_SIGNAL_COMBINATION_GUARD_FAILED",
+            )
+            require(
+                signal.getitimer(signal.ITIMER_REAL) == original_timer,
+                "LIVE_SIGNAL_COMBINATION_GUARD_FAILED",
+            )
+            return expected_state
+        finally:
+            signal.pthread_sigmask(signal.SIG_BLOCK, context_signals)
+            for signum, handler in original_handlers.items():
+                signal.signal(signum, handler)
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            pending = signal.sigpending() & context_signals
+            for signum in sorted(pending):
+                signal.sigwait({signum})
+            signal.setitimer(signal.ITIMER_REAL, *original_timer)
+            signal.pthread_sigmask(signal.SIG_SETMASK, original_mask)
+
+    def verify_case(first_batch, second_batch, primary):
+        baseline = execute(first_batch, second_batch, primary)
+        permuted_first = tuple(reversed(first_batch))
+        permuted_second = tuple(reversed(second_batch))
+        require(
+            execute(permuted_first, permuted_second, primary) == baseline,
+            "LIVE_SIGNAL_COMBINATION_GUARD_FAILED",
+        )
+
+    count = 0
+    for size in range(2, len(protected) + 1):
+        for subset in itertools.combinations(protected, size):
+            for primary in (False, True):
+                verify_case((), subset, primary)
+                count += 1
+    for first in protected:
+        for second in protected:
+            if first == second:
+                continue
+            for primary in (False, True):
+                verify_case((first,), (second,), primary)
+                count += 1
+    for signum in protected:
+        for primary in (False, True):
+            verify_case((signum,), (signum,), primary)
+            count += 1
+    require(count == 54, "LIVE_SIGNAL_COMBINATION_GUARD_FAILED")
+
+
+def signal_matrix_child(args):
+    signal_names = {
+        "SIGINT": signal.SIGINT,
+        "SIGTERM": signal.SIGTERM,
+        "SIGHUP": signal.SIGHUP,
+        "SIGALRM": signal.SIGALRM,
+    }
+    protected_phases = {
+        "during_operation_pending",
+        "after_operation_before_drain1",
+        "after_drain1_before_restore",
+        "during_restore_masked",
+        "after_restore_before_drain2",
+    }
+    post_handoff_phases = {
+        "after_second_drain_before_deactivate",
+        "after_deactivate_before_outcome",
+        "after_outcome_before_unmask",
+    }
+    phase = args.matrix_phase
+    outcome = args.matrix_outcome
+    delivered = signal_names.get(args.signal_name)
+    require(
+        delivered is not None
+        and phase in protected_phases | post_handoff_phases
+        and outcome in {"success", "failure"},
+        "LIVE_SIGNAL_MATRIX_CHILD_FAILED",
+    )
+    context_signals = set(signal_names.values())
+    expected_handlers = {
+        signal.SIGINT: signal.default_int_handler,
+        signal.SIGTERM: signal.SIG_DFL,
+        signal.SIGHUP: signal.SIG_DFL,
+        signal.SIGALRM: signal.SIG_DFL,
+    }
+    original_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+    original_handlers = {signum: signal.getsignal(signum) for signum in context_signals}
+    original_timer = signal.getitimer(signal.ITIMER_REAL)
+    require(original_mask == set(), "LIVE_SIGNAL_MATRIX_CHILD_FAILED")
+    require(
+        all(original_handlers[signum] is handler for signum, handler in expected_handlers.items()),
+        "LIVE_SIGNAL_MATRIX_CHILD_FAILED",
+    )
+    require(original_timer == (0.0, 0.0), "LIVE_SIGNAL_MATRIX_CHILD_FAILED")
+
+    root = pathlib.Path(args.root or "")
+    require(root.is_absolute(), "LIVE_SIGNAL_MATRIX_CHILD_FAILED")
+    root_info = root.lstat()
+    require(
+        stat.S_ISDIR(root_info.st_mode)
+        and not stat.S_ISLNK(root_info.st_mode)
+        and root_info.st_uid == os.getuid()
+        and stat.S_IMODE(root_info.st_mode) == 0o700,
+        "LIVE_SIGNAL_MATRIX_CHILD_FAILED",
+    )
+    require(
+        not paths_overlap(root, pathlib.Path.cwd().resolve(), "LIVE_SIGNAL_MATRIX_CHILD_FAILED"),
+        "LIVE_SIGNAL_MATRIX_CHILD_FAILED",
+    )
+    root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    root_identity = identity(root_info)
+    require(identity(os.fstat(root_fd)) == root_identity, "LIVE_SIGNAL_MATRIX_CHILD_FAILED")
+    canary_info = entry_at(root_fd, "canary")
+    require(
+        canary_info is not None
+        and stat.S_ISREG(canary_info.st_mode)
+        and stat.S_IMODE(canary_info.st_mode) == 0o600,
+        "LIVE_SIGNAL_MATRIX_CHILD_FAILED",
+    )
+    canary_identity = identity(canary_info)
+    state = SignalState()
+    state.cleanup_active = True
+    primary = RuntimeError("synthetic transition primary")
+    primary_tail = None
+    owned_fd = None
+    owned_identity = None
+    caught = None
+
+    def transition_stop(signum, _frame):
+        if state.cleanup_active:
+            state.record(signum)
+            return
+        raise VerificationError("LIVE_SIGNAL_MATRIX_CHILD_FAILED")
+
+    for signum in context_signals:
+        signal.signal(signum, transition_stop)
+
+    def inject():
+        os.kill(os.getpid(), delivered)
+
+    def operation():
+        nonlocal owned_fd, owned_identity, primary_tail
+        owned_fd, owned_identity = begin_owned_dir(root_fd, "owned")
+        try:
+            if phase == "during_operation_pending":
+                inject()
+        finally:
+            remove_owned_dir(root_fd, "owned", owned_fd, owned_identity)
+            os.close(owned_fd)
+            owned_fd = None
+        if outcome == "failure":
+            try:
+                raise primary
+            except RuntimeError as exc:
+                primary_tail = exc.__traceback__
+                raise
+        return "success"
+
+    def restore_handlers():
+        for signum, handler in original_handlers.items():
+            signal.signal(signum, handler)
+        if phase == "during_restore_masked":
+            inject()
+
+    hooks = {}
+    if phase not in {"during_operation_pending", "during_restore_masked"}:
+        hooks[phase] = inject
+    if phase in post_handoff_phases:
+        sys.tracebacklimit = 0
+    try:
+        try:
+            run_signal_transition(
+                context_signals,
+                state,
+                operation,
+                restore=restore_handlers,
+                transition_hooks=hooks,
+            )
+        except (VerificationError, InterruptedError, RuntimeError) as exc:
+            caught = exc
+        if phase in post_handoff_phases:
+            raise VerificationError("LIVE_SIGNAL_MATRIX_CHILD_FAILED")
+        if outcome == "failure":
+            require(caught is primary, "LIVE_SIGNAL_MATRIX_CHILD_FAILED")
+            require(type(caught) is RuntimeError and str(caught) == "synthetic transition primary", "LIVE_SIGNAL_MATRIX_CHILD_FAILED")
+            require(tuple(getattr(caught, "__notes__", ())) == (), "LIVE_SIGNAL_MATRIX_CHILD_FAILED")
+            current = caught.__traceback__
+            retained = False
+            while current is not None:
+                if current is primary_tail:
+                    retained = True
+                    break
+                current = current.tb_next
+            require(retained, "LIVE_SIGNAL_MATRIX_CHILD_FAILED")
+        elif delivered == signal.SIGALRM:
+            require(type(caught) is VerificationError and str(caught) == "TRANSPORT_LIMIT", "LIVE_SIGNAL_MATRIX_CHILD_FAILED")
+        else:
+            require(
+                type(caught) is InterruptedError and caught.args == (delivered,),
+                "LIVE_SIGNAL_MATRIX_CHILD_FAILED",
+            )
+        require(not state.cleanup_active, "LIVE_SIGNAL_MATRIX_CHILD_FAILED")
+        require(not (signal.sigpending() & context_signals), "LIVE_SIGNAL_MATRIX_CHILD_FAILED")
+        require(signal.pthread_sigmask(signal.SIG_BLOCK, set()) == original_mask, "LIVE_SIGNAL_MATRIX_CHILD_FAILED")
+        require(
+            all(signal.getsignal(signum) is original_handlers[signum] for signum in context_signals),
+            "LIVE_SIGNAL_MATRIX_CHILD_FAILED",
+        )
+        require(signal.getitimer(signal.ITIMER_REAL) == original_timer, "LIVE_SIGNAL_MATRIX_CHILD_FAILED")
+        require(entry_at(root_fd, "owned") is None, "LIVE_SIGNAL_MATRIX_CHILD_FAILED")
+        current_canary = entry_at(root_fd, "canary")
+        require(
+            current_canary is not None and identity(current_canary) == canary_identity,
+            "LIVE_SIGNAL_MATRIX_CHILD_FAILED",
+        )
+        print(
+            f"WP4158_SIGNAL_PROTECTED_PASS phase={phase} "
+            f"outcome={outcome} signal={args.signal_name} residue=0"
+        )
+        return 0
+    finally:
+        signal.pthread_sigmask(signal.SIG_BLOCK, context_signals)
+        for signum, handler in original_handlers.items():
+            signal.signal(signum, handler)
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        if owned_fd is not None and owned_identity is not None:
+            try:
+                require_owned_dir(root_fd, "owned", owned_fd, owned_identity)
+                remove_owned_dir(root_fd, "owned", owned_fd, owned_identity)
+            finally:
+                os.close(owned_fd)
+        os.close(root_fd)
+        signal.setitimer(signal.ITIMER_REAL, *original_timer)
+        signal.pthread_sigmask(signal.SIG_SETMASK, original_mask)
+
+
+def signal_matrix_guard():
+    protected_phases = (
+        "during_operation_pending",
+        "after_operation_before_drain1",
+        "after_drain1_before_restore",
+        "during_restore_masked",
+        "after_restore_before_drain2",
+    )
+    post_handoff_phases = (
+        "after_second_drain_before_deactivate",
+        "after_deactivate_before_outcome",
+        "after_outcome_before_unmask",
+    )
+    signal_names = ("SIGINT", "SIGTERM", "SIGHUP", "SIGALRM")
+    executable = pathlib.Path(sys.executable).resolve(strict=True)
+    script = pathlib.Path(__file__).resolve(strict=True)
+    cwd = pathlib.Path.cwd().resolve()
+    protected_count = 0
+    boundary_count = 0
+    for phase in protected_phases + post_handoff_phases:
+        for outcome in ("success", "failure"):
+            for signal_name in signal_names:
+                with tempfile.TemporaryDirectory(prefix="wp4158-signal-matrix-") as root_text:
+                    root = pathlib.Path(root_text)
+                    os.chmod(root, 0o700)
+                    root_identity = identity(root.lstat())
+                    canary = root / "canary"
+                    canary.write_bytes(b"canary")
+                    os.chmod(canary, 0o600)
+                    canary_identity = identity(canary.lstat())
+                    command = [
+                        str(executable),
+                        "-I",
+                        str(script),
+                        "--signal-matrix-child",
+                        "--matrix-phase",
+                        phase,
+                        "--matrix-outcome",
+                        outcome,
+                        "--signal-name",
+                        signal_name,
+                        "--root",
+                        str(root),
+                    ]
+                    child = subprocess.run(
+                        command,
+                        cwd=str(cwd),
+                        env={"LC_ALL": "C", "LANG": "C"},
+                        stdin=subprocess.DEVNULL,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        timeout=3,
+                        check=False,
+                        close_fds=True,
+                        start_new_session=True,
+                    )
+                    if phase in protected_phases:
+                        expected = (
+                            f"WP4158_SIGNAL_PROTECTED_PASS phase={phase} "
+                            f"outcome={outcome} signal={signal_name} residue=0\n"
+                        ).encode()
+                        require(
+                            child.returncode == 0 and child.stdout == expected and child.stderr == b"",
+                            "LIVE_SIGNAL_TRANSITION_BINDING_FAILED",
+                        )
+                        protected_count += 1
+                    else:
+                        expected_code = {
+                            "SIGINT": -signal.SIGINT,
+                            "SIGTERM": -signal.SIGTERM,
+                            "SIGHUP": -signal.SIGHUP,
+                            "SIGALRM": -signal.SIGALRM,
+                        }[signal_name]
+                        expected_stderr = b"KeyboardInterrupt\n" if signal_name == "SIGINT" else b""
+                        require(
+                            child.returncode == expected_code
+                            and child.stdout == b""
+                            and child.stderr == expected_stderr,
+                            "LIVE_SIGNAL_TRANSITION_BINDING_FAILED",
+                        )
+                        boundary_count += 1
+                    owned = root / "owned"
+                    if owned.exists():
+                        shutil.rmtree(owned)
+                    require(
+                        root.is_dir()
+                        and identity(root.lstat()) == root_identity
+                        and canary.read_bytes() == b"canary"
+                        and identity(canary.lstat()) == canary_identity
+                        and not owned.exists(),
+                        "LIVE_SIGNAL_TRANSITION_BINDING_FAILED",
+                    )
+    require(protected_count == 40 and boundary_count == 24, "LIVE_SIGNAL_TRANSITION_BINDING_FAILED")
+
+
+def recovery_monitor_binding_guard():
+    source = pathlib.Path(__file__).read_text(encoding="utf-8")
+    require(
+        (
+            "RECOVERY_MUTATION_"
+            + "MONITOR_NOT_READY"
+        )
+        not in source,
+        "RECOVERY_MONITOR_BINDING_FAILED",
+    )
+    tree = ast.parse(source)
+    functions = {
+        node.name: node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef)
+    }
+    required = {
+        "recovery_push",
+        "run_recovery_process_lifecycle",
+        "bash_bootstrap",
+        "classification_resume",
+        "classify_and_persist_recovery",
+        "complete_recovery_terminal",
+    }
+    require(
+        required <= set(functions),
+        "RECOVERY_MONITOR_BINDING_FAILED",
+    )
+
+    def direct_name_calls(node, name):
+        return [
+            item
+            for item in ast.walk(node)
+            if isinstance(item, ast.Call)
+            and isinstance(item.func, ast.Name)
+            and item.func.id == name
+        ]
+
+    push = functions["recovery_push"]
+    claim_calls = direct_name_calls(push, "claim_recovery_once")
+    lifecycle_calls = direct_name_calls(
+        push,
+        "run_recovery_process_lifecycle",
+    )
+    classify_calls = direct_name_calls(
+        push,
+        "classify_and_persist_recovery",
+    )
+    require(
+        len(claim_calls) == 1
+        and len(lifecycle_calls) == 1
+        and len(classify_calls) == 1
+        and claim_calls[0].lineno < lifecycle_calls[0].lineno
+        < classify_calls[0].lineno
+        and not direct_name_calls(push, "run_capped_process"),
+        "RECOVERY_MONITOR_BINDING_FAILED",
+    )
+    preclaim_calls = direct_name_calls(
+        push,
+        "verify_recovery_preclaim_remote",
+    )
+    require(
+        len(preclaim_calls) == 3
+        and sum(call.lineno < claim_calls[0].lineno for call in preclaim_calls)
+        == 2
+        and sum(call.lineno > claim_calls[0].lineno for call in preclaim_calls)
+        == 1,
+        "RECOVERY_MONITOR_BINDING_FAILED",
+    )
+    lifecycle = functions["run_recovery_process_lifecycle"]
+    fork_calls = [
+        item
+        for item in ast.walk(lifecycle)
+        if isinstance(item, ast.Call)
+        and isinstance(item.func, ast.Attribute)
+        and isinstance(item.func.value, ast.Name)
+        and item.func.value.id == "os"
+        and item.func.attr == "fork"
+    ]
+    spawn_calls = [
+        item
+        for item in ast.walk(lifecycle)
+        if isinstance(item, ast.Call)
+        and isinstance(item.func, ast.Attribute)
+        and isinstance(item.func.value, ast.Name)
+        and item.func.value.id == "os"
+        and item.func.attr == "posix_spawn"
+    ]
+    fault_stages = [
+        item.args[0].value
+        for item in ast.walk(lifecycle)
+        if isinstance(item, ast.Call)
+        and isinstance(item.func, ast.Name)
+        and item.func.id == "fault_hook"
+        and len(item.args) == 1
+        and isinstance(item.args[0], ast.Constant)
+        and isinstance(item.args[0].value, str)
+    ]
+    require(
+        len(fork_calls) == 1
+        and len(spawn_calls) == 1
+        and tuple(fault_stages)
+        == (
+            "after_fork_return_before_intent",
+            "after_intent_fsync_before_release",
+            "after_sentinel_ready",
+            "after_bash_spawn_before_ready",
+            "after_bash_ready_before_pre_release",
+            "after_pre_release_before_mutation",
+            "after_mutation_before_release",
+            "after_release",
+            "after_bash_reap",
+            "after_sentinel_reap",
+        ),
+        "RECOVERY_MONITOR_BINDING_FAILED",
+    )
+    release_calls = [
+        item
+        for item in direct_name_calls(
+            lifecycle,
+            "write_exclusive_recovery_file",
+        )
+        if len(item.args) >= 2
+        and isinstance(item.args[1], ast.Constant)
+        and item.args[1].value in {"mutation.state", "bash.release"}
+    ]
+    pre_release_calls = direct_name_calls(lifecycle, "pre_release")
+    require(
+        len(pre_release_calls) == 1
+        and len(release_calls) == 2
+        and pre_release_calls[0].lineno
+        < release_calls[0].lineno
+        < release_calls[1].lineno,
+        "RECOVERY_MONITOR_BINDING_FAILED",
+    )
+    bootstrap = functions["bash_bootstrap"]
+    exec_calls = [
+        item
+        for item in ast.walk(bootstrap)
+        if isinstance(item, ast.Call)
+        and isinstance(item.func, ast.Attribute)
+        and isinstance(item.func.value, ast.Name)
+        and item.func.value.id == "os"
+        and item.func.attr == "execve"
+    ]
+    require(
+        len(exec_calls) == 1,
+        "RECOVERY_MONITOR_BINDING_FAILED",
+    )
+
+
 def self_test():
     rights, rights_expected = rights_fixture(); rights[0]["copyright"] = "cc0"; validate_rights(rights, **rights_expected)
     profiles, value_sets, direct_expected = direct_fixture(); before_order = repr(profiles[0]["snapshot"]["element"]); profiles[0]["snapshot"]["element"].reverse(); require(repr(profiles[0]["snapshot"]["element"]) != before_order, "SELFTEST_POSITIVE_FAILED"); validate_direct_profiles(profiles, value_sets, **direct_expected)
@@ -2937,12 +11166,47 @@ def self_test():
     signal_transition_guard()
     default_signal_primary_guard()
     live_transition_binding_guard()
+    recovery_monitor_binding_guard()
+    signal_transition_mutation_guard()
     git_boundary_guard()
     transport_constructor_guard()
+    exception_note_compatibility_guard()
+    recovery_v12_manifest_guard()
+    raw_commit_guard()
+    recovery_git_parser_guard()
+    recovery_ac9p_guard()
+    recovery_ac9p_execution_guard()
+    recovery_local_observation_guard()
+    recovery_postcommit_static_guard()
+    recovery_context_static_guard()
+    recovery_authority_guard()
+    capped_process_guard()
+    recovery_claim_file_guard()
+    recovery_claim_reconcile_guard()
+    recovery_lock_guard()
+    recovery_wait_guard()
+    recovery_resume_guard()
+    recovery_esrch_guard()
+    recovery_resume_files_guard()
+    recovery_classification_guard()
+    recovery_result_file_guard()
+    fork_release_guard()
+    sentinel_ready_guard()
+    monitor_lifecycle_guard()
+    monitor_crash_cut_guard()
+    posix_spawn_guard()
+    signal_combination_guard()
+    signal_matrix_guard()
     for phase in ("pending", "final"):
         for reason in ("normal", "operation_error", "sigint", "sigterm", "sighup"):
             cleanup_probe(phase, reason)
-    print("WP4158_SELFTEST_PASS positives=2 negatives=95 cleanup=10 residue=0")
+    python_version = ".".join(str(value) for value in sys.version_info[:3])
+    require(python_version in {"3.9.6", "3.14.6"}, "INTERPRETER_IDENTITY_MISMATCH")
+    print(
+        f"WP4158_RECOVERY_SELFTEST_PASS python={python_version} "
+        "positives=2 negatives=95 cleanup=10 signal_protected=40 "
+        "signal_boundary=24 signal_combinations=54 mutations=11 residue=0"
+    )
 
 
 def live():
@@ -3071,7 +11335,7 @@ def live():
             run_signal_transition(tail_signals, state, close_transport, restore=restore_handlers)
         except BaseException as exc:
             if primary[1] is None: raise
-            primary[1].add_note(f"secondary final signal restoration failure: {type(exc).__name__}")
+            append_exception_note(primary[1], f"secondary final signal restoration failure: {type(exc).__name__}")
 
 
 def main():
@@ -3080,15 +11344,84 @@ def main():
     parser.add_argument("--live", action="store_true")
     parser.add_argument("--cleanup-child", action="store_true")
     parser.add_argument("--transition-primary-child", action="store_true")
+    parser.add_argument("--signal-matrix-child", action="store_true")
+    parser.add_argument("--fork-release-probe", action="store_true")
+    parser.add_argument("--sentinel-ready-probe", action="store_true")
+    parser.add_argument("--posix-spawn-probe", action="store_true")
+    parser.add_argument("--group-sentinel")
+    parser.add_argument("--bash-bootstrap-probe")
+    parser.add_argument("--bash-bootstrap")
+    parser.add_argument("--classification-resume")
+    parser.add_argument("--recovery-push")
+    parser.add_argument("--monitor-lifecycle-probe", action="store_true")
+    parser.add_argument("--monitor-crash-cut-probe", action="store_true")
     parser.add_argument("--signal-name", choices=("SIGINT", "SIGTERM", "SIGHUP", "SIGALRM"))
     parser.add_argument("--signal-phase", choices=("pre_snapshot", "post_snapshot"))
+    parser.add_argument(
+        "--matrix-phase",
+        choices=(
+            "during_operation_pending",
+            "after_operation_before_drain1",
+            "after_drain1_before_restore",
+            "during_restore_masked",
+            "after_restore_before_drain2",
+            "after_second_drain_before_deactivate",
+            "after_deactivate_before_outcome",
+            "after_outcome_before_unmask",
+        ),
+    )
+    parser.add_argument("--matrix-outcome", choices=("success", "failure"))
     parser.add_argument("--phase", choices=("pending", "final"))
     parser.add_argument("--reason", choices=("normal", "operation_error", "sigint", "sigterm", "sighup"))
     parser.add_argument("--root"); parser.add_argument("--root-fd", type=int)
     parser.add_argument("--ready-fd", type=int); parser.add_argument("--release-fd", type=int)
     parser.add_argument("--cleanup-ready-fd", type=int); parser.add_argument("--cleanup-go-fd", type=int); parser.add_argument("--signal-ack-fd", type=int)
     args = parser.parse_args()
-    require(sum((args.self_test, args.live, args.cleanup_child, args.transition_primary_child)) == 1, "MODE_INVALID")
+    require(
+        sum(
+            (
+                args.self_test,
+                args.live,
+                args.cleanup_child,
+                args.transition_primary_child,
+                args.signal_matrix_child,
+                args.fork_release_probe,
+                args.sentinel_ready_probe,
+                args.posix_spawn_probe,
+                bool(args.group_sentinel),
+                bool(args.bash_bootstrap_probe),
+                bool(args.bash_bootstrap),
+                bool(args.classification_resume),
+                bool(args.recovery_push),
+                args.monitor_lifecycle_probe,
+                args.monitor_crash_cut_probe,
+            )
+        )
+        == 1,
+        "MODE_INVALID",
+    )
+    if args.signal_matrix_child:
+        return signal_matrix_child(args)
+    if args.fork_release_probe:
+        return fork_release_probe()
+    if args.sentinel_ready_probe:
+        return sentinel_ready_probe()
+    if args.posix_spawn_probe:
+        return posix_spawn_probe()
+    if args.group_sentinel:
+        return group_sentinel(args.group_sentinel)
+    if args.bash_bootstrap_probe:
+        return bash_bootstrap_probe(args.bash_bootstrap_probe)
+    if args.bash_bootstrap:
+        return bash_bootstrap(args.bash_bootstrap)
+    if args.classification_resume:
+        return classification_resume(args.classification_resume)
+    if args.recovery_push:
+        return recovery_push(args.recovery_push)
+    if args.monitor_lifecycle_probe:
+        return monitor_lifecycle_probe()
+    if args.monitor_crash_cut_probe:
+        return monitor_crash_cut_probe()
     if args.transition_primary_child:
         return transition_primary_child(args)
     if args.cleanup_child:
@@ -3206,7 +11539,131 @@ The twenty-ninth BUG_REFACTOR candidate tree `ef1fc1e6389a44a25e69c8c14526a24d80
 
 The thirtieth BUG_REFACTOR source SHA-256 was `7ac2e9837f3bf0ffd7866c19f5e979ed0c5889b87faafab1e3015d1df3718a01` across 2354 LF lines. The verifier required its own canonical final LF. One shared primitive owned signal blocking, protected operation, pending/deferred decision, cleanup deactivation, state restoration, and unmasking for live allocation, the success tail, the outer finalizer, and the runtime guard. An AST binding oracle plus controlled allocation and tail bypass mutants prevented call-site false-green. Existing path containment used strict device/inode same-file and bidirectional ancestor-chain checks; the actual macOS case-variant workspace-local temp oracle required zero Git calls, unchanged canary bytes, no artifacts, and zero root residue. The remaining legacy signal-set reference used the shared tail set. Twenty canonical-source self-test repetitions passed exactly. Candidate tree `c095e836707deafb20b9e883e693bf35ccddea22` failed reviewer 1 and passed reviewers 2 and 3, so reviewers 4 and 5 were not started. When a protected operation queued a signal and then raised its primary exception, the drain was skipped; restoring actual default handlers before unmask terminated the process for SIGTERM, SIGHUP, and SIGALRM. The custom `ProbeSignal` primary guard did not exercise that fatal path.
 
-The thirty-first BUG_REFACTOR source SHA-256 is `9661c715c218aa8c7ebcf4fdabb42125455fa6d2f30a9d08619b435a669d2e87` across 2544 LF lines. The transition now captures operation success or failure and then performs exactly one common pending-signal drain while the mask and transition handler remain active. A queued signal updates deferred state, but the exact operation exception identity, type, message, traceback and empty notes remain primary; only then does the transition deactivate, restore actual handlers, and unmask. Four independent fresh `python -I` children exercise Python's SIGINT default handler and `SIG_DFL` for SIGTERM, SIGHUP, and SIGALRM. Each requires the primary exception, exact deferred state, an empty pending set, and zero child-owned directory/FD, mask, handler, timer, canary, and parent-root residue. The former failure-drain omission mutant is rejected with `LIVE_SIGNAL_PRIMARY_GUARD_FAILED`; missing-terminal-LF plus allocation and tail bypass mutants remain rejected with `LIVE_TRANSITION_BINDING_FAILED`. Twenty canonical-source self-test repetitions passed exactly. The sanitized live verifier ultimately passed its exact six-line oracle and zero residue; one unchanged-source attempt first returned `TRANSPORT_LIMIT`, and a subsequent verifier exit-zero run exposed only an incorrect external harness expectation of 225 rather than the authoritative 200 handoff rows before the corrected exact oracle passed. Fresh exactly-five BUG_REFACTOR review is pending.
+The thirty-first BUG_REFACTOR projection is INVALID. All four ledgers pinned source SHA-256 `9661c715c218aa8c7ebcf4fdabb42125455fa6d2f30a9d08619b435a669d2e87` / 2544 LF lines, while canonical marker extraction from live HEAD produced `e096d18ce95dbd0f1167e12c918747393f23ceafdb48cc760e462d2d2c0bf151` / 2610 LF lines. Twenty green self-tests therefore ran unbound bytes. Fresh reviewers 1 through 3 all failed the generation. Reviewers 1 and 2 independently reproduced the unmask-before-restore race: injection immediately after actual handler restoration terminated SIGTERM/SIGHUP/SIGALRM children with `-15/-1/-14`, while SIGINT added a secondary note to the primary. Reviewers 1 and 3 also found that commit `f4d0f8f71a62c3e55a57a79ad57092b10620cc70`, parent S0 `68470672bd0f5efff6cc06f42cfb374dc59dc0f7`, tree `de78f97dfbd7f9a050f0141c10fd3c37849426e2`, changed ten paths rather than exact4. The six non-ledger paths are `.omo/run-continuation/ses_09a245a19ffeBWzQa3pzsfAF7A.json`, `apps/api/package.json`, `apps/web/package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, and `scripts/check-scripts.mjs`. Their base blob OIDs are respectively `6828719e4b4a1cb7ad0ae72605f4c296b79f1f65`, `a3e388ddb255196153e8f39d8a7472264a9b716c`, `b9c838b0d2b86cfd6c8f9f8b1b9b29ea0f83444b`, `9d3f409ae7edefcb85f7b53c3b9a083238f4fc14`, `dee09960d2fe3ee9a2083ba536c8db07d16e0ba9`, and `243691fa3fdc1c7285fa59dfb10eb7787ed7bd0e`. The mixed commit remains in history but is not an original S1 landing or evidence artifact. WP-4158 does not revert, modify, or approve those six paths.
+
+The thirty-second prototype source SHA-256 `41fe9c6c64443c8324240ccd20a4f6b0bdb857e128a2a27189cdcc8abaf488b7` / 2776 LF lines and every execution result from that prototype are INVALID/non-evidence. The prototype bypassed fresh recovery PLAN and IMPLEMENTATION gates. It also called `BaseException.add_note` directly: Homebrew Python 3.14.6 passed, but system `/usr/bin/python3` 3.9.6 failed with `AttributeError`. The inline verifier has therefore been restored byte-for-byte to the base-derived SHA-256 `e096d18ce95dbd0f1167e12c918747393f23ceafdb48cc760e462d2d2c0bf151` / 2610 LF lines; that source retains the known unmask-before-restore race and is not implementation authority or evidence.
+
+First recovery PLAN tree `939db7db027dbc8de11b51c007cb29d3831875f4` stopped at reviewer 1 PASS and reviewers 2/3 FAIL; reviewers 4/5 were not started. It lacked a recovery-specific PLAN/landing oracle, left a second-drain-to-unmask injection gap, did not bind signal cases/mutations into the aggregate token, and did not pin the Homebrew interpreter by absolute path and version. Second tree `0c645a12556ed4558edb2659c2c869530ca79aac` stopped at reviewers 1/3 FAIL; reviewer 2 was interrupted before verdict and is count-excluded, reviewers 4/5 were not started. It incorrectly mapped protected SIGALRM success to `InterruptedError`, omitted operation-to-drain-one and restore-to-drain-two windows, left historical and recovery AC9 clauses simultaneously applicable, and did not bind resolved interpreter identities.
+
+Third recovery PLAN tree `564ad334e213aafd2d8d6fcb8cbe29d5686ec456` passed reviewers 1 through 4 and failed reviewer 5, so it is not approved. The remaining blockers were unpinned remote repository identity and order-dependent multi-signal pending state.
+
+Fourth recovery PLAN tree `8c36518598d0521c6385baeb929a241c2f2834ac` failed reviewers 1 through 3; reviewers 4/5 were not started. It required local HEAD to be both base and commit after AC9L and left a check-to-push race under remote deletion or rewind.
+
+Fifth recovery PLAN tree `9408546019ee291e7c0c22316acee5b1fdad119c` failed reviewers 1 through 3; reviewers 4/5 were not started. Its exact lease CAS was safe, but governance still requires commit-bound human approval for a force-with-lease command, and hook/follow-tag/config/non-target ref side effects were not fully bounded.
+
+Sixth recovery PLAN tree `42d47b1f669180087d21b1ac04527fb4044672f6` failed reviewers 1 through 3; reviewers 4/5 were not started. Approval authenticity/freshness/one-shot, absolute Git/helper/environment identity, all-ref manifest grammar, post-attempt state classification, and the client/server hook boundary were incomplete.
+
+Seventh recovery PLAN tree `b7a52b241ea83c80fe09e71e8221e2965efad3da` failed reviewers 1 through 3; reviewers 4/5 were not started. It used the wrong empty non-target ref digest, left approval literals/durable consumption and wrapper authority ambiguous, and lacked full recovery AC9P and S2 PLAN.
+
+Eighth recovery PLAN tree `709cea350fba057f5f3a604e81b3564bcdaf6640` failed reviewers 1 through 3; reviewers 4/5 were not started. Exact tool/wrapper/hash reproducibility, one-winner durable claim, push supervision, and executable gh AC9P were incomplete.
+
+The ninth recovery PLAN tree `b4fcca448b42bcfcf25c828d67a9a25f9ee105d6` failed reviewers 1 through 3; reviewers 4/5 were not started. Blocking findings were an unbound supervisor source/runtime, non-reconstructible tool/config manifest preimages, incomplete ls-remote and gh argv/env/workflow pagination, duplicate-ref ambiguity, an unauthenticated/undated human receipt, a mkdir-before-attempt crash cut, and an origin tracking-ref parity requirement that literal-URL push cannot satisfy.
+
+The tenth plan enumerates Tool/Config V2 canonical records, binds the committed supervisor source and system Python runtime into the human request, fixes exact supervised ls-remote/gh argv and environments with exhaustive workflow/jobs pagination, requires globally unique refs, accepts only a subsequent exact host-delivered user-role approval body with issued/expiry times, atomically links a prewritten durable claim manifest, and defines terminal parity as local HEAD against pinned remote main. Current action is tenth fresh exactly-five recovery PLAN review only.
+
+The tenth recovery PLAN tree `017e0088ffb937584a3dcacf5a4797a3e60aee8c` failed reviewers 1 through 3; reviewers 4/5 were not started. V2 contradicted its full-replacement rule by importing V1 grammar/token and lacked exact config/ref validation execution, cwd/worktree/gitdir/config/run identity, interpreter byte hashes, immediate preclaim/prespawn revalidation, workflow transient-state transitions, and a fresh terminal all-ref check.
+
+The eleventh plan replaces prior push clauses with standalone V3 authority: byte-pinned system Python, explicit execution context and config reader, pure bounded ref grammar, fully restated executor bytes, context-bound exact host approval, prewritten atomic-link claim with two temporal revalidation points, explicit polling states, and terminal fresh all-ref parity. Current action is eleventh fresh exactly-five recovery PLAN review only.
+
+The eleventh recovery PLAN tree `63a6e56263f0ce3b232d69581b8bb02ed22f0148` failed reviewers 1 through 3; reviewers 4/5 were not started. V3 still referred to prior config text, left context/state/claim framing incomplete, did not clean the pre-bash environment, omitted exact local Git and post-claim predicates, did not hand off a constructible monotonic deadline, and omitted standalone AC9P endpoints/schemas/status transitions.
+
+The twelfth plan replaces all prior recovery-push clauses with standalone V4: complete tool/config/context manifests, exact clean launchers, fd-relative nonce state files and atomic claim bytes, exact local Git predicates, wall plus monotonic request fields, complete remote grammar, and full GitHub endpoints/JSON schemas/poll states. Current action is twelfth fresh exactly-five recovery PLAN review only.
+
+The twelfth recovery PLAN tree `bb9bb081d2d78fc0f339c975b9a0d08df98bfce1` failed reviewers 1 through 3; reviewers 4/5 were not started. V4 could not durably present the host receipt, left a winner hard-link alias and S2 existing-parent path undefined, omitted approval binding for the outer launcher, and allowed a supervisor crash or premature classification to race a later orphan push.
+
+The thirteenth plan keeps complete V4 bytes and applies explicit V5 amendments: durable receipt input, exact launcher hashes, winner alias cleanup, a bootstrap release fence with fsynced pid/pgid/deadlines, quiescence-before-classification, remotely reproducible result state, bounded outer resume, and strict subprocess exit/output oracles. Current action is thirteenth fresh exactly-five recovery PLAN review only.
+
+The thirteenth recovery PLAN tree `a71911f888e332cd4dd8805fe08b5b3823799e7f` failed reviewers 1 through 3; reviewers 4/5 were not started. V5 lacked strict cutoff checks on both release sides, a ready-only deadline, complete pre-release local revalidation, group-wide/PID-reuse-safe quiescence, total UNKNOWN result sentinels, and an explicit push-output exception.
+
+The fourteenth plan applies V6: an inherited advisory-lock ownership witness, strict cutoff checks before write and after read, complete pre-launch local revalidation, lock plus process-group extinction as the only quiescence oracle, total result sentinels, and separate push output rules. Current action is fourteenth fresh exactly-five recovery PLAN review only.
+
+The fourteenth recovery PLAN tree `4b5953472305f719b38d5d52770625634affb7ee` failed reviewers 1 through 3; reviewers 4/5 were not started. A busy flock observation could be followed by holder exit/group escape and numeric PGID reuse before killpg; concurrent resumes could also make the lock busy themselves. Resume-side signaling was therefore unsafe.
+
+The fifteenth plan applies V7: a persistent monitor remains parent of a second fenced bash-bootstrap, retains the unreaped kernel child identity, and is the only process permitted to signal that group. Resume never signals and cannot terminal-classify until monitor and bash groups are absent in two samples. Current action is fifteenth fresh exactly-five recovery PLAN review only.
+
+The fifteenth recovery PLAN tree `8b109bbbab5b2a8f3b18c83616b49e3c456ae182` failed reviewers 1 through 3; reviewers 4/5 were not started. System Python lacks os.waitid, the zombie leader prevented the planned ESRCH oracle, descendants could escape the recorded group, and a server-side delayed commit could follow a false terminal base snapshot.
+
+The sixteenth plan applies V8: a live posix_spawn group sentinel allows ordinary waitpid while pinning the PGID, an inherited descendant lock detects escaped helpers, resume remains no-signal, and any attempted push that still observes base is permanently ambiguous/non-retriable rather than terminal not-applied. Current action is sixteenth fresh exactly-five recovery PLAN review only.
+
+The sixteenth recovery PLAN tree `4a98e2e325252560385b3682ca3e3d297ff51a74` failed reviewers 1 through 3; reviewers 4/5 were not started. V8 double-reaped a completed bash child, underspecified posix_spawn/lock transfer bytes, contradicted immediate ambiguous persistence with its delayed-commit guard, and lacked an exact monotonic v2 upgrade schema.
+
+The seventeenth plan applies V9: a human-bound canonical spawn template, explicit FD9 lock transfer and parent close, exactly-once waitpid state, immediate nonterminal ambiguous persistence, and a hash-bound O_EXCL commit-upgrade record. Current action is seventeenth fresh exactly-five recovery PLAN review only.
+
+The seventeenth recovery PLAN tree `bcd91879b288d44bbbb38917f0c046abd3e12c56` failed reviewers 1 through 3; reviewers 4/5 were not started. V9 used an unsupported posix_spawn cwd keyword, left a dynamic lock FD outside authorized substitutions, retained conflicting spawn precedence, did not finalize approval field order, and omitted total first-observation result variants.
+
+The eighteenth plan applies V10: one final request/token order, inherited-and-verified cwd, a supported posix_spawn call with fixed fd8-to-fd9 actions, and total initial result schemas with only ambiguous-to-commit monotonic upgrade. Current action is eighteenth fresh exactly-five recovery PLAN review only.
+
+The eighteenth recovery PLAN tree `f6ddabafa091111e54619eb55606dad0e49f458a` failed reviewers 1 through 3; reviewers 4/5 were not started. V10 did not enumerate the final spawn-spec hash preimage and could not recover a successful push after an initial unreadable remote observation.
+
+The nineteenth plan applies V11: an exact 23-record spawn template manifest and an O_EXCL, prior-hash-bound observational COMMIT upgrade from either ambiguous base or unknown, without any mutation retry. Current action is nineteenth fresh exactly-five recovery PLAN review only.
+
+The nineteenth recovery PLAN tree `dcc52a56691c3fe3dc0f259ded770fb7e56a41b6` passed reviewers 1, 2, 3 and 5 but failed reviewer 4, so it remained 4/5 and unapproved. The sentinel posix_spawn return-to-ready interval lacked a durable PID witness; a monitor crash could leave an unrecorded sentinel that resume could not prove extinct.
+
+The twentieth plan applies V12: forked sentinel child stays blocked on a release pipe while the parent fsyncs its exact PID intent, a separate guardian pipe makes parent death terminate the non-mutating sentinel, and resume never terminal-classifies a missing/partial readiness state until the recorded PID is absent. Current action is twentieth fresh exactly-five recovery PLAN review only.
+
+The twentieth recovery PLAN tree `dba6223490dae2f7af09ab32e236b709d10a8244` failed reviewers 1 through 3; reviewers 4/5 were not started. Guardian write FD8 conflicted with the normative bash descendant-lock source FD8, and the fork child failed to normalize inherited signal mask/default dispositions before exec.
+
+The twenty-first plan moves guardian write to FD10 while reserving FD8 and binds empty signal mask plus default INT/TERM/HUP/ALRM dispositions into the fork manifest and runtime guards. Current action is twenty-first fresh exactly-five recovery PLAN review only.
+
+The twenty-first recovery PLAN tree `b3da7b5de4469414199b1764eee10e8f8e487e6d` failed reviewers 1 and 2; reviewers 3 through 5 were not started. It unblocked signals before defaulting inherited handlers, lacked collision-safe pipe FD normalization, and left final approval ordering ambiguous.
+
+The twenty-second plan blocks signals before installing defaults and unmasking, normalizes pipes through collision-free backups after proving targets empty, and states the complete final request/body order. Current action is twenty-second fresh exactly-five recovery PLAN review only.
+
+The twenty-second recovery PLAN tree `5cfe99006fd4a7428cdaa63e2c784ba9be8951ff` failed reviewers 1 through 3; reviewers 4/5 were not started. The child did not receive a blocked mask until after release, leaving fork, FD and release-wait windows exposed to inherited handlers.
+
+The twenty-third plan blocks all four signals in the single-threaded parent before any FD work/fork, inherits that mask through child release waiting and default installation, and restores the parent's original empty mask exception-safely. Current action is twenty-third fresh exactly-five recovery PLAN review only.
+
+The twenty-third recovery PLAN tree `a1596358acc67d92f08b16eccb50fae60f73acde` failed reviewers 1 and 2; reviewers 3 through 5 were not started. The ready/guardian schema and release-deadline transfer were non-exact, the approval-bound parent action order contradicted the normative lifecycle, and pre-ready child exits lacked an exactly-once waitpid settlement.
+
+The twenty-fourth plan captures one absolute deadline before fork, defines exact intent-bound ready/guardian and pre-ready exit schemas, aligns the fork manifest parent order, and carries the sentinel wait state exactly once into V9. Current action is twenty-fourth fresh exactly-five recovery PLAN review only.
+
+The twenty-fourth recovery PLAN tree `59e1720db53643aaeee28ff6b385517547422324` failed reviewer 1; reviewers 2 through 5 were not started. Its new safety clauses were not blocked, but the authoritative Plans candidate projection still named the obsolete twenty-third gate.
+
+The twenty-fifth plan synchronizes the authoritative candidate and all ledger projections to the repaired V12 authority. Current action is twenty-fifth fresh exactly-five recovery PLAN review only.
+
+The twenty-fifth recovery PLAN tree `dfa0461a57ccedc4fd5da70e9be218c428144bd8` passed reviewers 1 and 2 and failed reviewer 3; reviewers 4/5 were not started. The parent-death guardian lacked an exec-crossing dynamic pipe challenge, and waitpid authority omitted total EINTR/error/deadline behavior after readiness.
+
+The twenty-sixth plan adds a parent-post-fork exact32-byte guardian challenge bound into intent/ready and a bounded nonblocking waitpid totality clause for both direct children. Current action is twenty-sixth fresh exactly-five recovery PLAN review only.
+
+The twenty-sixth recovery PLAN tree `e02d12d1ffacf312abaacc57206b2f541c49acab` failed reviewers 1 and 2; reviewers 3 through 5 were not started. It required ESRCH before reaping the zombie sentinel contrary to V9, one projection said pre-fork challenge, and waitpid EINTR referenced undefined verifier-only deferred-signal state.
+
+The twenty-seventh plan restores V9 reap-before-group-oracle order with no post-reap signal, synchronizes parent-post-fork challenge generation, and makes EINTR retry self-contained and deadline-bounded. Current action is twenty-seventh fresh exactly-five recovery PLAN review only.
+
+The twenty-seventh recovery PLAN tree `f51e062a3ce277bec9791abf410a71270bc22afe` passed reviewers 1 through 3 and failed reviewers 4 and 5. Persisted monotonic deadlines had no boot-epoch binding, and Python 3.9 installs a SIGINT handler during startup, contradicting the sentinel's immediate-default assumption.
+
+The twenty-eighth plan binds a Darwin boot-session hash into approval and defines no-signal/no-retry reboot classification, while keeping all four signals blocked through Python startup and performing the sole unmask after sentinel-source defaults them. Current action is twenty-eighth fresh exactly-five recovery PLAN review only.
+
+The twenty-eighth recovery PLAN tree `4fb5ff69045d87472c829338cc02a813b1c67920` passed reviewers 1, 2, 3 and 5 and failed reviewer 4. The boot-session `timeval` contract constrained only total size, so a c_long/c_long same-size wrong-layout implementation could false-green.
+
+The twenty-ninth plan fixes the absolute libSystem image, sysctlbyname prototype, signed field types, offsets, total/returned sizes and padding bytes, with controlled ABI mutants. Current action is twenty-ninth fresh exactly-five recovery PLAN review only.
+
+The twenty-ninth recovery PLAN tree `ced209d16248e970079b4be97d8b0a56e17831f3` passed reviewer 1 and failed reviewer 2; reviewers 3 through 5 were not started. The ABI was exact, but the decimal-seconds formatter did not forbid signs or leading zeros, leaving multiple boot-hash preimages.
+
+The thirtieth plan fixes seconds to shortest unsigned decimal, microseconds to exactly six digits and all NUL/dot/LF delimiters, with formatter mutants. Current action is thirtieth fresh exactly-five recovery PLAN review only.
+
+The thirtieth recovery PLAN tree `acd0175a7a9a06046cdbdf966441b7122b30801a` passed reviewer 2 and failed reviewer 1; reviewers 3 through 5 were not started. Local Git allowed replacement refs/legacy grafts, and wall-clock boottime alone was not an injective boot-session identity.
+
+The thirty-first plan disables replacements in every Git read/push, requires replacement refs and grafts absent, and binds canonical `kern.bootsessionuuid` bytes together with boottime. Current action is thirty-first fresh exactly-five recovery PLAN review only.
+
+The thirty-first recovery PLAN tree `f2d153ec100e3e386ecceb0f7341bc6e76bb19f7` passed reviewer 2 and failed reviewer 1; reviewers 3 through 5 were not started. No-replace was scoped to supervisor Git only, leaving root PLAN candidate, AC9C/AC9L and S2 Git reads replaceable.
+
+The thirty-second plan globally applies the absolute no-replace Git grammar and replace/graft observations to every recovery gate and binds that evidence into reviewer and human packets. Current action is thirty-second fresh exactly-five recovery PLAN review only.
+
+The thirty-second recovery PLAN tree `7a524777083aad44ec088af25972c131ba67616e` passed reviewer 1 and failed reviewer 2; reviewers 3 through 5 were not started. A transient legacy graft could still forge rev-list parent evidence between absent-graft observations.
+
+The thirty-third plan replaces authoritative ancestry with an independently hashed and parsed raw commit object and binds its SHA-256/tree/base/message into every review, AC9 and human packet. Current action is thirty-third fresh exactly-five recovery PLAN review only.
+
+The thirty-third recovery PLAN tree `837ea4bb9e094cdf80da2abc892c37fd2ce83528` failed reviewers 1 and 2; reviewers 3 through 5 were not started. It required a future recovery commit/raw hash in precommit AC9C, contradicting the exact commit-after-review boundary.
+
+The thirty-fourth plan phase-separates precommit base raw plus candidate inputs, postcommit recovery raw, and S2 landed-base raw. Current action is thirty-fourth fresh exactly-five recovery PLAN review only.
+
+The thirty-fourth recovery PLAN tree `ef291d965197c12bc9906e73bbac56c68b2e21a2` passed fresh reviewers 1 through 5. Exact4, global no-replace/raw object phase separation, boot-session binding, fork/signal/FD/guardian/wait/lock lifecycle, one-shot remote settlement, AC9P and postcommit human approval were approved without executing the inherited verifier or network mutation. The exact PLAN_READY token is recorded in Plans. Current action is RECOVERY IMPLEMENTATION by root sole maintainer; fresh exactly-five IMPLEMENTATION review is pending.
+
+The current recovery IMPLEMENTATION partial has source SHA-256 `2a7598010a26a3f6e303ff6c25db257b902a378bd8909769f1c27d62626e46bd` across 10934 LF lines. Both pinned interpreters pass the exact recovery token with protected40/post-handoff24/drain1+drain2 exact54/mutation11. V12 foundations include canonical manifests and request authority; raw/no-replace Git and capped process observation; durable claim/result/lock/wait/launcher/AC9P boundaries; actual clean-system-Python sentinel intent/challenge/ready/guardian lifecycle; system `os.posix_spawn` FD8-to-FD9 inheritance; bash in the sentinel PGID with descendant-lock retention, ready/mutation/release, bash exact reap, sentinel-last TERM and group extinction; resume no-signal decision totality; durable result O_EXCL/upgrade; postcommit/preclaim oracles; the V12 execution-context manifest; an actual GH poll core with an offline exact-eight-endpoint guard; split live/persisted authority validation; one-second-spaced ESRCH sampling; partial-ready and lock-drift crash resume; durable base/commit/unknown classification with V2 observational upgrade; a classification-only resume terminal entrypoint; and an actual bash bootstrap. Production `--recovery-push` now connects fresh/free monitor lock, repeated preclaim, atomic claim, pre-spawn validation, fork-release sentinel, same-PGID bash, pre-release validation, mutation release, exact child reaping/group extinction, fresh classification and COMMIT AC9P terminal handling. The same production lifecycle passed a real-process happy path and ten injected crash boundaries; claim orphan-before-link, fixed-claim nlink2 and loser-temp reconciliation plus call-site binding guards passed, with zero result/residue at crash cuts. Both pinned self-tests, live read-only tool/config/base/no-replace/graft/remote observations, diff, SSOT173, scripts and tracked exact4 overlay secrets passed. The context oracle preserves authority dev `16777233`, observes live `16777228`, emits exact `RECOVERY_CONTEXT_INVALID`, and leaves runParent absent. Production mutation code is implemented but not live-authorized or observed. The non-authoritative V13 amendment and recovery IMPLEMENTATION still require independent review; context-bound preclaim/push/AC9P, approval, commit and push were not performed.
+
+Current full-workspace preflight for that source passed workspace typecheck, 1,829 tests with 14 expected local PostgreSQL integration skips, the lint entrypoint, OpenAPI, calculation purity, boundaries, SSOT index 173, SBOM 232 and the full build with 12/12 Next.js static pages. It did not pass the complete VALIDATION gate: `pnpm check:deps` now fails with one high-severity PostCSS 8.5.16 advisory, GHSA-r28c-9q8g-f849, affecting versions through 8.5.17 and patched in 8.5.18 or later. Historical high-zero observations remain valid only for their recorded checkpoints. WP-4158 excludes package and lock changes, so no dependency bytes were changed in this exact4 candidate; remediation is separately tracked as WP-4240.
+
+V13 offline feasibility was tested without changing tracked authority or source. Replacing only the four fixed-context device literals and their one static-guard literal from `16777233` to `16777228` in memory produced candidate SHA-256 `0430d462f7a435d028c63720fb6ce61bd6524284e9fdc59673223b2eed68e187` across the same 10,934 LF lines. A repository-external private 0600 temporary source passed the exact recovery self-test under system Python 3.9.6 and Homebrew Python 3.14.6 with positives2, negatives95, cleanup10, signal40/24/54, mutations11 and residue0; the private temp left zero residue. Three one-second-spaced no-follow lstat/fstat samples observed all four objects at device `16777228` with the existing inode, mode, uid and gid, while runParent remained absent. This is feasibility evidence only: it does not approve V13, alter the tracked V12 source, satisfy independent PLAN or IMPLEMENTATION review, or authorize runParent creation, approval, claim, signals, push or AC9P.
 
 Terminology rights provenance follow-up captured on 2026-07-16:
 
