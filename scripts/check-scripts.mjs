@@ -2569,6 +2569,87 @@ async function testSsotIndexDetectsStatusMismatch() {
   assert(outputOf(result).includes("status mismatch"), "status drift finding should explain the mismatch");
 }
 
+async function testSsotIndexDetectsInvalidFrontmatterYaml() {
+  const root = path.join(tempRoot, "ssot-index-invalid-yaml");
+  // WP-4250 で実際に混入した欠陥形。値がバッククォート(YAML の予約文字)で
+  // 始まるため plain scalar として解釈できない。行単位の field 抽出では
+  // ssot_id / status が取れてしまうので、この文書は YAML parse を持たない
+  // 検査を通過していた。
+  const invalidDoc = [
+    "# fixture — invalid frontmatter",
+    "",
+    "```yaml",
+    "ssot_id: PRD-001",
+    "title: fixture",
+    "domain: fixture",
+    "status: APPROVED",
+    "owner: fable5",
+    "version: 0.1.0",
+    "created_at: 2026-07-09",
+    "updated_at: 2026-07-09",
+    "blockers:",
+    "  - BLOCKED_EXAMPLE: `writerFenceToken` の自己保持が強制できない",
+    "```",
+    "",
+    "Fixture body.",
+    "",
+  ].join("\n");
+  await writeText(path.join(root, "docs", "product", "mvp_scope.md"), invalidDoc);
+  await writeText(
+    path.join(root, "docs", "ssot_index.md"),
+    ssotIndex([{ ssotId: "PRD-001", linkPath: "product/mvp_scope.md", status: "APPROVED" }]),
+  );
+
+  const result = runNode("check-ssot-index.mjs", [root]);
+  const output = outputOf(result);
+  assert(result.status === 1, "check-ssot-index should reject frontmatter that is not valid YAML");
+  assert(
+    output.includes("docs/product/mvp_scope.md: frontmatter is not valid YAML"),
+    "invalid frontmatter finding should name the document",
+  );
+  assert(
+    !output.includes("does not exist"),
+    "invalid frontmatter must not cascade into a false missing-document finding",
+  );
+}
+
+async function testSsotIndexAcceptsQuotedColonBearingFrontmatterValues() {
+  const root = path.join(tempRoot, "ssot-index-quoted-yaml");
+  // 引用符で囲めば、コロンやバッククォートを含む値も妥当な YAML になる。
+  // 既存文書の修復方法がそのまま通ることを固定する。
+  const quotedDoc = [
+    "# fixture — quoted frontmatter",
+    "",
+    "```yaml",
+    "ssot_id: PRD-001",
+    "title: fixture",
+    "domain: fixture",
+    "status: APPROVED",
+    "owner: fable5",
+    "version: 0.1.0",
+    "created_at: 2026-07-09",
+    "updated_at: 2026-07-09",
+    "source_refs: \"構築プロンプト v0.2.0 §10、PRD-006 product_concept(柱2: 返戻率KPI公開)\"",
+    "blockers:",
+    "  - \"BLOCKED_EXAMPLE: `writerFenceToken` の自己保持が強制できない\"",
+    "```",
+    "",
+    "Fixture body.",
+    "",
+  ].join("\n");
+  await writeText(path.join(root, "docs", "product", "mvp_scope.md"), quotedDoc);
+  await writeText(
+    path.join(root, "docs", "ssot_index.md"),
+    ssotIndex([{ ssotId: "PRD-001", linkPath: "product/mvp_scope.md", status: "APPROVED" }]),
+  );
+
+  const result = runNode("check-ssot-index.mjs", [root]);
+  assert(
+    result.status === 0,
+    `check-ssot-index should accept quoted colon-bearing frontmatter values: ${outputOf(result)}`,
+  );
+}
+
 async function testSsotIndexDetectsDuplicateSsotId() {
   const root = path.join(tempRoot, "ssot-index-duplicate-id");
   await writeText(path.join(root, "docs", "product", "mvp_scope.md"), ssotDoc("PRD-001", "APPROVED"));
@@ -2843,6 +2924,8 @@ try {
   await testSsotIndexDetectsMissingDocumentRow();
   await testSsotIndexPreservesZeroRowSemanticDiagnostics();
   await testSsotIndexDetectsStatusMismatch();
+  await testSsotIndexDetectsInvalidFrontmatterYaml();
+  await testSsotIndexAcceptsQuotedColonBearingFrontmatterValues();
   await testSsotIndexDetectsDuplicateSsotId();
   await testSsotIndexInvalidScopesFailClosed();
   await testOpenApiDriftDetection();

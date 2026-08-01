@@ -27,7 +27,7 @@ change_log:
   - "body history authority: 本文§6の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-12 WP-9002-W21 metadata-only completion: body/status/version/approval/effective/allocation semantics unchanged"
 open_questions:
-  - 割当順序デフォルトの確定(【要確認: 請求実務レビュー】候補: 請求発生日昇順)
+  - "割当順序デフォルトの確定(【要確認: 請求実務レビュー】候補: 請求発生日昇順)"
 blockers: []
 ```
 

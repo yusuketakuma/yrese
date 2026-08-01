@@ -16,7 +16,7 @@ created_at: 2026-07-09
 updated_at: 2026-07-12
 effective_from: null
 effective_to: null
-source_refs: 構築プロンプト v0.2.0 §10、PRD-006 product_concept(柱2: 返戻率KPI公開)
+source_refs: "構築プロンプト v0.2.0 §10、PRD-006 product_concept(柱2: 返戻率KPI公開)"
 depends_on:
   - QUA-007 quality_transparency_strategy
   - QUA-008 public_quality_kpi_policy

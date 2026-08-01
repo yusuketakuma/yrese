@@ -714,6 +714,32 @@ the two applicable gates were executed directly through `node` and `git`.
   action belongs to this decision packet.
 - **Dirty ownership / landing:** the same Codex root owns the existing WP-4254 IDX-001 delta; whole-file IDX ownership is resolved for cumulative review. Pre-edit `git diff -- docs/ssot_index.md` SHA-256 was `88c2ab2c375b8a8b7edbff9ec5cd2a21670cd58da4a1b5ef83fd0cdaf80b1f79`; all WP-4254/MOD-009 semantics/hunks must remain. WP-4250 owns only this active block, the active pointer snapshot, and the exact11 PROPOSED additions. No landing is authorized; cumulative exact-path landing remains separately gated after review/finalization.
 
+### WP-4257 — frontmatter を YAML として検証する(2026-08-01)
+
+- **Status:** COMPLETED_LOCAL / MACHINE_VALIDATED / LANDED
+- **Risk:** P2 / R2。検査規則の追加と、意味を変えない引用符付与のみ。
+
+WP-4250 finalization 中に、ARC-008 の blocker 値がバッククォート(YAML の予約
+文字)で始まり frontmatter が parse 不能だったことが判明した。**`check:ssot-index`
+も round-5 の独立 review 三レーンも検出できなかった**。原因は
+`parseFrontmatter` が行単位の正規表現で `ssot_id` / `status` だけを抜いており、
+YAML としての妥当性を一切見ていなかったことである。
+
+- `scripts/check-ssot-index.mjs` へ `parseDocument` による実 YAML parse を追加し、
+  `document.errors` を violation として報告する。parse 失敗時に `undefined` を
+  返すと呼び出し側が「文書が存在しない」と誤報告して連鎖偽陽性になるため、
+  field 抽出は従来経路で続行する(この副作用は実装中に検出し修正済み)。
+- 導入直後の全 173 文書 scan で、**既存の4文書に実在の YAML 欠陥を検出**した
+  (`payment_allocation_policy.md` / `jahis_adapter_inventory.md` /
+  `audit_event_registry.md` / `claim_return_rate_kpi_policy.md`)。いずれも値に
+  `: ` を含み入れ子マッピングと誤解釈されるもので、引用符で囲んで修復した。
+  **意味変更がないことは、修復後に YAML parse した実値が意図した全文字列と
+  一致することで確認済み**(40 / 65 / 325 / 56 文字)。
+- `scripts/check-scripts.mjs` に negative fixture(実際に混入したバッククォート
+  始まりの形)と positive fixture(引用済みでコロンを含む値)を追加。連鎖偽陽性が
+  出ないことも assertion で固定した。YAML error 報告を外す変異で negative 側
+  2 件が落ちることを確認済み。
+
 ### WP-4256 — 複合キー構築の機械強制と ingress delimiter 拒否の固定(2026-07-31〜08-01)
 
 - **Status:** COMPLETED_LOCAL / MACHINE_VALIDATED / LANDING_APPROVED(2026-08-01

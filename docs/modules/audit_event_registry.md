@@ -41,7 +41,7 @@ open_questions:
 change_log:
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
-  - 0.2.4 (2026-07-31): WP-4162(全 PHI 読取り監査)に基づき、列挙アクセスの監査イベント `patient.searched` / `reception.queue.viewed` を追加(命名文法準拠: patient は単一リソースで resource 省略、reception は queue リソースを明示)。データ最小化規律(クエリ文字列・PHI をペイロードへ入れない)を備考へ明記。文法・既存種別・必須属性は不変更。承認: direct user instruction 2026-07-31(ヒューマンゲート包括許可)。独立レビューは codex lane 復帰(2026-08-05)後に実施予定と記録。
+  - "0.2.4 (2026-07-31): WP-4162(全 PHI 読取り監査)に基づき、列挙アクセスの監査イベント `patient.searched` / `reception.queue.viewed` を追加(命名文法準拠: patient は単一リソースで resource 省略、reception は queue リソースを明示)。データ最小化規律(クエリ文字列・PHI をペイロードへ入れない)を備考へ明記。文法・既存種別・必須属性は不変更。承認: direct user instruction 2026-07-31(ヒューマンゲート包括許可)。独立レビューは codex lane 復帰(2026-08-05)後に実施予定と記録。"
   - 0.2.3 (2026-07-09): WP-3009-BE / API-006 v0.2.0 に基づき、受付キュー操作の監査イベント `reception.created` / `reception.cancelled` を追加。`reception.cancelled` は action=cancelled の既存規律により businessReason 必須。
   - 0.2.2 (2026-07-09): WP-4043 実装状態 drift 整備。MOD-008 台帳の実装先を `@yrese/audit` 実装済みとして記録し、旧予定の記述を現行 packages/* 実態へ同期(命名文法・イベント種別・必須属性は不変更)。
   - 0.2.1 (2026-07-09) SEC-008 §4 反映 — breakglass.ended を追加し、businessReasonRequiredEventTypes に breakglass.used を登録。終了イベントは発動イベントと同一 correlationId で紐づける。

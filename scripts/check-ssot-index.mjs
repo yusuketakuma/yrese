@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { lstat, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { parseDocument } from "yaml";
 
 const rootDir = path.resolve(process.argv[2] ?? process.cwd());
 const docsDir = path.join(rootDir, "docs");
@@ -91,6 +92,21 @@ function parseFrontmatter(source, relativePath) {
   if (match === null) {
     report(`${relativePath}: missing yaml frontmatter block`);
     return undefined;
+  }
+
+  // frontmatter は machine-readable metadata の正本である。以下の field 抽出は
+  // 行単位の正規表現であり、YAML として妥当かどうかを見ない。そのため値が YAML の
+  // 予約文字(バッククォート・`@` 等)で始まって plain scalar として解釈できない
+  // 場合でも ssot_id / status は取り出せてしまい、検査を通過する。実際に
+  // WP-4250 の改版で blocker 値がバッククォート始まりになり、本検査でも独立
+  // review でも検出できないまま APPROVED 化に至った。したがって field 抽出の前に
+  // 本物の YAML parser へ通し、解釈不能な frontmatter を fail-closed で拒否する。
+  // parse 結果は捨て、errors だけを violation にする。ここで undefined を返すと
+  // 呼び出し側は「文書が存在しない」と誤って報告し、index 不整合の連鎖偽陽性に
+  // なるため、field 抽出は下の行単位経路で続行する。
+  const document = parseDocument(match[1], { prettyErrors: true });
+  for (const error of document.errors) {
+    report(`${relativePath}: frontmatter is not valid YAML: ${error.message}`);
   }
 
   const values = new Map();
