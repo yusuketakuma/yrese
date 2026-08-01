@@ -37,7 +37,19 @@ live code の実測に限定した。ベンチマークは実行していない�
 
 1. `auditRepository.list(scope)` — **`apps/api/src/db/audit-repository.ts:143` の
    `list` に `LIMIT` / `OFFSET` がない**。当該 tenant+pharmacy の
-   チェーン全件をメモリへ載せる。
+   チェーン全件をメモリへ載せる。実 SQL は次のとおりで、要約を信用せずとも
+   確認できる。
+
+   ```sql
+   SELECT event_body
+     FROM audit_events
+    WHERE tenant_id = $1 AND pharmacy_id = $2
+    ORDER BY sequence_number ASC
+   ```
+
+   in-memory 実装(`apps/api/src/audit-repository.ts:112-114`)も
+   `return [...(this.chains.get(scopeKey(scope)) ?? [])]` でチェーン全体を
+   複製して返す。**両実装とも上限を持たない**。
 2. 全件に対する scope 検査(`events.some(...)`)。
 3. `verifyAuditHashChain(events)` — `packages/audit/src/index.ts:592` で genesis から
    全件を線形走査。
