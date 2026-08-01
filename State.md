@@ -414,8 +414,8 @@
 ### Blockers carried past the 2026-08-01 grouped landing (base `4f4ba68`)
 
 Direct user instruction「全ての変更をグループごとにコミット」により、working tree
-全体を所有グループごとに local commit した。`Plans.md` §4 の BUG-4260 / BUG-4261 /
-BUG-4262 が正本であり、本節は landing 後も残る blocker だけを保持する。
+全体を所有グループごとに local commit した。`Plans.md` §8 Prioritized Backlog の BUG-4260 /
+BUG-4261 / BUG-4262 が正本であり、本節は landing 後も残る blocker だけを保持する。
 
 - **Landed groups (local commits, push 未要求):** `4d889d5` work-selection
   charter と agent instruction、`7650cad` legacy refactor ledger の FROZEN 化、

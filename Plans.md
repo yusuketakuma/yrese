@@ -1,6 +1,6 @@
 # Plans.md — Active execution board
 
-> **AUTHORITATIVE ACTIVE BOARD (2026-07-30):** `DEVELOPMENT_POLICY.md`
+> **AUTHORITATIVE ACTIVE BOARD (2026-08-01):** `DEVELOPMENT_POLICY.md`
 > に従う。CURRENTは1件、READYは最大2件である。frozen legacy(完了済み・凍結
 > 履歴)は direct user instruction 2026-07-31 により
 > `Plans.legacy-archive-20260731.md` へ全量退避済みで、checkboxや旧statusに
@@ -20,27 +20,34 @@
   `FROZEN / GIT_HISTORY_ONLY / NONCLAIMABLE`として一括分類し、
   `Plans.legacy-archive-20260731.md`(non-HEAD provenance の保全先)へ退避済み。
   active parser、task selection、completion判定から除外する。
-- このstatic auditのsole editorはCodex root。書込み前に本書のSHA-256、
-  `git status --short`、外部変更を再確認し、`Plans.md`だけを変更する。
+- 本書のsole editorは `AGENTS.md` の `active_root_writer` である。書込み前に
+  `git status --short --branch` と外部変更を再確認し、owned exact pathだけを変更する。
+- 節番号は本書の物理順と一致させる。番号と順序が食い違った状態を放置しない
+  (読み手がどの節が現行かを判断できなくなるため)。
+- 完了済みreviewの逐次記録・round-by-roundのfinding表・承認済みSSOTの
+  決定内容の複製を本書へ残さない。前二者はGit履歴、後者はAPPROVED SSOT本文が
+  正本である。approval-facing recordをSSOTから複製したことが、WP-4250 round 2〜3で
+  3ラウンド連続のHIGHを生んだ直接原因である。
 
 ## 1. Current Planning Snapshot
 
 | Field | Current evidence |
 |---|---|
 | Branch | `main` |
-| Scanned HEAD | `9d8dbc0c3f5201c762dbb39fd9b15fc3ddc4b875` |
-| Upstream divergence | `origin/main...HEAD = 0 behind / 1 ahead` |
-| Working tree included | yes; 35 tracked dirty paths + 1 untracked path at scan start |
-| Last scan date | 2026-07-30 JST |
-| Active Goal | static repository audit and `Plans.md` normalization; no implementation |
-| Current critical path | WP-4250 bounded authority review/final human approval, then policy-consistent milestone execution |
-| Main blocker | WP-4250 exact11 domain-review corrections and final human approval; WP-4050 remains a separate R3 human gate |
-| Runtime verification | not run; static evidence only by explicit Goal boundary |
-| Next scan cursor | diff-first from `9d8dbc0`; reset on new High/Medium finding or reprioritization |
+| Local HEAD | `f91ae783df6314b7189ba3e422366ab9ff3b8559` |
+| Upstream divergence | `origin/main...HEAD = 0 behind / 7 ahead`(push未要求) |
+| Working tree | clean(2026-08-01 のグループ landing 後) |
+| Last update | 2026-08-01 JST |
+| Active Goal | なし。WIP 0 件で、次の claim は human gate 解除待ち |
+| Current critical path | Milestone 1 exit の残余 — WP-4050 の独立レビュー(codex lane 復帰 2026-08-05)と WP-4258 の final human SSOT approval |
+| Main blocker | 上記2件に加え、BUG-4263(secret scan スコープ定義)と `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) がいずれも human gate |
+| Runtime verification | 2026-08-01 に実行済み。`typecheck` / `lint` / `test:scripts` / apps/web 437 tests / `check-ssot-index` 173 / `git diff --check` PASS。`check:secrets` のみ BUG-4263 により exit 1 |
+| Next scan cursor | diff-first from `f91ae78`; reset on new High/Medium finding or reprioritization |
 
-The working tree is authoritative for current implementation evidence. The
-uncommitted exact11, WP-4254, and WP-4255 changes are not treated as landed.
-WP-4253 is separately committed at the scanned HEAD and is not unlanded work.
+実装証跡は Git diff と commit にある。本書は landing 済み項目については index に
+とどめ、内容を複製しない。7 commit はいずれも local であり、push・deploy・
+production 変更は行っていない。独立レビューは 2026-08-01 の landing 分について
+未取得である。
 
 ## 2. Product and Architecture Guardrails
 
@@ -64,809 +71,141 @@ WP-4253 is separately committed at the scanned HEAD and is not unlanded work.
 
 ### WIP — exactly one
 
-### WP-4250 — Bounded Patient + MedicationRequest authority decision
+**現在 WIP は 0 件である。** 直前まで本節に並んでいた5項目はいずれも landing 済み、
+または human gate 待ちであり、claim 対象ではない。次の claim は下の Human gates が
+解除された時点で `DEVELOPMENT_POLICY.md §8` の work-selection に従って選ぶ。
+WIP を 0 のまま放置することと、gate 待ちの項目を WIP に置き続けることは別である。
+後者は §0 の「CURRENT は exactly one」に反するため行わない。
 
-- **Status:** **FINALIZED / APPROVED**(2026-08-01)/ LANDING_PENDING
-  — exact11の11文書は `direct human authority 2026-08-01 (全て承認)` により
-  PROPOSED→APPROVEDへ同一batchで昇格済み(PRC-007 §4 step 8 / §97)。
-  **承認範囲はSSOT改版のみ**であり、実装着手・schema/data migration・
-  production action・conformance主張・cutoverを含まない。登録済みblockerは
-  全て据え置きで、それぞれが引き続き該当行為を止める。
-  旧status(参考): WIP / PROPOSED / CORRECTIONS_APPLIED_REVISION_14 /
-  ROUND_5_COMPLETE / FINAL_HUMAN_APPROVAL_REQUIRED
-
-#### Finalization 実施記録(2026-08-01)
-
-PRC-007 §4の10段フローのうち、step 1〜7は本WPのround 1〜5で完了済み。
-step 8(APPROVED化)とstep 9(exact-path stage / commit / push)を本日実施した。
-§97の要求どおり、**11文書のAPPROVED化とindex同期を同一finalization batchで
-行い、中間状態をlandingしていない**。
-
-| 項目 | 内容 |
-|---|---|
-| 昇格対象 | ARC-008 / API-003 / API-001 / API-004 / API-008 / DOM-002 / DOM-005 / DOM-006 / DB-005 / PRD-007 / IDX-001 の11文書 |
-| 変更したfield | `status` PROPOSED→APPROVED、`approved_at` null→2026-08-01、`approved_by` null→承認記録、`effective_from` null→2026-08-01 |
-| blocker | `FINAL_HUMAN_APPROVAL_REQUIRED` のみ全10文書から除去(承認により充足)。**他のblockerは1件も削除していない**(ARC-008 15件 / DB-005 16件 / API-008 14件 / DOM-006 9件 / DOM-005 7件 / DOM-002・PRD-007 各4件 / API-003 3件 / API-001 2件 / API-004・IDX-001 0件) |
-| version | 内容不変の10文書は据え置き。IDX-001のみ本文(status行10件)が変わるため 0.4.46→0.4.47 |
-| index | status行10件をPROPOSED→APPROVED(集計 APPROVED 131→141、PROPOSED 22→12、SUPERSEDED 17不変)。documentカウント173・section件数・23-field移行inventoryは不変 |
-| `amends` / `PENDING_REVISION` | **解除しない**。本batchはbounded scopeであり、DOM-005/API-004/PRD-007の完全改版ではない。ARC-008の`amends`はDB-001〜004・ARC-005・ARC-007も対象に含み、これらはpacket外である。PRC-007 §7.4の解除条件を満たさないため予約を維持する |
-| 検証 | `check:ssot-index` PASS(173)、`git diff --check` PASS、全11文書のfrontmatterをYAML parseして status/approval/effective/blocker/change_log先頭entryを機械確認(ALL 11 OK) |
-
-**finalization中に発見した欠陥(記録)**: ARC-008 frontmatterの
-`BLOCKED_WRITER_FENCE_TOKEN_ISSUANCE` 行が、値をbacktickで開始していたため
-**YAMLとして parse 不能**だった(backtickはYAMLのreserved indicator)。HEAD時点では
-存在せず、本WPのPROPOSED改版(Revision 9)で混入したものである。値を引用符で囲んで
-修正した(意味変更なし)。**重大なのは、この欠陥を `check:ssot-index` も round-5 の
-独立review三レーンも検出できなかった点である** — 現行のmachine validationは
-frontmatterのYAML妥当性を検証していない。round 3で reviewer が提案した
-「approval-facing recordをSSOTから機械的に導出し、その整合を `check:ssot-index` へ
-入れる」という systemic な対策と同じ領域であり、別WPとして起票する。
-  (round-3で到達したiteration limitのescalationは、2026-07-31のuser direction
-  「fableが決めた内容に従う」により設計方向の委任として解消。round 5は
-  data-integrity / security-privacy / independent verifier の3レーン全てが
-  delivered となり、verifier は Revision 14 packet に対して **本文 PASS
-  (HIGHなし)** を返した。**maker/checker分離は充足**。残るのは
-  **final human SSOT approval** であり、これは委任されておらず解消していない)
-- **Claimability:** review and correction only. Implementation, migration,
-  landing, production action, and conformance claims are nonclaimable.
-- **Risk / authority:** R4. User wording `推奨承認` is recorded as explicit equivalent authorization for drafting/review only. The exact11 PRC-007 batch is now PROPOSED; no final SSOT approval, implementation, migration, production action, or conformance claim is inferred.
-- **Policy alignment:** Milestone 2 decision exit; directly unlocks the smallest architecture proof.
-- **Outcome:** exact11 is a bounded PROPOSED draft. Independent API/FHIR,
-  data-integrity, security/privacy, and product/medical review found unresolved
-  producer, authority, lifecycle, cutover, reception-compatibility, identity,
-  audit/outbox, performance, and evidence boundaries. Revision 7 (2026-07-31)
-  applied a correction for every HIGH and MEDIUM finding, choosing the
-  fail-closed option wherever the finding permitted one. The batch remains
-  PROPOSED and is still not decision-ready: the corrections themselves require
-  independent re-review, and each new blocker below must be cleared by its own
-  approved amendment.
-
-| Decision surface | Read-only evidence | Decision-ready conclusion / remaining gate |
+| 直前まで WIP にあった項目 | 現在の扱い | 参照 |
 |---|---|---|
-| Canonical authority | exact11 PROPOSED draft aligns ARC-008/DOM-005/API-003/DOM-006 on bounded authority | Review Patient + oral/topical MedicationRequest only; keep all non-selected resources/internal domains authoritative and retain ARC-008 `amends` until finalization |
-| Profiles / mapping | FHIR R4 4.0.1, `jpfhir.jp.core#1.2.0`, two canonical URLs, digest/length/last-modified are captured as identity; DOM-006 authority-boundary records are not mapping allow-list entries | Field mappings, signature/checksum, terminology, Must Support beyond derived IG, real validator and CapabilityStatement remain BLOCKED; no authenticity/conformance claim |
-| Lifecycle / correction | Patient merge/unmerge and MedicationRequest correction/original-order ownership are not approved; API-008 is PROPOSED | Adopt the fail-closed lifecycle default below; a later approved workflow is required before expanding it |
-| Create / update / retry | API-008/DB-005 PROPOSED text now aligns create/update conditional idempotency, persisted monotonic rotation fencing, request-byte replay, update concurrency, and native DynamoDB limits | Every clinical write strong-reads the tenant+pharmacy rotation control **and the per-resourceType authority control item**, and includes exact ConditionChecks on both in the same TWI; every enabled Patient PUT requires both If-Match and Idempotency-Key; each configured active+retained version gets a conditional immutable alias; stale/reanimated writers cannot commit; distinct targets are ≤100, operation-after item aggregate ≤4 MiB, each item ≤400 KB, with no chunking or S3 fallback; never auto-retry writes. **Patient create is disabled and post-cutover Patient identity is immutable**, so neither path can produce a duplicate patientNumber — but that combination also leaves no way to register or correct a patient after cutover, which is why it gates cutover rather than merely describing post-cutover behaviour. **Lookup-key retirement is unsupported**, so the retained set only grows and a compromised key has no withdrawal path — `BLOCKED_LOOKUP_KEY_RETIREMENT` therefore gates write enablement rather than recording an accepted risk. The authority ConditionCheck does not by itself establish fresh-writer exclusion; that is `BLOCKED_WRITER_FENCE_TOKEN_ISSUANCE`. Replay returns stored octets verbatim, not re-derived through a serializer |
-| FHIR search paging | upper-watermark-only claim, collapsed identifier forms, vague update deltas, nonstandard medication token naming, and implicit date/set algebra were rejected | Build distinct BEFORE/AFTER canonical partition sets before TWI enumeration; retained partitions get one NEW-version true and removed partitions one false, with duplicate/multi-valued tokens deduped; preserve identifier forms, standard `code`, OR/AND algebra and precision-derived `_lastUpdated` half-open intervals before deterministic as-of manifests; search remains `BLOCKED_FHIR_SEARCH_SNAPSHOT_IMPLEMENTATION` until retention, corruption, and concurrent-writer tests exist |
-| FHIR instance history | prior draft advertised history-instance without bounded page semantics | Strong-read current/version watermark, immutable descending version pages, scope/resource/count-bound signed cursor, absolute unversioned same-instance `entry.fullUrl`, full FHIR history metadata, strict parameter rejection, and mutation-stable tests are required |
-| Wire / URI boundary | request-derived URI resolution, static Allow, and wildcard parameter handling were unsafe/incomplete | All URI/canonical fields are inert and pinned-local-only; Accept evaluates supported parameters on wildcard ranges with RFC specificity/q; 405 Allow and CapabilityStatement use one request-time atomic config generation's LIVE ENABLED methods and never advertise blocked interactions |
-| Cutover / audit | PostgreSQL Patient is the live authority (with **zero current write paths** — the repository is read-only, so drain/fence gates must be measured against write grants, not observed writers); no MedicationRequest runtime/store/writer/data currently exists; ARC-008 requires one authority; Provenance is a projection and internal audit remains authoritative | Patient uses read-only shadow parity plus human cutover, whose **idempotent** transaction creates FHIR VERSION 1 as immutable `SYSTEM_CUTOVER` creation baseline without PostgreSQL history backfill — per-patient TWIs are guarded by a conditional immutable **PATIENTLINK** (keyed by `hmacPatientId`, never the raw patientId) so a re-run can never mint a second logicalId, CURRENT carries `internalPatientId` as the projection/reception linkage, and the final advance is gated on set equality proven by a membership **and** cardinality check, not a count match alone; re-cutover after rollback must re-enter `SHADOWING` to regenerate parity and is additionally held by `BLOCKED_RECUTOVER_DIVERGENCE_RESOLUTION` because rollback-window divergence has no reconciliation path; MedicationRequest starts with one FHIR ingestion writer and no migration/backfill; never dual-write or automatically fall back |
-
-#### Independent domain review — required corrections
-
-All findings below are absorbed into WP-4250 rather than registered as parallel
-implementation tasks. The exact11 documents remain PROPOSED and must be
-corrected and independently re-reviewed as one atomic set.
-
-| Severity | Required correction | Static evidence |
-|---|---|---|
-| HIGH | Select one external authoritative write producer: either the separate intake command boundary or `/fhir/R4`; define actor/client class, audience, scope, qualification, purpose-of-use, payload/result, and idempotency for it | ARC-008/API-003/API-008 producer descriptions diverge; production identity and role-to-scope remain unimplemented/unapproved |
-| HIGH | Bind every clinical TWI to the exact tenant+pharmacy+resource authority state and epoch; define PostgreSQL writer drain/fence and prohibit any cross-store atomicity claim | API-008/DB-005 currently bind rotation state, not the resource-authority handoff |
-| HIGH | Resolve Patient cutover versus the live reception foreign key/join and define MedicationRequest versus internal Prescription authority, cardinality, mutable fields, status, correction lineage, and projection | live reception still reads PostgreSQL Patient; exact11 does not close Prescription/MedicationRequest ownership |
-| HIGH | Either disable Patient create initially or define same-TWI `(tenantId, pharmacyId, patientNumber)` uniqueness plus possible-match/manual resolution, merge/unmerge lineage, and lifecycle behavior | DOM-002 uniqueness is absent from API-008/DB-005 create TWI; Patient create is enabled while merge/unmerge is prohibited |
-| HIGH | Fence lookup-key retirement before drain, then prove stable version-addressable residual zero; otherwise declare retirement unsupported | current zero-proof can race a stale writer and has no complete version manifest/index |
-| HIGH | Define replay as byte-exact or semantic-exact and persist the required response representation, serializer/version, status, headers, and `Prefer` semantics; define ambiguous-result reconciliation without blind retry | API-008 requires exact replay while DB-005 lacks a complete stored response contract |
-| HIGH | Bound search snapshot creation by scanned items, matches, segments, bytes, wall time, and per-scope quota; define overload, cancellation, cleanup, and retry behavior | `_count <= 100` bounds page size but not first-page materialization work |
-| HIGH | Make PHI-bearing patient search body-based and production-disable the GET query form; require `no-store` on every FHIR response and exact tenant+pharmacy DB enforcement | API-001 still puts patient identifiers in URLs; API-008 only calls out `/metadata`; DB-005 IAM scope stops at tenant |
-| HIGH | Define durable PHI read/search/deny audit semantics and write intent→fact convergence with stable event ID/fingerprint, idempotent delivery, retry/DLQ, reconciliation, and failure behavior | registry coverage and outbox cardinality do not prove durable audit facts or exactly-once convergence |
-| MEDIUM | Fix parser and error boundaries: pre-capture byte/depth/member limits, duplicate-member/UTF-8 policy, 400/413/415/422 mapping, 401 with `WWW-Authenticate`, distinct 403, `Retry-After`, bounded attempts, and cursor restart | API-008 captures raw bytes before a defined resource cap and merges 401/403 semantics |
-| MEDIUM | Bound API-001 Patient projection search by fetched candidates, decrypted bytes, memory, wall time, and per-scope concurrency; define a measured cap, fail-closed overload result, and a non-PHI coarse-index alternative before production use | DB-005 currently fetches and decrypts the whole pharmacy candidate set in memory and leaves its scale limit/open optimization unresolved |
-| MEDIUM | Require server-generated opaque non-PHI logical IDs and reconcile their permitted key/URL use with the stated PHI prohibition; constrain tombstone text to unsupported/future legacy handling while delete remains disabled | API-008/DB-005 currently contain internal logical-ID and delete/tombstone contradictions |
-| MEDIUM | Establish a fixed-package/profile evidence chain in the source registry and correct formal specification references before treating package or canonical identity as verified | exact11 records candidate hashes, while SRC-FHIR-002/003 and direct construction-prompt references do not establish the claimed provenance |
-
-#### Revision 7 disposition (2026-07-31) — corrections applied, re-review pending
-
-Every finding above received a correction in the exact11 working tree. No
-correction is claimed as approved; each is a PROPOSED edit awaiting independent
-re-review. Where a finding offered a fail-closed alternative, that alternative
-was taken rather than designing new capability.
-
-| Finding | Disposition | Where |
-|---|---|---|
-| HIGH producer | `/fhir/R4/*` selected as the sole external authoritative write producer; separate intake command boundary demoted to unselected; producer actor/client class, audience, scope, qualification, purpose-of-use, payload/result, idempotency fixed in a table; all write interactions stay phase-disabled until those prerequisites exist | ARC-008 §3.1; API-003 §1; DOM-005 §2; API-004 §1 |
-| HIGH authority fence | New persisted per-resourceType authority control item (`authorityState`/`authorityEpoch`/`writerFenceToken`) with a mandatory same-TWI ConditionCheck counted into the action/size budget; PostgreSQL drain → fence → epoch advance → new writer ordering; cross-store atomicity claims prohibited | API-008 §9.1; DB-005 §5.1, §11 |
-| HIGH cutover / ownership | live `reception_entries_patient_fk` and `INNER JOIN patients` recorded as a cutover blocker with four required design answers; Prescription (DOM-002 C4) restored to the internal-authority list it had been omitted from, and its unresolved relationship to MedicationRequest tabulated | DOM-002 §0, §2, §4; DB-005 §11; ARC-008 §3; DOM-005 §4; DOM-006 §1.1 |
-| HIGH Patient create | Fail-closed option taken: Patient create is initially disabled (405, unadvertised). Four prerequisites recorded for ever enabling it, including the same-TWI patientNumber uniqueness guard keyed on an HMAC rather than the raw number | API-008 §2.1; DB-005 §5 create template; DOM-002 §10 |
-| HIGH key retirement | Fail-closed option taken: retirement declared unsupported, retained set monotonically increasing, rotation refused rather than retiring past the approved bound. Rationale recorded: no version-addressable residual manifest exists, so residual-zero is unprovable | API-008 §4.2.1; DB-005 §5.2 |
-| HIGH replay | Replay defined as wire byte-exact, achieved by re-deriving the body from the referenced immutable VERSION through a pinned deterministic serializer and verifying `responseBodyDigest` — chosen so it does not conflict with the existing prohibition on storing raw payloads. Full persisted response field set tabulated. `Prefer` rejected outright because it would change the representation without entering fingerprint v1 | API-008 §4.1.1, §4.3; DB-005 §5.2 |
-| HIGH search bounds | Seven materialization bounds (scanned deltas, candidates, manifest entries, segments, bytes, wall time, per-scope concurrency) with 429/503 + `Retry-After`, no partial results, cleanup of unpublished segments, and cancellation on disconnect | API-008 §5.3; DB-005 §4.1 |
-| HIGH PHI exposure | GET patient-search marked PRODUCTION_DISABLED with body-based form as the production path (existing wire shape unchanged for synthetic environments); `Cache-Control: no-store` required on every FHIR response with no PHI-based branching; `dynamodb:LeadingKeys` scoped to tenant **and** pharmacy, with the fallback options constrained to preserve that granularity | API-001 §2, §5; API-008 §8; DB-005 §7 |
-| HIGH audit durability | Stable `eventId` identity reused across attempts, at-least-once delivery converging via the existing dedupe item, append-only outbox/DLQ with no TTL, reconciliation defined as the intent/dedupe set difference, and a rule that PHI responses are not returned before the audit intent is durably committed | API-008 §9.2; DB-005 §6.4 |
-| MEDIUM parser/errors | Pre-capture byte cap evaluated *before* fingerprint byte capture (closing the ordering defect), UTF-8 and duplicate-member rejection, incremental JSON structure caps, 401 `security` + `WWW-Authenticate` split from 403 `AUTH-0003`, 413/`too-costly` and `Retry-After` rows added, cursor restart semantics | API-008 §6, §7.1, §8 |
-| MEDIUM projection bounds | Five measured caps on candidate fetch/decrypt/working set/wall time/concurrency, fail-closed 503 with no truncated results, non-PHI coarse-index alternative required before production | API-001 §4, §5; DB-005 §3.4 |
-| MEDIUM logical ID / tombstone | Server-generated opaque non-PHI logical IDs, with the PHI-in-keys prohibition reconciled by making non-PHI-ness the precondition for key/URL use; tombstone text constrained to future legacy handling while delete stays disabled | API-008 §3.2; DB-005 §3.1 |
-| MEDIUM provenance | Package hash and canonical URLs marked `UNREGISTERED_PROVENANCE`; recorded that SRC-FHIR-002/003 are HTML pages with no hash and therefore establish neither the package artifact nor the canonical URLs. Registering the artifact requires editing `docs/regulatory/source_registry.md`, which is **outside the exact11 path allow-list**, so it is raised as a separate `SSOT_UPDATE_REQUIRED` rather than performed | DOM-006 §1.1; PRD-007 §4 |
-
-New blockers introduced by this correction pass, each requiring its own approved
-amendment: `BLOCKED_WRITE_PRODUCER_PREREQUISITES`,
-`BLOCKED_RECEPTION_PATIENT_COMPATIBILITY`,
-`BLOCKED_MEDICATIONREQUEST_PRESCRIPTION_OWNERSHIP`,
-`BLOCKED_PATIENT_CREATE_UNIQUENESS`, `BLOCKED_LOOKUP_KEY_RETIREMENT`,
-`BLOCKED_PATIENT_SEARCH_URL_PHI`, `BLOCKED_PATIENT_SEARCH_SCALE_BOUND`,
-`BLOCKED_PACKAGE_PROVENANCE`.
-
-**Self-consistency sweep after the correction pass.** A read-only sweep of the
-corrected tree found four places where Revision 7 left text asserting the
-opposite of a rule it had just introduced. All four were corrected in the same
-pass and are recorded here rather than left for the reviewer, because they are
-objective contradictions rather than judgement calls:
-
-1. API-008 §8 permission table still granted `patient:write` for
-   `post-cutover create/update`, contradicting §2.1. Split into an `update` row
-   plus an explicit row stating create is 405 and that holding the scope does
-   not enable it.
-2. API-008 §4.2 still said key material is retained "until no replayable record
-   remains", implying retirement is reachable. Corrected to state retirement is
-   unsupported and the retained set only grows.
-3. DB-005 §5.2 carried the same implication; corrected identically.
-4. API-008 §12 stop condition said "non-monotonic rotation / unsafe retirement",
-   implying a safe retirement exists. Corrected to prohibit retirement of any
-   kind. DB-005 §5.2's heading was also widened, since that subsection now
-   contains the create/update transaction templates as well.
-
-#### Revision 7 independent re-review result (round 1) — REQUEST_CHANGES ×3
-
-Three fresh-context read-only reviewers ran against the frozen packet
-(`483411c7…`). All three returned REQUEST_CHANGES. The Codex second opinion was
-still unavailable. Aggregate: 11 HIGH, 13 MEDIUM, 9 LOW including overlaps.
-Reviewers independently confirmed that no exact-path violation occurred, that
-the four code/migration facts Revision 7 cites are accurate, that no dangling
-cross-reference exists, and one reviewer reproduced the frozen packet hash
-itself. The failures are in the corrections' substance, not their provenance.
-
-**HIGH — Revision 7 left its own new rule contradicted (same class as the
-self-consistency sweep, which was therefore incomplete).**
-
-| # | Finding | Location |
-|---|---|---|
-| R1-H1 | `DB-005 §4.1` still lists Patient post-cutover as `read/vread/history/search/create/update`. This is the access-pattern section a storage implementer reads first, and it is the one place out of six still asserting create is enabled | `dynamodb_single_table_design.md:323` |
-| R1-H2 | `DB-005 §12` prohibits "retiring without fleet/replay-window proof", which by contraposition permits retirement with proof, contradicting the unconditional prohibition in the same section | `dynamodb_single_table_design.md:1012` |
-| R1-H3 | `API-008 §11` demands `POST /fhir/R4/Patient` return 405 **in every phase**, but pre-cutover the route is phase-disabled and must be 404. Returning 405 discloses the route's existence to unauthenticated callers — a fail-closed regression introduced by Revision 7 itself | `fhir_rest_facade_contract.md:963` |
-
-**HIGH — design defects in the corrections themselves.**
-
-| # | Finding | Location |
-|---|---|---|
-| R1-H4 | `authorityState` was declared monotonically forward-only, but no value represents the post-rollback state. After a rollback the state stays `FHIR_PRIMARY`, so a **freshly started** FHIR writer passes both the precondition and the ConditionCheck. The epoch fence stops stale writers only | `dynamodb_single_table_design.md:457`, `fhir_rest_facade_contract.md:819` |
-| R1-H5 | No enforceable fence primitive exists on the PostgreSQL side. "Stop the writer" is application self-restraint; an instance that never receives the stop signal keeps its write grant. "In-flight = 0" is a property of the observation instant and cannot exclude a transaction starting immediately after. No post-cutover divergence detector is defined | `dynamodb_single_table_design.md:914-928` |
-| R1-H6 | **The retirement rationale is factually wrong.** Alias records are keyed `PK = …#FHIRIDEMPOTENCY#{resourceType}` / `SK = KEY#{hmac}` — one partition per (tenant, pharmacy, resourceType), not scattered per resource instance. A single-PK Query enumerates them. The fail-closed conclusion may stand, but not on this reasoning | `dynamodb_single_table_design.md:530` vs `:434` |
-| R1-H7 | Disabling Patient create does not close the hazard: **Patient PUT remains enabled and its TWI has no patientNumber guard**, and no immutability is declared for `identifier`/`patientNumber`. A PUT can still produce two Patients sharing a patientNumber, with merge/unmerge unsupported | `fhir_rest_facade_contract.md:85`, `dynamodb_single_table_design.md:587-599` |
-| R1-H8 | The outbox `deliveredAt` Update carries no ConditionExpression. Setting it once — even wrongly — removes that `eventId` from the unconverged set permanently, making an audit gap silent. This is the only convergence detector | `dynamodb_single_table_design.md:755-758` |
-| R1-H9 | A replay digest mismatch is a permanent 500, and §4.3 forbids re-executing the write, so the client's only escape is a different key — which creates a **duplicate clinical resource**. Compounding this, `resourceJson`'s DynamoDB attribute type is unspecified; stored as `M`, numeric normalisation drops FHIR decimal trailing zeros and breaks byte equality. No serializer retention obligation and no collation rule are stated | `fhir_rest_facade_contract.md:275-295`, `dynamodb_single_table_design.md:155` |
-| R1-H10 | `GSI2PK = TENANT#{tenantId}#RECEPTION#{receptionId}` has no pharmacy segment, so the pharmacy-granularity `LeadingKeys` correction does not cover every access path. DB-005 `:242` claims all GSI PKs carry the tenant+pharmacy prefix, which is false for GSI2 | `dynamodb_single_table_design.md:294` vs `:242` |
-| R1-H11 | The pharmacy-prefix correction depends on canonical `#`-free IDs and on `GLOBAL` being reserved, but `branded-ids.ts` enforces neither. A pharmacy literally named `GLOBAL` would place its PHI inside the tenant-wide partition that the newly separated tenant-wide session policy is allowed to reach — a privilege-escalation path that did not exist before this correction | `packages/shared-kernel/src/branded-ids.ts:28-43` |
-
-**HIGH — audit reconstructability.** The outbox intent item's field list is
-closed and carries no audit payload, so a DLQ-stranded intent leaves only
-"eventId X never converged": what was disclosed, to whom, about which patient
-cannot be reconstructed even though the PHI was already returned. Separately,
-the durable-commit-before-response rule is conditioned on "responses **containing
-PHI**", which by construction excludes deny responses — so a failed cross-scope
-probe can be answered without its audit intent, and because no intent was
-committed the reconciliation difference never shows it either.
-
-**MEDIUM (selected).** Retained lookup versions grow monotonically while each
-version costs one alias action, so the 100-action budget is eaten over time and
-patients with many indexed tokens become permanently un-writable, with no escape
-because retirement is unsupported — the same mechanism also makes a compromised
-HMAC key impossible to withdraw. `maxConcurrentSnapshotsPerScope` has no
-decrement or crash-recovery rule, so repeated crashes pin the counter and the
-scope returns 429 forever. Reconciliation scans an unbounded, monotonically
-growing partition — the one new path Revision 7 did *not* bound. "Confirm no
-active cursor references the snapshot" is unimplementable because cursors are
-client-held signed tokens with no server-side record. The patientNumber HMAC
-guard has no key-derivation, version, or rotation discipline, so a key rotation
-silently breaks the uniqueness invariant it exists to enforce. Method/route
-resolution is not ordered after authentication, so an unauthenticated caller can
-read the LIVE ENABLED method set out of 405 `Allow` responses.
-
-**Disposition.** These are not closable by wording alone. R1-H4, H5, H7, H9 and
-the audit-reconstructability findings require design decisions; R1-H6 requires
-replacing a rationale that is factually false. R1-H10 and R1-H11 name defects in
-key design and in shared-kernel enforcement that sit outside this WP's
-Markdown-only path allow-list, so they must be raised as prerequisites rather
-than fixed here. Round 2 of the correction cycle is required, and it is
-comparable in size to round 1.
-
-#### Revision 8 — round 2 corrections (2026-07-31)
-
-Every round-1 finding received a correction, again taking the fail-closed option
-wherever one existed. The batch narrowed further rather than gaining capability.
-
-| Finding | Correction |
-|---|---|
-| R1-H1 | `DB-005 §4.1` now reads `read/vread/history/search/update` for Patient post-cutover, with create marked 405/404 by phase; the access-pattern `create` row is annotated MedicationRequest-only |
-| R1-H2 | `DB-005 §12` now prohibits retirement unconditionally, matching API-008 §12; the proof-conditioned wording is gone |
-| R1-H3 | `API-008 §11` now requires 405 **post-cutover** and 404 **pre-cutover**, and states why: 405 would disclose that the route exists |
-| R1-H4 | The monotonic-forward claim on `authorityState` is withdrawn and `POSTGRES_PRIMARY_ROLLED_BACK` added; only `authorityEpoch` is monotonic. `writerFenceToken` must now be held by the writer from its own configuration or lease and compared against the control item, so reading the item is no longer sufficient to satisfy the check |
-| R1-H5 | Recorded that no enforceable fence primitive exists on the PostgreSQL side and that "in-flight = 0" cannot be proven without one. Requires either a write-grant revoke, a read-only role switch, or a DB-side fence, plus a post-cutover divergence detector, before cutover. `BLOCKED_POSTGRES_WRITER_FENCE_PRIMITIVE` |
-| R1-H6 | The rationale is replaced with the true one: aliases live in one partition per (tenant, pharmacy, resourceType) and **are** enumerable by a single-PK Query; what is missing is a scan bound, a simultaneous `replayUntil`-expiry-and-zero-residual proof, and failure/rollback semantics. The conservative conclusion stands on corrected grounds |
-| R1-H7 | New `API-008 §2.2` declares `identifier`, the patientNumber slice and `Patient.id` immutable post-cutover, rejecting a changing PUT with 422 before the TWI. Also records that cutover-baseline uniqueness is merely inherited from the PostgreSQL constraint and stops protecting writes once PostgreSQL is no longer the writer. `BLOCKED_PATIENT_IDENTITY_MUTATION` |
-| R1-H8 | The `deliveredAt` clear is now a TWI carrying `ConditionCheck(dedupe exists)` plus `attribute_not_exists(deliveredAt)`, and the outbox discipline is renamed *monotonic single-transition, no delete* so it is not mistaken for §6.1 immutability |
-| R1-H9 | `resourceJson` is fixed as a UTF-8 byte string (`S`) because `N` normalisation drops FHIR decimal trailing zeros; serializer versions gain a retention obligation as strong as key material's; member-order collation is pinned to code-point order. The permanent-500 hole is **recorded as unresolved** — `BLOCKED_REPLAY_PERMANENT_FAILURE` — rather than claimed closed, because fail-closed here still leaves the client a duplicate-creating escape |
-| R1-H10 | `GSI2PK` now carries the pharmacy segment; the false "all GSI PKs carry tenant+pharmacy" claim is corrected into a stated invariant for future indexes; SEC-008's verification scope is extended to GSI and Scan |
-| R1-H11 | Recorded that `branded-ids.ts` enforces neither `#`-exclusion nor a `GLOBAL` reservation, that a pharmacy named `GLOBAL` would be reachable from the tenant-wide session policy, and that this escalation path did not exist before the correction. Raised as a prerequisite outside this WP's allow-list. `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` |
-| audit | Intents must now carry an encrypted payload or immutable-store reference sufficient to reconstruct the fact, so a DLQ-stranded intent no longer loses what was disclosed. The durable-commit condition widened from "responses containing PHI" to "auditable operation", closing the deny-audit gap. Unauthenticated 401s are recorded as outside this contract's convergence guarantee, for SEC-007/SEC-008 to place |
-| MEDIUM | Retained-version budget expressed as the residue of 100 actions and monitored at write preflight; key-compromise having no withdrawal path recorded as accepted; snapshot concurrency changed from a counter to an expiring lease; reconciliation given a sparse index and measured bounds; the unimplementable "no active cursor references it" test replaced by expiry; patientNumber guard given pharmacy+purpose key derivation and rotation discipline; request ordering fixed at authenticate → authorise → resolve → exist with a single 401 and no `Allow` for unauthenticated callers; `no-store` moved to a single send choke point; the bound-disclosure claim narrowed to "prevents precise inference", acknowledging the 1-bit threshold oracle |
-
-Two findings could not be fixed here and are prerequisites for other work:
-`branded-ids.ts` enforcement (`packages/` is outside the allow-list) and the
-registration of the JP Core package artifact in `docs/regulatory/source_registry.md`.
-
-Round 2 introduced five further blockers: `BLOCKED_PATIENT_IDENTITY_MUTATION`,
-`BLOCKED_POSTGRES_WRITER_FENCE_PRIMITIVE`, `BLOCKED_REPLAY_PERMANENT_FAILURE`,
-`BLOCKED_AUTH_RESPONSE_FAMILY_ALIGNMENT`, `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT`.
-
-#### Revision 8 re-review result (round 2) and Revision 9 corrections (round 3)
-
-Round 2 returned REQUEST_CHANGES ×3 again, but converged sharply: the three
-reviewers judged nearly every round-1 finding **closed**, and the new HIGH count
-fell from 11 to 3 (independent verifier 2, security 3, data-integrity 0). All
-three independently reproduced the frozen packet hash and confirmed no
-exact-path violation. Round 3 corrected every round-2 finding.
-
-The two round-2 HIGH findings worth recording in full, because both describe
-defects that round 2's own corrections created:
-
-- **The approval-facing records contradicted the SSOT.** `Plans.md`'s
-  *Recommended safe default 3* — the very text the `推奨承認` applied to — still
-  presented retirement as a supported mechanism, and `State.md` still called the
-  authority state monotonic. A human approver reads those, not a 4,349-line
-  diff, so the approval would have attached to a design that no longer exists.
-  Round 3 rewrote both, plus the decision-surface row.
-- **Patient became unregisterable.** Disabling create (round 2, to stop
-  duplicate patientNumbers) combined with immutable identity, unsupported
-  delete/merge, and PostgreSQL no longer being the writer, closes the Patient
-  set permanently after cutover. Nothing in the cutover gate list required a
-  registration path to exist, so cutover was executable into that state — leaving
-  operations to choose between停止 and the PostgreSQL direct write the design
-  forbids, or to rewrite an existing record's demographics and end up with two
-  patients' dispensing history under one `Patient.id`. That is a worse
-  misidentification hazard than the duplicate it was meant to prevent. Round 3
-  made `BLOCKED_PATIENT_IDENTITY_MUTATION` a **cutover** blocker and added the
-  registration/correction path to the §11 gate list.
-
-Other round-3 corrections: `DB-005 §11` still defined the state machine as
-one-way (the canonical definition, contradicting §5.1); the `authorityState`
-correction was propagated to DOM-002, DOM-005 and DOM-006; the alias canonical
-outcome tuple wrongly included `lookupKeyVersion`, which would have made every
-replay after a rotation a permanent integrity error; the retained-version budget
-residual was uncomputable without a cap on indexed token partitions, so
-`maxIndexedTokenPartitions` was introduced as a joint invariant; `writerFenceToken`
-self-holding was shown to be unenforceable at the DynamoDB layer — the same
-"application self-restraint" this batch rejected on the PostgreSQL side — and is
-now `BLOCKED_WRITER_FENCE_TOKEN_ISSUANCE` rather than claimed as working;
-`BLOCKED_LOOKUP_KEY_RETIREMENT` was given the effect of gating write enablement,
-since a key that cannot be withdrawn should not be in service; `Allow` is now
-filtered by caller scope, closing the same disclosure in the scope dimension that
-round 2 closed in the authentication dimension; the request ordering was split
-into two authorisation stages so it is actually implementable alongside
-per-interaction scopes; the audit outbox gained a `PENDING#`/`DONE#` namespace
-(no new GSI, so it cannot repeat the GSI2 defect), inline-only payloads, a
-post-convergence payload drop, and a deny-path quota, because making deny audit
-durable had opened an attacker-driven path to unbounded permanent writes.
-
-Two things were **simplified rather than patched**. Replay now returns the stored
-`resourceJson` octets verbatim instead of re-deriving them through a pinned
-serializer: the re-derivation path necessarily went bytes → parse → serialize →
-bytes, and the parse layer was never fixed, so FHIR decimal trailing zeros could
-be lost before serialisation regardless of the `S` storage decision. Removing the
-serializer from the replay path also removes its retention obligation and its
-collation risk. Separately, the `PHARMACY#GLOBAL` sentinel was replaced with a
-distinct partition-key space, which structurally eliminates the escalation path a
-pharmacy named `GLOBAL` would have opened — that fix was inside the allow-list all
-along, so waiting on the external `branded-ids.ts` prerequisite was unnecessary.
-
-Round 3 added `BLOCKED_WRITER_FENCE_TOKEN_ISSUANCE` and
-`BLOCKED_AUDIT_PAYLOAD_EXTERNAL_STORE`, and narrowed
-`BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` to prefix ambiguity only.
-
-#### Revision 9 re-review result (round 3) — REQUEST_CHANGES ×3, iteration limit reached
-
-All three reviewers returned REQUEST_CHANGES again and all three independently
-reproduced the packet hash. Round 3 closed the great majority of round-2
-findings — the independent verifier judged 17 of 19 closed, and the substantive
-design work was called sound — but the pass is not decision-ready and the
-correction cycle has reached its iteration limit. **This is a human escalation,
-not a completion.**
-
-Distinct round-3 findings, deduplicated across the three reviewers:
-
-| Severity | Finding | Character |
-|---|---|---|
-| HIGH | `DB-005 §6.4`'s canonical key block still reads `SK = INTENT#EVENT{eventId}` while every other reference in the batch uses `PENDING#`/`DONE#`. An implementer copying the key block writes `INTENT#`, `reconciliation`'s `begins_with(SK, "PENDING#")` then returns the empty set forever, and `AUDIT_CONVERGENCE_PENDING` never fires. The clearing TWI still succeeds because a Delete on a non-existent key succeeds. This silently disables the mechanism the batch calls its only convergence detector — the exact outcome R1-H8 was written to prevent | Bookkeeping, one line, severe effect |
-| HIGH | The approval-facing records still contradict the SSOT, for the **third consecutive round**. Safe default 3 still describes replay as re-derived through a pinned serializer — a path §12 now lists as 実装禁止 — still asserts the authority ConditionCheck means "a write cannot commit against a store that is no longer the authority" when §9.1 withdrew that guarantee, and still frames the un-withdrawable lookup key as an accepted risk rather than a write-enablement gate. `State.md`'s blocker list contains none of the blockers added in rounds 2 and 3, and the status string is two revisions stale | Bookkeeping, recurring |
-| HIGH | DLQ payload retention is self-contradictory: §6.4 requires DLQ items to keep the payload so a stranded intent can still be reconstructed, and also requires the post-convergence drop to apply to them — but a DLQ item is by definition unconverged, so one reading keeps payloads forever and the other drops exactly the ones most needed. The drop itself is prose, not a ConditionCheck, unlike the clearing TWI it parallels | Design gap |
-| HIGH | The deny quota's "cut off with 429 before the auditable operation happens" exists only in DB-005, contradicts API-008 §12's unconditional prohibition, and hands an attacker a way to exhaust the quota deliberately and then probe under an audit blackout. It reproduces, under attacker control, the invisibility this batch closed | Design gap |
-| HIGH | Patient identity immutability — the batch's most safety-critical invariant — is enforced only by application self-restraint. The update TWI's ConditionExpression is `metaVersionId` alone; no guard or ConditionCheck binds identity. This is the same standard the batch explicitly rejected for the PostgreSQL fence and for `writerFenceToken`, applied inconsistently | Design gap |
-
-MEDIUM findings, also deduplicated: `maxIndexedTokenPartitions` has no evaluation
-point or overflow behaviour and its stated dependency on the §7.1 JSON caps does
-not hold numerically, because one identifier yields two partitions; the
-patientNumber guard is "one item" in API-008 and per-retained-version in DB-005,
-and the joint invariant counts neither; the re-cutover path
-`POSTGRES_PRIMARY_ROLLED_BACK → CUTOVER_PENDING` cannot satisfy the parity gate
-because parity is only produced in `SHADOWING`, which is unreachable from the
-rollback state; `BLOCKED_LOOKUP_KEY_RETIREMENT` carries a withdrawn rationale and
-a weaker effect in DB-005 than in API-008; §11's test obligation still recites the
-four-stage ordering §8 withdrew; **Revision 9 is absent from the body 変更履歴 of
-all seven documents that declare that body history is the authoritative source**;
-the frozen-packet note still says "Revisions 3–7 / Revision 7 entries"; the
-403-versus-404 difference discloses cutover phase to an authenticated caller
-holding no patient scope; and the new `SCOPE#TENANT#` prefix space has the same
-tenantId prefix-ambiguity exposure that `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT`
-only illustrates for pharmacyId.
-
-**Assessment.** The trajectory is real — 11 HIGH in round 1, then a handful per
-round, with each round's round-1 findings confirmed closed. But the residual
-defects are dominated by one repeating failure: a correction lands in the section
-that introduces a rule and not in every section that reads it. Three rounds of
-manual sweeping have not caught it, and two of the three round-3 HIGHs are
-instances of it. Reviewers proposed the systemic answer: derive the approval-facing
-records from the SSOT blocker set mechanically, and add that consistency to
-`check:ssot-index` rather than relying on a human sweep. That is a change to the
-validation gates, which is outside this WP's Markdown-only scope.
-
-**Iteration limit reached.** The correction cycle ran its three permitted rounds
-and did not converge. WP-4250 returns to WIP for human direction; it is not
-complete, not approved, and not landed.
-
-**Post-round-3 mechanical fixes applied under explicit user direction.** Three
-items were corrected after the escalation, chosen because reviewers agreed on
-them and none carries design judgement:
-
-1. `DB-005 §6.4`'s key block now declares `PENDING#` / `DONE#` / `DLQ#`
-   explicitly, states the single transition, fixes the SK lexical order, and
-   records why a single `INTENT#` namespace silently disables the convergence
-   detector.
-2. The approval-facing records were re-synced to the SSOT: safe default 3 and the
-   decision-surface row no longer claim serializer re-derivation or unconditional
-   fresh-writer exclusion and now present `BLOCKED_LOOKUP_KEY_RETIREMENT` as a
-   write-enablement gate; `State.md` gained the full blocker list and a current
-   status string; the frozen-packet note's revision range was corrected.
-
-3. Revision 9 was added to the body 変更履歴 of the six documents that carry a
-   Revision 9 change_log entry, closing the gap between the frontmatter and the
-   body history those documents declare to be their authoritative source. The
-   remaining three documents that make that declaration (API-003, API-004,
-   API-001) were not changed in round 3, so they need no entry. DB-005's entry
-   also records the key-block correction above, in both its frontmatter and its
-   body.
-
-#### Revision 10 — round-3 HIGH findings closed (2026-07-31)
-
-The three design-level HIGH findings were corrected under user direction. Each
-was an instance of the same thing: a rule that the batch declared but did not
-enforce, or a correction that opened a new way around itself. All three are
-closed by applying, to these rules, the standard the batch already applied
-elsewhere.
-
-| Finding | Correction |
-|---|---|
-| Patient identity immutability was enforced only by a pre-TWI 422 — application self-restraint, the very thing the batch rejected for the PostgreSQL fence and for `writerFenceToken` | CURRENT now carries an `identityDigest` attribute (SHA-256 over the length-prefixed identity tuple), and the Patient update's `Update(CURRENT)` composes `identityDigest = :expectedIdentityDigest` into its ConditionExpression. The adapter derives the expected value from the validated request resource, so a request that changed identity fails the condition and the TWI aborts atomically. **No extra action**, so the 100-action budget and the `maxIndexedTokenPartitions` invariant are unaffected. The pre-TWI 422 stays as the primary rejection; the ConditionCheck is the backstop for any path that bypasses it. An item with no `identityDigest` fails the comparison and is therefore fail-closed by construction |
-| The deny quota cut the request off with 429 *without* generating the auditable operation, handing an attacker a way to exhaust the quota deliberately and then probe under an audit blackout — reproducing, under attacker control, the invisibility the batch had just closed | Quota exhaustion now **degrades to aggregate recording** rather than to silence: after the quota is reached, a single aggregate intent per (principal, scope, window) is durably committed *before* the 429 is returned. It carries the attempt count and window bounds but no target IDs, which is what caused the amplification. If the aggregate intent cannot be committed, the 429 is not returned either — it becomes a 500. **No unrecorded window can exist.** The quota applies per principal; scope alone is not a cut-off, since that would let one principal silence a whole pharmacy's deny audit. Coarser aggregation is left to SEC-007/SEC-008, but the floor — at least one durable record — is fixed here and not delegated. Phase-disabled 404s are recorded as auditable; unauthenticated callers never reach route resolution, so they fall outside. The wire behaviour now lives in API-008 §9.2/§6/§12 as well as DB-005 |
-| DLQ payload retention required both keeping the payload for reconstruction and dropping it after a window, while a DLQ item is by definition unconverged — so one reading kept payloads forever and the other dropped exactly the ones most needed. The drop was prose, not a ConditionCheck | The drop is now **convergence-driven and machine-enforced**. A `DONE#` item has already proven convergence at clearing time, so its payload may be dropped after the safety window, via `ConditionCheck(dedupe exists)` + `attribute_exists(payload)` — the same shape as the clearing TWI, because dropping a payload is more destructive than clearing. A `DLQ#` item cannot satisfy that ConditionCheck until manual remediation makes the dedupe real, so **its payload never drops on a timer**. The clearing TWI carries the payload forward to `DONE#`. The unbounded retention that follows for stranded DLQ items is the intended fail-closed outcome and is sent to SEC-007/SEC-008 as `BLOCKED_AUDIT_PAYLOAD_RETENTION_POLICY` rather than solved with a timer |
-
-**Round-3 MEDIUMs remain open** — among them `maxIndexedTokenPartitions` having no
-evaluation point or overflow behaviour, the patientNumber guard's
-one-item-versus-per-version contradiction between API-008 and DB-005, the
-re-cutover path that cannot reach the parity evidence its own gate requires, and
-the 403-versus-404 disclosure of cutover phase to an authenticated caller holding
-no patient scope. Revision 10 has not been independently reviewed.
-
-These two fixes invalidate the round-3 frozen packet. Any round 4 must re-freeze
-and re-review from the hash recorded below.
-
-**Independent review status — Codex lane unavailable, gate NOT satisfied.**
-Fresh-context reviewer subagents (independent verifier, security/privacy,
-data-integrity) were dispatched against the frozen packet and did not return a
-verdict. The Codex second opinion could not run: `codex exec` reported
-`You've hit your usage limit ... try again at Aug 5th, 2026`. Neither result is
-counted as review evidence, and no verdict is claimed. The maker/checker
-separation required for R4 is therefore **not** satisfied: this correction pass
-has been checked only by its own author, which does not constitute approval.
-WP-4250 stays `INDEPENDENT_RE_REVIEW_REQUIRED`. The self-consistency sweep above
-invalidated the first frozen packet, so re-review must run against the current
-one.
-
-#### Round 4 re-review result (2026-07-31) and Revision 11 (mechanical)
-
-Round 4 was run under direct user direction against the Revision 10 packet
-(`cb5c543c…`, hash independently reproduced by the verifier lane). Two of
-three lanes delivered — independent verifier (10/11 documents read in full,
-including ARC-008) and data-integrity (DB-005/API-008 in full plus live-code
-cross-checks) — **both REQUEST_CHANGES**; the security lane failed to report
-twice (`independence_not_satisfied`). The two delivered lanes converged
-independently on the same two defects, both introduced by Revision 10 itself
-(the aggregate deny intent vs. the outbox lifecycle; the `_lastUpdated`
-machinery). Key design findings, all still OPEN: search index deltas have
-neither compaction nor a keep-latest rule (either reading decays
-irreversibly); the cutover transaction has no path to update the
-patientId-keyed projections (logicalId is unlinkable by design) and is not
-idempotent (re-runs create duplicate Patients with no repair path);
-the aggregate deny intent cannot satisfy the `PENDING#`/`DONE#` lifecycle;
-the joint action-budget invariant undercounts update/create actions.
-Data-integrity also corrected a premise: PostgreSQL currently has **zero**
-Patient writers (repository is read-only), so the cutover gate's drain/fence
-is trivially satisfiable today and does not measure what it claims.
-
-**Revision 11 (mechanical, 2026-07-31)** applied only the bookkeeping subset,
-per the post-round-3 precedent (no design judgement): DLQ "append-only"
-wording aligned to DB-005 §6.4's single-transition discipline in API-008
-§9.2/§11 (closing the self-contradiction with §12); the withdrawn 4-stage
-ordering removed from API-008 §11's test obligation in favor of §8's 5-stage;
-seven unprefixed cross-document `§` references given document prefixes;
-patient-search bound-exceeded status deferred to API-001 §4 (withdrawing the
-premature 429); `BLOCKED_WRITE_PRODUCER_PREREQUISITES` (API-003) and
-`BLOCKED_FIELD_MAPPING` (DOM-006) registered in frontmatter blockers;
-IDX-001's change_log revision range corrected; Revision 11 entries added to
-the body histories of the four edited documents.
-
-#### Revision 12 — round-4設計findingsの訂正(2026-07-31, user direction)
-
-2026-07-31のuser direction(「NSIPS仕様書入手は後回し。その他はfableが決めた
-内容に従う」)を、round-3 escalationが要求していた設計方向の人間委任として記録
-する。この委任の効力は**PROPOSEDドラフトの訂正とround 5 re-reviewの実行まで**で
-あり、final SSOT approval・implementation・landing・cutoverのいずれも承認しない。
-Revision 12は round-4の全設計finding + round-3 open MEDIUM群へ、batchが他所で
-既に採っている基準を一貫適用するfail-closed訂正を行った。
-
-| Finding (round 4) | Correction |
-|---|---|
-| search index deltaに圧縮規則がなく、恒久保持(走査劣化)か規則なき削除の二択に落ちる | DB-005 §3.2へ**keep-latest圧縮規則**を新設: `(partition, logicalId)`単位、retention期限後のsuperseded deltaのみ削除可、latest delta非削除、latest=falseのpairは期限後に全体削除可、clinical TWI外の有界background操作、barrier test証明前は実行しない(未実装の既定=削除しない) |
-| cutover transactionが非冪等(再実行が同一patientへ別logicalIdの重複Patientを作り、修復経路なし)かつpatientId-keyed投影への経路がない | DB-005 §11へ**PATIENTLINK item**(patientId→logicalIdのimmutable 1:1 linkage、per-patient TWI内のconditional Put)とCURRENTの`internalPatientId`内部属性を新設。再実行の進捗authorityをPATIENTLINKに一本化し、二重logicalId発行を条件不一致のatomic abortで構造的に排除。投影再生成とreception互換設計のlinkage経路を定義し、cutover gateへ追加(DOM-002 §2の前提列挙も同期) |
-| 集約deny intentがPENDING#/DONE# lifecycleを満たせない(試行回数の累積Updateがimmutability違反、identity・配送時期未定義でdedupe ConditionCheckを満たす経路がない) | DB-005 §6.4 / API-008 §9.2で`eventId`を`(principal, scope, windowStart)`から決定的に導出、窓あたり1回のconditional Put、以後は強整合存在確認後に429、**試行回数の保持を撤回**、配送は窓閉鎖+clock skew後、集約deny eventをMOD-008登録範囲(`BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT`)へ追加 |
-| joint action-budget invariantがupdate/createを過少計上(updateのdelta setはBEFORE/AFTER両versionに跨る。patientNumber guardは全version分を占めるのに「1件」計上) | operation別invariantへ訂正: MedicationRequest create `7+M+N<=100`、Patient update `7+2M+N<=100`、Patient create(将来)`7+M+2N<=100`(`M=maxIndexedTokenPartitions`)。評価点=write preflightの実数カウント、§7.1 JSON capの従属主張を撤回、API-008 §2.1の「guard 1件」をN件へ訂正 |
-| (premise) PostgreSQLに現在Patient書込経路が存在せず、drain/fence gateはtrivially satisfiableで主張を測っていない | DB-005 §11へ前提訂正を記録: fence要件の対象は観測されたwriterではなく**write grant**。grant棚卸しとrevoke/read-only化のevidenceだけがstep 1を充足し、「現在writerがいない」は充足根拠にならない |
-| (round-3 MEDIUM) 再cutover `POSTGRES_PRIMARY_ROLLED_BACK → CUTOVER_PENDING`はparity gateを満たせない到達不能経路 | 遷移を`POSTGRES_PRIMARY_ROLLED_BACK → SHADOWING → CUTOVER_PENDING`へ訂正(parity再生成を強制。rollback中のPostgreSQL書込も再parityで検出) |
-| (round-3 MEDIUM) 403/404の別がcutover phaseをscope外callerへ開示 | API-008 §8の判定順序へ**phase/enablement判定**段を追加(6段)。phase依存応答はinteraction scope通過callerに限定し、scope欠如は両phaseで一律403 |
-
-対象文書はDB-005・API-008・DOM-002の3件(いずれもexact11内)。各文書の
-frontmatter change_logと本文変更履歴へRevision 12を同時記録し、§12停止条件・
-test obligationsを同期した。新規blocker追加はなし。
-
-#### Round 5 re-review result — 3レーン中1レーンのみ delivered、REQUEST_CHANGES
-
-Revision 12 packet(`8ff16ca9…` / 5,195行)に対しfresh-context 3レーンを
-dispatchした。結果は**部分的**であり、gate充足は主張しない。
-
-| Lane | 結果 |
-|---|---|
-| data-integrity | **delivered / REQUEST_CHANGES**。packet hashを独立再現(一致)。HIGH 1件、MEDIUM 3件、LOW 3件 |
-| security / privacy | **delivered / REQUEST_CHANGES**。同packet hashを独立再現(一致)。MEDIUM 2件、LOW 3件。Revision 12の訂正9項目自体はround-4 findingsを正しく閉じていると判定 |
-| independent verifier | **delivered(5回目の起動、2026-08-01)**。Revision 14 packet `ab086c9f…` に対して hash を独立再現し一致。**packet本文 PASS(HIGHなし)**、総合は REQUEST_CHANGES(record-only — findings は全て packet 外)。1〜4回目は verdict を返せず(1回: session limit、3回: 起動後idleで報告なし・明示照会にも無応答)、`independence_not_satisfied` として review evidence に数えていない |
-| codex second opinion | 利用不能(usage limit、2026-08-05まで)。記録のみ |
-
-**round 5は3レーン全てがdeliveredとなり完了した。** data-integrityの
-findingsはRevision 13で、security/privacyのfindingsはRevision 14で閉じた。
-independent verifierは**Revision 14 packetに対してPASS(本文HIGHなし)**を返し、
-`BLOCKED_INDEPENDENT_VERIFIER_LANE_UNAVAILABLE`は解除された。
-**R4が要求するmaker/checker分離は充足した。**残るのはfinal human SSOT approvalである。
-
-verifier laneの主な確認結果:
-
-- packet hash `ab086c9f…`(5,559行)を独立再現し一致。
-- **§7の実装主張をlive codeと突合し完全一致**: `check-boundaries.mjs`の
-  marker検知・codec除外・test除外・`main()`からの呼び出しがいずれも実在、
-  `check-scripts.mjs`のpositive/negative fixtureも登録済み、両scriptをfresh実行
-  してPASS(exit 0)。`branded-ids.ts`の`#`拒否も実在。DB-005 §7が静的検知の
-  限界を正直に記載していることも確認。
-- **round 1〜4を落とし続けた失敗クラス(ルール導入節だけ直り参照側が旧のまま)は
-  再発なし**。残存grep hitは全て却下理由の説明・凍結履歴・禁止リストであり正当。
-  §8判定順序は本文とtest obligationの双方で6段一致、budget式・guard N件・
-  `intentKind`/`deliverableAfter`/`retentionExpiresAt`/`internalPatientId`の宣言も
-  同期済み。
-- 未検証範囲(verifier自己申告): DOM-005/DOM-006/API-003/PH-OS/patient_search/
-  jp_core strategy/ssot_indexの行単位精読(旧表現grepとentry確認のみ実施)、
-  data-integrity/security両laneのfinding listとのDOM系逐条突合。
-
-**MEDIUM 2件はState.md限定であり、同ファイルで閉じた**(packet hashは不変):
-Next action節がround-5未完了の旧記述のままだった点と、dirty ownership正本に
-未採番コード変更3 pathが未記載だった点。
-
-**LOW 3件はpacket本文に触れるため意図的に未適用とし、State.mdへdeferredとして
-記録した**。適用すればhashが動き、いま得たPASSを自ら無効化するためである
-(round 1〜4で繰り返した誤りを再演しない)。次にpacket revisionを開く際に畳む:
-(a) DB-005 frontmatter blocker注記がRevision 13表現のまま(§7本文と不一致だが
-conservative側)、(b) ARC-008本文変更履歴のRevision 13 entryの並び順、
-(c) §3.2のpair全体削除特例はsuperseding deltaを持たないため§3.2の機械強制
-ConditionCheckを満たせず、当該削除を強制する条件式が未記載。
-
-security laneがPASSと判定した項目(参考、単独ではapprovalではない):
-phase非開示6段順序に新oracleは特定できず(403/404の別が漏らすのは静的契約構造
-のみ)、keep-latest圧縮はindexが原則4の再生成可能projectionであるためappend-only
-/法定保存群と衝突せず位置づけ一貫、budget式(7+M+N / 7+2M+N / 7+M+2N、guard
-N件化、評価点=write preflight)はDB-005 §5.2とAPI-008 §2.1/§4.2.1で同一定義に
-収束、cutover冪等化はPATIENTLINK単一progress authority・logicalId発行とlink Put
-の同一TWI束縛・最終epoch CAS単一適用で二重logicalId経路を構造的に排除しGSI新設
-なしでLeadingKeys粒度と整合、集約denyの存在確認→429経路はaudit-before-response
-規律に適合(quota未満denyは個別intentで全件記録され無記録窓なし)。
-
-#### Revision 14 — round-5 security/privacy findingsの訂正(2026-07-31)
-
-| Severity | Finding | Correction |
-|---|---|---|
-| MEDIUM | PATIENTLINKの`SK = PATIENT#{patientId}`が「patientIdは内部surrogateだから非PHI」という**どのSSOTにも規律のない前提**に依存。`migrations/000002_…`の`patient_id`は自由形式TEXTで`patient_number`との同値を禁じる制約がなく、レガシーレセコン移行では患者ID=患者番号の運用が現実にある。その場合SKは生の患者番号となり原則7に直接違反。§5.2でpatientNumber guardをHMAC化していることとも非対称 | SKを`hmacPatientId`(`HKDF(root, tenantId, pharmacyId, purpose="patientLink")`、guardと同一のrotation規律)へ変更し、生値は暗号化item payload内のみに。決定的HMACなので再実行skip判定と投影linkageは復号なしで従来どおり成立。**正しさがpatientIdの由来に依存しなくなる**。あわせて最終epoch CASを**membership + cardinalityの合成**として定義し直し(membershipのみでは余剰link、cardinalityのみでは欠落と余剰の相殺を見逃す)、両検査ともpayload復号を要さないことを明記 |
-| MEDIUM | keep-latest圧縮の「latest非削除・retention内非削除」がprose + barrier test依存で、本batchが§5.2 `identityDigest`と§6.4 payload削除に課した「破壊的操作をapplicationの自己抑制に委ねない」基準と非整合。誤削除は存命recordの検索欠落(SAF隣接) | 各deltaへ`retentionExpiresAt`属性を追加し、削除を`TWI(ConditionCheck(superseding delta s: exists AND s.retentionExpiresAt <= :now) + Delete(d exact key) with retentionExpiresAt <= :now)`として機械強制。圧縮roleのleast-privilege分離と実行記録の運用監査を実装WPの承認要件へ |
-| LOW | `internalPatientId`のlog/trace/metric禁止がwire禁止と非対称(§11はwire resourceJson/FHIR responseのみ規定)。logicalIdは§9で範囲付き明示済み | §9へ`internalPatientId`と`patientId`生値の access log/APM/trace/exception/metric label/外部送信禁止をlogicalIdとparityで追加。許可される使用面はitem属性(保存時暗号化の対象内)に限定 |
-| LOW | 集約deny `eventId`の導出が keyed HMACか無鍵hashか未指定。`eventId`はoutbox SKと§6.1 dedupe keyに載る | keyed HMAC(`HKDF(root, tenantId, purpose="denyAggregateEventId")`)と明記。無鍵hashでは`(principal, scope, windowStart)`の総当たりで「どのprincipalがいつquotaに達したか」をkeyの存在だけから逆引きできる |
-| LOW | 開放窓中は集約intentが配送されずreconciliation対象外のため、進行中の総当たりのchain可視化が窓幅+skew分遅延。alertingはSEC-007管轄で未定義 | 本節が保証するのは**記録の完全性**であって**検知の即時性**ではないことを明記し、両者を混同しない旨を追加。「開放窓中のdeny集中を検知するoutbox非依存の経路」をSEC-007/SEC-008起票事項へ明示的に含める(本節でalertingを発明しない) |
-| LOW | write grant棚卸しにbreak-glass/superuser/migration credentialの明示がなく、乖離detector期間が有限(`patients`行はjoin先として存続) | 棚卸し対象へ break-glass/緊急アクセスcredential・superuser/owner role・migration実行credential・運用者の直接接続を明示列挙し、列挙漏れを「停止済み」と扱わないことを規定。detector終了根拠を「一定期間経過」ではなく権限revokeの証跡または`patients`依存の解消へ紐付け |
-
-対象文書はDB-005・DOM-002の2件。§12停止条件・test obligations(PATIENTLINKの
-key形、membership+cardinalityの合成、圧縮の機械強制、keyed eventId)・変更履歴を
-同期した。新規blocker追加はなし。
-
-**訂正後の自己整合スイープ**(Revision 13と同じ手順を反復)。1件が該当し同じ
-passで訂正した。**§9(暗号化と鍵管理の正本)が用途分離鍵を列挙していなかった**。
-本batchは検索トークン(§3.2)以外にpatientNumber guard(§5.2)、PATIENTLINK
-(§11)、idempotency lookup key(§5.2)、集約deny eventId(§6.4)で決定的HMACを
-使うが、定義は各節に分散し、§9のQ4は`HKDF(root, tenantId)`の検索トークン鍵しか
-挙げていなかった。鍵階層を読む実装者には他の4用途が見えず、tenant単位鍵の流用
-(guard/PATIENTLINKでは低エントロピー値の総当たり列挙を許す)へ倒れる誘因が
-残っていた。§9へ導出入力とローテ時の性質を含む正本一覧表を追加し、各節はこれを
-参照する形にした。
-
-delivered laneがPASSと判定した項目(参考、単独ではapprovalではない):
-budget invariantの数え上げ(固定7・2M・2N)は正確でundercountなし、
-`identityDigest`はaction数を増やさない、cutover冪等性のシナリオ(i)部分失敗後の
-再実行 / (ii)並行実行 / (iii)epoch advance後の再実行は構造的に成立、
-集約denyの「窓あたり1件以上」の下限は成立。またlive codeを確認し、
-`patients`表へのproduction書込経路がゼロである(patient-repositoryはSELECTのみ、
-INSERTはintegration test fixtureのみ)というround-4の前提訂正が**正確**である
-ことを独立に確認した。
-
-#### Revision 13 — round-5 data-integrity findingsの訂正(2026-07-31)
-
-| Severity | Finding | Correction |
-|---|---|---|
-| HIGH | §3.2 keep-latest圧縮の削除条件が削除対象`d`のretention経過しか要求せず、superseding delta `s`が新しい場合に`d.commit <= fence < s.commit`のas-of materializationから logicalIdがsilentに欠落する。同節末尾のbarrier不変条件と数学的に矛盾 | 削除条件へ**`s`自身のretention経過**を追加。`s`が期限を経過していれば`d`を要する fence区間は全て期限外になる |
-| MEDIUM | §6.4 集約deny intentのreconciliation除外条件(未閉鎖窓を差分に数えない)が実装不能 — `windowEnd`が暗号化payload内にしかなく、突合が復号と鍵可用性に依存する | 平文属性`intentKind`(`individual`/`aggregateDeny`)と`deliverableAfter`(`windowEnd + max clock skew`、生成時確定・以後不変)を追加。正確な窓境界とprincipal/scopeは暗号化payload側に維持 |
-| MEDIUM | §11 rollback→再cutover 2周目: rollback期間中のPostgreSQL側の属性変更はparityで検出されるが解消経路が存在せず(VERSION 2+ backfill禁止・`SYSTEM_CUTOVER`はVERSION 1限定・PUT producer未成立)、統合/削除で対象集合が縮むとPATIENTLINKがorphanとして残り件数一致が恒久不成立。既存の「未解消差分はcutoverをblockする」と合成すると再cutoverが二度と成立しない | `BLOCKED_RECUTOVER_DIVERGENCE_RESOLUTION`として登録(DB-005 §11 / ARC-008 / DOM-002 §2)。解除は(a)反映経路の承認 または (b)rollback期間もPostgreSQLをread-onlyに保つ運用制約の承認。初回cutoverは対象外 |
-| MEDIUM/LOW | §11 最終epoch CASの「件数一致」が基数比較として読め、欠落1件と余剰1件が相殺する。count QueryのConsistentRead未指定 | reconciliation対象集合 ⊆ PATIENTLINK集合の**membership検査**として定義。`ConsistentRead=true`の全ページ走査と対象集合の事前凍結を要求し、TOCTOU前提を明記 |
-| LOW | `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT`の前提がstale — `branded-ids.ts`はWP-4050(base SHA後)で`#`拒否を実装済みでnegative testもある | round-4のPostgreSQL writer前提訂正と同種の事実訂正。blockerの範囲を「factoryが拒否しないこと」から「キー構築経路がbranded型を経由することの保証」へ縮小し、conservative側は維持 |
-| LOW | cutover TWIのrotation CC要否が§5.2「全clinical TWI」と§11列挙で不整合 / CURRENTをPut置換すると`internalPatientId`がsilent消失(templateは`Update`だが保存義務が未明文) | per-patient cutover TWIもrotation CCを持つことを明示し固定action=8として数え方を確定。`internalPatientId`/`identityDigest`をCURRENTの保存必須属性として明文化しPut置換を§12で禁止 |
-
-対象文書はDB-005・ARC-008・DOM-002の3件。§12停止条件・test obligations
-(圧縮のsuperseding条件、平文属性による復号なしreconciliation、membership検査、
-CURRENT属性保存の各negative test)・変更履歴を同期し、新規blocker
-`BLOCKED_RECUTOVER_DIVERGENCE_RESOLUTION`を登録した。
-
-**訂正後の自己整合スイープ**。round 1以降くり返している失敗クラス
-(ルールを導入した節だけ直し、それを読む節が旧ルールのまま残る)を潰すため、
-新設・変更した各ルールについて参照側をgrepで機械的に洗った。2件が該当し、
-同じpassで訂正済みである。判断を要さない客観的矛盾なのでreviewerへ回さない。
-
-1. **§11のPATIENTLINK bulletが旧「件数一致」のまま残っていた**。membership検査
-   への訂正は後続bulletにしかなく、遷移条件を導入する側のbulletは
-   「PATIENTLINK件数がreconciliation対象件数と一致することを確認した後」と
-   読めた。実装者はこちらを先に読むため、round-5 findingが指摘した基数比較を
-   そのまま実装し得た。導入側bulletをmembership検査へ書き換えた。
-2. **`internalPatientId`が§3.1の属性列に未宣言だった**。§3.1はcurrent/version
-   itemの属性の正本であり`identityDigest`はRevision 10でここに追加されている。
-   `internalPatientId`は§11でだけ導入され、item schemaを読む実装者には見えて
-   いなかった。§3.1へ追加し、両属性がCURRENTの保存必須属性でありPut置換を
-   禁じることを同節にも明記した。
-
-Current frozen packet (Revision 14; **the undelivered round-5 verifier lane
-must start here**): base SHA `9d8dbc0c3f5201c762dbb39fd9b15fc3ddc4b875` (the
-exact11 paths are byte-identical at local HEAD `a1fd780`, which contains no
-exact11 changes); candidate diff SHA-256
-`ab086c9f8d6e6bfd26e32fbfe9daa21a3b8b6ccd3f324f413b4d2975731cfab6` over 5,559
-diff lines (Revision 14, including the post-correction self-consistency sweep
-and the §7 record of the `check:boundaries` enforcement). Round 5's data-integrity and security/privacy lanes
-both reviewed the Revision 12 packet
-`8ff16ca9b3532a38bbf9cd02f3bd2d060be7768b22e6666eecd979a3d3af0592`
-(5,195 lines) and each independently reproduced that hash; Revisions 13–14
-supersede it, so any further review starts from the hash above.
-The intermediate Revision 13 packet was
-`3f5a1de2cf11592f779c69dc7c0b56691a640e5b70350f0a66710589e228fb1b`
-(5,360 lines) and no lane reviewed it. Revision 12 had itself superseded the
-Revision 11 packet
-(`96ceec3a9d88e1fb9d9e700fd1d67807ae89c845257c4d30e3c091b187f4db30` / 4,935
-lines), which no round reviewed. Round 4 itself reviewed
-`cb5c543c73bfcc4d31af472b4a46134429882105be188c265027bf36de89ce57` over 4,919
-diff lines (Revision 10). Round 3 itself reviewed
-`634da8960b4893e5da7bfbb6ba5f4d9769b2fbdde6b7e0227ae090d19f5e2942` over 4,617
-lines; the three mechanical fixes superseded it. (Round 1 reviewed `483411c7…` / 3,721 lines; round 2 reviewed
-`a6751a4b…` / 4,349 lines. Each round's corrections superseded the prior packet.) The hash covers `git diff` over the **exact11 content documents
-only**, in the order they are listed in the drafted-amendment-set bullet above.
-`Plans.md` and `State.md` are owned and edited by this WP but are deliberately
-excluded from the hashed range, because they carry the hash itself and would
-otherwise make it unverifiable. Note that this diff spans Revisions 3–14; the
-Revision 14 entries in DB-005/DOM-002's change_log are the most recent pass
-(API-008's and ARC-008's most recent entries are Revision 12 and Revision 13
-respectively; neither was edited in Revision 14). This sentence must be updated every round — it was left at "3–7 /
-Revision 7" through rounds 2 and 3, which would have led a reviewer to treat
-the corrections under review as out of scope.
-
-Observed validation for the Revision 14 pass (2026-07-31):
-`node scripts/check-ssot-index.mjs` PASS at 173 documents; `git diff --check`
-PASS. The Revision 12 and 13 passes had the same two gates PASS. (The Revision 11 pass
-also passed both; its pre-existing `git diff --check` failure — `Plans.md`
-trailing blank line at EOF — was corrected in that edit.) No test, typecheck,
-build, or runtime gate was run in Revision 12/13 because both passes change
-only Markdown SSOT drafts and touch no source, contract artifact, schema, or
-migration. No test, typecheck, build, or runtime gate was run because this
-pass changes only Markdown SSOT drafts and touches no source, contract artifact,
-schema, or migration. `pnpm` scripts could not be invoked because the local
-`pnpm` is 11.17.0 while `package.json` pins `packageManager: pnpm@11.18.0`, so
-the two applicable gates were executed directly through `node` and `git`.
-
-- **Recommended safe default 1 — candidate profiles:** limit the proposed amendment scope to JP Core `JP_Patient` 1.2.0 and the oral/topical `JP_MedicationRequest` 1.2.0 use case, subject to official fixed-version package, canonical URL, digest, exact profile, terminology, and Must Support verification. This packet does not claim support. If the amendment is approved, injection, derived/unverified Must Support interpretations, and unknown or unresolved terminology remain unsupported and fail closed.
-- **Recommended safe default 2 — lifecycle:** prohibit Patient auto-merge, physical delete, and tombstone revival. Initially accept MedicationRequest only with `intent=order`; correction and original-order linkage remain fail closed until an explicit human-approved workflow exists.
-- **Recommended safe default 3 — create / update / idempotency:** create and every enabled Patient PUT require a tenant/pharmacy/resourceType-bound stable idempotency key, request-byte fingerprint over exact accepted request-entity bytes, and one conditional no-overwrite alias/guard for every configured active+retained lookup-key version in the same clinical TWI; Patient PUT additionally requires `If-Match` as its sole wire version authority. Each write strong-reads the persisted tenant+pharmacy rotation control and includes its exact generation, mandatory-set digest, and ACTIVE state as a same-TWI ConditionCheck, and additionally a ConditionCheck on the per-resourceType authority control item (`authorityState`, `authorityEpoch`, `writerFenceToken`). **That ConditionCheck does not by itself establish single-writer safety and this default does not claim it does**: `writerFenceToken` is a plaintext attribute every writer can read, so a writer that reads it and calls the value self-held cannot be distinguished at the DynamoDB layer — the same application self-restraint this batch rejected on the PostgreSQL side. Fresh-writer exclusion is not claimed until `BLOCKED_WRITER_FENCE_TOKEN_ISSUANCE` is cleared. **Lookup-key retirement is unsupported in this batch**: the retained version set only grows, key material is not removed, and a rotation that would exceed the approved bound is refused rather than retired past. A compromised lookup key therefore has no withdrawal path, and `BLOCKED_LOOKUP_KEY_RETIREMENT` **stops clinical write from being enabled** until an emergency deactivation route is approved — it is a gate, not an accepted residual risk. Patient create is disabled and, post-cutover, `identifier`, the patientNumber slice and `Patient.id` are immutable, so neither create nor update can produce a duplicate patientNumber — though that immutability is currently enforced only before the TWI, not by a ConditionCheck, and it also leaves no way to register or correct a patient after cutover, which is why it gates cutover. Same-byte replay returns the exact stored result **by returning the stored `resourceJson` octets verbatim**, verified against a stored digest; it is not re-derived through a serializer, and re-deriving it is a §12 prohibition. Byte-different reuse returns 409; ambiguous failure reconciles every applicable version without automatic retry. A digest mismatch is a permanent 500 with no client-side escape that avoids creating a duplicate — recorded as unresolved, not as safe. The whole TWI is limited to 100 distinct action targets and 4 MiB aggregate operation-after item size, each item to 400 KB; overflow is pre-write 422 and is never chunked or offloaded to S3.
-- **Recommended safe default 4 — single-writer cutover:** PostgreSQL remains the sole Patient authority until read-only shadow parity is proven and a human approves cutover; the approved cutover transaction creates FHIR VERSION 1 as a truthful immutable `SYSTEM_CUTOVER` creation baseline and does not invent PostgreSQL history. After cutover the FHIR store is the sole Patient writer. **Cutover is not currently executable and this default does not authorize it.** Single-writer safety rests on a time-ordered handover (stop → drain → epoch advance → new writer), and no primitive exists on the PostgreSQL side to enforce the stop: an instance that never receives it keeps its write grant, and "in-flight is zero" is a property of the observation instant. Cutover is additionally blocked until the live `reception_entries` foreign key and `INNER JOIN patients` compatibility design is approved, and until a route exists by which a patient can be registered or an identity error corrected after cutover — with create disabled, identity immutable and PostgreSQL no longer the writer, the Patient set would otherwise be permanently closed. The cutover transaction itself is **idempotent by construction** (Revision 12): each per-patient TWI conditionally Puts an immutable PATIENTLINK and is bound to `authorityState=CUTOVER_PENDING` + epoch, so a partial-failure re-run skips linked patients and can never commit a second logicalId for the same patient; the link is keyed by `hmacPatientId` (pharmacy- and purpose-separated HKDF, sharing the patientNumber guard's rotation discipline) rather than the raw `patientId`, so correctness no longer rests on the unenforced premise that `patientId` is non-PHI — the column is free-form TEXT with nothing forbidding `patient_id = patient_number` (Revision 14); CURRENT carries `internalPatientId` (a mandatory retained attribute — CURRENT is never Put-replaced) so patientId-keyed projections and the reception compatibility design have a defined linkage path, and the final `CUTOVER_PENDING → FHIR_PRIMARY` advance is a single conditional epoch CAS gated on **set equality**, proven by a per-element membership check plus a cardinality check (both strongly read, neither requiring payload decryption) — a membership check alone misses a surplus link and a count match alone lets a missing-one/surplus-one pair cancel (Revisions 13–14). **Re-cutover after a rollback is separately blocked**: nothing can reconcile a PostgreSQL-side change made during the rollback window (VERSION 2+ backfill is prohibited, `SYSTEM_CUTOVER` is VERSION 1 only, and the PUT producer prerequisites are unmet), and a shrunken reconciliation set leaves an undeletable surplus PATIENTLINK — so `BLOCKED_RECUTOVER_DIVERGENCE_RESOLUTION` gates it until either a reflection path or a read-only-during-rollback operating constraint is approved. The first cutover is out of that blocker's scope. The authority state machine is **not** one-way: it carries a rollback value and only `authorityEpoch` is monotonic, and re-cutover from `POSTGRES_PRIMARY_ROLLED_BACK` must pass through `SHADOWING` again to regenerate the parity evidence its own gate requires — the previous direct transition to `CUTOVER_PENDING` was unreachable by design and is withdrawn. The PostgreSQL-side stop/drain gate is measured against **write grants**, not observed writers: the repository currently has zero Patient write paths, so "no writer observed today" satisfies nothing. MedicationRequest has no current runtime/store/writer/data: only after the amendment batch is approved, locked-profile validation passes, and security prerequisites pass does the FHIR store/API ingestion boundary become its sole initial writer from the first accepted create, with no legacy migration, backfill, dual writer, or automatic fallback. FHIR Provenance does not replace the internal append-only audit authority.
-- **Drafted atomic amendment set (exact 11):** `docs/architecture/fhir_native_phos_aws_platform_direction.md`; `docs/api/platform_api_architecture.md`; `docs/domain/fhir_native_canonical_model.md`; `docs/domain/fhir_mapping_registry.md`; `docs/api/ph_os_reference_integration.md`; `docs/api/fhir_rest_facade_contract.md`; `docs/api/patient_search_contract.md`; `docs/domain/domain_model.md`; `docs/database/dynamodb_single_table_design.md`; `docs/product/jp_core_fhir_platform_strategy.md`; `docs/ssot_index.md`. All working versions are PROPOSED. ARC-008 v0.1.2 remains previous-version approval provenance; v0.1.3 retains the existing `amends` list until finalization. SEC-006/SEC-008 are unchanged.
-- **Approval record:** current user wording `推奨承認` is accepted as explicit equivalent to `WP-4250を推奨方針で承認`; its effect is limited to PROPOSED drafting/review.
-- **Approval effect:** authorizes only the listed PRC-007 **PROPOSED**
-  amendment batch and review. The independent domain reviews are complete and
-  FAIL; they do not self-approve their required corrections. This approval does
-  not authorize implementation, schema/data migration, production access/write,
-  deployment, conformance claims, landing, or final SSOT approval.
-- **R4 stop conditions:** stop at PROPOSED correction while any finding in the
-  independent-domain-review table, terminology/licensing, real validator and
-  CapabilityStatement evidence, fixed package/profile provenance, atomic-set
-  consistency, or final human approval is incomplete. Stop immediately on
-  security/privacy semantic weakening, second writer, dual write, automatic
-  fallback, invented history, unbounded work, or conformance claim. No source,
-  contract artifact, schema, migration, runtime, production, commit, or push
-  action belongs to this decision packet.
-- **Dirty ownership / landing:** the same Codex root owns the existing WP-4254 IDX-001 delta; whole-file IDX ownership is resolved for cumulative review. Pre-edit `git diff -- docs/ssot_index.md` SHA-256 was `88c2ab2c375b8a8b7edbff9ec5cd2a21670cd58da4a1b5ef83fd0cdaf80b1f79`; all WP-4254/MOD-009 semantics/hunks must remain. WP-4250 owns only this active block, the active pointer snapshot, and the exact11 PROPOSED additions. No landing is authorized; cumulative exact-path landing remains separately gated after review/finalization.
-
-### WP-4258 — round-5 deferred LOW の改版(2026-08-01)/ **APPROVAL_PENDING**
-
-- **Status:** PROPOSED / INDEPENDENT_REVIEW_DONE / CORRECTIONS_APPLIED /
-  **FINAL_HUMAN_APPROVAL_REQUIRED**
+| WP-4250 | FINALIZED / APPROVED(SSOT 改版のみ)。local commit `89275d2` | 下の決定記録 |
+| WP-4258 | COMMITTED_LOCAL `1dedf27`。final human SSOT approval 待ち | Human gates |
+| WP-4257 | COMMITTED_LOCAL `a911a99` / LANDED | Implemented / Landing State |
+| WP-4256 | COMMITTED_LOCAL `ab63db6` / LANDED | Implemented / Landing State |
+| `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) | 実行仕様のみ確定。DDL と実データ参照を伴うため human gate | Human gates |
+
+#### WP-4250 — Bounded Patient + MedicationRequest authority decision(決定記録)
+
+- **Status:** FINALIZED / APPROVED(2026-08-01)/ COMMITTED_LOCAL `89275d2`
+- **承認範囲は SSOT 改版のみ。** exact11 の11文書が
+  `direct human authority 2026-08-01(全て承認)` により PROPOSED→APPROVED へ
+  同一 batch で昇格した(PRC-007 §4 step 8)。**実装着手・schema/data migration・
+  production action・conformance 主張・cutover は含まない。**
+- **登録済み blocker は1件も解除していない。** 承認で充足した
+  `FINAL_HUMAN_APPROVAL_REQUIRED` を10文書から除いただけであり、
+  ARC-008 15件 / DB-005 16件 / API-008 14件 / DOM-006 9件 / DOM-005 7件 /
+  DOM-002・PRD-007 各4件 / API-003 3件 / API-001 2件 は据え置き。
+  **blocker 集合の正本は exact11 各文書の frontmatter `blockers`** であり、
+  その snapshot は `State.md` にある。本書はそれを複製しない(下記「学習」参照)。
+- **`amends` / `PENDING_REVISION` は解除しない。** 本 batch は bounded scope であり
+  DOM-005 / API-004 / PRD-007 の完全改版ではない。ARC-008 の `amends` は
+  DB-001〜004・ARC-005・ARC-007 も対象に含み、これらは packet 外である。
+- **承認済み exact11:** ARC-008 / API-003 / API-001 / API-004 / API-008 /
+  DOM-002 / DOM-005 / DOM-006 / DB-005 / PRD-007 / IDX-001。
+  内容不変の10文書は version 据え置き、IDX-001 のみ 0.4.46→0.4.47。
+- **決定内容そのものは承認済み SSOT を正本とする。** 以前ここに置いていた
+  「Recommended safe default 1〜4」と decision-surface 表は削除した。round 2〜3 で
+  **3ラウンド連続の HIGH** が「approval-facing record が SSOT と矛盾している」で
+  あった原因が、まさにこの複製だったためである。承認範囲・lifecycle・
+  create/update/idempotency・single-writer cutover の各決定は ARC-008 / DOM-005 /
+  API-008 / DB-005 の本文を読む。
+- **Review 経過(要約):** 独立 review を5ラウンド、draft を Revision 14 まで実施。
+  round 1 は HIGH 11件、round 2〜4 は各ラウンド数件で、いずれも REQUEST_CHANGES ×3。
+  round 5 で data-integrity / security-privacy / independent verifier の3レーンが
+  全て delivered となり、verifier は Revision 14 packet に対し
+  **本文 PASS(HIGH なし)** を返した。**R4 が要求する maker/checker 分離は充足**。
+  Codex second opinion は usage limit(2026-08-05 まで)で利用不能、記録のみ。
+- **Frozen packet(最終):** base SHA `9d8dbc0c3f5201c762dbb39fd9b15fc3ddc4b875`、
+  candidate diff SHA-256
+  `ab086c9f8d6e6bfd26e32fbfe9daa21a3b8b6ccd3f324f413b4d2975731cfab6`、5,559 行。
+  hash 対象は exact11 の本文 11 文書のみで、`Plans.md` / `State.md` は hash 自体を
+  載せるため意図的に除外している。
+- **学習(durable):** round 1〜4 を通して残り続けた失敗クラスは
+  **「ルールを導入した節だけ訂正し、それを読む節が旧ルールのまま残る」** である。
+  round 3 の reviewer が提案した systemic な対策(approval-facing record を SSOT
+  から機械的に導出し、その整合を `check:ssot-index` に入れる)を、本書側は
+  上記の複製削除で、gate 側は WP-4257(frontmatter の YAML 検証)で実施した。
+  finalization 中に ARC-008 frontmatter の blocker 値がバッククォート始まりで
+  **YAML として parse 不能**だったこと、それを `check:ssot-index` も round-5 の
+  独立 review 三レーンも検出できなかったことが WP-4257 の直接の起点である。
+- **round 1〜5 の全経過(Revision 7〜14、各ラウンドの finding 表と disposition)は
+  本書から削除した。** git 履歴に完全な形で残っており、`4f4ba68:Plans.md` で読める。
+  active queue に完了済み review の逐次記録を残さないことは
+  `DEVELOPMENT_POLICY.md §8 Record policy` の要求である。
+
+### READY — maximum two
+
+READY は 0 件である。`DEVELOPMENT_POLICY.md §8` により READY は最大2件だが、
+現時点で claim 可能な item がない。WP-4050 は実装 landing 済みで独立レビュー待ち、
+WP-4251 / WP-4252 は label であって READY ではない。§8 Prioritized Backlog の
+BUG 群は READY へ昇格しうる候補であり、昇格前は claim しない。
+
+## 4. Implemented / Landing State — nonclaimable
+
+本節は landing 済みで claim 対象外の項目を保持する。実装証跡は Git diff と commit
+であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
+
+### WP-4258 — round-5 deferred LOW の改版
+
+- **Status:** COMMITTED_LOCAL `1dedf27` / INDEPENDENT_REVIEW_DONE /
+  **FINAL_HUMAN_APPROVAL_REQUIRED**(Human gates 参照)
 - **対象:** DB-005(0.1.3→0.1.4)、ARC-008(0.1.3→0.1.4)、IDX-001(0.4.47→0.4.48)
-- **Risk:** P2 / R2。撤回と記述精緻化のみで、capability の追加・制約の緩和はない。
+- **Risk:** P2 / R2。撤回と記述精緻化のみで capability の追加・制約の緩和はない。
+- **主要な変更:** §3.2 の pair 全体削除特例を**撤回**。特例の論拠(期限後は latest
+  false と delta 不在が membership 上等価)は正しいが、Revision 14 が新設した機械
+  強制は superseding delta の実在を ConditionCheck で要求するため、superseding
+  delta を持たない latest delta の削除を表現できない。規則が許し強制機構が表現でき
+  ない状態は条件式なし Delete への圧力になる。§12 の「latest delta 削除は実装禁止」
+  との既存矛盾も同時に解消した。
+- **独立 review:** frozen packet `ef2db67b…` を hash 独立再現のうえ REQUEST_CHANGES
+  (HIGH 0)。指摘3件はすべて記録側で、同 revision 内で訂正済み。うち MEDIUM 1件は
+  **こちらの計数正規表現 `[A-Z]+-[0-9]+` が `SRC-FHIR-00x` 形式を取りこぼし**、
+  IDX-001 の集計値を誤らせていたもの。正しくは 143/13/17 → 141/15/17(合計173)。
+  `check:ssot-index` は section 件数と総数を検証するが change_log の散文集計は
+  検証しないため、この種の誤りは機械検査を素通りする。
+- **再凍結後の packet:** base `a911a99`、diff SHA-256
+  `92c4765be23e4440b21d6022c0f50d7e3373dc729b6ac03a6803157b3f1c5e06`、276行。
 
-WP-4250 round-5 verifier が packet 本文外として deferred した LOW 3件を畳んだ。
+### WP-4257 — frontmatter を YAML として検証する
 
-| 項目 | 訂正 |
-|---|---|
-| (c) §3.2 pair 全体削除特例 | **撤回**。特例の論拠(期限後は latest false と delta 不在が membership 上等価)は正しいが、Revision 14 が新設した機械強制は superseding delta `s` の実在を ConditionCheck で要求し、`s` を持たない latest delta の削除を表現できる条件式が存在しない。規則が許し強制機構が表現できない状態は条件式なし Delete への圧力になる。tombstone 1件/pair を許容し、将来経路(`FHIRINDEXFENCE` の `commitSequence` 一致)は記録のみ。**§12 が既に定めていた「latest delta を削除する→実装禁止」との既存矛盾も解消**した |
-| (d) §7 限界記述 | 実測4変種の表へ差し替え(template literal と `+` 連結は検知、marker 分割と配列 join は通過) |
-| (a) frontmatter blocker 注記 | §7 本文へ同期。解除条件 (a) は WP-4256 で充足済み、残余は (b) のみ |
-| (b) ARC-008 本文変更履歴 | Revision 13 entry の位置を降順へ是正 |
-
-**独立 review 結果(frozen packet `ef2db67b…` / 245行、hash 独立再現一致)**:
-**REQUEST_CHANGES(HIGH 0 / MEDIUM 1 / LOW 2)**。撤回の論理・実測表・並び順・
-参照側同期・メタデータは**すべて正しい**と確認された。verifier は §7 の実測表を
-**自作 fixture で4変種すべて実走**して表と完全一致を確認し、WP-4256 の実装実在と
-`check-scripts.mjs` の PASS、`FHIRINDEXFENCE` 引用が §4.1 実定義と文字列一致する
-ことも確認している。
-
-指摘3件はいずれも**記録側**であり、同 revision 内で訂正した。
-
-1. **[MEDIUM] IDX-001 の集計値が誤り**。0.4.48 entry の「APPROVED 141→139、
-   PROPOSED 12→14」は実測と不一致で、合計170が同 entry の「documentカウント173」
-   と自己矛盾していた。原因は**私が使った計数正規表現 `[A-Z]+-[0-9]+` が
-   `SRC-FHIR-00x` のような複数セグメント ID の3行を取りこぼしていた**こと。
-   正しい計数(`[A-Z][A-Z0-9-]*-[0-9]+`)では 143/13/17 → 141/15/17(合計173)。
-   さらに 0.4.47 entry の基準の取り方も曖昧で、その誤値を無検証で引き継いでいた。
-   両 entry を訂正し、0.4.47 側には訂正への参照を付けた(履歴の数値自体は
-   書き換えない)。**`check:ssot-index` は section 件数と総数を検証するが
-   change_log の散文集計は検証しない**ため、この誤りは機械検査を素通りする。
-   round 1〜5 で繰り返した「記録と実体の乖離」クラスの再発であり、
-   **今回は自分が書いた記録で再発させた**。
-2. **[LOW] (a) 充足日の不一致**。§7 本文が 2026-07-31、frontmatter が 2026-08-01。
-   git 実測で WP-4256 commit `ab63db6` は 2026-08-01 であり、本文側が Revision 14
-   の残存だった。commit hash 付きで是正した。
-3. **[LOW] tombstone「有界」の暗黙前提**。distinct token 値が有界である場合に
-   限る旨を明示し、token churn 支配下では対数が書込履歴に概ね比例し得ること、
-   §13(a) へ distinct 対数と churn 率を計測項目として加えることを記載した。
-
-**再凍結後の packet**: base SHA `a911a9911e50e2d56e3b7ebde4064e6c16ec2922`、
-diff SHA-256 `92c4765be23e4440b21d6022c0f50d7e3373dc729b6ac03a6803157b3f1c5e06`、
-276行。検証: `check:ssot-index` PASS(173)、`git diff --check` PASS、
-status 集計 141/15/17(合計173)が記録と一致。
-
-**残る gate**: final human approval。承認まで DB-005 / ARC-008 は PROPOSED であり
-実装根拠にしない。
-
-### BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT 残余 (b) — 実行仕様(2026-08-01)
-
-解除条件 (a)(キー構築経路の強制)は WP-4256 で充足済み。残余は **(b) 既存永続値に
-`#` が含まれないことの検証**である。**DDL と実データ参照を伴うため人間承認ゲート
-であり、本 session では実行しない**。ここでは実行者が判断なしに走らせられるよう、
-対象と手順だけを確定する。
-
-**設計上の要点**: 別途 SELECT で棚卸しするより、**CHECK 制約の追加そのものを検証と
-する**のが強い。違反行が 1 件でもあれば `ALTER TABLE ... ADD CONSTRAINT` は失敗する
-ため、適用成功がそのまま「既存値に `#` なし」の証明になり、同時に将来の混入も
-DB 層で止まる。既存スキーマは各 ID 列に `length(x) > 0` の CHECK を既に持っており、
-`#` 排除は同じ場所に自然に収まる。
-
-**対象列**(`migrations/` の現行スキーマより。すべて `TEXT NOT NULL`):
-
-| テーブル | 列 |
-|---|---|
-| `patients` | `tenant_id`, `pharmacy_id`, `patient_id` |
-| `reception_entries` | `tenant_id`, `pharmacy_id`, `reception_id`, `patient_id` |
-| `audit_events` | `tenant_id`, `pharmacy_id`, `event_id` |
-| `outbox_events` | `tenant_id`, `pharmacy_id`, `outbox_event_id`, `aggregate_id`, `audit_event_id` |
-
-**手順**:
-
-1. **事前棚卸し(read-only、破壊的でない)**: 各列について
-   `SELECT count(*) FROM <t> WHERE position('#' in <col>) > 0;` を実行し、全て 0 で
-   あることを環境ごと(dev / staging / production)に記録する。0 でなければ
-   ここで停止し、値の由来と是正方針を人間判断へ返す。**この時点では何も変更しない**。
-2. **DDL 適用(要人間承認)**: 新規 migration で各列へ
-   `CHECK (position('#' in <col>) = 0)` を追加する。手順 1 が 0 件であることを
-   確認済みの環境にのみ適用する。適用失敗は「未検出の違反行が存在する」ことの
-   証拠であり、握りつぶさない。
-3. **DynamoDB 側**: 現時点で provisioning されておらず既存値が存在しないため
-   (b) の対象外。write 有効化前に同等の検証を設けるかは、DB-005 の該当 blocker が
-   解除される時点の判断事項とする。
-
-**この session で実行していないこと**: 上記 1 も 2 も未実行である。当環境には
-`DATABASE_URL` がなく接続先が存在しない(`pnpm db:check` が
-`DATABASE_URL is required` で停止することを確認済み)。したがって blocker は
-**維持**する。検証スクリプトを未検証のまま置くことは避け、仕様のみを確定した。
-
-### WP-4257 — frontmatter を YAML として検証する(2026-08-01)
-
-- **Status:** COMPLETED_LOCAL / MACHINE_VALIDATED / LANDED
+- **Status:** COMMITTED_LOCAL `a911a99` / MACHINE_VALIDATED / LANDED
 - **Risk:** P2 / R2。検査規則の追加と、意味を変えない引用符付与のみ。
-
-WP-4250 finalization 中に、ARC-008 の blocker 値がバッククォート(YAML の予約
-文字)で始まり frontmatter が parse 不能だったことが判明した。**`check:ssot-index`
-も round-5 の独立 review 三レーンも検出できなかった**。原因は
-`parseFrontmatter` が行単位の正規表現で `ssot_id` / `status` だけを抜いており、
-YAML としての妥当性を一切見ていなかったことである。
-
-- `scripts/check-ssot-index.mjs` へ `parseDocument` による実 YAML parse を追加し、
-  `document.errors` を violation として報告する。parse 失敗時に `undefined` を
-  返すと呼び出し側が「文書が存在しない」と誤報告して連鎖偽陽性になるため、
-  field 抽出は従来経路で続行する(この副作用は実装中に検出し修正済み)。
-- 導入直後の全 173 文書 scan で、**既存の4文書に実在の YAML 欠陥を検出**した
+- WP-4250 finalization 中に ARC-008 の blocker 値がバッククォート(YAML の予約文字)
+  で始まり frontmatter が parse 不能だったことが判明した。`check:ssot-index` も
+  round-5 の独立 review 三レーンも検出できなかった。原因は `parseFrontmatter` が
+  行単位の正規表現で `ssot_id` / `status` だけを抜き、YAML としての妥当性を一切
+  見ていなかったことである。
+- `scripts/check-ssot-index.mjs` へ実 YAML parse を追加し `document.errors` を
+  violation として報告する。parse 失敗時に `undefined` を返すと呼び出し側が
+  「文書が存在しない」と誤報告して連鎖偽陽性になるため、field 抽出は従来経路で
+  続行する。
+- 導入直後の全173文書 scan で**既存4文書に実在の YAML 欠陥を検出**
   (`payment_allocation_policy.md` / `jahis_adapter_inventory.md` /
   `audit_event_registry.md` / `claim_return_rate_kpi_policy.md`)。いずれも値に
   `: ` を含み入れ子マッピングと誤解釈されるもので、引用符で囲んで修復した。
-  **意味変更がないことは、修復後に YAML parse した実値が意図した全文字列と
-  一致することで確認済み**(40 / 65 / 325 / 56 文字)。
-- `scripts/check-scripts.mjs` に negative fixture(実際に混入したバッククォート
-  始まりの形)と positive fixture(引用済みでコロンを含む値)を追加。連鎖偽陽性が
-  出ないことも assertion で固定した。YAML error 報告を外す変異で negative 側
-  2 件が落ちることを確認済み。
+  意味変更がないことは修復後の parse 実値が意図した全文字列(40 / 65 / 325 / 56
+  文字)と一致することで確認済み。
 
-### WP-4256 — 複合キー構築の機械強制と ingress delimiter 拒否の固定(2026-07-31〜08-01)
+### WP-4256 — 複合キー構築の機械強制と ingress delimiter 拒否の固定
 
-- **Status:** COMPLETED_LOCAL / MACHINE_VALIDATED / LANDING_APPROVED(2026-08-01
-  の direct human approval「全て承認」で採番と landing を承認)
-- **Risk:** P2 / R2。CI 検査規則の追加とテスト追加のみで、production 経路の
-  挙動、contract、schema、migration、認可判定を変更しない。
-
-2026-07-31 の user direction「実際のコードを編集して」に基づき、レビューが 2 ラウンド
-連続で挙げた `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` の解除条件 (a) を実装した。
-**これらの path は WP-4250 の markdown-only allow-list の外**であり、WP-4250 の
-frozen packet(exact11 の 11 文書)には含まれない。したがって round-5 review を
-無効化していない。
-
-| Path | 変更 | 検証 |
-|---|---|---|
-| `scripts/check-boundaries.mjs` | 複合キー構築の機械検知を追加。AST 走査で `TENANT#`/`PHARMACY#` を含む literal を検出し、承認済み key codec(`apps/*/src/dynamodb/*key-codec.ts`)以外の production source にあれば exit 1。codec 限定は §10 の「DynamoDB マーシャリングはアダプタ層のみ」境界に一致させたもの。test source は codec 出力の期待値固定のため除外 | `node scripts/check-boundaries.mjs` PASS。ルール呼び出しを外す変異で negative test 3 件が落ちることを確認 |
-| `scripts/check-scripts.mjs` | 上記の positive/negative fixture を追加し、テスト登録リストへ接続 | `node scripts/check-scripts.mjs` PASS |
-| `apps/api/src/server.test.ts` | `malformedDevIdHeaderCases` へ **key-delimiter ケース 3 件**を追加。従来は blank と制御文字のみを網羅し、`branded-ids.ts` が prefix 曖昧性を理由に拒否を追加した `#` そのものが ingress で未固定だった。tenant には衝突実例 `tenant-001#PHARMACY#tenant-002` を用いる | api 849→855 PASS。`branded-ids.ts` の delimiter 拒否を外す変異で新規 6 件がちょうど落ちることを確認 |
-
-**検知ルールの限界(実測)**: template literal と `+` 連結は検知するが、marker を
-分割する形(`const P="TENANT"; ${P}#${t}`)と `["TENANT",t].join("#")` は通過する。
-静的検知の原理的限界であり、DB-005 §7 は「迂回が入れば CI で落ちる保証であって
-迂回経路が存在しないことの証明ではない」と記載済み。この限界記述を実測 4 変種
-ベースの具体記述へ精緻化する作業は、packet hash を動かして review を無効化しない
-よう **verifier lane の verdict 取得後**に回す。
-
-`BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` の残余は **(b) 既存永続値の `#` 含有検証**
-のみ。DDL/DML と production data 参照を伴うため人間承認が必要であり、本 session では
-着手しない。blocker は維持する。
-
-## 8. Implemented / Landing State — nonclaimable
+- **Status:** COMMITTED_LOCAL `ab63db6` / MACHINE_VALIDATED / LANDED
+- **Risk:** P2 / R2。CI 検査規則とテストの追加のみで、production 経路の挙動、
+  contract、schema、migration、認可判定を変更しない。
+- `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` の解除条件 (a) を実装した。
+  `check-boundaries.mjs` が AST 走査で `TENANT#`/`PHARMACY#` を含む literal を検出し、
+  承認済み key codec 以外の production source にあれば exit 1 とする。
+  `server.test.ts` へ key-delimiter の ingress ケース3件を追加(tenant には衝突実例
+  `tenant-001#PHARMACY#tenant-002` を使用)。
+- **検知ルールの限界(実測4変種):** template literal と `+` 連結は検知するが、
+  marker を分割する形(`const P="TENANT"; ${P}#${t}`)と `["TENANT",t].join("#")`
+  は通過する。静的検知の原理的限界であり、DB-005 §7 は「迂回が入れば CI で落ちる
+  保証であって迂回経路が存在しないことの証明ではない」と記載済み。
+- 残余 (b) は Human gates を参照。
 
 ### WP-4255 — Prevalidate audit-read response before recording success
 
-- **Status:** COMPLETED_LOCAL / MACHINE_VALIDATED / INDEPENDENT_PASS / SECURITY_PASS / DATA_INTEGRITY_PASS / LANDING_NOT_REQUESTED
+- **Status:** COMMITTED_LOCAL `b9fc31a` / MACHINE_VALIDATED / INDEPENDENT_PASS / SECURITY_PASS / DATA_INTEGRITY_PASS / PUSH_NOT_REQUESTED
 - **Risk:** P2 / R2. Reorders one authorized audit-read path to prevent a durable `audit.viewed` success when the eventual HTTP response cannot satisfy the existing API schema; no contract, event type, repository, migration, transaction, authorization, idempotency, retention, or production-state change.
 - **Dependency:** separate prerequisite remediation for WP-4254, now independently accepted. WP-4254 owns no API change; WP-4255 owns only its exact API/test and active-board hunks.
 - **Exact owned paths:** `Plans.md`, `State.md`, `apps/api/src/server.ts`, `apps/api/src/audit-log.test.ts`.
@@ -876,11 +215,11 @@ frozen packet(exact11 の 11 文書)には含まれない。したがって roun
 - **Acceptance:** a core-valid verified event with a 129-character displayed target ID returns 500 with `no-store`, does not echo the raw ID, does not call the clock, does not call `record`, and leaves persisted count unchanged; a successful route appends exactly one `audit.viewed`, while that newly appended view is absent from the exact response snapshot; an interleaving writer after list does not enter the response snapshot, whose `totalCount` and `checkedCount` remain N, while persisted chain N+2 stays valid and ends in exactly one `audit.viewed` targeting `view:N`; existing broken-chain reason/count/order/raw-window omission tests remain green.
 - **Observed validation:** focused audit 73/73 PASS; API 808 PASS plus 14 expected PostgreSQL skips; workspace 1,782 PASS plus the same 14 expected skips; full workspace typecheck sequential PASS; build PASS with 11/11 static pages; OpenAPI, boundaries, SSOT index 173, and diff check PASS. Secrets remains fail-closed because of the existing external `.codegraph` symlink and is not claimed as PASS.
 - **Independent review:** verifier, security, and data-integrity reviews PASS. No contract/repository/audit-core/migration/event/idempotency/transaction expansion was accepted.
-- **Remaining gate:** exact-path landing is unrequested. Commit, push, deploy, and production mutation were not performed.
+- **Remaining gate:** landed at `b9fc31a`. Push, deploy, and production mutation were not requested or performed.
 
 ### WP-4254 — Remove the user-facing audit confirmation screen
 
-- **Status:** COMPLETED_LOCAL / MACHINE_VALIDATED / INDEPENDENT_PASS / LANDING_NOT_REQUESTED
+- **Status:** COMMITTED_LOCAL `2db1ec1` / MACHINE_VALIDATED / INDEPENDENT_PASS / PUSH_NOT_REQUESTED
 - **Risk:** C3 / R3 pre-implementation governance. Removes a user-facing U2 audit screen while preserving all audit production, authorization, append-only persistence, integrity verification, API contracts, and the existing max-200 response projection. Direct user instruction supplies the human product decision; independent security, privacy, medical-safety, and data-integrity review remains mandatory before implementation and does not constitute human risk acceptance.
 - **Outcome:** pharmacists and general Web users no longer see or operate SCR-028; `/admin` remains a truthful placeholder for future tenant/pharmacy/user/permission management.
 - **Owner:** Codex root as sole maintainer. All mapper, pre-plan, security, privacy, medical-safety, data-integrity, and independent verification roles are read-only.
@@ -892,8 +231,7 @@ frozen packet(exact11 の 11 文書)には含まれない。したがって roun
 - **Rollback:** revert only the Web consumer and this atomic SSOT/planning batch. Never delete audit rows, roll back an applied migration, weaken authorization/integrity, or alter the audit API. If SSOT and Web source cannot finalize atomically, restore the prior APPROVED SSOT state and stop.
 - **Human gate:** the direct user instruction from the pharmacist/product authority authorizes only removal of the user-facing screen. It does not accept residual production incident-investigation risk or authorize weakening audit retention, authorization, integrity, production controls, or compliance evidence provision; release stays blocked until the production operational path is separately approved and proven.
 - **Observed validation:** focused shell smoke 15 and Web 423 PASS; WP-4255 focused audit 73/73 PASS; API 808 PASS plus 14 expected PostgreSQL skips; workspace 1,782 PASS plus the same 14 expected skips; full workspace typecheck sequential PASS; build PASS with 11/11 static pages; OpenAPI, boundaries, SSOT index 173, and diff check PASS. Secrets remains fail-closed because of the existing external `.codegraph` symlink and is not claimed as PASS.
-- **Remaining gate:** the separately owned WP-4255 prerequisite has independent verifier, security, and data-integrity PASS. WP-4254 retains strict screen-removal/SSOT ownership separation from the API remediation and is completed-local but unlanded. Commit, push, deploy, and production mutation remain unrequested.
-- **Commit/push:** not requested.
+- **Remaining gate:** the separately owned WP-4255 prerequisite has independent verifier, security, and data-integrity PASS. WP-4254 retained strict screen-removal/SSOT ownership separation from the API remediation and landed at `2db1ec1` on 2026-08-01, after WP-4250 finalization made IDX-001 APPROVED and cleared its own Abort clause. Push, deploy, and production mutation remain unrequested.
 
 ### WP-4253 — Refresh the stable software baseline
 
@@ -929,8 +267,6 @@ frozen packet(exact11 の 11 文書)には含まれない。したがって roun
 - **Human gate:** none for local repository dependency and Mac mini runtime updates. Migration application, deploy/publish, production write, release acceptance, and any residual security/privacy exception remain separately gated.
 - **Exact first command:** `pnpm outdated -r --format json`
 
-### Human-gated next — nonclaimable
-
 ### WP-4050 — Atomic reception command boundary
 
 - **Status:** COMMITTED_LOCAL / MACHINE_VALIDATED / INDEPENDENT_REVIEW_PENDING /
@@ -963,25 +299,68 @@ frozen packet(exact11 の 11 文書)には含まれない。したがって roun
 - **Human gate:** explicit R3 pre-implementation review by human product/safety authority; migration apply and production write need separate approval.
 - **Exact first command:** `rg -n "POST /reception|receptionRepository\\.create|auditRepository\\.record|BEGIN|COMMIT|Outbox|idempotency" apps/api/src/server.ts apps/api/src/db apps/api/src/reception-repository.ts apps/api/src/audit-repository.ts docs/api/reception_queue_contract.md docs/domain/domain_model.md`
 
-### READY — maximum two
+## 5. Human gates
 
-No READY item is claimable while WP-4250 is
-`WIP_REVIEW / PROPOSED / DOMAIN_REVIEW_FAIL / CHANGES_REQUIRED`.
-Drafting/review authorization and the recommended work order are recorded; the
-remaining gate is atomic exact11 correction, independent re-review, and final
-human SSOT approval.
+未解除の human gate は次のとおり。いずれも人間の明示承認まで着手しない。
 
-## Human gates
+- **WP-4050 R3 implementation scope と repair semantics。** 実装自体は
+  `42ef15c`+`bf17cea` へ COMMITTED_LOCAL だが、独立レビューが未取得であり
+  (`independence_not_satisfied` ×2)、codex lane 復帰(2026-08-05)後の
+  再レビューが残存 gate である。
+- **WP-4258 の final human SSOT approval。** 承認まで DB-005 / ARC-008 は
+  PROPOSED(0.1.4)であり、実装根拠にしない。
+- **BUG-4263 — secret scan の走査スコープ定義。** security posture の変更を伴う
+  ため `DECISION_REQUIRED`。詳細は Prioritized Backlog を参照。
+- **`BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b)。** 実行仕様は下に確定済み。
+- migration application、production write、deploy、external send、pilot、
+  standards-conformance 主張、release 判断のすべて。
 
-- WP-4050 R3 implementation scope and repair semantics.
-- WP-4250 exact11 PROPOSED amendment finalization after all required
-  architecture/API/FHIR/data-integrity/security/privacy/medical-safety/product
-  reviews and corrections. ARC-008 retains its `amends` list until that
-  finalization.
-- Any migration application, production write, deploy, external send, pilot,
-  standards-conformance claim, or release decision.
+WP-4250 exact11 の finalization gate は 2026-08-01 の direct human authority で
+充足済みだが、**充足したのは SSOT 改版の承認のみ**である。ARC-008 の `amends` は
+bounded scope のため解除していない。
 
-## NOT NOW
+### BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT 残余 (b) — 実行仕様(2026-08-01)
+
+解除条件 (a)(キー構築経路の強制)は WP-4256 で充足済み。残余は **(b) 既存永続値に
+`#` が含まれないことの検証**である。**DDL と実データ参照を伴うため人間承認ゲート
+であり、未実行である**。ここでは実行者が判断なしに走らせられるよう、
+対象と手順だけを確定する。
+
+**設計上の要点**: 別途 SELECT で棚卸しするより、**CHECK 制約の追加そのものを検証と
+する**のが強い。違反行が 1 件でもあれば `ALTER TABLE ... ADD CONSTRAINT` は失敗する
+ため、適用成功がそのまま「既存値に `#` なし」の証明になり、同時に将来の混入も
+DB 層で止まる。既存スキーマは各 ID 列に `length(x) > 0` の CHECK を既に持っており、
+`#` 排除は同じ場所に自然に収まる。
+
+**対象列**(`migrations/` の現行スキーマより。すべて `TEXT NOT NULL`):
+
+| テーブル | 列 |
+|---|---|
+| `patients` | `tenant_id`, `pharmacy_id`, `patient_id` |
+| `reception_entries` | `tenant_id`, `pharmacy_id`, `reception_id`, `patient_id` |
+| `audit_events` | `tenant_id`, `pharmacy_id`, `event_id` |
+| `outbox_events` | `tenant_id`, `pharmacy_id`, `outbox_event_id`, `aggregate_id`, `audit_event_id` |
+
+**手順**:
+
+1. **事前棚卸し(read-only、破壊的でない)**: 各列について
+   `SELECT count(*) FROM <t> WHERE position('#' in <col>) > 0;` を実行し、全て 0 で
+   あることを環境ごと(dev / staging / production)に記録する。0 でなければ
+   ここで停止し、値の由来と是正方針を人間判断へ返す。**この時点では何も変更しない**。
+2. **DDL 適用(要人間承認)**: 新規 migration で各列へ
+   `CHECK (position('#' in <col>) = 0)` を追加する。手順 1 が 0 件であることを
+   確認済みの環境にのみ適用する。適用失敗は「未検出の違反行が存在する」ことの
+   証拠であり、握りつぶさない。
+3. **DynamoDB 側**: 現時点で provisioning されておらず既存値が存在しないため
+   (b) の対象外。write 有効化前に同等の検証を設けるかは、DB-005 の該当 blocker が
+   解除される時点の判断事項とする。
+
+**未実行の記録**: 上記 1 も 2 も未実行である。当環境には `DATABASE_URL` がなく
+接続先が存在しない(`pnpm db:check` が `DATABASE_URL is required` で停止することを
+確認済み)。したがって blocker は**維持**する。検証スクリプトを未検証のまま置く
+ことは避け、仕様のみを確定した。
+
+## 6. NOT NOW
 
 - WP-9002 metadata loops and WP-4158/4159/4160 evidence expansion.
 - Full AWS/DynamoDB/FHIR server/PH-OS synchronization and 22-domain fan-out.
@@ -990,26 +369,29 @@ human SSOT approval.
 - Any task listed only in the frozen inventory archive
   (`Plans.legacy-archive-20260731.md`).
 
-## Compact crosswalk
+## 7. Compact crosswalk
 
 | Legacy work | Disposition |
 |---|---|
 | WP-4240 | absorbed by completed-local WP-4253; PostCSS remediation remains mandatory |
 | WP-4255 | COMMITTED_LOCAL at `b9fc31a`(2026-07-31 landing、direct user instruction による)/ INDEPENDENT_PASS / SECURITY_PASS / DATA_INTEGRITY_PASS |
-| WP-4254 | COMPLETED_LOCAL / INDEPENDENT_PASS / **UNLANDED — 自身の Abort 条項(IDX-001 が PROPOSED の間は Web source を削除しない)により WP-4250 帰結へ従属**。index frontmatter で v0.4.45(WP-4254)と v0.4.46(WP-4250)が不可分のため hunk 分離着地は不能(2026-07-31 検証) |
+| WP-4254 | COMMITTED_LOCAL at `2db1ec1`(2026-08-01)/ INDEPENDENT_PASS。自身の Abort 条項(IDX-001 が PROPOSED の間は Web source を削除しない)により WP-4250 finalization まで保留されていたが、`89275d2` で IDX-001 が APPROVED となり条項が解除された |
 | WP-4253 | COMMITTED_LOCAL / PUSH_NOT_REQUESTED at `9d8dbc0`; WP-4240 superseded。host 拡張の取りこぼし(`~/.local/bin/pnpm` 11.17.0 残存)を 2026-07-31 に検出・修正(→11.18.0)— HOST_RUNTIME_ALIGNED は同日まで不完全だった |
 | WP-4050 | COMMITTED_LOCAL at `42ef15c`+`bf17cea`(2026-07-31)。R3 gate は direct user instruction で充足 |
 | WP-4236 / WP-4162 / WP-9008 | COMMITTED_LOCAL at `68e0d77` / `02a3409`+`566f386` / `2c84e66`(2026-07-31)。各 status 行参照 |
 | WP-5101 | ドラフト 13〜17号+3-lane fresh-context checker 訂正を `3da2466` で着地。checker verdict は REQUEST_CHANGES→訂正適用済み。再チェックと human 内容判断(10 論点)は未取得 — 各ドラフト未決欄と session 記録参照 |
-| WP-4250 | CURRENT / WIP_REVIEW / PROPOSED / DOMAIN_REVIEW_FAIL / CHANGES_REQUIRED |
+| WP-4250 | FINALIZED / APPROVED at `89275d2`(2026-08-01)。承認範囲は SSOT 改版のみで、登録済み blocker は全件据え置き |
+| WP-4256 / WP-4257 / WP-4258 | COMMITTED_LOCAL at `ab63db6` / `a911a99` / `1dedf27`。WP-4258 のみ final human SSOT approval が残存 |
+| BUG-4260 / BUG-4262 / BUG-4261 | COMMITTED_LOCAL at `fe03cf0` / `fe03cf0` / `6813750`(2026-08-01 バグ走査)。独立レビュー未取得 |
 | WP-0042 / WP-7001 / broad FHIR-AWS work | bounded by current WP-4250; remainder NOT_NOW |
 | WP-9002 / WP-4158 / WP-4159 / WP-4160 | FROZEN / GIT_HISTORY_ONLY |
 | all other incomplete entries below | NOT_NOW until a READY slot is deliberately opened |
 
-## 4. Prioritized Backlog
+## 8. Prioritized Backlog
 
 These entries are evidence-backed but do not override the active milestone or
-human gates. They are not claimable while WP-4250 review is WIP.
+human gates. Registration here is not a claim: an entry becomes claimable only
+when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 ### P1
 
@@ -1495,7 +877,7 @@ human gates. They are not claimable while WP-4250 review is WIP.
   reduced-motion / forced-colors 対応
 - **Stop:** 縮退を理由に安全情報を畳まない
 
-## 5. Investigations
+## 9. Investigations
 
 ### INV-20260730-01 — Prove a bounded reception-queue read contract
 
@@ -1511,10 +893,13 @@ human gates. They are not claimable while WP-4250 review is WIP.
   decision with a separate Task Packet. Do not issue an implementation task
   until the user-value/complexity tradeoff is established.
 
-## 6. Resolved Work-Selection Decision
+## 10. Resolved Work-Selection Decision
 
 ### DEC-20260730-01 — Finish WP-4250 review before implementation selection
 
+- **Status:** CLOSED(2026-08-01)。WP-4250 は `89275d2` で FINALIZED / APPROVED
+  となり、本決定が定めた順序は履行された。以降の work selection は
+  `DEVELOPMENT_POLICY.md §8` に戻る。以下は決定当時の記録である。
 - **Decision:** recommended ordering accepted. Finish the already-authorized
   WP-4250 correction/review/final-human-decision path without implementation;
   do not claim WP-4050 or any other implementation task concurrently.
@@ -1530,7 +915,7 @@ human gates. They are not claimable while WP-4250 review is WIP.
   implementation, migration application, landing, deploy, conformance, or
   production action.
 
-## 7. Deferred / Known Release Blockers
+## 11. Deferred / Known Release Blockers
 
 - Bounded audit verification, read-driven self-growth, retention-complete
   export, and production incident-response path: known in SEC-007; do not
@@ -1541,14 +926,15 @@ human gates. They are not claimable while WP-4250 review is WIP.
 - Patient-search URL PHI, all-response `no-store`, pharmacy-level DB isolation,
   production qualification/purpose-of-use, and durable FHIR audit behavior:
   explicit WP-4250 correction blockers; no claim of current resolution.
-- `State.md` still contains duplicated active detail and stale WP-4253
-  no-commit wording. It is outside this Plans-only Goal and is non-authoritative;
-  use the active board and live Git status above.
+- `check:secrets` は working tree 直下の `.codegraph` symlink により exit 1 の
+  ままである。リポジトリスコープ内容だけを走査すれば PASS することは実測済みで、
+  スコープ定義の変更は security posture の変更を伴うため BUG-4263 として
+  human gate に置いている。
 - Prescription, dispense, calculation consumer, billing, JAHIS/QR, schedule,
   visit, report, task/notification, PH-OS sync, and broad FHIR/AWS rollout:
   NOT NOW under the current policy.
 
-## 9. Completed
+## 12. Completed
 
 - No uncommitted item is moved to `VERIFIED_COMPLETE` by this static audit.
 - 2026-07-31(direct user instruction「ヒューマンゲートを全て許可」+ commit 承認
@@ -1559,10 +945,18 @@ human gates. They are not claimable while WP-4250 review is WIP.
   (PostgreSQL 統合込み)を実測。push・deploy・production 変更なし。
   **独立レビューは全件未取得**(subagent 報告経路劣化+codex usage limit)—
   2026-08-05 の codex lane 復帰後の再レビューが残存 gate。
-- WP-4253 is committed locally at `9d8dbc0`. WP-4254 remains an uncommitted
-  ownership hold(WP-4250 帰結へ従属 — crosswalk 参照)。
+- WP-4253 is committed locally at `9d8dbc0`.
+- 2026-08-01(direct user instruction「全ての変更をグループごとにコミット」):
+  working tree 全体を所有グループごとに local commit した。work-selection charter
+  と agent instruction(`4d889d5`)、legacy refactor ledger の FROZEN 化
+  (`7650cad`)、WP-4254(`2db1ec1`)、WP-4050 outbox intent profile の PROPOSED 化
+  (`f7eeb67`)、BUG-4260 + BUG-4262(`fe03cf0`)、BUG-4261(`6813750`)、
+  台帳(`f91ae78`)。landing 直前の tree 全体に対して `typecheck` / `lint` /
+  `test:scripts` / apps/web 437 tests / `check-ssot-index` 173 / `git diff --check`
+  がいずれも PASS。**各グループを exact-path stage で分離したため、中間 commit 単体
+  では gate 検証していない。** push・deploy・production 変更なし。独立レビュー未取得。
 
-## 10. Superseded / Archived
+## 13. Superseded / Archived
 
 | Item | Disposition |
 |---|---|
@@ -1577,7 +971,7 @@ instruction and archived in full to `Plans.legacy-archive-20260731.md`
 the pre-existing non-HEAD uncommitted provenance required by the previous
 version of this note; it remains NONCLAIMABLE history.
 
-## 11. Scan Ledger
+## 14. Scan Ledger
 
 | Scan area | Last commit | Status | Main finding | Next action |
 |---|---|---|---|---|
