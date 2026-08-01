@@ -40,8 +40,8 @@
 | Last update | 2026-08-01 JST |
 | Active Goal | なし。WIP 0 件で、次の claim は human gate 解除待ち |
 | Current critical path | Milestone 1 exit の残余 — WP-4050 の独立レビュー(codex lane 復帰 2026-08-05)と WP-4258 の final human SSOT approval |
-| Main blocker | 上記2件に加え、BUG-4263(secret scan スコープ定義)と `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) がいずれも human gate |
-| Runtime verification | 2026-08-01 に実行済み。`typecheck` / `lint` / `test:scripts` / apps/web 437 tests / `check-ssot-index` 173 / `git diff --check` PASS。`check:secrets` のみ BUG-4263 により exit 1 |
+| Main blocker | WP-4050 の独立レビュー(2026-08-05 待ち)と `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) の DDL human gate |
+| Runtime verification | 2026-08-01 に実行済み。`typecheck` / `lint` / `test:scripts` / apps/web 437 tests / `check-ssot-index` 173 / `check:boundaries` / `check:calculation-purity` / `check:secrets` / `git diff --check` いずれも PASS |
 | Next scan cursor | diff-first from `f91ae78`; reset on new High/Medium finding or reprioritization |
 
 実装証跡は Git diff と commit にある。本書は landing 済み項目については index に
@@ -148,8 +148,9 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 
 ### WP-4258 — round-5 deferred LOW の改版
 
-- **Status:** COMMITTED_LOCAL `1dedf27` / INDEPENDENT_REVIEW_DONE /
-  **FINAL_HUMAN_APPROVAL_REQUIRED**(Human gates 参照)
+- **Status:** FINALIZED / APPROVED(2026-08-01)。改版は `1dedf27`、APPROVED 化は
+  `1ec57d5`。DB-005 / ARC-008 は 0.1.4 APPROVED、IDX-001 は 0.4.49(集計
+  143/13/17、合計173)。承認範囲は SSOT 改版のみで、登録済み blocker は据え置き
 - **対象:** DB-005(0.1.3→0.1.4)、ARC-008(0.1.3→0.1.4)、IDX-001(0.4.47→0.4.48)
 - **Risk:** P2 / R2。撤回と記述精緻化のみで capability の追加・制約の緩和はない。
 - **主要な変更:** §3.2 の pair 全体削除特例を**撤回**。特例の論拠(期限後は latest
@@ -307,17 +308,16 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
   `42ef15c`+`bf17cea` へ COMMITTED_LOCAL だが、独立レビューが未取得であり
   (`independence_not_satisfied` ×2)、codex lane 復帰(2026-08-05)後の
   再レビューが残存 gate である。
-- **WP-4258 の final human SSOT approval。** 承認まで DB-005 / ARC-008 は
-  PROPOSED(0.1.4)であり、実装根拠にしない。
-- **BUG-4263 — secret scan の走査スコープ定義。** security posture の変更を伴う
-  ため `DECISION_REQUIRED`。詳細は Prioritized Backlog を参照。
 - **`BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b)。** 実行仕様は下に確定済み。
 - migration application、production write、deploy、external send、pilot、
   standards-conformance 主張、release 判断のすべて。
 
-WP-4250 exact11 の finalization gate は 2026-08-01 の direct human authority で
-充足済みだが、**充足したのは SSOT 改版の承認のみ**である。ARC-008 の `amends` は
-bounded scope のため解除していない。
+2026-08-01 の direct human authority「全て承認」により、WP-4258 の final SSOT
+approval と BUG-4263 の設計判断(案① — 走査カバレッジ不変、ignore データは
+scope violation の abort/skip 判定にのみ使用)は解除済みである。**充足したのは
+いずれも当該範囲のみ**であり、WP-4250 / WP-4258 の承認範囲は SSOT 改版に限られ、
+登録済み blocker は 1 件も解除していない。ARC-008 の `amends` も bounded scope の
+ため維持する。
 
 ### BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT 残余 (b) — 実行仕様(2026-08-01)
 
@@ -381,7 +381,8 @@ DB 層で止まる。既存スキーマは各 ID 列に `length(x) > 0` の CHEC
 | WP-4236 / WP-4162 / WP-9008 | COMMITTED_LOCAL at `68e0d77` / `02a3409`+`566f386` / `2c84e66`(2026-07-31)。各 status 行参照 |
 | WP-5101 | ドラフト 13〜17号+3-lane fresh-context checker 訂正を `3da2466` で着地。checker verdict は REQUEST_CHANGES→訂正適用済み。再チェックと human 内容判断(10 論点)は未取得 — 各ドラフト未決欄と session 記録参照 |
 | WP-4250 | FINALIZED / APPROVED at `89275d2`(2026-08-01)。承認範囲は SSOT 改版のみで、登録済み blocker は全件据え置き |
-| WP-4256 / WP-4257 / WP-4258 | COMMITTED_LOCAL at `ab63db6` / `a911a99` / `1dedf27`。WP-4258 のみ final human SSOT approval が残存 |
+| WP-4256 / WP-4257 / WP-4258 | COMMITTED_LOCAL at `ab63db6` / `a911a99` / `1dedf27`。WP-4258 は 2026-08-01 の direct human approval で APPROVED 化済み(DB-005 / ARC-008 0.1.4、IDX-001 0.4.49) |
+| BUG-4263 | DECIDED(案①)/ COMMITTED_LOCAL at `bf0b402`。`check:secrets` が exit 0 へ復帰 |
 | BUG-4260 / BUG-4262 / BUG-4261 | COMMITTED_LOCAL at `fe03cf0` / `fe03cf0` / `6813750`(2026-08-01 バグ走査)。独立レビュー未取得 |
 | WP-0042 / WP-7001 / broad FHIR-AWS work | bounded by current WP-4250; remainder NOT_NOW |
 | WP-9002 / WP-4158 / WP-4159 / WP-4160 | FROZEN / GIT_HISTORY_ONLY |
@@ -546,7 +547,8 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 - **Classification:** Confirmed Bug(診断可能性)。
 - **Status:** COMMITTED_LOCAL `6813750` / PUSH_NOT_REQUESTED(2026-08-01)。
-  **scope 定義そのものは未修正 — BUG-4263 参照**。
+  上流原因である scope 定義も同日 BUG-4263 の決定で修正済み。本 entry の診断行は
+  scope violation が実際に abort する経路で引き続き有効である。
 - **Confidence:** High。
 - **User / safety impact:** `AGENTS.md` は Oracle 送信前と landing 前に
   `pnpm check:secrets` を要求する。現 working tree ではこのゲートが
@@ -581,8 +583,26 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 #### BUG-4263 — secret scan の走査スコープが「リポジトリ内容」ではなく cwd 配下の実ファイル系である
 
-- **Classification:** Design Debt / **DECISION_REQUIRED**(未実装)。
-- **Status:** RECORDED_ONLY。
+- **Classification:** Design Debt / DECISION_REQUIRED → **DECIDED**(2026-08-01、
+  direct user instruction「全て承認」により案①を採用)。
+- **Status:** COMMITTED_LOCAL / MACHINE_VALIDATED。独立レビュー未取得。
+- **採用した決定(案①):** 走査カバレッジは一切変えない。ignore データを使うのは
+  **scope violation を abort するか skip するかの判定 1 点のみ**とする。すなわち
+  (a) 走査スコープは cwd 配下のまま、(b) gitignore 済み `.env` は従来どおり走査対象
+  に残す、(c) work tree の外では ignore データが存在しないため従来どおり fail-closed。
+  これにより security posture の緩和は「git が ignore しろと指示したエントリは
+  リポジトリ内容ではない」という 1 点に限定される。
+- **実装:** `isExcludedFromRepositoryContent()` が `git check-ignore -q` で判定し、
+  `skipOrFailScope()` が skip か abort を決める。`git check-ignore` は tracked path を
+  「ignore されていない」と報告するため、tracked = リポジトリ内容という境界がそのまま
+  得られる。非 0 終了(git 不在・設定エラーを含む)は「内容として扱う」へ倒す。
+  skip したパスは必ず stderr に列挙し、無言の縮退にしない。
+- **Regression evidence:** work tree 内 fixture 3 件(除外 symlink → PASS + skip 報告 /
+  非除外 symlink → 従来どおり abort / gitignore 済み `.env` の合成鍵 → 検出)と、
+  非 git root に `.gitignore` を置いても fail-closed が維持される fixture 1 件。
+  変異試験で双方向を確認 — 除外判定を常に false にすると 3 件、常に true にすると
+  別の 3 件が落ちる。
+- **効果:** `pnpm check:secrets` が exit 0 に復帰(`.codegraph` を skip として報告)。
 - **Confidence:** High(現象と原因は実測済み — BUG-4261 の evidence を参照)。
 - **問題:** `scripts/check-secrets.mjs:13` は `rootDir = process.cwd()` を走査根と
   し、`.gitignore` / `.git/info/exclude` を一切参照しない。したがって開発者ローカルの
@@ -926,10 +946,11 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 - Patient-search URL PHI, all-response `no-store`, pharmacy-level DB isolation,
   production qualification/purpose-of-use, and durable FHIR audit behavior:
   explicit WP-4250 correction blockers; no claim of current resolution.
-- `check:secrets` は working tree 直下の `.codegraph` symlink により exit 1 の
-  ままである。リポジトリスコープ内容だけを走査すれば PASS することは実測済みで、
-  スコープ定義の変更は security posture の変更を伴うため BUG-4263 として
-  human gate に置いている。
+- `check:secrets` の走査スコープは BUG-4263 の決定で「cwd 配下を走査し、ignore
+  データは scope violation の abort/skip 判定にのみ使う」へ確定した。カバレッジは
+  不変だが、**「git が ignore しろと指示したエントリはリポジトリ内容ではない」**
+  という前提を 1 つ受け入れている。この前提が崩れる運用(意図せず ignore された
+  リポジトリ内容)が現れた場合は再判断が要る。
 - Prescription, dispense, calculation consumer, billing, JAHIS/QR, schedule,
   visit, report, task/notification, PH-OS sync, and broad FHIR/AWS rollout:
   NOT NOW under the current policy.

@@ -183,9 +183,11 @@
   that failed rounds 1–4. `BLOCKED_INDEPENDENT_VERIFIER_LANE_UNAVAILABLE` is
   therefore cleared.
 - **WP-4258 (2026-08-01):** the three LOW findings WP-4250's round-5 verifier
-  deferred are now folded in. DB-005 and ARC-008 are back at **PROPOSED**
-  (0.1.3 → 0.1.4) pending approval; IDX-001 stays APPROVED at 0.4.48 as a
-  derived record. The §3.2 whole-pair deletion special case is **withdrawn**
+  deferred are now folded in, and the batch is **APPROVED** under the direct
+  human authority of 2026-08-01. DB-005 and ARC-008 went 0.1.3 → 0.1.4 through
+  PROPOSED and are now APPROVED with `effective_from` 2026-08-01; IDX-001 is at
+  0.4.49 as a derived record, tallies 143/13/17 over 173 documents. The approval
+  covers the SSOT amendment only and clears no registered blocker. The §3.2 whole-pair deletion special case is **withdrawn**
   because Revision 14's mechanical ConditionCheck cannot express it (a latest
   delta has no superseding delta), which also resolves the standing
   contradiction with §12's "deleting the latest delta is prohibited". An
@@ -201,12 +203,14 @@
   corrected. Re-frozen packet:
   `92c4765be23e4440b21d6022c0f50d7e3373dc729b6ac03a6803157b3f1c5e06`
   (base `a911a99…`, 276 lines).
-- **Next action:** human decision. The maker/checker separation R4 requires is
-  now satisfied by three delivered lanes; what remains is **final human SSOT
-  approval** of the exact11 PROPOSED batch, plus a scope decision on the
-  unnumbered code changes listed under dirty ownership below. The codex second
-  opinion is unavailable until 2026-08-05 (usage limit) and is recorded, not
-  counted. No implementation or landing before those gates.
+- **Next action:** the exact11 batch and its WP-4258 follow-up are both APPROVED
+  as of 2026-08-01, and the whole working tree is landed in grouped local
+  commits. What remains is not a decision but a wait: the codex second opinion
+  is unavailable until 2026-08-05 (usage limit), so WP-4050's independent review
+  and the review of everything landed on 2026-08-01 are still outstanding. A
+  local commit is not review evidence. The only open human gate is
+  `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` residual (b), which needs a live
+  database and a migration approval. No implementation beyond those bounds.
 - **Deferred packet-body corrections (round-5 verifier LOW ×3).** These are the
   only findings that touch the exact11 body. They are deliberately **not**
   applied, because applying them would move the frozen packet hash and void the
@@ -437,13 +441,11 @@ BUG-4261 / BUG-4262 が正本であり、本節は landing 後も残る blocker 
     (上の「Environment blocker for validation」に記録された 11.17.0 ドリフトは
     現時点では解消している)。
 - **Remaining blockers:**
-  - `pnpm check:secrets` は exit 1 のまま。原因は working tree 直下の
-    `.codegraph` symlink(`.git/info/exclude` 済み = リポジトリ内容外)。
-    走査スコープ定義の変更は security posture の変更を伴うため
-    `BUG-4263 / DECISION_REQUIRED` として人間判断待ち。
-    リポジトリスコープ内容(実在 450 ファイル)だけを複製して同スクリプトを
-    走らせると `Secret scan passed.` / exit 0 を実測しており、検出対象の
-    secret は存在しない。
+  - `pnpm check:secrets` は 2026-08-01 の BUG-4263 決定(案①)で exit 0 へ復帰した。
+    `.codegraph` は「リポジトリ内容外」として skip され、skip したことは stderr へ
+    必ず列挙される。走査カバレッジは不変で、gitignore 済み `.env` も従来どおり
+    走査対象である。受け入れた前提は「git が ignore しろと指示したエントリは
+    リポジトリ内容ではない」の 1 点のみ。
   - 独立レビュー未取得(maker/checker 分離未充足)。local commit 済みであることは
     review evidence にならない。
   - push は要求されておらず実行していない。`origin/main` との分岐は local 側のみ。
