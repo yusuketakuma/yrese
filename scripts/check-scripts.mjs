@@ -1686,11 +1686,28 @@ async function testSecretAllowlistAndDetection() {
   await writeText(externalSecret, `api_key='${externalCredential}'\n`);
   await mkdir(symlinkRoot, { recursive: true });
   await symlink(externalSecret, path.join(symlinkRoot, "linked.ts"));
-  invalidScopes.push({ label: "eligible symlink", root: symlinkRoot });
+  invalidScopes.push({
+    label: "eligible symlink",
+    root: symlinkRoot,
+    offendingPath: "linked.ts",
+  });
   const ignoredWrongKind = path.join(tempRoot, "secrets-ignored-wrong-kind");
   await writeText(path.join(ignoredWrongKind, "README.md"), "clean eligible text\n");
   await writeText(path.join(ignoredWrongKind, "node_modules"), "do-not-echo");
-  invalidScopes.push({ label: "ignored directory name as file", root: ignoredWrongKind });
+  invalidScopes.push({
+    label: "ignored directory name as file",
+    root: ignoredWrongKind,
+    offendingPath: "node_modules",
+  });
+  const nestedSymlinkRoot = path.join(tempRoot, "secrets-nested-symlink");
+  await writeText(path.join(nestedSymlinkRoot, "README.md"), "clean eligible text\n");
+  await mkdir(path.join(nestedSymlinkRoot, "tools"), { recursive: true });
+  await symlink(path.dirname(externalSecret), path.join(nestedSymlinkRoot, "tools", "linked-dir"));
+  invalidScopes.push({
+    label: "nested directory symlink",
+    root: nestedSymlinkRoot,
+    offendingPath: "tools/linked-dir",
+  });
   for (const fixture of invalidScopes) {
     const result = runNode("check-secrets.mjs", [], { cwd: fixture.root });
     const output = outputOf(result);
@@ -1700,6 +1717,18 @@ async function testSecretAllowlistAndDetection() {
     assert(!output.includes(fixture.root), `${fixture.label} must not echo the root path`);
     assert(!output.includes(externalCredential), `${fixture.label} must not echo target content`);
     assert(!output.includes("do-not-echo"), `${fixture.label} must not echo skipped content`);
+    // A scope abort skips every file, so the operator must be told which entry broke it.
+    if (fixture.offendingPath === undefined) {
+      assert(
+        !output.includes("Scope was broken by:"),
+        `${fixture.label} has no single offending entry and must not name one`,
+      );
+    } else {
+      assert(
+        output.includes(`Scope was broken by: ${fixture.offendingPath}`),
+        `${fixture.label} should name the repository-relative offending path`,
+      );
+    }
   }
 
   const allowRoot = path.join(tempRoot, "secrets-allow");
@@ -1883,6 +1912,10 @@ async function testSecretAllowlistAndDetection() {
   const npmrcSymlinkOutput = outputOf(npmrcSymlinkResult);
   assert(npmrcSymlinkResult.status === 1, "check-secrets should reject a symlinked .npmrc");
   assert(npmrcSymlinkOutput.includes(fixedScopeMessage), "symlinked .npmrc should use the fixed scope error");
+  assert(
+    npmrcSymlinkOutput.includes("Scope was broken by: .npmrc"),
+    "symlinked .npmrc should name the repository-relative offending path",
+  );
   assert(!npmrcSymlinkOutput.includes(externalNpmrc), "symlinked .npmrc must not expose its target path");
   assert(!npmrcSymlinkOutput.includes(syntheticNpmToken), "symlinked .npmrc must not expose target content");
 }

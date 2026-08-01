@@ -23,8 +23,22 @@ const ignoredDirs = new Set([
 const ignoredFiles = new Set(["pnpm-lock.yaml"]);
 const exactTextBasenames = new Set([".npmrc"]);
 const scopeErrorMessage = "Secret scan could not validate the protected repository scope.";
-class ProtectedScopeError extends Error {}
-function failScope() { throw new ProtectedScopeError(scopeErrorMessage); }
+class ProtectedScopeError extends Error {
+  constructor(offendingPath) {
+    super(scopeErrorMessage);
+    this.offendingPath = offendingPath;
+  }
+}
+/**
+ * Scope violations abort the whole scan, so the operator must be able to tell which
+ * entry broke it. Report only the repository-relative path — never the absolute root,
+ * a symlink target, or file content (the same disclosure boundary as findings).
+ */
+function failScope(offendingPath) {
+  throw new ProtectedScopeError(
+    offendingPath === undefined ? undefined : toPosix(path.relative(rootDir, offendingPath)),
+  );
+}
 
 const secretPatterns = [
   { name: "AWS access key", pattern: /\bAKIA[0-9A-Z]{16}\b/g },
@@ -132,17 +146,17 @@ function lineForIndex(source, index) {
 async function listFiles(dir) {
   const files = [];
   let entries;
-  try { entries = await readdir(dir, { withFileTypes: true }); } catch { failScope(); }
+  try { entries = await readdir(dir, { withFileTypes: true }); } catch { failScope(dir); }
 
   for (const entry of entries) {
     const entryPath = path.join(dir, entry.name);
-    if (entry.isSymbolicLink()) failScope();
+    if (entry.isSymbolicLink()) failScope(entryPath);
     if (ignoredDirs.has(entry.name)) {
-      if (!entry.isDirectory()) failScope();
+      if (!entry.isDirectory()) failScope(entryPath);
       continue;
     }
     if (ignoredFiles.has(entry.name)) {
-      if (!entry.isFile()) failScope();
+      if (!entry.isFile()) failScope(entryPath);
       continue;
     }
     if (entry.isDirectory()) {
@@ -153,7 +167,7 @@ async function listFiles(dir) {
     if (entry.isFile() && isTextFile(entryPath)) {
       files.push(entryPath);
     } else if (!entry.isFile()) {
-      failScope();
+      failScope(entryPath);
     }
   }
 
@@ -169,7 +183,7 @@ const findings = [];
 
 for (const filePath of files) {
   let source;
-  try { source = await readFile(filePath, "utf8"); } catch { failScope(); }
+  try { source = await readFile(filePath, "utf8"); } catch { failScope(filePath); }
   for (const { name, pattern, validate, appliesTo } of secretPatterns) {
     if (typeof appliesTo === "function" && !appliesTo(filePath)) {
       continue;
@@ -206,5 +220,8 @@ if (findings.length > 0) {
 try { await main(); } catch (error) {
   if (!(error instanceof ProtectedScopeError)) throw error;
   console.error(scopeErrorMessage);
+  if (error.offendingPath !== undefined && error.offendingPath.length > 0) {
+    console.error(`Scope was broken by: ${error.offendingPath}`);
+  }
   process.exitCode = 1;
 }
