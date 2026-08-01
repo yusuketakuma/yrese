@@ -1,3 +1,404 @@
+# State.md — Pointer-only resume snapshot
+
+> **ACTIVE SNAPSHOT (2026-07-30):** This section alone is current. The legacy
+> activity log below is frozen and nonauthoritative.
+
+- **Policy:** `DEVELOPMENT_POLICY.md`; primary is smallest architecture proof,
+  then one pharmacist vertical journey.
+- **Current task:** WP-4250 is **FINALIZED / APPROVED** (2026-08-01). The
+  exact11 batch was promoted PROPOSED → APPROVED in a single finalization
+  batch under `direct human authority 2026-08-01 (全て承認)`, per PRC-007 §4
+  step 8 and §97 (no intermediate state landed). **The approval covers the
+  SSOT amendment only** — it does not authorize implementation, schema/data
+  migration, production action, conformance claims, or cutover. Every
+  registered blocker is retained and still stops the action it names; only
+  `FINAL_HUMAN_APPROVAL_REQUIRED` was removed, because approval satisfied it.
+  `WP-4256` (composite-key CI enforcement + ingress delimiter tests) is
+  numbered and landing-approved in the same decision.
+  Prior status for provenance:
+  `WIP / CORRECTIONS_APPLIED_REVISION_14 / ROUND_5_COMPLETE /
+  FINAL_HUMAN_APPROVAL_REQUIRED`.
+  **data-integrity** and **security/privacy** delivered against the Revision 12
+  packet (REQUEST_CHANGES each; both independently reproduced its hash, and
+  data-integrity additionally confirmed against live code that `patients` has
+  zero production write paths). Their findings are closed in Revision 13 and
+  Revision 14 respectively. The **independent verifier** delivered against the
+  Revision 14 packet on 2026-08-01 after five lane starts — the first four
+  returned no verdict (one session limit, three idle without reporting) and
+  were recorded as `independence_not_satisfied` rather than counted. The fifth
+  reproduced the hash and returned **PASS on the packet body, no HIGH**, with
+  every finding outside the packet. `BLOCKED_INDEPENDENT_VERIFIER_LANE_UNAVAILABLE`
+  is cleared. **The maker/checker separation R4 requires is now satisfied**;
+  what remains is final human SSOT approval. The codex second opinion is still
+  unavailable until 2026-08-05 and is recorded, not counted.
+  User wording `推奨承認` authorized drafting/review only. The round-3
+  iteration-limit escalation was answered on 2026-07-31 by explicit user
+  direction (「fableが決めた内容に従う」), recorded as a design-direction
+  delegation covering the round-4 finding corrections (Revision 12) and the
+  round-5 re-review only. The exact11 batch is PROPOSED; final approval,
+  implementation, migration, production action, and conformance are not claimed.
+- **Current scope:** exact11 PRC-007 PROPOSED amendment review. No source,
+  contract artifact, schema, migration, runtime, production data, security SSOT,
+  or conformance state is changed or authorized.
+- **Writer/cutover decision:** Patient uses a persisted authority state
+  (`POSTGRES_PRIMARY`, `SHADOWING`, `CUTOVER_PENDING`, `FHIR_PRIMARY`,
+  `POSTGRES_PRIMARY_ROLLED_BACK`) plus `authorityEpoch` and `writerFenceToken`.
+  The state machine is **not** one-way and the state itself is **not** monotonic
+  — only `authorityEpoch` is, increasing on every transition including rollback.
+  Read-only shadow parity and a human-approved cutover remain required.
+  PostgreSQL remains sole writer until the switch; no shadow writer, dual write,
+  or stale fallback is allowed. **The handover is time-ordered, not atomic**
+  (stop → drain → epoch advance → new writer); no cross-store atomicity is
+  claimed, and no primitive currently enforces the PostgreSQL-side stop, so
+  cutover is blocked. Revision 12 (2026-07-31, user direction): the stop/drain
+  gate is measured against **write grants**, not observed writers — the
+  repository currently has zero Patient write paths, so "no writer observed"
+  satisfies nothing; re-cutover from `POSTGRES_PRIMARY_ROLLED_BACK` must
+  re-enter `SHADOWING` to regenerate parity (the direct transition to
+  `CUTOVER_PENDING` was unreachable and is withdrawn); the cutover transaction
+  is idempotent by construction — per-patient TWIs conditionally Put an
+  immutable PATIENTLINK bound to `CUTOVER_PENDING`+epoch,
+  a re-run skips linked patients and can never mint a second logicalId; the
+  link is keyed by `hmacPatientId` (pharmacy/purpose-separated HKDF, sharing
+  the patientNumber guard's rotation discipline) rather than the raw
+  `patientId`, because `patient_id` is free-form TEXT with nothing forbidding
+  `patient_id = patient_number` — so correctness no longer rests on an
+  unenforced non-PHI premise (Revision 14). CURRENT
+  carries `internalPatientId` as the projection/reception linkage (a mandatory
+  retained attribute — CURRENT is never Put-replaced), and the final advance is
+  a single conditional epoch CAS gated on **set equality**, proven by a
+  per-element membership check plus a cardinality check (both strongly read,
+  neither requiring decryption): membership alone misses a surplus link, a
+  count match alone lets a missing-one/surplus-one pair cancel
+  (Revisions 13–14). **Re-cutover after rollback is additionally
+  blocked** (`BLOCKED_RECUTOVER_DIVERGENCE_RESOLUTION`): a PostgreSQL-side
+  change during the rollback window has no reconciliation path and a shrunken
+  reconciliation set leaves an undeletable surplus link, so re-cutover needs
+  either an approved reflection path or a read-only-during-rollback
+  constraint; the first cutover is out of scope.
+  Search index deltas gain a keep-latest compaction rule (superseded deltas
+  only, **and only once the superseding delta has itself passed retention** —
+  otherwise an as-of fence between the two silently loses the logicalId —
+  bounded background, never the latest delta; the default until barrier-test
+  proof is "do not delete"), and the deletion is **mechanically enforced**
+  rather than left to prose: each delta carries `retentionExpiresAt` and the
+  delete is a TWI conditioned on the superseding delta existing and both
+  retention deadlines having passed, run under a least-privilege compaction
+  role with operational audit (Revision 14). The
+  aggregate deny intent now fits the `PENDING#`/`DONE#` lifecycle
+  (per-window eventId derived by **keyed** HMAC — it lands on the outbox SK and
+  the dedupe key, so an unkeyed hash would let brute force reveal which
+  principal hit quota when — one conditional Put, no attempt counter,
+  delivery after window close, MOD-008 registration required) and carries
+  plaintext `intentKind` / `deliverableAfter` attributes so reconciliation can
+  exclude unclosed windows without decrypting anything; that guarantees record
+  completeness, **not** detection latency — an outbox-independent path for
+  spotting deny bursts inside an open window is filed to SEC-007/SEC-008. The
+  action-budget invariant is per-operation (MedicationRequest create
+  `7+M+N<=100`, Patient update `7+2M+N<=100`, future Patient create
+  `7+M+2N<=100`, evaluated at write preflight; the §7.1 JSON-cap dependency
+  claim is withdrawn); phase-dependent 404/405 responses are observable only
+  to callers holding the interaction's scope (scope-less callers get 403 in
+  every phase). The cutover transaction creates
+  authoritative FHIR VERSION 1 with immutable `changeOrigin=SYSTEM_CUTOVER`;
+  history presents create/POST Patient/201 without claiming an external REST
+  caller, and PostgreSQL history is not invented or backfilled. MedicationRequest has no
+  current runtime/store/writer/data; only after the approved amendment batch,
+  locked-profile validation, and security prerequisites does the FHIR store/API
+  ingestion boundary become sole writer from the first accepted create, without
+  legacy migration, backfill, dual writer, or automatic fallback. Create uses a
+  tenant/pharmacy/resourceType-bound stable idempotency key, request-byte
+  fingerprint over exact accepted request-entity bytes, conditional immutable
+  alias/guard writes for every configured active+retained lookup-key version in
+  the same TWI, and all-version reconciliation. Every write strong-reads the
+  persisted trusted tenant+pharmacy rotation control and includes an exact
+  generation + mandatory-set digest + ACTIVE ConditionCheck in the TWI;
+  **lookup-key retirement is unsupported in this batch** — the retained version
+  set only grows, key material is not removed, a rotation that would exceed the
+  approved bound is refused rather than retired past, and a compromised key
+  consequently has no withdrawal path — so `BLOCKED_LOOKUP_KEY_RETIREMENT`
+  **gates clinical write enablement** rather than recording an accepted risk;
+  each clinical TWI additionally carries a ConditionCheck on the per-resourceType
+  authority control item, but **that check does not by itself establish
+  fresh-writer exclusion** (`writerFenceToken` is readable by every writer, so
+  self-holding is not enforceable at the DynamoDB layer —
+  `BLOCKED_WRITER_FENCE_TOKEN_ISSUANCE`); replay returns the stored
+  `resourceJson` octets **verbatim** and re-deriving them through a serializer is
+  a §12 prohibition;
+  every enabled Patient PUT requires `Idempotency-Key` and uses `If-Match` as
+  the sole wire version authority, deriving adapter expectedVersion once, with
+  400 `required` when either is missing and 412 `conflict` when stale. The full TWI, including the rotation
+  ConditionCheck, aliases, indexes, fence, audit/outbox, and fixed items, is
+  limited to 100 distinct action targets and aggregate operation-after item size
+  of 4 MiB; every item is at most 400 KB. Overflow is 422 before any
+  TransactWriteItems/S3 write call, with no chunking or S3 fallback. No automatic
+  write retry is authorized.
+  FHIR clinical routes also remain blocked until MOD-008 has registered
+  read/search/create/update/deny/failure audit mappings.
+  FHIR search is separately `BLOCKED_FHIR_SEARCH_SNAPSHOT_IMPLEMENTATION`;
+  upper-watermark paging is rejected. Bare/no-system/exact-system identifier
+  semantics remain distinct; MedicationRequest advertises standard `code` for
+  its CodeableConcept and rejects `medication` reference search. Exact
+  OR-within/AND-across parameter algebra, membership fingerprint, immutable index deltas/
+  materialized as-of snapshots, and retention/corruption/concurrent-writer tests
+  are required. Every write first dedupes distinct BEFORE/AFTER canonical
+  partitions; retained partitions receive one NEW-version true delta and
+  removed partitions one false, including all multi-valued tokens.
+  `_lastUpdated` uses precision-derived UTC half-open intervals and exact
+  eq/gt/ge/lt/le boundaries. Instance history separately uses a strong current/version
+  watermark, immutable descending pages, a scope/resource/count-bound cursor,
+  absolute unversioned same-instance `entry.fullUrl`, and full FHIR history
+  entry metadata. All request URI/canonical fields are inert and pinned-local-only
+  with outbound HTTP/DNS/redirect resolution fixed at zero. Content negotiation
+  follows RFC 9110 precedence, permits supported parameters on matching
+  wildcards, honors parameter/range specificity and q=0 exclusion, and accepts
+  only FHIR media parameter `fhirVersion=4.0`. 405 Allow and CapabilityStatement
+  use the same request-time atomic config generation's LIVE ENABLED method set.
+- **Preserved completed-local ownership:** WP-4255 is machine-validated with
+  independent verifier/security/data-integrity PASS and remains unlanded on its
+  exact four paths. WP-4254 is completed-local with independent PASS and remains
+  unlanded on its separate screen-removal/SSOT paths; its API ownership remains
+  separate from WP-4255. WP-4253 also remains independently verified and
+  unlanded. Do not absorb, stage, commit, or revert these dirty slices.
+- **Next product safety task:** WP-4050 atomic reception command boundary,
+  blocked on explicit R3 pre-implementation human scope approval.
+- **Observed validation:** WP-4255 focused audit 73/73 PASS; API 808 PASS plus
+  14 expected PostgreSQL skips; workspace 1,782 PASS plus the same 14 expected
+  skips; full workspace typecheck sequential PASS; build PASS with 11/11 static
+  pages; OpenAPI, boundaries, SSOT index 173, and diff check PASS. Secrets
+  remains fail-closed because of the existing external `.codegraph` symlink and
+  is not claimed as PASS.
+- **Round 5 is complete — all three lanes delivered.** data-integrity and
+  security/privacy reviewed the Revision 12 packet
+  (`8ff16ca9…`); their findings are closed in Revisions 13 and 14. The
+  independent verifier reviewed the **Revision 14** packet
+  `ab086c9f8d6e6bfd26e32fbfe9daa21a3b8b6ccd3f324f413b4d2975731cfab6`
+  (base SHA `9d8dbc0c…`, 5,559 diff lines) on 2026-08-01, independently
+  reproduced that hash, and returned **PASS on the exact11 packet body with no
+  HIGH finding**. Its overall verdict is REQUEST_CHANGES **record-only**: every
+  finding sits outside the packet, so closing them does not move the packet
+  hash. It verified the §7 implementation claim against live code (marker
+  detection, codec exemption, test exemption, `main()` wiring, both scripts
+  freshly executed PASS) and found **no recurrence** of the reference-side drift
+  that failed rounds 1–4. `BLOCKED_INDEPENDENT_VERIFIER_LANE_UNAVAILABLE` is
+  therefore cleared.
+- **Next action:** human decision. The maker/checker separation R4 requires is
+  now satisfied by three delivered lanes; what remains is **final human SSOT
+  approval** of the exact11 PROPOSED batch, plus a scope decision on the
+  unnumbered code changes listed under dirty ownership below. The codex second
+  opinion is unavailable until 2026-08-05 (usage limit) and is recorded, not
+  counted. No implementation or landing before those gates.
+- **Deferred packet-body corrections (round-5 verifier LOW ×3).** These are the
+  only findings that touch the exact11 body. They are deliberately **not**
+  applied, because applying them would move the frozen packet hash and void the
+  PASS just obtained. Fold them into the next packet revision if one is opened:
+  (a) DB-005 frontmatter blocker note at `dynamodb_single_table_design.md:92`
+  still carries the Revision 13 wording ("残余は迂回経路の不在証明と既存永続値の
+  検証") while §7 body and change_log now say "(a) implemented, residual (b)
+  only" — conservative, so safe; (b) ARC-008 body change history has the
+  Revision 13 entry ordered between Revision 10 and 9 (frontmatter order is
+  correct); (c) DB-005 §3.2's whole-pair deletion special case
+  (`:305-308`) has no superseding delta, so it cannot satisfy the mechanical
+  ConditionCheck at `:317-322`, and the condition that governs that deletion is
+  unstated.
+- **Known blockers:** WP-4250 is R4 and remains stopped at
+  FINAL_HUMAN_APPROVAL_REQUIRED. Terminology expansion/licensing, real validator/
+  CapabilityStatement, atomic-set drift,
+  ARC-008 scope change, incomplete immutable search snapshot/paging proof,
+  unsafe lookup-key rotation/retirement, missing all-version aliases,
+  missing persisted rotation fence/ConditionCheck, unbounded or vague history,
+  collapsed identifier semantics/nonstandard medication search,
+  URI dereference/network resolution, transaction budget/chunking drift,
+  content-negotiation/search-grammar drift,
+  production store/IAM/role/break-glass evidence,
+  unregistered audit/durability semantics, any second-writer design, or any
+  incomplete required review keeps it stopped. SEC-006/SEC-008 are not joined
+  into this exact11 draft and are not claimed complete. Retention-period-complete
+  audit export, bounded chain verification, and a production tenant/auth
+  incident-response path remain separate production compliance/release blockers.
+- **Blockers registered by rounds 1–5** (the authoritative set is the union of the
+  exact11 front-matter `blockers`; this list is the snapshot of it):
+  `BLOCKED_WRITE_PRODUCER_PREREQUISITES`,
+  `BLOCKED_RECEPTION_PATIENT_COMPATIBILITY`,
+  `BLOCKED_MEDICATIONREQUEST_PRESCRIPTION_OWNERSHIP`,
+  `BLOCKED_PATIENT_CREATE_UNIQUENESS`,
+  `BLOCKED_PATIENT_IDENTITY_MUTATION` (also a cutover blocker),
+  `BLOCKED_LOOKUP_KEY_RETIREMENT` (gates clinical write enablement),
+  `BLOCKED_POSTGRES_WRITER_FENCE_PRIMITIVE`,
+  `BLOCKED_WRITER_FENCE_TOKEN_ISSUANCE`,
+  `BLOCKED_REPLAY_PERMANENT_FAILURE`,
+  `BLOCKED_AUTH_RESPONSE_FAMILY_ALIGNMENT`,
+  `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` (narrowed in Revision 13 to
+  "key-construction paths are not forced through branded types" — the branded
+  ID factory already rejects `#` with negative tests, so the earlier premise
+  was stale),
+  `BLOCKED_AUDIT_PAYLOAD_EXTERNAL_STORE`,
+  `BLOCKED_PATIENT_SEARCH_URL_PHI`, `BLOCKED_PATIENT_SEARCH_SCALE_BOUND`,
+  `BLOCKED_PACKAGE_PROVENANCE`,
+  `BLOCKED_AUDIT_PAYLOAD_RETENTION_POLICY`,
+  `BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT`,
+  `BLOCKED_FHIR_SEARCH_SNAPSHOT_IMPLEMENTATION`,
+  `BLOCKED_RECUTOVER_DIVERGENCE_RESOLUTION` (Revision 13; re-cutover after a
+  rollback only — the first cutover is out of scope).
+- **Pre-existing dirty ownership preserved:** `Plans.md`, `State.md`,
+  `ops/refactor/EVIDENCE.md`, and `ops/refactor/STATE.md`. Their prior content
+  remains below freeze boundaries.
+- **Audit-owned governance paths:** `DEVELOPMENT_POLICY.md`, `AGENTS.md`,
+  `CLAUDE.md`, `docs/product/yrese_four_battles_strategy.md`, and the freeze
+  pointers added to the four pre-existing dirty ledgers.
+- **Dirty ownership / landing:** same Codex root owns the existing WP-4254
+  IDX-001 delta; pre-edit IDX diff SHA-256 is
+  `88c2ab2c375b8a8b7edbff9ec5cd2a21670cd58da4a1b5ef83fd0cdaf80b1f79`.
+  WP-4254/MOD-009 semantics remain preserved. No landing is authorized; final
+  cumulative exact-path landing remains separately gated.
+- **WP-4256 code changes** (numbered and landing-approved 2026-08-01; detail in
+  `Plans.md` §WP-4256): `scripts/check-boundaries.mjs`,
+  `scripts/check-scripts.mjs`, `apps/api/src/server.test.ts`. They implement
+  clearance condition (a) of `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT`
+  (mechanical detection of composite-key construction outside an approved key
+  codec) and pin the ingress rejection of `#`-bearing IDs. **None of these
+  paths is in the exact11 packet**, so they do not affect its hash or review.
+  Both additions were mutation-tested (removing the rule invocation drops 3
+  negative assertions; removing the delimiter rejection in `branded-ids.ts`
+  drops exactly the 6 new ingress cases). Gates observed 2026-08-01: workspace
+  test PASS (api 855 + 25 skipped, web 423, shared-kernel 73, audit 193,
+  contracts 97, trace 37, money 15, date-time 13), typecheck PASS, lint PASS,
+  boundaries PASS, script harness PASS, SSOT index 173 PASS, diff check PASS.
+  **They belong to WP-4256, not WP-4250; do not fold them into the exact11
+  batch.**
+- **Human gates:** `推奨承認` authorizes only PRC-007 PROPOSED drafting/review;
+  independent/domain review and
+  final human SSOT approval remain required. WP-4050 R3 scope, migration apply,
+  production write, deploy, external send, pilot, conformance, and release remain
+  separately gated.
+- **Revision 7 correction pass (2026-07-31):** the exact11 working tree now
+  carries a correction for every HIGH and MEDIUM finding of the independent
+  domain review, taking the fail-closed option wherever the finding offered one.
+  The batch stays PROPOSED and is **not** decision-ready: the corrections
+  themselves require independent re-review, and each new blocker needs its own
+  approved amendment. Disposition per finding is recorded in the `Plans.md`
+  WP-4250 block, not duplicated here.
+- **New blockers raised by that pass:** `BLOCKED_WRITE_PRODUCER_PREREQUISITES`,
+  `BLOCKED_RECEPTION_PATIENT_COMPATIBILITY`,
+  `BLOCKED_MEDICATIONREQUEST_PRESCRIPTION_OWNERSHIP`,
+  `BLOCKED_PATIENT_CREATE_UNIQUENESS`, `BLOCKED_LOOKUP_KEY_RETIREMENT`,
+  `BLOCKED_PATIENT_SEARCH_URL_PHI`, `BLOCKED_PATIENT_SEARCH_SCALE_BOUND`,
+  `BLOCKED_PACKAGE_PROVENANCE`. Patient create, lookup-key retirement, and the
+  GET patient-search production path are now explicitly disabled rather than
+  pending.
+- **Revision 7 re-review round 1 result — REQUEST_CHANGES ×3, gate NOT satisfied:**
+  three fresh-context read-only reviewers (independent verifier, security/privacy,
+  data-integrity) ran against the frozen packet and all returned
+  REQUEST_CHANGES: 11 HIGH, 13 MEDIUM, 9 LOW including overlaps. They confirmed
+  provenance is sound — no exact-path violation, the four cited code/migration
+  facts are accurate, no dangling cross-reference, and one reviewer reproduced
+  the packet hash independently — so the failures are in the corrections'
+  substance. Full finding list is in the `Plans.md` WP-4250 block; it is not
+  duplicated here. Round 2 of the correction cycle is required and is comparable
+  in size to round 1.
+- **Round-1 history (superseded):** at that point `GSI2PK` lacked a pharmacy
+  segment. It was inside the allow-list after all — the key is defined in DB-005
+  — and was corrected in round 2. The allow-list-external prerequisites are the
+  two listed below, not this one.
+- **Codex second opinion remains unavailable:** `codex exec` reported
+  `You've hit your usage limit ... try again at Aug 5th, 2026`. It is not counted
+  as review evidence.
+- **Self-consistency sweep:** a read-only sweep found four contradictions that
+  Revision 7 introduced against its own new rules (API-008 §8 permission table
+  still granting Patient create; API-008 §4.2 and DB-005 §5.2 still implying
+  lookup-key retirement is reachable; API-008 §12 implying a safe retirement
+  exists). All four were corrected. This invalidated the first frozen packet.
+- **Revision 8 — round 2 corrections applied (2026-07-31):** every round-1
+  finding received a correction, again taking the fail-closed option where one
+  existed, so the batch narrowed further rather than gaining capability. Two
+  findings could not be fixed inside this WP and are prerequisites elsewhere:
+  `branded-ids.ts` enforcement of `#`-exclusion and a `GLOBAL` reservation, and
+  registration of the JP Core package artifact in `source_registry.md`.
+  Round 2 added `BLOCKED_PATIENT_IDENTITY_MUTATION`,
+  `BLOCKED_POSTGRES_WRITER_FENCE_PRIMITIVE`,
+  `BLOCKED_REPLAY_PERMANENT_FAILURE`,
+  `BLOCKED_AUTH_RESPONSE_FAMILY_ALIGNMENT`,
+  `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT`. Per-finding disposition is in the
+  `Plans.md` WP-4250 block.
+- **Revision 10 — round-3 HIGH findings closed (2026-07-31), review still owed.**
+  Under user direction the three design-level HIGH findings were corrected:
+  Patient identity immutability now has a structural backstop in the
+  `Update(CURRENT)` ConditionExpression (`identityDigest`, no extra action); the
+  deny quota degrades to one aggregate intent per (principal, scope, window)
+  committed before the 429 instead of cutting off unrecorded; and audit payload
+  deletion is convergence-driven and ConditionCheck-enforced, so an unconverged
+  DLQ payload never drops on a timer. `BLOCKED_AUDIT_PAYLOAD_RETENTION_POLICY`
+  was added for the unbounded retention that follows. **Revision 10 has not been
+  independently reviewed** — round 4 must review it together with the round-3
+  MEDIUMs, which remain open.
+- **STOP — correction cycle hit its iteration limit (2026-07-31).** Round 3
+  re-review returned REQUEST_CHANGES from all three reviewers. WP-4250 is back to
+  WIP and needs human direction before any further correction round. It is not
+  complete, not approved, not landed. Round 3 closed most round-2 findings (the
+  independent verifier judged 17 of 19 closed) but five HIGH remain, and two of
+  them are the same failure repeating: a correction lands in the section that
+  introduces a rule and not in the sections that read it. Full finding list is in
+  the `Plans.md` WP-4250 block.
+- **Most consequential single defect to fix first:** `DB-005 §6.4`'s canonical key
+  block still says `SK = INTENT#EVENT{eventId}` while the rest of the batch uses
+  `PENDING#`/`DONE#`. An implementer following the key block would make
+  reconciliation return the empty set forever, silently disabling the only audit
+  convergence detector. One line, severe effect.
+- **Blocker list is now synced** (it had been missing every blocker added in
+  rounds 2 and 3, which was one of the round-3 HIGH findings). The authoritative
+  set remains the union of the exact11 front-matter `blockers`; the list above is
+  a snapshot of it and must be re-synced whenever a blocker is added.
+- **Systemic fix proposed by reviewers, outside this WP's scope:** derive the
+  approval-facing records (`Plans.md` safe defaults, this snapshot) from the SSOT
+  blocker set mechanically and add that consistency check to `check:ssot-index`,
+  rather than relying on a manual sweep that has now failed three rounds running.
+- **Revision 9 — round 3 corrections (2026-07-31):** round 2 returned
+  REQUEST_CHANGES ×3 but converged (new HIGH 11 → 3; nearly all round-1 findings
+  judged closed). Round 3 corrected every round-2 finding. Two of them described
+  defects round 2 itself created: the approval-facing records (`Plans.md` safe
+  default 3, `State.md` snapshot) still asserted retirement and a monotonic
+  state, and disabling Patient create closed the Patient set permanently after
+  cutover with nothing in the cutover gate requiring a registration path.
+  Both are fixed; `BLOCKED_PATIENT_IDENTITY_MUTATION` is now a cutover blocker.
+  Replay was simplified to return stored `resourceJson` octets verbatim, removing
+  the serializer from the replay path entirely, and the `PHARMACY#GLOBAL`
+  sentinel was replaced by a separate partition-key space. Round 3 added
+  `BLOCKED_WRITER_FENCE_TOKEN_ISSUANCE` and
+  `BLOCKED_AUDIT_PAYLOAD_EXTERNAL_STORE`. Per-finding detail is in `Plans.md`.
+- **Current frozen packet — round 4 must start here:** base SHA `9d8dbc0`;
+  candidate diff SHA-256
+  `cb5c543c73bfcc4d31af472b4a46134429882105be188c265027bf36de89ce57`
+  over the exact11 content documents only (4,919 lines, Revision 10). Round 3 reviewed
+  `634da896…`; the three post-escalation mechanical fixes superseded it.
+- **Body 変更履歴 synced:** Revision 9 is now recorded in the body history of all
+  six documents that carry a Revision 9 change_log entry, so the frontmatter and
+  the body source each of them declares authoritative now agree. The other three
+  documents declaring that authority (API-003, API-004, API-001) were not changed
+  in round 3 and correctly have no entry. `Plans.md` and `State.md` are owned
+  by this WP but excluded from the hashed range because they carry the hash.
+- **Out-of-allow-list follow-up:** registering the JP Core package artifact in
+  `docs/regulatory/source_registry.md` is required before package/profile
+  identity may be treated as verified, but that file is outside the exact11 path
+  allow-list. It is recorded as a separate `SSOT_UPDATE_REQUIRED`, not performed.
+- **Environment blocker for validation:** local `pnpm` is 11.17.0 while
+  `package.json` pins `packageManager: pnpm@11.18.0`, so `pnpm check:*` refuses
+  to run in this shell. The two gates applicable to a Markdown-only pass were
+  executed directly: `node scripts/check-ssot-index.mjs` PASS at 173 documents
+  and `git diff --check` PASS. The `git diff --check` failure that pre-existed
+  this pass (`Plans.md` trailing blank line at EOF) was corrected in the same
+  edit. This pnpm drift is not attributed to WP-4250 and was not remediated.
+- **Record rule:** update this snapshot only for interruption, blocker, human
+  gate, or uncommitted ownership. Normal success is evidenced by Git and CI.
+- **Commit/push:** not requested; exact11 finalization and cumulative landing are
+  separately gated and were not performed.
+
+## FROZEN LEGACY ACTIVITY LOG — GIT_HISTORY_ONLY
+
+The content below is preserved for provenance. It is not a current task source
+and must not receive routine success entries.
+
+---
+
 # State.md — 活動ログ
 
 調剤用レセプトコンピューター MVP(構築プロンプト v0.2.0)の活動記録。新しいエントリを上に追記する。
@@ -8,7 +409,7 @@
 
 ## 2026-07-18
 
-### WP-4158 terminology rights provenance closure — S1_BUG_REFACTOR_REVIEW / S0_REMOTE_CI_PASS / S1_PLAN_GATE_5_OF_5 / S1_IMPLEMENTATION_GATE_5_OF_5
+### WP-4158 terminology rights provenance closure — S1_RECOVERY_PLAN_REVIEW / S0_REMOTE_CI_PASS / ORIGINAL_S1_GATES_SUPERSEDED
 
 - S0 commit `68470672bd0f5efff6cc06f42cfb374dc59dc0f7` / tree `f955580a…`はCOMMIT fresh5/5、same-five PUSH AC9L/AC9P 5/5、local/origin/PR parity、main guard、deployments0、workflow `309812329` run `29658334162` attempt1 jobs1/steps22 all successでterminal。
 - S1 PLAN_GATE reviewer1〜5はexact token `WP4158_S1_PLAN_READY base=68470672bd0f5efff6cc06f42cfb374dc59dc0f7 scope=exact4 verifier=planned`を5/5 PASS。future verifierはPLAN時未実行。
@@ -63,7 +464,10 @@
 - Twenty-eighth BUG_REFACTOR candidate tree `970c5519a1cf7f93cd37b235f7d21b6b8282cbbe`はreviewer1〜3 FAILで停止、reviewer4/5未起動。deferred signal check後から`cleanup_active=False`までのraceと、その後のunbounded ambient Git実行、`GIT_WORK_TREE`等によるcwd/temp境界の迂回、headingのIMPLEMENTATION gate欠落をblock。
 - Twenty-ninth BUG_REFACTOR candidate tree `ef1fc1e6389a44a25e69c8c14526a24d8058e071`はreviewer1/2 FAIL、reviewer3 PASSで停止、reviewer4/5未起動。記録`a71ff936…`はterminal LF欠落hashでcanonical emitted SHAは`7a42c9a5a23943f72c2c7e49808d65d6cfa2fd527e884415110b326d93eff071`。guard単体だけが正しくlive call-site bypass mutationを検出しないfalse-green、success tail/outer finalizerの同型race、macOS case-insensitive aliasによるworkspace-local TMPDIR迂回をblock。
 - Thirtieth BUG_REFACTOR candidate tree `c095e836707deafb20b9e883e693bf35ccddea22`はreviewer1 FAIL、reviewer2/3 PASSで停止、reviewer4/5未起動。operationがsignalをqueue後primary exceptionを送出するとpending drainをskipし、actual default handler復元後のunmaskでTERM/HUP/ALRMがprocessを終了するgapと、custom `ProbeSignal` guardのfalse-greenをblock。
-- Thirty-first BUG_REFACTOR source SHA `9661c715c218aa8c7ebcf4fdabb42125455fa6d2f30a9d08619b435a669d2e87`、2544 linesはoperation成否直後のone common pending drainとoperation primaryのexact identity/type/message/traceback/empty notes優先へ修正。Fresh isolated childでSIGINT Python default、TERM/HUP/ALRM `SIG_DFL`を各検証し、deferred/pending/root/FD/mask/handler/timer/canary residue0を固定。旧bug/terminal-LF/call-site bypass mutations拒否、20/20 exact self-test、sanitized live six-line exact PASS。Next=fresh thirty-first-generation exactly5 BUG_REFACTOR_GATE review-only。
+- Thirty-first BUG_REFACTOR reviewはfresh reviewer1〜3が全員FAIL。4 ledgerのprojected source `9661c715…` / 2544 linesに対しactual marker sourceは`e096d18c…` / 2610 linesで、20/20 self-testはunbound bytesのfalse-greenだった。reviewer1/2はunmask→restore→deactivateのactual-default restore raceを再現し、TERM=-15/HUP=-1/ALRM=-14、SIGINT secondary-note化をblock。reviewer1/3は`f4d0f8f…`がS0 childから10 pathsを変更したmixed commitでexact4 invariantも破ると確認。`f4d0f8f…`はoriginal S1 landing/evidenceとしてINVALID/non-evidenceで、履歴・他6 pathはrevert/editしない。
+- RECOVERY PLAN thirty-fourth tree `ef291d96…`はfresh reviewer1〜5が5/5 PASS。Root sole maintainerはinline verifierをsource `2a759801…` / 10934 LFへ更新し、signal 40/24/54/11、V12 authority/Git/process/claim/result/lock/wait/launcher/AC9P、sentinel/bash、resume、GH実poll、live/persisted authority、ESRCH二回、classification/V2 upgradeに加え、production one-shot monitorをatomic claimからAC9P terminalまで接続した。同一lifecycle happy path/exact10 crash boundaries、claim orphan/nlink2/loser temp、binding guardはoffline実processでPASSし、crash時result0/residue0。両Python exact self-test、live read-only tool/config/base/remote、diff/SSOT173/scripts/tracked overlay secretsもPASS。context dev driftはexact STOPしrunParent未作成。V13 PLAN/IMPLEMENTATION independent review、context-bound live execution、approval/commit/push/human gateは未実施。
+- WP-4158 current exact4でfull workspace preflightを実行し、`pnpm -r typecheck`、`pnpm -r test`（1829 PASS、`TEST_DATABASE_URL`不在によるPostgreSQL integration 14 expected SKIP）、`pnpm lint`、OpenAPI、calculation purity、boundaries、SSOT index 173、SBOM 232、`pnpm -r build`（Next.js 12/12 static pages）をPASSした。`pnpm check:deps`はPostCSS 8.5.16のGHSA-r28c-9q8g-f849（path traversal/source-map disclosure、high=1/critical=0、vulnerable <=8.5.17、patched >=8.5.18）でFAILし、WP-4158 VALIDATIONはgreenでない。package/lockはWP-4158 exact4外で変更せず、WP-4240として独立remediationを登録した。これは既存の過去high=0記録を改変せず、2026-07-26 current auditだけを表す。
+- V13 offline feasibility preflightではtracked authority/sourceを変更せず、V12 sourceの4 context row＋static guardにあるexact5 dev literalだけを`16777228`へメモリ置換した候補`0430d462…` / 10934 LFをrepo外private temp0600で実行した。Python 3.9.6/3.14.6ともexact recovery self-test（2/95/10、signal40/24/54、mutation11、residue0）PASS、temp residue0。4 objectのno-follow lstat/fstatは1秒間隔3 sampleすべてdev16777228と既存ino/mode/uid/gidに一致し、runParentは不存在。これはV13 PLAN/IMPLEMENTATION independent reviewやlive mutation authorityの代替ではなく、runParent/approval/claim/signal/push/AC9Pは引き続きSTOP。
 
 - run `goal-20260718` active。WP-4158 S0 PLAN tree `dfe2742…`、IMPLEMENTATION tree `d9cef2a9…`、BUG_REFACTOR tree `93be8448…`、VALIDATION tree `bec05c8c…`は各fresh5/5 PASS。actual S0 diffのapproved plan一致、exact4/index/direct gates、negative95/cleanup10、full validation、no verifier/future evidence/nonclaimsを確認。当該S0 checkpointのCOMMIT review actionはS0 terminalでsuperseded済み。
 - Full local validationはfrozen install、workspace typecheck/build、1,829 tests PASS + `TEST_DATABASE_URL`不在のPostgreSQL integration 14 expected skips、scripts/OpenAPI/deps high0 critical0/SBOM231/boundaries/purity/SSOT173/diffをPASS。Next build 12/12 static pages。lint commandはexit0だがlint task不在でcoverageなし。live secretsはuser-owned `.codegraph`未読境界により実行せず、tracked candidate overlay scanをauthorityとした。当該validation checkpointのfresh review actionはfifth-generation 5/5で完了済み。
@@ -76,7 +480,7 @@
 - Historical second COMMIT generation `wp4158_commit2_r1,r2`はstaged tree `f362d267…`を1/2 PASSで停止。AC9C integrityはPASS、EVIDENCE旧precommit commit/parent/subject要約を検出・後続修正した。
 - Historical third COMMIT generation `wp4158_commit3_r1,r2`はstaged tree `dc3b1142…`を1/2 PASSで停止。AC9C integrityはPASS、stage後のstale restage directiveを検出・後続修正し、そのcheckpoint actionはS0 terminalでsuperseded済み。
 - Historical fourth COMMIT generationはstaged tree `70e8edb7…`でreviewer1/2b/3 PASS、reviewer4 FAIL、reviewer5未起動。original reviewer2は無応答中断でcount外。general oracleのAC9C `EXPECTED_COMMIT`要件とprecommit boundaryの衝突を検出し、AC9C base/tree/message対AC9L/P postcommit commitへ分離した。そのcheckpoint actionはS0 terminalでsuperseded済み。
-- S0はWP-4157 terminal projectionとWP-4158 closure planだけ、S1はrights reproduction、S2はS1 landing recordだけの独立commit/rollback境界。root sole maintainer、reviewersはread-only。package/lock/runtime/code/API/DB/UI/SSOT/CI/toolchain、persistent/repository artifact retention・展開、採用/公開/外部送信は不変。S1だけrepo外private tempへのephemeral no-extraction downloadを許可し、normal/error/catchable INT/TERM/HUP cleanupを必須化。SIGKILL/kernel loss cleanupは非主張。
+- Original designはS0=WP-4157 terminal projection + WP-4158 closure plan、S1=rights reproduction、S2=S1 landing recordの独立commit/rollback境界を要求した。Mixed `f4d0f8f…`はその境界に違反してoriginal S1 evidenceとしてINVALID。Recovery commitのbase-relative exact4 diffだけがpackage/lock/runtime/code/API/DB/UI/SSOT/CI/toolchain unchangedを主張でき、`f4d0f8f…`の他6 pathを承認しない。root sole maintainer、reviewersはread-only。persistent/repository artifact retention・展開、採用/公開/外部送信は禁止。S1 recoveryだけrepo外private tempへのephemeral no-extraction downloadを許可し、normal/error/catchable INT/TERM/HUP cleanupを必須化。SIGKILL/kernel loss cleanupは非主張。
 - outcomeはversion-bound provenance、rights digest、candidate-direct raw51（known duplicate multiplicity2）/unique50/25、200-row `UNRESOLVED` handoff。actual reachability/clearance等を非主張しhuman gate未解除。
 
 ### WP-4157 FHIR validator / IG Publisher / SUSHI compatibility candidates — FINALIZED / REMOTE_CI_PASS

@@ -66,9 +66,47 @@ WP-4253 is separately committed at the scanned HEAD and is not unlanded work.
 
 ### WP-4250 — Bounded Patient + MedicationRequest authority decision
 
-- **Status:** WIP / PROPOSED / CORRECTIONS_APPLIED_REVISION_9 /
-  RE_REVIEW_ITERATION_LIMIT_REACHED / HUMAN_ESCALATION_REQUIRED /
-  FINAL_HUMAN_APPROVAL_BLOCKED
+- **Status:** **FINALIZED / APPROVED**(2026-08-01)/ LANDING_PENDING
+  — exact11の11文書は `direct human authority 2026-08-01 (全て承認)` により
+  PROPOSED→APPROVEDへ同一batchで昇格済み(PRC-007 §4 step 8 / §97)。
+  **承認範囲はSSOT改版のみ**であり、実装着手・schema/data migration・
+  production action・conformance主張・cutoverを含まない。登録済みblockerは
+  全て据え置きで、それぞれが引き続き該当行為を止める。
+  旧status(参考): WIP / PROPOSED / CORRECTIONS_APPLIED_REVISION_14 /
+  ROUND_5_COMPLETE / FINAL_HUMAN_APPROVAL_REQUIRED
+
+#### Finalization 実施記録(2026-08-01)
+
+PRC-007 §4の10段フローのうち、step 1〜7は本WPのround 1〜5で完了済み。
+step 8(APPROVED化)とstep 9(exact-path stage / commit / push)を本日実施した。
+§97の要求どおり、**11文書のAPPROVED化とindex同期を同一finalization batchで
+行い、中間状態をlandingしていない**。
+
+| 項目 | 内容 |
+|---|---|
+| 昇格対象 | ARC-008 / API-003 / API-001 / API-004 / API-008 / DOM-002 / DOM-005 / DOM-006 / DB-005 / PRD-007 / IDX-001 の11文書 |
+| 変更したfield | `status` PROPOSED→APPROVED、`approved_at` null→2026-08-01、`approved_by` null→承認記録、`effective_from` null→2026-08-01 |
+| blocker | `FINAL_HUMAN_APPROVAL_REQUIRED` のみ全10文書から除去(承認により充足)。**他のblockerは1件も削除していない**(ARC-008 15件 / DB-005 16件 / API-008 14件 / DOM-006 9件 / DOM-005 7件 / DOM-002・PRD-007 各4件 / API-003 3件 / API-001 2件 / API-004・IDX-001 0件) |
+| version | 内容不変の10文書は据え置き。IDX-001のみ本文(status行10件)が変わるため 0.4.46→0.4.47 |
+| index | status行10件をPROPOSED→APPROVED(集計 APPROVED 131→141、PROPOSED 22→12、SUPERSEDED 17不変)。documentカウント173・section件数・23-field移行inventoryは不変 |
+| `amends` / `PENDING_REVISION` | **解除しない**。本batchはbounded scopeであり、DOM-005/API-004/PRD-007の完全改版ではない。ARC-008の`amends`はDB-001〜004・ARC-005・ARC-007も対象に含み、これらはpacket外である。PRC-007 §7.4の解除条件を満たさないため予約を維持する |
+| 検証 | `check:ssot-index` PASS(173)、`git diff --check` PASS、全11文書のfrontmatterをYAML parseして status/approval/effective/blocker/change_log先頭entryを機械確認(ALL 11 OK) |
+
+**finalization中に発見した欠陥(記録)**: ARC-008 frontmatterの
+`BLOCKED_WRITER_FENCE_TOKEN_ISSUANCE` 行が、値をbacktickで開始していたため
+**YAMLとして parse 不能**だった(backtickはYAMLのreserved indicator)。HEAD時点では
+存在せず、本WPのPROPOSED改版(Revision 9)で混入したものである。値を引用符で囲んで
+修正した(意味変更なし)。**重大なのは、この欠陥を `check:ssot-index` も round-5 の
+独立review三レーンも検出できなかった点である** — 現行のmachine validationは
+frontmatterのYAML妥当性を検証していない。round 3で reviewer が提案した
+「approval-facing recordをSSOTから機械的に導出し、その整合を `check:ssot-index` へ
+入れる」という systemic な対策と同じ領域であり、別WPとして起票する。
+  (round-3で到達したiteration limitのescalationは、2026-07-31のuser direction
+  「fableが決めた内容に従う」により設計方向の委任として解消。round 5は
+  data-integrity / security-privacy / independent verifier の3レーン全てが
+  delivered となり、verifier は Revision 14 packet に対して **本文 PASS
+  (HIGHなし)** を返した。**maker/checker分離は充足**。残るのは
+  **final human SSOT approval** であり、これは委任されておらず解消していない)
 - **Claimability:** review and correction only. Implementation, migration,
   landing, production action, and conformance claims are nonclaimable.
 - **Risk / authority:** R4. User wording `推奨承認` is recorded as explicit equivalent authorization for drafting/review only. The exact11 PRC-007 batch is now PROPOSED; no final SSOT approval, implementation, migration, production action, or conformance claim is inferred.
@@ -92,7 +130,7 @@ WP-4253 is separately committed at the scanned HEAD and is not unlanded work.
 | FHIR search paging | upper-watermark-only claim, collapsed identifier forms, vague update deltas, nonstandard medication token naming, and implicit date/set algebra were rejected | Build distinct BEFORE/AFTER canonical partition sets before TWI enumeration; retained partitions get one NEW-version true and removed partitions one false, with duplicate/multi-valued tokens deduped; preserve identifier forms, standard `code`, OR/AND algebra and precision-derived `_lastUpdated` half-open intervals before deterministic as-of manifests; search remains `BLOCKED_FHIR_SEARCH_SNAPSHOT_IMPLEMENTATION` until retention, corruption, and concurrent-writer tests exist |
 | FHIR instance history | prior draft advertised history-instance without bounded page semantics | Strong-read current/version watermark, immutable descending version pages, scope/resource/count-bound signed cursor, absolute unversioned same-instance `entry.fullUrl`, full FHIR history metadata, strict parameter rejection, and mutation-stable tests are required |
 | Wire / URI boundary | request-derived URI resolution, static Allow, and wildcard parameter handling were unsafe/incomplete | All URI/canonical fields are inert and pinned-local-only; Accept evaluates supported parameters on wildcard ranges with RFC specificity/q; 405 Allow and CapabilityStatement use one request-time atomic config generation's LIVE ENABLED methods and never advertise blocked interactions |
-| Cutover / audit | PostgreSQL Patient is the live authority; no MedicationRequest runtime/store/writer/data currently exists; ARC-008 requires one authority; Provenance is a projection and internal audit remains authoritative | Patient uses read-only shadow parity plus human cutover, whose transaction creates FHIR VERSION 1 as immutable `SYSTEM_CUTOVER` creation baseline without PostgreSQL history backfill; MedicationRequest starts with one FHIR ingestion writer and no migration/backfill; never dual-write or automatically fall back |
+| Cutover / audit | PostgreSQL Patient is the live authority (with **zero current write paths** — the repository is read-only, so drain/fence gates must be measured against write grants, not observed writers); no MedicationRequest runtime/store/writer/data currently exists; ARC-008 requires one authority; Provenance is a projection and internal audit remains authoritative | Patient uses read-only shadow parity plus human cutover, whose **idempotent** transaction creates FHIR VERSION 1 as immutable `SYSTEM_CUTOVER` creation baseline without PostgreSQL history backfill — per-patient TWIs are guarded by a conditional immutable **PATIENTLINK** (keyed by `hmacPatientId`, never the raw patientId) so a re-run can never mint a second logicalId, CURRENT carries `internalPatientId` as the projection/reception linkage, and the final advance is gated on set equality proven by a membership **and** cardinality check, not a count match alone; re-cutover after rollback must re-enter `SHADOWING` to regenerate parity and is additionally held by `BLOCKED_RECUTOVER_DIVERGENCE_RESOLUTION` because rollback-window divergence has no reconciliation path; MedicationRequest starts with one FHIR ingestion writer and no migration/backfill; never dual-write or automatically fall back |
 
 #### Independent domain review — required corrections
 
@@ -462,16 +500,171 @@ patient-search bound-exceeded status deferred to API-001 §4 (withdrawing the
 premature 429); `BLOCKED_WRITE_PRODUCER_PREREQUISITES` (API-003) and
 `BLOCKED_FIELD_MAPPING` (DOM-006) registered in frontmatter blockers;
 IDX-001's change_log revision range corrected; Revision 11 entries added to
-the body histories of the four edited documents. **All design findings remain
-unresolved and escalated; round 5 requires working independent review
-capacity (codex returns 2026-08-05).**
+the body histories of the four edited documents.
 
-Current frozen packet (post-round-4 mechanical fixes; **round 5 must start here**):
-base SHA `9d8dbc0c3f5201c762dbb39fd9b15fc3ddc4b875` (the exact11 paths are
-byte-identical at the current local HEAD `2c84e66`, which contains no exact11
-changes); candidate diff SHA-256
-`96ceec3a9d88e1fb9d9e700fd1d67807ae89c845257c4d30e3c091b187f4db30` over 4,935
-diff lines (Revision 11). Round 4 itself reviewed
+#### Revision 12 — round-4設計findingsの訂正(2026-07-31, user direction)
+
+2026-07-31のuser direction(「NSIPS仕様書入手は後回し。その他はfableが決めた
+内容に従う」)を、round-3 escalationが要求していた設計方向の人間委任として記録
+する。この委任の効力は**PROPOSEDドラフトの訂正とround 5 re-reviewの実行まで**で
+あり、final SSOT approval・implementation・landing・cutoverのいずれも承認しない。
+Revision 12は round-4の全設計finding + round-3 open MEDIUM群へ、batchが他所で
+既に採っている基準を一貫適用するfail-closed訂正を行った。
+
+| Finding (round 4) | Correction |
+|---|---|
+| search index deltaに圧縮規則がなく、恒久保持(走査劣化)か規則なき削除の二択に落ちる | DB-005 §3.2へ**keep-latest圧縮規則**を新設: `(partition, logicalId)`単位、retention期限後のsuperseded deltaのみ削除可、latest delta非削除、latest=falseのpairは期限後に全体削除可、clinical TWI外の有界background操作、barrier test証明前は実行しない(未実装の既定=削除しない) |
+| cutover transactionが非冪等(再実行が同一patientへ別logicalIdの重複Patientを作り、修復経路なし)かつpatientId-keyed投影への経路がない | DB-005 §11へ**PATIENTLINK item**(patientId→logicalIdのimmutable 1:1 linkage、per-patient TWI内のconditional Put)とCURRENTの`internalPatientId`内部属性を新設。再実行の進捗authorityをPATIENTLINKに一本化し、二重logicalId発行を条件不一致のatomic abortで構造的に排除。投影再生成とreception互換設計のlinkage経路を定義し、cutover gateへ追加(DOM-002 §2の前提列挙も同期) |
+| 集約deny intentがPENDING#/DONE# lifecycleを満たせない(試行回数の累積Updateがimmutability違反、identity・配送時期未定義でdedupe ConditionCheckを満たす経路がない) | DB-005 §6.4 / API-008 §9.2で`eventId`を`(principal, scope, windowStart)`から決定的に導出、窓あたり1回のconditional Put、以後は強整合存在確認後に429、**試行回数の保持を撤回**、配送は窓閉鎖+clock skew後、集約deny eventをMOD-008登録範囲(`BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT`)へ追加 |
+| joint action-budget invariantがupdate/createを過少計上(updateのdelta setはBEFORE/AFTER両versionに跨る。patientNumber guardは全version分を占めるのに「1件」計上) | operation別invariantへ訂正: MedicationRequest create `7+M+N<=100`、Patient update `7+2M+N<=100`、Patient create(将来)`7+M+2N<=100`(`M=maxIndexedTokenPartitions`)。評価点=write preflightの実数カウント、§7.1 JSON capの従属主張を撤回、API-008 §2.1の「guard 1件」をN件へ訂正 |
+| (premise) PostgreSQLに現在Patient書込経路が存在せず、drain/fence gateはtrivially satisfiableで主張を測っていない | DB-005 §11へ前提訂正を記録: fence要件の対象は観測されたwriterではなく**write grant**。grant棚卸しとrevoke/read-only化のevidenceだけがstep 1を充足し、「現在writerがいない」は充足根拠にならない |
+| (round-3 MEDIUM) 再cutover `POSTGRES_PRIMARY_ROLLED_BACK → CUTOVER_PENDING`はparity gateを満たせない到達不能経路 | 遷移を`POSTGRES_PRIMARY_ROLLED_BACK → SHADOWING → CUTOVER_PENDING`へ訂正(parity再生成を強制。rollback中のPostgreSQL書込も再parityで検出) |
+| (round-3 MEDIUM) 403/404の別がcutover phaseをscope外callerへ開示 | API-008 §8の判定順序へ**phase/enablement判定**段を追加(6段)。phase依存応答はinteraction scope通過callerに限定し、scope欠如は両phaseで一律403 |
+
+対象文書はDB-005・API-008・DOM-002の3件(いずれもexact11内)。各文書の
+frontmatter change_logと本文変更履歴へRevision 12を同時記録し、§12停止条件・
+test obligationsを同期した。新規blocker追加はなし。
+
+#### Round 5 re-review result — 3レーン中1レーンのみ delivered、REQUEST_CHANGES
+
+Revision 12 packet(`8ff16ca9…` / 5,195行)に対しfresh-context 3レーンを
+dispatchした。結果は**部分的**であり、gate充足は主張しない。
+
+| Lane | 結果 |
+|---|---|
+| data-integrity | **delivered / REQUEST_CHANGES**。packet hashを独立再現(一致)。HIGH 1件、MEDIUM 3件、LOW 3件 |
+| security / privacy | **delivered / REQUEST_CHANGES**。同packet hashを独立再現(一致)。MEDIUM 2件、LOW 3件。Revision 12の訂正9項目自体はround-4 findingsを正しく閉じていると判定 |
+| independent verifier | **delivered(5回目の起動、2026-08-01)**。Revision 14 packet `ab086c9f…` に対して hash を独立再現し一致。**packet本文 PASS(HIGHなし)**、総合は REQUEST_CHANGES(record-only — findings は全て packet 外)。1〜4回目は verdict を返せず(1回: session limit、3回: 起動後idleで報告なし・明示照会にも無応答)、`independence_not_satisfied` として review evidence に数えていない |
+| codex second opinion | 利用不能(usage limit、2026-08-05まで)。記録のみ |
+
+**round 5は3レーン全てがdeliveredとなり完了した。** data-integrityの
+findingsはRevision 13で、security/privacyのfindingsはRevision 14で閉じた。
+independent verifierは**Revision 14 packetに対してPASS(本文HIGHなし)**を返し、
+`BLOCKED_INDEPENDENT_VERIFIER_LANE_UNAVAILABLE`は解除された。
+**R4が要求するmaker/checker分離は充足した。**残るのはfinal human SSOT approvalである。
+
+verifier laneの主な確認結果:
+
+- packet hash `ab086c9f…`(5,559行)を独立再現し一致。
+- **§7の実装主張をlive codeと突合し完全一致**: `check-boundaries.mjs`の
+  marker検知・codec除外・test除外・`main()`からの呼び出しがいずれも実在、
+  `check-scripts.mjs`のpositive/negative fixtureも登録済み、両scriptをfresh実行
+  してPASS(exit 0)。`branded-ids.ts`の`#`拒否も実在。DB-005 §7が静的検知の
+  限界を正直に記載していることも確認。
+- **round 1〜4を落とし続けた失敗クラス(ルール導入節だけ直り参照側が旧のまま)は
+  再発なし**。残存grep hitは全て却下理由の説明・凍結履歴・禁止リストであり正当。
+  §8判定順序は本文とtest obligationの双方で6段一致、budget式・guard N件・
+  `intentKind`/`deliverableAfter`/`retentionExpiresAt`/`internalPatientId`の宣言も
+  同期済み。
+- 未検証範囲(verifier自己申告): DOM-005/DOM-006/API-003/PH-OS/patient_search/
+  jp_core strategy/ssot_indexの行単位精読(旧表現grepとentry確認のみ実施)、
+  data-integrity/security両laneのfinding listとのDOM系逐条突合。
+
+**MEDIUM 2件はState.md限定であり、同ファイルで閉じた**(packet hashは不変):
+Next action節がround-5未完了の旧記述のままだった点と、dirty ownership正本に
+未採番コード変更3 pathが未記載だった点。
+
+**LOW 3件はpacket本文に触れるため意図的に未適用とし、State.mdへdeferredとして
+記録した**。適用すればhashが動き、いま得たPASSを自ら無効化するためである
+(round 1〜4で繰り返した誤りを再演しない)。次にpacket revisionを開く際に畳む:
+(a) DB-005 frontmatter blocker注記がRevision 13表現のまま(§7本文と不一致だが
+conservative側)、(b) ARC-008本文変更履歴のRevision 13 entryの並び順、
+(c) §3.2のpair全体削除特例はsuperseding deltaを持たないため§3.2の機械強制
+ConditionCheckを満たせず、当該削除を強制する条件式が未記載。
+
+security laneがPASSと判定した項目(参考、単独ではapprovalではない):
+phase非開示6段順序に新oracleは特定できず(403/404の別が漏らすのは静的契約構造
+のみ)、keep-latest圧縮はindexが原則4の再生成可能projectionであるためappend-only
+/法定保存群と衝突せず位置づけ一貫、budget式(7+M+N / 7+2M+N / 7+M+2N、guard
+N件化、評価点=write preflight)はDB-005 §5.2とAPI-008 §2.1/§4.2.1で同一定義に
+収束、cutover冪等化はPATIENTLINK単一progress authority・logicalId発行とlink Put
+の同一TWI束縛・最終epoch CAS単一適用で二重logicalId経路を構造的に排除しGSI新設
+なしでLeadingKeys粒度と整合、集約denyの存在確認→429経路はaudit-before-response
+規律に適合(quota未満denyは個別intentで全件記録され無記録窓なし)。
+
+#### Revision 14 — round-5 security/privacy findingsの訂正(2026-07-31)
+
+| Severity | Finding | Correction |
+|---|---|---|
+| MEDIUM | PATIENTLINKの`SK = PATIENT#{patientId}`が「patientIdは内部surrogateだから非PHI」という**どのSSOTにも規律のない前提**に依存。`migrations/000002_…`の`patient_id`は自由形式TEXTで`patient_number`との同値を禁じる制約がなく、レガシーレセコン移行では患者ID=患者番号の運用が現実にある。その場合SKは生の患者番号となり原則7に直接違反。§5.2でpatientNumber guardをHMAC化していることとも非対称 | SKを`hmacPatientId`(`HKDF(root, tenantId, pharmacyId, purpose="patientLink")`、guardと同一のrotation規律)へ変更し、生値は暗号化item payload内のみに。決定的HMACなので再実行skip判定と投影linkageは復号なしで従来どおり成立。**正しさがpatientIdの由来に依存しなくなる**。あわせて最終epoch CASを**membership + cardinalityの合成**として定義し直し(membershipのみでは余剰link、cardinalityのみでは欠落と余剰の相殺を見逃す)、両検査ともpayload復号を要さないことを明記 |
+| MEDIUM | keep-latest圧縮の「latest非削除・retention内非削除」がprose + barrier test依存で、本batchが§5.2 `identityDigest`と§6.4 payload削除に課した「破壊的操作をapplicationの自己抑制に委ねない」基準と非整合。誤削除は存命recordの検索欠落(SAF隣接) | 各deltaへ`retentionExpiresAt`属性を追加し、削除を`TWI(ConditionCheck(superseding delta s: exists AND s.retentionExpiresAt <= :now) + Delete(d exact key) with retentionExpiresAt <= :now)`として機械強制。圧縮roleのleast-privilege分離と実行記録の運用監査を実装WPの承認要件へ |
+| LOW | `internalPatientId`のlog/trace/metric禁止がwire禁止と非対称(§11はwire resourceJson/FHIR responseのみ規定)。logicalIdは§9で範囲付き明示済み | §9へ`internalPatientId`と`patientId`生値の access log/APM/trace/exception/metric label/外部送信禁止をlogicalIdとparityで追加。許可される使用面はitem属性(保存時暗号化の対象内)に限定 |
+| LOW | 集約deny `eventId`の導出が keyed HMACか無鍵hashか未指定。`eventId`はoutbox SKと§6.1 dedupe keyに載る | keyed HMAC(`HKDF(root, tenantId, purpose="denyAggregateEventId")`)と明記。無鍵hashでは`(principal, scope, windowStart)`の総当たりで「どのprincipalがいつquotaに達したか」をkeyの存在だけから逆引きできる |
+| LOW | 開放窓中は集約intentが配送されずreconciliation対象外のため、進行中の総当たりのchain可視化が窓幅+skew分遅延。alertingはSEC-007管轄で未定義 | 本節が保証するのは**記録の完全性**であって**検知の即時性**ではないことを明記し、両者を混同しない旨を追加。「開放窓中のdeny集中を検知するoutbox非依存の経路」をSEC-007/SEC-008起票事項へ明示的に含める(本節でalertingを発明しない) |
+| LOW | write grant棚卸しにbreak-glass/superuser/migration credentialの明示がなく、乖離detector期間が有限(`patients`行はjoin先として存続) | 棚卸し対象へ break-glass/緊急アクセスcredential・superuser/owner role・migration実行credential・運用者の直接接続を明示列挙し、列挙漏れを「停止済み」と扱わないことを規定。detector終了根拠を「一定期間経過」ではなく権限revokeの証跡または`patients`依存の解消へ紐付け |
+
+対象文書はDB-005・DOM-002の2件。§12停止条件・test obligations(PATIENTLINKの
+key形、membership+cardinalityの合成、圧縮の機械強制、keyed eventId)・変更履歴を
+同期した。新規blocker追加はなし。
+
+**訂正後の自己整合スイープ**(Revision 13と同じ手順を反復)。1件が該当し同じ
+passで訂正した。**§9(暗号化と鍵管理の正本)が用途分離鍵を列挙していなかった**。
+本batchは検索トークン(§3.2)以外にpatientNumber guard(§5.2)、PATIENTLINK
+(§11)、idempotency lookup key(§5.2)、集約deny eventId(§6.4)で決定的HMACを
+使うが、定義は各節に分散し、§9のQ4は`HKDF(root, tenantId)`の検索トークン鍵しか
+挙げていなかった。鍵階層を読む実装者には他の4用途が見えず、tenant単位鍵の流用
+(guard/PATIENTLINKでは低エントロピー値の総当たり列挙を許す)へ倒れる誘因が
+残っていた。§9へ導出入力とローテ時の性質を含む正本一覧表を追加し、各節はこれを
+参照する形にした。
+
+delivered laneがPASSと判定した項目(参考、単独ではapprovalではない):
+budget invariantの数え上げ(固定7・2M・2N)は正確でundercountなし、
+`identityDigest`はaction数を増やさない、cutover冪等性のシナリオ(i)部分失敗後の
+再実行 / (ii)並行実行 / (iii)epoch advance後の再実行は構造的に成立、
+集約denyの「窓あたり1件以上」の下限は成立。またlive codeを確認し、
+`patients`表へのproduction書込経路がゼロである(patient-repositoryはSELECTのみ、
+INSERTはintegration test fixtureのみ)というround-4の前提訂正が**正確**である
+ことを独立に確認した。
+
+#### Revision 13 — round-5 data-integrity findingsの訂正(2026-07-31)
+
+| Severity | Finding | Correction |
+|---|---|---|
+| HIGH | §3.2 keep-latest圧縮の削除条件が削除対象`d`のretention経過しか要求せず、superseding delta `s`が新しい場合に`d.commit <= fence < s.commit`のas-of materializationから logicalIdがsilentに欠落する。同節末尾のbarrier不変条件と数学的に矛盾 | 削除条件へ**`s`自身のretention経過**を追加。`s`が期限を経過していれば`d`を要する fence区間は全て期限外になる |
+| MEDIUM | §6.4 集約deny intentのreconciliation除外条件(未閉鎖窓を差分に数えない)が実装不能 — `windowEnd`が暗号化payload内にしかなく、突合が復号と鍵可用性に依存する | 平文属性`intentKind`(`individual`/`aggregateDeny`)と`deliverableAfter`(`windowEnd + max clock skew`、生成時確定・以後不変)を追加。正確な窓境界とprincipal/scopeは暗号化payload側に維持 |
+| MEDIUM | §11 rollback→再cutover 2周目: rollback期間中のPostgreSQL側の属性変更はparityで検出されるが解消経路が存在せず(VERSION 2+ backfill禁止・`SYSTEM_CUTOVER`はVERSION 1限定・PUT producer未成立)、統合/削除で対象集合が縮むとPATIENTLINKがorphanとして残り件数一致が恒久不成立。既存の「未解消差分はcutoverをblockする」と合成すると再cutoverが二度と成立しない | `BLOCKED_RECUTOVER_DIVERGENCE_RESOLUTION`として登録(DB-005 §11 / ARC-008 / DOM-002 §2)。解除は(a)反映経路の承認 または (b)rollback期間もPostgreSQLをread-onlyに保つ運用制約の承認。初回cutoverは対象外 |
+| MEDIUM/LOW | §11 最終epoch CASの「件数一致」が基数比較として読め、欠落1件と余剰1件が相殺する。count QueryのConsistentRead未指定 | reconciliation対象集合 ⊆ PATIENTLINK集合の**membership検査**として定義。`ConsistentRead=true`の全ページ走査と対象集合の事前凍結を要求し、TOCTOU前提を明記 |
+| LOW | `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT`の前提がstale — `branded-ids.ts`はWP-4050(base SHA後)で`#`拒否を実装済みでnegative testもある | round-4のPostgreSQL writer前提訂正と同種の事実訂正。blockerの範囲を「factoryが拒否しないこと」から「キー構築経路がbranded型を経由することの保証」へ縮小し、conservative側は維持 |
+| LOW | cutover TWIのrotation CC要否が§5.2「全clinical TWI」と§11列挙で不整合 / CURRENTをPut置換すると`internalPatientId`がsilent消失(templateは`Update`だが保存義務が未明文) | per-patient cutover TWIもrotation CCを持つことを明示し固定action=8として数え方を確定。`internalPatientId`/`identityDigest`をCURRENTの保存必須属性として明文化しPut置換を§12で禁止 |
+
+対象文書はDB-005・ARC-008・DOM-002の3件。§12停止条件・test obligations
+(圧縮のsuperseding条件、平文属性による復号なしreconciliation、membership検査、
+CURRENT属性保存の各negative test)・変更履歴を同期し、新規blocker
+`BLOCKED_RECUTOVER_DIVERGENCE_RESOLUTION`を登録した。
+
+**訂正後の自己整合スイープ**。round 1以降くり返している失敗クラス
+(ルールを導入した節だけ直し、それを読む節が旧ルールのまま残る)を潰すため、
+新設・変更した各ルールについて参照側をgrepで機械的に洗った。2件が該当し、
+同じpassで訂正済みである。判断を要さない客観的矛盾なのでreviewerへ回さない。
+
+1. **§11のPATIENTLINK bulletが旧「件数一致」のまま残っていた**。membership検査
+   への訂正は後続bulletにしかなく、遷移条件を導入する側のbulletは
+   「PATIENTLINK件数がreconciliation対象件数と一致することを確認した後」と
+   読めた。実装者はこちらを先に読むため、round-5 findingが指摘した基数比較を
+   そのまま実装し得た。導入側bulletをmembership検査へ書き換えた。
+2. **`internalPatientId`が§3.1の属性列に未宣言だった**。§3.1はcurrent/version
+   itemの属性の正本であり`identityDigest`はRevision 10でここに追加されている。
+   `internalPatientId`は§11でだけ導入され、item schemaを読む実装者には見えて
+   いなかった。§3.1へ追加し、両属性がCURRENTの保存必須属性でありPut置換を
+   禁じることを同節にも明記した。
+
+Current frozen packet (Revision 14; **the undelivered round-5 verifier lane
+must start here**): base SHA `9d8dbc0c3f5201c762dbb39fd9b15fc3ddc4b875` (the
+exact11 paths are byte-identical at local HEAD `a1fd780`, which contains no
+exact11 changes); candidate diff SHA-256
+`ab086c9f8d6e6bfd26e32fbfe9daa21a3b8b6ccd3f324f413b4d2975731cfab6` over 5,559
+diff lines (Revision 14, including the post-correction self-consistency sweep
+and the §7 record of the `check:boundaries` enforcement). Round 5's data-integrity and security/privacy lanes
+both reviewed the Revision 12 packet
+`8ff16ca9b3532a38bbf9cd02f3bd2d060be7768b22e6666eecd979a3d3af0592`
+(5,195 lines) and each independently reproduced that hash; Revisions 13–14
+supersede it, so any further review starts from the hash above.
+The intermediate Revision 13 packet was
+`3f5a1de2cf11592f779c69dc7c0b56691a640e5b70350f0a66710589e228fb1b`
+(5,360 lines) and no lane reviewed it. Revision 12 had itself superseded the
+Revision 11 packet
+(`96ceec3a9d88e1fb9d9e700fd1d67807ae89c845257c4d30e3c091b187f4db30` / 4,935
+lines), which no round reviewed. Round 4 itself reviewed
 `cb5c543c73bfcc4d31af472b4a46134429882105be188c265027bf36de89ce57` over 4,919
 diff lines (Revision 10). Round 3 itself reviewed
 `634da8960b4893e5da7bfbb6ba5f4d9769b2fbdde6b7e0227ae090d19f5e2942` over 4,617
@@ -480,16 +673,21 @@ lines; the three mechanical fixes superseded it. (Round 1 reviewed `483411c7…`
 only**, in the order they are listed in the drafted-amendment-set bullet above.
 `Plans.md` and `State.md` are owned and edited by this WP but are deliberately
 excluded from the hashed range, because they carry the hash itself and would
-otherwise make it unverifiable. Note that this diff spans Revisions 3–9; the
-Revision 9 entries in each document's change_log are the most recent pass. This
-sentence must be updated every round — it was left at "3–7 / Revision 7" through
-rounds 2 and 3, which would have led a reviewer to treat the corrections under
-review as out of scope.
+otherwise make it unverifiable. Note that this diff spans Revisions 3–14; the
+Revision 14 entries in DB-005/DOM-002's change_log are the most recent pass
+(API-008's and ARC-008's most recent entries are Revision 12 and Revision 13
+respectively; neither was edited in Revision 14). This sentence must be updated every round — it was left at "3–7 /
+Revision 7" through rounds 2 and 3, which would have led a reviewer to treat
+the corrections under review as out of scope.
 
-Observed validation for this pass: `node scripts/check-ssot-index.mjs` PASS at
-173 documents; `git diff --check` PASS. The `git diff --check` failure that
-pre-existed this pass (`Plans.md` trailing blank line at EOF) was corrected in
-the same edit. No test, typecheck, build, or runtime gate was run because this
+Observed validation for the Revision 14 pass (2026-07-31):
+`node scripts/check-ssot-index.mjs` PASS at 173 documents; `git diff --check`
+PASS. The Revision 12 and 13 passes had the same two gates PASS. (The Revision 11 pass
+also passed both; its pre-existing `git diff --check` failure — `Plans.md`
+trailing blank line at EOF — was corrected in that edit.) No test, typecheck,
+build, or runtime gate was run in Revision 12/13 because both passes change
+only Markdown SSOT drafts and touch no source, contract artifact, schema, or
+migration. No test, typecheck, build, or runtime gate was run because this
 pass changes only Markdown SSOT drafts and touches no source, contract artifact,
 schema, or migration. `pnpm` scripts could not be invoked because the local
 `pnpm` is 11.17.0 while `package.json` pins `packageManager: pnpm@11.18.0`, so
@@ -498,7 +696,7 @@ the two applicable gates were executed directly through `node` and `git`.
 - **Recommended safe default 1 — candidate profiles:** limit the proposed amendment scope to JP Core `JP_Patient` 1.2.0 and the oral/topical `JP_MedicationRequest` 1.2.0 use case, subject to official fixed-version package, canonical URL, digest, exact profile, terminology, and Must Support verification. This packet does not claim support. If the amendment is approved, injection, derived/unverified Must Support interpretations, and unknown or unresolved terminology remain unsupported and fail closed.
 - **Recommended safe default 2 — lifecycle:** prohibit Patient auto-merge, physical delete, and tombstone revival. Initially accept MedicationRequest only with `intent=order`; correction and original-order linkage remain fail closed until an explicit human-approved workflow exists.
 - **Recommended safe default 3 — create / update / idempotency:** create and every enabled Patient PUT require a tenant/pharmacy/resourceType-bound stable idempotency key, request-byte fingerprint over exact accepted request-entity bytes, and one conditional no-overwrite alias/guard for every configured active+retained lookup-key version in the same clinical TWI; Patient PUT additionally requires `If-Match` as its sole wire version authority. Each write strong-reads the persisted tenant+pharmacy rotation control and includes its exact generation, mandatory-set digest, and ACTIVE state as a same-TWI ConditionCheck, and additionally a ConditionCheck on the per-resourceType authority control item (`authorityState`, `authorityEpoch`, `writerFenceToken`). **That ConditionCheck does not by itself establish single-writer safety and this default does not claim it does**: `writerFenceToken` is a plaintext attribute every writer can read, so a writer that reads it and calls the value self-held cannot be distinguished at the DynamoDB layer — the same application self-restraint this batch rejected on the PostgreSQL side. Fresh-writer exclusion is not claimed until `BLOCKED_WRITER_FENCE_TOKEN_ISSUANCE` is cleared. **Lookup-key retirement is unsupported in this batch**: the retained version set only grows, key material is not removed, and a rotation that would exceed the approved bound is refused rather than retired past. A compromised lookup key therefore has no withdrawal path, and `BLOCKED_LOOKUP_KEY_RETIREMENT` **stops clinical write from being enabled** until an emergency deactivation route is approved — it is a gate, not an accepted residual risk. Patient create is disabled and, post-cutover, `identifier`, the patientNumber slice and `Patient.id` are immutable, so neither create nor update can produce a duplicate patientNumber — though that immutability is currently enforced only before the TWI, not by a ConditionCheck, and it also leaves no way to register or correct a patient after cutover, which is why it gates cutover. Same-byte replay returns the exact stored result **by returning the stored `resourceJson` octets verbatim**, verified against a stored digest; it is not re-derived through a serializer, and re-deriving it is a §12 prohibition. Byte-different reuse returns 409; ambiguous failure reconciles every applicable version without automatic retry. A digest mismatch is a permanent 500 with no client-side escape that avoids creating a duplicate — recorded as unresolved, not as safe. The whole TWI is limited to 100 distinct action targets and 4 MiB aggregate operation-after item size, each item to 400 KB; overflow is pre-write 422 and is never chunked or offloaded to S3.
-- **Recommended safe default 4 — single-writer cutover:** PostgreSQL remains the sole Patient authority until read-only shadow parity is proven and a human approves cutover; the approved cutover transaction creates FHIR VERSION 1 as a truthful immutable `SYSTEM_CUTOVER` creation baseline and does not invent PostgreSQL history. After cutover the FHIR store is the sole Patient writer. **Cutover is not currently executable and this default does not authorize it.** Single-writer safety rests on a time-ordered handover (stop → drain → epoch advance → new writer), and no primitive exists on the PostgreSQL side to enforce the stop: an instance that never receives it keeps its write grant, and "in-flight is zero" is a property of the observation instant. Cutover is additionally blocked until the live `reception_entries` foreign key and `INNER JOIN patients` compatibility design is approved, and until a route exists by which a patient can be registered or an identity error corrected after cutover — with create disabled, identity immutable and PostgreSQL no longer the writer, the Patient set would otherwise be permanently closed. The authority state machine is **not** one-way: it carries a rollback value and only `authorityEpoch` is monotonic. MedicationRequest has no current runtime/store/writer/data: only after the amendment batch is approved, locked-profile validation passes, and security prerequisites pass does the FHIR store/API ingestion boundary become its sole initial writer from the first accepted create, with no legacy migration, backfill, dual writer, or automatic fallback. FHIR Provenance does not replace the internal append-only audit authority.
+- **Recommended safe default 4 — single-writer cutover:** PostgreSQL remains the sole Patient authority until read-only shadow parity is proven and a human approves cutover; the approved cutover transaction creates FHIR VERSION 1 as a truthful immutable `SYSTEM_CUTOVER` creation baseline and does not invent PostgreSQL history. After cutover the FHIR store is the sole Patient writer. **Cutover is not currently executable and this default does not authorize it.** Single-writer safety rests on a time-ordered handover (stop → drain → epoch advance → new writer), and no primitive exists on the PostgreSQL side to enforce the stop: an instance that never receives it keeps its write grant, and "in-flight is zero" is a property of the observation instant. Cutover is additionally blocked until the live `reception_entries` foreign key and `INNER JOIN patients` compatibility design is approved, and until a route exists by which a patient can be registered or an identity error corrected after cutover — with create disabled, identity immutable and PostgreSQL no longer the writer, the Patient set would otherwise be permanently closed. The cutover transaction itself is **idempotent by construction** (Revision 12): each per-patient TWI conditionally Puts an immutable PATIENTLINK and is bound to `authorityState=CUTOVER_PENDING` + epoch, so a partial-failure re-run skips linked patients and can never commit a second logicalId for the same patient; the link is keyed by `hmacPatientId` (pharmacy- and purpose-separated HKDF, sharing the patientNumber guard's rotation discipline) rather than the raw `patientId`, so correctness no longer rests on the unenforced premise that `patientId` is non-PHI — the column is free-form TEXT with nothing forbidding `patient_id = patient_number` (Revision 14); CURRENT carries `internalPatientId` (a mandatory retained attribute — CURRENT is never Put-replaced) so patientId-keyed projections and the reception compatibility design have a defined linkage path, and the final `CUTOVER_PENDING → FHIR_PRIMARY` advance is a single conditional epoch CAS gated on **set equality**, proven by a per-element membership check plus a cardinality check (both strongly read, neither requiring payload decryption) — a membership check alone misses a surplus link and a count match alone lets a missing-one/surplus-one pair cancel (Revisions 13–14). **Re-cutover after a rollback is separately blocked**: nothing can reconcile a PostgreSQL-side change made during the rollback window (VERSION 2+ backfill is prohibited, `SYSTEM_CUTOVER` is VERSION 1 only, and the PUT producer prerequisites are unmet), and a shrunken reconciliation set leaves an undeletable surplus PATIENTLINK — so `BLOCKED_RECUTOVER_DIVERGENCE_RESOLUTION` gates it until either a reflection path or a read-only-during-rollback operating constraint is approved. The first cutover is out of that blocker's scope. The authority state machine is **not** one-way: it carries a rollback value and only `authorityEpoch` is monotonic, and re-cutover from `POSTGRES_PRIMARY_ROLLED_BACK` must pass through `SHADOWING` again to regenerate the parity evidence its own gate requires — the previous direct transition to `CUTOVER_PENDING` was unreachable by design and is withdrawn. The PostgreSQL-side stop/drain gate is measured against **write grants**, not observed writers: the repository currently has zero Patient write paths, so "no writer observed today" satisfies nothing. MedicationRequest has no current runtime/store/writer/data: only after the amendment batch is approved, locked-profile validation passes, and security prerequisites pass does the FHIR store/API ingestion boundary become its sole initial writer from the first accepted create, with no legacy migration, backfill, dual writer, or automatic fallback. FHIR Provenance does not replace the internal append-only audit authority.
 - **Drafted atomic amendment set (exact 11):** `docs/architecture/fhir_native_phos_aws_platform_direction.md`; `docs/api/platform_api_architecture.md`; `docs/domain/fhir_native_canonical_model.md`; `docs/domain/fhir_mapping_registry.md`; `docs/api/ph_os_reference_integration.md`; `docs/api/fhir_rest_facade_contract.md`; `docs/api/patient_search_contract.md`; `docs/domain/domain_model.md`; `docs/database/dynamodb_single_table_design.md`; `docs/product/jp_core_fhir_platform_strategy.md`; `docs/ssot_index.md`. All working versions are PROPOSED. ARC-008 v0.1.2 remains previous-version approval provenance; v0.1.3 retains the existing `amends` list until finalization. SEC-006/SEC-008 are unchanged.
 - **Approval record:** current user wording `推奨承認` is accepted as explicit equivalent to `WP-4250を推奨方針で承認`; its effect is limited to PROPOSED drafting/review.
 - **Approval effect:** authorizes only the listed PRC-007 **PROPOSED**
@@ -515,6 +713,36 @@ the two applicable gates were executed directly through `node` and `git`.
   contract artifact, schema, migration, runtime, production, commit, or push
   action belongs to this decision packet.
 - **Dirty ownership / landing:** the same Codex root owns the existing WP-4254 IDX-001 delta; whole-file IDX ownership is resolved for cumulative review. Pre-edit `git diff -- docs/ssot_index.md` SHA-256 was `88c2ab2c375b8a8b7edbff9ec5cd2a21670cd58da4a1b5ef83fd0cdaf80b1f79`; all WP-4254/MOD-009 semantics/hunks must remain. WP-4250 owns only this active block, the active pointer snapshot, and the exact11 PROPOSED additions. No landing is authorized; cumulative exact-path landing remains separately gated after review/finalization.
+
+### WP-4256 — 複合キー構築の機械強制と ingress delimiter 拒否の固定(2026-07-31〜08-01)
+
+- **Status:** COMPLETED_LOCAL / MACHINE_VALIDATED / LANDING_APPROVED(2026-08-01
+  の direct human approval「全て承認」で採番と landing を承認)
+- **Risk:** P2 / R2。CI 検査規則の追加とテスト追加のみで、production 経路の
+  挙動、contract、schema、migration、認可判定を変更しない。
+
+2026-07-31 の user direction「実際のコードを編集して」に基づき、レビューが 2 ラウンド
+連続で挙げた `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` の解除条件 (a) を実装した。
+**これらの path は WP-4250 の markdown-only allow-list の外**であり、WP-4250 の
+frozen packet(exact11 の 11 文書)には含まれない。したがって round-5 review を
+無効化していない。
+
+| Path | 変更 | 検証 |
+|---|---|---|
+| `scripts/check-boundaries.mjs` | 複合キー構築の機械検知を追加。AST 走査で `TENANT#`/`PHARMACY#` を含む literal を検出し、承認済み key codec(`apps/*/src/dynamodb/*key-codec.ts`)以外の production source にあれば exit 1。codec 限定は §10 の「DynamoDB マーシャリングはアダプタ層のみ」境界に一致させたもの。test source は codec 出力の期待値固定のため除外 | `node scripts/check-boundaries.mjs` PASS。ルール呼び出しを外す変異で negative test 3 件が落ちることを確認 |
+| `scripts/check-scripts.mjs` | 上記の positive/negative fixture を追加し、テスト登録リストへ接続 | `node scripts/check-scripts.mjs` PASS |
+| `apps/api/src/server.test.ts` | `malformedDevIdHeaderCases` へ **key-delimiter ケース 3 件**を追加。従来は blank と制御文字のみを網羅し、`branded-ids.ts` が prefix 曖昧性を理由に拒否を追加した `#` そのものが ingress で未固定だった。tenant には衝突実例 `tenant-001#PHARMACY#tenant-002` を用いる | api 849→855 PASS。`branded-ids.ts` の delimiter 拒否を外す変異で新規 6 件がちょうど落ちることを確認 |
+
+**検知ルールの限界(実測)**: template literal と `+` 連結は検知するが、marker を
+分割する形(`const P="TENANT"; ${P}#${t}`)と `["TENANT",t].join("#")` は通過する。
+静的検知の原理的限界であり、DB-005 §7 は「迂回が入れば CI で落ちる保証であって
+迂回経路が存在しないことの証明ではない」と記載済み。この限界記述を実測 4 変種
+ベースの具体記述へ精緻化する作業は、packet hash を動かして review を無効化しない
+よう **verifier lane の verdict 取得後**に回す。
+
+`BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` の残余は **(b) 既存永続値の `#` 含有検証**
+のみ。DDL/DML と production data 参照を伴うため人間承認が必要であり、本 session では
+着手しない。blocker は維持する。
 
 ## 8. Implemented / Landing State — nonclaimable
 

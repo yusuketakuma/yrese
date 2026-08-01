@@ -5,29 +5,46 @@ ssot_id: DOM-002
 title: ドメインモデル(集約・不変条件)
 domain: domain
 status: APPROVED
-approved_at: 2026-07-09
-approved_by: opus4.8 review + fable5
-owner: fable5
+approved_at: 2026-08-01
+approved_by: "direct human authority 2026-08-01 (WP-4250 exact11 全て承認); round-5 independent verifier PASS on packet body with no HIGH finding (frozen packet ab086c9f8d6e6bfd26e32fbfe9daa21a3b8b6ccd3f324f413b4d2975731cfab6, base SHA 9d8dbc0c3f5201c762dbb39fd9b15fc3ddc4b875); round-5 security/privacy findings closed in Revision 14; round-5 data-integrity findings closed in Revision 13; codex second opinion unavailable until 2026-08-05 and not counted as evidence"
+owner: codex_root
 reviewers:
-  - opus4.8
-  - human_review_required
-version: 0.1.1
+  - independent_verifier
+  - architect
+  - data_integrity_reviewer
+  - medical_safety_reviewer
+  - privacy_compliance_reviewer
+  - human_pharmacist_product_authority
+version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-11
-effective_from: null
+updated_at: 2026-07-31
+effective_from: 2026-08-01
 effective_to: null
 source_refs: 構築プロンプト v0.2.0 §12, §17, §18
 depends_on: [DOM-001, PRD-001, SAF-001, MOD-004, MOD-005]
 impacts: [DOM-004]
-related_work_packages: [WP-1101, WP-9002-W5F]
-related_tests: []
+related_work_packages: [WP-1101, WP-9002-W5F, WP-4250]
+related_tests: [pnpm check:ssot-index, git diff --check]
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.1.2 2026-08-01 WP-4250 exact11 finalization: round-5の独立review三レーン完了(independent verifier PASS・本文HIGHなし)とdirect human approvalによりPROPOSED→APPROVED。本文semanticsは不変。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置き"
+  - "0.1.2 2026-07-31 WP-4250 PROPOSED Revision 14: round-5 security/privacy re-reviewの同期。§2のPATIENTLINK gateをmembership+cardinalityの合成(集合等価)として明示し、SKが生patientIdではなくhmacPatientIdであることを追記"
+  - "0.1.2 2026-07-31 WP-4250 PROPOSED Revision 13: round-5 data-integrity re-reviewの同期。§2のPATIENTLINK gateをmembership検査として明示し、rollback経由の再cutoverをBLOCKED_RECUTOVER_DIVERGENCE_RESOLUTIONとして追加(初回cutoverは対象外)"
+  - "0.1.2 2026-07-31 WP-4250 PROPOSED Revision 12: round 4設計findings訂正の同期。§2のcutover前提列挙へPATIENTLINK存在とCURRENTのinternalPatientId保持(DB-005 §11の冪等性・投影linkage経路)を追加"
+  - "0.1.2 2026-07-31 WP-4250 PROPOSED Revision 9: re-review round 2訂正。§2のstate machine記述をDB-005 §5.1へ同期し一方向・atomic switchの主張を撤回、cutover前提へfence primitive/reception互換/登録・訂正経路を追加、§10へidentity不変性の役割を追記、blockersを同期"
+  - "0.1.2 2026-07-31 WP-4250 PROPOSED Revision 8: re-review round 1訂正。create無効化だけではPUT経由の患者番号重複が閉じないため、§2へAPI-008 §2.2のidentity不変性とcutover baseline一意性の継承限界を追記しBLOCKED_PATIENT_IDENTITY_MUTATIONを追加"
+  - "0.1.2 2026-07-31 WP-4250 PROPOSED Revision 7: HIGH-3/HIGH-4訂正。§0の内部authority列挙へPrescriptionを明示追加、§2にreception foreign key/join依存とPatient create disabled、§4にPrescription対MedicationRequestのownership未確定表とblockerを追加"
+  - "0.1.2 2026-07-30 WP-4250 PROPOSED Revision 6: Patient cutover VERSION 1 SYSTEM_CUTOVER baselineと履歴非backfillをaggregate authority境界へ同期"
+  - "0.1.2 2026-07-30 WP-4250 PROPOSED: bounded FHIR authorityとinternal aggregate authorityの境界を追加。旧0.1.1承認はprevious-version provenance"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W5F metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions: 本文【要確認】参照
-blockers: []
+blockers:
+  - BLOCKED_RECEPTION_PATIENT_COMPATIBILITY: reception_entries の foreign key/join と Patient cutover の互換設計が承認されるまで cutover しない(§2)
+  - BLOCKED_MEDICATIONREQUEST_PRESCRIPTION_OWNERSHIP: Prescription 集約と MedicationRequest の cardinality/authority/status/correction lineage/projection 方向が承認されるまで ingestion しない(§4)
+  - BLOCKED_PATIENT_IDENTITY_MUTATION: API-008 §2.2 により post-cutover Patient の identifier/patientNumber/logicalId は不変。付け替え・訂正は uniqueness guard と merge lineage 承認まで実施できず、**これは cutover 実行の blocker でもある**(§2)
+  - BLOCKED_POSTGRES_WRITER_FENCE_PRIMITIVE: PostgreSQL 側の構造的 write fence と cutover 後の乖離 detector が承認・実装されるまで cutover しない(§2)
 ```
 
 ## 0. 原則
@@ -37,6 +54,12 @@ blockers: []
 - **PHI を含む集約は、ログ・trace・agmsg・イベント平文へ出さない**(SEC-004)。
 - 集約IDは branded ID 12種(TenantId / PharmacyId / UserId / PatientId / **ReceptionId** / PrescriptionId / DispensingId / ClaimId / EventId / DeviceId / EvidenceId / WorkPackageId — MOD-004 と一致)を使い、生 string を禁止する。
 - 全集約は tenant_id + pharmacy_id を保持し、クエリ境界で強制する(SEC-006)。
+- WP-4250候補ではPatientとoral/topical MedicationRequestだけが所定gate後にFHIR格納正本となり得る。Reception、Coverage、**Prescription**、Dispensing、CalculationResult、Claim、Report、Master、audit/accountingは内部authorityを維持する。
+  - **Prescription(§4 C4)は内部authorityであり、MedicationRequestはその置換でも
+    1対1写像でもない**。両者のownershipは未確定であり、§4に記録した
+    `BLOCKED_MEDICATIONREQUEST_PRESCRIPTION_OWNERSHIP`が解除されるまで
+    MedicationRequest ingestionを開始しない。以前の版でPrescriptionがこの
+    列挙から欠落していたことは、内部authorityの放棄を意味しない。
 
 ## 1. Reception(受付)集約 — C1
 
@@ -58,6 +81,70 @@ blockers: []
 | 不変条件 | カナなしで確定登録不可 / 生年月日は実在日付(CalendarDate が強制)/ 統合(マージ)は旧レコードを削除せず履歴保持+監査イベント必須 |
 | 医療安全 | SAF-001「患者取り違え」対策の情報源。同姓同名・類似カナの警告表示は Patient 検索サービスの責務 |
 
+Patient authority controlはDB-005 §5.1/§11のpersisted state
+(`POSTGRES_PRIMARY`, `SHADOWING`, `CUTOVER_PENDING`, `FHIR_PRIMARY`,
+`POSTGRES_PRIMARY_ROLLED_BACK`)と`authorityEpoch`/`writerFenceToken`を正とする。
+**state machineは一方向ではなく、単調なのは`authorityEpoch`だけ**である。
+PostgreSQLは**時間順序の交代**(停止 → drain確認 → epoch advance/fence →
+新writer開始)が完了するまでsole writer、shadowは比較専用でwriterにならない。
+**この交代はatomicではない**。PostgreSQLのtransactionとDynamoDBの
+TransactWriteItemsは同一のatomic unitではなく、cross-store atomicityの主張は
+DB-005 §12で実装禁止である。さらに現時点ではPostgreSQL側に停止を強制する
+primitiveが存在しないため、cutoverは`BLOCKED_POSTGRES_WRITER_FENCE_PRIMITIVE`で
+停止している。
+approved field mapping、identifier reconciliation、zero unresolved
+duplicate/orphan/conflict/merge-link、bounded count/content digest parity、
+synthetic/de-identified sampling、stable watermark、human approval record、
+**PostgreSQL側の構造的write fence primitiveとcutover後の乖離detector**、
+**reception foreign key/join互換設計**、
+**cutover後のPatient登録経路とidentity訂正経路**(API-008 §2.1/§2.2)、
+**全reconciled patientのPATIENTLINK存在とCURRENTの`internalPatientId`保持**
+(DB-005 §11 — patientId-keyed投影・受付のlinkage経路かつ再実行冪等性の
+進捗authority。判定はmembership検査(対象集合⊆PATIENTLINK集合)とcardinality
+検査の合成で集合等価を確認するものであり、いずれか片方では欠落または余剰を
+見逃す。PATIENTLINKのSKは生のpatientIdではなくpharmacy+用途分離鍵による
+`hmacPatientId`である)が
+一つでも欠ければcutoverしない。さらに**rollbackを経た再cutover**は、rollback
+期間中のPostgreSQL側変更(属性変更・統合・削除)の反映経路またはread-only運用
+制約が承認されるまで`BLOCKED_RECUTOVER_DIVERGENCE_RESOLUTION`で実行しない
+(初回cutoverは対象外)。switch failureはold/new writerのどちらか一方に
+fail closedし、dual-writeやstale fallbackを禁止する。cutover後はFHIR store/API
+だけをwriterとし、automatic merge、physical delete、tombstone resurrectionを
+禁止する。cutover transactionはFHIR VERSION 1をimmutable
+`changeOrigin=SYSTEM_CUTOVER`のauthoritative creation baselineとして作り、
+PostgreSQLの過去historyをFHIR versionへ推測/backfillしない。
+
+**Reception集約からの構造的依存(HIGH-3 訂正)**: §1のReceptionは`PatientId`で
+Patientを参照し、現行実装ではPostgreSQL `reception_entries`から`patients`への
+foreign keyとINNER JOINとして具体化されている
+(`migrations/000002_create_patient_and_reception_tables.sql`の
+`reception_entries_patient_fk`、`apps/api/src/db/reception-repository.ts`)。
+Patient authorityをFHIRへ移してもこの参照整合性とjoin経路は消えない。
+cutoverはDB-005 §11のreception互換要件(参照先、参照整合性の強制主体、join
+代替、rollback整合)がapproveされるまで実行できず、
+`BLOCKED_RECEPTION_PATIENT_COMPATIBILITY`とする。「集約間参照はIDのみ」という
+本書§1の規律は、DB層の参照整合性を黙って外してよい根拠ではない。
+
+**Patient createは`/fhir/R4`側でinitially disabled**である(API-008 §2.1)。
+§10の`(tenant_id, pharmacy_id, patientNumber)`一意性を保証するguardがFHIR側
+create TWIに存在せず、同時にmerge/unmergeがunsupportedであるため、重複を
+作れて解消できない組合せを避ける。PostgreSQL側の一意性制約
+(`patients_tenant_pharmacy_patient_number_unique`)は引き続き有効である。
+
+**create無効化だけでは閉じない**。post-cutoverのPatient `PUT`は有効なままで、
+そのTWIにも一意性guardがない。したがってupdateだけでも既存Patientの
+patientNumberを他のPatientと同じ値へ書き換えて重複を作れる。API-008 §2.2は
+これを受けて、post-cutover Patientの`identifier`、patientNumberを表す
+identifier slice、`Patient.id`を**不変**と宣言し、変更を含むPUTをTWI発行前の
+422で拒否する。患者番号の付け替えや誤登録の訂正は、uniqueness guard、
+possible-match、merge/unmerge lineageが承認されるまで実施できない
+(`BLOCKED_PATIENT_IDENTITY_MUTATION`)。
+
+cutover baselineのidentity一意性は、PostgreSQL側制約と`CUTOVER_PENDING`の
+「unresolved duplicate = zero」要件から**継承しているだけ**である。この継承は
+cutover時点でのみ成立し、**PostgreSQLがwriterでなくなった後の書込を守らない**。
+だからこそcreate無効化とupdate identity不変性の両方が必要である。
+
 ## 3. Coverage(保険・公費)集約 — C3
 
 | 要素 | 内容 |
@@ -77,6 +164,25 @@ blockers: []
 | Rp(RP単位) | 医薬品参照(マスター版付きコード — CodeMappingRegistry 経由)、用法、用量、日数/回数、数量、一般名処方フラグ、後発品変更可否 |
 | 状態 | DOM-004 の処方ライフサイクルに従う(仮受付→仮取込→薬剤師確認→確定) |
 | 不変条件 | **確定は薬剤師確認後のみ**(scope: prescription:confirm)/ QR由来は原本照合記録なしに確定不可 / 確定後の変更は訂正版の新規作成+履歴保持のみ(無履歴変更禁止)/ コード変換の曖昧一致は CODE_MAPPING_REVIEW_REQUIRED で停止 |
+
+**Prescription対MedicationRequestのownership未解決(HIGH-3 訂正)**:
+Prescriptionは本書の内部authority集約であり、WP-4250候補のoral/topical
+MedicationRequestはその置換でも1対1写像でもない。次が本batchで未確定である。
+
+| 未確定事項 | 内容 |
+|---|---|
+| cardinality | Prescription 1件に対するMedicationRequestの件数。RP(Rp)単位か処方箋単位か |
+| 可変fieldのauthority | どのfieldをどちらが権威として持つか。重複保持する場合の同期方向 |
+| status対応 | DOM-004の処方ライフサイクル(仮受付→仮取込→薬剤師確認→確定)とFHIR `MedicationRequest.status`/`intent`の対応 |
+| correction lineage | 訂正版の新規作成+履歴保持と、FHIR側version/`priorPrescription`相当の関係 |
+| projection方向 | 内部→FHIR、FHIR→内部、いずれか一方向。双方向は禁止 |
+
+未確定のままMedicationRequest ingestionを開始すると、同一の臨床事実に対する
+authorityが2箇所に生じ、ARC-008 §8「同一集約をFHIR正本と内部正本に二重格納」
+禁止に抵触する。したがって`BLOCKED_MEDICATIONREQUEST_PRESCRIPTION_OWNERSHIP`
+とし、DOM-005 / DOM-006へownership recordを登録するapproved amendmentまで
+ingestionを開始しない。「MedicationRequestは新規開始でデータがないので競合
+しない」という理由づけは、Prescription集約が既に定義済みである以上成立しない。
 
 ## 5. Dispensing(調剤)集約 — C5
 
@@ -122,7 +228,7 @@ blockers: []
 | 集約 | 一意性・冪等性境界 |
 |---|---|
 | Reception | 冪等一意性 (tenantId, pharmacyId, idempotencyKey)。同一 key + 同一 patientId = 既存返却、同一 key + 異なる patientId = 409(**正本は API-006 v0.2.0** — 本書で再定義しない) |
-| Patient | 患者番号(patientNumber)はテナント内(tenant_id + pharmacy_id)で一意(API-001 の patientNumber と整合) |
+| Patient | 患者番号(patientNumber)はテナント内(tenant_id + pharmacy_id)で一意(API-001 の patientNumber と整合)。PostgreSQL では `patients_tenant_pharmacy_patient_number_unique` が強制する。**FHIR 側 create にはこの一意性を保証する同一 TWI guard が未定義**のため、API-008 §2.1 により Patient create は initially disabled。post-cutover に PostgreSQL が writer でなくなった後の一意性維持手段は API-008 §2.2 の identity 不変性であり、PostgreSQL 制約からの継承は cutover 時点でのみ成立する(§2)|
 | その他の集約 | 各実装 WP の契約 SSOT で確定する(未実装分の一意性境界を本書で先行固定しない — fail-closed) |
 
 ## 11. 横断: SyncEvent / AuditEvent / Identity
@@ -140,5 +246,55 @@ blockers: []
 
 ## 変更履歴
 
+- 0.1.2 (2026-08-01 finalization): round-5 の独立 review 三レーン完了
+  (independent verifier は packet 本文 PASS・HIGH なし)と direct human approval に
+  より PROPOSED → APPROVED。**本文 semantics は不変**。承認範囲は SSOT 改版のみで
+  あり、実装着手・schema/data migration・production action・conformance 主張は
+  含まない。登録済み blocker は全て据え置きである。
+- 0.1.2 (2026-07-31 Revision 14): round-5 独立 security/privacy re-review の同期。
+  §2 の PATIENTLINK gate を membership 検査単独から **membership + cardinality の
+  合成**(集合等価)へ改め、片方だけでは欠落または余剰を見逃すことを明記した。
+  あわせて PATIENTLINK の SK が生の `patientId` ではなく pharmacy+用途分離鍵に
+  よる `hmacPatientId` であることを追記した(`patientId` は自由形式 TEXT で
+  患者番号と同値になり得るため、生値を key へ置くと原則 7 に違反する)。
+- 0.1.2 (2026-07-31 Revision 13): round-5 独立 data-integrity re-review の同期。
+  §2 の PATIENTLINK gate が基数比較として読める余地を閉じ、reconciliation
+  対象集合 ⊆ PATIENTLINK 集合の membership 検査であることを明示。あわせて
+  rollback を経た再 cutover を `BLOCKED_RECUTOVER_DIVERGENCE_RESOLUTION` として
+  追加した(rollback 期間中の PostgreSQL 側変更に解消経路がなく、余剰 link も
+  除去できないため。初回 cutover は対象外)。
+- 0.1.2 (2026-07-31 Revision 12): round 4 設計 findings 訂正の同期。§2 の
+  cutover 前提列挙へ「全 reconciled patient の PATIENTLINK 存在と CURRENT の
+  `internalPatientId` 保持」を追加(DB-005 §11 が新設した cutover transaction の
+  冪等性と patientId-keyed 投影・受付の linkage 経路。これらなしの cutover は
+  投影・受付を再生成不能にし、再実行が同一 patient へ複数 logicalId を発行し得る)。
+- 0.1.2 (2026-07-31 Revision 9): independent re-review round 2 の訂正。§2 の
+  Patient authority control 記述を DB-005 §5.1 へ同期し、authority state が
+  一方向でも単調でもないこと(単調なのは `authorityEpoch` だけ)と、writer 交代が
+  atomic ではなく時間順序であることを明記して「atomic switch」の主張を撤回。
+  cutover 前提の列挙へ PostgreSQL 側の構造的 write fence primitive と乖離
+  detector、reception foreign key/join 互換設計、cutover 後の Patient 登録経路と
+  identity 訂正経路を追加。§10 の Patient 一意性行へ、post-cutover に PostgreSQL
+  が writer でなくなった後の一意性維持手段が API-008 §2.2 の identity 不変性で
+  あり、PostgreSQL 制約からの継承は cutover 時点でのみ成立することを追記。
+  `BLOCKED_POSTGRES_WRITER_FENCE_PRIMITIVE` を登録し、
+  `BLOCKED_PATIENT_IDENTITY_MUTATION` が cutover blocker でもあることを明記。
+- 0.1.2 (2026-07-31 Revision 8): independent re-review round 1 の訂正。
+  Patient create の無効化だけでは PUT 経由の patientNumber 重複が閉じない
+  ことを受け、§2 に API-008 §2.2 の identity 不変性(identifier /
+  patientNumber slice / logicalId)と、cutover baseline の一意性が PostgreSQL
+  制約からの継承にすぎず cutover 後の書込を守らないことを追記。
+  `BLOCKED_PATIENT_IDENTITY_MUTATION` を追加。
+- 0.1.2 (2026-07-31 Revision 7): independent domain review の HIGH-3 / HIGH-4
+  訂正。§0 の内部 authority 集約列挙から欠落していた Prescription を明示追加。
+  §2 に live reception の foreign key / INNER JOIN 依存を cutover blocker として
+  記録し、FHIR 側 Patient create が patientNumber uniqueness guard 不在により
+  initially disabled であることを明記。§4 に Prescription と MedicationRequest の
+  cardinality / 可変 field authority / status 対応 / correction lineage /
+  projection 方向の未確定表と blocker を追加。§10 の Patient 一意性行へ
+  PostgreSQL 制約名と FHIR 側 guard 未定義を追記。
+- 0.1.2 (2026-07-30 Revision 6): Patient cutover VERSION 1
+  `SYSTEM_CUTOVER` baselineとPostgreSQL history非backfillを追加。
+- 0.1.2 (2026-07-30): WP-4250 PROPOSED。Patientのshadow/human cutoverとbounded FHIR authorityを追加し、全非選択aggregateのinternal authorityを維持。
 - 0.1.1 (2026-07-09): opus4.8 レビュー反映(BLOCKER: Reception 集約を追記[C1、実装済み WP-3009 の追認]、branded ID を実装12種へ訂正、一意性・冪等性境界の節を新設)。
 - 0.1.0 (2026-07-09): 初版起草(WP-1101)。
