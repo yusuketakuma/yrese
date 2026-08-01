@@ -2,11 +2,20 @@
 /**
  * Lightweight repository secret scan.
  *
+ * Scope: every eligible text file under the working directory is scanned, including
+ * files git ignores (an ignored `.env` is exactly what this gate exists to catch).
+ * Ignore data is consulted for one purpose only — deciding whether a scope violation
+ * (a symlink, a non-file, an unreadable entry) belongs to repository content and must
+ * therefore abort the scan, or belongs to developer-local tooling and may be skipped.
+ * Skips are always reported. Outside a git work tree there is no ignore data and the
+ * scan aborts on any violation, as it always did.
+ *
  * False positives can be allowlisted per line by adding:
  *   secret-scan: allow
  *
  * Keep allowlists rare and local to non-secret examples only.
  */
+import { spawnSync } from "node:child_process";
 import { lstat, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -38,6 +47,54 @@ function failScope(offendingPath) {
   throw new ProtectedScopeError(
     offendingPath === undefined ? undefined : toPosix(path.relative(rootDir, offendingPath)),
   );
+}
+
+/**
+ * A scope violation aborts the whole scan, which is correct only when the offending
+ * entry is repository content. Developer-local tooling that git is told to ignore is
+ * not repository content, so a symlink or non-file among it must not take the gate
+ * down. This narrows the abort condition only: every readable file, including an
+ * ignored `.env`, is still scanned exactly as before, so coverage is unchanged.
+ *
+ * Ignore data exists only inside a work tree. Without one there is nothing to
+ * distinguish content from tooling, so the scan stays fail-closed as it was.
+ */
+const insideGitWorkTree = (() => {
+  const probe = spawnSync("git", ["rev-parse", "--is-inside-work-tree"], {
+    cwd: rootDir,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  return probe.status === 0 && probe.stdout.trim() === "true";
+})();
+
+const skippedExcludedPaths = [];
+
+function isExcludedFromRepositoryContent(entryPath) {
+  if (!insideGitWorkTree || entryPath === undefined) {
+    return false;
+  }
+  // `git check-ignore` reports a tracked path as not ignored even when a pattern
+  // matches it, which is the boundary we want: tracked means repository content.
+  // Any non-zero status — including git being absent or erroring — means "treat as
+  // content", so an unreadable ignore configuration cannot silently widen the skip.
+  const probe = spawnSync("git", ["check-ignore", "-q", "--", entryPath], {
+    cwd: rootDir,
+    stdio: "ignore",
+  });
+  return probe.status === 0;
+}
+
+/**
+ * Returns true when the caller should skip the entry instead of aborting. Throws the
+ * scope error otherwise, preserving the previous fail-closed behavior.
+ */
+function skipOrFailScope(entryPath) {
+  if (!isExcludedFromRepositoryContent(entryPath)) {
+    failScope(entryPath);
+  }
+  skippedExcludedPaths.push(toPosix(path.relative(rootDir, entryPath)));
+  return true;
 }
 
 const secretPatterns = [
@@ -146,17 +203,25 @@ function lineForIndex(source, index) {
 async function listFiles(dir) {
   const files = [];
   let entries;
-  try { entries = await readdir(dir, { withFileTypes: true }); } catch { failScope(dir); }
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch {
+    skipOrFailScope(dir);
+    return files;
+  }
 
   for (const entry of entries) {
     const entryPath = path.join(dir, entry.name);
-    if (entry.isSymbolicLink()) failScope(entryPath);
+    if (entry.isSymbolicLink()) {
+      skipOrFailScope(entryPath);
+      continue;
+    }
     if (ignoredDirs.has(entry.name)) {
-      if (!entry.isDirectory()) failScope(entryPath);
+      if (!entry.isDirectory()) skipOrFailScope(entryPath);
       continue;
     }
     if (ignoredFiles.has(entry.name)) {
-      if (!entry.isFile()) failScope(entryPath);
+      if (!entry.isFile()) skipOrFailScope(entryPath);
       continue;
     }
     if (entry.isDirectory()) {
@@ -167,7 +232,7 @@ async function listFiles(dir) {
     if (entry.isFile() && isTextFile(entryPath)) {
       files.push(entryPath);
     } else if (!entry.isFile()) {
-      failScope(entryPath);
+      skipOrFailScope(entryPath);
     }
   }
 
@@ -183,7 +248,12 @@ const findings = [];
 
 for (const filePath of files) {
   let source;
-  try { source = await readFile(filePath, "utf8"); } catch { failScope(filePath); }
+  try {
+    source = await readFile(filePath, "utf8");
+  } catch {
+    skipOrFailScope(filePath);
+    continue;
+  }
   for (const { name, pattern, validate, appliesTo } of secretPatterns) {
     if (typeof appliesTo === "function" && !appliesTo(filePath)) {
       continue;
@@ -203,6 +273,16 @@ for (const filePath of files) {
         name,
       });
     }
+  }
+}
+
+// Never let a skip read as full coverage: say what was left out and why.
+if (skippedExcludedPaths.length > 0) {
+  console.error(
+    `Secret scan skipped ${skippedExcludedPaths.length} entr${skippedExcludedPaths.length === 1 ? "y" : "ies"} excluded from repository content:`,
+  );
+  for (const skipped of skippedExcludedPaths) {
+    console.error(`- ${skipped}`);
   }
 }
 

@@ -1731,6 +1731,28 @@ async function testSecretAllowlistAndDetection() {
     }
   }
 
+  // Every fixture above runs in a non-git temp root, so they also pin the fallback
+  // required by BUG-4263 (c): with no work tree there is no ignore data, and a scope
+  // violation must still abort. A stray .gitignore must not be trusted for that.
+  const strayIgnoreRoot = path.join(tempRoot, "secrets-stray-gitignore");
+  await writeText(path.join(strayIgnoreRoot, ".gitignore"), "linked.ts\n");
+  await writeText(path.join(strayIgnoreRoot, "README.md"), "clean eligible text\n");
+  await symlink(externalSecret, path.join(strayIgnoreRoot, "linked.ts"));
+  const strayIgnoreResult = runNode("check-secrets.mjs", [], { cwd: strayIgnoreRoot });
+  const strayIgnoreOutput = outputOf(strayIgnoreResult);
+  assert(
+    strayIgnoreResult.status === 1,
+    "check-secrets must not honor a .gitignore outside a work tree",
+  );
+  assert(
+    strayIgnoreOutput.includes("Scope was broken by: linked.ts"),
+    "a stray .gitignore should leave the scope abort intact",
+  );
+  assert(
+    !strayIgnoreOutput.includes(externalCredential),
+    "the stray .gitignore fixture must not echo target content",
+  );
+
   const allowRoot = path.join(tempRoot, "secrets-allow");
   await writeText(
     path.join(allowRoot, "README.md"),
@@ -1918,6 +1940,81 @@ async function testSecretAllowlistAndDetection() {
   );
   assert(!npmrcSymlinkOutput.includes(externalNpmrc), "symlinked .npmrc must not expose its target path");
   assert(!npmrcSymlinkOutput.includes(syntheticNpmToken), "symlinked .npmrc must not expose target content");
+}
+
+/**
+ * BUG-4263: the abort condition is about repository content, not about whatever
+ * happens to sit under the working directory. These fixtures run inside a real work
+ * tree, which is the path the non-git fixtures above cannot reach.
+ */
+async function testSecretScanRepositoryContentScope() {
+  const initGitRoot = async (name) => {
+    const root = path.join(tempRoot, name);
+    await mkdir(root, { recursive: true });
+    const init = spawnSync("git", ["init", "-q"], { cwd: root, encoding: "utf8" });
+    assert(init.status === 0, `git init should succeed for ${name}: ${outputOf(init)}`);
+    return root;
+  };
+
+  const externalTarget = path.join(tempRoot, "content-scope-external.ts");
+  const externalCredential = ["Synthetic", "Excluded", "Credential", "4321"].join("_");
+  await writeText(externalTarget, `api_key='${externalCredential}'\n`);
+
+  // An excluded symlink is developer-local tooling, so it is skipped and named.
+  const excludedRoot = await initGitRoot("secrets-content-excluded");
+  await writeText(path.join(excludedRoot, "README.md"), "clean eligible text\n");
+  await writeText(path.join(excludedRoot, ".git", "info", "exclude"), "local-tool-link\n");
+  await symlink(externalTarget, path.join(excludedRoot, "local-tool-link"));
+  const excludedResult = runNode("check-secrets.mjs", [], { cwd: excludedRoot });
+  const excludedOutput = outputOf(excludedResult);
+  assert(
+    excludedResult.status === 0,
+    `an excluded symlink should not abort the scan: ${excludedOutput}`,
+  );
+  assert(excludedOutput.includes("Secret scan passed."), "the excluded fixture should report PASS");
+  assert(
+    excludedOutput.includes("Secret scan skipped 1 entry excluded from repository content:") &&
+      excludedOutput.includes("- local-tool-link"),
+    "a skip must be reported, never silent",
+  );
+  assert(
+    !excludedOutput.includes(externalCredential) && !excludedOutput.includes(externalTarget),
+    "the excluded fixture must not expose the symlink target or its content",
+  );
+
+  // A symlink that is repository content still takes the gate down.
+  const trackedRoot = await initGitRoot("secrets-content-tracked");
+  await writeText(path.join(trackedRoot, "README.md"), "clean eligible text\n");
+  await symlink(externalTarget, path.join(trackedRoot, "linked.ts"));
+  const trackedResult = runNode("check-secrets.mjs", [], { cwd: trackedRoot });
+  const trackedOutput = outputOf(trackedResult);
+  assert(trackedResult.status === 1, "a non-excluded symlink must still abort the scan");
+  assert(
+    trackedOutput.includes("Scope was broken by: linked.ts"),
+    "a content symlink should still name the repository-relative offending path",
+  );
+  assert(
+    !trackedOutput.includes("Secret scan passed."),
+    "a content symlink must not report PASS",
+  );
+
+  // Coverage is unchanged: an ignored .env is still scanned, which is the whole
+  // reason the skip is limited to scope violations instead of to ignored entries.
+  const ignoredEnvRoot = await initGitRoot("secrets-content-ignored-env");
+  const syntheticEnvKey = ["sk", "proj", "zyxwvutsrqponmlkjihgfedcba987654321ABCDE"].join("-");
+  await writeText(path.join(ignoredEnvRoot, ".gitignore"), ".env\n");
+  await writeText(path.join(ignoredEnvRoot, ".env"), `OPENAI_API_KEY=${syntheticEnvKey}\n`);
+  const ignoredEnvResult = runNode("check-secrets.mjs", [], { cwd: ignoredEnvRoot });
+  const ignoredEnvOutput = outputOf(ignoredEnvResult);
+  assert(ignoredEnvResult.status === 1, "an ignored .env must still be scanned");
+  assert(
+    ignoredEnvOutput.includes(".env:1: OpenAI API key"),
+    `an ignored .env finding should be reported: ${ignoredEnvOutput}`,
+  );
+  assert(
+    !ignoredEnvOutput.includes("Secret scan skipped"),
+    "an ordinary ignored file is scanned, not skipped",
+  );
 }
 
 async function testCleanRemovesGeneratedArtifacts() {
@@ -2950,6 +3047,7 @@ try {
   await testCalculationPuritySyntaxAwareDetection();
   await testCalculationPurityInvalidScopesFailClosed();
   await testSecretAllowlistAndDetection();
+  await testSecretScanRepositoryContentScope();
   await testCleanRemovesGeneratedArtifacts();
   await testDependencyAuditWrapper();
   await testSbomGenerationFixture();
