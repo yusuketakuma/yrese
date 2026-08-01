@@ -18,12 +18,15 @@ import {
   createReception,
   createReceptionDashboardLifecycle,
   createReceptionQueueRunner,
+  createReceptionIdempotencyKeyStore,
   createReceptionQueueTargetTracker,
   createReceptionRegistrationRunner,
   fetchReceptionQueue,
   formatAcceptedTime,
+  isSettledReceptionCreateFailure,
   parseDateParam,
   registrationPatientChangeNotice,
+  submitReceptionRegistration,
   type QueueState,
   todayAsIsoDate,
 } from "./reception-dashboard";
@@ -2756,5 +2759,222 @@ describe("parseDateParam (URL 状態は非PHIの業務日付のみ — S-03)", (
       "0001-01-01",
     );
     expect(parseDateParam("?date=raw-phi-sentinel&date=2026-07-10")).toBeUndefined();
+  });
+});
+
+describe("reception create idempotency across retries (BUG-4260)", () => {
+  it("keeps one key per unresolved registration intent and separates patients", () => {
+    let issued = 0;
+    const store = createReceptionIdempotencyKeyStore(() => `key-${++issued}`);
+
+    expect(store.keyFor("patient-a")).toBe("key-1");
+    expect(store.keyFor("patient-a")).toBe("key-1");
+    expect(store.keyFor("patient-b")).toBe("key-2");
+    expect(store.hasPendingKey("patient-a")).toBe(true);
+
+    store.retire("patient-a");
+    expect(store.hasPendingKey("patient-a")).toBe(false);
+    expect(store.keyFor("patient-a")).toBe("key-3");
+    // 別患者の未解決意図は巻き添えで失われない
+    expect(store.keyFor("patient-b")).toBe("key-2");
+  });
+
+  it.each([
+    [400, "RCV-0001"],
+    [403, "AUTH-0003"],
+    [404, "RCV-0002"],
+    [409, "RCV-0003"],
+  ] as const)(
+    "classifies HTTP %s as a settled create failure (no reception was created)",
+    async (status, errorCode) => {
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValue(jsonResponse(status, { errorCode, message: "denied" }));
+
+      const error = await withNodeEnv("development", () =>
+        createReception("patient-test-001", fetchImpl, "key-1").then(
+          () => {
+            throw new Error("expected a rejection");
+          },
+          (rejection: unknown) => rejection,
+        ),
+      );
+
+      expect(error).toBeInstanceOf(ReceptionError);
+      expect(isSettledReceptionCreateFailure(error)).toBe(true);
+    },
+  );
+
+  it.each([500, 502, 503] as const)(
+    "treats HTTP %s as an unknown create outcome so the key is retained",
+    async (status) => {
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValue(jsonResponse(status, { errorCode: "SYS-0001", message: "boom" }));
+
+      const error = await withNodeEnv("development", () =>
+        createReception("patient-test-001", fetchImpl, "key-1").then(
+          () => {
+            throw new Error("expected a rejection");
+          },
+          (rejection: unknown) => rejection,
+        ),
+      );
+
+      expect(error).toBeInstanceOf(ReceptionError);
+      expect(isSettledReceptionCreateFailure(error)).toBe(false);
+    },
+  );
+
+  it("treats a network rejection and an unparseable success body as unknown outcomes", async () => {
+    const networkError = await withNodeEnv("development", () =>
+      createReception(
+        "patient-test-001",
+        vi.fn().mockRejectedValue(new TypeError("network down")),
+        "key-1",
+      ).then(
+        () => {
+          throw new Error("expected a rejection");
+        },
+        (rejection: unknown) => rejection,
+      ),
+    );
+    expect(isSettledReceptionCreateFailure(networkError)).toBe(false);
+
+    const malformedError = await withNodeEnv("development", () =>
+      createReception(
+        "patient-test-001",
+        vi.fn().mockResolvedValue(jsonResponse(201, { receptionId: "not-an-entry" })),
+        "key-1",
+      ).then(
+        () => {
+          throw new Error("expected a rejection");
+        },
+        (rejection: unknown) => rejection,
+      ),
+    );
+    expect(isSettledReceptionCreateFailure(malformedError)).toBe(false);
+  });
+
+  it("reuses the retained key after a lost response so the retry converges on one reception", async () => {
+    let issued = 0;
+    const store = createReceptionIdempotencyKeyStore(() => `key-${++issued}`);
+    const created = entry({ receptionId: "reception-000004", receptionStatus: "WAITING" });
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("response lost"))
+      .mockResolvedValueOnce(jsonResponse(200, created));
+    const submit = (
+      patientIdValue: string,
+      idempotencyKey: string,
+      signal: AbortSignal,
+    ) => createReception(patientIdValue, fetchImpl, idempotencyKey, signal);
+
+    await withNodeEnv("development", async () => {
+      // 1回目: 応答喪失。結果不明のためキーを退役させない。
+      await expect(
+        submitReceptionRegistration("patient-test-001", store, submit, 60_000),
+      ).rejects.toBeInstanceOf(TypeError);
+      expect(store.hasPendingKey("patient-test-001")).toBe(true);
+
+      // 2回目(再試行): 同じキーで送られ、サーバーは既存受付を 200 で返す。
+      const retried = await submitReceptionRegistration(
+        "patient-test-001",
+        store,
+        submit,
+        60_000,
+      );
+      expect(retried.receptionId).toBe("reception-000004");
+    });
+
+    const sentKeys = fetchImpl.mock.calls.map((call) => {
+      const init = call[1] as RequestInit;
+      return (JSON.parse(String(init.body)) as { idempotencyKey: string }).idempotencyKey;
+    });
+    expect(sentKeys).toEqual(["key-1", "key-1"]);
+    // 成功で退役済み。次の登録意図は別キーになる(同一日の2件目の受付を妨げない)
+    expect(store.hasPendingKey("patient-test-001")).toBe(false);
+    expect(store.keyFor("patient-test-001")).toBe("key-2");
+  });
+
+  it("retires the key on a settled failure so the next attempt is a new intent", async () => {
+    let issued = 0;
+    const store = createReceptionIdempotencyKeyStore(() => `key-${++issued}`);
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(404, { errorCode: "RCV-0002", message: "no patient" }));
+
+    await withNodeEnv("development", async () => {
+      await expect(
+        submitReceptionRegistration(
+          "patient-test-001",
+          store,
+          (patientIdValue, idempotencyKey, signal) =>
+            createReception(patientIdValue, fetchImpl, idempotencyKey, signal),
+          60_000,
+        ),
+      ).rejects.toBeInstanceOf(ReceptionError);
+    });
+
+    expect(store.hasPendingKey("patient-test-001")).toBe(false);
+    expect(store.keyFor("patient-test-001")).toBe("key-2");
+  });
+
+  it("bounds each attempt with an abort signal derived from the timeout", async () => {
+    const store = createReceptionIdempotencyKeyStore(() => "key-1");
+    const signals: AbortSignal[] = [];
+
+    await submitReceptionRegistration(
+      "patient-test-001",
+      store,
+      (_patientIdValue, _idempotencyKey, signal) => {
+        signals.push(signal);
+        return Promise.resolve(entry({ receptionId: "reception-000004" }));
+      },
+      60_000,
+    );
+
+    expect(signals).toHaveLength(1);
+    expect(signals[0]).toBeInstanceOf(AbortSignal);
+    expect(signals[0]!.aborted).toBe(false);
+  });
+});
+
+describe("reception create response timeout (BUG-4262)", () => {
+  it("reports an unknown outcome instead of hanging when the request is aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const fetchImpl = vi.fn().mockRejectedValue(new Error("aborted"));
+
+    const error = await withNodeEnv("development", () =>
+      createReception("patient-test-001", fetchImpl, "key-1", controller.signal).then(
+        () => {
+          throw new Error("expected a rejection");
+        },
+        (rejection: unknown) => rejection,
+      ),
+    );
+
+    expect(error).toBeInstanceOf(ReceptionError);
+    const notice = (error as ReceptionError).toNotice();
+    expect(notice.message).toContain("応答がありません");
+    expect(notice.nextAction).toContain("受付一覧を更新");
+    // 中断は結果不明であり、冪等キーを退役させてはならない
+    expect(isSettledReceptionCreateFailure(error)).toBe(false);
+  });
+
+  it("passes the caller signal through and leaves unaborted rejections unchanged", async () => {
+    const controller = new AbortController();
+    const rejection = new TypeError("network down");
+    const fetchImpl = vi.fn().mockRejectedValue(rejection);
+
+    await expect(
+      withNodeEnv("development", () =>
+        createReception("patient-test-001", fetchImpl, "key-1", controller.signal),
+      ),
+    ).rejects.toBe(rejection);
+
+    const init = fetchImpl.mock.calls[0]![1] as RequestInit;
+    expect(init.signal).toBe(controller.signal);
   });
 });

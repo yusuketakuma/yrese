@@ -39,6 +39,9 @@ import { devTenantHeaders } from "./dev-tenant";
  * 日付は常に明示指定で API へ送る(暗黙の現在時刻をサーバーに解決させない —
  * ブラウザの今日は UI 層の既定値にすぎない)。
  * 受付状態は RECEPTION_STATUSES のテキストラベルで表示(色非依存、UIX-001 P-20)。
+ * 受付登録は retryable な create であり、冪等キーは「未解決の登録意図」ごとに固定する
+ * (DEVELOPMENT_POLICY §6)。応答喪失後の再試行はサーバー側の同一受付へ収束させ、
+ * 受付を二重に作らない。
  */
 
 /**
@@ -77,6 +80,27 @@ export class ReceptionError extends Error {
 }
 
 const trustedReceptionErrorNotices = new WeakMap<object, ErrorNoticeProps>();
+
+/**
+ * 受付登録の失敗のうち、「サーバー側に受付は作られていない」と断定できるもの
+ * (400 / 403 / 404 / 409)。結果が確定したときだけ冪等キーを退役させてよい。
+ * ネットワーク失敗・応答喪失・5xx・応答形式違反は結果不明として扱う。
+ */
+const settledReceptionCreateFailures = new WeakSet<object>();
+
+export function isSettledReceptionCreateFailure(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    settledReceptionCreateFailures.has(error)
+  );
+}
+
+function settledCreateFailure(error: ReceptionError): ReceptionError {
+  settledReceptionCreateFailures.add(error);
+  return error;
+}
+
 const genericQueueErrorNotice = Object.freeze({
   message: "受付一覧の処理に失敗しました。",
   nextAction: "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
@@ -236,47 +260,71 @@ export async function createReception(
   patientIdValue: string,
   fetchImpl: typeof fetch = fetch,
   idempotencyKey: string = crypto.randomUUID(),
+  signal?: AbortSignal,
 ): Promise<ReceptionQueueEntry> {
   const url = resolveWebApiUrl("/reception");
-  const res = await fetchImpl(url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...devTenantHeaders(RECEPTION_CREATE_DEV_SCOPES),
-    },
-    cache: "no-store",
-    body: JSON.stringify({ patientId: patientIdValue, idempotencyKey }),
-  });
+  let res: Response;
+  try {
+    res = await fetchImpl(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...devTenantHeaders(RECEPTION_CREATE_DEV_SCOPES),
+      },
+      cache: "no-store",
+      body: JSON.stringify({ patientId: patientIdValue, idempotencyKey }),
+      ...(signal !== undefined ? { signal } : {}),
+    });
+  } catch (error) {
+    // 中断/無応答は「結果不明」であり、受付が durable に作られた可能性を否定できない。
+    // 例外値そのものは検査せず、こちらが渡した signal の状態だけで判定する。
+    if (signal?.aborted === true) {
+      throw createTrustedReceptionError(
+        "受付の結果を確認できませんでした(応答がありません)。",
+        "受付一覧を更新して受付状況を確認してください。同じ患者への再受付は同じ操作キーで送られるため、受付が二重に作られることはありません。",
+      );
+    }
+    throw error;
+  }
   if (!res.ok) {
     const errorCode = await extractErrorCode(res, "create");
     if (res.status === 409) {
-      throw createTrustedReceptionError(
-        "同じ操作キーが別の患者で再利用されました(二重操作の可能性)。",
-        "受付一覧を更新して受付状況を確認してください。解消しない場合はシステム管理者へ連絡してください。",
-        errorCode,
+      throw settledCreateFailure(
+        createTrustedReceptionError(
+          "同じ操作キーが別の患者で再利用されました(二重操作の可能性)。",
+          "受付一覧を更新して受付状況を確認してください。解消しない場合はシステム管理者へ連絡してください。",
+          errorCode,
+        ),
       );
     }
     if (res.status === 404) {
-      throw createTrustedReceptionError(
-        "指定した患者がこの薬局に見つかりません。",
-        "患者検索画面で受付対象の患者を選択し直してください。",
-        errorCode,
+      throw settledCreateFailure(
+        createTrustedReceptionError(
+          "指定した患者がこの薬局に見つかりません。",
+          "患者検索画面で受付対象の患者を選択し直してください。",
+          errorCode,
+        ),
       );
     }
     if (res.status === 403) {
-      throw createTrustedReceptionError(
-        "権限がありません。",
-        "管理者に権限(reception:write / patient:read)の付与状況を確認してください。",
-        errorCode,
+      throw settledCreateFailure(
+        createTrustedReceptionError(
+          "権限がありません。",
+          "管理者に権限(reception:write / patient:read)の付与状況を確認してください。",
+          errorCode,
+        ),
       );
     }
     if (res.status === 400) {
-      throw createTrustedReceptionError(
-        "受付内容が不正です。",
-        "患者検索画面で受付対象の患者を選択し直してから、再度受付してください。",
-        errorCode,
+      throw settledCreateFailure(
+        createTrustedReceptionError(
+          "受付内容が不正です。",
+          "患者検索画面で受付対象の患者を選択し直してから、再度受付してください。",
+          errorCode,
+        ),
       );
     }
+    // 5xx 等は結果不明。冪等キーを保持したまま再試行させ、サーバー側の同一受付へ収束させる。
     throw createTrustedReceptionError(
       `受付の登録に失敗しました(HTTP ${res.status})。`,
       "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
@@ -606,6 +654,96 @@ export function createReceptionRegistrationRunner() {
   };
 }
 
+/** 受付登録 POST の応答待ち上限。超過は「結果不明」として扱い、再試行を可能にする。 */
+export const RECEPTION_CREATE_TIMEOUT_MS = 30_000;
+
+/**
+ * 受付登録の冪等キー保持。
+ *
+ * `DEVELOPMENT_POLICY.md §6`: retryable な create は安定した idempotency key を
+ * 持たなければならない。呼び出しごとに新しいキーを生成すると、応答喪失後の再試行が
+ * サーバー側の冪等判定を素通りし、同一患者の受付を重複作成する。
+ *
+ * キーは「未解決の登録意図」を表す。同一患者への再試行では同じキーを再利用し、
+ * 結果が確定したとき(登録成功、または 400 / 403 / 404 / 409)にだけ退役させる。
+ * 結果不明の失敗(ネットワーク失敗・応答喪失・5xx・応答形式違反)では保持し続け、
+ * 再試行がサーバー側の同一受付へ収束するようにする。
+ *
+ * 既知の境界: キーはこのタブのセッション内でのみ保持される。結果不明のまま
+ * 再読込した場合は新しいキーになるため、UI は受付一覧での確認を案内する。
+ */
+export interface ReceptionIdempotencyKeyStore {
+  keyFor(patientIdValue: string): string;
+  retire(patientIdValue: string): void;
+  hasPendingKey(patientIdValue: string): boolean;
+}
+
+export function createReceptionIdempotencyKeyStore(
+  generateKey: () => string = () => crypto.randomUUID(),
+): ReceptionIdempotencyKeyStore {
+  const keys = new Map<string, string>();
+  return {
+    /** 未解決の登録意図があればそのキーを、なければ新しいキーを返す。 */
+    keyFor(patientIdValue: string): string {
+      const existing = keys.get(patientIdValue);
+      if (existing !== undefined) {
+        return existing;
+      }
+      const key = generateKey();
+      keys.set(patientIdValue, key);
+      return key;
+    },
+    /** 結果が確定した登録意図を退役させる(次回は新しい受付になる)。 */
+    retire(patientIdValue: string): void {
+      keys.delete(patientIdValue);
+    },
+    hasPendingKey(patientIdValue: string): boolean {
+      return keys.has(patientIdValue);
+    },
+  };
+}
+
+export type ReceptionRegistrationSubmitter = (
+  patientIdValue: string,
+  idempotencyKey: string,
+  signal: AbortSignal,
+) => Promise<ReceptionQueueEntry>;
+
+const defaultReceptionRegistrationSubmitter: ReceptionRegistrationSubmitter = (
+  patientIdValue,
+  idempotencyKey,
+  signal,
+) => createReception(patientIdValue, fetch, idempotencyKey, signal);
+
+/**
+ * 受付登録の1回の試行。冪等キーの寿命(取得・退役)をここに集約する。
+ * 呼び出し側(UI)がキーを組み立てないことが、再試行で受付が重複しない根拠になる。
+ */
+export async function submitReceptionRegistration(
+  patientIdValue: string,
+  keyStore: ReceptionIdempotencyKeyStore,
+  submit: ReceptionRegistrationSubmitter = defaultReceptionRegistrationSubmitter,
+  timeoutMs: number = RECEPTION_CREATE_TIMEOUT_MS,
+): Promise<ReceptionQueueEntry> {
+  const idempotencyKey = keyStore.keyFor(patientIdValue);
+  try {
+    const entry = await submit(
+      patientIdValue,
+      idempotencyKey,
+      AbortSignal.timeout(timeoutMs),
+    );
+    keyStore.retire(patientIdValue);
+    return entry;
+  } catch (error) {
+    // 結果が確定した失敗だけキーを退役させる。結果不明なら保持し、
+    // 再試行がサーバー側の同一受付へ収束するようにする。
+    if (isSettledReceptionCreateFailure(error)) {
+      keyStore.retire(patientIdValue);
+    }
+    throw error;
+  }
+}
+
 export function registrationPatientChangeNotice(
   currentPatientId: string | undefined,
   submittedPatientId: string,
@@ -744,9 +882,16 @@ export function ReceptionDashboard() {
   const queueTargetTrackerRef = useRef<ReturnType<
     typeof createReceptionQueueTargetTracker
   > | null>(null);
+  const idempotencyKeyStoreRef = useRef<ReturnType<
+    typeof createReceptionIdempotencyKeyStore
+  > | null>(null);
   if (registrationRunner.current === null) {
     registrationRunner.current = createReceptionRegistrationRunner();
   }
+  if (idempotencyKeyStoreRef.current === null) {
+    idempotencyKeyStoreRef.current = createReceptionIdempotencyKeyStore();
+  }
+  const idempotencyKeyStore = idempotencyKeyStoreRef.current;
   if (lifecycleRef.current === null) {
     lifecycleRef.current = createReceptionDashboardLifecycle();
   }
@@ -821,7 +966,11 @@ export function ReceptionDashboard() {
       setSubmitting(true);
       setRegisterNotice(null);
       try {
-        const entry = await createReception(submittedPatientId);
+        // 冪等キーは「未解決の登録意図」ごとに固定する(再試行で再生成しない)。
+        const entry = await submitReceptionRegistration(
+          submittedPatientId,
+          idempotencyKeyStore,
+        );
         if (!lifecycle.isMounted()) return;
         setRegistered(entry);
         const patientChangeNotice = registrationPatientChangeNotice(
@@ -851,7 +1000,13 @@ export function ReceptionDashboard() {
         }
       }
     });
-  }, [selectedPatient?.patientId, lifecycle, load, queueTargetTracker]);
+  }, [
+    selectedPatient?.patientId,
+    lifecycle,
+    load,
+    queueTargetTracker,
+    idempotencyKeyStore,
+  ]);
 
   return (
     <section aria-label="受付ダッシュボード">
