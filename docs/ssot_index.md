@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.51
+version: 0.4.52
 created_at: 2026-07-09
 updated_at: 2026-08-23
 approved_at: 2026-08-01
@@ -153,6 +153,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.4.52 2026-08-23 WP-6202/WP-6203: JAHIS 2次元シンボルの版認識統一のため ADP-001(0.1.0→0.1.1)と REG-002(0.1.0→0.1.1)を APPROVED→PROPOSED へ降格。JHS-001〜008 は 0.1.0→0.1.1(owner 移管・23 field 補完)で PROPOSED 維持。総文書数 184 不変。status 集計は APPROVED 142→140、PROPOSED 25→27、SUPERSEDED 17 不変。登録済み blocker は据え置き"
   - "0.4.51 2026-08-23 WP-6001: Integration Hub SSOT 11 本(API-009〜API-018、ADP-003)を PROPOSED で新規登録。総文書数 173→184、docs/api 8→18、docs/adapters 2→3。status 集計は APPROVED 142 不変、PROPOSED 14→25、SUPERSEDED 17 不変(合計184)。全件 PROPOSED であり実装根拠にしない。登録済み blocker は据え置き"
   - "0.4.50 2026-08-23 WP-6101: JP Core 1.2.0 package artifact を SRC-FHIR-007 として source_registry(REG-001 0.2.0→0.2.1)へ登録するため、REG-001 の status 行を APPROVED→PROPOSED へ降格。review と human approval まで実装根拠にしない。documentカウント173・ssot_id・文書パス・section件数は不変。status 集計は APPROVED 143→142、PROPOSED 13→14、SUPERSEDED 17不変(合計173)。登録済み blocker(BLOCKED_PACKAGE_PROVENANCE 含む)は据え置き"
   - "0.4.49 2026-08-01 WP-4258 finalization: 独立review(frozen packet 92c4765b…、HIGH 0)とdirect human approvalにより DB-005 と ARC-008 の status 行を PROPOSED→APPROVED へ戻した。本索引自体は派生記録でありAPPROVEDを維持する。documentカウント173・ssot_id・文書パス・section件数は不変。status 集計は APPROVED 141→143、PROPOSED 15→13、SUPERSEDED 17不変(合計173)。集計は文書行(`| ID | [link](path.md) | STATUS |`)のみを対象として実測した — 索引には WP-9001 review/finalization status matrix のように同形の列を持つ非文書表があり、ID列だけで数えると AGT-018 を二重計上して174になる。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置き"
@@ -267,7 +268,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 |---|---|---|
 | ADP-003 | [adapter_registry.md](adapters/adapter_registry.md) | PROPOSED |
 | ADP-002 | [external_system_boundary.md](adapters/external_system_boundary.md) | APPROVED |
-| ADP-001 | [official_adapter_inventory.md](adapters/official_adapter_inventory.md) | APPROVED |
+| ADP-001 | [official_adapter_inventory.md](adapters/official_adapter_inventory.md) | PROPOSED |
 
 ## docs/agents/ (18件)
 
@@ -502,7 +503,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | REG-004 | [regulatory_blockers.md](regulatory/regulatory_blockers.md) | APPROVED |
 | REG-005 | [samd_applicability_assessment.md](regulatory/samd_applicability_assessment.md) | APPROVED |
 | REG-001 | [source_registry.md](regulatory/source_registry.md) | PROPOSED |
-| REG-002 | [version_watchlist.md](regulatory/version_watchlist.md) | APPROVED |
+| REG-002 | [version_watchlist.md](regulatory/version_watchlist.md) | PROPOSED |
 
 ## docs/safety/ (2件)
 

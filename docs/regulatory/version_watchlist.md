@@ -4,17 +4,19 @@
 ssot_id: REG-002
 title: 仕様版監視台帳(version watchlist)
 domain: regulatory
-status: APPROVED
+status: PROPOSED
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-08-23
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.2.0 §4, §10, docs/regulatory/source_registry.md
+change_log:
+  - "0.1.1 2026-08-23 WP-6202: 行 8(JAHIS 2次元シンボル)の版認識を Ver.1.11 実在確認済みへ訂正、監視周期を JHS-004 と同期。他行不変。review と human approval まで PROPOSED"
 open_questions:
   - 監視の自動化手段(公式サイトの更新検知)と担当の確定
   - ONSアクセス確保前は 10.5/10.6 系の監視が実施不能
@@ -38,7 +40,7 @@ blockers: []
 | 5 | オンライン資格確認 外部IF仕様 | 未採用【要確認】 | ONS未アクセス | ONS | 月次 | online_qualification_boundary |
 | 6 | 電子処方箋 技術解説書・記録条件仕様 | 未採用【要確認】 | v0.2.0指定「令和8年7月 2.04版以降」の一次確認未了 | ONS | 月次 | electronic_prescription_boundary |
 | 7 | PMH(利用規約・制度関連マスタ・対象自治体) | 未採用【要確認】 | 対象自治体は拡大中とされる【要確認】 | デジタル庁PMHサイト | 月次 | pmh_boundary |
-| 8 | JAHIS 2次元シンボル記録条件規約 | 未採用【要確認】 | Ver.1.10(2024-09)公開確認。Ver.1.11は言及のみ | JAHISサイト | 四半期 | prescription 2D symbol 設計 |
+| 8 | JAHIS 2次元シンボル記録条件規約 | 未採用(採用候補 Ver.1.11) | **Ver.1.11(2026年5月、id=1233)実在を REG-007 §7 で一次確認**(WP-6202 で訂正)。本文未入手 | JAHISサイト | 月次+改定期強化(JHS-004 と同期) | prescription 2D symbol 設計 |
 | 9 | JAHIS 薬歴連携仕様 / お薬手帳フォーマット | 未採用【要確認】 | 【要確認】 | JAHISサイト | 四半期 | jahis_boundary |
 | 10 | NSIPS | 許諾未取得 | — | 日本薬剤師会 | 許諾取得後に設定 | nsips_adapter_policy |
 | 11 | 安全管理GL(+Q&A)・事業者向けGL | 未採用【要確認】 | 第6.0版(2023-05)+Q&A(令和7年5月)を確認。第7.0版は未確認 | 厚労省・総務省経産省 | 四半期 | security系SSOT |

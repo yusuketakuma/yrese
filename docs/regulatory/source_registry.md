@@ -19,7 +19,7 @@ open_questions:
   - 全資料の版・取得日・ハッシュが未取得(本台帳は「何を確認すべきか」の骨格)
   - 医療機関等ONSアクセス手段(ベンダー登録・利用申請)の確保方法
   - 安全管理GL「第7.0版以降」(v0.2.0指定)の実在 — Web調査では第6.0版(2023年5月)+Q&A(令和7年5月)までを確認
-  - JAHIS 2次元シンボル Ver.1.11 の公開状態 — 公式サイトで確認できたのは Ver.1.10(2024年9月)
+  - JAHIS 2次元シンボル Ver.1.11 本文の入手経路(会員/購入)— 実在は REG-007 §7 で確認済み(WP-6202)
 blockers:
   - BLOCKED_REGULATORY_REVIEW(全資料が evidence_id 未発行)
 ```
@@ -105,7 +105,7 @@ blockers:
 
 | 資料 | 発行主体 | 入手経路 | 版/取得日/ハッシュ | 状態 |
 |---|---|---|---|---|
-| JAHIS院外処方箋2次元シンボル記録条件規約(Ver.1.11以降 — v0.2.0指定) | JAHIS | JAHISサイト | 【要確認】(公開確認済みは Ver.1.10/2024-09) | UNVERIFIED |
+| JAHIS院外処方箋2次元シンボル記録条件規約(Ver.1.11以降 — v0.2.0指定) | JAHIS | JAHISサイト(id=1233) | Ver.1.11(2026年5月)実在を REG-007 §7 で一次確認。本文未入手・ハッシュ未取得 | UNVERIFIED(実在確認済み) |
 | JAHIS電子処方箋運用 薬局レセコン・電子薬歴連携仕様書 Ver.1.1以降 | JAHIS | JAHISサイト | 【要確認】 | UNVERIFIED |
 | JAHIS電子版お薬手帳データフォーマット仕様書 Ver.2.6以降 | JAHIS | JAHISサイト | 【要確認】 | UNVERIFIED |
 | NSIPS仕様・利用許諾条件・入会手続き | 日本薬剤師会 | **許諾制** | 【要確認】(許諾未取得) | UNVERIFIED |
@@ -144,7 +144,7 @@ blockers:
 
 - 医療情報システムの安全管理に関するガイドライン: 第6.0版(2023年5月)が最新と確認。令和7年5月に第6.0版Q&Aが公表。**v0.2.0 が指定する「第7.0版以降」は未確認** → 存在しない場合は第6.0版+最新Q&Aを適用版として人間レビューで確定する。
   - 出典: [厚労省 第6.0版PDF](https://www.mhlw.go.jp/content/10808000/001582980.pdf)、[第6.0版Q&A(令和7年5月)](https://www.mhlw.go.jp/content/10808000/001145860.pdf)
-- JAHIS院外処方箋2次元シンボル記録条件規約: 公式サイトで **Ver.1.10(2024年9月)** の公開を確認。Ver.1.11 は検索要約での言及のみで一次確認未了。
+- JAHIS院外処方箋2次元シンボル記録条件規約: 公式サイトで **Ver.1.10(2024年9月)** の公開を確認(2026-07-09 時点)。**その後 REG-007 §7 で Ver.1.11(2026年5月、id=1233)の実在を一次確認**(本行は WP-6202 で訂正。下の REG-007 突合表と整合)。
   - 出典: [JAHIS Ver.1.10 標準ページ](https://www.jahis.jp/standard/detail/id=1123)、[Ver.1.10 PDF](https://www.jahis.jp/files/user/04_JAHIS%20standard/24-103_JAHIS%E9%99%A2%E5%A4%96%E5%87%A6%E6%96%B9%E7%AE%8B%EF%BC%92%E6%AC%A1%E5%85%83%E3%82%B7%E3%83%B3%E3%83%9C%E3%83%AB%E8%A8%98%E9%8C%B2%E6%9D%A1%E4%BB%B6%E8%A6%8F%E7%B4%84Ver.1.10.pdf)
 
 ---
@@ -193,6 +193,6 @@ SSK「オンライン請求」 https://www.ssk.or.jp/seikyushiharai/iryokikan/in
 
 ## 変更履歴
 
-- 0.2.1 (2026-08-23, WP-6101, PROPOSED): JP Core 1.2.0 package artifact を SRC-FHIR-007 として登録(DOM-006 `BLOCKED_PACKAGE_PROVENANCE` の解除前提)。hash 再現は egress 承認待ちで FETCHED に留める。evidence_id 未発行。
+- 0.2.1 (2026-08-23, WP-6101 + WP-6202, PROPOSED): JAHIS 2次元シンボルの版認識を Ver.1.11 実在確認済みへ統一(ADP-001 / REG-002 と同一 batch)。 JP Core 1.2.0 package artifact を SRC-FHIR-007 として登録(DOM-006 `BLOCKED_PACKAGE_PROVENANCE` の解除前提)。hash 再現は egress 承認待ちで FETCHED に留める。evidence_id 未発行。
 - 0.2.0 (2026-07-09): JP Core / FHIR / 医療DX連携ソース(SRC-FHIR-001..006)を追加。evidence_idは未発行、状態はFETCHED。
 - 0.1.0 (2026-07-09): 初版。

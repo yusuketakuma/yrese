@@ -4,14 +4,14 @@
 ssot_id: ADP-001
 title: Official Adapter 台帳
 domain: adapters
-status: APPROVED
+status: PROPOSED
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-11
+updated_at: 2026-08-23
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 effective_from: null
@@ -30,6 +30,7 @@ related_tests: []
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.1.1 2026-08-23 WP-6202: ADP-A5 の 2次元シンボル版認識を Ver.1.10 から Ver.1.11(REG-007 §7 で実在確認)へ訂正。他行・blocker・semantics 不変。review と human approval まで PROPOSED"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W5C metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
@@ -100,7 +101,7 @@ Pharmacy Integration API(独自 OpenAPI/JSON)とは分離し、混同しない�
 |---|---|
 | 責務 | (a) 院外処方箋2次元シンボル(Prescription2DSymbol)のデコード・バリデーション・仮取込(バージョン判定・分割シンボル・読取順序・文字コード・CSV構造・必須/条件付き項目)。(b) 薬局レセコン⇄電子薬歴の JAHIS 連携仕様準拠の変換 |
 | 責務外 | QR読取結果の処方箋原本扱い(紙処方箋または電子処方箋正式データとの照合が必須 — v0.2.0 §26)。薬剤師確認の代行 |
-| 公式仕様 | JAHIS 2次元シンボル記録条件規約(公式確認済み最新: Ver.1.10 / 2024-09。v0.2.0 指定の Ver.1.11 は一次未確認【要確認 — REG-002】)、JAHIS 薬歴連携仕様 Ver.1.1以降【要確認】 |
+| 公式仕様 | JAHIS 2次元シンボル記録条件規約 **Ver.1.11(2026年5月、jahis.jp id=1233)— 実在を REG-007 §7 で一次確認済み(WP-6202 で Ver.1.10 記載を訂正)。本文は未入手** 、JAHIS 薬歴連携仕様 Ver.1.1以降【要確認】 |
 | 入出力形式 | JAHIS 規約準拠 CSV(Shift-JIS 含む)【版確定まで詳細記録しない】 |
 | 実装状態 | **BLOCKED**(JAHIS 規約は有償頒布の場合あり — 入手手続きは人間判断) |
 | 解除条件 | 規約文書の正規入手 → 版確定 → jahis_boundary.md APPROVED → opus4.8 レビュー。読取仮取込 UI(仮取込→薬剤師確認→確定)は規約入手後に WP 発行 |
