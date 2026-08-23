@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.50
+version: 0.4.51
 created_at: 2026-07-09
 updated_at: 2026-08-23
 approved_at: 2026-08-01
@@ -153,6 +153,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.4.51 2026-08-23 WP-6001: Integration Hub SSOT 11 本(API-009〜API-018、ADP-003)を PROPOSED で新規登録。総文書数 173→184、docs/api 8→18、docs/adapters 2→3。status 集計は APPROVED 142 不変、PROPOSED 14→25、SUPERSEDED 17 不変(合計184)。全件 PROPOSED であり実装根拠にしない。登録済み blocker は据え置き"
   - "0.4.50 2026-08-23 WP-6101: JP Core 1.2.0 package artifact を SRC-FHIR-007 として source_registry(REG-001 0.2.0→0.2.1)へ登録するため、REG-001 の status 行を APPROVED→PROPOSED へ降格。review と human approval まで実装根拠にしない。documentカウント173・ssot_id・文書パス・section件数は不変。status 集計は APPROVED 143→142、PROPOSED 13→14、SUPERSEDED 17不変(合計173)。登録済み blocker(BLOCKED_PACKAGE_PROVENANCE 含む)は据え置き"
   - "0.4.49 2026-08-01 WP-4258 finalization: 独立review(frozen packet 92c4765b…、HIGH 0)とdirect human approvalにより DB-005 と ARC-008 の status 行を PROPOSED→APPROVED へ戻した。本索引自体は派生記録でありAPPROVEDを維持する。documentカウント173・ssot_id・文書パス・section件数は不変。status 集計は APPROVED 141→143、PROPOSED 15→13、SUPERSEDED 17不変(合計173)。集計は文書行(`| ID | [link](path.md) | STATUS |`)のみを対象として実測した — 索引には WP-9001 review/finalization status matrix のように同形の列を持つ非文書表があり、ID列だけで数えると AGT-018 を二重計上して174になる。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置き"
   - "0.4.48 2026-08-01 WP-4258: round-5 verifier の deferred LOW 訂正のため DB-005 と ARC-008 を改版(0.1.3→0.1.4)。両文書の status 行を APPROVED→PROPOSED へ戻し、review 完了と human approval まで実装根拠にしない。本索引自体は派生記録であり APPROVED を維持する。documentカウント173・ssot_id・文書パス・section件数は不変。status 集計は APPROVED 143→141、PROPOSED 13→15、SUPERSEDED 17不変(合計173)。**0.4.47 entry の集計値は誤りであり本 entry で訂正する**: 当時の計数は ssot_id を `[A-Z]+-[0-9]+` で拾う正規表現で行っており、`SRC-FHIR-00x` のような複数セグメント ID の3行を取りこぼして合計170になっていた。正しい計数は `[A-Z][A-Z0-9-]*-[0-9]+` で173行である。あわせて 0.4.47 の基準の取り方も曖昧だった — 同 entry の数値は review 用に PROPOSED へ降格していた作業ツリーを基準としたもので、コミット済み索引は当該10行が元から APPROVED であったため 143/13/17 のまま不変だった。訂正後の正しい記述は「作業ツリー基準で APPROVED 133→143、PROPOSED 23→13」である。`check:ssot-index` は section 件数と総数を検証するが change_log の散文集計は検証対象外であり、この誤りを検出しない"
@@ -242,7 +243,7 @@ WP-9002-W1はHEAD `6198068`の23-field exact-key scanをbaselineとし、173文�
 
 WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbaselineとし、MOD-011とMOD-014の不足8 fieldだけをmetadata-onlyで補完した。final inventoryは173文書 / 不足139 / 充足34である。両文書の本文、version、status、approval、effective semanticsと、本索引の各行(`APPROVED` / `modules/date_time_policy.md`, `APPROVED` / `modules/generated_code_policy.md`)および総文書数173は変更していない。independent_verifier、test_architect、spec_guardian、api_contract_reviewer、data_integrity_auditor、medical_safety_reviewer、privacy_compliance_reviewerのAPPROVEDとfull validation後、IDX-001 v0.4.3をAPPROVEDとしてfinalizeした。W2 human approvalは主張しない。historical 173/142およびW1 173/141/32 recordはprovenanceとして維持する。
 
-総文書数: 173(本索引を除く)
+総文書数: 184(本索引を除く)
 
 ## docs/accounting/ (11件)
 
@@ -260,10 +261,11 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | ACC-009 | [pos_integration_policy.md](accounting/pos_integration_policy.md) | APPROVED |
 | ACC-005 | [refund_adjustment_policy.md](accounting/refund_adjustment_policy.md) | APPROVED |
 
-## docs/adapters/ (2件)
+## docs/adapters/ (3件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
+| ADP-003 | [adapter_registry.md](adapters/adapter_registry.md) | PROPOSED |
 | ADP-002 | [external_system_boundary.md](adapters/external_system_boundary.md) | APPROVED |
 | ADP-001 | [official_adapter_inventory.md](adapters/official_adapter_inventory.md) | APPROVED |
 
@@ -290,18 +292,28 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | AGT-016 | [llm_capability_registry.md](agents/llm_capability_registry.md) | SUPERSEDED |
 | AGT-004 | [sol_ultra_mode_execution_policy.md](agents/sol_ultra_mode_execution_policy.md) | SUPERSEDED |
 
-## docs/api/ (8件)
+## docs/api/ (18件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
 | API-002 | [api_first_dogfooding_policy.md](api/api_first_dogfooding_policy.md) | APPROVED |
+| API-011 | [api_scope_registry.md](api/api_scope_registry.md) | PROPOSED |
 | API-007 | [calculation_trace_read_contract.md](api/calculation_trace_read_contract.md) | APPROVED |
+| API-015 | [contract_test_policy.md](api/contract_test_policy.md) | PROPOSED |
+| API-016 | [data_portability_policy.md](api/data_portability_policy.md) | PROPOSED |
+| API-018 | [data_sharing_module_inventory.md](api/data_sharing_module_inventory.md) | PROPOSED |
+| API-017 | [data_sharing_policy.md](api/data_sharing_policy.md) | PROPOSED |
 | API-008 | [fhir_rest_facade_contract.md](api/fhir_rest_facade_contract.md) | APPROVED |
+| API-013 | [idempotency_policy.md](api/idempotency_policy.md) | PROPOSED |
+| API-009 | [integration_hub_architecture.md](api/integration_hub_architecture.md) | PROPOSED |
 | API-005 | [oss_sdk_and_schema_publication_policy.md](api/oss_sdk_and_schema_publication_policy.md) | APPROVED |
+| API-010 | [partner_registry_policy.md](api/partner_registry_policy.md) | PROPOSED |
+| API-014 | [partner_sandbox_policy.md](api/partner_sandbox_policy.md) | PROPOSED |
 | API-001 | [patient_search_contract.md](api/patient_search_contract.md) | APPROVED |
 | API-004 | [ph_os_reference_integration.md](api/ph_os_reference_integration.md) | APPROVED |
 | API-003 | [platform_api_architecture.md](api/platform_api_architecture.md) | APPROVED |
 | API-006 | [reception_queue_contract.md](api/reception_queue_contract.md) | APPROVED |
+| API-012 | [webhook_event_catalog.md](api/webhook_event_catalog.md) | PROPOSED |
 
 ## docs/architecture/ (10件)
 
