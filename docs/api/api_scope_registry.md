@@ -45,12 +45,11 @@ partner に与える権限を **scope** として列挙し、内部 permission(M
 |---|---|---|---|
 | `events:subscribe:<event_type>` | Event Catalog の当該 event だけを webhook 購読(種別ごと。包括購読なし) | 当該 event の分類 | — |
 | `patient:read` | Patient projection / FHIR Patient read | direct_identifier | patient:read |
-| `medication-request:read` | MedicationRequest projection read | clinical | prescription:read |
-| `medication-request:write` | Inbox 経由の MedicationRequest 提出(単一 writer 前提) | clinical | prescription:write |
+| `medication-request:read` | MedicationRequest projection read(API-008 の bounded scope = 経口・外用のみ。注射は unsupported) | clinical | prescription:read |
+| `medication-request:write` | `/fhir/R4/MedicationRequest` create(`intent=order`、経口・外用のみ)。**API-008 の単一 producer 経由のみで、Inbox 経路は存在しない** | clinical | prescription:write |
 | `medication-dispense:read` | 確認済み調剤の read(WP-6109 後) | clinical | dispensing:read |
 | `yakureki:report` | 薬歴未記載チェック結果の提出(WP-6401) | clinical | prescription:write(MOD-007 改版で専用 resource を検討) |
 | `audit-result:submit` | 処方監査結果の未加工提出(WP-6402) | clinical | prescription:write(同上) |
-| `inventory:read` | 在庫向け read-only projection(WP-6403) | none | dispensing:read(患者識別子を含まない projection に限定) |
 | `export:tenant` | tenant 自身の data portability export(API-016) | all | tenant:admin(`export` action は MOD-007 に無く、改版依存) |
 
 ## 3. 規則

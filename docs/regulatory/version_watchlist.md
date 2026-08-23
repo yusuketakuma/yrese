@@ -15,6 +15,14 @@ updated_at: 2026-08-23
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.2.0 §4, §10, docs/regulatory/source_registry.md
+effective_from: 2026-07-09
+effective_to: null
+depends_on: [REG-001, REG-007, JHS-004]
+impacts: [REG-001 状態更新, ADP-001, CAL-001 改定追従, JHS-004]
+related_work_packages: [WP-0005, WP-6202]
+related_tests: []
+related_prs: []
+evidence_ids: []
 change_log:
   - "0.1.1 2026-08-23 WP-6202: 行 8(JAHIS 2次元シンボル)の版認識を Ver.1.11 実在確認済みへ訂正、監視周期を JHS-004 と同期。他行不変。review と human approval まで PROPOSED"
 open_questions:

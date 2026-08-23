@@ -46,7 +46,7 @@ blockers:
 | Event Catalog schema | out | partner | zod / JSON Schema | packages/contracts/src/partner-event.ts | 実装済(`reception.created`) | WP-6004 |
 | webhook sink(HMAC 署名) | out | partner | HTTPS POST | apps/api/src/webhook-partner-sink.ts | 実装済(registry 配線・key-id・rotation 未) | WP-6005 |
 | Partner Registry | — | partner | DB/API | apps/api(新) | 未実装 | WP-6006 |
-| Inbox | in | partner | JSON | apps/api(新) | 未実装 | WP-6008 |
+| Inbox(非 authority 提出のみ) | in | partner | JSON | apps/api(新) | 未実装。clinical resource の書込み経路ではない(API-003) | WP-6008(再定義) |
 | FHIR facade(Patient/MR) | out(read) / in(MR create) | partner | FHIR R4 JP Core | apps/api(新)/ packages/fhir(新) | 未実装 | WP-6105/6106 |
 | JAHIS 2D decoder | in | 処方箋 | JAHIS Ver.1.11 | packages/jahis-2d(新) | 未実装 | WP-6205 |
 | JAHIS 薬歴連携 adapter | out | 電子薬歴 | JAHIS Ver.1.1 | packages/jahis-yakureki(新) | 未実装 | WP-6207 |

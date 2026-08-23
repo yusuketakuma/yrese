@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.53
+version: 0.4.54
 created_at: 2026-07-09
 updated_at: 2026-08-23
 approved_at: 2026-08-01
@@ -153,6 +153,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.4.54 2026-08-23 WP-6001 review 反映: api-contract / security-privacy 独立レビューの finding 閉鎖に伴い MOD-005(0.1.4→0.1.5、BLOCKER_TYPES 5 種追加)を APPROVED→PROPOSED へ降格、MOD-009 は 0.2.0→0.2.1 で PROPOSED 維持。総文書数 185 不変。status 集計は APPROVED 140→139、PROPOSED 28→29、SUPERSEDED 17 不変"
   - "0.4.53 2026-08-23 WP-6302: オンライン資格確認・マイナ保険証連動の境界 SSOT 骨子(ADP-004)を PROPOSED で新規登録。総文書数 184→185、docs/adapters 3→4。status 集計は APPROVED 140 不変、PROPOSED 27→28、SUPERSEDED 17 不変。公式 IF 未入手のため外部接続の根拠にしない"
   - "0.4.52 2026-08-23 WP-6202/WP-6203: JAHIS 2次元シンボルの版認識統一のため ADP-001(0.1.0→0.1.1)と REG-002(0.1.0→0.1.1)を APPROVED→PROPOSED へ降格。JHS-001〜008 は 0.1.0→0.1.1(owner 移管・23 field 補完)で PROPOSED 維持。総文書数 184 不変。status 集計は APPROVED 142→140、PROPOSED 25→27、SUPERSEDED 17 不変。登録済み blocker は据え置き"
   - "0.4.51 2026-08-23 WP-6001: Integration Hub SSOT 11 本(API-009〜API-018、ADP-003)を PROPOSED で新規登録。総文書数 173→184、docs/api 8→18、docs/adapters 2→3。status 集計は APPROVED 142 不変、PROPOSED 14→25、SUPERSEDED 17 不変(合計184)。全件 PROPOSED であり実装根拠にしない。登録済み blocker は据え置き"
@@ -413,7 +414,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | MOD-010 | [money_point_policy.md](modules/money_point_policy.md) | APPROVED |
 | MOD-007 | [permission_scope_registry.md](modules/permission_scope_registry.md) | APPROVED |
 | MOD-004 | [shared_type_registry.md](modules/shared_type_registry.md) | APPROVED |
-| MOD-005 | [status_registry.md](modules/status_registry.md) | APPROVED |
+| MOD-005 | [status_registry.md](modules/status_registry.md) | PROPOSED |
 | MOD-012 | [validation_schema_policy.md](modules/validation_schema_policy.md) | APPROVED |
 
 ## docs/operations/ (14件)

@@ -13,9 +13,9 @@ reviewers:
   - privacy_compliance_reviewer
   - medical_safety_reviewer
   - human_review_required
-version: 0.2.0
+version: 0.2.1
 created_at: 2026-07-09
-updated_at: 2026-07-29
+updated_at: 2026-08-23
 approved_at: null
 approved_by: null
 effective_from: null
@@ -54,6 +54,7 @@ open_questions:
 blockers:
   - WP-4050 R3 specialist review and human approval required before APPROVED
 change_log:
+  - "0.2.1 2026-08-23 WP-6004: §4.3 を実装済み outbox_events(単一 table + sequence_number + FK)と整合させ、2 table 構造を将来の delivery state 追加として位置づけ。envelope semantics 不変。PROPOSED 維持"
   - "0.2.0 2026-07-29 PROPOSED: WP-4050向けreception.created Outbox intent profile、immutable intent/mutable delivery分離、atomic completeness、legacy orphan fail-closed規則を追加"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
@@ -150,8 +151,8 @@ fail-closedに隔離する。
 
 ### 4.3 PostgreSQL persistence contract
 
-forward migrationは次の論理構造を追加する。migration適用は別human gateであり、
-WP-4050では未適用migrationとsynthetic test databaseだけを対象とする。
+**実装済み構造(2026-08-23 時点、migrations/000005 + 000007):** 単一 table `outbox_events`
+(PK `(tenant_id, pharmacy_id, outbox_event_id)`、UNIQUE `(tenant_id, pharmacy_id, aggregate_type, aggregate_id, event_type)`、DB 割当て `sequence_number`、`delivered_at` の pending→delivered 単一遷移だけを許す trigger、reception_entries / audit_events への FK)。配送 worker は `apps/api/src/db/outbox-delivery.ts`。以下の 2 table 構造は **retry / DLQ を導入する将来の forward migration の論理設計**であり、`outbox_events` を作り替えるものではない(`outbox_events` = intent、`outbox_delivery_state` を別 table として追加する)。migration適用は別human gateである。
 
 - `outbox_intents`: tenantId、pharmacyId、eventId、eventType、aggregateType、
   aggregateId、schemaVersion、eventBody、createdAtを保持するappend-only table。

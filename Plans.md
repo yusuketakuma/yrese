@@ -1325,7 +1325,7 @@ release gate 群。§11 の既知 blocker を作業項目化した index であ�
 | WP-6003 | outbox 配送 worker: `outbox_events` pending→delivered の単一遷移 worker、at-least-once、順序保証(aggregate 単位)、PHI-free payload 検証、injected sink failure テスト | WP-4050 独立レビュー(C-002) |
 | WP-6004 | Event Catalog v0 + MOD-009 `event_envelope_schema` の APPROVED 昇格(現在 PROPOSED)。`reception.created` を第 1 event とする【SSOT】 | WP-6001 |
 | WP-6005 | Webhook delivery: 署名(HMAC、key rotation)、retry/backoff、DLQ テーブルと可視化 API、replay protection、partner ごとの rate limit | WP-6003、WP-6004 |
-| WP-6006 | Partner Registry + Scope 管理の persistence/API(tenant/pharmacy/partner_id、scope、PHI classification、data minimization)。MOD-011 内部 scope との対応表 | WP-6001 |
+| WP-6006 | Partner Registry + Scope 管理の persistence/API(tenant/pharmacy/partner_id、scope、PHI classification、data minimization)。MOD-007 内部 scope との対応表 | WP-6001 |
 | WP-6007 | OAuth2 Client Credentials(partner 認証)+ mTLS 境界設計と実装。dev header stub を production で無効化する release gate と同一 packet【HG: security】【SSOT: C-083】 | C-083 |
 | WP-6008 | Inbox(partner → yrese)受信境界: idempotency、schema validation、PHI classification、`PENDING_EXTERNAL_SYNC` 状態。書込みは MedicationRequest ingestion(C-050)の単一 writer 経由のみ | C-050、WP-6006 |
 | WP-6009 | Partner Sandbox: synthetic tenant、fixture seeding(MOD-013)、本番 PHI 混入ゼロの機械検証 | WP-6006 |

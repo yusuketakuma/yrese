@@ -4,18 +4,19 @@
 ssot_id: MOD-005
 title: ステータスレジストリ(システムモード・保留系・BLOCKER)
 domain: modules
-status: APPROVED
+status: PROPOSED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.4
+version: 0.1.5
 created_at: 2026-07-09
-updated_at: 2026-07-11
+updated_at: 2026-08-23
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 effective_from: null
 effective_to: null
 change_log:
+  - "0.1.5 2026-08-23 WP-6001: BLOCKER_TYPES に Integration Hub / 監査 / privacy 系 5 種を登録(33→38)。shared-kernel blockers.ts と同期。review と human approval まで PROPOSED"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - 0.1.4 (2026-07-09): ドメインライフサイクル状態の所有権を明記 — 定義の正本は DOM-004、shared-kernel への登録は使用する実装 WP の着地時に DOM-004 と同期して行う(opus4.8 DOM レビューの governance 決着)。
@@ -84,7 +85,7 @@ WAITING / IN_PROGRESS / COMPLETED / CANCELLED
 - 受付状態は請求可否判定 `isClaimable()` に関与しない
 - 値の正本は `@yrese/shared-kernel` の `RECEPTION_STATUSES`
 
-## 3. BLOCKER 種別(BLOCKER_TYPES — 33種)
+## 3. BLOCKER 種別(BLOCKER_TYPES — 38種)
 
 実装統率(§0.13): BLOCKED_NOT_READY / BLOCKED_REGULATORY_REVIEW / BLOCKED_LEGAL_REVIEW / BLOCKED_MEDICAL_SAFETY_REVIEW / BLOCKED_OFFICIAL_ADAPTER_SPEC / BLOCKED_CODE_MAPPING_REVIEW / BLOCKED_UNSUPPORTED_CLAIM / BLOCKED_PMH_REVIEW / BLOCKED_NSIPS_LICENSE / BLOCKED_SECURITY_REVIEW / BLOCKED_PERFORMANCE_SLO / BLOCKED_EDGE_SYNC_DESIGN / BLOCKED_UX_SAFETY / CODEX_CAPABILITY_UNVERIFIED / AGMSG_PROTOCOL_UNVERIFIED
 
@@ -101,6 +102,8 @@ WAITING / IN_PROGRESS / COMPLETED / CANCELLED
 マスター(§21): PENDING_MASTER_VALIDATION / コードマッピング(§22): CODE_MAPPING_REVIEW_REQUIRED / SSOT(§0.1.6.17): SSOT_UPDATE_REQUIRED
 
 FHIR/連携境界(PRD-007、DOM-005/006): BLOCKED_OFFICIAL_ADAPTER_BOUNDARY(Official Adapter[オン資・電子処方箋・オンライン請求・PMH・JAHIS]を FHIR で置換しない)/ BLOCKED_FHIR_CONFORMANCE_REVIEW(conformance 未検証での「JP Core 準拠」訴求禁止)
+
+Integration Hub / 監査・保持・privacy(API-008/009〜018、ADP-004、JHS-003): BLOCKED_WRITE_PRODUCER_PREREQUISITES(単一 external write producer の前提未充足)/ BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT(MOD-008 未登録種別の発火禁止)/ BLOCKED_AUDIT_PAYLOAD_RETENTION_POLICY(保持期間未確定)/ BLOCKED_PRIVACY_REVIEW(privacy review 未完了)/ BLOCKED_JAHIS_SPEC_ACQUISITION(JAHIS 仕様本文未入手)
 
 報告形式は `BlockerReport`(blockerType / workPackageId / blockingQuestion / affectedFiles / risk / recommendedNextStep)— 運用は PRC-006(blocker_triage_policy)。
 

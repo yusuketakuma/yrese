@@ -58,7 +58,7 @@ ADP-001(Official Adapter 台帳)と JHS-003(JAHIS Adapter 台帳)が定義する
 
 ## 4. 初期登録(全件 STUB 未満 = 登録のみ)
 
-ADP-A1(オン資)、ADP-A2(電子処方箋)、ADP-A3(電子レセプト)、ADP-A4(PMH)、ADP-A5(JAHIS 2D / 薬歴)、JAHIS-2D、JAHIS-YAKUREKI、JAHIS-OKUSURI。ADP-A6(NSIPS)は登録凍結。
+ADP-A1(オン資)、ADP-A2(電子処方箋)、ADP-A3(電子レセプト)、ADP-A4(PMH)、JAHIS-2D、JAHIS-YAKUREKI、JAHIS-OKUSURI(JHS-003 の ID を registry の正とし、ADP-001 の ADP-A5 はこの 2 件を束ねる umbrella として registry 行を持たない)。ADP-A6(NSIPS)は登録凍結。
 
 ## 共通原則(全 Integration Hub SSOT に適用)
 

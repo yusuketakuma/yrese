@@ -42,7 +42,7 @@ blockers:
 | 公開 event | 発生源 | payload(最小) | PHI | 導入 WP |
 |---|---|---|---|---|
 | `reception.created` | WP-4050 command | eventId(=outbox id), occurredAt, auditEventId, aggregate{type:reception,id} — 実装: `packages/contracts/src/partner-event.ts` | none | WP-6003/6004(実装済) |
-| `prescription.draft.created` | C-059 | prescription_id, reception_id, version | none | Milestone 3 |
+| `prescription.draft.created` | C-059 | prescription_id, reception_id, version(経口・外用の bounded scope のみ) | none | Milestone 3 |
 | `dispense.confirmed` | C-061/063 | dispense_id, prescription_id, version, confirmed_at | none | Milestone 3 |
 | `calculation.trace.recorded` | WP-6501 | trace_id, dispense_id, rule_version, master_version | none | Track F |
 | `eligibility.snapshot.recorded` | WP-6303 | snapshot_id, aggregate ref, version(patient_ref・verified_method は載せない) | none | Track D |

@@ -38,7 +38,7 @@ blockers:
 
 ## 1. 目的
 
-yrese の情報連携(FHIR JP Core facade、JAHIS adapter、電子薬歴・処方監査・在庫・PH-OS 等の partner 連携)を、巨大 API ではなく **Integration Hub** という 1 つの境界に集約する。Hub は「誰が(partner)・何を(event / resource)・どの権限で(scope)・どの形式で(adapter)・どの同期方式で(webhook / inbox / projection)」を一箇所で決め、監査する。
+yrese の情報連携(FHIR JP Core facade、JAHIS adapter、電子薬歴・処方監査・PH-OS 等の partner 連携。在庫・POS・分包機は PRD-002 N9 により MVP 外で API v1 候補)を、巨大 API ではなく **Integration Hub** という 1 つの境界に集約する。Hub は「誰が(partner)・何を(event / resource)・どの権限で(scope)・どの形式で(adapter)・どの同期方式で(webhook / inbox / projection)」を一箇所で決め、監査する。
 
 ## 2. 構成要素と担当 SSOT
 
@@ -53,20 +53,24 @@ yrese の情報連携(FHIR JP Core facade、JAHIS adapter、電子薬歴・処�
 | Data Portability / Export-Import | tenant 自身のデータの署名付き export と dry-run import | API-016 |
 | Data Sharing Policy | 共有対象・目的・同意・最小化・保持 | API-017 |
 | Data Sharing Module Inventory | 共有 module の棚卸しと所有 | API-018 |
+| Inbox(非 authority 受信) | partner からの非 clinical-authority 提出(薬歴記載報告、処方監査結果の未加工転記)の受信境界。**clinical resource の書込み経路ではない** | API-009 §3、API-013 |
+| API Gateway Policy | rate limit、replay protection、body size、timeout の閾値を partner app 単位で持つ。閾値は API-003 性能 SLO 確定後に数値化 | API-009 §4(専用 SSOT は SLO 確定後) |
+| Partner SDK | 契約からの生成物と公開範囲 | API-005 |
 | Adapter Registry | Official Adapter(ADP-001)と JAHIS Adapter(JHS-003)の登録・版・状態 | ADP-003 |
 | Audit Trail | 全 Hub 操作の監査(MOD-008 へ event 種別を追加) | MOD-008(改版必要) |
-| API Versioning / Deprecation | API-003 §4 の廃止期間・通知方法を本 Hub で確定 | API-003(改版必要) |
+| API Versioning / Deprecation | 廃止期間・通知方法(本 Hub で確定): 破壊的変更は新 major、旧 major は **最低 12 か月**併存、廃止は Partner Registry の連絡先へ通知しつつ応答 header `Deprecation` / `Sunset`(RFC 9745 / RFC 8594)で機械通知、sandbox へ先行反映。API-003 §4 は本行を参照する形へ改版する | API-009(API-003 改版で参照) |
 
 ## 3. データフロー(方向別)
 
 - **Outbound(yrese → partner):** domain command が同一 transaction で `outbox_events` に intent を書く(WP-4050)→ 配送 worker(WP-6003)が Event Catalog の公開 schema へ投影 → Webhook Delivery が署名付きで配送 → 受領/失敗を監査 → 失敗は retry → DLQ。配送 payload は識別子と版のみを既定とし、本文は partner が scope 付き read API で取得する(data minimization)。
-- **Inbound(partner → yrese):** Inbox が署名・idempotency・schema・scope を検証 → `PENDING_EXTERNAL_SYNC` として保存 → 書込みは該当 resource の単一 writer(MedicationRequest ingestion 等)だけが行う。Inbox は clinical authority を持たない。
+- **Inbound(partner → yrese、clinical resource):** partner による MedicationRequest 等の提出は **`/fhir/R4/*`(API-008)経由のみ**であり、API-003 §1 の単一 external write producer を Hub は変更しない。Hub は scope・rate limit・監査をその前段で適用するだけで、別 route・別 model・別 idempotency 規則を持たない。
+- **Inbound(partner → yrese、非 authority 提出):** Inbox は薬歴記載報告(`yakureki:report`)と処方監査結果の未加工転記(`audit-result:submit`)のような、clinical authority を持たない記録だけを受ける。署名・idempotency(API-013、FHIR と同一規則)・schema・scope を検証し `PENDING_EXTERNAL_SYNC` で保存する。Inbox から clinical resource を書くことはできない(API_CONTRACT_BLOCKED)。
 - **Projection(read):** FHIR facade(API-008)と generic projection API(API-003 §1)は read-only の非正本面であり、Hub の scope で保護する。
 
 ## 4. 非機能要件
 
 - 配送は at-least-once、aggregate 単位の順序保証、receiver 側の冪等前提(API-013)。
-- 全経路で tenant isolation(SEC-006)、rate limit、replay protection、監査(SEC-007)。
+- 全経路で tenant isolation(SEC-006)、rate limit(partner app 単位、429 + `Retry-After`)、replay protection(署名 timestamp window)、body size 上限、監査(SEC-007)。閾値は BLOCKED_PERFORMANCE_SLO 解除後に数値化する。
 - Hub 停止時でも domain command は成功する(outbox が吸収)。Hub の障害は `EXTERNAL_DEGRADED` モードとして可視化し、配送失敗を成功と誤認させない(MSR-017)。
 
 ## 5. 禁止事項

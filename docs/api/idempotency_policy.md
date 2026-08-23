@@ -49,7 +49,7 @@ blockers:
 |---|---|---|
 | `POST /reception` | API-006(BUG-4260 で再試行間の key 安定化済み) | 本方針の基準実装 |
 | FHIR create/update | API-008 §4 | 同一規則。`If-None-Exist` は採用しない |
-| Inbox 受信 | なし | partner 提供 key + 署名 event_id の二重鍵。重複は受理済み応答を返し副作用なし |
+| Inbox 受信(非 authority 提出のみ) | なし | FHIR create と同一規則(`Idempotency-Key`)。署名 event_id は replay 検知に使うが冪等鍵ではない。重複は受理済み応答を返し副作用なし |
 | Webhook 配送 | なし | event_id を受信側の冪等鍵とする。再送は同一 event_id |
 | Export/Import | なし | import dry-run は job_id で冪等 |
 

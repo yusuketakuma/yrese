@@ -15,6 +15,18 @@ updated_at: 2026-08-23
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.2.0 §1, §11
+effective_from: 2026-07-09
+effective_to: null
+depends_on: [REG-002, REG-007, PRC-007]
+impacts: [全 evidence_id 発行, CAL-001, CLM-001, DOM-006(BLOCKED_PACKAGE_PROVENANCE), ADP-001, JHS-001〜008]
+related_work_packages: [WP-0005, WP-6101, WP-6202]
+related_tests: []
+related_prs: []
+evidence_ids: []
+change_log:
+  - "0.2.1 2026-08-23 WP-6101 + WP-6202 PROPOSED: SRC-FHIR-007(JP Core 1.2.0 package artifact)登録、JAHIS 2次元シンボル版認識を Ver.1.11 実在確認済みへ統一、23 field 補完(本文『変更履歴』節を frontmatter へ転記)"
+  - "0.2.0 2026-07-09: JP Core / FHIR / 医療DX連携ソース(SRC-FHIR-001..006)を追加。evidence_id 未発行、状態 FETCHED"
+  - "0.1.0 2026-07-09: 初版"
 open_questions:
   - 全資料の版・取得日・ハッシュが未取得(本台帳は「何を確認すべきか」の骨格)
   - 医療機関等ONSアクセス手段(ベンダー登録・利用申請)の確保方法
