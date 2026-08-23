@@ -4,14 +4,14 @@
 ssot_id: REG-001
 title: 公式資料台帳(source registry)
 domain: regulatory
-status: APPROVED
+status: PROPOSED
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.2.0
+version: 0.2.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-08-23
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.2.0 §1, §11
@@ -121,6 +121,7 @@ blockers:
 | SRC-FHIR-003 | HL7 FHIR JP Core 実装ガイド v1.2.0 | JAMI FHIR国内実装基盤研究会 | https://jpfhir.jp/fhir/core/1.2.0/index.html | 2026-07-09取得、ハッシュ未取得。Patient/Coverage/MedicationRequest/MedicationDispense/MedicationStatement等のプロファイル一覧を確認 | FETCHED |
 | SRC-FHIR-004 | 電子処方箋 | 厚生労働省 | https://www.mhlw.go.jp/stf/denshishohousen.html | 2026-07-09取得、ハッシュ未取得。直近処方・調剤情報参照、重複投薬等チェック、導入状況ダッシュボードの説明を確認 | FETCHED |
 | SRC-FHIR-005 | JAHIS電子処方箋運用における薬局レセコンと電子薬歴システムの連携仕様書 Ver.1.1 | JAHIS | https://www.jahis.jp/standard/detail/id=1129 | 2026-07-09取得、ハッシュ未取得。薬局内システム連携の共通仕様、CSV/Shift-JIS等の記載を確認 | FETCHED |
+| SRC-FHIR-007 | HL7 FHIR JP Core 1.2.0 **package artifact**(`jpfhir.jp.core#1.2.0`、FHIR R4 4.0.1、canonical base `http://jpfhir.jp/fhir/core`) | JAMI FHIR国内実装基盤研究会 | https://jpfhir.jp/fhir/core/1.2.0/package.tgz(HTTPS GET、公式 IG サイト直下) | 2026-07-30 取得 identity(DOM-006 §1 記録を転記): SHA-256 `6094c8b9ebd975cb738c66cc999774c06a0aacf4480c068a8465e597117e52a3`、content-length 2391515、last-modified `2025-11-28T05:12:19Z`。published signature/checksum なし。manifest `notForPublication` と file URL 不整合あり(authenticity evidence ではなく identity record)。**2026-08-23 の再取得・hash 再現は external egress 未承認のため未実施** — 承認後に再取得し、一致時のみ VERIFIED へ進める。profile canonical URL(`.../StructureDefinition/JP_Patient`、`JP_MedicationRequest`)の根拠は本 artifact 内 StructureDefinition に紐づける(SRC-FHIR-002/003 の HTML ページは根拠にしない) | FETCHED(identity recorded、再現待ち) |
 | SRC-FHIR-006 | 電子カルテ情報共有サービス | 厚生労働省 | https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryou/johoka/denkarukyouyuu.html | 2026-07-09取得、ハッシュ未取得。全国医療情報プラットフォーム、薬局を含む情報共有、2026年6月30日技術解説書v2.1.0公開を確認 | FETCHED |
 
 ### 10.8 医療情報安全管理・セキュリティ(Priority A/B)
@@ -192,5 +193,6 @@ SSK「オンライン請求」 https://www.ssk.or.jp/seikyushiharai/iryokikan/in
 
 ## 変更履歴
 
+- 0.2.1 (2026-08-23, WP-6101, PROPOSED): JP Core 1.2.0 package artifact を SRC-FHIR-007 として登録(DOM-006 `BLOCKED_PACKAGE_PROVENANCE` の解除前提)。hash 再現は egress 承認待ちで FETCHED に留める。evidence_id 未発行。
 - 0.2.0 (2026-07-09): JP Core / FHIR / 医療DX連携ソース(SRC-FHIR-001..006)を追加。evidence_idは未発行、状態はFETCHED。
 - 0.1.0 (2026-07-09): 初版。
