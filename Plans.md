@@ -39,7 +39,7 @@
 | Working tree | landing recordの `Plans.md` / `State.md` exact2のみ。final record commit後はcleanを要求 |
 | Last update | 2026-08-23 JST(grouped landing record補正。product WIP/READYは不変更) |
 | Active Goal | grouped commit/push finalization。product queueはWIP 0のまま |
-| Current critical path | Milestone 1 exit の残余 — WP-4050 の独立レビュー(codex lane 復帰 2026-08-05)と WP-4258 の final human SSOT approval |
+| Current critical path | Milestone 1 exit の残余 — WP-4050 の独立レビュー(codex lane 復帰 2026-08-05) |
 | Main blocker | WP-4050 の独立レビュー(2026-08-05 待ち)と `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) の DDL human gate |
 | Runtime verification | Node 26.6.0でfrozen install、typecheck、1,877 tests(skip 0)、script harness、build 11/11、OpenAPI、secrets、deps、SBOM 249、boundaries、calculation purity、SSOT index 173、actionlint、diff check PASS |
 | Next scan cursor | diff-first from `f91ae78`; reset on new High/Medium finding or reprioritization |
@@ -81,7 +81,7 @@ WIP を 0 のまま放置することと、gate 待ちの項目を WIP に置き
 | 直前まで WIP にあった項目 | 現在の扱い | 参照 |
 |---|---|---|
 | WP-4250 | FINALIZED / APPROVED(SSOT 改版のみ)。local commit `89275d2` | 下の決定記録 |
-| WP-4258 | COMMITTED_LOCAL `1dedf27`。final human SSOT approval 待ち | Human gates |
+| WP-4258 | FINALIZED / APPROVED(2026-08-01)。改版 `1dedf27`、APPROVED 化 `1ec57d5` | Implemented / Landing State |
 | WP-4257 | COMMITTED_LOCAL `a911a99` / LANDED | Implemented / Landing State |
 | WP-4256 | COMMITTED_LOCAL `ab63db6` / LANDED | Implemented / Landing State |
 | `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) | 実行仕様のみ確定。DDL と実データ参照を伴うため human gate | Human gates |
