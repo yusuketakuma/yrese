@@ -4,7 +4,7 @@
 ssot_id: MOD-009
 title: イベントエンベロープスキーマ
 domain: modules
-status: PROPOSED
+status: APPROVED
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -16,9 +16,9 @@ reviewers:
 version: 0.2.1
 created_at: 2026-07-09
 updated_at: 2026-08-23
-approved_at: null
-approved_by: null
-effective_from: null
+approved_at: 2026-08-23
+approved_by: "direct human authority 2026-08-23 (「全てを許可する。実行」); independent review: api-contract lane + security-privacy lane REQUEST_CHANGES -> all findings closed (28dae05, f07e76e); closure checker PASS"
+effective_from: 2026-08-23
 effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §32(同期設計の必須項目), §0.0.3.3
@@ -54,6 +54,7 @@ open_questions:
 blockers:
   - WP-4050 R3 specialist review and human approval required before APPROVED
 change_log:
+  - "2026-08-23 WP-6001/WP-6101/WP-6202/WP-6203/WP-6302 finalization: 独立 review 2 lane の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手は各 WP の gate に従い、外部接続・conformance 主張は含まない"
   - "0.2.1 2026-08-23 WP-6004: §4.3 を実装済み outbox_events(単一 table + sequence_number + FK)と整合させ、2 table 構造を将来の delivery state 追加として位置づけ。envelope semantics 不変。PROPOSED 維持"
   - "0.2.0 2026-07-29 PROPOSED: WP-4050向けreception.created Outbox intent profile、immutable intent/mutable delivery分離、atomic completeness、legacy orphan fail-closed規則を追加"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"

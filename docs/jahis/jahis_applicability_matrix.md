@@ -4,7 +4,7 @@
 ssot_id: JHS-001
 title: JAHIS該当性マトリクス
 domain: jahis
-status: PROPOSED
+status: APPROVED
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -19,9 +19,9 @@ open_questions:
   - 薬局レセコン電子薬歴連携仕様 Ver.1.1 の一次確認(jahis.jp 検索で未到達)
   - 2Dシンボル Ver.1.11 本文PDFの公開/会員限定の別
   - 電子処方箋実装ガイド Ver.1.2 の後継文書有無
-approved_at: null
-approved_by: null
-effective_from: null
+approved_at: 2026-08-23
+approved_by: "direct human authority 2026-08-23 (「全てを許可する。実行」); independent review: api-contract lane + security-privacy lane REQUEST_CHANGES -> all findings closed (28dae05, f07e76e); closure checker PASS"
+effective_from: 2026-08-23
 effective_to: null
 depends_on: [REG-001, REG-007, ADP-001, API-009, ADP-003]
 impacts: [Plans.md §16 Track C, packages/jahis-2d(予定), packages/jahis-yakureki(予定)]
@@ -32,6 +32,7 @@ evidence_ids: []
 blockers:
   - BLOCKED_JAHIS_SPEC_ACQUISITION: 仕様本文の正規入手(WP-6201、人間手続き)まで実装根拠にしない
 change_log:
+  - "2026-08-23 WP-6001/WP-6101/WP-6202/WP-6203/WP-6302 finalization: 独立 review 2 lane の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手は各 WP の gate に従い、外部接続・conformance 主張は含まない"
   - "0.1.1 2026-08-23 WP-6203: 昇格 batch 準備 — owner を codex_root へ移管、23 field を補完、2次元シンボルの版認識を Ver.1.11 実在確認済み(REG-007 §7)へ統一(WP-6202)。本文 semantics は不変。status は PROPOSED のまま(review と human approval 待ち)"
 ```
 

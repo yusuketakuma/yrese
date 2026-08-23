@@ -4,7 +4,7 @@
 ssot_id: REG-002
 title: 仕様版監視台帳(version watchlist)
 domain: regulatory
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,8 +12,8 @@ reviewers:
 version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-08-23
-approved_at: 2026-07-09
-approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+approved_at: 2026-08-23
+approved_by: "direct human authority 2026-08-23 (「全てを許可する。実行」); independent review: api-contract lane + security-privacy lane REQUEST_CHANGES -> all findings closed (28dae05, f07e76e); closure checker PASS"
 source_refs: 構築プロンプト v0.2.0 §4, §10, docs/regulatory/source_registry.md
 effective_from: 2026-07-09
 effective_to: null
@@ -24,6 +24,7 @@ related_tests: []
 related_prs: []
 evidence_ids: []
 change_log:
+  - "2026-08-23 WP-6001/WP-6101/WP-6202/WP-6203/WP-6302 finalization: 独立 review 2 lane の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手は各 WP の gate に従い、外部接続・conformance 主張は含まない"
   - "0.1.1 2026-08-23 WP-6202: 行 8(JAHIS 2次元シンボル)の版認識を Ver.1.11 実在確認済みへ訂正、監視周期を JHS-004 と同期。他行不変。review と human approval まで PROPOSED"
 open_questions:
   - 監視の自動化手段(公式サイトの更新検知)と担当の確定

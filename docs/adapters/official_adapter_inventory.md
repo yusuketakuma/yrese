@@ -4,7 +4,7 @@
 ssot_id: ADP-001
 title: Official Adapter 台帳
 domain: adapters
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,9 +12,9 @@ reviewers:
 version: 0.1.1
 created_at: 2026-07-09
 updated_at: 2026-08-23
-approved_at: 2026-07-09
-approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-effective_from: null
+approved_at: 2026-08-23
+approved_by: "direct human authority 2026-08-23 (「全てを許可する。実行」); independent review: api-contract lane + security-privacy lane REQUEST_CHANGES -> all findings closed (28dae05, f07e76e); closure checker PASS"
+effective_from: 2026-08-23
 effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §12, §19, §23-27, §29
@@ -30,6 +30,7 @@ related_tests: []
 related_prs: []
 evidence_ids: []
 change_log:
+  - "2026-08-23 WP-6001/WP-6101/WP-6202/WP-6203/WP-6302 finalization: 独立 review 2 lane の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手は各 WP の gate に従い、外部接続・conformance 主張は含まない"
   - "0.1.1 2026-08-23 WP-6202: ADP-A5 の 2次元シンボル版認識を Ver.1.10 から Ver.1.11(REG-007 §7 で実在確認)へ訂正。他行・blocker・semantics 不変。review と human approval まで PROPOSED"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W5C metadata-only completion: body/status/version/approval/effective semantics unchanged"

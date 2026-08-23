@@ -4,7 +4,7 @@
 ssot_id: REG-001
 title: 公式資料台帳(source registry)
 domain: regulatory
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
@@ -12,8 +12,8 @@ reviewers:
 version: 0.2.1
 created_at: 2026-07-09
 updated_at: 2026-08-23
-approved_at: 2026-07-09
-approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+approved_at: 2026-08-23
+approved_by: "direct human authority 2026-08-23 (「全てを許可する。実行」); independent review: api-contract lane + security-privacy lane REQUEST_CHANGES -> all findings closed (28dae05, f07e76e); closure checker PASS"
 source_refs: 構築プロンプト v0.2.0 §1, §11
 effective_from: 2026-07-09
 effective_to: null
@@ -24,6 +24,7 @@ related_tests: []
 related_prs: []
 evidence_ids: []
 change_log:
+  - "2026-08-23 WP-6001/WP-6101/WP-6202/WP-6203/WP-6302 finalization: 独立 review 2 lane の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手は各 WP の gate に従い、外部接続・conformance 主張は含まない"
   - "0.2.1 2026-08-23 WP-6101 + WP-6202 PROPOSED: SRC-FHIR-007(JP Core 1.2.0 package artifact)登録、JAHIS 2次元シンボル版認識を Ver.1.11 実在確認済みへ統一、23 field 補完(本文『変更履歴』節を frontmatter へ転記)"
   - "0.2.0 2026-07-09: JP Core / FHIR / 医療DX連携ソース(SRC-FHIR-001..006)を追加。evidence_id 未発行、状態 FETCHED"
   - "0.1.0 2026-07-09: 初版"

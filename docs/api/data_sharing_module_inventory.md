@@ -4,7 +4,7 @@
 ssot_id: API-018
 title: Data Sharing Module 棚卸し
 domain: api
-status: PROPOSED
+status: APPROVED
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -15,9 +15,9 @@ reviewers:
 version: 0.1.0
 created_at: 2026-08-23
 updated_at: 2026-08-23
-approved_at: null
-approved_by: null
-effective_from: null
+approved_at: 2026-08-23
+approved_by: "direct human authority 2026-08-23 (「全てを許可する。実行」); independent review: api-contract lane + security-privacy lane REQUEST_CHANGES -> all findings closed (28dae05, f07e76e); closure checker PASS"
+effective_from: 2026-08-23
 effective_to: null
 source_refs: [構築プロンプト v0.2.0 §11(Integration Hub / Partner API / JAHIS)・§14(API-first)・§18(データ主権), PRD-001 M12, API-002, API-003, API-005]
 depends_on: [API-009, API-017, MOD-001, MOD-002, ADP-001, JHS-003]
@@ -27,6 +27,7 @@ related_tests: []
 related_prs: []
 evidence_ids: []
 change_log:
+  - "2026-08-23 WP-6001/WP-6101/WP-6202/WP-6203/WP-6302 finalization: 独立 review 2 lane の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手は各 WP の gate に従い、外部接続・conformance 主張は含まない"
   - "0.1.0 2026-08-23 WP-6001 初版起案(PROPOSED)。direct user instruction 2026-08-23(情報連携主軸)と Plans.md §16 Track A に基づく。実装根拠にしない"
 open_questions: []
 blockers:

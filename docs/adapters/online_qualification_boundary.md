@@ -4,7 +4,7 @@
 ssot_id: ADP-004
 title: オンライン資格確認・マイナ保険証連動の境界
 domain: adapters
-status: PROPOSED
+status: APPROVED
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -16,9 +16,9 @@ reviewers:
 version: 0.1.0
 created_at: 2026-08-23
 updated_at: 2026-08-23
-approved_at: null
-approved_by: null
-effective_from: null
+approved_at: 2026-08-23
+approved_by: "direct human authority 2026-08-23 (「全てを許可する。実行」); independent review: api-contract lane + security-privacy lane REQUEST_CHANGES -> all findings closed (28dae05, f07e76e); closure checker PASS"
+effective_from: 2026-08-23
 effective_to: null
 source_refs: [構築プロンプト v0.2.0 §3・§8・§10・§27, PRD-001 M2/M3, PRD-005 §1 行8, ADP-001 ADP-A1, REG-004 RB-002/RB-003/RB-005, DOM-001 C3, SEC-004, SEC-007]
 depends_on: [ADP-001, REG-001, REG-004, DOM-002, DOM-005, API-006, API-009, API-017, MOD-005, MOD-008]
@@ -28,6 +28,7 @@ related_tests: []
 related_prs: []
 evidence_ids: []
 change_log:
+  - "2026-08-23 WP-6001/WP-6101/WP-6202/WP-6203/WP-6302 finalization: 独立 review 2 lane の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手は各 WP の gate に従い、外部接続・conformance 主張は含まない"
   - "0.1.0 2026-08-23 WP-6302 骨子起案(PROPOSED)。外部 IF 仕様(ONS)未入手のため、yrese 側の状態機械・不変条件・fail-closed 規則・privacy 境界だけを定める。公式 IF の形式・項目・接続方式は一切推測しない"
 open_questions:
   - 資格確認端末経由(薬局内 PC)と API 経由のどちらを主経路にするかは ONS 仕様入手後に決める

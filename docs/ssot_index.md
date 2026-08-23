@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.54
+version: 0.4.55
 created_at: 2026-07-09
 updated_at: 2026-08-23
 approved_at: 2026-08-01
@@ -153,6 +153,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.4.55 2026-08-23 finalization batch: 独立 review(api-contract / security-privacy)の finding 閉鎖と closure checker PASS、direct human approval により 25 文書を PROPOSED→APPROVED(API-009、API-010、API-011、API-012、API-013、API-014、API-015、API-016、API-017、API-018、ADP-003、ADP-004、REG-001、REG-002、ADP-001、MOD-005、MOD-009、JHS-004、JHS-003、JHS-006、JHS-007、JHS-005、JHS-002、JHS-001、JHS-008)。総文書数 185 不変。status 集計は APPROVED 139→164、PROPOSED 29→4、SUPERSEDED 17 不変。承認範囲は SSOT 改版のみで、実装着手・外部接続・conformance 主張・登録済み blocker の解除を含まない"
   - "0.4.54 2026-08-23 WP-6001 review 反映: api-contract / security-privacy 独立レビューの finding 閉鎖に伴い MOD-005(0.1.4→0.1.5、BLOCKER_TYPES 5 種追加)を APPROVED→PROPOSED へ降格、MOD-009 は 0.2.0→0.2.1 で PROPOSED 維持。総文書数 185 不変。status 集計は APPROVED 140→139、PROPOSED 28→29、SUPERSEDED 17 不変"
   - "0.4.53 2026-08-23 WP-6302: オンライン資格確認・マイナ保険証連動の境界 SSOT 骨子(ADP-004)を PROPOSED で新規登録。総文書数 184→185、docs/adapters 3→4。status 集計は APPROVED 140 不変、PROPOSED 27→28、SUPERSEDED 17 不変。公式 IF 未入手のため外部接続の根拠にしない"
   - "0.4.52 2026-08-23 WP-6202/WP-6203: JAHIS 2次元シンボルの版認識統一のため ADP-001(0.1.0→0.1.1)と REG-002(0.1.0→0.1.1)を APPROVED→PROPOSED へ降格。JHS-001〜008 は 0.1.0→0.1.1(owner 移管・23 field 補完)で PROPOSED 維持。総文書数 184 不変。status 集計は APPROVED 142→140、PROPOSED 25→27、SUPERSEDED 17 不変。登録済み blocker は据え置き"
@@ -268,10 +269,10 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 
 | ssot_id | 文書 | status |
 |---|---|---|
-| ADP-003 | [adapter_registry.md](adapters/adapter_registry.md) | PROPOSED |
+| ADP-003 | [adapter_registry.md](adapters/adapter_registry.md) | APPROVED |
 | ADP-002 | [external_system_boundary.md](adapters/external_system_boundary.md) | APPROVED |
-| ADP-001 | [official_adapter_inventory.md](adapters/official_adapter_inventory.md) | PROPOSED |
-| ADP-004 | [online_qualification_boundary.md](adapters/online_qualification_boundary.md) | PROPOSED |
+| ADP-001 | [official_adapter_inventory.md](adapters/official_adapter_inventory.md) | APPROVED |
+| ADP-004 | [online_qualification_boundary.md](adapters/online_qualification_boundary.md) | APPROVED |
 
 ## docs/agents/ (18件)
 
@@ -301,23 +302,23 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | ssot_id | 文書 | status |
 |---|---|---|
 | API-002 | [api_first_dogfooding_policy.md](api/api_first_dogfooding_policy.md) | APPROVED |
-| API-011 | [api_scope_registry.md](api/api_scope_registry.md) | PROPOSED |
+| API-011 | [api_scope_registry.md](api/api_scope_registry.md) | APPROVED |
 | API-007 | [calculation_trace_read_contract.md](api/calculation_trace_read_contract.md) | APPROVED |
-| API-015 | [contract_test_policy.md](api/contract_test_policy.md) | PROPOSED |
-| API-016 | [data_portability_policy.md](api/data_portability_policy.md) | PROPOSED |
-| API-018 | [data_sharing_module_inventory.md](api/data_sharing_module_inventory.md) | PROPOSED |
-| API-017 | [data_sharing_policy.md](api/data_sharing_policy.md) | PROPOSED |
+| API-015 | [contract_test_policy.md](api/contract_test_policy.md) | APPROVED |
+| API-016 | [data_portability_policy.md](api/data_portability_policy.md) | APPROVED |
+| API-018 | [data_sharing_module_inventory.md](api/data_sharing_module_inventory.md) | APPROVED |
+| API-017 | [data_sharing_policy.md](api/data_sharing_policy.md) | APPROVED |
 | API-008 | [fhir_rest_facade_contract.md](api/fhir_rest_facade_contract.md) | APPROVED |
-| API-013 | [idempotency_policy.md](api/idempotency_policy.md) | PROPOSED |
-| API-009 | [integration_hub_architecture.md](api/integration_hub_architecture.md) | PROPOSED |
+| API-013 | [idempotency_policy.md](api/idempotency_policy.md) | APPROVED |
+| API-009 | [integration_hub_architecture.md](api/integration_hub_architecture.md) | APPROVED |
 | API-005 | [oss_sdk_and_schema_publication_policy.md](api/oss_sdk_and_schema_publication_policy.md) | APPROVED |
-| API-010 | [partner_registry_policy.md](api/partner_registry_policy.md) | PROPOSED |
-| API-014 | [partner_sandbox_policy.md](api/partner_sandbox_policy.md) | PROPOSED |
+| API-010 | [partner_registry_policy.md](api/partner_registry_policy.md) | APPROVED |
+| API-014 | [partner_sandbox_policy.md](api/partner_sandbox_policy.md) | APPROVED |
 | API-001 | [patient_search_contract.md](api/patient_search_contract.md) | APPROVED |
 | API-004 | [ph_os_reference_integration.md](api/ph_os_reference_integration.md) | APPROVED |
 | API-003 | [platform_api_architecture.md](api/platform_api_architecture.md) | APPROVED |
 | API-006 | [reception_queue_contract.md](api/reception_queue_contract.md) | APPROVED |
-| API-012 | [webhook_event_catalog.md](api/webhook_event_catalog.md) | PROPOSED |
+| API-012 | [webhook_event_catalog.md](api/webhook_event_catalog.md) | APPROVED |
 
 ## docs/architecture/ (10件)
 
@@ -382,14 +383,14 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 
 | ssot_id | 文書 | status |
 |---|---|---|
-| JHS-003 | [jahis_adapter_inventory.md](jahis/jahis_adapter_inventory.md) | PROPOSED |
-| JHS-001 | [jahis_applicability_matrix.md](jahis/jahis_applicability_matrix.md) | PROPOSED |
-| JHS-006 | [jahis_character_encoding_policy.md](jahis/jahis_character_encoding_policy.md) | PROPOSED |
-| JHS-007 | [jahis_code_mapping_policy.md](jahis/jahis_code_mapping_policy.md) | PROPOSED |
-| JHS-005 | [jahis_conformance_test_plan.md](jahis/jahis_conformance_test_plan.md) | PROPOSED |
-| JHS-002 | [jahis_full_support_definition.md](jahis/jahis_full_support_definition.md) | PROPOSED |
-| JHS-008 | [jahis_roundtrip_test_policy.md](jahis/jahis_roundtrip_test_policy.md) | PROPOSED |
-| JHS-004 | [jahis_version_watchlist.md](jahis/jahis_version_watchlist.md) | PROPOSED |
+| JHS-003 | [jahis_adapter_inventory.md](jahis/jahis_adapter_inventory.md) | APPROVED |
+| JHS-001 | [jahis_applicability_matrix.md](jahis/jahis_applicability_matrix.md) | APPROVED |
+| JHS-006 | [jahis_character_encoding_policy.md](jahis/jahis_character_encoding_policy.md) | APPROVED |
+| JHS-007 | [jahis_code_mapping_policy.md](jahis/jahis_code_mapping_policy.md) | APPROVED |
+| JHS-005 | [jahis_conformance_test_plan.md](jahis/jahis_conformance_test_plan.md) | APPROVED |
+| JHS-002 | [jahis_full_support_definition.md](jahis/jahis_full_support_definition.md) | APPROVED |
+| JHS-008 | [jahis_roundtrip_test_policy.md](jahis/jahis_roundtrip_test_policy.md) | APPROVED |
+| JHS-004 | [jahis_version_watchlist.md](jahis/jahis_version_watchlist.md) | APPROVED |
 
 ## docs/masters/ (2件)
 
@@ -408,13 +409,13 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | MOD-011 | [date_time_policy.md](modules/date_time_policy.md) | APPROVED |
 | MOD-003 | [dependency_direction_policy.md](modules/dependency_direction_policy.md) | APPROVED |
 | MOD-006 | [error_code_registry.md](modules/error_code_registry.md) | APPROVED |
-| MOD-009 | [event_envelope_schema.md](modules/event_envelope_schema.md) | PROPOSED |
+| MOD-009 | [event_envelope_schema.md](modules/event_envelope_schema.md) | APPROVED |
 | MOD-013 | [fixture_policy.md](modules/fixture_policy.md) | APPROVED |
 | MOD-014 | [generated_code_policy.md](modules/generated_code_policy.md) | APPROVED |
 | MOD-010 | [money_point_policy.md](modules/money_point_policy.md) | APPROVED |
 | MOD-007 | [permission_scope_registry.md](modules/permission_scope_registry.md) | APPROVED |
 | MOD-004 | [shared_type_registry.md](modules/shared_type_registry.md) | APPROVED |
-| MOD-005 | [status_registry.md](modules/status_registry.md) | PROPOSED |
+| MOD-005 | [status_registry.md](modules/status_registry.md) | APPROVED |
 | MOD-012 | [validation_schema_policy.md](modules/validation_schema_policy.md) | APPROVED |
 
 ## docs/operations/ (14件)
@@ -505,8 +506,8 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | REG-003 | [legal_compliance_matrix.md](regulatory/legal_compliance_matrix.md) | APPROVED |
 | REG-004 | [regulatory_blockers.md](regulatory/regulatory_blockers.md) | APPROVED |
 | REG-005 | [samd_applicability_assessment.md](regulatory/samd_applicability_assessment.md) | APPROVED |
-| REG-001 | [source_registry.md](regulatory/source_registry.md) | PROPOSED |
-| REG-002 | [version_watchlist.md](regulatory/version_watchlist.md) | PROPOSED |
+| REG-001 | [source_registry.md](regulatory/source_registry.md) | APPROVED |
+| REG-002 | [version_watchlist.md](regulatory/version_watchlist.md) | APPROVED |
 
 ## docs/safety/ (2件)
 

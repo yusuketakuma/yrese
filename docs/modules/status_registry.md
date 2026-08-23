@@ -4,18 +4,19 @@
 ssot_id: MOD-005
 title: ステータスレジストリ(システムモード・保留系・BLOCKER)
 domain: modules
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.1.5
 created_at: 2026-07-09
 updated_at: 2026-08-23
-approved_at: 2026-07-09
-approved_by: human_review (ユーザー承認「人間レビューはOKです」)
-effective_from: null
+approved_at: 2026-08-23
+approved_by: "direct human authority 2026-08-23 (「全てを許可する。実行」); independent review: api-contract lane + security-privacy lane REQUEST_CHANGES -> all findings closed (28dae05, f07e76e); closure checker PASS"
+effective_from: 2026-08-23
 effective_to: null
 change_log:
+  - "2026-08-23 WP-6001/WP-6101/WP-6202/WP-6203/WP-6302 finalization: 独立 review 2 lane の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手は各 WP の gate に従い、外部接続・conformance 主張は含まない"
   - "0.1.5 2026-08-23 WP-6001: BLOCKER_TYPES に Integration Hub / 監査 / privacy 系 5 種を登録(33→38)。shared-kernel blockers.ts と同期。review と human approval まで PROPOSED"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
