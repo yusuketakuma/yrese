@@ -1441,6 +1441,21 @@ release gate 群。§11 の既知 blocker を作業項目化した index であ�
 
 ### 16.5 READY 昇格候補(slot は消費しない。順序は推奨)
 
+**進捗(2026-08-23、codex 不使用・Claude が sole writer):**
+
+| 候補 | 状態 | commit |
+|---|---|---|
+| WP-6101 | SRC-FHIR-007 を PROPOSED 登録。hash 再現は egress 承認待ち | `c9e6f18` |
+| WP-6001 | Integration Hub SSOT 11 本を PROPOSED 起案(API-009〜018、ADP-003) | `034fe40` |
+| WP-6202/6203 | 版不整合(Ver.1.10→1.11)を ADP-001/REG-001/REG-002 で訂正、JHS-001〜008 を 23 field 補完・0.1.1。全件 PROPOSED | `f5c0771` |
+| WP-6302 | ADP-004 `online_qualification_boundary.md` 骨子を PROPOSED 起案 | `30a2957` |
+| WP-4050 review | REQUEST_CHANGES → HIGH-1/2 修正 `28fd62e`、checker 再確認待ち、HIGH-3 DDL gate | `df2b628` |
+| WP-6003 | 未着手(WP-4050 checker PASS 後に claim) | — |
+
+PROPOSED 化した SSOT(REG-001 / REG-002 / ADP-001 / ADP-004 / API-009〜018 / ADP-003 /
+JHS-001〜008)は PRC-007 §4 step 6(独立 review)と step 7(human approval)待ち。
+
+
 1. **WP-6101** JP Core package provenance 登録(C-024 と同一。外部手続き不要、
    SSOT 改版のみ、FHIR Track 全体の根)。
 2. **WP-6001** Integration Hub SSOT 起案(charter 決定後。コード変更なし)。
