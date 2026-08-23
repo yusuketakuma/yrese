@@ -278,8 +278,8 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 
 ### WP-4050 — Atomic reception command boundary
 
-- **Status:** INDEPENDENT_REVIEW_DELIVERED(2026-08-23)/ HIGH-1・HIGH-2 修正済み
-  `28fd62e` / HIGH-3 は DDL human gate 待ち / 修正 diff の checker 再確認待ち
+- **Status:** INDEPENDENT_REVIEW_DELIVERED(2026-08-23)/ HIGH-1・HIGH-2 修正 `28fd62e` は
+  checker PASS / MEDIUM-1・LOW-2 閉鎖 `273c66e` / **HIGH-3 は DDL human gate 待ち**
 - **独立レビュー(2026-08-23、fresh-context data-integrity lane、codex 不使用):**
   frozen packet base `9d8dbc0`(= `42ef15c~1`)→ head `9a404fe`、9 path、diff
   SHA-256 `494a79e60462731034a539adf670098d0c0074c85b576e19972a4348cff7008f`、
@@ -1449,8 +1449,8 @@ release gate 群。§11 の既知 blocker を作業項目化した index であ�
 | WP-6001 | Integration Hub SSOT 11 本を PROPOSED 起案(API-009〜018、ADP-003) | `034fe40` |
 | WP-6202/6203 | 版不整合(Ver.1.10→1.11)を ADP-001/REG-001/REG-002 で訂正、JHS-001〜008 を 23 field 補完・0.1.1。全件 PROPOSED | `f5c0771` |
 | WP-6302 | ADP-004 `online_qualification_boundary.md` 骨子を PROPOSED 起案 | `30a2957` |
-| WP-4050 review | REQUEST_CHANGES → HIGH-1/2 修正 `28fd62e`、checker 再確認待ち、HIGH-3 DDL gate | `df2b628` |
-| WP-6003 | 未着手(WP-4050 checker PASS 後に claim) | — |
+| WP-4050 review | REQUEST_CHANGES → HIGH-1/2 修正 `28fd62e` → checker **PASS**(新規 HIGH なし)→ 残課題 MEDIUM-1/LOW-2 を `273c66e` で閉鎖。HIGH-3 FK は DDL gate、MEDIUM-2(orphan の運用照合経路)は §8 候補 | `df2b628` |
+| WP-6003 | **COMMITTED_LOCAL** `3c0c1fa` — `PostgresOutboxDeliveryWorker`(sink 注入、1 行 1 tx、at-least-once、aggregate 順序、SKIP LOCKED)。統合テスト 3 本 PASS(local PostgreSQL 18)。独立レビュー未取得。main.ts への常駐配線と partner sink は WP-6005 | `3c0c1fa` |
 
 PROPOSED 化した SSOT(REG-001 / REG-002 / ADP-001 / ADP-004 / API-009〜018 / ADP-003 /
 JHS-001〜008)は PRC-007 §4 step 6(独立 review)と step 7(human approval)待ち。
