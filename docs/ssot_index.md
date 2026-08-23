@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.52
+version: 0.4.53
 created_at: 2026-07-09
 updated_at: 2026-08-23
 approved_at: 2026-08-01
@@ -153,6 +153,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.4.53 2026-08-23 WP-6302: オンライン資格確認・マイナ保険証連動の境界 SSOT 骨子(ADP-004)を PROPOSED で新規登録。総文書数 184→185、docs/adapters 3→4。status 集計は APPROVED 140 不変、PROPOSED 27→28、SUPERSEDED 17 不変。公式 IF 未入手のため外部接続の根拠にしない"
   - "0.4.52 2026-08-23 WP-6202/WP-6203: JAHIS 2次元シンボルの版認識統一のため ADP-001(0.1.0→0.1.1)と REG-002(0.1.0→0.1.1)を APPROVED→PROPOSED へ降格。JHS-001〜008 は 0.1.0→0.1.1(owner 移管・23 field 補完)で PROPOSED 維持。総文書数 184 不変。status 集計は APPROVED 142→140、PROPOSED 25→27、SUPERSEDED 17 不変。登録済み blocker は据え置き"
   - "0.4.51 2026-08-23 WP-6001: Integration Hub SSOT 11 本(API-009〜API-018、ADP-003)を PROPOSED で新規登録。総文書数 173→184、docs/api 8→18、docs/adapters 2→3。status 集計は APPROVED 142 不変、PROPOSED 14→25、SUPERSEDED 17 不変(合計184)。全件 PROPOSED であり実装根拠にしない。登録済み blocker は据え置き"
   - "0.4.50 2026-08-23 WP-6101: JP Core 1.2.0 package artifact を SRC-FHIR-007 として source_registry(REG-001 0.2.0→0.2.1)へ登録するため、REG-001 の status 行を APPROVED→PROPOSED へ降格。review と human approval まで実装根拠にしない。documentカウント173・ssot_id・文書パス・section件数は不変。status 集計は APPROVED 143→142、PROPOSED 13→14、SUPERSEDED 17不変(合計173)。登録済み blocker(BLOCKED_PACKAGE_PROVENANCE 含む)は据え置き"
@@ -244,7 +245,7 @@ WP-9002-W1はHEAD `6198068`の23-field exact-key scanをbaselineとし、173文�
 
 WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbaselineとし、MOD-011とMOD-014の不足8 fieldだけをmetadata-onlyで補完した。final inventoryは173文書 / 不足139 / 充足34である。両文書の本文、version、status、approval、effective semanticsと、本索引の各行(`APPROVED` / `modules/date_time_policy.md`, `APPROVED` / `modules/generated_code_policy.md`)および総文書数173は変更していない。independent_verifier、test_architect、spec_guardian、api_contract_reviewer、data_integrity_auditor、medical_safety_reviewer、privacy_compliance_reviewerのAPPROVEDとfull validation後、IDX-001 v0.4.3をAPPROVEDとしてfinalizeした。W2 human approvalは主張しない。historical 173/142およびW1 173/141/32 recordはprovenanceとして維持する。
 
-総文書数: 184(本索引を除く)
+総文書数: 185(本索引を除く)
 
 ## docs/accounting/ (11件)
 
@@ -262,13 +263,14 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | ACC-009 | [pos_integration_policy.md](accounting/pos_integration_policy.md) | APPROVED |
 | ACC-005 | [refund_adjustment_policy.md](accounting/refund_adjustment_policy.md) | APPROVED |
 
-## docs/adapters/ (3件)
+## docs/adapters/ (4件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
 | ADP-003 | [adapter_registry.md](adapters/adapter_registry.md) | PROPOSED |
 | ADP-002 | [external_system_boundary.md](adapters/external_system_boundary.md) | APPROVED |
 | ADP-001 | [official_adapter_inventory.md](adapters/official_adapter_inventory.md) | PROPOSED |
+| ADP-004 | [online_qualification_boundary.md](adapters/online_qualification_boundary.md) | PROPOSED |
 
 ## docs/agents/ (18件)
 
