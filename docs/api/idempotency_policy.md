@@ -30,7 +30,7 @@ change_log:
   - "0.1.0 2026-08-23 WP-6001 初版起案(PROPOSED)。direct user instruction 2026-08-23(情報連携主軸)と Plans.md §16 Track A に基づく。実装根拠にしない"
 open_questions: []
 blockers:
-  - BLOCKED_WRITE_PRODUCER_PREREQUISITES: Inbox 書込み経路の冪等は単一 writer 前提の解除後に実装する
+  - BLOCKED_WRITE_PRODUCER_PREREQUISITES: partner からの FHIR create の冪等は単一 producer 前提の解除後に実装する(Inbox は非 authority 提出のみ)
   - BLOCKED_AUDIT_PAYLOAD_RETENTION_POLICY: key と応答 fingerprint の保持期間は retention policy 確定まで未定
 ```
 
