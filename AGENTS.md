@@ -87,13 +87,13 @@ risk、重要なmodel disagreement、原因不明の反復失敗、high-impact p
 4. live runはdry-runと同じ引数からdry-run flagだけを外す。
 
 ```bash
-oracle --engine browser --model gpt-5.6-sol \
-  --browser-model-strategy select --browser-thinking-time heavy \
+oracle --engine browser --model gpt-5-pro \
+  --browser-model-strategy select \
   -p "<task>" --file "<allowlisted-path>"
 ```
 
-automatic engine、API fallback、別model、lower effortを使わない。verified picker labelと
-effortを記録する。未検証、Chrome failure、session recovery不能は
+automatic engine、API fallback、別modelを使わない。latest generic Proのverified picker
+labelを記録する。未検証、Chrome failure、session recovery不能は
 `Oracle unavailable`とし、別human gateがOracle evidenceを必須にしない限り継続する。
 Oracleはadvisoryであり、SSOT、official evidence、independent verification、approvalの
 代替ではない。artifactはowner-onlyとし、finding反映と必要handoff後にmachine retention
