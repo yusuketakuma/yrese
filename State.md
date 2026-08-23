@@ -4,21 +4,21 @@
 > is current. Everything below is nonauthoritative.
 
 - **Direction:** direct user instruction 2026-08-23 — interoperability is the primary
-  strength; charter amended in `DEVELOPMENT_POLICY.md` (`9a404fe`); plan in `Plans.md §16`.
-  Codex lane is not used; Claude is `active_root_writer` and commits directly. Push only on
-  explicit request (not requested).
-- **Local commits this session (unpushed):** `01273f0` plan §16, `9a404fe` charter,
-  `c9e6f18` WP-6101 SRC-FHIR-007 (PROPOSED), `034fe40` WP-6001 Integration Hub SSOTs ×11
-  (PROPOSED), `28fd62e` WP-4050 HIGH-1/HIGH-2 fixes.
-- **Open human gates:** (1) WP-4050 HIGH-3 outbox FK migration (DDL, SQL in Plans.md §4);
-  (2) external egress to `https://jpfhir.jp` for the JP Core package re-fetch (WP-6101);
-  (3) PRC-007 approval of REG-001 0.2.1 and API-009…018 / ADP-003; (4) external
-  procedures WP-6201 (JAHIS documents) and WP-6301 (ONS access).
-- **Pending checker:** fresh-context re-review of `28fd62e` (maker = this lane).
-- **Validation at `28fd62e`:** api unit 856 passed / 26 skipped (Postgres integration
-  skipped in unit run); reception-command integration 10/10 on local PostgreSQL 18
-  (`yrese_wp4050_test`, synthetic); workspace typecheck, lint, OpenAPI drift, SSOT index
-  (184 docs), diff check PASS.
+  strength; charter amended in `DEVELOPMENT_POLICY.md`; plan in `Plans.md §16`. Codex lane is
+  not used; Claude is `active_root_writer` and commits directly. Push authorized 2026-08-23
+  ("全てを許可する。実行") after gates.
+- **Landed this session (local, pushed at the end of the session if gates pass):** plan §16,
+  charter, WP-4050 review closure incl. HIGH-3 migration 000007, WP-6003 outbox worker
+  (review closed), WP-6004 event catalog v0, WP-6005 webhook sink (minimal), WP-6101
+  SRC-FHIR-007, WP-6001 Integration Hub SSOTs, WP-6202/6203 JAHIS batch, WP-6302 ADP-004;
+  PRC-007 finalization of 25 reviewed SSOTs (`eb7c2d3`).
+- **Open human / external gates:** JP Core package re-fetch must be run from the user's
+  terminal (agent egress is hard-floored) — SRC-FHIR-007 stays FETCHED until the hash is
+  reproduced; WP-6201 JAHIS documents; WP-6301 ONS access; MOD-008 amendment for the new
+  audit event families (`BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT`); BLOCKED_LEGAL/PRIVACY
+  reviews listed in ADP-004 / API-016 / API-017; production DB runbook for migration 000007.
+- **Validation at the final head:** see Git/CI. Local: all check scripts, typecheck, lint,
+  build, and full test suite with PostgreSQL integration (0 skips) PASS before push.
 
 ### PREVIOUS SNAPSHOT (2026-08-23 push landing) — NONAUTHORITATIVE
 
