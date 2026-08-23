@@ -37,7 +37,7 @@
 | Local HEAD | landing record 直前 `491aea5033ad1c67b07abee96ddcf40603e1385b`。本record commit後の最終値はGitを正本とする |
 | Upstream divergence | fetch後のrecord直前 `origin/main...HEAD = 0 behind / 16 ahead`。2026-08-23 direct user instructionでpush要求済み |
 | Working tree | landing recordの `Plans.md` / `State.md` exact2のみ。final record commit後はcleanを要求 |
-| Last update | 2026-08-23 JST(grouped landing record補正。product WIP/READYは不変更) |
+| Last update | 2026-08-23 JST(§16 情報連携主軸ギャップ分析・実装計画を inventory 追加。product WIP/READYは不変更) |
 | Active Goal | grouped commit/push finalization。product queueはWIP 0のまま |
 | Current critical path | Milestone 1 exit の残余 — WP-4050 の独立レビュー(codex lane 復帰 2026-08-05) |
 | Main blocker | WP-4050 の独立レビュー(2026-08-05 待ち)と `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) の DDL human gate |
@@ -1221,3 +1221,210 @@ release gate 群。§11 の既知 blocker を作業項目化した index であ�
 **集計:** 15.1=14 / 15.2=8 / 15.3=20 / 15.4=13 / 15.5=11 / 15.6=16 / 15.7=12 /
 15.8=6 — 合計 100 項目。本節の追加は planning record の変更のみであり、実装・
 検証実行・commit・push・gate 解除をいずれも行っていない。
+
+## 16. 情報連携主軸の機能ギャップ分析と実装計画(2026-08-23)
+
+> **来歴:** direct user instruction 2026-08-23「コードベースを理解し、調剤レセコンとして
+> 不足している機能を調査して実装計画を立てる。yrese の強みは情報連携(FHIR JP Core
+> ネイティブ対応・JAHIS 準拠・共有 API 解放)とし、情報連携を最大化する機能と、
+> オンライン資格確認・マイナンバーシステム連動を加える」。
+> **調査根拠:** live code(`apps/api/src/server.ts`、`migrations/`、`packages/*`、
+> `apps/web/app/*`)、`docs/ssot_index.md` IDX-001 0.4.49(173 文書 / APPROVED 143 /
+> PROPOSED 13)、PRD-001/002/005、CAL-001、CLM-001、ACC-001、RCP-001〜006、MST-001、
+> REG-004、ADP-001、DOM-005/006、API-003/005/008、JHS-001〜008、SPEC-002 §8〜§11。
+> **queue 規律:** 本節は §15 と同じ inventory である。**READY slot を消費せず、登録は
+> claim ではない。** WIP=1 / READY≤2、human gate、登録済み blocker、§6 NOT NOW、
+> §11 release blockers を上書きしない。昇格は `DEVELOPMENT_POLICY.md §8` に従う。
+> **凡例:** 【HG】human gate、【SSOT】PRC-007 改版必須、【GATED】前提未成立、
+> 【REG】既登録 item 参照、【EXT】外部手続き(仕様入手・許諾・接続試験)が前提。
+
+### 16.0 方針上の注記 — charter との関係(human decision 必要)
+
+- `DEVELOPMENT_POLICY.md §9` は JAHIS/QR、PH-OS 同期、broad FHIR/AWS を
+  「North Star 前提(Milestone 1〜2)までは NOT NOW」と定める。本節の方向性
+  (情報連携を製品の主軸とする)はこの charter の **reframe** であり、
+  `DEVELOPMENT_POLICY.md §2 / §9 / §11` の改版を要する。本節は改版を**行わず**、
+  改版提案として記録する。改版は user の明示決定まで `POLICY_AMENDMENT_PENDING`。
+- 改版有無にかかわらず次は不変: (a) Milestone 1 exit(WP-4050 独立レビュー)と
+  Milestone 2(bounded Patient + MedicationRequest 単一 writer 証明)は情報連携の
+  **前提**であり迂回しない。FHIR facade は単一 writer が証明された resource だけを
+  公開する。(b) REG-004 RB-001〜RB-010 は全件未解除であり、解除履歴なしに外部 IF
+  依存コードを書かない。(c) 外部 IF 仕様の入手(ONS、JAHIS 頒布、NSIPS 許諾)は
+  人間手続きであり、本節はそれを「着手可能」と表記しない。
+- 推奨する charter 改版の骨子: Milestone 3(薬剤師 vertical journey)と並行して
+  **Milestone 2.5「Integration Hub 基盤 + FHIR facade read 面」** を置き、
+  Milestone 4 を「JAHIS 2D 取込 + 電子薬歴配信 + オン資境界」とする。
+  North Star の journey に「外部へ配信された調剤イベントを partner sandbox が受信
+  する」を 1 行加える(API-first dogfooding、API-002)。
+
+### 16.1 ギャップマトリクス(調剤レセコン機能 × SSOT × 実装)
+
+実装列は live code の実測。SSOT 列は frontmatter status。
+
+| 領域 | 機能 | SSOT(status) | 実装 | 主 blocker |
+|---|---|---|---|---|
+| 受付 | 受付キュー・紙処方箋受付・冪等登録 | API-006 APPROVED | **稼働**(`POST /reception`、`GET /reception/queue`) | — |
+| 受付 | 2次元シンボル/電子処方箋/OCR/前回Do の統一取込 | PRD-001 M1 APPROVED、PRD-005 PROPOSED | なし(`prescription_intake_type` 列のみ) | JAHIS 仕様未入手、RB-003 |
+| 患者 | 検索・取得 | API-001 APPROVED | **稼働**(cursor、no-store) | 検索語 URL PHI(C-038) |
+| 患者 | 登録・更新・統合・取り違え防止 | DOM-002 APPROVED | なし(write route 0) | Patient create uniqueness(C-028)、identity mutation(C-029) |
+| 保険 | 保険・公費・負担割合・資格スナップショット | PRD-001 M2/M3 APPROVED | なし(`eligibility_status` 列のみ) | RB-002、境界 SSOT 不在 |
+| 処方 | RP 単位処方入力・用法用量・疑義照会・残薬 | DOM-001 C4/C5 APPROVED、DOM-005 APPROVED | なし(UI shell) | C-026/C-056 |
+| 調剤 | 調剤記録・薬剤師確認・訂正履歴 | DOM-004、DOM-001 C5 | なし | C-061/C-062 |
+| 算定 | 調剤報酬点数 | CAL-001 16 行 EVIDENCE_ISSUED | **孤立**(68 evidence ルール、既定セット 5 本、API/DB consumer 0) | RB-008、一部負担金 CAL-R-024 BLOCKED |
+| 算定 | 一部負担金・公費按分・選定療養 | CAL-R-024/025/020 BLOCKED | なし(`patientCopay` 型のみ) | BLOCKED_REGULATORY_REVIEW |
+| 請求 | レセプト中間モデル・電算生成・記録条件検証・月次締め・返戻再請求 | CLM-001 APPROVED(工程 3/4/5/9/10 BLOCKED) | なし(`/claim-check` `/monthly-closing` placeholder) | RB-001、RB-004 |
+| 会計 | 患者請求・未収・一部入金・返金・日計 | ACC-001〜011 APPROVED | なし(`/checkout` placeholder) | 算定 consumer 不在 |
+| 帳票 | 領収証・調剤明細書・調剤録・薬袋・薬情 | RCP-001〜006 APPROVED、PRD-001 M7 | なし | 算定 consumer 不在 |
+| マスター | 医薬品・薬価・調剤行為・公費・保険者・コードマッピング | MST-001/002 APPROVED | なし(`/masters` placeholder) | RB-009 |
+| 薬歴 | 電子薬歴 API 連携・薬歴未記載チェック | PRD-001 M12 APPROVED | なし | Integration Hub 不在 |
+| 監査 | 処方監査外部 API 取込(未加工転記) | PRD-005 PROPOSED、REG-005 | なし | RB-007 |
+| **FHIR** | JP Core Patient / MedicationRequest facade | ARC-008/DOM-005/006/API-008 APPROVED | なし(`/fhir/R4` 0 route、mapping entry 0、package provenance 未登録) | C-023〜C-042、BLOCKED_PACKAGE_PROVENANCE |
+| **FHIR** | MedicationDispense / Coverage / Organization / Practitioner / Bundle | 選択外(DOM-005 §bounded) | なし | SSOT 改版必須 |
+| **JAHIS** | 2次元シンボル Ver.1.11 decode、薬歴連携 Ver.1.1、お薬手帳 Ver.2.6 | JHS-001〜008 **全件 PROPOSED** | なし | 仕様本文未入手【EXT】、JHS 昇格 |
+| **Partner API** | Partner Registry / OAuth2 CC / mTLS / webhook / inbox / DLQ / sandbox / contract test / SDK / versioning | **SSOT 不在**(WP-0036 未起票)、API-003/005 APPROVED | outbox テーブル+intent 記録のみ(配送 worker 0) | BLOCKED_SECURITY_REVIEW、BLOCKED_LEGAL_REVIEW |
+| **オン資** | 資格確認・薬剤情報/特定健診取得・請求前資格確認・障害時モード | ADP-A1、RB-002 | なし | ONS アクセス【EXT】、`online_qualification_boundary.md` 不在 |
+| **電子処方箋** | 引換番号受付・処方取得・調剤結果登録・HPKI | ADP-A2、RB-003、N1(境界設計のみ MVP) | なし | 技術解説書【EXT】 |
+| PMH | 医療費助成の資格確認・按分入力 | ADP-A4、RB-005 | なし | 【EXT】 |
+| NSIPS | 薬局内機器連動 ACL | ARC-003 APPROVED、RB-006 | なし(設計自体凍結) | 許諾【HG】 |
+| 同期/BCP | 5 モード検知・LOCAL_ONLY・RECOVERY_SYNC | ARC-001/002 APPROVED | なし(NORMAL 固定表示) | — |
+| 認証 | production OIDC / 資格 / RLS | SEC-006/007/008 | dev header stub のみ | C-083〜C-085 |
+
+### 16.2 実装計画 — Track 別 Work Package(WP-6xxx、全件 inventory)
+
+#### Track A — Integration Hub 基盤(共有 API 解放の土台。WP-0036 の復活)
+
+| WP | 内容 | 前提 / Gate |
+|---|---|---|
+| WP-6001 | Integration Hub SSOT 11 本の起案: `integration_hub_architecture.md`、`partner_registry_policy.md`、`api_scope_registry.md`、`webhook_event_catalog.md`、`idempotency_policy.md`、`partner_sandbox_policy.md`、`contract_test_policy.md`、`data_portability_policy.md`、`adapter_registry.md`、`data_sharing_policy.md`、`data_sharing_module_inventory.md`(SPEC-002 §11 / §29 の既定名)【SSOT】【HG: PRC-007】 | §16.0 charter 決定 |
+| WP-6002 | API-003 §4 / API-005 §4 の「WP-0036 で確定」依存解消(versioning 廃止期間、OSS 公開範囲)【SSOT】 | WP-6001 |
+| WP-6003 | outbox 配送 worker: `outbox_events` pending→delivered の単一遷移 worker、at-least-once、順序保証(aggregate 単位)、PHI-free payload 検証、injected sink failure テスト | WP-4050 独立レビュー(C-002) |
+| WP-6004 | Event Catalog v0 + MOD-009 `event_envelope_schema` の APPROVED 昇格(現在 PROPOSED)。`reception.created` を第 1 event とする【SSOT】 | WP-6001 |
+| WP-6005 | Webhook delivery: 署名(HMAC、key rotation)、retry/backoff、DLQ テーブルと可視化 API、replay protection、partner ごとの rate limit | WP-6003、WP-6004 |
+| WP-6006 | Partner Registry + Scope 管理の persistence/API(tenant/pharmacy/partner_id、scope、PHI classification、data minimization)。MOD-011 内部 scope との対応表 | WP-6001 |
+| WP-6007 | OAuth2 Client Credentials(partner 認証)+ mTLS 境界設計と実装。dev header stub を production で無効化する release gate と同一 packet【HG: security】【SSOT: C-083】 | C-083 |
+| WP-6008 | Inbox(partner → yrese)受信境界: idempotency、schema validation、PHI classification、`PENDING_EXTERNAL_SYNC` 状態。書込みは MedicationRequest ingestion(C-050)の単一 writer 経由のみ | C-050、WP-6006 |
+| WP-6009 | Partner Sandbox: synthetic tenant、fixture seeding(MOD-013)、本番 PHI 混入ゼロの機械検証 | WP-6006 |
+| WP-6010 | Contract Test Harness: OpenAPI 3.1 + JSON Schema からの consumer-driven contract test、CI gate 化(`check:openapi` の拡張) | WP-6009 |
+| WP-6011 | Partner SDK(TypeScript 生成、API-005 の legal review 後に OSS 公開)【HG: legal】 | WP-6002、WP-6010 |
+| WP-6012 | Data Portability: tenant 自身のデータ export(FHIR Bundle `collection` + JSON Lines、署名付き manifest)と import dry-run。SPEC-002 §18 | WP-6101〜 |
+| WP-6013 | 公開品質 KPI endpoint(API 可用性、配送成功率、返戻率 QUA-009)。PHI-free | WP-6005 |
+
+#### Track B — FHIR R4 / JP Core ネイティブ facade
+
+| WP | 内容 | 前提 / Gate |
+|---|---|---|
+| WP-6101 | JP Core 1.2.0 package artifact の `source_registry` 登録と SHA-256 固定(`BLOCKED_PACKAGE_PROVENANCE` 解除)【REG: C-024】【SSOT】 | — |
+| WP-6102 | FHIR validator toolchain 選定と locked-profile validation の CI 実行(C-025)。validator は外部 network なし・package pinned | WP-6101 |
+| WP-6103 | DOM-006 field mapping entry の記入: `JP_Patient`(identifier / name(漢字・カナ)/ birthDate / gender / address / telecom)と `JP_MedicationRequest`(経口・外用、用法 JP Core extension、dosageInstruction、dispenseRequest)。loss_notes を全列挙【SSOT】 | WP-6101 |
+| WP-6104 | `GET /fhir/R4/metadata` CapabilityStatement(authenticated)+ OpenAPI 登録。mode は実装済み interaction だけを宣言 | WP-6103、WP-6007 |
+| WP-6105 | Patient read-only shadow projection → `GET /fhir/R4/Patient/{id}`、`vread`、`search(identifier,_lastUpdated)`(C-045/046 と同一 packet)。pre-cutover は API-008 matrix に従い非公開 | C-045 |
+| WP-6106 | MedicationRequest `intent=order` create/read/vread/search(C-050/051/052)。Idempotency-Key + If-Match 強制、Provenance を audit から派生 | C-050 |
+| WP-6107 | Provenance / AuditEvent read-only derivative(commit 済み audit からの生成。client write 不可) | WP-6105、C-037 |
+| WP-6108 | DOM-005 改版提案: MedicationDispense(調剤結果)、Coverage(資格スナップショット)、Organization/Practitioner(薬局・薬剤師)を bounded scope へ追加する amendment packet。**採否は human gate**【SSOT】【HG】 | Milestone 2 exit、C-056 |
+| WP-6109 | MedicationDispense projection(薬剤師確認済み調剤のみ。provisional は公開しない) | WP-6108、C-061 |
+| WP-6110 | FHIR Subscription(R4 `rest-hook`)を Track A webhook 上に載せる。Subscription 登録は partner scope 必須 | WP-6005、WP-6105 |
+| WP-6111 | Bundle `transaction`/`batch` の扱い決定 record(API-008 は unsupported)。導入するなら transaction budget(C-052)と整合【SSOT】 | WP-6106 |
+| WP-6112 | JP Core conformance 証明 packet(synthetic、validator 出力、known loss 一覧)。`BLOCKED_FHIR_CONFORMANCE_REVIEW` 解除は human review【HG】 | WP-6102〜6107 |
+
+#### Track C — JAHIS 準拠
+
+| WP | 内容 | 前提 / Gate |
+|---|---|---|
+| WP-6201 | JAHIS 仕様本文の入手経路決定と入手(2次元シンボル Ver.1.11、電子薬歴連携 Ver.1.1、お薬手帳 Ver.2.6、監査証跡メッセージ Ver.2.2)【EXT】【HG: 経営判断 — 会員/購入】 | — |
+| WP-6202 | ADP-001(Ver.1.10)と JHS-001/004(Ver.1.11)の版認識不整合の解消、REG-002 watchlist 更新【SSOT】 | WP-6201 |
+| WP-6203 | JHS-001〜008 の PROPOSED → APPROVED 昇格 batch(owner を現行 lane へ移管、精読ノート追加)【SSOT】【HG: PRC-007】 | WP-6202 |
+| WP-6204 | `jahis_boundary.md`(ADP-A5 前提境界 SSOT)起案: decode 成功 ≠ 構文妥当 ≠ 患者同一 ≠ 原本真正 ≠ 薬剤師確認 の 5 結果分離【SSOT】 | WP-6203 |
+| WP-6205 | 2次元シンボル decoder package(`packages/jahis-2d`): Shift-JIS 境界、レコード順検証、版検出、golden file、round-trip(JHS-008)。純粋関数・外部依存なし | WP-6204 |
+| WP-6206 | 2D 取込 → 受付 `prescription_intake_type=qr` → provisional 処方 draft(C-056 の状態機械)接続。薬剤師確認前は算定・配信へ流さない | WP-6205、C-059 |
+| WP-6207 | 電子薬歴連携(JAHIS Ver.1.1)出力 adapter: Track A event を JAHIS 形式へ変換する Official Adapter。contract test 付き | WP-6005、WP-6203 |
+| WP-6208 | 電子版お薬手帳 Ver.2.6 export(患者交付。Phase 2 扱いのまま設計のみ)【GATED: N11】 | WP-6203 |
+| WP-6209 | JAHIS 監査証跡メッセージ標準 Ver.2.2 への audit event mapping 評価 record | WP-6203 |
+| WP-6210 | JHS-002 の「JAHIS 対応」6 条件の充足 evidence packet。`BLOCKED_JAHIS_CONFORMANCE_REVIEW` 解除は human【HG】 | WP-6205〜6207 |
+
+#### Track D — オンライン資格確認・マイナンバー連動・電子処方箋
+
+全件 RB-002 / RB-003 / RB-005 配下。**外部 IF 仕様入手前に書けるのは境界 SSOT、
+ドメインモデル、synthetic fixture、fail-closed 状態機械、UI 状態表示まで**。
+
+| WP | 内容 | 前提 / Gate |
+|---|---|---|
+| WP-6301 | ONS(医療機関等向けポータル)アクセス確保と外部 IF 仕様書・版の `source_registry` 登録【EXT】【HG: 人間手続き】 | — |
+| WP-6302 | `online_qualification_boundary.md` 起案(ADP-A1 前提): 資格確認端末経由 / API 経由の選択、資格スナップショット不変性、再確認周期、請求前資格確認、災害時・障害時モードの状態【SSOT】【HG: R3】 | — (仕様入手前に骨子は書ける) |
+| WP-6303 | 資格確認スナップショット domain model + schema 設計: 保険者番号・記号番号・負担割合・限度額区分・確認日時・確認方式(マイナ/券面/未確認)を append-only で保持。Coverage projection の canonical 元【SSOT: DOM 改版】 | WP-6302 |
+| WP-6304 | 受付との接続: `eligibility_status` を `UNVERIFIED / VERIFIED_MYNA / VERIFIED_CARD / EXPIRED / MISMATCH / OFFLINE_PROVISIONAL` の状態機械へ置換。未確認受付は算定・請求へ進めない fail-closed | WP-6303、WP-4050 |
+| WP-6305 | 薬剤情報・特定健診情報・診療情報の閲覧同意取込(マイナ保険証同意フロー)の境界設計: 同意記録、閲覧監査(MOD-008 追加)、表示のみ・yrese は正本を持たない【SSOT】【HG: privacy】 | WP-6302、C-037 |
+| WP-6306 | ADP-A1 adapter 実装(synthetic stub 先行 → 公式接続試験)。外部 IF 応答の未加工保存+PHI classification、timeout/partial failure の fail-closed | WP-6301、WP-6304 |
+| WP-6307 | 請求前資格確認バッチ(CLM-001 工程 6 の点検項目)。未確認・資格喪失・保険者変更を `MANUAL_REVIEW_REQUIRED` で保留 | WP-6306、Track F 請求 |
+| WP-6308 | 電子処方箋 ADP-A2 境界 SSOT(`electronic_prescription_boundary.md`): 引換番号受付、処方情報取得、調剤結果登録、重複投薬等チェック結果の未加工転記、HPKI 署名呼出境界。**MVP は境界設計のみ(N1)**【SSOT】【HG: R3】 | WP-6301 |
+| WP-6309 | 電子処方箋管理サービスの処方情報(FHIR JP 電子処方箋 profile)→ MedicationRequest ingestion(C-050)への写像 entry 追加。Track B の単一 writer を再利用【SSOT: DOM-006】 | WP-6308、WP-6106 |
+| WP-6310 | 調剤結果登録(FHIR MedicationDispense ベース)の送信境界。送信失敗の誤認防止(MSR-017)を outbox/DLQ で可視化 | WP-6109、WP-6005 |
+| WP-6311 | PMH(ADP-A4)境界 SSOT `pmh_boundary.md` と受給者証スナップショット。按分計算入力は CAL-R-025 解除まで `PENDING_PMH_REVERIFY`【SSOT】 | WP-6301 |
+| WP-6312 | 災害時・障害時モード(EXTERNAL_DEGRADED / LOCAL_ONLY)での資格確認保留と RECOVERY_SYNC 再検証の実装(ARC-001/002 の最初の実体) | WP-6304 |
+
+#### Track E — 情報連携を最大化する追加機能(提案)
+
+| WP | 内容 | 前提 / Gate |
+|---|---|---|
+| WP-6401 | 電子薬歴 Pharmacy Integration API v0(PRD-001 M12): 処方・調剤イベント配信、薬歴未記載チェックの双方向(薬歴側 → `yakureki.recorded` inbox event)、薬学管理料整合の請求前点検入力 | WP-6005、WP-6008 |
+| WP-6402 | 処方監査システム双方向 API(RB-007 を侵さない「未加工転記+出典明示」のみ)。監査結果は `ClinicalAlert` として表示、算定判断に使わない | WP-6008、REG-005 |
+| WP-6403 | 在庫・分包機・POS 向け read-only projection API(現在庫表示の連携口、N9 の範囲内)。書込みなし | WP-6006 |
+| WP-6404 | PH-OS 参照連携(API-004): schedule proposal / visit / report の projection 受信と調剤イベント配信。single writer per resource | WP-6005、WP-6008 |
+| WP-6405 | 医療機関向けトレーシングレポート・服薬情報提供の FHIR Communication / DocumentReference projection(送信は partner 経由、yrese は直接送信しない)【SSOT: DOM-005 改版】 | WP-6108 |
+| WP-6406 | 薬局間データ移行(他社レセコン → yrese)import 境界: JAHIS/FHIR/CSV の三系統入力を CanonicalPrescription に正規化、原本扱いしない。移行 dry-run と差分レポート | WP-6012、WP-6205 |
+| WP-6407 | Developer Portal(OpenAPI/FHIR CapabilityStatement/event catalog/sandbox 申請)の静的公開【HG: legal(API-005)】 | WP-6011 |
+| WP-6408 | 連携状態ダッシュボード(SCR-024/025): partner ごとの配送状態、DLQ、資格確認サービス・電子処方箋サービスの疎通状態、5 モード検知の実体化 | WP-6005、WP-6312 |
+
+#### Track F — 連携が運ぶデータを生む中核レセコン機能(既登録 C-056〜C-066 の補完)
+
+情報連携は配信対象(処方・調剤・算定・請求)が存在して初めて価値を持つ。
+以下は §15.5 と重複しない差分のみ。
+
+| WP | 内容 | 前提 / Gate |
+|---|---|---|
+| WP-6501 | 算定エンジンの API/DB consumer 接続: 確定調剤 → `calculate()` → `calculation_trace` 永続化 → API-007 read route(唯一の契約あり route なし resource)。既定ルールセットを EVIDENCE_ISSUED 16 行分へ拡張 | C-061、RB-008 行単位解除 |
+| WP-6502 | 一部負担金・公費按分(CAL-R-024/025)の evidence 発行と golden test【HG: 診療報酬】 | 【EXT: 公式資料】 |
+| WP-6503 | マスター基盤: 医薬品・薬価・調剤行為・公費・保険者の effective-dated テーブルと MST-001 24 段 pipeline の最小実装(取得→ハッシュ→スキーマ→差分→有効日→承認→反映→ロールバック)。CodeMappingRegistry(MST-002) | RB-009 |
+| WP-6504 | 会計 append-only ledger(ACC-001 21 概念のうち Charge / PatientReceivable / Payment / PartialPayment / Refund)と領収証・調剤明細書(RCP-001〜004)の発行 | WP-6501 |
+| WP-6505 | レセプト中間モデル生成(CLM-001 工程 2)と請求前点検(工程 6)。電算生成(工程 3)は RB-001 解除まで `BLOCKED_REGULATORY_REVIEW` | WP-6501、WP-6307 |
+| WP-6506 | 帳票基盤: 調剤録・薬袋・薬情の template registry(RCP-005)、ハッシュ・版・出力者記録、PDF 生成 | WP-6501 |
+| WP-6507 | システムモード検知 backend(NORMAL 固定表示の置換)と LOCAL_ONLY 仮受付・仮算定 | WP-6312 |
+
+### 16.3 段階と exit criteria
+
+| 段階 | 内容 | exit |
+|---|---|---|
+| **S0(現行)** | Milestone 1 exit: WP-4050 独立レビュー(C-001〜C-014)、§16.0 charter 決定 | WP-4050 PASS、`DEVELOPMENT_POLICY.md` 改版 or 現行維持の明示決定 |
+| **S1** | Track B 前提(WP-6101〜6103)+ Track A SSOT(WP-6001/6002/6004)+ Track C/D の外部手続き着手(WP-6201/6301)+ JHS 昇格 | package provenance 登録、mapping entry ≥ Patient 全 Must Support、Hub SSOT 11 本 PROPOSED、MOD-009 APPROVED |
+| **S2** | Milestone 2(C-043〜C-055)と同一 packet で WP-6105/6106/6107、outbox worker WP-6003 | cross-tenant 否認・stale conflict・retry dedupe・単一 writer 証明 + FHIR Patient read が validator PASS |
+| **S3** | Milestone 3(C-056〜C-066)+ WP-6005/6006/6009/6010(webhook・registry・sandbox・contract test)+ WP-6104 CapabilityStatement | North Star E2E に「partner sandbox が `dispense.confirmed` を受信」を含めて PASS |
+| **S4** | WP-6205〜6207(JAHIS 2D 取込・薬歴配信)、WP-6302〜6304(オン資境界・状態機械)、WP-6401/6402、WP-6501/6503 | 2D 取込 → 薬剤師確認 → 算定 trace → 薬歴配信が synthetic で貫通。資格未確認受付が請求へ進めないことを fail-closed テストで証明 |
+| **S5** | WP-6007(OAuth2/mTLS)、WP-6108/6109(MedicationDispense)、WP-6306/6307(オン資実接続)、WP-6308〜6310(電子処方箋)、WP-6011/6407(SDK/Portal) | 公式接続試験 PASS【EXT】、conformance packet human review、legal review |
+| **S6** | WP-6012/6013/6403〜6406/6504〜6507 | データ主権 export、KPI 公開、移行 dry-run |
+
+### 16.4 本節が要求する human gate / 外部手続き(集約)
+
+- charter 改版(§16.0)— `DEVELOPMENT_POLICY.md §2/§9/§11`、PRC-007。
+- Integration Hub SSOT 11 本、DOM-005 bounded scope 拡張(MedicationDispense /
+  Coverage / Organization / Practitioner)、JHS-001〜008 昇格、MOD-009 昇格 — PRC-007。
+- 外部仕様入手: ONS アクセス(RB-002/003)、JAHIS 頒布(会員/購入判断)、PMH(RB-005)、
+  NSIPS 許諾(RB-006、本節では設計も凍結のまま)。
+- security: OAuth2 CC / mTLS / production 認証(C-083〜C-087)、partner scope。
+- privacy: 薬剤情報・特定健診閲覧同意(WP-6305)、data portability export(WP-6012)。
+- legal: OSS SDK / Developer Portal 公開(API-005 `BLOCKED_LEGAL_REVIEW`)。
+- 診療報酬: CAL-R-024/025 evidence(WP-6502)、RB-008 行単位解除。
+- conformance 主張: FHIR(WP-6112)、JAHIS(WP-6210)は human review 後のみ。
+
+### 16.5 READY 昇格候補(slot は消費しない。順序は推奨)
+
+1. **WP-6101** JP Core package provenance 登録(C-024 と同一。外部手続き不要、
+   SSOT 改版のみ、FHIR Track 全体の根)。
+2. **WP-6001** Integration Hub SSOT 起案(charter 決定後。コード変更なし)。
+3. **WP-6202 + WP-6203** JAHIS 版不整合解消と昇格 batch(仕様入手と並行可能な
+   文書作業)。
+4. **WP-6302** オン資境界 SSOT 骨子(仕様入手前に書ける範囲。ADP-A1 前提文書)。
+5. **WP-6003** outbox 配送 worker(WP-4050 独立レビュー PASS 直後の最初のコード
+   slice。配信がなければ共有 API は成立しない)。
+
+**集計:** Track A=13 / B=12 / C=10 / D=12 / E=8 / F=7 — 合計 62 WP。本節の追加は
+planning record の変更のみであり、実装・検証実行・commit・push・gate 解除・
+`DEVELOPMENT_POLICY.md` 改版をいずれも行っていない。
