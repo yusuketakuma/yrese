@@ -3,8 +3,11 @@
 ## 1. Authority and scope
 
 This charter records the repository work-selection decision made under the direct
-user instruction dated 2026-07-29. It is the single pointer for the next 6–12
-weeks of development sequencing.
+user instruction dated 2026-07-29, amended on 2026-08-23 by direct user
+instruction to make **information interoperability the product's primary
+strength** (FHIR R4 / JP Core native, JAHIS conformance, an open shared partner
+API, and online eligibility / Myna linkage). It is the single pointer for the
+next 6–12 weeks of development sequencing.
 
 - This is a non-SSOT operational charter. Its architecture and Core Logic
   Register sections are evidence-linked planning summaries, not implementation
@@ -47,6 +50,22 @@ projection. The fallback does not permit dual writers, a silent rollback to the
 legacy model, or a FHIR/JP Core conformance claim.
 
 Only this fallback may be activated. Do not blend both policies indefinitely.
+
+### Interoperability-first amendment (2026-08-23)
+
+The primary policy is kept. Its prerequisites — a green baseline, one atomic
+reception/audit/outbox command boundary, and the bounded single-writer proof for
+`Patient` and `MedicationRequest` — are unchanged and are not bypassed. What
+changes is what is selected **after** them:
+
+- The FHIR facade publishes only resources whose single writer has been proven.
+- Interoperability tracks (Integration Hub, FHIR facade, JAHIS, online
+  eligibility / e-prescription, partner-facing extras) are sequenced in
+  `Plans.md §16` and become selectable in the order of §11 below.
+- External-interface code is written only after the official specification is
+  registered in `source_registry` with an evidence_id and the corresponding
+  REG-004 blocker row is released; obtaining ONS access, JAHIS documents, or
+  NSIPS licence remains a human procedure.
 
 ### Strategy comparison
 
@@ -107,6 +126,7 @@ patient search and selection
 → manual paper-prescription draft
 → pharmacist confirmation
 → immutable audit evidence capture
+→ partner sandbox receives the dispensing event through the shared API
 ```
 
 The journey must be tenant-safe, versioned, retry-safe, correction-aware, and
@@ -148,6 +168,23 @@ Exit criteria:
 - failed conformance or migration proof activates a stop/reframe, not a second
   writer.
 
+### Milestone 2.5 — Integration Hub foundation and FHIR read facade
+
+Runs alongside Milestone 2/3 packets; see `Plans.md §16.3` stages S1–S3.
+
+Exit criteria:
+
+- JP Core package provenance is registered and locked-profile validation runs
+  in CI;
+- DOM-006 has field mapping entries for every Must Support element of
+  `JP_Patient` and oral/topical `JP_MedicationRequest`, with loss listed;
+- Integration Hub SSOTs exist and MOD-009 is APPROVED;
+- the outbox delivery worker delivers `reception.created` at-least-once with
+  injected-failure proof;
+- `GET /fhir/R4/Patient` read/vread/search passes the validator on synthetic
+  data under the same cross-tenant / stale-version / retry proofs as
+  Milestone 2.
+
 ### Milestone 3 — Pharmacist vertical journey (week 5–10)
 
 Exit criteria:
@@ -162,6 +199,20 @@ Exit criteria:
 - calculation, claims, JAHIS/QR, PH-OS synchronization, and report delivery stay
   visibly fail closed;
 - a human pharmacist safety/UX review occurs before any pilot decision.
+
+### Milestone 4 — JAHIS intake, pharmacy-record delivery, eligibility boundary
+
+Exit criteria (`Plans.md §16.3` stage S4):
+
+- a JAHIS 2D symbol is decoded into a provisional draft, confirmed by a
+  pharmacist, traced by the calculation engine, and delivered to a partner as a
+  JAHIS pharmacy-record message, all on synthetic data;
+- decode success, syntax validity, patient identity match, source authenticity,
+  and pharmacist confirmation remain five separate evidence records;
+- the eligibility snapshot state machine exists and an unverified reception
+  cannot reach calculation or claims (fail-closed test);
+- online eligibility, e-prescription, and PMH connections stay stubbed until
+  their official specifications are registered and RB-002/003/005 are released.
 
 ## 5. Architecture and ownership
 
@@ -315,11 +366,15 @@ security/privacy relaxation.
 - New generic verifiers embedded in Markdown.
 - Fixed `exact5`, `exact10`, or other reviewer-cardinality gates.
 - Routine record-only commits and per-slice success entries in multiple ledgers.
-- Broad 22-domain fan-out, full AWS/DynamoDB platform, full FHIR server, or
-  PH-OS synchronization before the bounded proof.
-- JAHIS/QR parser, billing/claims, receipt, schedule/visit/report writers,
-  task/notification platform, and noncritical patient/reception/audit hardening
-  before the North Star prerequisites.
+- Broad 22-domain fan-out or a full AWS/DynamoDB platform before the bounded
+  proof. A full generic FHIR server remains out of scope; the facade exposes
+  only proven-writer resources.
+- Billing/claims electronic file generation, schedule/visit/report writers,
+  and noncritical patient/reception/audit hardening before the North Star
+  prerequisites. (JAHIS, FHIR facade, Integration Hub, and eligibility
+  boundaries are no longer NOT NOW; they follow §11 and `Plans.md §16`.)
+- Any external-interface connection code before its official specification is
+  registered and the matching REG-004 row is released.
 - Production data, deploy, external send, conformance, or release-readiness
   claims.
 
@@ -356,6 +411,15 @@ Activate the fallback only through the human/PRC-007 gate in section 2.
    required review and final human approval.
 4. **CONDITIONAL MILESTONE LABEL — WP-4252:** pharmacist vertical journey,
    claimable only after its predecessors and separate safety gates are complete.
+
+5. **INTEROPERABILITY SEQUENCE (2026-08-23 amendment):** after WP-4050's
+   independent review passes, select in this order, one WIP at a time and
+   subject to each item's human gate: WP-6101 (JP Core package provenance),
+   WP-6001 (Integration Hub SSOTs), WP-6202/6203 (JAHIS version alignment and
+   promotion), WP-6302 (eligibility boundary SSOT skeleton), WP-6003 (outbox
+   delivery worker), then the Milestone 2.5 FHIR read facade packets, then
+   Milestone 3 and 4 items per `Plans.md §16.3`. External procedures
+   (WP-6201, WP-6301) start immediately and run in parallel as human work.
 
 WP-4251 and WP-4252 are labels, not READY or implementation authorization.
 WP-4250 owns only the active `Plans.md` block, active `State.md` snapshot, and

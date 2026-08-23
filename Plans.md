@@ -1244,7 +1244,7 @@ release gate 群。§11 の既知 blocker を作業項目化した index であ�
   「North Star 前提(Milestone 1〜2)までは NOT NOW」と定める。本節の方向性
   (情報連携を製品の主軸とする)はこの charter の **reframe** であり、
   `DEVELOPMENT_POLICY.md §2 / §9 / §11` の改版を要する。本節は改版を**行わず**、
-  改版提案として記録する。改版は user の明示決定まで `POLICY_AMENDMENT_PENDING`。
+  改版提案として記録する。改版は 2026-08-23 direct user instruction「推奨通りに進んで」により **決定済み** — `DEVELOPMENT_POLICY.md` §1/§2/§4/§9/§11 を同日改版(Milestone 2.5 / 4 追加、§9 NOT NOW から JAHIS・FHIR facade・Hub・資格境界を除外)。
 - 改版有無にかかわらず次は不変: (a) Milestone 1 exit(WP-4050 独立レビュー)と
   Milestone 2(bounded Patient + MedicationRequest 単一 writer 証明)は情報連携の
   **前提**であり迂回しない。FHIR facade は単一 writer が証明された resource だけを
