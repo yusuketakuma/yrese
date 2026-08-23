@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Pool } from 'pg';
 
+import { pharmacyId, tenantId, userId } from '@yrese/shared-kernel';
+
+import { appendAuditEventWithinTransaction } from './audit-repository.js';
 import { applyPendingMigrations } from './migration-runner.js';
 import { loadMigrationFiles } from './migrations.js';
 import {
@@ -52,6 +55,22 @@ async function withMigratedSchema(
   }
 }
 
+const auditScope = { tenantId: tenantId(scope.tenantId), pharmacyId: pharmacyId(scope.pharmacyId) };
+
+async function seedPatient(pool: Pool): Promise<void> {
+  await pool.query(
+    `INSERT INTO patients (tenant_id, pharmacy_id, patient_id, name, kana, birth_date, sex,
+       patient_number, eligibility_status, eligibility_checked_at)
+     VALUES ($1, $2, 'patient-obx-001', '合成配送患者', 'ゴウセイハイソウカンジャ', '1980-01-01'::date,
+             'female', 'OBX-001', 'VERIFIED', NULL)`,
+    [scope.tenantId, scope.pharmacyId],
+  );
+}
+
+/**
+ * FK(migrations/000007)を満たす intent を作る: 受付行 + 監査行 + outbox 行。
+ * 同一 aggregate の 2 本目は eventType を変えて UNIQUE を避ける。
+ */
 async function seedIntent(
   pool: Pool,
   input: {
@@ -61,21 +80,46 @@ async function seedIntent(
     readonly eventType?: string;
   },
 ): Promise<void> {
-  await pool.query(
-    `INSERT INTO outbox_events (tenant_id, pharmacy_id, outbox_event_id, event_type,
-       aggregate_type, aggregate_id, audit_event_id, payload, created_at)
-     VALUES ($1, $2, $3, $8, 'reception', $4, $5, $6::jsonb, $7::timestamptz)`,
-    [
-      scope.tenantId,
-      scope.pharmacyId,
-      input.id,
-      input.aggregateId,
-      `audit-${input.id}`,
-      JSON.stringify({ receptionId: input.aggregateId, patientId: 'patient-obx-001' }),
-      input.createdAt,
-      input.eventType ?? 'reception.created',
-    ],
-  );
+  const eventType = input.eventType ?? 'reception.created';
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `INSERT INTO reception_entries (tenant_id, pharmacy_id, reception_id, patient_id, accepted_at,
+         business_date, reception_status, prescription_intake_type, idempotency_key)
+       VALUES ($1, $2, $3, 'patient-obx-001', $4::timestamptz, '2026-08-23'::date, 'WAITING', 'paper', $5)
+       ON CONFLICT DO NOTHING`,
+      [scope.tenantId, scope.pharmacyId, input.aggregateId, input.createdAt, `idem-${input.aggregateId}`],
+    );
+    const audit = await appendAuditEventWithinTransaction(client, auditScope, {
+      actorId: userId('user-obx-001'),
+      auditEventType: 'reception.created',
+      targetRef: { kind: 'reception', id: input.aggregateId },
+      outcome: 'success',
+      wallClock: input.createdAt,
+    });
+    await client.query(
+      `INSERT INTO outbox_events (tenant_id, pharmacy_id, outbox_event_id, event_type,
+         aggregate_type, aggregate_id, audit_event_id, payload, created_at)
+       VALUES ($1, $2, $3, $4, 'reception', $5, $6, $7::jsonb, $8::timestamptz)`,
+      [
+        scope.tenantId,
+        scope.pharmacyId,
+        input.id,
+        eventType,
+        input.aggregateId,
+        audit.eventId,
+        JSON.stringify({ receptionId: input.aggregateId, patientId: 'patient-obx-001' }),
+        input.createdAt,
+      ],
+    );
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function deliveredIds(pool: Pool): Promise<readonly string[]> {
@@ -101,6 +145,7 @@ function recordingSink(failFor: ReadonlySet<string> = new Set()): OutboxDelivery
 describePostgres('PostgresOutboxDeliveryWorker (PostgreSQL)', () => {
   it('delivers pending intents oldest-first and marks only the delivered rows', async () => {
     await withMigratedSchema(async (pool) => {
+      await seedPatient(pool);
       await seedIntent(pool, { id: 'ob-2', aggregateId: 'r-2', createdAt: '2026-08-23T00:00:02Z' });
       await seedIntent(pool, { id: 'ob-1', aggregateId: 'r-1', createdAt: '2026-08-23T00:00:01Z' });
       const sink = recordingSink();
@@ -115,7 +160,6 @@ describePostgres('PostgresOutboxDeliveryWorker (PostgreSQL)', () => {
         eventType: 'reception.created',
         aggregateType: 'reception',
         aggregateId: 'r-1',
-        auditEventId: 'audit-ob-1',
         payload: { receptionId: 'r-1', patientId: 'patient-obx-001' },
       });
       await expect(deliveredIds(pool)).resolves.toEqual(['ob-1', 'ob-2']);
@@ -124,6 +168,7 @@ describePostgres('PostgresOutboxDeliveryWorker (PostgreSQL)', () => {
 
   it('leaves a failed intent pending, blocks later intents of the same aggregate, and retries on the next run', async () => {
     await withMigratedSchema(async (pool) => {
+      await seedPatient(pool);
       await seedIntent(pool, { id: 'ob-a1', aggregateId: 'r-a', createdAt: '2026-08-23T00:00:01Z' });
       await seedIntent(pool, {
         id: 'ob-a2',
@@ -157,6 +202,7 @@ describePostgres('PostgresOutboxDeliveryWorker (PostgreSQL)', () => {
   it('never delivers the same intent twice across concurrent workers', async () => {
     await withMigratedSchema(
       async (pool) => {
+        await seedPatient(pool);
         for (let i = 0; i < 6; i += 1) {
           await seedIntent(pool, {
             id: `ob-c${i}`,

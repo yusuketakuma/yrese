@@ -352,7 +352,7 @@ describePostgres('PostgresReceptionCreateCommand (WP-4050 atomic boundary)', () 
     });
   });
 
-  it('does not report existing_complete when the outbox intent has no matching audit event (WP-4050 HIGH-2)', async () => {
+  it('rejects an outbox intent whose audit event or reception does not exist (WP-4050 HIGH-3 foreign keys)', async () => {
     await withMigratedSchema(async (pool) => {
       await seedPatient(pool, commandPatient);
       const legacy = await new PostgresReceptionRepository(pool).create({
@@ -364,25 +364,31 @@ describePostgres('PostgresReceptionCreateCommand (WP-4050 atomic boundary)', () 
       if (legacy.kind !== 'created') {
         throw new Error('unreachable');
       }
-      // outbox intent だけを直接挿入(監査行なし = 三点のうち一点だけが存在)。
-      await pool.query(
-        `INSERT INTO outbox_events (tenant_id, pharmacy_id, outbox_event_id, event_type,
-           aggregate_type, aggregate_id, audit_event_id, payload, created_at)
-         VALUES ($1, $2, 'dangling-outbox-1', 'reception.created', 'reception', $3,
-                 'no-such-audit-event', '{}'::jsonb, now())`,
-        [scope.tenantId, scope.pharmacyId, legacy.provenance.receptionId],
-      );
+      const insertIntent = (aggregateId: string, auditEventId: string) =>
+        pool.query(
+          `INSERT INTO outbox_events (tenant_id, pharmacy_id, outbox_event_id, event_type,
+             aggregate_type, aggregate_id, audit_event_id, payload, created_at)
+           VALUES ($1, $2, 'dangling-outbox-1', 'reception.created', 'reception', $3, $4,
+                   '{}'::jsonb, now())`,
+          [scope.tenantId, scope.pharmacyId, aggregateId, auditEventId],
+        );
 
-      const command = buildCommand(pool);
-      const result = await command.execute(
+      // 監査行なし → FK 違反。受付なし → FK 違反。どちらも dangling intent を作れない。
+      await expect(insertIntent(legacy.provenance.receptionId, 'no-such-audit-event')).rejects.toThrow(
+        /outbox_events_audit_event_fk/,
+      );
+      await expect(insertIntent('no-such-reception', 'no-such-audit-event')).rejects.toThrow(
+        /outbox_events_(reception|audit_event)_fk/,
+      );
+      // 境界導入前の受付は intent も監査も無いまま legacy_orphan として分類される。
+      const result = await buildCommand(pool).execute(
         commandInput({ idempotencyKey: 'cmd-int-key-dangling' }),
       );
       expect(result.kind).toBe('legacy_orphan');
-      await expect(command.classifyExisting(legacy.provenance)).resolves.toBe('legacy_orphan');
       await expect(counts(pool)).resolves.toEqual({
         receptions: 1,
         auditEvents: 0,
-        outboxIntents: 1,
+        outboxIntents: 0,
       });
     });
   });

@@ -186,6 +186,7 @@ describe('loadMigrationFiles', () => {
           '000004_create_audit_events.sql',
           '000005_create_outbox_events.sql',
           '000006_constrain_audit_event_body.sql',
+          '000007_add_outbox_event_foreign_keys.sql',
         ]);
       } finally {
         process.chdir(originalCwd);
