@@ -35,8 +35,9 @@ import {
 
 /**
  * 既存受付の完全性判定(WP-4050 HIGH-2): outbox intent が存在し、かつ
- * その audit_event_id が同一 tenant/pharmacy の audit_events に実在して初めて
- * existing_complete とする。intent だけが残る dangling 状態は legacy_orphan。
+ * その audit_event_id が同一 tenant/pharmacy の audit_events に実在し、かつその監査行が
+ * 同じ aggregate の同じ event type を指して初めて existing_complete とする。
+ * dangling intent や他 aggregate の監査行を借りた intent は legacy_orphan(checker MEDIUM-1)。
  */
 const receptionEvidenceCompleteSql = `SELECT EXISTS (
      SELECT 1
@@ -45,6 +46,9 @@ const receptionEvidenceCompleteSql = `SELECT EXISTS (
          ON a.tenant_id = o.tenant_id
         AND a.pharmacy_id = o.pharmacy_id
         AND a.event_id = o.audit_event_id
+        AND a.event_body->>'auditEventType' = o.event_type
+        AND a.event_body->'targetRef'->>'kind' = o.aggregate_type
+        AND a.event_body->'targetRef'->>'id' = o.aggregate_id
       WHERE o.tenant_id = $1 AND o.pharmacy_id = $2
         AND o.aggregate_type = $3 AND o.aggregate_id = $4 AND o.event_type = $5
    ) AS exists`;

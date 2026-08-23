@@ -387,6 +387,42 @@ describePostgres('PostgresReceptionCreateCommand (WP-4050 atomic boundary)', () 
     });
   });
 
+  it('does not accept an outbox intent that borrows another reception\'s audit event (checker MEDIUM-1)', async () => {
+    await withMigratedSchema(async (pool) => {
+      await seedPatient(pool, commandPatient);
+      const command = buildCommand(pool);
+      const a = await command.execute(commandInput({ idempotencyKey: 'cmd-int-key-a' }));
+      if (a.kind !== 'created') {
+        throw new Error('unreachable');
+      }
+      const auditEventId = (
+        await pool.query<{ audit_event_id: string }>(
+          'SELECT audit_event_id FROM outbox_events WHERE aggregate_id = $1',
+          [a.provenance.receptionId],
+        )
+      ).rows[0]?.audit_event_id;
+      const b = await new PostgresReceptionRepository(pool).create({
+        ...scope,
+        patient: commandPatient,
+        idempotencyKey: 'cmd-int-key-b',
+        acceptedAt: new Date(acceptedAtIso),
+      });
+      if (b.kind !== 'created') {
+        throw new Error('unreachable');
+      }
+      await pool.query(
+        `INSERT INTO outbox_events (tenant_id, pharmacy_id, outbox_event_id, event_type,
+           aggregate_type, aggregate_id, audit_event_id, payload, created_at)
+         VALUES ($1, $2, 'borrowed-outbox-1', 'reception.created', 'reception', $3, $4,
+                 '{}'::jsonb, now())`,
+        [scope.tenantId, scope.pharmacyId, b.provenance.receptionId, auditEventId],
+      );
+
+      await expect(command.classifyExisting(b.provenance)).resolves.toBe('legacy_orphan');
+      await expect(command.classifyExisting(a.provenance)).resolves.toBe('existing_complete');
+    });
+  });
+
   it('enforces the outbox mutation discipline: no delete, only the single pending -> delivered transition', async () => {
     await withMigratedSchema(async (pool) => {
       await seedPatient(pool, commandPatient);

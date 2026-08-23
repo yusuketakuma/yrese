@@ -1276,9 +1276,6 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       } else if (resultKind === 'legacy_orphan') {
         reconciliation = 'legacy_orphan';
       }
-      if (reconciliation === 'legacy_orphan') {
-        void reply.header(receptionReconciliationHeaderName, 'legacy_orphan');
-      }
 
       // 監査証跡(who/when/what)。冪等再送(existing 系)では二重記録しない。
       // targetRef は識別子のみ(PHI 非含有)。created の evidence 確定は
@@ -1322,6 +1319,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         throw new Error(receptionCreatedAuditInvariantErrorMessage);
       }
 
+      if (reconciliation === 'legacy_orphan') {
+        void reply.header(receptionReconciliationHeaderName, 'legacy_orphan');
+      }
       return reply.code(resultKind === 'created' ? 201 : 200).send(parsedEntry);
     },
   );
