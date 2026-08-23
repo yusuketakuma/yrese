@@ -39,8 +39,8 @@
 | Working tree | landing recordの `Plans.md` / `State.md` exact2のみ。final record commit後はcleanを要求 |
 | Last update | 2026-08-23 JST(§16 情報連携主軸ギャップ分析・実装計画を inventory 追加。product WIP/READYは不変更) |
 | Active Goal | grouped commit/push finalization。product queueはWIP 0のまま |
-| Current critical path | Milestone 1 exit の残余 — WP-4050 の独立レビュー(codex lane 復帰 2026-08-05) |
-| Main blocker | WP-4050 の独立レビュー(2026-08-05 待ち)と `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) の DDL human gate |
+| Current critical path | Milestone 1 exit の残余 — WP-4050 修正 diff の checker 再確認と HIGH-3 DDL gate。並行して §16 S1(WP-6202/6203、WP-6302) |
+| Main blocker | HIGH-3 outbox FK の DDL gate、JP Core package 再取得の egress 承認、`BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) の DDL gate |
 | Runtime verification | Node 26.6.0でfrozen install、typecheck、1,877 tests(skip 0)、script harness、build 11/11、OpenAPI、secrets、deps、SBOM 249、boundaries、calculation purity、SSOT index 173、actionlint、diff check PASS |
 | Next scan cursor | diff-first from `f91ae78`; reset on new High/Medium finding or reprioritization |
 
@@ -278,8 +278,29 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 
 ### WP-4050 — Atomic reception command boundary
 
-- **Status:** COMMITTED_LOCAL / MACHINE_VALIDATED / INDEPENDENT_REVIEW_PENDING /
-  PUSH_NOT_REQUESTED(2026-07-31)
+- **Status:** INDEPENDENT_REVIEW_DELIVERED(2026-08-23)/ HIGH-1・HIGH-2 修正済み
+  `28fd62e` / HIGH-3 は DDL human gate 待ち / 修正 diff の checker 再確認待ち
+- **独立レビュー(2026-08-23、fresh-context data-integrity lane、codex 不使用):**
+  frozen packet base `9d8dbc0`(= `42ef15c~1`)→ head `9a404fe`、9 path、diff
+  SHA-256 `494a79e60462731034a539adf670098d0c0074c85b576e19972a4348cff7008f`、
+  hash 再現一致。verdict **REQUEST_CHANGES**(HIGH 3 / MEDIUM 4 / LOW 4)。
+  Postgres の原子境界そのもの(acceptance 1・2・4・5・6)は PASS。
+  - HIGH-1 legacy_orphan が process 外へ一切出ない → `28fd62e` で
+    `X-Yrese-Reconciliation: legacy_orphan` header(OpenAPI 200 に宣言)。
+  - HIGH-2 完全性判定が outbox のみ → `28fd62e` で audit_events との JOIN を要求。
+  - **HIGH-3 `outbox_events` に FK なし**(aggregate_id→reception_entries、
+    audit_event_id→audit_events)。DDL のため **human gate**。migration 案:
+    `ALTER TABLE outbox_events ADD CONSTRAINT outbox_events_reception_fk FOREIGN KEY
+    (tenant_id, pharmacy_id, aggregate_id) REFERENCES reception_entries (tenant_id,
+    pharmacy_id, reception_id); ADD CONSTRAINT outbox_events_audit_fk FOREIGN KEY
+    (tenant_id, pharmacy_id, audit_event_id) REFERENCES audit_events (tenant_id,
+    pharmacy_id, event_id);`(aggregate_type='reception' 前提。汎用化時は partial
+    制約へ)。適用前に既存 dangling 行の棚卸し SELECT が必要。
+  - MEDIUM-1〜4(in-memory 補償の opt-in、rollback 部分失敗の判別不能、commit と
+    検証の間の throw 窓、`#` 既存データ未検査)と LOW-1〜4 は §8 backlog 候補。
+    MEDIUM-4 は `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) と同一枠。
+  - 修正 diff `28fd62e` は maker=本 lane のため、別 context の checker 再確認を
+    要する(未取得)。
 - **Landing evidence:** local commits `42ef15c`(atomic boundary: migrations/000005
   outbox_events、PostgresReceptionCreateCommand 単一トランザクション、
   ComposedReceptionCreateCommand 補償型 in-memory、4 結果値
@@ -316,6 +337,10 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
   `42ef15c`+`bf17cea` へ COMMITTED_LOCAL だが、独立レビューが未取得であり
   (`independence_not_satisfied` ×2)、codex lane 復帰(2026-08-05)後の
   再レビューが残存 gate である。
+- **WP-4050 HIGH-3 — `outbox_events` 外部キー migration(DDL)。** SQL 案は §4
+  WP-4050 に記載。適用は synthetic/local を含め human approval 後。
+- **JP Core package 再取得(WP-6101)。** external egress(`https://jpfhir.jp`)が
+  runtime policy で未承認。承認後に SHA-256 を再現し SRC-FHIR-007 を VERIFIED へ。
 - **`BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b)。** 実行仕様は下に確定済み。
 - migration application、production write、deploy、external send、pilot、
   standards-conformance 主張、release 判断のすべて。
