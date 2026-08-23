@@ -1,7 +1,32 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-07-30):** This section alone is current. The legacy
-> activity log below is frozen and nonauthoritative.
+> **ACTIVE SNAPSHOT (2026-08-23):** This block alone is current. The prior
+> snapshot and frozen activity log below are nonauthoritative.
+
+- **Current landing:** direct user instruction requires every working-tree change to be
+  grouped, committed, and pushed. Five new exact-path commits are grouped by agent policy,
+  planning inventory, dependency security, startup refactor, and Node 26.6.0. Product WIP
+  remains 0; no blocked product item was claimed or implemented.
+- **Frozen pre-record packet:** base `4f4ba6835e0192dd7731fe3a963650b437b61bb0`,
+  pre-record HEAD `491aea5033ad1c67b07abee96ddcf40603e1385b`, 16 outgoing commits,
+  37 paths, diff SHA-256
+  `611b8082d7268bed787d9afa08b73a4d434457ad22b1b56955bdad1be63283c8`.
+  This record commit necessarily supersedes the pre-record HEAD; Git is the final authority.
+- **Validation:** Node 26.6.0; frozen install; workspace typecheck; 1,877 tests with
+  PostgreSQL integration and zero skips; script harness; 11-page build; OpenAPI, secret,
+  dependency high=0/critical=0, production audit, SBOM 249, boundaries, calculation purity,
+  SSOT index 173, actionlint, and diff checks all PASS.
+- **Push gate:** current human instruction authorizes a normal fast-forward push only after
+  the exact final stack receives independent review PASS and `origin/main` is fetched again.
+  Force-push, deploy, release, migration, production mutation, and risk acceptance remain
+  unauthorized.
+- **Remaining product gates:** production authentication/qualification, runtime role/RLS,
+  patient-search URL PHI, bounded audit verification/self-growth, and registered SSOT/human
+  blockers remain unchanged. Git/CI carry routine landing success evidence.
+- **Record rule:** update this snapshot only for interruption, blocker, human gate, or
+  uncommitted ownership. Do not append routine command or reviewer diaries.
+
+## PRIOR ACTIVE SNAPSHOT (2026-07-30 / updated through 2026-08-01) — NONAUTHORITATIVE
 
 - **Policy:** `DEVELOPMENT_POLICY.md`; primary is smallest architecture proof,
   then one pharmacist vertical journey.

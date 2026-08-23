@@ -34,20 +34,21 @@
 | Field | Current evidence |
 |---|---|
 | Branch | `main` |
-| Local HEAD | `0507c026a74f42570966451a1721592561f75a90` |
-| Upstream divergence | `origin/main...HEAD = 0 behind / 11 ahead`(push未要求) |
-| Working tree | `AGENTS.md` のみ modified(外部変更・本書の所有外。保全する) |
-| Last update | 2026-08-02 JST(§15 Candidate Work Inventory 追加。実装・検証・landing なし) |
-| Active Goal | なし。WIP 0 件で、次の claim は human gate 解除待ち |
+| Local HEAD | landing record 直前 `491aea5033ad1c67b07abee96ddcf40603e1385b`。本record commit後の最終値はGitを正本とする |
+| Upstream divergence | fetch後のrecord直前 `origin/main...HEAD = 0 behind / 16 ahead`。2026-08-23 direct user instructionでpush要求済み |
+| Working tree | landing recordの `Plans.md` / `State.md` exact2のみ。final record commit後はcleanを要求 |
+| Last update | 2026-08-23 JST(grouped landing record補正。product WIP/READYは不変更) |
+| Active Goal | grouped commit/push finalization。product queueはWIP 0のまま |
 | Current critical path | Milestone 1 exit の残余 — WP-4050 の独立レビュー(codex lane 復帰 2026-08-05)と WP-4258 の final human SSOT approval |
 | Main blocker | WP-4050 の独立レビュー(2026-08-05 待ち)と `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) の DDL human gate |
-| Runtime verification | 2026-08-01 に実行済み。`typecheck` / `lint` / `test:scripts` / apps/web 437 tests / `check-ssot-index` 173 / `check:boundaries` / `check:calculation-purity` / `check:secrets` / `git diff --check` いずれも PASS |
+| Runtime verification | Node 26.6.0でfrozen install、typecheck、1,877 tests(skip 0)、script harness、build 11/11、OpenAPI、secrets、deps、SBOM 249、boundaries、calculation purity、SSOT index 173、actionlint、diff check PASS |
 | Next scan cursor | diff-first from `f91ae78`; reset on new High/Medium finding or reprioritization |
 
-実装証跡は Git diff と commit にある。本書は landing 済み項目については index に
-とどめ、内容を複製しない。7 commit はいずれも local であり、push・deploy・
-production 変更は行っていない。独立レビューは 2026-08-01 の landing 分について
-未取得である。
+実装証跡はGit diff/commitとCIを正本とし、本書はindexにとどめる。record直前の
+outgoing stackはbase `4f4ba68`、HEAD `491aea5`、16 commits、37 paths、diff SHA-256
+`611b8082d7268bed787d9afa08b73a4d434457ad22b1b56955bdad1be63283c8`。pushはcurrent
+user requestで許可されたが、最終frozen review PASSとremote fast-forward再確認後だけ
+実行する。deploy、migration、production変更、release acceptanceは許可されていない。
 
 ## 2. Product and Architecture Guardrails
 
@@ -235,6 +236,13 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 - **Remaining gate:** the separately owned WP-4255 prerequisite has independent verifier, security, and data-integrity PASS. WP-4254 retained strict screen-removal/SSOT ownership separation from the API remediation and landed at `2db1ec1` on 2026-08-01, after WP-4250 finalization made IDX-001 APPROVED and cleared its own Abort clause. Push, deploy, and production mutation remain unrequested.
 
 ### WP-4253 — Refresh the stable software baseline
+
+> **2026-08-23 follow-up:** executable Node selector 4か所を26.6.0へ揃え、
+> `fast-uri` 3.1.6/4.1.3と`nanoid` 3.3.18で当日公開High advisoryを閉じた。
+> follow-up commitsは`9087f61`と`491aea5`。Node 26.6.0でfull 1,877 tests(skip 0)、
+> typecheck/build/全CI checker、dependency high=0/critical=0を再検証し、pushは
+> 2026-08-23 direct user instructionで要求済み。以下の26.5.0記述は元WP landing時の
+> historical evidenceであり、current executable selectorではない。
 
 - **Status:** COMMITTED_LOCAL / MACHINE_VALIDATED / HOST_RUNTIME_ALIGNED / INDEPENDENT_PASS / PUSH_NOT_REQUESTED
 - **Landing evidence:** local commit
