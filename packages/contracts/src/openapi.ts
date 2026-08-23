@@ -349,8 +349,16 @@ const openApiDefinition = {
             },
           },
           "200": {
-            description: "Idempotent resend returned the existing reception entry",
-            headers: noStoreHeaders,
+            description:
+              "Idempotent resend returned the existing reception entry. When the stored reception has no complete audit/outbox evidence (a reception created before the atomic command boundary, or a dangling outbox intent), the response carries `X-Yrese-Reconciliation: legacy_orphan` as reconciliation evidence; the server never fabricates the original actor or timestamp.",
+            headers: {
+              ...noStoreHeaders,
+              "X-Yrese-Reconciliation": {
+                description:
+                  "Present only when the existing reception lacks complete audit/outbox evidence. Fixed vocabulary, no PHI.",
+                schema: { type: "string" as const, enum: ["legacy_orphan"] },
+              },
+            },
             content: {
               [jsonContentType]: {
                 schema: receptionQueueEntryOpenApiSchema,

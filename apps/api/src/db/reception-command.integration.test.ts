@@ -352,6 +352,41 @@ describePostgres('PostgresReceptionCreateCommand (WP-4050 atomic boundary)', () 
     });
   });
 
+  it('does not report existing_complete when the outbox intent has no matching audit event (WP-4050 HIGH-2)', async () => {
+    await withMigratedSchema(async (pool) => {
+      await seedPatient(pool, commandPatient);
+      const legacy = await new PostgresReceptionRepository(pool).create({
+        ...scope,
+        patient: commandPatient,
+        idempotencyKey: 'cmd-int-key-dangling',
+        acceptedAt: new Date(acceptedAtIso),
+      });
+      if (legacy.kind !== 'created') {
+        throw new Error('unreachable');
+      }
+      // outbox intent だけを直接挿入(監査行なし = 三点のうち一点だけが存在)。
+      await pool.query(
+        `INSERT INTO outbox_events (tenant_id, pharmacy_id, outbox_event_id, event_type,
+           aggregate_type, aggregate_id, audit_event_id, payload, created_at)
+         VALUES ($1, $2, 'dangling-outbox-1', 'reception.created', 'reception', $3,
+                 'no-such-audit-event', '{}'::jsonb, now())`,
+        [scope.tenantId, scope.pharmacyId, legacy.provenance.receptionId],
+      );
+
+      const command = buildCommand(pool);
+      const result = await command.execute(
+        commandInput({ idempotencyKey: 'cmd-int-key-dangling' }),
+      );
+      expect(result.kind).toBe('legacy_orphan');
+      await expect(command.classifyExisting(legacy.provenance)).resolves.toBe('legacy_orphan');
+      await expect(counts(pool)).resolves.toEqual({
+        receptions: 1,
+        auditEvents: 0,
+        outboxIntents: 1,
+      });
+    });
+  });
+
   it('enforces the outbox mutation discipline: no delete, only the single pending -> delivered transition', async () => {
     await withMigratedSchema(async (pool) => {
       await seedPatient(pool, commandPatient);

@@ -60,6 +60,7 @@ import {
   isReceptionOutboxAppendError,
   type ReceptionCreateCommand,
   type ReceptionCreateExecuteResult,
+  type ReceptionExistingClassification,
 } from './reception-command.js';
 import {
   InMemoryPatientRepository,
@@ -99,6 +100,7 @@ export const patientLookupRepositoryErrorMessage = 'Patient repository lookup fa
 export const receptionInvalidRequestErrorCode = RECEPTION_INVALID_REQUEST_ERROR_CODE;
 export const receptionPatientNotFoundErrorCode = RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE;
 export const receptionIdempotencyConflictErrorCode = RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE;
+export const receptionReconciliationHeaderName = 'x-yrese-reconciliation';
 export const receptionPatientIdentityMismatchErrorMessage =
   'Patient lookup returned a mismatched patient identity';
 export const receptionPatientSchemaInvariantErrorMessage =
@@ -1262,12 +1264,20 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       // outbox intent の有無で existing_complete / legacy_orphan へ分類する。
       // legacy_orphan は照合証跡であり、元の actor / 時刻を捏造する修復はしない
       // (wire 応答は既存契約どおり 200 のまま)。
+      // 分類結果は応答 header で照合証跡として表面化する(WP-4050 HIGH-1)。
+      // 値は固定語のみで PHI を含まない。
+      let reconciliation: ReceptionExistingClassification | undefined;
       if (resultKind === 'existing') {
         try {
-          await receptionCreateCommand.classifyExisting(validatedProvenance);
+          reconciliation = await receptionCreateCommand.classifyExisting(validatedProvenance);
         } catch {
           throw new Error(receptionCreateRepositoryErrorMessage);
         }
+      } else if (resultKind === 'legacy_orphan') {
+        reconciliation = 'legacy_orphan';
+      }
+      if (reconciliation === 'legacy_orphan') {
+        void reply.header(receptionReconciliationHeaderName, 'legacy_orphan');
       }
 
       // 監査証跡(who/when/what)。冪等再送(existing 系)では二重記録しない。

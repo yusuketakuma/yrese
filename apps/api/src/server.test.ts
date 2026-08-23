@@ -22,10 +22,11 @@ import {
   type PatientSearchCursorCodec,
 } from './patient-search-cursor.js';
 import type { PatientRepository } from './patient-repository.js';
-import type {
-  ReceptionCreateInput,
-  ReceptionCreateResult,
-  ReceptionRepository,
+import {
+  InMemoryReceptionRepository,
+  type ReceptionCreateInput,
+  type ReceptionCreateResult,
+  type ReceptionRepository,
 } from './reception-repository.js';
 import { InMemoryAuditRepository, type AuditRepository } from './audit-repository.js';
 import {
@@ -3340,6 +3341,66 @@ describe('buildServer', () => {
       errorCode: receptionInvalidRequestErrorCode,
       message: 'Invalid reception request',
     });
+  });
+
+  it('surfaces a legacy orphan reception on idempotent resend without inventing audit evidence (WP-4050 HIGH-1)', async () => {
+    const acceptedAt = new Date('2026-07-09T09:00:00.000Z');
+    const receptionRepository = new InMemoryReceptionRepository();
+    const auditRepository = new InMemoryAuditRepository();
+    const server = buildDevTestServer({
+      now: () => acceptedAt,
+      receptionRepository,
+      auditRepository,
+    });
+
+    const created = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: { patientId: 'patient-syn-004', idempotencyKey: 'reception-orphan-complete' },
+    });
+    expect(created.statusCode).toBe(201);
+    const auditCountAfterCreate = (await auditRepository.list({
+      tenantId: tenantId('tenant-001'),
+      pharmacyId: pharmacyId('pharmacy-001'),
+    })).length;
+
+    // 境界導入前の受付を模す: リポジトリ直接 create(監査・outbox なし)。
+    const legacy = await receptionRepository.create({
+      tenantId: tenantId('tenant-001'),
+      pharmacyId: pharmacyId('pharmacy-001'),
+      patient: created.json().patient,
+      idempotencyKey: 'reception-orphan-legacy',
+      acceptedAt,
+    });
+    expect(legacy.kind).toBe('created');
+
+    const completeResend = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: { patientId: 'patient-syn-004', idempotencyKey: 'reception-orphan-complete' },
+    });
+    const orphanResend = await server.inject({
+      method: 'POST',
+      url: '/reception',
+      headers: tenantOneReceptionWriteHeaders,
+      payload: { patientId: 'patient-syn-004', idempotencyKey: 'reception-orphan-legacy' },
+    });
+    const auditCountAfterResends = (await auditRepository.list({
+      tenantId: tenantId('tenant-001'),
+      pharmacyId: pharmacyId('pharmacy-001'),
+    })).length;
+    await server.close();
+
+    expect(completeResend.statusCode).toBe(200);
+    expect(completeResend.headers).not.toHaveProperty('x-yrese-reconciliation');
+    expect(orphanResend.statusCode).toBe(200);
+    expect(orphanResend.headers['x-yrese-reconciliation']).toBe('legacy_orphan');
+    expect(orphanResend.headers['cache-control']).toBe('no-store');
+    expect(orphanResend.json()).not.toHaveProperty('provenance');
+    // 元の actor / 時刻を捏造した修復をしない: 再送で監査は増えない。
+    expect(auditCountAfterResends).toBe(auditCountAfterCreate);
   });
 
   it('creates a reception entry with patient summary and no-store response', async () => {

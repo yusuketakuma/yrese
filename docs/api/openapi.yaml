@@ -94,7 +94,7 @@ paths:
         "200":
           description: Patient search results
           headers: &a1
-            Cache-Control:
+            Cache-Control: &a2
               description: Always `no-store` on this PHI-bearing route — applied to every status including errors.
               schema:
                 type: string
@@ -241,8 +241,18 @@ paths:
               $ref: "#/components/schemas/ReceptionCreateRequest"
       responses:
         "200":
-          description: Idempotent resend returned the existing reception entry
-          headers: *a1
+          description: "Idempotent resend returned the existing reception entry. When the stored reception has no complete
+            audit/outbox evidence (a reception created before the atomic command boundary, or a dangling outbox intent),
+            the response carries `X-Yrese-Reconciliation: legacy_orphan` as reconciliation evidence; the server never
+            fabricates the original actor or timestamp."
+          headers:
+            Cache-Control: *a2
+            X-Yrese-Reconciliation:
+              description: Present only when the existing reception lacks complete audit/outbox evidence. Fixed vocabulary, no PHI.
+              schema:
+                type: string
+                enum:
+                  - legacy_orphan
           content:
             application/json:
               schema:

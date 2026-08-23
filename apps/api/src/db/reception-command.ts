@@ -33,6 +33,22 @@ import {
  * 触れないため、循環待ちは生じない。
  */
 
+/**
+ * 既存受付の完全性判定(WP-4050 HIGH-2): outbox intent が存在し、かつ
+ * その audit_event_id が同一 tenant/pharmacy の audit_events に実在して初めて
+ * existing_complete とする。intent だけが残る dangling 状態は legacy_orphan。
+ */
+const receptionEvidenceCompleteSql = `SELECT EXISTS (
+     SELECT 1
+       FROM outbox_events o
+       JOIN audit_events a
+         ON a.tenant_id = o.tenant_id
+        AND a.pharmacy_id = o.pharmacy_id
+        AND a.event_id = o.audit_event_id
+      WHERE o.tenant_id = $1 AND o.pharmacy_id = $2
+        AND o.aggregate_type = $3 AND o.aggregate_id = $4 AND o.event_type = $5
+   ) AS exists`;
+
 export interface PostgresReceptionCommandFaultInjection {
   /** テスト専用の故障注入点(監査追記直前)。本番構成では未指定。 */
   readonly beforeAuditAppend?: () => void;
@@ -65,11 +81,7 @@ export class PostgresReceptionCreateCommand implements ReceptionCreateCommand {
 
       if (result.kind === 'existing') {
         const intentExists = await client.query<{ exists: boolean }>(
-          `SELECT EXISTS (
-             SELECT 1 FROM outbox_events
-              WHERE tenant_id = $1 AND pharmacy_id = $2
-                AND aggregate_type = $3 AND aggregate_id = $4 AND event_type = $5
-           ) AS exists`,
+          receptionEvidenceCompleteSql,
           [
             scope.tenantId,
             scope.pharmacyId,
@@ -206,11 +218,7 @@ export class PostgresReceptionCreateCommand implements ReceptionCreateCommand {
     provenance: ReceptionCreateProvenance,
   ): Promise<ReceptionExistingClassification> {
     const intentExists = await this.pool.query<{ exists: boolean }>(
-      `SELECT EXISTS (
-         SELECT 1 FROM outbox_events
-          WHERE tenant_id = $1 AND pharmacy_id = $2
-            AND aggregate_type = $3 AND aggregate_id = $4 AND event_type = $5
-       ) AS exists`,
+      receptionEvidenceCompleteSql,
       [
         provenance.tenantId,
         provenance.pharmacyId,
