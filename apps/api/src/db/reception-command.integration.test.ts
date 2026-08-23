@@ -429,6 +429,32 @@ describePostgres('PostgresReceptionCreateCommand (WP-4050 atomic boundary)', () 
     });
   });
 
+  it('lists legacy orphans for operator reconciliation without repairing them (checker MEDIUM-2)', async () => {
+    await withMigratedSchema(async (pool) => {
+      await seedPatient(pool, commandPatient);
+      const command = buildCommand(pool);
+      const complete = await command.execute(commandInput({ idempotencyKey: 'cmd-int-key-complete' }));
+      const legacy = await new PostgresReceptionRepository(pool).create({
+        ...scope,
+        patient: commandPatient,
+        idempotencyKey: 'cmd-int-key-orphan',
+        acceptedAt: new Date('2026-07-30T00:31:00.000Z'),
+      });
+      if (complete.kind !== 'created' || legacy.kind !== 'created') {
+        throw new Error('unreachable');
+      }
+
+      await expect(command.listLegacyOrphans(scope)).resolves.toEqual([
+        { receptionId: legacy.provenance.receptionId, acceptedAt: '2026-07-30T00:31:00.000Z' },
+      ]);
+      // 別 tenant からは見えない。
+      await expect(
+        command.listLegacyOrphans({ tenantId: 'tenant-other', pharmacyId: scope.pharmacyId }),
+      ).resolves.toEqual([]);
+      await expect(counts(pool)).resolves.toEqual({ receptions: 2, auditEvents: 1, outboxIntents: 1 });
+    });
+  });
+
   it('enforces the outbox mutation discipline: no delete, only the single pending -> delivered transition', async () => {
     await withMigratedSchema(async (pool) => {
       await seedPatient(pool, commandPatient);

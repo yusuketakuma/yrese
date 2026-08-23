@@ -218,6 +218,40 @@ export class PostgresReceptionCreateCommand implements ReceptionCreateCommand {
     // no-op
   }
 
+  /**
+   * 監査/outbox 証跡を欠く受付(legacy orphan)を tenant/pharmacy 単位で列挙する
+   * (checker MEDIUM-2: 再送依存でない運用照合経路)。識別子のみを返し、修復はしない。
+   */
+  async listLegacyOrphans(scope: {
+    readonly tenantId: string;
+    readonly pharmacyId: string;
+  }): Promise<readonly { readonly receptionId: string; readonly acceptedAt: string }[]> {
+    const result = await this.pool.query<{ reception_id: string; accepted_at: Date }>(
+      `SELECT r.reception_id, r.accepted_at
+         FROM reception_entries r
+        WHERE r.tenant_id = $1 AND r.pharmacy_id = $2
+          AND NOT EXISTS (
+            SELECT 1
+              FROM outbox_events o
+              JOIN audit_events a
+                ON a.tenant_id = o.tenant_id AND a.pharmacy_id = o.pharmacy_id
+               AND a.event_id = o.audit_event_id
+               AND a.event_body->>'auditEventType' = o.event_type
+               AND a.event_body->'targetRef'->>'kind' = o.aggregate_type
+               AND a.event_body->'targetRef'->>'id' = o.aggregate_id
+             WHERE o.tenant_id = r.tenant_id AND o.pharmacy_id = r.pharmacy_id
+               AND o.aggregate_type = $3 AND o.aggregate_id = r.reception_id
+               AND o.event_type = $4
+          )
+        ORDER BY r.accepted_at, r.reception_id`,
+      [scope.tenantId, scope.pharmacyId, receptionCommandAggregateType, receptionCommandAuditEventType],
+    );
+    return result.rows.map((row) => ({
+      receptionId: row.reception_id,
+      acceptedAt: row.accepted_at.toISOString(),
+    }));
+  }
+
   async classifyExisting(
     provenance: ReceptionCreateProvenance,
   ): Promise<ReceptionExistingClassification> {
