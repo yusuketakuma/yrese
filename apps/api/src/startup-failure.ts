@@ -103,13 +103,16 @@ export async function handleStartupFailure(
   input: HandleStartupFailureInput,
 ): Promise<StartupFailureResult> {
   const reporterErrors: unknown[] = [];
-  input.setExitCode(1);
+  const reportSafely = (message: string): void => {
+    try {
+      input.report(message);
+    } catch (error) {
+      reporterErrors.push(error);
+    }
+  };
 
-  try {
-    input.report(apiStartupFailureMessage);
-  } catch (error) {
-    reporterErrors.push(error);
-  }
+  input.setExitCode(1);
+  reportSafely(apiStartupFailureMessage);
 
   let cleanupFailure:
     | {
@@ -119,21 +122,13 @@ export async function handleStartupFailure(
     | undefined;
   if (input.priorCleanupFailure !== undefined) {
     cleanupFailure = input.priorCleanupFailure;
-    try {
-      input.report(apiStartupPoolCleanupFailureMessage);
-    } catch (reporterError) {
-      reporterErrors.push(reporterError);
-    }
+    reportSafely(apiStartupPoolCleanupFailureMessage);
   } else if (input.server !== undefined) {
     try {
       await input.server.close();
     } catch (error) {
       cleanupFailure = { stage: 'server', error };
-      try {
-        input.report(apiStartupCleanupFailureMessage);
-      } catch (reporterError) {
-        reporterErrors.push(reporterError);
-      }
+      reportSafely(apiStartupCleanupFailureMessage);
     }
   }
 
