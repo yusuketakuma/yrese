@@ -33,10 +33,17 @@ open_questions:
   - 資格確認端末経由(薬局内 PC)と API 経由のどちらを主経路にするかは ONS 仕様入手後に決める
   - 薬剤情報・特定健診情報の閲覧同意フローを yrese UI で扱うか端末側に委ねるかは privacy review 論点
   - 災害時モード(資格確認不能時の特例取扱い)の制度条件は REG-003 で確認する
+  - 代理人・法定代理人による同意、未成年、意思能力を欠く場合の扱い(legal review)
+  - 同意の有効期間と再取得契機
+  - 撤回の伝播先(画面キャッシュ、印刷済み帳票、生成済み export、配送済み/DLQ の event)
+  - 同意記録自体の保持期間
+  - 同意取得主体(資格確認端末側か yrese UI か)
 blockers:
   - BLOCKED_REGULATORY_REVIEW: RB-002(オン資外部 IF 仕様未入手)・RB-003(電子処方箋)・RB-005(PMH)が解除されるまで外部接続コードを書かない
   - BLOCKED_OFFICIAL_ADAPTER_SPEC: ADP-001 共通
   - BLOCKED_PRIVACY_REVIEW: 閲覧同意・監査・保持の privacy review 完了まで薬剤情報/特定健診情報の取込を実装しない
+  - BLOCKED_LEGAL_REVIEW: 代理人・未成年・意思能力の同意取扱い
+  - BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT: eligibility.* および consent.* 監査種別
 ```
 
 ## 1. 目的と範囲
@@ -58,7 +65,7 @@ blockers:
 | EligibilitySnapshot(資格確認スナップショット) | ある時点で外部システムまたは券面から確認した資格情報の不変記録 | append-only。訂正は新 snapshot。元の actor / 時刻 / 確認方式を後から変更しない |
 | verified_method | `MYNA_ONLINE`(マイナ保険証でオンライン確認)/ `CARD_ONLINE`(被保険者証番号でオンライン確認)/ `CARD_VISUAL`(券面目視、オンライン不能時)/ `NONE` | `NONE` は snapshot ではなく「未確認」状態 |
 | 資格内容 | 保険者番号・記号番号・枝番・負担割合・限度額適用区分・有効期間・公費(受給者証)情報 | 項目名は DOM-002 / DOM-005 の canonical model に従い、公式 IF 入手後に写像表を追加 |
-| 外部応答原本 | 外部システムの応答を未加工で保存した記録 | PHI classification 付与・暗号化・監査。yrese は内容を解釈して書き換えない |
+| 外部応答原本 | 資格確認応答を未加工で保存した記録 | PHI classification 付与・暗号化・監査。yrese は内容を解釈して書き換えない。**§5 の薬剤情報・特定健診情報・診療情報の閲覧応答は外部応答原本として保存しない**(表示のみ。保存対象は表示事実と範囲の監査) |
 | 閲覧同意記録 | 薬剤情報・特定健診情報・診療情報の閲覧に対する患者同意 | 同意の範囲・時刻・取得経路・撤回を監査。同意なき閲覧は拒否 |
 
 ## 3. 受付の資格状態機械(`reception_entries.eligibility_status` の置換)
@@ -78,7 +85,7 @@ OFFLINE_PROVISIONAL / PROVISIONAL_VISUAL ──(再確認失敗)──▶ MISMAT
 - 算定の確定(`allowsFinalCalculation`)と請求データ生成は `VERIFIED_*` だけを許す。
   `PROVISIONAL_*` / `OFFLINE_PROVISIONAL` は仮算定のみ、`UNVERIFIED` / `EXPIRED` /
   `MISMATCH` は `MANUAL_REVIEW_REQUIRED` で停止する(CAL-007、CLM-001 工程 6)。
-- 遷移は全て監査 event を伴う(MOD-008 に `eligibility.*` 種別を追加する改版が必要)。
+- 遷移は全て監査 event を伴う(MOD-008 に `eligibility.*` 種別を追加する改版が前提 — `BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT`)。同意の状態(未取得 / 取得 / 撤回)は資格状態とは別の evidence として snapshot に紐づけ、「同意不明」は未取得として扱う。
 - 状態は snapshot から導出し、受付行に結果だけを複製する場合も snapshot_id を必ず持つ。
 - 患者同一性(氏名・生年月日・性別)の照合結果は資格確認結果とは別の evidence とし、
   一致しない場合に弱属性で自動統合しない(DEVELOPMENT_POLICY.md §6)。

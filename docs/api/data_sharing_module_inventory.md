@@ -42,8 +42,9 @@ blockers:
 | module | 方向 | 相手 | 形式 | 所有 package | 状態 | WP |
 |---|---|---|---|---|---|---|
 | outbox intent | 内部 | — | DB | apps/api | 実装済(配送 worker なし) | WP-4050 |
-| outbox delivery worker | out | partner | webhook | apps/api(新) | 未実装 | WP-6003 |
-| Event Catalog schema | out | partner | JSON Schema | packages/contracts | 未実装 | WP-6004 |
+| outbox delivery worker | out | partner | sink 注入 | apps/api/src/db/outbox-delivery.ts | 実装済(独立レビュー finding 閉鎖) | WP-6003 |
+| Event Catalog schema | out | partner | zod / JSON Schema | packages/contracts/src/partner-event.ts | 実装済(`reception.created`) | WP-6004 |
+| webhook sink(HMAC 署名) | out | partner | HTTPS POST | apps/api/src/webhook-partner-sink.ts | 実装済(registry 配線・key-id・rotation 未) | WP-6005 |
 | Partner Registry | — | partner | DB/API | apps/api(新) | 未実装 | WP-6006 |
 | Inbox | in | partner | JSON | apps/api(新) | 未実装 | WP-6008 |
 | FHIR facade(Patient/MR) | out(read) / in(MR create) | partner | FHIR R4 JP Core | apps/api(新)/ packages/fhir(新) | 未実装 | WP-6105/6106 |

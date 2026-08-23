@@ -32,6 +32,7 @@ open_questions:
   - FHIR SMART scope 記法(`patient/*.read` 等)を partner scope に採用するかは API-008 の facade 実装時に決める
 blockers:
   - BLOCKED_SECURITY_REVIEW: scope と内部 permission の写像は security review まで実装しない
+  - BLOCKED_PRIVACY_REVIEW: direct_identifier / clinical / all 分類の scope を第三者へ発行する前に privacy review を要する
 ```
 
 ## 1. 目的
@@ -42,19 +43,19 @@ partner に与える権限を **scope** として列挙し、内部 permission(M
 
 | scope | 内容 | PHI classification | 写像先(MOD-007) |
 |---|---|---|---|
-| `events:subscribe` | Event Catalog の event を webhook 購読 | none(識別子のみ) | — |
+| `events:subscribe:<event_type>` | Event Catalog の当該 event だけを webhook 購読(種別ごと。包括購読なし) | 当該 event の分類 | — |
 | `patient:read` | Patient projection / FHIR Patient read | direct_identifier | patient:read |
 | `medication-request:read` | MedicationRequest projection read | clinical | prescription:read |
 | `medication-request:write` | Inbox 経由の MedicationRequest 提出(単一 writer 前提) | clinical | prescription:write |
-| `medication-dispense:read` | 確認済み調剤の read(WP-6109 後) | clinical | dispense:read |
-| `yakureki:report` | 薬歴未記載チェック結果の提出(WP-6401) | clinical | — |
-| `audit-result:submit` | 処方監査結果の未加工提出(WP-6402) | clinical | — |
-| `inventory:read` | 在庫向け read-only projection(WP-6403) | none | — |
-| `export:tenant` | tenant 自身の data portability export(API-016) | all | tenant:export |
+| `medication-dispense:read` | 確認済み調剤の read(WP-6109 後) | clinical | dispensing:read |
+| `yakureki:report` | 薬歴未記載チェック結果の提出(WP-6401) | clinical | prescription:write(MOD-007 改版で専用 resource を検討) |
+| `audit-result:submit` | 処方監査結果の未加工提出(WP-6402) | clinical | prescription:write(同上) |
+| `inventory:read` | 在庫向け read-only projection(WP-6403) | none | dispensing:read(患者識別子を含まない projection に限定) |
+| `export:tenant` | tenant 自身の data portability export(API-016) | all | tenant:admin(`export` action は MOD-007 に無く、改版依存) |
 
 ## 3. 規則
 
-- scope は `<resource>:<action>` 形式、小文字、ワイルドカード禁止。
+- scope は `<resource>:<action>` 形式(event 購読は `events:subscribe:<event_type>`)、小文字、ワイルドカード禁止。写像先の MOD-007 resource/action に無い名称(`export` 等)は MOD-007 改版まで発行しない。
 - 付与は PartnerGrant(API-010)単位で tenant/pharmacy ごとに行う。
 - 403 応答は scope 名を漏らさない(WP-9008 の error contract に従い `AUTH-0003`)。
 - scope の追加・意味変更は本 SSOT の改版を要する。

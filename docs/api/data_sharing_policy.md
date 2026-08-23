@@ -32,6 +32,7 @@ open_questions: []
 blockers:
   - BLOCKED_PRIVACY_REVIEW: 第三者提供・委託・本人同意の法的整理(個人情報保護法・医療ガイダンス)は privacy/legal review 後に確定
   - BLOCKED_LEGAL_REVIEW
+  - BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT: consent.* 監査種別
 ```
 
 ## 1. 原則
@@ -40,12 +41,13 @@ blockers:
 - data minimization: event は識別子のみ、本文は scope 付き read。read 応答も要求 scope の分類を超えない。
 - 本人同意が必要な共有(マイナ保険証経由の薬剤情報・特定健診情報の閲覧、患者アプリ連携等)は同意記録を前提とし、同意の有無・範囲・撤回を監査する(WP-6305)。
 - 共有先での二次利用・再共有は契約で禁止し、契約のない partner を `ACTIVE` にしない。
+- 共有ごとに共有先での保持上限と、撤回時の停止範囲(以後の read/配送停止・DLQ 破棄・共有先への削除要請)を定義に含める。同意記録・撤回の監査は `consent.*` 種別の MOD-008 登録が前提。
 
 ## 2. 共有クラス(候補)
 
 | クラス | 例 | 法的根拠の候補(privacy review で確定) | 同意 |
 |---|---|---|---|
-| 委託(処理の外部化) | 電子薬歴 SaaS、処方監査 API | 委託契約 | 不要(委託先監督) |
+| 委託(処理の外部化) | 電子薬歴 SaaS、処方監査 API | 委託契約 | 不要(委託先監督)※要配慮個人情報の取得局面の同意とは別問題。privacy review 論点 |
 | 第三者提供 | 医療機関へのトレーシングレポート | 本人同意 or 法令 | 要 |
 | 本人提供 | 電子版お薬手帳 export、患者 export | 本人の求め | 本人操作 |
 | 公的基盤 | オン資・電子処方箋・PMH | 法令・制度 | 制度に従う |

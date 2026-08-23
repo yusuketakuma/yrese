@@ -32,6 +32,7 @@ open_questions: []
 blockers:
   - BLOCKED_SECURITY_REVIEW: credential 発行・保管・rotation の方式承認まで partner 登録 API を公開しない
   - BLOCKED_LEGAL_REVIEW: partner 利用規約・データ共有契約の法務確認
+  - BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT: partner.* 監査種別の MOD-008 登録まで partner 操作を production で行わない
 ```
 
 ## 1. 目的
@@ -43,15 +44,15 @@ yrese に接続する外部システム(電子薬歴、処方監査、在庫・�
 | 概念 | 説明 | 不変条件 |
 |---|---|---|
 | Partner | 法人・製品単位の相手方。`partner_id` は tenant 横断で一意 | 削除しない。`RETIRED` へ遷移 |
-| PartnerApp | partner が持つ client(OAuth2 client / mTLS 証明書主体)。複数可 | credential は app 単位。app 停止で即時全経路停止 |
+| PartnerApp | partner が持つ client(OAuth2 client / mTLS 証明書主体)。複数可 | credential は **(partner, tenant, pharmacy) に固定して発行**し、1 credential が複数 tenant の grant を持つ構成を禁止する。tenant は credential から一意に決まり、request body/query の tenant は一切参照しない(SEC-006)。app 停止で即時全経路停止 |
 | PartnerGrant | tenant / pharmacy が partner app に与える scope の集合 | tenant/pharmacy ごとに明示付与。既定はゼロ |
-| DeliveryEndpoint | webhook 受信 URL と署名鍵 | HTTPS 必須、鍵は rotation 対応(API-012) |
+| DeliveryEndpoint | webhook 受信 URL と署名鍵 | HTTPS 必須。登録時と配送時に宛先を検証: 公開 IP のみ(private / loopback / link-local / cloud metadata アドレスを拒否)、DNS 再解決後も同条件、リダイレクト非追従、ポートは 443 のみ(SSRF 統制)。宛先の所在国を登録し、SEC-004 §4(越境移転なし)との整合確認を `ACTIVE` 化の前提とする。署名鍵は secret store に保管し、API 応答・log・export に出さない。endpoint 変更時は所有権再検証(challenge)を経て再 `ACTIVE` 化。鍵は rotation 対応(API-012) |
 
 状態: `DRAFT → ACTIVE → SUSPENDED → RETIRED`。`SUSPENDED` / `RETIRED` は配送・受信・read すべてを fail-closed で停止する。
 
 ## 3. 登録・変更の gate
 
-- partner 登録、scope 付与、endpoint 変更、credential rotation はすべて監査対象(MOD-008 に `partner.*` 種別を追加)。
+- partner 登録、scope 付与、endpoint 変更、credential rotation はすべて監査対象(MOD-008 に `partner.*` 種別を追加する改版が前提 — `BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT`)。
 - tenant/pharmacy の管理者ロール(MOD-007)だけが自 tenant の PartnerGrant を変更できる。yrese 運用者は partner 自体の登録を行うが、tenant の PHI へのアクセスを付与しない。
 - 本番 partner の `ACTIVE` 化は Sandbox(API-014)で contract test(API-015)に合格した app だけを対象とする。
 

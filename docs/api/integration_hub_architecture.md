@@ -33,6 +33,7 @@ open_questions:
 blockers:
   - BLOCKED_SECURITY_REVIEW: partner 認証(OAuth2 Client Credentials / mTLS)の設計承認まで partner 向け endpoint を公開しない
   - BLOCKED_WRITE_PRODUCER_PREREQUISITES: Inbox 経由の書込みは DOM-005 / API-008 の単一 writer 前提が満たされるまで受け付けない
+  - BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT: Hub 操作・配送・同意・export/import の監査種別を MOD-008 へ登録するまで production で動かさない
 ```
 
 ## 1. 目的

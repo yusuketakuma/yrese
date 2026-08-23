@@ -31,6 +31,7 @@ change_log:
 open_questions: []
 blockers:
   - BLOCKED_SECURITY_REVIEW: sandbox と production の network / credential 分離の承認
+  - BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT: sandbox reset・partner 閲覧の監査種別
 ```
 
 ## 1. 目的
@@ -39,11 +40,11 @@ partner が本番 PHI に一切触れずに接続仕様を検証できる環境�
 
 ## 2. 要件
 
-- 専用 synthetic tenant / pharmacy。fixture は MOD-013 の合成データのみ。本番データの複製・匿名化データの持込みを禁止する(機械検証: fixture の PHI classification が `none` 以外なら seed を拒否)。
+- 専用 synthetic tenant / pharmacy。fixture は MOD-013 の合成データのみ。本番データの複製・匿名化データの持込みを禁止する(機械検証: fixture の PHI classification が `none` 以外なら seed を拒否 — MOD-013 §4 の fixtures PHI scan 整備後に有効。整備までは seed を人手 review で止める)。
 - production と credential、鍵、network、DB を共有しない。
 - 同一 contract(`packages/contracts` の同一版)で動作し、挙動差を作らない。挙動差が必要な場合(外部サービス stub)は stub であることを応答 header で明示する。
-- sandbox の監査ログは production と分離し、partner が自 app の監査を閲覧できる。
-- リセット可能。リセットは監査される。
+- sandbox の監査ログは production と分離し、partner が自 app の監査を閲覧できる(SEC-007 アクセス制御表への partner 行追加を要する。閲覧自体を `audit.viewed` で監査)。
+- リセット可能。リセットは監査される(`sandbox.reset` 種別の MOD-008 登録が前提)。
 
 ## 3. 外部サービス stub
 

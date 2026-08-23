@@ -53,6 +53,8 @@ export type ReceptionCreatedPartnerEvent = z.infer<typeof receptionCreatedPartne
 /** 公開 event に含めてはならない key(テストと投影で機械検証する)。 */
 export const PARTNER_EVENT_FORBIDDEN_KEYS = [
   "patientId",
+  "patientRef",
+  "patient_ref",
   "name",
   "kana",
   "birthDate",

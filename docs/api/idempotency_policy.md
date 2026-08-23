@@ -31,6 +31,7 @@ change_log:
 open_questions: []
 blockers:
   - BLOCKED_WRITE_PRODUCER_PREREQUISITES: Inbox 書込み経路の冪等は単一 writer 前提の解除後に実装する
+  - BLOCKED_AUDIT_PAYLOAD_RETENTION_POLICY: key と応答 fingerprint の保持期間は retention policy 確定まで未定
 ```
 
 ## 1. 原則(DEVELOPMENT_POLICY.md §6 を横断規則化)
@@ -39,6 +40,8 @@ blockers:
 - update / correction は **`If-Match`(expected version)** を必須とし、retryable なら `Idempotency-Key` も持つ。
 - 同一 key + 同一 body fingerprint → 初回と同じ応答(201/200 等価)。同一 key + 異なる body → `409` conflict。key 不在 → `400`。
 - key の scope は `(tenant, pharmacy, partner_or_actor, operation)`。partner 間で key 空間を共有しない。
+- `Idempotency-Key` は opaque とし `[A-Za-z0-9_-]{16,128}` で検証する。非適合は `400`。key と応答 fingerprint を log・metric label・raw error に出さない(PHI を key に入れる client を構造的に拒否する)。
+- 保存する応答は元 resource と同じ PHI classification・暗号化・tenant scope を継承する(応答再生は PHI キャッシュである)。
 
 ## 2. 適用面
 
