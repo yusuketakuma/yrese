@@ -337,10 +337,8 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
   `42ef15c`+`bf17cea` へ COMMITTED_LOCAL だが、独立レビューが未取得であり
   (`independence_not_satisfied` ×2)、codex lane 復帰(2026-08-05)後の
   再レビューが残存 gate である。
-- **WP-4050 HIGH-3 — `outbox_events` 外部キー migration(DDL)。** SQL 案は §4
-  WP-4050 に記載。適用は synthetic/local を含め human approval 後。
-- **JP Core package 再取得(WP-6101)。** external egress(`https://jpfhir.jp`)が
-  runtime policy で未承認。承認後に SHA-256 を再現し SRC-FHIR-007 を VERIFIED へ。
+- **WP-4050 HIGH-3** — 2026-08-23 human approval により migrations/000007 へ landing。production/staging は存在せず、適用先の出現時に runbook(dangling 行の棚卸し→reconciliation evidence→専用 forward migration)を要する。
+- **JP Core package 再取得(WP-6101)。** external egress は harness の hard floor で agent から実行不可。ユーザー端末での取得コマンド実行待ち(会話に提示済み)。再現後に SRC-FHIR-007 を VERIFIED へ。
 - **`BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b)。** 実行仕様は下に確定済み。
 - migration application、production write、deploy、external send、pilot、
   standards-conformance 主張、release 判断のすべて。
@@ -1450,7 +1448,12 @@ release gate 群。§11 の既知 blocker を作業項目化した index であ�
 | WP-6202/6203 | 版不整合(Ver.1.10→1.11)を ADP-001/REG-001/REG-002 で訂正、JHS-001〜008 を 23 field 補完・0.1.1。全件 PROPOSED | `f5c0771` |
 | WP-6302 | ADP-004 `online_qualification_boundary.md` 骨子を PROPOSED 起案 | `30a2957` |
 | WP-4050 review | REQUEST_CHANGES → HIGH-1/2 修正 `28fd62e` → checker **PASS**(新規 HIGH なし)→ 残課題 MEDIUM-1/LOW-2 を `273c66e` で閉鎖。HIGH-3 FK は DDL gate、MEDIUM-2(orphan の運用照合経路)は §8 候補 | `df2b628` |
-| WP-6003 | **COMMITTED_LOCAL** `3c0c1fa` — `PostgresOutboxDeliveryWorker`(sink 注入、1 行 1 tx、at-least-once、aggregate 順序、SKIP LOCKED)。統合テスト 3 本 PASS(local PostgreSQL 18)。独立レビュー未取得。main.ts への常駐配線と partner sink は WP-6005 | `3c0c1fa` |
+| WP-6003 | `3c0c1fa` → 独立レビュー REQUEST_CHANGES(HIGH 1: 順序キー)→ `6f62b92` で全 finding 閉鎖(sequence_number、clock_timestamp、sink timeout、failures 報告、rowCount 検証、000007 書換え)。統合テスト 8 本 PASS | `6f62b92` |
+| WP-4050 HIGH-3 | **human approval 2026-08-23** → migrations/000007(FK NOT VALID+VALIDATE、aggregate_type CHECK、sequence_number、index)。local synthetic / CI のみ適用 | `425294a` `6f62b92` |
+| MEDIUM-2 | `listLegacyOrphans` 照合 query | `a20d8b9` |
+| WP-6004 | Event Catalog v0 `reception.created` schema(packages/contracts)+ outbox→partner 投影 | `2f1b592` |
+| WP-6005(最小形) | HMAC 署名 webhook sink(endpoint/secret 注入、registry 配線・key-id・rotation 未) | `1f2d45d` |
+| SSOT review | api-contract lane REQUEST_CHANGES(HIGH 4)/ security-privacy lane REQUEST_CHANGES(HIGH 6)→ 全 finding 閉鎖。**Inbox は clinical 書込み経路でなくなり FHIR facade の単一 producer を維持、`inventory:read` 削除、MOD-005 に blocker 5 種登録(code 同期)** | `28dae05` `f07e76e` |
 
 PROPOSED 化した SSOT(REG-001 / REG-002 / ADP-001 / ADP-004 / API-009〜018 / ADP-003 /
 JHS-001〜008)は PRC-007 §4 step 6(独立 review)と step 7(human approval)待ち。
