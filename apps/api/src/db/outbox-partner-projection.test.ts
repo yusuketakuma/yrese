@@ -17,6 +17,7 @@ const row: OutboxPendingEvent = Object.freeze({
   auditEventId: 'audit-0001',
   payload: { receptionId: 'reception-000001', patientId: 'patient-syn-004' },
   createdAt: '2026-08-23T00:00:00.000Z',
+  sequenceNumber: 1n,
 });
 
 describe('projectOutboxEventToPartnerEvent', () => {
