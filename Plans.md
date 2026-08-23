@@ -34,10 +34,10 @@
 | Field | Current evidence |
 |---|---|
 | Branch | `main` |
-| Local HEAD | `f91ae783df6314b7189ba3e422366ab9ff3b8559` |
-| Upstream divergence | `origin/main...HEAD = 0 behind / 7 ahead`(push未要求) |
-| Working tree | clean(2026-08-01 のグループ landing 後) |
-| Last update | 2026-08-01 JST |
+| Local HEAD | `0507c026a74f42570966451a1721592561f75a90` |
+| Upstream divergence | `origin/main...HEAD = 0 behind / 11 ahead`(push未要求) |
+| Working tree | `AGENTS.md` のみ modified(外部変更・本書の所有外。保全する) |
+| Last update | 2026-08-02 JST(§15 Candidate Work Inventory 追加。実装・検証・landing なし) |
 | Active Goal | なし。WIP 0 件で、次の claim は human gate 解除待ち |
 | Current critical path | Milestone 1 exit の残余 — WP-4050 の独立レビュー(codex lane 復帰 2026-08-05)と WP-4258 の final human SSOT approval |
 | Main blocker | WP-4050 の独立レビュー(2026-08-05 待ち)と `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) の DDL human gate |
@@ -1039,3 +1039,177 @@ version of this note; it remains NONCLAIMABLE history.
 | 起票 | P1 1 件(BUG-4260)、P2 3 件(BUG-4261 / BUG-4262 / BUG-4263)、P3 2 件(BUG-4264 / BUG-4265)。重複 1 件・Not a Bug 3 件を明示除外 |
 | 実装 | Active Batch = BUG-4260 / BUG-4261 / BUG-4262。BUG-4260 と BUG-4262 は `fe03cf0`、BUG-4261 は `6813750` へ COMMITTED_LOCAL。回帰テスト付き、独立レビュー未取得、push 未要求 |
 | 未解決 | `check:secrets` は `.codegraph` により exit 1 のまま(BUG-4263 の決定待ち)。リポジトリスコープ内容 450 ファイルのみの走査は `Secret scan passed.` を実測 |
+
+## 15. Candidate Work Inventory — 次期100項目(2026-08-02)
+
+> **来歴:** direct user instruction 2026-08-02(コミット履歴・本書・`State.md` の
+> 解析に基づく「次にすべき100項目」の抽出・記載指示)。抽出根拠は
+> `DEVELOPMENT_POLICY.md` §4 Milestones / §7 Core Logic Register、`State.md`
+> active snapshot の blocker 集合、本書 §3〜§11、および `f91ae78..0507c02` の
+> コミット履歴である。
+> **queue 規律:** 本節は inventory であり **READY slot を消費せず、登録は claim
+> ではない**(§8 冒頭と同じ扱い)。WIP=1 / READY≤2、human gate、登録済み blocker、
+> §6 NOT NOW、§11 release blockers を一切上書きしない。昇格は
+> `DEVELOPMENT_POLICY.md §8` work-selection に従い、READY 昇格時に個別の
+> Task Packet(scope / acceptance / stop / 検証)を確定してから claim する。
+> **blocker 名の正本は exact11 各文書の frontmatter `blockers`** であり、本節は
+> それを解除条件つき作業項目として指す index にとどめる(内容を複製しない)。
+> **凡例:** 【HG】= human gate 必須、【SSOT】= PRC-007 改版必須、
+> 【GATED】= 前提未成立、【REG】= 本書既登録項目への参照(重複起票ではない)。
+
+### 15.1 Milestone 1 完了残余 — 独立レビューと landing 後始末(C-001〜C-014)
+
+| # | 項目 | 前提 / Gate |
+|---|---|---|
+| C-001 | WP-4050 独立レビュー packet の再凍結(base SHA・diff hash・acceptance・検証結果。対象 `42ef15c`+`bf17cea`) | codex lane 復帰(2026-08-05) |
+| C-002 | WP-4050 独立レビュー実施と finding 解消(`independence_not_satisfied` ×2 の解消記録)【REG: §5】 | C-001 |
+| C-003 | BUG-4260 / BUG-4262(`fe03cf0`)の独立レビュー【REG: §8】 | codex lane 復帰 |
+| C-004 | BUG-4261(`6813750`)の独立レビュー【REG: §8】 | 同上 |
+| C-005 | BUG-4263(`bf0b402`)の独立レビュー — 「ignore 指示 = 非リポジトリ内容」前提 1 点の security posture 妥当性確認込み【REG: §8/§11】 | 同上 |
+| C-006 | WP-4256(`ab63db6`)の独立レビュー — 検知 4 変種の限界表の独立再現【REG: §4】 | 同上 |
+| C-007 | WP-4257(`a911a99`)の独立レビュー — 既存 4 文書修復の意味不変確認【REG: §4】 | 同上 |
+| C-008 | WP-9008(`2c84e66`)の独立レビュー【REG: §8】 | 同上 |
+| C-009 | WP-4236(`68e0d77`)の独立レビュー — migrations/000006 含む【REG: §8】 | 同上 |
+| C-010 | WP-4162(`02a3409`+`566f386`)の独立レビュー — MOD-008 v0.2.4 改版込み【REG: §8】 | 同上 |
+| C-011 | WP-4050 outbox intent profile(`f7eeb67` PROPOSED)の独立レビューと PRC-007 昇格【SSOT】【HG】 | C-002 |
+| C-012 | 2026-08-01 グループ landing の中間 commit 単体 gate 未検証(§12 注記)の扱い決定 record(再検証 or 受容) | — |
+| C-013 | push 判断(0 behind / 11 ahead)と、push 後の remote exact-head CI green 確認【HG: push は明示要求時のみ】 | C-002〜C-010 |
+| C-014 | Milestone 1 exit 総括判定 record — `DEVELOPMENT_POLICY.md §4` M1 exit criteria と evidence の突合 | C-002 / C-011 / C-015〜016 |
+
+### 15.2 Milestone 1 残バグ・調査・観測性(C-015〜C-022)
+
+| # | 項目 | 前提 / Gate |
+|---|---|---|
+| C-015 | `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) 手順1: 事前棚卸し SELECT(read-only、環境ごと記録)【REG: §5 実行仕様】 | `DATABASE_URL` のある環境 |
+| C-016 | 同 (b) 手順2: `CHECK (position('#' in col) = 0)` migration 起案と適用【HG: DDL】 | C-015 全 0 件 |
+| C-017 | BUG-4264 — created 経路 audit 時計の `snapshotWallClock` 規律化と in-memory 巻き戻し閉鎖(WP-4050 次スライスに同梱)【REG: §8 P3】【GATED】 | WP-4050 R3 gate |
+| C-018 | BUG-4265 — API logger の PHI-safe 出力境界設計(SEC 系 SSOT)【SSOT】【HG: security/privacy】【REG: §8 P3】 | — |
+| C-019 | BUG-4265 — Fastify logger 有効化実装+PHI sentinel テスト | C-018 APPROVED |
+| C-020 | INV-20260730-01 — reception queue の synthetic volume 測定【REG: §9】 | — |
+| C-021 | INV-20260730-01 — bound/pagination 決定 record と実装 Task Packet 起票 | C-020 |
+| C-022 | WP-4162 明示 defer 分 — deny(403)監査の SEC-007/SEC-008 設計反映【SSOT】 | — |
+
+### 15.3 Milestone 2 前提解除 — exact11 登録 blocker の解除作業(C-023〜C-042)
+
+いずれも WP-4250/4258 で APPROVED 済み SSOT が登録する blocker の解除作業であり、
+解除は該当 SSOT の改版(PRC-007)または approved evidence を要する。
+
+| # | 項目 | 前提 / Gate |
+|---|---|---|
+| C-023 | `BLOCKED_WRITE_PRODUCER_PREREQUISITES` — 解除ロードマップ record(前提の全列挙・順序・担当 gate) | — |
+| C-024 | `BLOCKED_PACKAGE_PROVENANCE` — JP Core 1.2.0 package artifact の `source_registry.md` 登録【SSOT】 | — |
+| C-025 | locked-profile validation の実行 evidence(WP-4157 系 FHIR toolchain の後続) | C-024 |
+| C-026 | `BLOCKED_MEDICATIONREQUEST_PRESCRIPTION_OWNERSHIP` — 紙処方 draft と MedicationRequest の所有境界 SSOT 起案【SSOT】 | — |
+| C-027 | `BLOCKED_RECEPTION_PATIENT_COMPATIBILITY` — 受付⇔Patient authority 互換規則の確定【SSOT】 | — |
+| C-028 | `BLOCKED_PATIENT_CREATE_UNIQUENESS` — Patient create の一意性・登録経路設計(cutover 後の集合閉鎖回避)【SSOT】 | — |
+| C-029 | `BLOCKED_PATIENT_IDENTITY_MUTATION` — identityDigest 構造 backstop の実装検証(cutover blocker) | — |
+| C-030 | `BLOCKED_LOOKUP_KEY_RETIREMENT` — 鍵退役の安全設計(clinical write enablement gate。漏えい鍵の撤回経路)【SSOT】【HG: security】 | — |
+| C-031 | `BLOCKED_POSTGRES_WRITER_FENCE_PRIMITIVE` — PostgreSQL 側 stop/drain 強制 primitive の設計 | — |
+| C-032 | `BLOCKED_WRITER_FENCE_TOKEN_ISSUANCE` — fence token 発行と自己保持強制の設計 | — |
+| C-033 | `BLOCKED_REPLAY_PERMANENT_FAILURE` — replay 恒久失敗 semantics の確定【SSOT】 | — |
+| C-034 | `BLOCKED_AUTH_RESPONSE_FAMILY_ALIGNMENT` — 位相依存 401/403/404/405 応答族の API/security 決定(WP-9008 と連続)【SSOT】【HG: security】 | — |
+| C-035 | `BLOCKED_AUDIT_PAYLOAD_EXTERNAL_STORE` — 監査 payload 外部ストア設計【SSOT】 | — |
+| C-036 | `BLOCKED_AUDIT_PAYLOAD_RETENTION_POLICY` — 保持ポリシー SSOT【SSOT】【HG: retention】 | — |
+| C-037 | `BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT` — MOD-008 への FHIR read/search/create/update/deny/failure 監査 mapping 登録【SSOT】 | — |
+| C-038 | `BLOCKED_PATIENT_SEARCH_URL_PHI` — 検索語の URL PHI 排除の決定と実装【SSOT】【HG: security/privacy】 | — |
+| C-039 | `BLOCKED_PATIENT_SEARCH_SCALE_BOUND` — patient search の有界化(cap/cursor) | C-038 と同一決定枠 |
+| C-040 | `BLOCKED_FHIR_SEARCH_SNAPSHOT_IMPLEMENTATION` — immutable index delta / as-of snapshot の証明計画(upper-watermark paging 拒否のまま) | — |
+| C-041 | `BLOCKED_RECUTOVER_DIVERGENCE_RESOLUTION` — rollback 窓の read-only 制約 or approved 反映経路の設計(re-cutover 用。初回 cutover は対象外)【SSOT】 | — |
+| C-042 | deny-burst の open-window 内検知経路(outbox 非依存)の SEC-007/SEC-008 起案(`State.md` filed 分)【SSOT】 | — |
+
+### 15.4 Milestone 2 実装 — bounded architecture proof(WP-4251 の分解、C-043〜C-055)
+
+全件【GATED】: WP-4251 label の解放(必要 blocker 解除+human gate)まで claim 不可。
+synthetic data 限定。migration 適用・production 行為は含まない。
+
+| # | 項目 | 前提 / Gate |
+|---|---|---|
+| C-043 | synthetic 検証環境の決定 record(DynamoDB Local 等。provisioning なしで proof を成立させる方式) | — |
+| C-044 | approved key codec の複合キー拡張実装(DynamoDB 側。WP-4256 検知規則と整合) | C-043 |
+| C-045 | Patient read-only shadow projection 実装(Postgres→FHIR、loss 全列挙) | C-043 |
+| C-046 | shadow parity 比較 harness(synthetic、mapping loss の可視化) | C-045 |
+| C-047 | authority state machine 実装(authorityEpoch 単調・遷移表・rollback 遷移)+網羅テスト | C-043 |
+| C-048 | cutover transaction 実装(PATIENTLINK 条件付き Put、hmacPatientId HKDF、冪等 re-run) | C-047 |
+| C-049 | set-equality epoch CAS 実装(membership+cardinality の二重証明) | C-048 |
+| C-050 | MedicationRequest create ingestion boundary 実装(stable idempotency key・request-byte fingerprint・全版 alias TWI) | C-023 解除 |
+| C-051 | Patient PUT の `If-Match` / `Idempotency-Key` 強制実装(400 required / 412 conflict) | C-050 |
+| C-052 | transaction budget preflight 実装(100 action targets / 4MiB / 400KB 超過 = 422、chunking なし) | C-050 |
+| C-053 | search index delta の keep-latest compaction 実装(`retentionExpiresAt` 条件付き TWI 削除、既定は削除しない) | C-040 |
+| C-054 | retention / corruption / concurrent-writer テスト群 | C-047〜C-053 |
+| C-055 | Milestone 2 exit proof — cross-tenant 否認・stale conflict・retry dedupe・単一 writer の contract/integration 証明と、不成立時の stop/reframe 判定 record | C-044〜C-054 |
+
+### 15.5 Milestone 3 — 薬剤師 vertical journey(WP-4252 の分解、C-056〜C-066)
+
+全件【GATED】: Milestone 2 exit まで claim 不可。synthetic data 限定。
+
+| # | 項目 | 前提 / Gate |
+|---|---|---|
+| C-056 | 紙処方 draft のドメインモデル/状態 SSOT 起案(provisional と pharmacist-confirmed の分離)【SSOT】 | C-026 |
+| C-057 | prescription draft の contract-first 契約設計(generated artifact / consumer 同期) | C-056 |
+| C-058 | prescription draft schema / forward migration 設計(適用は別 gate)【HG: migration apply】 | C-056 |
+| C-059 | reception → prescription draft の linkage 実装(WP-4050 コマンド境界と整合) | C-057 |
+| C-060 | draft 入力 API/Web 実装(synthetic) | C-057 |
+| C-061 | 薬剤師確認の actor/qualification boundary 実装(承認済み境界のみ)【HG: medical safety】 | C-084 |
+| C-062 | 訂正=新版追加の version history 実装(前版保存・上書き禁止) | C-058 |
+| C-063 | 確定操作の audit + transactional outbox evidence 接続 | C-059 |
+| C-064 | North Star synthetic E2E(browser/API 統合 scenario の全行程) | C-059〜C-063 |
+| C-065 | calculation / claims / JAHIS / PH-OS の fail-closed 可視化の総点検 | C-064 |
+| C-066 | 薬剤師 human safety/UX review(pilot 判断前)【HG】 | C-064 |
+
+### 15.6 UIUX 盤面刷新 pipeline の gate 進行(既登録 WP-5101〜5124、C-067〜C-082)
+
+全件【REG: §8 UIUX 節】。本節は順序 index のみ。
+
+| # | 項目 | 前提 / Gate |
+|---|---|---|
+| C-067 | WP-5101 — 13〜17号ドラフトの fresh-context 再チェックと human 内容判断(10 論点)【HG】 | — |
+| C-068 | WP-5102 — DOM-004 改版起案(2段分離)【SSOT】【HG: R3 相当】 | C-067 |
+| C-069 | WP-5103 — workflow-stage enum SSOT 昇格【SSOT】 | C-068 |
+| C-070 | WP-5104 — UIX-008 昇格【SSOT】 | C-067 |
+| C-071 | WP-5105 — UIX-006/007/PLAN-UIUX-001 改版(3盤面写像)【SSOT】 | C-069/C-070 |
+| C-072 | WP-5106 — 電子薬歴連携手段の経営判断と連携契約 SSOT【HG: 経営判断】【SSOT】 | — |
+| C-073 | WP-5111 — L0 トークンテーマ基盤(Phase A・挙動不変) | C-070 |
+| C-074 | WP-5112 — workflow-stage.ts 実装 | C-069 |
+| C-075 | WP-5113 — 調剤盤シェル【U4】【HG: 実装後レビュー】 | C-071/C-074 |
+| C-076 | WP-5114 — WorkflowSheet / EvidenceDrawer【U4】 | C-075 |
+| C-077 | WP-5115 前提 — 14号 §7.3 設計課題の解消(lease/timeout・LOCAL_ONLY・差し戻し遷移の ARC/DOM 突合) | C-075 |
+| C-078 | WP-5115 — 並行作業ロック実装 | C-077 |
+| C-079 | WP-5121 — アカウント種別制御【HG: security release gate】 | C-083〜C-085 |
+| C-080 | WP-5122 — FinalizeAndRegisterAction【U4】【HG: RB-003 + 医療安全】 | C-068 |
+| C-081 | WP-5123 — 電子薬歴連携送信実装 | C-072 |
+| C-082 | WP-5124 — タブレット縮退+密度段階【HG: 薬剤師レビュー】 | C-075 |
+
+### 15.7 Security / Privacy / Release gates(C-083〜C-094)
+
+release gate 群。§11 の既知 blocker を作業項目化した index であり、SEC-007 等の
+正本を複製しない。
+
+| # | 項目 | 前提 / Gate |
+|---|---|---|
+| C-083 | production AuthContext / OIDC 設計 SSOT(dev header の非 production 化を固定)【SSOT】【HG】 | — |
+| C-084 | 薬剤師資格(qualification)検証の設計と evidence 境界【SSOT】【HG】 | C-083 |
+| C-085 | runtime role + RLS proof【HG: security】 | C-083 |
+| C-086 | break-glass アクセス設計(監査必須)【SSOT】【HG】 | C-083 |
+| C-087 | credential transport / secret rotation 運用設計【HG: secret rotation】 | — |
+| C-088 | bounded audit chain verification 設計(O(total history) 解消。SEC-007 既知)【SSOT】 | — |
+| C-089 | audit read self-growth(`audit.viewed` 自己増殖)の設計解消(SEC-007 既知)【SSOT】 | C-088 |
+| C-090 | retention-period-complete audit export【SSOT】【HG】 | C-036 |
+| C-091 | production tenant/auth incident-response path【SSOT】【HG】 | C-083 |
+| C-092 | pharmacy-level DB isolation の要否決定 record【HG: security】 | — |
+| C-093 | 全応答 `no-store` 残余の閉鎖確認(WP-4250 correction blocker の実測突合) | — |
+| C-094 | SEC-006 / SEC-008 の現状整理と完了計画(exact11 に未結合のまま)【SSOT】 | — |
+
+### 15.8 運用・保守・記録整備(C-095〜C-100)
+
+| # | 項目 | 前提 / Gate |
+|---|---|---|
+| C-095 | `check:secrets` の BUG-4263 前提(意図せず ignore されたリポジトリ内容)の検出補助を CI 側へ置くかの要否判断 record | — |
+| C-096 | Scan Ledger の diff-first 再走査(`f91ae78..0507c02` 以降)と cursor 更新 | C-002〜C-010 後 |
+| C-097 | `State.md` frozen legacy log(約 2,200 行)の退避判断 — pointer-only 契約との整合。`AGT-018 §§3.2, 4` / PRC-007 と競合するなら fail-closed で停止【HG: 記録政策】 | — |
+| C-098 | 本書 §4 landing 済み index の圧縮(Record policy 準拠。独立レビュー完了後) | C-002〜C-010 |
+| C-099 | 依存 baseline の次回周期更新(`pnpm outdated -r`、WP-4253 方式の再実行) | — |
+| C-100 | `DEVELOPMENT_POLICY.md §11` Exact implementation sequence の現状反映改版(WP-4250 FINALIZED / WP-4258 APPROVED / WP-4050 COMMITTED_LOCAL を反映) | C-002 |
+
+**集計:** 15.1=14 / 15.2=8 / 15.3=20 / 15.4=13 / 15.5=11 / 15.6=16 / 15.7=12 /
+15.8=6 — 合計 100 項目。本節の追加は planning record の変更のみであり、実装・
+検証実行・commit・push・gate 解除をいずれも行っていない。
