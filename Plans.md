@@ -37,7 +37,7 @@
 | Local HEAD | landing record 直前 `491aea5033ad1c67b07abee96ddcf40603e1385b`。本record commit後の最終値はGitを正本とする |
 | Upstream divergence | fetch後のrecord直前 `origin/main...HEAD = 0 behind / 16 ahead`。2026-08-23 direct user instructionでpush要求済み |
 | Working tree | landing recordの `Plans.md` / `State.md` exact2のみ。final record commit後はcleanを要求 |
-| Last update | 2026-08-24 JST(§16.5 進捗表を更新。Track A/D の初回 slice landing) |
+| Last update | 2026-08-24 JST(Track A/D の初回 slice の独立レビュー finding 全閉鎖) |
 | Active Goal | grouped commit/push finalization。product queueはWIP 0のまま |
 | Current critical path | Milestone 1 exit の残余 — WP-4050 修正 diff の checker 再確認と HIGH-3 DDL gate。並行して §16 S1(WP-6202/6203、WP-6302) |
 | Main blocker | HIGH-3 outbox FK の DDL gate、JP Core package 再取得の egress 承認、`BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) の DDL gate |
@@ -338,6 +338,7 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
   (`independence_not_satisfied` ×2)、codex lane 復帰(2026-08-05)後の
   再レビューが残存 gate である。
 - **WP-4050 HIGH-3** — 2026-08-23 human approval により migrations/000007 へ landing。production/staging は存在せず、適用先の出現時に runbook(dangling 行の棚卸し→reconciliation evidence→専用 forward migration)を要する。
+- **Webhook egress の network 層統制(BLOCKED_SECURITY_REVIEW)。** DNS 解決と fetch の間の rebinding 窓はアプリ側では閉じられない。partner 向け egress の allow-list / proxy を infra で設計するまで production 配送は行わない(WP-6006 review F2 残余)。
 - **JP Core package 再取得(WP-6101)。** external egress は harness の hard floor で agent から実行不可。ユーザー端末での取得コマンド実行待ち(会話に提示済み)。再現後に SRC-FHIR-007 を VERIFIED へ。
 - **`BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b)。** 実行仕様は下に確定済み。
 - migration application、production write、deploy、external send、pilot、
@@ -1457,7 +1458,9 @@ release gate 群。§11 の既知 blocker を作業項目化した index であ�
 | SSOT 承認 batch | closure checker PASS → direct human approval で 25 文書 APPROVED(IDX-001 0.4.55) | `eb7c2d3` |
 | MOD-008 0.2.5 | 情報連携監査種別 21 種(partner/delivery/eligibility/consent/external_record/sandbox/import)を PROPOSED 追加、`@yrese/audit` 同期。**review 待ち** | `b62f2bc` |
 | WP-6006 | Partner Registry persistence(migrations/000008)、SSRF endpoint policy、registry-routed webhook 配送、key-id header、redirect 非追従。登録 HTTP route と partner.* 監査発火は contract-first の次 WP | `5d964aa` |
-| WP-6303/6304 | ADP-004 §3 受付資格状態機械(shared-kernel)、append-only `eligibility_snapshots`(migrations/000009)、受付紐づけと fail-closed 導出。外部 IF 未接続(RB-002) | `ccc2640` |
+| WP-6303/6304 | `ccc2640` → 独立レビュー REQUEST_CHANGES(HIGH 4: 粒度・method/state・attach 上書き・過剰遷移)→ `b073f2a` で全閉鎖(受付単位の遷移元、同一 tx 記録+紐づけ、ADP-004 §3 と一致する遷移表、method↔state CHECK、CalendarDate 比較、migration 000011)。closure checker 待ち | `b073f2a` |
+| WP-6006 review | 独立レビュー REQUEST_CHANGES(HIGH 4: 末尾ドット SSRF、DNS 再解決、先頭失敗の飢餓、国/所有権未検証)→ `66e4058` で 13 finding 全閉鎖(migration 000010)。closure checker 待ち | `66e4058` |
+| MOD-008 review | REQUEST_CHANGES(21→20 種、payload/phiClassification 未定義)→ `b073f2a` で閉鎖。MOD-005 0.1.6 / ADP-004 0.1.1 と共に PROPOSED、承認 batch 待ち | `b073f2a` |
 
 PROPOSED 化した SSOT(REG-001 / REG-002 / ADP-001 / ADP-004 / API-009〜018 / ADP-003 /
 JHS-001〜008)は PRC-007 §4 step 6(独立 review)と step 7(human approval)待ち。

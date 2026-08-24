@@ -17,6 +17,11 @@
   reproduced; WP-6201 JAHIS documents; WP-6301 ONS access; MOD-008 amendment for the new
   audit event families (`BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT`); BLOCKED_LEGAL/PRIVACY
   reviews listed in ADP-004 / API-016 / API-017; production DB runbook for migration 000007.
+- **2026-08-24 review closures:** WP-6006 (`66e4058`, migration 000010) and WP-6303/6304 + MOD-008
+  (`b073f2a`, migration 000011) closed every independent-review finding; closure checker
+  running. Pending human approval batch: MOD-005 0.1.6, MOD-008 0.2.5, ADP-004 0.1.1.
+  Residual security gate: network-layer egress control for partner webhooks (DNS rebinding
+  window) — BLOCKED_SECURITY_REVIEW until infra allow-list/proxy exists.
 - **2026-08-24 additions (local, pushed after gates):** MOD-008 0.2.5 (PROPOSED, review
   pending), WP-6006 Partner Registry + registry-routed delivery (migration 000008),
   WP-6303/6304 eligibility snapshots + reception eligibility state machine (migration 000009).
