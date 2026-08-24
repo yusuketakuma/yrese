@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   PartnerEndpointPolicyError,
   assertPublicHttpsEndpoint,
+  assertResolvesToPublicAddress,
 } from './partner-endpoint-policy.js';
 
 describe('assertPublicHttpsEndpoint', () => {
@@ -33,6 +34,12 @@ describe('assertPublicHttpsEndpoint', () => {
     ['https://[fd00::1]/yrese', 'private ipv6'],
     ['https://203.0.113.9/yrese', 'ip literal'],
     ['https://intranet/yrese', 'public dns name'],
+    ['https://localhost./yrese', 'not public'],
+    ['https://api.internal./yrese', 'not public'],
+    ['https://metadata.google.internal./v1', 'not public'],
+    ['https://db.local./yrese', 'not public'],
+    ['https://[::ffff:127.0.0.1]/yrese', 'private ipv6'],
+    ['https://[::ffff:7f00:1]/yrese', 'private ipv6'],
   ])('rejects %s (%s)', (url, reason) => {
     expect(() => assertPublicHttpsEndpoint(new URL(url))).toThrow(
       PartnerEndpointPolicyError,
@@ -42,5 +49,33 @@ describe('assertPublicHttpsEndpoint', () => {
     } catch (error) {
       expect((error as PartnerEndpointPolicyError).reason).toContain(reason);
     }
+  });
+
+  it('requires every resolved address to be public (DNS re-resolution)', async () => {
+    const url = new URL('https://hooks.partner.example/yrese');
+    await expect(
+      assertResolvesToPublicAddress(url, async () => [
+        { address: '203.0.113.9', family: 4 },
+      ]),
+    ).resolves.toBeUndefined();
+    await expect(
+      assertResolvesToPublicAddress(url, async () => [
+        { address: '203.0.113.9', family: 4 },
+        { address: '10.0.0.5', family: 4 },
+      ]),
+    ).rejects.toThrow(/private address/);
+    await expect(
+      assertResolvesToPublicAddress(url, async () => [
+        { address: '::ffff:169.254.169.254', family: 6 },
+      ]),
+    ).rejects.toThrow(/private address/);
+    await expect(
+      assertResolvesToPublicAddress(url, async () => []),
+    ).rejects.toThrow(/does not resolve/);
+    await expect(
+      assertResolvesToPublicAddress(url, async () => {
+        throw new Error('ENOTFOUND');
+      }),
+    ).rejects.toThrow(/does not resolve/);
   });
 });

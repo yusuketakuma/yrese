@@ -39,14 +39,14 @@ export function projectOutboxEventToPartnerEvent(event: OutboxPendingEvent): Par
 }
 
 export interface PartnerEventSink {
-  publish(event: PartnerEvent): Promise<void>;
+  publish(event: PartnerEvent, signal?: AbortSignal): Promise<void>;
 }
 
 /** 投影を挟む OutboxDeliverySink。投影失敗は配送失敗(pending のまま)として扱われる。 */
 export function projectingSink(target: PartnerEventSink): OutboxDeliverySink {
   return {
-    async deliver(event) {
-      await target.publish(projectOutboxEventToPartnerEvent(event));
+    async deliver(event, signal) {
+      await target.publish(projectOutboxEventToPartnerEvent(event), signal);
     },
   };
 }

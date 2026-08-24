@@ -3,6 +3,7 @@ import type { Pool } from 'pg';
 
 import { pharmacyId, tenantId, userId } from '@yrese/shared-kernel';
 
+import type { AddressLookup } from '../partner-endpoint-policy.js';
 import {
   WEBHOOK_EVENT_ID_HEADER,
   WEBHOOK_KEY_ID_HEADER,
@@ -15,6 +16,9 @@ import { applyPendingMigrations } from './migration-runner.js';
 import { loadMigrationFiles } from './migrations.js';
 import { PostgresOutboxDeliveryWorker } from './outbox-delivery.js';
 import {
+  PartnerScopeError,
+  PartnerStateConflictError,
+  PartnerStateTransitionError,
   PostgresPartnerRegistry,
   subscribeScopeFor,
 } from './partner-registry.js';
@@ -36,6 +40,15 @@ const otherScope = {
   pharmacyId: 'pharmacy-reg-int-001',
 };
 const now = new Date('2026-08-24T00:00:00.000Z');
+
+/** DNS を合成する: partner.example 配下は public、rebind.example は metadata アドレスへ解決。 */
+const syntheticLookup: AddressLookup = async (hostname) => {
+  if (hostname.endsWith('.partner.example'))
+    return [{ address: '203.0.113.10', family: 4 }];
+  if (hostname === 'rebind.example')
+    return [{ address: '169.254.169.254', family: 4 }];
+  throw new Error('ENOTFOUND');
+};
 
 async function withMigratedSchema(
   run: (pool: Pool) => Promise<void>,
@@ -67,6 +80,10 @@ async function withMigratedSchema(
       await cleanupPool.end();
     }
   }
+}
+
+function registry(pool: Pool): PostgresPartnerRegistry {
+  return new PostgresPartnerRegistry(pool, { lookup: syntheticLookup });
 }
 
 async function seedReceptionIntent(
@@ -124,193 +141,287 @@ async function seedReceptionIntent(
   }
 }
 
-async function activePartnerWithEndpoint(
-  registry: PostgresPartnerRegistry,
+async function activePartner(
+  r: PostgresPartnerRegistry,
+  partnerId = 'partner-yakureki',
+): Promise<void> {
+  await r.registerPartner({ partnerId, displayName: '合成薬歴', now });
+  await r.setPartnerState(partnerId, 'DRAFT', 'ACTIVE');
+}
+
+async function activeAppWithEndpoint(
+  r: PostgresPartnerRegistry,
   s: typeof scope,
   input: {
     readonly appId: string;
     readonly url: string;
     readonly subscribe?: boolean;
     readonly grant?: boolean;
+    readonly countryCode?: string;
+    readonly verify?: boolean;
   },
 ): Promise<void> {
-  await registry.issueApp(s, {
+  await r.issueApp(s, {
     appId: input.appId,
     partnerId: 'partner-yakureki',
     now,
   });
-  await registry.setAppState(s, input.appId, 'ACTIVE');
-  if (input.grant !== false) {
-    await registry.grant(
-      s,
-      input.appId,
-      subscribeScopeFor('reception.created'),
-      now,
-    );
-  }
-  if (input.subscribe !== false) {
-    await registry.subscribe(s, input.appId, 'reception.created', now);
-  }
-  await registry.registerEndpoint(s, {
+  await r.setAppState(s, input.appId, 'DRAFT', 'ACTIVE');
+  if (input.grant !== false)
+    await r.grant(s, input.appId, subscribeScopeFor('reception.created'), now);
+  if (input.subscribe !== false)
+    await r.subscribe(s, input.appId, 'reception.created', now);
+  await r.registerEndpoint(s, {
     appId: input.appId,
     endpointId: `${input.appId}-ep`,
     url: new URL(input.url),
     keyId: 'k1',
     secretRef: `secret/${input.appId}`,
-    countryCode: 'JP',
+    countryCode: input.countryCode ?? 'JP',
     now,
   });
-  await registry.setEndpointState(s, `${input.appId}-ep`, 'ACTIVE');
+  if (input.verify !== false)
+    await r.recordEndpointOwnershipVerified(s, `${input.appId}-ep`, now);
+  await r.setEndpointState(
+    s,
+    `${input.appId}-ep`,
+    'PENDING_VERIFICATION',
+    'ACTIVE',
+  );
 }
 
 describePostgres(
   'PostgresPartnerRegistry + RegistryRoutedSink (PostgreSQL)',
   () => {
-    it('resolves only fully active, subscribed, and granted endpoints within the tenant', async () => {
+    it('resolves only fully active, subscribed, granted, verified endpoints within the tenant', async () => {
       await withMigratedSchema(async (pool) => {
-        const registry = new PostgresPartnerRegistry(pool);
-        await registry.registerPartner({
-          partnerId: 'partner-yakureki',
-          displayName: '合成薬歴',
-          now,
-        });
-        await registry.setPartnerState('partner-yakureki', 'ACTIVE');
-        await activePartnerWithEndpoint(registry, scope, {
+        const r = registry(pool);
+        await activePartner(r);
+        await activeAppWithEndpoint(r, scope, {
           appId: 'app-ok',
           url: 'https://hooks.partner.example/ok',
         });
-        await activePartnerWithEndpoint(registry, scope, {
+        await activeAppWithEndpoint(r, scope, {
           appId: 'app-nosub',
           url: 'https://hooks.partner.example/nosub',
           subscribe: false,
         });
-        await activePartnerWithEndpoint(registry, scope, {
+        await activeAppWithEndpoint(r, scope, {
           appId: 'app-nogrant',
           url: 'https://hooks.partner.example/nogrant',
           grant: false,
         });
-        await activePartnerWithEndpoint(registry, scope, {
-          appId: 'app-suspended',
-          url: 'https://hooks.partner.example/suspended',
+        await activeAppWithEndpoint(r, scope, {
+          appId: 'app-revoked',
+          url: 'https://hooks.partner.example/revoked',
         });
-        await registry.setAppState(scope, 'app-suspended', 'SUSPENDED');
-        await activePartnerWithEndpoint(registry, otherScope, {
-          appId: 'app-other-tenant',
+        await r.revokeGrant(
+          scope,
+          'app-revoked',
+          subscribeScopeFor('reception.created'),
+          now,
+        );
+        await activeAppWithEndpoint(r, scope, {
+          appId: 'app-unsub',
+          url: 'https://hooks.partner.example/unsub',
+        });
+        await r.unsubscribe(scope, 'app-unsub', 'reception.created', now);
+        await activeAppWithEndpoint(r, otherScope, {
+          appId: 'app-other',
           url: 'https://hooks.partner.example/other',
         });
 
-        const targets = await registry.resolveDeliveryTargets(
+        const resolution = await r.resolveDeliveryTargets(
           scope,
           'reception.created',
         );
-        expect(targets.map((t) => t.appId)).toEqual(['app-ok']);
-        expect(targets[0]).toMatchObject({
+        expect(resolution.targets.map((t) => t.appId)).toEqual(['app-ok']);
+        expect(resolution.targets[0]).toMatchObject({
           keyId: 'k1',
           secretRef: 'secret/app-ok',
           endpointId: 'app-ok-ep',
         });
+        expect(resolution).toMatchObject({
+          rejectedEndpointIds: [],
+          suspendedSubscribers: 0,
+        });
 
-        // partner 全体の停止は全 app の配送先を消す。
-        await registry.setPartnerState('partner-yakureki', 'SUSPENDED');
+        // 失効した grant は行として残る(DELETE 禁止、revoked_at 付き)。
+        const grants = await pool.query<{
+          scope: string;
+          revoked_at: Date | null;
+        }>(
+          `SELECT scope, revoked_at FROM partner_grants WHERE app_id = 'app-revoked'`,
+        );
+        expect(grants.rows[0]?.revoked_at).not.toBeNull();
         await expect(
-          registry.resolveDeliveryTargets(scope, 'reception.created'),
-        ).resolves.toEqual([]);
+          pool.query(`DELETE FROM partner_grants WHERE app_id = 'app-revoked'`),
+        ).rejects.toThrow(/must not be deleted/);
+
+        // partner 全体の一時停止は配送先を消し、一時停止中の購読者として数える。
+        await r.setPartnerState('partner-yakureki', 'ACTIVE', 'SUSPENDED');
+        await expect(
+          r.resolveDeliveryTargets(scope, 'reception.created'),
+        ).resolves.toMatchObject({
+          targets: [],
+          suspendedSubscribers: expect.any(Number),
+        });
+        const suspended = await r.resolveDeliveryTargets(scope, 'reception.created');
+        expect(suspended.suspendedSubscribers).toBeGreaterThan(0);
       });
     });
 
-    it('rejects non-public endpoints at registration and non-wildcard scopes at the database', async () => {
+    it('enforces state transitions, expected-state CAS, and terminal RETIRED', async () => {
       await withMigratedSchema(async (pool) => {
-        const registry = new PostgresPartnerRegistry(pool);
-        await registry.registerPartner({
-          partnerId: 'partner-yakureki',
-          displayName: '合成薬歴',
-          now,
-        });
-        await registry.issueApp(scope, {
-          appId: 'app-x',
-          partnerId: 'partner-yakureki',
-          now,
-        });
+        const r = registry(pool);
+        await r.registerPartner({ partnerId: 'p', displayName: 'p', now });
         await expect(
-          registry.registerEndpoint(scope, {
-            appId: 'app-x',
-            endpointId: 'ep-x',
-            url: new URL('https://169.254.169.254/latest'),
-            keyId: 'k1',
-            secretRef: 'secret/x',
-            countryCode: 'JP',
-            now,
-          }),
-        ).rejects.toThrow(/partner endpoint rejected/);
+          r.setPartnerState('p', 'DRAFT', 'SUSPENDED'),
+        ).rejects.toThrow(PartnerStateTransitionError);
+        await r.setPartnerState('p', 'DRAFT', 'ACTIVE');
+        // stale な期待状態は conflict(last-writer-wins にしない)。
+        await expect(r.setPartnerState('p', 'DRAFT', 'ACTIVE')).rejects.toThrow(
+          PartnerStateConflictError,
+        );
+        await r.setPartnerState('p', 'ACTIVE', 'RETIRED');
         await expect(
-          registry.grant(scope, 'app-x', 'events:subscribe:*', now),
-        ).rejects.toThrow(/partner_grants_no_wildcard/);
+          r.setPartnerState('p', 'RETIRED', 'ACTIVE'),
+        ).rejects.toThrow(PartnerStateTransitionError);
+        // app_id は tenant を跨いで一意。
+        await r.issueApp(scope, { appId: 'app-unique', partnerId: 'p', now });
         await expect(
-          registry.grant(scope, 'app-x', 'patient:read', now),
+          r.issueApp(otherScope, { appId: 'app-unique', partnerId: 'p', now }),
+        ).rejects.toThrow(/partner_apps_app_id_global_unique/);
+        // 登録系は同一入力で冪等。
+        await expect(
+          r.issueApp(scope, { appId: 'app-unique', partnerId: 'p', now }),
         ).resolves.toBeUndefined();
       });
     });
 
-    it('delivers an outbox intent to every resolved endpoint with a per-endpoint key and treats partial failure as pending', async () => {
+    it('rejects non-public, non-resolving, rebinding endpoints, unknown scopes, and unverified or foreign activation', async () => {
       await withMigratedSchema(async (pool) => {
-        const registry = new PostgresPartnerRegistry(pool);
-        await registry.registerPartner({
+        const r = registry(pool);
+        await activePartner(r);
+        await r.issueApp(scope, {
+          appId: 'app-x',
           partnerId: 'partner-yakureki',
-          displayName: '合成薬歴',
           now,
         });
-        await registry.setPartnerState('partner-yakureki', 'ACTIVE');
-        await activePartnerWithEndpoint(registry, scope, {
+        const endpoint = (url: string, id = 'ep-x', countryCode = 'JP') => ({
+          appId: 'app-x',
+          endpointId: id,
+          url: new URL(url),
+          keyId: 'k1',
+          secretRef: 'secret/x',
+          countryCode,
+          now,
+        });
+        await expect(
+          r.registerEndpoint(scope, endpoint('https://169.254.169.254/latest')),
+        ).rejects.toThrow(/rejected/);
+        await expect(
+          r.registerEndpoint(scope, endpoint('https://localhost./x')),
+        ).rejects.toThrow(/not public/);
+        await expect(
+          r.registerEndpoint(scope, endpoint('https://rebind.example/x')),
+        ).rejects.toThrow(/private address/);
+        await expect(
+          r.registerEndpoint(scope, endpoint('https://nowhere.example/x')),
+        ).rejects.toThrow(/does not resolve/);
+
+        await expect(
+          r.grant(scope, 'app-x', 'events:subscribe:*', now),
+        ).rejects.toThrow(PartnerScopeError);
+        await expect(
+          r.grant(scope, 'app-x', 'patient:read-everything', now),
+        ).rejects.toThrow(PartnerScopeError);
+        await expect(
+          r.grant(scope, 'app-x', 'patient:read', now),
+        ).resolves.toBeUndefined();
+
+        // 所有権未検証 / 国外は ACTIVE 化できない。
+        await r.registerEndpoint(
+          scope,
+          endpoint('https://hooks.partner.example/x', 'ep-jp'),
+        );
+        await expect(
+          r.setEndpointState(scope, 'ep-jp', 'PENDING_VERIFICATION', 'ACTIVE'),
+        ).rejects.toThrow(/ownership/);
+        await r.registerEndpoint(
+          scope,
+          endpoint('https://hooks.partner.example/us', 'ep-us', 'US'),
+        );
+        await r.recordEndpointOwnershipVerified(scope, 'ep-us', now);
+        await expect(
+          r.setEndpointState(scope, 'ep-us', 'PENDING_VERIFICATION', 'ACTIVE'),
+        ).rejects.toThrow(/country/);
+        await r.recordEndpointOwnershipVerified(scope, 'ep-jp', now);
+        await expect(
+          r.setEndpointState(scope, 'ep-jp', 'PENDING_VERIFICATION', 'ACTIVE'),
+        ).resolves.toBeUndefined();
+      });
+    });
+
+    it('delivers to every endpoint in parallel, keeps pending on partial failure, and never starves later endpoints', async () => {
+      await withMigratedSchema(async (pool) => {
+        const r = registry(pool);
+        await activePartner(r);
+        await activeAppWithEndpoint(r, scope, {
           appId: 'app-a',
           url: 'https://hooks.partner.example/a',
         });
-        await activePartnerWithEndpoint(registry, scope, {
+        await activeAppWithEndpoint(r, scope, {
           appId: 'app-b',
           url: 'https://hooks.partner.example/b',
         });
         await seedReceptionIntent(pool, scope, 'reception-reg-001');
 
         const calls: { url: string; init: RequestInit }[] = [];
-        let failB = true;
+        let failA = true;
         const fetchImpl = vi.fn<typeof fetch>(async (url, init) => {
           calls.push({ url: String(url), init: init! });
-          if (String(url).endsWith('/b') && failB)
+          if (String(url).endsWith('/a') && failA)
             return new Response('down', { status: 503 });
           return new Response(null, { status: 204 });
         });
         const secrets = { resolve: async (ref: string) => `resolved:${ref}` };
-        const sink = new RegistryRoutedSink(registry, secrets, {
-          fetch: fetchImpl,
-          now: () => now,
-        });
-        const worker = new PostgresOutboxDeliveryWorker(pool, sink);
+        const worker = new PostgresOutboxDeliveryWorker(
+          pool,
+          new RegistryRoutedSink(r, secrets, {
+            fetch: fetchImpl,
+            now: () => now,
+          }),
+        );
 
         const first = await worker.runOnce();
         expect(first.delivered).toBe(0);
         expect(first.failures).toEqual([
           expect.objectContaining({
             outboxEventId: 'ob-reception-reg-001',
-            reason: 'WebhookDeliveryError',
+            reason: 'PartialDeliveryError',
           }),
         ]);
-        expect(calls.map((c) => c.url)).toEqual([
+        // 先頭(/a)が失敗しても /b は同じ run で受け取る。
+        expect(calls.map((c) => c.url).sort()).toEqual([
           'https://hooks.partner.example/a',
           'https://hooks.partner.example/b',
         ]);
 
-        const headers = calls[0]!.init.headers as Record<string, string>;
-        const body = calls[0]!.init.body as string;
+        const b = calls.find((c) => c.url.endsWith('/b'))!;
+        const headers = b.init.headers as Record<string, string>;
+        const body = b.init.body as string;
         expect(headers[WEBHOOK_EVENT_ID_HEADER]).toBe('ob-reception-reg-001');
         expect(headers[WEBHOOK_KEY_ID_HEADER]).toBe('k1');
         expect(
           verifyWebhookSignature(
-            'resolved:secret/app-a',
+            'resolved:secret/app-b',
             headers[WEBHOOK_TIMESTAMP_HEADER]!,
             body,
             headers[WEBHOOK_SIGNATURE_HEADER]!,
           ),
         ).toBe(true);
-        expect(calls[0]!.init.redirect).toBe('error');
+        expect(b.init.redirect).toBe('error');
         expect(JSON.parse(body)).toMatchObject({
           eventType: 'reception.created',
           aggregate: { type: 'reception', id: 'reception-reg-001' },
@@ -318,32 +429,114 @@ describePostgres(
         expect(body).not.toContain('patient');
         expect(body).not.toContain('resolved:secret');
 
-        failB = false;
+        failA = false;
         const second = await worker.runOnce();
         expect(second.delivered).toBe(1);
-        // 再送は全配送先へ(受信側は eventId で冪等)。
         expect(calls).toHaveLength(4);
       });
     });
 
-    it('marks an intent delivered when no subscriber exists', async () => {
+    it('keeps an intent pending while a subscriber is suspended, and marks it delivered when nobody subscribes', async () => {
       await withMigratedSchema(async (pool) => {
-        const registry = new PostgresPartnerRegistry(pool);
+        const r = registry(pool);
+        await activePartner(r);
+        await activeAppWithEndpoint(r, scope, {
+          appId: 'app-s',
+          url: 'https://hooks.partner.example/s',
+        });
+        await r.setAppState(scope, 'app-s', 'ACTIVE', 'SUSPENDED');
         await seedReceptionIntent(pool, scope, 'reception-reg-002');
-        const fetchImpl = vi.fn<typeof fetch>();
+        const fetchImpl = vi.fn<typeof fetch>(
+          async () => new Response(null, { status: 204 }),
+        );
         const worker = new PostgresOutboxDeliveryWorker(
           pool,
           new RegistryRoutedSink(
-            registry,
-            { resolve: async () => 'unused' },
+            r,
+            { resolve: async () => 's' },
             { fetch: fetchImpl },
           ),
         );
         await expect(worker.runOnce()).resolves.toMatchObject({
+          delivered: 0,
+          failures: [
+            expect.objectContaining({ reason: 'SubscriberSuspendedError' }),
+          ],
+        });
+        expect(fetchImpl).not.toHaveBeenCalled();
+        // 復帰後に届く(event は失われていない)。
+        await r.setAppState(scope, 'app-s', 'SUSPENDED', 'ACTIVE');
+        await expect(worker.runOnce()).resolves.toMatchObject({ delivered: 1 });
+        expect(fetchImpl).toHaveBeenCalledTimes(1);
+
+        // 購読者が居ない event は配送済み扱い。
+        await seedReceptionIntent(pool, otherScope, 'reception-reg-003');
+        await expect(worker.runOnce()).resolves.toMatchObject({
           delivered: 1,
           failed: 0,
         });
-        expect(fetchImpl).not.toHaveBeenCalled();
+        expect(fetchImpl).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('skips a policy-violating endpoint row without stopping delivery to compliant ones', async () => {
+      await withMigratedSchema(async (pool) => {
+        const r = registry(pool);
+        await activePartner(r);
+        await activeAppWithEndpoint(r, scope, {
+          appId: 'app-good',
+          url: 'https://hooks.partner.example/good',
+        });
+        await activeAppWithEndpoint(r, scope, {
+          appId: 'app-bad',
+          url: 'https://hooks.partner.example/bad',
+        });
+        // 生 SQL で policy 非適合 URL に書き換える(登録時検証をすり抜けた行を模す)。
+        await pool.query(
+          `UPDATE partner_delivery_endpoints SET url = 'https://rebind.example/bad' WHERE endpoint_id = 'app-bad-ep'`,
+        );
+        const resolution = await r.resolveDeliveryTargets(
+          scope,
+          'reception.created',
+        );
+        expect(resolution.targets.map((t) => t.appId)).toEqual(['app-good']);
+        expect(resolution.rejectedEndpointIds).toEqual(['app-bad-ep']);
+      });
+    });
+
+    it('aborts in-flight fan-out when the worker sink timeout fires', async () => {
+      await withMigratedSchema(async (pool) => {
+        const r = registry(pool);
+        await activePartner(r);
+        await activeAppWithEndpoint(r, scope, {
+          appId: 'app-slow',
+          url: 'https://hooks.partner.example/slow',
+        });
+        await seedReceptionIntent(pool, scope, 'reception-reg-004');
+        const aborted: boolean[] = [];
+        const hanging = vi.fn<typeof fetch>(
+          (_url, init) =>
+            new Promise((_resolve, reject) => {
+              init?.signal?.addEventListener('abort', () => {
+                aborted.push(true);
+                reject(new Error('aborted'));
+              });
+            }),
+        );
+        const worker = new PostgresOutboxDeliveryWorker(
+          pool,
+          new RegistryRoutedSink(
+            r,
+            { resolve: async () => 's' },
+            { fetch: hanging, timeoutMs: 10_000 },
+          ),
+          { sinkTimeoutMs: 30 },
+        );
+        const summary = await worker.runOnce();
+        expect(summary.failures[0]).toMatchObject({ timedOut: true });
+        // worker の timeout が fetch まで伝播し、孤児 fan-out が残らない。
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(aborted).toEqual([true]);
       });
     });
   },

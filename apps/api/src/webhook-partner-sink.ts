@@ -83,11 +83,14 @@ export class WebhookPartnerSink implements PartnerEventSink {
     this.timeoutMs = options.timeoutMs ?? 10_000;
   }
 
-  async publish(event: PartnerEvent): Promise<void> {
+  async publish(event: PartnerEvent, signal?: AbortSignal): Promise<void> {
     const body = JSON.stringify(event);
     const timestamp = this.now().toISOString();
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const abortFromCaller = () => controller.abort();
+    if (signal?.aborted) controller.abort();
+    signal?.addEventListener('abort', abortFromCaller, { once: true });
     let response: Response;
     try {
       response = await this.fetchImpl(this.endpointUrl, {
@@ -109,6 +112,7 @@ export class WebhookPartnerSink implements PartnerEventSink {
       throw new WebhookDeliveryError(event.eventId, reason);
     } finally {
       clearTimeout(timer);
+      signal?.removeEventListener('abort', abortFromCaller);
     }
     if (response.status < 200 || response.status >= 300) {
       throw new WebhookDeliveryError(event.eventId, 'non_2xx', response.status);

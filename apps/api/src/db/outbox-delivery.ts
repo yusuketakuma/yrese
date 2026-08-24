@@ -36,7 +36,8 @@ export interface OutboxPendingEvent {
 }
 
 export interface OutboxDeliverySink {
-  deliver(event: OutboxPendingEvent): Promise<void>;
+  /** `signal` は worker の timeout で abort される。sink は外部 I/O に伝播させ、孤児 fan-out を残さない。 */
+  deliver(event: OutboxPendingEvent, signal?: AbortSignal): Promise<void>;
 }
 
 export interface OutboxDeliveryFailure {
@@ -138,12 +139,19 @@ class SinkTimeoutError extends Error {
   }
 }
 
-function withTimeout(promise: Promise<void>, timeoutMs: number): Promise<void> {
+function withTimeout(
+  run: (signal: AbortSignal) => Promise<void>,
+  timeoutMs: number,
+): Promise<void> {
+  const controller = new AbortController();
   let timer: NodeJS.Timeout | undefined;
   const timeout = new Promise<void>((_resolve, reject) => {
-    timer = setTimeout(() => reject(new SinkTimeoutError()), timeoutMs);
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new SinkTimeoutError());
+    }, timeoutMs);
   });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+  return Promise.race([run(controller.signal), timeout]).finally(() => clearTimeout(timer));
 }
 
 export class PostgresOutboxDeliveryWorker {
@@ -189,7 +197,8 @@ export class PostgresOutboxDeliveryWorker {
         return 'none';
       }
       try {
-        await withTimeout(this.sink.deliver(toPendingEvent(row)), this.sinkTimeoutMs);
+        const pending = toPendingEvent(row);
+        await withTimeout((signal) => this.sink.deliver(pending, signal), this.sinkTimeoutMs);
       } catch (error) {
         // 失敗は pending のまま残す(at-least-once)。同 aggregate は本 run で再試行しない。
         await client.query('ROLLBACK');
