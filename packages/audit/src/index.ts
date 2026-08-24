@@ -93,6 +93,27 @@ export const AUDIT_EVENT_TYPES = [
   "closing.adjusted",
   "facility.invoice.issued",
   "facility.payment.received",
+  // 情報連携(MOD-008 0.2.5: API-009〜018、ADP-004、Plans.md §16 Track A/D)
+  "partner.registered",
+  "partner.suspended",
+  "partner.retired",
+  "partner.app.issued",
+  "partner.app.revoked",
+  "partner.grant.changed",
+  "partner.endpoint.changed",
+  "delivery.sent",
+  "delivery.failed",
+  "delivery.dead_lettered",
+  "delivery.resent",
+  "eligibility.verified",
+  "eligibility.provisional_recorded",
+  "eligibility.expired",
+  "eligibility.mismatch_detected",
+  "consent.recorded",
+  "consent.revoked",
+  "external_record.viewed",
+  "sandbox.reset",
+  "data.imported",
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
@@ -176,7 +197,14 @@ const businessReasonRequiredActions = new Set([
   "reversed",
   "rolled_back",
 ]);
-const businessReasonRequiredEventTypes = new Set<string>(["accounting.adjustment.created", "breakglass.used"]);
+const businessReasonRequiredEventTypes = new Set<string>([
+  "accounting.adjustment.created",
+  "breakglass.used",
+  "delivery.resent",
+  "partner.suspended",
+  "partner.retired",
+  "sandbox.reset",
+]);
 const auditOutcomes = new Set<string>(["success", "denied", "failed"]);
 const kernelErrorCodeRegistry = createKernelErrorCodeRegistry();
 

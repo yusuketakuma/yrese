@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.55
+version: 0.4.56
 created_at: 2026-07-09
 updated_at: 2026-08-23
 approved_at: 2026-08-01
@@ -153,6 +153,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.4.56 2026-08-24 MOD-008 0.2.4→0.2.5(情報連携監査種別 21 種追加)を APPROVED→PROPOSED へ降格。総文書数 185 不変。status 集計は APPROVED 164→163、PROPOSED 4→5、SUPERSEDED 17 不変"
   - "0.4.55 2026-08-23 finalization batch: 独立 review(api-contract / security-privacy)の finding 閉鎖と closure checker PASS、direct human approval により 25 文書を PROPOSED→APPROVED(API-009、API-010、API-011、API-012、API-013、API-014、API-015、API-016、API-017、API-018、ADP-003、ADP-004、REG-001、REG-002、ADP-001、MOD-005、MOD-009、JHS-004、JHS-003、JHS-006、JHS-007、JHS-005、JHS-002、JHS-001、JHS-008)。総文書数 185 不変。status 集計は APPROVED 139→164、PROPOSED 29→4、SUPERSEDED 17 不変。承認範囲は SSOT 改版のみで、実装着手・外部接続・conformance 主張・登録済み blocker の解除を含まない"
   - "0.4.54 2026-08-23 WP-6001 review 反映: api-contract / security-privacy 独立レビューの finding 閉鎖に伴い MOD-005(0.1.4→0.1.5、BLOCKER_TYPES 5 種追加)を APPROVED→PROPOSED へ降格、MOD-009 は 0.2.0→0.2.1 で PROPOSED 維持。総文書数 185 不変。status 集計は APPROVED 140→139、PROPOSED 28→29、SUPERSEDED 17 不変"
   - "0.4.53 2026-08-23 WP-6302: オンライン資格確認・マイナ保険証連動の境界 SSOT 骨子(ADP-004)を PROPOSED で新規登録。総文書数 184→185、docs/adapters 3→4。status 集計は APPROVED 140 不変、PROPOSED 27→28、SUPERSEDED 17 不変。公式 IF 未入手のため外部接続の根拠にしない"
@@ -403,7 +404,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 
 | ssot_id | 文書 | status |
 |---|---|---|
-| MOD-008 | [audit_event_registry.md](modules/audit_event_registry.md) | APPROVED |
+| MOD-008 | [audit_event_registry.md](modules/audit_event_registry.md) | PROPOSED |
 | MOD-002 | [common_module_boundary.md](modules/common_module_boundary.md) | APPROVED |
 | MOD-001 | [common_module_inventory.md](modules/common_module_inventory.md) | APPROVED |
 | MOD-011 | [date_time_policy.md](modules/date_time_policy.md) | APPROVED |

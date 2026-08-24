@@ -4,13 +4,13 @@
 ssot_id: MOD-008
 title: 監査イベントレジストリ
 domain: modules
-status: APPROVED
+status: PROPOSED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.2.4
+version: 0.2.5
 created_at: 2026-07-09
-updated_at: 2026-07-31
+updated_at: 2026-08-24
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 effective_from: null
@@ -39,6 +39,7 @@ evidence_ids: []
 open_questions:
   - 保存期間(REG-003 の法定根拠確定待ち — SEC-007 と同期)
 change_log:
+  - "0.2.5 (2026-08-24): §1.2 情報連携イベント 21 種(partner.* / delivery.* / eligibility.* / consent.* / external_record.viewed / sandbox.reset / data.imported)を追加し、API-009〜018・ADP-004 の BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT の解除前提を満たす。businessReason 必須集合に delivery.resent / partner.suspended / partner.retired / sandbox.reset を追加。@yrese/audit AUDIT_EVENT_TYPES と同期。文法・既存種別は不変。review と human approval まで PROPOSED"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - "0.2.4 (2026-07-31): WP-4162(全 PHI 読取り監査)に基づき、列挙アクセスの監査イベント `patient.searched` / `reception.queue.viewed` を追加(命名文法準拠: patient は単一リソースで resource 省略、reception は queue リソースを明示)。データ最小化規律(クエリ文字列・PHI をペイロードへ入れない)を備考へ明記。文法・既存種別・必須属性は不変更。承認: direct user instruction 2026-07-31(ヒューマンゲート包括許可)。独立レビューは codex lane 復帰(2026-08-05)後に実施予定と記録。"
@@ -105,6 +106,26 @@ ACC-011 の短縮名(charge_created 等)は以下の正規形へ写像する。*
 | statement.issued / statement.voided | statement.* | RCP-004(状態なし・交付履歴 void) |
 | closing.executed / closing.adjusted | closing.* | ACC-007 |
 | facility.invoice.issued / facility.payment.received | facility.* | ACC-010 |
+
+### 1.2 情報連携イベント(Integration Hub / 資格確認 / 同意 — 0.2.5)
+
+API-009〜018、ADP-004 が前提としていた `BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT` を解消する種別。
+payload は識別子のみ(partner_id / app_id / endpoint_id / outbox_event_id / snapshot_id / consent_id)で、
+URL・署名鍵・資格内容・閲覧した医療情報の本文を入れない。
+
+| 種別(文法準拠) | 対象操作 | outcome必須 | 備考 |
+|---|---|---|---|
+| partner.registered / partner.suspended / partner.retired | partner の登録・停止・退役(API-010 状態遷移) | ○ | suspended / retired は businessReason 必須 |
+| partner.app.issued / partner.app.revoked | client credential の発行・失効 | ○ | credential 値は載せない。app_id のみ |
+| partner.grant.changed | tenant/pharmacy が partner app へ与える scope 集合の変更 | ○ | 変更前後の scope 名を payload に持つ(scope 名は PHI ではない) |
+| partner.endpoint.changed | DeliveryEndpoint の登録・変更・所有権再検証 | ○ | URL は載せず endpoint_id のみ |
+| delivery.sent / delivery.failed / delivery.dead_lettered | outbox 配送の成功・失敗・DLQ 移送(API-012) | ○ | failed は error name のみ(message 禁止)。actor は system |
+| delivery.resent | DLQ からの人間操作による再送 | ○ | businessReason 必須。再送時の partner 状態・grant・同意の再評価結果を payload に持つ |
+| eligibility.verified / eligibility.provisional_recorded / eligibility.expired / eligibility.mismatch_detected | 資格確認スナップショットの状態遷移(ADP-004 §3) | ○ | payload は snapshot_id・verified_method・状態のみ。保険者番号等の資格内容は載せない |
+| consent.recorded / consent.revoked | 薬剤情報・特定健診情報等の閲覧同意の記録・撤回(ADP-004 §5、API-017) | ○ | 同意の範囲コードのみ。revoked の actor は患者代理の操作者 |
+| external_record.viewed | 同意に基づく外部医療情報(薬剤情報・特定健診情報・診療情報)の表示 | ○ | 表示した種別と範囲コードのみ。本文は保存しない(ADP-004 §2) |
+| sandbox.reset | partner sandbox のリセット(API-014) | ○ | businessReason 必須 |
+| data.imported | 移行 import の本適用(API-016。dry-run は監査しない) | ○ | job_id・件数のみ |
 
 ## 2. 種別定義の必須属性(実装時)
 
