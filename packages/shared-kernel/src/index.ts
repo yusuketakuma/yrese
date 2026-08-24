@@ -9,6 +9,7 @@
 export * from "./branded-ids.js";
 export * from "./system-mode.js";
 export * from "./status.js";
+export * from "./eligibility.js";
 export * from "./blockers.js";
 export * from "./error-codes.js";
 export * from "./permissions.js";
