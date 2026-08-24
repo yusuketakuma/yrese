@@ -4,18 +4,19 @@
 ssot_id: MOD-005
 title: ステータスレジストリ(システムモード・保留系・BLOCKER)
 domain: modules
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.1.6
 created_at: 2026-07-09
 updated_at: 2026-08-23
-approved_at: 2026-08-23
-approved_by: "direct human authority 2026-08-23 (「全てを許可する。実行」); independent review: api-contract lane + security-privacy lane REQUEST_CHANGES -> all findings closed (28dae05, f07e76e); closure checker PASS"
+approved_at: 2026-08-24
+approved_by: "direct human authority 2026-08-23 (「全てを許可する。実行」) applied to the 2026-08-24 review batch; independent reviews (WP-6006 data-integrity/security lane, WP-6303/6304 + MOD-008 privacy/medical-safety lane) REQUEST_CHANGES -> findings closed (66e4058, b073f2a, 7f7df40); closure checker PASS for the SSOT batch with condition M5 resolved in 7f7df40"
 effective_from: 2026-08-23
 effective_to: null
 change_log:
+  - "2026-08-24 finalization: 独立 review の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手・外部接続・conformance 主張は含まない"
   - "0.1.6 2026-08-24 WP-6303/6304 review A-8/B-6: §2.2 に受付資格確認状態 7 種と確認方式 4 種を登録、BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT の文言を APPROVED 版基準に精緻化。review と human approval まで PROPOSED"
   - "2026-08-23 WP-6001/WP-6101/WP-6202/WP-6203/WP-6302 finalization: 独立 review 2 lane の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手は各 WP の gate に従い、外部接続・conformance 主張は含まない"
   - "0.1.5 2026-08-23 WP-6001: BLOCKER_TYPES に Integration Hub / 監査 / privacy 系 5 種を登録(33→38)。shared-kernel blockers.ts と同期。review と human approval まで PROPOSED"

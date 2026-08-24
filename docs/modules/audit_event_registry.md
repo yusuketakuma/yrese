@@ -4,15 +4,15 @@
 ssot_id: MOD-008
 title: 監査イベントレジストリ
 domain: modules
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.2.5
 created_at: 2026-07-09
 updated_at: 2026-08-24
-approved_at: 2026-07-09
-approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+approved_at: 2026-08-24
+approved_by: "direct human authority 2026-08-23 (「全てを許可する。実行」) applied to the 2026-08-24 review batch; independent reviews (WP-6006 data-integrity/security lane, WP-6303/6304 + MOD-008 privacy/medical-safety lane) REQUEST_CHANGES -> findings closed (66e4058, b073f2a, 7f7df40); closure checker PASS for the SSOT batch with condition M5 resolved in 7f7df40"
 effective_from: null
 effective_to: null
 source_refs:
@@ -39,6 +39,7 @@ evidence_ids: []
 open_questions:
   - 保存期間(REG-003 の法定根拠確定待ち — SEC-007 と同期)
 change_log:
+  - "2026-08-24 finalization: 独立 review の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手・外部接続・conformance 主張は含まない"
   - "0.2.5 (2026-08-24): §1.2 情報連携イベント 20 種(partner.* / delivery.* / eligibility.* / consent.* / external_record.viewed / sandbox.reset / data.imported)を追加し、API-009〜018・ADP-004 の BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT の解除前提を満たす(review B-1〜B-5 反映: 種別数 20、payload の所在と phiClassification 既定値、targetRef kind、§0 の主リソース省略規則を明記)。businessReason 必須集合に delivery.resent / partner.suspended / partner.retired / sandbox.reset を追加。@yrese/audit AUDIT_EVENT_TYPES と同期。文法・既存種別は不変。review と human approval まで PROPOSED"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"

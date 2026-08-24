@@ -1461,6 +1461,9 @@ release gate 群。§11 の既知 blocker を作業項目化した index であ�
 | WP-6303/6304 | `ccc2640` → 独立レビュー REQUEST_CHANGES(HIGH 4: 粒度・method/state・attach 上書き・過剰遷移)→ `b073f2a` で全閉鎖(受付単位の遷移元、同一 tx 記録+紐づけ、ADP-004 §3 と一致する遷移表、method↔state CHECK、CalendarDate 比較、migration 000011)。closure checker 待ち | `b073f2a` |
 | WP-6006 review | 独立レビュー REQUEST_CHANGES(HIGH 4: 末尾ドット SSRF、DNS 再解決、先頭失敗の飢餓、国/所有権未検証)→ `66e4058` で 13 finding 全閉鎖(migration 000010)。closure checker 待ち | `66e4058` |
 | MOD-008 review | REQUEST_CHANGES(21→20 種、payload/phiClassification 未定義)→ `b073f2a` で閉鎖。MOD-005 0.1.6 / ADP-004 0.1.1 と共に PROPOSED、承認 batch 待ち | `b073f2a` |
+| closure checker | SSOT batch PASS(条件 M5 → `7f7df40` で解消)/ WP-6303 PASS / WP-6006 新規 HIGH 2(SUSPENDED 判定・policy 非適合行)→ `7f7df40` で閉鎖(migration 000012: 国 CHECK、grant/subscription 履歴、raw_response_ref 形式) | `7f7df40` |
+| 承認 batch 2 | MOD-005 0.1.6 / MOD-008 0.2.5 / ADP-004 0.1.1 を APPROVED(IDX-001 0.4.58)。`BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT` の前提が揃い、partner.* / delivery.* / eligibility.* の監査発火が次 WP で可能 | — |
+| 既知の上限(ponytail) | 配送可能 target と停止中 / 非適合 app が混在する event は前者へ配送して配送済みにする(後者は受け取れない)。配送先ごとの delivery state table(API-012、DDL)まで | — |
 
 PROPOSED 化した SSOT(REG-001 / REG-002 / ADP-001 / ADP-004 / API-009〜018 / ADP-003 /
 JHS-001〜008)は PRC-007 §4 step 6(独立 review)と step 7(human approval)待ち。
