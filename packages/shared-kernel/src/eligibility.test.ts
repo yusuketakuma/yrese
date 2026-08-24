@@ -4,8 +4,9 @@ import {
   RECEPTION_ELIGIBILITY_STATES,
   allowsFinalCalculationForEligibility,
   allowsProvisionalCalculationForEligibility,
+  isEligibilityMethodConsistent,
   isEligibilityTransitionAllowed,
-  verifiedStateForMethod,
+  stateForVerificationMethod,
 } from "./eligibility.js";
 
 describe("reception eligibility state machine (ADP-004 §3)", () => {
@@ -27,17 +28,25 @@ describe("reception eligibility state machine (ADP-004 §3)", () => {
     expect(isEligibilityTransitionAllowed("UNVERIFIED", "OFFLINE_PROVISIONAL")).toBe(true);
     expect(isEligibilityTransitionAllowed("OFFLINE_PROVISIONAL", "VERIFIED_CARD")).toBe(true);
     expect(isEligibilityTransitionAllowed("VERIFIED_MYNA", "EXPIRED")).toBe(true);
-    expect(isEligibilityTransitionAllowed("EXPIRED", "VERIFIED_MYNA")).toBe(true);
-    // 検証済みから未確認へ戻す遷移、期限切れから仮状態へ戻す遷移は存在しない。
+    expect(isEligibilityTransitionAllowed("VERIFIED_MYNA", "MISMATCH")).toBe(true);
+    // 表にない遷移: 方式変更、EXPIRED / MISMATCH からの復帰、未確認への逆戻り。
+    expect(isEligibilityTransitionAllowed("VERIFIED_MYNA", "VERIFIED_CARD")).toBe(false);
+    expect(isEligibilityTransitionAllowed("VERIFIED_MYNA", "VERIFIED_MYNA")).toBe(false);
+    expect(isEligibilityTransitionAllowed("EXPIRED", "VERIFIED_MYNA")).toBe(false);
+    expect(isEligibilityTransitionAllowed("MISMATCH", "VERIFIED_CARD")).toBe(false);
     expect(isEligibilityTransitionAllowed("VERIFIED_MYNA", "UNVERIFIED")).toBe(false);
     expect(isEligibilityTransitionAllowed("EXPIRED", "OFFLINE_PROVISIONAL")).toBe(false);
-    expect(isEligibilityTransitionAllowed("MISMATCH", "PROVISIONAL_VISUAL")).toBe(false);
     expect(isEligibilityTransitionAllowed("UNVERIFIED", "EXPIRED")).toBe(false);
   });
 
-  it("maps verification methods to their verified state", () => {
-    expect(verifiedStateForMethod("MYNA_ONLINE")).toBe("VERIFIED_MYNA");
-    expect(verifiedStateForMethod("CARD_ONLINE")).toBe("VERIFIED_CARD");
-    expect(verifiedStateForMethod("CARD_VISUAL")).toBe("PROVISIONAL_VISUAL");
+  it("binds verification methods to the states they may record", () => {
+    expect(stateForVerificationMethod("MYNA_ONLINE")).toBe("VERIFIED_MYNA");
+    expect(stateForVerificationMethod("CARD_ONLINE")).toBe("VERIFIED_CARD");
+    expect(stateForVerificationMethod("CARD_VISUAL")).toBe("PROVISIONAL_VISUAL");
+    expect(stateForVerificationMethod("NONE")).toBe("OFFLINE_PROVISIONAL");
+    expect(isEligibilityMethodConsistent("CARD_VISUAL", "VERIFIED_MYNA")).toBe(false);
+    expect(isEligibilityMethodConsistent("NONE", "VERIFIED_CARD")).toBe(false);
+    expect(isEligibilityMethodConsistent("CARD_VISUAL", "MISMATCH")).toBe(true);
+    expect(isEligibilityMethodConsistent("MYNA_ONLINE", "EXPIRED")).toBe(true);
   });
 });

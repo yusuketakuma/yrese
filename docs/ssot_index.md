@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.56
+version: 0.4.57
 created_at: 2026-07-09
 updated_at: 2026-08-23
 approved_at: 2026-08-01
@@ -153,6 +153,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.4.57 2026-08-24 review 反映: MOD-005 0.1.5→0.1.6(§2.2 資格状態登録・blocker 文言)、ADP-004 0.1.0→0.1.1(§3/§6 文言)を APPROVED→PROPOSED、MOD-008 0.2.5 の種別数を 20 に訂正。総文書数 185 不変。status 集計は APPROVED 163→161、PROPOSED 5→7、SUPERSEDED 17 不変"
   - "0.4.56 2026-08-24 MOD-008 0.2.4→0.2.5(情報連携監査種別 21 種追加)を APPROVED→PROPOSED へ降格。総文書数 185 不変。status 集計は APPROVED 164→163、PROPOSED 4→5、SUPERSEDED 17 不変"
   - "0.4.55 2026-08-23 finalization batch: 独立 review(api-contract / security-privacy)の finding 閉鎖と closure checker PASS、direct human approval により 25 文書を PROPOSED→APPROVED(API-009、API-010、API-011、API-012、API-013、API-014、API-015、API-016、API-017、API-018、ADP-003、ADP-004、REG-001、REG-002、ADP-001、MOD-005、MOD-009、JHS-004、JHS-003、JHS-006、JHS-007、JHS-005、JHS-002、JHS-001、JHS-008)。総文書数 185 不変。status 集計は APPROVED 139→164、PROPOSED 29→4、SUPERSEDED 17 不変。承認範囲は SSOT 改版のみで、実装着手・外部接続・conformance 主張・登録済み blocker の解除を含まない"
   - "0.4.54 2026-08-23 WP-6001 review 反映: api-contract / security-privacy 独立レビューの finding 閉鎖に伴い MOD-005(0.1.4→0.1.5、BLOCKER_TYPES 5 種追加)を APPROVED→PROPOSED へ降格、MOD-009 は 0.2.0→0.2.1 で PROPOSED 維持。総文書数 185 不変。status 集計は APPROVED 140→139、PROPOSED 28→29、SUPERSEDED 17 不変"
@@ -273,7 +274,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | ADP-003 | [adapter_registry.md](adapters/adapter_registry.md) | APPROVED |
 | ADP-002 | [external_system_boundary.md](adapters/external_system_boundary.md) | APPROVED |
 | ADP-001 | [official_adapter_inventory.md](adapters/official_adapter_inventory.md) | APPROVED |
-| ADP-004 | [online_qualification_boundary.md](adapters/online_qualification_boundary.md) | APPROVED |
+| ADP-004 | [online_qualification_boundary.md](adapters/online_qualification_boundary.md) | PROPOSED |
 
 ## docs/agents/ (18件)
 
@@ -416,7 +417,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | MOD-010 | [money_point_policy.md](modules/money_point_policy.md) | APPROVED |
 | MOD-007 | [permission_scope_registry.md](modules/permission_scope_registry.md) | APPROVED |
 | MOD-004 | [shared_type_registry.md](modules/shared_type_registry.md) | APPROVED |
-| MOD-005 | [status_registry.md](modules/status_registry.md) | APPROVED |
+| MOD-005 | [status_registry.md](modules/status_registry.md) | PROPOSED |
 | MOD-012 | [validation_schema_policy.md](modules/validation_schema_policy.md) | APPROVED |
 
 ## docs/operations/ (14件)

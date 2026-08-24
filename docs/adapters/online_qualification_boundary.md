@@ -4,7 +4,7 @@
 ssot_id: ADP-004
 title: オンライン資格確認・マイナ保険証連動の境界
 domain: adapters
-status: APPROVED
+status: PROPOSED
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -13,9 +13,9 @@ reviewers:
   - medical_safety_reviewer
   - claims_evidence_specialist
   - human_review_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-08-23
-updated_at: 2026-08-23
+updated_at: 2026-08-24
 approved_at: 2026-08-23
 approved_by: "direct human authority 2026-08-23 (「全てを許可する。実行」); independent review: api-contract lane + security-privacy lane REQUEST_CHANGES -> all findings closed (28dae05, f07e76e); closure checker PASS"
 effective_from: 2026-08-23
@@ -28,6 +28,7 @@ related_tests: []
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.1.1 2026-08-24 review A-9: §3 見出しを DB 実体(patients.eligibility_status は患者要約、受付単位状態は snapshot 導出)に合わせ、§6 に受付表示の正本を明記。EXPIRED / MISMATCH からの復帰は evidence を伴う人間 gate として open question に残す。semantics 不変。review と human approval まで PROPOSED"
   - "2026-08-23 WP-6001/WP-6101/WP-6202/WP-6203/WP-6302 finalization: 独立 review 2 lane の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手は各 WP の gate に従い、外部接続・conformance 主張は含まない"
   - "0.1.0 2026-08-23 WP-6302 骨子起案(PROPOSED)。外部 IF 仕様(ONS)未入手のため、yrese 側の状態機械・不変条件・fail-closed 規則・privacy 境界だけを定める。公式 IF の形式・項目・接続方式は一切推測しない"
 open_questions:
@@ -39,6 +40,7 @@ open_questions:
   - 撤回の伝播先(画面キャッシュ、印刷済み帳票、生成済み export、配送済み/DLQ の event)
   - 同意記録自体の保持期間
   - 同意取得主体(資格確認端末側か yrese UI か)
+  - EXPIRED / MISMATCH 受付の復帰に必要な evidence(同一性照合の再実施記録)と人間 gate の形
 blockers:
   - BLOCKED_REGULATORY_REVIEW: RB-002(オン資外部 IF 仕様未入手)・RB-003(電子処方箋)・RB-005(PMH)が解除されるまで外部接続コードを書かない
   - BLOCKED_OFFICIAL_ADAPTER_SPEC: ADP-001 共通
@@ -69,7 +71,7 @@ blockers:
 | 外部応答原本 | 資格確認応答を未加工で保存した記録 | PHI classification 付与・暗号化・監査。yrese は内容を解釈して書き換えない。**§5 の薬剤情報・特定健診情報・診療情報の閲覧応答は外部応答原本として保存しない**(表示のみ。保存対象は表示事実と範囲の監査) |
 | 閲覧同意記録 | 薬剤情報・特定健診情報・診療情報の閲覧に対する患者同意 | 同意の範囲・時刻・取得経路・撤回を監査。同意なき閲覧は拒否 |
 
-## 3. 受付の資格状態機械(`reception_entries.eligibility_status` の置換)
+## 3. 受付の資格状態機械(受付単位。`patients.eligibility_status` の患者要約とは別概念)
 
 ```text
 UNVERIFIED ──(確認成功)──▶ VERIFIED_MYNA | VERIFIED_CARD
@@ -118,7 +120,10 @@ OFFLINE_PROVISIONAL / PROVISIONAL_VISUAL ──(再確認失敗)──▶ MISMAT
 | LOCAL_ONLY | 不能 | `OFFLINE_PROVISIONAL` | 仮算定のみ |
 | RECOVERY_SYNC | 再確認を順次実施 | 再確認結果で遷移 | 再確認後に確定可 |
 
-未確認受付を「確認済み」と表示してはならない(SPEC-002 §16)。
+未確認受付を「確認済み」と表示してはならない(SPEC-002 §16)。受付画面の資格表示の正本は
+**受付単位の状態(§3)**であり、`patients.eligibility_status`(患者要約)を受付の確認済み表示に使わない。
+実装: `eligibility_snapshots` + `reception_entries.eligibility_snapshot_id`(migrations/000009・000011)、
+状態機械は `@yrese/shared-kernel` `RECEPTION_ELIGIBILITY_STATES`(MOD-005 §2.2)。
 
 ## 7. Privacy / security 不変条件
 

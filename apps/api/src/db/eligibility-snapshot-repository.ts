@@ -1,21 +1,28 @@
 import type { Pool } from 'pg';
 
+import { CalendarDate } from '@yrese/date-time';
 import {
   allowsFinalCalculationForEligibility,
   allowsProvisionalCalculationForEligibility,
+  isEligibilityMethodConsistent,
   isEligibilityTransitionAllowed,
   type EligibilityVerificationMethod,
   type ReceptionEligibilityState,
+  type RecordedEligibilityState,
 } from '@yrese/shared-kernel';
 
 /**
- * 資格確認スナップショット(WP-6303/6304、SSOT: ADP-004 §2-§4、migrations/000009)。
+ * 資格確認スナップショット(WP-6303/6304、SSOT: ADP-004 §2-§4、migrations/000009 + 000011)。
  *
- * - append-only。訂正は新 snapshot。前 snapshot からの遷移は ADP-004 §3 の表で検証する。
- * - 受付の資格状態は snapshot から導出する: 紐づけなし = UNVERIFIED、
- *   有効期限切れ = EXPIRED(記録時 state にかかわらず)。
- * - 外部 IF は未接続(RB-002)。本 repository は「確認した事実」を記録するだけで、
- *   確認そのものは行わない。資格内容(保険者番号等)は保持せず raw_response_ref だけ持つ。
+ * - 粒度は **受付 1 件**。遷移元は当該受付に現在紐づく snapshot の導出状態(なければ
+ *   UNVERIFIED)であり、患者の過去来局の状態ではない(review A-1)。
+ * - append-only。記録と受付への紐づけは同一 tx で行い、紐づけの単独張り替え API は持たない
+ *   (review A-3)。訂正は遷移表に従う新 snapshot。
+ * - 確認方式と状態の整合を code と DB CHECK の両方で強制する(review A-2)。
+ * - 暦日比較は MOD-011 の CalendarDate に委ね、asOf は 'YYYY-MM-DD'(薬局ロケール JST の
+ *   業務日付)以外を拒否する(review A-5)。
+ * - 外部 IF は未接続(RB-002)。本 repository は「確認した事実」を記録するだけ。
+ *   資格内容(保険者番号等)は保持せず raw_response_ref(不透明 handle)だけ持つ。
  */
 export interface EligibilityScope {
   readonly tenantId: string;
@@ -24,22 +31,24 @@ export interface EligibilityScope {
 
 export interface RecordEligibilitySnapshotInput {
   readonly snapshotId: string;
-  readonly patientId: string;
-  readonly verifiedMethod: EligibilityVerificationMethod | 'NONE';
-  readonly state: Exclude<ReceptionEligibilityState, 'UNVERIFIED'>;
+  readonly verifiedMethod: EligibilityVerificationMethod;
+  readonly state: RecordedEligibilityState;
   readonly verifiedAt: Date;
+  /** 'YYYY-MM-DD'(業務日付)。 */
   readonly validFrom: string;
-  readonly validTo?: string;
-  readonly rawResponseRef?: string;
+  readonly validTo?: string | null;
+  readonly rawResponseRef?: string | null;
   readonly recordedBy: string;
+  /** 記録時刻。遷移元の導出に使う業務日付は `asOfDate` で明示する(MOD-011)。 */
   readonly now: Date;
+  readonly asOfDate: string;
 }
 
 export interface EligibilitySnapshot {
   readonly snapshotId: string;
   readonly patientId: string;
   readonly verifiedMethod: string;
-  readonly state: Exclude<ReceptionEligibilityState, 'UNVERIFIED'>;
+  readonly state: RecordedEligibilityState;
   readonly verifiedAt: string;
   readonly validFrom: string;
   readonly validTo: string | null;
@@ -62,11 +71,18 @@ export class EligibilityTransitionError extends RangeError {
   }
 }
 
+export class EligibilityMethodError extends RangeError {
+  constructor(method: string, state: string) {
+    super(`verification method ${method} cannot record state ${state}`);
+    this.name = 'EligibilityMethodError';
+  }
+}
+
 interface SnapshotRow {
   readonly snapshot_id: string;
   readonly patient_id: string;
   readonly verified_method: string;
-  readonly state: Exclude<ReceptionEligibilityState, 'UNVERIFIED'>;
+  readonly state: RecordedEligibilityState;
   readonly verified_at: Date;
   readonly valid_from: string;
   readonly valid_to: string | null;
@@ -84,73 +100,95 @@ function toSnapshot(row: SnapshotRow): EligibilitySnapshot {
   });
 }
 
-function deriveState(
+function businessDate(value: string, label: string): CalendarDate {
+  try {
+    return CalendarDate.fromString(value);
+  } catch {
+    throw new RangeError(`${label} must be a calendar date (YYYY-MM-DD)`);
+  }
+}
+
+/** 有効期間外は EXPIRED(有効開始前も含む。fail-closed)。 */
+export function deriveEligibilityState(
   snapshot: EligibilitySnapshot | undefined,
   asOfDate: string,
 ): ReceptionEligibilityState {
+  const asOf = businessDate(asOfDate, 'asOfDate');
   if (snapshot === undefined) return 'UNVERIFIED';
-  if (snapshot.validTo !== null && snapshot.validTo < asOfDate)
+  if (businessDate(snapshot.validFrom, 'validFrom').compare(asOf) > 0)
     return 'EXPIRED';
-  if (snapshot.validFrom > asOfDate) return 'EXPIRED';
+  if (
+    snapshot.validTo !== null &&
+    businessDate(snapshot.validTo, 'validTo').compare(asOf) < 0
+  ) {
+    return 'EXPIRED';
+  }
   return snapshot.state;
 }
 
-const selectSnapshotColumns = `snapshot_id, patient_id, verified_method, state, verified_at,
-  valid_from::text AS valid_from, valid_to::text AS valid_to`;
+const selectSnapshotColumns = `s.snapshot_id, s.patient_id, s.verified_method, s.state, s.verified_at,
+  s.valid_from::text AS valid_from, s.valid_to::text AS valid_to`;
+
+const selectReceptionSnapshotSql = `
+  SELECT r.patient_id AS reception_patient_id, ${selectSnapshotColumns}
+    FROM reception_entries r
+    LEFT JOIN eligibility_snapshots s
+      ON s.tenant_id = r.tenant_id AND s.pharmacy_id = r.pharmacy_id
+     AND s.patient_id = r.patient_id AND s.snapshot_id = r.eligibility_snapshot_id
+   WHERE r.tenant_id = $1 AND r.pharmacy_id = $2 AND r.reception_id = $3`;
+
+type ReceptionSnapshotRow = Partial<SnapshotRow> & {
+  readonly reception_patient_id: string;
+  readonly snapshot_id: string | null;
+};
+
+const lockKeyDelimiter = '\u001f';
 
 export class PostgresEligibilitySnapshotRepository {
   constructor(private readonly pool: Pool) {}
 
-  async latestForPatient(
+  /**
+   * 受付に対して snapshot を記録し、同一 tx で受付の紐づけを更新する。
+   * 遷移元は受付の現在の導出状態。受付単位で直列化する。
+   */
+  async recordForReception(
     scope: EligibilityScope,
-    patientId: string,
-  ): Promise<EligibilitySnapshot | undefined> {
-    const result = await this.pool.query<SnapshotRow>(
-      `SELECT ${selectSnapshotColumns}
-         FROM eligibility_snapshots
-        WHERE tenant_id = $1 AND pharmacy_id = $2 AND patient_id = $3
-        ORDER BY sequence_number DESC
-        LIMIT 1`,
-      [scope.tenantId, scope.pharmacyId, patientId],
-    );
-    const row = result.rows[0];
-    return row === undefined ? undefined : toSnapshot(row);
-  }
-
-  /** 前 snapshot からの遷移を検証して追記する。同一 tx 内で直列化する。 */
-  async record(
-    scope: EligibilityScope,
+    receptionId: string,
     input: RecordEligibilitySnapshotInput,
   ): Promise<EligibilitySnapshot> {
+    if (!isEligibilityMethodConsistent(input.verifiedMethod, input.state)) {
+      throw new EligibilityMethodError(input.verifiedMethod, input.state);
+    }
+    businessDate(input.validFrom, 'validFrom');
+    if (input.validTo !== undefined && input.validTo !== null)
+      businessDate(input.validTo, 'validTo');
+    businessDate(input.asOfDate, 'asOfDate');
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
       await client.query(
         'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
         [
-          [
-            'eligibility',
-            scope.tenantId,
-            scope.pharmacyId,
-            input.patientId,
-          ].join('\u001f'),
+          ['eligibility', scope.tenantId, scope.pharmacyId, receptionId].join(
+            lockKeyDelimiter,
+          ),
         ],
       );
-      const latest = await client.query<SnapshotRow>(
-        `SELECT ${selectSnapshotColumns}
-           FROM eligibility_snapshots
-          WHERE tenant_id = $1 AND pharmacy_id = $2 AND patient_id = $3
-          ORDER BY sequence_number DESC LIMIT 1`,
-        [scope.tenantId, scope.pharmacyId, input.patientId],
+      const current = await client.query<ReceptionSnapshotRow>(
+        selectReceptionSnapshotSql,
+        [scope.tenantId, scope.pharmacyId, receptionId],
       );
-      const from: ReceptionEligibilityState =
-        latest.rows[0]?.state ?? 'UNVERIFIED';
+      const row = current.rows[0];
+      if (row === undefined)
+        throw new RangeError('reception not found in scope');
+      const currentSnapshot =
+        row.snapshot_id === null ? undefined : toSnapshot(row as SnapshotRow);
+      const from = deriveEligibilityState(currentSnapshot, input.asOfDate);
       if (!isEligibilityTransitionAllowed(from, input.state)) {
-        await client.query('ROLLBACK');
         throw new EligibilityTransitionError(from, input.state);
       }
       const inserted = await client.query<SnapshotRow>(
-        `INSERT INTO eligibility_snapshots
+        `INSERT INTO eligibility_snapshots AS s
            (tenant_id, pharmacy_id, snapshot_id, patient_id, verified_method, state, verified_at,
             valid_from, valid_to, raw_response_ref, recorded_by, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9::date, $10, $11, $12)
@@ -159,7 +197,7 @@ export class PostgresEligibilitySnapshotRepository {
           scope.tenantId,
           scope.pharmacyId,
           input.snapshotId,
-          input.patientId,
+          row.reception_patient_id,
           input.verifiedMethod,
           input.state,
           input.verifiedAt,
@@ -170,6 +208,20 @@ export class PostgresEligibilitySnapshotRepository {
           input.now,
         ],
       );
+      const attached = await client.query(
+        `UPDATE reception_entries SET eligibility_snapshot_id = $4
+          WHERE tenant_id = $1 AND pharmacy_id = $2 AND reception_id = $3
+            AND eligibility_snapshot_id IS NOT DISTINCT FROM $5`,
+        [
+          scope.tenantId,
+          scope.pharmacyId,
+          receptionId,
+          input.snapshotId,
+          currentSnapshot?.snapshotId ?? null,
+        ],
+      );
+      if (attached.rowCount !== 1)
+        throw new RangeError('reception eligibility changed concurrently');
       await client.query('COMMIT');
       return toSnapshot(inserted.rows[0]!);
     } catch (error) {
@@ -184,51 +236,21 @@ export class PostgresEligibilitySnapshotRepository {
     }
   }
 
-  /** 受付を snapshot に紐づける(同一患者の snapshot のみ)。 */
-  async attachToReception(
-    scope: EligibilityScope,
-    receptionId: string,
-    snapshotId: string,
-  ): Promise<void> {
-    const result = await this.pool.query(
-      `UPDATE reception_entries r
-          SET eligibility_snapshot_id = s.snapshot_id
-         FROM eligibility_snapshots s
-        WHERE r.tenant_id = $1 AND r.pharmacy_id = $2 AND r.reception_id = $3
-          AND s.tenant_id = r.tenant_id AND s.pharmacy_id = r.pharmacy_id
-          AND s.snapshot_id = $4 AND s.patient_id = r.patient_id`,
-      [scope.tenantId, scope.pharmacyId, receptionId, snapshotId],
-    );
-    if (result.rowCount !== 1) {
-      throw new RangeError(
-        'reception or snapshot not found in scope, or patient mismatch',
-      );
-    }
-  }
-
-  /** 受付の資格状態を導出する(fail-closed: 紐づけなし = UNVERIFIED)。 */
+  /** 受付の資格状態を導出する(fail-closed: 紐づけなし = UNVERIFIED、期間外 = EXPIRED)。 */
   async receptionEligibility(
     scope: EligibilityScope,
     receptionId: string,
     asOfDate: string,
   ): Promise<ReceptionEligibility> {
-    const result = await this.pool.query<
-      SnapshotRow & { snapshot_id: string | null }
-    >(
-      `SELECT s.snapshot_id, s.patient_id, s.verified_method, s.state, s.verified_at,
-              s.valid_from::text AS valid_from, s.valid_to::text AS valid_to
-         FROM reception_entries r
-         LEFT JOIN eligibility_snapshots s
-           ON s.tenant_id = r.tenant_id AND s.pharmacy_id = r.pharmacy_id
-          AND s.snapshot_id = r.eligibility_snapshot_id
-        WHERE r.tenant_id = $1 AND r.pharmacy_id = $2 AND r.reception_id = $3`,
+    const result = await this.pool.query<ReceptionSnapshotRow>(
+      selectReceptionSnapshotSql,
       [scope.tenantId, scope.pharmacyId, receptionId],
     );
     const row = result.rows[0];
     if (row === undefined) throw new RangeError('reception not found in scope');
     const snapshot =
       row.snapshot_id === null ? undefined : toSnapshot(row as SnapshotRow);
-    const state = deriveState(snapshot, asOfDate);
+    const state = deriveEligibilityState(snapshot, asOfDate);
     return Object.freeze({
       state,
       snapshotId: snapshot?.snapshotId ?? null,

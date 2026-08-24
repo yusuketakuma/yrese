@@ -3,7 +3,12 @@ import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { ELIGIBILITY_STATUSES, RECEPTION_STATUSES } from '@yrese/shared-kernel';
+import {
+  ELIGIBILITY_STATUSES,
+  ELIGIBILITY_VERIFICATION_METHODS,
+  RECEPTION_ELIGIBILITY_STATES,
+  RECEPTION_STATUSES,
+} from '@yrese/shared-kernel';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const immutablePatientReceptionMigrationChecksum = '2910b460d2b9733904937093b399784089dbda9a444af75ac5fd498a1ae4b599';
@@ -27,6 +32,16 @@ describe('patient/reception migration enum values', () => {
 
     expect(extractCheckValues(sql, 'patients_eligibility_status_check')).toEqual([...ELIGIBILITY_STATUSES]);
     expect(extractCheckValues(sql, 'reception_entries_reception_status_check')).toEqual([...RECEPTION_STATUSES]);
+  });
+
+  it('keeps eligibility snapshot CHECK lists aligned with shared-kernel tuples (000009)', async () => {
+    const sql = await readFile(resolve(repositoryRoot, 'migrations/000009_create_eligibility_snapshots.sql'), 'utf8');
+
+    expect(extractCheckValues(sql, 'eligibility_snapshots_method_check')).toEqual([...ELIGIBILITY_VERIFICATION_METHODS]);
+    // UNVERIFIED は snapshot なしの導出状態であり、記録可能状態には含まれない。
+    expect(extractCheckValues(sql, 'eligibility_snapshots_state_check')).toEqual(
+      RECEPTION_ELIGIBILITY_STATES.filter((state) => state !== 'UNVERIFIED'),
+    );
   });
 
   it('keeps the applied patient/reception migration immutable', async () => {

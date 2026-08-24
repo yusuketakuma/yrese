@@ -4,11 +4,11 @@
 ssot_id: MOD-005
 title: ステータスレジストリ(システムモード・保留系・BLOCKER)
 domain: modules
-status: APPROVED
+status: PROPOSED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.5
+version: 0.1.6
 created_at: 2026-07-09
 updated_at: 2026-08-23
 approved_at: 2026-08-23
@@ -16,6 +16,7 @@ approved_by: "direct human authority 2026-08-23 (「全てを許可する。実�
 effective_from: 2026-08-23
 effective_to: null
 change_log:
+  - "0.1.6 2026-08-24 WP-6303/6304 review A-8/B-6: §2.2 に受付資格確認状態 7 種と確認方式 4 種を登録、BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT の文言を APPROVED 版基準に精緻化。review と human approval まで PROPOSED"
   - "2026-08-23 WP-6001/WP-6101/WP-6202/WP-6203/WP-6302 finalization: 独立 review 2 lane の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手は各 WP の gate に従い、外部接続・conformance 主張は含まない"
   - "0.1.5 2026-08-23 WP-6001: BLOCKER_TYPES に Integration Hub / 監査 / privacy 系 5 種を登録(33→38)。shared-kernel blockers.ts と同期。review と human approval まで PROPOSED"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
@@ -86,6 +87,17 @@ WAITING / IN_PROGRESS / COMPLETED / CANCELLED
 - 受付状態は請求可否判定 `isClaimable()` に関与しない
 - 値の正本は `@yrese/shared-kernel` の `RECEPTION_STATUSES`
 
+## 2.2 受付の資格確認状態(RECEPTION_ELIGIBILITY_STATES — 7種、ADP-004 §3)と確認方式(ELIGIBILITY_VERIFICATION_METHODS — 4種)
+
+UNVERIFIED / VERIFIED_MYNA / VERIFIED_CARD / PROVISIONAL_VISUAL / OFFLINE_PROVISIONAL / EXPIRED / MISMATCH
+MYNA_ONLINE / CARD_ONLINE / CARD_VISUAL / NONE
+
+- **受付 1 件**に紐づく EligibilitySnapshot から導出する状態。患者要約の `ELIGIBILITY_STATUSES`(§1、API-001)とは別概念で、受付画面の資格表示の正本はこちら
+- 確定算定は VERIFIED_MYNA / VERIFIED_CARD のみ、仮算定は加えて PROVISIONAL_VISUAL / OFFLINE_PROVISIONAL。UNVERIFIED / EXPIRED / MISMATCH は算定不可(fail-closed)
+- 遷移表は ADP-004 §3 と一致させる。EXPIRED / MISMATCH は受付単位の終端で、復帰は新規受付または evidence を伴う人間 gate
+- 確認方式と記録状態の整合(目視 → PROVISIONAL_VISUAL、NONE → OFFLINE_PROVISIONAL 等)は code と DB CHECK の双方で強制する
+- 値の正本は `@yrese/shared-kernel` の `RECEPTION_ELIGIBILITY_STATES` / `ELIGIBILITY_VERIFICATION_METHODS`(`check:boundaries` の重複定数検査対象)
+
 ## 3. BLOCKER 種別(BLOCKER_TYPES — 38種)
 
 実装統率(§0.13): BLOCKED_NOT_READY / BLOCKED_REGULATORY_REVIEW / BLOCKED_LEGAL_REVIEW / BLOCKED_MEDICAL_SAFETY_REVIEW / BLOCKED_OFFICIAL_ADAPTER_SPEC / BLOCKED_CODE_MAPPING_REVIEW / BLOCKED_UNSUPPORTED_CLAIM / BLOCKED_PMH_REVIEW / BLOCKED_NSIPS_LICENSE / BLOCKED_SECURITY_REVIEW / BLOCKED_PERFORMANCE_SLO / BLOCKED_EDGE_SYNC_DESIGN / BLOCKED_UX_SAFETY / CODEX_CAPABILITY_UNVERIFIED / AGMSG_PROTOCOL_UNVERIFIED
@@ -104,7 +116,7 @@ WAITING / IN_PROGRESS / COMPLETED / CANCELLED
 
 FHIR/連携境界(PRD-007、DOM-005/006): BLOCKED_OFFICIAL_ADAPTER_BOUNDARY(Official Adapter[オン資・電子処方箋・オンライン請求・PMH・JAHIS]を FHIR で置換しない)/ BLOCKED_FHIR_CONFORMANCE_REVIEW(conformance 未検証での「JP Core 準拠」訴求禁止)
 
-Integration Hub / 監査・保持・privacy(API-008/009〜018、ADP-004、JHS-003): BLOCKED_WRITE_PRODUCER_PREREQUISITES(単一 external write producer の前提未充足)/ BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT(MOD-008 未登録種別の発火禁止)/ BLOCKED_AUDIT_PAYLOAD_RETENTION_POLICY(保持期間未確定)/ BLOCKED_PRIVACY_REVIEW(privacy review 未完了)/ BLOCKED_JAHIS_SPEC_ACQUISITION(JAHIS 仕様本文未入手)
+Integration Hub / 監査・保持・privacy(API-008/009〜018、ADP-004、JHS-003): BLOCKED_WRITE_PRODUCER_PREREQUISITES(単一 external write producer の前提未充足)/ BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT(MOD-008 の **APPROVED 版**に登録されていない種別の発火禁止。code の `AUDIT_EVENT_TYPES` に存在しても SSOT が PROPOSED の間は発火不可)/ BLOCKED_AUDIT_PAYLOAD_RETENTION_POLICY(保持期間未確定)/ BLOCKED_PRIVACY_REVIEW(privacy review 未完了)/ BLOCKED_JAHIS_SPEC_ACQUISITION(JAHIS 仕様本文未入手)
 
 報告形式は `BlockerReport`(blockerType / workPackageId / blockingQuestion / affectedFiles / risk / recommendedNextStep)— 運用は PRC-006(blocker_triage_policy)。
 

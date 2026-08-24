@@ -41,6 +41,8 @@ const duplicateConstRules = [
   { constName: "ERROR_DOMAINS", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
   { constName: "KERNEL_ERROR_CODES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
   { constName: "ELIGIBILITY_STATUSES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
+  { constName: "RECEPTION_ELIGIBILITY_STATES", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
+  { constName: "ELIGIBILITY_VERIFICATION_METHODS", ownerPackageName: "shared-kernel", sourceName: "shared-kernel", requiresAsConst: true },
   {
     constName: "PATIENT_SEARCH_CURSOR_MAX_LENGTH",
     ownerPackageName: "contracts",
