@@ -93,6 +93,14 @@ export class PartnerStateConflictError extends Error {
   }
 }
 
+/** 同一 id で属性の異なる再登録(M1)。無言 no-op にしない。 */
+export class PartnerRegistrationConflictError extends Error {
+  constructor(readonly entity: string) {
+    super(`${entity} already exists with different attributes`);
+    this.name = 'PartnerRegistrationConflictError';
+  }
+}
+
 export class PartnerScopeError extends RangeError {
   constructor(readonly scope: string) {
     super('scope is not in the partner scope registry');
@@ -117,12 +125,21 @@ export class PostgresPartnerRegistry {
     readonly displayName: string;
     readonly now: Date;
   }): Promise<void> {
-    await this.pool.query(
+    const inserted = await this.pool.query(
       `INSERT INTO partners (partner_id, display_name, state, created_at)
        VALUES ($1, $2, 'DRAFT', $3)
        ON CONFLICT (partner_id) DO NOTHING`,
       [input.partnerId, input.displayName, input.now],
     );
+    if (inserted.rowCount === 0) {
+      const existing = await this.pool.query<{ display_name: string }>(
+        'SELECT display_name FROM partners WHERE partner_id = $1',
+        [input.partnerId],
+      );
+      if (existing.rows[0]?.display_name !== input.displayName) {
+        throw new PartnerRegistrationConflictError('partner');
+      }
+    }
   }
 
   /** 期待状態付き CAS。表にない遷移は拒否、期待状態不一致は conflict。 */
@@ -149,7 +166,7 @@ export class PostgresPartnerRegistry {
       readonly now: Date;
     },
   ): Promise<void> {
-    await this.pool.query(
+    const inserted = await this.pool.query(
       `INSERT INTO partner_apps (tenant_id, pharmacy_id, app_id, partner_id, state, created_at)
        VALUES ($1, $2, $3, $4, 'DRAFT', $5)
        ON CONFLICT (tenant_id, pharmacy_id, app_id) DO NOTHING`,
@@ -161,6 +178,16 @@ export class PostgresPartnerRegistry {
         input.now,
       ],
     );
+    if (inserted.rowCount === 0) {
+      const existing = await this.pool.query<{ partner_id: string }>(
+        `SELECT partner_id FROM partner_apps
+          WHERE tenant_id = $1 AND pharmacy_id = $2 AND app_id = $3`,
+        [scope.tenantId, scope.pharmacyId, input.appId],
+      );
+      if (existing.rows[0]?.partner_id !== input.partnerId) {
+        throw new PartnerRegistrationConflictError('partner app');
+      }
+    }
   }
 
   async setAppState(
@@ -224,7 +251,7 @@ export class PostgresPartnerRegistry {
     },
   ): Promise<void> {
     await assertResolvesToPublicAddress(input.url, this.lookup);
-    await this.pool.query(
+    const inserted = await this.pool.query(
       `INSERT INTO partner_delivery_endpoints
          (tenant_id, pharmacy_id, app_id, endpoint_id, url, key_id, secret_ref, country_code, state, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDING_VERIFICATION', $9)
@@ -241,6 +268,30 @@ export class PostgresPartnerRegistry {
         input.now,
       ],
     );
+    if (inserted.rowCount === 0) {
+      const existing = await this.pool.query<{
+        app_id: string;
+        url: string;
+        key_id: string;
+        secret_ref: string;
+        country_code: string;
+      }>(
+        `SELECT app_id, url, key_id, secret_ref, country_code FROM partner_delivery_endpoints
+          WHERE tenant_id = $1 AND pharmacy_id = $2 AND endpoint_id = $3`,
+        [scope.tenantId, scope.pharmacyId, input.endpointId],
+      );
+      const row = existing.rows[0];
+      if (
+        row === undefined ||
+        row.app_id !== input.appId ||
+        row.url !== input.url.toString() ||
+        row.key_id !== input.keyId ||
+        row.secret_ref !== input.secretRef ||
+        row.country_code !== input.countryCode
+      ) {
+        throw new PartnerRegistrationConflictError('endpoint');
+      }
+    }
   }
 
   /** 所有権検証(challenge)の完了を記録する。ACTIVE 化の前提。 */
@@ -326,59 +377,103 @@ export class PostgresPartnerRegistry {
     );
   }
 
-  /** 配送時に毎回評価する(grant / state の失効を即時反映)。DNS 再解決も行う。 */
+  /**
+   * 配送時に毎回評価する(grant / state の失効を即時反映)。DNS 再解決も行う。
+   * targets と suspended は同一 REPEATABLE READ tx の 1 snapshot から読む(H1: 非原子読取の排除)。
+   * suspended = 有効な購読と grant を持ち、配送可能な ACTIVE endpoint が 1 つも無く、
+   * かつ app / partner / endpoint のいずれかが SUSPENDED で止まっている app。
+   */
   async resolveDeliveryTargets(
     scope: PartnerScope,
     eventType: string,
   ): Promise<DeliveryResolution> {
-    const result = await this.pool.query<{
+    const client = await this.pool.connect();
+    let rows: {
       app_id: string;
       partner_id: string;
       endpoint_id: string;
       url: string;
       key_id: string;
       secret_ref: string;
-    }>(
-      `SELECT a.app_id, a.partner_id, e.endpoint_id, e.url, e.key_id, e.secret_ref
-         FROM partner_apps a
-         JOIN partners p ON p.partner_id = a.partner_id
-         JOIN partner_subscriptions s
-           ON s.tenant_id = a.tenant_id AND s.pharmacy_id = a.pharmacy_id AND s.app_id = a.app_id
-          AND s.ended_at IS NULL
-         JOIN partner_grants g
-           ON g.tenant_id = a.tenant_id AND g.pharmacy_id = a.pharmacy_id AND g.app_id = a.app_id
-          AND g.revoked_at IS NULL
-         JOIN partner_delivery_endpoints e
-           ON e.tenant_id = a.tenant_id AND e.pharmacy_id = a.pharmacy_id AND e.app_id = a.app_id
-        WHERE a.tenant_id = $1 AND a.pharmacy_id = $2
-          AND s.event_type = $3
-          AND g.scope = $4
-          AND p.state = 'ACTIVE' AND a.state = 'ACTIVE' AND e.state = 'ACTIVE'
-        ORDER BY a.app_id, e.endpoint_id`,
-      [
-        scope.tenantId,
-        scope.pharmacyId,
-        eventType,
-        `events:subscribe:${eventType}`,
-      ],
-    );
-    const suspended = await this.pool.query<{ count: string }>(
-      `SELECT count(*)::text AS count
-         FROM partner_apps a
-         JOIN partners p ON p.partner_id = a.partner_id
-         JOIN partner_subscriptions s
-           ON s.tenant_id = a.tenant_id AND s.pharmacy_id = a.pharmacy_id AND s.app_id = a.app_id
-          AND s.ended_at IS NULL
-        WHERE a.tenant_id = $1 AND a.pharmacy_id = $2 AND s.event_type = $3
-          AND (a.state = 'SUSPENDED' OR p.state = 'SUSPENDED'
-               OR EXISTS (SELECT 1 FROM partner_delivery_endpoints e
-                           WHERE e.tenant_id = a.tenant_id AND e.pharmacy_id = a.pharmacy_id
-                             AND e.app_id = a.app_id AND e.state = 'SUSPENDED'))`,
-      [scope.tenantId, scope.pharmacyId, eventType],
-    );
+    }[];
+    let suspendedCount: number;
+    try {
+      await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+      const result = await client.query<{
+        app_id: string;
+        partner_id: string;
+        endpoint_id: string;
+        url: string;
+        key_id: string;
+        secret_ref: string;
+      }>(
+        `SELECT a.app_id, a.partner_id, e.endpoint_id, e.url, e.key_id, e.secret_ref
+           FROM partner_apps a
+           JOIN partners p ON p.partner_id = a.partner_id
+           JOIN partner_subscriptions s
+             ON s.tenant_id = a.tenant_id AND s.pharmacy_id = a.pharmacy_id AND s.app_id = a.app_id
+            AND s.ended_at IS NULL
+           JOIN partner_grants g
+             ON g.tenant_id = a.tenant_id AND g.pharmacy_id = a.pharmacy_id AND g.app_id = a.app_id
+            AND g.revoked_at IS NULL
+           JOIN partner_delivery_endpoints e
+             ON e.tenant_id = a.tenant_id AND e.pharmacy_id = a.pharmacy_id AND e.app_id = a.app_id
+          WHERE a.tenant_id = $1 AND a.pharmacy_id = $2
+            AND s.event_type = $3
+            AND g.scope = $4
+            AND p.state = 'ACTIVE' AND a.state = 'ACTIVE' AND e.state = 'ACTIVE'
+          ORDER BY a.app_id, e.endpoint_id`,
+        [
+          scope.tenantId,
+          scope.pharmacyId,
+          eventType,
+          `events:subscribe:${eventType}`,
+        ],
+      );
+      rows = result.rows;
+      const suspended = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count
+           FROM partner_apps a
+           JOIN partners p ON p.partner_id = a.partner_id
+           JOIN partner_subscriptions s
+             ON s.tenant_id = a.tenant_id AND s.pharmacy_id = a.pharmacy_id AND s.app_id = a.app_id
+            AND s.ended_at IS NULL AND s.event_type = $3
+           JOIN partner_grants g
+             ON g.tenant_id = a.tenant_id AND g.pharmacy_id = a.pharmacy_id AND g.app_id = a.app_id
+            AND g.revoked_at IS NULL AND g.scope = $4
+          WHERE a.tenant_id = $1 AND a.pharmacy_id = $2
+            AND a.state <> 'RETIRED' AND p.state <> 'RETIRED'
+            AND NOT EXISTS (
+              SELECT 1 FROM partner_delivery_endpoints e
+               WHERE e.tenant_id = a.tenant_id AND e.pharmacy_id = a.pharmacy_id
+                 AND e.app_id = a.app_id AND e.state = 'ACTIVE'
+                 AND a.state = 'ACTIVE' AND p.state = 'ACTIVE')
+            AND (a.state = 'SUSPENDED' OR p.state = 'SUSPENDED'
+                 OR EXISTS (SELECT 1 FROM partner_delivery_endpoints e
+                             WHERE e.tenant_id = a.tenant_id AND e.pharmacy_id = a.pharmacy_id
+                               AND e.app_id = a.app_id AND e.state = 'SUSPENDED'))`,
+        [
+          scope.tenantId,
+          scope.pharmacyId,
+          eventType,
+          `events:subscribe:${eventType}`,
+        ],
+      );
+      suspendedCount = Number(suspended.rows[0]?.count ?? '0');
+      await client.query('COMMIT');
+    } catch (error) {
+      try {
+        await client.query('ROLLBACK');
+      } catch {
+        // ignore
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
     const targets: DeliveryTarget[] = [];
     const rejectedEndpointIds: string[] = [];
-    for (const row of result.rows) {
+    for (const row of rows) {
       try {
         const url = new URL(row.url);
         await assertResolvesToPublicAddress(url, this.lookup);
@@ -397,7 +492,7 @@ export class PostgresPartnerRegistry {
     return Object.freeze({
       targets,
       rejectedEndpointIds,
-      suspendedSubscribers: Number(suspended.rows[0]?.count ?? '0'),
+      suspendedSubscribers: suspendedCount,
     });
   }
 }

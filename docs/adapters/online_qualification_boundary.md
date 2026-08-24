@@ -28,7 +28,7 @@ related_tests: []
 related_prs: []
 evidence_ids: []
 change_log:
-  - "0.1.1 2026-08-24 review A-9: §3 見出しを DB 実体(patients.eligibility_status は患者要約、受付単位状態は snapshot 導出)に合わせ、§6 に受付表示の正本を明記。EXPIRED / MISMATCH からの復帰は evidence を伴う人間 gate として open question に残す。semantics 不変。review と human approval まで PROPOSED"
+  - "0.1.1 2026-08-24 review A-9/M5: §4 の再確認を「結果不変は監査 event、結果変化は新 snapshot」と定義して §3 と整合。 §3 見出しを DB 実体(patients.eligibility_status は患者要約、受付単位状態は snapshot 導出)に合わせ、§6 に受付表示の正本を明記。EXPIRED / MISMATCH からの復帰は evidence を伴う人間 gate として open question に残す。semantics 不変。review と human approval まで PROPOSED"
   - "2026-08-23 WP-6001/WP-6101/WP-6202/WP-6203/WP-6302 finalization: 独立 review 2 lane の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手は各 WP の gate に従い、外部接続・conformance 主張は含まない"
   - "0.1.0 2026-08-23 WP-6302 骨子起案(PROPOSED)。外部 IF 仕様(ONS)未入手のため、yrese 側の状態機械・不変条件・fail-closed 規則・privacy 境界だけを定める。公式 IF の形式・項目・接続方式は一切推測しない"
 open_questions:
@@ -96,7 +96,10 @@ OFFLINE_PROVISIONAL / PROVISIONAL_VISUAL ──(再確認失敗)──▶ MISMAT
 ## 4. 請求前資格確認(CLM-001 工程 6 への入力)
 
 - 請求月締め前に、対象受付の snapshot が「請求対象日に有効」かを再確認する。
-  再確認も snapshot として追加する(上書きしない)。
+  再確認の結果が変わった場合(資格喪失・保険者変更・不一致)は §3 の遷移表に従う新 snapshot
+  (`EXPIRED` / `MISMATCH`)として追加する(上書きしない)。結果が変わらない再確認は新 snapshot を
+  作らず、既存 snapshot_id を対象とする監査 event(`eligibility.verified`、MOD-008 §1.2)として
+  記録する — §3 の表に VERIFIED_* の自己遷移が無いのはこのためである(review M5)。
 - 資格喪失・保険者変更・負担割合変更を検知した受付は請求データ生成から除外し、
   `MANUAL_REVIEW_REQUIRED` 一覧へ出す。
 - 再確認の外部 IF 仕様は RB-002 解除後に記述する。

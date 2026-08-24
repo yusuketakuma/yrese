@@ -86,7 +86,7 @@ function input(
     verifiedAt: now,
     validFrom: '2026-08-01',
     validTo: '2026-09-30',
-    rawResponseRef: 'raw/opaque-001',
+    rawResponseRef: 'raw/0123456789abcdef',
     recordedBy: 'user-elig-001',
     now,
     asOfDate: today,
@@ -318,6 +318,17 @@ describePostgres('PostgresEligibilitySnapshotRepository (PostgreSQL)', () => {
           input({ snapshotId: 'snap-p2', rawResponseRef: '{"insurer":"x"}' }),
         ),
       ).rejects.toThrow(/raw_response_ref_opaque/);
+      // base64url で encode した payload も hex-only の id 部に合わず拒否される(M4)。
+      await expect(
+        repo.recordForReception(
+          scope,
+          'reception-elig-002',
+          input({
+            snapshotId: 'snap-p2',
+            rawResponseRef: 'raw/eyJpbnN1cmVyIjoiMTIzNDU2NzgifQ',
+          }),
+        ),
+      ).rejects.toThrow(/raw_response_ref_opaque/);
       // 生 SQL でも他患者の snapshot を受付に付けられない(複合 FK、review A-7)。
       await expect(
         pool.query(
@@ -334,6 +345,32 @@ describePostgres('PostgresEligibilitySnapshotRepository (PostgreSQL)', () => {
           input({ snapshotId: 'x' }),
         ),
       ).rejects.toThrow(/not found/);
+    });
+  });
+
+  it('treats an identical retry after a lost response as success, not as an invalid transition (M6)', async () => {
+    await withMigratedSchema(async (pool) => {
+      await seedPatientAndReception(
+        pool,
+        'patient-elig-001',
+        'reception-elig-001',
+      );
+      const repo = new PostgresEligibilitySnapshotRepository(pool);
+      const first = await repo.recordForReception(
+        scope,
+        'reception-elig-001',
+        input(),
+      );
+      const retry = await repo.recordForReception(
+        scope,
+        'reception-elig-001',
+        input(),
+      );
+      expect(retry).toEqual(first);
+      const count = await pool.query<{ count: string }>(
+        'SELECT count(*)::text AS count FROM eligibility_snapshots',
+      );
+      expect(count.rows[0]?.count).toBe('1');
     });
   });
 

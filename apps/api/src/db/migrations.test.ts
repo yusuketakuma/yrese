@@ -191,6 +191,7 @@ describe('loadMigrationFiles', () => {
           '000009_create_eligibility_snapshots.sql',
           '000010_harden_partner_registry.sql',
           '000011_harden_eligibility_snapshots.sql',
+          '000012_partner_registry_history_and_country.sql',
         ]);
       } finally {
         process.chdir(originalCwd);

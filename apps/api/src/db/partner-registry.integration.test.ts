@@ -16,6 +16,7 @@ import { applyPendingMigrations } from './migration-runner.js';
 import { loadMigrationFiles } from './migrations.js';
 import { PostgresOutboxDeliveryWorker } from './outbox-delivery.js';
 import {
+  PartnerRegistrationConflictError,
   PartnerScopeError,
   PartnerStateConflictError,
   PartnerStateTransitionError,
@@ -264,10 +265,8 @@ describePostgres(
           r.resolveDeliveryTargets(scope, 'reception.created'),
         ).resolves.toMatchObject({
           targets: [],
-          suspendedSubscribers: expect.any(Number),
+          suspendedSubscribers: 1,
         });
-        const suspended = await r.resolveDeliveryTargets(scope, 'reception.created');
-        expect(suspended.suspendedSubscribers).toBeGreaterThan(0);
       });
     });
 
@@ -530,13 +529,197 @@ describePostgres(
             { resolve: async () => 's' },
             { fetch: hanging, timeoutMs: 10_000 },
           ),
-          { sinkTimeoutMs: 30 },
+          { sinkTimeoutMs: 400 },
         );
         const summary = await worker.runOnce();
         expect(summary.failures[0]).toMatchObject({ timedOut: true });
         // worker の timeout が fetch まで伝播し、孤児 fan-out が残らない。
-        await new Promise((resolve) => setTimeout(resolve, 20));
+        await new Promise((resolve) => setTimeout(resolve, 50));
         expect(aborted).toEqual([true]);
+      });
+    });
+
+    it('does not defer when an active endpoint exists alongside a suspended one, and counts only truly blocked subscribers (H1)', async () => {
+      await withMigratedSchema(async (pool) => {
+        const r = registry(pool);
+        await activePartner(r);
+        await activeAppWithEndpoint(r, scope, {
+          appId: 'app-mixed',
+          url: 'https://hooks.partner.example/m1',
+        });
+        await r.registerEndpoint(scope, {
+          appId: 'app-mixed',
+          endpointId: 'app-mixed-ep2',
+          url: new URL('https://hooks.partner.example/m2'),
+          keyId: 'k1',
+          secretRef: 'secret/m2',
+          countryCode: 'JP',
+          now,
+        });
+        await r.recordEndpointOwnershipVerified(scope, 'app-mixed-ep2', now);
+        await r.setEndpointState(
+          scope,
+          'app-mixed-ep2',
+          'PENDING_VERIFICATION',
+          'ACTIVE',
+        );
+        await r.setEndpointState(scope, 'app-mixed-ep2', 'ACTIVE', 'SUSPENDED');
+        // grant の無い SUSPENDED app は「止まっている購読者」に数えない。
+        await r.issueApp(scope, {
+          appId: 'app-nogrant-susp',
+          partnerId: 'partner-yakureki',
+          now,
+        });
+        await r.setAppState(scope, 'app-nogrant-susp', 'DRAFT', 'ACTIVE');
+        await r.subscribe(scope, 'app-nogrant-susp', 'reception.created', now);
+        await r.setAppState(scope, 'app-nogrant-susp', 'ACTIVE', 'SUSPENDED');
+        await seedReceptionIntent(pool, scope, 'reception-reg-h1');
+        const fetchImpl = vi.fn<typeof fetch>(
+          async () => new Response(null, { status: 204 }),
+        );
+        const worker = new PostgresOutboxDeliveryWorker(
+          pool,
+          new RegistryRoutedSink(
+            r,
+            { resolve: async () => 's' },
+            { fetch: fetchImpl },
+          ),
+        );
+        const resolution = await r.resolveDeliveryTargets(
+          scope,
+          'reception.created',
+        );
+        expect(resolution.targets.map((t) => t.endpointId)).toEqual([
+          'app-mixed-ep',
+        ]);
+        expect(resolution.suspendedSubscribers).toBe(0);
+        await expect(worker.runOnce()).resolves.toMatchObject({
+          delivered: 1,
+          failed: 0,
+        });
+        expect(fetchImpl).toHaveBeenCalledTimes(1);
+        await expect(worker.runOnce()).resolves.toMatchObject({
+          delivered: 0,
+          failed: 0,
+        });
+      });
+    });
+
+    it('keeps an intent pending and reports it when every candidate endpoint is rejected by policy (H2)', async () => {
+      await withMigratedSchema(async (pool) => {
+        const r = registry(pool);
+        await activePartner(r);
+        await activeAppWithEndpoint(r, scope, {
+          appId: 'app-only',
+          url: 'https://hooks.partner.example/only',
+        });
+        await pool.query(
+          `UPDATE partner_delivery_endpoints SET url = 'https://rebind.example/only' WHERE endpoint_id = 'app-only-ep'`,
+        );
+        await seedReceptionIntent(pool, scope, 'reception-reg-h2');
+        const fetchImpl = vi.fn<typeof fetch>(
+          async () => new Response(null, { status: 204 }),
+        );
+        const worker = new PostgresOutboxDeliveryWorker(
+          pool,
+          new RegistryRoutedSink(
+            r,
+            { resolve: async () => 's' },
+            { fetch: fetchImpl },
+          ),
+        );
+        await expect(worker.runOnce()).resolves.toMatchObject({
+          delivered: 0,
+          failures: [
+            expect.objectContaining({ reason: 'EndpointPolicyRejectedError' }),
+          ],
+        });
+        expect(fetchImpl).not.toHaveBeenCalled();
+      });
+    });
+
+    it('rejects re-registration with different attributes instead of silently ignoring it (M1)', async () => {
+      await withMigratedSchema(async (pool) => {
+        const r = registry(pool);
+        await r.registerPartner({ partnerId: 'p1', displayName: 'one', now });
+        await r.registerPartner({ partnerId: 'p2', displayName: 'two', now });
+        await expect(
+          r.registerPartner({ partnerId: 'p1', displayName: 'renamed', now }),
+        ).rejects.toThrow(PartnerRegistrationConflictError);
+        await r.issueApp(scope, { appId: 'app-m1', partnerId: 'p1', now });
+        await expect(
+          r.issueApp(scope, { appId: 'app-m1', partnerId: 'p2', now }),
+        ).rejects.toThrow(PartnerRegistrationConflictError);
+        const endpoint = (url: string) => ({
+          appId: 'app-m1',
+          endpointId: 'ep-m1',
+          url: new URL(url),
+          keyId: 'k1',
+          secretRef: 'secret/m1',
+          countryCode: 'JP',
+          now,
+        });
+        await r.registerEndpoint(
+          scope,
+          endpoint('https://hooks.partner.example/a'),
+        );
+        await expect(
+          r.registerEndpoint(
+            scope,
+            endpoint('https://hooks.partner.example/a'),
+          ),
+        ).resolves.toBeUndefined();
+        await expect(
+          r.registerEndpoint(
+            scope,
+            endpoint('https://hooks.partner.example/b'),
+          ),
+        ).rejects.toThrow(PartnerRegistrationConflictError);
+      });
+    });
+
+    it('keeps the full grant history across revoke and re-grant, enforces the country CHECK, and retires endpoints terminally (M2/M3/F13)', async () => {
+      await withMigratedSchema(async (pool) => {
+        const r = registry(pool);
+        await activePartner(r);
+        await activeAppWithEndpoint(r, scope, {
+          appId: 'app-h',
+          url: 'https://hooks.partner.example/h',
+        });
+        const t1 = new Date('2026-08-24T01:00:00.000Z');
+        const t2 = new Date('2026-08-24T02:00:00.000Z');
+        const t3 = new Date('2026-08-24T03:00:00.000Z');
+        await r.grant(scope, 'app-h', 'patient:read', t1);
+        await r.revokeGrant(scope, 'app-h', 'patient:read', t2);
+        await r.grant(scope, 'app-h', 'patient:read', t3);
+        const history = await pool.query<{
+          granted_at: Date;
+          revoked_at: Date | null;
+        }>(
+          `SELECT granted_at, revoked_at FROM partner_grant_history WHERE app_id = 'app-h' AND scope = 'patient:read' ORDER BY sequence_number`,
+        );
+        // 履歴: (t1, NULL) → (t1, t2) の 2 世代が残り、live 行は (t3, NULL)。
+        expect(
+          history.rows.map((row) => [
+            row.granted_at.toISOString(),
+            row.revoked_at?.toISOString() ?? null,
+          ]),
+        ).toEqual([
+          [t1.toISOString(), null],
+          [t1.toISOString(), t2.toISOString()],
+        ]);
+        await expect(
+          pool.query(
+            `UPDATE partner_delivery_endpoints SET country_code = 'US' WHERE endpoint_id = 'app-h-ep'`,
+          ),
+        ).rejects.toThrow(/active_country_allowed/);
+        await r.setEndpointState(scope, 'app-h-ep', 'ACTIVE', 'RETIRED');
+        await expect(
+          r.setEndpointState(scope, 'app-h-ep', 'RETIRED', 'ACTIVE'),
+        ).rejects.toThrow(PartnerStateTransitionError);
+        await expect(
+          r.resolveDeliveryTargets(scope, 'reception.created'),
+        ).resolves.toMatchObject({ targets: [], suspendedSubscribers: 0 });
       });
     });
   },

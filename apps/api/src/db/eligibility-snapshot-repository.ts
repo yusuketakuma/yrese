@@ -126,8 +126,9 @@ export function deriveEligibilityState(
   return snapshot.state;
 }
 
+/** DateStyle 非依存の ISO 暦日文字列(L1)。 */
 const selectSnapshotColumns = `s.snapshot_id, s.patient_id, s.verified_method, s.state, s.verified_at,
-  s.valid_from::text AS valid_from, s.valid_to::text AS valid_to`;
+  to_char(s.valid_from, 'YYYY-MM-DD') AS valid_from, to_char(s.valid_to, 'YYYY-MM-DD') AS valid_to`;
 
 const selectReceptionSnapshotSql = `
   SELECT r.patient_id AS reception_patient_id, ${selectSnapshotColumns}
@@ -183,6 +184,16 @@ export class PostgresEligibilitySnapshotRepository {
         throw new RangeError('reception not found in scope');
       const currentSnapshot =
         row.snapshot_id === null ? undefined : toSnapshot(row as SnapshotRow);
+      // 応答喪失後の同一入力リトライ(M6): 既に当該 snapshot が受付に紐づいていれば成功扱いで返す。
+      if (
+        currentSnapshot !== undefined &&
+        currentSnapshot.snapshotId === input.snapshotId &&
+        currentSnapshot.state === input.state &&
+        currentSnapshot.verifiedMethod === input.verifiedMethod
+      ) {
+        await client.query('ROLLBACK');
+        return currentSnapshot;
+      }
       const from = deriveEligibilityState(currentSnapshot, input.asOfDate);
       if (!isEligibilityTransitionAllowed(from, input.state)) {
         throw new EligibilityTransitionError(from, input.state);
