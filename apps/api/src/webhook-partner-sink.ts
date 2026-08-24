@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { PartnerEvent } from '@yrese/contracts';
 
 import type { PartnerEventSink } from './db/outbox-partner-projection.js';
+import { assertPublicHttpsEndpoint } from './partner-endpoint-policy.js';
 
 /**
  * HMAC 署名付き webhook sink(WP-6005 の最小形、SSOT: API-012 §2 PROPOSED)。
@@ -21,10 +22,13 @@ export const WEBHOOK_SIGNATURE_VERSION = 'v1';
 export const WEBHOOK_EVENT_ID_HEADER = 'x-yrese-event-id';
 export const WEBHOOK_TIMESTAMP_HEADER = 'x-yrese-timestamp';
 export const WEBHOOK_SIGNATURE_HEADER = 'x-yrese-signature';
+export const WEBHOOK_KEY_ID_HEADER = 'x-yrese-key-id';
 
 export interface WebhookPartnerSinkOptions {
   readonly endpointUrl: URL;
   readonly signingSecret: string;
+  /** 受信側が検証鍵を選ぶための識別子(rotation 用)。省略時は 'default'。 */
+  readonly keyId?: string;
   readonly fetch?: typeof fetch;
   readonly now?: () => Date;
   readonly timeoutMs?: number;
@@ -61,19 +65,19 @@ export function verifyWebhookSignature(
 export class WebhookPartnerSink implements PartnerEventSink {
   private readonly endpointUrl: URL;
   private readonly signingSecret: string;
+  private readonly keyId: string;
   private readonly fetchImpl: typeof fetch;
   private readonly now: () => Date;
   private readonly timeoutMs: number;
 
   constructor(options: WebhookPartnerSinkOptions) {
-    if (options.endpointUrl.protocol !== 'https:') {
-      throw new RangeError('webhook endpoint must use https');
-    }
+    assertPublicHttpsEndpoint(options.endpointUrl);
     if (options.signingSecret.length === 0) {
       throw new RangeError('webhook signing secret must be non-empty');
     }
     this.endpointUrl = options.endpointUrl;
     this.signingSecret = options.signingSecret;
+    this.keyId = options.keyId ?? 'default';
     this.fetchImpl = options.fetch ?? fetch;
     this.now = options.now ?? (() => new Date());
     this.timeoutMs = options.timeoutMs ?? 10_000;
@@ -93,8 +97,11 @@ export class WebhookPartnerSink implements PartnerEventSink {
           [WEBHOOK_EVENT_ID_HEADER]: event.eventId,
           [WEBHOOK_TIMESTAMP_HEADER]: timestamp,
           [WEBHOOK_SIGNATURE_HEADER]: signWebhookPayload(this.signingSecret, timestamp, body),
+          [WEBHOOK_KEY_ID_HEADER]: this.keyId,
         },
         body,
+        // SSRF 統制: リダイレクトは追従しない(API-010 §2)。
+        redirect: 'error',
         signal: controller.signal,
       });
     } catch (error) {
