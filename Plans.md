@@ -37,7 +37,7 @@
 | Local HEAD | landing record 直前 `491aea5033ad1c67b07abee96ddcf40603e1385b`。本record commit後の最終値はGitを正本とする |
 | Upstream divergence | fetch後のrecord直前 `origin/main...HEAD = 0 behind / 16 ahead`。2026-08-23 direct user instructionでpush要求済み |
 | Working tree | landing recordの `Plans.md` / `State.md` exact2のみ。final record commit後はcleanを要求 |
-| Last update | 2026-08-23 JST(§16 情報連携主軸ギャップ分析・実装計画を inventory 追加。product WIP/READYは不変更) |
+| Last update | 2026-08-24 JST(§16.5 進捗表を更新。Track A/D の初回 slice landing) |
 | Active Goal | grouped commit/push finalization。product queueはWIP 0のまま |
 | Current critical path | Milestone 1 exit の残余 — WP-4050 修正 diff の checker 再確認と HIGH-3 DDL gate。並行して §16 S1(WP-6202/6203、WP-6302) |
 | Main blocker | HIGH-3 outbox FK の DDL gate、JP Core package 再取得の egress 承認、`BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) の DDL gate |
@@ -1454,6 +1454,10 @@ release gate 群。§11 の既知 blocker を作業項目化した index であ�
 | WP-6004 | Event Catalog v0 `reception.created` schema(packages/contracts)+ outbox→partner 投影 | `2f1b592` |
 | WP-6005(最小形) | HMAC 署名 webhook sink(endpoint/secret 注入、registry 配線・key-id・rotation 未) | `1f2d45d` |
 | SSOT review | api-contract lane REQUEST_CHANGES(HIGH 4)/ security-privacy lane REQUEST_CHANGES(HIGH 6)→ 全 finding 閉鎖。**Inbox は clinical 書込み経路でなくなり FHIR facade の単一 producer を維持、`inventory:read` 削除、MOD-005 に blocker 5 種登録(code 同期)** | `28dae05` `f07e76e` |
+| SSOT 承認 batch | closure checker PASS → direct human approval で 25 文書 APPROVED(IDX-001 0.4.55) | `eb7c2d3` |
+| MOD-008 0.2.5 | 情報連携監査種別 21 種(partner/delivery/eligibility/consent/external_record/sandbox/import)を PROPOSED 追加、`@yrese/audit` 同期。**review 待ち** | `b62f2bc` |
+| WP-6006 | Partner Registry persistence(migrations/000008)、SSRF endpoint policy、registry-routed webhook 配送、key-id header、redirect 非追従。登録 HTTP route と partner.* 監査発火は contract-first の次 WP | `5d964aa` |
+| WP-6303/6304 | ADP-004 §3 受付資格状態機械(shared-kernel)、append-only `eligibility_snapshots`(migrations/000009)、受付紐づけと fail-closed 導出。外部 IF 未接続(RB-002) | `ccc2640` |
 
 PROPOSED 化した SSOT(REG-001 / REG-002 / ADP-001 / ADP-004 / API-009〜018 / ADP-003 /
 JHS-001〜008)は PRC-007 §4 step 6(独立 review)と step 7(human approval)待ち。

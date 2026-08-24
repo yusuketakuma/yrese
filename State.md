@@ -17,6 +17,11 @@
   reproduced; WP-6201 JAHIS documents; WP-6301 ONS access; MOD-008 amendment for the new
   audit event families (`BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT`); BLOCKED_LEGAL/PRIVACY
   reviews listed in ADP-004 / API-016 / API-017; production DB runbook for migration 000007.
+- **2026-08-24 additions (local, pushed after gates):** MOD-008 0.2.5 (PROPOSED, review
+  pending), WP-6006 Partner Registry + registry-routed delivery (migration 000008),
+  WP-6303/6304 eligibility snapshots + reception eligibility state machine (migration 000009).
+  Pending checkers: MOD-008 amendment review; independent review of WP-6006 and WP-6303/6304
+  (maker = this lane). Migrations 000008/000009 applied only to local synthetic / CI.
 - **Validation at the final head:** see Git/CI. Local: all check scripts, typecheck, lint,
   build, and full test suite with PostgreSQL integration (0 skips) PASS before push.
 
