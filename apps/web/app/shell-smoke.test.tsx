@@ -67,15 +67,18 @@ describe("web shell smoke contracts", () => {
     expect(renderToStaticMarkup(<BusinessNav />)).not.toContain('aria-current="page"');
   });
 
-  it("renders system mode labels with a provisional-state warning", () => {
+  it("fails closed when the system mode API is unconnected", () => {
     const defaultMode = renderToStaticMarkup(<SystemModeBadge />);
-    expect(defaultMode).toContain("通常稼働");
-    expect(defaultMode).toContain("暫定");
+    expect(defaultMode).toContain("状態未検知");
+    expect(defaultMode).toContain("API未接続");
+    expect(defaultMode).toContain('data-mode="UNDETECTED"');
     expect(defaultMode).toContain('data-provisional="true"');
+    expect(defaultMode).not.toContain("通常稼働");
 
     const localOnly = renderToStaticMarkup(<SystemModeBadge mode="LOCAL_ONLY" />);
     expect(localOnly).toContain("ローカル単独稼働(外部確認不可)");
     expect(localOnly).toContain('data-mode="LOCAL_ONLY"');
+    expect(localOnly).toContain('data-provisional="false"');
   });
 
   it("retains the implemented reception queue while disabling unconnected intake actions", () => {
