@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   type ChangeEvent,
   type FormEvent,
@@ -93,10 +94,14 @@ function isTextEntryTarget(target: EventTarget | null): boolean {
 export function OperatorCommandBar() {
   const [command, setCommand] = useState("");
   const [submittedCommand, setSubmittedCommand] = useState("");
+  const pathname = usePathname();
   const inputRef = useRef<HTMLInputElement>(null);
   const intent = useMemo(() => resolveOperatorIntent(submittedCommand), [submittedCommand]);
 
   useEffect(() => {
+    setCommand("");
+    setSubmittedCommand("");
+
     function handleShortcut(event: KeyboardEvent) {
       const commandShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
       const slashShortcut = event.key === "/" && !isTextEntryTarget(event.target);
@@ -115,7 +120,7 @@ export function OperatorCommandBar() {
 
     document.addEventListener("keydown", handleShortcut);
     return () => document.removeEventListener("keydown", handleShortcut);
-  }, []);
+  }, [pathname]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
