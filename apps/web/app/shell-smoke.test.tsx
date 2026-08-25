@@ -142,12 +142,13 @@ describe("web shell smoke contracts", () => {
     ["請求前点検", "BLOCKED_REGULATORY_REVIEW", <ClaimCheckPage />],
     ["月次締め・返戻管理", "締めAPI未接続", <MonthlyClosingPage />],
     ["マスター管理", "master_update_pipeline未承認", <MastersPage />],
-  ])("renders a non-operational prototype for %s", (title: string, boundary: string, element: ReactElement) => {
+  ])("renders an explicit unavailable capability boundary for %s", (title: string, boundary: string, element: ReactElement) => {
     const html = renderToStaticMarkup(element);
     expect(html).toContain(title);
-    expect(html).toContain("UIプロトタイプ");
+    expect(html).toContain("機能境界");
     expect(html).toContain(boundary);
     expect(html).toContain("disabled");
+    expect(html).not.toContain("UIプロトタイプ");
   });
 
   it("fails closed when synchronization and system mode cannot be detected", () => {
