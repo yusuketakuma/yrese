@@ -18,6 +18,7 @@ import {
   type PrescriptionLaunchContext,
   validateReceptionLaunchEntry,
 } from "./prescription-launch-context";
+import { useOptionalPrescriptionOrigin } from "./prescription-origin-context";
 
 type ReceptionContextLoadState =
   | { readonly status: "loading" }
@@ -42,6 +43,8 @@ export function PrescriptionLaunchRoute({
   readonly launch: PrescriptionLaunchContext;
 }) {
   const patientContext = useOptionalPatientContext();
+  const prescriptionOrigin = useOptionalPrescriptionOrigin();
+  const selectOrigin = prescriptionOrigin?.selectOrigin;
   const selectedPatient = patientContext?.patient ?? null;
   const [state, setState] = useState<ReceptionContextLoadState>({
     status: "loading",
@@ -96,6 +99,7 @@ export function PrescriptionLaunchRoute({
           });
           return;
         }
+        selectOrigin?.(launch);
         setState({ status: "ready", entry: validation.entry });
       })
       .catch((error: unknown) => {
@@ -107,7 +111,7 @@ export function PrescriptionLaunchRoute({
       current = false;
       controller.abort();
     };
-  }, [launch, selectedPatientId]);
+  }, [launch, selectedPatientId, selectOrigin]);
 
   if (selectedPatient === null) {
     return (
