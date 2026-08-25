@@ -3,6 +3,17 @@
 このディレクトリは、本システム(調剤用レセプトコンピューター MVP)の全画面 UI/UX 監査、患者安全リスク分析、
 デザイン SSOT 再構築、共通基盤からの実装、検証証跡を **追跡可能** に残すための作業領域である。
 
+## Candidate A review status(2026-08-26)
+
+direct user instructionでCandidate Aを選択した。review targetは
+`docs/uiux/medical_ui_ux_principles.md`のUIX-001 v0.2.0 PROPOSED revisionであり、
+UIX-002〜007と13号の必要内容を一つのfoundationへ集約する。UIX-008は作成しない。
+
+PRC-007 finalizationまでは既存UIX-001〜007のAPPROVED版がcurrent authorityであり、
+PROPOSED revisionや本directoryを実装根拠にしない。required reviewとfinal human approval後だけ、
+UIX-001 APPROVED、UIX-002〜007 SUPERSEDED、indexとdirect live referencesを同一batchで更新する。
+未決のmedical-safety/privacy/accessibility/pharmacist判断は各該当gateに残る。
+
 ## 重要: 重複させない方針
 
 本システムには既に規範 SSOT が存在する。**新しい重複文書を作らず、既存 SSOT を正本として参照する。**
@@ -18,8 +29,8 @@
 | 安定性 SLO | `docs/uiux/stability_slo_policy.md` |
 | ユーザビリティ受入基準 | `docs/uiux/usability_acceptance_criteria.md` |
 | 状態(ドメイン) | `packages/shared-kernel/src/{status,system-mode,blockers,permissions}.ts` |
-| 状態(表示文言) | `apps/web/app/components/patient-header.tsx`(ELIGIBILITY_LABELS)、`apps/web/app/system-mode-badge.tsx`(MODE_LABELS) |
-| デザイントークン | `apps/web/app/globals.css`(`:root` CSS custom properties) |
+| 状態(表示文言) | `apps/web/app/status/visual-status-registry.ts`。`ELIGIBILITY_LABELS` / `MODE_LABELS`はRegistryを再exportする互換consumer |
+| デザイントークン | current declaration anchorは`apps/web/app/globals.css`(`:root` CSS custom properties)。complete L0 authorityはCandidate Aのreconciliation gate待ち |
 
 ## 文書構成
 
@@ -38,6 +49,15 @@
 | `09-implementation-plan.md` | 実装順序・vertical slice | 7-8 |
 | `10-verification-evidence.md` | 検証コマンド・結果・証跡 | 9 |
 | `11-remaining-risks.md` | 未解決リスク・専門家レビュー要 | 全 |
+| `12-component-contracts.md` | component契約の統合元(provenance。final authorityではない) | SSOT review |
+| `13-ui-component-system-ssot-draft.md` | Candidate Aのcomponent統合元・preservation matrix | SSOT review |
+| `14-one-board-direction-decision.md` | 丁「一枚盤面」の選択記録と未決gate | design source |
+| `15-workflow-stage-enum-ssot-draft.md` | workflow-stage候補。承認前は実装根拠禁止 | domain source |
+| `16-primary-user-research.md` | 主操作者・role仮説の調査記録 | research |
+| `17-adversarial-review-and-new-requirements.md` | 14〜16号の反例・追加要求 | review evidence |
+
+12〜17号はすべてnon-SSOTのsource/evidenceである。binding requirementはCandidate AのUIX-001
+PROPOSED revisionへ統合し、これらを別authorityとして参照したままfinalizeしない。
 
 ## 実行原則(このタスク固有)
 

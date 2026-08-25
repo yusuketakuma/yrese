@@ -1,6 +1,6 @@
 # Plans.md — Active execution board
 
-> **AUTHORITATIVE ACTIVE BOARD (2026-08-01):** `DEVELOPMENT_POLICY.md`
+> **AUTHORITATIVE ACTIVE BOARD (2026-08-26):** `DEVELOPMENT_POLICY.md`
 > に従う。CURRENTは1件、READYは最大2件である。frozen legacy(完了済み・凍結
 > 履歴)は direct user instruction 2026-07-31 により
 > `Plans.legacy-archive-20260731.md` へ全量退避済みで、checkboxや旧statusに
@@ -33,22 +33,24 @@
 
 | Field | Current evidence |
 |---|---|
-| Branch | `main` |
-| Local HEAD | landing record 直前 `491aea5033ad1c67b07abee96ddcf40603e1385b`。本record commit後の最終値はGitを正本とする |
-| Upstream divergence | fetch後のrecord直前 `origin/main...HEAD = 0 behind / 16 ahead`。2026-08-23 direct user instructionでpush要求済み |
-| Working tree | landing recordの `Plans.md` / `State.md` exact2のみ。final record commit後はcleanを要求 |
-| Last update | 2026-08-24 JST(Track A/D の初回 slice の独立レビュー finding 全閉鎖) |
-| Active Goal | grouped commit/push finalization。product queueはWIP 0のまま |
-| Current critical path | Milestone 1 exit の残余 — WP-4050 修正 diff の checker 再確認と HIGH-3 DDL gate。並行して §16 S1(WP-6202/6203、WP-6302) |
-| Main blocker | HIGH-3 outbox FK の DDL gate、JP Core package 再取得の egress 承認、`BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) の DDL gate |
-| Runtime verification | Node 26.6.0でfrozen install、typecheck、1,877 tests(skip 0)、script harness、build 11/11、OpenAPI、secrets、deps、SBOM 249、boundaries、calculation purity、SSOT index 173、actionlint、diff check PASS |
-| Next scan cursor | diff-first from `f91ae78`; reset on new High/Medium finding or reprioritization |
+| Review base | `main = origin/main = c7b61406c6f6e58363139e3dced79c62f30cebf5`(2026-08-26 live確認) |
+| Candidate branch | `feature/wp-5101-uiux-review = origin/feature/wp-5101-uiux-review`; exact headはGit / Draft PR #5を正本とする |
+| Upstream relation | candidate branchはreview baseのfast-forward子。direct main commit/pushなし |
+| Candidate scope | Draft PR #5上のcurrent WP-5104 PROPOSED packetは`Plans.md`、`State.md`、UIX-001、IDX-001、draft 13、`docs/ui-ux-refresh/README.md`のexact6。exact head/statusはGitを正本とする |
+| Last update | 2026-08-26 JST(C-100はindependent PASS後に`9786fe8`でfeature branchへpush済み。WP-5104 Candidate A PROPOSED packetを起草中) |
+| C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
+| Active Goal | WP-5104 PLAN_ONLYとしてUIX-001を唯一のUI/UX foundationへ集約し、PRC-007 review用のPROPOSED packetを凍結する。製品実装は未claim |
+| Current critical path | WP-5104 Candidate A PROPOSED batch → required independent/frontend/medical-safety/security/privacy/accessibility review + pharmacist/applicable human gate → PRC-007 atomic finalization |
+| Main blocker | Candidate AのSSOT final approval、PRC-007、U3/U4 の実装前 relevant review/human authorization。後続実装は全件 NOT_READY |
+| Required verification | WP-5104 exact6の`git diff --check`、`pnpm check:ssot-index`、secret scan、preservation checks、required review、verified Oracle、Draft PR exact-head CI。code test/build/browser runtimeはPLAN_ONLYではN/A |
+| Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
+| Next scan cursor | `c7b6140`; new High/Medium finding、remote main更新、human decisionでreset |
 
-実装証跡はGit diff/commitとCIを正本とし、本書はindexにとどめる。record直前の
-outgoing stackはbase `4f4ba68`、HEAD `491aea5`、16 commits、37 paths、diff SHA-256
-`611b8082d7268bed787d9afa08b73a4d434457ad22b1b56955bdad1be63283c8`。pushはcurrent
-user requestで許可されたが、最終frozen review PASSとremote fast-forward再確認後だけ
-実行する。deploy、migration、production変更、release acceptanceは許可されていない。
+実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
+current exact6 はUIX-001/IDX-001のPROPOSED revisionを作るが、旧APPROVED revisionの
+effective authority、実装code、schemaは変更しない。feature branch/PR以外からmainへ置かず、
+Candidate AのPRC-007 finalization前にSSOT昇格・実装・deploy・migration・production変更・
+release acceptanceを行わない。
 
 ## 2. Product and Architecture Guardrails
 
@@ -72,13 +74,11 @@ user requestで許可されたが、最終frozen review PASSとremote fast-forwa
 
 ### WIP — exactly one
 
-**現在 WIP は 0 件である。** 直前まで本節に並んでいた5項目はいずれも landing 済み、
-または human gate 待ちであり、claim 対象ではない。次の claim は下の Human gates が
-解除された時点で `DEVELOPMENT_POLICY.md §8` の work-selection に従って選ぶ。
-WIP を 0 のまま放置することと、gate 待ちの項目を WIP に置き続けることは別である。
-後者は §0 の「CURRENT は exactly one」に反するため行わない。
+**CURRENT は WP-5104 の PLAN_ONLY SSOT proposal 1件である。** Candidate Aの製品方向、
+WP-5101 review、C-100 charter correctionを前提に、UIX-001をPROPOSEDへ改版する。
+APPROVED化、旧UIX文書のSUPERSEDED化、製品実装、schema、migrationはclaimしない。
 
-| 直前まで WIP にあった項目 | 現在の扱い | 参照 |
+| prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
 | WP-4250 | FINALIZED / APPROVED(SSOT 改版のみ)。local commit `89275d2` | 下の決定記録 |
 | WP-4258 | FINALIZED / APPROVED(2026-08-01)。改版 `1dedf27`、APPROVED 化 `1ec57d5` | Implemented / Landing State |
@@ -86,7 +86,7 @@ WIP を 0 のまま放置することと、gate 待ちの項目を WIP に置き
 | WP-4256 | COMMITTED_LOCAL `ab63db6` / LANDED | Implemented / Landing State |
 | `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) | 実行仕様のみ確定。DDL と実データ参照を伴うため human gate | Human gates |
 
-#### WP-4250 — Bounded Patient + MedicationRequest authority decision(決定記録)
+#### Historical nonclaimable — WP-4250 Bounded Patient + MedicationRequest authority decision
 
 - **Status:** FINALIZED / APPROVED(2026-08-01)/ COMMITTED_LOCAL `89275d2`
 - **承認範囲は SSOT 改版のみ。** exact11 の11文書が
@@ -138,8 +138,8 @@ WIP を 0 のまま放置することと、gate 待ちの項目を WIP に置き
 ### READY — maximum two
 
 READY は 0 件である。`DEVELOPMENT_POLICY.md §8` により READY は最大2件だが、
-現時点で claim 可能な item がない。WP-4050 は実装 landing 済みで独立レビュー待ち、
-WP-4251 / WP-4252 は label であって READY ではない。§8 Prioritized Backlog の
+現時点で claim 可能な item がない。WP-4050 は実装・独立review・HIGH-3 local/CI landing済みで、
+production applicationは別human gateである。WP-4251 / WP-4252 は label であって READY ではない。§8 Prioritized Backlog の
 BUG 群は READY へ昇格しうる候補であり、昇格前は claim しない。
 
 ## 4. Implemented / Landing State — nonclaimable
@@ -278,9 +278,11 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 
 ### WP-4050 — Atomic reception command boundary
 
-- **Status:** INDEPENDENT_REVIEW_DELIVERED(2026-08-23)/ HIGH-1・HIGH-2 修正 `28fd62e` は
-  checker PASS / MEDIUM-1・LOW-2 閉鎖 `273c66e` / **HIGH-3 は DDL human gate 待ち**
-- **独立レビュー(2026-08-23、fresh-context data-integrity lane、codex 不使用):**
+- **Status:** INDEPENDENT_REVIEW_CLOSED(2026-08-23) / HIGH-1・HIGH-2 修正 `28fd62e` は
+  checker PASS / MEDIUM-1・LOW-2 閉鎖 `273c66e` / HIGH-3 は human approval 後に
+  migration 000007 として local synthetic / CI へ landing 済み。production/staging
+  application は別 human gate
+- **初回独立レビュー(2026-08-23、fresh-context data-integrity lane、codex 不使用):**
   frozen packet base `9d8dbc0`(= `42ef15c~1`)→ head `9a404fe`、9 path、diff
   SHA-256 `494a79e60462731034a539adf670098d0c0074c85b576e19972a4348cff7008f`、
   hash 再現一致。verdict **REQUEST_CHANGES**(HIGH 3 / MEDIUM 4 / LOW 4)。
@@ -299,8 +301,9 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
   - MEDIUM-1〜4(in-memory 補償の opt-in、rollback 部分失敗の判別不能、commit と
     検証の間の throw 窓、`#` 既存データ未検査)と LOW-1〜4 は §8 backlog 候補。
     MEDIUM-4 は `BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b) と同一枠。
-  - 修正 diff `28fd62e` は maker=本 lane のため、別 context の checker 再確認を
-    要する(未取得)。
+  - 修正 diff `28fd62e` は maker=本 lane と別 context の checker が PASS。
+    残る finding は `273c66e`、`a20d8b9`、human-approved migration 000007
+    (`425294a` + `6f62b92`)で閉鎖し、production/staging application だけを別 gate に残す。
 - **Landing evidence:** local commits `42ef15c`(atomic boundary: migrations/000005
   outbox_events、PostgresReceptionCreateCommand 単一トランザクション、
   ComposedReceptionCreateCommand 補償型 in-memory、4 結果値
@@ -312,32 +315,39 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
   失敗で counts 0/0/0、成功・全再送形態で 1/1/1 収束、conflict 無書込み、
   legacy_orphan 明示)は in-memory 8 + PostgreSQL 実 DB 9 テストで実測 PASS。
   各 commit の exact tree を zero-skip green で検証してから commit。
-  独立レビューは subagent 報告経路劣化により未取得
-  (`independence_not_satisfied` ×2 記録)— codex lane 復帰(2026-08-05)後に実施。
+  初回実装時の独立レビュー未取得(`independence_not_satisfied` ×2)は historical
+  provenance であり、2026-08-23 の上記 review/checker で current blocker から解消した。
 - **Policy alignment:** Milestone 1 data-integrity exit and prerequisite for every later clinical write.
 - **Outcome:** a successful reception can never exist without exactly one durable `reception.created` audit intent and required outbox intent; an ambiguous retry converges.
-- **Evidence:** `POST /reception`, PostgreSQL reception repository, and audit repository currently commit in separate transactions; retry of the surviving reception does not repair the missing audit.
-- **Scope:** API command/unit-of-work boundary, transaction-bound reception/audit/outbox persistence, in-memory semantic parity, focused unit/integration tests, and an explicit orphan-reconciliation result. A forward migration may be designed but not applied without separate approval.
+- **Pre-change evidence:** before `42ef15c`, `POST /reception`, the PostgreSQL reception
+  repository, and the audit repository committed separately; retry could not repair a
+  surviving reception with missing audit/outbox intent.
+- **Landed scope:** API command/unit-of-work boundary, transaction-bound
+  reception/audit/outbox persistence, in-memory semantic parity, focused unit/integration
+  tests, explicit orphan reconciliation, and approved forward migrations 000005/000007.
 - **Invariant:** trusted tenant/pharmacy/actor context, same-key/same-patient idempotency, mismatched-patient conflict, PHI-free target reference, append-only audit chain, no invented actor/time.
 - **Dependency:** WP-4253 green baseline; R3 human scope approval; approved transaction/outbox/repair semantics.
 - **Contract:** one command result distinguishes created, existing-complete, conflict, and legacy-orphan/reconciliation-required.
-- **Migration:** add only the approved forward schema; do not backfill fictitious historical facts. Production application is separately human-gated.
+- **Migration:** migrations 000005/000007 are landed and validated on local synthetic/CI
+  only; do not backfill fictitious historical facts. Production/staging application remains
+  separately human-gated.
 - **Acceptance:** injected audit/outbox failure leaves reception count 0; success leaves reception/audit/outbox count 1 each; response loss, same-key retry, restart, and concurrent retry remain 1 each; different patient with same key returns 409 with no writes; orphan handling is explicit.
 - **Downstream validation:** focused API/repository/audit tests, PostgreSQL integration, then full current gates.
 - **Falsification:** any partial durable write, duplicate event, fabricated provenance, cross-tenant visibility, or rollback requiring production DML fails the design.
-- **Rollback:** revert the command-boundary implementation and unapplied migration; do not run data rollback in this slice.
-- **Human gate:** explicit R3 pre-implementation review by human product/safety authority; migration apply and production write need separate approval.
+- **Rollback:** revert the command-boundary implementation and forward migrations in
+  repository/local synthetic environments; do not run production data rollback in this slice.
+- **Human gate resolution:** R3 implementation and local synthetic/CI migration approval are
+  recorded. Any production/staging migration application or write needs separate approval.
 - **Exact first command:** `rg -n "POST /reception|receptionRepository\\.create|auditRepository\\.record|BEGIN|COMMIT|Outbox|idempotency" apps/api/src/server.ts apps/api/src/db apps/api/src/reception-repository.ts apps/api/src/audit-repository.ts docs/api/reception_queue_contract.md docs/domain/domain_model.md`
 
 ## 5. Human gates
 
 未解除の human gate は次のとおり。いずれも人間の明示承認まで着手しない。
 
-- **WP-4050 R3 implementation scope と repair semantics。** 実装自体は
-  `42ef15c`+`bf17cea` へ COMMITTED_LOCAL だが、独立レビューが未取得であり
-  (`independence_not_satisfied` ×2)、codex lane 復帰(2026-08-05)後の
-  再レビューが残存 gate である。
-- **WP-4050 HIGH-3** — 2026-08-23 human approval により migrations/000007 へ landing。production/staging は存在せず、適用先の出現時に runbook(dangling 行の棚卸し→reconciliation evidence→専用 forward migration)を要する。
+- **WP-4050 production/staging application。** implementation・独立review・HIGH-3 の
+  migration 000007 は human approval後にlocal synthetic/CIへlanding済み。production/stagingは
+  存在せず、適用先の出現時に runbook(dangling行棚卸し→reconciliation evidence→専用forward
+  migration)と別human approvalを要する。
 - **Webhook egress の network 層統制(BLOCKED_SECURITY_REVIEW)。** DNS 解決と fetch の間の rebinding 窓はアプリ側では閉じられない。partner 向け egress の allow-list / proxy を infra で設計するまで production 配送は行わない(WP-6006 review F2 残余)。
 - **JP Core package 再取得(WP-6101)。** external egress は harness の hard floor で agent から実行不可。ユーザー端末での取得コマンド実行待ち(会話に提示済み)。再現後に SRC-FHIR-007 を VERIFIED へ。
 - **`BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b)。** 実行仕様は下に確定済み。
@@ -411,12 +421,12 @@ DB 層で止まる。既存スキーマは各 ID 列に `length(x) > 0` の CHEC
 | WP-4253 | COMMITTED_LOCAL / PUSH_NOT_REQUESTED at `9d8dbc0`; WP-4240 superseded。host 拡張の取りこぼし(`~/.local/bin/pnpm` 11.17.0 残存)を 2026-07-31 に検出・修正(→11.18.0)— HOST_RUNTIME_ALIGNED は同日まで不完全だった |
 | WP-4050 | COMMITTED_LOCAL at `42ef15c`+`bf17cea`(2026-07-31)。R3 gate は direct user instruction で充足 |
 | WP-4236 / WP-4162 / WP-9008 | COMMITTED_LOCAL at `68e0d77` / `02a3409`+`566f386` / `2c84e66`(2026-07-31)。各 status 行参照 |
-| WP-5101 | ドラフト 13〜17号+3-lane fresh-context checker 訂正を `3da2466` で着地。checker verdict は REQUEST_CHANGES→訂正適用済み。再チェックと human 内容判断(10 論点)は未取得 — 各ドラフト未決欄と session 記録参照 |
+| WP-5101 | ドラフト 13〜17号+3-lane fresh-context checker 訂正を `3da2466` で着地。当時のREQUEST_CHANGESは訂正済み。2026-08-26にCandidate A選択と製品方向承認を受け、decision deltaはfresh independent PASS後に`df8c0cb`へ記録。委譲された専門判断と各ドラフトの未決事項は後続gateに残る |
 | WP-4250 | FINALIZED / APPROVED at `89275d2`(2026-08-01)。承認範囲は SSOT 改版のみで、登録済み blocker は全件据え置き |
 | WP-4256 / WP-4257 / WP-4258 | COMMITTED_LOCAL at `ab63db6` / `a911a99` / `1dedf27`。WP-4258 は 2026-08-01 の direct human approval で APPROVED 化済み(DB-005 / ARC-008 0.1.4、IDX-001 0.4.49) |
 | BUG-4263 | DECIDED(案①)/ COMMITTED_LOCAL at `bf0b402`。`check:secrets` が exit 0 へ復帰 |
 | BUG-4260 / BUG-4262 / BUG-4261 | COMMITTED_LOCAL at `fe03cf0` / `fe03cf0` / `6813750`(2026-08-01 バグ走査)。独立レビュー未取得 |
-| WP-0042 / WP-7001 / broad FHIR-AWS work | bounded by current WP-4250; remainder NOT_NOW |
+| WP-0042 / WP-7001 / broad FHIR-AWS work | bounded by APPROVED WP-4250 decisions and the current `Plans.md` queue; remainder NOT_NOW |
 | WP-9002 / WP-4158 / WP-4159 / WP-4160 | FROZEN / GIT_HISTORY_ONLY |
 | all other incomplete entries below | NOT_NOW until a READY slot is deliberately opened |
 
@@ -748,27 +758,31 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 | `patient-search.tsx` のフォームが `method="post" action="/patients"` を持つ | **Not a Bug** | 入力に `name` 属性がなく、JS 無効時のネイティブ送信でも検索語(PHI)は送出されない |
 | `main.ts` の ephemeral cursor HMAC キーがプロセス起動ごとに変わる | **Not a Bug** | `resolvePatientSearchCursorHmacKey` は in_memory + development/test のみ ephemeral を返し、postgres 構成では設定必須で throw する(意図的な dev 限定挙動) |
 
-### UIUX — 一枚盤面刷新パイプライン(WP-5101〜5124・全件 GATED / NOT_READY)
+### UIUX — 一枚盤面刷新パイプライン(WP-5101 REVIEWED / WP-5102〜5124 GATED)
 
 > **来歴**: direct user instruction 2026-07-31(丁「一枚盤面」採用と詳細タスク化の指示)。
 > 起草 lane は Claude(fable5)。Document Contract の sole editor 規律に対する例外は
 > この direct user instruction を根拠とし、本グループ以外の記載に触れていない。
-> **queue 規律**: 本グループは READY slot を消費しない。WP-4250 の CURRENT と
-> WIP=1 / READY≤2 を変更せず、各 Gate 成立まで全件 claim 不可。
-> **設計正本(non-SSOT ドラフト)**: `docs/ui-ux-refresh/13〜17号`(未コミット)。
+> **queue 規律**: WP-5101 reviewとCandidate Aの製品判断、C-100完了は記録済み。current WIPは
+> §3のWP-5104 PLAN_ONLYだけであり、後続 WP は READY slotを消費せず、WIP=1 / READY≤2を維持し、
+> 各 Gate 成立までclaim不可。
+> **設計資料(non-SSOT ドラフト)**: `docs/ui-ux-refresh/13〜17号`。
 > 昇格前は実装根拠にならない(fail-closed)。
+> **U3/U4 gate**: 実装着手前に relevant medical-safety/privacy/accessibility review と必要な
+> human authority の承認を得る。実装後は同じ観点の validation evidence を独立確認する。
 
 #### Stage 0 — SSOT 整備(PLAN_ONLY・実装なし)
 
-##### WP-5101 — 13〜17号ドラフトの独立レビューと確定
+##### WP-5101 — 13〜17号ドラフトの独立レビューと製品方針決定
 
-- **Status:** GATED / NOT_READY(fresh-context checker 未実施)
-- **Gate:** fresh-context independent checker(fable5 セルフレビュー 17号は
-  `independence_not_satisfied` — approval に数えない)+ human product 承認
-- **Scope:** 13号(UIX-008 候補)/14号(丁決定+§7 ビュー・ロック)/15号(workflow-stage)/
+- **Status:** REVIEWED / CANDIDATE_A_SELECTED / PRODUCT_DIRECTION_APPROVED / NONCLAIMABLE
+- **Gate:** packet本体のfresh-context independent checkerはPASS。human product authorityは
+  direct user instruction 2026-08-26でCandidate Aを選択し、未決のmedical-safety/privacy/
+  accessibility/pharmacist判断を各該当gateへ委譲。decision deltaはfresh independent PASS
+- **Scope:** 13号(selected unique foundation/component system 候補)/14号(丁決定+§7 ビュー・ロック)/15号(workflow-stage)/
   16号(主操作者調査)/17号(新要件 D-1..D-4・所見 AF/SF)の整合・網羅レビューと確定
 - **Acceptance:** 全 findings が解消または記録済み。D-2 の2段分離、AF-2 の NSIPS 凍結整合、
-  SF-1 の Phase A/B 分離が checker で再確認されている
+  SF-1 の Phase A/B 分離、Candidate Aの選択と委譲gateがfresh checkerで再確認されている
 - **Stop:** レビュー完了前に後続 WP の Gate を開かない
 
 ##### WP-5102 — DOM-004 改版起案(薬剤師最終確定の位置と2段分離)
@@ -785,28 +799,51 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 ##### WP-5103 — workflow-stage enum SSOT 昇格
 
 - **Status:** GATED / NOT_READY
-- **Gate:** WP-5101 + WP-5102 APPROVED + exact11 landing(`docs/ssot_index.md`
-  dirty ownership 解消)
+- **Gate:** WP-5101 + WP-5102 APPROVED
 - **Scope:** 15号を `docs/domain/` へ移設、DOM 系採番、frontmatter 正式化、index 登録。
   §9 未決(PATIENT_IDENTIFICATION 完了条件、CANCELLED 表示、一人薬剤師兼任)の解消を含む
 - **Acceptance:** PRC-007 完了。`pnpm check:ssot-index` PASS。UIX-006 工程順との一致が
   レビュー記録に残る
 - **Stop:** APPROVED 前の shared-kernel 実装禁止
 
-##### WP-5104 — UIX-008(UI共通コンポーネントシステム)昇格
+##### WP-5104 — unique UI/UX SSOT foundation の atomic 昇格
 
-- **Status:** GATED / NOT_READY
-- **Gate:** WP-5101 + exact11 landing
-- **Scope:** 13号を `docs/uiux/ui_component_system.md` へ移設、UIX-008 採番確定、index 登録。
-  L0〜L4 層構造、台帳20点+予約6点(WorkflowSheet/StageRow・ReceptionQueueRail・AlertRail・
-  EvidenceDrawer・BoardViewSwitcher・FinalizeAndRegisterAction)、禁止8項、Phase A/B 分離
-- **Acceptance:** PRC-007 完了。PLAN-UIUX-001 との参照整合
+- **WP status:** BLOCKED
+- **Qualifiers:** CURRENT / PLAN_ONLY / CANDIDATE_A_SELECTED / PROPOSED_REVIEW / NOT_IMPLEMENTABLE
+- **Risk:** R3(医療安全・privacy・accessibility・不可逆確定/outbox契約を含むSSOT改版)
+- **Owner role:** `codex_root`(`active_root_writer`)
+- **Reviewer roles:** `independent_verifier`、`frontend_reviewer`、`ui_flow_tester`、
+  `accessibility_ux_reviewer`、`medical_safety_reviewer`、`security_critic`、
+  `privacy_compliance_reviewer`、`api_contract_reviewer`、`data_integrity_auditor`、
+  `test_architect`、`claim_clerk_workflow_reviewer`。全員read-onlyでmakerと分離
+- **Allowed files (proposal packet):** `Plans.md`、`State.md`、`docs/ssot_index.md`、
+  `docs/ui-ux-refresh/13-ui-component-system-ssot-draft.md`、
+  `docs/ui-ux-refresh/README.md`、`docs/uiux/medical_ui_ux_principles.md`
+- **Forbidden files/actions:** 上記以外、UIX-002〜007、product code、schema/migration、generated
+  artifact、deploy/production/external action。finalizationはhuman gate後に別hash・allowlistで再凍結
+- **Gate:** Candidate A product direction、WP-5101 fresh independent review、C-100は完了。
+  APPROVED化はcurrent exact packetのrequired reviewとfinal human approval待ち
+- **Human gates:** final SSOT approval、medical-safety、security/privacy、accessibility、
+  pharmacist workflow、HPKI/legal (`legal_compliance_matrix #7`)。product directionだけは
+  direct user instruction 2026-08-26で承認済み
+- **Scope:** direct user instruction 2026-08-26で選択された Candidate A(UIX-001改版)により、
+  UIX-001〜007 の安全・品質要件と component contract を一つの
+  foundation へ集約する。同一 PRC-007 batch で旧文書を SUPERSEDED、index と参照を更新する
+- **Acceptance:** 唯一の UI/UX foundation が APPROVED。UIX-004 UAC-01〜12 と UIX-005
+  ST-01〜15 を含む既存要件、`docs/ssot_index.md`、PLAN-UIUX-001 の参照が整合。D-2は
+  UI 1 user action / 1 buttonとbackend 2段(local確定+同一transactionのoutbox intent、外部delivery)
+  を維持し、段2失敗で段1をrollbackせず`PENDING_EXTERNAL_SYNC`を表示する
+- **Test plan:** exact-path/hash確認、`git diff --check`、`pnpm check:ssot-index`、normal-Git
+  cloneでの`pnpm check:secrets`、preservation count、frozen specialist review、verified Oracle。
+  PLAN_ONLYのためcode test/build/browser runtimeはN/A
+- **Rollback plan:** proposal/finalizationを中止し、旧UIX-001〜007 APPROVED revisionをeffectiveの
+  まま維持する。code/data rollbackは発生しない
 - **Stop:** 台帳外コンポーネントの追加は本 SSOT の改版なしに不可
 
 ##### WP-5105 — UIX-006 / UIX-007 / PLAN-UIUX-001 改版(3盤面写像)
 
 - **Status:** GATED / SSOT_UPDATE_REQUIRED / NOT_READY
-- **Gate:** WP-5101〜5104 + PLAN-UIUX-001 現 dirty ownership(WP-425x 系)解消
+- **Gate:** WP-5101〜5104
 - **Scope:** active 28画面 →「調剤盤・請求盤・管理盤+常設レール+ドロワー」写像
   (14号 §2-2・プロトタイプ §再編)を APPROVED 台帳へ反映。ロール別ビュー(14号 §7.1)と
   UIX-006 §4 ロール別ホームの統合。SCR-028 RETIRED は不変
@@ -826,63 +863,71 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
   Q-1/Q-3 が解消または明示 defer
 - **Stop:** 許諾なき NSIPS 準拠実装・仕様複製は行わない(RB-006)
 
-#### Stage 1 — 実装基盤(前提: Stage 0 APPROVED + apps/web dirty slice(WP-4253/4254/4255)landing)
+#### Stage 1 — 実装基盤(前提: Stage 0 APPROVED)
 
 ##### WP-5111 — L0 トークンテーマ基盤(Phase A・挙動不変)
 
 - **Status:** GATED / NOT_READY
-- **Gate:** WP-5104 + apps/web dirty landing
-- **Scope:** `globals.css` トークン再編(甲乙丙テーマ差し替え可能な構造+暫定クローム)。
-  DOM 構造・文言・contract 不変
-- **Acceptance:** 既存 web テスト全緑(挙動不変の証跡 — 13号 Phase A)。typecheck/lint/build PASS。
-  UIX-003 予算内(CSS サイズ・CLS 非悪化)
+- **Gate:** WP-5104
+- **Scope:** active stylesheet に分散した token/direct color を一つの token authority へ集約
+  (甲乙丙テーマ差し替え可能な構造+暫定クローム)。DOM 構造・文言・contract 不変
+- **Acceptance:** relevant web tests PASS + exact-path diff review(各 test の観測範囲だけを証跡化)。
+  active stylesheet の token/direct-color static check、UIX-004 の targeted automated+manual
+  verification、typecheck/lint/build PASS。UIX-003 予算内(CSS サイズ・CLS 非悪化)
 - **Stop:** L1 以上へ変更が波及したら Phase A を放棄し WP-5113 系へ再分類(全緑主張を捨てる)
 
 ##### WP-5112 — workflow-stage.ts 実装
 
 - **Status:** GATED / NOT_READY
-- **Gate:** WP-5103 APPROVED
+- **Gate:** WP-5103 + WP-5104 APPROVED(UNAVAILABLE shape decision を含む)
 - **Scope:** `packages/shared-kernel/src/workflow-stage.ts`(enum 9工程+STAGE_PROGRESSES 5値+
   `deriveStageProgress` 純関数)、Visual Status Registry 2軸(workflow-stage /
   stage-progress)、網羅テスト(15号 §7: 順序一致・fail-closed UNAVAILABLE・
   BLOCKED reason 必須・モード連動)
 - **Acceptance:** 全 stage×progress 導出テスト PASS。契約未承認ドメイン入力 undefined →
-  必ず UNAVAILABLE。既存 registry テスト流儀での label/tone/shape/ARIA 網羅
+  必ず UNAVAILABLE。事前承認済み shape を用い、Registry は identity の label/shape と
+  progress の label/tone/shape/ARIA を網羅
 - **Stop:** DOM-004 状態の shared-kernel 登録は使用実装 WP 着地時のみ(先行登録禁止)
 
 ##### WP-5113 — 調剤盤シェル(3カラム+ロール別ビュー)【U4】
 
 - **Status:** GATED / NOT_READY
-- **Gate:** WP-5105 + WP-5112 + apps/web dirty landing
+- **Gate:** WP-5105 + WP-5112
 - **Scope:** 調剤盤 3カラム(ReceptionQueueRail / 患者フォーカスフレーム+WorkflowSheet 骨格 /
   AlertRail)、BoardViewSwitcher(投影のみ・権限非変更 — P-14)、
   兼任(一人薬剤師)統合ビュー、連続受付1操作復帰
 - **Acceptance:** ロール別既定展開が 14号 §7.1 通り。畳んだ工程行でも状態 chip+サマリ常時可視
-  (P-01 規律の型・テスト強制 = 14号 R-1 の解)。RTL テストで loading/empty/error/403 状態網羅
-- **Stop:** U4 — 実装後に medical_safety / privacy / accessibility レビュー+human 承認必須。
-  受付・患者検索の既存2実装フローを壊す変更は段階分離
+  (P-01 規律の型・テスト強制 = 14号 R-1 の解)。最小の Vitest contract で
+  loading/empty/error/403 を網羅し、DOM interaction が必要な state は targeted Playwright/axe
+  scenario を追加する。現行 browser gate 単独はこの4状態の網羅証跡にしない
+- **Stop:** 上記 U3/U4 gate を満たさないまま実装しない。受付・患者検索の既存2実装フローを
+  壊す変更は段階分離
 
 ##### WP-5114 — WorkflowSheet / WorkflowStageRow + EvidenceDrawer【U4】
 
 - **Status:** GATED / NOT_READY
-- **Gate:** WP-5113
+- **Gate:** WP-5113 + medical-safety/privacy/accessibility の実装前 review + 必要な human 承認
 - **Scope:** 工程アコーディオン(展開部=入力フォームのみを型で強制)、
-  仮=点線/確定=実線の形状文法(P-05/06/07)、EvidenceDrawer(trace・履歴・監査メタ —
-  P-13 一手)、外部登録待ちは PENDING_EXTERNAL_SYNC chip 併置(15号 SF-3 方針)
+  仮=点線/確定=実線の形状文法(P-05/06/07)、EvidenceDrawer(calculation trace +
+  記録版履歴の版・確認者・確認日時 — P-13 一手)、外部登録待ちは
+  PENDING_EXTERNAL_SYNC chip 併置(15号 SF-3 方針)。`audit_events` 一覧・chain 状態・
+  再試行操作は含めず、SCR-028 を別名で復活させない
 - **Acceptance:** 「安全情報を展開部に置けない」型テスト。fixture trace viewer(SCR-012)の
   ドロワー昇格。確定演出は版一致時のみ発火のテスト
-- **Stop:** 工程行から契約外 API を呼ばない(API-002)
+- **Stop:** 工程行から契約外 API を呼ばない(API-002)。実装後の同観点 independent validation 必須
 
 ##### WP-5115 — 並行作業ロック(患者×工程 lease)
 
 - **Status:** GATED / NOT_READY(設計課題 14号 §7.3 未解消)
-- **Gate:** WP-5113 + §7.3 解消(lease/timeout・LOCAL_ONLY 時挙動の ARC 突合・
-  差し戻し遷移の DOM-004 突合)
+- **Gate:** U4。WP-5113 + §7.3 解消(lease/timeout・LOCAL_ONLY 時挙動の ARC 突合・
+  差し戻し遷移の DOM-004 突合) + medical-safety/privacy/accessibility の実装前 review
+  と必要な human 承認
 - **Scope:** 患者×工程(enum 工程粒度 — 17号 SF-4)の単一編集所有、
   「↻ 入力中 — 操作者(端末)」常時表示、stale 確定の 412/conflict(最終防衛は
   DOM-004 遷移ガード)、競合の人間返し(自動補正禁止)
 - **Acceptance:** 同時編集・lease 失効・stale 署名失敗・競合の各テスト。無言グレーアウト非存在
-- **Stop:** UI ロックを防衛と扱わない(API 側検証なしの排他は不可)
+- **Stop:** UI ロックを防衛と扱わない(API 側検証なしの排他は不可)。実装後の同観点
+  independent validation 必須
 
 #### Stage 2 — 外部依存機能(各凍結解除後)
 
@@ -901,13 +946,14 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 - **Status:** GATED / BLOCKED_REGULATORY_REVIEW / NOT_READY
 - **Gate:** RB-003 解除(電子処方箋 技術解説書+記録条件 evidence+境界 SSOT APPROVED)+
-  WP-5102 APPROVED + HPKI 署名位置づけ確定(legal_compliance_matrix #7)
+  WP-5102 APPROVED + HPKI 署名位置づけ確定(legal_compliance_matrix #7)+
+  medical-safety/privacy/accessibility の実装前 review + 薬剤師 human 承認
 - **Scope:** 薬剤師最終確定(ローカル不可逆・確認者/日時/対象版記録・二段階確認 P-11)→
   調剤結果登録ジョブ outbox 投入(PENDING_EXTERNAL_SYNC・再試行・DLQ→SCR-025)。
   段2失敗は段1を巻き戻さない/段2単独成功は存在しない順序保証
 - **Acceptance:** LOCAL_ONLY 中のキュー蓄積、登録失敗の可視化、
   「確定●」「登録↻/●」chip 分離表示(単一成功表現の禁止 — 禁止3項/H-03)の各テスト
-- **Stop:** 医療安全レビュー+薬剤師 human gate なしに確定機能を有効化しない
+- **Stop:** 上記 gate なしに実装しない。実装後の同観点 independent validation なしに有効化しない
 
 ##### WP-5123 — 電子薬歴連携送信実装(D-3)
 
@@ -922,12 +968,13 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 ##### WP-5124 — タブレット縮退+密度段階(R-2 / R-4)
 
 - **Status:** GATED / NOT_READY
-- **Gate:** WP-5113 + 薬剤師レビュー(密度既定・高齢者向け拡大の対象画面 — UIX-001 §6)
+- **Gate:** WP-5113 + medical-safety/privacy/accessibility の実装前 review + 薬剤師 human 承認
+  (密度既定・高齢者向け拡大の対象画面 — UIX-001 §6)
 - **Scope:** 3カラム縮退(キュー・右レールのドロワー化、警告 chip のヘッダー残置)、
   密度段階(標準/圧縮)、キーボード完結(Tab/ショートカット — 16号 F-4)
 - **Acceptance:** 縮退時も警告・患者文脈・モードが常時可視(P-01/03/09)。
   reduced-motion / forced-colors 対応
-- **Stop:** 縮退を理由に安全情報を畳まない
+- **Stop:** 縮退を理由に安全情報を畳まない。実装後の同観点 independent validation 必須
 
 ## 9. Investigations
 
@@ -1093,8 +1140,8 @@ version of this note; it remains NONCLAIMABLE history.
 
 | # | 項目 | 前提 / Gate |
 |---|---|---|
-| C-001 | WP-4050 独立レビュー packet の再凍結(base SHA・diff hash・acceptance・検証結果。対象 `42ef15c`+`bf17cea`) | codex lane 復帰(2026-08-05) |
-| C-002 | WP-4050 独立レビュー実施と finding 解消(`independence_not_satisfied` ×2 の解消記録)【REG: §5】 | C-001 |
+| C-001 | **完了(2026-08-23)** — WP-4050 独立レビュー packet を再凍結(base `9d8dbc0`、head `9a404fe`、diff `494a79e6...`) | — |
+| C-002 | **完了(2026-08-23)** — 初回 REQUEST_CHANGES、`28fd62e` checker PASS、残 finding を `273c66e` / `a20d8b9` / `425294a` + `6f62b92` で閉鎖【REG: §5】 | C-001 |
 | C-003 | BUG-4260 / BUG-4262(`fe03cf0`)の独立レビュー【REG: §8】 | codex lane 復帰 |
 | C-004 | BUG-4261(`6813750`)の独立レビュー【REG: §8】 | 同上 |
 | C-005 | BUG-4263(`bf0b402`)の独立レビュー — 「ignore 指示 = 非リポジトリ内容」前提 1 点の security posture 妥当性確認込み【REG: §8/§11】 | 同上 |
@@ -1197,19 +1244,19 @@ synthetic data 限定。migration 適用・production 行為は含まない。
 | C-067 | WP-5101 — 13〜17号ドラフトの fresh-context 再チェックと human 内容判断(10 論点)【HG】 | — |
 | C-068 | WP-5102 — DOM-004 改版起案(2段分離)【SSOT】【HG: R3 相当】 | C-067 |
 | C-069 | WP-5103 — workflow-stage enum SSOT 昇格【SSOT】 | C-068 |
-| C-070 | WP-5104 — UIX-008 昇格【SSOT】 | C-067 |
+| C-070 | WP-5104 — 選択された unique UI/UX foundation の atomic 昇格【SSOT】 | C-067 |
 | C-071 | WP-5105 — UIX-006/007/PLAN-UIUX-001 改版(3盤面写像)【SSOT】 | C-069/C-070 |
 | C-072 | WP-5106 — 電子薬歴連携手段の経営判断と連携契約 SSOT【HG: 経営判断】【SSOT】 | — |
 | C-073 | WP-5111 — L0 トークンテーマ基盤(Phase A・挙動不変) | C-070 |
-| C-074 | WP-5112 — workflow-stage.ts 実装 | C-069 |
-| C-075 | WP-5113 — 調剤盤シェル【U4】【HG: 実装後レビュー】 | C-071/C-074 |
-| C-076 | WP-5114 — WorkflowSheet / EvidenceDrawer【U4】 | C-075 |
-| C-077 | WP-5115 前提 — 14号 §7.3 設計課題の解消(lease/timeout・LOCAL_ONLY・差し戻し遷移の ARC/DOM 突合) | C-075 |
-| C-078 | WP-5115 — 並行作業ロック実装 | C-077 |
+| C-074 | WP-5112 — workflow-stage.ts 実装(UNAVAILABLE shape 事前決定済み) | C-069/C-070 |
+| C-075 | WP-5113 — 調剤盤シェル【U4】【HG: 実装前承認+実装後validation】 | C-071/C-074 |
+| C-076 | WP-5114 — WorkflowSheet / EvidenceDrawer【U4】【HG: medical/privacy/a11y実装前承認+実装後validation】 | C-075 |
+| C-077 | WP-5115 前提 — 14号 §7.3 設計課題の解消(lease/timeout・LOCAL_ONLY・差し戻し遷移の ARC/DOM 突合)【U4】【HG: §14共通gate(medical/privacy/a11y実装前承認+実装後independent validation)】 | C-075 |
+| C-078 | WP-5115 — 並行作業ロック実装【U4】【HG: §14共通gate(medical/privacy/a11y実装前承認+実装後independent validation)】 | C-077 |
 | C-079 | WP-5121 — アカウント種別制御【HG: security release gate】 | C-083〜C-085 |
-| C-080 | WP-5122 — FinalizeAndRegisterAction【U4】【HG: RB-003 + 医療安全】 | C-068 |
+| C-080 | WP-5122 — FinalizeAndRegisterAction【U4】【HG: RB-003/HPKI法務+medical/privacy/a11y/薬剤師実装前承認+実装後validation】 | C-068 |
 | C-081 | WP-5123 — 電子薬歴連携送信実装 | C-072 |
-| C-082 | WP-5124 — タブレット縮退+密度段階【HG: 薬剤師レビュー】 | C-075 |
+| C-082 | WP-5124 — タブレット縮退+密度段階【U4】【HG: medical/privacy/a11y/薬剤師実装前承認+実装後validation】 | C-075 |
 
 ### 15.7 Security / Privacy / Release gates(C-083〜C-094)
 
@@ -1240,7 +1287,7 @@ release gate 群。§11 の既知 blocker を作業項目化した index であ�
 | C-097 | `State.md` frozen legacy log(約 2,200 行)の退避判断 — pointer-only 契約との整合。`AGT-018 §§3.2, 4` / PRC-007 と競合するなら fail-closed で停止【HG: 記録政策】 | — |
 | C-098 | 本書 §4 landing 済み index の圧縮(Record policy 準拠。独立レビュー完了後) | C-002〜C-010 |
 | C-099 | 依存 baseline の次回周期更新(`pnpm outdated -r`、WP-4253 方式の再実行) | — |
-| C-100 | `DEVELOPMENT_POLICY.md §11` Exact implementation sequence の現状反映改版(WP-4250 FINALIZED / WP-4258 APPROVED / WP-4050 COMMITTED_LOCAL を反映) | C-002 |
+| C-100 | **COMPLETED / REVIEWED / NONCLAIMABLE** — `DEVELOPMENT_POLICY.md §11` Exact implementation sequenceを現状へ反映。independent PASS後に`9786fe8`でfeature branchへ記録。SSOT・実装・production gateは変更していない | C-002(完了) |
 
 **集計:** 15.1=14 / 15.2=8 / 15.3=20 / 15.4=13 / 15.5=11 / 15.6=16 / 15.7=12 /
 15.8=6 — 合計 100 項目。本節の追加は planning record の変更のみであり、実装・
@@ -1448,7 +1495,7 @@ release gate 群。§11 の既知 blocker を作業項目化した index であ�
 | WP-6001 | Integration Hub SSOT 11 本を PROPOSED 起案(API-009〜018、ADP-003) | `034fe40` |
 | WP-6202/6203 | 版不整合(Ver.1.10→1.11)を ADP-001/REG-001/REG-002 で訂正、JHS-001〜008 を 23 field 補完・0.1.1。全件 PROPOSED | `f5c0771` |
 | WP-6302 | ADP-004 `online_qualification_boundary.md` 骨子を PROPOSED 起案 | `30a2957` |
-| WP-4050 review | REQUEST_CHANGES → HIGH-1/2 修正 `28fd62e` → checker **PASS**(新規 HIGH なし)→ 残課題 MEDIUM-1/LOW-2 を `273c66e` で閉鎖。HIGH-3 FK は DDL gate、MEDIUM-2(orphan の運用照合経路)は §8 候補 | `df2b628` |
+| WP-4050 review | REQUEST_CHANGES → HIGH-1/2 修正 `28fd62e` → checker **PASS**(新規 HIGH なし)→ 残課題 MEDIUM-1/LOW-2 を `273c66e` で閉鎖。HIGH-3 FK は次行のhuman approval後にlocal/CI landing、MEDIUM-2(orphan の運用照合経路)は §8 候補 | `df2b628` |
 | WP-6003 | `3c0c1fa` → 独立レビュー REQUEST_CHANGES(HIGH 1: 順序キー)→ `6f62b92` で全 finding 閉鎖(sequence_number、clock_timestamp、sink timeout、failures 報告、rowCount 検証、000007 書換え)。統合テスト 8 本 PASS | `6f62b92` |
 | WP-4050 HIGH-3 | **human approval 2026-08-23** → migrations/000007(FK NOT VALID+VALIDATE、aggregate_type CHECK、sequence_number、index)。local synthetic / CI のみ適用 | `425294a` `6f62b92` |
 | MEDIUM-2 | `listLegacyOrphans` 照合 query | `a20d8b9` |
