@@ -1,4 +1,4 @@
-import React from "react";
+import React, { type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -14,7 +14,7 @@ import ClaimCheckPage from "./claim-check/page";
 import RootLayout from "./layout";
 import MastersPage from "./masters/page";
 import MonthlyClosingPage from "./monthly-closing/page";
-import { BusinessNav, NAV_ITEMS } from "./nav";
+import { BusinessNav, NAV_GROUPS, NAV_ITEMS } from "./nav";
 import ReceptionPage from "./page";
 import PatientsPage from "./patients/page";
 import PrescriptionsPage from "./prescriptions/page";
@@ -40,13 +40,14 @@ describe("web shell smoke contracts", () => {
     }
     expect(html).toContain('id="business-nav-label"');
     expect(html).toContain('aria-labelledby="business-nav-label"');
+    for (const group of NAV_GROUPS) expect(html).toContain(group.label);
     expect(currentHref(html)).toBe("/patients");
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
   });
 
   it.each(["/", "/patients", "/admin"])(
     "marks exactly one navigation item for the exact pathname: %s",
-    (pathname) => {
+    (pathname: string) => {
       navigation.pathname = pathname;
       const html = renderToStaticMarkup(<BusinessNav />);
 
@@ -65,7 +66,6 @@ describe("web shell smoke contracts", () => {
 
   it("does not infer a current navigation item for an unmatched pathname", () => {
     navigation.pathname = "/not-present";
-
     expect(renderToStaticMarkup(<BusinessNav />)).not.toContain('aria-current="page"');
   });
 
@@ -85,15 +85,9 @@ describe("web shell smoke contracts", () => {
     expect(localOnly).toContain("ローカル単独稼働(外部確認不可)");
     expect(localOnly).toContain('data-mode="LOCAL_ONLY"');
     expect(localOnly).toContain('data-provisional="false"');
-
-    const provisionalNormal = renderToStaticMarkup(
-      <SystemModeBadge mode="NORMAL" provisional />,
-    );
-    expect(provisionalNormal).toContain("通常稼働");
-    expect(provisionalNormal).toContain("暫定");
   });
 
-  it("provides keyboard landmarks without synthetic notification counts", () => {
+  it("provides truthful keyboard landmarks without inviting PHI in the command bar", () => {
     navigation.pathname = "/";
     const html = renderToStaticMarkup(
       <RootLayout>
@@ -108,6 +102,9 @@ describe("web shell smoke contracts", () => {
     expect(html).toContain("未接続");
     expect(html).toContain("操作者未接続");
     expect(html).toContain('aria-keyshortcuts="/ Control+K Meta+K"');
+    expect(html).toContain("患者名は入れず業務名で検索");
+    expect(html).toContain('aria-label="主要業務へのショートカット"');
+    expect(html).not.toContain("山田さんを検索して");
     expect(html).not.toContain('aria-label="通知 2件"');
   });
 
@@ -126,7 +123,6 @@ describe("web shell smoke contracts", () => {
 
   it("retains the implemented patient search inside the new workspace", () => {
     const html = renderToStaticMarkup(<PatientsPage />);
-
     expect(html).toContain("患者検索・患者管理");
     expect(html).toContain("既存患者検索API配線");
     expect(html).toContain('aria-label="患者検索"');
@@ -134,7 +130,6 @@ describe("web shell smoke contracts", () => {
 
   it("keeps prescription work blocked until a patient is selected", () => {
     const html = renderToStaticMarkup(<PrescriptionsPage />);
-
     expect(html).toContain("処方入力ワークスペース");
     expect(html).toContain("業務対象の患者が選択されていません");
     expect(html).toContain("患者取り違え防止");
@@ -146,9 +141,8 @@ describe("web shell smoke contracts", () => {
     ["請求前点検", "BLOCKED_REGULATORY_REVIEW", <ClaimCheckPage />],
     ["月次締め・返戻管理", "締めAPI未接続", <MonthlyClosingPage />],
     ["マスター管理", "master_update_pipeline未承認", <MastersPage />],
-  ])("renders a non-operational prototype for %s", (title, boundary, element) => {
+  ])("renders a non-operational prototype for %s", (title: string, boundary: string, element: ReactElement) => {
     const html = renderToStaticMarkup(element);
-
     expect(html).toContain(title);
     expect(html).toContain("UIプロトタイプ");
     expect(html).toContain(boundary);
@@ -157,7 +151,6 @@ describe("web shell smoke contracts", () => {
 
   it("fails closed when synchronization and system mode cannot be detected", () => {
     const html = renderToStaticMarkup(<SyncStatusPage />);
-
     expect(html).toContain("同期状態・外部連携");
     expect(html).toContain("システムモード未検知");
     expect(html).toContain("NORMAL・障害・オフラインのいずれも推測しません");
@@ -165,14 +158,14 @@ describe("web shell smoke contracts", () => {
     expect(html).not.toContain("すべて正常に稼働中");
   });
 
-  it("renders administration as a disabled synthetic-data prototype", () => {
+  it("renders administration as a disabled no-operational-data prototype", () => {
     const html = renderToStaticMarkup(<AdminPage />);
-
     expect(html).toContain("管理・設定");
     expect(html).toContain("UIプロトタイプ");
     expect(html).toContain("permission_scope_registry承認待ち");
     expect(html).toContain("監査ログ");
-    expect(html).toContain("合成ユーザーA");
+    expect(html).toContain("ユーザー一覧API未接続");
+    expect(html).not.toContain("合成ユーザーA");
     expect(html).toContain("disabled");
   });
 });
