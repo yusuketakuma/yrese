@@ -3,29 +3,27 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-/**
- * 業務ナビゲーション。
- * 画面群は docs/plan/phase0_plan.md §5 screen_inventory 仮説の主要業務フロー順
- * (受付 → 患者 → 処方入力 → 会計 → 請求前点検 → 月次締め)に並べる。
- * 医療UI原則: 業務順序に沿ったナビゲーション、重要状態を隠さない。
- */
-
 export interface NavItem {
   readonly href: string;
   readonly label: string;
+  readonly icon: string;
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
-  { href: "/", label: "受付" },
-  { href: "/patients", label: "患者" },
-  { href: "/prescriptions", label: "処方入力" },
-  { href: "/checkout", label: "会計" },
-  { href: "/claim-check", label: "請求前点検" },
-  { href: "/monthly-closing", label: "月次締め" },
-  { href: "/masters", label: "マスター" },
-  { href: "/sync-status", label: "同期状態" },
-  { href: "/admin", label: "管理" },
+  { href: "/", label: "受付", icon: "受" },
+  { href: "/patients", label: "患者", icon: "患" },
+  { href: "/prescriptions", label: "処方入力", icon: "処" },
+  { href: "/checkout", label: "会計", icon: "会" },
+  { href: "/claim-check", label: "請求前点検", icon: "点" },
+  { href: "/monthly-closing", label: "月次締め", icon: "締" },
+  { href: "/masters", label: "マスター", icon: "マ" },
+  { href: "/sync-status", label: "同期状態", icon: "同" },
+  { href: "/admin", label: "管理・設定", icon: "管" },
 ] as const;
+
+function isCurrentPath(current: string, href: string): boolean {
+  return href === "/" ? current === "/" : current === href || current.startsWith(`${href}/`);
+}
 
 export function BusinessNav() {
   return <BusinessNavView current={usePathname()} />;
@@ -33,19 +31,29 @@ export function BusinessNav() {
 
 export function BusinessNavView({ current }: { readonly current: string }) {
   return (
-    <nav className="app-nav" aria-label="業務メニュー">
-      <ul>
-        {NAV_ITEMS.map((item) => (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              aria-current={current === item.href ? "page" : undefined}
-            >
-              {item.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </nav>
+    <div className="app-nav-wrap">
+      <nav className="app-nav" aria-label="業務メニュー">
+        <ul>
+          {NAV_ITEMS.map((item) => (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                className="app-nav-link"
+                aria-current={isCurrentPath(current, item.href) ? "page" : undefined}
+              >
+                <span className="app-nav-icon" aria-hidden="true">
+                  {item.icon}
+                </span>
+                <span>{item.label}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+      <footer className="app-nav-footer">
+        <span>operator UI preview</span>
+        <span>feat/operator-first-ui</span>
+      </footer>
+    </div>
   );
 }
