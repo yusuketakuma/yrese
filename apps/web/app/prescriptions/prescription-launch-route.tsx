@@ -85,6 +85,17 @@ export function PrescriptionLaunchRoute({
           });
           return;
         }
+        if (validation.status === "terminal-status") {
+          setState({
+            status: "error",
+            notice: {
+              message: `受付状態が${RECEPTION_STATUS_LABELS[validation.entry.receptionStatus]}のため、処方下書きを編集できません。`,
+              nextAction:
+                "受付画面へ戻り、訂正手順または新しい受付の要否を確認してください。",
+            },
+          });
+          return;
+        }
         setState({ status: "ready", entry: validation.entry });
       })
       .catch((error: unknown) => {
