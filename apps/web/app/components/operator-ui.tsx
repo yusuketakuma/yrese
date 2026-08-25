@@ -77,6 +77,10 @@ export function ScreenHeader({
   );
 }
 
+/**
+ * Connected and prototype screens share this boundary banner.
+ * The visible label deliberately describes capability truth, not implementation maturity.
+ */
 export function PrototypeBanner({
   children,
   tone = "warning",
@@ -86,10 +90,10 @@ export function PrototypeBanner({
 }) {
   return (
     <div className="prototype-banner" data-tone={tone} role="note">
-      <strong>UIプロトタイプ</strong>
+      <strong>機能境界</strong>
       <span>
         {children ??
-          "合成データによる画面構成です。保存・算定・請求・外部送信は実行されません。"}
+          "この画面には未接続または未承認の機能があります。表示中の状態と実行可否を確認してください。"}
       </span>
     </div>
   );
@@ -245,14 +249,14 @@ function prototypeActionLabel(
 }
 
 /**
- * 実行不能なプロトタイプ操作。
+ * 実行不能な操作。
  * native disabledを維持し、理由は常時可視テキストとして隣接表示する。
  * 無効操作をフォーカス可能なwrapperへ変換しないため、画面内のtab stopを増やさない。
  */
 export function PrototypeAction({
   children,
   kind = "secondary",
-  reason = "この操作はUIプロトタイプでは実行できません",
+  reason = "必要な機能が未接続または未承認のため実行できません",
   actionLabel,
 }: {
   readonly children: ReactNode;

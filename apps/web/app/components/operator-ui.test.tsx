@@ -13,8 +13,8 @@ import {
 
 (globalThis as { React?: typeof React }).React = React;
 
-describe("operator UI prototype primitives", () => {
-  it("keeps prototype actions disabled and explains the reason without an extra tab stop", () => {
+describe("operator UI capability primitives", () => {
+  it("keeps unavailable actions disabled and explains the reason without an extra tab stop", () => {
     const html = renderToStaticMarkup(
       <>
         <PrototypeBanner>合成データです</PrototypeBanner>
@@ -24,7 +24,7 @@ describe("operator UI prototype primitives", () => {
       </>,
     );
 
-    expect(html).toContain("UIプロトタイプ");
+    expect(html).toContain("機能境界");
     expect(html).toContain("合成データです");
     expect(html).toContain('class="prototype-action-shell"');
     expect(html).toContain("利用不可: 確定API未接続");
@@ -32,6 +32,17 @@ describe("operator UI prototype primitives", () => {
     expect(html).toContain('aria-label="確定（利用不可）"');
     expect(html).not.toContain('tabindex="0"');
     expect(html).not.toContain('aria-hidden="true"');
+  });
+
+  it("uses capability wording when a caller does not provide a custom reason", () => {
+    const html = renderToStaticMarkup(
+      <PrototypeAction>未接続操作</PrototypeAction>,
+    );
+
+    expect(html).toContain(
+      "利用不可: 必要な機能が未接続または未承認のため実行できません",
+    );
+    expect(html).not.toContain("UIプロトタイプでは実行できません");
   });
 
   it("renders metrics as one labelled list without color-only semantics", () => {
