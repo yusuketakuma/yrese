@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type ChangeEvent, useMemo, useState } from "react";
+import { type ChangeEvent, useState } from "react";
 
 import { DomainStatusBadge } from "../components/domain-status-badge";
 import { EmptyState } from "../components/empty-state";
@@ -10,8 +10,8 @@ import {
   useOptionalPatientContext,
 } from "../components/patient-context";
 import {
-  InlineNotice,
   Panel,
+  PrototypeAction,
   PrototypeBanner,
   RailCard,
   ScreenHeader,
@@ -19,201 +19,31 @@ import {
 } from "../components/operator-ui";
 import { SeverityList } from "../components/severity-list";
 
-export interface DraftRow {
-  readonly id: number;
-  readonly drug: string;
-  readonly usage: string;
-  readonly days: string;
-  readonly quantity: string;
-}
+import {
+  type DraftRow,
+  createBlankDraftRows,
+  isDraftRowEmpty,
+  removeDraftRow,
+} from "./prescription-replacement";
 
-export interface PastPrescriptionRow {
-  readonly drug: string;
-  readonly usage: string;
-  readonly days: string;
-  readonly quantity: string;
-}
-
-export interface PastPrescription {
-  readonly date: string;
-  readonly rows: readonly PastPrescriptionRow[];
-}
-
-export interface PrescriptionReplacementSummary {
-  readonly added: number;
-  readonly removed: number;
-  readonly changed: number;
-  readonly unchanged: number;
-}
-
-type ComparablePrescriptionRow = Pick<
+export type {
   DraftRow,
-  "drug" | "usage" | "days" | "quantity"
->;
+  PastPrescription,
+  PastPrescriptionRow,
+  PrescriptionReplacementSummary,
+} from "./prescription-replacement";
+export {
+  buildDraftRowsFromPastPrescription,
+  createBlankDraftRows,
+  filterPastPrescriptions,
+  isDraftRowEmpty,
+  pastPrescriptionDurationLabel,
+  removeDraftRow,
+  summarizePrescriptionReplacement,
+} from "./prescription-replacement";
 
-const INITIAL_ROWS: readonly DraftRow[] = [
-  { id: 1, drug: "アムロジピンOD錠5mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
-  { id: 2, drug: "ロサルタンK錠50mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
-  { id: 3, drug: "トラゾドン錠25mg", usage: "1日1回 就寝前", days: "7", quantity: "7錠" },
-];
-
-export const PAST_PRESCRIPTIONS: readonly PastPrescription[] = [
-  {
-    date: "2026/08/24",
-    rows: [
-      { drug: "アムロジピンOD錠5mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
-      { drug: "ロサルタンK錠50mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
-      { drug: "トラゾドン錠25mg", usage: "1日1回 就寝前", days: "7", quantity: "7錠" },
-    ],
-  },
-  {
-    date: "2026/07/27",
-    rows: [
-      { drug: "アムロジピン錠5mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
-      { drug: "ロサルタンK錠50mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
-      { drug: "トラゾドン錠25mg", usage: "1日1回 就寝前", days: "7", quantity: "7錠" },
-    ],
-  },
-  {
-    date: "2026/06/28",
-    rows: [
-      { drug: "アムロジピン錠5mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
-      { drug: "ロサルタンK錠50mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
-      { drug: "トラゾドン錠25mg", usage: "1日1回 就寝前", days: "7", quantity: "7錠" },
-    ],
-  },
-  {
-    date: "2026/05/27",
-    rows: [
-      { drug: "アムロジピン錠5mg", usage: "1日1回 朝食後", days: "14", quantity: "14錠" },
-      { drug: "ロサルタンK錠50mg", usage: "1日1回 朝食後", days: "14", quantity: "14錠" },
-    ],
-  },
-] as const;
-
-function normalizedText(value: string): string {
-  return value.normalize("NFKC").trim().toLowerCase();
-}
-
-function rowSignature(
-  row: Pick<ComparablePrescriptionRow, "usage" | "days" | "quantity">,
-): string {
-  return [row.usage, row.days, row.quantity].map(normalizedText).join("|");
-}
-
-function groupRowsByDrug<T extends ComparablePrescriptionRow>(
-  rows: readonly T[],
-): Map<string, T[]> {
-  const groups = new Map<string, T[]>();
-  for (const row of rows) {
-    const drugKey = normalizedText(row.drug);
-    if (!drugKey) continue;
-    const existing = groups.get(drugKey);
-    if (existing === undefined) {
-      groups.set(drugKey, [row]);
-    } else {
-      existing.push(row);
-    }
-  }
-  return groups;
-}
-
-export function pastPrescriptionDurationLabel(item: PastPrescription): string {
-  const durations = new Set(item.rows.map((row) => row.days.trim()).filter(Boolean));
-  if (durations.size === 0) return "日数不明";
-  if (durations.size > 1) return "日数混在";
-  const duration = durations.values().next().value;
-  return duration === undefined ? "日数不明" : `${duration}日分`;
-}
-
-export function buildDraftRowsFromPastPrescription(
-  item: PastPrescription,
-): DraftRow[] {
-  return item.rows.map((row, index) => ({
-    id: index + 1,
-    ...row,
-  }));
-}
-
-export function filterPastPrescriptions(
-  items: readonly PastPrescription[],
-  query: string,
-): PastPrescription[] {
-  const normalizedQuery = normalizedText(query);
-  if (!normalizedQuery) return [...items];
-
-  return items.filter((item) =>
-    normalizedText(
-      [
-        item.date,
-        ...item.rows.flatMap((row) => [
-          row.drug,
-          row.usage,
-          `${row.days}日`,
-          row.quantity,
-        ]),
-      ].join(" "),
-    ).includes(normalizedQuery),
-  );
-}
-
-/**
- * 同一薬剤名の複数RP行を縮約せずmultisetとして比較する。
- * まず完全一致行を消し込み、残った同一薬剤行を内容変更として対応付ける。
- * 実データ接続時は薬剤名ではなく承認済みの安定薬剤コードをgroup keyにする。
- */
-export function summarizePrescriptionReplacement(
-  currentRows: readonly DraftRow[],
-  pastPrescription: PastPrescription,
-): PrescriptionReplacementSummary {
-  const currentGroups = groupRowsByDrug(currentRows);
-  const pastGroups = groupRowsByDrug(pastPrescription.rows);
-  const drugKeys = new Set([...currentGroups.keys(), ...pastGroups.keys()]);
-  const summary = {
-    added: 0,
-    removed: 0,
-    changed: 0,
-    unchanged: 0,
-  };
-
-  for (const drugKey of drugKeys) {
-    const current = currentGroups.get(drugKey) ?? [];
-    const past = pastGroups.get(drugKey) ?? [];
-    const currentSignatureCounts = new Map<string, number>();
-
-    for (const row of current) {
-      const signature = rowSignature(row);
-      currentSignatureCounts.set(
-        signature,
-        (currentSignatureCounts.get(signature) ?? 0) + 1,
-      );
-    }
-
-    let unchangedForDrug = 0;
-    for (const row of past) {
-      const signature = rowSignature(row);
-      const available = currentSignatureCounts.get(signature) ?? 0;
-      if (available <= 0) continue;
-      unchangedForDrug += 1;
-      if (available === 1) {
-        currentSignatureCounts.delete(signature);
-      } else {
-        currentSignatureCounts.set(signature, available - 1);
-      }
-    }
-
-    const currentRemaining = current.length - unchangedForDrug;
-    const pastRemaining = past.length - unchangedForDrug;
-    const changedForDrug = Math.min(currentRemaining, pastRemaining);
-
-    summary.unchanged += unchangedForDrug;
-    summary.changed += changedForDrug;
-    summary.removed += currentRemaining - changedForDrug;
-    summary.added += pastRemaining - changedForDrug;
-  }
-
-  return summary;
-}
+const PRESCRIPTION_OPTIONS = ["一包化", "在宅", "麻薬", "向精神薬", "残薬調整"] as const;
+type PrescriptionOption = (typeof PRESCRIPTION_OPTIONS)[number];
 
 export function PrescriptionWorkspace() {
   const context = useOptionalPatientContext();
@@ -222,13 +52,18 @@ export function PrescriptionWorkspace() {
   if (patient === null) {
     return (
       <section aria-label="処方入力(患者未選択)">
+        <ScreenHeader
+          title="処方入力ワークスペース"
+          description="患者を明示的に選択してから入力を開始します。"
+          meta={<StatusPill tone="warning">患者未選択・開始不可</StatusPill>}
+        />
         <EmptyState message="業務対象の患者が選択されていません" />
         <p>
           <Link href="/patients">患者検索</Link>
           で患者を選択すると、処方入力を開始できます（患者取り違え防止のため、患者未選択での入力開始はできません）。
         </p>
         <p className="placeholder-note">
-          処方データ・臨床判定・算定APIは未接続です。表示される入力例は合成データで保存されません。
+          処方データ・臨床判定・算定APIは未接続です。患者未選択では入力欄も表示しません。
         </p>
       </section>
     );
@@ -242,35 +77,27 @@ export function SelectedPatientWorkspaceView({
 }: {
   readonly patient: PatientContextData;
 }) {
-  const [rows, setRows] = useState<DraftRow[]>([...INITIAL_ROWS]);
-  const [pastSearch, setPastSearch] = useState("");
-  const [pendingPastPrescription, setPendingPastPrescription] =
-    useState<PastPrescription | null>(null);
-  const [previewVisible, setPreviewVisible] = useState(false);
-  const [savedNotice, setSavedNotice] = useState<string | null>(null);
-  const visiblePastPrescriptions = useMemo(
-    () => filterPastPrescriptions(PAST_PRESCRIPTIONS, pastSearch),
-    [pastSearch],
-  );
-  const replacementSummary = useMemo(
-    () =>
-      pendingPastPrescription === null
-        ? null
-        : summarizePrescriptionReplacement(rows, pendingPastPrescription),
-    [pendingPastPrescription, rows],
-  );
+  const [rows, setRows] = useState<DraftRow[]>(createBlankDraftRows);
+  const [prescriptionType, setPrescriptionType] = useState("");
+  const [prescriptionDate, setPrescriptionDate] = useState("");
+  const [defaultDays, setDefaultDays] = useState("");
+  const [options, setOptions] = useState<PrescriptionOption[]>([]);
+  const [note, setNote] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const [resetRequested, setResetRequested] = useState(false);
+  const [pendingRemovalRowId, setPendingRemovalRowId] = useState<number | null>(null);
 
-  function invalidateDerivedPreview() {
-    setPendingPastPrescription(null);
-    setPreviewVisible(false);
-    setSavedNotice(null);
+  function markDirty() {
+    setDirty(true);
+    setResetRequested(false);
+    setPendingRemovalRowId(null);
   }
 
   function updateRow(id: number, field: keyof Omit<DraftRow, "id">, value: string) {
     setRows((current) =>
       current.map((row) => (row.id === id ? { ...row, [field]: value } : row)),
     );
-    invalidateDerivedPreview();
+    markDirty();
   }
 
   function addRow() {
@@ -284,127 +111,101 @@ export function SelectedPatientWorkspaceView({
         quantity: "",
       },
     ]);
-    invalidateDerivedPreview();
+    markDirty();
   }
 
-  function removeRow(id: number) {
-    setRows((current) => current.filter((row) => row.id !== id));
-    invalidateDerivedPreview();
+  function requestRowRemoval(id: number) {
+    setResetRequested(false);
+    setPendingRemovalRowId(id);
   }
 
-  function resetDraft() {
-    setRows([...INITIAL_ROWS]);
-    invalidateDerivedPreview();
+  function confirmRowRemoval() {
+    if (pendingRemovalRowId === null) return;
+    setRows((current) => removeDraftRow(current, pendingRemovalRowId));
+    setDirty(true);
+    setResetRequested(false);
+    setPendingRemovalRowId(null);
   }
 
-  function updatePastSearch(value: string) {
-    setPastSearch(value);
-    setPendingPastPrescription(null);
-  }
-
-  function requestPastPrescription(item: PastPrescription) {
-    setPendingPastPrescription(item);
-    setPreviewVisible(false);
-    setSavedNotice(null);
-  }
-
-  function confirmPastPrescription() {
-    if (pendingPastPrescription === null) return;
-    const item = pendingPastPrescription;
-    setRows(buildDraftRowsFromPastPrescription(item));
-    setPendingPastPrescription(null);
-    setPreviewVisible(false);
-    setSavedNotice(
-      `${item.date}の過去処方（合成例）を確認後に入力欄へ反映しました。永続保存はしていません。`,
+  function toggleOption(option: PrescriptionOption) {
+    setOptions((current) =>
+      current.includes(option)
+        ? current.filter((currentOption) => currentOption !== option)
+        : [...current, option],
     );
+    markDirty();
   }
+
+  function confirmReset() {
+    setRows(createBlankDraftRows());
+    setPrescriptionType("");
+    setPrescriptionDate("");
+    setDefaultDays("");
+    setOptions([]);
+    setNote("");
+    setDirty(false);
+    setResetRequested(false);
+    setPendingRemovalRowId(null);
+  }
+
+  const nonEmptyRows = rows.filter((row) => !isDraftRowEmpty(row)).length;
+  const pendingRemovalIndex = rows.findIndex((row) => row.id === pendingRemovalRowId);
+  const pendingRemovalRow = pendingRemovalIndex >= 0 ? rows[pendingRemovalIndex] : undefined;
 
   return (
-    <section aria-label="処方入力" data-patient-selected="true">
+    <section
+      aria-label="処方入力"
+      data-patient-selected="true"
+      data-prototype-clinical-data="excluded"
+    >
       <ScreenHeader
         title="処方入力ワークスペース"
-        description="過去処方を左側に固定し、現在の入力と安全情報を同時に比較できる構成です。"
-        meta={<StatusPill tone="warning">保存API未接続</StatusPill>}
+        description="患者文脈を固定し、入力と安全情報を並べます。患者固有の過去処方はAPI接続後に表示します。"
+        meta={
+          <StatusPill tone={dirty ? "warning" : "neutral"}>
+            {dirty ? "未保存の変更（端末内）" : "未入力・保存API未接続"}
+          </StatusPill>
+        }
       />
-      <PrototypeBanner>
-        合成処方データによる入力UIです。保存・疑義照会・臨床判定・算定・印刷は実行されません。
+      <PrototypeBanner tone="warning">
+        選択患者へ固定の合成薬剤・合成過去処方を誤帰属させないため、患者固有データは表示していません。入力はサーバーへ保存されず、臨床判定・算定も実行されません。
       </PrototypeBanner>
 
-      <div className="prescription-workbench-grid">
-        <Panel title="過去処方一覧（直近6か月）" className="prescription-history-panel">
+      <div className="prescription-workbench-grid prescription-workbench-grid-safe">
+        <Panel title="過去処方一覧" className="prescription-history-panel">
+          <StatusPill tone="warning">患者固有API未接続</StatusPill>
           <label className="visually-hidden" htmlFor="past-prescription-search">
-            過去処方を検索
+            過去処方を検索（未接続）
           </label>
           <input
             id="past-prescription-search"
             className="operator-input"
             type="search"
-            value={pastSearch}
-            onChange={(event: ChangeEvent<HTMLInputElement>) => updatePastSearch(event.target.value)}
-            placeholder="日付・薬剤名・日数で検索"
-            autoComplete="off"
-            spellCheck={false}
-          />
-          <p className="queue-last-updated" aria-live="polite">
-            表示 {visiblePastPrescriptions.length}件 / 合成例 {PAST_PRESCRIPTIONS.length}件
-          </p>
-          <div className="prescription-history-list">
-            {visiblePastPrescriptions.length > 0 ? (
-              visiblePastPrescriptions.map((item) => {
-                const selected = pendingPastPrescription?.date === item.date;
-                return (
-                  <article
-                    className="prescription-history-card"
-                    data-selected={selected ? "true" : "false"}
-                    key={item.date}
-                  >
-                    <header>
-                      <strong>{item.date}</strong>
-                      <span>{pastPrescriptionDurationLabel(item)}</span>
-                    </header>
-                    <StatusPill tone="neutral">合成例</StatusPill>
-                    <ol>
-                      {item.rows.map((row, index) => (
-                        <li key={`${row.drug}-${index}`}>
-                          <strong>{row.drug}</strong>
-                          <span>{row.usage}・{row.days}日・{row.quantity}</span>
-                        </li>
-                      ))}
-                    </ol>
-                    <button
-                      type="button"
-                      aria-pressed={selected}
-                      onClick={() => requestPastPrescription(item)}
-                    >
-                      {selected ? "差分を確認中" : "差分を確認"}
-                    </button>
-                  </article>
-                );
-              })
-            ) : (
-              <p className="prescription-history-empty">
-                条件に一致する過去処方はありません。検索語を短くしてください。
-              </p>
-            )}
-          </div>
-          <button
-            className="operator-text-action"
-            type="button"
+            placeholder="過去処方API接続後に検索できます"
             disabled
-            title="過去処方API未接続"
-          >
-            もっと見る（未接続）
-          </button>
+            aria-describedby="past-prescription-unavailable"
+          />
+          <p id="past-prescription-unavailable" className="prescription-history-empty">
+            この患者の過去処方は未取得です。履歴がない、変更がない、安全である、のいずれも意味しません。従来の薬歴確認手順を継続してください。
+          </p>
         </Panel>
 
         <Panel
           title="処方入力"
-          description="入力はブラウザ内の一時状態だけに反映されます。"
+          description="入力はこの画面の一時状態だけに保持されます。画面遷移・患者変更で破棄されます。"
           className="prescription-editor-panel"
           actions={
             <div className="operator-inline-actions">
-              <button type="button" onClick={resetDraft}>
-                初期化
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingRemovalRowId(null);
+                  setResetRequested(true);
+                }}
+                disabled={!dirty}
+                title={dirty ? "入力内容を確認後に消去します" : "消去する入力はありません"}
+              >
+                入力を消去
               </button>
               <button type="button" onClick={addRow}>
                 RP行を追加
@@ -412,30 +213,48 @@ export function SelectedPatientWorkspaceView({
             </div>
           }
         >
-          {pendingPastPrescription !== null && replacementSummary !== null ? (
+          {resetRequested ? (
             <section
-              className="prescription-replacement-review"
-              aria-labelledby="prescription-replacement-title"
-              aria-live="polite"
+              className="prescription-reset-review"
+              role="region"
+              aria-live="assertive"
+              aria-labelledby="prescription-reset-title"
+              aria-describedby="prescription-reset-description"
             >
-              <h4 id="prescription-replacement-title">過去処方の反映確認</h4>
-              <p>
-                患者: {patient.name}。{pendingPastPrescription.date}（
-                {pastPrescriptionDurationLabel(pendingPastPrescription)}）の構成で、現在の
-                {rows.length}行を置き換えます。薬剤名・用法・日数・数量を比較し、まだ入力欄には反映していません。
+              <h4 id="prescription-reset-title">未保存の入力を消去しますか</h4>
+              <p id="prescription-reset-description">
+                患者: {patient.name}。入力済み {nonEmptyRows}行、選択項目 {options.length}件、メモを消去します。この操作は元に戻せません。
               </p>
-              <dl className="prescription-replacement-summary">
-                <div><dt>追加</dt><dd>{replacementSummary.added}剤</dd></div>
-                <div><dt>削除</dt><dd>{replacementSummary.removed}剤</dd></div>
-                <div><dt>内容変更</dt><dd>{replacementSummary.changed}剤</dd></div>
-                <div><dt>同一</dt><dd>{replacementSummary.unchanged}剤</dd></div>
-              </dl>
-              <div className="prescription-replacement-actions">
-                <button type="button" onClick={() => setPendingPastPrescription(null)}>
+              <div className="prescription-reset-actions">
+                <button type="button" onClick={() => setResetRequested(false)}>
                   キャンセル
                 </button>
-                <button type="button" data-kind="primary" onClick={confirmPastPrescription}>
-                  確認して反映
+                <button type="button" data-kind="danger" onClick={confirmReset}>
+                  確認して消去
+                </button>
+              </div>
+            </section>
+          ) : null}
+
+          {pendingRemovalRow !== undefined ? (
+            <section
+              className="prescription-row-removal-review"
+              role="region"
+              aria-live="assertive"
+              aria-labelledby="prescription-row-removal-title"
+              aria-describedby="prescription-row-removal-description"
+            >
+              <h4 id="prescription-row-removal-title">RP行を削除しますか</h4>
+              <p id="prescription-row-removal-description">
+                患者: {patient.name}。RP{pendingRemovalIndex + 1}（
+                {pendingRemovalRow.drug.trim() || "薬剤名未入力"}）を削除します。未保存内容は元に戻せません。
+              </p>
+              <div className="prescription-reset-actions">
+                <button type="button" onClick={() => setPendingRemovalRowId(null)}>
+                  キャンセル
+                </button>
+                <button type="button" data-kind="danger" onClick={confirmRowRemoval}>
+                  確認して削除
                 </button>
               </div>
             </section>
@@ -444,24 +263,47 @@ export function SelectedPatientWorkspaceView({
           <div className="prescription-meta-grid">
             <label>
               処方区分
-              <select defaultValue="外来">
-                <option>外来</option>
-                <option>在宅</option>
+              <select
+                value={prescriptionType}
+                onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+                  setPrescriptionType(event.target.value);
+                  markDirty();
+                }}
+              >
+                <option value="">未選択</option>
+                <option value="外来">外来</option>
+                <option value="在宅">在宅</option>
               </select>
             </label>
             <label>
               処方日
-              <input type="date" defaultValue="2026-08-24" />
+              <input
+                type="date"
+                value={prescriptionDate}
+                onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                  setPrescriptionDate(event.target.value);
+                  markDirty();
+                }}
+              />
             </label>
             <label>
               交付日数
-              <input type="number" min="1" defaultValue="7" />
+              <input
+                type="number"
+                min="1"
+                value={defaultDays}
+                onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                  setDefaultDays(event.target.value);
+                  markDirty();
+                }}
+                placeholder="未入力"
+              />
             </label>
           </div>
 
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0} aria-label="処方入力表。横方向にスクロールできます">
             <table className="operator-table prescription-draft-table">
-              <caption className="visually-hidden">処方入力行</caption>
+              <caption className="visually-hidden">選択患者の未保存処方入力行</caption>
               <thead>
                 <tr>
                   <th scope="col">RP</th>
@@ -483,7 +325,8 @@ export function SelectedPatientWorkspaceView({
                         onChange={(event: ChangeEvent<HTMLInputElement>) =>
                           updateRow(row.id, "drug", event.target.value)
                         }
-                        placeholder="薬剤名を検索"
+                        placeholder="薬剤名を入力（未保存）"
+                        autoComplete="off"
                       />
                     </td>
                     <td>
@@ -494,6 +337,7 @@ export function SelectedPatientWorkspaceView({
                           updateRow(row.id, "usage", event.target.value)
                         }
                         placeholder="用法・用量"
+                        autoComplete="off"
                       />
                     </td>
                     <td>
@@ -513,15 +357,22 @@ export function SelectedPatientWorkspaceView({
                         onChange={(event: ChangeEvent<HTMLInputElement>) =>
                           updateRow(row.id, "quantity", event.target.value)
                         }
+                        autoComplete="off"
                       />
                     </td>
                     <td>
                       <button
                         type="button"
-                        onClick={() => removeRow(row.id)}
-                        aria-label={`RP${index + 1}を削除`}
+                        onClick={() => requestRowRemoval(row.id)}
+                        aria-label={`RP${index + 1}の削除を確認`}
+                        disabled={rows.length === 1 && isDraftRowEmpty(row)}
+                        title={
+                          rows.length === 1 && isDraftRowEmpty(row)
+                            ? "空の最終行は削除できません"
+                            : "患者とRP内容を確認後に削除します"
+                        }
                       >
-                        削除
+                        削除確認
                       </button>
                     </td>
                   </tr>
@@ -532,57 +383,42 @@ export function SelectedPatientWorkspaceView({
 
           <fieldset className="prescription-options">
             <legend>全体指示・コメント</legend>
-            <label><input type="checkbox" /> 一包化</label>
-            <label><input type="checkbox" /> 在宅</label>
-            <label><input type="checkbox" /> 麻薬</label>
-            <label><input type="checkbox" /> 向精神薬</label>
-            <label><input type="checkbox" /> 残薬調整</label>
+            {PRESCRIPTION_OPTIONS.map((option) => (
+              <label key={option}>
+                <input
+                  type="checkbox"
+                  checked={options.includes(option)}
+                  onChange={() => toggleOption(option)}
+                />
+                {option}
+              </label>
+            ))}
           </fieldset>
           <label className="prescription-note-label">
             メモ（薬剤師メモ・特記事項）
-            <textarea rows={4} placeholder="保存されないUI入力例です" />
+            <textarea
+              rows={4}
+              value={note}
+              onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
+                setNote(event.target.value);
+                markDirty();
+              }}
+              placeholder="この画面を離れると破棄されます"
+            />
           </label>
 
-          {savedNotice !== null ? (
-            <InlineNotice title="一時状態" tone="info">
-              <p>{savedNotice}</p>
-            </InlineNotice>
-          ) : null}
-
-          {previewVisible ? (
-            <InlineNotice title="算定プレビュー" tone="warning">
-              <p>
-                算定エンジンは未接続です。入力行は {rows.length} 行ですが、点数・患者負担額・請求可否は計算していません。
-              </p>
-            </InlineNotice>
-          ) : null}
-
-          <div className="prescription-actions">
-            <button
-              type="button"
-              className="operator-button"
-              data-kind="secondary"
-              onClick={() =>
-                setSavedNotice(
-                  "ブラウザ内の一時状態を更新しました。サーバーには保存していません。",
-                )
-              }
-            >
-              一時保存（ブラウザ内）
-            </button>
-            <button
-              type="button"
-              className="operator-button"
-              data-kind="primary"
-              onClick={() => setPreviewVisible(true)}
-            >
+          <div className="prescription-actions" aria-label="未接続の処方操作">
+            <PrototypeAction reason="処方保存API・監査証跡が未接続です">
+              処方を保存
+            </PrototypeAction>
+            <PrototypeAction kind="primary" reason="算定エンジンと根拠トレースが未接続です">
               算定プレビュー
-            </button>
+            </PrototypeAction>
           </div>
         </Panel>
 
         <aside className="prescription-safety-rail" aria-label="患者コンテキストと安全情報">
-          <RailCard title="患者コンテキスト & 安全" tone="danger">
+          <RailCard title="患者コンテキスト & 安全" tone="warning">
             <div className="patient-safety-summary">
               <strong>{patient.name}</strong>
               <span>{patient.kana}</span>
@@ -601,16 +437,14 @@ export function SelectedPatientWorkspaceView({
               ]}
             />
           </RailCard>
-          <RailCard title="検査値（直近3件）" tone="warning">
+          <RailCard title="検査値" tone="warning">
             <StatusPill tone="warning">未接続</StatusPill>
             <p className="rail-muted">検査値が表示されないことは正常を意味しません。</p>
           </RailCard>
-          <RailCard title="タスク">
-            <ul className="rail-action-list">
-              <li>疑義照会：未送信 1件（合成例）</li>
-              <li>薬歴確認：未接続</li>
-              <li>次回フォロー：未接続</li>
-            </ul>
+          <RailCard title="患者固有タスク">
+            <p className="rail-muted">
+              疑義照会、薬歴確認、次回フォローはタスクAPI接続後に表示します。合成件数は表示しません。
+            </p>
           </RailCard>
           <RailCard title="エビデンス">
             <p className="rail-muted">

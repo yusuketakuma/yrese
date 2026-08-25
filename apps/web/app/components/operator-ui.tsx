@@ -15,10 +15,12 @@ function classNames(...values: Array<string | false | null | undefined>): string
 export function OperatorPage({
   children,
   rail,
+  railLabel = "補助情報",
   className,
 }: {
   readonly children: ReactNode;
   readonly rail?: ReactNode;
+  readonly railLabel?: string;
   readonly className?: string;
 }) {
   return (
@@ -26,7 +28,11 @@ export function OperatorPage({
       className={classNames("operator-page", rail !== undefined && "operator-page-with-rail", className)}
     >
       <div className="operator-page-primary">{children}</div>
-      {rail !== undefined ? <aside className="operator-rail">{rail}</aside> : null}
+      {rail !== undefined ? (
+        <aside className="operator-rail" aria-label={railLabel}>
+          {rail}
+        </aside>
+      ) : null}
     </div>
   );
 }
@@ -92,7 +98,11 @@ export function StatusPill({
 }
 
 export function MetricGrid({ children }: { readonly children: ReactNode }) {
-  return <section className="metric-grid">{children}</section>;
+  return (
+    <div className="metric-grid" role="list" aria-label="主要指標">
+      {children}
+    </div>
+  );
 }
 
 export function MetricCard({
@@ -111,7 +121,7 @@ export function MetricCard({
   readonly icon?: string;
 }) {
   return (
-    <article className="metric-card" data-tone={tone}>
+    <article className="metric-card" data-tone={tone} role="listitem">
       {icon !== undefined ? (
         <span className="metric-icon" aria-hidden="true">
           {icon}
@@ -202,25 +212,48 @@ export function KeyValueList({
   );
 }
 
+function prototypeActionLabel(children: ReactNode, actionLabel?: string): string {
+  if (actionLabel !== undefined) return actionLabel;
+  if (typeof children === "string" || typeof children === "number") return String(children);
+  return "この操作";
+}
+
+/**
+ * 実行不能なプロトタイプ操作。
+ * native disabledを維持しつつ、理由をキーボード利用者にも提示するfocusable shellを付ける。
+ */
 export function PrototypeAction({
   children,
   kind = "secondary",
   reason = "この操作はUIプロトタイプでは実行できません",
+  actionLabel,
 }: {
   readonly children: ReactNode;
   readonly kind?: "primary" | "secondary" | "quiet" | "danger";
   readonly reason?: string;
+  readonly actionLabel?: string;
 }) {
+  const label = prototypeActionLabel(children, actionLabel);
   return (
-    <button
-      type="button"
-      className="operator-button"
-      data-kind={kind}
-      disabled
-      title={reason}
+    <span
+      className="prototype-action-shell"
+      role="group"
+      tabIndex={0}
+      aria-label={`${label}。利用不可。${reason}`}
+      data-disabled-reason={reason}
     >
-      {children}
-    </button>
+      <button
+        type="button"
+        className="operator-button"
+        data-kind={kind}
+        disabled
+        aria-hidden="true"
+        tabIndex={-1}
+        title={reason}
+      >
+        {children}
+      </button>
+    </span>
   );
 }
 
@@ -252,7 +285,9 @@ export function IntakeCard({
       </div>
       <div className="intake-card-footer">
         <StatusPill tone="warning">{status}</StatusPill>
-        <PrototypeAction>{actionLabel}</PrototypeAction>
+        <PrototypeAction reason={`${title}は接続・承認前のため実行できません`}>
+          {actionLabel}
+        </PrototypeAction>
       </div>
     </article>
   );
@@ -262,13 +297,24 @@ export function InlineNotice({
   title,
   children,
   tone = "info",
+  announce,
 }: {
   readonly title: string;
   readonly children: ReactNode;
   readonly tone?: OperatorTone;
+  readonly announce?: "polite" | "assertive";
 }) {
   return (
-    <div className="inline-notice" data-tone={tone}>
+    <div
+      className="inline-notice"
+      data-tone={tone}
+      {...(announce !== undefined
+        ? {
+            role: announce === "assertive" ? "alert" : "status",
+            "aria-live": announce,
+          }
+        : {})}
+    >
       <strong>{title}</strong>
       <div>{children}</div>
     </div>
