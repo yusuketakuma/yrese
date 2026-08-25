@@ -30,6 +30,7 @@ const findings = {
   routeChecks: [],
   accessibilityViolations: [],
   consoleErrors: [],
+  expectedNetworkResponses: [],
   interactionChecks: [],
 };
 
@@ -42,10 +43,33 @@ function routeName(route) {
 }
 
 function attachErrorCollection(page, label) {
-  page.on("console", (message) => {
-    if (message.type() === "error") {
-      findings.consoleErrors.push({ label, kind: "console", text: message.text() });
+  let expectedDraftNotFoundResponses = 0;
+  page.on("response", (response) => {
+    if (
+      response.status() === 404 &&
+      response.request().method() === "GET" &&
+      response.url().includes("/prescription-drafts/by-reception/")
+    ) {
+      expectedDraftNotFoundResponses += 1;
+      findings.expectedNetworkResponses.push({
+        label,
+        kind: "empty-prescription-draft",
+        status: 404,
+      });
     }
+  });
+  page.on("console", (message) => {
+    if (message.type() !== "error") return;
+    const text = message.text();
+    if (
+      expectedDraftNotFoundResponses > 0 &&
+      text.includes("Failed to load resource") &&
+      text.includes("404")
+    ) {
+      expectedDraftNotFoundResponses -= 1;
+      return;
+    }
+    findings.consoleErrors.push({ label, kind: "console", text });
   });
   page.on("pageerror", (error) => {
     findings.consoleErrors.push({ label, kind: "pageerror", text: error.message });
