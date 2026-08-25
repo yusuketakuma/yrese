@@ -90,12 +90,14 @@ describe("web shell smoke contracts", () => {
     expect(html).toMatch(/未実装|scaffold/);
   });
 
-  it("keeps the admin route as the SCR-029 placeholder without the retired viewer", () => {
+  it("renders the connected SCR-029 boundary without reintroducing the retired audit viewer", () => {
     const html = renderToStaticMarkup(<AdminPage />);
 
-    expect(html).toContain("<h2>管理</h2>");
-    expect(html).toContain("テナント・薬局・ユーザー・権限管理は未実装");
-    expect(html).not.toContain(["監査", "ログ"].join(""));
+    expect(html).toContain("yrese 管理設定ダッシュボード");
+    expect(html).toContain("認証・tenant境界・API状態を検証しています");
+    expect(html).toContain('aria-busy="true"');
+    expect(html).not.toContain("テナント・薬局・ユーザー・権限管理は未実装のプレースホルダー");
+    expect(html).not.toContain("監査イベント一覧");
     expect(html).not.toContain(["SCR", "028"].join("-"));
     expect(html).not.toContain(["audit", "log", "panel"].join("-"));
   });
