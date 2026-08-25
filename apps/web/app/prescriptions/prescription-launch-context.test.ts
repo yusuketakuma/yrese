@@ -71,6 +71,11 @@ describe("validateReceptionLaunchEntry", () => {
       patient: { patientId: "patient-b" },
       receptionStatus: "WAITING",
     },
+    {
+      receptionId: "reception-c",
+      patient: { patientId: "patient-c" },
+      receptionStatus: "COMPLETED",
+    },
   ] as const;
 
   it("returns only the matching authenticated queue entry", () => {
@@ -96,5 +101,15 @@ describe("validateReceptionLaunchEntry", () => {
         receptionId: "reception-missing",
       }),
     ).toEqual({ status: "not-found" });
+  });
+
+  it("returns an explicit terminal result for a completed reception", () => {
+    expect(
+      validateReceptionLaunchEntry(entries, {
+        receptionId: "reception-c",
+        patientId: "patient-c",
+        businessDate: "2026-08-25",
+      }),
+    ).toEqual({ status: "terminal-status", entry: entries[2] });
   });
 });

@@ -1,6 +1,6 @@
 # GENERATED - DO NOT EDIT.
 # 手編集禁止・再生成のみ。
-# Source: packages/contracts/src/openapi.ts and @yrese/contracts zod schemas.
+# Source: packages/contracts/src/openapi.ts, prescription-draft-openapi.ts, and @yrese/contracts zod schemas.
 # Regenerate: pnpm generate:openapi
 # Tool: zod-openapi@6.0.0
 openapi: 3.1.0
@@ -340,6 +340,153 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FrameworkErrorResponse"
+  /prescription-drafts/by-reception/{receptionId}:
+    get:
+      operationId: getPrescriptionDraftByReception
+      tags:
+        - prescriptions
+      summary: Get the versioned prescription draft for one verified reception context
+      description: Requires prescription:read, reception:read, and patient:read. Tenant, pharmacy, reception, patient, and
+        business date are checked together. A 404 does not disclose which scoped identity failed.
+      x-yrese-ssot: API-008
+      x-yrese-required-scopes:
+        - prescription:read
+        - reception:read
+        - patient:read
+      parameters:
+        - in: path
+          name: receptionId
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: true
+        - in: query
+          name: patientId
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: true
+        - in: query
+          name: date
+          schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          required: true
+      responses:
+        "200":
+          description: Current server-saved prescription draft
+          headers: &a3
+            Cache-Control:
+              description: Always `no-store` on this PHI-bearing route, including error responses.
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrescriptionDraftResponse"
+        "400":
+          description: Invalid prescription draft selector
+          headers: *a3
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+        "403": &a4
+          description: Forbidden (AUTH-0003)
+          headers: *a3
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Draft or exact reception-patient-business-date context not found
+          headers: *a3
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+        "500":
+          description: Normalized internal error with constant PHI-free message
+          headers: *a3
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+    put:
+      operationId: savePrescriptionDraftByReception
+      tags:
+        - prescriptions
+      summary: Create or update a versioned prescription draft
+      description: Requires prescription:write, reception:read, and patient:read. Uses expectedVersion for optimistic
+        concurrency. Save, structured rows/flags, and audit evidence are atomic in PostgreSQL repository mode.
+      x-yrese-ssot: API-008
+      x-yrese-required-scopes:
+        - prescription:write
+        - reception:read
+        - patient:read
+      parameters:
+        - in: path
+          name: receptionId
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrescriptionDraftSaveRequest"
+      responses:
+        "200":
+          description: Existing draft updated, unchanged, or an identical committed request replayed
+          headers: *a3
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrescriptionDraftSaveResponse"
+        "201":
+          description: New prescription draft created
+          headers: *a3
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrescriptionDraftSaveResponse"
+        "400":
+          description: Invalid prescription draft save request
+          headers: *a3
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+        "403": *a4
+        "404":
+          description: Exact reception-patient-business-date context not found
+          headers: *a3
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+        "409":
+          description: expectedVersion does not match the authoritative server version
+          headers: *a3
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+        "500":
+          description: Normalized internal error with constant PHI-free message
+          headers: *a3
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
 components:
   schemas:
     ReceptionCreateRequest:
@@ -401,8 +548,7 @@ components:
         - error
         - message
       additionalProperties: false
-      description: Normalized framework-shaped error (JSON body parse 400 with `code`, unknown-route 404, internal 500).
-        Message is a constant safe string; never a raw exception, never PHI.
+      description: Normalized framework-shaped error with constant safe text; never a raw exception and never PHI.
     WhoamiResponse:
       type: object
       properties:
@@ -859,3 +1005,371 @@ components:
         - totalCount
       additionalProperties: false
       description: Audit log display projection (who/when/what) with hash chain verification. IDs only; no PHI names.
+    PrescriptionDraftSaveRequest:
+      type: object
+      properties:
+        patientId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        businessDate:
+          type: string
+          format: date
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        expectedVersion:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        draft:
+          type: object
+          properties:
+            prescriptionType:
+              type: string
+              enum:
+                - UNSPECIFIED
+                - OUTPATIENT
+                - HOME
+            prescriptionDate:
+              anyOf:
+                - type: string
+                  format: date
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                - type: "null"
+            defaultDays:
+              anyOf:
+                - type: integer
+                  minimum: 1
+                  maximum: 999
+                - type: "null"
+            flags:
+              maxItems: 5
+              type: array
+              items:
+                type: string
+                enum:
+                  - PACKAGING
+                  - HOME_CARE
+                  - NARCOTIC
+                  - PSYCHOTROPIC
+                  - LEFTOVER_ADJUSTMENT
+            note:
+              type: string
+              maxLength: 2000
+            rows:
+              minItems: 1
+              maxItems: 100
+              type: array
+              items:
+                type: object
+                properties:
+                  sequence:
+                    type: integer
+                    minimum: 1
+                    maximum: 100
+                  drugText:
+                    type: string
+                    maxLength: 256
+                  usageText:
+                    type: string
+                    maxLength: 256
+                  days:
+                    anyOf:
+                      - type: integer
+                        minimum: 1
+                        maximum: 999
+                      - type: "null"
+                  quantityText:
+                    type: string
+                    maxLength: 64
+                required:
+                  - sequence
+                  - drugText
+                  - usageText
+                  - days
+                  - quantityText
+          required:
+            - prescriptionType
+            - prescriptionDate
+            - defaultDays
+            - flags
+            - note
+            - rows
+      required:
+        - patientId
+        - businessDate
+        - expectedVersion
+        - draft
+      description: Version-checked structured prescription draft save request. Contains PHI and must not be logged in plaintext.
+    PrescriptionDraftResponse:
+      type: object
+      properties:
+        prescriptionId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        receptionId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        patientId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        businessDate:
+          type: string
+          format: date
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        lifecycleStatus:
+          type: string
+          const: SERVER_SAVED
+        draft:
+          type: object
+          properties:
+            prescriptionType:
+              type: string
+              enum:
+                - UNSPECIFIED
+                - OUTPATIENT
+                - HOME
+            prescriptionDate:
+              anyOf:
+                - type: string
+                  format: date
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                - type: "null"
+            defaultDays:
+              anyOf:
+                - type: integer
+                  minimum: 1
+                  maximum: 999
+                - type: "null"
+            flags:
+              maxItems: 5
+              type: array
+              items:
+                type: string
+                enum:
+                  - PACKAGING
+                  - HOME_CARE
+                  - NARCOTIC
+                  - PSYCHOTROPIC
+                  - LEFTOVER_ADJUSTMENT
+            note:
+              type: string
+              maxLength: 2000
+            rows:
+              minItems: 1
+              maxItems: 100
+              type: array
+              items:
+                type: object
+                properties:
+                  sequence:
+                    type: integer
+                    minimum: 1
+                    maximum: 100
+                  drugText:
+                    type: string
+                    maxLength: 256
+                  usageText:
+                    type: string
+                    maxLength: 256
+                  days:
+                    anyOf:
+                      - type: integer
+                        minimum: 1
+                        maximum: 999
+                      - type: "null"
+                  quantityText:
+                    type: string
+                    maxLength: 64
+                required:
+                  - sequence
+                  - drugText
+                  - usageText
+                  - days
+                  - quantityText
+                additionalProperties: false
+          required:
+            - prescriptionType
+            - prescriptionDate
+            - defaultDays
+            - flags
+            - note
+            - rows
+          additionalProperties: false
+        createdAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+        updatedAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+        createdBy:
+          type: string
+          minLength: 1
+          maxLength: 128
+        updatedBy:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+        - prescriptionId
+        - receptionId
+        - patientId
+        - businessDate
+        - version
+        - lifecycleStatus
+        - draft
+        - createdAt
+        - updatedAt
+        - createdBy
+        - updatedBy
+      additionalProperties: false
+      description: "Structured versioned prescription draft. Contains PHI and must use Cache-Control: no-store."
+    PrescriptionDraftSaveResponse:
+      type: object
+      properties:
+        prescriptionId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        receptionId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        patientId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        businessDate:
+          type: string
+          format: date
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        lifecycleStatus:
+          type: string
+          const: SERVER_SAVED
+        draft:
+          type: object
+          properties:
+            prescriptionType:
+              type: string
+              enum:
+                - UNSPECIFIED
+                - OUTPATIENT
+                - HOME
+            prescriptionDate:
+              anyOf:
+                - type: string
+                  format: date
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                - type: "null"
+            defaultDays:
+              anyOf:
+                - type: integer
+                  minimum: 1
+                  maximum: 999
+                - type: "null"
+            flags:
+              maxItems: 5
+              type: array
+              items:
+                type: string
+                enum:
+                  - PACKAGING
+                  - HOME_CARE
+                  - NARCOTIC
+                  - PSYCHOTROPIC
+                  - LEFTOVER_ADJUSTMENT
+            note:
+              type: string
+              maxLength: 2000
+            rows:
+              minItems: 1
+              maxItems: 100
+              type: array
+              items:
+                type: object
+                properties:
+                  sequence:
+                    type: integer
+                    minimum: 1
+                    maximum: 100
+                  drugText:
+                    type: string
+                    maxLength: 256
+                  usageText:
+                    type: string
+                    maxLength: 256
+                  days:
+                    anyOf:
+                      - type: integer
+                        minimum: 1
+                        maximum: 999
+                      - type: "null"
+                  quantityText:
+                    type: string
+                    maxLength: 64
+                required:
+                  - sequence
+                  - drugText
+                  - usageText
+                  - days
+                  - quantityText
+                additionalProperties: false
+          required:
+            - prescriptionType
+            - prescriptionDate
+            - defaultDays
+            - flags
+            - note
+            - rows
+          additionalProperties: false
+        createdAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+        updatedAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+        createdBy:
+          type: string
+          minLength: 1
+          maxLength: 128
+        updatedBy:
+          type: string
+          minLength: 1
+          maxLength: 128
+        saveDisposition:
+          type: string
+          enum:
+            - created
+            - updated
+            - unchanged
+            - replayed
+      required:
+        - prescriptionId
+        - receptionId
+        - patientId
+        - businessDate
+        - version
+        - lifecycleStatus
+        - draft
+        - createdAt
+        - updatedAt
+        - createdBy
+        - updatedBy
+        - saveDisposition
+      additionalProperties: false
+      description: "Saved prescription draft plus deterministic save disposition. Contains PHI and must use Cache-Control:
+        no-store."

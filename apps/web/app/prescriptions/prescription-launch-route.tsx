@@ -18,6 +18,7 @@ import {
   type PrescriptionLaunchContext,
   validateReceptionLaunchEntry,
 } from "./prescription-launch-context";
+import { useOptionalPrescriptionOrigin } from "./prescription-origin-context";
 
 type ReceptionContextLoadState =
   | { readonly status: "loading" }
@@ -42,6 +43,8 @@ export function PrescriptionLaunchRoute({
   readonly launch: PrescriptionLaunchContext;
 }) {
   const patientContext = useOptionalPatientContext();
+  const prescriptionOrigin = useOptionalPrescriptionOrigin();
+  const selectOrigin = prescriptionOrigin?.selectOrigin;
   const selectedPatient = patientContext?.patient ?? null;
   const [state, setState] = useState<ReceptionContextLoadState>({
     status: "loading",
@@ -85,6 +88,18 @@ export function PrescriptionLaunchRoute({
           });
           return;
         }
+        if (validation.status === "terminal-status") {
+          setState({
+            status: "error",
+            notice: {
+              message: `受付状態が${RECEPTION_STATUS_LABELS[validation.entry.receptionStatus]}のため、処方下書きを編集できません。`,
+              nextAction:
+                "受付画面へ戻り、訂正手順または新しい受付の要否を確認してください。",
+            },
+          });
+          return;
+        }
+        selectOrigin?.(launch);
         setState({ status: "ready", entry: validation.entry });
       })
       .catch((error: unknown) => {
@@ -96,7 +111,7 @@ export function PrescriptionLaunchRoute({
       current = false;
       controller.abort();
     };
-  }, [launch, selectedPatientId]);
+  }, [launch, selectedPatientId, selectOrigin]);
 
   if (selectedPatient === null) {
     return (

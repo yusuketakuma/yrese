@@ -116,11 +116,11 @@ describe("prescription draft web client", () => {
     await expect(
       savePrescriptionDraft(SCOPE, 2, RESPONSE.draft, conflict),
     ).rejects.toEqual(
-      expect.objectContaining<Partial<PrescriptionDraftClientError>>({
+      expect.objectContaining({
         kind: "CONFLICT",
         status: 409,
         message: "別の端末またはタブで処方下書きが更新されました。",
-      }),
+      } satisfies Partial<PrescriptionDraftClientError>),
     );
 
     const [, init] = conflictMock.mock.calls[0]!;

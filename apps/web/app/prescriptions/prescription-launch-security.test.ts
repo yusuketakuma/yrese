@@ -9,6 +9,7 @@ describe("prescription launch security boundary", () => {
         {
           receptionId: "reception-shared-looking-id",
           patient: { patientId: "patient-authoritative" },
+          receptionStatus: "WAITING",
         },
       ],
       {

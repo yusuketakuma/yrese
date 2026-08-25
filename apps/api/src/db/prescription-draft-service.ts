@@ -106,7 +106,7 @@ async function selectMetadata(
 async function receptionMatches(
   client: PoolClient,
   input: PrescriptionDraftLookupInput,
-  lock: boolean,
+  requireEditable: boolean,
 ): Promise<boolean> {
   const result = await client.query<{ readonly reception_id: string }>(
     `SELECT reception_id
@@ -116,16 +116,42 @@ async function receptionMatches(
         AND reception_id = $3
         AND patient_id = $4
         AND business_date = $5::date
-      ${lock ? "FOR SHARE" : ""}`,
+        AND ($6::boolean = false OR reception_status IN ('WAITING', 'IN_PROGRESS'))
+      ${requireEditable ? "FOR SHARE" : ""}`,
     [
       input.tenantId,
       input.pharmacyId,
       input.receptionId,
       input.patientId,
       input.businessDate,
+      requireEditable,
     ],
   );
   return result.rows.length === 1;
+}
+
+/**
+ * Serialize the create-or-update decision for one exact tenant/pharmacy/reception scope.
+ *
+ * A row lock cannot protect the initial "no draft row exists" state. Without this lock, two
+ * expectedVersion=0 writers can both observe absence and the loser surfaces a database unique
+ * violation instead of the API's deterministic conflict result. A transaction-scoped advisory
+ * lock closes that gap; a hash collision can only serialize unrelated drafts, not mix data.
+ */
+async function lockDraftScope(
+  client: PoolClient,
+  input: PrescriptionDraftLookupInput,
+): Promise<void> {
+  const lockIdentity = JSON.stringify([
+    "yrese.prescription-draft.v1",
+    input.tenantId,
+    input.pharmacyId,
+    input.receptionId,
+  ]);
+  await client.query(
+    "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+    [lockIdentity],
+  );
 }
 
 async function readDraft(
@@ -298,6 +324,7 @@ export class PostgresPrescriptionDraftService
         await client.query("ROLLBACK");
         return { kind: "not_found" };
       }
+      await lockDraftScope(client, input);
 
       const existing = await selectMetadata(client, input, true);
       if (existing === undefined) {

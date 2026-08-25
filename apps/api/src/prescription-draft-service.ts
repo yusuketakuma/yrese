@@ -93,9 +93,14 @@ function scopeKey(input: PrescriptionDraftLookupInput): string {
   ]);
 }
 
+function receptionIsEditable(status: string): boolean {
+  return status === "WAITING" || status === "IN_PROGRESS";
+}
+
 async function receptionMatches(
   repository: ReceptionRepository,
   input: PrescriptionDraftLookupInput,
+  requireEditable: boolean,
 ): Promise<boolean> {
   const entries = await repository.list({
     tenantId: input.tenantId,
@@ -105,7 +110,8 @@ async function receptionMatches(
   return entries.some(
     (entry) =>
       entry.receptionId === input.receptionId &&
-      entry.patient.patientId === input.patientId,
+      entry.patient.patientId === input.patientId &&
+      (!requireEditable || receptionIsEditable(entry.receptionStatus)),
   );
 }
 
@@ -150,7 +156,7 @@ export class InMemoryPrescriptionDraftService
   async get(
     input: PrescriptionDraftLookupInput,
   ): Promise<PrescriptionDraftLookupResult> {
-    if (!(await receptionMatches(this.receptionRepository, input))) {
+    if (!(await receptionMatches(this.receptionRepository, input, false))) {
       return { kind: "not_found" };
     }
     const record = this.records.get(scopeKey(input));
@@ -167,7 +173,7 @@ export class InMemoryPrescriptionDraftService
   ): Promise<PrescriptionDraftSaveResult> {
     const key = scopeKey(input);
     return this.withKeyLock(key, async () => {
-      if (!(await receptionMatches(this.receptionRepository, input))) {
+      if (!(await receptionMatches(this.receptionRepository, input, true))) {
         return { kind: "not_found" };
       }
 
