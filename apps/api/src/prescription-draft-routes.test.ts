@@ -1,0 +1,237 @@
+import { randomBytes } from "node:crypto";
+
+import { afterEach, describe, expect, it } from "vitest";
+
+import {
+  prescriptionDraftResponseSchema,
+  prescriptionDraftSaveResponseSchema,
+} from "@yrese/contracts";
+import {
+  AUTH_PERMISSION_DENIED_ERROR_CODE,
+  prescriptionId,
+} from "@yrese/shared-kernel";
+
+import { InMemoryAuditRepository } from "./audit-repository.js";
+import {
+  createPatientSearchCursorCodec,
+  patientSearchCursorHmacKeyByteLength,
+} from "./patient-search-cursor.js";
+import { prescriptionDraftRoutes } from "./prescription-draft-routes.js";
+import { InMemoryPrescriptionDraftService } from "./prescription-draft-service.js";
+import { InMemoryReceptionRepository } from "./reception-repository.js";
+import { buildServer } from "./server.js";
+
+const authorizedHeaders = {
+  "x-dev-tenant": "tenant-001",
+  "x-dev-pharmacy": "pharmacy-001",
+  "x-dev-actor": "actor-prescription-001",
+  "x-dev-scopes": "prescription:read,prescription:write,reception:read,patient:read",
+} as const;
+
+const baseBody = {
+  patientId: "patient-syn-001",
+  businessDate: "2026-07-09",
+  expectedVersion: 0,
+  draft: {
+    prescriptionType: "OUTPATIENT",
+    prescriptionDate: "2026-07-09",
+    defaultDays: 7,
+    flags: ["PACKAGING"],
+    note: "合成テスト用",
+    rows: [
+      {
+        sequence: 1,
+        drugText: "合成薬剤 5mg",
+        usageText: "1日1回 朝食後",
+        days: 7,
+        quantityText: "7錠",
+      },
+    ],
+  },
+} as const;
+
+function buildPrescriptionDraftTestServer() {
+  const receptionRepository = new InMemoryReceptionRepository();
+  const auditRepository = new InMemoryAuditRepository();
+  const server = buildServer({
+    receptionRepository,
+    auditRepository,
+    repositoryMode: "in_memory",
+    tenantContextMode: "dev_headers",
+    patientSearchCursorCodec: createPatientSearchCursorCodec(
+      randomBytes(patientSearchCursorHmacKeyByteLength),
+    ),
+  });
+  server.register(prescriptionDraftRoutes, {
+    service: new InMemoryPrescriptionDraftService(
+      receptionRepository,
+      auditRepository,
+      () => prescriptionId("prescription-route-test-001"),
+    ),
+    now: () => new Date("2026-08-25T00:00:00.000Z"),
+  });
+  return server;
+}
+
+describe("prescription draft routes", () => {
+  const servers: ReturnType<typeof buildPrescriptionDraftTestServer>[] = [];
+
+  afterEach(async () => {
+    await Promise.all(servers.splice(0).map((server) => server.close()));
+  });
+
+  function server() {
+    const instance = buildPrescriptionDraftTestServer();
+    servers.push(instance);
+    return instance;
+  }
+
+  it("creates and reads a no-store versioned draft through authenticated scope", async () => {
+    const instance = server();
+    const created = await instance.inject({
+      method: "PUT",
+      url: "/prescription-drafts/by-reception/reception-syn-001",
+      headers: authorizedHeaders,
+      payload: baseBody,
+    });
+
+    expect(created.statusCode).toBe(201);
+    expect(created.headers["cache-control"]).toBe("no-store");
+    expect(prescriptionDraftSaveResponseSchema.parse(created.json())).toMatchObject({
+      prescriptionId: "prescription-route-test-001",
+      receptionId: "reception-syn-001",
+      patientId: "patient-syn-001",
+      version: 1,
+      saveDisposition: "created",
+    });
+
+    const read = await instance.inject({
+      method: "GET",
+      url:
+        "/prescription-drafts/by-reception/reception-syn-001" +
+        "?patientId=patient-syn-001&date=2026-07-09",
+      headers: authorizedHeaders,
+    });
+
+    expect(read.statusCode).toBe(200);
+    expect(read.headers["cache-control"]).toBe("no-store");
+    expect(prescriptionDraftResponseSchema.parse(read.json())).toMatchObject({
+      prescriptionId: "prescription-route-test-001",
+      version: 1,
+    });
+  });
+
+  it("returns 409 on stale content without echoing draft PHI", async () => {
+    const instance = server();
+    await instance.inject({
+      method: "PUT",
+      url: "/prescription-drafts/by-reception/reception-syn-001",
+      headers: authorizedHeaders,
+      payload: baseBody,
+    });
+
+    const conflictingMarker = "raw-clinical-marker-must-not-leak";
+    const response = await instance.inject({
+      method: "PUT",
+      url: "/prescription-drafts/by-reception/reception-syn-001",
+      headers: authorizedHeaders,
+      payload: {
+        ...baseBody,
+        draft: {
+          ...baseBody.draft,
+          rows: [{ ...baseBody.draft.rows[0], drugText: conflictingMarker }],
+        },
+      },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.body).not.toContain(conflictingMarker);
+    expect(response.json()).toEqual({
+      statusCode: 409,
+      error: "Conflict",
+      message: "Prescription draft version conflict",
+    });
+  });
+
+  it("fails closed for another tenant, patient, reception, or business date", async () => {
+    const instance = server();
+    for (const request of [
+      {
+        headers: { ...authorizedHeaders, "x-dev-tenant": "tenant-other" },
+        body: baseBody,
+      },
+      {
+        headers: authorizedHeaders,
+        body: { ...baseBody, patientId: "patient-syn-002" },
+      },
+      {
+        headers: authorizedHeaders,
+        body: { ...baseBody, businessDate: "2026-07-10" },
+      },
+    ]) {
+      const response = await instance.inject({
+        method: "PUT",
+        url: "/prescription-drafts/by-reception/reception-syn-001",
+        headers: request.headers,
+        payload: request.body,
+      });
+      expect(response.statusCode).toBe(404);
+      expect(response.headers["cache-control"]).toBe("no-store");
+    }
+
+    const wrongReception = await instance.inject({
+      method: "PUT",
+      url: "/prescription-drafts/by-reception/reception-syn-002",
+      headers: authorizedHeaders,
+      payload: baseBody,
+    });
+    expect(wrongReception.statusCode).toBe(404);
+  });
+
+  it("requires all registered scopes and preserves the existing AUTH contract", async () => {
+    const instance = server();
+    const response = await instance.inject({
+      method: "PUT",
+      url: "/prescription-drafts/by-reception/reception-syn-001",
+      headers: {
+        ...authorizedHeaders,
+        "x-dev-scopes": "prescription:write,reception:read",
+      },
+      payload: baseBody,
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.json()).toMatchObject({
+      errorCode: AUTH_PERMISSION_DENIED_ERROR_CODE,
+    });
+  });
+
+  it("rejects invalid IDs, dates, and body shapes with a fixed PHI-free 400", async () => {
+    const instance = server();
+    const marker = "raw-invalid-draft-marker";
+    const response = await instance.inject({
+      method: "PUT",
+      url: "/prescription-drafts/by-reception/reception-syn-001",
+      headers: authorizedHeaders,
+      payload: {
+        ...baseBody,
+        businessDate: "2026-02-30",
+        draft: {
+          ...baseBody.draft,
+          note: marker.repeat(300),
+        },
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.body).not.toContain(marker);
+    expect(response.json()).toEqual({
+      statusCode: 400,
+      error: "Bad Request",
+      message: "Invalid prescription draft request",
+    });
+  });
+});

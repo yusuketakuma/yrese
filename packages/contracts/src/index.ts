@@ -17,6 +17,7 @@ export * from "./openapi.js";
 export * from "./partner-event.js";
 export * from "./partner-scope.js";
 export * from "./patient-search.js";
+export * from "./prescription-draft.js";
 export * from "./reception-queue.js";
 export * from "./wire-id.js";
 export * from "./whoami.js";

@@ -1,4 +1,6 @@
 import { randomBytes } from 'node:crypto';
+
+import { InMemoryAuditRepository } from './audit-repository.js';
 import {
   parseApiPort,
   parseDatabaseUrl,
@@ -11,12 +13,17 @@ import { assertMigrationStateAllowsStartup } from './db/migration-runner.js';
 import { loadMigrationFiles } from './db/migrations.js';
 import { PostgresPatientRepository } from './db/patient-repository.js';
 import { createDbPool } from './db/pool.js';
+import { PostgresPrescriptionDraftService } from './db/prescription-draft-service.js';
 import { PostgresReceptionCreateCommand } from './db/reception-command.js';
 import { PostgresReceptionRepository } from './db/reception-repository.js';
+import { InMemoryPatientRepository } from './patient-repository.js';
 import {
   createPatientSearchCursorCodec,
   patientSearchCursorHmacKeyByteLength,
 } from './patient-search-cursor.js';
+import { prescriptionDraftRoutes } from './prescription-draft-routes.js';
+import { InMemoryPrescriptionDraftService } from './prescription-draft-service.js';
+import { InMemoryReceptionRepository } from './reception-repository.js';
 import { buildServer } from './server.js';
 import {
   handleStartupFailure,
@@ -49,7 +56,24 @@ async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServe
   const patientSearchCursorCodec = createPatientSearchCursorCodec(patientSearchCursorHmacKey);
 
   if (repositoryMode === 'in_memory') {
-    return buildServer({ repositoryMode, tenantContextMode, patientSearchCursorCodec });
+    const patientRepository = new InMemoryPatientRepository();
+    const receptionRepository = new InMemoryReceptionRepository();
+    const auditRepository = new InMemoryAuditRepository();
+    const server = buildServer({
+      patientRepository,
+      receptionRepository,
+      auditRepository,
+      repositoryMode,
+      tenantContextMode,
+      patientSearchCursorCodec,
+    });
+    server.register(prescriptionDraftRoutes, {
+      service: new InMemoryPrescriptionDraftService(
+        receptionRepository,
+        auditRepository,
+      ),
+    });
+    return server;
   }
 
   if (databaseUrl === undefined) {
@@ -69,6 +93,9 @@ async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServe
       repositoryMode,
       tenantContextMode,
       patientSearchCursorCodec,
+    });
+    server.register(prescriptionDraftRoutes, {
+      service: new PostgresPrescriptionDraftService(pool),
     });
     server.addHook('onClose', async () => {
       await pool.end();
