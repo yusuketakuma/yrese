@@ -14,7 +14,7 @@ import {
 (globalThis as { React?: typeof React }).React = React;
 
 describe("operator UI prototype primitives", () => {
-  it("keeps prototype actions natively disabled while exposing the reason to keyboard users", () => {
+  it("keeps prototype actions disabled and explains the reason without an extra tab stop", () => {
     const html = renderToStaticMarkup(
       <>
         <PrototypeBanner>合成データです</PrototypeBanner>
@@ -27,16 +27,23 @@ describe("operator UI prototype primitives", () => {
     expect(html).toContain("UIプロトタイプ");
     expect(html).toContain("合成データです");
     expect(html).toContain('class="prototype-action-shell"');
-    expect(html).toContain('tabindex="0"');
-    expect(html).toContain("確定API未接続");
+    expect(html).toContain("利用不可: 確定API未接続");
     expect(html).toContain("disabled");
-    expect(html).toContain("確定");
+    expect(html).toContain('aria-label="確定（利用不可）"');
+    expect(html).not.toContain('tabindex="0"');
+    expect(html).not.toContain('aria-hidden="true"');
   });
 
   it("renders metrics as one labelled list without color-only semantics", () => {
     const html = renderToStaticMarkup(
       <MetricGrid>
-        <MetricCard label="未処理" value="—" unit="件" detail="API未接続" tone="warning" />
+        <MetricCard
+          label="未処理"
+          value="—"
+          unit="件"
+          detail="API未接続"
+          tone="warning"
+        />
       </MetricGrid>,
     );
 
@@ -49,7 +56,10 @@ describe("operator UI prototype primitives", () => {
 
   it("labels the contextual rail and status text explicitly", () => {
     const html = renderToStaticMarkup(
-      <OperatorPage rail={<StatusPill tone="warning">未接続</StatusPill>} railLabel="会計補助情報">
+      <OperatorPage
+        rail={<StatusPill tone="warning">未接続</StatusPill>}
+        railLabel="会計補助情報"
+      >
         <p>本文</p>
       </OperatorPage>,
     );

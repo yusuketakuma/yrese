@@ -27,32 +27,87 @@ const PAST_PRESCRIPTIONS = [
   {
     date: "2026/08/24",
     rows: [
-      { drug: "アムロジピンOD錠5mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
-      { drug: "ロサルタンK錠50mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
-      { drug: "トラゾドン錠25mg", usage: "1日1回 就寝前", days: "7", quantity: "7錠" },
+      {
+        drug: "アムロジピンOD錠5mg",
+        usage: "1日1回 朝食後",
+        days: "7",
+        quantity: "7錠",
+      },
+      {
+        drug: "ロサルタンK錠50mg",
+        usage: "1日1回 朝食後",
+        days: "7",
+        quantity: "7錠",
+      },
+      {
+        drug: "トラゾドン錠25mg",
+        usage: "1日1回 就寝前",
+        days: "7",
+        quantity: "7錠",
+      },
     ],
   },
   {
     date: "2026/07/27",
     rows: [
-      { drug: "アムロジピン錠5mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
-      { drug: "ロサルタンK錠50mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
-      { drug: "トラゾドン錠25mg", usage: "1日1回 就寝前", days: "7", quantity: "7錠" },
+      {
+        drug: "アムロジピン錠5mg",
+        usage: "1日1回 朝食後",
+        days: "7",
+        quantity: "7錠",
+      },
+      {
+        drug: "ロサルタンK錠50mg",
+        usage: "1日1回 朝食後",
+        days: "7",
+        quantity: "7錠",
+      },
+      {
+        drug: "トラゾドン錠25mg",
+        usage: "1日1回 就寝前",
+        days: "7",
+        quantity: "7錠",
+      },
     ],
   },
   {
     date: "2026/06/28",
     rows: [
-      { drug: "アムロジピン錠5mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
-      { drug: "ロサルタンK錠50mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
-      { drug: "トラゾドン錠25mg", usage: "1日1回 就寝前", days: "7", quantity: "7錠" },
+      {
+        drug: "アムロジピン錠5mg",
+        usage: "1日1回 朝食後",
+        days: "7",
+        quantity: "7錠",
+      },
+      {
+        drug: "ロサルタンK錠50mg",
+        usage: "1日1回 朝食後",
+        days: "7",
+        quantity: "7錠",
+      },
+      {
+        drug: "トラゾドン錠25mg",
+        usage: "1日1回 就寝前",
+        days: "7",
+        quantity: "7錠",
+      },
     ],
   },
   {
     date: "2026/05/27",
     rows: [
-      { drug: "アムロジピン錠5mg", usage: "1日1回 朝食後", days: "14", quantity: "14錠" },
-      { drug: "ロサルタンK錠50mg", usage: "1日1回 朝食後", days: "14", quantity: "14錠" },
+      {
+        drug: "アムロジピン錠5mg",
+        usage: "1日1回 朝食後",
+        days: "14",
+        quantity: "14錠",
+      },
+      {
+        drug: "ロサルタンK錠50mg",
+        usage: "1日1回 朝食後",
+        days: "14",
+        quantity: "14錠",
+      },
     ],
   },
 ] as const;
@@ -86,7 +141,7 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
     expect(html).not.toContain("2026/08/24");
   });
 
-  it("starts with one blank row and no inferred prescription defaults", () => {
+  it("starts blank and documents the PHI-minimizing recovery boundary", () => {
     expect(createBlankDraftRows()).toEqual([
       { id: 1, drug: "", usage: "", days: "", quantity: "" },
     ]);
@@ -95,46 +150,111 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
     );
     expect(html).toContain("未選択");
     expect(html).toContain("未入力・保存API未接続");
+    expect(html).toContain("このタブのメモリだけに保持");
+    expect(html).toContain("患者切替では確認後に破棄");
+    expect(html).toContain("再読込・タブ終了では警告後に消失");
     expect(html).not.toContain('value="外来" selected');
   });
 
-  it("filters the isolated synthetic fixture by date, duration, and drug name", () => {
-    expect(filterPastPrescriptions(PAST_PRESCRIPTIONS, "2026/07")).toHaveLength(1);
+  it("filters isolated synthetic fixtures without projecting them into production UI", () => {
+    expect(filterPastPrescriptions(PAST_PRESCRIPTIONS, "2026/07")).toHaveLength(
+      1,
+    );
     expect(filterPastPrescriptions(PAST_PRESCRIPTIONS, "14日")).toHaveLength(1);
-    expect(filterPastPrescriptions(PAST_PRESCRIPTIONS, "ロサルタン")).toHaveLength(4);
-    expect(filterPastPrescriptions(PAST_PRESCRIPTIONS, "一致しない")).toHaveLength(0);
+    expect(
+      filterPastPrescriptions(PAST_PRESCRIPTIONS, "ロサルタン"),
+    ).toHaveLength(4);
+    expect(
+      filterPastPrescriptions(PAST_PRESCRIPTIONS, "一致しない"),
+    ).toHaveLength(0);
   });
 
   it("summarizes ordinary replacement differences", () => {
     const summary = summarizePrescriptionReplacement(
       [
-        { id: 1, drug: "アムロジピンOD錠5mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
-        { id: 2, drug: "ロサルタンK錠50mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
-        { id: 3, drug: "トラゾドン錠25mg", usage: "1日1回 就寝前", days: "7", quantity: "7錠" },
+        {
+          id: 1,
+          drug: "アムロジピンOD錠5mg",
+          usage: "1日1回 朝食後",
+          days: "7",
+          quantity: "7錠",
+        },
+        {
+          id: 2,
+          drug: "ロサルタンK錠50mg",
+          usage: "1日1回 朝食後",
+          days: "7",
+          quantity: "7錠",
+        },
+        {
+          id: 3,
+          drug: "トラゾドン錠25mg",
+          usage: "1日1回 就寝前",
+          days: "7",
+          quantity: "7錠",
+        },
       ],
       PAST_PRESCRIPTIONS[1]!,
     );
 
-    expect(summary).toEqual({ added: 1, removed: 1, changed: 0, unchanged: 2 });
+    expect(summary).toEqual({
+      added: 1,
+      removed: 1,
+      changed: 0,
+      unchanged: 2,
+    });
   });
 
   it("preserves duplicate same-drug RP rows as a multiset", () => {
     const summary = summarizePrescriptionReplacement(
       [
-        { id: 1, drug: "同一薬10mg", usage: "朝", days: "7", quantity: "7錠" },
-        { id: 2, drug: "同一薬10mg", usage: "夕", days: "7", quantity: "7錠" },
-        { id: 3, drug: "同一薬10mg", usage: "就寝前", days: "7", quantity: "7錠" },
+        {
+          id: 1,
+          drug: "同一薬10mg",
+          usage: "朝",
+          days: "7",
+          quantity: "7錠",
+        },
+        {
+          id: 2,
+          drug: "同一薬10mg",
+          usage: "夕",
+          days: "7",
+          quantity: "7錠",
+        },
+        {
+          id: 3,
+          drug: "同一薬10mg",
+          usage: "就寝前",
+          days: "7",
+          quantity: "7錠",
+        },
       ],
       {
         date: "2026/08/01",
         rows: [
-          { drug: "同一薬10mg", usage: "朝", days: "7", quantity: "7錠" },
-          { drug: "同一薬10mg", usage: "夕", days: "14", quantity: "14錠" },
+          {
+            drug: "同一薬10mg",
+            usage: "朝",
+            days: "7",
+            quantity: "7錠",
+          },
+          {
+            drug: "同一薬10mg",
+            usage: "夕",
+            days: "14",
+            quantity: "14錠",
+          },
         ],
       },
     );
 
-    expect(summary).toEqual({ added: 0, removed: 1, changed: 1, unchanged: 1 });
+    expect(summary).toEqual({
+      added: 0,
+      removed: 1,
+      changed: 1,
+      unchanged: 1,
+    });
   });
 
   it("copies stored fixture rows exactly instead of inferring usage or quantity", () => {
@@ -161,7 +281,9 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
     const html = renderToStaticMarkup(
       <SelectedPatientWorkspaceView patient={SELECTED_PATIENT} />,
     );
-    expect(html).toContain("臨床アラート判定(相互作用・禁忌・重複・用量)は未接続です");
+    expect(html).toContain(
+      "臨床アラート判定(相互作用・禁忌・重複・用量)は未接続です",
+    );
     expect(html).toContain("安全確認済みを意味しません");
     expect(html).toContain("処方保存API・監査証跡が未接続です");
     expect(html).not.toContain("安全確認済みです");

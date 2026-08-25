@@ -28,6 +28,7 @@ import { resolveWebApiUrl } from "../api-transport";
 import { devTenantHeaders } from "../dev-tenant";
 import { DomainStatusBadge } from "./domain-status-badge";
 import { PatientHeader, computeAgeYears } from "./patient-header";
+import { useOptionalUnsavedWork } from "./unsaved-work";
 
 const invalidPatientNotFoundResponseErrorMessage =
   "Patient refresh not-found response invalid";
@@ -36,9 +37,8 @@ const invalidPatientNotFoundResponseErrorMessage =
  * 患者文脈の横断保持(R-PATCTX 全画面横断固定 / H-01・H-02 取り違え防止)。
  *
  * App Router の RootLayout は画面遷移で再マウントされないため、レイアウト直下に置いた
- * 本 Provider の状態は遷移後も維持される。これにより「業務対象として選択した患者」を
- * 全業務画面の固定バー(PatientContextBar)で常時提示できる。別患者を選ぶと前患者の
- * 文脈は破棄され残存しない(H-02)。
+ * 本 Provider の状態は遷移後も維持される。別患者を選ぶと前患者の文脈は破棄されるが、
+ * 未保存下書きがある患者の切替・解除は UnsavedWorkProvider で確認を必須化する。
  *
  * 表示投影(PatientContextData)は患者検索結果(API-001)の表示フィールドと同型で、将来の
  * get-by-id API でも同じ形で供給できる。PHI をログ・計測へ渡さない。
@@ -83,7 +83,9 @@ interface InternalPatientContextValue extends PatientContextValue {
 }
 
 /** 検索結果/get-by-id 応答(PatientSummary)を横断患者文脈(表示投影)へ変換する(R-PATCTX)。 */
-export function toPatientContextData(p: PatientSearchResult): PatientContextData {
+export function toPatientContextData(
+  p: PatientSearchResult,
+): PatientContextData {
   return {
     patientId: p.patientId,
     name: p.name,
@@ -107,19 +109,29 @@ export async function fetchPatientById(
   fetchImpl: typeof fetch = fetch,
   signal?: AbortSignal,
 ): Promise<PatientContextData | null> {
-  const res = await fetchImpl(resolveWebApiUrl(`/patients/${encodeURIComponent(id)}`), {
-    headers: devTenantHeaders([permissionScope("patient", "read")]),
-    cache: "no-store",
-    ...(signal !== undefined ? { signal } : {}),
-  });
+  const res = await fetchImpl(
+    resolveWebApiUrl(`/patients/${encodeURIComponent(id)}`),
+    {
+      headers: devTenantHeaders([permissionScope("patient", "read")]),
+      cache: "no-store",
+      ...(signal !== undefined ? { signal } : {}),
+    },
+  );
   if (res.status === 404) {
     let parsedError: ReturnType<typeof errorResponseSchema.safeParse>;
     try {
       const body: unknown = await res.json();
-      if (typeof body !== "object" || body === null || Array.isArray(body)) {
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        Array.isArray(body)
+      ) {
         throw new Error(invalidPatientNotFoundResponseErrorMessage);
       }
-      const errorCodeDescriptor = Object.getOwnPropertyDescriptor(body, "errorCode");
+      const errorCodeDescriptor = Object.getOwnPropertyDescriptor(
+        body,
+        "errorCode",
+      );
       const messageDescriptor = Object.getOwnPropertyDescriptor(body, "message");
       if (
         errorCodeDescriptor === undefined ||
@@ -158,8 +170,18 @@ export async function fetchPatientById(
 
 const PatientContext = createContext<InternalPatientContextValue | null>(null);
 
-export function PatientContextProvider({ children }: { children: ReactNode }) {
-  const refreshRunnerRef = useRef<ReturnType<typeof createPatientRefreshRunner> | null>(null);
+export function PatientContextProvider({
+  children,
+}: {
+  readonly children: ReactNode;
+}) {
+  const unsavedWork = useOptionalUnsavedWork();
+  const confirmPatientContextChange =
+    unsavedWork?.confirmPatientContextChange;
+  const discardPatientWork = unsavedWork?.discardPatientWork;
+  const refreshRunnerRef = useRef<
+    ReturnType<typeof createPatientRefreshRunner> | null
+  >(null);
   if (refreshRunnerRef.current === null) {
     refreshRunnerRef.current = createPatientRefreshRunner();
   }
@@ -168,33 +190,52 @@ export function PatientContextProvider({ children }: { children: ReactNode }) {
     ReturnType<typeof createPatientContextAuthorityController> | null
   >(null);
   if (authorityControllerRef.current === null) {
-    authorityControllerRef.current = createPatientContextAuthorityController(refreshRunner);
+    authorityControllerRef.current =
+      createPatientContextAuthorityController(refreshRunner);
   }
   const authorityController = authorityControllerRef.current;
   const [selection, setSelection] = useState<{
     readonly patient: PatientContextData | null;
     readonly authority: number;
-  }>({ patient: null, authority: authorityController.currentAuthority() });
+  }>({
+    patient: null,
+    authority: authorityController.currentAuthority(),
+  });
+  const selectedPatientId = selection.patient?.patientId ?? null;
 
-  // Public selection changes synchronously revoke the previous refresh authority before
-  // React schedules the visible state update. This also covers same-ID reselection.
+  // 患者切替・解除は未保存処方下書きがある場合に同期確認し、取消時は現在文脈を維持する。
   const selectPatient = useCallback(
     (patient: PatientContextData) => {
+      const allowed =
+        confirmPatientContextChange?.(
+          selectedPatientId,
+          patient.patientId,
+        ) ?? true;
+      if (!allowed) return;
       const authority = authorityController.select(patient.patientId);
       setSelection({ patient, authority });
     },
-    [authorityController],
+    [authorityController, confirmPatientContextChange, selectedPatientId],
   );
+
   const clearPatient = useCallback(() => {
+    const allowed =
+      confirmPatientContextChange?.(selectedPatientId, null) ?? true;
+    if (!allowed) return;
     const authority = authorityController.clear();
     setSelection({ patient: null, authority });
-  }, [authorityController]);
+  }, [authorityController, confirmPatientContextChange, selectedPatientId]);
+
   const captureRefreshAuthority = useCallback(
-    (patientId: string) => authorityController.capture(patientId),
+    (id: string) => authorityController.capture(id),
     [authorityController],
   );
+
   const commitRefreshedPatient = useCallback(
-    (authorityClaim: PatientRefreshAuthorityClaim, patient: PatientContextData) => {
+    (
+      authorityClaim: PatientRefreshAuthorityClaim,
+      patient: PatientContextData,
+    ) => {
       if (!authorityController.acceptFresh(authorityClaim, patient.patientId)) {
         return false;
       }
@@ -208,22 +249,26 @@ export function PatientContextProvider({ children }: { children: ReactNode }) {
     },
     [authorityController],
   );
+
   const commitRefreshedRemoval = useCallback(
     (authorityClaim: PatientRefreshAuthorityClaim) => {
       const authority = authorityController.acceptRemoval(authorityClaim);
-      if (authority === null) {
-        return false;
-      }
+      if (authority === null) return false;
+
+      // 参照不能になった患者の下書きは、安全な患者文脈へ復帰できないため破棄する。
+      discardPatientWork?.(authorityClaim.patientId);
       setSelection({ patient: null, authority });
       return true;
     },
-    [authorityController],
+    [authorityController, discardPatientWork],
   );
+
   const isRefreshAuthorityCurrent = useCallback(
     (authorityClaim: PatientRefreshAuthorityClaim) =>
       authorityController.isCurrent(authorityClaim),
     [authorityController],
   );
+
   const value = useMemo<InternalPatientContextValue>(
     () => ({
       patient: selection.patient,
@@ -247,14 +292,21 @@ export function PatientContextProvider({ children }: { children: ReactNode }) {
       isRefreshAuthorityCurrent,
     ],
   );
-  return <PatientContext.Provider value={value}>{children}</PatientContext.Provider>;
+
+  return (
+    <PatientContext.Provider value={value}>
+      {children}
+    </PatientContext.Provider>
+  );
 }
 
 /** Provider 必須のアクセサ(存在しなければ実装ミスとして例外)。 */
 export function usePatientContext(): PatientContextValue {
   const ctx = useContext(PatientContext);
   if (ctx === null) {
-    throw new Error("usePatientContext must be used within PatientContextProvider");
+    throw new Error(
+      "usePatientContext must be used within PatientContextProvider",
+    );
   }
   return ctx;
 }
@@ -326,24 +378,22 @@ export function PatientContextBarView(props: PatientContextBarViewProps) {
  */
 export function PatientContextBar() {
   const ctx = useContext(PatientContext);
-  if (ctx === null) {
-    return null;
-  }
-  // usePathname 等の Next ランタイム依存フックは Provider 配下でのみマウントされる
-  // 内部コンポーネント側に置く(スタンドアロン描画・テストで例外にしない)。
+  if (ctx === null) return null;
   return <PatientContextBarWithRefresh ctx={ctx} />;
 }
 
-function PatientContextBarWithRefresh({ ctx }: { readonly ctx: InternalPatientContextValue }) {
+function PatientContextBarWithRefresh({
+  ctx,
+}: {
+  readonly ctx: InternalPatientContextValue;
+}) {
   const pathname = usePathname();
-  const [staleAuthority, setStaleAuthority] = useState<PatientRefreshAuthorityClaim | null>(
-    null,
-  );
+  const [staleAuthority, setStaleAuthority] =
+    useState<PatientRefreshAuthorityClaim | null>(null);
   const [removedNotice, setRemovedNotice] = useState<string | null>(null);
 
   const patientIdKey = ctx.patient?.patientId ?? null;
-  const clearPatient = ctx.clearPatient;
-  const handleClear = clearPatient;
+  const handleClear = ctx.clearPatient;
 
   useEffect(() => {
     const refreshRunner = ctx.refreshRunner;
@@ -352,24 +402,19 @@ function PatientContextBarWithRefresh({ ctx }: { readonly ctx: InternalPatientCo
       return;
     }
     const refreshAuthority = ctx.captureRefreshAuthority(patientIdKey);
-    if (refreshAuthority === null) {
-      return;
-    }
+    if (refreshAuthority === null) return;
+
     setRemovedNotice(null);
     refreshRunner.refresh(patientIdKey, {
       onFresh: (fresh) => {
-        if (!ctx.commitRefreshedPatient(refreshAuthority, fresh)) {
-          return;
-        }
+        if (!ctx.commitRefreshedPatient(refreshAuthority, fresh)) return;
         setRemovedNotice(null);
         setStaleAuthority(null);
       },
       onRemoved: () => {
-        if (!ctx.commitRefreshedRemoval(refreshAuthority)) {
-          return;
-        }
+        if (!ctx.commitRefreshedRemoval(refreshAuthority)) return;
         setRemovedNotice(
-          "選択中だった患者の情報が取得できなくなったため、選択を解除しました。患者検索から選択し直してください。",
+          "選択中だった患者の情報が取得できなくなったため、選択を解除し、同患者の未保存下書きも破棄しました。患者検索から選択し直してください。",
         );
         setStaleAuthority(null);
       },
@@ -379,10 +424,7 @@ function PatientContextBarWithRefresh({ ctx }: { readonly ctx: InternalPatientCo
         }
       },
     });
-    // patientIdKey / pathname が変わるたびに再取得(同一患者でも遷移ごとに最新化)
     return () => refreshRunner.invalidate();
-    // selectionAuthority is intentionally not a dependency: same-ID direct selection revokes
-    // the old claim synchronously but does not add an extra refresh beyond pathname/ID changes.
   }, [
     patientIdKey,
     pathname,
@@ -400,11 +442,18 @@ function PatientContextBarWithRefresh({ ctx }: { readonly ctx: InternalPatientCo
       </p>
     ) : null;
   }
+
   const stale =
     staleAuthority !== null &&
     staleAuthority.authority === ctx.selectionAuthority &&
     staleAuthority.patientId === ctx.patient.patientId;
-  return <PatientContextBarView patient={ctx.patient} onClear={handleClear} stale={stale} />;
+  return (
+    <PatientContextBarView
+      patient={ctx.patient}
+      onClear={handleClear}
+      stale={stale}
+    />
+  );
 }
 
 interface PatientRefreshCallbacks {
@@ -430,10 +479,10 @@ export function createPatientContextAuthorityController(
 
   return {
     currentAuthority: () => authority,
-    select(patientId: string) {
+    select(id: string) {
       refreshInvalidator.invalidate();
       authority += 1;
-      currentPatientId = patientId;
+      currentPatientId = id;
       return authority;
     },
     clear() {
@@ -442,20 +491,25 @@ export function createPatientContextAuthorityController(
       currentPatientId = null;
       return authority;
     },
-    capture(patientId: string): PatientRefreshAuthorityClaim | null {
-      return currentPatientId === patientId ? { authority, patientId } : null;
+    capture(id: string): PatientRefreshAuthorityClaim | null {
+      return currentPatientId === id
+        ? { authority, patientId: id }
+        : null;
     },
     isCurrent,
     acceptFresh(
       authorityClaim: PatientRefreshAuthorityClaim,
       freshPatientId: string,
     ) {
-      return freshPatientId === authorityClaim.patientId && isCurrent(authorityClaim);
+      return (
+        freshPatientId === authorityClaim.patientId &&
+        isCurrent(authorityClaim)
+      );
     },
-    acceptRemoval(authorityClaim: PatientRefreshAuthorityClaim): number | null {
-      if (!isCurrent(authorityClaim)) {
-        return null;
-      }
+    acceptRemoval(
+      authorityClaim: PatientRefreshAuthorityClaim,
+    ): number | null {
+      if (!isCurrent(authorityClaim)) return null;
       authority += 1;
       currentPatientId = null;
       return authority;
@@ -465,10 +519,11 @@ export function createPatientContextAuthorityController(
 
 /** Keeps only the latest patient refresh authoritative across clear, switch, and unmount. */
 export function createPatientRefreshRunner(
-  fetcher: (id: string, signal: AbortSignal) => Promise<PatientContextData | null> = (
-    id,
-    signal,
-  ) => fetchPatientById(id, fetch, signal),
+  fetcher: (
+    id: string,
+    signal: AbortSignal,
+  ) => Promise<PatientContextData | null> = (id, signal) =>
+    fetchPatientById(id, fetch, signal),
 ) {
   let generation = 0;
   let activeOwner:
@@ -477,6 +532,7 @@ export function createPatientRefreshRunner(
       }
     | undefined;
   let isInvalidating = false;
+
   return {
     invalidate() {
       if (isInvalidating) return;
@@ -497,15 +553,18 @@ export function createPatientRefreshRunner(
       const currentOwner = { controller: new AbortController() };
       activeOwner = currentOwner;
       previousOwner?.controller.abort();
+
       if (currentGeneration !== generation) {
-        if (activeOwner === currentOwner) {
-          activeOwner = undefined;
-        }
+        if (activeOwner === currentOwner) activeOwner = undefined;
         currentOwner.controller.abort();
         return;
       }
+
       let outcome:
-        | { readonly kind: "success"; readonly value: PatientContextData | null }
+        | {
+            readonly kind: "success";
+            readonly value: PatientContextData | null;
+          }
         | { readonly kind: "failure" };
       try {
         outcome = {
@@ -515,23 +574,19 @@ export function createPatientRefreshRunner(
       } catch {
         outcome = { kind: "failure" };
       } finally {
-        if (activeOwner === currentOwner) {
-          activeOwner = undefined;
-        }
+        if (activeOwner === currentOwner) activeOwner = undefined;
       }
-      if (currentGeneration !== generation) {
-        return;
-      }
+
+      if (currentGeneration !== generation) return;
       if (outcome.kind === "failure") {
         callbacks.onFailure();
         return;
       }
-      const fresh = outcome.value;
-      if (fresh === null) {
+      if (outcome.value === null) {
         callbacks.onRemoved();
         return;
       }
-      callbacks.onFresh(fresh);
+      callbacks.onFresh(outcome.value);
     },
   };
 }

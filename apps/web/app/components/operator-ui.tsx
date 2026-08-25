@@ -8,7 +8,9 @@ export type OperatorTone =
   | "warning"
   | "danger";
 
-function classNames(...values: Array<string | false | null | undefined>): string {
+function classNames(
+  ...values: Array<string | false | null | undefined>
+): string {
   return values.filter(Boolean).join(" ");
 }
 
@@ -25,7 +27,11 @@ export function OperatorPage({
 }) {
   return (
     <div
-      className={classNames("operator-page", rail !== undefined && "operator-page-with-rail", className)}
+      className={classNames(
+        "operator-page",
+        rail !== undefined && "operator-page-with-rail",
+        className,
+      )}
     >
       <div className="operator-page-primary">{children}</div>
       {rail !== undefined ? (
@@ -53,14 +59,20 @@ export function ScreenHeader({
   return (
     <header className="screen-header">
       <div>
-        {eyebrow !== undefined ? <p className="screen-eyebrow">{eyebrow}</p> : null}
+        {eyebrow !== undefined ? (
+          <p className="screen-eyebrow">{eyebrow}</p>
+        ) : null}
         <div className="screen-title-row">
           <h2 className="screen-title">{title}</h2>
           {meta}
         </div>
-        {description !== undefined ? <p className="screen-description">{description}</p> : null}
+        {description !== undefined ? (
+          <p className="screen-description">{description}</p>
+        ) : null}
       </div>
-      {actions !== undefined ? <div className="screen-actions">{actions}</div> : null}
+      {actions !== undefined ? (
+        <div className="screen-actions">{actions}</div>
+      ) : null}
     </header>
   );
 }
@@ -131,9 +143,13 @@ export function MetricCard({
         <p className="metric-label">{label}</p>
         <p className="metric-value">
           {value}
-          {unit !== undefined ? <span className="metric-unit">{unit}</span> : null}
+          {unit !== undefined ? (
+            <span className="metric-unit">{unit}</span>
+          ) : null}
         </p>
-        {detail !== undefined ? <p className="metric-detail">{detail}</p> : null}
+        {detail !== undefined ? (
+          <p className="metric-detail">{detail}</p>
+        ) : null}
       </div>
     </article>
   );
@@ -155,14 +171,19 @@ export function Panel({
   readonly tone?: OperatorTone;
 }) {
   return (
-    <section className={classNames("operator-panel", className)} data-tone={tone}>
+    <section
+      className={classNames("operator-panel", className)}
+      data-tone={tone}
+    >
       {title !== undefined || actions !== undefined ? (
         <header className="operator-panel-header">
           <div>
             {title !== undefined ? <h3>{title}</h3> : null}
             {description !== undefined ? <p>{description}</p> : null}
           </div>
-          {actions !== undefined ? <div className="operator-panel-actions">{actions}</div> : null}
+          {actions !== undefined ? (
+            <div className="operator-panel-actions">{actions}</div>
+          ) : null}
         </header>
       ) : null}
       <div className="operator-panel-body">{children}</div>
@@ -212,15 +233,21 @@ export function KeyValueList({
   );
 }
 
-function prototypeActionLabel(children: ReactNode, actionLabel?: string): string {
+function prototypeActionLabel(
+  children: ReactNode,
+  actionLabel?: string,
+): string {
   if (actionLabel !== undefined) return actionLabel;
-  if (typeof children === "string" || typeof children === "number") return String(children);
+  if (typeof children === "string" || typeof children === "number") {
+    return String(children);
+  }
   return "この操作";
 }
 
 /**
  * 実行不能なプロトタイプ操作。
- * native disabledを維持しつつ、理由をキーボード利用者にも提示するfocusable shellを付ける。
+ * native disabledを維持し、理由は常時可視テキストとして隣接表示する。
+ * 無効操作をフォーカス可能なwrapperへ変換しないため、画面内のtab stopを増やさない。
  */
 export function PrototypeAction({
   children,
@@ -237,9 +264,6 @@ export function PrototypeAction({
   return (
     <span
       className="prototype-action-shell"
-      role="group"
-      tabIndex={0}
-      aria-label={`${label}。利用不可。${reason}`}
       data-disabled-reason={reason}
     >
       <button
@@ -247,12 +271,14 @@ export function PrototypeAction({
         className="operator-button"
         data-kind={kind}
         disabled
-        aria-hidden="true"
-        tabIndex={-1}
+        aria-label={`${label}（利用不可）`}
         title={reason}
       >
         {children}
       </button>
+      <small className="prototype-action-reason">
+        利用不可: {reason}
+      </small>
     </span>
   );
 }
@@ -285,7 +311,9 @@ export function IntakeCard({
       </div>
       <div className="intake-card-footer">
         <StatusPill tone="warning">{status}</StatusPill>
-        <PrototypeAction reason={`${title}は接続・承認前のため実行できません`}>
+        <PrototypeAction
+          reason={`${title}は接続・承認前のため実行できません`}
+        >
           {actionLabel}
         </PrototypeAction>
       </div>

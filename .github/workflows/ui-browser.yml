@@ -1,0 +1,111 @@
+name: UI browser gate
+
+on:
+  push:
+    branches: [feat/operator-first-ui]
+    paths:
+      - "apps/web/**"
+      - "packages/contracts/**"
+      - "packages/shared-kernel/**"
+      - "scripts/ui-*.mjs"
+      - ".github/workflows/ui-browser.yml"
+      - "pnpm-lock.yaml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/contracts/**"
+      - "packages/shared-kernel/**"
+      - "scripts/ui-*.mjs"
+      - ".github/workflows/ui-browser.yml"
+      - "pnpm-lock.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NEXT_PUBLIC_API_BASE: http://127.0.0.1:3001
+      UI_BASE_URL: http://127.0.0.1:3000
+      UI_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/ui-browser
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.18.0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26.6.0
+          cache: pnpm
+
+      - name: Install repository dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck and test web package
+        run: |
+          pnpm --filter @yrese/web typecheck
+          pnpm --filter @yrese/web test
+
+      - name: Build production web app
+        run: pnpm --filter @yrese/web build
+
+      - name: Install isolated browser tools
+        run: |
+          mkdir -p .ui-test-tools
+          cd .ui-test-tools
+          npm init -y
+          npm install --no-save playwright@1.62.1 axe-core@4.13.0
+          ./node_modules/.bin/playwright install --with-deps chromium
+          cp ../scripts/ui-browser-check.mjs ./ui-browser-check.mjs
+
+      - name: Start fixture API and production web server
+        run: |
+          mkdir -p "$UI_ARTIFACT_DIR"
+          node scripts/ui-fixture-api.mjs > "$UI_ARTIFACT_DIR/fixture-api.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/yrese-fixture-api.pid"
+          pnpm --filter @yrese/web start > "$UI_ARTIFACT_DIR/web.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/yrese-web.pid"
+
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3001/health >/dev/null &&
+               curl --fail --silent http://127.0.0.1:3000/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "UI servers did not become ready" >&2
+          cat "$UI_ARTIFACT_DIR/fixture-api.log" >&2 || true
+          cat "$UI_ARTIFACT_DIR/web.log" >&2 || true
+          exit 1
+
+      - name: Run keyboard, accessibility, reflow, and draft-safety checks
+        working-directory: .ui-test-tools
+        run: node ui-browser-check.mjs
+
+      - name: Stop UI servers
+        if: always()
+        run: |
+          for pid_file in \
+            "$RUNNER_TEMP/yrese-fixture-api.pid" \
+            "$RUNNER_TEMP/yrese-web.pid"; do
+            if [ -f "$pid_file" ]; then
+              kill "$(cat "$pid_file")" 2>/dev/null || true
+            fi
+          done
+
+      - name: Upload UI browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: yrese-ui-browser-evidence
+          path: artifacts/ui-browser
+          if-no-files-found: error
+          retention-days: 14
