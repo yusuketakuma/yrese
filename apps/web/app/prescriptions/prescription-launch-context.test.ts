@@ -63,13 +63,13 @@ describe("validateReceptionLaunchEntry", () => {
   const entries = [
     {
       receptionId: "reception-a",
-      patientId: "patient-a",
-      status: "accepted",
+      patient: { patientId: "patient-a" },
+      receptionStatus: "IN_PROGRESS",
     },
     {
       receptionId: "reception-b",
-      patientId: "patient-b",
-      status: "accepted",
+      patient: { patientId: "patient-b" },
+      receptionStatus: "WAITING",
     },
   ] as const;
 

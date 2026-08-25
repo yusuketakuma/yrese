@@ -157,13 +157,13 @@ export function PrescriptionLaunchRoute({
     <div
       data-prescription-launch="verified"
       data-reception-id={state.entry.receptionId}
-      data-patient-id={state.entry.patientId}
+      data-patient-id={state.entry.patient.patientId}
     >
       <InlineNotice title="受付コンテキストを確認しました" tone="info" announce="polite">
         <p>
           受付ID: {state.entry.receptionId} / 業務日: {launch.businessDate} / 受付状態:{" "}
           <StatusPill tone="info">
-            {RECEPTION_STATUS_LABELS[state.entry.status]}
+            {RECEPTION_STATUS_LABELS[state.entry.receptionStatus]}
           </StatusPill>
         </p>
         <p>

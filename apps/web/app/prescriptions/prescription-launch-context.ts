@@ -65,7 +65,9 @@ export function parsePrescriptionLaunchContext(input: {
 
 export interface ReceptionLaunchIdentity {
   readonly receptionId: string;
-  readonly patientId: string;
+  readonly patient: {
+    readonly patientId: string;
+  };
 }
 
 export type ReceptionLaunchValidationResult<T extends ReceptionLaunchIdentity> =
@@ -75,7 +77,7 @@ export type ReceptionLaunchValidationResult<T extends ReceptionLaunchIdentity> =
 
 /**
  * Resolve only an entry returned by the authenticated, tenant-scoped reception queue.
- * A route patientId never overrides the patient identity returned by the API.
+ * A route patientId never overrides the nested patient identity returned by the API contract.
  */
 export function validateReceptionLaunchEntry<T extends ReceptionLaunchIdentity>(
   entries: readonly T[],
@@ -85,7 +87,7 @@ export function validateReceptionLaunchEntry<T extends ReceptionLaunchIdentity>(
     (candidate) => candidate.receptionId === context.receptionId,
   );
   if (entry === undefined) return { status: "not-found" };
-  if (entry.patientId !== context.patientId) {
+  if (entry.patient.patientId !== context.patientId) {
     return { status: "patient-mismatch" };
   }
   return { status: "ready", entry };
