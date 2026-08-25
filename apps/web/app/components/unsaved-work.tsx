@@ -33,41 +33,6 @@ export interface UnsavedWorkStore {
   readonly hasForPatient: (patientId: string) => boolean;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function validRecoveryIdentifier(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    value.length > 0 &&
-    value.length <= 128 &&
-    !/[/?#\\]/u.test(value)
-  );
-}
-
-/**
- * Recover a persisted draft through its exact reception/patient/business-date route.
- * Malformed or legacy snapshots fall back to the caller-provided safe route.
- */
-export function resolveUnsavedWorkHref(record: UnsavedWorkRecord): string {
-  if (record.kind !== "prescription-draft" || !isRecord(record.snapshot)) {
-    return record.href;
-  }
-  const { receptionId, patientId, businessDate } = record.snapshot;
-  if (
-    !validRecoveryIdentifier(receptionId) ||
-    !validRecoveryIdentifier(patientId) ||
-    patientId !== record.patientId ||
-    typeof businessDate !== "string" ||
-    !/^\d{4}-\d{2}-\d{2}$/u.test(businessDate)
-  ) {
-    return record.href;
-  }
-  const query = new URLSearchParams({ patientId, date: businessDate });
-  return `/prescriptions/${encodeURIComponent(receptionId)}?${query}`;
-}
-
 export function createUnsavedWorkStore(
   initialRecords: readonly UnsavedWorkRecord[] = [],
 ): UnsavedWorkStore {
@@ -75,7 +40,7 @@ export function createUnsavedWorkStore(
 
   return {
     upsert(record) {
-      records.set(record.id, { ...record, href: resolveUnsavedWorkHref(record) });
+      records.set(record.id, record);
     },
     remove(id) {
       records.delete(id);
@@ -246,10 +211,8 @@ export function useOptionalUnsavedWork(): UnsavedWorkContextValue | null {
 
 export function UnsavedWorkStatusView({
   count,
-  href = "/prescriptions",
 }: {
   readonly count: number;
-  readonly href?: string;
 }) {
   if (count <= 0) return null;
   return (
@@ -258,18 +221,12 @@ export function UnsavedWorkStatusView({
         <strong>未保存下書き {count}件</strong>
         <small>このタブ内のみ・再読込で消失</small>
       </span>
-      <Link href={href}>処方下書きへ戻る</Link>
+      <Link href="/prescriptions">処方下書きへ戻る</Link>
     </div>
   );
 }
 
 export function UnsavedWorkStatus() {
   const context = useOptionalUnsavedWork();
-  const records = context?.records ?? [];
-  return (
-    <UnsavedWorkStatusView
-      count={records.length}
-      href={records.length === 1 ? records[0]!.href : "/prescriptions"}
-    />
-  );
+  return <UnsavedWorkStatusView count={context?.records.length ?? 0} />;
 }
