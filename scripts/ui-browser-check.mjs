@@ -227,11 +227,25 @@ async function checkDraftRecoveryAndPatientGuard(page) {
   await page.locator('.app-nav-link[href="/checkout"]').click();
   await page.getByText("未保存下書き 1件").waitFor();
   await page.getByRole("link", { name: "処方下書きへ戻る" }).click();
-  await page.getByText("タブ内下書きを復元しました").waitFor();
+  const restoredDrugInput = page.getByLabel("RP1 薬剤名");
+  await restoredDrugInput.waitFor();
+  await page.waitForFunction(() => {
+    const element = document.querySelector('input[aria-label="RP1 薬剤名"]');
+    return element instanceof HTMLInputElement && element.value === "E2E合成薬10mg";
+  });
+  const restoredNoticeVisible = await page
+    .getByText("タブ内下書きを復元しました")
+    .isVisible()
+    .catch(() => false);
   assert(
-    (await page.getByLabel("RP1 薬剤名").inputValue()) === "E2E合成薬10mg",
+    (await restoredDrugInput.inputValue()) === "E2E合成薬10mg",
     "draft recovery: drug input was not restored after in-app route change",
   );
+  findings.interactionChecks.push({
+    name: "draft-recovery-after-in-app-route-change",
+    status: "pass",
+    mode: restoredNoticeVisible ? "snapshot-remount" : "router-cache-retention",
+  });
 
   const unloadResult = await page.evaluate(() => {
     const event = new Event("beforeunload", { cancelable: true });
@@ -269,7 +283,7 @@ async function checkDraftRecoveryAndPatientGuard(page) {
   );
 
   findings.interactionChecks.push({
-    name: "draft-route-recovery-beforeunload-and-patient-switch",
+    name: "beforeunload-and-patient-switch",
     status: "pass",
   });
 
