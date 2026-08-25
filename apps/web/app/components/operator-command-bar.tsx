@@ -1,27 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type ChangeEvent, type FormEvent, useMemo, useRef, useState } from "react";
-
-interface SpeechRecognitionLike {
-  lang: string;
-  interimResults: boolean;
-  continuous: boolean;
-  start(): void;
-  stop(): void;
-  onresult: ((event: { results: ArrayLike<{ readonly 0: { readonly transcript: string } }> }) => void) | null;
-  onerror: (() => void) | null;
-  onend: (() => void) | null;
-}
-
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
-
-declare global {
-  interface Window {
-    webkitSpeechRecognition?: SpeechRecognitionConstructor;
-    SpeechRecognition?: SpeechRecognitionConstructor;
-  }
-}
+import { type ChangeEvent, type FormEvent, useMemo, useState } from "react";
 
 interface CommandIntent {
   readonly label: string;
@@ -88,46 +68,19 @@ export function resolveOperatorIntent(command: string): CommandIntent | null {
   return best?.intent ?? null;
 }
 
+/**
+ * 自然言語は画面候補の提示だけに使い、患者・処方・会計・請求データを変更しない。
+ * ブラウザ組込み音声認識は処理先・保持・リージョンを保証できないため、承認済みの
+ * 音声処理境界が接続されるまで fail-closed で無効化する。
+ */
 export function OperatorCommandBar() {
   const [command, setCommand] = useState("");
   const [submittedCommand, setSubmittedCommand] = useState("");
-  const [listening, setListening] = useState(false);
-  const [speechUnavailable, setSpeechUnavailable] = useState(false);
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const intent = useMemo(() => resolveOperatorIntent(submittedCommand), [submittedCommand]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
     setSubmittedCommand(command.trim());
-  }
-
-  function toggleSpeech() {
-    if (listening) {
-      recognitionRef.current?.stop();
-      return;
-    }
-
-    const Recognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
-    if (!Recognition) {
-      setSpeechUnavailable(true);
-      return;
-    }
-
-    setSpeechUnavailable(false);
-    const recognition = new Recognition();
-    recognition.lang = "ja-JP";
-    recognition.interimResults = false;
-    recognition.continuous = false;
-    recognition.onresult = (event) => {
-      const transcript = event.results[0]?.[0]?.transcript ?? "";
-      setCommand(transcript);
-      setSubmittedCommand(transcript);
-    };
-    recognition.onerror = () => setListening(false);
-    recognition.onend = () => setListening(false);
-    recognitionRef.current = recognition;
-    setListening(true);
-    recognition.start();
   }
 
   return (
@@ -153,20 +106,17 @@ export function OperatorCommandBar() {
           <button
             type="button"
             className="operator-command-voice"
-            onClick={toggleSpeech}
-            aria-pressed={listening}
-            aria-label={listening ? "音声入力を停止" : "音声入力を開始"}
+            disabled
+            aria-describedby="operator-voice-status"
+            title="承認済み音声処理境界の接続前のため利用できません"
           >
-            {listening ? "停止" : "音声"}
+            音声
           </button>
         </div>
+        <span id="operator-voice-status" className="visually-hidden">
+          音声入力は、処理先・保持・リージョンを確認した承認済み音声処理境界の接続前のため利用できません。
+        </span>
       </form>
-
-      {speechUnavailable ? (
-        <p role="status" className="operator-command-note">
-          このブラウザでは音声認識を利用できません。テキスト入力を利用してください。
-        </p>
-      ) : null}
 
       {submittedCommand ? (
         <div className="operator-command-preview" aria-live="polite">
