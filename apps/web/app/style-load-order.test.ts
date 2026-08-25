@@ -9,6 +9,10 @@ const layoutSource = readFileSync(
   new URL("./layout.tsx", import.meta.url),
   "utf8",
 );
+const operatorSource = readFileSync(
+  new URL("./operator-first.css", import.meta.url),
+  "utf8",
+);
 const duplicateRefinementUrl = new URL(
   "./operator-first-refinement.css",
   import.meta.url,
@@ -47,5 +51,11 @@ describe("operator stylesheet load order", () => {
       'import "./operator-first-refinement.css";',
     );
     expect(existsSync(duplicateRefinementUrl)).toBe(false);
+  });
+
+  it("lays out the desktop shell as a sidebar and workspace grid", () => {
+    expect(operatorSource).toMatch(
+      /\.app-shell\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:/s,
+    );
   });
 });

@@ -118,6 +118,18 @@ describe("AdminDashboardView", () => {
     expect(html).toMatch(/<button[^>]*disabled[^>]*>利用者を追加<\/button>/);
   });
 
+  it("keeps the tab contract keyboard-reachable without dangling controls", () => {
+    const html = renderSnapshot(
+      snapshotFor("tenant-alpha", "pharmacy-alpha", "actor-alpha"),
+    );
+    const tabs = html.match(/<button[^>]*role="tab"[^>]*>/g) ?? [];
+
+    expect(tabs.filter((tab) => tab.includes('tabindex="0"'))).toHaveLength(1);
+    expect(tabs.filter((tab) => tab.includes('tabindex="-1"'))).toHaveLength(6);
+    expect(html.match(/aria-controls="admin-tabpanel-/g)).toHaveLength(1);
+    expect(html).toContain('aria-controls="admin-tabpanel-overview"');
+  });
+
   it("honors the retired audit viewer boundary instead of listing events", () => {
     const html = renderSnapshot(
       snapshotFor("tenant-alpha", "pharmacy-alpha", "actor-alpha"),

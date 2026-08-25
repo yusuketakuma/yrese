@@ -100,7 +100,8 @@ describe("web shell smoke contracts", () => {
     expect(html).toContain('id="main-content"');
     expect(html).toContain("Gbrain");
     expect(html).toContain("未接続");
-    expect(html).toContain("操作者未接続");
+    expect(html).toContain("プロフィール表示未接続");
+    expect(html).not.toContain("操作者未接続");
     expect(html).toContain('aria-keyshortcuts="/ Control+K Meta+K"');
     expect(html).toContain("患者名は入れず業務名で検索");
     expect(html).toContain('aria-label="主要業務へのショートカット"');
@@ -156,6 +157,9 @@ describe("web shell smoke contracts", () => {
     expect(html).toContain("NORMAL・障害・オフラインのいずれも推測しません");
     expect(html).toContain("判定不可・実行不可");
     expect(html).not.toContain("すべて正常に稼働中");
+    expect(html).toMatch(
+      /<table class="operator-table"><thead><tr>(?:<th scope="col">[^<]+<\/th>){5}/,
+    );
   });
 
   it("renders the connected SCR-029 boundary without reintroducing the retired audit viewer", () => {

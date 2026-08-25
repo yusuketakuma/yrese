@@ -125,7 +125,7 @@ function MetricCard({
   readonly tone: "accent" | "info" | "warning" | "success";
 }) {
   return (
-    <article className={styles.metricCard} data-tone={tone}>
+    <article className={styles.metricCard} data-tone={tone} role="listitem">
       <span className={styles.metricSymbol} aria-hidden="true">
         {symbol}
       </span>
@@ -562,16 +562,36 @@ export function AdminDashboardView({
       <div className={styles.workspace}>
         <div className={styles.primaryColumn}>
           <div className={styles.tabs} role="tablist" aria-label="管理設定カテゴリ">
-            {TAB_ITEMS.map((tab) => (
+            {TAB_ITEMS.map((tab, index) => (
               <button
                 type="button"
                 role="tab"
                 aria-selected={activeTab === tab.id}
-                aria-controls={`admin-tabpanel-${tab.id}`}
+                aria-controls={
+                  activeTab === tab.id ? `admin-tabpanel-${tab.id}` : undefined
+                }
                 id={`admin-tab-${tab.id}`}
                 tabIndex={activeTab === tab.id ? 0 : -1}
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
+                onKeyDown={(event) => {
+                  const nextIndex =
+                    event.key === "ArrowRight"
+                      ? (index + 1) % TAB_ITEMS.length
+                      : event.key === "ArrowLeft"
+                        ? (index - 1 + TAB_ITEMS.length) % TAB_ITEMS.length
+                        : event.key === "Home"
+                          ? 0
+                          : event.key === "End"
+                            ? TAB_ITEMS.length - 1
+                            : null;
+                  if (nextIndex === null) return;
+                  const nextTab = TAB_ITEMS[nextIndex];
+                  if (nextTab === undefined) return;
+                  event.preventDefault();
+                  onTabChange(nextTab.id);
+                  document.getElementById(`admin-tab-${nextTab.id}`)?.focus();
+                }}
               >
                 <span aria-hidden="true">{tab.symbol}</span>
                 {tab.label}

@@ -54,7 +54,7 @@ export default function Page() {
       </MetricGrid>
 
       <Panel title="同期・連携ステータスボード" description="各サービスの未接続を明示します。">
-        <div className="table-scroll"><table className="operator-table"><thead><tr><th>連携 / 同期項目</th><th>現在の状態</th><th>未処理件数</th><th>次のアクション</th><th>詳細</th></tr></thead><tbody>
+        <div className="table-scroll"><table className="operator-table"><thead><tr><th scope="col">連携 / 同期項目</th><th scope="col">現在の状態</th><th scope="col">未処理件数</th><th scope="col">次のアクション</th><th scope="col">詳細</th></tr></thead><tbody>
           {INTEGRATIONS.map((row) => <tr key={row[0]}><td>{row[0]}</td><td><StatusPill tone="warning">{row[1]}</StatusPill></td><td>{row[2]}</td><td>{row[3]}</td><td><PrototypeAction>詳細ログ</PrototypeAction></td></tr>)}
         </tbody></table></div>
       </Panel>

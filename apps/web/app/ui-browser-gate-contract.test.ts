@@ -37,6 +37,13 @@ describe("UI browser validation gate", () => {
   it("covers keyboard, accessibility, reflow, and unsaved-draft safety", () => {
     expect(browserCheck).toContain("axe.run");
     expect(browserCheck).toContain('waitUntil: "domcontentloaded"');
+    expect(browserCheck).toContain("const routeHeadings = new Map");
+    expect(browserCheck).toContain("const routeViewports = [");
+    expect(browserCheck).toContain("header-boundary");
+    expect(browserCheck).toContain('waitForLoadState("networkidle")');
+    expect(browserCheck).toContain("window.scrollTo(0, 0)");
+    expect(browserCheck).toContain("mobile safety context");
+    expect(browserCheck).toContain("admin tabs");
     expect(browserCheck.match(/caret: "initial"/g)).toHaveLength(3);
     expect(browserCheck).toContain("beforeunload");
     expect(browserCheck).toContain("reflow-200pct-equivalent");

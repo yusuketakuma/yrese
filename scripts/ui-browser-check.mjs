@@ -21,6 +21,23 @@ const routes = [
   "/sync-status",
   "/admin",
 ];
+const routeHeadings = new Map([
+  ["/", "受付ダッシュボード"],
+  ["/patients", "患者検索・患者管理"],
+  ["/prescriptions", "処方入力ワークスペース"],
+  ["/checkout", "会計・一部負担金"],
+  ["/claim-check", "請求前点検"],
+  ["/monthly-closing", "月次締め・返戻管理"],
+  ["/masters", "マスター管理"],
+  ["/sync-status", "同期状態・外部連携"],
+  ["/admin", "yrese 管理設定ダッシュボード"],
+]);
+const routeViewports = [
+  { name: "desktop", width: 1366, height: 768 },
+  { name: "tablet", width: 1024, height: 768 },
+  { name: "header-boundary", width: 821, height: 768 },
+  { name: "mobile", width: 390, height: 844 },
+];
 
 await mkdir(ARTIFACT_DIR, { recursive: true });
 
@@ -64,11 +81,52 @@ async function assertNoPageOverflow(page, label) {
   const dimensions = await page.evaluate(() => ({
     viewport: document.documentElement.clientWidth,
     document: document.documentElement.scrollWidth,
+    headerMetaRight:
+      document.querySelector(".app-header-meta")?.getBoundingClientRect().right ?? 0,
   }));
   assert(
     dimensions.document <= dimensions.viewport + 1,
     `${label}: page-level horizontal overflow (${dimensions.document} > ${dimensions.viewport})`,
   );
+  assert(
+    dimensions.headerMetaRight <= dimensions.viewport + 1,
+    `${label}: header content is clipped (${dimensions.headerMetaRight} > ${dimensions.viewport})`,
+  );
+}
+
+async function assertMobileSafetyContext(page, label) {
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const positions = await page.evaluate(() => {
+    const mode = document.querySelector(".system-mode-badge")?.getBoundingClientRect();
+    const patient = document.querySelector(".patient-context-bar")?.getBoundingClientRect();
+    const unsaved = document.querySelector(".unsaved-work-status")?.getBoundingClientRect();
+    return {
+      viewportHeight: window.innerHeight,
+      mode: mode === undefined ? null : { top: mode.top, bottom: mode.bottom },
+      patient:
+        patient === undefined ? null : { top: patient.top, bottom: patient.bottom },
+      unsaved:
+        unsaved === undefined ? null : { top: unsaved.top, bottom: unsaved.bottom },
+    };
+  });
+  assert(positions.mode !== null, `${label}: system mode badge is missing`);
+  assert(positions.patient !== null, `${label}: patient context is missing`);
+  assert(
+    positions.mode.top >= 0 && positions.mode.bottom <= positions.viewportHeight,
+    `${label}: system mode left the viewport (${positions.mode.top}..${positions.mode.bottom} / ${positions.viewportHeight})`,
+  );
+  assert(
+    positions.patient.top >= positions.mode.bottom &&
+      positions.patient.bottom <= positions.viewportHeight,
+    `${label}: mobile safety context overlaps or left the viewport (${positions.patient.top}..${positions.patient.bottom} after ${positions.mode.bottom} / ${positions.viewportHeight})`,
+  );
+  if (positions.unsaved !== null) {
+    assert(
+      positions.unsaved.bottom <= positions.mode.top ||
+        positions.unsaved.top >= positions.mode.bottom,
+      `${label}: system mode overlaps unsaved-work status`,
+    );
+  }
 }
 
 async function runAxe(page, label) {
@@ -101,6 +159,14 @@ async function runAxe(page, label) {
   );
 }
 
+async function waitForRoute(page, route) {
+  await page.waitForLoadState("networkidle");
+  await page
+    .getByRole("heading", { name: routeHeadings.get(route), level: 2 })
+    .last()
+    .waitFor();
+}
+
 async function checkRoute(page, route, viewport) {
   const label = `${routeName(route)}-${viewport.width}x${viewport.height}`;
   await page.setViewportSize(viewport);
@@ -108,6 +174,7 @@ async function checkRoute(page, route, viewport) {
     waitUntil: "domcontentloaded",
   });
   assert(response?.ok() === true, `${label}: route did not return 2xx`);
+  await waitForRoute(page, route);
   await page.locator("main#main-content").waitFor();
   assert(
     (await page.locator("main#main-content").count()) === 1,
@@ -146,6 +213,52 @@ async function checkKeyboardLandmarks(page) {
       (element) => document.activeElement === element,
     ),
     "keyboard: slash shortcut did not focus command search",
+  );
+
+  await page.goto(`${BASE_URL}/admin`, { waitUntil: "networkidle" });
+  const adminTabs = page.getByRole("tab");
+  assert((await adminTabs.count()) === 7, "admin tabs: expected seven tabs");
+  await adminTabs.first().focus();
+  for (let index = 1; index < 7; index += 1) {
+    await page.keyboard.press("ArrowRight");
+    const tab = adminTabs.nth(index);
+    assert(
+      (await tab.getAttribute("aria-selected")) === "true" &&
+        (await tab.evaluate((element) => document.activeElement === element)),
+      `admin tabs: tab ${index + 1} was not selected and focused`,
+    );
+    const controls = await tab.getAttribute("aria-controls");
+    assert(
+      controls !== null &&
+        (await page.locator(`#${controls}`).count()) === 1,
+      `admin tabs: tab ${index + 1} does not control the rendered panel`,
+    );
+  }
+  await page.keyboard.press("ArrowRight");
+  assert(
+    (await adminTabs.first().getAttribute("aria-selected")) === "true",
+    "admin tabs: ArrowRight did not wrap to the first tab",
+  );
+  await page.keyboard.press("ArrowLeft");
+  assert(
+    (await adminTabs.last().getAttribute("aria-selected")) === "true",
+    "admin tabs: ArrowLeft did not wrap to the last tab",
+  );
+  await page.keyboard.press("Home");
+  assert(
+    (await adminTabs.first().getAttribute("aria-selected")) === "true",
+    "admin tabs: Home did not select the first tab",
+  );
+  await page.keyboard.press("End");
+  assert(
+    (await adminTabs.last().getAttribute("aria-selected")) === "true",
+    "admin tabs: End did not select the last tab",
+  );
+  assert(
+    (await page
+      .getByRole("complementary", { name: "環境・管理補助情報" })
+      .evaluate((element) => getComputedStyle(element).position)) !== "sticky",
+    "admin tabs: secondary column can stick beneath the global header",
   );
   findings.interactionChecks.push({
     name: "keyboard-landmarks-and-command-shortcut",
@@ -187,15 +300,33 @@ async function checkDraftRecoveryAndPatientGuard(page) {
   await page.locator(".patient-context-bar").getByText("テスト患者 一").waitFor();
 
   await page.locator('.app-nav-link[href="/prescriptions"]').click();
+  await waitForRoute(page, "/prescriptions");
   const drugInput = page.getByLabel("RP1 薬剤名");
   await drugInput.fill("E2E合成薬10mg");
   await page.getByLabel("RP1 用法用量").fill("1日1回 朝");
   await page.getByLabel("メモ（薬剤師メモ・特記事項）").fill("E2E下書き");
   await page.getByText("未保存の変更（このタブ内）").waitFor();
 
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const mobileHeader = await page.evaluate(() => {
+    const mode = document.querySelector(".system-mode-badge")?.getBoundingClientRect();
+    const unsaved = document.querySelector(".unsaved-work-status")?.getBoundingClientRect();
+    return mode === undefined || unsaved === undefined
+      ? null
+      : { modeBottom: mode.bottom, unsavedTop: unsaved.top };
+  });
+  assert(
+    mobileHeader !== null && mobileHeader.modeBottom <= mobileHeader.unsavedTop,
+    "mobile safety context: system mode overlaps unsaved-work status",
+  );
+  await page.setViewportSize({ width: 1366, height: 768 });
+
   await page.locator('.app-nav-link[href="/checkout"]').click();
+  await waitForRoute(page, "/checkout");
   await page.getByText("未保存下書き 1件").waitFor();
   await page.getByRole("link", { name: "処方下書きへ戻る" }).click();
+  await waitForRoute(page, "/prescriptions");
   await page.getByText("タブ内下書きを復元しました").waitFor();
   assert(
     (await page.getByLabel("RP1 薬剤名").inputValue()) === "E2E合成薬10mg",
@@ -216,6 +347,7 @@ async function checkDraftRecoveryAndPatientGuard(page) {
   );
 
   await page.locator('.app-nav-link[href="/patients"]').click();
+  await waitForRoute(page, "/patients");
   await searchPatients(page);
   await selectPatient(page, 1, "dismiss");
   await page.locator(".patient-context-bar").getByText("テスト患者 一").waitFor();
@@ -232,6 +364,7 @@ async function checkDraftRecoveryAndPatientGuard(page) {
   );
 
   await page.locator('.app-nav-link[href="/prescriptions"]').click();
+  await waitForRoute(page, "/prescriptions");
   assert(
     (await page.getByLabel("RP1 薬剤名").inputValue()) === "",
     "patient switch accept: old patient draft leaked into new patient",
@@ -255,6 +388,10 @@ async function checkDraftRecoveryAndPatientGuard(page) {
       width: viewport.width,
       height: viewport.height,
     });
+    if (viewport.width <= 820) {
+      await assertMobileSafetyContext(page, `prescription-${viewport.name}`);
+    }
+    await page.evaluate(() => window.scrollTo(0, 0));
     await assertNoPageOverflow(page, `prescription-${viewport.name}`);
     await runAxe(page, `prescription-${viewport.name}`);
     await page.screenshot({
@@ -286,7 +423,9 @@ try {
   await attachErrorCollection(page, "browser-gate");
 
   for (const route of routes) {
-    await checkRoute(page, route, { width: 1366, height: 768 });
+    for (const viewport of routeViewports) {
+      await checkRoute(page, route, viewport);
+    }
   }
   await checkKeyboardLandmarks(page);
   await checkDraftRecoveryAndPatientGuard(page);

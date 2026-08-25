@@ -81,14 +81,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <div
                   className="operator-profile"
                   role="group"
-                  aria-label="操作者情報は未接続"
+                  aria-label="操作者プロフィール表示は未接続"
                 >
                   <span className="operator-avatar" aria-hidden="true">
                     未
                   </span>
                   <div>
-                    <strong>操作者未接続</strong>
-                    <small>開発環境</small>
+                    <strong>プロフィール表示未接続</strong>
+                    <small>認証状態は各画面で確認</small>
                   </div>
                 </div>
               </div>

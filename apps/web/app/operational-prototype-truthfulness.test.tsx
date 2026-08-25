@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import AdminPage from "./admin/page";
+import ClaimCheckPage from "./claim-check/page";
 import MastersPage from "./masters/page";
 import MonthlyClosingPage from "./monthly-closing/page";
 import PatientsPage from "./patients/page";
@@ -38,6 +39,14 @@ describe("operator prototype operational truthfulness", () => {
     expect(html).not.toContain("合成ユーザーA");
     expect(html).not.toContain("弱いパスワード候補：合成例");
     expect(html).not.toContain("多要素認証未設定：合成例");
+  });
+
+  it("does not render fabricated patients or check results before the claim API exists", () => {
+    const html = renderToStaticMarkup(<ClaimCheckPage />);
+
+    expect(html).toContain('data-operational-data="unavailable"');
+    expect(html).not.toContain('data-synthetic="true"');
+    expect(html).not.toContain("合成患者");
   });
 
   it("does not style unknown queue totals as success or danger", () => {
