@@ -1,0 +1,494 @@
+/*
+ * Reversible readability and safety refinement for feat/operator-first-ui.
+ * Loaded after globals.css and operator-first.css; does not redefine domain status meaning.
+ */
+:root {
+  --ux-font-caption: 0.75rem;
+  --ux-font-small: 0.8125rem;
+  --ux-font-body: 0.875rem;
+  --ux-control-min: 40px;
+  --ux-control-primary: 44px;
+  --ux-patient-bar-offset: 5.5rem;
+}
+
+body {
+  min-width: 320px;
+}
+
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.75rem;
+  z-index: 200;
+  padding: 0.55rem 0.8rem;
+  border: 2px solid var(--color-accent-strong);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--color-accent-strong);
+  font-weight: 800;
+  text-decoration: none;
+  transform: translateY(-160%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+.app-brand {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-brand:hover .app-title {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.app-title {
+  display: block;
+}
+
+.app-header {
+  grid-template-columns: minmax(260px, auto) minmax(340px, 1fr) minmax(270px, auto);
+}
+
+.integration-chip[data-state="prototype"] small {
+  color: var(--color-accent-strong);
+  font-weight: 750;
+}
+
+.integration-chip strong,
+.operator-profile strong {
+  font-size: var(--ux-font-small);
+}
+
+.integration-chip small,
+.operator-profile small,
+.app-subtitle {
+  font-size: var(--ux-font-caption);
+}
+
+.system-mode-badge[data-mode="UNDETECTED"] {
+  border-style: dashed;
+  border-color: var(--color-warning);
+  background: var(--color-warning-soft);
+  color: #7a3e00;
+}
+
+.system-mode-badge[data-mode="UNDETECTED"] .system-mode-shape {
+  font-size: 0.9rem;
+}
+
+.app-nav-label {
+  margin: 0 0 0.4rem;
+  padding: 0 0.6rem;
+  color: var(--color-fg-muted);
+  font-size: var(--ux-font-caption);
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.app-nav .app-nav-link {
+  min-height: var(--ux-control-primary);
+  font-size: var(--ux-font-body);
+}
+
+.app-nav-icon {
+  font-size: 0.7rem;
+}
+
+.app-nav-footer {
+  gap: 0.15rem;
+  font-size: var(--ux-font-caption);
+}
+
+.app-nav-footer strong {
+  color: #3e4a61;
+}
+
+.operator-command-row {
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  min-height: var(--ux-control-primary);
+}
+
+.operator-command-row input {
+  min-height: 36px;
+  font-size: var(--ux-font-body);
+}
+
+.operator-command-shortcut {
+  padding: 0.18rem 0.4rem;
+  border: 1px solid var(--color-border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: #f8f9fc;
+  color: var(--color-fg-muted);
+  font-family: inherit;
+  font-size: var(--ux-font-caption);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.operator-command-row .operator-command-submit,
+.operator-command-row .operator-command-voice {
+  min-height: 36px;
+  font-size: var(--ux-font-caption);
+}
+
+.operator-command-row .operator-command-voice:disabled {
+  border-style: dashed;
+  color: var(--color-fg-muted);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.operator-command-preview,
+.operator-command-note,
+.operator-command-preview small {
+  font-size: var(--ux-font-small);
+}
+
+.patient-context-bar {
+  position: sticky;
+  top: calc(var(--header-height) + 0.5rem);
+  z-index: 36;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.45rem 0.75rem;
+  background: rgb(255 255 255 / 0.97);
+  backdrop-filter: blur(14px);
+}
+
+.patient-context-bar-title,
+.patient-kana,
+.patient-eligibility-checked-at {
+  font-size: var(--ux-font-caption);
+}
+
+.patient-context-bar .patient-header {
+  grid-column: 1;
+  min-width: 0;
+}
+
+.patient-context-bar > button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-height: var(--ux-control-min);
+  align-self: center;
+  font-size: var(--ux-font-small);
+}
+
+.app-workspace:has(.patient-context-bar) .operator-rail,
+.app-workspace:has(.patient-context-bar) .prescription-history-panel,
+.app-workspace:has(.patient-context-bar) .prescription-safety-rail {
+  top: calc(var(--header-height) + var(--ux-patient-bar-offset));
+  max-height: calc(100vh - var(--header-height) - var(--ux-patient-bar-offset) - 0.75rem);
+}
+
+.screen-title {
+  font-size: 1.4rem;
+}
+
+.screen-description,
+.screen-eyebrow,
+.prototype-banner,
+.metric-label,
+.metric-detail,
+.metric-unit,
+.operator-panel-header p,
+.rail-muted,
+.operator-empty-copy,
+.rail-action-list,
+.rail-steps,
+.key-value-list dt,
+.key-value-list dd,
+.inline-notice,
+.intake-card p,
+.warning-list article p,
+.settings-list small {
+  font-size: var(--ux-font-small);
+}
+
+.operator-panel-header h3,
+.rail-card-header h3,
+.intake-card h3,
+.rail-patient-name,
+.settings-list strong {
+  font-size: 0.9375rem;
+}
+
+.operator-status-pill {
+  min-height: 26px;
+  padding-inline: 0.55rem;
+  font-size: var(--ux-font-caption);
+}
+
+.operator-button,
+.operator-panel-actions button,
+.operator-inline-actions button,
+.operator-text-action,
+.rail-text-button,
+.rail-link-button,
+.payment-method-grid button,
+.check-chip-row label,
+.operator-tabs button,
+.prescription-history-card button,
+.prescription-draft-table button {
+  min-height: var(--ux-control-min);
+  font-size: var(--ux-font-small);
+}
+
+.operator-button:disabled,
+.operator-panel-actions button:disabled,
+.operator-inline-actions button:disabled,
+.payment-method-grid button:disabled,
+.prescription-history-card button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.operator-button:not(:disabled):hover,
+.operator-panel-actions button:not(:disabled):hover,
+.operator-inline-actions button:not(:disabled):hover,
+.prescription-history-card button:not(:disabled):hover,
+.rail-link-button:hover {
+  border-color: var(--color-accent-strong);
+  background: var(--color-accent-soft);
+}
+
+.operator-table {
+  font-size: var(--ux-font-small);
+}
+
+.operator-table thead,
+.filter-grid label,
+.prescription-meta-grid label,
+.prescription-note-label,
+.prescription-options legend,
+.prescription-options label,
+.prescription-history-card header,
+.prescription-history-card ol,
+.closing-stepper li {
+  font-size: var(--ux-font-caption);
+}
+
+.operator-table th,
+.operator-table td {
+  padding-block: 0.58rem;
+}
+
+.operator-table input,
+.operator-table select,
+.operator-input,
+.prescription-meta-grid input,
+.prescription-meta-grid select,
+.prescription-note-label textarea,
+.filter-grid input,
+.filter-grid select {
+  min-height: var(--ux-control-min);
+  font-size: var(--ux-font-small);
+}
+
+.table-scroll {
+  scrollbar-gutter: stable;
+}
+
+.prescription-history-card {
+  gap: 0.45rem;
+  padding: 0.65rem;
+}
+
+.prescription-history-card[data-selected="true"] {
+  border-color: var(--color-accent-strong);
+  box-shadow: 0 0 0 2px var(--color-accent-soft);
+}
+
+.prescription-replacement-review {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.7rem;
+  border: 2px solid var(--color-warning);
+  border-radius: 9px;
+  background: var(--color-warning-soft);
+}
+
+.prescription-replacement-review h4,
+.prescription-replacement-review p {
+  margin: 0;
+}
+
+.prescription-replacement-review h4 {
+  font-size: 0.9375rem;
+}
+
+.prescription-replacement-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.prescription-replacement-summary > div {
+  padding: 0.45rem;
+  border: 1px solid #efc99e;
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.prescription-replacement-summary dt {
+  color: var(--color-fg-muted);
+  font-size: var(--ux-font-caption);
+}
+
+.prescription-replacement-summary dd {
+  margin: 0.12rem 0 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.prescription-replacement-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.prescription-replacement-actions button {
+  min-height: var(--ux-control-min);
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 7px;
+  background: #ffffff;
+  color: var(--color-fg);
+  font-size: var(--ux-font-small);
+  font-weight: 750;
+}
+
+.prescription-replacement-actions button[data-kind="primary"] {
+  border-color: var(--color-warning);
+  background: #8a4600;
+  color: #ffffff;
+}
+
+.prescription-history-empty {
+  padding: 0.75rem;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: 8px;
+  color: var(--color-fg-muted);
+  font-size: var(--ux-font-small);
+}
+
+.patient-safety-summary {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.patient-safety-summary strong {
+  font-size: 0.9375rem;
+}
+
+.patient-safety-summary span {
+  font-size: var(--ux-font-small);
+}
+
+.screen-header,
+.operator-panel,
+.rail-card,
+.patient-context-bar {
+  scroll-margin-top: calc(var(--header-height) + 1rem);
+}
+
+@media (max-width: 1320px) {
+  .operator-command-shortcut {
+    display: none;
+  }
+
+  .operator-command-row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+}
+
+@media (max-width: 1020px) {
+  .app-workspace:has(.patient-context-bar) .operator-rail,
+  .app-workspace:has(.patient-context-bar) .prescription-history-panel,
+  .app-workspace:has(.patient-context-bar) .prescription-safety-rail {
+    top: auto;
+    max-height: none;
+  }
+
+  .prescription-replacement-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .app-nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .patient-context-bar {
+    position: static;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .patient-context-bar .patient-header,
+  .patient-context-bar > button {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .patient-context-bar > button {
+    width: fit-content;
+  }
+}
+
+@media (max-width: 540px) {
+  .operator-command-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .operator-command-submit {
+    display: none;
+  }
+
+  .prescription-replacement-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .prescription-replacement-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .prescription-replacement-actions button {
+    width: 100%;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .operator-panel,
+  .rail-card,
+  .metric-card,
+  .patient-context-bar,
+  .operator-status-pill,
+  .integration-chip {
+    border-color: currentColor;
+  }
+}
+
+@media (forced-colors: active) {
+  .system-mode-badge[data-mode="UNDETECTED"],
+  .prescription-replacement-review,
+  .prescription-history-card[data-selected="true"] {
+    border: 2px solid CanvasText;
+  }
+}
