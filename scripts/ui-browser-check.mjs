@@ -66,6 +66,15 @@ function isExpectedDraftNotFoundResponse(response) {
   );
 }
 
+function extractLinkedBusinessDate(text) {
+  const match = /受付日\s+(\d{4}-\d{2}-\d{2})/u.exec(text ?? "");
+  assert(
+    match !== null,
+    "reception handoff: verified business date was not visible",
+  );
+  return match[1];
+}
+
 async function attachErrorCollection(page, label) {
   page.on("response", (response) => {
     if (response.status() !== 404 || isExpectedDraftNotFoundResponse(response)) {
@@ -384,6 +393,11 @@ async function checkReceptionHandoff(page) {
   await handoff.click();
   await page.waitForURL(`${BASE_URL}/prescriptions`);
   await page.getByText("受付との関連を確認しました").waitFor();
+  const linkedNoticeText = await page
+    .locator('section[data-reception-linked="true"] > .inline-notice')
+    .first()
+    .textContent();
+  const linkedBusinessDate = extractLinkedBusinessDate(linkedNoticeText);
   await page.locator(".patient-context-bar").getByText("テスト患者 一").waitFor();
   assert(
     (await page.locator('[data-reception-linked="true"]').count()) === 1,
@@ -423,7 +437,7 @@ async function checkReceptionHandoff(page) {
   const launchRegion = page.getByRole("region", {
     name: "処方入力への受付引き継ぎ",
   });
-  await launchRegion.getByLabel("受付の業務日").fill("2026-08-25");
+  await launchRegion.getByLabel("受付の業務日").fill(linkedBusinessDate);
   await launchRegion
     .getByRole("button", { name: "対象受付を確認" })
     .click();
@@ -442,6 +456,7 @@ async function checkReceptionHandoff(page) {
   findings.interactionChecks.push({
     name: "reception-search-to-guarded-handoff",
     status: "pass",
+    businessDate: linkedBusinessDate,
   });
 }
 

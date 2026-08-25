@@ -34,7 +34,7 @@ describe("UI browser validation gate", () => {
     );
   });
 
-  it("covers keyboard, accessibility, reflow, reception handoff, and unsaved-draft safety", () => {
+  it("covers keyboard, accessibility, reflow, reception identity, and unsaved-draft safety", () => {
     expect(browserCheck).toContain("axe.run");
     expect(browserCheck).toContain('waitUntil: "domcontentloaded"');
     expect(browserCheck).toContain("const routeHeadings = new Map");
@@ -51,6 +51,14 @@ describe("UI browser validation gate", () => {
     expect(browserCheck).toContain("data-server-draft-version");
     expect(browserCheck).toContain("data-unsaved-draft");
     expect(browserCheck).toContain("isExpectedDraftNotFoundResponse");
+    expect(browserCheck).toContain("extractLinkedBusinessDate");
+    expect(browserCheck).toContain("linkedBusinessDate");
+    expect(browserCheck).toContain(
+      'getByLabel("受付の業務日").fill(linkedBusinessDate)',
+    );
+    expect(browserCheck).not.toContain(
+      'getByLabel("受付の業務日").fill("2026-08-25")',
+    );
     expect(browserCheck).toContain("beforeunload");
     expect(browserCheck).toContain("reflow-200pct-equivalent");
     expect(browserCheck).toContain("未保存下書き 1件");
