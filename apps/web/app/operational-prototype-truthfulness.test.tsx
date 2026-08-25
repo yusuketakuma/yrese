@@ -30,11 +30,11 @@ describe("operator prototype operational truthfulness", () => {
     expect(html).not.toContain("適用日 2024");
   });
 
-  it("does not render fabricated users or security alarm counts", () => {
+  it("does not render fabricated users or security alarm counts while admin data loads", () => {
     const html = renderToStaticMarkup(<AdminPage />);
 
-    expect(html).toContain("ユーザー一覧API未接続");
-    expect(html).toContain("認証監査API未接続");
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain("認証・tenant境界・API状態を検証しています");
     expect(html).not.toContain("合成ユーザーA");
     expect(html).not.toContain("弱いパスワード候補：合成例");
     expect(html).not.toContain("多要素認証未設定：合成例");

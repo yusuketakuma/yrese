@@ -2,7 +2,7 @@ name: UI browser gate
 
 on:
   push:
-    branches: [feat/operator-first-ui]
+    branches: [main, feat/operator-first-ui]
     paths:
       - "apps/web/**"
       - "packages/contracts/**"
@@ -70,12 +70,12 @@ jobs:
           ./node_modules/.bin/playwright install --with-deps chromium
           cp ../scripts/ui-browser-check.mjs ./ui-browser-check.mjs
 
-      - name: Start fixture API and production web server
+      - name: Start fixture API and browser web server
         run: |
           mkdir -p "$UI_ARTIFACT_DIR"
           node scripts/ui-fixture-api.mjs > "$UI_ARTIFACT_DIR/fixture-api.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/yrese-fixture-api.pid"
-          pnpm --filter @yrese/web start > "$UI_ARTIFACT_DIR/web.log" 2>&1 &
+          pnpm --filter @yrese/web dev > "$UI_ARTIFACT_DIR/web.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/yrese-web.pid"
 
           for attempt in $(seq 1 60); do

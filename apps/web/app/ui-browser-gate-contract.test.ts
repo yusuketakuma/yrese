@@ -19,8 +19,10 @@ const fixtureApi = readFileSync(
 );
 
 describe("UI browser validation gate", () => {
-  it("runs for the operator branch and uploads evidence", () => {
-    expect(workflow).toContain("feat/operator-first-ui");
+  it("runs for main and the operator branch against the development proxy", () => {
+    expect(workflow).toContain("branches: [main, feat/operator-first-ui]");
+    expect(workflow).toContain("pnpm --filter @yrese/web build");
+    expect(workflow).toContain("pnpm --filter @yrese/web dev");
     expect(workflow).toContain("playwright@1.62.1");
     expect(workflow).toContain("axe-core@4.13.0");
     expect(workflow).toContain(
