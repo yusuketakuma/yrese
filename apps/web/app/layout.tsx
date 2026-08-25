@@ -29,17 +29,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <span className="app-brand-mark" aria-hidden="true">
                   Y
                 </span>
-                <span>
+                <div>
                   <h1 className="app-title">yrese</h1>
                   <span className="app-subtitle">調剤業務ワークスペース</span>
-                </span>
+                </div>
               </Link>
               <SystemModeBadge />
             </div>
             <div className="app-header-command">
               <OperatorCommandBar />
             </div>
-            <div className="app-header-meta" aria-label="接続・実行環境">
+            <div className="app-header-meta" role="group" aria-label="接続・実行環境">
               <span className="integration-chip" data-state="disconnected" role="status">
                 <strong>Gbrain</strong>
                 <small>未接続</small>
@@ -48,7 +48,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <strong>UI</strong>
                 <small>プロトタイプ</small>
               </span>
-              <div className="operator-profile" aria-label="操作者情報は未接続">
+              <div className="operator-profile" role="group" aria-label="操作者情報は未接続">
                 <span className="operator-avatar" aria-hidden="true">
                   未
                 </span>
