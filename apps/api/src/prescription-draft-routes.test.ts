@@ -154,7 +154,7 @@ describe("prescription draft routes", () => {
     });
   });
 
-  it("fails closed before data lookup for an untrusted tenant context", async () => {
+  it("does not disclose a scoped reception across authenticated tenant contexts", async () => {
     const instance = server();
     const response = await instance.inject({
       method: "PUT",
@@ -163,10 +163,33 @@ describe("prescription draft routes", () => {
       payload: baseBody,
     });
 
-    expect(response.statusCode).toBe(403);
+    expect(response.statusCode).toBe(404);
     expect(response.headers["cache-control"]).toBe("no-store");
-    expect(response.json()).toMatchObject({
-      errorCode: AUTH_PERMISSION_DENIED_ERROR_CODE,
+    expect(response.json()).toEqual({
+      statusCode: 404,
+      error: "Not Found",
+      message: "Prescription draft context not found",
+    });
+  });
+
+  it("does not allow draft creation from a completed reception", async () => {
+    const instance = server();
+    const response = await instance.inject({
+      method: "PUT",
+      url: "/prescription-drafts/by-reception/reception-syn-003",
+      headers: authorizedHeaders,
+      payload: {
+        ...baseBody,
+        patientId: "patient-syn-003",
+      },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.json()).toEqual({
+      statusCode: 404,
+      error: "Not Found",
+      message: "Prescription draft context not found",
     });
   });
 
