@@ -6,6 +6,7 @@
 - Treats route values as untrusted selectors, never as authorization evidence.
 - Re-fetches the existing authenticated, tenant/pharmacy-scoped reception queue for the stated business date.
 - Requires the selected patient context and queue entry patient to match before rendering the prescription workspace.
+- Reuses the existing guarded handoff for editable-status checks and same-patient draft conflict confirmation.
 - Keeps the current in-tab unsaved draft and clinical/calculation unavailable boundaries unchanged.
 
 ## Explicitly not implemented
@@ -26,5 +27,7 @@ Those items require the relevant APPROVED SSOT and human gates before implementa
 2. A missing selected patient blocks the workspace before API use.
 3. The reception must exist in the authenticated tenant/pharmacy queue for the requested business date.
 4. The queue entry patient must match the selected patient.
-5. Unknown, missing, or failed reception context never degrades to an unverified editable workspace.
-6. No production mock patient, medication, or prescription data is introduced.
+5. Completed or cancelled receptions never expose an enabled prescription action.
+6. Changing reception cannot reuse a same-patient unsaved draft without explicit confirmation.
+7. Unknown, missing, or failed reception context never degrades to an unverified editable workspace.
+8. No production mock patient, medication, or prescription data is introduced.

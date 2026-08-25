@@ -46,7 +46,7 @@ export function ReceptionPrescriptionHandoffAction({
     patientContext !== null &&
     originContext !== null &&
     canOpenPrescriptionFromReception(entry);
-  const actionLabel = `この受付を処方入力へ引き継ぐ: ${entry.patient.name}（患者番号 ${entry.patient.patientNumber}）`;
+  const actionLabel = `この受付を処方入力へ引き継ぐ: ${entry.patient.name}（患者番号 ${entry.patient.patientNumber}、受付ID ${entry.receptionId}）`;
 
   function handleClick(event: MouseEvent<HTMLAnchorElement>) {
     if (!available || patientContext === null || originContext === null) {

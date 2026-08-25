@@ -13,16 +13,24 @@ import {
   ReceptionError,
   fetchReceptionQueue,
 } from "../reception-dashboard";
+import { ReceptionPrescriptionHandoffAction } from "../reception-prescription-handoff";
 import {
   type PrescriptionLaunchContext,
   validateReceptionLaunchEntry,
 } from "./prescription-launch-context";
-import { PrescriptionWorkspace } from "./prescription-workspace";
 
 type ReceptionContextLoadState =
   | { readonly status: "loading" }
-  | { readonly status: "ready"; readonly entry: ReceptionQueueEntry }
-  | { readonly status: "error"; readonly notice: ErrorNoticeProps };
+  | {
+      readonly status: "ready";
+      readonly requestKey: string;
+      readonly entry: ReceptionQueueEntry;
+    }
+  | {
+      readonly status: "error";
+      readonly requestKey: string;
+      readonly notice: ErrorNoticeProps;
+    };
 
 const GENERIC_RECEPTION_CONTEXT_ERROR = Object.freeze({
   message: "受付コンテキストを確認できませんでした。",
@@ -48,6 +56,11 @@ export function PrescriptionLaunchRoute({
   });
 
   const selectedPatientId = selectedPatient?.patientId;
+  const requestKey = JSON.stringify([
+    launch.receptionId,
+    launch.businessDate,
+    selectedPatientId ?? null,
+  ]);
 
   useEffect(() => {
     if (selectedPatientId === undefined) {
@@ -70,6 +83,7 @@ export function PrescriptionLaunchRoute({
         if (validation.status === "not-found") {
           setState({
             status: "error",
+            requestKey,
             notice: {
               message: "指定された受付を現在の薬局・業務日で確認できませんでした。",
               nextAction:
@@ -81,6 +95,7 @@ export function PrescriptionLaunchRoute({
         if (validation.status === "patient-mismatch") {
           setState({
             status: "error",
+            requestKey,
             notice: {
               message: "受付と患者の組み合わせを確認できませんでした。",
               nextAction:
@@ -89,18 +104,26 @@ export function PrescriptionLaunchRoute({
           });
           return;
         }
-        setState({ status: "ready", entry: validation.entry });
+        setState({
+          status: "ready",
+          requestKey,
+          entry: validation.entry,
+        });
       })
       .catch((error: unknown) => {
         if (!current || controller.signal.aborted) return;
-        setState({ status: "error", notice: noticeFromError(error) });
+        setState({
+          status: "error",
+          requestKey,
+          notice: noticeFromError(error),
+        });
       });
 
     return () => {
       current = false;
       controller.abort();
     };
-  }, [launch, selectedPatientId]);
+  }, [launch, requestKey, selectedPatientId]);
 
   if (selectedPatient === null) {
     return (
@@ -117,7 +140,7 @@ export function PrescriptionLaunchRoute({
     );
   }
 
-  if (state.status === "loading") {
+  if (state.status === "loading" || state.requestKey !== requestKey) {
     return (
       <section
         aria-label="受付コンテキスト確認中"
@@ -144,7 +167,6 @@ export function PrescriptionLaunchRoute({
     <div
       data-prescription-launch="verified"
       data-reception-id={state.entry.receptionId}
-      data-patient-id={state.entry.patient.patientId}
     >
       <InlineNotice title="受付コンテキストを確認しました" tone="info" announce="polite">
         <p>
@@ -157,7 +179,10 @@ export function PrescriptionLaunchRoute({
           この確認は、認証済みtenant・薬局の受付キューに受付が存在し、選択患者と一致することだけを示します。処方内容の妥当性、安全性、保存完了は示しません。
         </p>
       </InlineNotice>
-      <PrescriptionWorkspace />
+      <ReceptionPrescriptionHandoffAction
+        entry={state.entry}
+        businessDate={launch.businessDate}
+      />
     </div>
   );
 }

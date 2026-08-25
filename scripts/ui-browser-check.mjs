@@ -331,6 +331,31 @@ async function checkReceptionHandoff(page) {
     name: "reception-to-prescription-fresh-patient-verification",
     status: "pass",
   });
+
+  await page.locator('.app-nav-link[href="/"]').click();
+  await waitForRoute(page, "/");
+  const launchRegion = page.getByRole("region", {
+    name: "処方入力への受付引き継ぎ",
+  });
+  await launchRegion.getByLabel("受付の業務日").fill("2026-08-25");
+  await launchRegion
+    .getByRole("button", { name: "対象受付を確認" })
+    .click();
+  const searchedHandoff = launchRegion.getByRole("link", {
+    name: /受付ID reception-e2e-001/u,
+  });
+  await searchedHandoff.waitFor();
+  assert(
+    (await searchedHandoff.getAttribute("href")) === "/prescriptions",
+    "reception search launch: result bypassed the guarded handoff route",
+  );
+  await searchedHandoff.click();
+  await page.waitForURL(`${BASE_URL}/prescriptions`);
+  await page.getByText("受付との関連を確認しました").waitFor();
+  findings.interactionChecks.push({
+    name: "reception-search-to-guarded-handoff",
+    status: "pass",
+  });
 }
 
 async function searchPatients(page) {

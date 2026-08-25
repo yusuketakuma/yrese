@@ -13,6 +13,7 @@ import {
   ReceptionError,
   fetchReceptionQueue,
 } from "./reception-dashboard";
+import { ReceptionPrescriptionHandoffAction } from "./reception-prescription-handoff";
 
 type LaunchSearchState =
   | { readonly status: "idle" }
@@ -109,6 +110,8 @@ export function ReceptionPrescriptionLaunch() {
             required
             value={businessDate}
             onChange={(event) => {
+              requestRef.current?.abort();
+              requestRef.current = null;
               setBusinessDate(event.target.value);
               setState({ status: "idle" });
             }}
@@ -143,12 +146,10 @@ export function ReceptionPrescriptionLaunch() {
                   {RECEPTION_STATUS_LABELS[entry.receptionStatus]}
                 </StatusPill>
               </div>
-              <Link
-                className="operator-button"
-                href={`/prescriptions/${encodeURIComponent(entry.receptionId)}?date=${encodeURIComponent(businessDate)}`}
-              >
-                この受付で処方入力を開始
-              </Link>
+              <ReceptionPrescriptionHandoffAction
+                entry={entry}
+                businessDate={businessDate}
+              />
             </li>
           ))}
         </ul>
