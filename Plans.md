@@ -33,15 +33,15 @@
 
 | Field | Current evidence |
 |---|---|
-| Branch | `feature/wp-5101-uiux-review` |
-| Local / remote base | `HEAD = main = origin/main = c7b61406c6f6e58363139e3dced79c62f30cebf5`(2026-08-26 live確認) |
-| Upstream divergence | `origin/main...HEAD = 0 behind / 0 ahead`; direct main commit/pushなし |
-| Working tree | WP-5101 PLAN_ONLY candidate exact5: `Plans.md` + `State.md` + `docs/ui-ux-refresh/13` / `14` / `15` |
-| Last update | 2026-08-26 JST(current base再同期、fresh independent/Oracle review findings反映中) |
+| Review base | `main = origin/main = c7b61406c6f6e58363139e3dced79c62f30cebf5`(2026-08-26 live確認) |
+| Candidate branch | `feature/wp-5101-uiux-review = origin/feature/wp-5101-uiux-review`; exact headはGit / Draft PR #5を正本とする |
+| Upstream relation | candidate branchはreview baseのfast-forward子。direct main commit/pushなし |
+| Candidate scope | WP-5101 PLAN_ONLY exact5: `Plans.md` + `State.md` + `docs/ui-ux-refresh/13` / `14` / `15`; exact head/statusはGitを正本とする |
+| Last update | 2026-08-26 JST(Draft PR #5でhuman decision待ち。exact review/CI結果は当該PRと外部evidenceを正本とする) |
 | Active Goal | WP-5101 の non-SSOT draft review packet を human product decision へ提示可能にする。製品実装は未claim |
-| Current critical path | frozen candidate review → human product authority による Candidate A/B 判断 → 必要時のみ PRC-007 atomic cutover |
+| Current critical path | human product authority による Candidate A/B 判断 → 必要な PRC-007 atomic cutoverとC-100 charter整合 → 再計画 |
 | Main blocker | human product A/B decision、PRC-007、U3/U4 の実装前 relevant review/human authorization。後続実装は全件 NOT_READY |
-| Required verification | final exact diff: `git diff --check`、SSOT index、secret scan、fresh independent review、verified Oracle。code/test/build/browserはPLAN_ONLYではN/A |
+| Required verification | exact diffの`git diff --check`、SSOT index、secret scan、fresh independent review、verified Oracle、Draft PR exact-head CI。code test/build/browser runtimeはPLAN_ONLYではN/A |
 | Work-selection drift | `DEVELOPMENT_POLICY.md §11` の旧 `CURRENT — WP-4250` はC-100改版待ち。AGT-018 §2で優先するcurrent requestはWP-5101 PLAN_ONLYだけを選択し、drift解消前の実装claimを禁止 |
 | Next scan cursor | `c7b6140`; new High/Medium finding、remote main更新、human decisionでreset |
 

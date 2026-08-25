@@ -7,13 +7,15 @@
   Codex root is the sole `active_root_writer`; delegated reviewers are read-only.
 - **Git boundary:** `main` and `origin/main` are
   `c7b61406c6f6e58363139e3dced79c62f30cebf5`. Candidate work is isolated on
-  `feature/wp-5101-uiux-review` and owns exact five paths: `Plans.md`, `State.md`, and
+  local/remote `feature/wp-5101-uiux-review` and owns exact five paths; exact head/status
+  is read from Git. The paths are `Plans.md`, `State.md`, and
   `docs/ui-ux-refresh/13-ui-component-system-ssot-draft.md`,
   `14-one-board-direction-decision.md`, `15-workflow-stage-enum-ssot-draft.md`.
 - **Current gate:** no APPROVED SSOT, product code, schema, migration, or production data
   is changed. Candidate A/B product selection, PRC-007 approval, and applicable
   medical-safety/privacy/accessibility/pharmacist human authorization remain open.
-- **Landing / remote:** no main merge is permitted before those gates. Draft PR #4
+- **Landing / remote:** Draft PR #5 is the PLAN_ONLY review vehicle; exact-head CI status
+  is read from GitHub. No main merge is permitted before the open gates. Draft PR #4
   (`feat/prescription-draft-persistence`) remains conflicting, failing, and outside the
   approved durable-writer boundary; do not merge it.
 
