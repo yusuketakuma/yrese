@@ -28,6 +28,9 @@ const patients = [
   },
 ];
 
+const prescriptionDrafts = new Map();
+let fixtureClock = 0;
+
 function receptionEntries(date) {
   return [
     {
@@ -50,7 +53,7 @@ function receptionEntries(date) {
 function corsHeaders(request) {
   return {
     "access-control-allow-origin": ALLOWED_ORIGIN,
-    "access-control-allow-methods": "GET, POST, OPTIONS",
+    "access-control-allow-methods": "GET, POST, PUT, OPTIONS",
     "access-control-allow-headers":
       request.headers["access-control-request-headers"] ?? "*",
     "access-control-max-age": "600",
@@ -67,7 +70,53 @@ function sendJson(request, response, status, body) {
   response.end(JSON.stringify(body));
 }
 
-const server = createServer((request, response) => {
+function prescriptionDraftReceptionId(pathname) {
+  const prefix = "/prescription-drafts/by-reception/";
+  return pathname.startsWith(prefix)
+    ? decodeURIComponent(pathname.slice(prefix.length))
+    : null;
+}
+
+function matchingReception(receptionId, patientId, businessDate) {
+  return receptionEntries(businessDate).find(
+    (entry) =>
+      entry.receptionId === receptionId &&
+      entry.patient.patientId === patientId,
+  );
+}
+
+function draftKey(receptionId, patientId, businessDate) {
+  return `${receptionId}:${patientId}:${businessDate}`;
+}
+
+function readJsonBody(request) {
+  return new Promise((resolve, reject) => {
+    let raw = "";
+    request.setEncoding("utf8");
+    request.on("data", (chunk) => {
+      raw += chunk;
+      if (raw.length > 64_000) {
+        reject(new Error("fixture request too large"));
+        request.destroy();
+      }
+    });
+    request.on("end", () => {
+      try {
+        resolve(JSON.parse(raw));
+      } catch (error) {
+        reject(error);
+      }
+    });
+    request.on("error", reject);
+  });
+}
+
+function nextFixtureInstant() {
+  fixtureClock += 1;
+  return `2026-08-25T00:00:${String(fixtureClock).padStart(2, "0")}.000Z`;
+}
+
+async function handleRequest(request, response) {
   const method = request.method ?? "GET";
   const url = new URL(
     request.url ?? "/",
@@ -95,7 +144,15 @@ const server = createServer((request, response) => {
       tenantId: "tenant-e2e",
       pharmacyId: "pharmacy-e2e",
       actorId: "actor-e2e",
-      scopes: ["tenant:read", "tenant:admin", "user:admin"],
+      scopes: [
+        "tenant:read",
+        "tenant:admin",
+        "user:admin",
+        "patient:read",
+        "reception:read",
+        "prescription:read",
+        "prescription:write",
+      ],
     });
     return;
   }
@@ -152,9 +209,118 @@ const server = createServer((request, response) => {
     return;
   }
 
+  const receptionId = prescriptionDraftReceptionId(url.pathname);
+  if (receptionId !== null && method === "GET") {
+    const patientId = url.searchParams.get("patientId");
+    const businessDate = url.searchParams.get("date");
+    if (
+      patientId === null ||
+      businessDate === null ||
+      matchingReception(receptionId, patientId, businessDate) === undefined
+    ) {
+      sendJson(request, response, 404, {
+        statusCode: 404,
+        error: "Not Found",
+        message: "Prescription draft context not found",
+      });
+      return;
+    }
+    const draft = prescriptionDrafts.get(
+      draftKey(receptionId, patientId, businessDate),
+    );
+    if (draft === undefined) {
+      sendJson(request, response, 404, {
+        statusCode: 404,
+        error: "Not Found",
+        message: "Prescription draft context not found",
+      });
+      return;
+    }
+    sendJson(request, response, 200, draft);
+    return;
+  }
+
+  if (receptionId !== null && method === "PUT") {
+    let body;
+    try {
+      body = await readJsonBody(request);
+    } catch {
+      sendJson(request, response, 400, {
+        statusCode: 400,
+        error: "Bad Request",
+        message: "Invalid prescription draft request",
+      });
+      return;
+    }
+    const patientId = body?.patientId;
+    const businessDate = body?.businessDate;
+    const expectedVersion = body?.expectedVersion;
+    if (
+      typeof patientId !== "string" ||
+      typeof businessDate !== "string" ||
+      !Number.isInteger(expectedVersion) ||
+      typeof body?.draft !== "object" ||
+      body.draft === null ||
+      matchingReception(receptionId, patientId, businessDate) === undefined
+    ) {
+      sendJson(request, response, 404, {
+        statusCode: 404,
+        error: "Not Found",
+        message: "Prescription draft context not found",
+      });
+      return;
+    }
+
+    const key = draftKey(receptionId, patientId, businessDate);
+    const existing = prescriptionDrafts.get(key);
+    const currentVersion = existing?.version ?? 0;
+    if (expectedVersion !== currentVersion) {
+      sendJson(request, response, 409, {
+        statusCode: 409,
+        error: "Conflict",
+        message: "Prescription draft version conflict",
+      });
+      return;
+    }
+
+    const now = nextFixtureInstant();
+    const saved = {
+      prescriptionId:
+        existing?.prescriptionId ?? `prescription-${receptionId}`,
+      receptionId,
+      patientId,
+      businessDate,
+      version: currentVersion + 1,
+      lifecycleStatus: "SERVER_SAVED",
+      draft: body.draft,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+      createdBy: existing?.createdBy ?? "actor-e2e",
+      updatedBy: "actor-e2e",
+      saveDisposition: existing === undefined ? "created" : "updated",
+    };
+    prescriptionDrafts.set(key, saved);
+    sendJson(request, response, existing === undefined ? 201 : 200, saved);
+    return;
+  }
+
   sendJson(request, response, 404, {
     errorCode: "UI-FIXTURE-404",
     message: "Fixture route not found",
+  });
+}
+
+const server = createServer((request, response) => {
+  void handleRequest(request, response).catch(() => {
+    if (!response.headersSent) {
+      sendJson(request, response, 500, {
+        statusCode: 500,
+        error: "Internal Server Error",
+        message: "Fixture request failed",
+      });
+    } else {
+      response.destroy();
+    }
   });
 });
 
