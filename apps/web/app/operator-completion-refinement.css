@@ -3,9 +3,13 @@
  * Loaded after the adversarial layer. Domain status semantics are unchanged.
  */
 
-/* The base warning orange is suitable for borders, not small text on white. */
+/* Base semantic hues remain unchanged; small foreground text needs darker projections. */
 .integration-chip[data-state="disconnected"] small {
   color: #8a3f00;
+}
+
+.operator-status-pill[data-tone="danger"] {
+  color: #b42318;
 }
 
 .prototype-action-shell {
