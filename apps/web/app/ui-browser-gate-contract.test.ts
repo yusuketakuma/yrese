@@ -47,6 +47,10 @@ describe("UI browser validation gate", () => {
     expect(browserCheck.match(/caret: "initial"/g)).toHaveLength(4);
     expect(browserCheck).toContain("reception-to-prescription-handoff");
     expect(browserCheck).toContain("受付との関連を確認しました");
+    expect(browserCheck).toContain("waitForPersistedDraft");
+    expect(browserCheck).toContain("data-server-draft-version");
+    expect(browserCheck).toContain("data-unsaved-draft");
+    expect(browserCheck).toContain("isExpectedDraftNotFoundResponse");
     expect(browserCheck).toContain("beforeunload");
     expect(browserCheck).toContain("reflow-200pct-equivalent");
     expect(browserCheck).toContain("未保存下書き 1件");
@@ -61,6 +65,8 @@ describe("UI browser validation gate", () => {
     expect(fixtureApi).toContain("テスト患者 一");
     expect(fixtureApi).toContain('url.pathname === "/whoami"');
     expect(fixtureApi).toContain('url.pathname === "/reception/queue"');
+    expect(fixtureApi).toContain("/prescription-drafts/by-reception/");
+    expect(fixtureApi).toContain("expectedVersion");
     expect(fixtureApi).toContain("tenant-e2e");
     expect(fixtureApi).toContain('service: "api"');
     expect(fixtureApi).toContain("127.0.0.1");

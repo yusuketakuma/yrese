@@ -58,15 +58,42 @@ function routeName(route) {
   return route === "/" ? "reception" : route.slice(1).replaceAll("/", "-");
 }
 
+function isExpectedDraftNotFoundResponse(response) {
+  return (
+    response.status() === 404 &&
+    response.request().method() === "GET" &&
+    response.url().includes("/prescription-drafts/by-reception/")
+  );
+}
+
 async function attachErrorCollection(page, label) {
-  page.on("console", (message) => {
-    if (message.type() === "error") {
-      findings.consoleErrors.push({
-        label,
-        kind: "console",
-        text: message.text(),
-      });
+  page.on("response", (response) => {
+    if (response.status() !== 404 || isExpectedDraftNotFoundResponse(response)) {
+      return;
     }
+    findings.consoleErrors.push({
+      label,
+      kind: "network",
+      text: `Unexpected 404: ${response.request().method()} ${response.url()}`,
+    });
+  });
+  page.on("console", (message) => {
+    if (message.type() !== "error") return;
+    const text = message.text();
+    // Chromium emits a generic console event for the expected first GET /draft 404.
+    // Exact response URL validation above still records every unexpected 404.
+    if (
+      text.includes(
+        "Failed to load resource: the server responded with a status of 404",
+      )
+    ) {
+      return;
+    }
+    findings.consoleErrors.push({
+      label,
+      kind: "console",
+      text,
+    });
   });
   page.on("pageerror", (error) => {
     findings.consoleErrors.push({
@@ -201,6 +228,51 @@ async function waitForRoute(page, route) {
     .waitFor();
 }
 
+async function waitForPersistedDraft(page, version, expectedDrug) {
+  const workspace = page
+    .locator(
+      `section[aria-label="処方入力"][data-server-draft-version="${version}"][data-unsaved-draft="false"]:visible`,
+    )
+    .last();
+  await workspace.waitFor();
+  const drugInput = workspace.getByLabel("RP1 薬剤名");
+  await drugInput.waitFor();
+  await page.waitForFunction(
+    ({ expectedDrugValue, expectedVersion }) => {
+      const candidates = [
+        ...document.querySelectorAll('section[aria-label="処方入力"]'),
+      ];
+      const visibleWorkspace = candidates.find(
+        (candidate) =>
+          candidate instanceof HTMLElement && candidate.offsetParent !== null,
+      );
+      const input = visibleWorkspace?.querySelector(
+        'input[aria-label="RP1 薬剤名"]',
+      );
+      return (
+        visibleWorkspace instanceof HTMLElement &&
+        visibleWorkspace.dataset.serverDraftVersion === expectedVersion &&
+        visibleWorkspace.dataset.unsavedDraft === "false" &&
+        input instanceof HTMLInputElement &&
+        input.value === expectedDrugValue
+      );
+    },
+    {
+      expectedDrugValue: expectedDrug,
+      expectedVersion: String(version),
+    },
+  );
+  const statusText = await workspace
+    .locator(".screen-title-row .operator-status-pill")
+    .first()
+    .textContent();
+  assert(
+    statusText?.trim() === `サーバー保存済み v${version}`,
+    `prescription persistence: visible saved status did not match v${version} (${statusText})`,
+  );
+  return workspace;
+}
+
 async function checkRoute(page, route, viewport) {
   const label = `${routeName(route)}-${viewport.width}x${viewport.height}`;
   await page.setViewportSize(viewport);
@@ -327,18 +399,13 @@ async function checkReceptionHandoff(page) {
   await page.getByLabel("RP1 数量").fill("7錠");
   await saveButton.click();
   await page.getByText("サーバー保存が完了しました").waitFor();
-  await page.getByText("サーバー保存済み v1").waitFor();
+  await waitForPersistedDraft(page, 1, "E2Eサーバー保存薬10mg");
 
   await page.locator('.app-nav-link[href="/checkout"]').click();
   await waitForRoute(page, "/checkout");
   await page.locator('.app-nav-link[href="/prescriptions"]').click();
   await waitForRoute(page, "/prescriptions");
-  await page.getByText("サーバー保存済み v1").waitFor();
-  assert(
-    (await page.getByLabel("RP1 薬剤名").inputValue()) ===
-      "E2Eサーバー保存薬10mg",
-    "prescription persistence: saved draft was not reloaded after route remount",
-  );
+  await waitForPersistedDraft(page, 1, "E2Eサーバー保存薬10mg");
   findings.interactionChecks.push({
     name: "reception-linked-versioned-draft-save-and-reload",
     status: "pass",
@@ -371,7 +438,7 @@ async function checkReceptionHandoff(page) {
   await searchedHandoff.click();
   await page.waitForURL(`${BASE_URL}/prescriptions`);
   await page.getByText("受付との関連を確認しました").waitFor();
-  await page.getByText("サーバー保存済み v1").waitFor();
+  await waitForPersistedDraft(page, 1, "E2Eサーバー保存薬10mg");
   findings.interactionChecks.push({
     name: "reception-search-to-guarded-handoff",
     status: "pass",
