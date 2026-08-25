@@ -11,6 +11,7 @@ vi.mock("next/navigation", () => ({
 import AdminPage from "./admin/page";
 import CheckoutPage from "./checkout/page";
 import ClaimCheckPage from "./claim-check/page";
+import RootLayout from "./layout";
 import MastersPage from "./masters/page";
 import MonthlyClosingPage from "./monthly-closing/page";
 import { BusinessNav, NAV_ITEMS } from "./nav";
@@ -37,7 +38,8 @@ describe("web shell smoke contracts", () => {
       expect(html).toContain(`href="${item.href}"`);
       expect(html).toContain(item.label);
     }
-    expect(html).toContain('aria-label="業務メニュー"');
+    expect(html).toContain('id="business-nav-label"');
+    expect(html).toContain('aria-labelledby="business-nav-label"');
     expect(currentHref(html)).toBe("/patients");
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
   });
@@ -79,6 +81,24 @@ describe("web shell smoke contracts", () => {
     expect(localOnly).toContain("ローカル単独稼働(外部確認不可)");
     expect(localOnly).toContain('data-mode="LOCAL_ONLY"');
     expect(localOnly).toContain('data-provisional="false"');
+  });
+
+  it("provides keyboard landmarks without synthetic notification counts", () => {
+    navigation.pathname = "/";
+    const html = renderToStaticMarkup(
+      <RootLayout>
+        <p>本文</p>
+      </RootLayout>,
+    );
+
+    expect(html).toContain('class="skip-link"');
+    expect(html).toContain('href="#main-content"');
+    expect(html).toContain('id="main-content"');
+    expect(html).toContain("Gbrain");
+    expect(html).toContain("未接続");
+    expect(html).toContain("操作者未接続");
+    expect(html).toContain('aria-keyshortcuts="/ Control+K Meta+K"');
+    expect(html).not.toContain('aria-label="通知 2件"');
   });
 
   it("retains the implemented reception queue while disabling unconnected intake actions", () => {
