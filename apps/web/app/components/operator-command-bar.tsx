@@ -98,8 +98,7 @@ export function OperatorCommandBar() {
 
   useEffect(() => {
     function handleShortcut(event: KeyboardEvent) {
-      const commandShortcut =
-        (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
+      const commandShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
       const slashShortcut = event.key === "/" && !isTextEntryTarget(event.target);
       if (commandShortcut || slashShortcut) {
         event.preventDefault();
@@ -108,6 +107,7 @@ export function OperatorCommandBar() {
         return;
       }
       if (event.key === "Escape" && document.activeElement === inputRef.current) {
+        setCommand("");
         setSubmittedCommand("");
         inputRef.current?.blur();
       }
@@ -120,6 +120,11 @@ export function OperatorCommandBar() {
   function submit(event: FormEvent) {
     event.preventDefault();
     setSubmittedCommand(command.trim());
+  }
+
+  function clearCommand() {
+    setCommand("");
+    setSubmittedCommand("");
   }
 
   return (
@@ -136,7 +141,11 @@ export function OperatorCommandBar() {
             ref={inputRef}
             id="operator-command-input"
             value={command}
-            onChange={(event: ChangeEvent<HTMLInputElement>) => setCommand(event.target.value)}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => {
+              const nextCommand = event.target.value;
+              setCommand(nextCommand);
+              if (!nextCommand.trim()) setSubmittedCommand("");
+            }}
             placeholder="画面を探す（例：山田さんを検索して）"
             autoComplete="off"
             autoCorrect="off"
@@ -175,7 +184,9 @@ export function OperatorCommandBar() {
           {intent ? (
             <>
               <strong>{intent.rationale}</strong>
-              <Link href={intent.href}>{intent.label}</Link>
+              <Link href={intent.href} onClick={clearCommand}>
+                {intent.label}
+              </Link>
             </>
           ) : (
             <span>安全に解釈できません。左の業務メニューから対象画面を選択してください。</span>
