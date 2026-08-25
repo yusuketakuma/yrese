@@ -9,6 +9,7 @@ import type { PrescriptionReceptionOrigin } from "./prescription-origin-context"
 export type PrescriptionReceptionErrorKind =
   | "NOT_FOUND"
   | "PATIENT_MISMATCH"
+  | "TERMINAL_STATUS"
   | "UNAVAILABLE";
 
 export class PrescriptionReceptionError extends Error {
@@ -21,9 +22,19 @@ export class PrescriptionReceptionError extends Error {
   }
 }
 
+export function isReceptionOpenForPrescriptionEntry(
+  entry: ReceptionQueueEntry,
+): boolean {
+  return (
+    entry.receptionStatus === "WAITING" ||
+    entry.receptionStatus === "IN_PROGRESS"
+  );
+}
+
 /**
  * Bind a tab-local handoff pointer back to a fresh, contract-validated queue projection.
- * No identity supplied by the browser is trusted without this exact reception+patient match.
+ * No identity or state supplied by the browser is trusted without this exact reception,
+ * patient, and editable-status match.
  */
 export function verifyPrescriptionReceptionOrigin(
   origin: PrescriptionReceptionOrigin,
@@ -42,6 +53,12 @@ export function verifyPrescriptionReceptionOrigin(
     throw new PrescriptionReceptionError(
       "PATIENT_MISMATCH",
       "受付と選択患者の関連を確認できませんでした。",
+    );
+  }
+  if (!isReceptionOpenForPrescriptionEntry(entry)) {
+    throw new PrescriptionReceptionError(
+      "TERMINAL_STATUS",
+      "受付が完了または取消済みのため、処方入力を開始できません。",
     );
   }
   return entry;
