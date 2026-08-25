@@ -2,6 +2,8 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import type { PermissionScope } from "@yrese/shared-kernel";
+
 import type { AdminDashboardSnapshot } from "./admin-data";
 import { AdminDashboardView } from "./admin-dashboard";
 
@@ -17,7 +19,7 @@ function snapshotFor(
   tenantId: string,
   pharmacyId: string,
   actorId: string,
-  scopes: string[] = ["tenant:read", "tenant:admin", "user:admin"],
+  scopes: PermissionScope[] = ["tenant:read", "tenant:admin", "user:admin"],
 ): AdminDashboardSnapshot {
   return {
     identity: {
