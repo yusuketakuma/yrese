@@ -309,6 +309,16 @@ body {
   padding: 0.65rem;
 }
 
+.prescription-history-card li {
+  display: grid;
+  gap: 0.08rem;
+}
+
+.prescription-history-card li span {
+  color: var(--color-fg-muted);
+  font-size: var(--ux-font-caption);
+}
+
 .prescription-history-card[data-selected="true"] {
   border-color: var(--color-accent-strong);
   box-shadow: 0 0 0 2px var(--color-accent-soft);
