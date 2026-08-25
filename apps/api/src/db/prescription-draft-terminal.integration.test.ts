@@ -15,6 +15,7 @@ import { loadMigrationFiles } from "./migrations.js";
 import { createDbPool } from "./pool.js";
 import { PostgresPrescriptionDraftService } from "./prescription-draft-service.js";
 import { resolveTestDatabaseUrl } from "./test-database-environment.js";
+import type { PrescriptionDraftSaveInput } from "../prescription-draft-service.js";
 
 const testDatabaseUrl = resolveTestDatabaseUrl(process.env);
 const describePostgres =
@@ -64,17 +65,20 @@ const scope = {
   businessDate: "2026-08-25",
 } as const;
 
-function saveInput(expectedVersion: number, note: string) {
+function saveInput(
+  expectedVersion: number,
+  note: string,
+): PrescriptionDraftSaveInput {
   return {
     ...scope,
     actorId: userId("actor-draft-terminal"),
     expectedVersion,
     wallClock: `2026-08-25T01:00:0${expectedVersion}.000Z`,
     draft: {
-      prescriptionType: "OUTPATIENT" as const,
+      prescriptionType: "OUTPATIENT",
       prescriptionDate: "2026-08-25",
       defaultDays: 7,
-      flags: [] as const,
+      flags: [],
       note,
       rows: [
         {
