@@ -6,6 +6,7 @@ import { PatientContextBar, PatientContextProvider } from "./components/patient-
 import { BusinessNav } from "./nav";
 import { SystemModeBadge } from "./system-mode-badge";
 import "./globals.css";
+import "./operator-first.css";
 
 export const metadata: Metadata = {
   title: "yrese 調剤レセプトコンピューター",
