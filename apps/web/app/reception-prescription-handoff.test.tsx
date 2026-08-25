@@ -32,42 +32,41 @@ function entry(status: ReceptionQueueEntry["receptionStatus"]): ReceptionQueueEn
   };
 }
 
+function renderAction(status: ReceptionQueueEntry["receptionStatus"]): string {
+  return renderToStaticMarkup(
+    <UnsavedWorkProvider>
+      <PatientContextProvider>
+        <PrescriptionOriginProvider>
+          <ReceptionPrescriptionHandoffAction
+            entry={entry(status)}
+            businessDate="2026-08-25"
+          />
+        </PrescriptionOriginProvider>
+      </PatientContextProvider>
+    </UnsavedWorkProvider>,
+  );
+}
+
 describe("ReceptionPrescriptionHandoffAction", () => {
-  it("links a non-cancelled, contract-validated reception to the existing route", () => {
-    const html = renderToStaticMarkup(
-      <UnsavedWorkProvider>
-        <PatientContextProvider>
-          <PrescriptionOriginProvider>
-            <ReceptionPrescriptionHandoffAction
-              entry={entry("WAITING")}
-              businessDate="2026-08-25"
-            />
-          </PrescriptionOriginProvider>
-        </PatientContextProvider>
-      </UnsavedWorkProvider>,
-    );
+  it.each(["WAITING", "IN_PROGRESS"] as const)(
+    "links an editable %s reception to the existing route",
+    (status) => {
+      expect(canOpenPrescriptionFromReception(entry(status))).toBe(true);
+      const html = renderAction(status);
+      expect(html).toContain('href="/prescriptions"');
+      expect(html).toContain("処方入力へ");
+      expect(html).toContain("この受付を処方入力へ引き継ぐ");
+    },
+  );
 
-    expect(html).toContain('href="/prescriptions"');
-    expect(html).toContain("処方入力へ");
-    expect(html).toContain("この受付を処方入力へ引き継ぐ");
-  });
-
-  it("keeps a cancelled reception fail-closed", () => {
-    expect(canOpenPrescriptionFromReception(entry("CANCELLED"))).toBe(false);
-    const html = renderToStaticMarkup(
-      <UnsavedWorkProvider>
-        <PatientContextProvider>
-          <PrescriptionOriginProvider>
-            <ReceptionPrescriptionHandoffAction
-              entry={entry("CANCELLED")}
-              businessDate="2026-08-25"
-            />
-          </PrescriptionOriginProvider>
-        </PatientContextProvider>
-      </UnsavedWorkProvider>,
-    );
-
+  it.each([
+    ["CANCELLED", "取消済み受付"],
+    ["COMPLETED", "完了済み受付"],
+  ] as const)("keeps a terminal %s reception fail-closed", (status, reason) => {
+    expect(canOpenPrescriptionFromReception(entry(status))).toBe(false);
+    const html = renderAction(status);
     expect(html).toMatch(/<button[^>]*disabled[^>]*>処方入力へ<\/button>/);
+    expect(html).toContain(reason);
     expect(html).not.toContain('href="/prescriptions"');
   });
 });
