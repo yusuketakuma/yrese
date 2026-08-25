@@ -36,19 +36,21 @@
 | Review base | `main = origin/main = c7b61406c6f6e58363139e3dced79c62f30cebf5`(2026-08-26 live確認) |
 | Candidate branch | `feature/wp-5101-uiux-review = origin/feature/wp-5101-uiux-review`; exact headはGit / Draft PR #5を正本とする |
 | Upstream relation | candidate branchはreview baseのfast-forward子。direct main commit/pushなし |
-| Candidate scope | Draft PR #5はWP-5101 exact5 decision packetを保持。current C-100 deltaは`Plans.md` + `State.md` + `DEVELOPMENT_POLICY.md`のexact3。exact head/statusはGitを正本とする |
-| Last update | 2026-08-26 JST(Candidate A decision recordはfresh independent PASS後にfeature branchへpush済み。C-100 charter correctionを別batchでreview中) |
-| Active Goal | C-100 PLAN_ONLYとして`DEVELOPMENT_POLICY.md §11`のstale work-selection sequenceだけを現状へ合わせる。SSOT・製品実装は未claim |
-| Current critical path | C-100 charter correction → WP-5104 Candidate A PROPOSED batch → required specialist/human gate → PRC-007 atomic finalization |
+| Candidate scope | Draft PR #5上のcurrent WP-5104 PROPOSED packetは`Plans.md`、`State.md`、UIX-001、IDX-001、draft 13、`docs/ui-ux-refresh/README.md`のexact6。exact head/statusはGitを正本とする |
+| Last update | 2026-08-26 JST(C-100はindependent PASS後に`9786fe8`でfeature branchへpush済み。WP-5104 Candidate A PROPOSED packetを起草中) |
+| C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
+| Active Goal | WP-5104 PLAN_ONLYとしてUIX-001を唯一のUI/UX foundationへ集約し、PRC-007 review用のPROPOSED packetを凍結する。製品実装は未claim |
+| Current critical path | WP-5104 Candidate A PROPOSED batch → required independent/frontend/medical-safety/security/privacy/accessibility review + pharmacist/applicable human gate → PRC-007 atomic finalization |
 | Main blocker | Candidate AのSSOT final approval、PRC-007、U3/U4 の実装前 relevant review/human authorization。後続実装は全件 NOT_READY |
-| Required verification | C-100 exact3の`git diff --check`、secret scan、fresh independent review、Draft PR exact-head CI。code test/build/browser runtimeはPLAN_ONLYではN/A |
-| Work-selection drift | `DEVELOPMENT_POLICY.md §11` の旧 `CURRENT — WP-4250`をC-100で訂正中。C-100完了前の実装claimを禁止 |
+| Required verification | WP-5104 exact6の`git diff --check`、`pnpm check:ssot-index`、secret scan、preservation checks、required review、verified Oracle、Draft PR exact-head CI。code test/build/browser runtimeはPLAN_ONLYではN/A |
+| Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `c7b6140`; new High/Medium finding、remote main更新、human decisionでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current exact5 は APPROVED SSOT・実装code・schemaを変更しない。feature branch/PR以外から
-mainへ置かず、Candidate AのPRC-007 finalization前にSSOT昇格・実装・deploy・migration・
-production変更・release acceptanceを行わない。
+current exact6 はUIX-001/IDX-001のPROPOSED revisionを作るが、旧APPROVED revisionの
+effective authority、実装code、schemaは変更しない。feature branch/PR以外からmainへ置かず、
+Candidate AのPRC-007 finalization前にSSOT昇格・実装・deploy・migration・production変更・
+release acceptanceを行わない。
 
 ## 2. Product and Architecture Guardrails
 
@@ -72,10 +74,9 @@ production変更・release acceptanceを行わない。
 
 ### WIP — exactly one
 
-**CURRENT は C-100 の PLAN_ONLY charter correction 1件である。** WP-5101 decision packetは
-fresh independent PASSとdirect user decisionを得てfeature branchへ記録済み。C-100では
-`DEVELOPMENT_POLICY.md §11`のstale sequenceだけを訂正し、APPROVED SSOT・製品実装・
-schema・migrationはclaimしない。
+**CURRENT は WP-5104 の PLAN_ONLY SSOT proposal 1件である。** Candidate Aの製品方向、
+WP-5101 review、C-100 charter correctionを前提に、UIX-001をPROPOSEDへ改版する。
+APPROVED化、旧UIX文書のSUPERSEDED化、製品実装、schema、migrationはclaimしない。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
@@ -762,8 +763,8 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 > **来歴**: direct user instruction 2026-07-31(丁「一枚盤面」採用と詳細タスク化の指示)。
 > 起草 lane は Claude(fable5)。Document Contract の sole editor 規律に対する例外は
 > この direct user instruction を根拠とし、本グループ以外の記載に触れていない。
-> **queue 規律**: WP-5101 reviewとCandidate Aの製品判断は記録済み。current WIPは§3の
-> C-100 PLAN_ONLYだけであり、後続 WP は READY slotを消費せず、WIP=1 / READY≤2を維持し、
+> **queue 規律**: WP-5101 reviewとCandidate Aの製品判断、C-100完了は記録済み。current WIPは
+> §3のWP-5104 PLAN_ONLYだけであり、後続 WP は READY slotを消費せず、WIP=1 / READY≤2を維持し、
 > 各 Gate 成立までclaim不可。
 > **設計資料(non-SSOT ドラフト)**: `docs/ui-ux-refresh/13〜17号`。
 > 昇格前は実装根拠にならない(fail-closed)。
@@ -807,13 +808,36 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 ##### WP-5104 — unique UI/UX SSOT foundation の atomic 昇格
 
-- **Status:** GATED / CANDIDATE_A_SELECTED / NOT_READY
-- **Gate:** C-100 charter correction
+- **WP status:** BLOCKED
+- **Qualifiers:** CURRENT / PLAN_ONLY / CANDIDATE_A_SELECTED / PROPOSED_REVIEW / NOT_IMPLEMENTABLE
+- **Risk:** R3(医療安全・privacy・accessibility・不可逆確定/outbox契約を含むSSOT改版)
+- **Owner role:** `codex_root`(`active_root_writer`)
+- **Reviewer roles:** `independent_verifier`、`frontend_reviewer`、`ui_flow_tester`、
+  `accessibility_ux_reviewer`、`medical_safety_reviewer`、`security_critic`、
+  `privacy_compliance_reviewer`、`api_contract_reviewer`、`data_integrity_auditor`、
+  `test_architect`、`claim_clerk_workflow_reviewer`。全員read-onlyでmakerと分離
+- **Allowed files (proposal packet):** `Plans.md`、`State.md`、`docs/ssot_index.md`、
+  `docs/ui-ux-refresh/13-ui-component-system-ssot-draft.md`、
+  `docs/ui-ux-refresh/README.md`、`docs/uiux/medical_ui_ux_principles.md`
+- **Forbidden files/actions:** 上記以外、UIX-002〜007、product code、schema/migration、generated
+  artifact、deploy/production/external action。finalizationはhuman gate後に別hash・allowlistで再凍結
+- **Gate:** Candidate A product direction、WP-5101 fresh independent review、C-100は完了。
+  APPROVED化はcurrent exact packetのrequired reviewとfinal human approval待ち
+- **Human gates:** final SSOT approval、medical-safety、security/privacy、accessibility、
+  pharmacist workflow、HPKI/legal (`legal_compliance_matrix #7`)。product directionだけは
+  direct user instruction 2026-08-26で承認済み
 - **Scope:** direct user instruction 2026-08-26で選択された Candidate A(UIX-001改版)により、
   UIX-001〜007 の安全・品質要件と component contract を一つの
   foundation へ集約する。同一 PRC-007 batch で旧文書を SUPERSEDED、index と参照を更新する
 - **Acceptance:** 唯一の UI/UX foundation が APPROVED。UIX-004 UAC-01〜12 と UIX-005
-  ST-01〜15 を含む既存要件、`docs/ssot_index.md`、PLAN-UIUX-001 の参照が整合
+  ST-01〜15 を含む既存要件、`docs/ssot_index.md`、PLAN-UIUX-001 の参照が整合。D-2は
+  UI 1 user action / 1 buttonとbackend 2段(local確定+同一transactionのoutbox intent、外部delivery)
+  を維持し、段2失敗で段1をrollbackせず`PENDING_EXTERNAL_SYNC`を表示する
+- **Test plan:** exact-path/hash確認、`git diff --check`、`pnpm check:ssot-index`、normal-Git
+  cloneでの`pnpm check:secrets`、preservation count、frozen specialist review、verified Oracle。
+  PLAN_ONLYのためcode test/build/browser runtimeはN/A
+- **Rollback plan:** proposal/finalizationを中止し、旧UIX-001〜007 APPROVED revisionをeffectiveの
+  まま維持する。code/data rollbackは発生しない
 - **Stop:** 台帳外コンポーネントの追加は本 SSOT の改版なしに不可
 
 ##### WP-5105 — UIX-006 / UIX-007 / PLAN-UIUX-001 改版(3盤面写像)
@@ -1263,7 +1287,7 @@ release gate 群。§11 の既知 blocker を作業項目化した index であ�
 | C-097 | `State.md` frozen legacy log(約 2,200 行)の退避判断 — pointer-only 契約との整合。`AGT-018 §§3.2, 4` / PRC-007 と競合するなら fail-closed で停止【HG: 記録政策】 | — |
 | C-098 | 本書 §4 landing 済み index の圧縮(Record policy 準拠。独立レビュー完了後) | C-002〜C-010 |
 | C-099 | 依存 baseline の次回周期更新(`pnpm outdated -r`、WP-4253 方式の再実行) | — |
-| C-100 | **CURRENT / PLAN_ONLY** — `DEVELOPMENT_POLICY.md §11` Exact implementation sequence の現状反映改版(WP-4250 FINALIZED / WP-4258 APPROVED / WP-4050 local+CI completionを反映)。SSOT・実装・production gateは変更しない | C-002(完了) |
+| C-100 | **COMPLETED / REVIEWED / NONCLAIMABLE** — `DEVELOPMENT_POLICY.md §11` Exact implementation sequenceを現状へ反映。independent PASS後に`9786fe8`でfeature branchへ記録。SSOT・実装・production gateは変更していない | C-002(完了) |
 
 **集計:** 15.1=14 / 15.2=8 / 15.3=20 / 15.4=13 / 15.5=11 / 15.6=16 / 15.7=12 /
 15.8=6 — 合計 100 項目。本節の追加は planning record の変更のみであり、実装・

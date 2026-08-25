@@ -4,7 +4,7 @@
 > direct user instruction 2026-08-26 は §0 の Candidate A を選択した。正式化では
 > UIX-001 を改版し、本書を独立SSOTへ昇格せず、UIX-008も採番しない。
 > Candidate AのPROPOSED batchとfinalizationはPRC-007の10段改版フローに従う。
-> historical exact11 と WP-4254/4255 は current base `c7b6140` までに landing 済みであり、
+> historical exact11 と WP-4254/4255 は historical landing base `c7b6140` までに landing 済みであり、
 > 現在の blocker には数えない。
 > それまで本書は承認・実装・準拠を主張しない。
 
@@ -23,9 +23,16 @@ reviewers:
   - accessibility_ux_reviewer
   - medical_safety_reviewer      # U4 該当コンポーネント
   - privacy_compliance_reviewer  # U4 該当コンポーネント
-  - human_review_required
-version: 0.1.5-draft
+  - security_critic
+  - api_contract_reviewer
+  - data_integrity_auditor
+  - test_architect
+  - claim_clerk_workflow_reviewer
+  - human_pharmacist_workflow_authority
+  - human_product_authority
+version: 0.1.7-draft
 created_at: 2026-07-31
+source_snapshot_commit: 9786fe8eab3da97213d5b641b725531b13f10290
 source_refs:
   - docs/spec/construction_prompt_v0.2.0.md §7, §16
   - ユーザー指示 2026-07-31(UIは共通コンポーネントを導入。SSOT文書を作り、yrese内のUIUXルールをベースに構築する)
@@ -34,19 +41,28 @@ source_refs:
   - デザイン探索ボード 2026-07-31(甲乙丙+五構造 — 別紙 Artifact bcc10e46)
   - 一枚盤面プロトタイプ 2026-07-31(丁 — 別紙 Artifact cb24845f)
   - docs/ui-ux-refresh/14-one-board-direction-decision.md(丁採用の決定記録 2026-07-31)
-depends_on: [UIX-001, UIX-002, UIX-003, UIX-004, UIX-005, UIX-006, UIX-007, PLAN-UIUX-001, API-002]
+  - docs/ui-ux-refresh/17-adversarial-review-and-new-requirements.md
+  - docs/regulatory/legal_compliance_matrix.md REG-003 §7
+  - docs/regulatory/regulatory_blockers.md REG-004 RB-003
+depends_on: [UIX-001, UIX-002, UIX-003, UIX-004, UIX-005, UIX-006, UIX-007, PLAN-UIUX-001, API-002, API-009, API-012, API-013, DOM-004, MOD-007, MOD-008, MOD-009, REG-003, REG-004, SEC-006]
 impacts: [apps/web/**, docs/plan/uiux_development_plan.md]
 open_questions: 本文 §9 参照
 blockers:
   - BLOCKED_CANDIDATE_A_PRC007_PROPOSED_BATCH
   - BLOCKED_RELEVANT_MEDICAL_SAFETY_PRIVACY_ACCESSIBILITY_PHARMACIST_GATES
+  - BLOCKED_SECURITY_REVIEW(production auth、role-to-scope、support access)
+  - BLOCKED_SCREEN_TO_BOARD_MAPPING_SOURCE(artifact cb24845fはrepository未転記)
+  - BLOCKED_DOM004_RB003_OUTBOX_CONTRACT
+  - BLOCKED_HPKI_LEGAL_CLASSIFICATION(REG-003 §7)
   - BLOCKED_L0_TOKEN_AUTHORITY_RECONCILIATION(§2 の current implementation drift)
 ```
 
 ## 0. Current topology と unique SSOT target(2026-08-26)
 
-current repository では UIX-001〜007 がそれぞれ APPROVED であり、本書は component system
-だけを扱う non-SSOT 候補である。一方、current task は UI/UX 原則・IA・操作/表示体系・theme・
+review baseではUIX-001〜007の旧revisionがAPPROVEDであり、そのeffective authorityは
+finalizationまで維持する。current working treeではUIX-001/IDX-001だけがPROPOSED revision、
+UIX-002〜007はAPPROVEDのままで、本書はcomponent systemを扱うnon-SSOT候補である。
+一方、current taskはUI/UX原則・IA・操作/表示体系・theme・
 tokens・canonical components・state・a11y・responsive・debt/change management を集約した
 **唯一の UI/UX SSOT file**を要求する。component-only の UIX-008 を追加し UIX-001〜007 を
 APPROVED のまま維持する構成は、この unique-file 要件を満たさない。
@@ -67,15 +83,38 @@ LOCAL_ONLY/RECOVERY_SYNC・監査欠落防止を含む)を cutover checklist に
 UIX-001改版のAPPROVED化や実装を承認せず、exact candidate diff、独立レビュー、
 medical-safety/privacy/accessibility review、該当するpharmacist/product human gateを省略しない。
 
+### 0.1 Candidate A preservation matrix
+
+review中はUIX-001の改版だけをPROPOSEDとし、UIX-002〜007は既存APPROVED authorityのまま
+維持する。final human approval後のfinalization batchでのみUIX-001をAPPROVED、UIX-002〜007を
+SUPERSEDEDにし、indexとdirect live referencesを同時更新する。
+
+| source | Candidate A UIX-001 target | preservation pin |
+|---|---|---|
+| UIX-001 v0.1.2 | §§1〜6 | P-01〜20、禁止15、警告5段、旧実装対応、3 open questions |
+| UIX-002 v0.1.0 | §7 | 最低基準11、3本柱、禁止10、必須test 14、2 open questions |
+| UIX-003 v0.1.0 | §8 | 前提3、候補予算18、運用3、未実測/release blocker |
+| UIX-004 v0.1.0 | §9 | UAC-01〜12、synthetic/demo限定、4 human approval、UAC-11自動+手動 |
+| UIX-005 v0.1.0 | §10 | SLO候補7、ST-01〜15、禁止2、実測/runtime/human blocker |
+| UIX-006 v0.2.0 | §11 | NORMAL/LOCAL_ONLY/RECOVERY_SYNC、4 role home、監査Web禁止、遷移原則 |
+| UIX-007 v0.2.0 | §12 | active 28 screen、U0〜U4、SCR-028 RETIRED、U3/U4 gate |
+| 本書 v0.1.7-draft | §§13〜17 | L0〜L4、Phase A/B、component ledger/予約、禁止、a11y/responsive、debt/change、未決gate |
+
+旧sourceの候補値・未実装・blocker・human gateは、集約によって解除・完了扱いにしない。
+
 ## 1. 目的と適用範囲
 
-`apps/web/**` の全画面(UIX-007 active 28画面)は、状態表示・患者文脈・警告・確認操作・
+`apps/web/**` のUIX-007 active 28画面は、該当する状態表示・警告・確認操作・
 ローディング/空/エラー表示を**本書が台帳化する共通コンポーネント経由でのみ**表現する。
+患者文脈は認証済み患者業務面だけへ適用し、待合・共用・support面には投影しない。
 画面ローカルでの状態表現の直接実装(hex 直指定・自由ラベルのドメイン状態・独自 severity)は禁止する。
+support denyとtenant/pharmacy bindingはCandidate Aのtarget acceptanceであり、trusted role/subject、
+membership/active grant、API/OpenAPI operation mappingが未承認の間はenforcement PASSや実装可能性を主張しない。
 
 本書は次を再定義しない(上位正本をそのまま参照する):
 
-- 優先順位・原則 P-01..P-20・禁止15項・警告重要度5段 — **UIX-001**(APPROVED)
+- 優先順位・原則 P-01..P-20・禁止15項・警告重要度5段 — **旧UIX-001 v0.1.2**
+  (review base/effective predecessorのみAPPROVED。working treeのv0.2.0はPROPOSED)
 - 業務導線・モード分岐・ロール別ホーム — **UIX-006**(APPROVED)
 - 画面台帳・ux_safety_level(U0..U4)— **UIX-007**(APPROVED)
 - 実装波・品質ゲート — **PLAN-UIUX-001**
@@ -115,8 +154,11 @@ medical-safety/privacy/accessibility review、該当するpharmacist/product hum
 
 ## 3. コンポーネント台帳(2026-07-31 実在確認済み)
 
-分類は `docs/ui-ux-refresh/12-component-contracts.md` の契約を正とし、本書は台帳(存在・分類・状態)を持つ。
-契約詳細は 12 号を参照(重複記載しない)。
+`docs/ui-ux-refresh/12-component-contracts.md` は統合元の版付きprovenanceである。Candidate Aでは
+Purpose / Props / ARIA / Prohibited / Testsの最低契約をUIX-001 §13.3.1へ統合し、12号を
+別authorityとして残さない。本書は台帳(存在・分類・状態)と統合漏れの確認元を持つ。
+`✅ 実装済`はfrozen base `9786fe8`でfile/rendering骨格が存在するinventory語に限定し、
+Candidate A contract適合、live integration、自動test、専門review、release admissionを意味しない。
 
 ### 3.1 状態表現(L1/L2)
 
@@ -133,8 +175,8 @@ medical-safety/privacy/accessibility review、該当するpharmacist/product hum
 
 | コンポーネント | ファイル | 状態 | 備考 |
 |---|---|---|---|
-| PatientHeader | `components/patient-header.tsx` | ✅ 実装済 | P-09。氏名・カナ・生年月日・年齢・性別・資格状態 |
-| PatientContextProvider / Bar | `components/patient-context.tsx` | ✅ 実装済 | 全画面横断固定。別患者選択で前文脈破棄 |
+| PatientHeader | `components/patient-header.tsx` | ✅ 実装済 | P-09。認証済み患者業務面だけに氏名・カナ・生年月日・年齢・性別・資格状態を表示 |
+| PatientContextProvider / Bar | `components/patient-context.tsx` | ✅ 実装済 | 認証済み患者業務面で横断固定。別患者選択で前文脈破棄。待合/共用/support面へ投影しない |
 
 ### 3.3 警告・エラー・確認(L2/L3)
 
@@ -143,7 +185,7 @@ medical-safety/privacy/accessibility review、該当するpharmacist/product hum
 | ErrorNotice + error-code | `components/error-notice.tsx` / `error-code.ts` | ✅ 実装済 | エラーコード+次アクションの対提示(P-18) |
 | BlockerBanner | `components/blocker-banner.tsx` | ✅ 実装済 | BLOCKER 理由+次アクション |
 | ClinicalAlert / Summary | `components/clinical-alert.tsx` | ◐ 表示層のみ | **判定エンジン接続前に医療安全レビュー+SaMD 該当性評価必須** |
-| ConfirmationDialog / DestructiveActionDialog | `components/confirmation-dialog.tsx` | ✅ 実装済 | P-11 二段階確認。focus trap は呼出側 client 装着 |
+| ConfirmationDialog / DestructiveActionDialog | `components/confirmation-dialog.tsx` | ◐ 表示骨格のみ | P-11。UIX-001 §13.3.1のtrap/Escape/returnをcomponent内へ実装するまでU3/U4利用禁止 |
 
 ### 3.4 モード・同期(L2/L3)
 
@@ -173,7 +215,8 @@ medical-safety/privacy/accessibility review、該当するpharmacist/product hum
 
 1. **丁 一枚盤面 = L2〜L4 の構成原理**。画面(L4)は「調剤盤・請求盤・管理盤」の3盤面へ再編し、
    遷移を「選択(常設キュー)・展開(工程行)・ドロワー(根拠)」の三置換で消す。
-   28画面の写像表と前提条件は 14号 §2/§4 を正とする。
+   repository内で検証できるplacementはCandidate A UIX-001 §13.4.1だけを正とする。14号が参照する
+   28画面写像artifactは未転記のためprovenanceに限定し、残るscreenを推測配置しない。
 2. **甲乙丙 = L0 トークンテーマ**。Phase A で確定する単一 token authority の差し替えで実現し、コンポーネント契約は不変。
 3. **状態インク = L1 Registry の視覚仕様**。tone×shape×label の三重エンコードは既に Registry が保持。テーマはトーンの具体色のみ変える。
 4. **患者フォーカスフレーム = PatientContextBar の視覚強化**(L3 の style 変更、契約不変)。盤面中央の患者枠として常設。
@@ -189,11 +232,19 @@ medical-safety/privacy/accessibility review、該当するpharmacist/product hum
      提供しない」の明示禁止に従う(SCR-028 RETIRED を別名で復活させない — 2026-07-31 checker C-1 訂正)
    - `BoardViewSwitcher` — ロール別ビューの投影切替(14号 §7.1)。**権限を一切変更しない**
      (capability の正は MOD-007 + API scope — 17号 D-1/SF-6)
-   - `FinalizeAndRegisterAction` — 薬剤師最終確定の1操作・2段分離。**「2段」= 段1 ローカル確定
-     (不可逆)/ 段2 外部登録(outbox 再試行)であり(17号 §2)、DOM-004 の2つの確認行為
+   - `FinalizeAndRegisterAction` — 一つのsurface上の1 button / 1 user actionから、段1の
+     local確定と段2の外部登録をbackendで分離するcontainer。**「2段」= 段1 ローカル確定
+     (不可逆)+outbox intentのatomic commit / 段2 workerによる外部登録(再試行)である(17号 §2)。
+     ただしDOM-004 の2つの確認行為
      (`prescription:confirm` / `dispensing:confirm`)の統合を意味しない** — その統合可否は
      DOM-004 改版(WP-5102)の承認事項であり本コンポーネントの前提(2026-07-31 checker H-7 訂正)。
-     完了表現は「確定」chip と「登録」chip を併置し単一成功表現で束ねない(H-03)
+     完了表現は「確定」chip と「登録」chip を併置し単一成功表現で束ねない(H-03)。user commandと
+     delivery workerのauthorization/idempotency/auditを分離し、DOM-004/RB-003/MOD-007の該当改版、
+     API-013のoperation契約、MOD-008の別event登録、MOD-009のatomic outbox/delivery profileが
+     完了するまで推測実装・権限流用しない。人間の別操作はAPI-012準拠のtenant adminによる
+     DLQ resendだけとし、UIX-001 §12.3の個別operation/authority/audit contractまで実装しない。
+     local確定は不可逆、外部登録失敗は巻き戻さず、`PENDING_EXTERNAL_SYNC`をdurable stateから
+     復元する(UIX-001 §12.4)
    - `BoardShell` — 3カラム(左レール・中央・右レール)を保持する盤面の器(L2)。
      3盤面(L4)が器を画面ごとに再実装しないための共通枠(2026-07-31 checker M-12 追加)
    - `ConfirmationQueueRail` — 薬剤師ビュー主役の確認待ちキュー(14号 §7.1)。
@@ -208,8 +259,8 @@ medical-safety/privacy/accessibility review、該当するpharmacist/product hum
 
 ## 5. 新規コンポーネント追加手順
 
-1. **The Component Gallery**(https://component.gallery/components/)で標準パターン・命名・a11y 慣行を照合(ユーザー指示 2026-07-09。医療UI原則と衝突時は UIX-001 優先)
-2. 契約起草 — `12-component-contracts.md` へ Purpose / Props / ARIA / Prohibited / Tests を追記
+1. **The Component Gallery**(https://component.gallery/components/)で標準パターン・命名・a11y 慣行を照合する。法令、公式な医療・請求要件、患者安全、human gate、APPROVED SSOTを上書きできず、衝突時はBLOCKEDとして該当authorityへエスカレーションする
+2. 契約起草 — Candidate Aの唯一正本UIX-001 §13.3.1へ Purpose / Props / ARIA / Prohibited / Testsを追記。12号はreview用provenanceだけを同期
 3. ドメイン状態を扱う場合: 対応 enum が shared-kernel SSOT に存在することを確認。無ければ **enum SSOT 承認まで実装しない**(予約として設計のみ記録)
 4. Registry 軸追加(必要時)→ コンポーネント実装 → 最小の Vitest 契約テスト+
    DOM interaction/a11y がある場合は既存 Playwright/axe browser gate(--passWithNoTests 禁止)。
@@ -225,7 +276,8 @@ medical-safety/privacy/accessibility review、該当するpharmacist/product hum
 3. ドメイン状態の自由 label/tone 表示(DomainStatusBadge / Registry を迂回しない)
 4. UI 側での独自モード・権限判定(shared-kernel 判定関数と API 側制御が正 — P-14)
 5. ローカル保存・仮状態・確認前状態に確定と同じ成功表現を使うこと(P-05/06/07/17)
-6. PHI をログ・計測・エラーメッセージ・テストフィクスチャへ出すこと(SEC-004)
+6. PHI をログ・計測・エラーメッセージ・URL・technical `data-*`・未承認client storage・
+   テストフィクスチャ・screenshotへ出すこと(SEC-004。synthetic fixture/artifactは§7だけで使用)
 7. `packages/ui` への投機的移動(第二利用者出現まで `apps/web/app/components/` — 既決)
 8. 台帳外コンポーネントの新設・台帳外画面からの利用
    (**適用範囲は共通コンポーネント(L1〜L3)**。既存の画面ローカル構成要素
@@ -256,7 +308,12 @@ medical-safety/privacy/accessibility review、該当するpharmacist/product hum
 - actual 200% zoom、内部 scroll、screen reader、forced-colors の自動判定、reduced-motion の
   挙動、`prefers-contrast: more`、将来の WorkflowSheet は targeted test と手動確認を別途行う。
   現行 gate 単独を UIX-004/UAC-11 適合の証跡と呼ばない
-- a11y: UIX-004 受入基準+forced-colors / reduced-motion / キーボード操作を自動+手動で確認
+- target gateは`/prescriptions`一枚に限定せず、全canonical componentと代表routeの
+  forced-colors境界/focus、reduced-motionの停止挙動、320/375/768/1024 CSS px、200% zoom、
+  dialog focus、実screen readerをUIX-001 §14.1の自動+手動matrixで確認する
+- browser artifactはproduction接続なしのsynthetic fixtureだけで生成する。patient sentinelを
+  console、URL、error、artifact名へ含めず、screenshot外部共有時はredactしCI retention期間だけ保持する
+- a11y: UIX-004受入基準+UIX-001 §14.1を自動+手動で確認し、結果を別artifactにする
 - 性能: UIX-003 予算内(トークン差し替えで CSS サイズ・CLS を悪化させない)
 
 ## 8. 昇格手順(fail-closed)
@@ -264,19 +321,27 @@ medical-safety/privacy/accessibility review、該当するpharmacist/product hum
 1. 本ドラフトのレビュー(frontend / accessibility / independent)
 2. §0 の unique SSOT topologyをhuman product authorityが承認(2026-08-26 Candidate A選択済み)。
    §9の未決事項はそれぞれの該当gateで解消する
-3. 選択 topology の全文書を PROPOSED のまま atomic batch としてレビュー
-4. PRC-007 完了後、選択した unique foundation と `docs/ssot_index.md` を同時に APPROVED 化
-5. PLAN-UIUX-001 を unique foundation 参照へ改版し、実装 WP を queue 規律に従って claim
+3. UIX-001 PROPOSED revisionと§0.1 preservation matrixをreviewする。旧UIX-002〜007は
+   finalizationまでAPPROVEDのまま維持する
+4. required reviewとfinal human approval後、UIX-001 APPROVED、UIX-002〜007 SUPERSEDED、
+   `docs/ssot_index.md`、PLAN-UIUX-001とdirect live referencesを同一finalization batchで更新する
+5. finalization diffを再確認してlandingした後だけ、実装WPをqueue規律に従ってclaimする
 
 ## 9. Open questions
 
 - workflow-stage enum の SSOT 粒度・所在 — **丁採用により必須化** → **15号として起案済み(2026-07-31)**。残る論点は 15号 §9(薬剤師確認の位置の DOM-004 突合ほか)【レビュー待ち】
 - L0 テーマ(甲乙丙)の選定と、薬局ごとの複数保持を許すか全テナント単一か(製品判断)【要確認】
-- 丁の並行作業ロック表現・タブレット縮退・密度既定値(14号 R-2/R-3/R-4)【要設計・薬剤師レビュー】
+- 丁の並行作業ロック表現・タブレット縮退・密度既定値(14号 R-2/R-3/R-4)。
+  UIX-001 §14.1の`>=1024`候補とdrawer順はaccessibility/pharmacist gateでapprove/amend【要設計・薬剤師レビュー】
 - 密度段階(標準/圧縮)と高齢患者向け拡大表示の対象画面範囲(UIX-001 §6 の既存要確認と統合)【薬剤師レビュー】
 
 ## 変更履歴
 
+- 0.1.7-draft (2026-08-26): frozen reviewのD-2操作逆転、reviewer/source trace、authority優先順位を修正。
+  1 user action / backend 2段、MOD-009同一transaction、各専門/human gateを維持。
+- 0.1.6-draft (2026-08-26): Candidate A UIX-001 PROPOSED packetのpreservation matrix、
+  component contractのUIX-001統合、focus/privacy/a11y artifact境界を固定。review中は
+  UIX-002〜007をAPPROVEDのまま維持しfinalizationでのみSUPERSEDEDにする順序を固定。
 - 0.1.5-draft (2026-08-26): direct user instructionによりCandidate A(UIX-001改版)を選択。
   本書は独立SSOT/UIX-008へ昇格せず、未決のmedical-safety/privacy/accessibility/pharmacist
   判断を各該当gateへ委譲。PRC-007 final approvalと実装は未承認のまま維持。
