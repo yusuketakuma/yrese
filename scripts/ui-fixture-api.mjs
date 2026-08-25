@@ -28,6 +28,25 @@ const patients = [
   },
 ];
 
+function receptionEntries(date) {
+  return [
+    {
+      receptionId: "reception-e2e-001",
+      patient: patients[0],
+      acceptedAt: `${date}T00:15:00.000Z`,
+      receptionStatus: "WAITING",
+      prescriptionIntakeType: "paper",
+    },
+    {
+      receptionId: "reception-e2e-002",
+      patient: patients[1],
+      acceptedAt: `${date}T00:30:00.000Z`,
+      receptionStatus: "IN_PROGRESS",
+      prescriptionIntakeType: "paper",
+    },
+  ];
+}
+
 function corsHeaders(request) {
   return {
     "access-control-allow-origin": ALLOWED_ORIGIN,
@@ -126,7 +145,10 @@ const server = createServer((request, response) => {
       });
       return;
     }
-    sendJson(request, response, 200, { date, entries: [] });
+    sendJson(request, response, 200, {
+      date,
+      entries: receptionEntries(date),
+    });
     return;
   }
 
