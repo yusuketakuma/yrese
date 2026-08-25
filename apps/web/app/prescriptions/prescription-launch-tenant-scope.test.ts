@@ -6,7 +6,12 @@ describe("prescription launch tenant scope", () => {
   it("cannot authorize a reception absent from the authenticated queue", () => {
     expect(
       validateReceptionLaunchEntry(
-        [{ receptionId: "tenant-a-reception", patientId: "patient-a" }],
+        [
+          {
+            receptionId: "tenant-a-reception",
+            patient: { patientId: "patient-a" },
+          },
+        ],
         {
           receptionId: "tenant-b-reception",
           patientId: "patient-a",
