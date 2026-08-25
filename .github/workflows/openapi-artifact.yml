@@ -1,0 +1,53 @@
+name: OpenAPI generated artifact
+
+on:
+  pull_request:
+    paths:
+      - "packages/contracts/src/**"
+      - "scripts/openapi-*.mjs"
+      - "docs/api/openapi.yaml"
+      - ".github/workflows/openapi-artifact.yml"
+      - "pnpm-lock.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.18.0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26.6.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate OpenAPI from contract source
+        run: pnpm generate:openapi
+
+      - name: Record generated diff
+        run: |
+          mkdir -p artifacts/openapi
+          git diff -- docs/api/openapi.yaml > artifacts/openapi/openapi.diff
+          cp docs/api/openapi.yaml artifacts/openapi/openapi.yaml
+          printf 'sha=%s\nrun=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > artifacts/openapi/status.txt
+
+      - name: Upload generated OpenAPI evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: yrese-generated-openapi
+          path: artifacts/openapi
+          if-no-files-found: error
+          retention-days: 14
