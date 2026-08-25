@@ -16,6 +16,7 @@ import {
 import { useOptionalPatientContext } from "../components/patient-context";
 import { useOptionalUnsavedWork } from "../components/unsaved-work";
 import { formatAcceptedTime } from "../reception-dashboard";
+import { PersistentPrescriptionWorkspace } from "./persistent-prescription-workspace";
 import {
   type PrescriptionReceptionOrigin,
   useOptionalPrescriptionOrigin,
@@ -65,7 +66,8 @@ export function PrescriptionReceptionBoundary({
   const originContext = useOptionalPrescriptionOrigin();
   const unsavedWork = useOptionalUnsavedWork();
   const origin = originContext?.origin ?? null;
-  const selectedPatientId = patientContext?.patient?.patientId ?? null;
+  const selectedPatient = patientContext?.patient ?? null;
+  const selectedPatientId = selectedPatient?.patientId ?? null;
   const [verification, setVerification] = useState<VerificationState>({
     kind: "idle",
   });
@@ -112,7 +114,7 @@ export function PrescriptionReceptionBoundary({
 
   if (origin === null) return children;
 
-  if (selectedPatientId !== origin.patientId) {
+  if (selectedPatient === null || selectedPatientId !== origin.patientId) {
     return (
       <section aria-label="受付連携の患者不一致">
         <ScreenHeader
@@ -186,7 +188,7 @@ export function PrescriptionReceptionBoundary({
               key: verification.entry.receptionStatus,
             }}
           />
-          です。処方内容そのものは未保存で、臨床判定・算定・確定処理にも未接続です。
+          です。処方下書きはversion確認付きで保存できますが、臨床判定・算定・薬剤師確認・確定処理には未接続です。
         </p>
         <button
           type="button"
@@ -202,7 +204,11 @@ export function PrescriptionReceptionBoundary({
           受付連携を解除
         </button>
       </InlineNotice>
-      {children}
+      <PersistentPrescriptionWorkspace
+        key={key}
+        patient={selectedPatient}
+        scope={origin}
+      />
     </section>
   );
 }
