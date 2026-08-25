@@ -288,4 +288,13 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
     expect(html).toContain("処方保存API・監査証跡が未接続です");
     expect(html).not.toContain("安全確認済みです");
   });
+
+  it("keeps the scrollable safety rail keyboard reachable", () => {
+    const html = renderToStaticMarkup(
+      <SelectedPatientWorkspaceView patient={SELECTED_PATIENT} />,
+    );
+    expect(html).toMatch(
+      /<aside class="prescription-safety-rail" aria-label="患者コンテキストと安全情報" tabindex="0">/,
+    );
+  });
 });

@@ -548,6 +548,7 @@ export function SelectedPatientWorkspaceView({
         <aside
           className="prescription-safety-rail"
           aria-label="患者コンテキストと安全情報"
+          tabIndex={0}
         >
           <RailCard title="患者コンテキスト & 安全" tone="warning">
             <div className="patient-safety-summary">

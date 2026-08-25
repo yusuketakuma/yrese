@@ -62,7 +62,22 @@ const server = createServer((request, response) => {
   }
 
   if (method === "GET" && url.pathname === "/health") {
-    sendJson(request, response, 200, { status: "ok" });
+    sendJson(request, response, 200, {
+      status: "ok",
+      service: "api",
+      version: "0.0.1",
+      timestamp: "2026-08-25T00:00:00.000Z",
+    });
+    return;
+  }
+
+  if (method === "GET" && url.pathname === "/whoami") {
+    sendJson(request, response, 200, {
+      tenantId: "tenant-e2e",
+      pharmacyId: "pharmacy-e2e",
+      actorId: "actor-e2e",
+      scopes: ["tenant:read", "tenant:admin", "user:admin"],
+    });
     return;
   }
 

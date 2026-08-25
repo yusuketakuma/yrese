@@ -452,6 +452,10 @@ body {
 }
 
 @media (max-width: 820px) {
+  .app-header {
+    grid-template-columns: 1fr auto;
+  }
+
   .app-nav-label {
     position: absolute;
     width: 1px;

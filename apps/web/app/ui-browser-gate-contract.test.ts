@@ -36,6 +36,8 @@ describe("UI browser validation gate", () => {
 
   it("covers keyboard, accessibility, reflow, and unsaved-draft safety", () => {
     expect(browserCheck).toContain("axe.run");
+    expect(browserCheck).toContain('waitUntil: "domcontentloaded"');
+    expect(browserCheck.match(/caret: "initial"/g)).toHaveLength(3);
     expect(browserCheck).toContain("beforeunload");
     expect(browserCheck).toContain("reflow-200pct-equivalent");
     expect(browserCheck).toContain("未保存下書き 1件");
@@ -47,6 +49,9 @@ describe("UI browser validation gate", () => {
   it("uses synthetic fixture patients and no production endpoint", () => {
     expect(fixtureApi).toContain("patient-e2e-001");
     expect(fixtureApi).toContain("テスト患者 一");
+    expect(fixtureApi).toContain('url.pathname === "/whoami"');
+    expect(fixtureApi).toContain("tenant-e2e");
+    expect(fixtureApi).toContain('service: "api"');
     expect(fixtureApi).toContain("127.0.0.1");
     expect(fixtureApi).not.toContain("amazonaws.com");
     expect(fixtureApi).not.toContain("production");

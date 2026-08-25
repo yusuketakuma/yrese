@@ -105,9 +105,10 @@ async function checkRoute(page, route, viewport) {
   const label = `${routeName(route)}-${viewport.width}x${viewport.height}`;
   await page.setViewportSize(viewport);
   const response = await page.goto(`${BASE_URL}${route}`, {
-    waitUntil: "networkidle",
+    waitUntil: "domcontentloaded",
   });
   assert(response?.ok() === true, `${label}: route did not return 2xx`);
+  await page.locator("main#main-content").waitFor();
   assert(
     (await page.locator("main#main-content").count()) === 1,
     `${label}: main landmark missing or duplicated`,
@@ -117,6 +118,7 @@ async function checkRoute(page, route, viewport) {
   await page.screenshot({
     path: path.join(ARTIFACT_DIR, `${label}.png`),
     fullPage: true,
+    caret: "initial",
   });
   findings.routeChecks.push({ route, viewport, status: response.status() });
 }
@@ -261,6 +263,7 @@ async function checkDraftRecoveryAndPatientGuard(page) {
         `prescription-${viewport.name}-${viewport.width}x${viewport.height}.png`,
       ),
       fullPage: true,
+      caret: "initial",
     });
   }
 
@@ -268,6 +271,7 @@ async function checkDraftRecoveryAndPatientGuard(page) {
   await page.screenshot({
     path: path.join(ARTIFACT_DIR, "prescription-forced-colors.png"),
     fullPage: true,
+    caret: "initial",
   });
   await page.emulateMedia({ forcedColors: "none" });
 }
