@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, type FormEvent, useMemo, useRef, useState } from "react";
 
 interface SpeechRecognitionLike {
   lang: string;
@@ -35,39 +35,43 @@ const INTENTS: readonly {
 }[] = [
   {
     keywords: ["受付", "処方箋", "qr", "電子処方箋", "取り込"],
-    intent: { label: "受付を開く", href: "/", rationale: "受付・処方箋取込に関する指示と判断しました" },
+    intent: { label: "受付を開く", href: "/", rationale: "受付・処方箋取込に関する指示" },
   },
   {
     keywords: ["患者", "検索", "生年月日", "患者番号"],
-    intent: { label: "患者検索を開く", href: "/patients", rationale: "患者の検索・選択に関する指示と判断しました" },
+    intent: { label: "患者検索を開く", href: "/patients", rationale: "患者検索・患者選択に関する指示" },
   },
   {
     keywords: ["処方", "薬", "用法", "用量", "日数", "疑義", "残薬"],
-    intent: { label: "処方ワークスペースを開く", href: "/prescriptions", rationale: "処方内容の確認・編集に関する指示と判断しました" },
+    intent: { label: "処方入力を開く", href: "/prescriptions", rationale: "処方内容の確認・編集に関する指示" },
   },
   {
     keywords: ["会計", "負担金", "領収", "返金", "未収"],
-    intent: { label: "会計を開く", href: "/checkout", rationale: "会計・患者負担に関する指示と判断しました" },
+    intent: { label: "会計を開く", href: "/checkout", rationale: "会計・患者負担に関する指示" },
   },
   {
     keywords: ["請求", "レセプト", "点検", "エラー"],
-    intent: { label: "請求前点検を開く", href: "/claim-check", rationale: "請求前点検に関する指示と判断しました" },
+    intent: { label: "請求前点検を開く", href: "/claim-check", rationale: "請求前点検に関する指示" },
   },
   {
     keywords: ["月次", "締め", "返戻", "再請求"],
-    intent: { label: "月次締めを開く", href: "/monthly-closing", rationale: "月次締め・再請求に関する指示と判断しました" },
+    intent: { label: "月次締めを開く", href: "/monthly-closing", rationale: "月次締め・返戻に関する指示" },
   },
   {
     keywords: ["マスター", "薬価", "医薬品"],
-    intent: { label: "マスターを開く", href: "/masters", rationale: "マスター情報に関する指示と判断しました" },
+    intent: { label: "マスターを開く", href: "/masters", rationale: "マスター情報に関する指示" },
   },
   {
     keywords: ["同期", "障害", "連携", "ステータス"],
-    intent: { label: "同期状態を開く", href: "/sync-status", rationale: "外部連携・同期状態に関する指示と判断しました" },
+    intent: { label: "同期状態を開く", href: "/sync-status", rationale: "外部連携・同期状態に関する指示" },
+  },
+  {
+    keywords: ["管理", "ユーザー", "権限", "設定"],
+    intent: { label: "管理・設定を開く", href: "/admin", rationale: "管理・設定に関する指示" },
   },
 ];
 
-function resolveIntent(command: string): CommandIntent | null {
+export function resolveOperatorIntent(command: string): CommandIntent | null {
   const normalized = command.trim().toLowerCase();
   if (!normalized) return null;
 
@@ -84,21 +88,13 @@ function resolveIntent(command: string): CommandIntent | null {
   return best?.intent ?? null;
 }
 
-/**
- * Operator-first command surface.
- *
- * Safety boundary: this component never mutates clinical/billing data. Natural language and
- * speech only resolve to a navigation candidate. Any clinical change remains inside the
- * destination workflow, where patient context, validation and explicit confirmation apply.
- */
 export function OperatorCommandBar() {
   const [command, setCommand] = useState("");
   const [submittedCommand, setSubmittedCommand] = useState("");
   const [listening, setListening] = useState(false);
   const [speechUnavailable, setSpeechUnavailable] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
-
-  const intent = useMemo(() => resolveIntent(submittedCommand), [submittedCommand]);
+  const intent = useMemo(() => resolveOperatorIntent(submittedCommand), [submittedCommand]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -138,45 +134,51 @@ export function OperatorCommandBar() {
     <section className="operator-command" aria-label="自然言語クイック操作">
       <form onSubmit={submit} className="operator-command-form">
         <label htmlFor="operator-command-input" className="operator-command-label">
-          操作を入力
+          自然言語で画面を探す
         </label>
         <div className="operator-command-row">
+          <span className="operator-command-search-icon" aria-hidden="true">
+            ⌕
+          </span>
           <input
             id="operator-command-input"
             value={command}
-            onChange={(event) => setCommand(event.target.value)}
-            placeholder="例: 山田さんを検索 / 今日の受付を確認 / 請求エラーを見せて"
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setCommand(event.target.value)}
+            placeholder="自然言語で指示してください（例：山田さんを検索して）"
             autoComplete="off"
           />
-          <button type="submit">候補を表示</button>
+          <button type="submit" className="operator-command-submit">
+            候補
+          </button>
           <button
             type="button"
+            className="operator-command-voice"
             onClick={toggleSpeech}
             aria-pressed={listening}
             aria-label={listening ? "音声入力を停止" : "音声入力を開始"}
           >
-            {listening ? "音声停止" : "音声入力"}
+            {listening ? "停止" : "音声"}
           </button>
         </div>
       </form>
 
       {speechUnavailable ? (
         <p role="status" className="operator-command-note">
-          このブラウザでは音声認識を利用できません。テキスト入力は利用できます。
+          このブラウザでは音声認識を利用できません。テキスト入力を利用してください。
         </p>
       ) : null}
 
       {submittedCommand ? (
         <div className="operator-command-preview" aria-live="polite">
-          <strong>解釈結果:</strong>{" "}
           {intent ? (
             <>
-              {intent.rationale}。 <Link href={intent.href}>{intent.label}</Link>
+              <strong>{intent.rationale}</strong>
+              <Link href={intent.href}>{intent.label}</Link>
             </>
           ) : (
-            "安全に自動解釈できませんでした。左の業務メニューから対象画面を選択してください。"
+            <span>安全に解釈できません。左の業務メニューから対象画面を選択してください。</span>
           )}
-          <p>この入力だけで患者情報・処方・会計・請求データを変更することはありません。</p>
+          <small>この入力だけで患者・処方・会計・請求データは変更されません。</small>
         </div>
       ) : null}
     </section>
