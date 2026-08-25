@@ -1,3 +1,4 @@
+import { OperatorFocusBoard } from "./components/operator-focus-board";
 import { PatientContextRail } from "./components/patient-context-rail";
 import {
   IntakeCard,
@@ -36,14 +37,16 @@ export default function ReceptionPage() {
       <ScreenHeader
         title="受付ダッシュボード"
         description="患者を選択し、受付キューから次の処理へ進むための業務起点です。"
-        meta={<StatusPill tone="success">既存受付API配線</StatusPill>}
+        meta={<StatusPill tone="info">既存受付API配線・稼働未確認</StatusPill>}
       />
+
+      <OperatorFocusBoard />
 
       <MetricGrid>
         <MetricCard label="未受付" value="—" unit="件" detail="集計API未接続" tone="accent" icon="受" />
         <MetricCard label="受付中" value="—" unit="件" detail="下のライブキューを参照" tone="info" icon="進" />
-        <MetricCard label="要確認" value="—" unit="件" detail="集計API未接続" tone="warning" icon="!" />
-        <MetricCard label="完了" value="—" unit="件" detail="集計API未接続" tone="success" icon="✓" />
+        <MetricCard label="要確認" value="—" unit="件" detail="集計API未接続" tone="neutral" icon="?" />
+        <MetricCard label="完了" value="—" unit="件" detail="集計API未接続" tone="neutral" icon="?" />
       </MetricGrid>
 
       <Panel
@@ -79,7 +82,9 @@ export default function ReceptionPage() {
         description="この領域は既存の受付API・冪等登録・患者文脈へ接続されています。"
         className="live-surface-panel"
       >
-        <ReceptionDashboard />
+        <div id="reception-live-queue">
+          <ReceptionDashboard />
+        </div>
       </Panel>
     </OperatorPage>
   );
