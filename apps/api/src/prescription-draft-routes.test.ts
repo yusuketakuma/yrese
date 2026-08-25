@@ -154,12 +154,16 @@ describe("prescription draft routes", () => {
     });
   });
 
-  it("fails closed before data lookup for an untrusted tenant context", async () => {
+  it("fails closed before data lookup when the tenant context cannot be constructed", async () => {
     const instance = server();
     const response = await instance.inject({
       method: "PUT",
       url: "/prescription-drafts/by-reception/reception-syn-001",
-      headers: { ...authorizedHeaders, "x-dev-tenant": "tenant-other" },
+      headers: {
+        "x-dev-tenant": authorizedHeaders["x-dev-tenant"],
+        "x-dev-pharmacy": authorizedHeaders["x-dev-pharmacy"],
+        "x-dev-scopes": authorizedHeaders["x-dev-scopes"],
+      },
       payload: baseBody,
     });
 

@@ -116,7 +116,7 @@ async function receptionMatches(
         AND reception_id = $3
         AND patient_id = $4
         AND business_date = $5::date
-      ${lock ? "FOR SHARE" : ""}`,
+      ${lock ? "FOR NO KEY UPDATE" : ""}`,
     [
       input.tenantId,
       input.pharmacyId,
@@ -294,6 +294,9 @@ export class PostgresPrescriptionDraftService
 
     try {
       await client.query("BEGIN");
+      // Serializes all draft writers for the same verified reception row. This closes the
+      // create/create race before either transaction decides that no draft exists while still
+      // permitting unrelated receptions to proceed concurrently.
       if (!(await receptionMatches(client, input, true))) {
         await client.query("ROLLBACK");
         return { kind: "not_found" };

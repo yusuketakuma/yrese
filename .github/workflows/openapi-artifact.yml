@@ -11,21 +11,16 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   generate:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.head.repo.full_name == github.repository &&
-       github.event.pull_request.head.ref == 'feat/prescription-draft-complete-slice')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
-          persist-credentials: true
+          persist-credentials: false
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
@@ -42,23 +37,10 @@ jobs:
       - name: Generate OpenAPI from contract source
         run: pnpm generate:openapi
 
-      - name: Publish deterministic generated artifact to the feature branch
-        if: github.event_name == 'pull_request'
-        run: |
-          if git diff --quiet -- docs/api/openapi.yaml; then
-            echo "OpenAPI artifact is already current"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/api/openapi.yaml
-          git commit -m "docs(api): publish generated prescription draft OpenAPI"
-          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
-
-      - name: Record generated evidence
+      - name: Record generated diff
         run: |
           mkdir -p artifacts/openapi
-          git diff HEAD^ -- docs/api/openapi.yaml > artifacts/openapi/openapi.diff || true
+          git diff -- docs/api/openapi.yaml > artifacts/openapi/openapi.diff
           cp docs/api/openapi.yaml artifacts/openapi/openapi.yaml
           printf 'sha=%s\nrun=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > artifacts/openapi/status.txt
 
