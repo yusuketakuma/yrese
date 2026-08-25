@@ -35,7 +35,7 @@ export function OperatorPage({
     >
       <div className="operator-page-primary">{children}</div>
       {rail !== undefined ? (
-        <aside className="operator-rail" aria-label={railLabel}>
+        <aside className="operator-rail" aria-label={railLabel} tabIndex={0}>
           {rail}
         </aside>
       ) : null}
@@ -262,10 +262,7 @@ export function PrototypeAction({
 }) {
   const label = prototypeActionLabel(children, actionLabel);
   return (
-    <span
-      className="prototype-action-shell"
-      data-disabled-reason={reason}
-    >
+    <span className="prototype-action-shell" data-disabled-reason={reason}>
       <button
         type="button"
         className="operator-button"
@@ -276,9 +273,7 @@ export function PrototypeAction({
       >
         {children}
       </button>
-      <small className="prototype-action-reason">
-        利用不可: {reason}
-      </small>
+      <small className="prototype-action-reason">利用不可: {reason}</small>
     </span>
   );
 }
