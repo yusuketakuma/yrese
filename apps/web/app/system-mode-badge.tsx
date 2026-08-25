@@ -7,47 +7,53 @@ import {
 
 export const MODE_LABELS: Record<SystemMode, string> = SYSTEM_MODE_LABELS;
 
+export interface SystemModeBadgeProps {
+  readonly mode?: SystemMode;
+  readonly provisional?: boolean;
+}
+
 /**
  * システムモード常時表示。
- *
- * モード検知 API が未接続の既定状態では NORMAL を推測せず、状態未検知として表示する。
- * mode が明示された場合だけ Visual Status Registry のラベルを表示する。
+ * mode 未指定は常に未検知へ倒し、provisional=falseを渡してもNORMALを推測しない。
+ * mode が明示された場合だけ Visual Status Registry のラベルと形状を投影する。
  */
 export function SystemModeBadge({
   mode,
-  provisional = mode === undefined,
-}: {
-  readonly mode?: SystemMode;
-  readonly provisional?: boolean;
-}) {
-  const effectiveMode = mode ?? "NORMAL";
-  const displayMode = provisional ? "UNDETECTED" : effectiveMode;
+  provisional = false,
+}: SystemModeBadgeProps) {
+  if (mode === undefined) {
+    return (
+      <span
+        className="system-mode-badge"
+        data-mode="UNDETECTED"
+        data-provisional="true"
+        role="status"
+        aria-live="polite"
+        title="モード検知バックエンド未接続のため状態を判定できません"
+      >
+        <span className="system-mode-shape" aria-hidden="true">
+          ?
+        </span>
+        状態未検知
+        <span className="system-mode-provisional">API未接続</span>
+      </span>
+    );
+  }
 
   return (
     <span
       className="system-mode-badge"
-      data-mode={displayMode}
+      data-mode={mode}
       data-provisional={provisional ? "true" : "false"}
       role="status"
       aria-live="polite"
-      title={
-        provisional
-          ? "モード検知バックエンド未接続のため状態を判定できません"
-          : undefined
-      }
-      style={
-        provisional
-          ? { background: "var(--color-status-attention-bg)" }
-          : undefined
-      }
+      title={provisional ? "取得したシステムモードは暫定値です" : undefined}
     >
       <span className="system-mode-shape" aria-hidden="true">
-        {provisional ? "?" : SYSTEM_MODE_PRESENTATION[effectiveMode].shape}
+        {SYSTEM_MODE_PRESENTATION[mode].shape}
       </span>
-      {provisional ? "状態未検知" : MODE_LABELS[effectiveMode]}
-      {provisional ? (
-        <span className="system-mode-provisional">API未接続</span>
-      ) : null}
+      {MODE_LABELS[mode]}
+      {provisional ? <span className="system-mode-provisional">暫定</span> : null}
     </span>
   );
 }
