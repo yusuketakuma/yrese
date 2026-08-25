@@ -1,5 +1,5 @@
-import { ModeCapabilityView } from "../components/mode-capability-view";
 import {
+  InlineNotice,
   MetricCard,
   MetricGrid,
   OperatorPage,
@@ -9,7 +9,6 @@ import {
   ScreenHeader,
   StatusPill,
 } from "../components/operator-ui";
-import { SystemHealthBanner } from "../components/sync-indicator";
 import { ModeOverviewTable } from "./mode-overview";
 
 const INTEGRATIONS = [
@@ -21,14 +20,13 @@ const INTEGRATIONS = [
 ] as const;
 
 export default function Page() {
-  const currentMode = "NORMAL" as const;
   return (
     <OperatorPage
       rail={
         <>
           <RailCard title="現在のシステムモード" tone="warning">
-            <StatusPill tone="warning">NORMAL固定（暫定）</StatusPill>
-            <p className="rail-muted">モード検知バックエンドは未接続です。固定表示を実状態と解釈しないでください。</p>
+            <StatusPill tone="warning">未検知</StatusPill>
+            <p className="rail-muted">モード検知バックエンドは未接続です。NORMAL・障害・オフラインのいずれも推測しません。</p>
           </RailCard>
           <RailCard title="障害時の対応ガイド" tone="info">
             <ol className="rail-steps"><li>現在モードと警告を確認</li><li>影響サービスと未処理件数を確認</li><li>再試行または正式な障害手順へ</li></ol>
@@ -45,7 +43,9 @@ export default function Page() {
         meta={<StatusPill tone="warning">検知バックエンド未接続</StatusPill>}
         actions={<PrototypeAction>手動で最新に更新</PrototypeAction>}
       />
-      <SystemHealthBanner mode={currentMode} reason="モード検知バックエンド未接続のため NORMAL 固定表示（暫定）" />
+      <InlineNotice title="システムモード未検知" tone="warning">
+        <p>稼働状態は判定できません。緑色の正常表示や外部連携成功を推測せず、すべて未確認として扱います。</p>
+      </InlineNotice>
       <MetricGrid>
         <MetricCard label="クラウド（yrese）" value="未検知" detail="ヘルスAPI未接続" tone="warning" icon="雲" />
         <MetricCard label="オンプレミス / Edge" value="未検知" detail="Edge状態API未接続" tone="warning" icon="端" />
@@ -60,8 +60,14 @@ export default function Page() {
       </Panel>
 
       <div className="operator-two-column">
-        <Panel title="現在モードの操作可否"><ModeCapabilityView mode={currentMode} /></Panel>
-        <Panel title="モード別可否早見表（非常時リファレンス）"><ModeOverviewTable currentMode={currentMode} /></Panel>
+        <Panel title="現在モードの操作可否">
+          <StatusPill tone="danger">判定不可・実行不可</StatusPill>
+          <p className="operator-empty-copy">モード検知、権限、接続状態の確認が揃うまで、外部確認・確定算定・月次締めを許可しません。</p>
+        </Panel>
+        <Panel title="モード別可否早見表（静的リファレンス）">
+          <p className="operator-empty-copy">表の「可」はモードガード上の参考であり、現在の実行許可ではありません。</p>
+          <ModeOverviewTable />
+        </Panel>
       </div>
 
       <Panel title="最近の同期イベント（ジョブキュー）">
