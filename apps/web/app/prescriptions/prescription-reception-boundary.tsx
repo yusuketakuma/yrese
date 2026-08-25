@@ -186,7 +186,7 @@ export function PrescriptionReceptionBoundary({
               key: verification.entry.receptionStatus,
             }}
           />
-          です。処方内容そのものは未保存で、臨床判定・算定・確定処理にも未接続です。
+          です。次の入力画面でサーバー下書き版を取得します。下書き保存は薬剤師確認・処方確定を意味せず、臨床判定・算定・確定処理は未接続です。
         </p>
         <button
           type="button"

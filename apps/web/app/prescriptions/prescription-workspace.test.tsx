@@ -112,7 +112,7 @@ const PAST_PRESCRIPTIONS = [
   },
 ] as const;
 
-describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
+describe("PrescriptionWorkspace (connected draft UI / patient safety)", () => {
   it("blocks starting work without a selected patient and routes to search", () => {
     const html = renderToStaticMarkup(
       <PatientContextProvider>
@@ -141,7 +141,7 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
     expect(html).not.toContain("2026/08/24");
   });
 
-  it("starts blank and documents the PHI-minimizing recovery boundary", () => {
+  it("starts blank and fails closed without a verified reception origin", () => {
     expect(createBlankDraftRows()).toEqual([
       { id: 1, drug: "", usage: "", days: "", quantity: "" },
     ]);
@@ -149,10 +149,11 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
       <SelectedPatientWorkspaceView patient={SELECTED_PATIENT} />,
     );
     expect(html).toContain("未選択");
-    expect(html).toContain("未入力・保存API未接続");
-    expect(html).toContain("このタブのメモリだけに保持");
-    expect(html).toContain("患者切替では確認後に破棄");
-    expect(html).toContain("再読込・タブ終了では警告後に消失");
+    expect(html).toContain("受付未連携・保存不可");
+    expect(html).toContain("受付との連携がありません");
+    expect(html).toContain("サーバーへ保存できません");
+    expect(html).toContain("処方下書きを保存");
+    expect(html).toContain("受付画面から対象受付を引き継いでください");
     expect(html).not.toContain('value="外来" selected');
   });
 
@@ -265,19 +266,19 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
     ]);
   });
 
-  it("keeps destructive clearing behind an explicit confirmation step", () => {
+  it("keeps destructive changes behind an explicit confirmation step", () => {
     const html = renderToStaticMarkup(
       <SelectedPatientWorkspaceView patient={SELECTED_PATIENT} />,
     );
-    expect(html).toContain("入力を消去");
+    expect(html).toContain("変更を戻す");
     expect(html).toContain("削除確認");
     expect(html).toContain("空の最終行は削除できません");
     expect(html).toContain("disabled");
-    expect(html).not.toContain("確認して消去");
+    expect(html).not.toContain("確認して変更を破棄");
     expect(html).not.toContain("確認して削除");
   });
 
-  it("does not present missing clinical checks or calculation as completed", () => {
+  it("does not present missing clinical checks, finalization, or calculation as completed", () => {
     const html = renderToStaticMarkup(
       <SelectedPatientWorkspaceView patient={SELECTED_PATIENT} />,
     );
@@ -285,7 +286,8 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
       "臨床アラート判定(相互作用・禁忌・重複・用量)は未接続です",
     );
     expect(html).toContain("安全確認済みを意味しません");
-    expect(html).toContain("処方保存API・監査証跡が未接続です");
+    expect(html).toContain("下書き保存は薬剤師確認・処方確定を意味しません");
+    expect(html).toContain("算定エンジンと根拠トレースが未接続です");
     expect(html).not.toContain("安全確認済みです");
   });
 
