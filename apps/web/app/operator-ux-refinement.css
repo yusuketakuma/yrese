@@ -3,9 +3,9 @@
  * Loaded after globals.css and operator-first.css; does not redefine domain status meaning.
  */
 :root {
-  --ux-font-caption: 0.75rem;
-  --ux-font-small: 0.8125rem;
-  --ux-font-body: 0.875rem;
+  --ux-font-caption: 0.8125rem;
+  --ux-font-small: 0.875rem;
+  --ux-font-body: 0.9375rem;
   --ux-control-min: 40px;
   --ux-control-primary: 44px;
   --ux-patient-bar-offset: 5.5rem;
@@ -112,7 +112,7 @@ body {
 }
 
 .operator-command-row input {
-  min-height: 36px;
+  min-height: var(--ux-control-min);
   font-size: var(--ux-font-body);
 }
 
@@ -131,7 +131,7 @@ body {
 
 .operator-command-row .operator-command-submit,
 .operator-command-row .operator-command-voice {
-  min-height: 36px;
+  min-height: var(--ux-control-min);
   font-size: var(--ux-font-caption);
 }
 
