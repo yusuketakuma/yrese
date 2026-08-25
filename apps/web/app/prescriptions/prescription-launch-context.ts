@@ -1,3 +1,5 @@
+import type { ReceptionStatus } from "@yrese/contracts";
+
 export type PrescriptionLaunchSearchParam = string | readonly string[] | undefined;
 
 export interface PrescriptionLaunchContext {
@@ -68,16 +70,24 @@ export interface ReceptionLaunchIdentity {
   readonly patient: {
     readonly patientId: string;
   };
+  readonly receptionStatus: ReceptionStatus;
 }
 
 export type ReceptionLaunchValidationResult<T extends ReceptionLaunchIdentity> =
   | { readonly status: "ready"; readonly entry: T }
   | { readonly status: "not-found" }
-  | { readonly status: "patient-mismatch" };
+  | { readonly status: "patient-mismatch" }
+  | { readonly status: "terminal-status"; readonly entry: T };
+
+function receptionAcceptsPrescriptionDraft(status: ReceptionStatus): boolean {
+  return status === "WAITING" || status === "IN_PROGRESS";
+}
 
 /**
  * Resolve only an entry returned by the authenticated, tenant-scoped reception queue.
  * A route patientId never overrides the nested patient identity returned by the API contract.
+ * Completed or cancelled reception entries are returned as an explicit terminal result so the
+ * editor cannot be entered through a copied dynamic URL.
  */
 export function validateReceptionLaunchEntry<T extends ReceptionLaunchIdentity>(
   entries: readonly T[],
@@ -89,6 +99,9 @@ export function validateReceptionLaunchEntry<T extends ReceptionLaunchIdentity>(
   if (entry === undefined) return { status: "not-found" };
   if (entry.patient.patientId !== context.patientId) {
     return { status: "patient-mismatch" };
+  }
+  if (!receptionAcceptsPrescriptionDraft(entry.receptionStatus)) {
+    return { status: "terminal-status", entry };
   }
   return { status: "ready", entry };
 }
