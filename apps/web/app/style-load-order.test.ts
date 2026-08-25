@@ -13,6 +13,10 @@ const operatorSource = readFileSync(
   new URL("./operator-first.css", import.meta.url),
   "utf8",
 );
+const completionSource = readFileSync(
+  new URL("./operator-completion-refinement.css", import.meta.url),
+  "utf8",
+);
 const duplicateRefinementUrl = new URL(
   "./operator-first-refinement.css",
   import.meta.url,
@@ -56,6 +60,9 @@ describe("operator stylesheet load order", () => {
   it("lays out the desktop shell as a sidebar and workspace grid", () => {
     expect(operatorSource).toMatch(
       /\.app-shell\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:/s,
+    );
+    expect(completionSource).not.toMatch(
+      /\.app-sidebar\s*\{[^}]*background:/s,
     );
   });
 });

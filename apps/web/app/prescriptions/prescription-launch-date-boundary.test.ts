@@ -9,7 +9,6 @@ describe("prescription launch business date", () => {
       expect(
         parsePrescriptionLaunchContext({
           receptionId: "reception-date",
-          patientId: "patient-date",
           date,
         }).status,
       ).toBe("invalid");

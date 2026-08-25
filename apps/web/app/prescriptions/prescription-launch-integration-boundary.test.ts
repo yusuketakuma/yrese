@@ -6,7 +6,6 @@ describe("prescription launch bounded scope", () => {
   it("does not derive medication, calculation, or confirmation state from URL input", () => {
     const result = parsePrescriptionLaunchContext({
       receptionId: "reception-bounded",
-      patientId: "patient-bounded",
       date: "2026-08-25",
     });
 
@@ -14,7 +13,6 @@ describe("prescription launch bounded scope", () => {
       status: "ready",
       context: {
         receptionId: "reception-bounded",
-        patientId: "patient-bounded",
         businessDate: "2026-08-25",
       },
     });

@@ -55,7 +55,9 @@ describe("ReceptionPrescriptionHandoffAction", () => {
       const html = renderAction(status);
       expect(html).toContain('href="/prescriptions"');
       expect(html).toContain("処方入力へ");
-      expect(html).toContain("この受付を処方入力へ引き継ぐ");
+      expect(html).toContain(
+        "この受付を処方入力へ引き継ぐ: 合成 患者（患者番号 T-0001）",
+      );
     },
   );
 
@@ -67,6 +69,8 @@ describe("ReceptionPrescriptionHandoffAction", () => {
     const html = renderAction(status);
     expect(html).toMatch(/<button[^>]*disabled[^>]*>処方入力へ<\/button>/);
     expect(html).toContain(reason);
+    expect(html).toContain('class="prototype-action-reason"');
+    expect(html).toContain("合成 患者（患者番号 T-0001）");
     expect(html).not.toContain('href="/prescriptions"');
   });
 });

@@ -72,7 +72,7 @@ export function ReceptionPrescriptionLaunch() {
       setState({
         status: "ready",
         entries: queue.entries.filter(
-          (entry) => entry.patientId === selectedPatient.patientId,
+          (entry) => entry.patient.patientId === selectedPatient.patientId,
         ),
       });
     } catch (error) {
@@ -140,12 +140,12 @@ export function ReceptionPrescriptionLaunch() {
               <div>
                 <strong>受付ID: {entry.receptionId}</strong>
                 <StatusPill tone="info">
-                  {RECEPTION_STATUS_LABELS[entry.status]}
+                  {RECEPTION_STATUS_LABELS[entry.receptionStatus]}
                 </StatusPill>
               </div>
               <Link
                 className="operator-button"
-                href={`/prescriptions/${encodeURIComponent(entry.receptionId)}?patientId=${encodeURIComponent(entry.patientId)}&date=${encodeURIComponent(businessDate)}`}
+                href={`/prescriptions/${encodeURIComponent(entry.receptionId)}?date=${encodeURIComponent(businessDate)}`}
               >
                 この受付で処方入力を開始
               </Link>

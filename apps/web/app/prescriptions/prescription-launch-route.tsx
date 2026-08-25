@@ -50,7 +50,7 @@ export function PrescriptionLaunchRoute({
   const selectedPatientId = selectedPatient?.patientId;
 
   useEffect(() => {
-    if (selectedPatientId === undefined || selectedPatientId !== launch.patientId) {
+    if (selectedPatientId === undefined) {
       setState({ status: "loading" });
       return;
     }
@@ -62,7 +62,11 @@ export function PrescriptionLaunchRoute({
     fetchReceptionQueue(launch.businessDate, fetch, controller.signal)
       .then((queue) => {
         if (!current) return;
-        const validation = validateReceptionLaunchEntry(queue.entries, launch);
+        const validation = validateReceptionLaunchEntry(
+          queue.entries,
+          launch,
+          selectedPatientId,
+        );
         if (validation.status === "not-found") {
           setState({
             status: "error",
@@ -113,23 +117,6 @@ export function PrescriptionLaunchRoute({
     );
   }
 
-  if (selectedPatient.patientId !== launch.patientId) {
-    return (
-      <section aria-label="患者不一致により処方入力を停止">
-        <ErrorNotice
-          severity="ERROR"
-          message="選択中の患者と受付URLの患者が一致しません。"
-          nextAction="処方入力を中止し、患者検索または受付画面から対象患者を選び直してください。"
-        />
-        <p>
-          <Link href="/">受付画面へ戻る</Link>
-          {" / "}
-          <Link href="/patients">患者検索を開く</Link>
-        </p>
-      </section>
-    );
-  }
-
   if (state.status === "loading") {
     return (
       <section
@@ -157,13 +144,13 @@ export function PrescriptionLaunchRoute({
     <div
       data-prescription-launch="verified"
       data-reception-id={state.entry.receptionId}
-      data-patient-id={state.entry.patientId}
+      data-patient-id={state.entry.patient.patientId}
     >
       <InlineNotice title="受付コンテキストを確認しました" tone="info" announce="polite">
         <p>
           受付ID: {state.entry.receptionId} / 業務日: {launch.businessDate} / 受付状態:{" "}
           <StatusPill tone="info">
-            {RECEPTION_STATUS_LABELS[state.entry.status]}
+            {RECEPTION_STATUS_LABELS[state.entry.receptionStatus]}
           </StatusPill>
         </p>
         <p>

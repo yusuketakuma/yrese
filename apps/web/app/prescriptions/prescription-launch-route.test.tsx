@@ -27,7 +27,6 @@ import { PrescriptionLaunchRoute } from "./prescription-launch-route";
 
 const LAUNCH = {
   receptionId: "reception-a",
-  patientId: "patient-a",
   businessDate: "2026-08-25",
 } as const;
 
@@ -41,7 +40,7 @@ describe("PrescriptionLaunchRoute", () => {
     expect(html).not.toContain('data-prescription-launch="verified"');
   });
 
-  it("blocks a selected patient that differs from the route patient", () => {
+  it("does not trust a selected patient before authenticated queue verification", () => {
     patientContext.patient = {
       patientId: "patient-b",
       name: "検証患者B",
@@ -52,7 +51,7 @@ describe("PrescriptionLaunchRoute", () => {
     };
     const html = renderToStaticMarkup(<PrescriptionLaunchRoute launch={LAUNCH} />);
 
-    expect(html).toContain("選択中の患者と受付URLの患者が一致しません");
+    expect(html).toContain("受付・患者・業務日の対応を確認しています");
     expect(html).not.toContain('data-prescription-launch="verified"');
   });
 });

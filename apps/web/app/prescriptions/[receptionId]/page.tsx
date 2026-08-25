@@ -6,7 +6,6 @@ import {
 import { PrescriptionLaunchRoute } from "../prescription-launch-route";
 
 type PrescriptionRouteSearchParams = {
-  readonly patientId?: PrescriptionLaunchSearchParam;
   readonly date?: PrescriptionLaunchSearchParam;
 };
 
@@ -20,7 +19,6 @@ export default async function Page({
   const [{ receptionId }, query] = await Promise.all([params, searchParams]);
   const parsed = parsePrescriptionLaunchContext({
     receptionId,
-    patientId: query.patientId,
     date: query.date,
   });
 

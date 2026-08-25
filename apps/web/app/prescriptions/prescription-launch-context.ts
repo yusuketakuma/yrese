@@ -2,7 +2,6 @@ export type PrescriptionLaunchSearchParam = string | readonly string[] | undefin
 
 export interface PrescriptionLaunchContext {
   readonly receptionId: string;
-  readonly patientId: string;
   readonly businessDate: string;
 }
 
@@ -27,27 +26,21 @@ function validIdentifier(value: string): boolean {
  */
 export function parsePrescriptionLaunchContext(input: {
   readonly receptionId: PrescriptionLaunchSearchParam;
-  readonly patientId: PrescriptionLaunchSearchParam;
   readonly date: PrescriptionLaunchSearchParam;
 }): PrescriptionLaunchContextParseResult {
   const receptionId = singleValue(input.receptionId)?.trim();
-  const patientId = singleValue(input.patientId)?.trim();
   const businessDate = singleValue(input.date)?.trim();
 
-  if (
-    receptionId === undefined ||
-    patientId === undefined ||
-    businessDate === undefined
-  ) {
+  if (receptionId === undefined || businessDate === undefined) {
     return {
       status: "invalid",
-      reason: "受付ID・患者ID・業務日を一意に指定してください。",
+      reason: "受付ID・業務日を一意に指定してください。",
     };
   }
-  if (!validIdentifier(receptionId) || !validIdentifier(patientId)) {
+  if (!validIdentifier(receptionId)) {
     return {
       status: "invalid",
-      reason: "受付IDまたは患者IDの形式を確認できません。",
+      reason: "受付IDの形式を確認できません。",
     };
   }
   if (!BUSINESS_DATE_PATTERN.test(businessDate)) {
@@ -59,13 +52,13 @@ export function parsePrescriptionLaunchContext(input: {
 
   return {
     status: "ready",
-    context: { receptionId, patientId, businessDate },
+    context: { receptionId, businessDate },
   };
 }
 
 export interface ReceptionLaunchIdentity {
   readonly receptionId: string;
-  readonly patientId: string;
+  readonly patient: { readonly patientId: string };
 }
 
 export type ReceptionLaunchValidationResult<T extends ReceptionLaunchIdentity> =
@@ -75,17 +68,18 @@ export type ReceptionLaunchValidationResult<T extends ReceptionLaunchIdentity> =
 
 /**
  * Resolve only an entry returned by the authenticated, tenant-scoped reception queue.
- * A route patientId never overrides the patient identity returned by the API.
+ * Patient identity comes from the queue and must match the explicitly selected patient.
  */
 export function validateReceptionLaunchEntry<T extends ReceptionLaunchIdentity>(
   entries: readonly T[],
   context: PrescriptionLaunchContext,
+  selectedPatientId: string,
 ): ReceptionLaunchValidationResult<T> {
   const entry = entries.find(
     (candidate) => candidate.receptionId === context.receptionId,
   );
   if (entry === undefined) return { status: "not-found" };
-  if (entry.patientId !== context.patientId) {
+  if (entry.patient.patientId !== selectedPatientId) {
     return { status: "patient-mismatch" };
   }
   return { status: "ready", entry };

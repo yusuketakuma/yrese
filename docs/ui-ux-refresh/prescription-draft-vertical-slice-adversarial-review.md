@@ -5,6 +5,7 @@
 - Route values are not authorization evidence.
 - The existing authenticated tenant/pharmacy reception queue is re-fetched with `no-store` before the editable workspace is rendered.
 - Patient selection is mandatory and mismatches stop the workflow.
+- Patient identity is excluded from the workflow URL and comes from the authenticated queue.
 - Missing reception, cross-patient identity, permission failure, malformed input, and partial API failure fail closed.
 - No fixed patient, medication, calculation, or clinical safety result is introduced.
 
@@ -15,4 +16,3 @@
 - Atomic audit/outbox behavior for create/update/confirm.
 - Pharmacist confirmation and immutable versioning.
 - Tenant/RLS integration evidence and negative tests.
-- Explicit decision on whether opaque patient identifiers may appear in workflow URLs; until then the route ID is treated as a selector and the queue response remains authoritative.

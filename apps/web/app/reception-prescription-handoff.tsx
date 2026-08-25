@@ -9,6 +9,7 @@ import {
   toPatientContextData,
   useOptionalPatientContext,
 } from "./components/patient-context";
+import { PrototypeAction } from "./components/operator-ui";
 import { useOptionalUnsavedWork } from "./components/unsaved-work";
 import {
   PRESCRIPTION_ORIGIN_CHANGE_MESSAGE,
@@ -45,6 +46,7 @@ export function ReceptionPrescriptionHandoffAction({
     patientContext !== null &&
     originContext !== null &&
     canOpenPrescriptionFromReception(entry);
+  const actionLabel = `この受付を処方入力へ引き継ぐ: ${entry.patient.name}（患者番号 ${entry.patient.patientNumber}）`;
 
   function handleClick(event: MouseEvent<HTMLAnchorElement>) {
     if (!available || patientContext === null || originContext === null) {
@@ -89,9 +91,9 @@ export function ReceptionPrescriptionHandoffAction({
   if (!available) {
     const reason = unavailableReason(entry);
     return (
-      <button type="button" className="operator-button" disabled title={reason}>
+      <PrototypeAction actionLabel={actionLabel} reason={reason}>
         処方入力へ
-      </button>
+      </PrototypeAction>
     );
   }
 
@@ -100,7 +102,7 @@ export function ReceptionPrescriptionHandoffAction({
       className="operator-button"
       href="/prescriptions"
       onClick={handleClick}
-      aria-label="この受付を処方入力へ引き継ぐ"
+      aria-label={actionLabel}
     >
       処方入力へ
     </Link>

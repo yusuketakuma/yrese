@@ -7,7 +7,6 @@ describe("prescription launch identifier bounds", () => {
     expect(
       parsePrescriptionLaunchContext({
         receptionId: "r".repeat(129),
-        patientId: "patient-a",
         date: "2026-08-25",
       }).status,
     ).toBe("invalid");

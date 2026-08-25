@@ -20,7 +20,6 @@ describe("prescription launch accessibility", () => {
       <PrescriptionLaunchRoute
         launch={{
           receptionId: "reception-accessibility",
-          patientId: "patient-accessibility",
           businessDate: "2026-08-25",
         }}
       />,

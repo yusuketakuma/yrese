@@ -17,7 +17,6 @@ describe("prescription launch empty state", () => {
       <PrescriptionLaunchRoute
         launch={{
           receptionId: "reception-empty",
-          patientId: "patient-empty",
           businessDate: "2026-08-25",
         }}
       />,

@@ -6,18 +6,16 @@ import {
 } from "./prescription-launch-context";
 
 describe("parsePrescriptionLaunchContext", () => {
-  it("accepts one reception, patient, and business date", () => {
+  it("accepts one reception and business date without carrying patient identity", () => {
     expect(
       parsePrescriptionLaunchContext({
         receptionId: "reception-a",
-        patientId: "patient-a",
         date: "2026-08-25",
       }),
     ).toEqual({
       status: "ready",
       context: {
         receptionId: "reception-a",
-        patientId: "patient-a",
         businessDate: "2026-08-25",
       },
     });
@@ -26,27 +24,18 @@ describe("parsePrescriptionLaunchContext", () => {
   it.each([
     {
       receptionId: ["reception-a", "reception-b"],
-      patientId: "patient-a",
       date: "2026-08-25",
     },
     {
       receptionId: "reception-a",
-      patientId: ["patient-a", "patient-b"],
-      date: "2026-08-25",
-    },
-    {
-      receptionId: "reception-a",
-      patientId: "patient-a",
       date: ["2026-08-25", "2026-08-26"],
     },
     {
       receptionId: "reception-a",
-      patientId: "patient-a",
       date: "25/08/2026",
     },
     {
       receptionId: "",
-      patientId: "patient-a",
       date: "2026-08-25",
     },
   ])("rejects ambiguous or malformed input", (input) => {
@@ -57,44 +46,41 @@ describe("parsePrescriptionLaunchContext", () => {
 describe("validateReceptionLaunchEntry", () => {
   const launch = {
     receptionId: "reception-a",
-    patientId: "patient-a",
     businessDate: "2026-08-25",
   } as const;
   const entries = [
     {
       receptionId: "reception-a",
-      patientId: "patient-a",
-      status: "accepted",
+      patient: { patientId: "patient-a" },
+      receptionStatus: "WAITING",
     },
     {
       receptionId: "reception-b",
-      patientId: "patient-b",
-      status: "accepted",
+      patient: { patientId: "patient-b" },
+      receptionStatus: "WAITING",
     },
   ] as const;
 
   it("returns only the matching authenticated queue entry", () => {
-    expect(validateReceptionLaunchEntry(entries, launch)).toEqual({
+    expect(validateReceptionLaunchEntry(entries, launch, "patient-a")).toEqual({
       status: "ready",
       entry: entries[0],
     });
   });
 
-  it("does not reuse a prior patient entry for another route patient", () => {
-    expect(
-      validateReceptionLaunchEntry(entries, {
-        ...launch,
-        patientId: "patient-b",
-      }),
-    ).toEqual({ status: "patient-mismatch" });
+  it("does not reuse a queue entry for another selected patient", () => {
+    expect(validateReceptionLaunchEntry(entries, launch, "patient-b")).toEqual({
+      status: "patient-mismatch",
+    });
   });
 
   it("fails closed when the reception is absent from the tenant-scoped queue", () => {
     expect(
-      validateReceptionLaunchEntry(entries, {
-        ...launch,
-        receptionId: "reception-missing",
-      }),
+      validateReceptionLaunchEntry(
+        entries,
+        { ...launch, receptionId: "reception-missing" },
+        "patient-a",
+      ),
     ).toEqual({ status: "not-found" });
   });
 });

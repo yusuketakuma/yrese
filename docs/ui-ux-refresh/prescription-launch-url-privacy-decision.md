@@ -1,7 +1,7 @@
 # Prescription launch URL privacy decision
 
-The first bounded slice currently carries an opaque `patientId` as a selector and independently revalidates it against the authenticated reception queue. This does not make the URL an authorization boundary.
+The bounded slice carries only the opaque reception identifier and business date in the workflow URL. Patient identity is derived from the authenticated reception queue and compared with the explicitly selected patient.
 
-Before the slice is eligible for merge, the URL contract should be reduced to the opaque reception identifier plus business date, with patient identity derived only from the authenticated queue and compared to the explicitly selected patient. This removes redundant patient identity from browser history, reverse-proxy access logs, analytics, copied links, and support screenshots.
+This keeps redundant patient identity out of browser history, reverse-proxy access logs, analytics, copied links, and support screenshots. Route values remain untrusted selectors rather than authorization evidence.
 
-Status: **merge blocker for this draft PR** until the route and tests are updated.
+Status: **resolved in the route and contract tests**.
