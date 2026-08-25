@@ -1,22 +1,20 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-26, WP-5101 UI/UX review checkpoint):** This block alone
+> **ACTIVE SNAPSHOT (2026-08-26, C-100 charter correction):** This block alone
 > is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** direct user instruction 2026-08-26 selects Candidate A
-  (UIX-001 amendment) and approves the WP-5101 product direction. Unresolved
-  medical-safety/privacy/accessibility/pharmacist judgments are delegated to their
-  applicable gates. Codex root is the sole `active_root_writer`; delegated reviewers are read-only.
+- **Direction / ownership:** WP-5101 Candidate A decision record received fresh independent
+  PASS and is pushed on Draft PR #5. Current WIP is C-100 PLAN_ONLY: correct only the stale
+  `DEVELOPMENT_POLICY.md §11` sequence. Codex root is the sole `active_root_writer`;
+  delegated reviewers are read-only.
 - **Git boundary:** `main` and `origin/main` are
   `c7b61406c6f6e58363139e3dced79c62f30cebf5`. Candidate work is isolated on
-  local/remote `feature/wp-5101-uiux-review` and owns exact five paths; exact head/status
-  is read from Git. The paths are `Plans.md`, `State.md`, and
-  `docs/ui-ux-refresh/13-ui-component-system-ssot-draft.md`,
-  `14-one-board-direction-decision.md`, `15-workflow-stage-enum-ssot-draft.md`.
-- **Current gate:** no APPROVED SSOT, product code, schema, migration, or production data
-  is changed. Candidate A selection is satisfied; the decision-record delta still requires
-  fresh review. Candidate A SSOT final approval, PRC-007 atomic finalization, and applicable
-  medical-safety/privacy/accessibility/pharmacist authorization remain open.
+  local/remote `feature/wp-5101-uiux-review`; exact head/status is read from Git. The current
+  uncommitted C-100 ownership is exact3: `Plans.md`, `State.md`, `DEVELOPMENT_POLICY.md`.
+- **Current gate:** C-100 requires independent review before commit. It changes no APPROVED
+  SSOT, product code, schema, migration, or production data. Candidate A SSOT final approval,
+  PRC-007 atomic finalization, and applicable medical-safety/privacy/accessibility/pharmacist
+  authorization remain open.
 - **Landing / remote:** Draft PR #5 is the PLAN_ONLY review vehicle; exact-head CI status
   is read from GitHub. No main merge is permitted before the open gates. Draft PR #4
   (`feat/prescription-draft-persistence`) remains conflicting, failing, and outside the

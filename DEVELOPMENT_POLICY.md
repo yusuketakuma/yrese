@@ -6,8 +6,9 @@ This charter records the repository work-selection decision made under the direc
 user instruction dated 2026-07-29, amended on 2026-08-23 by direct user
 instruction to make **information interoperability the product's primary
 strength** (FHIR R4 / JP Core native, JAHIS conformance, an open shared partner
-API, and online eligibility / Myna linkage). It is the single pointer for the
-next 6–12 weeks of development sequencing.
+API, and online eligibility / Myna linkage), and reconciled on 2026-08-26 to
+remove completed work from the exact sequence without changing that policy.
+It is the single pointer for the next 6–12 weeks of development sequencing.
 
 - This is a non-SSOT operational charter. Its architecture and Core Logic
   Register sections are evidence-linked planning summaries, not implementation
@@ -394,36 +395,32 @@ Activate the fallback only through the human/PRC-007 gate in section 2.
 
 ## 11. Exact implementation sequence
 
-1. **CURRENT — WP-4250 DECISION PACKET:** mapping for the bounded `Patient` +
-   `MedicationRequest` authority/profile/lifecycle/concurrency/cutover decision
-   is complete. Await the exact human approval phrase recorded in `Plans.md`;
-   approval authorizes only candidate exact11 PRC-007 PROPOSED amendment
-   drafting/review and does not authorize implementation or final SSOT approval.
-   Patient retains read-only shadow parity plus human cutover. MedicationRequest
-   has no current writer/data and begins with the FHIR ingestion boundary as sole
-   writer only after approved amendments, locked-profile validation, and security
-   prerequisites, with no migration, backfill, dual writer, or automatic fallback.
-2. **SEPARATE HUMAN-GATED NEXT — WP-4050:** after explicit R3 scope approval,
-   make reception, audit intent, and transactional outbox one retry-safe durable
-   command boundary. It is not a READY slot and is independent of WP-4250.
-3. **CONDITIONAL MILESTONE LABEL — WP-4251:** synthetic bounded architecture
-   proof, claimable only after the WP-4250 atomic amendment batch receives all
-   required review and final human approval.
-4. **CONDITIONAL MILESTONE LABEL — WP-4252:** pharmacist vertical journey,
-   claimable only after its predecessors and separate safety gates are complete.
+This charter fixes durable order; it does not duplicate the live queue. `Plans.md`
+is the sole authority for CURRENT/READY selection and records the applicable gates.
 
-5. **INTEROPERABILITY SEQUENCE (2026-08-23 amendment):** after WP-4050's
-   independent review passes, select in this order, one WIP at a time and
-   subject to each item's human gate: WP-6101 (JP Core package provenance),
-   WP-6001 (Integration Hub SSOTs), WP-6202/6203 (JAHIS version alignment and
-   promotion), WP-6302 (eligibility boundary SSOT skeleton), WP-6003 (outbox
-   delivery worker), then the Milestone 2.5 FHIR read facade packets, then
-   Milestone 3 and 4 items per `Plans.md §16.3`. External procedures
-   (WP-6201, WP-6301) start immediately and run in parallel as human work.
+1. **WP-4250 — FINALIZED / APPROVED (SSOT amendment only):** the bounded
+   `Patient` + `MedicationRequest` authority decision is complete. Its approval
+   does not authorize migration, backfill, dual writers, automatic fallback,
+   production cutover, or a conformance claim.
+2. **WP-4050 — LOCAL/CI IMPLEMENTATION AND INDEPENDENT REVIEW COMPLETE:** the
+   reception, audit intent, and transactional outbox command boundary is landed
+   for repository/local synthetic/CI use. Production or staging application and
+   the registered follow-up blockers remain separately human-gated.
+3. **WP-4258 — FINALIZED / APPROVED (SSOT amendment only):** the deferred
+   amendment batch is complete and no longer a selectable work item. Its
+   registered blockers and implementation gates remain unchanged.
+4. **CURRENT WORK SELECTION:** choose exactly one item from `Plans.md`; do not
+   infer CURRENT or READY from this charter. The 2026-08-26 Candidate A UI/UX
+   direction permits only the registered PLAN_ONLY PRC-007 preparation path
+   until its specialist and human gates are complete.
+5. **INTEROPERABILITY ORDER:** for remaining items, preserve the dependency order
+   in `Plans.md §16`; completed items are nonclaimable and must not be replayed.
+   External procedures remain human work, and external-interface code still
+   requires the official source/evidence gate in §9.
+6. **MILESTONE LABELS:** WP-4251 and WP-4252 remain labels, not READY or
+   implementation authorization. They become claimable only through `Plans.md`
+   after their approved predecessors and applicable safety gates are complete.
 
-WP-4251 and WP-4252 are labels, not READY or implementation authorization.
-WP-4250 owns only the active `Plans.md` block, active `State.md` snapshot, and
-this §11. Because the full files contain pre-existing dirty changes and
-`DEVELOPMENT_POLICY.md` was already untracked, exact3 landing is not authorized
-or provable as an isolated commit until root resolves whole-file ownership or
-constructs and reviews an isolated commit that excludes unrelated changes.
+No status above relaxes security, privacy, data-integrity, medical-safety,
+pharmacist, migration, deployment, production-data, external-send, release, or
+conformance gates.

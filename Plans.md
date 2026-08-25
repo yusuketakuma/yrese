@@ -36,13 +36,13 @@
 | Review base | `main = origin/main = c7b61406c6f6e58363139e3dced79c62f30cebf5`(2026-08-26 live確認) |
 | Candidate branch | `feature/wp-5101-uiux-review = origin/feature/wp-5101-uiux-review`; exact headはGit / Draft PR #5を正本とする |
 | Upstream relation | candidate branchはreview baseのfast-forward子。direct main commit/pushなし |
-| Candidate scope | WP-5101 PLAN_ONLY exact5: `Plans.md` + `State.md` + `docs/ui-ux-refresh/13` / `14` / `15`; exact head/statusはGitを正本とする |
-| Last update | 2026-08-26 JST(direct user instructionでCandidate Aを選択し、未決のmedical-safety/privacy/accessibility/pharmacist判断を各該当gateへ委譲。decision recordの再review中) |
-| Active Goal | WP-5101 の non-SSOT packetへCandidate Aの製品判断を記録し、fresh independent review後にWP-5104のPRC-007 PROPOSED packetへ引き渡す。製品実装は未claim |
-| Current critical path | Candidate A decision recordの再review → WP-5104 Candidate A PROPOSED batch → required specialist/human gate → PRC-007 atomic finalization。C-100 charter整合は別batch |
+| Candidate scope | Draft PR #5はWP-5101 exact5 decision packetを保持。current C-100 deltaは`Plans.md` + `State.md` + `DEVELOPMENT_POLICY.md`のexact3。exact head/statusはGitを正本とする |
+| Last update | 2026-08-26 JST(Candidate A decision recordはfresh independent PASS後にfeature branchへpush済み。C-100 charter correctionを別batchでreview中) |
+| Active Goal | C-100 PLAN_ONLYとして`DEVELOPMENT_POLICY.md §11`のstale work-selection sequenceだけを現状へ合わせる。SSOT・製品実装は未claim |
+| Current critical path | C-100 charter correction → WP-5104 Candidate A PROPOSED batch → required specialist/human gate → PRC-007 atomic finalization |
 | Main blocker | Candidate AのSSOT final approval、PRC-007、U3/U4 の実装前 relevant review/human authorization。後続実装は全件 NOT_READY |
-| Required verification | decision deltaの`git diff --check`、secret scan、fresh independent review、Draft PR exact-head CI。code test/build/browser runtimeはPLAN_ONLYではN/A |
-| Work-selection drift | `DEVELOPMENT_POLICY.md §11` の旧 `CURRENT — WP-4250` はC-100改版待ち。AGT-018 §2で優先するcurrent requestはWP-5101 PLAN_ONLYだけを選択し、drift解消前の実装claimを禁止 |
+| Required verification | C-100 exact3の`git diff --check`、secret scan、fresh independent review、Draft PR exact-head CI。code test/build/browser runtimeはPLAN_ONLYではN/A |
+| Work-selection drift | `DEVELOPMENT_POLICY.md §11` の旧 `CURRENT — WP-4250`をC-100で訂正中。C-100完了前の実装claimを禁止 |
 | Next scan cursor | `c7b6140`; new High/Medium finding、remote main更新、human decisionでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
@@ -72,9 +72,10 @@ production変更・release acceptanceを行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5101 の PLAN_ONLY review 1件である。** direct user request により選択された
-non-SSOT candidateの整合レビューだけを行い、APPROVED SSOT・製品実装・schema・migrationは
-claimしない。詳細scope/gate/acceptanceは §8 UIUX の WP-5101 を正とする。
+**CURRENT は C-100 の PLAN_ONLY charter correction 1件である。** WP-5101 decision packetは
+fresh independent PASSとdirect user decisionを得てfeature branchへ記録済み。C-100では
+`DEVELOPMENT_POLICY.md §11`のstale sequenceだけを訂正し、APPROVED SSOT・製品実装・
+schema・migrationはclaimしない。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
@@ -419,12 +420,12 @@ DB 層で止まる。既存スキーマは各 ID 列に `length(x) > 0` の CHEC
 | WP-4253 | COMMITTED_LOCAL / PUSH_NOT_REQUESTED at `9d8dbc0`; WP-4240 superseded。host 拡張の取りこぼし(`~/.local/bin/pnpm` 11.17.0 残存)を 2026-07-31 に検出・修正(→11.18.0)— HOST_RUNTIME_ALIGNED は同日まで不完全だった |
 | WP-4050 | COMMITTED_LOCAL at `42ef15c`+`bf17cea`(2026-07-31)。R3 gate は direct user instruction で充足 |
 | WP-4236 / WP-4162 / WP-9008 | COMMITTED_LOCAL at `68e0d77` / `02a3409`+`566f386` / `2c84e66`(2026-07-31)。各 status 行参照 |
-| WP-5101 | ドラフト 13〜17号+3-lane fresh-context checker 訂正を `3da2466` で着地。checker verdict は REQUEST_CHANGES→訂正適用済み。再チェックと human 内容判断(10 論点)は未取得 — 各ドラフト未決欄と session 記録参照 |
+| WP-5101 | ドラフト 13〜17号+3-lane fresh-context checker 訂正を `3da2466` で着地。当時のREQUEST_CHANGESは訂正済み。2026-08-26にCandidate A選択と製品方向承認を受け、decision deltaはfresh independent PASS後に`df8c0cb`へ記録。委譲された専門判断と各ドラフトの未決事項は後続gateに残る |
 | WP-4250 | FINALIZED / APPROVED at `89275d2`(2026-08-01)。承認範囲は SSOT 改版のみで、登録済み blocker は全件据え置き |
 | WP-4256 / WP-4257 / WP-4258 | COMMITTED_LOCAL at `ab63db6` / `a911a99` / `1dedf27`。WP-4258 は 2026-08-01 の direct human approval で APPROVED 化済み(DB-005 / ARC-008 0.1.4、IDX-001 0.4.49) |
 | BUG-4263 | DECIDED(案①)/ COMMITTED_LOCAL at `bf0b402`。`check:secrets` が exit 0 へ復帰 |
 | BUG-4260 / BUG-4262 / BUG-4261 | COMMITTED_LOCAL at `fe03cf0` / `fe03cf0` / `6813750`(2026-08-01 バグ走査)。独立レビュー未取得 |
-| WP-0042 / WP-7001 / broad FHIR-AWS work | bounded by current WP-4250; remainder NOT_NOW |
+| WP-0042 / WP-7001 / broad FHIR-AWS work | bounded by APPROVED WP-4250 decisions and the current `Plans.md` queue; remainder NOT_NOW |
 | WP-9002 / WP-4158 / WP-4159 / WP-4160 | FROZEN / GIT_HISTORY_ONLY |
 | all other incomplete entries below | NOT_NOW until a READY slot is deliberately opened |
 
@@ -756,13 +757,14 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 | `patient-search.tsx` のフォームが `method="post" action="/patients"` を持つ | **Not a Bug** | 入力に `name` 属性がなく、JS 無効時のネイティブ送信でも検索語(PHI)は送出されない |
 | `main.ts` の ephemeral cursor HMAC キーがプロセス起動ごとに変わる | **Not a Bug** | `resolvePatientSearchCursorHmacKey` は in_memory + development/test のみ ephemeral を返し、postgres 構成では設定必須で throw する(意図的な dev 限定挙動) |
 
-### UIUX — 一枚盤面刷新パイプライン(WP-5101 CURRENT PLAN_ONLY / WP-5102〜5124 GATED)
+### UIUX — 一枚盤面刷新パイプライン(WP-5101 REVIEWED / WP-5102〜5124 GATED)
 
 > **来歴**: direct user instruction 2026-07-31(丁「一枚盤面」採用と詳細タスク化の指示)。
 > 起草 lane は Claude(fable5)。Document Contract の sole editor 規律に対する例外は
 > この direct user instruction を根拠とし、本グループ以外の記載に触れていない。
-> **queue 規律**: WP-5101 PLAN_ONLY review が唯一の CURRENT である。後続 WP は READY slotを
-> 消費せず、WIP=1 / READY≤2を維持し、各 Gate 成立までclaim不可。
+> **queue 規律**: WP-5101 reviewとCandidate Aの製品判断は記録済み。current WIPは§3の
+> C-100 PLAN_ONLYだけであり、後続 WP は READY slotを消費せず、WIP=1 / READY≤2を維持し、
+> 各 Gate 成立までclaim不可。
 > **設計資料(non-SSOT ドラフト)**: `docs/ui-ux-refresh/13〜17号`。
 > 昇格前は実装根拠にならない(fail-closed)。
 > **U3/U4 gate**: 実装着手前に relevant medical-safety/privacy/accessibility review と必要な
@@ -772,10 +774,10 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 ##### WP-5101 — 13〜17号ドラフトの独立レビューと製品方針決定
 
-- **Status:** CURRENT / PLAN_ONLY / CANDIDATE_A_SELECTED / DECISION_RECORD_REVIEW / NOT_IMPLEMENTABLE
+- **Status:** REVIEWED / CANDIDATE_A_SELECTED / PRODUCT_DIRECTION_APPROVED / NONCLAIMABLE
 - **Gate:** packet本体のfresh-context independent checkerはPASS。human product authorityは
   direct user instruction 2026-08-26でCandidate Aを選択し、未決のmedical-safety/privacy/
-  accessibility/pharmacist判断を各該当gateへ委譲。今回のdecision deltaはfresh re-review待ち
+  accessibility/pharmacist判断を各該当gateへ委譲。decision deltaはfresh independent PASS
 - **Scope:** 13号(selected unique foundation/component system 候補)/14号(丁決定+§7 ビュー・ロック)/15号(workflow-stage)/
   16号(主操作者調査)/17号(新要件 D-1..D-4・所見 AF/SF)の整合・網羅レビューと確定
 - **Acceptance:** 全 findings が解消または記録済み。D-2 の2段分離、AF-2 の NSIPS 凍結整合、
@@ -806,7 +808,7 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 ##### WP-5104 — unique UI/UX SSOT foundation の atomic 昇格
 
 - **Status:** GATED / CANDIDATE_A_SELECTED / NOT_READY
-- **Gate:** WP-5101 decision deltaのfresh review
+- **Gate:** C-100 charter correction
 - **Scope:** direct user instruction 2026-08-26で選択された Candidate A(UIX-001改版)により、
   UIX-001〜007 の安全・品質要件と component contract を一つの
   foundation へ集約する。同一 PRC-007 batch で旧文書を SUPERSEDED、index と参照を更新する
@@ -1261,7 +1263,7 @@ release gate 群。§11 の既知 blocker を作業項目化した index であ�
 | C-097 | `State.md` frozen legacy log(約 2,200 行)の退避判断 — pointer-only 契約との整合。`AGT-018 §§3.2, 4` / PRC-007 と競合するなら fail-closed で停止【HG: 記録政策】 | — |
 | C-098 | 本書 §4 landing 済み index の圧縮(Record policy 準拠。独立レビュー完了後) | C-002〜C-010 |
 | C-099 | 依存 baseline の次回周期更新(`pnpm outdated -r`、WP-4253 方式の再実行) | — |
-| C-100 | `DEVELOPMENT_POLICY.md §11` Exact implementation sequence の現状反映改版(WP-4250 FINALIZED / WP-4258 APPROVED / WP-4050 COMMITTED_LOCAL を反映) | C-002 |
+| C-100 | **CURRENT / PLAN_ONLY** — `DEVELOPMENT_POLICY.md §11` Exact implementation sequence の現状反映改版(WP-4250 FINALIZED / WP-4258 APPROVED / WP-4050 local+CI completionを反映)。SSOT・実装・production gateは変更しない | C-002(完了) |
 
 **集計:** 15.1=14 / 15.2=8 / 15.3=20 / 15.4=13 / 15.5=11 / 15.6=16 / 15.7=12 /
 15.8=6 — 合計 100 項目。本節の追加は planning record の変更のみであり、実装・
