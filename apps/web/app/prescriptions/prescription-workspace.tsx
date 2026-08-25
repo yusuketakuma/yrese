@@ -169,7 +169,7 @@ export function summarizePrescriptionReplacement(
   const currentGroups = groupRowsByDrug(currentRows);
   const pastGroups = groupRowsByDrug(pastPrescription.rows);
   const drugKeys = new Set([...currentGroups.keys(), ...pastGroups.keys()]);
-  const summary: PrescriptionReplacementSummary = {
+  const summary = {
     added: 0,
     removed: 0,
     changed: 0,
