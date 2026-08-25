@@ -13,11 +13,11 @@ import {
   ReceptionError,
   fetchReceptionQueue,
 } from "../reception-dashboard";
+import { PersistentPrescriptionWorkspace } from "./persistent-prescription-workspace";
 import {
   type PrescriptionLaunchContext,
   validateReceptionLaunchEntry,
 } from "./prescription-launch-context";
-import { PrescriptionWorkspace } from "./prescription-workspace";
 
 type ReceptionContextLoadState =
   | { readonly status: "loading" }
@@ -167,10 +167,14 @@ export function PrescriptionLaunchRoute({
           </StatusPill>
         </p>
         <p>
-          この確認は、認証済みtenant・薬局の受付キューに受付が存在し、選択患者と一致することだけを示します。処方内容の妥当性、安全性、保存完了は示しません。
+          認証済みtenant・薬局の受付キューで患者との対応を確認しました。下書き保存時もサーバー側で同じ境界を再検証します。
         </p>
       </InlineNotice>
-      <PrescriptionWorkspace />
+      <PersistentPrescriptionWorkspace
+        key={`${launch.receptionId}:${launch.patientId}:${launch.businessDate}`}
+        patient={selectedPatient}
+        scope={launch}
+      />
     </div>
   );
 }
