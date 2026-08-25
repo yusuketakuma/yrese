@@ -171,8 +171,8 @@ export function PrescriptionWorkspace() {
 export function SelectedPatientWorkspaceView({
   patient,
 }: {
-  readonly patient?: PatientContextData;
-} = {}) {
+  readonly patient: PatientContextData;
+}) {
   const [rows, setRows] = useState<DraftRow[]>([...INITIAL_ROWS]);
   const [pastSearch, setPastSearch] = useState("");
   const [pendingPastPrescription, setPendingPastPrescription] =
@@ -259,7 +259,7 @@ export function SelectedPatientWorkspaceView({
     <section
       aria-label="処方入力"
       data-patient-selected="true"
-      data-patient-id={patient?.patientId ?? "standalone-test-view"}
+      data-patient-id={patient.patientId}
     >
       <ScreenHeader
         title="処方入力ワークスペース"
@@ -360,7 +360,7 @@ export function SelectedPatientWorkspaceView({
             >
               <h4 id="prescription-replacement-title">過去処方の反映確認</h4>
               <p>
-                患者: {patient?.name ?? "選択患者"}。{pendingPastPrescription.date}（
+                患者: {patient.name}。{pendingPastPrescription.date}（
                 {pastPrescriptionDurationLabel(pendingPastPrescription)}）の構成で、現在の
                 {rows.length}行を置き換えます。まだ入力欄には反映していません。
               </p>
@@ -523,18 +523,16 @@ export function SelectedPatientWorkspaceView({
 
         <aside className="prescription-safety-rail" aria-label="患者コンテキストと安全情報">
           <RailCard title="患者コンテキスト & 安全" tone="danger">
-            {patient !== undefined ? (
-              <div className="patient-safety-summary">
-                <strong>{patient.name}</strong>
-                <span>{patient.kana}</span>
-                <span>
-                  生年月日 {patient.birthDate}
-                </span>
-                <DomainStatusBadge
-                  query={{ domain: "eligibility", key: patient.eligibilityStatus }}
-                />
-              </div>
-            ) : null}
+            <div className="patient-safety-summary">
+              <strong>{patient.name}</strong>
+              <span>{patient.kana}</span>
+              <span>
+                生年月日 {patient.birthDate}
+              </span>
+              <DomainStatusBadge
+                query={{ domain: "eligibility", key: patient.eligibilityStatus }}
+              />
+            </div>
             <SeverityList
               items={[
                 {
