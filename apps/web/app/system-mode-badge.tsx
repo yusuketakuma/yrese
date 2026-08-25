@@ -9,30 +9,45 @@ export const MODE_LABELS: Record<SystemMode, string> = SYSTEM_MODE_LABELS;
 
 /**
  * システムモード常時表示。
- * モード検知APIは未接続であるため、既定値はNORMALだが必ず「暫定」を併記する。
- * 実状態の正常性を保証する表示として扱ってはならない。
+ *
+ * モード検知 API が未接続の既定状態では NORMAL を推測せず、状態未検知として表示する。
+ * mode が明示された場合だけ Visual Status Registry のラベルを表示する。
  */
 export function SystemModeBadge({
-  mode = "NORMAL",
-  provisional = true,
+  mode,
+  provisional = mode === undefined,
 }: {
   readonly mode?: SystemMode;
   readonly provisional?: boolean;
 }) {
+  const effectiveMode = mode ?? "NORMAL";
+  const displayMode = provisional ? "UNDETECTED" : effectiveMode;
+
   return (
     <span
       className="system-mode-badge"
-      data-mode={mode}
+      data-mode={displayMode}
       data-provisional={provisional ? "true" : "false"}
       role="status"
       aria-live="polite"
-      title={provisional ? "モード検知バックエンド未接続のため暫定表示" : undefined}
+      title={
+        provisional
+          ? "モード検知バックエンド未接続のため状態を判定できません"
+          : undefined
+      }
+      style={
+        provisional
+          ? { background: "var(--color-status-attention-bg)" }
+          : undefined
+      }
     >
       <span className="system-mode-shape" aria-hidden="true">
-        {SYSTEM_MODE_PRESENTATION[mode].shape}
+        {provisional ? "?" : SYSTEM_MODE_PRESENTATION[effectiveMode].shape}
       </span>
-      {MODE_LABELS[mode]}
-      {provisional ? <span className="system-mode-provisional">暫定</span> : null}
+      {provisional ? "状態未検知" : MODE_LABELS[effectiveMode]}
+      {provisional ? (
+        <span className="system-mode-provisional">API未接続</span>
+      ) : null}
     </span>
   );
 }
