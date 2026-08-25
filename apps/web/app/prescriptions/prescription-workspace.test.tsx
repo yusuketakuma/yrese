@@ -13,6 +13,15 @@ import {
 
 (globalThis as { React?: typeof React }).React = React;
 
+const SELECTED_PATIENT = {
+  patientId: "patient-1",
+  name: "山田 花子",
+  kana: "ヤマダ ハナコ",
+  birthDate: "1950-01-02",
+  sex: "female",
+  eligibilityStatus: "VERIFIED",
+} as const;
+
 describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
   it("blocks starting work without a selected patient and routes to search", () => {
     const html = renderToStaticMarkup(
@@ -27,7 +36,9 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
   });
 
   it("keeps the past-prescription rail visible beside the entry surface", () => {
-    const html = renderToStaticMarkup(<SelectedPatientWorkspaceView />);
+    const html = renderToStaticMarkup(
+      <SelectedPatientWorkspaceView patient={SELECTED_PATIENT} />,
+    );
     expect(html).toContain('data-patient-selected="true"');
     expect(html).toContain("過去処方一覧（直近6か月）");
     expect(html).toContain("処方入力ワークスペース");
@@ -38,16 +49,7 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
 
   it("projects the selected patient into the safety rail without synthetic substitution", () => {
     const html = renderToStaticMarkup(
-      <SelectedPatientWorkspaceView
-        patient={{
-          patientId: "patient-1",
-          name: "山田 花子",
-          kana: "ヤマダ ハナコ",
-          birthDate: "1950-01-02",
-          sex: "female",
-          eligibilityStatus: "VERIFIED",
-        }}
-      />,
+      <SelectedPatientWorkspaceView patient={SELECTED_PATIENT} />,
     );
 
     expect(html).toContain("山田 花子");
@@ -101,7 +103,9 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
   });
 
   it("does not present missing clinical checks or calculation as completed", () => {
-    const html = renderToStaticMarkup(<SelectedPatientWorkspaceView />);
+    const html = renderToStaticMarkup(
+      <SelectedPatientWorkspaceView patient={SELECTED_PATIENT} />,
+    );
     expect(html).toContain("臨床アラート判定(相互作用・禁忌・重複・用量)は未接続です");
     expect(html).toContain("安全確認済みを意味しません");
     expect(html).toContain("合成処方データ");
