@@ -7,6 +7,7 @@ import {
   PAST_PRESCRIPTIONS,
   PrescriptionWorkspace,
   SelectedPatientWorkspaceView,
+  buildDraftRowsFromPastPrescription,
   filterPastPrescriptions,
   summarizePrescriptionReplacement,
 } from "./prescription-workspace";
@@ -69,9 +70,9 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
   it("summarizes replacement differences before applying a past prescription", () => {
     const summary = summarizePrescriptionReplacement(
       [
-        { id: 1, drug: "アムロジピンOD錠5mg", usage: "", days: "7", quantity: "" },
-        { id: 2, drug: "ロサルタンK錠50mg", usage: "", days: "7", quantity: "" },
-        { id: 3, drug: "トラゾドン錠25mg", usage: "", days: "7", quantity: "" },
+        { id: 1, drug: "アムロジピンOD錠5mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
+        { id: 2, drug: "ロサルタンK錠50mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
+        { id: 3, drug: "トラゾドン錠25mg", usage: "1日1回 就寝前", days: "7", quantity: "7錠" },
       ],
       PAST_PRESCRIPTIONS[1]!,
     );
@@ -79,9 +80,17 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
     expect(summary).toEqual({
       added: 1,
       removed: 1,
-      changed: 2,
-      unchanged: 0,
+      changed: 0,
+      unchanged: 2,
     });
+  });
+
+  it("copies stored past rows exactly instead of inferring usage or quantity", () => {
+    const source = PAST_PRESCRIPTIONS[3]!;
+    expect(buildDraftRowsFromPastPrescription(source)).toEqual([
+      { id: 1, ...source.rows[0] },
+      { id: 2, ...source.rows[1] },
+    ]);
   });
 
   it("detects a same-drug usage or quantity change instead of calling it unchanged", () => {
