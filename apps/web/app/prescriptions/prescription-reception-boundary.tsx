@@ -50,6 +50,9 @@ function errorNextAction(error: PrescriptionReceptionError): string {
   if (error.kind === "PATIENT_MISMATCH") {
     return "処方入力を中止し、受付画面で患者のカナ・生年月日・患者番号を再確認してください。";
   }
+  if (error.kind === "TERMINAL_STATUS") {
+    return "受付画面へ戻り、完了・取消後の訂正手順または新しい受付の要否を確認してください。";
+  }
   return "受付画面を更新して再度引き継いでください。解消しない場合は同期状態を確認してください。";
 }
 
@@ -160,24 +163,9 @@ export function PrescriptionReceptionBoundary({
           message={verification.error.message}
           nextAction={errorNextAction(verification.error)}
         />
-        <div className="operator-inline-actions">
-          <Link className="operator-button" href="/">
-            受付画面へ戻る
-          </Link>
-          <button
-            type="button"
-            className="operator-button"
-            disabled={hasPatientDraft}
-            title={
-              hasPatientDraft
-                ? "未保存下書きがあるため受付連携を解除できません"
-                : "受付連携を解除して患者単位の未接続入力へ戻ります"
-            }
-            onClick={() => originContext?.clearOrigin()}
-          >
-            受付連携を解除
-          </button>
-        </div>
+        <Link className="operator-button" href="/">
+          受付画面へ戻る
+        </Link>
       </section>
     );
   }
