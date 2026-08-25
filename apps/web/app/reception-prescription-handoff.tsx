@@ -16,15 +16,10 @@ import {
   createPrescriptionReceptionOrigin,
   useOptionalPrescriptionOrigin,
 } from "./prescriptions/prescription-origin-context";
+import { isReceptionOpenForPrescriptionEntry } from "./prescriptions/prescription-reception";
 
-export function canOpenPrescriptionFromReception(
-  entry: ReceptionQueueEntry,
-): boolean {
-  return (
-    entry.receptionStatus === "WAITING" ||
-    entry.receptionStatus === "IN_PROGRESS"
-  );
-}
+export const canOpenPrescriptionFromReception =
+  isReceptionOpenForPrescriptionEntry;
 
 function unavailableReason(entry: ReceptionQueueEntry): string {
   if (entry.receptionStatus === "CANCELLED") {
