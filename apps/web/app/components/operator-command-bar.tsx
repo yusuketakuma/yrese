@@ -11,70 +11,28 @@ import {
   useState,
 } from "react";
 
-interface CommandIntent {
+import {
+  resolveOperatorIntent,
+  shouldFocusOperatorCommand,
+} from "./operator-command-policy";
+
+export {
+  resolveOperatorIntent,
+  shouldFocusOperatorCommand,
+} from "./operator-command-policy";
+
+export interface OperatorQuickLink {
   readonly label: string;
   readonly href: string;
-  readonly rationale: string;
 }
 
-const INTENTS: readonly {
-  readonly keywords: readonly string[];
-  readonly intent: CommandIntent;
-}[] = [
-  {
-    keywords: ["受付", "処方箋", "qr", "電子処方箋", "取り込"],
-    intent: { label: "受付を開く", href: "/", rationale: "受付・処方箋取込に関する指示" },
-  },
-  {
-    keywords: ["患者", "検索", "生年月日", "患者番号"],
-    intent: { label: "患者検索を開く", href: "/patients", rationale: "患者検索・患者選択に関する指示" },
-  },
-  {
-    keywords: ["処方", "薬", "用法", "用量", "日数", "疑義", "残薬"],
-    intent: { label: "処方入力を開く", href: "/prescriptions", rationale: "処方内容の確認・編集に関する指示" },
-  },
-  {
-    keywords: ["会計", "負担金", "領収", "返金", "未収"],
-    intent: { label: "会計を開く", href: "/checkout", rationale: "会計・患者負担に関する指示" },
-  },
-  {
-    keywords: ["請求", "レセプト", "点検", "エラー"],
-    intent: { label: "請求前点検を開く", href: "/claim-check", rationale: "請求前点検に関する指示" },
-  },
-  {
-    keywords: ["月次", "締め", "返戻", "再請求"],
-    intent: { label: "月次締めを開く", href: "/monthly-closing", rationale: "月次締め・返戻に関する指示" },
-  },
-  {
-    keywords: ["マスター", "薬価", "医薬品"],
-    intent: { label: "マスターを開く", href: "/masters", rationale: "マスター情報に関する指示" },
-  },
-  {
-    keywords: ["同期", "障害", "連携", "ステータス"],
-    intent: { label: "同期状態を開く", href: "/sync-status", rationale: "外部連携・同期状態に関する指示" },
-  },
-  {
-    keywords: ["管理", "ユーザー", "権限", "設定"],
-    intent: { label: "管理・設定を開く", href: "/admin", rationale: "管理・設定に関する指示" },
-  },
-];
-
-export function resolveOperatorIntent(command: string): CommandIntent | null {
-  const normalized = command.trim().toLowerCase();
-  if (!normalized) return null;
-
-  let best: { score: number; intent: CommandIntent } | null = null;
-  for (const candidate of INTENTS) {
-    const score = candidate.keywords.reduce(
-      (sum, keyword) => sum + (normalized.includes(keyword.toLowerCase()) ? 1 : 0),
-      0,
-    );
-    if (score > 0 && (best === null || score > best.score)) {
-      best = { score, intent: candidate.intent };
-    }
-  }
-  return best?.intent ?? null;
-}
+export const OPERATOR_QUICK_LINKS: readonly OperatorQuickLink[] = [
+  { label: "受付", href: "/" },
+  { label: "患者検索", href: "/patients" },
+  { label: "処方入力", href: "/prescriptions" },
+  { label: "会計", href: "/checkout" },
+  { label: "請求前点検", href: "/claim-check" },
+] as const;
 
 function isTextEntryTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -87,15 +45,16 @@ function isTextEntryTarget(target: EventTarget | null): boolean {
 }
 
 /**
- * 自然言語は画面候補の提示だけに使い、患者・処方・会計・請求データを変更しない。
- * ブラウザ組込み音声認識は処理先・保持・リージョンを保証できないため、承認済みの
- * 音声処理境界が接続されるまで fail-closed で無効化する。
+ * 自然言語は既存画面の候補提示だけに使い、患者・処方・会計・請求データを変更しない。
+ * 患者名・薬剤名・処方内容などのPHI入力は促さず、弱い一致や複数の強い意図は棄却する。
+ * ブラウザ組込み音声認識は処理先・保持・リージョンを保証できないため無効化する。
  */
 export function OperatorCommandBar() {
   const [command, setCommand] = useState("");
   const [submittedCommand, setSubmittedCommand] = useState("");
   const pathname = usePathname();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const intent = useMemo(() => resolveOperatorIntent(submittedCommand), [submittedCommand]);
 
   useEffect(() => {
@@ -103,22 +62,33 @@ export function OperatorCommandBar() {
     setSubmittedCommand("");
 
     function handleShortcut(event: KeyboardEvent) {
-      const textEntryTarget = isTextEntryTarget(event.target);
-      const commandShortcut =
-        (event.ctrlKey || event.metaKey) &&
-        event.key.toLowerCase() === "k" &&
-        (!textEntryTarget || event.target === inputRef.current);
-      const slashShortcut = event.key === "/" && !textEntryTarget;
-      if (commandShortcut || slashShortcut) {
+      const targetIsTextEntry = isTextEntryTarget(event.target);
+      if (
+        shouldFocusOperatorCommand({
+          key: event.key,
+          ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+          altKey: event.altKey,
+          isComposing: event.isComposing,
+          targetIsTextEntry,
+          targetIsCommandInput: event.target === inputRef.current,
+        })
+      ) {
         event.preventDefault();
         inputRef.current?.focus();
         inputRef.current?.select();
         return;
       }
-      if (event.key === "Escape" && document.activeElement === inputRef.current) {
+
+      if (
+        event.key === "Escape" &&
+        !event.isComposing &&
+        sectionRef.current?.contains(document.activeElement)
+      ) {
+        event.preventDefault();
         setCommand("");
         setSubmittedCommand("");
-        inputRef.current?.blur();
+        inputRef.current?.focus();
       }
     }
 
@@ -137,10 +107,10 @@ export function OperatorCommandBar() {
   }
 
   return (
-    <section className="operator-command" aria-label="自然言語クイック操作">
+    <section ref={sectionRef} className="operator-command" aria-label="業務画面クイック検索">
       <form onSubmit={submit} className="operator-command-form" role="search">
         <label htmlFor="operator-command-input" className="operator-command-label">
-          自然言語で画面を探す
+          業務名で画面を探す
         </label>
         <div className="operator-command-row">
           <span className="operator-command-search-icon" aria-hidden="true">
@@ -155,7 +125,9 @@ export function OperatorCommandBar() {
               setCommand(nextCommand);
               if (!nextCommand.trim()) setSubmittedCommand("");
             }}
-            placeholder="画面を探す（例：山田さんを検索して）"
+            placeholder="患者名は入れず業務名で検索（例：月次締め）"
+            title="患者名・薬剤名・処方内容などの個人情報は入力しないでください"
+            maxLength={80}
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="none"
@@ -181,12 +153,24 @@ export function OperatorCommandBar() {
           </button>
         </div>
         <span id="operator-command-help" className="visually-hidden">
-          スラッシュまたはControl K、MacではCommand Kで入力欄へ移動できます。ほかの入力欄を編集中はショートカットを奪いません。入力は画面候補の提示だけに使用します。
+          患者名、薬剤名、処方内容などの個人情報は入力せず、患者検索、会計、月次締めなどの業務名を入力してください。スラッシュまたはControl K、MacではCommand Kで入力欄へ移動し、Escapeキーで入力と候補を消去できます。ほかの入力欄を編集中はショートカットを奪いません。
         </span>
         <span id="operator-voice-status" className="visually-hidden">
           音声入力は、処理先・保持・リージョンを確認した承認済み音声処理境界の接続前のため利用できません。
         </span>
       </form>
+
+      <nav className="operator-command-suggestions" aria-label="主要業務へのショートカット">
+        <span className="operator-command-shortcut-hint">
+          <kbd aria-hidden="true">/</kbd>
+          業務名で検索
+        </span>
+        {OPERATOR_QUICK_LINKS.map((item) => (
+          <Link href={item.href} key={item.href} onClick={clearCommand}>
+            {item.label}
+          </Link>
+        ))}
+      </nav>
 
       {submittedCommand ? (
         <div className="operator-command-preview" aria-live="polite">
@@ -198,7 +182,9 @@ export function OperatorCommandBar() {
               </Link>
             </>
           ) : (
-            <span>安全に解釈できません。左の業務メニューから対象画面を選択してください。</span>
+            <span>
+              安全に一意判定できません。患者名や処方内容ではなく、「患者検索」「請求前点検」のような業務名を入力するか、業務メニューから選択してください。
+            </span>
           )}
           <small>この入力だけで患者・処方・会計・請求データは変更されません。</small>
         </div>

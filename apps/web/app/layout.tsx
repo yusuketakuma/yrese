@@ -3,12 +3,15 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { OperatorCommandBar } from "./components/operator-command-bar";
-import { PatientContextBar, PatientContextProvider } from "./components/patient-context";
+import { PatientContextBoundary } from "./components/patient-context-boundary";
+import { PatientContextProvider } from "./components/patient-context";
 import { BusinessNav } from "./nav";
 import { SystemModeBadge } from "./system-mode-badge";
 import "./globals.css";
 import "./operator-first.css";
 import "./operator-ux-refinement.css";
+import "./operator-first-navigation.css";
+import "./operator-adversarial-refinement.css";
 
 export const metadata: Metadata = {
   title: "yrese 調剤レセプトコンピューター",
@@ -64,7 +67,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <BusinessNav />
             </aside>
             <div className="app-workspace">
-              <PatientContextBar />
+              <PatientContextBoundary />
               <main id="main-content" className="app-main" tabIndex={-1}>
                 {children}
               </main>
