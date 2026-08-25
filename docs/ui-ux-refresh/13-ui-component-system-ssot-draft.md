@@ -1,17 +1,18 @@
-# 13 — UI共通コンポーネントシステム SSOT ドラフト(UIX-008 候補)
+# 13 — UI共通コンポーネントシステム統合元(Candidate A / UIX-001改版)
 
 > **DRAFT / PROPOSED — 本書は non-SSOT 作業領域(`docs/ui-ux-refresh/`)上の起草文書である。**
-> 正式 SSOT への昇格は §0 の topology 選択に従う。`docs/uiux/ui_component_system.md`
-> への移設・UIX-008 採番は Candidate B の場合だけ行い、Candidate A は UIX-001 を改版する。
-> WP-5101 の独立レビューと human product 承認後、PRC-007 の10段改版フローに従う。
+> direct user instruction 2026-08-26 は §0 の Candidate A を選択した。正式化では
+> UIX-001 を改版し、本書を独立SSOTへ昇格せず、UIX-008も採番しない。
+> Candidate AのPROPOSED batchとfinalizationはPRC-007の10段改版フローに従う。
 > historical exact11 と WP-4254/4255 は current base `c7b6140` までに landing 済みであり、
 > 現在の blocker には数えない。
 > それまで本書は承認・実装・準拠を主張しない。
 
 ```yaml
-# 昇格時に確定する frontmatter 案
-ssot_id: UIX-008        # 候補採番(UIX-001..007 の次。PRC-007 で確定)
-title: UI共通コンポーネントシステム
+# Candidate A UIX-001改版へ統合するnon-SSOT proposal metadata
+proposal_id: WP-5101-UIX-001-COMPONENT-SOURCE
+target_ssot_id: UIX-001
+title: UI共通コンポーネントシステム統合元
 domain: uiux
 status: PROPOSED
 owner: codex_root
@@ -23,7 +24,7 @@ reviewers:
   - medical_safety_reviewer      # U4 該当コンポーネント
   - privacy_compliance_reviewer  # U4 該当コンポーネント
   - human_review_required
-version: 0.1.4-draft
+version: 0.1.5-draft
 created_at: 2026-07-31
 source_refs:
   - docs/spec/construction_prompt_v0.2.0.md §7, §16
@@ -37,8 +38,8 @@ depends_on: [UIX-001, UIX-002, UIX-003, UIX-004, UIX-005, UIX-006, UIX-007, PLAN
 impacts: [apps/web/**, docs/plan/uiux_development_plan.md]
 open_questions: 本文 §9 参照
 blockers:
-  - BLOCKED_WP_5101_INDEPENDENT_REVIEW
-  - BLOCKED_HUMAN_PRODUCT_APPROVAL(§0 の unique SSOT topology と §9 の製品判断)
+  - BLOCKED_CANDIDATE_A_PRC007_PROPOSED_BATCH
+  - BLOCKED_RELEVANT_MEDICAL_SAFETY_PRIVACY_ACCESSIBILITY_PHARMACIST_GATES
   - BLOCKED_L0_TOKEN_AUTHORITY_RECONCILIATION(§2 の current implementation drift)
 ```
 
@@ -54,16 +55,17 @@ PRC-007 の atomic cutover で選べる topology は次の二つだけであり�
 
 | Candidate | Reuse | Atomic cutover |
 |---|---|---|
-| **A(推奨)** | 既存 UIX-001 を unique foundation へ改版 | UIX-002〜007 と本ドラフトの必要内容を UIX-001 へ集約し、旧文書を同一 batch で SUPERSEDED にする |
-| B | UIX-008 を新しい unique foundation として採番 | UIX-001〜007 と本ドラフトの必要内容を UIX-008 へ集約し、UIX-001〜007 を同一 batch で SUPERSEDED にする |
+| **A(選択済み、2026-08-26)** | 既存 UIX-001 を unique foundation へ改版 | UIX-002〜007 と本ドラフトの必要内容を UIX-001 へ集約し、旧文書を同一 batch で SUPERSEDED にする |
+| B(不採用) | UIX-008 を新しい unique foundation として採番 | UIX-001〜007 と本ドラフトの必要内容を UIX-008 へ集約し、UIX-001〜007 を同一 batch で SUPERSEDED にする |
 
 どちらも UIX-001〜007 の安全・品質要件を削除しない。特に UIX-004 の UAC-01〜12、
 synthetic/demo data 限定、pharmacist / claim-clerk / accessibility / product の human approval、
 UAC-11 の自動+手動検証、および UIX-005 の ST-01〜15(入力保全・冪等性・部分失敗・
 LOCAL_ONLY/RECOVERY_SYNC・監査欠落防止を含む)を cutover checklist に明記して保存する。
 
-既存正本を再利用する A が最小差分である。いずれも exact candidate diff、独立レビュー、
-medical-safety/privacy/accessibility review、human product 承認なしに APPROVED 化しない。
+既存正本を再利用する A を direct user instruction 2026-08-26 が選択した。この選択は
+UIX-001改版のAPPROVED化や実装を承認せず、exact candidate diff、独立レビュー、
+medical-safety/privacy/accessibility review、該当するpharmacist/product human gateを省略しない。
 
 ## 1. 目的と適用範囲
 
@@ -260,7 +262,8 @@ medical-safety/privacy/accessibility review、human product 承認なしに APPR
 ## 8. 昇格手順(fail-closed)
 
 1. 本ドラフトのレビュー(frontend / accessibility / independent)
-2. §0 の unique SSOT topology と §9 の製品判断を human product authority が承認
+2. §0 の unique SSOT topologyをhuman product authorityが承認(2026-08-26 Candidate A選択済み)。
+   §9の未決事項はそれぞれの該当gateで解消する
 3. 選択 topology の全文書を PROPOSED のまま atomic batch としてレビュー
 4. PRC-007 完了後、選択した unique foundation と `docs/ssot_index.md` を同時に APPROVED 化
 5. PLAN-UIUX-001 を unique foundation 参照へ改版し、実装 WP を queue 規律に従って claim
@@ -274,6 +277,9 @@ medical-safety/privacy/accessibility review、human product 承認なしに APPR
 
 ## 変更履歴
 
+- 0.1.5-draft (2026-08-26): direct user instructionによりCandidate A(UIX-001改版)を選択。
+  本書は独立SSOT/UIX-008へ昇格せず、未決のmedical-safety/privacy/accessibility/pharmacist
+  判断を各該当gateへ委譲。PRC-007 final approvalと実装は未承認のまま維持。
 - 0.1.4-draft (2026-08-26): current `c7b6140` へ再同期 — exact11/WP-4254/4255 の
   historical dirty blocker を除去し、unique SSOT task と UIX-001〜007 の current topology
   の競合を atomic cutover decision として明示。L0 token の実在する分散 ownership と、

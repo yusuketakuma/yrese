@@ -79,8 +79,8 @@
 本決定記録(14号)
  → 13号 UIX-008 ドラフト §4 改訂(丁を採用構造として反映)… 本日実施
  → workflow-stage enum SSOT 起案(shared-kernel)… 次の起案対象
- → WP-5101 fresh-context review + human product decision
- → 13号 §0 で選択した unique UI/UX SSOT topology を atomic PRC-007 batch で承認
+ → WP-5101 fresh-context review + human product decision(Candidate A、2026-08-26選択済み)
+ → UIX-001をunique foundationへ改版するCandidate Aをatomic PRC-007 batchでreview/finalize
  → UIX-006/007・PLAN-UIUX-001 の改版起案(盤面写像・実装波の再編)
  → Plans.md への WP 登載(WIP=1 / READY≤2)→ 実装
 ```
@@ -162,6 +162,9 @@ WP-5113 着手の前提【要設計】。
 
 ## 変更履歴
 
+- 0.2.4 (2026-08-26): direct user instructionでCandidate A(UIX-001改版)を選択したため、
+  後続フローをA/B判断待ちからCandidate AのPRC-007 review/finalizationへ更新。未決の
+  medical-safety/privacy/accessibility/pharmacist gateと実装stopは変更していない。
 - 0.2.3 (2026-08-26): current `c7b6140` へ再同期 — WP-4253/4254/4255 の historical
   dirty prerequisite を satisfied とし、次工程を WP-5101 review と unique SSOT atomic
   cutover へ更新。丁の構造決定・未決事項・実装 stop condition は変更していない。

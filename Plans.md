@@ -37,18 +37,18 @@
 | Candidate branch | `feature/wp-5101-uiux-review = origin/feature/wp-5101-uiux-review`; exact headはGit / Draft PR #5を正本とする |
 | Upstream relation | candidate branchはreview baseのfast-forward子。direct main commit/pushなし |
 | Candidate scope | WP-5101 PLAN_ONLY exact5: `Plans.md` + `State.md` + `docs/ui-ux-refresh/13` / `14` / `15`; exact head/statusはGitを正本とする |
-| Last update | 2026-08-26 JST(Draft PR #5でhuman decision待ち。exact review/CI結果は当該PRと外部evidenceを正本とする) |
-| Active Goal | WP-5101 の non-SSOT draft review packet を human product decision へ提示可能にする。製品実装は未claim |
-| Current critical path | human product authority による Candidate A/B 判断 → 必要な PRC-007 atomic cutoverとC-100 charter整合 → 再計画 |
-| Main blocker | human product A/B decision、PRC-007、U3/U4 の実装前 relevant review/human authorization。後続実装は全件 NOT_READY |
-| Required verification | exact diffの`git diff --check`、SSOT index、secret scan、fresh independent review、verified Oracle、Draft PR exact-head CI。code test/build/browser runtimeはPLAN_ONLYではN/A |
+| Last update | 2026-08-26 JST(direct user instructionでCandidate Aを選択し、未決のmedical-safety/privacy/accessibility/pharmacist判断を各該当gateへ委譲。decision recordの再review中) |
+| Active Goal | WP-5101 の non-SSOT packetへCandidate Aの製品判断を記録し、fresh independent review後にWP-5104のPRC-007 PROPOSED packetへ引き渡す。製品実装は未claim |
+| Current critical path | Candidate A decision recordの再review → WP-5104 Candidate A PROPOSED batch → required specialist/human gate → PRC-007 atomic finalization。C-100 charter整合は別batch |
+| Main blocker | Candidate AのSSOT final approval、PRC-007、U3/U4 の実装前 relevant review/human authorization。後続実装は全件 NOT_READY |
+| Required verification | decision deltaの`git diff --check`、secret scan、fresh independent review、Draft PR exact-head CI。code test/build/browser runtimeはPLAN_ONLYではN/A |
 | Work-selection drift | `DEVELOPMENT_POLICY.md §11` の旧 `CURRENT — WP-4250` はC-100改版待ち。AGT-018 §2で優先するcurrent requestはWP-5101 PLAN_ONLYだけを選択し、drift解消前の実装claimを禁止 |
 | Next scan cursor | `c7b6140`; new High/Medium finding、remote main更新、human decisionでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
 current exact5 は APPROVED SSOT・実装code・schemaを変更しない。feature branch/PR以外から
-mainへ置かず、human product decision前にSSOT昇格・実装・deploy・migration・production変更・
-release acceptanceを行わない。
+mainへ置かず、Candidate AのPRC-007 finalization前にSSOT昇格・実装・deploy・migration・
+production変更・release acceptanceを行わない。
 
 ## 2. Product and Architecture Guardrails
 
@@ -770,15 +770,16 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 #### Stage 0 — SSOT 整備(PLAN_ONLY・実装なし)
 
-##### WP-5101 — 13〜17号ドラフトの独立レビューと確定
+##### WP-5101 — 13〜17号ドラフトの独立レビューと製品方針決定
 
-- **Status:** CURRENT / PLAN_ONLY / REVIEW_IN_PROGRESS / NOT_IMPLEMENTABLE
-- **Gate:** fresh-context independent checker(fable5 セルフレビュー 17号は
-  `independence_not_satisfied` — approval に数えない)+ human product 承認
+- **Status:** CURRENT / PLAN_ONLY / CANDIDATE_A_SELECTED / DECISION_RECORD_REVIEW / NOT_IMPLEMENTABLE
+- **Gate:** packet本体のfresh-context independent checkerはPASS。human product authorityは
+  direct user instruction 2026-08-26でCandidate Aを選択し、未決のmedical-safety/privacy/
+  accessibility/pharmacist判断を各該当gateへ委譲。今回のdecision deltaはfresh re-review待ち
 - **Scope:** 13号(selected unique foundation/component system 候補)/14号(丁決定+§7 ビュー・ロック)/15号(workflow-stage)/
   16号(主操作者調査)/17号(新要件 D-1..D-4・所見 AF/SF)の整合・網羅レビューと確定
 - **Acceptance:** 全 findings が解消または記録済み。D-2 の2段分離、AF-2 の NSIPS 凍結整合、
-  SF-1 の Phase A/B 分離が checker で再確認されている
+  SF-1 の Phase A/B 分離、Candidate Aの選択と委譲gateがfresh checkerで再確認されている
 - **Stop:** レビュー完了前に後続 WP の Gate を開かない
 
 ##### WP-5102 — DOM-004 改版起案(薬剤師最終確定の位置と2段分離)
@@ -804,10 +805,10 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 ##### WP-5104 — unique UI/UX SSOT foundation の atomic 昇格
 
-- **Status:** GATED / NOT_READY
-- **Gate:** WP-5101
-- **Scope:** 13号 §0 の Candidate A(UIX-001改版)または B(UIX-008新設)を human product
-  authority が選択し、UIX-001〜007 の安全・品質要件と component contract を一つの
+- **Status:** GATED / CANDIDATE_A_SELECTED / NOT_READY
+- **Gate:** WP-5101 decision deltaのfresh review
+- **Scope:** direct user instruction 2026-08-26で選択された Candidate A(UIX-001改版)により、
+  UIX-001〜007 の安全・品質要件と component contract を一つの
   foundation へ集約する。同一 PRC-007 batch で旧文書を SUPERSEDED、index と参照を更新する
 - **Acceptance:** 唯一の UI/UX foundation が APPROVED。UIX-004 UAC-01〜12 と UIX-005
   ST-01〜15 を含む既存要件、`docs/ssot_index.md`、PLAN-UIUX-001 の参照が整合
