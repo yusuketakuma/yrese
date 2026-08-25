@@ -63,8 +63,8 @@ jobs:
 
       - name: Install isolated browser tools
         run: |
-          mkdir -p .ui-test-tools
-          cd .ui-test-tools
+          mkdir -p ui-test-tools
+          cd ui-test-tools
           npm init -y
           npm install --no-save playwright@1.62.1 axe-core@4.13.0
           ./node_modules/.bin/playwright install --with-deps chromium
@@ -92,7 +92,7 @@ jobs:
           exit 1
 
       - name: Run keyboard, accessibility, reflow, and draft-safety checks
-        working-directory: .ui-test-tools
+        working-directory: ui-test-tools
         run: node ui-browser-check.mjs
 
       - name: Stop UI servers
