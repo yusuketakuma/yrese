@@ -106,7 +106,7 @@ async function selectMetadata(
 async function receptionMatches(
   client: PoolClient,
   input: PrescriptionDraftLookupInput,
-  lock: boolean,
+  requireEditable: boolean,
 ): Promise<boolean> {
   const result = await client.query<{ readonly reception_id: string }>(
     `SELECT reception_id
@@ -116,13 +116,15 @@ async function receptionMatches(
         AND reception_id = $3
         AND patient_id = $4
         AND business_date = $5::date
-      ${lock ? "FOR SHARE" : ""}`,
+        AND ($6::boolean = false OR reception_status IN ('WAITING', 'IN_PROGRESS'))
+      ${requireEditable ? "FOR SHARE" : ""}`,
     [
       input.tenantId,
       input.pharmacyId,
       input.receptionId,
       input.patientId,
       input.businessDate,
+      requireEditable,
     ],
   );
   return result.rows.length === 1;
