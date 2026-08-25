@@ -25,6 +25,7 @@ import {
   PrescriptionReceptionError,
   loadPrescriptionReceptionOrigin,
 } from "./prescription-reception";
+import { PrescriptionWorkflowProgress } from "./prescription-workflow-progress";
 
 type VerificationState =
   | { readonly kind: "idle" }
@@ -188,7 +189,7 @@ export function PrescriptionReceptionBoundary({
               key: verification.entry.receptionStatus,
             }}
           />
-          です。処方下書きはversion確認付きで保存できますが、臨床判定・算定・薬剤師確認・確定処理には未接続です。
+          です。処方下書きは版確認付きで保存できますが、臨床判定・算定・薬剤師確認・確定処理には未接続です。
         </p>
         <button
           type="button"
@@ -204,6 +205,7 @@ export function PrescriptionReceptionBoundary({
           受付連携を解除
         </button>
       </InlineNotice>
+      <PrescriptionWorkflowProgress />
       <PersistentPrescriptionWorkspace
         key={key}
         patient={selectedPatient}
