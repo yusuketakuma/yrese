@@ -153,6 +153,37 @@ async function checkKeyboardLandmarks(page) {
   });
 }
 
+async function checkReceptionHandoff(page) {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto(BASE_URL, { waitUntil: "networkidle" });
+  const handoff = page.getByRole("link", {
+    name: "この受付を処方入力へ引き継ぐ",
+  }).first();
+  await handoff.waitFor();
+  await handoff.click();
+  await page.waitForURL(`${BASE_URL}/prescriptions`);
+  await page.getByText("受付との関連を確認しました").waitFor();
+  await page.locator(".patient-context-bar").getByText("テスト患者 一").waitFor();
+  assert(
+    (await page.locator('[data-reception-linked="true"]').count()) === 1,
+    "reception handoff: verified linked workspace was not rendered",
+  );
+  assert(
+    await page.getByText("処方保存API・監査証跡が未接続です").isVisible(),
+    "reception handoff: unsupported persistence was not kept fail-closed",
+  );
+  await runAxe(page, "reception-to-prescription-handoff");
+  await page.screenshot({
+    path: path.join(ARTIFACT_DIR, "reception-to-prescription-handoff.png"),
+    fullPage: true,
+    caret: "initial",
+  });
+  findings.interactionChecks.push({
+    name: "reception-to-prescription-fresh-patient-verification",
+    status: "pass",
+  });
+}
+
 async function searchPatients(page) {
   await page.locator("#patient-search-q").fill("テスト患者");
   await page.getByRole("button", { name: "検索", exact: true }).click();
@@ -289,6 +320,7 @@ try {
     await checkRoute(page, route, { width: 1366, height: 768 });
   }
   await checkKeyboardLandmarks(page);
+  await checkReceptionHandoff(page);
   await checkDraftRecoveryAndPatientGuard(page);
 
   assert(
