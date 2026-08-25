@@ -27,17 +27,23 @@ export interface DraftRow {
   readonly quantity: string;
 }
 
+export interface PastPrescriptionRow {
+  readonly drug: string;
+  readonly usage: string;
+  readonly days: string;
+  readonly quantity: string;
+}
+
 export interface PastPrescription {
   readonly date: string;
-  readonly days: string;
-  readonly drugs: readonly string[];
+  readonly rows: readonly PastPrescriptionRow[];
 }
 
 export interface PrescriptionReplacementSummary {
   readonly added: number;
   readonly removed: number;
+  readonly changed: number;
   readonly unchanged: number;
-  readonly daysChanged: boolean;
 }
 
 const INITIAL_ROWS: readonly DraftRow[] = [
@@ -47,14 +53,50 @@ const INITIAL_ROWS: readonly DraftRow[] = [
 ];
 
 export const PAST_PRESCRIPTIONS: readonly PastPrescription[] = [
-  { date: "2026/08/24", days: "7日分", drugs: ["アムロジピンOD錠5mg", "ロサルタンK錠50mg", "トラゾドン錠25mg"] },
-  { date: "2026/07/27", days: "7日分", drugs: ["アムロジピン錠5mg", "ロサルタンK錠50mg", "トラゾドン錠25mg"] },
-  { date: "2026/06/28", days: "7日分", drugs: ["アムロジピン錠5mg", "ロサルタンK錠50mg", "トラゾドン錠25mg"] },
-  { date: "2026/05/27", days: "14日分", drugs: ["アムロジピン錠5mg", "ロサルタンK錠50mg"] },
+  {
+    date: "2026/08/24",
+    rows: [
+      { drug: "アムロジピンOD錠5mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
+      { drug: "ロサルタンK錠50mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
+      { drug: "トラゾドン錠25mg", usage: "1日1回 就寝前", days: "7", quantity: "7錠" },
+    ],
+  },
+  {
+    date: "2026/07/27",
+    rows: [
+      { drug: "アムロジピン錠5mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
+      { drug: "ロサルタンK錠50mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
+      { drug: "トラゾドン錠25mg", usage: "1日1回 就寝前", days: "7", quantity: "7錠" },
+    ],
+  },
+  {
+    date: "2026/06/28",
+    rows: [
+      { drug: "アムロジピン錠5mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
+      { drug: "ロサルタンK錠50mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
+      { drug: "トラゾドン錠25mg", usage: "1日1回 就寝前", days: "7", quantity: "7錠" },
+    ],
+  },
+  {
+    date: "2026/05/27",
+    rows: [
+      { drug: "アムロジピン錠5mg", usage: "1日1回 朝食後", days: "14", quantity: "14錠" },
+      { drug: "ロサルタンK錠50mg", usage: "1日1回 朝食後", days: "14", quantity: "14錠" },
+    ],
+  },
 ] as const;
 
 function normalizedText(value: string): string {
   return value.normalize("NFKC").trim().toLowerCase();
+}
+
+function rowSignature(row: Pick<DraftRow, "usage" | "days" | "quantity">): string {
+  return [row.usage, row.days, row.quantity].map(normalizedText).join("|");
+}
+
+export function pastPrescriptionDurationLabel(item: PastPrescription): string {
+  const durations = new Set(item.rows.map((row) => row.days.trim()).filter(Boolean));
+  return durations.size === 1 ? `${[...durations][0]}日分` : "日数混在";
 }
 
 export function filterPastPrescriptions(
@@ -65,7 +107,17 @@ export function filterPastPrescriptions(
   if (!normalizedQuery) return [...items];
 
   return items.filter((item) =>
-    normalizedText([item.date, item.days, ...item.drugs].join(" ")).includes(normalizedQuery),
+    normalizedText(
+      [
+        item.date,
+        ...item.rows.flatMap((row) => [
+          row.drug,
+          row.usage,
+          `${row.days}日`,
+          row.quantity,
+        ]),
+      ].join(" "),
+    ).includes(normalizedQuery),
   );
 }
 
@@ -73,20 +125,24 @@ export function summarizePrescriptionReplacement(
   currentRows: readonly DraftRow[],
   pastPrescription: PastPrescription,
 ): PrescriptionReplacementSummary {
-  const currentDrugs = new Set(
-    currentRows.map((row) => normalizedText(row.drug)).filter((drug) => drug.length > 0),
+  const currentByDrug = new Map(
+    currentRows
+      .filter((row) => normalizedText(row.drug).length > 0)
+      .map((row) => [normalizedText(row.drug), row] as const),
   );
-  const pastDrugs = new Set(pastPrescription.drugs.map(normalizedText));
-  const targetDays = pastPrescription.days.replace("日分", "");
-  const currentDays = new Set(
-    currentRows.map((row) => row.days.trim()).filter((days) => days.length > 0),
+  const pastByDrug = new Map(
+    pastPrescription.rows.map((row) => [normalizedText(row.drug), row] as const),
   );
+  const sharedDrugs = [...pastByDrug.keys()].filter((drug) => currentByDrug.has(drug));
+  const changed = sharedDrugs.filter(
+    (drug) => rowSignature(currentByDrug.get(drug)!) !== rowSignature(pastByDrug.get(drug)!),
+  ).length;
 
   return {
-    added: [...pastDrugs].filter((drug) => !currentDrugs.has(drug)).length,
-    removed: [...currentDrugs].filter((drug) => !pastDrugs.has(drug)).length,
-    unchanged: [...pastDrugs].filter((drug) => currentDrugs.has(drug)).length,
-    daysChanged: currentDays.size !== 1 || !currentDays.has(targetDays),
+    added: [...pastByDrug.keys()].filter((drug) => !currentByDrug.has(drug)).length,
+    removed: [...currentByDrug.keys()].filter((drug) => !pastByDrug.has(drug)).length,
+    changed,
+    unchanged: sharedDrugs.length - changed,
   };
 }
 
@@ -109,7 +165,7 @@ export function PrescriptionWorkspace() {
     );
   }
 
-  return <SelectedPatientWorkspaceView patient={patient} />;
+  return <SelectedPatientWorkspaceView key={patient.patientId} patient={patient} />;
 }
 
 export function SelectedPatientWorkspaceView({
@@ -186,14 +242,10 @@ export function SelectedPatientWorkspaceView({
   function confirmPastPrescription() {
     if (pendingPastPrescription === null) return;
     const item = pendingPastPrescription;
-    const days = item.days.replace("日分", "");
     setRows(
-      item.drugs.map((drug, index) => ({
+      item.rows.map((row, index) => ({
         id: index + 1,
-        drug,
-        usage: drug.includes("トラゾドン") ? "1日1回 就寝前" : "1日1回 朝食後",
-        days,
-        quantity: `${days}錠`,
+        ...row,
       })),
     );
     setPendingPastPrescription(null);
@@ -204,7 +256,11 @@ export function SelectedPatientWorkspaceView({
   }
 
   return (
-    <section aria-label="処方入力" data-patient-selected="true">
+    <section
+      aria-label="処方入力"
+      data-patient-selected="true"
+      data-patient-id={patient?.patientId ?? "standalone-test-view"}
+    >
       <ScreenHeader
         title="処方入力ワークスペース"
         description="過去処方を左側に固定し、現在の入力と安全情報を同時に比較できる構成です。"
@@ -244,12 +300,15 @@ export function SelectedPatientWorkspaceView({
                   >
                     <header>
                       <strong>{item.date}</strong>
-                      <span>{item.days}</span>
+                      <span>{pastPrescriptionDurationLabel(item)}</span>
                     </header>
                     <StatusPill tone="neutral">合成例</StatusPill>
                     <ol>
-                      {item.drugs.map((drug) => (
-                        <li key={drug}>{drug}</li>
+                      {item.rows.map((row) => (
+                        <li key={row.drug}>
+                          <strong>{row.drug}</strong>
+                          <span>{row.usage}・{row.days}日・{row.quantity}</span>
+                        </li>
                       ))}
                     </ol>
                     <button
@@ -301,14 +360,15 @@ export function SelectedPatientWorkspaceView({
             >
               <h4 id="prescription-replacement-title">過去処方の反映確認</h4>
               <p>
-                {pendingPastPrescription.date}（{pendingPastPrescription.days}）の構成で、現在の
+                患者: {patient?.name ?? "選択患者"}。{pendingPastPrescription.date}（
+                {pastPrescriptionDurationLabel(pendingPastPrescription)}）の構成で、現在の
                 {rows.length}行を置き換えます。まだ入力欄には反映していません。
               </p>
               <dl className="prescription-replacement-summary">
                 <div><dt>追加</dt><dd>{replacementSummary.added}剤</dd></div>
                 <div><dt>削除</dt><dd>{replacementSummary.removed}剤</dd></div>
-                <div><dt>維持</dt><dd>{replacementSummary.unchanged}剤</dd></div>
-                <div><dt>日数</dt><dd>{replacementSummary.daysChanged ? "変更あり" : "変更なし"}</dd></div>
+                <div><dt>内容変更</dt><dd>{replacementSummary.changed}剤</dd></div>
+                <div><dt>同一</dt><dd>{replacementSummary.unchanged}剤</dd></div>
               </dl>
               <div className="prescription-replacement-actions">
                 <button type="button" onClick={() => setPendingPastPrescription(null)}>
