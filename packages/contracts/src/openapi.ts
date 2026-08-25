@@ -14,6 +14,13 @@ import {
   patientSearchResultSchema,
 } from "./patient-search.js";
 import {
+  prescriptionDraftParamsSchema,
+  prescriptionDraftQuerySchema,
+  prescriptionDraftResponseSchema,
+  prescriptionDraftSaveRequestSchema,
+  prescriptionDraftSaveResponseSchema,
+} from "./prescription-draft.js";
+import {
   receptionCreateRequestSchema,
   receptionQueueQuerySchema,
   receptionQueueEntrySchema,
@@ -59,6 +66,16 @@ const internalErrorResponse = (options: { readonly noStore: boolean }) => ({
   description:
     "Normalized internal error. Constant invariant message; no raw exception detail, no PHI.",
   ...(options.noStore ? { headers: noStoreHeaders } : {}),
+  content: {
+    [jsonContentType]: {
+      schema: frameworkErrorResponseOpenApiSchema,
+    },
+  },
+});
+
+const frameworkFailureResponse = (description: string) => ({
+  description,
+  headers: noStoreHeaders,
   content: {
     [jsonContentType]: {
       schema: frameworkErrorResponseOpenApiSchema,
@@ -116,6 +133,37 @@ const receptionCreateRequestOpenApiSchema = receptionCreateRequestSchema.meta({
   id: "ReceptionCreateRequest",
   description: "Create a reception entry using an opaque idempotency key.",
 });
+
+const prescriptionDraftParamsOpenApiSchema = prescriptionDraftParamsSchema.meta({
+  id: "PrescriptionDraftParams",
+  description: "Prescription draft path parameters scoped by reception ID.",
+});
+
+const prescriptionDraftQueryOpenApiSchema = prescriptionDraftQuerySchema.meta({
+  id: "PrescriptionDraftQuery",
+  description:
+    "Patient and business-date selectors. The authenticated tenant and pharmacy remain authoritative.",
+});
+
+const prescriptionDraftSaveRequestOpenApiSchema =
+  prescriptionDraftSaveRequestSchema.meta({
+    id: "PrescriptionDraftSaveRequest",
+    description:
+      "Versioned prescription draft save request. Contains clinical PHI and must not be logged in plaintext.",
+  });
+
+const prescriptionDraftResponseOpenApiSchema = prescriptionDraftResponseSchema.meta({
+  id: "PrescriptionDraftResponse",
+  description:
+    "Server-saved prescription draft with optimistic-concurrency version and actor metadata. Contains clinical PHI.",
+});
+
+const prescriptionDraftSaveResponseOpenApiSchema =
+  prescriptionDraftSaveResponseSchema.meta({
+    id: "PrescriptionDraftSaveResponse",
+    description:
+      "Prescription draft save result, including created/updated/unchanged/replayed disposition. Contains clinical PHI.",
+  });
 
 const auditLogQueryOpenApiSchema = auditLogQuerySchema.meta({
   id: "AuditLogQuery",
@@ -399,6 +447,111 @@ const openApiDefinition = {
               },
             },
           },
+        },
+      },
+    },
+    "/prescription-drafts/by-reception/{receptionId}": {
+      get: {
+        operationId: "getPrescriptionDraftByReception",
+        tags: ["prescriptions"],
+        summary: "Read the server-saved prescription draft for one verified reception context",
+        description:
+          "Requires prescription:read, reception:read, and patient:read. Tenant and pharmacy come only from authenticated context. The response contains clinical PHI and every status uses Cache-Control: no-store.",
+        "x-yrese-ssot": "DOM-002",
+        "x-yrese-required-scopes": [
+          "prescription:read",
+          "reception:read",
+          "patient:read",
+        ],
+        requestParams: {
+          path: prescriptionDraftParamsOpenApiSchema,
+          query: prescriptionDraftQueryOpenApiSchema,
+        },
+        responses: {
+          "200": {
+            description: "Current server-saved prescription draft",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: prescriptionDraftResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": frameworkFailureResponse("Invalid prescription draft request"),
+          "403": {
+            description: "Forbidden (AUTH-0003)",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+          "404": frameworkFailureResponse(
+            "Prescription draft or verified reception context not found",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+      put: {
+        operationId: "savePrescriptionDraftByReception",
+        tags: ["prescriptions"],
+        summary: "Create or update a versioned prescription draft",
+        description:
+          "Requires prescription:write, reception:read, and patient:read. Uses expectedVersion for optimistic concurrency. A 409 never echoes the current clinical payload. Every status uses Cache-Control: no-store.",
+        "x-yrese-ssot": "DOM-002",
+        "x-yrese-required-scopes": [
+          "prescription:write",
+          "reception:read",
+          "patient:read",
+        ],
+        requestParams: {
+          path: prescriptionDraftParamsOpenApiSchema,
+        },
+        requestBody: {
+          required: true,
+          content: {
+            [jsonContentType]: {
+              schema: prescriptionDraftSaveRequestOpenApiSchema,
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Prescription draft created",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: prescriptionDraftSaveResponseOpenApiSchema,
+              },
+            },
+          },
+          "200": {
+            description: "Prescription draft updated, unchanged, or idempotently replayed",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: prescriptionDraftSaveResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": frameworkFailureResponse("Invalid prescription draft request"),
+          "403": {
+            description: "Forbidden (AUTH-0003)",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+          "404": frameworkFailureResponse(
+            "Verified reception and patient context not found",
+          ),
+          "409": frameworkFailureResponse(
+            "Prescription draft version conflict",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
         },
       },
     },

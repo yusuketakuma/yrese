@@ -295,6 +295,153 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FrameworkErrorResponse"
+  /prescription-drafts/by-reception/{receptionId}:
+    get:
+      operationId: getPrescriptionDraftByReception
+      tags:
+        - prescriptions
+      summary: Read the server-saved prescription draft for one verified reception context
+      description: "Requires prescription:read, reception:read, and patient:read. Tenant and pharmacy come only from
+        authenticated context. The response contains clinical PHI and every status uses Cache-Control: no-store."
+      x-yrese-ssot: DOM-002
+      x-yrese-required-scopes:
+        - prescription:read
+        - reception:read
+        - patient:read
+      parameters:
+        - in: path
+          name: receptionId
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: true
+        - in: query
+          name: patientId
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: true
+        - in: query
+          name: date
+          schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          required: true
+      responses:
+        "200":
+          description: Current server-saved prescription draft
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrescriptionDraftResponse"
+        "400":
+          description: Invalid prescription draft request
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+        "403":
+          description: Forbidden (AUTH-0003)
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Prescription draft or verified reception context not found
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+    put:
+      operationId: savePrescriptionDraftByReception
+      tags:
+        - prescriptions
+      summary: Create or update a versioned prescription draft
+      description: "Requires prescription:write, reception:read, and patient:read. Uses expectedVersion for optimistic
+        concurrency. A 409 never echoes the current clinical payload. Every status uses Cache-Control: no-store."
+      x-yrese-ssot: DOM-002
+      x-yrese-required-scopes:
+        - prescription:write
+        - reception:read
+        - patient:read
+      parameters:
+        - in: path
+          name: receptionId
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrescriptionDraftSaveRequest"
+      responses:
+        "200":
+          description: Prescription draft updated, unchanged, or idempotently replayed
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrescriptionDraftSaveResponse"
+        "201":
+          description: Prescription draft created
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrescriptionDraftSaveResponse"
+        "400":
+          description: Invalid prescription draft request
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+        "403":
+          description: Forbidden (AUTH-0003)
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Verified reception and patient context not found
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+        "409":
+          description: Prescription draft version conflict
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
   /audit/events:
     get:
       operationId: getAuditEvents
@@ -357,6 +504,101 @@ components:
         - patientId
         - idempotencyKey
       description: Create a reception entry using an opaque idempotency key.
+    PrescriptionDraftSaveRequest:
+      type: object
+      properties:
+        patientId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        businessDate:
+          type: string
+          format: date
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        expectedVersion:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        draft:
+          type: object
+          properties:
+            prescriptionType:
+              type: string
+              enum:
+                - UNSPECIFIED
+                - OUTPATIENT
+                - HOME
+            prescriptionDate:
+              anyOf:
+                - type: string
+                  format: date
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                - type: "null"
+            defaultDays:
+              anyOf:
+                - type: integer
+                  minimum: 1
+                  maximum: 999
+                - type: "null"
+            flags:
+              maxItems: 5
+              type: array
+              items:
+                type: string
+                enum:
+                  - PACKAGING
+                  - HOME_CARE
+                  - NARCOTIC
+                  - PSYCHOTROPIC
+                  - LEFTOVER_ADJUSTMENT
+            note:
+              type: string
+              maxLength: 2000
+            rows:
+              minItems: 1
+              maxItems: 100
+              type: array
+              items:
+                type: object
+                properties:
+                  sequence:
+                    type: integer
+                    minimum: 1
+                    maximum: 100
+                  drugText:
+                    type: string
+                    maxLength: 256
+                  usageText:
+                    type: string
+                    maxLength: 256
+                  days:
+                    anyOf:
+                      - type: integer
+                        minimum: 1
+                        maximum: 999
+                      - type: "null"
+                  quantityText:
+                    type: string
+                    maxLength: 64
+                required:
+                  - sequence
+                  - drugText
+                  - usageText
+                  - days
+                  - quantityText
+          required:
+            - prescriptionType
+            - prescriptionDate
+            - defaultDays
+            - flags
+            - note
+            - rows
+      required:
+        - patientId
+        - businessDate
+        - expectedVersion
+        - draft
+      description: Versioned prescription draft save request. Contains clinical PHI and must not be logged in plaintext.
     HealthResponse:
       type: object
       properties:
@@ -748,6 +990,278 @@ components:
           additionalProperties: false
       description: Validation failure (RCV-0001) or JSON body parse failure (framework shape with code
         FST_ERR_CTP_INVALID_JSON_BODY). Non-JSON content types are coerced through validation and fail as RCV-0001.
+    PrescriptionDraftResponse:
+      type: object
+      properties:
+        prescriptionId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        receptionId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        patientId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        businessDate:
+          type: string
+          format: date
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        lifecycleStatus:
+          type: string
+          const: SERVER_SAVED
+        draft:
+          type: object
+          properties:
+            prescriptionType:
+              type: string
+              enum:
+                - UNSPECIFIED
+                - OUTPATIENT
+                - HOME
+            prescriptionDate:
+              anyOf:
+                - type: string
+                  format: date
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                - type: "null"
+            defaultDays:
+              anyOf:
+                - type: integer
+                  minimum: 1
+                  maximum: 999
+                - type: "null"
+            flags:
+              maxItems: 5
+              type: array
+              items:
+                type: string
+                enum:
+                  - PACKAGING
+                  - HOME_CARE
+                  - NARCOTIC
+                  - PSYCHOTROPIC
+                  - LEFTOVER_ADJUSTMENT
+            note:
+              type: string
+              maxLength: 2000
+            rows:
+              minItems: 1
+              maxItems: 100
+              type: array
+              items:
+                type: object
+                properties:
+                  sequence:
+                    type: integer
+                    minimum: 1
+                    maximum: 100
+                  drugText:
+                    type: string
+                    maxLength: 256
+                  usageText:
+                    type: string
+                    maxLength: 256
+                  days:
+                    anyOf:
+                      - type: integer
+                        minimum: 1
+                        maximum: 999
+                      - type: "null"
+                  quantityText:
+                    type: string
+                    maxLength: 64
+                required:
+                  - sequence
+                  - drugText
+                  - usageText
+                  - days
+                  - quantityText
+                additionalProperties: false
+          required:
+            - prescriptionType
+            - prescriptionDate
+            - defaultDays
+            - flags
+            - note
+            - rows
+          additionalProperties: false
+        createdAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+        updatedAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+        createdBy:
+          type: string
+          minLength: 1
+          maxLength: 128
+        updatedBy:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+        - prescriptionId
+        - receptionId
+        - patientId
+        - businessDate
+        - version
+        - lifecycleStatus
+        - draft
+        - createdAt
+        - updatedAt
+        - createdBy
+        - updatedBy
+      additionalProperties: false
+      description: Server-saved prescription draft with optimistic-concurrency version and actor metadata. Contains clinical PHI.
+    PrescriptionDraftSaveResponse:
+      type: object
+      properties:
+        prescriptionId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        receptionId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        patientId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        businessDate:
+          type: string
+          format: date
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        lifecycleStatus:
+          type: string
+          const: SERVER_SAVED
+        draft:
+          type: object
+          properties:
+            prescriptionType:
+              type: string
+              enum:
+                - UNSPECIFIED
+                - OUTPATIENT
+                - HOME
+            prescriptionDate:
+              anyOf:
+                - type: string
+                  format: date
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                - type: "null"
+            defaultDays:
+              anyOf:
+                - type: integer
+                  minimum: 1
+                  maximum: 999
+                - type: "null"
+            flags:
+              maxItems: 5
+              type: array
+              items:
+                type: string
+                enum:
+                  - PACKAGING
+                  - HOME_CARE
+                  - NARCOTIC
+                  - PSYCHOTROPIC
+                  - LEFTOVER_ADJUSTMENT
+            note:
+              type: string
+              maxLength: 2000
+            rows:
+              minItems: 1
+              maxItems: 100
+              type: array
+              items:
+                type: object
+                properties:
+                  sequence:
+                    type: integer
+                    minimum: 1
+                    maximum: 100
+                  drugText:
+                    type: string
+                    maxLength: 256
+                  usageText:
+                    type: string
+                    maxLength: 256
+                  days:
+                    anyOf:
+                      - type: integer
+                        minimum: 1
+                        maximum: 999
+                      - type: "null"
+                  quantityText:
+                    type: string
+                    maxLength: 64
+                required:
+                  - sequence
+                  - drugText
+                  - usageText
+                  - days
+                  - quantityText
+                additionalProperties: false
+          required:
+            - prescriptionType
+            - prescriptionDate
+            - defaultDays
+            - flags
+            - note
+            - rows
+          additionalProperties: false
+        createdAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+        updatedAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+        createdBy:
+          type: string
+          minLength: 1
+          maxLength: 128
+        updatedBy:
+          type: string
+          minLength: 1
+          maxLength: 128
+        saveDisposition:
+          type: string
+          enum:
+            - created
+            - updated
+            - unchanged
+            - replayed
+      required:
+        - prescriptionId
+        - receptionId
+        - patientId
+        - businessDate
+        - version
+        - lifecycleStatus
+        - draft
+        - createdAt
+        - updatedAt
+        - createdBy
+        - updatedBy
+        - saveDisposition
+      additionalProperties: false
+      description: Prescription draft save result, including created/updated/unchanged/replayed disposition. Contains clinical PHI.
     AuditLogResponse:
       type: object
       properties:

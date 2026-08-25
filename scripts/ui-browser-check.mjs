@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { chromium } from "playwright";
@@ -58,15 +58,42 @@ function routeName(route) {
   return route === "/" ? "reception" : route.slice(1).replaceAll("/", "-");
 }
 
+function isExpectedDraftNotFoundResponse(response) {
+  return (
+    response.status() === 404 &&
+    response.request().method() === "GET" &&
+    response.url().includes("/prescription-drafts/by-reception/")
+  );
+}
+
 async function attachErrorCollection(page, label) {
-  page.on("console", (message) => {
-    if (message.type() === "error") {
-      findings.consoleErrors.push({
-        label,
-        kind: "console",
-        text: message.text(),
-      });
+  page.on("response", (response) => {
+    if (response.status() !== 404 || isExpectedDraftNotFoundResponse(response)) {
+      return;
     }
+    findings.consoleErrors.push({
+      label,
+      kind: "network",
+      text: `Unexpected 404: ${response.request().method()} ${response.url()}`,
+    });
+  });
+  page.on("console", (message) => {
+    if (message.type() !== "error") return;
+    const text = message.text();
+    // Chromium emits a generic console event for the expected first GET /draft 404.
+    // Exact response URL validation above still records every unexpected 404.
+    if (
+      text.includes(
+        "Failed to load resource: the server responded with a status of 404",
+      )
+    ) {
+      return;
+    }
+    findings.consoleErrors.push({
+      label,
+      kind: "console",
+      text,
+    });
   });
   page.on("pageerror", (error) => {
     findings.consoleErrors.push({
@@ -172,8 +199,9 @@ async function runAxe(page, label) {
       },
     }),
   );
-  const blocking = result.violations.filter((violation) =>
-    violation.impact === "critical" || violation.impact === "serious",
+  const blocking = result.violations.filter(
+    (violation) =>
+      violation.impact === "critical" || violation.impact === "serious",
   );
   for (const violation of blocking) {
     findings.accessibilityViolations.push({
@@ -198,6 +226,51 @@ async function waitForRoute(page, route) {
     .getByRole("heading", { name: routeHeadings.get(route), level: 2 })
     .last()
     .waitFor();
+}
+
+async function waitForPersistedDraft(page, version, expectedDrug) {
+  const workspace = page
+    .locator(
+      `section[aria-label="処方入力"][data-server-draft-version="${version}"][data-unsaved-draft="false"]:visible`,
+    )
+    .last();
+  await workspace.waitFor();
+  const drugInput = workspace.getByLabel("RP1 薬剤名");
+  await drugInput.waitFor();
+  await page.waitForFunction(
+    ({ expectedDrugValue, expectedVersion }) => {
+      const candidates = [
+        ...document.querySelectorAll('section[aria-label="処方入力"]'),
+      ];
+      const visibleWorkspace = candidates.find(
+        (candidate) =>
+          candidate instanceof HTMLElement && candidate.offsetParent !== null,
+      );
+      const input = visibleWorkspace?.querySelector(
+        'input[aria-label="RP1 薬剤名"]',
+      );
+      return (
+        visibleWorkspace instanceof HTMLElement &&
+        visibleWorkspace.dataset.serverDraftVersion === expectedVersion &&
+        visibleWorkspace.dataset.unsavedDraft === "false" &&
+        input instanceof HTMLInputElement &&
+        input.value === expectedDrugValue
+      );
+    },
+    {
+      expectedDrugValue: expectedDrug,
+      expectedVersion: String(version),
+    },
+  );
+  const statusText = await workspace
+    .locator(".screen-title-row .operator-status-pill")
+    .first()
+    .textContent();
+  assert(
+    statusText?.trim() === `サーバー保存済み v${version}`,
+    `prescription persistence: visible saved status did not match v${version} (${statusText})`,
+  );
+  return workspace;
 }
 
 async function checkRoute(page, route, viewport) {
@@ -265,8 +338,7 @@ async function checkKeyboardLandmarks(page) {
     );
     const controls = await tab.getAttribute("aria-controls");
     assert(
-      controls !== null &&
-        (await page.locator(`#${controls}`).count()) === 1,
+      controls !== null && (await page.locator(`#${controls}`).count()) === 1,
       `admin tabs: tab ${index + 1} does not control the rendered panel`,
     );
   }
@@ -317,19 +389,33 @@ async function checkReceptionHandoff(page) {
     (await page.locator('[data-reception-linked="true"]').count()) === 1,
     "reception handoff: verified linked workspace was not rendered",
   );
-  assert(
-    await page.getByText("処方保存API・監査証跡が未接続です").isVisible(),
-    "reception handoff: unsupported persistence was not kept fail-closed",
-  );
+
+  const saveButton = page.getByRole("button", { name: "処方下書きを保存" });
+  await saveButton.waitFor();
+  assert(await saveButton.isDisabled(), "prescription persistence: blank draft save was enabled");
+  await page.getByLabel("RP1 薬剤名").fill("E2Eサーバー保存薬10mg");
+  await page.getByLabel("RP1 用法用量").fill("1日1回 朝食後");
+  await page.getByLabel("RP1 日数").fill("7");
+  await page.getByLabel("RP1 数量").fill("7錠");
+  await saveButton.click();
+  await page.getByText("サーバー保存が完了しました").waitFor();
+  await waitForPersistedDraft(page, 1, "E2Eサーバー保存薬10mg");
+
+  await page.locator('.app-nav-link[href="/checkout"]').click();
+  await waitForRoute(page, "/checkout");
+  await page.locator('.app-nav-link[href="/prescriptions"]').click();
+  await waitForRoute(page, "/prescriptions");
+  await waitForPersistedDraft(page, 1, "E2Eサーバー保存薬10mg");
+  findings.interactionChecks.push({
+    name: "reception-linked-versioned-draft-save-and-reload",
+    status: "pass",
+  });
+
   await runAxe(page, "reception-to-prescription-handoff");
   await page.screenshot({
     path: path.join(ARTIFACT_DIR, "reception-to-prescription-handoff.png"),
     fullPage: true,
     caret: "initial",
-  });
-  findings.interactionChecks.push({
-    name: "reception-to-prescription-fresh-patient-verification",
-    status: "pass",
   });
 
   await page.locator('.app-nav-link[href="/"]').click();
@@ -352,6 +438,7 @@ async function checkReceptionHandoff(page) {
   await searchedHandoff.click();
   await page.waitForURL(`${BASE_URL}/prescriptions`);
   await page.getByText("受付との関連を確認しました").waitFor();
+  await waitForPersistedDraft(page, 1, "E2Eサーバー保存薬10mg");
   findings.interactionChecks.push({
     name: "reception-search-to-guarded-handoff",
     status: "pass",
@@ -397,7 +484,7 @@ async function checkDraftRecoveryAndPatientGuard(page) {
   await drugInput.fill("E2E合成薬10mg");
   await page.getByLabel("RP1 用法用量").fill("1日1回 朝");
   await page.getByLabel("メモ（薬剤師メモ・特記事項）").fill("E2E下書き");
-  await page.getByText("未保存の変更（このタブ内）").waitFor();
+  await page.getByText("受付未連携・タブ内未保存").waitFor();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => window.scrollTo(0, 0));
@@ -426,7 +513,7 @@ async function checkDraftRecoveryAndPatientGuard(page) {
     return element instanceof HTMLInputElement && element.value === "E2E合成薬10mg";
   });
   const restoredNoticeVisible = await page
-    .getByText("タブ内下書きを復元しました")
+    .getByText("タブ内の未保存入力を復元しました")
     .isVisible()
     .catch(() => false);
   assert(

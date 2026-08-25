@@ -1,10 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { type ChangeEvent, useEffect, useState } from "react";
+import {
+  type ChangeEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { DomainStatusBadge } from "../components/domain-status-badge";
 import { EmptyState } from "../components/empty-state";
+import { ErrorNotice } from "../components/error-notice";
+import { LoadingState } from "../components/loading-state";
 import {
   type PatientContextData,
   useOptionalPatientContext,
@@ -30,6 +37,14 @@ import {
   isPrescriptionDraftDirty,
   prescriptionDraftWorkId,
 } from "./prescription-draft";
+import {
+  PrescriptionDraftApiError,
+  fromPrescriptionDraftResponse,
+  loadPrescriptionDraft,
+  prescriptionDraftSnapshotsEqual,
+  savePrescriptionDraft,
+} from "./prescription-draft-persistence";
+import { useOptionalPrescriptionOrigin } from "./prescription-origin-context";
 import {
   type DraftRow,
   createBlankDraftRows,
@@ -59,8 +74,60 @@ export {
   prescriptionDraftWorkId,
 } from "./prescription-draft";
 
+type DraftLoadState =
+  | { readonly kind: "unlinked" }
+  | { readonly kind: "loading" }
+  | { readonly kind: "ready" }
+  | { readonly kind: "error"; readonly error: PrescriptionDraftApiError };
+
+type DraftSaveState =
+  | { readonly kind: "idle" }
+  | { readonly kind: "saving" }
+  | {
+      readonly kind: "saved";
+      readonly disposition: "created" | "updated" | "unchanged" | "replayed";
+    }
+  | { readonly kind: "conflict" }
+  | { readonly kind: "error"; readonly error: PrescriptionDraftApiError };
+
+function saveDispositionLabel(
+  disposition: "created" | "updated" | "unchanged" | "replayed",
+): string {
+  if (disposition === "created") return "新規下書きを保存しました";
+  if (disposition === "updated") return "下書きを更新しました";
+  if (disposition === "replayed") return "直前の保存結果を再確認しました";
+  return "サーバー上の下書きは変更ありません";
+}
+
+function loadErrorNextAction(error: PrescriptionDraftApiError): string {
+  if (error.kind === "PERMISSION_DENIED") {
+    return "管理者に prescription:read・reception:read・patient:read の付与状況を確認してください。";
+  }
+  if (error.kind === "NOT_FOUND") {
+    return "受付画面へ戻り、対象患者・受付・業務日を再確認してください。";
+  }
+  if (error.kind === "INVALID_RESPONSE") {
+    return "同期状態を確認し、継続する場合はシステム管理者へ連絡してください。";
+  }
+  return "再取得してください。解消しない場合は同期状態を確認してください。";
+}
+
+function saveErrorNextAction(error: PrescriptionDraftApiError): string {
+  if (error.kind === "PERMISSION_DENIED") {
+    return "管理者に prescription:write・reception:read・patient:read の付与状況を確認してください。";
+  }
+  if (error.kind === "INVALID_REQUEST") {
+    return "日付、日数、文字数、RP行数を確認してから再度保存してください。";
+  }
+  if (error.kind === "NOT_FOUND") {
+    return "受付と患者の関連が変わった可能性があります。受付画面から再度開始してください。";
+  }
+  return "入力内容はこのタブに保持されています。同期状態を確認してから再度保存してください。";
+}
+
 export function PrescriptionWorkspace() {
   const context = useOptionalPatientContext();
+  const origin = useOptionalPrescriptionOrigin()?.origin ?? null;
   const patient = context?.patient ?? null;
 
   if (patient === null) {
@@ -76,14 +143,21 @@ export function PrescriptionWorkspace() {
           <Link href="/patients">患者検索</Link>
           で患者を選択すると、処方入力を開始できます（患者取り違え防止のため、患者未選択での入力開始はできません）。
         </p>
-        <p className="placeholder-note">
-          処方データ・臨床判定・算定APIは未接続です。患者未選択では入力欄も表示しません。
-        </p>
       </section>
     );
   }
 
-  return <SelectedPatientWorkspaceView key={patient.patientId} patient={patient} />;
+  const workspaceKey = [
+    patient.patientId,
+    origin?.receptionId ?? "unlinked",
+    origin?.businessDate ?? "unlinked",
+  ].join(":");
+  return (
+    <SelectedPatientWorkspaceView
+      key={workspaceKey}
+      patient={patient}
+    />
+  );
 }
 
 export function SelectedPatientWorkspaceView({
@@ -91,11 +165,18 @@ export function SelectedPatientWorkspaceView({
 }: {
   readonly patient: PatientContextData;
 }) {
+  const origin = useOptionalPrescriptionOrigin()?.origin ?? null;
+  const linkedOrigin =
+    origin !== null && origin.patientId === patient.patientId ? origin : null;
   const unsavedWork = useOptionalUnsavedWork();
   const getWorkSnapshot = unsavedWork?.getWorkSnapshot;
   const upsertWork = unsavedWork?.upsertWork;
   const removeWork = unsavedWork?.removeWork;
-  const workId = prescriptionDraftWorkId(patient.patientId);
+  const workId = prescriptionDraftWorkId(
+    patient.patientId,
+    linkedOrigin?.receptionId,
+    linkedOrigin?.businessDate,
+  );
   const [initialDraft] = useState(() => {
     const restored =
       getWorkSnapshot === undefined
@@ -112,15 +193,94 @@ export function SelectedPatientWorkspaceView({
   const [draft, setDraft] = useState<PrescriptionDraftSnapshot>(
     initialDraft.draft,
   );
+  const [baseline, setBaseline] = useState<PrescriptionDraftSnapshot>(
+    createBlankPrescriptionDraft,
+  );
+  const [serverVersion, setServerVersion] = useState(0);
+  const [serverUpdatedAt, setServerUpdatedAt] = useState<string | null>(null);
+  const [loadState, setLoadState] = useState<DraftLoadState>(
+    linkedOrigin === null ? { kind: "unlinked" } : { kind: "loading" },
+  );
+  const [saveState, setSaveState] = useState<DraftSaveState>({ kind: "idle" });
   const [restoredNoticeVisible, setRestoredNoticeVisible] = useState(
     initialDraft.restored,
   );
+  const [serverChangedWhileAway, setServerChangedWhileAway] = useState(false);
   const [resetRequested, setResetRequested] = useState(false);
+  const [reloadRequested, setReloadRequested] = useState(false);
   const [pendingRemovalRowId, setPendingRemovalRowId] = useState<number | null>(
     null,
   );
 
-  const dirty = isPrescriptionDraftDirty(draft);
+  const dirty = useMemo(
+    () =>
+      linkedOrigin === null
+        ? isPrescriptionDraftDirty(draft)
+        : !prescriptionDraftSnapshotsEqual(draft, baseline),
+    [baseline, draft, linkedOrigin],
+  );
+
+  useEffect(() => {
+    if (linkedOrigin === null) {
+      setLoadState({ kind: "unlinked" });
+      setBaseline(createBlankPrescriptionDraft());
+      setServerVersion(0);
+      setServerUpdatedAt(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    let current = true;
+    setLoadState({ kind: "loading" });
+    setSaveState({ kind: "idle" });
+
+    void loadPrescriptionDraft(
+      {
+        receptionId: linkedOrigin.receptionId,
+        patientId: linkedOrigin.patientId,
+        businessDate: linkedOrigin.businessDate,
+      },
+      fetch,
+      controller.signal,
+    ).then(
+      (response) => {
+        if (!current) return;
+        const serverDraft =
+          response === null
+            ? createBlankPrescriptionDraft()
+            : fromPrescriptionDraftResponse(response);
+        setBaseline(serverDraft);
+        setServerVersion(response?.version ?? 0);
+        setServerUpdatedAt(response?.updatedAt ?? null);
+        if (initialDraft.restored) {
+          setServerChangedWhileAway(
+            !prescriptionDraftSnapshotsEqual(initialDraft.draft, serverDraft),
+          );
+        } else {
+          setDraft(serverDraft);
+        }
+        setLoadState({ kind: "ready" });
+      },
+      (error: unknown) => {
+        if (!current || controller.signal.aborted) return;
+        setLoadState({
+          kind: "error",
+          error:
+            error instanceof PrescriptionDraftApiError
+              ? error
+              : new PrescriptionDraftApiError(
+                  "UNAVAILABLE",
+                  "処方下書きAPIを利用できません。",
+                ),
+        });
+      },
+    );
+
+    return () => {
+      current = false;
+      controller.abort();
+    };
+  }, [initialDraft, linkedOrigin]);
 
   useEffect(() => {
     if (upsertWork === undefined || removeWork === undefined) return;
@@ -143,7 +303,9 @@ export function SelectedPatientWorkspaceView({
   ) {
     setDraft((current) => update(current));
     setResetRequested(false);
+    setReloadRequested(false);
     setPendingRemovalRowId(null);
+    setSaveState({ kind: "idle" });
   }
 
   function updateRow(
@@ -199,11 +361,88 @@ export function SelectedPatientWorkspaceView({
   }
 
   function confirmReset() {
-    setDraft(createBlankPrescriptionDraft());
+    setDraft(clonePrescriptionDraft(baseline));
     setRestoredNoticeVisible(false);
+    setServerChangedWhileAway(false);
     setResetRequested(false);
     setPendingRemovalRowId(null);
+    setSaveState({ kind: "idle" });
     removeWork?.(workId);
+  }
+
+  async function saveDraft() {
+    if (linkedOrigin === null || loadState.kind !== "ready" || !dirty) return;
+    const submitted = clonePrescriptionDraft(draft);
+    setSaveState({ kind: "saving" });
+    try {
+      const response = await savePrescriptionDraft(
+        {
+          receptionId: linkedOrigin.receptionId,
+          patientId: linkedOrigin.patientId,
+          businessDate: linkedOrigin.businessDate,
+        },
+        { expectedVersion: serverVersion, snapshot: submitted },
+      );
+      const savedDraft = fromPrescriptionDraftResponse(response);
+      setDraft(savedDraft);
+      setBaseline(savedDraft);
+      setServerVersion(response.version);
+      setServerUpdatedAt(response.updatedAt);
+      setServerChangedWhileAway(false);
+      setRestoredNoticeVisible(false);
+      setSaveState({ kind: "saved", disposition: response.saveDisposition });
+      removeWork?.(workId);
+    } catch (error) {
+      const normalized =
+        error instanceof PrescriptionDraftApiError
+          ? error
+          : new PrescriptionDraftApiError(
+              "UNAVAILABLE",
+              "処方下書きAPIを利用できません。",
+            );
+      setSaveState(
+        normalized.kind === "CONFLICT"
+          ? { kind: "conflict" }
+          : { kind: "error", error: normalized },
+      );
+    }
+  }
+
+  async function reloadLatestServerDraft() {
+    if (linkedOrigin === null) return;
+    setReloadRequested(false);
+    setLoadState({ kind: "loading" });
+    try {
+      const response = await loadPrescriptionDraft({
+        receptionId: linkedOrigin.receptionId,
+        patientId: linkedOrigin.patientId,
+        businessDate: linkedOrigin.businessDate,
+      });
+      const latest =
+        response === null
+          ? createBlankPrescriptionDraft()
+          : fromPrescriptionDraftResponse(response);
+      setDraft(latest);
+      setBaseline(latest);
+      setServerVersion(response?.version ?? 0);
+      setServerUpdatedAt(response?.updatedAt ?? null);
+      setServerChangedWhileAway(false);
+      setRestoredNoticeVisible(false);
+      setSaveState({ kind: "idle" });
+      setLoadState({ kind: "ready" });
+      removeWork?.(workId);
+    } catch (error) {
+      setLoadState({
+        kind: "error",
+        error:
+          error instanceof PrescriptionDraftApiError
+            ? error
+            : new PrescriptionDraftApiError(
+                "UNAVAILABLE",
+                "処方下書きAPIを利用できません。",
+              ),
+      });
+    }
   }
 
   const nonEmptyRows = draft.rows.filter((row) => !isDraftRowEmpty(row)).length;
@@ -212,6 +451,64 @@ export function SelectedPatientWorkspaceView({
   );
   const pendingRemovalRow =
     pendingRemovalIndex >= 0 ? draft.rows[pendingRemovalIndex] : undefined;
+  const editorLocked =
+    loadState.kind === "loading" || saveState.kind === "saving";
+
+  if (linkedOrigin !== null && loadState.kind === "loading") {
+    return (
+      <section aria-label="処方下書きを読み込み中" aria-busy="true">
+        <ScreenHeader
+          title="処方入力ワークスペース"
+          description="受付に紐づくサーバー下書きを確認しています。"
+          meta={<StatusPill tone="info">下書きを読込中</StatusPill>}
+        />
+        <LoadingState label="処方下書きを再取得しています…" />
+      </section>
+    );
+  }
+
+  if (linkedOrigin !== null && loadState.kind === "error") {
+    return (
+      <section aria-label="処方下書きの読込エラー">
+        <ScreenHeader
+          title="処方入力ワークスペース"
+          description="サーバー上の版を確認できるまで編集を開始しません。"
+          meta={<StatusPill tone="danger">読込失敗・編集不可</StatusPill>}
+        />
+        <ErrorNotice
+          severity="ERROR"
+          message={loadState.error.message}
+          nextAction={loadErrorNextAction(loadState.error)}
+        />
+        <p>
+          <Link href="/">受付画面へ戻る</Link>
+        </p>
+      </section>
+    );
+  }
+
+  const headerTone =
+    saveState.kind === "conflict" || saveState.kind === "error"
+      ? "danger"
+      : dirty
+        ? "warning"
+        : serverVersion > 0
+          ? "success"
+          : "neutral";
+  const headerLabel =
+    saveState.kind === "saving"
+      ? "保存中"
+      : saveState.kind === "conflict"
+        ? `競合・サーバー版 v${serverVersion}`
+        : linkedOrigin === null
+          ? dirty
+            ? "受付未連携・タブ内未保存"
+            : "受付未連携・保存不可"
+          : dirty
+            ? `サーバー版 v${serverVersion} から未保存変更`
+            : serverVersion > 0
+              ? `サーバー保存済み v${serverVersion}`
+              : "新規下書き・未保存";
 
   return (
     <section
@@ -219,26 +516,32 @@ export function SelectedPatientWorkspaceView({
       data-patient-selected="true"
       data-prototype-clinical-data="excluded"
       data-unsaved-draft={dirty ? "true" : "false"}
+      data-server-draft-version={serverVersion}
     >
       <ScreenHeader
         title="処方入力ワークスペース"
-        description="患者文脈を固定し、入力と安全情報を並べます。患者固有の過去処方はAPI接続後に表示します。"
-        meta={
-          <StatusPill tone={dirty ? "warning" : "neutral"}>
-            {dirty
-              ? "未保存の変更（このタブ内）"
-              : "未入力・保存API未接続"}
-          </StatusPill>
-        }
+        description="受付・患者文脈を固定し、サーバー保存版と未保存変更を分離して表示します。"
+        meta={<StatusPill tone={headerTone}>{headerLabel}</StatusPill>}
       />
       <PrototypeBanner tone="warning">
-        選択患者へ固定の合成薬剤・合成過去処方を誤帰属させないため、患者固有データは表示していません。下書きはこのタブのメモリだけに保持され、患者切替では確認後に破棄、再読込・タブ終了では警告後に消失します。
+        処方下書きの読込・保存・版競合検知は実APIへ接続しています。過去処方、薬剤マスター照合、相互作用・禁忌・重複・用量判定、算定、処方確定は未接続です。
       </PrototypeBanner>
 
-      {restoredNoticeVisible ? (
-        <InlineNotice title="タブ内下書きを復元しました" tone="info" announce="polite">
+      {linkedOrigin === null ? (
+        <InlineNotice title="受付との連携がありません" tone="warning" announce="polite">
           <p>
-            同じタブ内の画面移動から戻ったため、未保存入力を復元しました。ブラウザ保存領域には書き込んでいません。再読込・タブ終了では失われます。
+            この画面の入力は同じタブ内だけに保持され、サーバーへ保存できません。実運用では受付画面から対象受付を選び、患者を再確認して開始してください。
+          </p>
+          <Link className="operator-button" href="/">
+            受付画面を開く
+          </Link>
+        </InlineNotice>
+      ) : null}
+
+      {restoredNoticeVisible ? (
+        <InlineNotice title="タブ内の未保存入力を復元しました" tone="info" announce="polite">
+          <p>
+            同じタブ内の画面移動から戻ったため未保存入力を復元しました。サーバー保存版との比較後に保存してください。
           </p>
           <button
             type="button"
@@ -250,11 +553,59 @@ export function SelectedPatientWorkspaceView({
         </InlineNotice>
       ) : null}
 
+      {serverChangedWhileAway ? (
+        <InlineNotice title="サーバー保存版との差分があります" tone="warning" announce="assertive">
+          <p>
+            復元したタブ内入力と、現在のサーバー保存版が一致しません。上書きせず、内容を確認してください。
+          </p>
+        </InlineNotice>
+      ) : null}
+
+      {saveState.kind === "saved" ? (
+        <InlineNotice title="サーバー保存が完了しました" tone="success" announce="polite">
+          <p>
+            {saveDispositionLabel(saveState.disposition)}。現在の版は v{serverVersion}
+            {serverUpdatedAt === null ? "" : `、更新日時 ${serverUpdatedAt}`} です。
+          </p>
+        </InlineNotice>
+      ) : null}
+
+      {saveState.kind === "error" ? (
+        <ErrorNotice
+          severity="ERROR"
+          message={saveState.error.message}
+          nextAction={saveErrorNextAction(saveState.error)}
+        />
+      ) : null}
+
+      {saveState.kind === "conflict" ? (
+        <InlineNotice title="別の更新を検出しました" tone="danger" announce="assertive">
+          <p>
+            現在の入力はこのタブに保持されています。サーバー版を確認せずに再保存することはできません。
+          </p>
+          {!reloadRequested ? (
+            <button type="button" onClick={() => setReloadRequested(true)}>
+              サーバー最新版の再読込を確認
+            </button>
+          ) : (
+            <div className="prescription-reset-actions">
+              <button type="button" onClick={() => setReloadRequested(false)}>
+                入力を保持
+              </button>
+              <button
+                type="button"
+                data-kind="danger"
+                onClick={() => void reloadLatestServerDraft()}
+              >
+                未保存入力を破棄して再読込
+              </button>
+            </div>
+          )}
+        </InlineNotice>
+      ) : null}
+
       <div className="prescription-workbench-grid prescription-workbench-grid-safe">
-        <Panel
-          title="過去処方一覧"
-          className="prescription-history-panel"
-        >
+        <Panel title="過去処方一覧" className="prescription-history-panel">
           <StatusPill tone="warning">患者固有API未接続</StatusPill>
           <label className="visually-hidden" htmlFor="past-prescription-search">
             過去処方を検索（未接続）
@@ -267,17 +618,14 @@ export function SelectedPatientWorkspaceView({
             disabled
             aria-describedby="past-prescription-unavailable"
           />
-          <p
-            id="past-prescription-unavailable"
-            className="prescription-history-empty"
-          >
+          <p id="past-prescription-unavailable" className="prescription-history-empty">
             この患者の過去処方は未取得です。履歴がない、変更がない、安全である、のいずれも意味しません。従来の薬歴確認手順を継続してください。
           </p>
         </Panel>
 
         <Panel
           title="処方入力"
-          description="未保存下書きは同じタブ内の画面移動では保持されます。患者切替・再読込・タブ終了時は警告します。"
+          description="サーバー保存後も薬剤師確認・処方確定ではありません。未保存変更はタブ内に保持され、患者切替・離脱時に警告します。"
           className="prescription-editor-panel"
           actions={
             <div className="operator-inline-actions">
@@ -287,16 +635,16 @@ export function SelectedPatientWorkspaceView({
                   setPendingRemovalRowId(null);
                   setResetRequested(true);
                 }}
-                disabled={!dirty}
+                disabled={!dirty || editorLocked}
                 title={
                   dirty
-                    ? "入力内容を確認後に消去します"
-                    : "消去する入力はありません"
+                    ? "最後に確認したサーバー版まで戻します"
+                    : "戻す変更はありません"
                 }
               >
-                入力を消去
+                変更を戻す
               </button>
-              <button type="button" onClick={addRow}>
+              <button type="button" onClick={addRow} disabled={editorLocked}>
                 RP行を追加
               </button>
             </div>
@@ -310,27 +658,17 @@ export function SelectedPatientWorkspaceView({
               aria-labelledby="prescription-reset-title"
               aria-describedby="prescription-reset-description"
             >
-              <h4 id="prescription-reset-title">
-                未保存の入力を消去しますか
-              </h4>
+              <h4 id="prescription-reset-title">未保存の変更を破棄しますか</h4>
               <p id="prescription-reset-description">
-                患者: {patient.name}。入力済み {nonEmptyRows}
-                行、選択項目 {draft.options.length}
-                件、メモを消去します。この操作は元に戻せません。
+                患者: {patient.name}。入力済み {nonEmptyRows}行、選択項目 {draft.options.length}
+                件、メモを最後に確認したサーバー版へ戻します。
               </p>
               <div className="prescription-reset-actions">
-                <button
-                  type="button"
-                  onClick={() => setResetRequested(false)}
-                >
+                <button type="button" onClick={() => setResetRequested(false)}>
                   キャンセル
                 </button>
-                <button
-                  type="button"
-                  data-kind="danger"
-                  onClick={confirmReset}
-                >
-                  確認して消去
+                <button type="button" data-kind="danger" onClick={confirmReset}>
+                  確認して変更を破棄
                 </button>
               </div>
             </section>
@@ -348,20 +686,13 @@ export function SelectedPatientWorkspaceView({
               <p id="prescription-row-removal-description">
                 患者: {patient.name}。RP{pendingRemovalIndex + 1}（
                 {pendingRemovalRow.drug.trim() || "薬剤名未入力"}
-                ）を削除します。未保存内容は元に戻せません。
+                ）を削除します。保存前の内容は元に戻せません。
               </p>
               <div className="prescription-reset-actions">
-                <button
-                  type="button"
-                  onClick={() => setPendingRemovalRowId(null)}
-                >
+                <button type="button" onClick={() => setPendingRemovalRowId(null)}>
                   キャンセル
                 </button>
-                <button
-                  type="button"
-                  data-kind="danger"
-                  onClick={confirmRowRemoval}
-                >
+                <button type="button" data-kind="danger" onClick={confirmRowRemoval}>
                   確認して削除
                 </button>
               </div>
@@ -373,6 +704,7 @@ export function SelectedPatientWorkspaceView({
               処方区分
               <select
                 value={draft.prescriptionType}
+                disabled={editorLocked}
                 onChange={(event: ChangeEvent<HTMLSelectElement>) =>
                   updateDraft((current) => ({
                     ...current,
@@ -390,6 +722,7 @@ export function SelectedPatientWorkspaceView({
               <input
                 type="date"
                 value={draft.prescriptionDate}
+                disabled={editorLocked}
                 onChange={(event: ChangeEvent<HTMLInputElement>) =>
                   updateDraft((current) => ({
                     ...current,
@@ -403,7 +736,9 @@ export function SelectedPatientWorkspaceView({
               <input
                 type="number"
                 min="1"
+                max="999"
                 value={draft.defaultDays}
+                disabled={editorLocked}
                 onChange={(event: ChangeEvent<HTMLInputElement>) =>
                   updateDraft((current) => ({
                     ...current,
@@ -421,9 +756,7 @@ export function SelectedPatientWorkspaceView({
             aria-label="処方入力表。横方向にスクロールできます"
           >
             <table className="operator-table prescription-draft-table">
-              <caption className="visually-hidden">
-                選択患者の未保存処方入力行
-              </caption>
+              <caption className="visually-hidden">選択患者の処方下書き入力行</caption>
               <thead>
                 <tr>
                   <th scope="col">RP</th>
@@ -442,10 +775,12 @@ export function SelectedPatientWorkspaceView({
                       <input
                         aria-label={`RP${index + 1} 薬剤名`}
                         value={row.drug}
+                        maxLength={256}
+                        disabled={editorLocked}
                         onChange={(event: ChangeEvent<HTMLInputElement>) =>
                           updateRow(row.id, "drug", event.target.value)
                         }
-                        placeholder="薬剤名を入力（未保存）"
+                        placeholder="薬剤名・規格を入力"
                         autoComplete="off"
                       />
                     </td>
@@ -453,6 +788,8 @@ export function SelectedPatientWorkspaceView({
                       <input
                         aria-label={`RP${index + 1} 用法用量`}
                         value={row.usage}
+                        maxLength={256}
+                        disabled={editorLocked}
                         onChange={(event: ChangeEvent<HTMLInputElement>) =>
                           updateRow(row.id, "usage", event.target.value)
                         }
@@ -464,16 +801,19 @@ export function SelectedPatientWorkspaceView({
                       <input
                         aria-label={`RP${index + 1} 日数`}
                         value={row.days}
+                        inputMode="numeric"
+                        disabled={editorLocked}
                         onChange={(event: ChangeEvent<HTMLInputElement>) =>
                           updateRow(row.id, "days", event.target.value)
                         }
-                        inputMode="numeric"
                       />
                     </td>
                     <td>
                       <input
                         aria-label={`RP${index + 1} 数量`}
                         value={row.quantity}
+                        maxLength={64}
+                        disabled={editorLocked}
                         onChange={(event: ChangeEvent<HTMLInputElement>) =>
                           updateRow(row.id, "quantity", event.target.value)
                         }
@@ -486,7 +826,8 @@ export function SelectedPatientWorkspaceView({
                         onClick={() => requestRowRemoval(row.id)}
                         aria-label={`RP${index + 1}の削除を確認`}
                         disabled={
-                          draft.rows.length === 1 && isDraftRowEmpty(row)
+                          editorLocked ||
+                          (draft.rows.length === 1 && isDraftRowEmpty(row))
                         }
                         title={
                           draft.rows.length === 1 && isDraftRowEmpty(row)
@@ -503,7 +844,7 @@ export function SelectedPatientWorkspaceView({
             </table>
           </div>
 
-          <fieldset className="prescription-options">
+          <fieldset className="prescription-options" disabled={editorLocked}>
             <legend>全体指示・コメント</legend>
             {PRESCRIPTION_OPTIONS.map((option) => (
               <label key={option}>
@@ -522,20 +863,43 @@ export function SelectedPatientWorkspaceView({
             <textarea
               rows={4}
               value={draft.note}
+              maxLength={2000}
+              disabled={editorLocked}
               onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
                 updateDraft((current) => ({
                   ...current,
                   note: event.target.value,
                 }))
               }
-              placeholder="同じタブ内だけに保持されます"
+              placeholder="サーバー下書きへ保存されます"
             />
           </label>
 
-          <div className="prescription-actions" aria-label="未接続の処方操作">
-            <PrototypeAction reason="処方保存API・監査証跡が未接続です">
-              処方を保存
-            </PrototypeAction>
+          <div className="prescription-actions" aria-label="処方操作">
+            <button
+              type="button"
+              className="operator-button"
+              data-kind="secondary"
+              disabled={
+                linkedOrigin === null ||
+                loadState.kind !== "ready" ||
+                !dirty ||
+                saveState.kind === "saving" ||
+                saveState.kind === "conflict"
+              }
+              title={
+                linkedOrigin === null
+                  ? "受付画面から対象受付を引き継いでください"
+                  : !dirty
+                    ? "保存する変更はありません"
+                    : saveState.kind === "conflict"
+                      ? "サーバー最新版を再読込してください"
+                      : "処方下書きをサーバーへ保存"
+              }
+              onClick={() => void saveDraft()}
+            >
+              {saveState.kind === "saving" ? "保存中…" : "処方下書きを保存"}
+            </button>
             <PrototypeAction
               kind="primary"
               reason="算定エンジンと根拠トレースが未接続です"
@@ -572,11 +936,15 @@ export function SelectedPatientWorkspaceView({
               ]}
             />
           </RailCard>
+          <RailCard title="保存・確認状態">
+            <p className="rail-muted">
+              サーバー下書き版: {serverVersion === 0 ? "未作成" : `v${serverVersion}`}。
+              下書き保存は薬剤師確認・処方確定を意味しません。
+            </p>
+          </RailCard>
           <RailCard title="検査値" tone="warning">
             <StatusPill tone="warning">未接続</StatusPill>
-            <p className="rail-muted">
-              検査値が表示されないことは正常を意味しません。
-            </p>
+            <p className="rail-muted">検査値が表示されないことは正常を意味しません。</p>
           </RailCard>
           <RailCard title="患者固有タスク">
             <p className="rail-muted">
@@ -585,8 +953,7 @@ export function SelectedPatientWorkspaceView({
           </RailCard>
           <RailCard title="エビデンス">
             <p className="rail-muted">
-              ガイドライン・相互作用根拠・算定根拠は evidence_id
-              接続後に表示します。
+              ガイドライン・相互作用根拠・算定根拠は evidence_id 接続後に表示します。
             </p>
           </RailCard>
         </aside>
