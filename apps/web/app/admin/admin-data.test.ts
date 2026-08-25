@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { HealthResponse, WhoamiResponse } from "@yrese/contracts";
+
 import {
   ADMIN_DASHBOARD_REQUIRED_SCOPES,
-  AdminDataError,
   countAdminScopes,
   fetchAdminIdentity,
   hasRequiredAdminScopes,
@@ -21,25 +22,25 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-const IDENTITY = {
+const IDENTITY: WhoamiResponse = {
   tenantId: "tenant-test-a",
   pharmacyId: "pharmacy-test-a",
   actorId: "actor-test-a",
   scopes: ["tenant:read", "tenant:admin", "user:admin"],
-} as const;
+};
 
-const HEALTH = {
+const HEALTH: HealthResponse = {
   status: "ok",
   service: "api",
   version: "0.0.1",
   timestamp: "2026-08-25T00:00:00.000Z",
-} as const;
+};
 
 describe("admin dashboard data boundary", () => {
   it("loads identity and health from the existing APIs without a shared cache", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
-    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const calls: Array<{ url: string; init: RequestInit | undefined }> = [];
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       calls.push({ url, init });
@@ -111,9 +112,7 @@ describe("admin dashboard data boundary", () => {
     ) as unknown as typeof fetch;
 
     await expect(fetchAdminIdentity(fetchImpl)).rejects.toEqual(
-      expect.objectContaining<Partial<AdminDataError>>({
-        kind: "INVALID_RESPONSE",
-      }),
+      expect.objectContaining({ kind: "INVALID_RESPONSE" }),
     );
   });
 
