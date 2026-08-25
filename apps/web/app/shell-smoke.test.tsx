@@ -77,10 +77,20 @@ describe("web shell smoke contracts", () => {
     expect(defaultMode).toContain('data-provisional="true"');
     expect(defaultMode).not.toContain("通常稼働");
 
+    const forcedFalse = renderToStaticMarkup(<SystemModeBadge provisional={false} />);
+    expect(forcedFalse).toContain("状態未検知");
+    expect(forcedFalse).not.toContain("通常稼働");
+
     const localOnly = renderToStaticMarkup(<SystemModeBadge mode="LOCAL_ONLY" />);
     expect(localOnly).toContain("ローカル単独稼働(外部確認不可)");
     expect(localOnly).toContain('data-mode="LOCAL_ONLY"');
     expect(localOnly).toContain('data-provisional="false"');
+
+    const provisionalNormal = renderToStaticMarkup(
+      <SystemModeBadge mode="NORMAL" provisional />,
+    );
+    expect(provisionalNormal).toContain("通常稼働");
+    expect(provisionalNormal).toContain("暫定");
   });
 
   it("provides keyboard landmarks without synthetic notification counts", () => {
