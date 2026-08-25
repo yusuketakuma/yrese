@@ -2,6 +2,20 @@
 
 This implementation adds a server-saved, versioned prescription draft for the existing reception-to-prescription launch flow.
 
+## Data lineage
+
+```text
+/prescriptions/[receptionId]
+  -> authenticated reception queue lookup
+  -> exact tenant + pharmacy + reception + patient + business-date match
+  -> GET/PUT /prescription-drafts/by-reception/:receptionId
+  -> PrescriptionDraftService
+  -> prescription_drafts / prescription_draft_rows / prescription_draft_flags
+  -> prescription.created / prescription.updated audit evidence
+```
+
+The route and body identifiers select a candidate only. They never replace the authenticated tenant/pharmacy context or the patient identity returned by the reception contract.
+
 ## Included
 
 - one draft per authenticated tenant/pharmacy/reception
@@ -11,12 +25,46 @@ This implementation adds a server-saved, versioned prescription draft for the ex
 - idempotent replay for an already committed identical payload
 - atomic `prescription.created` / `prescription.updated` audit evidence in PostgreSQL mode
 - fixed PHI-free 400/404/409 responses and `Cache-Control: no-store`
+- real-calendar validation for business and prescription dates
+- in-memory and PostgreSQL implementations with the same result semantics
+
+## HTTP contract
+
+```text
+GET /prescription-drafts/by-reception/:receptionId?patientId=...&date=YYYY-MM-DD
+PUT /prescription-drafts/by-reception/:receptionId
+```
+
+Required read scopes: `prescription:read`, `reception:read`, `patient:read`.
+Required write scopes: `prescription:write`, `reception:read`, `patient:read`.
+
+A first save uses `expectedVersion: 0`. A subsequent save must use the version returned by the server. A stale version returns 409 without returning the current clinical payload. Retrying an identical request after an already committed save returns `saveDisposition: replayed` without another mutation or audit event.
+
+## Database boundary
+
+Migration `000013_create_prescription_drafts.sql` is additive and contains no backfill. The database enforces the exact reception/patient/business-date relationship through a composite foreign key. RP rows and bounded draft flags are structured tables; clinical business values are not stored as an opaque JSON document.
+
+The migration file being present in source does not authorize applying it to production or staging. Application remains an explicit DB-002 operational action.
 
 ## Excluded
 
 - MedicationRequest ingestion or FHIR conformance claims
 - pharmacist confirmation/finalization
 - calculation, dispensing, claim, or external synchronization
-- production migration application
+- production or staging migration application
+- persistent storage of production PHI in CI, screenshots, fixtures, or logs
 
-The migration is additive and must be applied only through the existing DB-002 operational gate.
+## Required gates before merge
+
+- workspace typecheck
+- unit, route, migration, and PostgreSQL integration tests
+- production build
+- OpenAPI drift check
+- secrets, dependency, SBOM, boundary, calculation-purity, and SSOT-index checks
+- independent security/data-integrity review
+
+## Remaining implementation groups
+
+1. Publish the generated OpenAPI path and schema artifact.
+2. Connect the existing prescription workspace to draft load/save, loading, permission, error, and conflict states.
+3. Implement pharmacist confirmation and immutable finalized versions as a separate bounded phase.
