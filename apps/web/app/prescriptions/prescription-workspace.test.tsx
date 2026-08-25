@@ -48,7 +48,7 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
     expect(html).not.toContain("この構成を入力欄へ反映");
   });
 
-  it("projects the selected patient into the safety rail without synthetic substitution", () => {
+  it("projects the selected patient into the safety rail without adding an identifier attribute", () => {
     const html = renderToStaticMarkup(
       <SelectedPatientWorkspaceView patient={SELECTED_PATIENT} />,
     );
@@ -56,7 +56,7 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
     expect(html).toContain("山田 花子");
     expect(html).toContain("ヤマダ ハナコ");
     expect(html).toContain("生年月日 1950-01-02");
-    expect(html).toContain('data-patient-id="patient-1"');
+    expect(html).not.toContain("data-patient-id");
     expect(html).toContain("資格確認済み");
   });
 
@@ -88,8 +88,8 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
   it("copies stored past rows exactly instead of inferring usage or quantity", () => {
     const source = PAST_PRESCRIPTIONS[3]!;
     expect(buildDraftRowsFromPastPrescription(source)).toEqual([
-      { id: 1, ...source.rows[0] },
-      { id: 2, ...source.rows[1] },
+      { id: 1, ...source.rows[0]! },
+      { id: 2, ...source.rows[1]! },
     ]);
   });
 
@@ -108,6 +108,30 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
       removed: 0,
       changed: 1,
       unchanged: 2,
+    });
+  });
+
+  it("compares duplicate same-drug RP rows as a multiset instead of collapsing them", () => {
+    const summary = summarizePrescriptionReplacement(
+      [
+        { id: 1, drug: "合成薬A", usage: "1日1回 朝", days: "7", quantity: "7錠" },
+        { id: 2, drug: "合成薬A", usage: "1日1回 夕", days: "7", quantity: "7錠" },
+      ],
+      {
+        date: "2026/08/24",
+        rows: [
+          { drug: "合成薬A", usage: "1日1回 朝", days: "7", quantity: "7錠" },
+          { drug: "合成薬A", usage: "1日1回 就寝前", days: "7", quantity: "7錠" },
+          { drug: "合成薬A", usage: "頓用", days: "1", quantity: "3錠" },
+        ],
+      },
+    );
+
+    expect(summary).toEqual({
+      added: 1,
+      removed: 0,
+      changed: 1,
+      unchanged: 1,
     });
   });
 
