@@ -45,6 +45,11 @@ jobs:
           node-version: 26.6.0
           cache: pnpm
 
+      - name: Prepare evidence directory
+        run: |
+          mkdir -p "$UI_ARTIFACT_DIR"
+          printf 'run=%s\nsha=%s\n' "$GITHUB_RUN_ID" "$GITHUB_SHA" > "$UI_ARTIFACT_DIR/status.txt"
+
       - name: Install repository dependencies
         run: pnpm install --frozen-lockfile
 

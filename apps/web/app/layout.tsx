@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { OperatorCommandBar } from "./components/operator-command-bar";
 import { PatientContextBoundary } from "./components/patient-context-boundary";
 import { PatientContextProvider } from "./components/patient-context";
+import { OperatorPreferencesProvider } from "./components/operator-preferences";
 import {
   UnsavedWorkProvider,
   UnsavedWorkStatus,
@@ -31,7 +32,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           本文へスキップ
         </a>
         <UnsavedWorkProvider>
-          <PatientContextProvider>
+          <OperatorPreferencesProvider>
+            <PatientContextProvider>
             <header className="app-header">
               <div className="app-header-brand-area">
                 <Link
@@ -105,7 +107,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 </main>
               </div>
             </div>
-          </PatientContextProvider>
+            </PatientContextProvider>
+          </OperatorPreferencesProvider>
         </UnsavedWorkProvider>
       </body>
     </html>
