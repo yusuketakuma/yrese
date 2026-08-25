@@ -71,6 +71,39 @@ async function assertNoPageOverflow(page, label) {
   );
 }
 
+async function assertDesktopShellLayout(page, label) {
+  const geometry = await page.locator(".app-shell").evaluate((shell) => {
+    const sidebar = shell.querySelector(".app-sidebar");
+    const workspace = shell.querySelector(".app-workspace");
+    if (!(sidebar instanceof HTMLElement) || !(workspace instanceof HTMLElement)) {
+      return null;
+    }
+    const sidebarRect = sidebar.getBoundingClientRect();
+    const workspaceRect = workspace.getBoundingClientRect();
+    return {
+      display: getComputedStyle(shell).display,
+      sidebarWidth: sidebarRect.width,
+      sidebarRight: sidebarRect.right,
+      workspaceLeft: workspaceRect.left,
+      workspaceWidth: workspaceRect.width,
+    };
+  });
+  assert(geometry !== null, `${label}: app shell children are missing`);
+  assert(geometry.display === "grid", `${label}: app shell is not a CSS grid`);
+  assert(
+    geometry.sidebarWidth >= 140 && geometry.sidebarWidth <= 220,
+    `${label}: sidebar width is outside the operator-shell range (${geometry.sidebarWidth})`,
+  );
+  assert(
+    Math.abs(geometry.workspaceLeft - geometry.sidebarRight) <= 1,
+    `${label}: workspace is not adjacent to the sidebar`,
+  );
+  assert(
+    geometry.workspaceWidth > geometry.sidebarWidth * 2,
+    `${label}: workspace did not receive the primary desktop column`,
+  );
+}
+
 async function runAxe(page, label) {
   await page.addScriptTag({ content: axeSource });
   const result = await page.evaluate(async () =>
@@ -113,6 +146,9 @@ async function checkRoute(page, route, viewport) {
     (await page.locator("main#main-content").count()) === 1,
     `${label}: main landmark missing or duplicated`,
   );
+  if (viewport.width > 820) {
+    await assertDesktopShellLayout(page, label);
+  }
   await assertNoPageOverflow(page, label);
   await runAxe(page, label);
   await page.screenshot({
