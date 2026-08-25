@@ -11,6 +11,7 @@ import {
   StatusPill,
 } from "./components/operator-ui";
 import { ReceptionDashboard } from "./reception-dashboard";
+import { ReceptionPrescriptionLaunch } from "./reception-prescription-launch";
 
 export default function ReceptionPage() {
   return (
@@ -85,6 +86,14 @@ export default function ReceptionPage() {
         <div id="reception-live-queue">
           <ReceptionDashboard />
         </div>
+      </Panel>
+
+      <Panel
+        title="選択患者の処方入力を開始"
+        description="受付IDを手入力せず、認証済みの受付キューから患者一致を確認して処方入力へ引き継ぎます。"
+        className="live-surface-panel"
+      >
+        <ReceptionPrescriptionLaunch />
       </Panel>
     </OperatorPage>
   );
