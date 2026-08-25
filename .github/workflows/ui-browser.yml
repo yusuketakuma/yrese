@@ -2,7 +2,7 @@ name: UI browser gate
 
 on:
   push:
-    branches: [main, feat/operator-first-ui]
+    branches: [main, feat/operator-first-ui, "feat/prescription-*"]
     paths:
       - "apps/web/**"
       - "packages/contracts/**"
