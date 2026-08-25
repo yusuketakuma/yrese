@@ -11,6 +11,7 @@ import {
   UnsavedWorkStatus,
 } from "./components/unsaved-work";
 import { BusinessNav } from "./nav";
+import { PrescriptionOriginProvider } from "./prescriptions/prescription-origin-context";
 import { SystemModeBadge } from "./system-mode-badge";
 import "./globals.css";
 import "./operator-first.css";
@@ -34,79 +35,81 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <UnsavedWorkProvider>
           <OperatorPreferencesProvider>
             <PatientContextProvider>
-            <header className="app-header">
-              <div className="app-header-brand-area">
-                <Link
-                  className="app-brand"
-                  href="/"
-                  aria-label="yrese 受付ダッシュボードへ"
-                >
-                  <span className="app-brand-mark" aria-hidden="true">
-                    Y
-                  </span>
-                  <div>
-                    <h1 className="app-title">yrese</h1>
-                    <span className="app-subtitle">
-                      調剤業務ワークスペース
-                    </span>
+              <PrescriptionOriginProvider>
+                <header className="app-header">
+                  <div className="app-header-brand-area">
+                    <Link
+                      className="app-brand"
+                      href="/"
+                      aria-label="yrese 受付ダッシュボードへ"
+                    >
+                      <span className="app-brand-mark" aria-hidden="true">
+                        Y
+                      </span>
+                      <div>
+                        <h1 className="app-title">yrese</h1>
+                        <span className="app-subtitle">
+                          調剤業務ワークスペース
+                        </span>
+                      </div>
+                    </Link>
+                    <SystemModeBadge />
                   </div>
-                </Link>
-                <SystemModeBadge />
-              </div>
-              <div className="app-header-command">
-                <OperatorCommandBar />
-              </div>
-              <div
-                className="app-header-meta"
-                role="group"
-                aria-label="接続・実行環境"
-              >
-                <UnsavedWorkStatus />
-                <span
-                  className="integration-chip"
-                  data-state="disconnected"
-                  role="status"
-                >
-                  <strong>Gbrain</strong>
-                  <small>未接続</small>
-                </span>
-                <span
-                  className="integration-chip"
-                  data-state="prototype"
-                  role="status"
-                >
-                  <strong>UI</strong>
-                  <small>プロトタイプ</small>
-                </span>
-                <div
-                  className="operator-profile"
-                  role="group"
-                  aria-label="操作者情報は未接続"
-                >
-                  <span className="operator-avatar" aria-hidden="true">
-                    未
-                  </span>
-                  <div>
-                    <strong>操作者未接続</strong>
-                    <small>開発環境</small>
+                  <div className="app-header-command">
+                    <OperatorCommandBar />
+                  </div>
+                  <div
+                    className="app-header-meta"
+                    role="group"
+                    aria-label="接続・実行環境"
+                  >
+                    <UnsavedWorkStatus />
+                    <span
+                      className="integration-chip"
+                      data-state="disconnected"
+                      role="status"
+                    >
+                      <strong>Gbrain</strong>
+                      <small>未接続</small>
+                    </span>
+                    <span
+                      className="integration-chip"
+                      data-state="prototype"
+                      role="status"
+                    >
+                      <strong>UI</strong>
+                      <small>プロトタイプ</small>
+                    </span>
+                    <div
+                      className="operator-profile"
+                      role="group"
+                      aria-label="操作者情報は未接続"
+                    >
+                      <span className="operator-avatar" aria-hidden="true">
+                        未
+                      </span>
+                      <div>
+                        <strong>操作者未接続</strong>
+                        <small>開発環境</small>
+                      </div>
+                    </div>
+                  </div>
+                </header>
+                <div className="app-shell">
+                  <aside
+                    className="app-sidebar"
+                    aria-label="主要業務ナビゲーション"
+                  >
+                    <BusinessNav />
+                  </aside>
+                  <div className="app-workspace">
+                    <PatientContextBoundary />
+                    <main id="main-content" className="app-main" tabIndex={-1}>
+                      {children}
+                    </main>
                   </div>
                 </div>
-              </div>
-            </header>
-            <div className="app-shell">
-              <aside
-                className="app-sidebar"
-                aria-label="主要業務ナビゲーション"
-              >
-                <BusinessNav />
-              </aside>
-              <div className="app-workspace">
-                <PatientContextBoundary />
-                <main id="main-content" className="app-main" tabIndex={-1}>
-                  {children}
-                </main>
-              </div>
-            </div>
+              </PrescriptionOriginProvider>
             </PatientContextProvider>
           </OperatorPreferencesProvider>
         </UnsavedWorkProvider>

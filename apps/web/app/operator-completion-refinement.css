@@ -3,6 +3,21 @@
  * Loaded after the adversarial layer. Domain status semantics are unchanged.
  */
 
+/* The generated operator shell declared columns but lost display:grid during consolidation. */
+.app-shell {
+  display: grid;
+}
+
+.app-sidebar {
+  min-width: 0;
+  border-right: 1px solid var(--color-border);
+  background: #ffffff;
+}
+
+.app-workspace {
+  min-width: 0;
+}
+
 /* Base semantic hues remain unchanged; small foreground text needs darker projections. */
 .integration-chip[data-state="disconnected"] small {
   color: #8a3f00;
