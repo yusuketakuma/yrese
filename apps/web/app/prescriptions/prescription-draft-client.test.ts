@@ -69,7 +69,10 @@ describe("prescription draft web client", () => {
   it("loads a validated tenant-scoped draft with no-store and exact query identity", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
-    const fetchMock = vi.fn(async () => jsonResponse(RESPONSE));
+    const fetchMock = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        jsonResponse(RESPONSE),
+    );
     const fetchImpl = fetchMock as unknown as typeof fetch;
 
     await expect(loadPrescriptionDraft(SCOPE, fetchImpl)).resolves.toEqual(RESPONSE);
@@ -104,8 +107,9 @@ describe("prescription draft web client", () => {
   it("sends expectedVersion and maps a server conflict without exposing response text", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
-    const conflictMock = vi.fn(async () =>
-      jsonResponse({ message: "sensitive server detail" }, 409),
+    const conflictMock = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        jsonResponse({ message: "sensitive server detail" }, 409),
     );
     const conflict = conflictMock as unknown as typeof fetch;
 
