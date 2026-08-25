@@ -18,7 +18,7 @@ describe("PrescriptionWorkflowProgress", () => {
     expect(html).toContain("受付・患者確認");
     expect(html).toContain("下書き入力・保存");
     expect(html).toContain("接続済み");
-    expect(html.match(/未接続/g)).toHaveLength(3);
+    expect(html.match(/<small>未接続<\/small>/g)).toHaveLength(3);
     expect(html.match(/aria-current="step"/g)).toHaveLength(1);
     expect(html).toContain("下書き保存は処方内容の安全確認");
     expect(html).not.toContain("安全確認済み");

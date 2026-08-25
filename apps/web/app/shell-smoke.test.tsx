@@ -144,7 +144,7 @@ describe("web shell smoke contracts", () => {
   ])("renders a non-operational prototype for %s", (title: string, boundary: string, element: ReactElement) => {
     const html = renderToStaticMarkup(element);
     expect(html).toContain(title);
-    expect(html).toContain("UIプロトタイプ");
+    expect(html).toContain("機能境界");
     expect(html).toContain(boundary);
     expect(html).toContain("disabled");
   });
