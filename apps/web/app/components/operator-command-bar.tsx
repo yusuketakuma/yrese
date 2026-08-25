@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { type ChangeEvent, type FormEvent, useMemo, useState } from "react";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 interface CommandIntent {
   readonly label: string;
@@ -68,6 +75,16 @@ export function resolveOperatorIntent(command: string): CommandIntent | null {
   return best?.intent ?? null;
 }
 
+function isTextEntryTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.isContentEditable ||
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.tagName === "SELECT"
+  );
+}
+
 /**
  * 自然言語は画面候補の提示だけに使い、患者・処方・会計・請求データを変更しない。
  * ブラウザ組込み音声認識は処理先・保持・リージョンを保証できないため、承認済みの
@@ -76,7 +93,29 @@ export function resolveOperatorIntent(command: string): CommandIntent | null {
 export function OperatorCommandBar() {
   const [command, setCommand] = useState("");
   const [submittedCommand, setSubmittedCommand] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const intent = useMemo(() => resolveOperatorIntent(submittedCommand), [submittedCommand]);
+
+  useEffect(() => {
+    function handleShortcut(event: KeyboardEvent) {
+      const commandShortcut =
+        (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
+      const slashShortcut = event.key === "/" && !isTextEntryTarget(event.target);
+      if (commandShortcut || slashShortcut) {
+        event.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+        return;
+      }
+      if (event.key === "Escape" && document.activeElement === inputRef.current) {
+        setSubmittedCommand("");
+        inputRef.current?.blur();
+      }
+    }
+
+    document.addEventListener("keydown", handleShortcut);
+    return () => document.removeEventListener("keydown", handleShortcut);
+  }, []);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -85,7 +124,7 @@ export function OperatorCommandBar() {
 
   return (
     <section className="operator-command" aria-label="自然言語クイック操作">
-      <form onSubmit={submit} className="operator-command-form">
+      <form onSubmit={submit} className="operator-command-form" role="search">
         <label htmlFor="operator-command-input" className="operator-command-label">
           自然言語で画面を探す
         </label>
@@ -94,12 +133,22 @@ export function OperatorCommandBar() {
             ⌕
           </span>
           <input
+            ref={inputRef}
             id="operator-command-input"
             value={command}
             onChange={(event: ChangeEvent<HTMLInputElement>) => setCommand(event.target.value)}
-            placeholder="自然言語で指示してください（例：山田さんを検索して）"
+            placeholder="画面を探す（例：山田さんを検索して）"
             autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            enterKeyHint="search"
+            aria-keyshortcuts="/ Control+K Meta+K"
+            aria-describedby="operator-command-help operator-voice-status"
           />
+          <kbd className="operator-command-shortcut" aria-hidden="true">
+            Ctrl/⌘ K
+          </kbd>
           <button type="submit" className="operator-command-submit">
             候補
           </button>
@@ -113,6 +162,9 @@ export function OperatorCommandBar() {
             音声
           </button>
         </div>
+        <span id="operator-command-help" className="visually-hidden">
+          スラッシュまたはControl K、MacではCommand Kで入力欄へ移動できます。入力は画面候補の提示だけに使用します。
+        </span>
         <span id="operator-voice-status" className="visually-hidden">
           音声入力は、処理先・保持・リージョンを確認した承認済み音声処理境界の接続前のため利用できません。
         </span>
