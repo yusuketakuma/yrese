@@ -154,27 +154,33 @@ describe("prescription draft routes", () => {
     });
   });
 
-  it("fails closed for another tenant, patient, reception, or business date", async () => {
+  it("fails closed before data lookup for an untrusted tenant context", async () => {
     const instance = server();
-    for (const request of [
-      {
-        headers: { ...authorizedHeaders, "x-dev-tenant": "tenant-other" },
-        body: baseBody,
-      },
-      {
-        headers: authorizedHeaders,
-        body: { ...baseBody, patientId: "patient-syn-002" },
-      },
-      {
-        headers: authorizedHeaders,
-        body: { ...baseBody, businessDate: "2026-07-10" },
-      },
+    const response = await instance.inject({
+      method: "PUT",
+      url: "/prescription-drafts/by-reception/reception-syn-001",
+      headers: { ...authorizedHeaders, "x-dev-tenant": "tenant-other" },
+      payload: baseBody,
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.json()).toMatchObject({
+      errorCode: AUTH_PERMISSION_DENIED_ERROR_CODE,
+    });
+  });
+
+  it("returns not found for patient, date, or reception mismatches in a trusted scope", async () => {
+    const instance = server();
+    for (const body of [
+      { ...baseBody, patientId: "patient-syn-002" },
+      { ...baseBody, businessDate: "2026-07-10" },
     ]) {
       const response = await instance.inject({
         method: "PUT",
         url: "/prescription-drafts/by-reception/reception-syn-001",
-        headers: request.headers,
-        payload: request.body,
+        headers: authorizedHeaders,
+        payload: body,
       });
       expect(response.statusCode).toBe(404);
       expect(response.headers["cache-control"]).toBe("no-store");

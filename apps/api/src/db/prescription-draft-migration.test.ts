@@ -15,13 +15,13 @@ describe("000013 prescription draft DDL", () => {
     expect(sql).toContain("CREATE TABLE prescription_draft_rows");
     expect(sql).toContain("CREATE TABLE prescription_draft_flags");
     expect(sql).toContain("prescription_drafts_reception_patient_fk");
-    expect(sql).toContain(
-      "UNIQUE (tenant_id, pharmacy_id, reception_id, patient_id, business_date)",
+    expect(sql).toMatch(
+      /UNIQUE\s*\(\s*tenant_id,\s*pharmacy_id,\s*reception_id,\s*patient_id,\s*business_date\s*\)/u,
     );
-    expect(sql).toContain(
-      "UNIQUE (tenant_id, pharmacy_id, reception_id)",
+    expect(sql).toMatch(
+      /UNIQUE\s*\(\s*tenant_id,\s*pharmacy_id,\s*reception_id\s*\)/u,
     );
-    expect(sql).not.toMatch(/\bJSONB?\b/i);
+    expect(sql).not.toMatch(/\bJSONB?\b/iu);
   });
 
   it("bounds draft versions, rows, flags, text, and lifecycle state", async () => {
@@ -37,9 +37,9 @@ describe("000013 prescription draft DDL", () => {
   it("does not backfill, delete, or mutate existing clinical records", async () => {
     const sql = await readFile(migrationPath, "utf8");
 
-    expect(sql).not.toMatch(/\bUPDATE\s+(patients|reception_entries)\b/i);
-    expect(sql).not.toMatch(/\bDELETE\s+FROM\s+(patients|reception_entries)\b/i);
-    expect(sql).not.toMatch(/\bINSERT\s+INTO\s+(patients|reception_entries)\b/i);
-    expect(sql).not.toMatch(/\bDROP\s+(TABLE|COLUMN)\b/i);
+    expect(sql).not.toMatch(/\bUPDATE\s+(patients|reception_entries)\b/iu);
+    expect(sql).not.toMatch(/\bDELETE\s+FROM\s+(patients|reception_entries)\b/iu);
+    expect(sql).not.toMatch(/\bINSERT\s+INTO\s+(patients|reception_entries)\b/iu);
+    expect(sql).not.toMatch(/\bDROP\s+(TABLE|COLUMN)\b/iu);
   });
 });

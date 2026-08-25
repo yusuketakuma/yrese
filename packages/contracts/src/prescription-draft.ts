@@ -14,6 +14,21 @@ export const PRESCRIPTION_DRAFT_NOTE_MAX_LENGTH = 2_000;
 export const PRESCRIPTION_DRAFT_MAX_DAYS = 999;
 export const PRESCRIPTION_DRAFT_MAX_VERSION = 2_147_483_647;
 
+function isRealIsoCalendarDate(value: string): boolean {
+  const instant = new Date(`${value}T00:00:00.000Z`);
+  return (
+    Number.isFinite(instant.getTime()) &&
+    instant.toISOString().slice(0, 10) === value
+  );
+}
+
+const calendarDateWireSchema = z
+  .iso
+  .date()
+  .refine(isRealIsoCalendarDate, {
+    message: "date must be a real calendar date",
+  });
+
 export const prescriptionDraftTypeSchema = z.enum([
   "UNSPECIFIED",
   "OUTPATIENT",
@@ -47,7 +62,7 @@ export type PrescriptionDraftRow = z.infer<typeof prescriptionDraftRowSchema>;
 export const prescriptionDraftContentSchema = z
   .object({
     prescriptionType: prescriptionDraftTypeSchema,
-    prescriptionDate: z.iso.date().nullable(),
+    prescriptionDate: calendarDateWireSchema.nullable(),
     defaultDays: z
       .number()
       .int()
@@ -92,12 +107,12 @@ export const prescriptionDraftParamsSchema = z.object({
 
 export const prescriptionDraftQuerySchema = z.object({
   patientId: patientIdWireSchema,
-  date: z.iso.date(),
+  date: calendarDateWireSchema,
 });
 
 export const prescriptionDraftSaveRequestSchema = z.object({
   patientId: patientIdWireSchema,
-  businessDate: z.iso.date(),
+  businessDate: calendarDateWireSchema,
   expectedVersion: z
     .number()
     .int()
@@ -114,7 +129,7 @@ export const prescriptionDraftResponseSchema = z.object({
   prescriptionId: prescriptionIdWireSchema,
   receptionId: receptionIdWireSchema,
   patientId: patientIdWireSchema,
-  businessDate: z.iso.date(),
+  businessDate: calendarDateWireSchema,
   version: z
     .number()
     .int()
