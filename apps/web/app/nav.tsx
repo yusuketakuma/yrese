@@ -32,7 +32,10 @@ export function BusinessNav() {
 export function BusinessNavView({ current }: { readonly current: string }) {
   return (
     <div className="app-nav-wrap">
-      <nav className="app-nav" aria-label="業務メニュー">
+      <p className="app-nav-label" id="business-nav-label">
+        業務メニュー
+      </p>
+      <nav className="app-nav" aria-labelledby="business-nav-label">
         <ul>
           {NAV_ITEMS.map((item) => (
             <li key={item.href}>
@@ -51,8 +54,8 @@ export function BusinessNavView({ current }: { readonly current: string }) {
         </ul>
       </nav>
       <footer className="app-nav-footer">
-        <span>operator UI preview</span>
-        <span>feat/operator-first-ui</span>
+        <strong>開発用UIプレビュー</strong>
+        <span>未接続機能は各画面内に明示</span>
       </footer>
     </div>
   );
