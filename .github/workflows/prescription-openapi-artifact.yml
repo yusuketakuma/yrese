@@ -1,0 +1,37 @@
+name: Prescription OpenAPI artifact
+
+on:
+  push:
+    branches: [feat/prescription-draft-openapi-artifact]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.18.0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26.6.0
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm generate:openapi -- --output generated/openapi.yaml
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: prescription-openapi-generated
+          path: generated/openapi.yaml
+          if-no-files-found: error
+          retention-days: 1
