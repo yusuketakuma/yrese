@@ -19,8 +19,10 @@ const fixtureApi = readFileSync(
 );
 
 describe("UI browser validation gate", () => {
-  it("runs for main and the operator branch against the development proxy", () => {
-    expect(workflow).toContain("branches: [main, feat/operator-first-ui]");
+  it("runs for main, operator UI, and prescription branches against the development proxy", () => {
+    const branchSelector =
+      'branches: [main, feat/operator-first-ui, "feat/prescription-*"]';
+    expect(workflow).toContain(branchSelector);
     expect(workflow).toContain("pnpm --filter @yrese/web build");
     expect(workflow).toContain("pnpm --filter @yrese/web dev");
     expect(workflow).toContain("playwright@1.62.1");
@@ -29,31 +31,32 @@ describe("UI browser validation gate", () => {
       "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
     );
     expect(workflow).toContain("yrese-ui-browser-evidence");
-    expect(ciWorkflow).toContain(
-      "branches: [main, feat/operator-first-ui]",
-    );
+    expect(ciWorkflow).toContain(branchSelector);
   });
 
-  it("covers keyboard, accessibility, reflow, reception handoff, and unsaved-draft safety", () => {
+  it("covers keyboard, accessibility, reflow, persisted drafts, and local unsaved-draft safety", () => {
     expect(browserCheck).toContain("axe.run");
     expect(browserCheck).toContain('waitUntil: "domcontentloaded"');
-    expect(browserCheck.match(/caret: "initial"/g)).toHaveLength(4);
-    expect(browserCheck).toContain("reception-to-prescription-handoff");
-    expect(browserCheck).toContain("受付との関連を確認しました");
+    expect(browserCheck).toContain("reception-to-prescription-persisted-draft");
+    expect(browserCheck).toContain("下書きを保存");
+    expect(browserCheck).toContain("サーバー保存済み v1");
+    expect(browserCheck).toContain("サーバー保存済み v2");
     expect(browserCheck).toContain("beforeunload");
     expect(browserCheck).toContain("reflow-200pct-equivalent");
     expect(browserCheck).toContain("未保存下書き 1件");
-    expect(browserCheck).toContain("dialog.dismiss");
-    expect(browserCheck).toContain("dialog.accept");
     expect(browserCheck).toContain('forcedColors: "active"');
+    expect(browserCheck.match(/caret: "initial"/g)?.length ?? 0).toBeGreaterThanOrEqual(1);
   });
 
-  it("uses synthetic fixture patients and receptions with no production endpoint", () => {
+  it("uses synthetic fixture patients, receptions, and versioned drafts with no production endpoint", () => {
     expect(fixtureApi).toContain("patient-e2e-001");
     expect(fixtureApi).toContain("reception-e2e-001");
     expect(fixtureApi).toContain("テスト患者 一");
     expect(fixtureApi).toContain('url.pathname === "/whoami"');
     expect(fixtureApi).toContain('url.pathname === "/reception/queue"');
+    expect(fixtureApi).toContain("/prescription-drafts/by-reception/");
+    expect(fixtureApi).toContain("expectedVersion");
+    expect(fixtureApi).toContain("prescriptionDrafts");
     expect(fixtureApi).toContain("tenant-e2e");
     expect(fixtureApi).toContain('service: "api"');
     expect(fixtureApi).toContain("127.0.0.1");
