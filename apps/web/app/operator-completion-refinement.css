@@ -1,0 +1,154 @@
+/*
+ * Completion pass for unsaved-draft safety and disabled-action ergonomics.
+ * Loaded after the adversarial layer. Domain status semantics are unchanged.
+ */
+
+/* Base semantic hues remain unchanged; small foreground text needs darker projections. */
+.integration-chip[data-state="disconnected"] small {
+  color: #8a3f00;
+}
+
+.operator-status-pill[data-tone="danger"] {
+  color: #b42318;
+}
+
+.prototype-action-shell {
+  display: inline-grid;
+  gap: 0.25rem;
+  align-items: start;
+  max-width: 100%;
+}
+
+.prototype-action-shell > .operator-button {
+  width: 100%;
+  pointer-events: none;
+}
+
+.prototype-action-shell:focus-visible {
+  outline: none;
+}
+
+.prototype-action-reason {
+  display: block;
+  max-width: 28rem;
+  color: var(--color-fg-muted);
+  font-size: var(--ux-font-caption);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.document-action-grid .prototype-action-shell,
+.panel-footer-actions .prototype-action-shell,
+.prescription-actions .prototype-action-shell,
+.operator-panel-actions .prototype-action-shell,
+.intake-card-footer .prototype-action-shell {
+  min-width: 0;
+}
+
+.unsaved-work-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--color-warning);
+  border-radius: 9px;
+  background: var(--color-warning-soft);
+  color: #7a3e00;
+}
+
+.unsaved-work-status > span {
+  display: grid;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.unsaved-work-status strong {
+  font-size: var(--ux-font-caption);
+  white-space: nowrap;
+}
+
+.unsaved-work-status small {
+  color: inherit;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.unsaved-work-status a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0.25rem 0.45rem;
+  border: 1px solid currentColor;
+  border-radius: 7px;
+  color: inherit;
+  font-size: var(--ux-font-caption);
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.unsaved-work-status a:hover {
+  background: #ffffff;
+}
+
+.unsaved-work-status a:focus-visible {
+  outline: 3px solid var(--color-focus, #6b4eff);
+  outline-offset: 2px;
+}
+
+[data-unsaved-draft="true"] .prescription-editor-panel {
+  border-color: var(--color-warning);
+}
+
+[data-unsaved-draft="true"] .prescription-editor-panel > .operator-panel-header {
+  background: #fffaf2;
+}
+
+.inline-notice .operator-text-action {
+  width: fit-content;
+  margin-top: 0.45rem;
+}
+
+@media (max-width: 1420px) {
+  .unsaved-work-status small {
+    display: none;
+  }
+}
+
+@media (max-width: 1120px) {
+  .unsaved-work-status {
+    order: -1;
+  }
+
+  .unsaved-work-status a {
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 820px) {
+  .unsaved-work-status {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .prototype-action-shell,
+  .prototype-action-reason {
+    width: 100%;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .unsaved-work-status,
+  [data-unsaved-draft="true"] .prescription-editor-panel {
+    border-width: 2px;
+  }
+}
+
+@media (forced-colors: active) {
+  .unsaved-work-status,
+  [data-unsaved-draft="true"] .prescription-editor-panel {
+    border: 2px solid CanvasText;
+  }
+}

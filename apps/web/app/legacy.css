@@ -1,0 +1,667 @@
+:root {
+  --color-bg: #ffffff;
+  --color-fg: #18213a;
+  --color-fg-muted: #667085;
+  --color-border: #d9dfeb;
+  --color-surface: #eef2f8;
+  --color-surface-raised: #ffffff;
+  --color-accent: #5b43f1;
+  --color-danger-border: #b42318;
+  --color-status-ok-bg: #e9f7ef;
+  --color-status-pending-bg: #fff4d6;
+  --color-status-blocked-bg: #feeceb;
+  --color-status-neutral-bg: #eef1f4;
+  --color-status-attention-bg: #fff0df;
+  --color-mode-normal-bg: var(--color-status-ok-bg);
+  --color-mode-degraded-bg: var(--color-status-pending-bg);
+  --color-mode-local-only-bg: var(--color-status-blocked-bg);
+  --color-provisional-bg: var(--color-status-pending-bg);
+  --font-size-sm: 0.85rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.4rem;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --focus-ring: 3px solid var(--color-accent);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "BIZ UDGothic", Meiryo, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.placeholder-note,
+.empty-state,
+.loading-state {
+  border: 1px dashed var(--color-border);
+  padding: 0.75rem 1rem;
+  background: var(--color-surface-raised);
+}
+
+.reception-registration-form {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 42rem;
+  margin-block: var(--space-3);
+  padding: var(--space-3);
+  border: 2px solid var(--color-accent);
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+}
+
+.reception-registration-form h3,
+.reception-registration-form p {
+  margin: 0;
+}
+
+.reception-registration-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+.reception-registration-label {
+  flex-basis: 100%;
+  font-weight: 700;
+}
+
+.reception-registration-form button {
+  width: fit-content;
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1.5px solid var(--color-fg);
+  border-radius: 3px;
+  background: var(--color-accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reception-registration-form button:disabled {
+  background: var(--color-status-neutral-bg);
+  color: var(--color-fg);
+  cursor: not-allowed;
+}
+
+.reception-registration-empty a {
+  margin-inline-start: var(--space-2);
+}
+
+.patient-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1.5rem;
+  padding: 0.5rem 1rem;
+  border: 2px solid var(--color-fg);
+  border-radius: 4px;
+  background: #f5f7fa;
+}
+
+.patient-kana {
+  display: block;
+  font-size: 0.85rem;
+}
+
+.patient-duplicate-kana-label {
+  display: block;
+  font-weight: 700;
+}
+
+tr[data-duplicate-kana="true"] > td {
+  background: var(--color-status-pending-bg);
+}
+
+.patient-name {
+  margin-right: 0.5rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.patient-birth {
+  font-size: 1rem;
+}
+
+.patient-eligibility {
+  padding: 0.15rem 0.6rem;
+  border: 1.5px solid var(--color-fg);
+  border-radius: 3px;
+  background: var(--color-provisional-bg);
+  font-weight: 700;
+}
+
+.patient-eligibility[data-status="VERIFIED"] {
+  background: var(--color-status-ok-bg);
+}
+
+.patient-eligibility[data-status="LOCAL_ONLY_UNVERIFIED"],
+.patient-eligibility[data-status="NOT_CHECKED"] {
+  background: var(--color-status-blocked-bg);
+}
+
+.patient-eligibility-checked-at {
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.selected-patient-context {
+  margin-bottom: var(--space-3);
+  padding: var(--space-2);
+  border: 2px solid var(--color-accent);
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+}
+
+.selected-patient-context-title {
+  margin: 0 0 var(--space-1);
+  font-weight: 700;
+}
+
+.patient-search-form {
+  margin-bottom: 1rem;
+}
+
+.patient-search-form label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.patient-search-row {
+  display: flex;
+  gap: 0.5rem;
+  max-width: 480px;
+}
+
+.patient-search-row input {
+  flex: 1;
+  padding: 0.45rem 0.6rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: 3px;
+  font-size: 1.1rem;
+}
+
+.patient-search-row button {
+  padding: 0.45rem 1.2rem;
+  border: 1.5px solid var(--color-fg);
+  border-radius: 3px;
+  background: #f0f2f5;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.error-notice {
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--color-danger-border);
+  border-radius: 3px;
+  background: var(--color-status-blocked-bg);
+}
+
+.error-notice[data-severity="WARNING"],
+.error-notice[data-severity="INFO"] {
+  background: var(--color-status-pending-bg);
+}
+
+.error-notice .severity-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.error-notice-next-action {
+  margin: var(--space-1) 0 0;
+  font-weight: 600;
+}
+
+.route-error {
+  padding: var(--space-3);
+}
+
+.route-error-digest {
+  color: var(--color-fg-muted);
+  font-size: 0.9rem;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border: 1.5px solid var(--color-fg);
+  border-radius: 3px;
+  background: var(--color-status-neutral-bg);
+  font-weight: 700;
+}
+
+.status-badge[data-tone="ok"] {
+  background: var(--color-status-ok-bg);
+}
+
+.status-badge[data-tone="pending"] {
+  background: var(--color-status-pending-bg);
+}
+
+.status-badge[data-tone="blocked"] {
+  background: var(--color-status-blocked-bg);
+}
+
+.status-badge[data-tone="attention"] {
+  background: var(--color-status-attention-bg);
+}
+
+.status-badge-shape,
+.severity-shape,
+.system-mode-shape,
+.patient-eligibility-shape,
+.record-state span[aria-hidden],
+.prescription-change-arrow,
+.clinical-alert-shape,
+.offline-banner-shape,
+.system-health-shape,
+.emergency-mode-shape,
+.session-expiry-shape,
+.file-upload-shape,
+.permission-state-shape {
+  margin-right: var(--space-1);
+  font-weight: 700;
+}
+
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.queue-last-updated {
+  margin: 0 0 var(--space-2);
+  color: var(--color-fg);
+  font-size: var(--font-size-sm);
+}
+
+.mode-capability-provisional-key {
+  margin-left: var(--space-1);
+  color: var(--color-fg);
+  font-size: var(--font-size-sm);
+}
+
+.blocker-banner {
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--color-danger-border);
+  border-radius: 4px;
+  background: var(--color-status-blocked-bg);
+}
+
+.blocker-banner-title {
+  margin: 0 0 var(--space-1);
+  font-weight: 700;
+}
+
+.blocker-banner-reason,
+.blocker-banner-next-action {
+  margin: 0;
+}
+
+.blocker-banner-next-action {
+  font-weight: 600;
+}
+
+.severity-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.severity-list li {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-fg);
+  background: var(--color-status-neutral-bg);
+}
+
+.severity-list li[data-severity="BLOCKER"],
+.severity-list li[data-severity="CRITICAL"] {
+  border-left-color: var(--color-danger-border);
+  background: var(--color-status-blocked-bg);
+}
+
+.severity-list li[data-severity="ERROR"],
+.severity-list li[data-severity="WARNING"] {
+  background: var(--color-status-pending-bg);
+}
+
+.severity-label {
+  margin-right: var(--space-2);
+  font-weight: 700;
+}
+
+.patient-search-results,
+.reception-queue,
+.mode-overview-table {
+  width: 100%;
+  max-width: 1100px;
+  border-collapse: collapse;
+}
+
+.patient-search-results th,
+.patient-search-results td,
+.reception-queue th,
+.reception-queue td,
+.mode-overview-table th,
+.mode-overview-table td {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.patient-search-results thead,
+.reception-queue thead,
+.mode-overview-table thead {
+  background: var(--color-surface);
+}
+
+.patient-search-results .patient-search-action-column {
+  min-width: 9.5rem;
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--color-bg);
+  box-shadow: -2px 0 0 var(--color-border);
+}
+
+.patient-search-results thead .patient-search-action-column {
+  z-index: 2;
+  background: var(--color-surface);
+}
+
+.patient-context-bar {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--color-accent);
+  border-radius: 4px;
+  background: var(--color-surface-raised);
+}
+
+.patient-context-bar-title {
+  margin: 0 0 var(--space-1);
+  font-weight: 700;
+}
+
+.patient-context-bar-stale {
+  margin-left: var(--space-2);
+}
+
+.patient-context-bar[data-stale="true"] {
+  border-style: dashed;
+}
+
+.patient-context-removed {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--color-danger-border);
+  border-radius: 4px;
+  background: var(--color-status-blocked-bg);
+  font-weight: 600;
+}
+
+.record-state,
+.prescription-change,
+.sync-indicator,
+.file-upload-status,
+.audit-metadata,
+.permission-state,
+.read-only-indicator {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.record-state-version,
+.record-state-audit,
+.prescription-change-delta,
+.sync-indicator-last,
+.file-upload-message,
+.audit-metadata,
+.read-only-indicator {
+  font-size: var(--font-size-sm);
+}
+
+.prescription-change-drug,
+.file-upload-name {
+  font-weight: 700;
+}
+
+.clinical-alert,
+.clinical-alert-summary {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-fg);
+  border-radius: 4px;
+  background: var(--color-status-neutral-bg);
+}
+
+.clinical-alert[data-tone="blocked"],
+.clinical-alert-summary[data-top-severity="CRITICAL"],
+.clinical-alert-summary[data-top-severity="BLOCKER"] {
+  border-color: var(--color-danger-border);
+  background: var(--color-status-blocked-bg);
+}
+
+.clinical-alert[data-tone="attention"] {
+  background: var(--color-status-attention-bg);
+}
+
+.clinical-alert[data-tone="pending"] {
+  background: var(--color-status-pending-bg);
+}
+
+.clinical-alert-header,
+.clinical-alert-provenance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.clinical-alert-header,
+.clinical-alert-blocking,
+.clinical-alert-summary-total {
+  font-weight: 700;
+}
+
+.clinical-alert-blocking {
+  color: var(--color-danger-border);
+}
+
+.clinical-alert-body {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.clinical-alert-provenance {
+  font-size: var(--font-size-sm);
+}
+
+.clinical-alert-summary-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.offline-banner,
+.system-health-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-status-pending-bg);
+}
+
+.offline-banner[data-mode="LOCAL_ONLY"],
+.system-health-banner[data-degraded="true"][data-mode="LOCAL_ONLY"] {
+  border-color: var(--color-danger-border);
+  background: var(--color-status-blocked-bg);
+}
+
+.system-health-banner[data-degraded="false"] {
+  background: var(--color-status-ok-bg);
+}
+
+.offline-banner-mode,
+.system-health-mode {
+  font-weight: 700;
+}
+
+.emergency-mode-banner,
+.session-expiry-warning {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--color-danger-border);
+  border-radius: 4px;
+  background: var(--color-status-blocked-bg);
+}
+
+.session-expiry-warning {
+  border-color: var(--color-accent);
+  background: var(--color-status-attention-bg);
+}
+
+.session-expiry-warning[data-session-status="EXPIRED"],
+.session-expiry-warning[data-session-status="LOCKED"] {
+  border-color: var(--color-danger-border);
+  background: var(--color-status-blocked-bg);
+}
+
+.login-form,
+.login-form-field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.login-form {
+  max-width: 22rem;
+}
+
+.login-form-error,
+.destructive-action-impact {
+  margin: 0;
+  color: var(--color-danger-border);
+  font-weight: 700;
+}
+
+.confirmation-dialog,
+.destructive-action-dialog {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  background: rgba(0, 0, 0, 0.4);
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+.confirmation-dialog-panel,
+.destructive-action-panel {
+  width: 100%;
+  max-width: 32rem;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 2px solid var(--color-fg);
+  border-radius: 6px;
+  background: var(--color-bg);
+}
+
+.confirmation-dialog-actions,
+.destructive-action-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.mode-overview-table tr[data-current="true"] {
+  background: var(--color-surface-raised);
+}
+
+.mode-overview-table td[data-allowed="false"] {
+  background: var(--color-status-attention-bg);
+  font-weight: 600;
+}
+
+.permission-state[data-allowed="false"] {
+  color: var(--color-danger-border);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .status-badge,
+  .system-mode-badge,
+  .patient-eligibility,
+  .severity-list li,
+  .error-notice,
+  .blocker-banner,
+  .patient-context-bar,
+  .clinical-alert,
+  .clinical-alert-summary,
+  .offline-banner,
+  .system-health-banner,
+  .emergency-mode-banner,
+  .session-expiry-warning,
+  .confirmation-dialog-panel,
+  .destructive-action-panel {
+    border: 1px solid CanvasText;
+  }
+
+  :focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 1px;
+  }
+}
