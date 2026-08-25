@@ -112,7 +112,7 @@ describe("web shell smoke contracts", () => {
     ["会計・一部負担金", "算定・会計API未接続", <CheckoutPage />],
     ["請求前点検", "BLOCKED_REGULATORY_REVIEW", <ClaimCheckPage />],
     ["月次締め・返戻管理", "締めAPI未接続", <MonthlyClosingPage />],
-    ["マスター管理", "マスター更新API未接続", <MastersPage />],
+    ["マスター管理", "master_update_pipeline未承認", <MastersPage />],
   ])("renders a non-operational prototype for %s", (title, boundary, element) => {
     const html = renderToStaticMarkup(element);
 
