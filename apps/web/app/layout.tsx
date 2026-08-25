@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { OperatorCommandBar } from "./components/operator-command-bar";
@@ -7,6 +8,7 @@ import { BusinessNav } from "./nav";
 import { SystemModeBadge } from "./system-mode-badge";
 import "./globals.css";
 import "./operator-first.css";
+import "./operator-ux-refinement.css";
 
 export const metadata: Metadata = {
   title: "yrese 調剤レセプトコンピューター",
@@ -17,53 +19,55 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ja">
       <body>
+        <a className="skip-link" href="#main-content">
+          本文へスキップ
+        </a>
         <PatientContextProvider>
           <header className="app-header">
             <div className="app-header-brand-area">
-              <div className="app-brand">
+              <Link className="app-brand" href="/" aria-label="yrese 受付ダッシュボードへ">
                 <span className="app-brand-mark" aria-hidden="true">
                   Y
                 </span>
-                <div>
+                <span>
                   <h1 className="app-title">yrese</h1>
                   <span className="app-subtitle">調剤業務ワークスペース</span>
-                </div>
-              </div>
+                </span>
+              </Link>
               <SystemModeBadge />
             </div>
             <div className="app-header-command">
               <OperatorCommandBar />
             </div>
-            <div className="app-header-meta">
-              <span className="integration-chip" data-state="disconnected">
+            <div className="app-header-meta" aria-label="接続・実行環境">
+              <span className="integration-chip" data-state="disconnected" role="status">
                 <strong>Gbrain</strong>
                 <small>未接続</small>
               </span>
-              <span className="integration-chip" data-state="branch">
-                <strong>GitHub</strong>
-                <small>UI branch</small>
+              <span className="integration-chip" data-state="prototype" role="status">
+                <strong>UI</strong>
+                <small>プロトタイプ</small>
               </span>
-              <span className="app-notification" aria-label="通知 2件">
-                2
-              </span>
-              <div className="operator-profile">
+              <div className="operator-profile" aria-label="操作者情報は未接続">
                 <span className="operator-avatar" aria-hidden="true">
-                  薬
+                  未
                 </span>
                 <div>
-                  <strong>薬剤師</strong>
+                  <strong>操作者未接続</strong>
                   <small>開発環境</small>
                 </div>
               </div>
             </div>
           </header>
           <div className="app-shell">
-            <aside className="app-sidebar">
+            <aside className="app-sidebar" aria-label="主要業務ナビゲーション">
               <BusinessNav />
             </aside>
             <div className="app-workspace">
               <PatientContextBar />
-              <main className="app-main">{children}</main>
+              <main id="main-content" className="app-main" tabIndex={-1}>
+                {children}
+              </main>
             </div>
           </div>
         </PatientContextProvider>
