@@ -4,8 +4,11 @@ import { describe, expect, it } from "vitest";
 
 import { PatientContextProvider } from "../components/patient-context";
 import {
+  PAST_PRESCRIPTIONS,
   PrescriptionWorkspace,
   SelectedPatientWorkspaceView,
+  filterPastPrescriptions,
+  summarizePrescriptionReplacement,
 } from "./prescription-workspace";
 
 (globalThis as { React?: typeof React }).React = React;
@@ -23,12 +26,59 @@ describe("PrescriptionWorkspace (operator-first UI / patient safety)", () => {
     expect(html).not.toContain('data-patient-selected="true"');
   });
 
-  it("keeps the past-prescription rail visible beside the entry surface", () => {
+  it("keeps the past-prescription rail visible without immediate replacement", () => {
     const html = renderToStaticMarkup(<SelectedPatientWorkspaceView />);
     expect(html).toContain('data-patient-selected="true"');
     expect(html).toContain("過去処方一覧（直近6か月）");
     expect(html).toContain("処方入力ワークスペース");
     expect(html).toContain("患者コンテキスト &amp; 安全");
+    expect(html).toContain("差分を確認");
+    expect(html).not.toContain("この構成を入力欄へ反映");
+  });
+
+  it("projects the selected patient into the safety rail without synthetic substitution", () => {
+    const html = renderToStaticMarkup(
+      <SelectedPatientWorkspaceView
+        patient={{
+          patientId: "patient-1",
+          name: "山田 花子",
+          kana: "ヤマダ ハナコ",
+          birthDate: "1950-01-02",
+          sex: "female",
+          eligibilityStatus: "VERIFIED",
+        }}
+      />,
+    );
+
+    expect(html).toContain("山田 花子");
+    expect(html).toContain("ヤマダ ハナコ");
+    expect(html).toContain("生年月日 1950-01-02");
+    expect(html).toContain("資格確認済み");
+  });
+
+  it("filters the synthetic history by date, duration, and drug name", () => {
+    expect(filterPastPrescriptions(PAST_PRESCRIPTIONS, "2026/07")).toHaveLength(1);
+    expect(filterPastPrescriptions(PAST_PRESCRIPTIONS, "14日")).toHaveLength(1);
+    expect(filterPastPrescriptions(PAST_PRESCRIPTIONS, "ロサルタン")).toHaveLength(4);
+    expect(filterPastPrescriptions(PAST_PRESCRIPTIONS, "一致しない")).toHaveLength(0);
+  });
+
+  it("summarizes replacement differences before applying a past prescription", () => {
+    const summary = summarizePrescriptionReplacement(
+      [
+        { id: 1, drug: "アムロジピンOD錠5mg", usage: "", days: "7", quantity: "" },
+        { id: 2, drug: "ロサルタンK錠50mg", usage: "", days: "7", quantity: "" },
+        { id: 3, drug: "トラゾドン錠25mg", usage: "", days: "7", quantity: "" },
+      ],
+      PAST_PRESCRIPTIONS[1]!,
+    );
+
+    expect(summary).toEqual({
+      added: 1,
+      removed: 1,
+      unchanged: 2,
+      daysChanged: false,
+    });
   });
 
   it("does not present missing clinical checks or calculation as completed", () => {
