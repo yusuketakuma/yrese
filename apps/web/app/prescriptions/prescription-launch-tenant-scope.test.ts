@@ -10,6 +10,7 @@ describe("prescription launch tenant scope", () => {
           {
             receptionId: "tenant-a-reception",
             patient: { patientId: "patient-a" },
+            receptionStatus: "IN_PROGRESS",
           },
         ],
         {
