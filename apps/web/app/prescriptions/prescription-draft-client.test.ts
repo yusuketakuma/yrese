@@ -69,11 +69,12 @@ describe("prescription draft web client", () => {
   it("loads a validated tenant-scoped draft with no-store and exact query identity", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
-    const fetchImpl = vi.fn(async () => jsonResponse(RESPONSE)) as unknown as typeof fetch;
+    const fetchMock = vi.fn(async () => jsonResponse(RESPONSE));
+    const fetchImpl = fetchMock as unknown as typeof fetch;
 
     await expect(loadPrescriptionDraft(SCOPE, fetchImpl)).resolves.toEqual(RESPONSE);
 
-    const [url, init] = fetchImpl.mock.calls[0]!;
+    const [url, init] = fetchMock.mock.calls[0]!;
     expect(String(url)).toBe(
       "/_yrese-api/prescription-drafts/by-reception/reception-web-draft?patientId=patient-web-draft&date=2026-08-25",
     );
@@ -103,21 +104,22 @@ describe("prescription draft web client", () => {
   it("sends expectedVersion and maps a server conflict without exposing response text", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
-    const conflict = vi.fn(async () =>
+    const conflictMock = vi.fn(async () =>
       jsonResponse({ message: "sensitive server detail" }, 409),
-    ) as unknown as typeof fetch;
+    );
+    const conflict = conflictMock as unknown as typeof fetch;
 
     await expect(
       savePrescriptionDraft(SCOPE, 2, RESPONSE.draft, conflict),
     ).rejects.toEqual(
-      expect.objectContaining<Partial<PrescriptionDraftClientError>>({
+      expect.objectContaining({
         kind: "CONFLICT",
         status: 409,
         message: "別の端末またはタブで処方下書きが更新されました。",
-      }),
+      } satisfies Partial<PrescriptionDraftClientError>),
     );
 
-    const [, init] = conflict.mock.calls[0]!;
+    const [, init] = conflictMock.mock.calls[0]!;
     expect(init?.method).toBe("PUT");
     expect(init?.cache).toBe("no-store");
     expect(JSON.parse(String(init?.body))).toMatchObject({
