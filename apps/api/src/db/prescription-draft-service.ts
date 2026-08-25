@@ -128,6 +128,30 @@ async function receptionMatches(
   return result.rows.length === 1;
 }
 
+/**
+ * Serialize the create-or-update decision for one exact tenant/pharmacy/reception scope.
+ *
+ * A row lock cannot protect the initial "no draft row exists" state. Without this lock, two
+ * expectedVersion=0 writers can both observe absence and the loser surfaces a database unique
+ * violation instead of the API's deterministic conflict result. A transaction-scoped advisory
+ * lock closes that gap; a hash collision can only serialize unrelated drafts, not mix data.
+ */
+async function lockDraftScope(
+  client: PoolClient,
+  input: PrescriptionDraftLookupInput,
+): Promise<void> {
+  const lockIdentity = JSON.stringify([
+    "yrese.prescription-draft.v1",
+    input.tenantId,
+    input.pharmacyId,
+    input.receptionId,
+  ]);
+  await client.query(
+    "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+    [lockIdentity],
+  );
+}
+
 async function readDraft(
   client: PoolClient,
   input: PrescriptionDraftLookupInput,
@@ -298,6 +322,7 @@ export class PostgresPrescriptionDraftService
         await client.query("ROLLBACK");
         return { kind: "not_found" };
       }
+      await lockDraftScope(client, input);
 
       const existing = await selectMetadata(client, input, true);
       if (existing === undefined) {
