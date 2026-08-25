@@ -158,14 +158,15 @@ describe("web shell smoke contracts", () => {
     expect(html).not.toContain("すべて正常に稼働中");
   });
 
-  it("renders administration as a disabled no-operational-data prototype", () => {
+  it("renders the connected SCR-029 boundary without reintroducing the retired audit viewer", () => {
     const html = renderToStaticMarkup(<AdminPage />);
-    expect(html).toContain("管理・設定");
-    expect(html).toContain("UIプロトタイプ");
-    expect(html).toContain("permission_scope_registry承認待ち");
-    expect(html).toContain("監査ログ");
-    expect(html).toContain("ユーザー一覧API未接続");
-    expect(html).not.toContain("合成ユーザーA");
-    expect(html).toContain("disabled");
+
+    expect(html).toContain("yrese 管理設定ダッシュボード");
+    expect(html).toContain("認証・tenant境界・API状態を検証しています");
+    expect(html).toContain('aria-busy="true"');
+    expect(html).not.toContain("テナント・薬局・ユーザー・権限管理は未実装のプレースホルダー");
+    expect(html).not.toContain("監査イベント一覧");
+    expect(html).not.toContain(["SCR", "028"].join("-"));
+    expect(html).not.toContain(["audit", "log", "panel"].join("-"));
   });
 });
