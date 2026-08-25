@@ -103,8 +103,12 @@ export function OperatorCommandBar() {
     setSubmittedCommand("");
 
     function handleShortcut(event: KeyboardEvent) {
-      const commandShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k";
-      const slashShortcut = event.key === "/" && !isTextEntryTarget(event.target);
+      const textEntryTarget = isTextEntryTarget(event.target);
+      const commandShortcut =
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "k" &&
+        (!textEntryTarget || event.target === inputRef.current);
+      const slashShortcut = event.key === "/" && !textEntryTarget;
       if (commandShortcut || slashShortcut) {
         event.preventDefault();
         inputRef.current?.focus();
@@ -177,7 +181,7 @@ export function OperatorCommandBar() {
           </button>
         </div>
         <span id="operator-command-help" className="visually-hidden">
-          スラッシュまたはControl K、MacではCommand Kで入力欄へ移動できます。入力は画面候補の提示だけに使用します。
+          スラッシュまたはControl K、MacではCommand Kで入力欄へ移動できます。ほかの入力欄を編集中はショートカットを奪いません。入力は画面候補の提示だけに使用します。
         </span>
         <span id="operator-voice-status" className="visually-hidden">
           音声入力は、処理先・保持・リージョンを確認した承認済み音声処理境界の接続前のため利用できません。
