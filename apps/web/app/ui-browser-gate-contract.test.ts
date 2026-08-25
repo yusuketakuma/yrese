@@ -34,7 +34,7 @@ describe("UI browser validation gate", () => {
     );
   });
 
-  it("covers keyboard, accessibility, reflow, and unsaved-draft safety", () => {
+  it("covers keyboard, accessibility, reflow, reception handoff, and unsaved-draft safety", () => {
     expect(browserCheck).toContain("axe.run");
     expect(browserCheck).toContain('waitUntil: "domcontentloaded"');
     expect(browserCheck).toContain("const routeHeadings = new Map");
@@ -44,7 +44,9 @@ describe("UI browser validation gate", () => {
     expect(browserCheck).toContain("window.scrollTo(0, 0)");
     expect(browserCheck).toContain("mobile safety context");
     expect(browserCheck).toContain("admin tabs");
-    expect(browserCheck.match(/caret: "initial"/g)).toHaveLength(3);
+    expect(browserCheck.match(/caret: "initial"/g)).toHaveLength(4);
+    expect(browserCheck).toContain("reception-to-prescription-handoff");
+    expect(browserCheck).toContain("受付との関連を確認しました");
     expect(browserCheck).toContain("beforeunload");
     expect(browserCheck).toContain("reflow-200pct-equivalent");
     expect(browserCheck).toContain("未保存下書き 1件");
@@ -53,10 +55,12 @@ describe("UI browser validation gate", () => {
     expect(browserCheck).toContain('forcedColors: "active"');
   });
 
-  it("uses synthetic fixture patients and no production endpoint", () => {
+  it("uses synthetic fixture patients and receptions with no production endpoint", () => {
     expect(fixtureApi).toContain("patient-e2e-001");
+    expect(fixtureApi).toContain("reception-e2e-001");
     expect(fixtureApi).toContain("テスト患者 一");
     expect(fixtureApi).toContain('url.pathname === "/whoami"');
+    expect(fixtureApi).toContain('url.pathname === "/reception/queue"');
     expect(fixtureApi).toContain("tenant-e2e");
     expect(fixtureApi).toContain('service: "api"');
     expect(fixtureApi).toContain("127.0.0.1");

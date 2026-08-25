@@ -129,6 +129,39 @@ async function assertMobileSafetyContext(page, label) {
   }
 }
 
+async function assertDesktopShellLayout(page, label) {
+  const geometry = await page.locator(".app-shell").evaluate((shell) => {
+    const sidebar = shell.querySelector(".app-sidebar");
+    const workspace = shell.querySelector(".app-workspace");
+    if (!(sidebar instanceof HTMLElement) || !(workspace instanceof HTMLElement)) {
+      return null;
+    }
+    const sidebarRect = sidebar.getBoundingClientRect();
+    const workspaceRect = workspace.getBoundingClientRect();
+    return {
+      display: getComputedStyle(shell).display,
+      sidebarWidth: sidebarRect.width,
+      sidebarRight: sidebarRect.right,
+      workspaceLeft: workspaceRect.left,
+      workspaceWidth: workspaceRect.width,
+    };
+  });
+  assert(geometry !== null, `${label}: app shell children are missing`);
+  assert(geometry.display === "grid", `${label}: app shell is not a CSS grid`);
+  assert(
+    geometry.sidebarWidth >= 140 && geometry.sidebarWidth <= 220,
+    `${label}: sidebar width is outside the operator-shell range (${geometry.sidebarWidth})`,
+  );
+  assert(
+    Math.abs(geometry.workspaceLeft - geometry.sidebarRight) <= 1,
+    `${label}: workspace is not adjacent to the sidebar`,
+  );
+  assert(
+    geometry.workspaceWidth > geometry.sidebarWidth * 2,
+    `${label}: workspace did not receive the primary desktop column`,
+  );
+}
+
 async function runAxe(page, label) {
   await page.addScriptTag({ content: axeSource });
   const result = await page.evaluate(async () =>
@@ -180,6 +213,9 @@ async function checkRoute(page, route, viewport) {
     (await page.locator("main#main-content").count()) === 1,
     `${label}: main landmark missing or duplicated`,
   );
+  if (viewport.width > 820) {
+    await assertDesktopShellLayout(page, label);
+  }
   await assertNoPageOverflow(page, label);
   await runAxe(page, label);
   await page.screenshot({
@@ -266,6 +302,37 @@ async function checkKeyboardLandmarks(page) {
   });
 }
 
+async function checkReceptionHandoff(page) {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto(BASE_URL, { waitUntil: "networkidle" });
+  const handoff = page.getByRole("link", {
+    name: "この受付を処方入力へ引き継ぐ",
+  }).first();
+  await handoff.waitFor();
+  await handoff.click();
+  await page.waitForURL(`${BASE_URL}/prescriptions`);
+  await page.getByText("受付との関連を確認しました").waitFor();
+  await page.locator(".patient-context-bar").getByText("テスト患者 一").waitFor();
+  assert(
+    (await page.locator('[data-reception-linked="true"]').count()) === 1,
+    "reception handoff: verified linked workspace was not rendered",
+  );
+  assert(
+    await page.getByText("処方保存API・監査証跡が未接続です").isVisible(),
+    "reception handoff: unsupported persistence was not kept fail-closed",
+  );
+  await runAxe(page, "reception-to-prescription-handoff");
+  await page.screenshot({
+    path: path.join(ARTIFACT_DIR, "reception-to-prescription-handoff.png"),
+    fullPage: true,
+    caret: "initial",
+  });
+  findings.interactionChecks.push({
+    name: "reception-to-prescription-fresh-patient-verification",
+    status: "pass",
+  });
+}
+
 async function searchPatients(page) {
   await page.locator("#patient-search-q").fill("テスト患者");
   await page.getByRole("button", { name: "検索", exact: true }).click();
@@ -327,11 +394,25 @@ async function checkDraftRecoveryAndPatientGuard(page) {
   await page.getByText("未保存下書き 1件").waitFor();
   await page.getByRole("link", { name: "処方下書きへ戻る" }).click();
   await waitForRoute(page, "/prescriptions");
-  await page.getByText("タブ内下書きを復元しました").waitFor();
+  const restoredDrugInput = page.getByLabel("RP1 薬剤名");
+  await restoredDrugInput.waitFor();
+  await page.waitForFunction(() => {
+    const element = document.querySelector('input[aria-label="RP1 薬剤名"]');
+    return element instanceof HTMLInputElement && element.value === "E2E合成薬10mg";
+  });
+  const restoredNoticeVisible = await page
+    .getByText("タブ内下書きを復元しました")
+    .isVisible()
+    .catch(() => false);
   assert(
-    (await page.getByLabel("RP1 薬剤名").inputValue()) === "E2E合成薬10mg",
+    (await restoredDrugInput.inputValue()) === "E2E合成薬10mg",
     "draft recovery: drug input was not restored after in-app route change",
   );
+  findings.interactionChecks.push({
+    name: "draft-recovery-after-in-app-route-change",
+    status: "pass",
+    mode: restoredNoticeVisible ? "snapshot-remount" : "router-cache-retention",
+  });
 
   const unloadResult = await page.evaluate(() => {
     const event = new Event("beforeunload", { cancelable: true });
@@ -371,7 +452,7 @@ async function checkDraftRecoveryAndPatientGuard(page) {
   );
 
   findings.interactionChecks.push({
-    name: "draft-route-recovery-beforeunload-and-patient-switch",
+    name: "beforeunload-and-patient-switch",
     status: "pass",
   });
 
@@ -428,6 +509,7 @@ try {
     }
   }
   await checkKeyboardLandmarks(page);
+  await checkReceptionHandoff(page);
   await checkDraftRecoveryAndPatientGuard(page);
 
   assert(

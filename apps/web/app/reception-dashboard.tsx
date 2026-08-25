@@ -31,6 +31,7 @@ import { registeredErrorCodeOrUndefined } from "./components/error-code";
 import { ErrorNotice, type ErrorNoticeProps } from "./components/error-notice";
 import { LoadingState } from "./components/loading-state";
 import { devTenantHeaders } from "./dev-tenant";
+import { ReceptionPrescriptionHandoffAction } from "./reception-prescription-handoff";
 
 /**
  * 受付ダッシュボード(WP-3009-UI / SCR-001)。
@@ -392,8 +393,10 @@ export function formatAcceptedTime(acceptedAt: string): string {
 
 export function ReceptionQueueTable({
   entries,
+  businessDate,
 }: {
   readonly entries: readonly ReceptionQueueEntry[];
+  readonly businessDate?: string;
 }) {
   return (
     <div className="table-scroll">
@@ -406,6 +409,7 @@ export function ReceptionQueueTable({
             <th scope="col">生年月日</th>
             <th scope="col">受付状態</th>
             <th scope="col">処方箋</th>
+            {businessDate !== undefined ? <th scope="col">次の操作</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -424,6 +428,14 @@ export function ReceptionQueueTable({
                 />
               </td>
               <td>{PRESCRIPTION_INTAKE_LABELS[entry.prescriptionIntakeType]}</td>
+              {businessDate !== undefined ? (
+                <td>
+                  <ReceptionPrescriptionHandoffAction
+                    entry={entry}
+                    businessDate={businessDate}
+                  />
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>
@@ -805,7 +817,10 @@ export function ReceptionQueueView({ state }: { readonly state: QueueState }) {
         {state.loadedAt !== undefined && (
           <p className="queue-last-updated">最終取得: {state.loadedAt}(JST)</p>
         )}
-        <ReceptionQueueTable entries={state.response.entries} />
+        <ReceptionQueueTable
+          entries={state.response.entries}
+          businessDate={state.response.date}
+        />
       </>
     );
   return (
