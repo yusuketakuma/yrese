@@ -1,5 +1,3 @@
-import { allowsClaimFinalization } from "@yrese/shared-kernel";
-
 import { PermissionState, ReadOnlyIndicator } from "../components/audit-metadata";
 import {
   MetricCard,
@@ -21,8 +19,7 @@ const BATCH_ROWS = [
 ] as const;
 
 export default function Page() {
-  const currentMode = "NORMAL" as const;
-  const modeAllowed = allowsClaimFinalization(currentMode);
+  const executionAllowed = false;
 
   return (
     <OperatorPage
@@ -35,9 +32,9 @@ export default function Page() {
           <RailCard title="オペレーターへのお願い" tone="warning">
             <ul className="rail-action-list"><li>未提出バッチの内容を確認</li><li>返戻7件の再請求可否を確認</li><li>電子レセプト正常性チェックは未接続</li></ul>
           </RailCard>
-          <RailCard title="実行可否">
-            <PermissionState allowed={modeAllowed} actionLabel="月次締め・請求データロック（モードゲート）" reason="NORMALモードでのみ実行できます" />
-            {!modeAllowed ? <ReadOnlyIndicator reason="現在のシステムモードでは締めを実行できません" /> : null}
+          <RailCard title="実行可否" tone="danger">
+            <PermissionState allowed={executionAllowed} actionLabel="月次締め・請求データロック" reason="モード検知・締めAPI・権限判定が未接続です" />
+            <ReadOnlyIndicator reason="接続・承認・実測が揃うまで締め処理は実行できません" />
           </RailCard>
         </>
       }
