@@ -3,6 +3,11 @@
  * Loaded after the adversarial layer. Domain status semantics are unchanged.
  */
 
+/* The base warning orange is suitable for borders, not small text on white. */
+.integration-chip[data-state="disconnected"] small {
+  color: #8a3f00;
+}
+
 .prototype-action-shell {
   display: inline-grid;
   gap: 0.25rem;
