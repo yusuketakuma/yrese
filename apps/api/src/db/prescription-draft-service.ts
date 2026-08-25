@@ -128,6 +128,22 @@ async function receptionMatches(
   return result.rows.length === 1;
 }
 
+async function lockPrescriptionDraftScope(
+  client: PoolClient,
+  input: PrescriptionDraftLookupInput,
+): Promise<void> {
+  const lockKey = JSON.stringify([
+    "yrese.prescription-draft.v1",
+    input.tenantId,
+    input.pharmacyId,
+    input.receptionId,
+  ]);
+  await client.query(
+    "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+    [lockKey],
+  );
+}
+
 async function readDraft(
   client: PoolClient,
   input: PrescriptionDraftLookupInput,
@@ -299,6 +315,7 @@ export class PostgresPrescriptionDraftService
         return { kind: "not_found" };
       }
 
+      await lockPrescriptionDraftScope(client, input);
       const existing = await selectMetadata(client, input, true);
       if (existing === undefined) {
         if (input.expectedVersion !== 0) {
