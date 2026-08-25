@@ -1,16 +1,16 @@
+import { AdminDashboard } from "./admin-dashboard";
+
 /**
- * 管理画面(SCR-029)。
- * テナント・薬局・ユーザー・権限管理はpermission_scope_registry SSOT承認後に
- * 実装する。未実装の機能を実装済みに見せない。
+ * SCR-029 管理者・権限管理。
+ *
+ * データは既存の /whoami と /health から取得し、tenant/user admin scopeを満たさない
+ * セッションには管理情報を表示しない。利用者ディレクトリや権限変更commandは、
+ * 承認済み契約が存在するまで明示的な unavailable state とする。
  */
 export default function Page() {
   return (
-    <>
-      <h2>管理</h2>
-      <p className="placeholder-note">
-        テナント・薬局・ユーザー・権限管理は未実装のプレースホルダーです(permission_scope_registry
-        SSOT 承認後に実装)。
-      </p>
-    </>
+    <div data-admin-dashboard="true">
+      <AdminDashboard />
+    </div>
   );
 }
