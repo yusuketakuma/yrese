@@ -46,6 +46,11 @@ export interface PrescriptionReplacementSummary {
   readonly unchanged: number;
 }
 
+type ComparablePrescriptionRow = Pick<
+  DraftRow,
+  "drug" | "usage" | "days" | "quantity"
+>;
+
 const INITIAL_ROWS: readonly DraftRow[] = [
   { id: 1, drug: "アムロジピンOD錠5mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
   { id: 2, drug: "ロサルタンK錠50mg", usage: "1日1回 朝食後", days: "7", quantity: "7錠" },
@@ -90,8 +95,27 @@ function normalizedText(value: string): string {
   return value.normalize("NFKC").trim().toLowerCase();
 }
 
-function rowSignature(row: Pick<DraftRow, "usage" | "days" | "quantity">): string {
+function rowSignature(
+  row: Pick<ComparablePrescriptionRow, "usage" | "days" | "quantity">,
+): string {
   return [row.usage, row.days, row.quantity].map(normalizedText).join("|");
+}
+
+function groupRowsByDrug<T extends ComparablePrescriptionRow>(
+  rows: readonly T[],
+): Map<string, T[]> {
+  const groups = new Map<string, T[]>();
+  for (const row of rows) {
+    const drugKey = normalizedText(row.drug);
+    if (!drugKey) continue;
+    const existing = groups.get(drugKey);
+    if (existing === undefined) {
+      groups.set(drugKey, [row]);
+    } else {
+      existing.push(row);
+    }
+  }
+  return groups;
 }
 
 export function pastPrescriptionDurationLabel(item: PastPrescription): string {
@@ -133,29 +157,62 @@ export function filterPastPrescriptions(
   );
 }
 
+/**
+ * 同一薬剤名の複数RP行を縮約せずmultisetとして比較する。
+ * まず完全一致行を消し込み、残った同一薬剤行を内容変更として対応付ける。
+ * 実データ接続時は薬剤名ではなく承認済みの安定薬剤コードをgroup keyにする。
+ */
 export function summarizePrescriptionReplacement(
   currentRows: readonly DraftRow[],
   pastPrescription: PastPrescription,
 ): PrescriptionReplacementSummary {
-  const currentByDrug = new Map(
-    currentRows
-      .filter((row) => normalizedText(row.drug).length > 0)
-      .map((row) => [normalizedText(row.drug), row] as const),
-  );
-  const pastByDrug = new Map(
-    pastPrescription.rows.map((row) => [normalizedText(row.drug), row] as const),
-  );
-  const sharedDrugs = [...pastByDrug.keys()].filter((drug) => currentByDrug.has(drug));
-  const changed = sharedDrugs.filter(
-    (drug) => rowSignature(currentByDrug.get(drug)!) !== rowSignature(pastByDrug.get(drug)!),
-  ).length;
-
-  return {
-    added: [...pastByDrug.keys()].filter((drug) => !currentByDrug.has(drug)).length,
-    removed: [...currentByDrug.keys()].filter((drug) => !pastByDrug.has(drug)).length,
-    changed,
-    unchanged: sharedDrugs.length - changed,
+  const currentGroups = groupRowsByDrug(currentRows);
+  const pastGroups = groupRowsByDrug(pastPrescription.rows);
+  const drugKeys = new Set([...currentGroups.keys(), ...pastGroups.keys()]);
+  const summary: PrescriptionReplacementSummary = {
+    added: 0,
+    removed: 0,
+    changed: 0,
+    unchanged: 0,
   };
+
+  for (const drugKey of drugKeys) {
+    const current = currentGroups.get(drugKey) ?? [];
+    const past = pastGroups.get(drugKey) ?? [];
+    const currentSignatureCounts = new Map<string, number>();
+
+    for (const row of current) {
+      const signature = rowSignature(row);
+      currentSignatureCounts.set(
+        signature,
+        (currentSignatureCounts.get(signature) ?? 0) + 1,
+      );
+    }
+
+    let unchangedForDrug = 0;
+    for (const row of past) {
+      const signature = rowSignature(row);
+      const available = currentSignatureCounts.get(signature) ?? 0;
+      if (available <= 0) continue;
+      unchangedForDrug += 1;
+      if (available === 1) {
+        currentSignatureCounts.delete(signature);
+      } else {
+        currentSignatureCounts.set(signature, available - 1);
+      }
+    }
+
+    const currentRemaining = current.length - unchangedForDrug;
+    const pastRemaining = past.length - unchangedForDrug;
+    const changedForDrug = Math.min(currentRemaining, pastRemaining);
+
+    summary.unchanged += unchangedForDrug;
+    summary.changed += changedForDrug;
+    summary.removed += currentRemaining - changedForDrug;
+    summary.added += pastRemaining - changedForDrug;
+  }
+
+  return summary;
 }
 
 export function PrescriptionWorkspace() {
@@ -263,11 +320,7 @@ export function SelectedPatientWorkspaceView({
   }
 
   return (
-    <section
-      aria-label="処方入力"
-      data-patient-selected="true"
-      data-patient-id={patient.patientId}
-    >
+    <section aria-label="処方入力" data-patient-selected="true">
       <ScreenHeader
         title="処方入力ワークスペース"
         description="過去処方を左側に固定し、現在の入力と安全情報を同時に比較できる構成です。"
@@ -533,9 +586,7 @@ export function SelectedPatientWorkspaceView({
             <div className="patient-safety-summary">
               <strong>{patient.name}</strong>
               <span>{patient.kana}</span>
-              <span>
-                生年月日 {patient.birthDate}
-              </span>
+              <span>生年月日 {patient.birthDate}</span>
               <DomainStatusBadge
                 query={{ domain: "eligibility", key: patient.eligibilityStatus }}
               />
