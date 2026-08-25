@@ -84,18 +84,23 @@ describe("prescription draft web persistence", () => {
   it("loads through the existing API transport with patient-scoped no-store query", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
-    const fetchMock = vi.fn(async () => response(serverDraft));
-    const fetchImpl = fetchMock as unknown as typeof fetch;
+    const calls: Array<{
+      readonly input: RequestInfo | URL;
+      readonly init: RequestInit | undefined;
+    }> = [];
+    const fetchImpl: typeof fetch = async (input, init) => {
+      calls.push({ input, init });
+      return response(serverDraft);
+    };
 
     await expect(loadPrescriptionDraft(context, fetchImpl)).resolves.toEqual(
       serverDraft,
     );
-    const [url, init] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toBe(
+    expect(String(calls[0]?.input)).toBe(
       "/_yrese-api/prescription-drafts/by-reception/reception-test-001?patientId=patient-test-001&date=2026-08-25",
     );
-    expect(init?.cache).toBe("no-store");
-    const headers = new Headers(init?.headers);
+    expect(calls[0]?.init?.cache).toBe("no-store");
+    const headers = new Headers(calls[0]?.init?.headers);
     expect(headers.get("x-dev-scopes")?.split(",")).toEqual(
       expect.arrayContaining([
         "prescription:read",
@@ -108,15 +113,21 @@ describe("prescription draft web persistence", () => {
   it("treats a verified reception with no server draft as an empty state", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
-    const fetchImpl = vi.fn(async () => response({}, 404)) as unknown as typeof fetch;
+    const fetchImpl: typeof fetch = async () => response({}, 404);
     await expect(loadPrescriptionDraft(context, fetchImpl)).resolves.toBeNull();
   });
 
   it("sends expectedVersion and maps a stale writer to a fixed conflict", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
-    const fetchMock = vi.fn(async () => response({}, 409));
-    const fetchImpl = fetchMock as unknown as typeof fetch;
+    const calls: Array<{
+      readonly input: RequestInfo | URL;
+      readonly init: RequestInit | undefined;
+    }> = [];
+    const fetchImpl: typeof fetch = async (input, init) => {
+      calls.push({ input, init });
+      return response({}, 409);
+    };
 
     await expect(
       savePrescriptionDraft(
@@ -131,9 +142,8 @@ describe("prescription draft web persistence", () => {
       kind: "CONFLICT",
       status: 409,
     });
-    const [, init] = fetchMock.mock.calls[0]!;
-    expect(init?.method).toBe("PUT");
-    expect(JSON.parse(String(init?.body))).toMatchObject({
+    expect(calls[0]?.init?.method).toBe("PUT");
+    expect(JSON.parse(String(calls[0]?.init?.body))).toMatchObject({
       patientId: context.patientId,
       businessDate: context.businessDate,
       expectedVersion: 2,
@@ -143,7 +153,7 @@ describe("prescription draft web persistence", () => {
   it("does not trust an invalid success payload", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
-    const fetchImpl = vi.fn(async () => response({ version: 99 })) as unknown as typeof fetch;
+    const fetchImpl: typeof fetch = async () => response({ version: 99 });
 
     await expect(loadPrescriptionDraft(context, fetchImpl)).rejects.toMatchObject({
       kind: "INVALID_RESPONSE",
