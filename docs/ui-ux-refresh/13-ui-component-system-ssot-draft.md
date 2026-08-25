@@ -1,9 +1,11 @@
 # 13 — UI共通コンポーネントシステム SSOT ドラフト(UIX-008 候補)
 
 > **DRAFT / PROPOSED — 本書は non-SSOT 作業領域(`docs/ui-ux-refresh/`)上の起草文書である。**
-> 正式 SSOT への昇格(`docs/uiux/ui_component_system.md` への移設・UIX-008 採番確定・
-> `docs/ssot_index.md` 登録)は PRC-007 の10段改版フローに従い、現在 exact11 batch が
-> 保全している `docs/ssot_index.md` の dirty ownership が解消(landing)した後に行う。
+> 正式 SSOT への昇格は §0 の topology 選択に従う。`docs/uiux/ui_component_system.md`
+> への移設・UIX-008 採番は Candidate B の場合だけ行い、Candidate A は UIX-001 を改版する。
+> WP-5101 の独立レビューと human product 承認後、PRC-007 の10段改版フローに従う。
+> historical exact11 と WP-4254/4255 は current base `c7b6140` までに landing 済みであり、
+> 現在の blocker には数えない。
 > それまで本書は承認・実装・準拠を主張しない。
 
 ```yaml
@@ -21,7 +23,7 @@ reviewers:
   - medical_safety_reviewer      # U4 該当コンポーネント
   - privacy_compliance_reviewer  # U4 該当コンポーネント
   - human_review_required
-version: 0.1.0-draft
+version: 0.1.4-draft
 created_at: 2026-07-31
 source_refs:
   - docs/spec/construction_prompt_v0.2.0.md §7, §16
@@ -31,17 +33,37 @@ source_refs:
   - デザイン探索ボード 2026-07-31(甲乙丙+五構造 — 別紙 Artifact bcc10e46)
   - 一枚盤面プロトタイプ 2026-07-31(丁 — 別紙 Artifact cb24845f)
   - docs/ui-ux-refresh/14-one-board-direction-decision.md(丁採用の決定記録 2026-07-31)
-depends_on: [UIX-001, UIX-002, UIX-003, UIX-004, UIX-006, UIX-007, PLAN-UIUX-001, API-002]
+depends_on: [UIX-001, UIX-002, UIX-003, UIX-004, UIX-005, UIX-006, UIX-007, PLAN-UIUX-001, API-002]
 impacts: [apps/web/**, docs/plan/uiux_development_plan.md]
 open_questions: 本文 §9 参照
 blockers:
-  - BLOCKED_SSOT_INDEX_DIRTY(exact11 landing 前は docs/ssot_index.md へ登録しない)
-  - apps/web の WP-4254/4255 未コミット slice の landing 前は実装 WP を発行しない
-    (WP-4253 はローカル commit 済み 9d8dbc0 — 2026-07-31 checker M-13 訂正)
-  - RTL/jsdom 相当の DOM テストハーネスは apps/web に未導入(devDependencies に
-    jsdom / Testing Library なし — 2026-07-31 checker 実測)。§5-4 / §7 の RTL 前提の
-    検証はハーネス整備 WP(未登載)の成果を前提とし、それまで実装 WP を発行しない
+  - BLOCKED_WP_5101_INDEPENDENT_REVIEW
+  - BLOCKED_HUMAN_PRODUCT_APPROVAL(§0 の unique SSOT topology と §9 の製品判断)
+  - BLOCKED_L0_TOKEN_AUTHORITY_RECONCILIATION(§2 の current implementation drift)
 ```
+
+## 0. Current topology と unique SSOT target(2026-08-26)
+
+current repository では UIX-001〜007 がそれぞれ APPROVED であり、本書は component system
+だけを扱う non-SSOT 候補である。一方、current task は UI/UX 原則・IA・操作/表示体系・theme・
+tokens・canonical components・state・a11y・responsive・debt/change management を集約した
+**唯一の UI/UX SSOT file**を要求する。component-only の UIX-008 を追加し UIX-001〜007 を
+APPROVED のまま維持する構成は、この unique-file 要件を満たさない。
+
+PRC-007 の atomic cutover で選べる topology は次の二つだけであり、中間状態を main へ置かない。
+
+| Candidate | Reuse | Atomic cutover |
+|---|---|---|
+| **A(推奨)** | 既存 UIX-001 を unique foundation へ改版 | UIX-002〜007 と本ドラフトの必要内容を UIX-001 へ集約し、旧文書を同一 batch で SUPERSEDED にする |
+| B | UIX-008 を新しい unique foundation として採番 | UIX-001〜007 と本ドラフトの必要内容を UIX-008 へ集約し、UIX-001〜007 を同一 batch で SUPERSEDED にする |
+
+どちらも UIX-001〜007 の安全・品質要件を削除しない。特に UIX-004 の UAC-01〜12、
+synthetic/demo data 限定、pharmacist / claim-clerk / accessibility / product の human approval、
+UAC-11 の自動+手動検証、および UIX-005 の ST-01〜15(入力保全・冪等性・部分失敗・
+LOCAL_ONLY/RECOVERY_SYNC・監査欠落防止を含む)を cutover checklist に明記して保存する。
+
+既存正本を再利用する A が最小差分である。いずれも exact candidate diff、独立レビュー、
+medical-safety/privacy/accessibility review、human product 承認なしに APPROVED 化しない。
 
 ## 1. 目的と適用範囲
 
@@ -61,7 +83,7 @@ blockers:
 
 | 層 | 内容 | 正本 | 変更の自由度 |
 |---|---|---|---|
-| L0 | デザイントークン(CSS custom properties: 色・タイポ・余白・密度・状態色) | `apps/web/app/globals.css` | **高** — デザイン方向(甲/乙/丙)の差し替えはこの層のみで行う |
+| L0 | デザイントークン(CSS custom properties: 色・タイポ・余白・密度・状態色) | target: 単一 token authority; current direct imports: `globals.css` / `operator-first.css` / `operator-ux-refinement.css` / `operator-first-navigation.css` / `operator-adversarial-refinement.css` / `operator-completion-refinement.css`; transitive: `legacy.css` via `globals.css`; route-local: `apps/web/app/admin/admin-dashboard.module.css` via `admin-dashboard.tsx` | **高** — Phase A で一つの token authority へ集約後、テーマ差し替えはこの層のみで行う |
 | L1 | 状態表現の単一正本(domain×key → label/tone/shape/ARIA) | `apps/web/app/status/visual-status-registry.ts` | 低 — ドメイン enum SSOT 承認後のみ軸追加 |
 | L2 | 基礎コンポーネント(バッジ・リスト・バナー・ダイアログ・状態画面) | `apps/web/app/components/` | 中 — 本書の契約と追加手順(§5)に従う |
 | L3 | 業務複合コンポーネント(PatientHeader・ClinicalAlert・trace viewer 等) | 同上 | 中 — U4 該当はレビュー体制必須 |
@@ -71,13 +93,17 @@ blockers:
 
 - **Phase A(視覚テーマ = L0 のみ)**: 甲乙丙のトークン差し替え。L1 以上の契約・文言・DOM 構造を
   変えない。**ただし「既存テスト全緑」を挙動不変の証跡と呼ばない**(2026-07-31 checker 訂正):
-  現行 web テストは renderToStaticMarkup による静的マークアップ検証のみで、スタイルを
-  一切観測せず(`toHaveStyle`/`getComputedStyle` 使用ゼロ)、`globals.css` はテストの
-  レンダリング経路に入らない。全緑が証明するのは「L1 以上を触っていない」ことまでである。
+  Vitest の component tests は主に static markup/純関数を観測し、Playwright/axe browser gate は
+  route、keyboard、reflow、forced-colors、重大 a11y 違反を観測する。いずれも token ownership
+  全体を単独では証明しない。全緑が証明する範囲は各 test が実際に観測した契約に限定する。
   Phase A の受入は既存テスト全緑**に加えて**、(a) L0 トークン参照の静的検査
-  (hex 直指定の残存ゼロ — 現行 `globals.css` には `#f0f2f5` 等の直指定が複数残存し
-  §6-1 に自ら違反している。Phase A はその解消を含む)、(b) §7 の a11y 検証
-  (forced-colors / reduced-motion / コントラスト)を必須とする。
+  (active stylesheet の component selector にある直指定色を token へ集約し、token 宣言と
+  forced-colors override だけを明示例外にする)、(b) §7 の browser/a11y 検証
+  (forced-colors / reduced-motion / コントラスト)を必須とする。現行
+  `style-load-order.test.ts` は cascade 順、legacy import、廃止/重複 stylesheet の不在、
+  desktop grid、completion layer の sidebar override 禁止を検査するが、token/direct-color は
+  検査しない。Phase A は上記 direct/transitive/route-local 全体を対象にした最小の failing
+  test から始める。
 - **Phase B(丁 一枚盤面 = L2〜L4 構造変更)**: 画面構成・遷移・コンポーネント合成が変わるため、
   既存テストは**壊れることが正常**。回帰証跡は「L1 Registry の文言・ARIA 網羅テスト不変」+
   「新盤面の新規テスト(14号 §7 の投影・ロック・確定演出を含む)」で構成し、
@@ -146,7 +172,7 @@ blockers:
 1. **丁 一枚盤面 = L2〜L4 の構成原理**。画面(L4)は「調剤盤・請求盤・管理盤」の3盤面へ再編し、
    遷移を「選択(常設キュー)・展開(工程行)・ドロワー(根拠)」の三置換で消す。
    28画面の写像表と前提条件は 14号 §2/§4 を正とする。
-2. **甲乙丙 = L0 トークンテーマ**。`globals.css` のトークンセット差し替えで実現し、コンポーネント契約は不変。
+2. **甲乙丙 = L0 トークンテーマ**。Phase A で確定する単一 token authority の差し替えで実現し、コンポーネント契約は不変。
 3. **状態インク = L1 Registry の視覚仕様**。tone×shape×label の三重エンコードは既に Registry が保持。テーマはトーンの具体色のみ変える。
 4. **患者フォーカスフレーム = PatientContextBar の視覚強化**(L3 の style 変更、契約不変)。盤面中央の患者枠として常設。
 5. **モードシアター = SystemModeBadge + ModeCapabilityView + L0 のモード連動テーマ**。新規判定ロジックは作らない。
@@ -183,8 +209,11 @@ blockers:
 1. **The Component Gallery**(https://component.gallery/components/)で標準パターン・命名・a11y 慣行を照合(ユーザー指示 2026-07-09。医療UI原則と衝突時は UIX-001 優先)
 2. 契約起草 — `12-component-contracts.md` へ Purpose / Props / ARIA / Prohibited / Tests を追記
 3. ドメイン状態を扱う場合: 対応 enum が shared-kernel SSOT に存在することを確認。無ければ **enum SSOT 承認まで実装しない**(予約として設計のみ記録)
-4. Registry 軸追加(必要時)→ コンポーネント実装 → vitest + Testing Library テスト(--passWithNoTests 禁止)
-5. U4 該当(患者文脈・薬剤師確認・外部未確認状態・請求確定に影響)は medical_safety_reviewer / privacy_compliance_reviewer / accessibility レビュー+必要な人間承認を実装後に必須
+4. Registry 軸追加(必要時)→ コンポーネント実装 → 最小の Vitest 契約テスト+
+   DOM interaction/a11y がある場合は既存 Playwright/axe browser gate(--passWithNoTests 禁止)。
+   jsdom / Testing Library は既存 stack で必要契約を検証できない場合だけ別 WP で判断する
+5. U3/U4 該当は実装着手前に medical_safety / privacy / accessibility の relevant review と
+   必要な human authority の承認を得る。実装後は同じ観点の検証 evidence を独立確認する
 6. 本書 §3 台帳へ行を追加(台帳にないコンポーネントを画面から import しない)
 
 ## 6. 禁止事項
@@ -199,7 +228,8 @@ blockers:
 8. 台帳外コンポーネントの新設・台帳外画面からの利用
    (**適用範囲は共通コンポーネント(L1〜L3)**。既存の画面ローカル構成要素
    — `nav.tsx` の BusinessNav、`reception-dashboard.tsx`、`patients/patient-search.tsx` 等 —
-   は昇格時点の経過措置として存続し、UIX-008 昇格改版で台帳登録か廃止かを個別判断する。
+   は昇格時点の経過措置として存続し、選択された unique foundation の cutover 改版で
+   台帳登録か廃止かを個別判断する。
    起草時点の既存コードを遡及的に SSOT 違反としない — 2026-07-31 checker M-11 訂正)
 9. 無言のグレーアウト・無言の操作不能化(「誰が・なぜ」の理由提示を必ず添える — 14号 §7.2)
 10. 理由(reason)なしの BLOCKED 表示(15号 §3 の型契約と同一規律)
@@ -209,22 +239,31 @@ blockers:
 
 ## 7. 検証
 
-- 単体: 各コンポーネントの RTL テスト(状態網羅・ARIA・色非依存)。Registry は網羅性を型+テストで担保。
-  **前提**: RTL/jsdom ハーネスは apps/web に未導入(frontmatter blockers 参照)。
-  ハーネス整備 WP の完了が全 RTL 要件の前提であり、それまで「テストで担保」を主張しない
-- 回帰: L0 差し替え時は既存テスト全緑(=L1 以上の契約・文言・DOM 構造の不変)**に加えて**、
-  L0 トークン参照の静的検査と下記 a11y 検証を証跡とする(§2 の訂正どおり、
-  全緑単独を挙動不変の証跡と呼ばない)
-- a11y: UIX-004 受入基準+forced-colors / reduced-motion / キーボード操作
+- 単体: 各コンポーネントの最小 Vitest 契約テスト(状態網羅・ARIA・色非依存)。Registry は
+  網羅性を型+テストで担保する。DOM interaction は既存 Playwright/axe browser gate で検証し、
+  現行 stack が観測しない契約を「テストで担保」と主張しない
+- 回帰: L0 差し替え時は relevant tests の PASS と exact-path diff review に加えて、L0 token
+  参照の静的検査と下記 a11y 検証を証跡とする。各 test が実際に観測した契約だけを根拠とし、
+  全緑を L1 以上の文言・DOM 構造の包括的不変証明と呼ばない
+- 現行 browser gate の自動範囲は、route 2xx・main landmark・desktop shell geometry・
+  page overflow、console/page error、axe critical/serious、mobile safety context、skip link・
+  `/` shortcut・admin tabs、受付/検索から処方への guarded handoff、draft recovery・
+  `beforeunload`・患者切替時の draft 非混入、複数 reflow viewport、および
+  `/prescriptions` の forced-colors screenshot である。`reducedMotion: "reduce"` は設定のみで
+  挙動 assertion はない
+- actual 200% zoom、内部 scroll、screen reader、forced-colors の自動判定、reduced-motion の
+  挙動、`prefers-contrast: more`、将来の WorkflowSheet は targeted test と手動確認を別途行う。
+  現行 gate 単独を UIX-004/UAC-11 適合の証跡と呼ばない
+- a11y: UIX-004 受入基準+forced-colors / reduced-motion / キーボード操作を自動+手動で確認
 - 性能: UIX-003 予算内(トークン差し替えで CSS サイズ・CLS を悪化させない)
 
 ## 8. 昇格手順(fail-closed)
 
 1. 本ドラフトのレビュー(frontend / accessibility / independent)
-2. exact11 batch の landing により `docs/ssot_index.md` の dirty ownership 解消
-3. `docs/uiux/ui_component_system.md` へ移設、UIX-008 採番確定、frontmatter 正式化、ssot_index 登録(PRC-007 10段)
-4. PLAN-UIUX-001 の Phase UI-1(WP-3006)を本書参照へ改版
-5. 実装 WP は Plans.md の queue 規律(WIP=1 / READY≤2)に従い登載後に claim
+2. §0 の unique SSOT topology と §9 の製品判断を human product authority が承認
+3. 選択 topology の全文書を PROPOSED のまま atomic batch としてレビュー
+4. PRC-007 完了後、選択した unique foundation と `docs/ssot_index.md` を同時に APPROVED 化
+5. PLAN-UIUX-001 を unique foundation 参照へ改版し、実装 WP を queue 規律に従って claim
 
 ## 9. Open questions
 
@@ -235,6 +274,10 @@ blockers:
 
 ## 変更履歴
 
+- 0.1.4-draft (2026-08-26): current `c7b6140` へ再同期 — exact11/WP-4254/4255 の
+  historical dirty blocker を除去し、unique SSOT task と UIX-001〜007 の current topology
+  の競合を atomic cutover decision として明示。L0 token の実在する分散 ownership と、
+  Vitest + Playwright/axe の現行 test stack に検証記述を合わせた。
 - 0.1.3-draft (2026-07-31): WP-5101 fresh-context checker(3 lane)findings 反映 —
   EvidenceDrawer から監査メタを削除し UIX-006/SEC-005 の明示禁止へ整合(C-1)、
   Phase A の「全緑=挙動不変」主張を検出力の実態へ訂正し受入へ静的検査+a11y を追加(H-4)、

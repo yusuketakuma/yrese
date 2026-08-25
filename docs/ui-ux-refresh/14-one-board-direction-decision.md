@@ -55,13 +55,13 @@
    enum が存在しない間、UI 側で工程状態を発明しない(捏造禁止)。
 2. **UIX-007 の改版** — 「画面→盤面上の居場所」写像は画面台帳の変更にあたるため、
    APPROVED 改版(PRC-007)後に実装する(台帳にない構成の実装禁止)。
-3. **apps/web の dirty slice(WP-4254/4255)の landing** — 吸収禁止のため、
-   landing 前に UI 実装 WP を発行しない(WP-4253 はローカル commit 済み 9d8dbc0 —
-   2026-07-31 checker M-13 訂正)。
-4. **UIX-008(共通コンポーネントシステム)の昇格** — 13 号 §8 の手順に従う。
-5. U4 該当(患者文脈・薬剤師確認・請求確定・キュー選択=患者取り違え面)は
-   medical_safety_reviewer / privacy_compliance_reviewer / accessibility レビュー+
-   必要な人間承認を実装後に必須(UIX-007 運用ルール)。
+3. **current base の再確認** — historical WP-4253/4254/4255 は current `c7b6140` までに
+   landing 済みであり、この dirty blocker は解消済み。実装着手時は最新 `origin/main` と
+   clean feature worktree を再確認し、concurrent remote change を吸収しない。
+4. **unique UI/UX foundation の atomic cutover** — 13号 §0/§8 の手順に従う。
+5. U3/U4 該当(患者文脈・薬剤師確認・請求確定・キュー選択=患者取り違え面)は、
+   実装着手前に medical_safety / privacy / accessibility の relevant review と必要な human
+   authority の承認を得る。実装後は同じ観点の検証 evidence を独立確認する。
 
 ## 5. 引き継ぐ設計課題(プロトタイプ §整合 より)
 
@@ -79,8 +79,8 @@
 本決定記録(14号)
  → 13号 UIX-008 ドラフト §4 改訂(丁を採用構造として反映)… 本日実施
  → workflow-stage enum SSOT 起案(shared-kernel)… 次の起案対象
- → exact11 / WP-425x landing(dirty ownership 解消)
- → UIX-008 昇格・採番確定・ssot_index 登録(PRC-007)
+ → WP-5101 fresh-context review + human product decision
+ → 13号 §0 で選択した unique UI/UX SSOT topology を atomic PRC-007 batch で承認
  → UIX-006/007・PLAN-UIUX-001 の改版起案(盤面写像・実装波の再編)
  → Plans.md への WP 登載(WIP=1 / READY≤2)→ 実装
 ```
@@ -162,6 +162,9 @@ WP-5113 着手の前提【要設計】。
 
 ## 変更履歴
 
+- 0.2.3 (2026-08-26): current `c7b6140` へ再同期 — WP-4253/4254/4255 の historical
+  dirty prerequisite を satisfied とし、次工程を WP-5101 review と unique SSOT atomic
+  cutover へ更新。丁の構造決定・未決事項・実装 stop condition は変更していない。
 - 0.2.2 (2026-07-31): WP-5101 fresh-context checker(3 lane)findings 反映 —
   §2-5 確定演出へ D-2 2段分離と chip 併置・形状+文言+確認者の三重表現を反映(H-2 / P-05/06/07)、
   §2-2 写像表のリポジトリ外 Artifact 依存を blocker 化(H-3)、§7.1 へ投影の安全不変量(M-6)・

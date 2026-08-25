@@ -1,7 +1,23 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-23, interoperability-first session):** This block alone
+> **ACTIVE SNAPSHOT (2026-08-26, WP-5101 UI/UX review checkpoint):** This block alone
 > is current. Everything below is nonauthoritative.
+
+- **Direction / ownership:** current direct user instruction selects WP-5101 PLAN_ONLY.
+  Codex root is the sole `active_root_writer`; delegated reviewers are read-only.
+- **Git boundary:** `main` and `origin/main` are
+  `c7b61406c6f6e58363139e3dced79c62f30cebf5`. Candidate work is isolated on
+  `feature/wp-5101-uiux-review` and owns exact five paths: `Plans.md`, `State.md`, and
+  `docs/ui-ux-refresh/13-ui-component-system-ssot-draft.md`,
+  `14-one-board-direction-decision.md`, `15-workflow-stage-enum-ssot-draft.md`.
+- **Current gate:** no APPROVED SSOT, product code, schema, migration, or production data
+  is changed. Candidate A/B product selection, PRC-007 approval, and applicable
+  medical-safety/privacy/accessibility/pharmacist human authorization remain open.
+- **Landing / remote:** no main merge is permitted before those gates. Draft PR #4
+  (`feat/prescription-draft-persistence`) remains conflicting, failing, and outside the
+  approved durable-writer boundary; do not merge it.
+
+### PREVIOUS SNAPSHOT (2026-08-23, interoperability-first session) — NONAUTHORITATIVE
 
 - **Direction:** direct user instruction 2026-08-23 — interoperability is the primary
   strength; charter amended in `DEVELOPMENT_POLICY.md`; plan in `Plans.md §16`. Codex lane is
