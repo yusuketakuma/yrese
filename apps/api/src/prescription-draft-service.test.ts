@@ -141,6 +141,29 @@ describe("InMemoryPrescriptionDraftService", () => {
     }
   });
 
+  it("does not create or update a draft for a completed reception", async () => {
+    const audit = new InMemoryAuditRepository();
+    const service = new InMemoryPrescriptionDraftService(
+      new InMemoryReceptionRepository(),
+      audit,
+    );
+    const completedScope = {
+      ...scope,
+      receptionId: receptionId("reception-syn-003"),
+      patientId: patientId("patient-syn-003"),
+    };
+
+    await expect(
+      service.save({ ...input(0), ...completedScope }),
+    ).resolves.toEqual({ kind: "not_found" });
+    expect(
+      await audit.list({
+        tenantId: scope.tenantId,
+        pharmacyId: scope.pharmacyId,
+      }),
+    ).toEqual([]);
+  });
+
   it("serializes concurrent first saves so only one draft is created", async () => {
     const audit = new InMemoryAuditRepository();
     const service = new InMemoryPrescriptionDraftService(
