@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { PatientContextBar, PatientContextProvider } from "./components/patient-context";
+import { PatientContextProvider } from "./components/patient-context";
+import { ScopedPatientContextBar } from "./components/scoped-patient-context-bar";
 import { BusinessNav } from "./nav";
 import { SystemModeBadge } from "./system-mode-badge";
 import "./globals.css";
@@ -26,7 +27,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <SystemModeBadge />
           </header>
           <BusinessNav />
-          <PatientContextBar />
+          <ScopedPatientContextBar />
           <main className="app-main">{children}</main>
         </PatientContextProvider>
       </body>
