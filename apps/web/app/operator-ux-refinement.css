@@ -179,11 +179,21 @@ body {
   font-size: var(--ux-font-small);
 }
 
-.app-workspace:has(.patient-context-bar) .operator-rail,
-.app-workspace:has(.patient-context-bar) .prescription-history-panel,
-.app-workspace:has(.patient-context-bar) .prescription-safety-rail {
+.operator-rail,
+.prescription-history-panel,
+.prescription-safety-rail {
   top: calc(var(--header-height) + var(--ux-patient-bar-offset));
   max-height: calc(100vh - var(--header-height) - var(--ux-patient-bar-offset) - 0.75rem);
+}
+
+/* Safe fallback: browsers without :has() keep the larger offset, avoiding overlap. */
+@supports selector(.app-workspace:has(.patient-context-bar)) {
+  .app-workspace:not(:has(.patient-context-bar)) .operator-rail,
+  .app-workspace:not(:has(.patient-context-bar)) .prescription-history-panel,
+  .app-workspace:not(:has(.patient-context-bar)) .prescription-safety-rail {
+    top: calc(var(--header-height) + 0.75rem);
+    max-height: calc(100vh - var(--header-height) - 1.5rem);
+  }
 }
 
 .screen-title {
@@ -412,10 +422,16 @@ body {
   }
 }
 
+@media (max-width: 1240px) {
+  :root {
+    --ux-patient-bar-offset: 7rem;
+  }
+}
+
 @media (max-width: 1020px) {
-  .app-workspace:has(.patient-context-bar) .operator-rail,
-  .app-workspace:has(.patient-context-bar) .prescription-history-panel,
-  .app-workspace:has(.patient-context-bar) .prescription-safety-rail {
+  .operator-rail,
+  .prescription-history-panel,
+  .prescription-safety-rail {
     top: auto;
     max-height: none;
   }
