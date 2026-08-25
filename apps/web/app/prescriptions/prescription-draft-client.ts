@@ -404,3 +404,13 @@ export function persistentPrescriptionDraftWorkId(
 ): string {
   return `prescription-draft:${patientId}:${receptionId}`;
 }
+
+export function prescriptionDraftRecoveryHref(
+  scope: PrescriptionDraftScope,
+): string {
+  const query = new URLSearchParams({
+    patientId: scope.patientId,
+    date: scope.businessDate,
+  });
+  return `/prescriptions/${encodeURIComponent(scope.receptionId)}?${query}`;
+}
