@@ -1,2 +1,6 @@
+/*
+ * Baseline medical UI styles only. The active operator layer is loaded explicitly from
+ * layout.tsx as operator-first.css followed by operator-ux-refinement.css.
+ * operator.css is retained as an unreferenced experimental draft and must not be loaded here.
+ */
 @import "./legacy.css";
-@import "./operator.css";
