@@ -20,7 +20,20 @@ import {
 export function canOpenPrescriptionFromReception(
   entry: ReceptionQueueEntry,
 ): boolean {
-  return entry.receptionStatus !== "CANCELLED";
+  return (
+    entry.receptionStatus === "WAITING" ||
+    entry.receptionStatus === "IN_PROGRESS"
+  );
+}
+
+function unavailableReason(entry: ReceptionQueueEntry): string {
+  if (entry.receptionStatus === "CANCELLED") {
+    return "取消済み受付から処方入力は開始できません";
+  }
+  if (entry.receptionStatus === "COMPLETED") {
+    return "完了済み受付から新しい処方入力は開始できません";
+  }
+  return "アプリケーションの患者・受付コンテキストが未接続です";
 }
 
 export function ReceptionPrescriptionHandoffAction({
@@ -79,10 +92,7 @@ export function ReceptionPrescriptionHandoffAction({
   }
 
   if (!available) {
-    const reason =
-      entry.receptionStatus === "CANCELLED"
-        ? "取消済み受付から処方入力は開始できません"
-        : "アプリケーションの患者・受付コンテキストが未接続です";
+    const reason = unavailableReason(entry);
     return (
       <button type="button" className="operator-button" disabled title={reason}>
         処方入力へ
