@@ -96,7 +96,19 @@ function rowSignature(row: Pick<DraftRow, "usage" | "days" | "quantity">): strin
 
 export function pastPrescriptionDurationLabel(item: PastPrescription): string {
   const durations = new Set(item.rows.map((row) => row.days.trim()).filter(Boolean));
-  return durations.size === 1 ? `${[...durations][0]}日分` : "日数混在";
+  if (durations.size === 0) return "日数不明";
+  if (durations.size > 1) return "日数混在";
+  const duration = durations.values().next().value;
+  return duration === undefined ? "日数不明" : `${duration}日分`;
+}
+
+export function buildDraftRowsFromPastPrescription(
+  item: PastPrescription,
+): DraftRow[] {
+  return item.rows.map((row, index) => ({
+    id: index + 1,
+    ...row,
+  }));
 }
 
 export function filterPastPrescriptions(
@@ -242,12 +254,7 @@ export function SelectedPatientWorkspaceView({
   function confirmPastPrescription() {
     if (pendingPastPrescription === null) return;
     const item = pendingPastPrescription;
-    setRows(
-      item.rows.map((row, index) => ({
-        id: index + 1,
-        ...row,
-      })),
-    );
+    setRows(buildDraftRowsFromPastPrescription(item));
     setPendingPastPrescription(null);
     setPreviewVisible(false);
     setSavedNotice(
@@ -304,8 +311,8 @@ export function SelectedPatientWorkspaceView({
                     </header>
                     <StatusPill tone="neutral">合成例</StatusPill>
                     <ol>
-                      {item.rows.map((row) => (
-                        <li key={row.drug}>
+                      {item.rows.map((row, index) => (
+                        <li key={`${row.drug}-${index}`}>
                           <strong>{row.drug}</strong>
                           <span>{row.usage}・{row.days}日・{row.quantity}</span>
                         </li>
@@ -362,7 +369,7 @@ export function SelectedPatientWorkspaceView({
               <p>
                 患者: {patient.name}。{pendingPastPrescription.date}（
                 {pastPrescriptionDurationLabel(pendingPastPrescription)}）の構成で、現在の
-                {rows.length}行を置き換えます。まだ入力欄には反映していません。
+                {rows.length}行を置き換えます。薬剤名・用法・日数・数量を比較し、まだ入力欄には反映していません。
               </p>
               <dl className="prescription-replacement-summary">
                 <div><dt>追加</dt><dd>{replacementSummary.added}剤</dd></div>
