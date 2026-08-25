@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, feat/operator-first-ui, "feat/prescription-*"]
+    branches: [main, feat/operator-first-ui]
   pull_request:
 
 permissions:
