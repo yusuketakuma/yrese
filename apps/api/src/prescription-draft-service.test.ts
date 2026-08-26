@@ -19,9 +19,15 @@ import { InMemoryReceptionRepository } from "./reception-repository.js";
 const scope = {
   tenantId: tenantId("tenant-001"),
   pharmacyId: pharmacyId("pharmacy-001"),
+  actorId: userId("actor-test-001"),
   receptionId: receptionId("reception-syn-001"),
-  patientId: patientId("patient-syn-001"),
   businessDate: "2026-07-09",
+  wallClock: "2026-08-25T00:00:09.000Z",
+} as const;
+
+const saveScope = {
+  ...scope,
+  patientId: patientId("patient-syn-001"),
 } as const;
 
 function input(
@@ -29,8 +35,7 @@ function input(
   drugText = "合成薬剤A 5mg",
 ): PrescriptionDraftSaveInput {
   return {
-    ...scope,
-    actorId: userId("actor-test-001"),
+    ...saveScope,
     expectedVersion,
     wallClock: `2026-08-25T00:00:0${Math.min(expectedVersion, 9)}.000Z`,
     draft: {
@@ -53,7 +58,7 @@ function input(
 }
 
 describe("InMemoryPrescriptionDraftService", () => {
-  it("creates, reads, updates, and idempotently replays a scoped draft", async () => {
+  it("creates, reads, updates, and recognizes an unchanged scoped draft", async () => {
     const audit = new InMemoryAuditRepository();
     const service = new InMemoryPrescriptionDraftService(
       new InMemoryReceptionRepository(),
@@ -68,12 +73,11 @@ describe("InMemoryPrescriptionDraftService", () => {
         prescriptionId: "prescription-test-001",
         version: 1,
         saveDisposition: "created",
-        lifecycleStatus: "SERVER_SAVED",
       },
     });
-    await expect(service.save(input(0))).resolves.toMatchObject({
-      kind: "saved",
-      draft: { version: 1, saveDisposition: "replayed" },
+    await expect(service.save(input(0))).resolves.toEqual({
+      kind: "conflict",
+      currentVersion: 1,
     });
     await expect(
       service.save(input(1, "合成薬剤B 10mg")),
@@ -102,6 +106,7 @@ describe("InMemoryPrescriptionDraftService", () => {
     expect(events.map((event) => event.auditEventType)).toEqual([
       "prescription.created",
       "prescription.updated",
+      "prescription.draft.viewed",
     ]);
   });
 
@@ -126,7 +131,7 @@ describe("InMemoryPrescriptionDraftService", () => {
     });
   });
 
-  it("fails closed across tenant, pharmacy, patient, date, and reception boundaries", async () => {
+  it("fails closed across tenant, pharmacy, date, and reception boundaries", async () => {
     const service = new InMemoryPrescriptionDraftService(
       new InMemoryReceptionRepository(),
       new InMemoryAuditRepository(),
@@ -135,8 +140,7 @@ describe("InMemoryPrescriptionDraftService", () => {
     for (const invalidScope of [
       { ...scope, tenantId: tenantId("tenant-other") },
       { ...scope, pharmacyId: pharmacyId("pharmacy-other") },
-      { ...scope, patientId: patientId("patient-syn-002") },
-      { ...scope, receptionId: receptionId("reception-syn-002") },
+      { ...scope, receptionId: receptionId("reception-other") },
       { ...scope, businessDate: "2026-07-10" },
     ]) {
       await expect(
@@ -146,6 +150,54 @@ describe("InMemoryPrescriptionDraftService", () => {
         kind: "not_found",
       });
     }
+
+    await expect(
+      service.save({ ...input(0), patientId: patientId("patient-syn-002") }),
+    ).resolves.toEqual({ kind: "not_found" });
+  });
+
+  it("rejects writes for a terminal reception without recording success", async () => {
+    const audit = new InMemoryAuditRepository();
+    const service = new InMemoryPrescriptionDraftService(
+      new InMemoryReceptionRepository(),
+      audit,
+    );
+    const completedScope = {
+      ...scope,
+      receptionId: receptionId("reception-syn-003"),
+      patientId: patientId("patient-syn-003"),
+    };
+
+    await expect(
+      service.save({ ...input(0), ...completedScope }),
+    ).resolves.toEqual({ kind: "not_found" });
+    await expect(
+      audit.list({ tenantId: scope.tenantId, pharmacyId: scope.pharmacyId }),
+    ).resolves.toEqual([]);
+  });
+
+  it("keeps persisted timestamps monotonic when the wall clock moves backward", async () => {
+    const service = new InMemoryPrescriptionDraftService(
+      new InMemoryReceptionRepository(),
+      new InMemoryAuditRepository(),
+    );
+    await service.save({
+      ...input(0),
+      wallClock: "2026-08-25T00:00:05.000Z",
+    });
+
+    await expect(
+      service.save({
+        ...input(1, "時刻逆行後の更新"),
+        wallClock: "2026-08-25T00:00:04.000Z",
+      }),
+    ).resolves.toMatchObject({
+      kind: "saved",
+      draft: {
+        createdAt: "2026-08-25T00:00:05.000Z",
+        updatedAt: "2026-08-25T00:00:05.000Z",
+      },
+    });
   });
 
   it("serializes concurrent first saves so only one draft is created", async () => {

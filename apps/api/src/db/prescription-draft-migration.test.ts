@@ -24,13 +24,13 @@ describe("000013 prescription draft DDL", () => {
     expect(sql).not.toMatch(/\bJSONB?\b/iu);
   });
 
-  it("bounds draft versions, rows, flags, text, and lifecycle state", async () => {
+  it("bounds draft versions, rows, flags, and text", async () => {
     const sql = await readFile(migrationPath, "utf8");
 
     expect(sql).toContain("version BETWEEN 1 AND 2147483647");
     expect(sql).toContain("row_sequence BETWEEN 1 AND 100");
     expect(sql).toContain("char_length(note) <= 2000");
-    expect(sql).toContain("lifecycle_status IN ('SERVER_SAVED')");
+    expect(sql).not.toContain("lifecycle_status");
     expect(sql).toContain("'LEFTOVER_ADJUSTMENT'");
   });
 

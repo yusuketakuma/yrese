@@ -94,10 +94,9 @@ function prescriptionDraftKey(receptionId, patientId, businessDate) {
   return JSON.stringify([receptionId, patientId, businessDate]);
 }
 
-function matchingReception(receptionId, patientId, businessDate) {
+function matchingReception(receptionId, businessDate) {
   return receptionEntries(businessDate).find(
-    (entry) =>
-      entry.receptionId === receptionId && entry.patient.patientId === patientId,
+    (entry) => entry.receptionId === receptionId,
   );
 }
 
@@ -119,7 +118,6 @@ function makeDraftResponse({
     patientId,
     businessDate,
     version,
-    lifecycleStatus: "SERVER_SAVED",
     draft,
     createdAt,
     updatedAt: draftTimestamp(version),
@@ -223,13 +221,20 @@ const server = createServer(async (request, response) => {
 
   const receptionId = prescriptionDraftPath(url.pathname);
   if (receptionId !== null && method === "GET") {
-    const patientId = url.searchParams.get("patientId");
     const businessDate = url.searchParams.get("date");
     if (
-      patientId === null ||
       businessDate === null ||
-      matchingReception(receptionId, patientId, businessDate) === undefined
+      url.searchParams.size !== 1
     ) {
+      sendJson(request, response, 400, {
+        statusCode: 400,
+        error: "Bad Request",
+        message: "Invalid prescription draft request",
+      });
+      return;
+    }
+    const reception = matchingReception(receptionId, businessDate);
+    if (reception === undefined) {
       sendJson(request, response, 404, {
         statusCode: 404,
         error: "Not Found",
@@ -237,15 +242,13 @@ const server = createServer(async (request, response) => {
       });
       return;
     }
+    const patientId = reception.patient.patientId;
     const record = prescriptionDrafts.get(
       prescriptionDraftKey(receptionId, patientId, businessDate),
     );
     if (record === undefined) {
-      sendJson(request, response, 404, {
-        statusCode: 404,
-        error: "Not Found",
-        message: "Prescription draft context not found",
-      });
+      response.writeHead(204, corsHeaders(request));
+      response.end();
       return;
     }
     sendJson(request, response, 200, record);
@@ -273,13 +276,36 @@ const server = createServer(async (request, response) => {
       typeof businessDate !== "string" ||
       !Number.isInteger(expectedVersion) ||
       draft === null ||
-      typeof draft !== "object" ||
-      matchingReception(receptionId, patientId, businessDate) === undefined
+      typeof draft !== "object"
+    ) {
+      sendJson(request, response, 400, {
+        statusCode: 400,
+        error: "Bad Request",
+        message: "Invalid prescription draft request",
+      });
+      return;
+    }
+    const reception = matchingReception(receptionId, businessDate);
+    if (
+      reception === undefined ||
+      reception.patient.patientId !== patientId
     ) {
       sendJson(request, response, 404, {
         statusCode: 404,
         error: "Not Found",
         message: "Prescription draft context not found",
+      });
+      return;
+    }
+    const ifMatch = request.headers["if-match"];
+    if (
+      (expectedVersion === 0 && ifMatch !== undefined) ||
+      (expectedVersion > 0 && ifMatch !== `"${expectedVersion}"`)
+    ) {
+      sendJson(request, response, 400, {
+        statusCode: 400,
+        error: "Bad Request",
+        message: "Invalid prescription draft request",
       });
       return;
     }
@@ -314,13 +340,6 @@ const server = createServer(async (request, response) => {
     }
 
     const existingContent = JSON.stringify(existing.draft);
-    if (expectedVersion + 1 === existing.version && content === existingContent) {
-      sendJson(request, response, 200, {
-        ...existing,
-        saveDisposition: "replayed",
-      });
-      return;
-    }
     if (expectedVersion !== existing.version) {
       sendJson(request, response, 409, {
         statusCode: 409,

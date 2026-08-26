@@ -224,7 +224,6 @@ export async function loadPrescriptionDraft(
   signal?: AbortSignal,
 ): Promise<PrescriptionDraftResponse | null> {
   const query = new URLSearchParams({
-    patientId: context.patientId,
     date: context.businessDate,
   });
   let response: Response;
@@ -234,7 +233,8 @@ export async function loadPrescriptionDraft(
       cache: "no-store",
       ...(signal === undefined ? {} : { signal }),
     });
-  } catch {
+  } catch (error) {
+    if (signal?.aborted === true) throw error;
     throw new PrescriptionDraftApiError(
       "UNAVAILABLE",
       "処方下書きAPIへ接続できませんでした。",
@@ -286,12 +286,16 @@ export async function savePrescriptionDraft(
       headers: {
         ...devTenantHeaders(WRITE_SCOPES),
         "content-type": "application/json",
+        ...(input.expectedVersion === 0
+          ? {}
+          : { "if-match": `"${input.expectedVersion}"` }),
       },
       cache: "no-store",
       body: JSON.stringify(body),
       ...(signal === undefined ? {} : { signal }),
     });
-  } catch {
+  } catch (error) {
+    if (signal?.aborted === true) throw error;
     throw new PrescriptionDraftApiError(
       "UNAVAILABLE",
       "処方下書きAPIへ接続できませんでした。",

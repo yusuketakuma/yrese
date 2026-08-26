@@ -318,7 +318,6 @@ const SERVER_DRAFT_RESPONSE: PrescriptionDraftResponse = {
   patientId: "patient-1",
   businessDate: "2026-08-26",
   version: 2,
-  lifecycleStatus: "SERVER_SAVED",
   draft: {
     prescriptionType: "OUTPATIENT",
     prescriptionDate: "2026-08-26",

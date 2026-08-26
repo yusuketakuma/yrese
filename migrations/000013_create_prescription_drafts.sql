@@ -16,7 +16,6 @@ CREATE TABLE prescription_drafts (
   patient_id TEXT NOT NULL,
   business_date DATE NOT NULL,
   version INTEGER NOT NULL,
-  lifecycle_status TEXT NOT NULL,
   prescription_type TEXT NOT NULL,
   prescription_date DATE,
   default_days INTEGER,
@@ -57,8 +56,6 @@ CREATE TABLE prescription_drafts (
     CHECK (length(patient_id) > 0),
   CONSTRAINT prescription_drafts_version_positive
     CHECK (version BETWEEN 1 AND 2147483647),
-  CONSTRAINT prescription_drafts_lifecycle_check
-    CHECK (lifecycle_status IN ('SERVER_SAVED')),
   CONSTRAINT prescription_drafts_type_check
     CHECK (prescription_type IN ('UNSPECIFIED', 'OUTPATIENT', 'HOME')),
   CONSTRAINT prescription_drafts_default_days_check
@@ -74,15 +71,6 @@ CREATE TABLE prescription_drafts (
   CONSTRAINT prescription_drafts_time_order
     CHECK (updated_at >= created_at)
 );
-
-CREATE INDEX prescription_drafts_patient_idx
-  ON prescription_drafts (
-    tenant_id,
-    pharmacy_id,
-    patient_id,
-    updated_at DESC,
-    prescription_id
-  );
 
 CREATE TABLE prescription_draft_rows (
   tenant_id TEXT NOT NULL,

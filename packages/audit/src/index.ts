@@ -37,6 +37,7 @@ export const AUDIT_EVENT_TYPES = [
   "reception.queue.viewed",
   "insurance.viewed",
   "insurance.updated",
+  "prescription.draft.viewed",
   "prescription.created",
   "prescription.updated",
   "dispensing.confirmed",

@@ -58,14 +58,6 @@ function routeName(route) {
   return route === "/" ? "reception" : route.slice(1).replaceAll("/", "-");
 }
 
-function isExpectedDraftNotFoundResponse(response) {
-  return (
-    response.status() === 404 &&
-    response.request().method() === "GET" &&
-    response.url().includes("/prescription-drafts/by-reception/")
-  );
-}
-
 function extractLinkedBusinessDate(text) {
   const match = /受付日\s+(\d{4}-\d{2}-\d{2})/u.exec(text ?? "");
   assert(
@@ -77,9 +69,7 @@ function extractLinkedBusinessDate(text) {
 
 async function attachErrorCollection(page, label) {
   page.on("response", (response) => {
-    if (response.status() !== 404 || isExpectedDraftNotFoundResponse(response)) {
-      return;
-    }
+    if (response.status() !== 404) return;
     findings.consoleErrors.push({
       label,
       kind: "network",
@@ -89,15 +79,6 @@ async function attachErrorCollection(page, label) {
   page.on("console", (message) => {
     if (message.type() !== "error") return;
     const text = message.text();
-    // Chromium emits a generic console event for the expected first GET /draft 404.
-    // Exact response URL validation above still records every unexpected 404.
-    if (
-      text.includes(
-        "Failed to load resource: the server responded with a status of 404",
-      )
-    ) {
-      return;
-    }
     findings.consoleErrors.push({
       label,
       kind: "console",

@@ -317,13 +317,6 @@ paths:
             maxLength: 128
           required: true
         - in: query
-          name: patientId
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 128
-          required: true
-        - in: query
           name: date
           schema:
             type: string
@@ -389,6 +382,12 @@ paths:
             minLength: 1
             maxLength: 128
           required: true
+        - in: header
+          name: if-match
+          schema:
+            type: string
+            maxLength: 12
+            pattern: ^"[1-9][0-9]*"$
       requestBody:
         required: true
         content:
@@ -397,7 +396,7 @@ paths:
               $ref: "#/components/schemas/PrescriptionDraftSaveRequest"
       responses:
         "200":
-          description: Prescription draft updated, unchanged, or idempotently replayed
+          description: Prescription draft updated or unchanged
           headers: *a1
           content:
             application/json:
@@ -1016,9 +1015,6 @@ components:
           type: integer
           minimum: 1
           maximum: 2147483647
-        lifecycleStatus:
-          type: string
-          const: SERVER_SAVED
         draft:
           type: object
           properties:
@@ -1117,7 +1113,6 @@ components:
         - patientId
         - businessDate
         - version
-        - lifecycleStatus
         - draft
         - createdAt
         - updatedAt
@@ -1148,9 +1143,6 @@ components:
           type: integer
           minimum: 1
           maximum: 2147483647
-        lifecycleStatus:
-          type: string
-          const: SERVER_SAVED
         draft:
           type: object
           properties:
@@ -1249,14 +1241,12 @@ components:
             - created
             - updated
             - unchanged
-            - replayed
       required:
         - prescriptionId
         - receptionId
         - patientId
         - businessDate
         - version
-        - lifecycleStatus
         - draft
         - createdAt
         - updatedAt
@@ -1264,7 +1254,7 @@ components:
         - updatedBy
         - saveDisposition
       additionalProperties: false
-      description: Prescription draft save result, including created/updated/unchanged/replayed disposition. Contains clinical PHI.
+      description: Prescription draft save result, including created/updated/unchanged disposition. Contains clinical PHI.
     AuditLogResponse:
       type: object
       properties:

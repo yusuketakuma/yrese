@@ -29,5 +29,18 @@ describe("prescription draft OpenAPI projection", () => {
     expect(path?.put?.responses?.["409"]?.headers).toHaveProperty(
       "Cache-Control",
     );
+    expect(path?.put?.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          in: "header",
+          name: "if-match",
+        }),
+      ]),
+    );
+    expect(
+      path?.put?.parameters?.find(
+        (parameter) => "name" in parameter && parameter.name === "if-match",
+      ),
+    ).not.toMatchObject({ required: true });
   });
 });

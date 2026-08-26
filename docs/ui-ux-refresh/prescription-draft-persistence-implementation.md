@@ -7,11 +7,11 @@ This implementation adds a server-saved, versioned prescription draft for the ex
 ```text
 /prescriptions/[receptionId]
   -> authenticated reception queue lookup
-  -> exact tenant + pharmacy + reception + patient + business-date match
+  -> exact tenant + pharmacy + reception + business-date match; patient derived server-side
   -> GET/PUT /prescription-drafts/by-reception/:receptionId
   -> PrescriptionDraftService
   -> prescription_drafts / prescription_draft_rows / prescription_draft_flags
-  -> prescription.created / prescription.updated audit evidence
+  -> prescription.created / prescription.updated / prescription.draft.viewed audit evidence
 ```
 
 The route and body identifiers select a candidate only. They never replace the authenticated tenant/pharmacy context or the patient identity returned by the reception contract.
@@ -22,8 +22,8 @@ The route and body identifiers select a candidate only. They never replace the a
 - exact reception/patient/business-date revalidation
 - structured PostgreSQL tables for metadata, RP rows, and bounded draft flags
 - optimistic concurrency using `expectedVersion`
-- idempotent replay for an already committed identical payload
-- atomic `prescription.created` / `prescription.updated` audit evidence in PostgreSQL mode
+- stale writes conflict even when their payload matches; no retry is claimed without an idempotency key
+- atomic write and successful-read audit evidence in PostgreSQL mode
 - fixed PHI-free 400/404/409 responses and `Cache-Control: no-store`
 - real-calendar validation for business and prescription dates
 - in-memory and PostgreSQL implementations with the same result semantics
@@ -31,14 +31,14 @@ The route and body identifiers select a candidate only. They never replace the a
 ## HTTP contract
 
 ```text
-GET /prescription-drafts/by-reception/:receptionId?patientId=...&date=YYYY-MM-DD
+GET /prescription-drafts/by-reception/:receptionId?date=YYYY-MM-DD
 PUT /prescription-drafts/by-reception/:receptionId
 ```
 
 Required read scopes: `prescription:read`, `reception:read`, `patient:read`.
 Required write scopes: `prescription:write`, `reception:read`, `patient:read`.
 
-A first save uses `expectedVersion: 0`. A subsequent save must use the version returned by the server. A stale version returns 409 without returning the current clinical payload. Retrying an identical request after an already committed save returns `saveDisposition: replayed` without another mutation or audit event.
+A first save uses `expectedVersion: 0` without `If-Match`. A subsequent save must use the version returned by the server and send the same quoted version in `If-Match`. A stale version returns 409 without returning the current clinical payload. This endpoint does not claim retryable-create behavior while API-013 retention remains unresolved.
 
 ## Database boundary
 

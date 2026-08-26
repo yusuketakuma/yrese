@@ -31,7 +31,6 @@ interface MetadataRow {
   readonly patient_id: string;
   readonly business_date: string;
   readonly version: number;
-  readonly lifecycle_status: string;
   readonly prescription_type: string;
   readonly prescription_date: string | null;
   readonly default_days: number | null;
@@ -64,6 +63,7 @@ async function selectMetadata(
   client: PoolClient,
   input: PrescriptionDraftLookupInput,
   lock: boolean,
+  expectedPatientId?: string,
 ): Promise<MetadataRow | undefined> {
   const result = await client.query<MetadataRow>(
     `SELECT
@@ -72,7 +72,6 @@ async function selectMetadata(
        patient_id,
        business_date::text AS business_date,
        version,
-       lifecycle_status,
        prescription_type,
        prescription_date::text AS prescription_date,
        default_days,
@@ -86,14 +85,14 @@ async function selectMetadata(
      WHERE tenant_id = $1
        AND pharmacy_id = $2
        AND reception_id = $3
-       AND patient_id = $4
+       AND ($4::text IS NULL OR patient_id = $4)
        AND business_date = $5::date
      ${lock ? "FOR UPDATE" : ""}`,
     [
       input.tenantId,
       input.pharmacyId,
       input.receptionId,
-      input.patientId,
+      expectedPatientId ?? null,
       input.businessDate,
     ],
   );
@@ -106,26 +105,31 @@ async function selectMetadata(
 async function receptionMatches(
   client: PoolClient,
   input: PrescriptionDraftLookupInput,
-  lock: boolean,
-): Promise<boolean> {
-  const result = await client.query<{ readonly reception_id: string }>(
-    `SELECT reception_id
+  requireEditable: boolean,
+  expectedPatientId?: string,
+): Promise<{ readonly patientId: string } | undefined> {
+  const result = await client.query<{ readonly patient_id: string }>(
+    `SELECT patient_id
        FROM reception_entries
       WHERE tenant_id = $1
         AND pharmacy_id = $2
         AND reception_id = $3
-        AND patient_id = $4
-        AND business_date = $5::date
-      ${lock ? "FOR NO KEY UPDATE" : ""}`,
+        AND business_date = $4::date
+        AND ($5::text IS NULL OR patient_id = $5)
+        AND ($6::boolean = false OR reception_status IN ('WAITING', 'IN_PROGRESS'))
+      ${requireEditable ? "FOR NO KEY UPDATE" : ""}`,
     [
       input.tenantId,
       input.pharmacyId,
       input.receptionId,
-      input.patientId,
       input.businessDate,
+      expectedPatientId ?? null,
+      requireEditable,
     ],
   );
-  return result.rows.length === 1;
+  const [row] = result.rows;
+  if (row === undefined || result.rows.length !== 1) return undefined;
+  return { patientId: row.patient_id };
 }
 
 async function readDraft(
@@ -162,13 +166,12 @@ async function readDraft(
   );
 
   try {
-    return prescriptionDraftResponseSchema.parse({
+    const response = prescriptionDraftResponseSchema.parse({
       prescriptionId: row.prescription_id,
       receptionId: row.reception_id,
       patientId: row.patient_id,
       businessDate: row.business_date,
       version: row.version,
-      lifecycleStatus: row.lifecycle_status,
       draft: {
         prescriptionType: row.prescription_type,
         prescriptionDate: row.prescription_date,
@@ -194,6 +197,10 @@ async function readDraft(
       createdBy: row.created_by,
       updatedBy: row.updated_by,
     });
+    if (prescriptionDraftContentHash(response.draft) !== row.content_hash) {
+      throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+    }
+    return response;
   } catch {
     throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
   }
@@ -260,13 +267,30 @@ export class PostgresPrescriptionDraftService
     let destroyClient = false;
     try {
       await client.query(
-        "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY",
+        "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ",
       );
-      if (!(await receptionMatches(client, input, false))) {
+      const reception = await receptionMatches(client, input, false);
+      if (reception === undefined) {
         await client.query("COMMIT");
         return { kind: "not_found" };
       }
       const draft = await readDraft(client, input);
+      if (draft !== undefined && draft.patientId !== reception.patientId) {
+        throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+      }
+      if (draft !== undefined) {
+        await appendAuditEventWithinTransaction(
+          client,
+          { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+          {
+            actorId: input.actorId,
+            auditEventType: "prescription.draft.viewed",
+            targetRef: { kind: "prescription", id: draft.prescriptionId },
+            outcome: "success",
+            wallClock: input.wallClock,
+          },
+        );
+      }
       await client.query("COMMIT");
       return draft === undefined
         ? { kind: "empty" }
@@ -297,12 +321,20 @@ export class PostgresPrescriptionDraftService
       // Serializes all draft writers for the same verified reception row. This closes the
       // create/create race before either transaction decides that no draft exists while still
       // permitting unrelated receptions to proceed concurrently.
-      if (!(await receptionMatches(client, input, true))) {
+      if (
+        (await receptionMatches(client, input, true, input.patientId)) ===
+        undefined
+      ) {
         await client.query("ROLLBACK");
         return { kind: "not_found" };
       }
 
-      const existing = await selectMetadata(client, input, true);
+      const existing = await selectMetadata(
+        client,
+        input,
+        true,
+        input.patientId,
+      );
       if (existing === undefined) {
         if (input.expectedVersion !== 0) {
           await client.query("ROLLBACK");
@@ -312,11 +344,11 @@ export class PostgresPrescriptionDraftService
         await client.query(
           `INSERT INTO prescription_drafts (
              tenant_id, pharmacy_id, prescription_id, reception_id, patient_id,
-             business_date, version, lifecycle_status, prescription_type,
+             business_date, version, prescription_type,
              prescription_date, default_days, note, content_hash,
              created_at, updated_at, created_by, updated_by
            ) VALUES (
-             $1, $2, $3, $4, $5, $6::date, 1, 'SERVER_SAVED', $7,
+             $1, $2, $3, $4, $5, $6::date, 1, $7,
              $8::date, $9, $10, $11, $12, $12, $13, $13
            )`,
           [
@@ -361,22 +393,9 @@ export class PostgresPrescriptionDraftService
         };
       }
 
-      if (
-        input.expectedVersion + 1 === existing.version &&
-        existing.content_hash === contentHash
-      ) {
-        const response = await readDraft(client, input, existing);
-        if (response === undefined) {
-          throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
-        }
-        await client.query("COMMIT");
-        return {
-          kind: "saved",
-          draft: prescriptionDraftSaveResponseSchema.parse({
-            ...response,
-            saveDisposition: "replayed",
-          }),
-        };
+      const existingResponse = await readDraft(client, input, existing);
+      if (existingResponse === undefined) {
+        throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
       }
 
       if (input.expectedVersion !== existing.version) {
@@ -385,15 +404,11 @@ export class PostgresPrescriptionDraftService
       }
 
       if (existing.content_hash === contentHash) {
-        const response = await readDraft(client, input, existing);
-        if (response === undefined) {
-          throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
-        }
         await client.query("COMMIT");
         return {
           kind: "saved",
           draft: prescriptionDraftSaveResponseSchema.parse({
-            ...response,
+            ...existingResponse,
             saveDisposition: "unchanged",
           }),
         };
@@ -411,7 +426,7 @@ export class PostgresPrescriptionDraftService
                 default_days = $9,
                 note = $10,
                 content_hash = $11,
-                updated_at = $12,
+                updated_at = GREATEST(updated_at, $12::timestamptz),
                 updated_by = $13
           WHERE tenant_id = $1
             AND pharmacy_id = $2

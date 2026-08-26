@@ -8,6 +8,7 @@ import {
   type PrescriptionDraftContent,
   type PrescriptionDraftResponse,
   type PrescriptionDraftSaveResponse,
+  type ReceptionQueueEntry,
 } from "@yrese/contracts";
 import {
   prescriptionId,
@@ -25,13 +26,14 @@ import type { ReceptionRepository } from "./reception-repository.js";
 export interface PrescriptionDraftLookupInput {
   readonly tenantId: TenantId;
   readonly pharmacyId: PharmacyId;
+  readonly actorId: UserId;
   readonly receptionId: ReceptionId;
-  readonly patientId: PatientId;
   readonly businessDate: string;
+  readonly wallClock: string;
 }
 
 export interface PrescriptionDraftSaveInput extends PrescriptionDraftLookupInput {
-  readonly actorId: UserId;
+  readonly patientId: PatientId;
   readonly expectedVersion: number;
   readonly draft: PrescriptionDraftContent;
   readonly wallClock: string;
@@ -97,16 +99,19 @@ function scopeKey(input: PrescriptionDraftLookupInput): string {
 async function receptionMatches(
   repository: ReceptionRepository,
   input: PrescriptionDraftLookupInput,
-): Promise<boolean> {
+  requireEditable: boolean,
+): Promise<ReceptionQueueEntry | undefined> {
   const entries = await repository.list({
     tenantId: input.tenantId,
     pharmacyId: input.pharmacyId,
     date: input.businessDate,
   });
-  return entries.some(
+  return entries.find(
     (entry) =>
       entry.receptionId === input.receptionId &&
-      entry.patient.patientId === input.patientId,
+      (!requireEditable ||
+        entry.receptionStatus === "WAITING" ||
+        entry.receptionStatus === "IN_PROGRESS"),
   );
 }
 
@@ -151,16 +156,31 @@ export class InMemoryPrescriptionDraftService
   async get(
     input: PrescriptionDraftLookupInput,
   ): Promise<PrescriptionDraftLookupResult> {
-    if (!(await receptionMatches(this.receptionRepository, input))) {
+    const reception = await receptionMatches(
+      this.receptionRepository,
+      input,
+      false,
+    );
+    if (reception === undefined) {
       return { kind: "not_found" };
     }
     const record = this.records.get(scopeKey(input));
-    return record === undefined
-      ? { kind: "empty" }
-      : {
-          kind: "found",
-          draft: prescriptionDraftResponseSchema.parse(record.response),
-        };
+    if (record === undefined) return { kind: "empty" };
+    const draft = prescriptionDraftResponseSchema.parse(record.response);
+    if (draft.patientId !== reception.patient.patientId) {
+      throw new Error("In-memory prescription draft reception mismatch");
+    }
+    await this.auditRepository.record(
+      { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+      {
+        actorId: input.actorId,
+        auditEventType: "prescription.draft.viewed",
+        targetRef: { kind: "prescription", id: draft.prescriptionId },
+        outcome: "success",
+        wallClock: input.wallClock,
+      },
+    );
+    return { kind: "found", draft };
   }
 
   async save(
@@ -168,7 +188,15 @@ export class InMemoryPrescriptionDraftService
   ): Promise<PrescriptionDraftSaveResult> {
     const key = scopeKey(input);
     return this.withKeyLock(key, async () => {
-      if (!(await receptionMatches(this.receptionRepository, input))) {
+      const reception = await receptionMatches(
+        this.receptionRepository,
+        input,
+        true,
+      );
+      if (
+        reception === undefined ||
+        reception.patient.patientId !== input.patientId
+      ) {
         return { kind: "not_found" };
       }
 
@@ -197,7 +225,6 @@ export class InMemoryPrescriptionDraftService
           patientId: input.patientId,
           businessDate: input.businessDate,
           version: 1,
-          lifecycleStatus: "SERVER_SAVED",
           draft: normalized,
           createdAt: input.wallClock,
           updatedAt: input.wallClock,
@@ -210,19 +237,6 @@ export class InMemoryPrescriptionDraftService
           draft: prescriptionDraftSaveResponseSchema.parse({
             ...response,
             saveDisposition: "created",
-          }),
-        };
-      }
-
-      if (
-        input.expectedVersion + 1 === existing.response.version &&
-        existing.contentHash === contentHash
-      ) {
-        return {
-          kind: "saved",
-          draft: prescriptionDraftSaveResponseSchema.parse({
-            ...existing.response,
-            saveDisposition: "replayed",
           }),
         };
       }
@@ -265,7 +279,12 @@ export class InMemoryPrescriptionDraftService
         ...existing.response,
         version: existing.response.version + 1,
         draft: normalized,
-        updatedAt: input.wallClock,
+        updatedAt: new Date(
+          Math.max(
+            Date.parse(existing.response.updatedAt),
+            Date.parse(input.wallClock),
+          ),
+        ).toISOString(),
         updatedBy: input.actorId,
       });
       this.records.set(key, { response, contentHash });

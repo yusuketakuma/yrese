@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   PRESCRIPTION_DRAFT_NOTE_MAX_LENGTH,
   prescriptionDraftContentSchema,
+  prescriptionDraftQuerySchema,
   prescriptionDraftResponseSchema,
   prescriptionDraftSaveRequestSchema,
 } from "./prescription-draft.js";
@@ -25,6 +26,18 @@ const validDraft = {
 } as const;
 
 describe("prescription draft contracts", () => {
+  it("keeps patient identifiers out of the read URL", () => {
+    expect(prescriptionDraftQuerySchema.parse({ date: "2026-08-25" })).toEqual({
+      date: "2026-08-25",
+    });
+    expect(() =>
+      prescriptionDraftQuerySchema.parse({
+        patientId: "patient-test-001",
+        date: "2026-08-25",
+      }),
+    ).toThrow();
+  });
+
   it("accepts a bounded versioned draft request and normalizes edge whitespace", () => {
     const parsed = prescriptionDraftSaveRequestSchema.parse({
       patientId: "patient-test-001",
@@ -70,7 +83,22 @@ describe("prescription draft contracts", () => {
     ).toThrow();
   });
 
-  it("requires persisted identity, version, lifecycle, and actor metadata", () => {
+  it("uses JSON Schema code-point length for clinical text", () => {
+    expect(
+      prescriptionDraftContentSchema.parse({
+        ...validDraft,
+        note: "😀".repeat(PRESCRIPTION_DRAFT_NOTE_MAX_LENGTH),
+      }).note,
+    ).toHaveLength(PRESCRIPTION_DRAFT_NOTE_MAX_LENGTH * 2);
+    expect(() =>
+      prescriptionDraftContentSchema.parse({
+        ...validDraft,
+        note: "😀".repeat(PRESCRIPTION_DRAFT_NOTE_MAX_LENGTH + 1),
+      }),
+    ).toThrow();
+  });
+
+  it("requires persisted identity, version, and actor metadata", () => {
     expect(
       prescriptionDraftResponseSchema.parse({
         prescriptionId: "prescription-test-001",
@@ -78,7 +106,6 @@ describe("prescription draft contracts", () => {
         patientId: "patient-test-001",
         businessDate: "2026-08-25",
         version: 1,
-        lifecycleStatus: "SERVER_SAVED",
         draft: validDraft,
         createdAt: "2026-08-25T00:00:00.000Z",
         updatedAt: "2026-08-25T00:00:00.000Z",
@@ -88,7 +115,6 @@ describe("prescription draft contracts", () => {
     ).toMatchObject({
       prescriptionId: "prescription-test-001",
       version: 1,
-      lifecycleStatus: "SERVER_SAVED",
     });
   });
 });

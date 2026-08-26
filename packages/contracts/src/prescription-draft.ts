@@ -47,7 +47,14 @@ export const prescriptionDraftFlagSchema = z.enum([
 
 export type PrescriptionDraftFlag = z.infer<typeof prescriptionDraftFlagSchema>;
 
-const normalizedDraftText = (maximum: number) => z.string().max(maximum).trim();
+const normalizedDraftText = (maximum: number) =>
+  z
+    .string()
+    .refine((value) => Array.from(value).length <= maximum, {
+      message: `text must contain at most ${maximum} Unicode code points`,
+    })
+    .trim()
+    .meta({ maxLength: maximum });
 
 export const prescriptionDraftRowSchema = z.object({
   sequence: z.number().int().min(1).max(PRESCRIPTION_DRAFT_MAX_ROWS),
@@ -105,9 +112,16 @@ export const prescriptionDraftParamsSchema = z.object({
   receptionId: receptionIdWireSchema,
 });
 
-export const prescriptionDraftQuerySchema = z.object({
-  patientId: patientIdWireSchema,
-  date: calendarDateWireSchema,
+export const prescriptionDraftQuerySchema = z
+  .object({ date: calendarDateWireSchema })
+  .strict();
+
+export const prescriptionDraftUpdateHeadersSchema = z.object({
+  "if-match": z
+    .string()
+    .regex(/^"[1-9][0-9]*"$/u)
+    .max(12)
+    .optional(),
 });
 
 export const prescriptionDraftSaveRequestSchema = z.object({
@@ -135,7 +149,6 @@ export const prescriptionDraftResponseSchema = z.object({
     .int()
     .min(1)
     .max(PRESCRIPTION_DRAFT_MAX_VERSION),
-  lifecycleStatus: z.literal("SERVER_SAVED"),
   draft: prescriptionDraftContentSchema,
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -149,7 +162,7 @@ export type PrescriptionDraftResponse = z.infer<
 
 export const prescriptionDraftSaveResponseSchema =
   prescriptionDraftResponseSchema.extend({
-    saveDisposition: z.enum(["created", "updated", "unchanged", "replayed"]),
+    saveDisposition: z.enum(["created", "updated", "unchanged"]),
   });
 
 export type PrescriptionDraftSaveResponse = z.infer<

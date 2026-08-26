@@ -19,6 +19,7 @@ import {
   prescriptionDraftResponseSchema,
   prescriptionDraftSaveRequestSchema,
   prescriptionDraftSaveResponseSchema,
+  prescriptionDraftUpdateHeadersSchema,
 } from "./prescription-draft.js";
 import {
   receptionCreateRequestSchema,
@@ -141,9 +142,15 @@ const prescriptionDraftParamsOpenApiSchema = prescriptionDraftParamsSchema.meta(
 
 const prescriptionDraftQueryOpenApiSchema = prescriptionDraftQuerySchema.meta({
   id: "PrescriptionDraftQuery",
-  description:
-    "Patient and business-date selectors. The authenticated tenant and pharmacy remain authoritative.",
+  description: "Business-date selector. Patient identity is derived from the verified reception.",
 });
+
+const prescriptionDraftUpdateHeadersOpenApiSchema =
+  prescriptionDraftUpdateHeadersSchema.meta({
+    id: "PrescriptionDraftUpdateHeaders",
+    description:
+      'If-Match is absent for the first save and must equal the quoted expectedVersion for updates, for example "2".',
+  });
 
 const prescriptionDraftSaveRequestOpenApiSchema =
   prescriptionDraftSaveRequestSchema.meta({
@@ -162,7 +169,7 @@ const prescriptionDraftSaveResponseOpenApiSchema =
   prescriptionDraftSaveResponseSchema.meta({
     id: "PrescriptionDraftSaveResponse",
     description:
-      "Prescription draft save result, including created/updated/unchanged/replayed disposition. Contains clinical PHI.",
+      "Prescription draft save result, including created/updated/unchanged disposition. Contains clinical PHI.",
   });
 
 const auditLogQueryOpenApiSchema = auditLogQuerySchema.meta({
@@ -512,6 +519,7 @@ const openApiDefinition = {
         ],
         requestParams: {
           path: prescriptionDraftParamsOpenApiSchema,
+          header: prescriptionDraftUpdateHeadersOpenApiSchema,
         },
         requestBody: {
           required: true,
@@ -532,7 +540,7 @@ const openApiDefinition = {
             },
           },
           "200": {
-            description: "Prescription draft updated, unchanged, or idempotently replayed",
+            description: "Prescription draft updated or unchanged",
             headers: noStoreHeaders,
             content: {
               [jsonContentType]: {

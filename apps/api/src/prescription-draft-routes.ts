@@ -89,6 +89,15 @@ function snapshotWallClock(now: () => Date): string {
   return value.toISOString();
 }
 
+function hasMatchingUpdatePrecondition(
+  ifMatch: string | string[] | undefined,
+  expectedVersion: number,
+): boolean {
+  return expectedVersion === 0
+    ? ifMatch === undefined
+    : ifMatch === `"${expectedVersion}"`;
+}
+
 const callback: FastifyPluginCallback<PrescriptionDraftRoutesOptions> = (
   server,
   options,
@@ -121,9 +130,10 @@ const callback: FastifyPluginCallback<PrescriptionDraftRoutesOptions> = (
       const result = await options.service.get({
         tenantId: tenantContext.tenantId,
         pharmacyId: tenantContext.pharmacyId,
+        actorId: tenantContext.actorId,
         receptionId: receptionId(params.data.receptionId),
-        patientId: patientId(query.data.patientId),
         businessDate: query.data.date,
+        wallClock: snapshotWallClock(now),
       });
       if (result.kind === "not_found") return notFound(reply);
       if (result.kind === "empty") return reply.code(204).send();
@@ -151,7 +161,16 @@ const callback: FastifyPluginCallback<PrescriptionDraftRoutesOptions> = (
 
       const params = prescriptionDraftParamsSchema.safeParse(request.params);
       const body = prescriptionDraftSaveRequestSchema.safeParse(request.body);
-      if (!params.success || !body.success) return invalidRequest(reply);
+      if (
+        !params.success ||
+        !body.success ||
+        !hasMatchingUpdatePrecondition(
+          request.headers["if-match"],
+          body.data.expectedVersion,
+        )
+      ) {
+        return invalidRequest(reply);
+      }
 
       const result = await options.service.save({
         tenantId: tenantContext.tenantId,

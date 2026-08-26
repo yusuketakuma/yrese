@@ -44,7 +44,10 @@ import {
   prescriptionDraftSnapshotsEqual,
   savePrescriptionDraft,
 } from "./prescription-draft-persistence";
-import type { PrescriptionDraftResponse } from "@yrese/contracts";
+import type {
+  PrescriptionDraftResponse,
+  PrescriptionDraftSaveResponse,
+} from "@yrese/contracts";
 import { useOptionalPrescriptionOrigin } from "./prescription-origin-context";
 import {
   type DraftRow,
@@ -81,22 +84,23 @@ type DraftLoadState =
   | { readonly kind: "ready" }
   | { readonly kind: "error"; readonly error: PrescriptionDraftApiError };
 
+type DraftSaveDisposition = PrescriptionDraftSaveResponse["saveDisposition"];
+
 type DraftSaveState =
   | { readonly kind: "idle" }
   | { readonly kind: "saving" }
   | {
       readonly kind: "saved";
-      readonly disposition: "created" | "updated" | "unchanged" | "replayed";
+      readonly disposition: DraftSaveDisposition;
     }
   | { readonly kind: "conflict" }
   | { readonly kind: "error"; readonly error: PrescriptionDraftApiError };
 
 function saveDispositionLabel(
-  disposition: "created" | "updated" | "unchanged" | "replayed",
+  disposition: DraftSaveDisposition,
 ): string {
   if (disposition === "created") return "新規下書きを保存しました";
   if (disposition === "updated") return "下書きを更新しました";
-  if (disposition === "replayed") return "直前の保存結果を再確認しました";
   return "サーバー上の下書きは変更ありません";
 }
 

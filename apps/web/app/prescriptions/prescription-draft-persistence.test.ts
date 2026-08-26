@@ -24,7 +24,6 @@ const serverDraft: PrescriptionDraftResponse = {
   patientId: context.patientId,
   businessDate: context.businessDate,
   version: 2,
-  lifecycleStatus: "SERVER_SAVED",
   draft: {
     prescriptionType: "OUTPATIENT",
     prescriptionDate: "2026-08-25",
@@ -81,7 +80,7 @@ describe("prescription draft web persistence", () => {
     );
   });
 
-  it("loads through the existing API transport with patient-scoped no-store query", async () => {
+  it("loads through the existing API transport without putting patient ID in the URL", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
     const calls: Array<{
@@ -97,7 +96,7 @@ describe("prescription draft web persistence", () => {
       serverDraft,
     );
     expect(String(calls[0]?.input)).toBe(
-      "/_yrese-api/prescription-drafts/by-reception/reception-test-001?patientId=patient-test-001&date=2026-08-25",
+      "/_yrese-api/prescription-drafts/by-reception/reception-test-001?date=2026-08-25",
     );
     expect(calls[0]?.init?.cache).toBe("no-store");
     const headers = new Headers(calls[0]?.init?.headers);
@@ -128,7 +127,33 @@ describe("prescription draft web persistence", () => {
     });
   });
 
-  it("sends expectedVersion and maps a stale writer to a fixed conflict", async () => {
+  it("preserves intentional request cancellation", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const controller = new AbortController();
+    const aborted = new DOMException("Aborted", "AbortError");
+    controller.abort();
+    const fetchImpl: typeof fetch = async () => {
+      throw aborted;
+    };
+
+    await expect(
+      loadPrescriptionDraft(context, fetchImpl, controller.signal),
+    ).rejects.toBe(aborted);
+    await expect(
+      savePrescriptionDraft(
+        context,
+        {
+          expectedVersion: 2,
+          snapshot: fromPrescriptionDraftResponse(serverDraft),
+        },
+        fetchImpl,
+        controller.signal,
+      ),
+    ).rejects.toBe(aborted);
+  });
+
+  it("sends the update precondition and maps a stale writer to a fixed conflict", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
     const calls: Array<{
@@ -154,6 +179,7 @@ describe("prescription draft web persistence", () => {
       status: 409,
     });
     expect(calls[0]?.init?.method).toBe("PUT");
+    expect(new Headers(calls[0]?.init?.headers).get("if-match")).toBe('"2"');
     expect(JSON.parse(String(calls[0]?.init?.body))).toMatchObject({
       patientId: context.patientId,
       businessDate: context.businessDate,

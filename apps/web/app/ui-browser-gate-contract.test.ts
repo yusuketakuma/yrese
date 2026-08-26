@@ -50,7 +50,6 @@ describe("UI browser validation gate", () => {
     expect(browserCheck).toContain("waitForPersistedDraft");
     expect(browserCheck).toContain("data-server-draft-version");
     expect(browserCheck).toContain("data-unsaved-draft");
-    expect(browserCheck).toContain("isExpectedDraftNotFoundResponse");
     expect(browserCheck).toContain("extractLinkedBusinessDate");
     expect(browserCheck).toContain("linkedBusinessDate");
     expect(browserCheck).toContain(
@@ -75,6 +74,10 @@ describe("UI browser validation gate", () => {
     expect(fixtureApi).toContain('url.pathname === "/reception/queue"');
     expect(fixtureApi).toContain("/prescription-drafts/by-reception/");
     expect(fixtureApi).toContain("expectedVersion");
+    expect(fixtureApi).toContain('request.headers["if-match"]');
+    expect(fixtureApi).toContain("response.writeHead(204");
+    expect(fixtureApi).not.toContain('saveDisposition: "replayed"');
+    expect(browserCheck).not.toContain("isExpectedDraftNotFoundResponse");
     expect(fixtureApi).toContain("tenant-e2e");
     expect(fixtureApi).toContain('service: "api"');
     expect(fixtureApi).toContain("127.0.0.1");

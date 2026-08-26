@@ -8,7 +8,9 @@ import {
 } from "@yrese/contracts";
 import {
   AUTH_PERMISSION_DENIED_ERROR_CODE,
+  pharmacyId,
   prescriptionId,
+  tenantId,
 } from "@yrese/shared-kernel";
 
 import { InMemoryAuditRepository } from "./audit-repository.js";
@@ -50,6 +52,8 @@ const baseBody = {
   },
 } as const;
 
+const auditByServer = new WeakMap<object, InMemoryAuditRepository>();
+
 function buildPrescriptionDraftTestServer() {
   const receptionRepository = new InMemoryReceptionRepository();
   const auditRepository = new InMemoryAuditRepository();
@@ -70,6 +74,7 @@ function buildPrescriptionDraftTestServer() {
     ),
     now: () => new Date("2026-08-25T00:00:00.000Z"),
   });
+  auditByServer.set(server, auditRepository);
   return server;
 }
 
@@ -92,7 +97,7 @@ describe("prescription draft routes", () => {
       method: "GET",
       url:
         "/prescription-drafts/by-reception/reception-syn-001" +
-        "?patientId=patient-syn-001&date=2026-07-09",
+        "?date=2026-07-09",
       headers: authorizedHeaders,
     });
 
@@ -121,7 +126,7 @@ describe("prescription draft routes", () => {
       method: "GET",
       url:
         "/prescription-drafts/by-reception/reception-syn-001" +
-        "?patientId=patient-syn-001&date=2026-07-09",
+        "?date=2026-07-09",
       headers: authorizedHeaders,
     });
 
@@ -131,6 +136,15 @@ describe("prescription draft routes", () => {
       prescriptionId: "prescription-route-test-001",
       version: 1,
     });
+    await expect(
+      auditByServer.get(instance)?.list({
+        tenantId: tenantId("tenant-001"),
+        pharmacyId: pharmacyId("pharmacy-001"),
+      }),
+    ).resolves.toMatchObject([
+      { auditEventType: "prescription.created" },
+      { auditEventType: "prescription.draft.viewed" },
+    ]);
   });
 
   it("returns 409 on stale content without echoing draft PHI", async () => {
@@ -164,6 +178,37 @@ describe("prescription draft routes", () => {
       error: "Conflict",
       message: "Prescription draft version conflict",
     });
+  });
+
+  it("requires a matching If-Match precondition for updates", async () => {
+    const instance = server();
+    await instance.inject({
+      method: "PUT",
+      url: "/prescription-drafts/by-reception/reception-syn-001",
+      headers: authorizedHeaders,
+      payload: baseBody,
+    });
+    const update = {
+      ...baseBody,
+      expectedVersion: 1,
+      draft: { ...baseBody.draft, note: "更新" },
+    };
+
+    const missing = await instance.inject({
+      method: "PUT",
+      url: "/prescription-drafts/by-reception/reception-syn-001",
+      headers: authorizedHeaders,
+      payload: update,
+    });
+    expect(missing.statusCode).toBe(400);
+
+    const accepted = await instance.inject({
+      method: "PUT",
+      url: "/prescription-drafts/by-reception/reception-syn-001",
+      headers: { ...authorizedHeaders, "if-match": '"1"' },
+      payload: update,
+    });
+    expect(accepted.statusCode).toBe(200);
   });
 
   it("fails closed before data lookup when the tenant context cannot be constructed", async () => {
@@ -210,14 +255,14 @@ describe("prescription draft routes", () => {
     });
     expect(wrongReception.statusCode).toBe(404);
 
-    const wrongReadContext = await instance.inject({
+    const patientIdInReadUrl = await instance.inject({
       method: "GET",
       url:
         "/prescription-drafts/by-reception/reception-syn-001" +
         "?patientId=patient-syn-002&date=2026-07-09",
       headers: authorizedHeaders,
     });
-    expect(wrongReadContext.statusCode).toBe(404);
+    expect(patientIdInReadUrl.statusCode).toBe(400);
   });
 
   it("requires all registered scopes and preserves the existing AUTH contract", async () => {

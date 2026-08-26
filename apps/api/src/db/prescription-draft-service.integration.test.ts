@@ -13,7 +13,10 @@ import {
 import { applyPendingMigrations } from "./migration-runner.js";
 import { loadMigrationFiles } from "./migrations.js";
 import { createDbPool } from "./pool.js";
-import { PostgresPrescriptionDraftService } from "./prescription-draft-service.js";
+import {
+  PostgresPrescriptionDraftService,
+  prescriptionDraftDatabaseInvariantErrorMessage,
+} from "./prescription-draft-service.js";
 import { resolveTestDatabaseUrl } from "./test-database-environment.js";
 
 const testDatabaseUrl = resolveTestDatabaseUrl(process.env);
@@ -69,6 +72,7 @@ async function seedReception(
     readonly patientNumber: string;
     readonly idempotencyKey: string;
     readonly businessDate?: string;
+    readonly receptionStatus?: "IN_PROGRESS" | "COMPLETED";
   },
 ): Promise<void> {
   await pool.query(
@@ -108,7 +112,7 @@ async function seedReception(
        idempotency_key
      ) VALUES (
        $1, $2, $3, $4, '2026-08-25T00:30:00.000Z'::timestamptz,
-       $5::date, 'IN_PROGRESS', 'paper', $6
+       $5::date, $6, 'paper', $7
      )`,
     [
       input.tenantId,
@@ -116,6 +120,7 @@ async function seedReception(
       input.receptionId,
       input.patientId,
       input.businessDate ?? "2026-08-25",
+      input.receptionStatus ?? "IN_PROGRESS",
       input.idempotencyKey,
     ],
   );
@@ -124,9 +129,11 @@ async function seedReception(
 const scopedInput = {
   tenantId: tenantId("tenant-draft-db"),
   pharmacyId: pharmacyId("pharmacy-draft-db"),
+  actorId: userId("actor-draft-db"),
   receptionId: receptionId("reception-draft-db"),
   patientId: patientId("patient-draft-db"),
   businessDate: "2026-08-25",
+  wallClock: "2026-08-25T01:00:09.000Z",
 } as const;
 
 function saveInput(
@@ -160,7 +167,7 @@ function saveInput(
 describePostgres(
   "PostgresPrescriptionDraftService (set TEST_DATABASE_URL to run)",
   () => {
-    it("persists, versions, replays, and reads a scoped draft with atomic audit evidence", async () => {
+    it("persists, versions, and reads a scoped draft with atomic audit evidence", async () => {
       await withMigratedSchema(async (pool) => {
         await seedReception(pool, {
           tenantId: scopedInput.tenantId,
@@ -183,9 +190,9 @@ describePostgres(
             saveDisposition: "created",
           },
         });
-        await expect(service.save(saveInput(0))).resolves.toMatchObject({
-          kind: "saved",
-          draft: { version: 1, saveDisposition: "replayed" },
+        await expect(service.save(saveInput(0))).resolves.toEqual({
+          kind: "conflict",
+          currentVersion: 1,
         });
         await expect(
           service.save(saveInput(1, "合成薬剤B 10mg")),
@@ -222,6 +229,10 @@ describePostgres(
           },
           {
             audit_event_type: "prescription.updated",
+            aggregate_id: "prescription-draft-db",
+          },
+          {
+            audit_event_type: "prescription.draft.viewed",
             aggregate_id: "prescription-draft-db",
           },
         ]);
@@ -279,7 +290,64 @@ describePostgres(
       });
     });
 
-    it("does not disclose or cross-link another tenant, pharmacy, patient, date, or reception", async () => {
+    it("keeps persisted timestamps monotonic when the database writer clock moves backward", async () => {
+      await withMigratedSchema(async (pool) => {
+        await seedReception(pool, {
+          tenantId: scopedInput.tenantId,
+          pharmacyId: scopedInput.pharmacyId,
+          patientId: scopedInput.patientId,
+          receptionId: scopedInput.receptionId,
+          patientNumber: "DRAFT-DB-CLOCK",
+          idempotencyKey: "draft-db-idempotency-clock",
+        });
+        const service = new PostgresPrescriptionDraftService(pool);
+        await service.save({
+          ...saveInput(0),
+          wallClock: "2026-08-25T01:00:05.000Z",
+        });
+
+        await expect(
+          service.save({
+            ...saveInput(1, "時刻逆行後の更新"),
+            wallClock: "2026-08-25T01:00:04.000Z",
+          }),
+        ).resolves.toMatchObject({
+          kind: "saved",
+          draft: {
+            createdAt: "2026-08-25T01:00:05.000Z",
+            updatedAt: "2026-08-25T01:00:05.000Z",
+          },
+        });
+      });
+    });
+
+    it("rejects writes for a terminal reception without draft or audit rows", async () => {
+      await withMigratedSchema(async (pool) => {
+        await seedReception(pool, {
+          tenantId: scopedInput.tenantId,
+          pharmacyId: scopedInput.pharmacyId,
+          patientId: scopedInput.patientId,
+          receptionId: scopedInput.receptionId,
+          patientNumber: "DRAFT-DB-TERMINAL",
+          idempotencyKey: "draft-db-idempotency-terminal",
+          receptionStatus: "COMPLETED",
+        });
+        const service = new PostgresPrescriptionDraftService(pool);
+
+        await expect(service.save(saveInput(0))).resolves.toEqual({
+          kind: "not_found",
+        });
+        await expect(
+          pool.query(
+            `SELECT
+               (SELECT count(*)::int FROM prescription_drafts) AS drafts,
+               (SELECT count(*)::int FROM audit_events) AS audits`,
+          ),
+        ).resolves.toMatchObject({ rows: [{ drafts: 0, audits: 0 }] });
+      });
+    });
+
+    it("does not disclose or cross-link another tenant, pharmacy, date, or reception", async () => {
       await withMigratedSchema(async (pool) => {
         await seedReception(pool, {
           tenantId: scopedInput.tenantId,
@@ -295,7 +363,6 @@ describePostgres(
         for (const invalid of [
           { ...scopedInput, tenantId: tenantId("tenant-other") },
           { ...scopedInput, pharmacyId: pharmacyId("pharmacy-other") },
-          { ...scopedInput, patientId: patientId("patient-other") },
           {
             ...scopedInput,
             receptionId: receptionId("reception-other"),
@@ -309,6 +376,44 @@ describePostgres(
             service.save({ ...saveInput(1), ...invalid }),
           ).resolves.toEqual({ kind: "not_found" });
         }
+        await expect(
+          service.save({
+            ...saveInput(1),
+            patientId: patientId("patient-other"),
+          }),
+        ).resolves.toEqual({ kind: "not_found" });
+      });
+    });
+
+    it("rejects a draft whose stored content hash does not match its rows", async () => {
+      await withMigratedSchema(async (pool) => {
+        await seedReception(pool, {
+          tenantId: scopedInput.tenantId,
+          pharmacyId: scopedInput.pharmacyId,
+          patientId: scopedInput.patientId,
+          receptionId: scopedInput.receptionId,
+          patientNumber: "DRAFT-DB-HASH",
+          idempotencyKey: "draft-db-idempotency-hash",
+        });
+        const service = new PostgresPrescriptionDraftService(pool);
+        await service.save(saveInput(0));
+        await pool.query(
+          `UPDATE prescription_drafts
+              SET content_hash = repeat('a', 64)
+            WHERE tenant_id = $1 AND pharmacy_id = $2 AND reception_id = $3`,
+          [
+            scopedInput.tenantId,
+            scopedInput.pharmacyId,
+            scopedInput.receptionId,
+          ],
+        );
+
+        await expect(service.get(scopedInput)).rejects.toThrow(
+          prescriptionDraftDatabaseInvariantErrorMessage,
+        );
+        await expect(
+          service.save(saveInput(1, "別内容")),
+        ).rejects.toThrow(prescriptionDraftDatabaseInvariantErrorMessage);
       });
     });
 
@@ -337,12 +442,12 @@ describePostgres(
           pool.query(
             `INSERT INTO prescription_drafts (
                tenant_id, pharmacy_id, prescription_id, reception_id,
-               patient_id, business_date, version, lifecycle_status,
+               patient_id, business_date, version,
                prescription_type, prescription_date, default_days, note,
                content_hash, created_at, updated_at, created_by, updated_by
              ) VALUES (
                $1, $2, 'prescription-invalid', $3, 'patient-unrelated',
-               '2026-08-25'::date, 1, 'SERVER_SAVED', 'UNSPECIFIED', NULL,
+               '2026-08-25'::date, 1, 'UNSPECIFIED', NULL,
                NULL, '', repeat('a', 64), now(), now(), 'actor', 'actor'
              )`,
             [
