@@ -145,17 +145,18 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
 }
 
 function createRuntimeSignalSource(): RuntimeSignalSource {
-  return Object.freeze({
-    on: (signal, listener) => {
+  const signals: RuntimeSignalSource = {
+    on(signal, listener) {
       process.on(signal, listener);
     },
-    off: (signal, listener) => {
+    off(signal, listener) {
       process.off(signal, listener);
     },
-    setExitCode: (exitCode) => {
+    setExitCode(exitCode) {
       process.exitCode = exitCode;
     },
-  });
+  };
+  return Object.freeze(signals);
 }
 
 let server: ReturnType<typeof buildServer> | undefined;
