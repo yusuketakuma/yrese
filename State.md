@@ -1,29 +1,24 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-26, WP-5104 Candidate A atomic finalization):** This block alone
+> **ACTIVE SNAPSHOT (2026-08-26, local main consolidation):** This block alone
 > is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5101 Candidate A decision and C-100 charter correction are
-  reviewed and pushed on Draft PR #5. C-100 evidence is frozen exact3
-  `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`, read-only
-  independent context `wp5101_human_authority_map` PASS/findings 0, `git diff --check` PASS,
-  landed commit `9786fe8`. Current WIP is WP-5104 PLAN_ONLY: create the Candidate A
-  UIX-001 PROPOSED review packet. Codex root is the sole `active_root_writer`; delegated
-  reviewers are read-only.
-- **Git boundary:** `main` and `origin/main` are
-  `c7b61406c6f6e58363139e3dced79c62f30cebf5`. Candidate work is isolated on
-  local/remote `feature/wp-5101-uiux-review`; exact head/status is read from Git. Current
-  WP-5104 ownership is the finalization exact-path allowlist in `Plans.md`; Git diff is authoritative.
-- **Current gate:** direct user instruction approved the limited UIX-001 v0.2.0 foundation and the
-  required medical-safety/security/privacy/accessibility/pharmacist/product UI-flow perspectives.
-  UIX-001→APPROVED, UIX-002〜007→SUPERSEDED, index and direct live references are being finalized
-  atomically. Fresh exact-diff validation/review/Oracle and PR #5 CI/merge remain.
-  HPKIの主体・時点・段帰属はREG-003 §7の法務gate、外部登録はREG-004 RB-003解除待ちで、
-  いずれも未解決中は署名・外部登録を実装しない。
-- **Landing / remote:** Draft PR #5 is the PLAN_ONLY finalization vehicle; exact-head CI status
-  is read from GitHub. Merge is permitted only after the remaining finalization gates pass. Draft PR #4
-  (`feat/prescription-draft-persistence`) remains conflicting, failing, and outside the
-  approved durable-writer boundary; do not merge it.
+- **Direction / ownership:** current user confirmation `承認` authorizes local consolidation of
+  open PR #5/#6/#9, migration 000013 source landing, WP-5101 blocker closure, required records,
+  and removal of merged clean worktrees. Codex root remains the sole `active_root_writer`.
+- **Git boundary:** local `main` / `origin/main` remain
+  `c7b61406c6f6e58363139e3dced79c62f30cebf5` until final fast-forward. Current branch is
+  `integrate/main-consolidation-20260826`; it includes local tips `964c5c3` and `0c9d727` plus
+  fetched PR #9 tip `7cd52ff`. No push is authorized or performed.
+- **Current gate:** add the approved DOM-002/DOM-004/MOD-008/IDX-001 atomic record, run focused
+  and full sequential gates with real local PostgreSQL integration, freeze/review the final diff,
+  then fast-forward local `main`. PR #6 Oracle review was verified and its findings were closed;
+  the exact PR #5 Oracle recovery was unavailable after Chrome disconnect and is not counted PASS.
+- **Landing / cleanup:** migration 000013 may land as source but must not be applied to an
+  environment. After local `main` contains `964c5c3`, `0c9d727`, and `7cd52ff`, remove only the
+  clean merged secondary worktree; retain branches. push/deploy/production mutation remain excluded.
+- **Preserved gates:** HPKI legal authority, REG-004 RB-003, pharmacist confirmation/finalization,
+  migration apply, and other registered medical/security/privacy blockers remain unresolved.
 
 ### PREVIOUS SNAPSHOT (2026-08-23, interoperability-first session) — NONAUTHORITATIVE
 

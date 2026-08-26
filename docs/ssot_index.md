@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.60
+version: 0.4.61
 created_at: 2026-07-09
 updated_at: 2026-08-26
 approved_at: 2026-08-26
@@ -42,12 +42,13 @@ previous_version_approved_by: direct_user_instruction (WP-9001); independent_ver
   ; WP-9002-W29 independent_verifier APPROVED_WITH_PINS; WP-9002-W29 spec_guardian APPROVED_WITH_PINS; WP-9002-W29 data_integrity_auditor APPROVED_WITH_PINS; WP-9002-W29 test_architect APPROVED_WITH_PINS; WP-9002-W29 frontend_reviewer APPROVED_WITH_PINS; WP-9002-W29 accessibility_ux_reviewer APPROVED_WITH_PINS; WP-9002-W29 product_quality_reviewer APPROVED_WITH_PINS; WP-9002-W29 workflow_architect APPROVED_WITH_PINS; WP-9002-W29 claims_workflow_reviewer APPROVED_WITH_PINS; WP-9002-W29 accounting_domain_reviewer APPROVED_WITH_PINS; WP-9002-W29 security_critic APPROVED_WITH_PINS; WP-9002-W29 privacy_compliance_reviewer APPROVED_WITH_PINS; WP-9002-W29 medical_safety_reviewer APPROVED_WITH_PINS
   ; WP-9002-W30 independent_verifier APPROVED_WITH_PINS; WP-9002-W30 spec_guardian APPROVED_WITH_PINS; WP-9002-W30 data_integrity_auditor APPROVED_WITH_PINS; WP-9002-W30 architect APPROVED_WITH_PINS; WP-9002-W30 test_architect APPROVED_WITH_PINS; WP-9002-W30 calculation_domain_reviewer APPROVED_WITH_PINS; WP-9002-W30 claims_evidence_specialist APPROVED_WITH_PINS; WP-9002-W30 claims_workflow_reviewer APPROVED_WITH_PINS; WP-9002-W30 security_critic APPROVED_WITH_PINS; WP-9002-W30 privacy_compliance_reviewer APPROVED_WITH_PINS; WP-9002-W30 medical_safety_reviewer APPROVED_WITH_PINS
   ; WP-9002-W31 independent_verifier APPROVED_WITH_PINS; WP-9002-W31 spec_guardian APPROVED_WITH_PINS; WP-9002-W31 data_integrity_auditor APPROVED_WITH_PINS; WP-9002-W31 architect APPROVED_WITH_PINS; WP-9002-W31 test_architect APPROVED_WITH_PINS; WP-9002-W31 calculation_domain_reviewer APPROVED_WITH_PINS; WP-9002-W31 trace_contract_reviewer APPROVED_WITH_PINS; WP-9002-W31 api_contract_reviewer APPROVED_WITH_PINS; WP-9002-W31 claims_workflow_reviewer APPROVED_WITH_PINS; WP-9002-W31 security_critic APPROVED_WITH_PINS; WP-9002-W31 privacy_compliance_reviewer APPROVED_WITH_PINS; WP-9002-W31 medical_safety_reviewer APPROVED_WITH_PINS
-approved_by: direct_user_instruction (limited WP-5104 Candidate A final SSOT approval, 2026-08-26); required independent and domain reviews PASS
+approved_by: direct_user_instruction (limited WP-5104 Candidate A final SSOT approval and WP-5101 prescription draft/migration source landing approval, 2026-08-26); required independent and domain reviews PASS
 previous_version_approval: "IDX-001 v0.4.58 APPROVED 2026-08-24; approval provenance is preserved in the 0.4.58 change-log entry and Git history"
 effective_from: 2026-08-26
 effective_to: null
 source_refs:
   - docs/process/ssot_governance.md
+  - direct_user_instruction WP-5101 prescription draft/migration source landing approval (2026-08-26)
   - direct_user_instruction WP-5104 limited final SSOT approval (2026-08-26)
   - human_instruction WP-9001 (2026-07-10)
   - WP-9002-W1 metadata-only canary plan (2026-07-10)
@@ -149,13 +150,16 @@ related_work_packages:
   - WP-9002-W31
   - WP-4254
   - WP-4250
+  - WP-5101
   - WP-5104
 related_tests:
   - pnpm check:ssot-index
 related_prs:
   - Draft PR #5
+  - PR #6
 evidence_ids: []
 change_log:
+  - "0.4.61 2026-08-26 WP-5101 bounded prescription draft finalization: DOM-002 0.1.3、DOM-004 0.1.2、MOD-008 0.2.6へscope/invariants/read auditを同期。文書status・総数185・inventory集計は不変。migration 000013 source landingは承認済みだが、環境への適用は別human gateのまま"
   - "0.4.60 2026-08-26 WP-5104 atomic finalization: UIX-001 0.2.0をAPPROVED、UIX-002〜007をSUPERSEDEDへ同期。未決blocker、UNMAPPED、HPKI/legal/RB-003、実装・risk acceptance・external action禁止を維持。総文書数185不変、inventory rowsはAPPROVED 163→158、PROPOSED 5→4、SUPERSEDED 17→23"
   - "0.4.59 2026-08-26 WP-5104 Candidate A review: UIX-001 0.2.0を唯一のUI/UX foundation候補としてAPPROVED→PROPOSEDへ更新。UIX-002〜007はfinalizationまでAPPROVEDを維持。IDX-001自身も改版review中のためPROPOSEDとしapproval/effective metadataを空欄化。総文書数185不変、inventory rowsはAPPROVED 164→163、PROPOSED 4→5、SUPERSEDED 17不変。required reviewとfinal human approval前はUIX-001 revisionを実装根拠にしない"
   - "0.4.58 2026-08-24 finalization: MOD-005 0.1.6 / MOD-008 0.2.5 / ADP-004 0.1.1 を PROPOSED→APPROVED(独立 review finding 閉鎖 + closure checker PASS + direct human approval)。総文書数 185 不変。status 集計は APPROVED 161→164、PROPOSED 7→4、SUPERSEDED 17 不変。承認範囲は SSOT 改版のみ"

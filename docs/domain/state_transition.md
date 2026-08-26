@@ -5,26 +5,27 @@ ssot_id: DOM-004
 title: 状態遷移設計
 domain: domain
 status: APPROVED
-approved_at: 2026-07-09
-approved_by: opus4.8 review + fable5
+approved_at: 2026-08-26
+approved_by: "direct human authority 2026-08-26 (WP-5101 prescription draft landing confirmation: 承認); opus4.8 review + fable5"
 owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.1.1
+version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-11
-effective_from: null
+updated_at: 2026-08-26
+effective_from: 2026-08-26
 effective_to: null
 source_refs: 構築プロンプト v0.2.0 §13-16, §18-19
 depends_on: [DOM-001, DOM-002, ARC-001, ARC-002, MOD-005]
 impacts: [MOD-005(domain lifecycle registration), apps/api transition enforcement, apps/web transition presentation]
-related_work_packages: [WP-1101, WP-9002-W5F]
+related_work_packages: [WP-1101, WP-9002-W5F, WP-5101]
 related_tests:
   - packages/shared-kernel/src/kernel.test.ts
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.1.2 2026-08-26 WP-5101: server-saved prescription draftをライフサイクル状態にせず、受付副状態に従うbounded write guardを承認。WAITING/IN_PROGRESSだけwrite可、COMPLETED/CANCELLEDはcreate/update不可。薬剤師確認・確定遷移は不変"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W5F metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions: 本文【要確認】参照
@@ -104,6 +105,10 @@ blockers:
 - 遷移の逆行なし(COMPLETED / CANCELLED は終端)。
 - 受付状態と処方ライフサイクル(§1 の RECEIVED_PROVISIONAL 等)の対応付けは、
   処方箋取込の実装 WP で確定する(API-006 open_question の解消先)。
+- server-saved prescription draftは保存事実であって本書のライフサイクル状態ではなく、
+  `SERVER_SAVED`その他の状態値を追加しない。writeはlocked/freshな受付行が`WAITING`または
+  `IN_PROGRESS`の場合だけ許可し、`COMPLETED` / `CANCELLED`ではcreate/updateを拒否する。
+  認可済みreadは受付が終端でも許可するが、MOD-008のread auditをresponse前に完了させる。
 
 ## 3. 資格確認スナップショットの状態
 
@@ -136,5 +141,6 @@ dead_letter は自動再投入禁止・人間トリアージ(CONFLICT_REQUIRES_H
 
 ## 変更履歴
 
+- 0.1.2 (2026-08-26): WP-5101 server-saved prescription draftの非ライフサイクル性と受付状態write guardを追加。§1の薬剤師確認・確定遷移は不変。
 - 0.1.1 (2026-07-09): opus4.8 レビュー反映(§2 に受付キュー副状態機械を追記[RECEPTION_STATUSES、処方ライフサイクルと独立]、§0 にライフサイクル状態の所有権規定[本書が定義の正本・実装 WP 着地時に MOD-005 と同期登録]、月次締め→ロック統制の正本を CLM-001 系へ委譲)。
 - 0.1.0 (2026-07-09): 初版起草(WP-1101)。

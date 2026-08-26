@@ -33,34 +33,33 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | `main = origin/main = c7b61406c6f6e58363139e3dced79c62f30cebf5`(2026-08-26 live確認) |
-| Candidate branch | `feature/wp-5101-uiux-review = origin/feature/wp-5101-uiux-review`; exact headはGit / Draft PR #5を正本とする |
-| Upstream relation | candidate branchはreview baseのfast-forward子。direct main commit/pushなし |
-| Candidate scope | Draft PR #5上でWP-5104 Candidate Aのatomic finalizationを実施中。exact path/head/statusはGitを正本とする |
-| Last update | 2026-08-26 JST(Candidate A UIX-001 v0.2.0の限定foundation昇格をdirect user instructionが最終承認。未決事項、UNMAPPED、HPKI/legal/RB-003 blockerは維持) |
+| Review base | local `main` / `origin/main` = `c7b61406c6f6e58363139e3dced79c62f30cebf5`; final local fast-forward前 |
+| Candidate branch | `integrate/main-consolidation-20260826`; exact head/statusはGitを正本とする |
+| Upstream relation | local PR #5/#6 branch tipsとfetched `origin/feat/all-screens-real-data-wiring`(PR #9)をmerge済み。remote pushなし |
+| Candidate scope | user-approved local main consolidation、WP-5101 bounded prescription draft SSOT記録、full gate、到達可能性確認後のmerged worktree削除 |
+| Last update | 2026-08-26 JST(current taskの「承認」でmigration 000013 source landing、PR #5/#6/#9 local consolidation、PR #6 blocker closureを承認。migration apply/deploy/pushは対象外) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
-| Active Goal | WP-5104 PLAN_ONLYとしてUIX-001 v0.2.0を唯一のUI/UX foundationへatomic finalizationする。製品実装は未claim |
-| Current critical path | direct user approval済みfinalization batch → fresh validation/independent review/verified Oracle → Draft PR #5 exact-head CI → PR経由main統合 |
-| Main blocker | foundation昇格自体のhuman gateは解除済み。未決領域、UNMAPPED、HPKI/legal、RB-003、U3/U4実装前gateは未解除で後続実装は全件 NOT_READY |
-| Required verification | WP-5104 exact6の`git diff --check`、`pnpm check:ssot-index`、secret scan、preservation checks、required review、verified Oracle、Draft PR exact-head CI。code test/build/browser runtimeはPLAN_ONLYではN/A |
+| Active Goal | user-approved open-PR workをlocal `main`へconsolidateし、focused/full gate後にmerged worktreeを安全に削除する |
+| Current critical path | atomic SSOT record → sequential workspace gates(実PostgreSQL integrationを含む) → frozen review → local `main` fast-forward → reachability proof → worktree removal |
+| Main blocker | local landingにはなし。migration apply、push/deploy、HPKI/legal、RB-003、未決medical/pharmacist workflowは別human gateのまま |
+| Required verification | focused prescription draft/API/audit/contracts/web tests、PostgreSQL integration 0 skip、workspace test/typecheck/lint/build、OpenAPI/SSOT/secrets/boundaries/deps/SBOM/script/browser gates、`git diff --check`、frozen review |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
-| Next scan cursor | `c7b6140`; new High/Medium finding、remote main更新、human decisionでreset |
+| Next scan cursor | `origin/main=c7b6140`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはUIX-001/IDX-001をAPPROVEDへ戻し、UIX-002〜007をUIX-001 §§7〜12へ
-SUPERSEDEDとして原子的に束ねる。feature branch/PR以外からmainへ置かず、製品実装、deploy、
-migration、production変更、risk/release acceptance、external actionを行わない。
+current batchは既存branch/remote open PRのlocal consolidationである。migration 000013のsourceは
+承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
+external actionも行わない。
 
 ## 2. Product and Architecture Guardrails
 
 - 6–12 week North Star: synthetic patient search/selection → paper reception →
   manual prescription draft → pharmacist confirmation → immutable audit evidence.
-- Current reachable runtime is limited to health/whoami, patient search/get,
-  paper reception queue/create, and audit read. Prescription/dispensing,
-  calculation consumer, billing, schedule, visit, report, notification, and
-  PH-OS synchronization are not connected.
-- Current persistent authorities are PostgreSQL `patients`,
-  `reception_entries`, and `audit_events`.
+- Current reachable runtime includes health/whoami, patient search/get, paper reception
+  queue/create, audit read, and the bounded server-saved prescription draft API/Web flow.
+  This local integration does not establish production/release readiness or pharmacist confirmation.
+- Current persistent authorities include PostgreSQL `patients`, `reception_entries`,
+  bounded prescription draft tables, and `audit_events`.
 - Patient and MedicationRequest must have one writer. No dual write, hidden
   multi-master, automatic fallback, or conformance claim is permitted.
 - Tenant/pharmacy/actor/scope must come from authenticated trusted context.
@@ -73,9 +72,9 @@ migration、production変更、risk/release acceptance、external actionを行�
 
 ### WIP — exactly one
 
-**CURRENT は WP-5104 の PLAN_ONLY SSOT finalization 1件である。** Candidate Aの製品方向、
-required review、direct user final approvalを前提に、UIX-001の限定foundation昇格だけを行う。
-製品実装、schema、migration、risk acceptance、external actionはclaimしない。
+**CURRENT は WP-5101/WP-5104 local main consolidation 1件である。** 承認済みPR #5/#6/#9を
+local integration branchへ束ね、required gateとreachability proof後にlocal `main`をfast-forwardする。
+push、migration apply、deploy、production mutationはclaimしない。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
@@ -807,8 +806,8 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 ##### WP-5104 — unique UI/UX SSOT foundation の atomic 昇格
 
-- **WP status:** FINALIZATION_IN_PROGRESS
-- **Qualifiers:** CURRENT / PLAN_ONLY / CANDIDATE_A_APPROVED_LIMITED_FOUNDATION / NOT_IMPLEMENTABLE
+- **WP status:** FINALIZED / APPROVED / MERGED_LOCAL_INTEGRATION
+- **Qualifiers:** NONCLAIMABLE / CANDIDATE_A_APPROVED_LIMITED_FOUNDATION / NOT_IMPLEMENTABLE
 - **Risk:** R3(医療安全・privacy・accessibility・不可逆確定/outbox契約を含むSSOT改版)
 - **Owner role:** `codex_root`(`active_root_writer`)
 - **Reviewer roles:** `independent_verifier`、`frontend_reviewer`、`ui_flow_tester`、
@@ -822,8 +821,8 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 - **Forbidden files/actions:** 上記以外、product code、schema/migration、generated artifact、
   deploy/production/external action、未決領域の実装、risk acceptance
 - **Gate:** Candidate A product direction、WP-5101 fresh independent review、C-100、required
-  domain review、限定foundationのfinal human approvalは完了。finalization exact diffの再検証、
-  fresh independent review、verified Oracle、PR CI/mergeだけを残す
+  domain review、限定foundationのfinal human approval、exact-head CI、local integration mergeは完了。
+  現在の全体consolidation gateは§1を正本とする
 - **Human gates:** foundation昇格に必要なmedical-safety、security/privacy、accessibility、
   pharmacist workflow、product/UI-flowはdirect user instruction 2026-08-26で承認済み。
   HPKI/legal (`legal_compliance_matrix #7`)とRB-003、未決実装判断は未解除
@@ -1220,15 +1219,17 @@ synthetic data 限定。migration 適用・production 行為は含まない。
 
 ### 15.5 Milestone 3 — 薬剤師 vertical journey(WP-4252 の分解、C-056〜C-066)
 
-全件【GATED】: Milestone 2 exit まで claim 不可。synthetic data 限定。
+原則【GATED】: Milestone 2 exit まで claim 不可。synthetic data 限定。direct human approval
+2026-08-26は、下表C-056〜C-060のうちserver-saved draftに限るbounded sliceを例外的に承認した。
+C-061以降、薬剤師確認・確定・訂正履歴・外部連携のgateは解除しない。
 
 | # | 項目 | 前提 / Gate |
 |---|---|---|
-| C-056 | 紙処方 draft のドメインモデル/状態 SSOT 起案(provisional と pharmacist-confirmed の分離)【SSOT】 | C-026 |
-| C-057 | prescription draft の contract-first 契約設計(generated artifact / consumer 同期) | C-056 |
-| C-058 | prescription draft schema / forward migration 設計(適用は別 gate)【HG: migration apply】 | C-056 |
-| C-059 | reception → prescription draft の linkage 実装(WP-4050 コマンド境界と整合) | C-057 |
-| C-060 | draft 入力 API/Web 実装(synthetic) | C-057 |
+| C-056 | **BOUNDED COMPLETE** — server-saved紙処方draftの非ライフサイクル性と受付write guardをDOM-002/004へ同期。pharmacist-confirmed分離の完全設計はGATED | direct approval 2026-08-26 |
+| C-057 | **COMPLETE** — prescription draft contract/generated OpenAPI/consumer同期 | C-056 bounded approval |
+| C-058 | **SOURCE COMPLETE / APPLY GATED** — forward migration 000013 source。環境適用は別HG | direct approval 2026-08-26 |
+| C-059 | **BOUNDED COMPLETE** — authenticated scopeでreception→patient→draftをserver-side linkage | C-057 |
+| C-060 | **COMPLETE (synthetic)** — draft入力API/Web、CAS conflict、read audit | C-057 |
 | C-061 | 薬剤師確認の actor/qualification boundary 実装(承認済み境界のみ)【HG: medical safety】 | C-084 |
 | C-062 | 訂正=新版追加の version history 実装(前版保存・上書き禁止) | C-058 |
 | C-063 | 確定操作の audit + transactional outbox evidence 接続 | C-059 |

@@ -5,8 +5,8 @@ ssot_id: DOM-002
 title: ドメインモデル(集約・不変条件)
 domain: domain
 status: APPROVED
-approved_at: 2026-08-01
-approved_by: "direct human authority 2026-08-01 (WP-4250 exact11 全て承認); round-5 independent verifier PASS on packet body with no HIGH finding (frozen packet ab086c9f8d6e6bfd26e32fbfe9daa21a3b8b6ccd3f324f413b4d2975731cfab6, base SHA 9d8dbc0c3f5201c762dbb39fd9b15fc3ddc4b875); round-5 security/privacy findings closed in Revision 14; round-5 data-integrity findings closed in Revision 13; codex second opinion unavailable until 2026-08-05 and not counted as evidence"
+approved_at: 2026-08-26
+approved_by: "direct human authority 2026-08-26 (WP-5101 prescription draft landing confirmation: 承認); direct human authority 2026-08-01 (WP-4250 exact11 全て承認); round-5 independent verifier PASS on packet body with no HIGH finding (frozen packet ab086c9f8d6e6bfd26e32fbfe9daa21a3b8b6ccd3f324f413b4d2975731cfab6, base SHA 9d8dbc0c3f5201c762dbb39fd9b15fc3ddc4b875); round-5 security/privacy findings closed in Revision 14; round-5 data-integrity findings closed in Revision 13; codex second opinion unavailable until 2026-08-05 and not counted as evidence"
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -15,19 +15,20 @@ reviewers:
   - medical_safety_reviewer
   - privacy_compliance_reviewer
   - human_pharmacist_product_authority
-version: 0.1.2
+version: 0.1.3
 created_at: 2026-07-09
-updated_at: 2026-07-31
-effective_from: 2026-08-01
+updated_at: 2026-08-26
+effective_from: 2026-08-26
 effective_to: null
 source_refs: 構築プロンプト v0.2.0 §12, §17, §18
 depends_on: [DOM-001, PRD-001, SAF-001, MOD-004, MOD-005]
 impacts: [DOM-004]
-related_work_packages: [WP-1101, WP-9002-W5F, WP-4250]
+related_work_packages: [WP-1101, WP-9002-W5F, WP-4250, WP-5101]
 related_tests: [pnpm check:ssot-index, git diff --check]
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.1.3 2026-08-26 WP-5101: 受付に従属するserver-saved prescription draftのbounded不変条件を承認。保存事実を処方ライフサイクル状態へ昇格せず、tenant/pharmacy/reception scope、受付由来patient、終端受付へのwrite拒否、version/If-Match conflict、content hash検証、read auditを固定。薬剤師確認・確定・訂正履歴・外部連携は対象外"
   - "0.1.2 2026-08-01 WP-4250 exact11 finalization: round-5の独立review三レーン完了(independent verifier PASS・本文HIGHなし)とdirect human approvalによりPROPOSED→APPROVED。本文semanticsは不変。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置き"
   - "0.1.2 2026-07-31 WP-4250 PROPOSED Revision 14: round-5 security/privacy re-reviewの同期。§2のPATIENTLINK gateをmembership+cardinalityの合成(集合等価)として明示し、SKが生patientIdではなくhmacPatientIdであることを追記"
   - "0.1.2 2026-07-31 WP-4250 PROPOSED Revision 13: round-5 data-integrity re-reviewの同期。§2のPATIENTLINK gateをmembership検査として明示し、rollback経由の再cutoverをBLOCKED_RECUTOVER_DIVERGENCE_RESOLUTIONとして追加(初回cutoverは対象外)"
@@ -164,6 +165,24 @@ cutover時点でのみ成立し、**PostgreSQLがwriterでなくなった後の�
 | Rp(RP単位) | 医薬品参照(マスター版付きコード — CodeMappingRegistry 経由)、用法、用量、日数/回数、数量、一般名処方フラグ、後発品変更可否 |
 | 状態 | DOM-004 の処方ライフサイクルに従う(仮受付→仮取込→薬剤師確認→確定) |
 | 不変条件 | **確定は薬剤師確認後のみ**(scope: prescription:confirm)/ QR由来は原本照合記録なしに確定不可 / 確定後の変更は訂正版の新規作成+履歴保持のみ(無履歴変更禁止)/ コード変換の曖昧一致は CODE_MAPPING_REVIEW_REQUIRED で停止 |
+
+### 4.1 Server-saved prescription draft (WP-5101 bounded slice)
+
+- 受付ごとに1件だけ保持し、authority keyは認証済み`tenantId` + `pharmacyId` +
+  `receptionId`とする。`patientId`は検証済み受付からサーバー側で導出し、URL・query・request
+  bodyをauthorityにしない。
+- server-savedであることは**永続化済みという事実**であり、§4またはDOM-004の処方
+  ライフサイクル状態ではない。`SERVER_SAVED`その他の新規状態を導入しない。
+- writeは受付が`WAITING`または`IN_PROGRESS`の間だけ許可し、`COMPLETED` / `CANCELLED`
+  ではcreate/updateとも拒否する。判定は保存と同じtransaction内のfreshな受付行に基づく。
+- 初回保存は`expectedVersion=0`かつ`If-Match`なし、更新は一致する`expectedVersion`とquoted
+  `If-Match`をともに必須とする。同一内容を含むstale writeは常にconflictで、create replayや
+  idempotency成功を主張しない。
+- versionは単調増加、`updatedAt`は直前値より必ず後、content hashはread/write境界で再計算して
+  不一致をfail-closedとする。構造化行だけを保持し、自由形式payloadの保存へfallbackしない。
+- successful readはMOD-008の`prescription.draft.viewed`をresponse前に永続化する。targetは
+  prescription IDだけとし、処方本文・患者識別子・検索条件を監査payloadへ入れない。
+- 本sliceは薬剤師確認、処方確定、確定後訂正/version history、outbox、外部連携を含まない。
 
 **Prescription対MedicationRequestのownership未解決(HIGH-3 訂正)**:
 Prescriptionは本書の内部authority集約であり、WP-4250候補のoral/topical

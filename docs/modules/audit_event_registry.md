@@ -8,12 +8,12 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.2.5
+version: 0.2.6
 created_at: 2026-07-09
-updated_at: 2026-08-24
-approved_at: 2026-08-24
-approved_by: "direct human authority 2026-08-23 (「全てを許可する。実行」) applied to the 2026-08-24 review batch; independent reviews (WP-6006 data-integrity/security lane, WP-6303/6304 + MOD-008 privacy/medical-safety lane) REQUEST_CHANGES -> findings closed (66e4058, b073f2a, 7f7df40); closure checker PASS for the SSOT batch with condition M5 resolved in 7f7df40"
-effective_from: null
+updated_at: 2026-08-26
+approved_at: 2026-08-26
+approved_by: "direct human authority 2026-08-26 (WP-5101 prescription draft landing confirmation: 承認); direct human authority 2026-08-23 (「全てを許可する。実行」) applied to the 2026-08-24 review batch; independent reviews (WP-6006 data-integrity/security lane, WP-6303/6304 + MOD-008 privacy/medical-safety lane) REQUEST_CHANGES -> findings closed (66e4058, b073f2a, 7f7df40); closure checker PASS for the SSOT batch with condition M5 resolved in 7f7df40"
+effective_from: 2026-08-26
 effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §0.0.3.3, §34
@@ -32,6 +32,7 @@ related_work_packages:
   - WP-3009-BE
   - WP-4043
   - WP-9002-W4
+  - WP-5101
 related_tests:
   - pnpm --filter @yrese/audit test
 related_prs: []
@@ -39,6 +40,7 @@ evidence_ids: []
 open_questions:
   - 保存期間(REG-003 の法定根拠確定待ち — SEC-007 と同期)
 change_log:
+  - "0.2.6 (2026-08-26): WP-5101のsuccessful server-saved prescription draft PHI readへ`prescription.draft.viewed`を登録。targetはprescription IDのみ、clinical content/query PHIは禁止、audit永続化をresponseより先に完了する"
   - "2026-08-24 finalization: 独立 review の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手・外部接続・conformance 主張は含まない"
   - "0.2.5 (2026-08-24): §1.2 情報連携イベント 20 種(partner.* / delivery.* / eligibility.* / consent.* / external_record.viewed / sandbox.reset / data.imported)を追加し、API-009〜018・ADP-004 の BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT の解除前提を満たす(review B-1〜B-5 反映: 種別数 20、payload の所在と phiClassification 既定値、targetRef kind、§0 の主リソース省略規則を明記)。businessReason 必須集合に delivery.resent / partner.suspended / partner.retired / sandbox.reset を追加。@yrese/audit AUDIT_EVENT_TYPES と同期。文法・既存種別は不変。review と human approval まで PROPOSED"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
@@ -53,7 +55,9 @@ blockers: []
 
 **分担**: SEC-007 = 監査ログの構造・保全・アクセス制御 / 本レジストリ = **イベント種別の台帳**。イベント種別の追加はレジストリ経由のみ — コード内のローカル追加は `COMMON_MODULE_DUPLICATION_BLOCKED`。
 
-**実装状態: `@yrese/audit` に実装済み(WP-2003/73ffd90, WP-2010/4cf702f)。** apps/api 監査ログ永続化・業務配線は未着手であり、SEC-007 の後続WPで扱う。
+**実装状態: `@yrese/audit` に実装済み(WP-2003/73ffd90, WP-2010/4cf702f)。**
+apps/apiはpatient/reception/prescription draftのbounded operationをin-memory/PostgreSQL
+audit repositoryへ配線済みである。レジストリ全種別の業務配線やrelease readinessは主張しない。
 
 ## 0. 命名文法(確定 — opus4.8 レビュー 2026-07-09)
 
@@ -74,6 +78,7 @@ blockers: []
 | reception.queue.viewed | 受付キュー閲覧(要配慮情報の列挙アクセス) | ○ | 1 閲覧リクエスト=1 イベント。payload は業務日付+件数のみ(PHI 非含有。0.2.4) |
 | insurance.viewed / insurance.updated | 保険・公費情報 | ○ | public-expense を含む【要確認 — 分離要否】 |
 | prescription.created / prescription.updated | 処方入力 | ○ | |
+| prescription.draft.viewed | server-saved処方draft閲覧(要配慮情報アクセス) | ○ | successful read(200)だけを記録。targetRefはprescription IDのみ。処方本文・患者識別子・queryを監査payloadへ入れず、audit commit前にresponseを返さない |
 | dispensing.confirmed | 薬剤師確認 | ○ | actor は薬剤師(人間責任の明示) |
 | inquiry.recorded | 疑義照会記録 | ○ | |
 | calculation.finalized / calculation.recalculated | 算定確定・再計算 | ○ | trace 参照(calculation_trace 保存とセット) |
