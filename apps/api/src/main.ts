@@ -5,6 +5,7 @@ import {
   parseApiPort,
   parseDatabaseUrl,
   resolveApiRepositoryMode,
+  resolveDbPoolConfiguration,
   resolvePatientSearchCursorHmacKey,
   resolveTenantContextMode,
 } from './config.js';
@@ -12,7 +13,11 @@ import { PostgresAuditRepository } from './db/audit-repository.js';
 import { assertMigrationStateAllowsStartup } from './db/migration-runner.js';
 import { loadMigrationFiles } from './db/migrations.js';
 import { PostgresPatientRepository } from './db/patient-repository.js';
-import { createDbPool } from './db/pool.js';
+import {
+  createDbPool,
+  observeDatabasePoolBackgroundErrors,
+  snapshotDatabasePool,
+} from './db/pool.js';
 import { PostgresPrescriptionDraftService } from './db/prescription-draft-service.js';
 import { PostgresReceptionCreateCommand } from './db/reception-command.js';
 import { PostgresReceptionRepository } from './db/reception-repository.js';
@@ -24,6 +29,14 @@ import {
 import { prescriptionDraftRoutes } from './prescription-draft-routes.js';
 import { InMemoryPrescriptionDraftService } from './prescription-draft-service.js';
 import { InMemoryReceptionRepository } from './reception-repository.js';
+import {
+  createJsonRuntimeOperationalEventSink,
+  type DatabasePoolSnapshot,
+} from './runtime-events.js';
+import {
+  registerGracefulShutdown,
+  type RuntimeSignalSource,
+} from './runtime-lifecycle.js';
 import { buildServer } from './server.js';
 import {
   handleStartupFailure,
@@ -31,7 +44,14 @@ import {
   preserveStartupFailureAcrossCleanup,
 } from './startup-failure.js';
 
-async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServer>> {
+interface BuiltServerRuntime {
+  readonly server: ReturnType<typeof buildServer>;
+  readonly databasePoolSnapshot?: () => DatabasePoolSnapshot;
+}
+
+const runtimeEvents = createJsonRuntimeOperationalEventSink();
+
+async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
   const databaseUrl = parseDatabaseUrl(process.env.DATABASE_URL);
   const repositoryMode = resolveApiRepositoryMode({
     repositoryMode: process.env.YRESE_API_REPOSITORY_MODE,
@@ -73,15 +93,23 @@ async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServe
         auditRepository,
       ),
     });
-    return server;
+    return Object.freeze({ server });
   }
 
   if (databaseUrl === undefined) {
     throw new Error('DATABASE_URL is required for postgres repository mode');
   }
 
-  const pool = createDbPool(databaseUrl);
+  const poolConfiguration = resolveDbPoolConfiguration({
+    max: process.env.YRESE_DB_POOL_MAX,
+    idleTimeoutMillis: process.env.YRESE_DB_POOL_IDLE_TIMEOUT_MS,
+    connectionTimeoutMillis: process.env.YRESE_DB_POOL_CONNECTION_TIMEOUT_MS,
+    maxLifetimeSeconds: process.env.YRESE_DB_POOL_MAX_LIFETIME_SECONDS,
+  });
+  const pool = createDbPool(databaseUrl, {}, poolConfiguration);
+  let stopObservingPool: (() => void) | undefined;
   try {
+    stopObservingPool = observeDatabasePoolBackgroundErrors(pool, runtimeEvents);
     const migrations = await loadMigrationFiles();
     await assertMigrationStateAllowsStartup(pool, migrations);
     const server = buildServer({
@@ -98,25 +126,55 @@ async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServe
       service: new PostgresPrescriptionDraftService(pool),
     });
     server.addHook('onClose', async () => {
+      stopObservingPool?.();
       await pool.end();
     });
-    return server;
+    return Object.freeze({
+      server,
+      databasePoolSnapshot: () => snapshotDatabasePool(pool),
+    });
   } catch (error) {
     throw await preserveStartupFailureAcrossCleanup({
       originalError: error,
-      cleanup: () => pool.end(),
+      cleanup: async () => {
+        stopObservingPool?.();
+        await pool.end();
+      },
     });
   }
+}
+
+function createRuntimeSignalSource(): RuntimeSignalSource {
+  return Object.freeze({
+    on: (signal, listener) => {
+      process.on(signal, listener);
+    },
+    off: (signal, listener) => {
+      process.off(signal, listener);
+    },
+    setExitCode: (exitCode) => {
+      process.exitCode = exitCode;
+    },
+  });
 }
 
 let server: ReturnType<typeof buildServer> | undefined;
 
 try {
-  server = await buildServerForEnvironment();
+  const runtime = await buildServerForEnvironment();
+  server = runtime.server;
   const port = parseApiPort(process.env.PORT);
-  server.log.info({ port }, 'API server port selected');
-  const address = await server.listen({ host: '0.0.0.0', port });
-  server.log.info({ address }, 'API server listening');
+  runtimeEvents.record({ kind: 'api.startup.port_selected', port });
+  await server.listen({ host: '0.0.0.0', port });
+  runtimeEvents.record({ kind: 'api.startup.listening', port });
+  registerGracefulShutdown({
+    server,
+    signals: createRuntimeSignalSource(),
+    events: runtimeEvents,
+    ...(runtime.databasePoolSnapshot === undefined
+      ? {}
+      : { databasePoolSnapshot: runtime.databasePoolSnapshot }),
+  });
 } catch (error) {
   const startupFailure = normalizeStartupFailure(error);
   const failureReporter = {
