@@ -69,7 +69,6 @@ export function registerGracefulShutdown(input: {
   const request = (signal: ApiShutdownSignal): Promise<GracefulShutdownResult> => {
     if (shutdown !== undefined) return shutdown;
 
-    dispose();
     const startedPool = safeDatabasePoolSnapshot(input.databasePoolSnapshot);
     safeRecord(input.events, {
       kind: 'api.shutdown.started',
@@ -100,6 +99,10 @@ export function registerGracefulShutdown(input: {
           ...(failedPool === undefined ? {} : { databasePool: failedPool }),
         });
         return Object.freeze({ ok: false });
+      } finally {
+        // Keep both handlers installed while close is pending so a repeated SIGTERM/SIGINT
+        // cannot restore Node's default immediate-termination behavior mid-drain.
+        dispose();
       }
     })();
     return shutdown;

@@ -42,7 +42,7 @@ function createSignalHarness(options: { readonly failOnSigint?: boolean } = {}) 
 }
 
 describe('registerGracefulShutdown', () => {
-  it('drains the server once and reuses the first signal outcome', async () => {
+  it('drains the server once and keeps signal handlers until the drain settles', async () => {
     let resolveClose: (() => void) | undefined;
     const close = vi.fn(
       () =>
@@ -66,11 +66,12 @@ describe('registerGracefulShutdown', () => {
     expect(signals.listenerCount('SIGTERM')).toBe(1);
     expect(signals.listenerCount('SIGINT')).toBe(1);
     signals.emit('SIGTERM');
+    signals.emit('SIGINT');
     const repeatedRequest = controller.request('SIGINT');
 
     expect(close).toHaveBeenCalledOnce();
-    expect(signals.listenerCount('SIGTERM')).toBe(0);
-    expect(signals.listenerCount('SIGINT')).toBe(0);
+    expect(signals.listenerCount('SIGTERM')).toBe(1);
+    expect(signals.listenerCount('SIGINT')).toBe(1);
     expect(events).toEqual([
       {
         kind: 'api.shutdown.started',
@@ -84,6 +85,8 @@ describe('registerGracefulShutdown', () => {
     await expect(controller.request('SIGTERM')).resolves.toEqual({ ok: true });
     expect(close).toHaveBeenCalledOnce();
     expect(poolSnapshot).toHaveBeenCalledTimes(2);
+    expect(signals.listenerCount('SIGTERM')).toBe(0);
+    expect(signals.listenerCount('SIGINT')).toBe(0);
     expect(events).toEqual([
       {
         kind: 'api.shutdown.started',
@@ -119,6 +122,8 @@ describe('registerGracefulShutdown', () => {
     expect(result).toEqual({ ok: false });
     expect(signals.exitCodes).toEqual([1]);
     expect(close).toHaveBeenCalledOnce();
+    expect(signals.listenerCount('SIGTERM')).toBe(0);
+    expect(signals.listenerCount('SIGINT')).toBe(0);
     expect(events).toEqual([
       { kind: 'api.shutdown.started', signal: 'SIGINT' },
       { kind: 'api.shutdown.failed', signal: 'SIGINT' },
@@ -146,6 +151,23 @@ describe('registerGracefulShutdown', () => {
     await expect(controller.request('SIGTERM')).resolves.toEqual({ ok: true });
     expect(close).toHaveBeenCalledOnce();
     expect(signals.exitCodes).toEqual([]);
+    expect(signals.listenerCount('SIGTERM')).toBe(0);
+    expect(signals.listenerCount('SIGINT')).toBe(0);
+  });
+
+  it('supports an explicit idempotent listener disposal before shutdown', () => {
+    const signals = createSignalHarness();
+    const controller = registerGracefulShutdown({
+      server: { close: vi.fn().mockResolvedValue(undefined) },
+      signals: signals.source,
+      events: { record() {} },
+    });
+
+    controller.dispose();
+    controller.dispose();
+
+    expect(signals.listenerCount('SIGTERM')).toBe(0);
+    expect(signals.listenerCount('SIGINT')).toBe(0);
   });
 
   it('rolls back the first listener when registering the second signal fails', () => {

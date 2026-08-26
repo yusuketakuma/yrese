@@ -37,10 +37,14 @@ export function observeDatabasePoolBackgroundErrors(
   events: RuntimeOperationalEventSink,
 ): () => void {
   const onBackgroundError = (): void => {
-    events.record({
-      kind: 'database.pool.background_error',
-      databasePool: snapshotDatabasePool(pool),
-    });
+    try {
+      events.record({
+        kind: 'database.pool.background_error',
+        databasePool: snapshotDatabasePool(pool),
+      });
+    } catch {
+      // A reporter failure must not turn an already-handled pool error into an uncaught error.
+    }
   };
 
   pool.on('error', onBackgroundError);
@@ -50,4 +54,16 @@ export function observeDatabasePoolBackgroundErrors(
     observing = false;
     pool.off('error', onBackgroundError);
   };
+}
+
+export async function closeObservedDatabasePool(
+  pool: Pick<Pool, 'end'>,
+  stopObserving: () => void,
+): Promise<void> {
+  try {
+    await pool.end();
+  } finally {
+    // Keep the error listener installed until every client has been drained or destroyed.
+    stopObserving();
+  }
 }

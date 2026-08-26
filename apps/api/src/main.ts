@@ -14,6 +14,7 @@ import { assertMigrationStateAllowsStartup } from './db/migration-runner.js';
 import { loadMigrationFiles } from './db/migrations.js';
 import { PostgresPatientRepository } from './db/patient-repository.js';
 import {
+  closeObservedDatabasePool,
   createDbPool,
   observeDatabasePoolBackgroundErrors,
   snapshotDatabasePool,
@@ -126,8 +127,7 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
       service: new PostgresPrescriptionDraftService(pool),
     });
     server.addHook('onClose', async () => {
-      stopObservingPool?.();
-      await pool.end();
+      await closeObservedDatabasePool(pool, stopObservingPool ?? (() => {}));
     });
     return Object.freeze({
       server,
@@ -136,10 +136,7 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
   } catch (error) {
     throw await preserveStartupFailureAcrossCleanup({
       originalError: error,
-      cleanup: async () => {
-        stopObservingPool?.();
-        await pool.end();
-      },
+      cleanup: () => closeObservedDatabasePool(pool, stopObservingPool ?? (() => {})),
     });
   }
 }

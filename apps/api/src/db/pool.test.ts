@@ -1,5 +1,5 @@
 import type { PoolConfig } from 'pg';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   defaultDbPoolConfiguration,
@@ -7,6 +7,7 @@ import {
 } from '../config.js';
 import { createJsonRuntimeOperationalEventSink } from '../runtime-events.js';
 import {
+  closeObservedDatabasePool,
   createDbPool,
   observeDatabasePoolBackgroundErrors,
   snapshotDatabasePool,
@@ -167,5 +168,53 @@ describe('createDbPool', () => {
     stopObserving();
     expect(pool.listenerCount('error')).toBe(initialListeners);
     await pool.end();
+  });
+
+  it('does not rethrow a pool error when the operational sink itself fails', async () => {
+    const pool = createDbPool('postgresql://synthetic.invalid/yrese');
+    const stopObserving = observeDatabasePoolBackgroundErrors(pool, {
+      record() {
+        throw new Error('synthetic reporter detail');
+      },
+    });
+
+    expect(() => pool.emit('error', new Error('synthetic pool detail'))).not.toThrow();
+
+    stopObserving();
+    await pool.end();
+  });
+});
+
+describe('closeObservedDatabasePool', () => {
+  it('keeps the observer installed until pool.end settles', async () => {
+    let resolveEnd: (() => void) | undefined;
+    const end = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveEnd = resolve;
+        }),
+    );
+    const stopObserving = vi.fn();
+
+    const closing = closeObservedDatabasePool({ end }, stopObserving);
+
+    expect(end).toHaveBeenCalledOnce();
+    expect(stopObserving).not.toHaveBeenCalled();
+    resolveEnd?.();
+    await closing;
+    expect(stopObserving).toHaveBeenCalledOnce();
+  });
+
+  it('removes the observer after a pool.end failure without hiding that failure', async () => {
+    const endError = new Error('synthetic pool end detail');
+    const stopObserving = vi.fn();
+
+    await expect(
+      closeObservedDatabasePool(
+        { end: vi.fn().mockRejectedValue(endError) },
+        stopObserving,
+      ),
+    ).rejects.toBe(endError);
+    expect(stopObserving).toHaveBeenCalledOnce();
   });
 });
