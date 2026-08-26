@@ -20,7 +20,9 @@ export const defaultDbPoolConfiguration: DbPoolConfiguration = Object.freeze({
   max: 5,
   idleTimeoutMillis: 10_000,
   connectionTimeoutMillis: 5_000,
-  maxLifetimeSeconds: 300,
+  // Preserve the previous unlimited lifetime until deployment-specific connection
+  // churn and Aurora failover behavior are measured. Operators may opt in explicitly.
+  maxLifetimeSeconds: 0,
 });
 
 export type PatientSearchCursorHmacKeyResolution =
