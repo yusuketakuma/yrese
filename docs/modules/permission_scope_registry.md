@@ -8,9 +8,9 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.1
+version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-11
+updated_at: 2026-08-26
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 effective_from: null
@@ -42,11 +42,12 @@ related_tests:
 related_prs: []
 evidence_ids: []
 open_questions:
-  - 疑義照会・会計(返金/差額)・RECOVERY_SYNC承認の専用 scope 要否(UIX-007 の指摘 — 画面実装WPの DoR までに確定)
+  - 疑義照会・会計(返金/差額)・RECOVERY_SYNC承認の専用 scope 要否(UIX-001 §12 の指摘 — 画面実装WPの DoR までに確定)
   - ロール→scope の既定割当表(pharmacist/clerk/admin/support)— auth 設計SSOTと同時に確定
   - break-glass アカウントの scope 表現(SEC-005)
 blockers: []
 change_log:
+  - 0.1.2 2026-08-26 WP-5104 reference-only cutover from UIX-007 to UIX-001 §12; permission semantics unchanged
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W3 metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - 0.1.1 (2026-07-09): WP-3009-BE / API-006 v0.2.0 に基づき、受付キュー API 用 resource `reception` を追加(`reception:read` / `reception:write`)。GET/POST は patient:read 併須。

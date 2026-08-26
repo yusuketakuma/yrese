@@ -59,9 +59,9 @@ blockers:
 
 ## 0. Current topology と unique SSOT target(2026-08-26)
 
-review baseではUIX-001〜007の旧revisionがAPPROVEDであり、そのeffective authorityは
-finalizationまで維持する。current working treeではUIX-001/IDX-001だけがPROPOSED revision、
-UIX-002〜007はAPPROVEDのままで、本書はcomponent systemを扱うnon-SSOT候補である。
+UIX-001 v0.2.0はdirect user instructionにより限定foundationとしてAPPROVEDとなり、
+UIX-002〜007はUIX-001 §§7〜12へSUPERSEDEDとして統合された。本書は引き続き
+component systemのreview provenanceを扱うnon-SSOTである。
 一方、current taskはUI/UX原則・IA・操作/表示体系・theme・
 tokens・canonical components・state・a11y・responsive・debt/change management を集約した
 **唯一の UI/UX SSOT file**を要求する。component-only の UIX-008 を追加し UIX-001〜007 を
@@ -79,15 +79,14 @@ synthetic/demo data 限定、pharmacist / claim-clerk / accessibility / product 
 UAC-11 の自動+手動検証、および UIX-005 の ST-01〜15(入力保全・冪等性・部分失敗・
 LOCAL_ONLY/RECOVERY_SYNC・監査欠落防止を含む)を cutover checklist に明記して保存する。
 
-既存正本を再利用する A を direct user instruction 2026-08-26 が選択した。この選択は
-UIX-001改版のAPPROVED化や実装を承認せず、exact candidate diff、独立レビュー、
-medical-safety/privacy/accessibility review、該当するpharmacist/product human gateを省略しない。
+既存正本を再利用する A を direct user instruction 2026-08-26 が選択し、同日の限定承認で
+UIX-001 v0.2.0のfoundation昇格に必要な観点を承認した。この承認は未決領域の実装、
+risk acceptance、external action、UNMAPPED、HPKI/legal、RB-003 blockerを解除しない。
 
 ### 0.1 Candidate A preservation matrix
 
-review中はUIX-001の改版だけをPROPOSEDとし、UIX-002〜007は既存APPROVED authorityのまま
-維持する。final human approval後のfinalization batchでのみUIX-001をAPPROVED、UIX-002〜007を
-SUPERSEDEDにし、indexとdirect live referencesを同時更新する。
+finalization batchでUIX-001をAPPROVED、UIX-002〜007をSUPERSEDEDとし、indexとdirect live
+referencesを同時更新する。旧source本文は履歴/provenanceとして保存する。
 
 | source | Candidate A UIX-001 target | preservation pin |
 |---|---|---|
@@ -104,7 +103,7 @@ SUPERSEDEDにし、indexとdirect live referencesを同時更新する。
 
 ## 1. 目的と適用範囲
 
-`apps/web/**` のUIX-007 active 28画面は、該当する状態表示・警告・確認操作・
+`apps/web/**` のUIX-001 §12 active 28画面は、該当する状態表示・警告・確認操作・
 ローディング/空/エラー表示を**本書が台帳化する共通コンポーネント経由でのみ**表現する。
 患者文脈は認証済み患者業務面だけへ適用し、待合・共用・support面には投影しない。
 画面ローカルでの状態表現の直接実装(hex 直指定・自由ラベルのドメイン状態・独自 severity)は禁止する。
@@ -113,10 +112,9 @@ membership/active grant、API/OpenAPI operation mappingが未承認の間はenfo
 
 本書は次を再定義しない(上位正本をそのまま参照する):
 
-- 優先順位・原則 P-01..P-20・禁止15項・警告重要度5段 — **旧UIX-001 v0.1.2**
-  (review base/effective predecessorのみAPPROVED。working treeのv0.2.0はPROPOSED)
-- 業務導線・モード分岐・ロール別ホーム — **UIX-006**(APPROVED)
-- 画面台帳・ux_safety_level(U0..U4)— **UIX-007**(APPROVED)
+- 優先順位・原則 P-01..P-20・禁止15項・警告重要度5段 — **UIX-001 §§1〜6**
+- 業務導線・モード分岐・ロール別ホーム — **UIX-001 §11**
+- 画面台帳・ux_safety_level(U0..U4)— **UIX-001 §12**
 - 実装波・品質ゲート — **PLAN-UIUX-001**
 - contract-first(zod 契約経由のみの API 呼出)— **API-002**
 
@@ -128,7 +126,7 @@ membership/active grant、API/OpenAPI operation mappingが未承認の間はenfo
 | L1 | 状態表現の単一正本(domain×key → label/tone/shape/ARIA) | `apps/web/app/status/visual-status-registry.ts` | 低 — ドメイン enum SSOT 承認後のみ軸追加 |
 | L2 | 基礎コンポーネント(バッジ・リスト・バナー・ダイアログ・状態画面) | `apps/web/app/components/` | 中 — 本書の契約と追加手順(§5)に従う |
 | L3 | 業務複合コンポーネント(PatientHeader・ClinicalAlert・trace viewer 等) | 同上 | 中 — U4 該当はレビュー体制必須 |
-| L4 | 画面(UIX-007 の SCR-xxx) | `apps/web/app/**/page.tsx` | 画面は L0-L3 を組み合わせるだけ。独自の状態表現を持たない |
+| L4 | 画面(UIX-001 §12 の SCR-xxx) | `apps/web/app/**/page.tsx` | 画面は L0-L3 を組み合わせるだけ。独自の状態表現を持たない |
 
 **核となる規律(2026-07-31 敵対的レビュー SF-1 により二相へ訂正)**: 刷新は性質の異なる二相に分離する。
 
@@ -228,7 +226,7 @@ Candidate A contract適合、live integration、自動test、専門review、rele
    - `AlertRail` — 右レール常設警告(SCR-013 吸収。BLOCKER の中央進出は UIX-001 §5 準拠)
    - `EvidenceDrawer` — calculation trace(P-13)と記録版履歴(P-12: 版・確認者・確認日時)の
      その場開閉。**監査イベント(audit_events 由来の一覧・chain 状態・再試行操作)は扱わない** —
-     UIX-006 §4「監査イベントは一般業務Webへ表示しない」と SEC-005「一般薬剤師向けWeb画面は
+     UIX-001 §11.4「監査イベントは一般業務Webへ表示しない」と SEC-005「一般薬剤師向けWeb画面は
      提供しない」の明示禁止に従う(SCR-028 RETIRED を別名で復活させない — 2026-07-31 checker C-1 訂正)
    - `BoardViewSwitcher` — ロール別ビューの投影切替(14号 §7.1)。**権限を一切変更しない**
      (capability の正は MOD-007 + API scope — 17号 D-1/SF-6)
@@ -307,24 +305,23 @@ Candidate A contract適合、live integration、自動test、専門review、rele
   挙動 assertion はない
 - actual 200% zoom、内部 scroll、screen reader、forced-colors の自動判定、reduced-motion の
   挙動、`prefers-contrast: more`、将来の WorkflowSheet は targeted test と手動確認を別途行う。
-  現行 gate 単独を UIX-004/UAC-11 適合の証跡と呼ばない
+  現行 gate 単独を UIX-001 §9/UAC-11 適合の証跡と呼ばない
 - target gateは`/prescriptions`一枚に限定せず、全canonical componentと代表routeの
   forced-colors境界/focus、reduced-motionの停止挙動、320/375/768/1024 CSS px、200% zoom、
   dialog focus、実screen readerをUIX-001 §14.1の自動+手動matrixで確認する
 - browser artifactはproduction接続なしのsynthetic fixtureだけで生成する。patient sentinelを
   console、URL、error、artifact名へ含めず、screenshot外部共有時はredactしCI retention期間だけ保持する
-- a11y: UIX-004受入基準+UIX-001 §14.1を自動+手動で確認し、結果を別artifactにする
-- 性能: UIX-003 予算内(トークン差し替えで CSS サイズ・CLS を悪化させない)
+- a11y: UIX-001 §§9,14.1の受入基準を自動+手動で確認し、結果を別artifactにする
+- 性能: UIX-001 §8予算内(トークン差し替えで CSS サイズ・CLS を悪化させない)
 
 ## 8. 昇格手順(fail-closed)
 
 1. 本ドラフトのレビュー(frontend / accessibility / independent)
 2. §0 の unique SSOT topologyをhuman product authorityが承認(2026-08-26 Candidate A選択済み)。
    §9の未決事項はそれぞれの該当gateで解消する
-3. UIX-001 PROPOSED revisionと§0.1 preservation matrixをreviewする。旧UIX-002〜007は
-   finalizationまでAPPROVEDのまま維持する
-4. required reviewとfinal human approval後、UIX-001 APPROVED、UIX-002〜007 SUPERSEDED、
-   `docs/ssot_index.md`、PLAN-UIUX-001とdirect live referencesを同一finalization batchで更新する
+3. UIX-001 revisionと§0.1 preservation matrixのrequired reviewを完了する(完了)
+4. direct user final approvalに基づき、UIX-001 APPROVED、UIX-002〜007 SUPERSEDED、
+   `docs/ssot_index.md`、PLAN-UIUX-001とdirect live referencesを同一finalization batchで更新する(実施中)
 5. finalization diffを再確認してlandingした後だけ、実装WPをqueue規律に従ってclaimする
 
 ## 9. Open questions
@@ -350,7 +347,7 @@ Candidate A contract適合、live integration、自動test、専門review、rele
   の競合を atomic cutover decision として明示。L0 token の実在する分散 ownership と、
   Vitest + Playwright/axe の現行 test stack に検証記述を合わせた。
 - 0.1.3-draft (2026-07-31): WP-5101 fresh-context checker(3 lane)findings 反映 —
-  EvidenceDrawer から監査メタを削除し UIX-006/SEC-005 の明示禁止へ整合(C-1)、
+  EvidenceDrawer から監査メタを削除し current UIX-001 §11/SEC-005 の明示禁止へ整合(C-1)、
   Phase A の「全緑=挙動不変」主張を検出力の実態へ訂正し受入へ静的検査+a11y を追加(H-4)、
   RTL ハーネス未導入を blocker 化(H-5)、予約へ BoardShell / ConfirmationQueueRail /
   StageLockIndicator / StageReturnAction を追加(M-12)、禁止8項→12項(M-2 / H-6 / L-1)、

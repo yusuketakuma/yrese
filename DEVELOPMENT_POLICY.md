@@ -410,9 +410,10 @@ is the sole authority for CURRENT/READY selection and records the applicable gat
    amendment batch is complete and no longer a selectable work item. Its
    registered blockers and implementation gates remain unchanged.
 4. **CURRENT WORK SELECTION:** choose exactly one item from `Plans.md`; do not
-   infer CURRENT or READY from this charter. The 2026-08-26 Candidate A UI/UX
-   direction permits only the registered PLAN_ONLY PRC-007 preparation path
-   until its specialist and human gates are complete.
+   infer CURRENT or READY from this charter. The 2026-08-26 limited Candidate A UI/UX
+   foundation approval permits only the registered PLAN_ONLY atomic finalization path;
+   it does not authorize unresolved implementation, risk acceptance, or external action;
+   those remain subject to their recorded domain gates.
 5. **INTEROPERABILITY ORDER:** for remaining items, preserve the dependency order
    in `Plans.md §16`; completed items are nonclaimable and must not be replayed.
    External procedures remain human work, and external-interface code still

@@ -1,6 +1,6 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-26, WP-5104 Candidate A PROPOSED packet):** This block alone
+> **ACTIVE SNAPSHOT (2026-08-26, WP-5104 Candidate A atomic finalization):** This block alone
 > is current. Everything below is nonauthoritative.
 
 - **Direction / ownership:** WP-5101 Candidate A decision and C-100 charter correction are
@@ -13,16 +13,15 @@
 - **Git boundary:** `main` and `origin/main` are
   `c7b61406c6f6e58363139e3dced79c62f30cebf5`. Candidate work is isolated on
   local/remote `feature/wp-5101-uiux-review`; exact head/status is read from Git. Current
-  WP-5104 ownership is exact6: `Plans.md`, `State.md`, UIX-001, IDX-001, draft 13, and
-  `docs/ui-ux-refresh/README.md`.
-- **Current gate:** UIX-001, its index row, and the amended IDX-001 metadata remain PROPOSED
-  review material with approval/effective fields blank. UIX-002〜007 stay APPROVED until
-  finalization. Candidate A final approval, PRC-007 atomic finalization, and
-  applicable medical-safety/security/privacy/accessibility/pharmacist authorization remain open.
+  WP-5104 ownership is the finalization exact-path allowlist in `Plans.md`; Git diff is authoritative.
+- **Current gate:** direct user instruction approved the limited UIX-001 v0.2.0 foundation and the
+  required medical-safety/security/privacy/accessibility/pharmacist/product UI-flow perspectives.
+  UIX-001→APPROVED, UIX-002〜007→SUPERSEDED, index and direct live references are being finalized
+  atomically. Fresh exact-diff validation/review/Oracle and PR #5 CI/merge remain.
   HPKIの主体・時点・段帰属はREG-003 §7の法務gate、外部登録はREG-004 RB-003解除待ちで、
   いずれも未解決中は署名・外部登録を実装しない。
-- **Landing / remote:** Draft PR #5 is the PLAN_ONLY review vehicle; exact-head CI status
-  is read from GitHub. No main merge is permitted before the open gates. Draft PR #4
+- **Landing / remote:** Draft PR #5 is the PLAN_ONLY finalization vehicle; exact-head CI status
+  is read from GitHub. Merge is permitted only after the remaining finalization gates pass. Draft PR #4
   (`feat/prescription-draft-persistence`) remains conflicting, failing, and outside the
   approved durable-writer boundary; do not merge it.
 

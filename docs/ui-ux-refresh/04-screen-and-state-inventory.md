@@ -1,11 +1,11 @@
 # 04 — Screen and State Inventory (Phase 3)
 
-既存の正本 `docs/uiux/screen_inventory_draft.md`(UIX-007, active 28画面 SCR-001..027 + SCR-029、SCR-028はretired tombstone)と
-`docs/uiux/workflow_map.md`(UIX-006)を**正本として参照**する。本書はそれを重複させず、
-(a) App Router 実装との対応、(b) UIX-007 に無い**状態(state)軸マトリクス**、(c) ジャーニー実在性、を補う。
+既存の正本 UIX-001 §12(active 28画面 SCR-001..027 + SCR-029、SCR-028はretired tombstone)と
+§11(業務導線)を**正本として参照**する。本書はそれを重複させず、
+(a) App Router 実装との対応、(b) UIX-001 §12 に無い**状態(state)軸マトリクス**、(c) ジャーニー実在性、を補う。
 
 > **2026-07-29 current-fact correction:** WP-4254はSCR-028 Web viewerをsource削除し、
-> 監査確認画面をcompliance/clinical mitigationとして扱わない。UIX-006/UIX-007/SEC-007/SEC-008と
+> 監査確認画面をcompliance/clinical mitigationとして扱わない。UIX-001 §§11〜12/SEC-007/SEC-008と
 > IDX-001のatomic approval、Web 423 tests、workspace 1,781 tests(PostgreSQL統合を含みskip 0)、
 > typecheck/build/CI相当gateをlocal検証済み。commit/push/production readinessは主張しない。
 
@@ -13,10 +13,9 @@
 
 ### Normative SSOT(人間向け規範。WP-4254改版対象は2026-07-29 APPROVED)
 - `docs/uiux/medical_ui_ux_principles.md`(UIX-001 v0.1.1): 優先順位、原則 P-01..P-20、禁止15項、警告重要度§5。
-- `docs/uiux/workflow_map.md`(UIX-006): NORMAL / LOCAL_ONLY / RECOVERY_SYNC 導線、ロール別ホーム。
-- `docs/uiux/screen_inventory_draft.md`(UIX-007): active 28画面、retired SCR-028 tombstone、U0-U4 安全度、権限 scope 仮割当。
-- `docs/uiux/experience_quality_baseline.md` / `performance_budget.md` / `stability_slo_policy.md` /
-  `usability_acceptance_criteria.md`: 体験品質・性能・安定性・受入基準。
+- UIX-001 §11: NORMAL / LOCAL_ONLY / RECOVERY_SYNC 導線、ロール別ホーム。
+- UIX-001 §12: active 28画面、retired SCR-028 tombstone、U0-U4 安全度、権限 scope 仮割当。
+- UIX-001 §§7〜10: 体験品質・性能・安定性・受入基準。
 
 ### Executable SSOT(コードとしてUIを制約)
 - `packages/shared-kernel/src/`: `system-mode.ts`(5モード+ガード関数)、`status.ts`(PROVISIONAL/ELIGIBILITY/
@@ -38,7 +37,7 @@
 - **重複**: `EligibilityDisplayStatus` の import 再利用は良いが、ラベル写像が「どの状態族も個別ファイル所有」で
   横断的な単一 Registry が無い。→ Phase 7 で集約。
 - `globals.css` に「旧名称(既存参照互換)」トークン(`--color-mode-*`)が残存 = 命名の二層化(意味的命名へ寄せる余地)。
-- UIX-007 の権限 scope に `【要確認】` 多数(permission_scope_registry 未確定)。
+- UIX-001 §12 の権限 scope に `【要確認】` 多数(permission_scope_registry 未確定)。
 
 ## 2. App Router 実装と特殊ファイルの現状
 
@@ -56,7 +55,7 @@
 **Phase 5/8 候補ギャップ(P0-P2)**: `loading.tsx` / `not-found.tsx` / `global-error.tsx` の欠如は、
 医療UI原則 P-01/P-19(状態を隠さない・例外時ほど状態明示)に照らし補うべき横断状態。
 
-## 3. 画面×状態マトリクス(UIX-007 に無い state 軸)
+## 3. 画面×状態マトリクス(UIX-001 §12 に無い state 軸)
 
 凡例: ● 実装で表現済 / ◐ 部分/コンポーネントは存在するが画面未結線 / ○ 設計はあるが未実装 / — 非該当。
 
@@ -85,10 +84,10 @@
 | 患者検索→選択→対象確認 | ◐ 検索は実在。「選択→患者文脈確定(PatientHeader へ受け渡し)」の結線は未 | patient-search.tsx / patient-header.tsx |
 | 一覧→検索→(フィルタ/ソート)→詳細 | ◐ 検索+cursor ページングは実在。フィルタ/ソート/詳細遷移は未 | patient-search.tsx(nextCursor) |
 | 新規作成→入力→検証→保存→確定 | ◐ 受付登録(冪等・409)は実在。「確定」ライフサイクルは未 | reception-dashboard.tsx |
-| 前回処方→今回処方 差分 | ○ 設計(workflow_map)あり・画面未実装 | UIX-006/007 SCR-004,010 |
+| 前回処方→今回処方 差分 | ○ 設計(UIX-001 §11)あり・画面未実装 | UIX-001 §§11〜12 SCR-004,010 |
 | 下書き→レビュー→承認→確定 | ○ 設計あり・未実装 | SCR-014 |
-| オフライン編集→ローカル保存→復帰→同期 | ◐ モデル(LOCAL_ONLY/RECOVERY_SYNC)と可否表示基盤あり・データ経路未 | system-mode.ts / mode-capability-view.tsx / UIX-006 |
-| 同期競合→差分→解決 | ○ CONFLICT_REQUIRES_HUMAN_REVIEW 定義あり・SCR-027 画面未 | status.ts / UIX-006 §3 |
+| オフライン編集→ローカル保存→復帰→同期 | ◐ モデル(LOCAL_ONLY/RECOVERY_SYNC)と可否表示基盤あり・データ経路未 | system-mode.ts / mode-capability-view.tsx / UIX-001 §11 |
+| 同期競合→差分→解決 | ○ CONFLICT_REQUIRES_HUMAN_REVIEW 定義あり・SCR-027 画面未 | status.ts / UIX-001 §11.3 |
 | サインイン→Cognito→callback→復帰 | ✗ **未実装**(認証は BLOCKED_SECURITY_REVIEW)。**捏造しない** | patient-search.tsx コメント |
 | ファイル選択→検証→アップロード→完了 | ✗ 未実装。捏造しない | — |
 | レート制限→待機→再試行 | ✗ UI 未実装 | — |

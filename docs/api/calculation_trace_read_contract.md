@@ -13,12 +13,12 @@ owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-10
-updated_at: 2026-07-11
+updated_at: 2026-08-26
 source_refs:
   - docs/quality/quality_transparency_strategy.md(QUA-007 §2 L2 過程の証明)
-  - docs/uiux/screen_inventory_draft.md(SCR-012)
+  - UIX-001 §12(SCR-012)
 depends_on:
   - CAL-008(calculation_trace_schema — trace スキーマの正本)
   - MOD-004(shared_type_registry — branded ID / 型の正本)
@@ -37,6 +37,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.1.1 2026-08-26 WP-5104 reference-only cutover from UIX-007 to UIX-001 §12; API contract semantics unchanged"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W5A metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:

@@ -12,9 +12,9 @@ reviewers:
   - ui_flow_tester
   - accessibility_ux_reviewer
   - human_review_if_required
-version: 0.2.0
+version: 0.2.1
 created_at: 2026-07-09
-updated_at: 2026-07-29
+updated_at: 2026-08-26
 approved_at:
 approved_by:
 effective_from:
@@ -24,8 +24,8 @@ source_refs:
   - ユーザー指示 2026-07-09(component.gallery 活用)
   - ユーザー指示 2026-07-29(監査確認画面を廃止)
   - docs/agents/codex_single_lane_operating_model.md
-depends_on: [AGT-018, UIX-001, UIX-002, UIX-003, UIX-004, UIX-006, UIX-007, API-001, API-002, PRD-008]
-impacts: [UIX-007(画面台帳の実装状態更新), Plans.md WP-3006以降]
+depends_on: [AGT-018, UIX-001, API-001, API-002, PRD-008]
+impacts: [UIX-001 §12(画面台帳の実装状態更新), Plans.md WP-3006以降]
 related_work_packages:
   - WP-3006
   - WP-9001
@@ -35,6 +35,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - 0.2.1 2026-08-26 WP-5104 reference-only cutover to UIX-001 §§7〜12; plan semantics and blockers unchanged
   - 0.2.0 2026-07-29 SCR-028をactive UI計画から除外。監査記録・権限制御API・保全・integrityはSEC-007境界で維持
   - 0.1.1 2026-07-10 direct user instruction (WP-9001) により現行UI routingをAGT-018のsole Codex maintainer + independent/domain reviewersへ切替。本文の旧role/model名はprovenanceとして保持
   - 0.1.0 2026-07-09 初版起案
@@ -47,11 +48,11 @@ blockers: []
 
 ## 1. 目的と上位方針
 
-`apps/web/**`をCodex単一レーンのsole maintainerが担当し、画面台帳 UIX-007 のactive 28画面に対してUI/UXを段階的に実装するための実行計画。次を上位方針とし、本計画はそれらを変更しない。
+`apps/web/**`をCodex単一レーンのsole maintainerが担当し、画面台帳 UIX-001 §12 のactive 28画面に対してUI/UXを段階的に実装するための実行計画。次を上位方針とし、本計画はそれらを変更しない。
 
 1. **医療UI原則(UIX-001 / v0.2.0 §16)**: 患者文脈の常時固定表示(PatientHeader)、状態は色だけに依存せずテキストラベル併記、システムモード常時可視。U4画面はindependent verifier、`medical_safety_reviewer`、`privacy_compliance_reviewer`、accessibility/flow reviewersと、該当する人間薬剤師・患者安全authorityのreviewを必須とする
 2. **contract-first / dogfooding(API-002)**: UI は @yrese/contracts の zod 契約経由でのみ API を呼ぶ。契約外フィールドの仮定禁止、抜け道 API 禁止
-3. **fail-closed の可視化**: BLOCKED・PENDING 系ステータスを隠さない。「なぜ操作できないか」を理由付きで表示する(UIX-007 SCR-013/026 の趣旨)
+3. **fail-closed の可視化**: BLOCKED・PENDING 系ステータスを隠さない。「なぜ操作できないか」を理由付きで表示する(UIX-001 §12 SCR-013/026 の趣旨)
 4. **デザイン参照規律(ユーザー指示 2026-07-09)**: 新規コンポーネントの設計前に The Component Gallery(https://component.gallery/components/)で標準パターン・命名・バリエーション・a11y 慣行を確認し、独自発明を避ける。医療UI原則と衝突する場合は医療UI原則が優先
 5. **シンプル実装**: packages/ui 化は第二利用者出現時(既決)。コンポーネントは apps/web/app/components/ に置き、投機的な汎用化をしない
 
@@ -63,7 +64,7 @@ blockers: []
 
 ## 3. 実装波(Phase UI-1〜UI-6)
 
-依存が満たされた波から着手する。**各画面の実装前に UIX-007 の該当行を確認し、台帳にない画面は実装しない。**
+依存が満たされた波から着手する。**各画面の実装前に UIX-001 §12 の該当行を確認し、台帳にない画面は実装しない。**
 
 ### Phase UI-1: デザイン基盤(依存なし — 即時着手可)
 
@@ -118,9 +119,9 @@ SCR-028 監査ログ閲覧はWP-4254で一般業務Webからsource削除・local
 
 1. コンポーネント/画面テスト必須(vitest + Testing Library。--passWithNoTests は既に禁止)
 2. 契約検証: レスポンスは必ず contracts の zod schema で parse(既存 patient-search の方式を踏襲)
-3. a11y: UIX-004 受入基準 + 色非依存(テキストラベル必須)・キーボード操作・role/aria の基本確認をレビュー項目化
-4. U4 画面と横断コンポーネントはmedical_safety_reviewer、privacy_compliance_reviewer、必要なhuman authorityのレビューを実装後に必須(UIX-007 運用ルール)
-5. 性能: UIX-003 の性能予算に収まること(初期は計測基盤のみ。数値ゲート化は OPS 系と同期)
+3. a11y: UIX-001 §9 受入基準 + 色非依存(テキストラベル必須)・キーボード操作・role/aria の基本確認をレビュー項目化
+4. U4 画面と横断コンポーネントはmedical_safety_reviewer、privacy_compliance_reviewer、必要なhuman authorityのレビューを実装後に必須(UIX-001 §12 運用ルール)
+5. 性能: UIX-001 §8 の性能予算に収まること(初期は計測基盤のみ。数値ゲート化は OPS 系と同期)
 6. PHI をログ・計測・エラーメッセージへ出さない(SEC-004)
 
 ## 5. 実行順序と当面のコミットメント
@@ -131,7 +132,7 @@ UI-1(WP-3006→3007)→ UI-2(WP-3008→3009→3010)→ UI-3(WP-3011→3012→301
 ```
 
 - 第1弾として WP-3006 / WP-3007 / WP-3011 を近日着手(依存が全て満たされているため)
-- 各 WP 完了時に UIX-007 の「実装状態」列を更新する(台帳が実態を反映し続けること)
+- 各 WP 完了時に UIX-001 §12 の「実装状態」列を更新する(台帳が実態を反映し続けること)
 
 ## 変更履歴
 

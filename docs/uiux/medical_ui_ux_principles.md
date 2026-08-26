@@ -4,7 +4,7 @@
 ssot_id: UIX-001
 title: yrese UI/UX 基盤
 domain: uiux
-status: PROPOSED
+status: APPROVED
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -23,9 +23,9 @@ reviewers:
 version: 0.2.0
 created_at: 2026-07-09
 updated_at: 2026-08-26
-approved_at:
-approved_by:
-effective_from:
+approved_at: 2026-08-26
+approved_by: direct_user_instruction (limited WP-5104 Candidate A final SSOT approval, 2026-08-26); required independent and domain reviews PASS
+effective_from: 2026-08-26
 effective_to: null
 source_snapshot_commit: 9786fe8eab3da97213d5b641b725531b13f10290
 source_refs:
@@ -47,6 +47,7 @@ source_refs:
   - design exploration board artifact bcc10e46 (2026-07-31)
   - one-board prototype artifact cb24845f (2026-07-31; repository外provenance。screen mapping authorityには使わない)
   - direct_user_instruction 2026-08-26 (Candidate A選択。未決のmedical-safety/privacy/accessibility/pharmacist判断は各該当gateへ委譲)
+  - direct_user_instruction 2026-08-26 (限定されたfoundation昇格を最終承認。UNMAPPED、HPKI/legal/RB-003、未決領域の実装・risk acceptance・external action禁止を維持)
 depends_on:
   - docs/product/mvp_scope.md
   - docs/architecture/offline_mode_matrix.md
@@ -91,7 +92,7 @@ related_prs:
   - Draft PR #5
 evidence_ids: []
 change_log:
-  - 0.2.0 2026-08-26 PROPOSED Candidate A: UIX-002〜007とcomponent-system規律をUIX-001へ集約。final approval前は実装根拠にしない
+  - 0.2.0 2026-08-26 Candidate A: UIX-002〜007とcomponent-system規律をUIX-001へ集約し、限定human approvalとrequired review後にAPPROVED化。未決blockerは維持
   - 0.1.2 2026-07-11 Visual Status Registry実装対応を追加。旧APPROVED版
   - 0.1.1 2026-07-09 警告重要度へERRORを追加。旧APPROVED版
   - 0.1.0 2026-07-09 初版APPROVED
@@ -99,12 +100,6 @@ open_questions:
   - L0 theme、density、tablet縮退、lock表現は本文 §17 の該当gateで確定
   - 高齢患者向け拡大表示、常設キューの氏名表示、薬剤師確認位置は本文 §17 の該当gateで確定
 blockers:
-  - BLOCKED_FINAL_HUMAN_SSOT_APPROVAL
-  - BLOCKED_MEDICAL_SAFETY_REVIEW
-  - BLOCKED_SECURITY_REVIEW
-  - BLOCKED_PRIVACY_REVIEW
-  - BLOCKED_ACCESSIBILITY_REVIEW
-  - BLOCKED_PHARMACIST_WORKFLOW_REVIEW
   - BLOCKED_SCREEN_TO_BOARD_MAPPING_SOURCE
   - BLOCKED_DOM004_FINALIZE_TRANSITION_AMENDMENT
   - BLOCKED_RB003_ELECTRONIC_PRESCRIPTION
@@ -116,8 +111,9 @@ blockers:
   - BLOCKED_STABILITY_VALIDATION
 ```
 
-> **PROPOSED / REVIEW ONLY:** Candidate AのPRC-007 review revisionである。finalizationまでは
-> UIX-001〜007の既存APPROVED版が現行根拠であり、本revisionを実装根拠にしない。
+> **APPROVED / LIMITED FOUNDATION:** Candidate AのPRC-007 final revisionである。
+> 未決事項、UNMAPPED、HPKI/legal/RB-003、実装・risk acceptance・external actionの
+> blockerは解除せず、本文の各stop conditionが成立するまで実装根拠にしない。
 
 §4、§12、§13の「実装済み」「current」「file対応」はsource snapshot上のfile/symbol/rendering
 inventoryだけを表し、runtime integration、authorization enforcement、production readiness、test PASSを意味しない。
@@ -759,7 +755,7 @@ drawerへ移せる。patient context、SystemMode、確定操作もdrawerへ隠�
 - browser/screenshot/trace/videoはproduction接続を持たないsynthetic fixtureだけで生成する。patient sentinelは
   intended screenshot DOM以外のconsole、URL、error、artifact名へ出ないことをscanし、外部共有時はredactする。
   artifactはCI retention policyの期間だけ保持し、production data/PHIを取得・保存しない。
-- UIX-003候補予算、UAC-01〜12、ST-01〜15は該当実測/human gateなしにPASSと呼ばない。
+- §8候補予算、UAC-01〜12、ST-01〜15は該当実測/human gateなしにPASSと呼ばない。
 
 ### 16.2 design debt
 
@@ -773,8 +769,8 @@ affected UIX section / exact code path / observable harm / ux_safety_level / tri
 - 本書、§12台帳、L1 Registry、shared-kernel enum、API contractのauthorityを先に確認し、同じ概念を二重実装しない。
 - UI/UX規範変更はPRC-007、screen/component追加は本書改版、domain状態変更は対応domain SSOT改版を先に行う。
 - sole maintainerが最小complete diffを作り、makerと別contextがfrozen hashをreviewする。
-- final approval後だけAPPROVED化し、旧UIX-002〜007のSUPERSEDED化、index、direct live referencesを同一batchで更新する。
-- finalization前は旧UIX-001〜007がcurrent authorityであり、このPROPOSED revisionを実装根拠にしない。
+- 本revisionのAPPROVED化、旧UIX-002〜007のSUPERSEDED化、index、direct live referencesは同一batchで更新する。
+- 旧UIX-002〜007は履歴/provenanceとして保持し、現行authorityには使用しない。
 - 変更後はaffected testsとbrowser/manual gateを実行し、未実行gateをPASSと記録しない。
 
 ## 17. 未決事項とhuman gate
@@ -798,13 +794,13 @@ affected UIX section / exact code path / observable harm / ux_safety_level / tri
 | performance/SLO/capacity | product + operations実測 | §8/§10を候補値として扱う |
 | 疑義照会/残薬/高齢患者表示 | pharmacist workflow | current approved requirementを維持し推測しない |
 
-Candidate A選択はこの表の判断、SSOT final approval、実装、migration、deploy、production/external
-action、release/risk acceptanceを含まない。
+限定されたCandidate A final approvalはこの表の未決判断、実装、migration、deploy、
+production/external action、release/risk acceptanceを含まない。
 
 ## 変更履歴
 
-- 0.2.0 (2026-08-26, PROPOSED): Candidate AによりUIX-002〜007とcomponent-system規律を
-  UIX-001へ集約。required review/final human approval前は実装根拠にしない。
+- 0.2.0 (2026-08-26, APPROVED): Candidate AによりUIX-002〜007とcomponent-system規律を
+  UIX-001へ集約。限定human approvalとrequired review後にAPPROVED化し、未決blockerを維持。
 - 0.1.2 (2026-07-11): §4 に Visual Status Registry(視覚的状態言語の単一正本)実装対応行を追加。原則本文は不変。実装対応は【human_review_required】(医療安全レビュー未了)。詳細は docs/ui-ux-refresh/08,09,10。
 - 0.1.1 (2026-07-09): WP-3007 opus4.8 医療安全レビュー反映 — §5 に ERROR(技術・システム)行を追加し、技術例外を CRITICAL に割り当てない濫発防止規定を明記。
 - 0.1.0: 初版(WP-0008)。

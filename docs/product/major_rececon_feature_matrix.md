@@ -9,9 +9,9 @@ owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-08-26
 source_refs: [PRD-004(rececon_feature_benchmark — Priority C宣言を含む)]
 depends_on: [PRD-001, PRD-002, PRD-004]
 impacts: [WP-0019(PRD-001改版), CAL系SSOT, UIX系SSOT, API契約群]
@@ -86,7 +86,7 @@ open_questions:
 4. **処方監査システム双方向API**(監査結果取込 — 未加工転記+出典明示。自機チェック実装は REG-005 凍結継続)
 5. **在庫連携API口+現在庫表示**(処方入力画面での現在庫表示を後続 easy-win として設計)
 6. **請求前点検の点検項目の明文化**(入力漏れ/算定根拠/薬歴未記載/資格確認/公費/レセプト形式)
-7. **二重UX**(初心者ガイド+熟練者ショートカット)— UIX-002/004 と連動改版
+7. **二重UX**(初心者ガイド+熟練者ショートカット)— UIX-001 §§7,9 と連動改版
 8. **リモート診断**(OPS-004 と整合させ MVP 運用要件へ明記)
 9. **施設請求書**(帳票領域への追加は施設調剤の MVP 範囲判断が必要 → **人間レビュー論点**)
 10. 会計領域に**会計履歴**を明記

@@ -16,11 +16,11 @@ reviewers:
   - medical_safety_reviewer
   - claims_evidence_specialist
   - human_review_if_required
-version: 0.1.2
+version: 0.1.3
 created_at: 2026-07-09
-updated_at: 2026-07-11
-approved_at: 2026-07-11
-approved_by: direct_user_instruction (WP-9001 AGT-018 cutover); independent_verifier APPROVED; spec_guardian APPROVED; data_integrity_auditor APPROVED; test_architect APPROVED; security_critic APPROVED; privacy_compliance_reviewer APPROVED; medical_safety_reviewer APPROVED; claims_evidence_specialist APPROVED
+updated_at: 2026-08-26
+approved_at: 2026-08-26
+approved_by: direct_user_instruction (WP-5104 limited finalization; reference-only cutover); prior approval provenance preserved in Git history
 effective_from: 2026-07-11
 effective_to: null
 source_refs:
@@ -48,6 +48,7 @@ blockers:
 open_questions:
   - ISO 14971 / IEC 62366-1 / ISO 13485 / JIS X 8341-3 相当の適用要否(SaMD判定と連動)
 change_log:
+  - 0.1.3 2026-08-26 WP-5104 reference-only cutover from UIX-004 to UIX-001 §9; quality semantics unchanged
   - 0.1.2 (2026-07-11): WP-9005 AGT-018 compatibility amendmentを8-role review後にfinalize。旧model/dual-lane routingと未作成扱いを現行governance・既存SSOTへ同期し、quality/medical/claims/human gatesは不変更。0.1.1までのhuman approvalはhistorical provenanceとして保持し、本版の承認には流用しない。
   - 0.1.1 (2026-07-09): WP-4047 実装状態 drift 整備。CI の secret scan / dependency scan / SBOM を WP-4009/a90df35・WP-4012/b0ecf84+702c2f5 の実態へ同期(品質ゲート要件は不変更)。
 ```
@@ -70,7 +71,7 @@ change_log:
 | ISO 14971 相当(リスクマネジメント) | SaMD 該当時必須、非該当でも SAF-001 を準用 | 【未判定】BLOCKED_QUALITY_REGULATORY_REVIEW |
 | IEC 62366-1 / JIS T 62366-1 相当(ユーザビリティ) | SaMD 該当時 | 【未判定】同上 |
 | ISO 13485 / JIS Q 13485 相当(QMS) | SaMD 該当時 | 【未判定】同上 |
-| JIS X 8341-3 / WCAG(アクセシビリティ) | 全UI(適用レベルは UIX-004 open_question) | 方針採用済み・レベル未確定 |
+| JIS X 8341-3 / WCAG(アクセシビリティ) | 全UI(適用レベルは UIX-001 §9 open question) | 方針採用済み・レベル未確定 |
 
 該当性が不明な間は推測で体系を簡略化せず、SAF-001(リスク台帳)・SAF-002(safety case)・本計画の運用で ISO 14971 相当の実質を先行させる。
 

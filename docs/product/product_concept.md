@@ -8,9 +8,9 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 1.1.0
+version: 1.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-08-26
 approved_at: 2026-07-09
 approved_by: ユーザー直接指示(2026-07-09「この問題に対して真っ向から戦うコンセプトを持つレセコンになるように全体指揮をとれ」)
 source_refs: [構築プロンプト v0.2.0, PRD-001, PRD-004/005(ベンチマーク)]
@@ -51,7 +51,7 @@ NSIPS を「敵として排除」するのではなく「周縁化」する。
 - **Cloud Core**: zero-downtime 更新(Blue/Green + canary + auto rollback)、expand-migrate-contract、PITR/DR。「メンテナンスのため停止します」を原則排除する。
 - **Pharmacy Edge Node**: クラウド障害・回線障害・外部公的システム障害のいずれでも LOCAL_ONLY で受付・仮算定・仮帳票・監査ログが継続する。「クラウドが落ちたら薬局が止まる」構造を設計段階から持たない。
 - **正直な継続性**: 24時間「動いているように見せる」のではなく、できること/できないこと/復旧後に必要なことを明示する(§15 の禁止事項・PENDING 系ステータスは本柱の一部)。
-- **SLO の公開コミットメント**: 可用性・主要操作レイテンシ・crash-free(OPS-005/UIX-003/005)を内部目標ではなく公開値として運用する。在宅・夜間当番・24時間薬局の実需に応える。
+- **SLO の公開コミットメント**: 可用性・主要操作レイテンシ・crash-free(OPS-005/UIX-001 §§8,10)を内部目標ではなく公開値として運用する。在宅・夜間当番・24時間薬局の実需に応える。
 
 ### 柱4 — Integration Hub を中核に: レセコンをハブにする
 

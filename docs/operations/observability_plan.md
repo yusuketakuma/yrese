@@ -8,9 +8,9 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-08-26
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.2.0 §9.6 / docs/plan/phase0_plan.md §8
@@ -41,7 +41,7 @@ open_questions:
 
 ## 3. メトリクス・トレース
 
-- メトリクス: UIX-003 予算対応の操作別 latency(p50/p95/p99)、error rate、二重送信検知数、sync backlog size、queue age、external adapter timeout rate、print failure rate、master distribution lag、claim batch completion time、Edge health、crash-free sessions
+- メトリクス: UIX-001 §8予算対応の操作別 latency(p50/p95/p99)、error rate、二重送信検知数、sync backlog size、queue age、external adapter timeout rate、print failure rate、master distribution lag、claim batch completion time、Edge health、crash-free sessions
 - トレース: リクエスト単位の分散トレース(Cloud Core 内)。Edge→Cloud は correlation_id で接続
 
 ## 4. ダッシュボード(9種 — v0.2.0 §9.6)

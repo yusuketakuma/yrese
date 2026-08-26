@@ -13,10 +13,10 @@ owner: fable5
 reviewers:
   - opus4.8
   - codex (backend実装可能性)
-version: 0.2.2
+version: 0.2.3
 created_at: 2026-07-09
-updated_at: 2026-07-11
-source_refs: [UIX-007(SCR-001), UIX-006(業務導線), API-001 v0.2.2(様式先例), API-003(公開API共通土台)]
+updated_at: 2026-08-26
+source_refs: [UIX-001 §12(SCR-001), UIX-001 §11(業務導線), API-001 v0.2.2(様式先例), API-003(公開API共通土台)]
 depends_on: [API-001, API-002, API-003, DOM-004(処方ライフサイクルとの分界), MOD-005(状態台帳 — 改版前提), MOD-006(error_code_registry — 改版前提), MOD-007(permission registry — 改版前提), MOD-011(date-time policy)]
 impacts: [packages/contracts, apps/api, apps/web(WP-3009 SCR-001), packages/shared-kernel(RECEPTION_STATUSES / PERMISSION_RESOURCES / RCV エラーコード / ReceptionId factory 追加)]
 related_work_packages: [WP-3009, WP-3009-BE, WP-3009-UI, WP-4046, WP-4049, WP-5003, WP-9002-W5A]
@@ -30,6 +30,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.2.3 2026-08-26 WP-5104 reference-only cutover to UIX-001 §§11〜12; API contract semantics unchanged"
   - "body history authority: 本文§8変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W5A metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
@@ -91,7 +92,7 @@ ReceptionQueueEntry = {
   (codex 実装可能性レビューの指摘1を採用。POST もレスポンスに PatientSummary を返すため併須)。
 - **PERMISSION_RESOURCES への `reception` 追加は実装済み**(WP-3009-BE/93aefa1。現行 15 リソース)。
   shared-kernel の追加+MOD-007 の改版は本契約 APPROVED と同一バッチで完了済み。
-- UIX-007 の SCR-001 仮 scope(patient:read)は本契約で reception:read + patient:read 併須へ置換する(台帳更新)。
+- UIX-001 §12 の SCR-001 仮 scope(patient:read)は本契約で reception:read + patient:read 併須へ置換する(台帳更新)。
 - テナント境界拘束・PHI レスポンスの `Cache-Control: no-store`・平文ログ禁止は API-003 §2 に従う。
 
 ## 4. PatientSummary(患者表示情報 — 再利用)

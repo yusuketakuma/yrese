@@ -12,14 +12,14 @@ reviewers:
   - privacy_compliance_reviewer
   - medical_safety_reviewer
   - human_pharmacist_product_authority
-version: 0.2.4
+version: 0.2.5
 created_at: 2026-07-09
-updated_at: 2026-07-31
-approved_at: 2026-08-01
-approved_by: "direct human authority 2026-08-01 (WP-4250 exact11 全て承認); round-5 independent verifier PASS on packet body with no HIGH finding (frozen packet ab086c9f8d6e6bfd26e32fbfe9daa21a3b8b6ccd3f324f413b4d2975731cfab6, base SHA 9d8dbc0c3f5201c762dbb39fd9b15fc3ddc4b875); round-5 security/privacy findings closed in Revision 14; round-5 data-integrity findings closed in Revision 13; codex second opinion unavailable until 2026-08-05 and not counted as evidence"
+updated_at: 2026-08-26
+approved_at: 2026-08-26
+approved_by: "direct_user_instruction (WP-5104 limited finalization; reference-only cutover); prior 0.2.4 approval provenance preserved in Git history"
 effective_from: 2026-08-01
 effective_to: null
-source_refs: [DOM-002(患者集約), UIX-007(SCR患者検索), SEC-004(PIA), MOD-012(validation policy)]
+source_refs: [DOM-002(患者集約), UIX-001 §12(SCR患者検索), SEC-004(PIA), MOD-012(validation policy)]
 depends_on: [DOM-001..004(PROPOSED — 本契約はR1-R2骨格範囲で先行、Phase 1ゲートで両者同時承認)]
 impacts: [packages/contracts, apps/api, apps/web(WP-3003)]
 related_work_packages: [WP-2008, WP-3003, WP-4014, WP-4029, WP-4045, WP-4046, WP-4074, WP-5003, WP-9002-W5A, WP-4250]
@@ -35,6 +35,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.2.5 2026-08-26 WP-5104 reference-only cutover from UIX-007 to UIX-001 §12; API contract semantics unchanged"
   - "0.2.4 2026-08-01 WP-4250 exact11 finalization: round-5の独立review三レーン完了(independent verifier PASS・本文HIGHなし)とdirect human approvalによりPROPOSED→APPROVED。本文semanticsは不変。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置き"
   - "0.2.4 2026-07-31 WP-4250 PROPOSED Revision 8: re-review round 1訂正。bound超過の非露出が防げる範囲を「精度の高い推測の防止」へ正直に限定し、503/200の1 bitが閾値oracleとして残ることを明記"
   - "0.2.4 2026-07-31 WP-4250 PROPOSED Revision 7: HIGH-8/MEDIUM-2訂正。GETクエリ形式をPRODUCTION_DISABLEDとしbody-based形式をproduction正規経路に指定、候補集合フェッチのmeasured capとfail-closed overload 503、非PHI粗インデックス代替の決定要件を追加"

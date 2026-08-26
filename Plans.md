@@ -36,21 +36,20 @@
 | Review base | `main = origin/main = c7b61406c6f6e58363139e3dced79c62f30cebf5`(2026-08-26 live確認) |
 | Candidate branch | `feature/wp-5101-uiux-review = origin/feature/wp-5101-uiux-review`; exact headはGit / Draft PR #5を正本とする |
 | Upstream relation | candidate branchはreview baseのfast-forward子。direct main commit/pushなし |
-| Candidate scope | Draft PR #5上のcurrent WP-5104 PROPOSED packetは`Plans.md`、`State.md`、UIX-001、IDX-001、draft 13、`docs/ui-ux-refresh/README.md`のexact6。exact head/statusはGitを正本とする |
-| Last update | 2026-08-26 JST(C-100はindependent PASS後に`9786fe8`でfeature branchへpush済み。WP-5104 Candidate A PROPOSED packetを起草中) |
+| Candidate scope | Draft PR #5上でWP-5104 Candidate Aのatomic finalizationを実施中。exact path/head/statusはGitを正本とする |
+| Last update | 2026-08-26 JST(Candidate A UIX-001 v0.2.0の限定foundation昇格をdirect user instructionが最終承認。未決事項、UNMAPPED、HPKI/legal/RB-003 blockerは維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
-| Active Goal | WP-5104 PLAN_ONLYとしてUIX-001を唯一のUI/UX foundationへ集約し、PRC-007 review用のPROPOSED packetを凍結する。製品実装は未claim |
-| Current critical path | WP-5104 Candidate A PROPOSED batch → required independent/frontend/medical-safety/security/privacy/accessibility review + pharmacist/applicable human gate → PRC-007 atomic finalization |
-| Main blocker | Candidate AのSSOT final approval、PRC-007、U3/U4 の実装前 relevant review/human authorization。後続実装は全件 NOT_READY |
+| Active Goal | WP-5104 PLAN_ONLYとしてUIX-001 v0.2.0を唯一のUI/UX foundationへatomic finalizationする。製品実装は未claim |
+| Current critical path | direct user approval済みfinalization batch → fresh validation/independent review/verified Oracle → Draft PR #5 exact-head CI → PR経由main統合 |
+| Main blocker | foundation昇格自体のhuman gateは解除済み。未決領域、UNMAPPED、HPKI/legal、RB-003、U3/U4実装前gateは未解除で後続実装は全件 NOT_READY |
 | Required verification | WP-5104 exact6の`git diff --check`、`pnpm check:ssot-index`、secret scan、preservation checks、required review、verified Oracle、Draft PR exact-head CI。code test/build/browser runtimeはPLAN_ONLYではN/A |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `c7b6140`; new High/Medium finding、remote main更新、human decisionでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current exact6 はUIX-001/IDX-001のPROPOSED revisionを作るが、旧APPROVED revisionの
-effective authority、実装code、schemaは変更しない。feature branch/PR以外からmainへ置かず、
-Candidate AのPRC-007 finalization前にSSOT昇格・実装・deploy・migration・production変更・
-release acceptanceを行わない。
+current batchはUIX-001/IDX-001をAPPROVEDへ戻し、UIX-002〜007をUIX-001 §§7〜12へ
+SUPERSEDEDとして原子的に束ねる。feature branch/PR以外からmainへ置かず、製品実装、deploy、
+migration、production変更、risk/release acceptance、external actionを行わない。
 
 ## 2. Product and Architecture Guardrails
 
@@ -74,9 +73,9 @@ release acceptanceを行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5104 の PLAN_ONLY SSOT proposal 1件である。** Candidate Aの製品方向、
-WP-5101 review、C-100 charter correctionを前提に、UIX-001をPROPOSEDへ改版する。
-APPROVED化、旧UIX文書のSUPERSEDED化、製品実装、schema、migrationはclaimしない。
+**CURRENT は WP-5104 の PLAN_ONLY SSOT finalization 1件である。** Candidate Aの製品方向、
+required review、direct user final approvalを前提に、UIX-001の限定foundation昇格だけを行う。
+製品実装、schema、migration、risk acceptance、external actionはclaimしない。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
@@ -808,24 +807,26 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 ##### WP-5104 — unique UI/UX SSOT foundation の atomic 昇格
 
-- **WP status:** BLOCKED
-- **Qualifiers:** CURRENT / PLAN_ONLY / CANDIDATE_A_SELECTED / PROPOSED_REVIEW / NOT_IMPLEMENTABLE
+- **WP status:** FINALIZATION_IN_PROGRESS
+- **Qualifiers:** CURRENT / PLAN_ONLY / CANDIDATE_A_APPROVED_LIMITED_FOUNDATION / NOT_IMPLEMENTABLE
 - **Risk:** R3(医療安全・privacy・accessibility・不可逆確定/outbox契約を含むSSOT改版)
 - **Owner role:** `codex_root`(`active_root_writer`)
 - **Reviewer roles:** `independent_verifier`、`frontend_reviewer`、`ui_flow_tester`、
   `accessibility_ux_reviewer`、`medical_safety_reviewer`、`security_critic`、
   `privacy_compliance_reviewer`、`api_contract_reviewer`、`data_integrity_auditor`、
   `test_architect`、`claim_clerk_workflow_reviewer`。全員read-onlyでmakerと分離
-- **Allowed files (proposal packet):** `Plans.md`、`State.md`、`docs/ssot_index.md`、
-  `docs/ui-ux-refresh/13-ui-component-system-ssot-draft.md`、
-  `docs/ui-ux-refresh/README.md`、`docs/uiux/medical_ui_ux_principles.md`
-- **Forbidden files/actions:** 上記以外、UIX-002〜007、product code、schema/migration、generated
-  artifact、deploy/production/external action。finalizationはhuman gate後に別hash・allowlistで再凍結
-- **Gate:** Candidate A product direction、WP-5101 fresh independent review、C-100は完了。
-  APPROVED化はcurrent exact packetのrequired reviewとfinal human approval待ち
-- **Human gates:** final SSOT approval、medical-safety、security/privacy、accessibility、
-  pharmacist workflow、HPKI/legal (`legal_compliance_matrix #7`)。product directionだけは
-  direct user instruction 2026-08-26で承認済み
+- **Allowed files (finalization batch):** `Plans.md`、`State.md`、`DEVELOPMENT_POLICY.md`、
+  UIX-001〜007、`docs/ssot_index.md`、PLAN-UIUX-001、現行gate/contractのUIX direct references、
+  現行accounting/calculation/operations/product/quality/regulatory文書のUIX direct references、
+  `docs/ui-ux-refresh/{README.md,01-scope-and-users.md,02-compliance-applicability.md,04-screen-and-state-inventory.md,13-ui-component-system-ssot-draft.md,14-one-board-direction-decision.md,15-workflow-stage-enum-ssot-draft.md,16-primary-user-research.md}`
+- **Forbidden files/actions:** 上記以外、product code、schema/migration、generated artifact、
+  deploy/production/external action、未決領域の実装、risk acceptance
+- **Gate:** Candidate A product direction、WP-5101 fresh independent review、C-100、required
+  domain review、限定foundationのfinal human approvalは完了。finalization exact diffの再検証、
+  fresh independent review、verified Oracle、PR CI/mergeだけを残す
+- **Human gates:** foundation昇格に必要なmedical-safety、security/privacy、accessibility、
+  pharmacist workflow、product/UI-flowはdirect user instruction 2026-08-26で承認済み。
+  HPKI/legal (`legal_compliance_matrix #7`)とRB-003、未決実装判断は未解除
 - **Scope:** direct user instruction 2026-08-26で選択された Candidate A(UIX-001改版)により、
   UIX-001〜007 の安全・品質要件と component contract を一つの
   foundation へ集約する。同一 PRC-007 batch で旧文書を SUPERSEDED、index と参照を更新する

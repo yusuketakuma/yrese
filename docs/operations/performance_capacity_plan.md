@@ -8,17 +8,17 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-08-26
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.2.0 §9.3 / docs/plan/phase0_plan.md §8
 depends_on:
-  - UIX-003 (performance_budget)
+  - UIX-001 §8 (performance budget)
   - OPS-005 (sla_slo_policy)
 open_questions:
-  - 「混雑時」の定量定義(UIX-004 open_questions と統合予定)【要確認】
+  - 「混雑時」の定量定義(UIX-001 §9 open questions と統合予定)【要確認】
   - 想定テナント数・薬局あたり日次処方件数の事業計画値【要確認 — 経営レビュー】
   - 負荷試験環境の規模(本番同等 or 縮小比率)(Phase 1)
 ```
@@ -33,7 +33,7 @@ open_questions:
 | 同時操作端末数/薬局 | 2-5 台【候補値】 | 【要確認】 |
 | レセプト件数/薬局/月 | 1,500-3,500 件【候補値】 | 処方枚数から推定【要確認】 |
 
-設計原則: 日常操作(検索・入力・仮算定)は Edge Node ローカル一次面で処理し、Cloud Core の負荷とネットワーク遅延から切り離す(UIX-003 前提)。Cloud Core 側の容量計画は同期・請求バッチ・マスター配布・横断管理が主対象。
+設計原則: 日常操作(検索・入力・仮算定)は Edge Node ローカル一次面で処理し、Cloud Core の負荷とネットワーク遅延から切り離す(UIX-001 §8 前提)。Cloud Core 側の容量計画は同期・請求バッチ・マスター配布・横断管理が主対象。
 
 ## 2. 容量計画対象
 
@@ -47,7 +47,7 @@ open_questions:
 
 | 試験 | 内容 | 合否基準 |
 |---|---|---|
-| 通常負荷 | 平均負荷モデルで UIX-003 予算内 | p95 予算内 |
+| 通常負荷 | 平均負荷モデルで UIX-001 §8予算内 | p95 予算内 |
 | 繁忙負荷 | 繁忙モデル×同時端末上限 | p95 予算内+error rate < 0.1% |
 | 月次請求ピーク | 全薬局が同期間に請求前点検・月次締め・レセプト出力 | OPS-005 の請求バッチ SLO 内 |
 | RECOVERY_SYNC バースト | 全 Edge 同時復旧+キュー滞留最大 | キュー消化時間・重複ゼロ |

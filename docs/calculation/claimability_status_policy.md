@@ -9,9 +9,9 @@ owner: fable5
 reviewers:
   - opus4.8
   - human_review_if_required
-version: 0.2.0
+version: 0.2.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-08-26
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認
 source_refs:
@@ -82,7 +82,7 @@ blockers:
 ```
 
 - 記録存在確認は**外部システム(電子薬歴)の応答**に依存するため、LOCAL_ONLY / EXTERNAL_DEGRADED では確認完了扱いにしない(PENDING_EXTERNAL_SYNC を併用 — v0.2.0 §15)。
-- 「薬歴未記載リスト」は請求前点検画面(SCR請求前点検)の必須表示項目とする(UIX-007 改版時に反映)。
+- 「薬歴未記載リスト」は請求前点検画面(SCR請求前点検)の必須表示項目とする(UIX-001 §12 改版時に反映)。
 
 ## 5. 変更履歴
 

@@ -3,16 +3,16 @@
 このディレクトリは、本システム(調剤用レセプトコンピューター MVP)の全画面 UI/UX 監査、患者安全リスク分析、
 デザイン SSOT 再構築、共通基盤からの実装、検証証跡を **追跡可能** に残すための作業領域である。
 
-## Candidate A review status(2026-08-26)
+## Candidate A finalization status(2026-08-26)
 
 direct user instructionでCandidate Aを選択した。review targetは
-`docs/uiux/medical_ui_ux_principles.md`のUIX-001 v0.2.0 PROPOSED revisionであり、
+`docs/uiux/medical_ui_ux_principles.md`のUIX-001 v0.2.0 APPROVED foundationであり、
 UIX-002〜007と13号の必要内容を一つのfoundationへ集約する。UIX-008は作成しない。
 
-PRC-007 finalizationまでは既存UIX-001〜007のAPPROVED版がcurrent authorityであり、
-PROPOSED revisionや本directoryを実装根拠にしない。required reviewとfinal human approval後だけ、
-UIX-001 APPROVED、UIX-002〜007 SUPERSEDED、indexとdirect live referencesを同一batchで更新する。
-未決のmedical-safety/privacy/accessibility/pharmacist判断は各該当gateに残る。
+direct user instructionは、この限定foundation昇格に必要な観点を最終承認した。UIX-002〜007は
+UIX-001 §§7〜12へSUPERSEDEDとして統合し、indexとdirect live referencesを同一batchで更新する。
+本directoryは引き続きnon-SSOTである。記載済みの未決事項、UNMAPPED、HPKI/legal、RB-003、
+未決領域の実装、risk acceptance、external actionは各該当gateに残る。
 
 ## 重要: 重複させない方針
 
@@ -22,12 +22,7 @@ UIX-001 APPROVED、UIX-002〜007 SUPERSEDED、indexとdirect live referencesを�
 | 領域 | 既存の正本(Normative SSOT) |
 | --- | --- |
 | 医療 UI 原則 | `docs/uiux/medical_ui_ux_principles.md` |
-| 体験品質ベースライン | `docs/uiux/experience_quality_baseline.md` |
-| 業務導線マップ | `docs/uiux/workflow_map.md` |
-| 画面台帳(ドラフト) | `docs/uiux/screen_inventory_draft.md` |
-| 性能予算 | `docs/uiux/performance_budget.md` |
-| 安定性 SLO | `docs/uiux/stability_slo_policy.md` |
-| ユーザビリティ受入基準 | `docs/uiux/usability_acceptance_criteria.md` |
+| 体験品質・性能・受入・安定性・導線・画面台帳 | `docs/uiux/medical_ui_ux_principles.md` §§7〜12 |
 | 状態(ドメイン) | `packages/shared-kernel/src/{status,system-mode,blockers,permissions}.ts` |
 | 状態(表示文言) | `apps/web/app/status/visual-status-registry.ts`。`ELIGIBILITY_LABELS` / `MODE_LABELS`はRegistryを再exportする互換consumer |
 | デザイントークン | current declaration anchorは`apps/web/app/globals.css`(`:root` CSS custom properties)。complete L0 authorityはCandidate Aのreconciliation gate待ち |

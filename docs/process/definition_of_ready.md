@@ -9,11 +9,11 @@ owner: codex_root
 reviewers:
   - independent_verifier
   - human_review_if_required
-version: 0.2.0
+version: 0.2.1
 created_at: 2026-07-09
-updated_at: 2026-07-10
-approved_at: 2026-07-10
-approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; spec_guardian APPROVED; medical_safety_reviewer APPROVED; privacy_compliance_reviewer APPROVED; security_critic APPROVED
+updated_at: 2026-08-26
+approved_at: 2026-08-26
+approved_by: direct_user_instruction (WP-5104 limited finalization; reference-only cutover); prior approval provenance preserved in Git history
 effective_from: 2026-07-10
 effective_to: null
 source_refs:
@@ -29,6 +29,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - 0.2.1 2026-08-26 WP-5104 reference-only cutover from UIX-007 to UIX-001 §12; DoR semantics unchanged
   - 0.2.0 2026-07-10 direct user instruction (WP-9001) とrequired reviews PASSによりmapper/pre-plan/sole-maintainer/independent-verifier gateへ改定
   - 0.1.0 2026-07-09 初版
 open_questions: []
@@ -51,7 +52,7 @@ blockers: []
 | 8 | PHI/PII影響が評価済み | SEC-004 PIA参照。fixtureはsynthetic/de-identifiedのみ |
 | 9 | risk levelが判定済み | R0-R4と高risk領域一覧を照合 |
 | 10 | relevant specialist / human gateが定義済み | R3+、法令、請求、薬学、患者安全、production actionは事前review/approval record必須 |
-| 11 | UI/UX影響がある場合UIX-001へ適合 | 画面はUIX-007台帳に存在。台帳外画面は禁止 |
+| 11 | UI/UX影響がある場合UIX-001へ適合 | 画面はUIX-001 §12台帳に存在。台帳外画面は禁止 |
 | 12 | offline影響がある場合LOCAL_ONLY / RECOVERY_SYNCを定義 | ARC-001 / ARC-002参照 |
 | 13 | 外部公的system影響がある場合Official Adapter境界を定義 | ADP-001 / ADP-002参照 |
 | 14 | common module再利用を確認済み | 既存packagesで実現できる概念の再実装は`COMMON_MODULE_DUPLICATION_BLOCKED` |

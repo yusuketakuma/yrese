@@ -4,7 +4,7 @@
 ssot_id: UIX-006
 title: 業務導線マップ
 domain: uiux
-status: APPROVED
+status: SUPERSEDED
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -13,13 +13,14 @@ reviewers:
   - privacy_compliance_reviewer
   - medical_safety_reviewer
   - human_pharmacist_product_authority
-version: 0.2.0
+version: 0.2.1
 created_at: 2026-07-09
-updated_at: 2026-07-29
+updated_at: 2026-08-26
 approved_at: 2026-07-29
 approved_by: direct_user_instruction (human pharmacist/product authority, 2026-07-29); independent_verifier APPROVED; security_auditor APPROVED; data_integrity_reviewer APPROVED; privacy_compliance_reviewer APPROVED; medical_safety_reviewer APPROVED
 effective_from: 2026-07-29
-effective_to: null
+effective_to: 2026-08-26
+superseded_by: UIX-001 v0.2.0 §11
 source_refs:
   - docs/spec/construction_prompt_v0.2.0.md §12, §15, §16
   - docs/plan/phase0_plan.md §5
@@ -33,6 +34,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - 0.2.1 2026-08-26 UIX-001 v0.2.0 §11へ原子的に統合しSUPERSEDED化。本文は履歴/provenanceとして不変
   - 0.2.0 2026-07-29 管理者ホームから監査イベントWeb表示を廃止。監査証跡はSEC-007の非UI境界へ分離し、production incident-response経路は未実装のrelease blockerとして維持
   - 0.1.0 2026-07-09 初版APPROVED
   - 0.1.0 2026-07-12 WP-9002-W29 metadata-only migration; body and workflow authority unchanged

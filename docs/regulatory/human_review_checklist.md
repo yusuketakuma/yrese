@@ -11,9 +11,9 @@ reviewers:
   - privacy_compliance_reviewer
   - security_critic
   - human_review_required
-version: 0.2.0
+version: 0.2.1
 created_at: 2026-07-09
-updated_at: 2026-07-10
+updated_at: 2026-08-26
 approved_at: 2026-07-10
 approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; spec_guardian APPROVED; medical_safety_reviewer APPROVED; privacy_compliance_reviewer APPROVED; security_critic APPROVED
 effective_from: 2026-07-10
@@ -61,7 +61,7 @@ blockers: []
 | 6 | オンライン資格確認の接続構成とONS資料取得手続き | 経営+システム | ベンダー登録・ONSアクセス要件、資格確認端末の連携方式 | RB-002/003 が解除不能(外部連携全般の停止継続) |
 | 7 | 帳票の保存期間・電子保存運用管理規程の方針 | 法務+薬剤師 | legal_compliance_matrix 行1/6、e-文書法要件 | 帳票・調剤録の保存設計が確定しない |
 | 8 | 既存レセコン移行のスコープ(移行元・データ範囲) | 経営+請求実務者 | legacy_rececon_migration_matrix(WP-0010)、対象顧客の現行システム | 移行ツール設計が開始不能 |
-| 9 | SLO候補値・性能予算の目標水準 | 経営+現場 | performance_budget 案、現場の混雑実態 | 受入基準が仮のまま |
+| 9 | SLO候補値・性能予算の目標水準 | 経営+現場 | UIX-001 §8、現場の混雑実態 | 受入基準が仮のまま |
 | 10 | サポート体制・SLAの事業前提 | 経営 | support_operations_model 案、提供価格・体制 | サービス提供条件が未確定 |
 | 11a | repository-local synthetic-only Codex単一レーン | ユーザー/経営(開発運用) | WP-9001、AGT-018、maker/checker分離、secret/PHI禁止、local validation記録 | WP-9001の指示によりroutingは承認済み。ただしAGT-018改版はindependent verification後にAPPROVED化する |
 | 11b | Cloud・production PHI/PII・外部送信・権限拡張・secret access | 経営(データ取扱い)+privacy/security authority | 対象service、送信先、データ分類、目的、retention、encryption、tenant boundary、権限、audit、rollback | 個別の明示human approvalがない限りBLOCKED。11aの承認を流用不可 |
