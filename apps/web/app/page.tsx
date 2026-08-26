@@ -2,8 +2,6 @@ import { OperatorFocusBoard } from "./components/operator-focus-board";
 import { PatientContextRail } from "./components/patient-context-rail";
 import {
   IntakeCard,
-  MetricCard,
-  MetricGrid,
   OperatorPage,
   Panel,
   RailCard,
@@ -42,13 +40,6 @@ export default function ReceptionPage() {
       />
 
       <OperatorFocusBoard />
-
-      <MetricGrid>
-        <MetricCard label="未受付" value="—" unit="件" detail="集計API未接続" tone="accent" icon="受" />
-        <MetricCard label="受付中" value="—" unit="件" detail="下のライブキューを参照" tone="info" icon="進" />
-        <MetricCard label="要確認" value="—" unit="件" detail="集計API未接続" tone="neutral" icon="?" />
-        <MetricCard label="完了" value="—" unit="件" detail="集計API未接続" tone="neutral" icon="?" />
-      </MetricGrid>
 
       <Panel
         title="受付（処方せんの取り込み）"
