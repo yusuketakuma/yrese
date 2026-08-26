@@ -192,6 +192,7 @@ describe('loadMigrationFiles', () => {
           '000010_harden_partner_registry.sql',
           '000011_harden_eligibility_snapshots.sql',
           '000012_partner_registry_history_and_country.sql',
+          '000013_create_prescription_drafts.sql',
         ]);
       } finally {
         process.chdir(originalCwd);

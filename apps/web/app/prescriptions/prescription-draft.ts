@@ -23,8 +23,15 @@ export interface PrescriptionDraftSnapshot {
   readonly note: string;
 }
 
-export function prescriptionDraftWorkId(patientId: string): string {
-  return `prescription-draft:${patientId}`;
+export function prescriptionDraftWorkId(
+  patientId: string,
+  receptionId?: string,
+  businessDate?: string,
+): string {
+  if (receptionId === undefined || businessDate === undefined) {
+    return `prescription-draft:${patientId}`;
+  }
+  return `prescription-draft:${patientId}:${businessDate}:${receptionId}`;
 }
 
 export function createBlankPrescriptionDraft(): PrescriptionDraftSnapshot {

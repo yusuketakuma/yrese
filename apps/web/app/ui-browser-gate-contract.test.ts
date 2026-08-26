@@ -34,7 +34,7 @@ describe("UI browser validation gate", () => {
     );
   });
 
-  it("covers keyboard, accessibility, reflow, reception handoff, and unsaved-draft safety", () => {
+  it("covers keyboard, accessibility, reflow, reception identity, and unsaved-draft safety", () => {
     expect(browserCheck).toContain("axe.run");
     expect(browserCheck).toContain('waitUntil: "domcontentloaded"');
     expect(browserCheck).toContain("const routeHeadings = new Map");
@@ -47,6 +47,17 @@ describe("UI browser validation gate", () => {
     expect(browserCheck.match(/caret: "initial"/g)).toHaveLength(4);
     expect(browserCheck).toContain("reception-to-prescription-handoff");
     expect(browserCheck).toContain("受付との関連を確認しました");
+    expect(browserCheck).toContain("waitForPersistedDraft");
+    expect(browserCheck).toContain("data-server-draft-version");
+    expect(browserCheck).toContain("data-unsaved-draft");
+    expect(browserCheck).toContain("extractLinkedBusinessDate");
+    expect(browserCheck).toContain("linkedBusinessDate");
+    expect(browserCheck).toContain(
+      'getByLabel("受付の業務日").fill(linkedBusinessDate)',
+    );
+    expect(browserCheck).not.toContain(
+      'getByLabel("受付の業務日").fill("2026-08-25")',
+    );
     expect(browserCheck).toContain("beforeunload");
     expect(browserCheck).toContain("reflow-200pct-equivalent");
     expect(browserCheck).toContain("未保存下書き 1件");
@@ -61,6 +72,12 @@ describe("UI browser validation gate", () => {
     expect(fixtureApi).toContain("テスト患者 一");
     expect(fixtureApi).toContain('url.pathname === "/whoami"');
     expect(fixtureApi).toContain('url.pathname === "/reception/queue"');
+    expect(fixtureApi).toContain("/prescription-drafts/by-reception/");
+    expect(fixtureApi).toContain("expectedVersion");
+    expect(fixtureApi).toContain('request.headers["if-match"]');
+    expect(fixtureApi).toContain("response.writeHead(204");
+    expect(fixtureApi).not.toContain('saveDisposition: "replayed"');
+    expect(browserCheck).not.toContain("isExpectedDraftNotFoundResponse");
     expect(fixtureApi).toContain("tenant-e2e");
     expect(fixtureApi).toContain('service: "api"');
     expect(fixtureApi).toContain("127.0.0.1");

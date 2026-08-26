@@ -74,11 +74,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     </span>
                     <span
                       className="integration-chip"
-                      data-state="prototype"
+                      data-state="partial"
                       role="status"
+                      aria-label="UI機能は画面ごとに接続状態が異なります"
+                      title="画面ごとに接続状態が異なります"
                     >
                       <strong>UI</strong>
-                      <small>プロトタイプ</small>
+                      <small>段階接続</small>
                     </span>
                     <div
                       className="operator-profile"

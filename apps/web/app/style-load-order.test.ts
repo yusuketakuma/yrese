@@ -65,4 +65,19 @@ describe("operator stylesheet load order", () => {
       /\.app-sidebar\s*\{[^}]*background:/s,
     );
   });
+
+  it("projects partial UI connectivity and neutralizes unavailable primary actions in the final cascade", () => {
+    expect(layoutSource).toContain('data-state="partial"');
+    expect(layoutSource).toContain("段階接続");
+    expect(layoutSource).not.toContain('data-state="prototype"');
+    expect(completionSource).toContain(
+      '.integration-chip[data-state="partial"]',
+    );
+    expect(completionSource).toContain(
+      '.prototype-action-shell > .operator-button[data-kind="primary"]:disabled',
+    );
+    expect(completionSource).toMatch(
+      /\.prototype-action-shell > \.operator-button\[data-kind="primary"\]:disabled\s*\{[^}]*border-style:\s*dashed;[^}]*background:\s*#f2f4f7;[^}]*opacity:\s*1;/s,
+    );
+  });
 });

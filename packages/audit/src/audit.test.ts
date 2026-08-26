@@ -103,6 +103,10 @@ describe("audit event type registry", () => {
     expect(requiresBusinessReason("reception.created")).toBe(false);
     expect(requiresBusinessReason("reception.cancelled")).toBe(true);
   });
+
+  it("registers prescription draft read audit evidence", () => {
+    expect(isAuditEventType("prescription.draft.viewed")).toBe(true);
+  });
 });
 
 describe("createAuditEvent", () => {
