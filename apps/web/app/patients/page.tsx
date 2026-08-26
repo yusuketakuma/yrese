@@ -1,9 +1,6 @@
 import { PatientContextRail } from "../components/patient-context-rail";
 import {
-  MetricCard,
-  MetricGrid,
   OperatorPage,
-  Panel,
   RailCard,
   ScreenHeader,
   StatusPill,
@@ -36,19 +33,7 @@ export default function PatientsPage() {
         description="氏名・カナ・患者番号から検索し、業務対象の患者を明示的に選択します。"
         meta={<StatusPill tone="info">既存患者検索API配線・稼働未確認</StatusPill>}
       />
-      <MetricGrid>
-        <MetricCard label="検索結果" value="—" unit="名" detail="検索実行後に一覧表示" tone="accent" icon="患" />
-        <MetricCard label="選択中の患者" value="—" unit="名" detail="右側の患者文脈を参照" tone="info" icon="選" />
-        <MetricCard label="資格未確認" value="—" unit="名" detail="集計API未接続" tone="neutral" icon="?" />
-        <MetricCard label="要フォロー" value="—" unit="名" detail="フォロー機能未接続" tone="neutral" icon="?" />
-      </MetricGrid>
-      <Panel
-        title="患者一覧"
-        description="検索結果は取得時点の鮮度を表示し、古い応答や重複患者IDを安全側で拒否します。"
-        className="live-surface-panel"
-      >
-        <PatientSearch />
-      </Panel>
+      <PatientSearch />
     </OperatorPage>
   );
 }

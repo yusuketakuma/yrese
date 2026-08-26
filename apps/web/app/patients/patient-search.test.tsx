@@ -18,6 +18,7 @@ import {
   createSearchRunner,
   duplicateKanaSet,
   fetchSearch,
+  patientSearchResultMetric,
   PatientSearch,
   PatientSearchResults,
   type SearchPage,
@@ -2159,5 +2160,49 @@ describe("PatientHeader with a selected patient (患者取り違え防止表示 
     expect(html).toContain("38歳");
     expect(html).toContain(ELIGIBILITY_LABELS.PENDING_REVERIFY);
     expect(html).toContain('data-patient-id="p-selected"');
+  });
+});
+
+describe("patient search metrics reflect real search state (WP-5101)", () => {
+  it("projects the loaded result count into the 検索結果 metric", () => {
+    const state: SearchState = {
+      kind: "loaded",
+      results: [patient({}), patient({ patientId: "patient-test-002" })],
+      query: "ヤマダ",
+      appendState: { kind: "idle" },
+    };
+    expect(patientSearchResultMetric(state)).toEqual({
+      value: "2",
+      detail: "「ヤマダ」の該当件数",
+    });
+  });
+
+  it("keeps the 検索結果 metric truthful before any search", () => {
+    expect(patientSearchResultMetric({ kind: "idle" })).toEqual({
+      value: "—",
+      detail: "検索実行後に一覧表示",
+    });
+  });
+
+  it("marks a partially loaded page as 続きあり", () => {
+    const state: SearchState = {
+      kind: "loaded",
+      results: [patient({})],
+      nextCursor: "cursor-1",
+      query: "ヤ",
+      appendState: { kind: "idle" },
+    };
+    expect(patientSearchResultMetric(state)).toEqual({
+      value: "1",
+      detail: "「ヤ」の該当件数(続きあり)",
+    });
+  });
+
+  it("renders the metric grid with truthful initial values from PatientSearch", () => {
+    const html = renderToStaticMarkup(<PatientSearch />);
+    expect(html).toContain("検索結果");
+    expect(html).toContain("選択中の患者");
+    expect(html).toContain("検索実行後に一覧表示");
+    expect(html).toContain("患者一覧");
   });
 });
