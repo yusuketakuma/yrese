@@ -70,42 +70,46 @@ export function registerGracefulShutdown(input: {
     if (shutdown !== undefined) return shutdown;
 
     const startedPool = safeDatabasePoolSnapshot(input.databasePoolSnapshot);
+    const pendingShutdown = Promise.resolve().then(
+      async (): Promise<GracefulShutdownResult> => {
+        try {
+          await input.server.close();
+          const completedPool = safeDatabasePoolSnapshot(input.databasePoolSnapshot);
+          safeRecord(input.events, {
+            kind: 'api.shutdown.completed',
+            signal,
+            ...(completedPool === undefined ? {} : { databasePool: completedPool }),
+          });
+          return Object.freeze({ ok: true });
+        } catch {
+          try {
+            input.signals.setExitCode(1);
+          } catch {
+            // The fixed failure event remains the last available signal.
+          }
+          const failedPool = safeDatabasePoolSnapshot(input.databasePoolSnapshot);
+          safeRecord(input.events, {
+            kind: 'api.shutdown.failed',
+            signal,
+            ...(failedPool === undefined ? {} : { databasePool: failedPool }),
+          });
+          return Object.freeze({ ok: false });
+        } finally {
+          // Keep both handlers installed while close is pending so a repeated SIGTERM/SIGINT
+          // cannot restore Node's default immediate-termination behavior mid-drain.
+          dispose();
+        }
+      },
+    );
+    // Publish the one shared outcome before invoking the injected event sink. This closes
+    // a re-entrancy window where a sink could otherwise request shutdown a second time.
+    shutdown = pendingShutdown;
     safeRecord(input.events, {
       kind: 'api.shutdown.started',
       signal,
       ...(startedPool === undefined ? {} : { databasePool: startedPool }),
     });
-
-    shutdown = (async (): Promise<GracefulShutdownResult> => {
-      try {
-        await input.server.close();
-        const completedPool = safeDatabasePoolSnapshot(input.databasePoolSnapshot);
-        safeRecord(input.events, {
-          kind: 'api.shutdown.completed',
-          signal,
-          ...(completedPool === undefined ? {} : { databasePool: completedPool }),
-        });
-        return Object.freeze({ ok: true });
-      } catch {
-        try {
-          input.signals.setExitCode(1);
-        } catch {
-          // The fixed failure event remains the last available signal.
-        }
-        const failedPool = safeDatabasePoolSnapshot(input.databasePoolSnapshot);
-        safeRecord(input.events, {
-          kind: 'api.shutdown.failed',
-          signal,
-          ...(failedPool === undefined ? {} : { databasePool: failedPool }),
-        });
-        return Object.freeze({ ok: false });
-      } finally {
-        // Keep both handlers installed while close is pending so a repeated SIGTERM/SIGINT
-        // cannot restore Node's default immediate-termination behavior mid-drain.
-        dispose();
-      }
-    })();
-    return shutdown;
+    return pendingShutdown;
   };
 
   function onSigterm(): void {

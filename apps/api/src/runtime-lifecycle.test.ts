@@ -69,7 +69,7 @@ describe('registerGracefulShutdown', () => {
     signals.emit('SIGINT');
     const repeatedRequest = controller.request('SIGINT');
 
-    expect(close).toHaveBeenCalledOnce();
+    expect(close).not.toHaveBeenCalled();
     expect(signals.listenerCount('SIGTERM')).toBe(1);
     expect(signals.listenerCount('SIGINT')).toBe(1);
     expect(events).toEqual([
@@ -80,6 +80,8 @@ describe('registerGracefulShutdown', () => {
       },
     ]);
 
+    await Promise.resolve();
+    expect(close).toHaveBeenCalledOnce();
     resolveClose?.();
     await expect(repeatedRequest).resolves.toEqual({ ok: true });
     await expect(controller.request('SIGTERM')).resolves.toEqual({ ok: true });
@@ -100,6 +102,36 @@ describe('registerGracefulShutdown', () => {
       },
     ]);
     expect(signals.exitCodes).toEqual([]);
+  });
+
+  it('publishes the shared shutdown outcome before a started-event sink can re-enter', async () => {
+    const close = vi.fn().mockResolvedValue(undefined);
+    const signals = createSignalHarness();
+    let controller!: ReturnType<typeof registerGracefulShutdown>;
+    let reentrantRequest: Promise<{ readonly ok: boolean }> | undefined;
+    const events: RuntimeOperationalEvent[] = [];
+    controller = registerGracefulShutdown({
+      server: { close },
+      signals: signals.source,
+      events: {
+        record(event) {
+          events.push(event);
+          if (event.kind === 'api.shutdown.started') {
+            reentrantRequest = controller.request('SIGINT');
+          }
+        },
+      },
+    });
+
+    const firstRequest = controller.request('SIGTERM');
+
+    expect(reentrantRequest).toBe(firstRequest);
+    await expect(firstRequest).resolves.toEqual({ ok: true });
+    expect(close).toHaveBeenCalledOnce();
+    expect(events).toEqual([
+      { kind: 'api.shutdown.started', signal: 'SIGTERM' },
+      { kind: 'api.shutdown.completed', signal: 'SIGTERM' },
+    ]);
   });
 
   it('sets a failing exit code without exposing the close rejection', async () => {
