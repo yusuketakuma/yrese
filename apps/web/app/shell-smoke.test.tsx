@@ -100,6 +100,10 @@ describe("web shell smoke contracts", () => {
     expect(html).toContain('id="main-content"');
     expect(html).toContain("Gbrain");
     expect(html).toContain("未接続");
+    expect(html).toContain('data-state="partial"');
+    expect(html).toContain("段階接続");
+    expect(html).toContain("UI機能は画面ごとに接続状態が異なります");
+    expect(html).not.toContain("<small>プロトタイプ</small>");
     expect(html).toContain("プロフィール表示未接続");
     expect(html).not.toContain("操作者未接続");
     expect(html).toContain('aria-keyshortcuts="/ Control+K Meta+K"');

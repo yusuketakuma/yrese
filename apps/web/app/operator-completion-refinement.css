@@ -22,6 +22,16 @@
   color: #8a3f00;
 }
 
+.integration-chip[data-state="partial"] {
+  border-color: #c9c0ff;
+  background: #fbfaff;
+}
+
+.integration-chip[data-state="partial"] small {
+  color: #4326c9;
+  font-weight: 750;
+}
+
 .operator-status-pill[data-tone="danger"] {
   color: #b42318;
 }
@@ -36,6 +46,21 @@
 .prototype-action-shell > .operator-button {
   width: 100%;
   pointer-events: none;
+}
+
+/*
+ * A disabled capability must not retain the same purple fill as an executable primary action.
+ * The visible reason remains adjacent, and the dashed neutral treatment survives without color.
+ */
+.prototype-action-shell > .operator-button:disabled,
+.prototype-action-shell > .operator-button[data-kind="primary"]:disabled {
+  border-color: var(--color-border-strong);
+  border-style: dashed;
+  background: #f2f4f7;
+  box-shadow: none;
+  color: #475467;
+  cursor: not-allowed;
+  opacity: 1;
 }
 
 .prototype-action-shell:focus-visible {
@@ -164,5 +189,17 @@
   .unsaved-work-status,
   [data-unsaved-draft="true"] .prescription-editor-panel {
     border: 2px solid CanvasText;
+  }
+
+  .integration-chip[data-state="partial"] {
+    border: 1px solid CanvasText;
+  }
+
+  .prototype-action-shell > .operator-button:disabled,
+  .prototype-action-shell > .operator-button[data-kind="primary"]:disabled {
+    border: 2px dashed GrayText;
+    background: Canvas;
+    color: GrayText;
+    opacity: 1;
   }
 }
