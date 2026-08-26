@@ -30,6 +30,7 @@ import { EmptyState } from "./components/empty-state";
 import { registeredErrorCodeOrUndefined } from "./components/error-code";
 import { ErrorNotice, type ErrorNoticeProps } from "./components/error-notice";
 import { LoadingState } from "./components/loading-state";
+import { MetricCard, MetricGrid } from "./components/operator-ui";
 import { devTenantHeaders } from "./dev-tenant";
 import { ReceptionPrescriptionHandoffAction } from "./reception-prescription-handoff";
 
@@ -460,6 +461,76 @@ export type QueueRefreshState =
   | { kind: "error"; requestTarget: string; notice: ErrorNoticeProps };
 
 type QueueStateUpdate = (prev: QueueState) => QueueState;
+
+/**
+ * 受付キュー実データからの真実集計。CANCELLED は稼働指標に数えない。
+ * 資格要確認は取消済みを除く VERIFIED 以外(NOT_CHECKED / PENDING_REVERIFY /
+ * LOCAL_ONLY_UNVERIFIED)の件数。
+ */
+export interface ReceptionQueueMetrics {
+  readonly waiting: number;
+  readonly inProgress: number;
+  readonly completed: number;
+  readonly eligibilityAttention: number;
+}
+
+export function receptionQueueMetrics(
+  entries: readonly ReceptionQueueEntry[],
+): ReceptionQueueMetrics {
+  let waiting = 0;
+  let inProgress = 0;
+  let completed = 0;
+  let eligibilityAttention = 0;
+  for (const entry of entries) {
+    if (entry.receptionStatus === "WAITING") waiting += 1;
+    else if (entry.receptionStatus === "IN_PROGRESS") inProgress += 1;
+    else if (entry.receptionStatus === "COMPLETED") completed += 1;
+    if (
+      entry.receptionStatus !== "CANCELLED" &&
+      entry.patient.eligibilityStatus !== "VERIFIED"
+    ) {
+      eligibilityAttention += 1;
+    }
+  }
+  return { waiting, inProgress, completed, eligibilityAttention };
+}
+
+export function ReceptionQueueMetricsView({
+  state,
+}: {
+  readonly state: QueueState;
+}) {
+  if (state.kind === "loading") {
+    return (
+      <MetricGrid>
+        <MetricCard label={RECEPTION_STATUS_LABELS.WAITING} value="…" unit="件" detail="キュー取得中" tone="accent" icon="受" />
+        <MetricCard label={RECEPTION_STATUS_LABELS.IN_PROGRESS} value="…" unit="件" detail="キュー取得中" tone="info" icon="進" />
+        <MetricCard label="資格要確認" value="…" unit="件" detail="キュー取得中" tone="warning" icon="資" />
+        <MetricCard label={RECEPTION_STATUS_LABELS.COMPLETED} value="…" unit="件" detail="キュー取得中" tone="neutral" icon="済" />
+      </MetricGrid>
+    );
+  }
+  if (state.kind === "error") {
+    return (
+      <MetricGrid>
+        <MetricCard label={RECEPTION_STATUS_LABELS.WAITING} value="—" unit="件" detail="キュー取得失敗" tone="accent" icon="受" />
+        <MetricCard label={RECEPTION_STATUS_LABELS.IN_PROGRESS} value="—" unit="件" detail="キュー取得失敗" tone="info" icon="進" />
+        <MetricCard label="資格要確認" value="—" unit="件" detail="キュー取得失敗" tone="warning" icon="資" />
+        <MetricCard label={RECEPTION_STATUS_LABELS.COMPLETED} value="—" unit="件" detail="キュー取得失敗" tone="neutral" icon="済" />
+      </MetricGrid>
+    );
+  }
+  const metrics = receptionQueueMetrics(state.response.entries);
+  const detail = `${state.response.date} の受付キューから集計`;
+  return (
+    <MetricGrid>
+      <MetricCard label={RECEPTION_STATUS_LABELS.WAITING} value={String(metrics.waiting)} unit="件" detail={detail} tone="accent" icon="受" />
+      <MetricCard label={RECEPTION_STATUS_LABELS.IN_PROGRESS} value={String(metrics.inProgress)} unit="件" detail={detail} tone="info" icon="進" />
+      <MetricCard label="資格要確認" value={String(metrics.eligibilityAttention)} unit="件" detail={detail} tone="warning" icon="資" />
+      <MetricCard label={RECEPTION_STATUS_LABELS.COMPLETED} value={String(metrics.completed)} unit="件" detail={detail} tone="neutral" icon="済" />
+    </MetricGrid>
+  );
+}
 
 function queueLoadErrorNotice(error: unknown): ErrorNoticeProps {
   return trustedReceptionErrorNotice(error) ?? genericQueueErrorNotice;
@@ -1025,6 +1096,7 @@ export function ReceptionDashboard() {
 
   return (
     <section aria-label="受付ダッシュボード">
+      <ReceptionQueueMetricsView state={queue} />
       <form
         onSubmit={(event) => {
           event.preventDefault();

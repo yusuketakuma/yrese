@@ -77,6 +77,9 @@ export function PatientContextRail() {
             {ELIGIBILITY_LABELS[patient.eligibilityStatus]}
           </StatusPill>
         </div>
+        {patient.eligibilityCheckedAt !== undefined && (
+          <p className="rail-muted">最終資格確認: {patient.eligibilityCheckedAt}</p>
+        )}
         <p className="rail-muted">
           保険者番号・記号番号・公費情報はこのUIスライスでは未接続です。
         </p>

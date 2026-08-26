@@ -25,6 +25,9 @@ import {
   formatAcceptedTime,
   isSettledReceptionCreateFailure,
   parseDateParam,
+  RECEPTION_STATUS_LABELS,
+  receptionQueueMetrics,
+  ReceptionQueueMetricsView,
   registrationPatientChangeNotice,
   submitReceptionRegistration,
   type QueueState,
@@ -2976,5 +2979,94 @@ describe("reception create response timeout (BUG-4262)", () => {
 
     const init = fetchImpl.mock.calls[0]![1] as RequestInit;
     expect(init.signal).toBe(controller.signal);
+  });
+});
+
+describe("receptionQueueMetrics", () => {
+  it("counts queue statuses and eligibility attention from real entries", () => {
+    const entries: readonly ReceptionQueueEntry[] = [
+      entry({ receptionId: "rc-1", receptionStatus: "WAITING" }),
+      entry({
+        receptionId: "rc-2",
+        receptionStatus: "WAITING",
+        patient: patient({ patientId: "patient-test-002", eligibilityStatus: "NOT_CHECKED" }),
+      }),
+      entry({ receptionId: "rc-3", receptionStatus: "IN_PROGRESS" }),
+      entry({ receptionId: "rc-4", receptionStatus: "COMPLETED" }),
+      entry({
+        receptionId: "rc-5",
+        receptionStatus: "CANCELLED",
+        patient: patient({ patientId: "patient-test-003", eligibilityStatus: "PENDING_REVERIFY" }),
+      }),
+    ];
+    expect(receptionQueueMetrics(entries)).toEqual({
+      waiting: 2,
+      inProgress: 1,
+      completed: 1,
+      eligibilityAttention: 1,
+    });
+  });
+
+  it("returns zero counts for an empty queue", () => {
+    expect(receptionQueueMetrics([])).toEqual({
+      waiting: 0,
+      inProgress: 0,
+      completed: 0,
+      eligibilityAttention: 0,
+    });
+  });
+});
+
+describe("ReceptionQueueMetricsView", () => {
+  it("renders real counts when the queue is loaded", () => {
+    const state: QueueState = {
+      kind: "loaded",
+      response: queueResponse("2026-07-09", [
+        entry({ receptionId: "rc-1", receptionStatus: "WAITING" }),
+        entry({ receptionId: "rc-2", receptionStatus: "COMPLETED" }),
+      ]),
+      refreshState: { kind: "idle" },
+    };
+    const html = renderToStaticMarkup(<ReceptionQueueMetricsView state={state} />);
+    expect(html).toContain("待機中");
+    expect(html).toContain("完了");
+    expect(html).not.toContain("集計API未接続");
+    expect(html).toContain("受付キューから集計");
+  });
+
+  it("does not show numbers while loading or after an error", () => {
+    const loadingHtml = renderToStaticMarkup(
+      <ReceptionQueueMetricsView state={{ kind: "loading" }} />,
+    );
+    expect(loadingHtml).toContain("取得中");
+    const errorHtml = renderToStaticMarkup(
+      <ReceptionQueueMetricsView
+        state={{
+          kind: "error",
+          notice: { severity: "ERROR", message: "x", nextAction: "再試行してください。" },
+        }}
+      />,
+    );
+    expect(errorHtml).toContain("取得失敗");
+    expect(errorHtml).not.toContain("取得中");
+  });
+
+  it("labels each count with the visual status registry wording (WP-5101 review)", () => {
+    const state: QueueState = {
+      kind: "loaded",
+      response: queueResponse("2026-07-09", [
+        entry({ receptionId: "rc-1", receptionStatus: "IN_PROGRESS" }),
+      ]),
+      refreshState: { kind: "idle" },
+    };
+    for (const html of [
+      renderToStaticMarkup(<ReceptionQueueMetricsView state={state} />),
+      renderToStaticMarkup(<ReceptionQueueMetricsView state={{ kind: "loading" }} />),
+    ]) {
+      expect(html).toContain(RECEPTION_STATUS_LABELS.IN_PROGRESS);
+      expect(html).toContain(RECEPTION_STATUS_LABELS.WAITING);
+      expect(html).toContain(RECEPTION_STATUS_LABELS.COMPLETED);
+      expect(html).not.toContain("処理中");
+    }
   });
 });

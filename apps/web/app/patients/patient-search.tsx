@@ -16,6 +16,7 @@ import {
 import { devTenantHeaders } from "../dev-tenant";
 
 import { registeredErrorCodeOrUndefined } from "../components/error-code";
+import { MetricCard, MetricGrid, Panel } from "../components/operator-ui";
 import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
 import {
   type PatientContextData,
@@ -550,6 +551,34 @@ export function PatientSearchResults({
   );
 }
 
+/**
+ * 検索結果メトリクスの表示投影(WP-5101)。実際の検索状態だけを反映し、
+ * 未実行・エラー時は欠測「—」を維持する(truthfulness 原則)。
+ */
+export function patientSearchResultMetric(state: SearchState): {
+  readonly value: string;
+  readonly detail: string;
+} {
+  if (state.kind === "loaded") {
+    // 契約は総件数を返さないため、切り詰められた頁では「該当件数」と呼ばない
+    // (表示中の件数と総数を混同させない — WP-5101 review)。
+    return {
+      value: String(state.results.length),
+      detail:
+        state.nextCursor !== undefined
+          ? `「${state.query}」の表示中件数(未読込の続きあり・総数不明)`
+          : `「${state.query}」の該当件数`,
+    };
+  }
+  if (state.kind === "loading") {
+    return { value: "—", detail: "検索中" };
+  }
+  if (state.kind === "error") {
+    return { value: "—", detail: "検索エラー" };
+  }
+  return { value: "—", detail: "検索実行後に一覧表示" };
+}
+
 export function PatientSearch() {
   const [q, setQ] = useState("");
   const [state, setState] = useState<SearchState>({ kind: "idle" });
@@ -599,7 +628,36 @@ export function PatientSearch() {
   // Provider 配下では固定バーが選択中患者を表示するため、検索画面での重複表示はしない。
   const standaloneSelected = patientCtx === null ? localSelected : null;
 
+  const selected = patientCtx !== null ? patientCtx.patient : localSelected;
+  const resultMetric = patientSearchResultMetric(state);
+
   return (
+    <>
+      <MetricGrid>
+        <MetricCard
+          label="検索結果"
+          value={resultMetric.value}
+          unit="名"
+          detail={resultMetric.detail}
+          tone="accent"
+          icon="患"
+        />
+        <MetricCard
+          label="選択中の患者"
+          value={selected !== null ? "1" : "0"}
+          unit="名"
+          detail={selected !== null ? `${selected.name} を業務対象に固定中` : "未選択"}
+          tone="info"
+          icon="選"
+        />
+        <MetricCard label="資格未確認" value="—" unit="名" detail="集計API未接続" tone="neutral" icon="?" />
+        <MetricCard label="要フォロー" value="—" unit="名" detail="フォロー機能未接続" tone="neutral" icon="?" />
+      </MetricGrid>
+      <Panel
+        title="患者一覧"
+        description="検索結果は取得時点の鮮度を表示し、古い応答や重複患者IDを安全側で拒否します。"
+        className="live-surface-panel"
+      >
     <section aria-label="患者検索">
       {standaloneSelected !== null && (
         <div className="selected-patient-context">
@@ -667,5 +725,7 @@ export function PatientSearch() {
         />
       )}
     </section>
+      </Panel>
+    </>
   );
 }

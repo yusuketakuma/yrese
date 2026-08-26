@@ -9,6 +9,7 @@ import {
   ScreenHeader,
   StatusPill,
 } from "../components/operator-ui";
+import { CloudHealthCard } from "./cloud-health-card";
 import { ModeOverviewTable } from "./mode-overview";
 
 const INTEGRATIONS = [
@@ -44,10 +45,14 @@ export default function Page() {
         actions={<PrototypeAction>手動で最新に更新</PrototypeAction>}
       />
       <InlineNotice title="システムモード未検知" tone="warning">
-        <p>稼働状態は判定できません。緑色の正常表示や外部連携成功を推測せず、すべて未確認として扱います。</p>
+        <p>
+          システムモードと外部連携の状態は判定できません。緑色の正常表示や外部連携成功を推測しません。
+          クラウドAPIの稼働確認だけは実測値を表示しますが、これは取得時点で到達できたことのみを示し、
+          同期状態・外部連携・モードの正常性を意味しません。
+        </p>
       </InlineNotice>
       <MetricGrid>
-        <MetricCard label="クラウド（yrese）" value="未検知" detail="ヘルスAPI未接続" tone="warning" icon="雲" />
+        <CloudHealthCard />
         <MetricCard label="オンプレミス / Edge" value="未検知" detail="Edge状態API未接続" tone="warning" icon="端" />
         <MetricCard label="外部サービス連携" value="未接続" detail="成功扱いにしません" tone="danger" icon="外" />
         <MetricCard label="未処理ジョブ（合計）" value="—" unit="件" detail="キューAPI未接続" tone="info" icon="時" />
