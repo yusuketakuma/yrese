@@ -25,6 +25,9 @@ export interface PrescriptionDraftRoutesOptions {
   readonly now?: () => Date;
 }
 
+export const prescriptionDraftRepositoryErrorMessage =
+  "Prescription draft repository operation failed";
+
 const setSensitiveResponseNoStore: onRequestHookHandler = async (
   _request,
   reply,
@@ -89,6 +92,16 @@ function snapshotWallClock(now: () => Date): string {
   return value.toISOString();
 }
 
+async function callPrescriptionDraftService<T>(
+  operation: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await operation();
+  } catch {
+    throw new Error(prescriptionDraftRepositoryErrorMessage);
+  }
+}
+
 function hasMatchingUpdatePrecondition(
   ifMatch: string | string[] | undefined,
   expectedVersion: number,
@@ -127,14 +140,16 @@ const callback: FastifyPluginCallback<PrescriptionDraftRoutesOptions> = (
       const query = prescriptionDraftQuerySchema.safeParse(request.query);
       if (!params.success || !query.success) return invalidRequest(reply);
 
-      const result = await options.service.get({
-        tenantId: tenantContext.tenantId,
-        pharmacyId: tenantContext.pharmacyId,
-        actorId: tenantContext.actorId,
-        receptionId: receptionId(params.data.receptionId),
-        businessDate: query.data.date,
-        wallClock: snapshotWallClock(now),
-      });
+      const result = await callPrescriptionDraftService(() =>
+        options.service.get({
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+          actorId: tenantContext.actorId,
+          receptionId: receptionId(params.data.receptionId),
+          businessDate: query.data.date,
+          wallClock: snapshotWallClock(now),
+        }),
+      );
       if (result.kind === "not_found") return notFound(reply);
       if (result.kind === "empty") return reply.code(204).send();
       return reply.code(200).send(result.draft);
@@ -172,17 +187,19 @@ const callback: FastifyPluginCallback<PrescriptionDraftRoutesOptions> = (
         return invalidRequest(reply);
       }
 
-      const result = await options.service.save({
-        tenantId: tenantContext.tenantId,
-        pharmacyId: tenantContext.pharmacyId,
-        actorId: tenantContext.actorId,
-        receptionId: receptionId(params.data.receptionId),
-        patientId: patientId(body.data.patientId),
-        businessDate: body.data.businessDate,
-        expectedVersion: body.data.expectedVersion,
-        draft: body.data.draft,
-        wallClock: snapshotWallClock(now),
-      });
+      const result = await callPrescriptionDraftService(() =>
+        options.service.save({
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+          actorId: tenantContext.actorId,
+          receptionId: receptionId(params.data.receptionId),
+          patientId: patientId(body.data.patientId),
+          businessDate: body.data.businessDate,
+          expectedVersion: body.data.expectedVersion,
+          draft: body.data.draft,
+          wallClock: snapshotWallClock(now),
+        }),
+      );
 
       if (result.kind === "not_found") return notFound(reply);
       if (result.kind === "conflict") return conflict(reply);

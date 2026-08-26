@@ -266,9 +266,9 @@ export class PostgresPrescriptionDraftService
     const client = await this.pool.connect();
     let destroyClient = false;
     try {
-      await client.query(
-        "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ",
-      );
+      // Audit append serializes by scope and must read the post-lock chain head.
+      // READ COMMITTED gives that statement a fresh snapshot; REPEATABLE READ does not.
+      await client.query("BEGIN");
       const reception = await receptionMatches(client, input, false);
       if (reception === undefined) {
         await client.query("COMMIT");

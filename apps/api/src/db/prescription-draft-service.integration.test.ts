@@ -10,6 +10,7 @@ import {
   userId,
 } from "@yrese/shared-kernel";
 
+import { buildAuditScopeAdvisoryLockKey } from "./audit-repository.js";
 import { applyPendingMigrations } from "./migration-runner.js";
 import { loadMigrationFiles } from "./migrations.js";
 import { createDbPool } from "./pool.js";
@@ -288,6 +289,91 @@ describePostgres(
         );
         expect(rows.rows).toEqual([{ version: 1, row_count: "1" }]);
       });
+    });
+
+    it("records every concurrent successful read without a sequence conflict", async () => {
+      await withMigratedSchema(async (pool) => {
+        await seedReception(pool, {
+          tenantId: scopedInput.tenantId,
+          pharmacyId: scopedInput.pharmacyId,
+          patientId: scopedInput.patientId,
+          receptionId: scopedInput.receptionId,
+          patientNumber: "DRAFT-DB-CONCURRENT-READ",
+          idempotencyKey: "draft-db-idempotency-concurrent-read",
+        });
+        const service = new PostgresPrescriptionDraftService(pool);
+        await service.save(saveInput(0));
+
+        const blocker = await pool.connect();
+        let blockerReleased = false;
+        try {
+          await blocker.query("BEGIN");
+          await blocker.query(
+            "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+            [
+              buildAuditScopeAdvisoryLockKey({
+                tenantId: scopedInput.tenantId,
+                pharmacyId: scopedInput.pharmacyId,
+              }),
+            ],
+          );
+          const reads = Promise.all([
+            service.get({
+              ...scopedInput,
+              wallClock: "2026-08-25T01:01:00.000Z",
+            }),
+            service.get({
+              ...scopedInput,
+              actorId: userId("actor-draft-db-second-reader"),
+              wallClock: "2026-08-25T01:01:01.000Z",
+            }),
+          ]);
+
+          let waiterCount = 0;
+          for (let attempt = 0; attempt < 100 && waiterCount < 2; attempt += 1) {
+            const waiters = await blocker.query<{ readonly waiter_count: number }>(
+              `SELECT count(*)::int AS waiter_count
+                 FROM pg_locks waiting
+                 JOIN pg_locks held
+                   ON held.locktype = waiting.locktype
+                  AND held.database IS NOT DISTINCT FROM waiting.database
+                  AND held.classid IS NOT DISTINCT FROM waiting.classid
+                  AND held.objid IS NOT DISTINCT FROM waiting.objid
+                  AND held.objsubid IS NOT DISTINCT FROM waiting.objsubid
+                WHERE held.pid = pg_backend_pid()
+                  AND held.granted
+                  AND NOT waiting.granted
+                  AND waiting.locktype = 'advisory'`,
+            );
+            waiterCount = waiters.rows[0]?.waiter_count ?? 0;
+            if (waiterCount < 2) {
+              await new Promise((resolve) => setTimeout(resolve, 5));
+            }
+          }
+          expect(waiterCount).toBe(2);
+          await blocker.query("COMMIT");
+          blockerReleased = true;
+
+          await expect(reads).resolves.toMatchObject([
+            { kind: "found" },
+            { kind: "found" },
+          ]);
+        } finally {
+          if (!blockerReleased) await blocker.query("ROLLBACK");
+          blocker.release();
+        }
+
+        await expect(
+          pool.query<{ readonly audit_count: number }>(
+            `SELECT count(*)::int AS audit_count
+               FROM audit_events
+              WHERE tenant_id = $1
+                AND pharmacy_id = $2
+                AND event_body->>'auditEventType' = 'prescription.draft.viewed'`,
+            [scopedInput.tenantId, scopedInput.pharmacyId],
+          ),
+        ).resolves.toMatchObject({ rows: [{ audit_count: 2 }] });
+      }, 3);
     });
 
     it("keeps persisted timestamps monotonic when the database writer clock moves backward", async () => {

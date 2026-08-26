@@ -178,7 +178,7 @@ cutover時点でのみ成立し、**PostgreSQLがwriterでなくなった後の�
 - 初回保存は`expectedVersion=0`かつ`If-Match`なし、更新は一致する`expectedVersion`とquoted
   `If-Match`をともに必須とする。同一内容を含むstale writeは常にconflictで、create replayや
   idempotency成功を主張しない。
-- versionは単調増加、`updatedAt`は直前値より必ず後、content hashはread/write境界で再計算して
+- versionは単調増加、`updatedAt`はclockが逆行しても直前値より前へ戻さず、content hashはread/write境界で再計算して
   不一致をfail-closedとする。構造化行だけを保持し、自由形式payloadの保存へfallbackしない。
 - successful readはMOD-008の`prescription.draft.viewed`をresponse前に永続化する。targetは
   prescription IDだけとし、処方本文・患者識別子・検索条件を監査payloadへ入れない。

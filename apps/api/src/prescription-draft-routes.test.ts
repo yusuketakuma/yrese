@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  frameworkErrorResponseSchema,
   prescriptionDraftResponseSchema,
   prescriptionDraftSaveResponseSchema,
 } from "@yrese/contracts";
@@ -19,7 +20,10 @@ import {
   patientSearchCursorHmacKeyByteLength,
 } from "./patient-search-cursor.js";
 import { prescriptionDraftRoutes } from "./prescription-draft-routes.js";
-import { InMemoryPrescriptionDraftService } from "./prescription-draft-service.js";
+import {
+  InMemoryPrescriptionDraftService,
+  type PrescriptionDraftService,
+} from "./prescription-draft-service.js";
 import { InMemoryReceptionRepository } from "./reception-repository.js";
 import { buildServer } from "./server.js";
 
@@ -54,7 +58,7 @@ const baseBody = {
 
 const auditByServer = new WeakMap<object, InMemoryAuditRepository>();
 
-function buildPrescriptionDraftTestServer() {
+function buildPrescriptionDraftTestServer(service?: PrescriptionDraftService) {
   const receptionRepository = new InMemoryReceptionRepository();
   const auditRepository = new InMemoryAuditRepository();
   const server = buildServer({
@@ -67,11 +71,13 @@ function buildPrescriptionDraftTestServer() {
     ),
   });
   server.register(prescriptionDraftRoutes, {
-    service: new InMemoryPrescriptionDraftService(
-      receptionRepository,
-      auditRepository,
-      () => prescriptionId("prescription-route-test-001"),
-    ),
+    service:
+      service ??
+      new InMemoryPrescriptionDraftService(
+        receptionRepository,
+        auditRepository,
+        () => prescriptionId("prescription-route-test-001"),
+      ),
     now: () => new Date("2026-08-25T00:00:00.000Z"),
   });
   auditByServer.set(server, auditRepository);
@@ -85,8 +91,8 @@ describe("prescription draft routes", () => {
     await Promise.all(servers.splice(0).map((server) => server.close()));
   });
 
-  function server() {
-    const instance = buildPrescriptionDraftTestServer();
+  function server(service?: PrescriptionDraftService) {
+    const instance = buildPrescriptionDraftTestServer(service);
     servers.push(instance);
     return instance;
   }
@@ -209,6 +215,43 @@ describe("prescription draft routes", () => {
       payload: update,
     });
     expect(accepted.statusCode).toBe(200);
+  });
+
+  it("normalizes service failures without echoing raw details", async () => {
+    const rawSentinel = "raw prescription repository failure secret";
+    const instance = server({
+      get: async () => {
+        throw new Error(rawSentinel);
+      },
+      save: async () => {
+        throw new Error(rawSentinel);
+      },
+    });
+
+    const read = await instance.inject({
+      method: "GET",
+      url:
+        "/prescription-drafts/by-reception/reception-syn-001" +
+        "?date=2026-07-09",
+      headers: authorizedHeaders,
+    });
+    const write = await instance.inject({
+      method: "PUT",
+      url: "/prescription-drafts/by-reception/reception-syn-001",
+      headers: authorizedHeaders,
+      payload: baseBody,
+    });
+
+    for (const response of [read, write]) {
+      expect(response.statusCode).toBe(500);
+      expect(response.headers["cache-control"]).toBe("no-store");
+      expect(frameworkErrorResponseSchema.parse(response.json())).toEqual({
+        statusCode: 500,
+        error: "Internal Server Error",
+        message: "Prescription draft repository operation failed",
+      });
+      expect(response.body).not.toContain(rawSentinel);
+    }
   });
 
   it("fails closed before data lookup when the tenant context cannot be constructed", async () => {
