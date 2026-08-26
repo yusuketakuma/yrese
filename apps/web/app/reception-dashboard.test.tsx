@@ -25,6 +25,7 @@ import {
   formatAcceptedTime,
   isSettledReceptionCreateFailure,
   parseDateParam,
+  RECEPTION_STATUS_LABELS,
   receptionQueueMetrics,
   ReceptionQueueMetricsView,
   registrationPatientChangeNotice,
@@ -3045,5 +3046,24 @@ describe("ReceptionQueueMetricsView", () => {
     );
     expect(errorHtml).toContain("取得失敗");
     expect(errorHtml).not.toContain("取得中");
+  });
+
+  it("labels each count with the visual status registry wording (WP-5101 review)", () => {
+    const state: QueueState = {
+      kind: "loaded",
+      response: queueResponse("2026-07-09", [
+        entry({ receptionId: "rc-1", receptionStatus: "IN_PROGRESS" }),
+      ]),
+      refreshState: { kind: "idle" },
+    };
+    for (const html of [
+      renderToStaticMarkup(<ReceptionQueueMetricsView state={state} />),
+      renderToStaticMarkup(<ReceptionQueueMetricsView state={{ kind: "loading" }} />),
+    ]) {
+      expect(html).toContain(RECEPTION_STATUS_LABELS.IN_PROGRESS);
+      expect(html).toContain(RECEPTION_STATUS_LABELS.WAITING);
+      expect(html).toContain(RECEPTION_STATUS_LABELS.COMPLETED);
+      expect(html).not.toContain("処理中");
+    }
   });
 });

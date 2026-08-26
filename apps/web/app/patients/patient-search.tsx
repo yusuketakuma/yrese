@@ -560,9 +560,14 @@ export function patientSearchResultMetric(state: SearchState): {
   readonly detail: string;
 } {
   if (state.kind === "loaded") {
+    // 契約は総件数を返さないため、切り詰められた頁では「該当件数」と呼ばない
+    // (表示中の件数と総数を混同させない — WP-5101 review)。
     return {
       value: String(state.results.length),
-      detail: `「${state.query}」の該当件数${state.nextCursor !== undefined ? "(続きあり)" : ""}`,
+      detail:
+        state.nextCursor !== undefined
+          ? `「${state.query}」の表示中件数(未読込の続きあり・総数不明)`
+          : `「${state.query}」の該当件数`,
     };
   }
   if (state.kind === "loading") {

@@ -45,7 +45,11 @@ export default function Page() {
         actions={<PrototypeAction>手動で最新に更新</PrototypeAction>}
       />
       <InlineNotice title="システムモード未検知" tone="warning">
-        <p>稼働状態は判定できません。緑色の正常表示や外部連携成功を推測せず、すべて未確認として扱います。</p>
+        <p>
+          システムモードと外部連携の状態は判定できません。緑色の正常表示や外部連携成功を推測しません。
+          クラウドAPIの稼働確認だけは実測値を表示しますが、これは取得時点で到達できたことのみを示し、
+          同期状態・外部連携・モードの正常性を意味しません。
+        </p>
       </InlineNotice>
       <MetricGrid>
         <CloudHealthCard />
