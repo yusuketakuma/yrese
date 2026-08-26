@@ -1,7 +1,7 @@
 # 14 — UI/UX 構造方向の選定記録: 丁「一枚盤面」採用
 
 > **DECISION RECORD(non-SSOT 作業領域)** — 本書は方向選定の一次記録である。
-> APPROVED SSOT(UIX-006/007、PLAN-UIUX-001)の改版はここでは行わず、
+> APPROVED SSOT(UIX-001 §§11〜12、PLAN-UIUX-001)の改版はここでは行わず、
 > §6 の条件成立後に PRC-007 フローで反映する。実装・承認・準拠は主張しない。
 
 ## 1. 決定
@@ -18,11 +18,11 @@
 
 1. **遷移の三置換**: 「対象を変える=選択(常設キュー)」「工程を進める=展開(工程行)」
    「根拠を確かめる=ドロワー(その場)」。典型1患者の完了は現行11遷移 → 0遷移。
-2. **3盤面への再編**: active 28画面(UIX-007)は廃止せず「調剤盤・請求盤・管理盤」の
+2. **3盤面への再編**: active 28画面(UIX-001 §12)は廃止せず「調剤盤・請求盤・管理盤」の
    3盤面+常設レール+ドロワーへ写像する。
    **写像表の所在(2026-07-31 checker H-3 訂正)**: 写像表の内容は現在リポジトリ外の
    Artifact(cb24845f プロトタイプ §再編)にのみ存在し、**リポジトリ内文書へ未転記**である。
-   fresh-context checker も将来の監査も参照できないため、**転記完了まで UIX-007 改版
+   fresh-context checker も将来の監査も参照できないため、**転記完了まで UIX-001 §12 改版
    (WP-5105)は起案不能**(PRC-007 の source_refs 検証可能性を満たさない)。
    請求・管理を調剤盤に混ぜないのは不可逆操作の隔離と権限境界のため(P-11/P-14)。
 3. **常設レイアウト**: 左=受付キュー(SCR-001/002 吸収)、中央=患者フォーカスフレーム+
@@ -46,22 +46,22 @@
   選定は別判断。丁は構造であり、どのテーマとも合成可能。暫定はプロトタイプの
   クローム(寒色紙+常磐緑)を仮置きとする。
 - 実装順序・WP 分割(Plans.md への登載は queue 規律に従い別途)
-- UIX-006/007 の APPROVED 改版内容(§6 成立後に起案)
+- UIX-001 §§11〜12 の APPROVED 改版内容(§6 成立後に起案)
 - 並行作業(事務+薬剤師)のロック表現、タブレット幅の縮退、密度段階の既定値
 
 ## 4. 実装の前提条件(fail-closed)
 
 1. **workflow-stage enum の SSOT 起案・承認** — 工程行の状態表示に必要。shared-kernel に
    enum が存在しない間、UI 側で工程状態を発明しない(捏造禁止)。
-2. **UIX-007 の改版** — 「画面→盤面上の居場所」写像は画面台帳の変更にあたるため、
+2. **UIX-001 §12 の改版** — 「画面→盤面上の居場所」写像は画面台帳の変更にあたるため、
    APPROVED 改版(PRC-007)後に実装する(台帳にない構成の実装禁止)。
-3. **apps/web の dirty slice(WP-4254/4255)の landing** — 吸収禁止のため、
-   landing 前に UI 実装 WP を発行しない(WP-4253 はローカル commit 済み 9d8dbc0 —
-   2026-07-31 checker M-13 訂正)。
-4. **UIX-008(共通コンポーネントシステム)の昇格** — 13 号 §8 の手順に従う。
-5. U4 該当(患者文脈・薬剤師確認・請求確定・キュー選択=患者取り違え面)は
-   medical_safety_reviewer / privacy_compliance_reviewer / accessibility レビュー+
-   必要な人間承認を実装後に必須(UIX-007 運用ルール)。
+3. **current base の再確認** — historical WP-4253/4254/4255 は current `c7b6140` までに
+   landing 済みであり、この dirty blocker は解消済み。実装着手時は最新 `origin/main` と
+   clean feature worktree を再確認し、concurrent remote change を吸収しない。
+4. **unique UI/UX foundation の atomic cutover** — 13号 §0/§8 の手順に従う。
+5. U3/U4 該当(患者文脈・薬剤師確認・請求確定・キュー選択=患者取り違え面)は、
+   実装着手前に medical_safety / privacy / accessibility の relevant review と必要な human
+   authority の承認を得る。実装後は同じ観点の検証 evidence を独立確認する。
 
 ## 5. 引き継ぐ設計課題(プロトタイプ §整合 より)
 
@@ -79,9 +79,9 @@
 本決定記録(14号)
  → 13号 UIX-008 ドラフト §4 改訂(丁を採用構造として反映)… 本日実施
  → workflow-stage enum SSOT 起案(shared-kernel)… 次の起案対象
- → exact11 / WP-425x landing(dirty ownership 解消)
- → UIX-008 昇格・採番確定・ssot_index 登録(PRC-007)
- → UIX-006/007・PLAN-UIUX-001 の改版起案(盤面写像・実装波の再編)
+ → WP-5101 fresh-context review + human product decision(Candidate A、2026-08-26選択済み)
+ → UIX-001をunique foundationへ改版するCandidate Aをatomic PRC-007 batchでreview/finalize
+ → UIX-001 §§11〜12・PLAN-UIUX-001 の改版起案(盤面写像・実装波の再編)
  → Plans.md への WP 登載(WIP=1 / READY≤2)→ 実装
 ```
 
@@ -116,10 +116,10 @@ WP-5113 着手の前提【要設計】。
 
 | ビュー | 主役 | 工程行の既定 | 前景に固定 |
 |---|---|---|---|
-| 事務(clerk) | 受付キュー(左レール) | 入力系(保険確認・処方入力・会計・帳票)を展開既定。確認系は読み取りサマリ | 入力中下書き・帳票失敗・未収(UIX-006 §4 準拠)+安全不変量 |
-| 薬剤師(pharmacist) | **確認待ちキュー**(薬剤師確認工程に到達した患者。並び順は §7.3 未決 — 薬剤師レビュー) | 確認系(調剤・算定 trace・薬剤師確認)を展開既定。入力系は参照+差し戻し導線 | CRITICAL 警告・疑義照会中・要再検証(UIX-006 §4 準拠) |
+| 事務(clerk) | 受付キュー(左レール) | 入力系(保険確認・処方入力・会計・帳票)を展開既定。確認系は読み取りサマリ | 入力中下書き・帳票失敗・未収(UIX-001 §11.4 準拠)+安全不変量 |
+| 薬剤師(pharmacist) | **確認待ちキュー**(薬剤師確認工程に到達した患者。並び順は §7.3 未決 — 薬剤師レビュー) | 確認系(調剤・算定 trace・薬剤師確認)を展開既定。入力系は参照+差し戻し導線 | CRITICAL 警告・疑義照会中・要再検証(UIX-001 §11.4 準拠) |
 | 管理者(admin) | 管理盤がホーム(調剤盤は閲覧投影) | — | モード・同期・マスター・月次締め状況+安全不変量 |
-| サポート(support) | 障害状況・診断情報のみ | — | **PHI 非表示投影**(UIX-006 §4 の明示要求。氏名・カナ・生年月日・患者番号を含む全 PHI を表示しない) |
+| サポート(support) | 障害状況・診断情報のみ | — | **PHI 非表示投影**(UIX-001 §11.4 の明示要求。氏名・カナ・生年月日・患者番号を含む全 PHI を表示しない) |
 | 兼任(pharmacist の表示プリセット) | 統合ビュー(事務ビュー+確認待ちキュー併置) | **確認操作到達時は確認系(調剤・算定 trace・薬剤師確認)を強制展開**(fail-closed 側の既定 — 2026-07-31 checker H-3 訂正。根拠を開かないまま最終確定に到達する既定導線を作らない。既定の妥当性は薬剤師 human gate【薬剤師レビュー】) | 確認操作時も scope 検証・自己入力+自己確認の記録分離を緩めない(15号 §9) |
 
 ### 7.2 並行作業の編集所有とロック表現
@@ -162,6 +162,12 @@ WP-5113 着手の前提【要設計】。
 
 ## 変更履歴
 
+- 0.2.4 (2026-08-26): direct user instructionでCandidate A(UIX-001改版)を選択したため、
+  後続フローをA/B判断待ちからCandidate AのPRC-007 review/finalizationへ更新。未決の
+  medical-safety/privacy/accessibility/pharmacist gateと実装stopは変更していない。
+- 0.2.3 (2026-08-26): current `c7b6140` へ再同期 — WP-4253/4254/4255 の historical
+  dirty prerequisite を satisfied とし、次工程を WP-5101 review と unique SSOT atomic
+  cutover へ更新。丁の構造決定・未決事項・実装 stop condition は変更していない。
 - 0.2.2 (2026-07-31): WP-5101 fresh-context checker(3 lane)findings 反映 —
   §2-5 確定演出へ D-2 2段分離と chip 併置・形状+文言+確認者の三重表現を反映(H-2 / P-05/06/07)、
   §2-2 写像表のリポジトリ外 Artifact 依存を blocker 化(H-3)、§7.1 へ投影の安全不変量(M-6)・

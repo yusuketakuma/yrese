@@ -4,17 +4,18 @@
 ssot_id: UIX-005
 title: 安定性SLOポリシー
 domain: uiux
-status: APPROVED
+status: SUPERSEDED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-12
+updated_at: 2026-08-26
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 effective_from: null
-effective_to: null
+effective_to: 2026-08-26
+superseded_by: UIX-001 v0.2.0 §10
 source_refs: 構築プロンプト v0.2.0 §8.2, §9.3 / docs/plan/phase0_plan.md §6, §8
 depends_on: [docs/architecture/offline_mode_matrix.md, docs/architecture/recovery_sync_design.md]
 impacts: [docs/uiux/experience_quality_baseline.md, docs/uiux/performance_budget.md, docs/uiux/usability_acceptance_criteria.md, docs/operations/sla_slo_policy.md, docs/operations/performance_capacity_plan.md, docs/operations/observability_plan.md, docs/testing/test_strategy.md, docs/quality/post_release_monitoring.md]
@@ -23,6 +24,7 @@ related_tests: []
 related_prs: []
 evidence_ids: []
 change_log:
+  - 0.1.1 2026-08-26 UIX-001 v0.2.0 §10へ原子的に統合しSUPERSEDED化。本文は履歴/provenanceとして不変
   - 0.1.0 2026-07-09 初版APPROVED
   - 0.1.0 2026-07-12 WP-9002-W27 metadata-only migration; body and stability authority unchanged
 open_questions:

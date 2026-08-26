@@ -8,18 +8,18 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.1
+version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-11
-approved_at: 2026-07-09
-approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+updated_at: 2026-08-26
+approved_at: 2026-08-26
+approved_by: direct_user_instruction (WP-5104 limited finalization; reference-only cutover); prior approval provenance preserved in Git history
 effective_from: null
 effective_to: null
 source_refs: 構築プロンプト v0.2.0 §36, §8.6
 depends_on:
   - QUA-001 quality_plan
   - QUA-002 validation_plan
-  - UIX-002 experience_quality_baseline
+  - UIX-001 §7 experience quality baseline
 impacts:
   - workspace and CI test strategy
   - fixture, golden-test, and future E2E gates
@@ -41,6 +41,7 @@ open_questions:
   - E2E フレームワーク選定(Playwright 想定、Phase 1 で確定)
   - golden test 資産の管理場所(packages/fixtures 想定、fixture_policy と連動)
 change_log:
+  - "0.1.2 2026-08-26 WP-5104 reference-only cutover to UIX-001 §§7〜9; test strategy semantics unchanged"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W4 metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - 0.1.1 (2026-07-09): WP-4047 実装状態 drift 整備。CI ゲートの secret scan / dependency scan / SBOM 実装状態を WP-4009/a90df35・WP-4012/b0ecf84+702c2f5 に同期(テスト戦略要件は不変更)。
@@ -74,15 +75,15 @@ blockers: []
 | 算定 golden / レセプト golden | 未着手 — evidence_id 発行後(CAL-001 の行単位解除と連動)。golden_test_catalog を作成 |
 | マスター差分・有効日・公費/PMH組み合わせ・負担割合・丸め | 未着手 — masters/calculation 実装と同時にWP化 |
 | QR読取 / 電子処方箋 / オン資 / PMH / JAHIS互換 / 外部API contract | BLOCKED(公式仕様・ONS) — Adapter 実装WPに同梱 |
-| UI workflow / medical safety UI / keyboard / accessibility / error state / offline UI | 未着手 — E2E基盤(Phase 1)で導入。受入条件は UIX-004 |
-| performance budget / perceived performance / latency regression | 未着手 — UIX-003 の候補値をテスト化 |
+| UI workflow / medical safety UI / keyboard / accessibility / error state / offline UI | 未着手 — E2E基盤(Phase 1)で導入。受入条件は UIX-001 §9 |
+| performance budget / perceived performance / latency regression | 未着手 — UIX-001 §8 の候補値をテスト化 |
 | usability heuristic / first-run / manual-less / error recovery / recovery sync UX / warning fatigue | 人間参加型 — UAC-01〜12 の検証方法に従う |
 | 法令適合性 / 帳票保存性 / 監査証跡 | 該当実装WPで必須化(evidence_id・ハッシュ・再出力) |
 | オフラインモード / 復旧後同期 / 競合解決 / Edge故障 / Cloud停止 / 外部停止 | ARC-001/002 のマトリクスをテストケース化(バックエンド実装と同時) |
 | Blue/Green deployment / DB migration rollback | インフラWP(Phase 1 以降) |
 | セキュリティ / tenant isolation / audit log tamper / backup restore / BCP rehearsal | SEC-006 の isolation test 5種を CI 必須ゲート化(DB導入時) |
 
-UIX-002 の必須テスト14種(§8.6)は上表の該当行に統合済み。
+UIX-001 §7.6 の必須テスト14種は上表の該当行に統合済み。
 
 ## 4. CI ゲート
 

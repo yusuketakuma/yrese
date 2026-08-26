@@ -2,7 +2,7 @@
 
 > **DRAFT / PROPOSED — non-SSOT 作業領域上の起草文書。**
 > 正式 SSOT への昇格(移設先・採番は §8、`docs/ssot_index.md` 登録含む)は PRC-007 の
-> 10段改版フローに従い、exact11 batch の dirty ownership 解消後に行う。
+> 10段改版フローに従い、WP-5101 review、DOM-004 改版、薬剤師 human gate 後に行う。
 > 本書の承認前に `packages/shared-kernel` へ enum を実装しない(捏造禁止)。
 
 ```yaml
@@ -18,19 +18,20 @@ reviewers:
   - medical_safety_reviewer   # 工程順・確認前後の区別は医療安全に直結
   - frontend_reviewer
   - human_review_required     # 薬剤師による工程実務レビュー
-version: 0.1.0-draft
+version: 0.1.3-draft
 created_at: 2026-07-31
 source_refs:
-  - docs/uiux/workflow_map.md(UIX-006 v0.2.0 APPROVED — 工程順の上位正本)
+  - UIX-001 v0.2.0 §11(APPROVED — 工程順の上位正本)
   - docs/domain/state_transition.md(DOM-004 — ライフサイクル状態・遷移ガードの正本)
   - docs/ui-ux-refresh/14-one-board-direction-decision.md(丁採用決定 R-5)
-  - docs/ui-ux-refresh/13-ui-component-system-ssot-draft.md(UIX-008 候補 §4)
+  - docs/ui-ux-refresh/13-ui-component-system-ssot-draft.md(selected unique foundation 候補 §4)
   - packages/shared-kernel/src/status.ts(既存 status 規約)
-depends_on: [UIX-001, UIX-006, UIX-007, DOM-004]
-impacts: [packages/shared-kernel, apps/web/app/status/visual-status-registry.ts, UIX-008候補]
+depends_on: [UIX-001, DOM-004]
+impacts: [packages/shared-kernel, apps/web/app/status/visual-status-registry.ts, selected unique foundation]
 open_questions: 本文 §9
 blockers:
-  - BLOCKED_SSOT_INDEX_DIRTY(exact11 landing 前は index 登録しない)
+  - BLOCKED_WP_5101_INDEPENDENT_REVIEW
+  - BLOCKED_DOM_004_AMENDMENT_AND_PHARMACIST_HUMAN_GATE
   - 本書 APPROVED 前の shared-kernel 実装禁止
 ```
 
@@ -39,8 +40,8 @@ blockers:
 丁「一枚盤面」(14号決定)の工程行(`WorkflowSheet` / `WorkflowStageRow`)が表示する
 **工程の同一性(identity)と順序**、および**工程進捗の導出語彙**を単一正本として定義する。
 
-- 工程順の上位正本は **UIX-006 業務導線マップ**であり、本書はその enum 化である。
-  UIX-006 と矛盾する順序・工程を定義しない。
+- 工程順の上位正本は **UIX-001 §11 業務導線**であり、本書はその enum 化である。
+  UIX-001 §11 と矛盾する順序・工程を定義しない。
 - **本書はライフサイクル状態を定義しない。** 処方・調剤・会計・請求の業務遷移状態
   (RECEIVED_PROVISIONAL〜RESUBMITTED)・遷移ガード・禁止遷移の正本は **DOM-004 §1** であり、
   本書の「工程(stage)」はそれと直交する**盤面上の位置の軸**である。状態の重複定義・
@@ -65,7 +66,7 @@ blockers:
    **opaque brand 型**として輸出し、`deriveStageProgress` だけが構築できる形
    (`Brand<..., "StageProgress">` — shared-kernel `branded-ids.ts` の既存イディオム)を
    実装要件とする。これにより「導出関数以外からの進捗表示が型エラーになる」が真になる。
-3. **enum は全工程、表示は投影。** enum は UIX-006 の全9工程を保持する。一枚盤面が
+3. **enum は全工程、表示は投影。** enum は UIX-001 §11 の全9工程を保持する。一枚盤面が
    「受付・患者特定をキュー側へ吸収」「会計と帳票を1行に統合」するのは表示層の投影であり、
    ドメイン正本を削らない。
 4. **モード判定を再発明しない。** LOCAL_ONLY / RECOVERY_SYNC による工程可否は既存の
@@ -78,14 +79,16 @@ blockers:
 ```ts
 // packages/shared-kernel/src/workflow-stage.ts(承認後に新設)
 
-/** 調剤線の工程。順序は UIX-006 §1 と完全一致(配列順=業務順)。 */
+import type { Brand, PatientId } from "./branded-ids.js";
+
+/** 調剤線の工程。順序は UIX-001 §11.1 と完全一致(配列順=業務順)。 */
 export const DISPENSING_WORKFLOW_STAGES = [
   "RECEPTION",                // 受付
   "PATIENT_IDENTIFICATION",   // 患者特定
   "COVERAGE_CONFIRMATION",    // 患者・保険・公費確認(資格確認・PMH 含む)
   "PRESCRIPTION_ENTRY",       // 処方入力(2D仮取込・照合を含む)
   "DISPENSING",               // 調剤入力(残薬調整・後発品変更記録)
-  "CALCULATION",              // 仮算定(ローカル)— 確定算定は PAYMENT 側(UIX-006 §1 準拠)
+  "CALCULATION",              // 仮算定(ローカル)— 確定算定は PAYMENT 側(UIX-001 §11.1 準拠)
   "PHARMACIST_CONFIRMATION",  // 薬剤師確認(ここまで「確認前」表示 — P-07)
   "PAYMENT",                  // 会計(一部負担金請求・収納)
   "DOCUMENT_OUTPUT",          // 帳票出力(領収証・明細書・薬袋等)
@@ -100,7 +103,11 @@ export const STAGE_PROGRESSES = [
   "COMPLETED",     // ドメイン正本が確定状態を示す(根拠のある確定のみ — P-17)
   "UNAVAILABLE",   // 対応するドメイン契約が未承認・未接続(進捗を主張しない)
 ] as const;
-export type StageProgress = (typeof STAGE_PROGRESSES)[number];
+type StageProgressValue = (typeof STAGE_PROGRESSES)[number];
+export type StageProgress = {
+  [Value in StageProgressValue]: Brand<Value, "StageProgress">;
+}[StageProgressValue];
+type BlockedStageProgress = Brand<"BLOCKED", "StageProgress">;
 
 /** 導出関数の契約(実装は承認後)。純関数・網羅 switch・既存正本のみを入力とする。 */
 export type StageProgressInput = {
@@ -121,11 +128,11 @@ export type StageProgressInput = {
 export type StageProgressResult =
   | {
       patientId: PatientId;
-      progress: Exclude<StageProgress, "BLOCKED">;
+      progress: Exclude<StageProgress, BlockedStageProgress>;
     }
   | {
       patientId: PatientId;
-      progress: "BLOCKED";
+      progress: BlockedStageProgress;
       reason: BlockerType;   // 既存 shared-kernel blockers.ts の BlockerType を流用(新型を作らない)
     };
 
@@ -155,7 +162,7 @@ export declare function deriveStageProgress(
 | COVERAGE_CONFIRMATION | `EligibilityStatus` + PMH 系 `ProvisionalStatus` | ◐ 資格は導出可 / PMH は BLOCKED(外部仕様待ち) |
 | PRESCRIPTION_ENTRY | *RECEIVED_PROVISIONAL / IMPORTED_PROVISIONAL / PHARMACIST_CONFIRMED / PRESCRIPTION_FINALIZED*(DOM-004 §1) | `UNAVAILABLE`(状態未登録・実装 WP 待ち) |
 | DISPENSING | *DISPENSING_RECORDED*(DOM-004 §1) | `UNAVAILABLE`(同上) |
-| CALCULATION | *CALCULATED_PROVISIONAL*(DOM-004 §1)+ `PROVISIONAL_CALCULATION` — **仮算定まで。確定算定(CALCULATED_FINAL)は PAYMENT 側の導出入力**(UIX-006 §1「会計(確定算定 → 一部負担金請求)」準拠 — 2026-07-31 checker 訂正: 工程境界の二重帰属を排除) | `UNAVAILABLE`(live 結線先の WP-3011b/c は**現 active queue に存在しない** — 契約承認後の実装 WP 起草が前提) |
+| CALCULATION | *CALCULATED_PROVISIONAL*(DOM-004 §1)+ `PROVISIONAL_CALCULATION` — **仮算定まで。確定算定(CALCULATED_FINAL)は PAYMENT 側の導出入力**(UIX-001 §11.1「会計(確定算定 → 一部負担金請求)」準拠 — 2026-07-31 checker 訂正: 工程境界の二重帰属を排除) | `UNAVAILABLE`(live 結線先の WP-3011b/c は**現 active queue に存在しない** — 契約承認後の実装 WP 起草が前提) |
 | PHARMACIST_CONFIRMATION | DOM-004 の確認記録(§9 の順序突合が前提) | `UNAVAILABLE` |
 | PAYMENT | *CALCULATED_FINAL / SETTLED*(DOM-004 §1)+ 会計契約(**未起草 — 旧 WP-2201/2202 は現 active queue に存在しない**) | `UNAVAILABLE` |
 | DOCUMENT_OUTPUT | 帳票契約 — **未起草** | `UNAVAILABLE` |
@@ -166,23 +173,24 @@ DOM-004 状態の shared-kernel 登録(使用実装 WP 着地)と各契約 APPRO
 
 ## 5. 疑義照会・分岐の扱い
 
-疑義照会(SCR-015)は UIX-006 上「処方入力からの分岐」であり、**線形工程ではない**。
+疑義照会(SCR-015)は UIX-001 §11 上「処方入力からの分岐」であり、**線形工程ではない**。
 本 enum に工程として追加せず、`PRESCRIPTION_ENTRY` の BLOCKED 理由
 (照会中 = 進行停止+理由「疑義照会の回答待ち」)として表現する。
 照会状態の enum(照会中/回答済み/処方訂正)は処方ドメイン契約起案時に定義する(予約)。
 
-## 6. Visual Status Registry との接続(UIX-008 候補 L1)
+## 6. Visual Status Registry との接続(selected unique foundation L1)
 
 承認後、Registry に次の 2 軸を追加する:
 
 1. **工程 identity**: 確定日本語ラベル
    受付 / 患者特定 / 保険・公費確認 / 処方入力 / 調剤 / 算定 / 薬剤師確認 / 会計 / 帳票出力
-   (UIX-006 の用語と一致。形状・トーンは持たない — identity は状態ではない)。
+   (UIX-001 §11 の用語と一致。label+補助 shape を持ち、tone/ARIA は持たない)。
    **実装形(2026-07-31 checker 訂正)**: Registry の `StatusQuery` union
    (全 domain が tone/shape 必須の `StatusPresentation` を返す)へは追加**しない**。
    既存の identity-only 前例 `CLINICAL_ALERT_TYPE_IDENTITY`(StatusQuery の外側の
-   label-only マップ)に倣い、`WORKFLOW_STAGE_IDENTITY` として同型で実装する
-   (偽の tone/shape を捏造しない)。
+   label+shape マップ)に倣い、`WORKFLOW_STAGE_IDENTITY` は
+   `Record<DispensingWorkflowStage, Pick<StatusPresentation, "label" | "shape">>` として
+   実装する(偽の tone/ARIA を捏造しない)。
 2. **進捗(domain=`stage-progress`)**:
 
 | key | label | tone | shape | 備考 |
@@ -191,7 +199,7 @@ DOM-004 状態の shared-kernel 登録(使用実装 WP 着地)と各契約 APPRO
 | IN_PROGRESS | 進行中 | pending | ↻ | 下書き・仮状態を含む |
 | BLOCKED | 停止(理由併記) | blocked | ■ | reason 必須 |
 | COMPLETED | 完了 | ok | ● | 根拠ある確定のみ |
-| UNAVAILABLE | 未提供(契約未承認) | neutral | — | 進捗を主張しない正直表示。shape「—」は既存 `StatusShape` union に存在せず **L1 変更(union への追加改版)を要する**(13号 §2: L1 変更の自由度 低)。追加の可否・代替形状は WP-5112 実装時に L1 改版として判断【要確認】 |
+| UNAVAILABLE | 未提供(契約未承認) | neutral | — | 進捗を主張しない正直表示。shape「—」は既存 `StatusShape` union に存在せず **L1 変更(union への追加改版)を要する**(13号 §2: L1 変更の自由度 低)。追加または既存 shape の採用は WP-5103/WP-5104 の PRC-007 packet で実装前に確定し、WP-5112 へ未決のまま渡さない【要確認】 |
 
 工程行 chip は本 2 軸のみを使い、ドメイン固有の詳細状態(資格・仮算定等)は
 行内サマリで既存軸の chip を併置する(丁プロトタイプの表示と同型)。
@@ -199,9 +207,9 @@ DOM-004 状態の shared-kernel 登録(使用実装 WP 着地)と各契約 APPRO
 ## 7. 検証要件(実装 WP で必須)
 
 - 網羅性: 全 stage × 全 progress の導出テスト(switch 網羅を型+テストで担保)
-- 順序: `DISPENSING_WORKFLOW_STAGES` の配列順が UIX-006 §1 と一致することのテスト
+- 順序: `DISPENSING_WORKFLOW_STAGES` の配列順が UIX-001 §11.1 と一致することのテスト
 - **工程内容の対応**: 配列順の一致だけでなく、各工程の**内容境界**(特に CALCULATION=
-  仮算定まで / 確定算定=PAYMENT 側)が UIX-006 §1 の記述と一致することの対応表テスト
+  仮算定まで / 確定算定=PAYMENT 側)が UIX-001 §11.1 の記述と一致することの対応表テスト
   (2026-07-31 checker 追加 — 順序一致テストは境界ズレを検出できない)
 - fail-closed: 契約未承認ドメインの入力が undefined のとき必ず `UNAVAILABLE` になること
 - **UNAVAILABLE の消費側 fail-closed**(2026-07-31 checker C-2 追加): 導出結果が
@@ -211,17 +219,18 @@ DOM-004 状態の shared-kernel 登録(使用実装 WP 着地)と各契約 APPRO
 - **患者束縛**(2026-07-31 checker H-1 追加): 導出結果の `patientId` が表示先の
   患者文脈と一致しない場合に描画されないこと(非同期 stale 結果の別患者混入)のテスト
 - BLOCKED reason 必須の型検査、モード連動(LOCAL_ONLY で PAYMENT 以降が BLOCKED 等)
-- Registry 2 軸の label/tone/shape/ARIA 網羅テスト(既存 registry テストの流儀)
-- **前提**: 上記のうち DOM/インタラクションを要するテストは RTL/jsdom ハーネスが
-  apps/web に未導入であるため(13号 blockers)、ハーネス整備 WP の完了が前提
+- Registry 2 軸の網羅テスト(identity は label/shape、progress は label/tone/shape/ARIA)
+- DOM/interaction を要する消費側契約は既存 Playwright/axe browser gate で検証する。
+  jsdom / Testing Library は現行 stack で必要契約を検証できない場合だけ別 WP で判断する
 
 ## 8. 昇格手順
 
 1. 本ドラフトのレビュー(data-integrity / medical-safety / frontend / independent+薬剤師実務)
-2. exact11 landing → `docs/ssot_index.md` 登録可能化
+2. WP-5102 の DOM-004 改版と §9 の薬剤師 human gate、および §6 の UNAVAILABLE shape
+   decision を WP-5103/WP-5104 packet で完了
 3. 移設・採番確定(domain 系 DOM-xxx。`docs/domain/` 配下へ。番号は index 正本と突合して採番)
-4. APPROVED 後に shared-kernel 実装 WP を Plans.md へ登載(WIP=1 規律)— 実装+テスト+Registry 2 軸
-5. UIX-008(13号)§3 台帳へ `workflow-stage.ts` 行を追加
+4. PRC-007 APPROVED 後に shared-kernel 実装 WP を Plans.md へ登載 — 実装+テスト+Registry 2 軸
+5. 13号 §0 で選択した unique UI/UX foundation の component ledger へ `workflow-stage.ts` を登録
 
 ## 9. Open questions
 
@@ -252,12 +261,16 @@ DOM-004 状態の shared-kernel 登録(使用実装 WP 着地)と各契約 APPRO
 
 ## 変更履歴
 
+- 0.1.3-draft (2026-08-26): current `c7b6140` へ再同期 — exact11 historical blocker を
+  除去し、actual gate を WP-5101 / DOM-004 改版 / 薬剤師 human review に限定。
+  DOM interaction 検証を既存 Playwright/axe gate の再利用へ訂正し、unique foundation
+  topology の選択結果へ component ledger 登録を追従させた。
 - 0.1.2-draft (2026-07-31): WP-5101 fresh-context checker(3 lane)findings 反映 —
   `BlockerReason`(存在しない型)を既存 `BlockerType` 流用へ確定し BLOCKED を判別可能
   ユニオン化(H-1)、`StageProgress` の brand 化を実装要件へ明記し「型で不可能」を
   実現可能な主張へ(§2-2)、導出入出力へ `patientId` を追加し患者束縛テストを必須化
   (safety H-1)、CALCULATION の境界を仮算定までへ訂正し確定算定を PAYMENT 側へ
-  (UIX-006 突合)、identity 軸の実装形を CLINICAL_ALERT_TYPE_IDENTITY 同型の
+  (UIX-001 §11 突合)、identity 軸の実装形を CLINICAL_ALERT_TYPE_IDENTITY 同型の
   identity-only マップへ確定・UNAVAILABLE shape の L1 改版必要性を明記、
   UNAVAILABLE 消費側の fail-closed(空/導出不能の区別)を検証要件へ追加(C-2)、
   WP-3011b/c・WP-2201/2202 の active queue 不在を明示、§9 へ patientSelected 先取り

@@ -13,11 +13,11 @@ reviewers:
   - privacy_compliance_reviewer
   - medical_safety_reviewer
   - human_product_authority
-version: 0.2.0
+version: 0.2.1
 created_at: 2026-07-09
-updated_at: 2026-07-29
-approved_at: 2026-07-29
-approved_by: direct_user_instruction (human pharmacist/product authority, 2026-07-29); independent_verifier APPROVED; security_auditor APPROVED; data_integrity_reviewer APPROVED; privacy_compliance_reviewer APPROVED; medical_safety_reviewer APPROVED
+updated_at: 2026-08-26
+approved_at: 2026-08-26
+approved_by: direct_user_instruction (WP-5104 limited finalization; reference-only cutover); prior approval provenance preserved in Git history
 effective_from: 2026-07-29
 effective_to: null
 source_refs:
@@ -25,7 +25,7 @@ source_refs:
   - direct_user_instruction 2026-07-29 (user-facing audit confirmation is unnecessary)
 depends_on:
   - SEC-004 privacy_impact_assessment
-  - UIX-007 screen_inventory
+  - UIX-001 §12 screen inventory
   - PRC-007 ssot_governance
   - packages/events EventEnvelope
 impacts:
@@ -43,6 +43,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - 0.2.1 2026-08-26 WP-5104 reference-only cutover from UIX-007 to UIX-001 §12; audit/security semantics unchanged
   - 0.2.0 2026-07-29 SCR-028 Web viewerを廃止し、権限制御APIと将来の監査済み運用出力を見読性境界として定義。保全・integrity・authorizationは不変
   - 0.1.0 2026-07-09 初版をhuman reviewで承認
 open_questions:
@@ -100,7 +101,7 @@ blockers:
 | テナント横断監査 | 専用特権による限定閲覧 | 未実装。明示的な目的・最小化・同意等の適用条件、time-bounded authorization、利用監査、事後review、applicable human gateが必要 |
 
 - `audit-log:read` は PermissionScope 済み(shared-kernel)だが、productionのrole assignmentを証明しない。書き込みはアプリケーション内部のみ(外部 API から直接書き込み不可)
-- SCR-028はUIX-007の廃止済みIDとして予約する。`/admin`はSCR-029の管理プレースホルダーだけを提供し、監査イベント一覧・chain状態・再試行操作を描画しない
+- SCR-028はUIX-001 §12の廃止済みIDとして予約する。`/admin`はSCR-029の管理プレースホルダーだけを提供し、監査イベント一覧・chain状態・再試行操作を描画しない
 
 ## PHI 方針
 

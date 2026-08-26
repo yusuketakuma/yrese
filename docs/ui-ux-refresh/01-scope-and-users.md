@@ -7,18 +7,18 @@
 | 項目 | 内容 | Evidence |
 | --- | --- | --- |
 | 対象組織 | 保険薬局 | package.json `description`「調剤用レセプトコンピューター MVP」/ 各画面文言 |
-| 提供形態 | Cloud Core + Pharmacy Edge Node のハイブリッド | package.json / system-mode.ts / workflow_map |
-| 対象業務 | 受付・患者/保険/公費確認・処方入力・調剤・算定・薬剤師確認・会計・帳票・請求前点検・月次締め・レセプト・返戻再請求・マスター・同期・監査 | UIX-007(29画面)/ UIX-006 導線 |
-| 利用ロール | pharmacist / clerk / admin / support | shared-kernel `ROLE_NAMES` / workflow_map §4 |
+| 提供形態 | Cloud Core + Pharmacy Edge Node のハイブリッド | package.json / system-mode.ts / UIX-001 §11 |
+| 対象業務 | 受付・患者/保険/公費確認・処方入力・調剤・算定・薬剤師確認・会計・帳票・請求前点検・月次締め・レセプト・返戻再請求・マスター・同期・監査 | UIX-001 §§11〜12 |
+| 利用ロール | pharmacist / clerk / admin / support | shared-kernel `ROLE_NAMES` / UIX-001 §11.4 |
 | 利用環境/デバイス | 現場PC + タブレット想定(現時点で responsive 実装は限定) | globals.css / UIX-001 §1(現場デバイス対応) |
 | 患者情報の範囲(PHI) | 氏名・カナ・生年月日・年齢・性別・患者番号・資格確認状態・薬歴・処方・調剤・会計 | patient-header.tsx / contracts patient-search |
-| 記録の流れ | 受付→確認→入力→仮/確定算定→薬剤師確認→会計→請求前点検→月次締め(確定は NORMAL のみ) | UIX-006 / system-mode allowsClaimFinalization |
-| 外部連携 | オンライン資格確認・電子処方箋・オンライン請求・PMH(いずれも境界のみ/BLOCKED) | UIX-007 SCR-006/008/009/021 |
-| 非常時継続 | LOCAL_ONLY(仮受付・仮算定)/ RECOVERY_SYNC(再検証)モデル | system-mode.ts / workflow_map §2,§3 |
+| 記録の流れ | 受付→確認→入力→仮/確定算定→薬剤師確認→会計→請求前点検→月次締め(確定は NORMAL のみ) | UIX-001 §11 / system-mode allowsClaimFinalization |
+| 外部連携 | オンライン資格確認・電子処方箋・オンライン請求・PMH(いずれも境界のみ/BLOCKED) | UIX-001 §12 SCR-006/008/009/021 |
+| 非常時継続 | LOCAL_ONLY(仮受付・仮算定)/ RECOVERY_SYNC(再検証)モデル | system-mode.ts / UIX-001 §§11.2〜11.3 |
 
 ## 2. 患者安全へ直接影響しうる機能(高リスク=U3/U4)
 
-UIX-007 の U4(患者取り違え・薬剤師確認・外部未確認・請求確定)を最重要とする:
+UIX-001 §12 の U4(患者取り違え・薬剤師確認・外部未確認・請求確定)を最重要とする:
 患者検索/選択(SCR-002)、患者文脈表示(SCR-003)、処方入力(SCR-004)、調剤入力(SCR-010)、
 薬剤師確認(SCR-014)、月次締め(SCR-020)、レセプト出力(SCR-021)、LOCAL_ONLY(SCR-026)、RECOVERY_SYNC(SCR-027)。
 → `07-use-error-risk-register.md` の H-01..H-12 に対応。

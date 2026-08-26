@@ -9,15 +9,15 @@ owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-08-26
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.2.0 §9.3, §9.8 / docs/plan/phase0_plan.md §8
 depends_on:
-  - UIX-003 (performance_budget)
-  - UIX-005 (stability_slo_policy)
+  - UIX-001 §8 (performance budget)
+  - UIX-001 §10 (stability SLO)
   - OPS-006 (performance_capacity_plan)
 open_questions:
   - SLA(契約値)と SLO(内部目標)の乖離幅の事業判断【要確認 — 経営レビュー】
@@ -27,8 +27,8 @@ open_questions:
 
 ## 1. 位置づけ
 
-- **性能の予算値**(操作別 p50/p95)は UIX-003 を正本とし、本書で重複定義しない。
-- **安定性の SLO**(crash-free・二重送信ゼロ等)は UIX-005 を正本とする。
+- **性能の予算値**(操作別 p50/p95)は UIX-001 §8 を正本とし、本書で重複定義しない。
+- **安定性の SLO**(crash-free・二重送信ゼロ等)は UIX-001 §10 を正本とする。
 - 本書は「サービスとしての SLA/SLO 体系・エラーバジェット・メンテナンス・通知」を定義する。
 
 ## 2. サービス SLO(候補値)
@@ -62,4 +62,4 @@ open_questions:
 
 - SLA/SLO 未定義での本番提供
 - コスト削減のために監査ログ・バックアップ・暗号化を削ること(OPS-014 と同期)
-- 高速化・安定表示のための検証省略・エラー隠蔽(UIX-002/003/005 の禁止を継承)
+- 高速化・安定表示のための検証省略・エラー隠蔽(UIX-001 §§7,8,10 の禁止を継承)

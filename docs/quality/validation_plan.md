@@ -9,11 +9,11 @@ owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-12
-approved_at: 2026-07-09
-approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+updated_at: 2026-08-26
+approved_at: 2026-08-26
+approved_by: direct_user_instruction (WP-5104 limited finalization; reference-only cutover); prior approval provenance preserved in Git history
 effective_from: null
 effective_to: null
 source_refs: 構築プロンプト v0.2.0 §10, §9.7
@@ -29,6 +29,7 @@ related_tests: []
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.1.1 2026-08-26 WP-5104 reference-only cutover from UIX-004 to UIX-001 §9; validation semantics unchanged"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-12 WP-9002-W16 metadata-only completion: body/status/version/approval/effective/validation semantics unchanged"
 open_questions:
@@ -76,7 +77,7 @@ L1 が通っても L2/L3 の承認なしに「正しい」と主張しない(画
 
 - golden test: 一致率100%(不一致は全件 triage、許容される差分は根拠付きで文書化)
 - 並行稼働: 差分許容範囲【要確認・定量化】を超えないこと
-- UAC: UIX-004 の合格条件(U4画面の状態誤認ゼロ等)
+- UAC: UIX-001 §9 の合格条件(U4画面の状態誤認ゼロ等)
 - Go/No-Go: go_no_go_checklist(OPS 系、WP-0010)の全項目
 
 ## 5. 記録

@@ -1,7 +1,31 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-23, interoperability-first session):** This block alone
+> **ACTIVE SNAPSHOT (2026-08-26, WP-5104 Candidate A atomic finalization):** This block alone
 > is current. Everything below is nonauthoritative.
+
+- **Direction / ownership:** WP-5101 Candidate A decision and C-100 charter correction are
+  reviewed and pushed on Draft PR #5. C-100 evidence is frozen exact3
+  `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`, read-only
+  independent context `wp5101_human_authority_map` PASS/findings 0, `git diff --check` PASS,
+  landed commit `9786fe8`. Current WIP is WP-5104 PLAN_ONLY: create the Candidate A
+  UIX-001 PROPOSED review packet. Codex root is the sole `active_root_writer`; delegated
+  reviewers are read-only.
+- **Git boundary:** `main` and `origin/main` are
+  `c7b61406c6f6e58363139e3dced79c62f30cebf5`. Candidate work is isolated on
+  local/remote `feature/wp-5101-uiux-review`; exact head/status is read from Git. Current
+  WP-5104 ownership is the finalization exact-path allowlist in `Plans.md`; Git diff is authoritative.
+- **Current gate:** direct user instruction approved the limited UIX-001 v0.2.0 foundation and the
+  required medical-safety/security/privacy/accessibility/pharmacist/product UI-flow perspectives.
+  UIX-001→APPROVED, UIX-002〜007→SUPERSEDED, index and direct live references are being finalized
+  atomically. Fresh exact-diff validation/review/Oracle and PR #5 CI/merge remain.
+  HPKIの主体・時点・段帰属はREG-003 §7の法務gate、外部登録はREG-004 RB-003解除待ちで、
+  いずれも未解決中は署名・外部登録を実装しない。
+- **Landing / remote:** Draft PR #5 is the PLAN_ONLY finalization vehicle; exact-head CI status
+  is read from GitHub. Merge is permitted only after the remaining finalization gates pass. Draft PR #4
+  (`feat/prescription-draft-persistence`) remains conflicting, failing, and outside the
+  approved durable-writer boundary; do not merge it.
+
+### PREVIOUS SNAPSHOT (2026-08-23, interoperability-first session) — NONAUTHORITATIVE
 
 - **Direction:** direct user instruction 2026-08-23 — interoperability is the primary
   strength; charter amended in `DEVELOPMENT_POLICY.md`; plan in `Plans.md §16`. Codex lane is

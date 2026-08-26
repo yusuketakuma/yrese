@@ -9,9 +9,9 @@ owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-08-26
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.2.0 §9.2 / docs/plan/phase0_plan.md §8
@@ -61,7 +61,7 @@ open_questions:
 
 - 薬局向け Runbook: 障害時ガイド(LOCAL_ONLY 移行手順・復旧手順)、月次請求期ガイド、デバイストラブルガイド
 - サポート向け Runbook: 切り分けフローチャート、ログ調査手順(マスク済み)、エスカレーション基準、break glass 手順
-- いずれも Phase 1 で整備し、UIX-002 の「マニュアルレス」原則と整合(Runbook は異常時の補完であり、通常操作をRunbook依存にしない)
+- いずれも Phase 1 で整備し、UIX-001 §7 の「マニュアルレス」原則と整合(Runbook は異常時の補完であり、通常操作をRunbook依存にしない)
 
 ## 6. 禁止事項(v0.2.0 §9.2)
 

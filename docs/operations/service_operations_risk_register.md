@@ -9,9 +9,9 @@ owner: fable5
 reviewers:
   - opus4.8
   - human_review_required
-version: 0.1.0
+version: 0.1.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-08-26
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 source_refs: 構築プロンプト v0.2.0 §9.2, §9.8 / docs/plan/phase0_plan.md §8
@@ -35,7 +35,7 @@ open_questions:
 |---|---|---|---|---|---|
 | SOR-01 | 月次請求期の障害(請求期限に間に合わない) | H | M | 請求期変更凍結(OPS-004)+強化監視+紙運用の最終手段Runbook | 期限延長相談の手順を Runbook 化【要確認 — 審査支払機関の運用】 |
 | SOR-02 | 外部公的システム側の長期障害 | H | M | EXTERNAL_DEGRADED 運用+PENDING キュー+公式障害情報の薬局向け中継 | 障害時モード運用(ADP-001) |
-| SOR-03 | サポート要員不足(導入拡大期・請求期) | M | H | 問い合わせ分類の自動化・セルフサービス化(UIX-002 マニュアルレス) | 導入ペース制御【要確認 — 経営】 |
+| SOR-03 | サポート要員不足(導入拡大期・請求期) | M | H | 問い合わせ分類の自動化・セルフサービス化(UIX-001 §7 マニュアルレス) | 導入ペース制御【要確認 — 経営】 |
 | SOR-04 | 重大障害時の連絡遅延・混乱 | H | M | エスカレーション基準+連絡テンプレート(OPS-004 §4) | 訓練(年2回候補) |
 | SOR-05 | 改定対応の遅延(6月施行に間に合わない) | H | M | version_watchlist(REG-002)監視+改定対応の専用リリーストラック | 旧版継続+施行日前の Go/No-Go |
 | SOR-06 | マスター配布事故(誤版・破損配布) | H | L | MST-001 24段パイプライン+段階配布+ロールバックポイント | PENDING_MASTER_VALIDATION で旧版継続 |

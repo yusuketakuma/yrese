@@ -8,9 +8,9 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.2.0
+version: 0.2.1
 created_at: 2026-07-09
-updated_at: 2026-07-09
+updated_at: 2026-08-26
 approved_at: 2026-07-09
 approved_by: opus4.8レビュー(APPROVE_WITH_CHANGES)全指摘反映後、fable5承認(人間の包括承認範囲内)
 source_refs: 構築プロンプト v0.2.0 §0.0.4.3, §0.0.4.16
@@ -42,7 +42,7 @@ open_questions:
 ## 3. 規則
 
 - 金額を含むイベントは金額(整数円)・通貨前提(JPY)・関連レコードIDを持つ。**患者氏名等のPHIは載せず、ID参照のみ**(SEC-007)。
-- 監査ログの欠落は操作失敗として扱う(監査書き込み成功を操作完了条件とする — UIX-005 ST 系と整合)。
+- 監査ログの欠落は操作失敗として扱う(監査書き込み成功を操作完了条件とする — UIX-001 §10 ST 系と整合)。
 - LOCAL_ONLY 中もローカル監査ログへ記録し、RECOVERY_SYNC で完全性検証(ARC-002 R1)。
 
 ## 4. 変更履歴
