@@ -3041,7 +3041,10 @@ describe("ReceptionQueueMetricsView", () => {
     expect(loadingHtml).toContain("取得中");
     const errorHtml = renderToStaticMarkup(
       <ReceptionQueueMetricsView
-        state={{ kind: "error", notice: { severity: "ERROR", message: "x" } }}
+        state={{
+          kind: "error",
+          notice: { severity: "ERROR", message: "x", nextAction: "再試行してください。" },
+        }}
       />,
     );
     expect(errorHtml).toContain("取得失敗");
