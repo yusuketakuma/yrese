@@ -39,6 +39,7 @@ export interface PrescriptionDraftSaveInput extends PrescriptionDraftLookupInput
 
 export type PrescriptionDraftLookupResult =
   | { readonly kind: "found"; readonly draft: PrescriptionDraftResponse }
+  | { readonly kind: "empty" }
   | { readonly kind: "not_found" };
 
 export type PrescriptionDraftSaveResult =
@@ -155,7 +156,7 @@ export class InMemoryPrescriptionDraftService
     }
     const record = this.records.get(scopeKey(input));
     return record === undefined
-      ? { kind: "not_found" }
+      ? { kind: "empty" }
       : {
           kind: "found",
           draft: prescriptionDraftResponseSchema.parse(record.response),

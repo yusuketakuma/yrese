@@ -126,6 +126,7 @@ const callback: FastifyPluginCallback<PrescriptionDraftRoutesOptions> = (
         businessDate: query.data.date,
       });
       if (result.kind === "not_found") return notFound(reply);
+      if (result.kind === "empty") return reply.code(204).send();
       return reply.code(200).send(result.draft);
     },
   );

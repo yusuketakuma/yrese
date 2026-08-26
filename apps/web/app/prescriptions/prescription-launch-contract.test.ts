@@ -13,6 +13,14 @@ const routeSource = readFileSync(
   new URL("./prescription-launch-route.tsx", import.meta.url),
   "utf8",
 );
+const receptionBoundarySource = readFileSync(
+  new URL("./prescription-reception-boundary.tsx", import.meta.url),
+  "utf8",
+);
+const workspaceSource = readFileSync(
+  new URL("./prescription-workspace.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("prescription launch URL contract", () => {
   it("keeps patient identity out of workflow URLs and launch diagnostics", () => {
@@ -26,5 +34,13 @@ describe("prescription launch URL contract", () => {
     expect(launchSource).not.toContain("href={`/prescriptions/");
     expect(routeSource).toContain("<ReceptionPrescriptionHandoffAction");
     expect(routeSource).not.toContain("<PrescriptionWorkspace");
+  });
+
+  it("does not present an unapproved workflow or a stale conflict version", () => {
+    expect(receptionBoundarySource).not.toContain("PrescriptionWorkflowProgress");
+    expect(workspaceSource).not.toContain(
+      "競合・サーバー版 v${serverVersion}",
+    );
+    expect(workspaceSource).toContain("競合・再読込が必要");
   });
 });

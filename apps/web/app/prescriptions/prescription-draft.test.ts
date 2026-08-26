@@ -14,6 +14,19 @@ describe("prescription draft tab-memory policy", () => {
     expect(prescriptionDraftWorkId("patient-1")).toBe(
       "prescription-draft:patient-1",
     );
+    expect(
+      prescriptionDraftWorkId("patient-1", "reception-1", "2026-08-25"),
+    ).toBe("prescription-draft:patient-1:2026-08-25:reception-1");
+    expect(
+      prescriptionDraftWorkId("patient-1", "reception-2", "2026-08-25"),
+    ).not.toBe(
+      prescriptionDraftWorkId("patient-1", "reception-1", "2026-08-25"),
+    );
+    expect(
+      prescriptionDraftWorkId("patient-1", "reception-1", "2026-08-26"),
+    ).not.toBe(
+      prescriptionDraftWorkId("patient-1", "reception-1", "2026-08-25"),
+    );
   });
 
   it("treats any meaningful edit or added row as unsaved work", () => {

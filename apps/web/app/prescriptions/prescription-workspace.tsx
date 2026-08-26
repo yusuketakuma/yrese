@@ -566,7 +566,7 @@ export function SelectedPatientWorkspaceView({
     saveState.kind === "saving"
       ? "保存中"
       : saveState.kind === "conflict"
-        ? `競合・サーバー版 v${serverVersion}`
+        ? "競合・再読込が必要"
         : linkedOrigin === null
           ? dirty
             ? "受付未連携・タブ内未保存"

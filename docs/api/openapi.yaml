@@ -338,6 +338,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PrescriptionDraftResponse"
+        "204":
+          description: Verified reception context has no server-saved prescription draft
+          headers: *a1
         "400":
           description: Invalid prescription draft request
           headers: *a1
@@ -353,7 +356,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: Prescription draft or verified reception context not found
+          description: Verified reception context not found
           headers: *a1
           content:
             application/json:

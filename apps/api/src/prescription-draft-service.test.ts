@@ -61,6 +61,7 @@ describe("InMemoryPrescriptionDraftService", () => {
       () => prescriptionId("prescription-test-001"),
     );
 
+    await expect(service.get(scope)).resolves.toEqual({ kind: "empty" });
     await expect(service.save(input(0))).resolves.toMatchObject({
       kind: "saved",
       draft: {
@@ -79,6 +80,12 @@ describe("InMemoryPrescriptionDraftService", () => {
     ).resolves.toMatchObject({
       kind: "saved",
       draft: { version: 2, saveDisposition: "updated" },
+    });
+    await expect(
+      service.save(input(2, "合成薬剤B 10mg")),
+    ).resolves.toMatchObject({
+      kind: "saved",
+      draft: { version: 2, saveDisposition: "unchanged" },
     });
     await expect(service.get(scope)).resolves.toMatchObject({
       kind: "found",

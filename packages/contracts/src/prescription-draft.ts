@@ -47,7 +47,7 @@ export const prescriptionDraftFlagSchema = z.enum([
 
 export type PrescriptionDraftFlag = z.infer<typeof prescriptionDraftFlagSchema>;
 
-const normalizedDraftText = (maximum: number) => z.string().trim().max(maximum);
+const normalizedDraftText = (maximum: number) => z.string().max(maximum).trim();
 
 export const prescriptionDraftRowSchema = z.object({
   sequence: z.number().int().min(1).max(PRESCRIPTION_DRAFT_MAX_ROWS),

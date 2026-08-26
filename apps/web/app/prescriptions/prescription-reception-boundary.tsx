@@ -24,7 +24,6 @@ import {
   PrescriptionReceptionError,
   loadPrescriptionReceptionOrigin,
 } from "./prescription-reception";
-import { PrescriptionWorkflowProgress } from "./prescription-workflow-progress";
 
 type VerificationState =
   | { readonly kind: "idle" }
@@ -203,7 +202,6 @@ export function PrescriptionReceptionBoundary({
           受付連携を解除
         </button>
       </InlineNotice>
-      <PrescriptionWorkflowProgress />
       {children}
     </section>
   );

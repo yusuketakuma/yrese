@@ -22,6 +22,10 @@ describe("prescription draft OpenAPI projection", () => {
     expect(path?.get?.responses?.["200"]?.headers).toHaveProperty(
       "Cache-Control",
     );
+    expect(path?.get?.responses?.["204"]?.headers).toHaveProperty(
+      "Cache-Control",
+    );
+    expect(path?.get?.responses?.["204"]).not.toHaveProperty("content");
     expect(path?.put?.responses?.["409"]?.headers).toHaveProperty(
       "Cache-Control",
     );

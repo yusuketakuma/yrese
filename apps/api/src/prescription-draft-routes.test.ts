@@ -88,6 +88,18 @@ describe("prescription draft routes", () => {
 
   it("creates and reads a no-store versioned draft through authenticated scope", async () => {
     const instance = server();
+    const empty = await instance.inject({
+      method: "GET",
+      url:
+        "/prescription-drafts/by-reception/reception-syn-001" +
+        "?patientId=patient-syn-001&date=2026-07-09",
+      headers: authorizedHeaders,
+    });
+
+    expect(empty.statusCode).toBe(204);
+    expect(empty.headers["cache-control"]).toBe("no-store");
+    expect(empty.body).toBe("");
+
     const created = await instance.inject({
       method: "PUT",
       url: "/prescription-drafts/by-reception/reception-syn-001",
@@ -197,6 +209,15 @@ describe("prescription draft routes", () => {
       payload: baseBody,
     });
     expect(wrongReception.statusCode).toBe(404);
+
+    const wrongReadContext = await instance.inject({
+      method: "GET",
+      url:
+        "/prescription-drafts/by-reception/reception-syn-001" +
+        "?patientId=patient-syn-002&date=2026-07-09",
+      headers: authorizedHeaders,
+    });
+    expect(wrongReadContext.statusCode).toBe(404);
   });
 
   it("requires all registered scopes and preserves the existing AUTH contract", async () => {

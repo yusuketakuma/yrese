@@ -477,6 +477,11 @@ const openApiDefinition = {
               },
             },
           },
+          "204": {
+            description:
+              "Verified reception context has no server-saved prescription draft",
+            headers: noStoreHeaders,
+          },
           "400": frameworkFailureResponse("Invalid prescription draft request"),
           "403": {
             description: "Forbidden (AUTH-0003)",
@@ -488,7 +493,7 @@ const openApiDefinition = {
             },
           },
           "404": frameworkFailureResponse(
-            "Prescription draft or verified reception context not found",
+            "Verified reception context not found",
           ),
           "500": internalErrorResponse({ noStore: true }),
         },

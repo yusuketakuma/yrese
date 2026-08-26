@@ -71,32 +71,3 @@ export function isPrescriptionDraftDirty(
     draft.note.trim().length > 0
   );
 }
-
-export function prescriptionDraftSnapshotsStructurallyEqual(
-  left: PrescriptionDraftSnapshot,
-  right: PrescriptionDraftSnapshot,
-): boolean {
-  if (
-    left.prescriptionType !== right.prescriptionType ||
-    left.prescriptionDate !== right.prescriptionDate ||
-    left.defaultDays !== right.defaultDays ||
-    left.note !== right.note ||
-    left.options.length !== right.options.length ||
-    left.rows.length !== right.rows.length
-  ) {
-    return false;
-  }
-  if (left.options.some((option, index) => option !== right.options[index])) {
-    return false;
-  }
-  return left.rows.every((row, index) => {
-    const other = right.rows[index];
-    return (
-      other !== undefined &&
-      row.drug === other.drug &&
-      row.usage === other.usage &&
-      row.days === other.days &&
-      row.quantity === other.quantity
-    );
-  });
-}

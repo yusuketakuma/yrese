@@ -241,7 +241,7 @@ export async function loadPrescriptionDraft(
     );
   }
 
-  if (response.status === 404) return null;
+  if (response.status === 204) return null;
   if (!response.ok) throw classifyFailure(response.status);
 
   try {

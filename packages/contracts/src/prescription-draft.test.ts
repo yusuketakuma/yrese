@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  PRESCRIPTION_DRAFT_NOTE_MAX_LENGTH,
   prescriptionDraftContentSchema,
   prescriptionDraftResponseSchema,
   prescriptionDraftSaveRequestSchema,
@@ -59,6 +60,12 @@ describe("prescription draft contracts", () => {
       prescriptionDraftContentSchema.parse({
         ...validDraft,
         note: "x".repeat(2_001),
+      }),
+    ).toThrow();
+    expect(() =>
+      prescriptionDraftContentSchema.parse({
+        ...validDraft,
+        note: ` ${"x".repeat(PRESCRIPTION_DRAFT_NOTE_MAX_LENGTH - 1)} `,
       }),
     ).toThrow();
   });

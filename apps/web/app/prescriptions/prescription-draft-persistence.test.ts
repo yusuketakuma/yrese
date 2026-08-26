@@ -48,7 +48,7 @@ const serverDraft: PrescriptionDraftResponse = {
 };
 
 function response(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
+  return new Response(status === 204 ? null : JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json" },
   });
@@ -113,8 +113,19 @@ describe("prescription draft web persistence", () => {
   it("treats a verified reception with no server draft as an empty state", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
-    const fetchImpl: typeof fetch = async () => response({}, 404);
+    const fetchImpl: typeof fetch = async () => response(null, 204);
     await expect(loadPrescriptionDraft(context, fetchImpl)).resolves.toBeNull();
+  });
+
+  it("rejects a missing reception context instead of opening an empty draft", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const fetchImpl: typeof fetch = async () => response({}, 404);
+
+    await expect(loadPrescriptionDraft(context, fetchImpl)).rejects.toMatchObject({
+      kind: "NOT_FOUND",
+      status: 404,
+    });
   });
 
   it("sends expectedVersion and maps a stale writer to a fixed conflict", async () => {

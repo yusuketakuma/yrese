@@ -269,7 +269,7 @@ export class PostgresPrescriptionDraftService
       const draft = await readDraft(client, input);
       await client.query("COMMIT");
       return draft === undefined
-        ? { kind: "not_found" }
+        ? { kind: "empty" }
         : { kind: "found", draft };
     } catch (error) {
       try {
