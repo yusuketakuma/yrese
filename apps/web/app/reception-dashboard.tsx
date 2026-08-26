@@ -503,20 +503,20 @@ export function ReceptionQueueMetricsView({
   if (state.kind === "loading") {
     return (
       <MetricGrid>
-        <MetricCard label="待機中" value="…" unit="件" detail="キュー取得中" tone="accent" icon="受" />
-        <MetricCard label="処理中" value="…" unit="件" detail="キュー取得中" tone="info" icon="進" />
+        <MetricCard label={RECEPTION_STATUS_LABELS.WAITING} value="…" unit="件" detail="キュー取得中" tone="accent" icon="受" />
+        <MetricCard label={RECEPTION_STATUS_LABELS.IN_PROGRESS} value="…" unit="件" detail="キュー取得中" tone="info" icon="進" />
         <MetricCard label="資格要確認" value="…" unit="件" detail="キュー取得中" tone="warning" icon="資" />
-        <MetricCard label="完了" value="…" unit="件" detail="キュー取得中" tone="neutral" icon="済" />
+        <MetricCard label={RECEPTION_STATUS_LABELS.COMPLETED} value="…" unit="件" detail="キュー取得中" tone="neutral" icon="済" />
       </MetricGrid>
     );
   }
   if (state.kind === "error") {
     return (
       <MetricGrid>
-        <MetricCard label="待機中" value="—" unit="件" detail="キュー取得失敗" tone="accent" icon="受" />
-        <MetricCard label="処理中" value="—" unit="件" detail="キュー取得失敗" tone="info" icon="進" />
+        <MetricCard label={RECEPTION_STATUS_LABELS.WAITING} value="—" unit="件" detail="キュー取得失敗" tone="accent" icon="受" />
+        <MetricCard label={RECEPTION_STATUS_LABELS.IN_PROGRESS} value="—" unit="件" detail="キュー取得失敗" tone="info" icon="進" />
         <MetricCard label="資格要確認" value="—" unit="件" detail="キュー取得失敗" tone="warning" icon="資" />
-        <MetricCard label="完了" value="—" unit="件" detail="キュー取得失敗" tone="neutral" icon="済" />
+        <MetricCard label={RECEPTION_STATUS_LABELS.COMPLETED} value="—" unit="件" detail="キュー取得失敗" tone="neutral" icon="済" />
       </MetricGrid>
     );
   }
@@ -524,10 +524,10 @@ export function ReceptionQueueMetricsView({
   const detail = `${state.response.date} の受付キューから集計`;
   return (
     <MetricGrid>
-      <MetricCard label="待機中" value={String(metrics.waiting)} unit="件" detail={detail} tone="accent" icon="受" />
-      <MetricCard label="処理中" value={String(metrics.inProgress)} unit="件" detail={detail} tone="info" icon="進" />
+      <MetricCard label={RECEPTION_STATUS_LABELS.WAITING} value={String(metrics.waiting)} unit="件" detail={detail} tone="accent" icon="受" />
+      <MetricCard label={RECEPTION_STATUS_LABELS.IN_PROGRESS} value={String(metrics.inProgress)} unit="件" detail={detail} tone="info" icon="進" />
       <MetricCard label="資格要確認" value={String(metrics.eligibilityAttention)} unit="件" detail={detail} tone="warning" icon="資" />
-      <MetricCard label="完了" value={String(metrics.completed)} unit="件" detail={detail} tone="neutral" icon="済" />
+      <MetricCard label={RECEPTION_STATUS_LABELS.COMPLETED} value={String(metrics.completed)} unit="件" detail={detail} tone="neutral" icon="済" />
     </MetricGrid>
   );
 }

@@ -2192,10 +2192,12 @@ describe("patient search metrics reflect real search state (WP-5101)", () => {
       query: "ヤ",
       appendState: { kind: "idle" },
     };
-    expect(patientSearchResultMetric(state)).toEqual({
-      value: "1",
-      detail: "「ヤ」の該当件数(続きあり)",
-    });
+    const metric = patientSearchResultMetric(state);
+    expect(metric.value).toBe("1");
+    // 総件数は契約に存在しないため、切り詰めた頁を「該当件数」と呼ばない。
+    expect(metric.detail).not.toContain("該当件数");
+    expect(metric.detail).toContain("表示中件数");
+    expect(metric.detail).toContain("総数不明");
   });
 
   it("renders the metric grid with truthful initial values from PatientSearch", () => {

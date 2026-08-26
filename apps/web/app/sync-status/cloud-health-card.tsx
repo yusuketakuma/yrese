@@ -13,12 +13,41 @@ import { MetricCard, type OperatorTone } from "../components/operator-ui";
  * `GET /health` の実応答だけを表示する。ヘルス応答は「APIプロセスに到達できた」
  * ことの確認であり、同期・外部連携・システムモードの正常性を意味しない
  * (truthfulness 原則 — 応答なしは未確認であり障害断定もしない)。
+ * 確認は取得時点のスナップショットであるため、必ず確認時刻を併記して
+ * 古い確認を現在の状態と誤読させない(受付キューの loadedAt と同じ規律)。
  */
 
 export type CloudHealthState =
   | { readonly kind: "loading" }
-  | { readonly kind: "ready"; readonly health: HealthResponse }
-  | { readonly kind: "error" };
+  | { readonly kind: "ready"; readonly health: HealthResponse; readonly checkedAt: string }
+  | { readonly kind: "error"; readonly checkedAt: string };
+
+/**
+ * ヘルス確認1回分の結果を状態へ写像する(表示副作用から分離してテスト可能にする)。
+ * abort 済みの確認は状態を変えない(null)。後続の確認を古い結果で上書きしない。
+ */
+export async function resolveCloudHealthState(
+  fetchImpl: typeof fetch = fetch,
+  signal?: AbortSignal,
+  now: () => Date = () => new Date(),
+): Promise<CloudHealthState | null> {
+  try {
+    const health = await fetchAdminHealth(fetchImpl, signal);
+    if (signal?.aborted === true) return null;
+    return { kind: "ready", health, checkedAt: now().toISOString() };
+  } catch {
+    if (signal?.aborted === true) return null;
+    return { kind: "error", checkedAt: now().toISOString() };
+  }
+}
+
+function checkedAtLabel(checkedAt: string): string {
+  const at = new Date(checkedAt);
+  if (Number.isNaN(at.getTime())) return "確認時刻不明";
+  const hh = String(at.getHours()).padStart(2, "0");
+  const mm = String(at.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}時点`;
+}
 
 export function cloudHealthMetric(state: CloudHealthState): {
   readonly value: string;
@@ -28,14 +57,14 @@ export function cloudHealthMetric(state: CloudHealthState): {
   if (state.kind === "ready") {
     return {
       value: "応答あり",
-      detail: `${state.health.service} v${state.health.version} が応答(稼働確認のみ。同期状態ではありません)`,
+      detail: `${checkedAtLabel(state.checkedAt)}: ${state.health.service} v${state.health.version} が応答(稼働確認のみ。同期状態ではありません)`,
       tone: "info",
     };
   }
   if (state.kind === "error") {
     return {
       value: "未確認",
-      detail: "ヘルスAPIに到達できません。障害とは断定せず未確認として扱います。",
+      detail: `${checkedAtLabel(state.checkedAt)}: ヘルスAPIに到達できません。障害とは断定せず未確認として扱います。`,
       tone: "warning",
     };
   }
@@ -47,11 +76,9 @@ export function CloudHealthCard() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchAdminHealth(fetch, controller.signal)
-      .then((health) => setState({ kind: "ready", health }))
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ kind: "error" });
-      });
+    void resolveCloudHealthState(fetch, controller.signal).then((next) => {
+      if (next !== null) setState(next);
+    });
     return () => controller.abort();
   }, []);
 
