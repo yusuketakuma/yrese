@@ -37,12 +37,12 @@
 | Candidate branch | `integrate/main-consolidation-20260826`; exact head/statusはGitを正本とする |
 | Upstream relation | local PR #5/#6 branch tipsとfetched `origin/feat/all-screens-real-data-wiring`(PR #9)をmerge済み。remote pushなし |
 | Candidate scope | user-approved local main consolidation、WP-5101 bounded prescription draft SSOT記録、full gate、到達可能性確認後のmerged worktree削除 |
-| Last update | 2026-08-26 JST(current taskの「承認」でmigration 000013 source landing、PR #5/#6/#9 local consolidation、PR #6 blocker closureを承認。migration apply/deploy/pushは対象外) |
+| Last update | 2026-08-26 JST(PR #5/#6/#9 local merge、approved SSOT record、fresh backend review MEDIUM 3件の回帰修正、full validation完了。migration apply/deploy/pushは対象外) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | user-approved open-PR workをlocal `main`へconsolidateし、focused/full gate後にmerged worktreeを安全に削除する |
-| Current critical path | atomic SSOT record → sequential workspace gates(実PostgreSQL integrationを含む) → frozen review → local `main` fast-forward → reachability proof → worktree removal |
+| Current critical path | final fix deltaのfresh read-only re-review → remote fetch → local `main` fast-forward → reachability proof → worktree removal |
 | Main blocker | local landingにはなし。migration apply、push/deploy、HPKI/legal、RB-003、未決medical/pharmacist workflowは別human gateのまま |
-| Required verification | focused prescription draft/API/audit/contracts/web tests、PostgreSQL integration 0 skip、workspace test/typecheck/lint/build、OpenAPI/SSOT/secrets/boundaries/deps/SBOM/script/browser gates、`git diff --check`、frozen review |
+| Required verification | workspace 2,132 tests/PostgreSQL integration 0 skip、typecheck/build、OpenAPI/SSOT/secrets/boundaries/deps/SBOM/script/diff checks、browser 36 routes/5 suitesはPASS。fresh reviewのHIGH 0/MEDIUM 3は回帰test付きで修正済み、fix delta re-review待ち |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=c7b6140`; remote main更新またはfinal gate findingでreset |
 
@@ -73,7 +73,8 @@ external actionも行わない。
 ### WIP — exactly one
 
 **CURRENT は WP-5101/WP-5104 local main consolidation 1件である。** 承認済みPR #5/#6/#9を
-local integration branchへ束ね、required gateとreachability proof後にlocal `main`をfast-forwardする。
+local integration branchへ束ね、full gateとfresh backend finding closureを完了した。fix deltaの
+read-only re-reviewとreachability proof後にlocal `main`をfast-forwardする。
 push、migration apply、deploy、production mutationはclaimしない。
 
 | prior nonclaimable item | 現在の扱い | 参照 |

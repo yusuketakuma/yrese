@@ -9,11 +9,16 @@
 - **Git boundary:** local `main` / `origin/main` remain
   `c7b61406c6f6e58363139e3dced79c62f30cebf5` until final fast-forward. Current branch is
   `integrate/main-consolidation-20260826`; it includes local tips `964c5c3` and `0c9d727` plus
-  fetched PR #9 tip `7cd52ff`. No push is authorized or performed.
-- **Current gate:** add the approved DOM-002/DOM-004/MOD-008/IDX-001 atomic record, run focused
-  and full sequential gates with real local PostgreSQL integration, freeze/review the final diff,
-  then fast-forward local `main`. PR #6 Oracle review was verified and its findings were closed;
-  the exact PR #5 Oracle recovery was unavailable after Chrome disconnect and is not counted PASS.
+  fetched PR #9 tip `7cd52ff`, approved record `19eca87`, and backend closure `b9458c2`.
+  No push is authorized or performed.
+- **Current gate:** workspace 2,132 tests with real local PostgreSQL integration and zero skips,
+  sequential typecheck/build, OpenAPI/SSOT/secrets/deps/SBOM/boundaries/calculation/script/diff checks,
+  and browser 36 routes/5 suites are PASS. Fresh frozen backend review returned HIGH 0/MEDIUM 3;
+  concurrent read-audit sequence failure, raw 500 detail exposure, and timestamp SSOT overclaim were
+  closed with focused red→green tests. Only the exact fix-delta re-review remains before fast-forward.
+- **Independent evidence:** PR #6 Oracle review was verified and its findings were closed. The exact
+  PR #5 Oracle recovery was unavailable after Chrome disconnect and is not counted PASS. Fresh local
+  adversarial reviewer independently reproduced the frozen diff hash and supplied the three closed findings.
 - **Landing / cleanup:** migration 000013 may land as source but must not be applied to an
   environment. After local `main` contains `964c5c3`, `0c9d727`, and `7cd52ff`, remove only the
   clean merged secondary worktree; retain branches. push/deploy/production mutation remain excluded.
