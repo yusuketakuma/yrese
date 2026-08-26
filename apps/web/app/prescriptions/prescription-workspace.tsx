@@ -44,6 +44,7 @@ import {
   prescriptionDraftSnapshotsEqual,
   savePrescriptionDraft,
 } from "./prescription-draft-persistence";
+import type { PrescriptionDraftResponse } from "@yrese/contracts";
 import { useOptionalPrescriptionOrigin } from "./prescription-origin-context";
 import {
   type DraftRow,
@@ -160,6 +161,81 @@ export function PrescriptionWorkspace() {
   );
 }
 
+/**
+ * サーバー下書き読込1回分を状態へ写像する(WP-5101 review HIGH-1/HIGH-2)。
+ *
+ * タブ内に復元した未保存入力があるときは、サーバー保存版で入力を置き換えない。
+ * 差分がある場合は serverChangedWhileAway を立て、どちらを残すか運用者が明示的に
+ * 決めるまで保存させない(サーバー側の新しい内容をワンクリックで失わせない)。
+ */
+export function resolveDraftLoadOutcome(
+  response: PrescriptionDraftResponse | null,
+  restoredDraft: PrescriptionDraftSnapshot | null,
+): {
+  readonly baseline: PrescriptionDraftSnapshot;
+  readonly serverVersion: number;
+  readonly serverUpdatedAt: string | null;
+  readonly adoptServerDraft: boolean;
+  readonly serverChangedWhileAway: boolean;
+} {
+  const baseline =
+    response === null
+      ? createBlankPrescriptionDraft()
+      : fromPrescriptionDraftResponse(response);
+  return {
+    baseline,
+    serverVersion: response?.version ?? 0,
+    serverUpdatedAt: response?.updatedAt ?? null,
+    adoptServerDraft: restoredDraft === null,
+    serverChangedWhileAway:
+      restoredDraft !== null &&
+      !prescriptionDraftSnapshotsEqual(restoredDraft, baseline),
+  };
+}
+
+/**
+ * 保存可否(WP-5101 review HIGH-1)。
+ *
+ * 競合検出後と同じく、復元入力とサーバー保存版が食い違っている間は保存を許さない。
+ * 楽観的並行制御は「読み込んだ版に対する編集」でのみ成立し、復元入力は
+ * 読み込んだ版に対する編集ではないため、そのままでは上書き検出が働かない。
+ */
+export function canSavePrescriptionDraft(input: {
+  readonly linked: boolean;
+  readonly loadKind: DraftLoadState["kind"];
+  readonly dirty: boolean;
+  readonly saveKind: DraftSaveState["kind"];
+  readonly serverChangedWhileAway: boolean;
+}): boolean {
+  return (
+    input.linked &&
+    input.loadKind === "ready" &&
+    input.dirty &&
+    input.saveKind !== "saving" &&
+    input.saveKind !== "conflict" &&
+    !input.serverChangedWhileAway
+  );
+}
+
+/**
+ * 保存失敗の状態写像(WP-5101 review HIGH-2)。
+ *
+ * CONFLICT を一般的なエラーに丸めない。競合は再試行で解決してはならず、
+ * サーバー版の確認を経る必要があるため、専用状態として区別する。
+ */
+export function resolveSaveFailureState(error: unknown): DraftSaveState {
+  const normalized =
+    error instanceof PrescriptionDraftApiError
+      ? error
+      : new PrescriptionDraftApiError(
+          "UNAVAILABLE",
+          "処方下書きAPIを利用できません。",
+        );
+  return normalized.kind === "CONFLICT"
+    ? { kind: "conflict" }
+    : { kind: "error", error: normalized };
+}
+
 export function SelectedPatientWorkspaceView({
   patient,
 }: {
@@ -206,6 +282,7 @@ export function SelectedPatientWorkspaceView({
     initialDraft.restored,
   );
   const [serverChangedWhileAway, setServerChangedWhileAway] = useState(false);
+  const [divergenceChoiceRequested, setDivergenceChoiceRequested] = useState(false);
   const [resetRequested, setResetRequested] = useState(false);
   const [reloadRequested, setReloadRequested] = useState(false);
   const [pendingRemovalRowId, setPendingRemovalRowId] = useState<number | null>(
@@ -245,19 +322,17 @@ export function SelectedPatientWorkspaceView({
     ).then(
       (response) => {
         if (!current) return;
-        const serverDraft =
-          response === null
-            ? createBlankPrescriptionDraft()
-            : fromPrescriptionDraftResponse(response);
-        setBaseline(serverDraft);
-        setServerVersion(response?.version ?? 0);
-        setServerUpdatedAt(response?.updatedAt ?? null);
-        if (initialDraft.restored) {
-          setServerChangedWhileAway(
-            !prescriptionDraftSnapshotsEqual(initialDraft.draft, serverDraft),
-          );
-        } else {
-          setDraft(serverDraft);
+        const outcome = resolveDraftLoadOutcome(
+          response,
+          initialDraft.restored ? initialDraft.draft : null,
+        );
+        setBaseline(outcome.baseline);
+        setServerVersion(outcome.serverVersion);
+        setServerUpdatedAt(outcome.serverUpdatedAt);
+        setServerChangedWhileAway(outcome.serverChangedWhileAway);
+        setDivergenceChoiceRequested(false);
+        if (outcome.adoptServerDraft) {
+          setDraft(outcome.baseline);
         }
         setLoadState({ kind: "ready" });
       },
@@ -364,6 +439,7 @@ export function SelectedPatientWorkspaceView({
     setDraft(clonePrescriptionDraft(baseline));
     setRestoredNoticeVisible(false);
     setServerChangedWhileAway(false);
+    setDivergenceChoiceRequested(false);
     setResetRequested(false);
     setPendingRemovalRowId(null);
     setSaveState({ kind: "idle" });
@@ -389,22 +465,12 @@ export function SelectedPatientWorkspaceView({
       setServerVersion(response.version);
       setServerUpdatedAt(response.updatedAt);
       setServerChangedWhileAway(false);
+      setDivergenceChoiceRequested(false);
       setRestoredNoticeVisible(false);
       setSaveState({ kind: "saved", disposition: response.saveDisposition });
       removeWork?.(workId);
     } catch (error) {
-      const normalized =
-        error instanceof PrescriptionDraftApiError
-          ? error
-          : new PrescriptionDraftApiError(
-              "UNAVAILABLE",
-              "処方下書きAPIを利用できません。",
-            );
-      setSaveState(
-        normalized.kind === "CONFLICT"
-          ? { kind: "conflict" }
-          : { kind: "error", error: normalized },
-      );
+      setSaveState(resolveSaveFailureState(error));
     }
   }
 
@@ -427,6 +493,7 @@ export function SelectedPatientWorkspaceView({
       setServerVersion(response?.version ?? 0);
       setServerUpdatedAt(response?.updatedAt ?? null);
       setServerChangedWhileAway(false);
+      setDivergenceChoiceRequested(false);
       setRestoredNoticeVisible(false);
       setSaveState({ kind: "idle" });
       setLoadState({ kind: "ready" });
@@ -554,10 +621,44 @@ export function SelectedPatientWorkspaceView({
       ) : null}
 
       {serverChangedWhileAway ? (
-        <InlineNotice title="サーバー保存版との差分があります" tone="warning" announce="assertive">
+        <InlineNotice title="サーバー保存版との差分があります" tone="danger" announce="assertive">
           <p>
-            復元したタブ内入力と、現在のサーバー保存版が一致しません。上書きせず、内容を確認してください。
+            復元したタブ内入力と、現在のサーバー保存版
+            {serverVersion === 0 ? "" : `（v${serverVersion}）`}
+            が一致しません。どちらを残すか選ぶまで保存できません。
           </p>
+          {!divergenceChoiceRequested ? (
+            <button type="button" onClick={() => setDivergenceChoiceRequested(true)}>
+              残す内容を選ぶ
+            </button>
+          ) : (
+            <div className="prescription-reset-actions">
+              <button
+                type="button"
+                onClick={() => setDivergenceChoiceRequested(false)}
+                data-kind="secondary"
+              >
+                まだ決めない
+              </button>
+              <button
+                type="button"
+                data-kind="danger"
+                onClick={() => void reloadLatestServerDraft()}
+              >
+                復元した入力を破棄してサーバー保存版を使う
+              </button>
+              <button
+                type="button"
+                data-kind="danger"
+                onClick={() => {
+                  setServerChangedWhileAway(false);
+                  setDivergenceChoiceRequested(false);
+                }}
+              >
+                サーバー保存版を破棄してこの入力で上書きする
+              </button>
+            </div>
+          )}
         </InlineNotice>
       ) : null}
 
@@ -881,11 +982,13 @@ export function SelectedPatientWorkspaceView({
               className="operator-button"
               data-kind="secondary"
               disabled={
-                linkedOrigin === null ||
-                loadState.kind !== "ready" ||
-                !dirty ||
-                saveState.kind === "saving" ||
-                saveState.kind === "conflict"
+                !canSavePrescriptionDraft({
+                  linked: linkedOrigin !== null,
+                  loadKind: loadState.kind,
+                  dirty,
+                  saveKind: saveState.kind,
+                  serverChangedWhileAway,
+                })
               }
               title={
                 linkedOrigin === null
@@ -894,7 +997,9 @@ export function SelectedPatientWorkspaceView({
                     ? "保存する変更はありません"
                     : saveState.kind === "conflict"
                       ? "サーバー最新版を再読込してください"
-                      : "処方下書きをサーバーへ保存"
+                      : serverChangedWhileAway
+                        ? "復元入力とサーバー保存版の差分を解消してください"
+                        : "処方下書きをサーバーへ保存"
               }
               onClick={() => void saveDraft()}
             >

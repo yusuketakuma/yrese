@@ -3,14 +3,25 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { PatientContextProvider } from "../components/patient-context";
+import type { PrescriptionDraftResponse } from "@yrese/contracts";
+
 import {
+  canSavePrescriptionDraft,
   PrescriptionWorkspace,
+  resolveDraftLoadOutcome,
+  resolveSaveFailureState,
   SelectedPatientWorkspaceView,
   buildDraftRowsFromPastPrescription,
   createBlankDraftRows,
   filterPastPrescriptions,
   summarizePrescriptionReplacement,
 } from "./prescription-workspace";
+import { createBlankPrescriptionDraft } from "./prescription-draft";
+import {
+  fromPrescriptionDraftResponse,
+  PrescriptionDraftApiError,
+  prescriptionDraftSnapshotsEqual,
+} from "./prescription-draft-persistence";
 
 (globalThis as { React?: typeof React }).React = React;
 
@@ -298,5 +309,128 @@ describe("PrescriptionWorkspace (connected draft UI / patient safety)", () => {
     expect(html).toMatch(
       /<aside class="prescription-safety-rail" aria-label="患者コンテキストと安全情報" tabindex="0">/,
     );
+  });
+});
+
+const SERVER_DRAFT_RESPONSE: PrescriptionDraftResponse = {
+  prescriptionId: "prescription-test-001",
+  receptionId: "reception-test-001",
+  patientId: "patient-1",
+  businessDate: "2026-08-26",
+  version: 2,
+  lifecycleStatus: "SERVER_SAVED",
+  draft: {
+    prescriptionType: "OUTPATIENT",
+    prescriptionDate: "2026-08-26",
+    defaultDays: 7,
+    flags: [],
+    note: "サーバー保存版のメモ",
+    rows: [
+      {
+        sequence: 1,
+        drugText: "合成薬剤 5mg",
+        usageText: "1日1回 朝食後",
+        days: 7,
+        quantityText: "7錠",
+      },
+    ],
+  },
+  createdAt: "2026-08-26T00:00:00.000Z",
+  updatedAt: "2026-08-26T02:00:00.000Z",
+  createdBy: "actor-test-001",
+  updatedBy: "actor-test-002",
+};
+
+describe("connected draft state machine (WP-5101 review HIGH-1/HIGH-2)", () => {
+  const serverSnapshot = () => fromPrescriptionDraftResponse(SERVER_DRAFT_RESPONSE);
+  const divergedSnapshot = () => ({
+    ...fromPrescriptionDraftResponse(SERVER_DRAFT_RESPONSE),
+    note: "タブ内で復元した未保存メモ",
+  });
+
+  it("adopts the server draft when nothing was restored in this tab", () => {
+    const outcome = resolveDraftLoadOutcome(SERVER_DRAFT_RESPONSE, null);
+    expect(outcome.serverVersion).toBe(2);
+    expect(outcome.serverUpdatedAt).toBe("2026-08-26T02:00:00.000Z");
+    expect(outcome.serverChangedWhileAway).toBe(false);
+    expect(outcome.adoptServerDraft).toBe(true);
+  });
+
+  it("keeps a restored draft that already matches the server without flagging divergence", () => {
+    const outcome = resolveDraftLoadOutcome(SERVER_DRAFT_RESPONSE, serverSnapshot());
+    expect(outcome.serverChangedWhileAway).toBe(false);
+    expect(outcome.adoptServerDraft).toBe(false);
+  });
+
+  it("flags divergence when the restored draft differs from the server draft", () => {
+    const outcome = resolveDraftLoadOutcome(SERVER_DRAFT_RESPONSE, divergedSnapshot());
+    expect(outcome.serverChangedWhileAway).toBe(true);
+    expect(outcome.adoptServerDraft).toBe(false);
+    expect(outcome.serverVersion).toBe(2);
+  });
+
+  it("treats an absent server draft as version 0 with a blank baseline", () => {
+    const outcome = resolveDraftLoadOutcome(null, null);
+    expect(outcome.serverVersion).toBe(0);
+    expect(outcome.serverUpdatedAt).toBeNull();
+    expect(outcome.adoptServerDraft).toBe(true);
+    expect(prescriptionDraftSnapshotsEqual(outcome.baseline, createBlankPrescriptionDraft())).toBe(
+      true,
+    );
+  });
+
+  it("blocks saving while a restored draft diverges from the server version (HIGH-1)", () => {
+    expect(
+      canSavePrescriptionDraft({
+        linked: true,
+        loadKind: "ready",
+        dirty: true,
+        saveKind: "idle",
+        serverChangedWhileAway: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("allows saving once the operator explicitly resolves the divergence", () => {
+    expect(
+      canSavePrescriptionDraft({
+        linked: true,
+        loadKind: "ready",
+        dirty: true,
+        saveKind: "idle",
+        serverChangedWhileAway: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps a save conflict distinct from a generic failure so it is never blind-retried", () => {
+    expect(
+      resolveSaveFailureState(
+        new PrescriptionDraftApiError("CONFLICT", "別の更新を検出しました。"),
+      ),
+    ).toEqual({ kind: "conflict" });
+  });
+
+  it("normalizes an unknown save failure into a reportable error state", () => {
+    const state = resolveSaveFailureState(new TypeError("network down"));
+    expect(state.kind).toBe("error");
+    if (state.kind !== "error") throw new Error("expected an error state");
+    expect(state.error).toBeInstanceOf(PrescriptionDraftApiError);
+    expect(state.error.kind).toBe("UNAVAILABLE");
+  });
+
+  it("blocks saving on conflict, while saving, when unlinked, unloaded, or clean", () => {
+    const base = {
+      linked: true,
+      loadKind: "ready" as const,
+      dirty: true,
+      saveKind: "idle" as const,
+      serverChangedWhileAway: false,
+    };
+    expect(canSavePrescriptionDraft({ ...base, saveKind: "conflict" })).toBe(false);
+    expect(canSavePrescriptionDraft({ ...base, saveKind: "saving" })).toBe(false);
+    expect(canSavePrescriptionDraft({ ...base, linked: false })).toBe(false);
+    expect(canSavePrescriptionDraft({ ...base, loadKind: "loading" })).toBe(false);
+    expect(canSavePrescriptionDraft({ ...base, dirty: false })).toBe(false);
   });
 });
