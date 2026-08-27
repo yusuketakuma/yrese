@@ -7,10 +7,13 @@ import type { PrescriptionDraftResponse } from "@yrese/contracts";
 
 import {
   canSavePrescriptionDraft,
+  PrescriptionDraftChangeSummary,
   PrescriptionWorkspace,
   resolveDraftLoadOutcome,
   resolveSaveFailureState,
+  serverDraftDivergenceCopy,
   SelectedPatientWorkspaceView,
+  summarizePrescriptionDraftChanges,
 } from "./prescription-workspace";
 import { createBlankDraftRows } from "./prescription-replacement";
 import { createBlankPrescriptionDraft } from "./prescription-draft";
@@ -214,6 +217,116 @@ describe("connected draft state machine (WP-5101 review HIGH-1/HIGH-2)", () => {
     expect(outcome.serverChangedWhileAway).toBe(true);
     expect(outcome.adoptServerDraft).toBe(false);
     expect(outcome.serverVersion).toBe(2);
+  });
+
+  it("summarizes both conflict paths with labels only and describes 409 against the last-loaded version", () => {
+    const current = {
+      ...divergedSnapshot(),
+      prescriptionType: "在宅",
+      prescriptionDate: "2026-08-27",
+      defaultDays: "14",
+      options: ["一包化" as const],
+      rows: [
+        {
+          ...divergedSnapshot().rows[0]!,
+          drug: "別の合成薬剤 10mg",
+          usage: "1日2回 朝夕食後",
+          days: "14",
+          quantity: "28錠",
+        },
+        { id: 2, drug: "追加薬", usage: "頓服", days: "", quantity: "3回分" },
+      ],
+    };
+
+    expect(
+      summarizePrescriptionDraftChanges(current, serverSnapshot()),
+    ).toEqual([
+      "処方区分",
+      "処方日",
+      "交付日数",
+      "全体指示",
+      "メモ",
+      "RP行数",
+      "RP1 薬剤名",
+      "RP1 用法用量",
+      "RP1 日数",
+      "RP1 数量",
+    ]);
+
+    const conflictHtml = renderToStaticMarkup(
+      <PrescriptionDraftChangeSummary
+        kind="save-conflict"
+        draft={current}
+        baseline={serverSnapshot()}
+        serverVersion={1}
+      />,
+    );
+    expect(conflictHtml).toContain("最後に読み込んだサーバー版");
+    expect(conflictHtml).toContain("競合相手の最新内容はまだ取得していません");
+    expect(conflictHtml).toContain("RP1 薬剤名");
+    expect(conflictHtml).not.toContain("別の合成薬剤 10mg");
+    expect(conflictHtml).not.toContain("28錠");
+    expect(conflictHtml).not.toContain("サーバー最新版との差分");
+
+    const restoredHtml = renderToStaticMarkup(
+      <PrescriptionDraftChangeSummary
+        kind="server-changed-while-away"
+        draft={current}
+        baseline={serverSnapshot()}
+        serverVersion={1}
+      />,
+    );
+    expect(restoredHtml).toContain("今回読み込んだサーバー保存版");
+    expect(restoredHtml).toContain("変更値は表示しません");
+
+    const absentBaselineHtml = renderToStaticMarkup(
+      <PrescriptionDraftChangeSummary
+        kind="server-changed-while-away"
+        draft={current}
+        baseline={createBlankPrescriptionDraft()}
+        serverVersion={0}
+      />,
+    );
+    expect(absentBaselineHtml).toContain("サーバー状態（下書きなし）");
+    expect(absentBaselineHtml).not.toContain("サーバー保存版");
+    expect(absentBaselineHtml).toContain('role="group"');
+    expect(absentBaselineHtml).toContain('aria-label="処方下書きの変更項目"');
+  });
+
+  it("summarizes changes using the same normalized values as divergence detection", () => {
+    const baseline = serverSnapshot();
+    const formattingOnly = {
+      ...baseline,
+      prescriptionDate: ` ${baseline.prescriptionDate} `,
+      defaultDays: "007",
+      note: ` ${baseline.note} `,
+      rows: baseline.rows.map((row) => ({
+        ...row,
+        drug: ` ${row.drug} `,
+        usage: ` ${row.usage} `,
+        days: "007",
+        quantity: ` ${row.quantity} `,
+      })),
+    };
+
+    expect(prescriptionDraftSnapshotsEqual(formattingOnly, baseline)).toBe(true);
+    expect(
+      summarizePrescriptionDraftChanges(
+        { ...formattingOnly, note: "更新したメモ" },
+        baseline,
+      ),
+    ).toEqual(["メモ"]);
+  });
+
+  it("describes an absent server draft without implying that a saved version exists", () => {
+    expect(serverDraftDivergenceCopy(0)).toEqual({
+      noticeTitle: "サーバー側に下書きがありません",
+      currentBaseline: "今回確認したサーバー状態（下書きなし）",
+      restoredBaseline: "今回読み込んだサーバー状態（下書きなし）",
+      conflictBaseline: "最後に読み込んだサーバー状態（下書きなし）",
+      discardLocal: "復元した入力を破棄して下書きなしに戻す",
+      keepLocal: "この入力を残して保存へ進む",
+    });
   });
 
   it("treats an absent server draft as version 0 with a blank baseline", () => {

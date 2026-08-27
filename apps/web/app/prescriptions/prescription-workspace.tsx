@@ -45,6 +45,7 @@ import {
   loadPrescriptionDraft,
   prescriptionDraftSnapshotsEqual,
   savePrescriptionDraft,
+  toPrescriptionDraftContent,
 } from "./prescription-draft-persistence";
 import type {
   PrescriptionDraftResponse,
@@ -74,6 +75,139 @@ type DraftSaveState =
     }
   | { readonly kind: "conflict" }
   | { readonly kind: "error"; readonly error: PrescriptionDraftApiError };
+
+type PrescriptionDraftChangeKind =
+  | "server-changed-while-away"
+  | "save-conflict";
+
+function arraysEqual<T>(left: readonly T[], right: readonly T[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
+  );
+}
+
+function normalizedDraftForComparison(
+  snapshot: PrescriptionDraftSnapshot,
+): PrescriptionDraftSnapshot {
+  const content = toPrescriptionDraftContent(snapshot);
+  return {
+    prescriptionType: snapshot.prescriptionType,
+    prescriptionDate: content.prescriptionDate ?? "",
+    defaultDays:
+      content.defaultDays === null ? "" : String(content.defaultDays),
+    options: snapshot.options,
+    note: content.note,
+    rows: content.rows.map((row) => ({
+      id: row.sequence,
+      drug: row.drugText,
+      usage: row.usageText,
+      days: row.days === null ? "" : String(row.days),
+      quantity: row.quantityText,
+    })),
+  };
+}
+
+export function serverDraftDivergenceCopy(serverVersion: number) {
+  if (serverVersion === 0) {
+    return {
+      noticeTitle: "サーバー側に下書きがありません",
+      currentBaseline: "今回確認したサーバー状態（下書きなし）",
+      restoredBaseline: "今回読み込んだサーバー状態（下書きなし）",
+      conflictBaseline: "最後に読み込んだサーバー状態（下書きなし）",
+      discardLocal: "復元した入力を破棄して下書きなしに戻す",
+      keepLocal: "この入力を残して保存へ進む",
+    };
+  }
+  return {
+    noticeTitle: "サーバー保存版との差分があります",
+    currentBaseline: `現在のサーバー保存版（v${serverVersion}）`,
+    restoredBaseline: "今回読み込んだサーバー保存版",
+    conflictBaseline: "最後に読み込んだサーバー版",
+    discardLocal: "復元した入力を破棄してサーバー保存版を使う",
+    keepLocal: "サーバー保存版を破棄してこの入力で上書きする",
+  };
+}
+
+export function summarizePrescriptionDraftChanges(
+  draft: PrescriptionDraftSnapshot,
+  baseline: PrescriptionDraftSnapshot,
+): readonly string[] {
+  let comparedDraft = draft;
+  let comparedBaseline = baseline;
+  try {
+    const normalizedDraft = normalizedDraftForComparison(draft);
+    const normalizedBaseline = normalizedDraftForComparison(baseline);
+    comparedDraft = normalizedDraft;
+    comparedBaseline = normalizedBaseline;
+  } catch {
+    // Invalid restored input still needs a non-throwing field summary.
+  }
+
+  const labels: string[] = [];
+  if (comparedDraft.prescriptionType !== comparedBaseline.prescriptionType) {
+    labels.push("処方区分");
+  }
+  if (comparedDraft.prescriptionDate !== comparedBaseline.prescriptionDate) {
+    labels.push("処方日");
+  }
+  if (comparedDraft.defaultDays !== comparedBaseline.defaultDays) {
+    labels.push("交付日数");
+  }
+  if (!arraysEqual(comparedDraft.options, comparedBaseline.options)) {
+    labels.push("全体指示");
+  }
+  if (comparedDraft.note !== comparedBaseline.note) labels.push("メモ");
+  if (comparedDraft.rows.length !== comparedBaseline.rows.length) labels.push("RP行数");
+
+  const sharedRowCount = Math.min(
+    comparedDraft.rows.length,
+    comparedBaseline.rows.length,
+  );
+  for (let index = 0; index < sharedRowCount; index += 1) {
+    const current = comparedDraft.rows[index]!;
+    const saved = comparedBaseline.rows[index]!;
+    const prefix = `RP${index + 1}`;
+    if (current.drug !== saved.drug) labels.push(`${prefix} 薬剤名`);
+    if (current.usage !== saved.usage) labels.push(`${prefix} 用法用量`);
+    if (current.days !== saved.days) labels.push(`${prefix} 日数`);
+    if (current.quantity !== saved.quantity) labels.push(`${prefix} 数量`);
+  }
+
+  return labels;
+}
+
+export function PrescriptionDraftChangeSummary({
+  kind,
+  draft,
+  baseline,
+  serverVersion,
+}: {
+  readonly kind: PrescriptionDraftChangeKind;
+  readonly draft: PrescriptionDraftSnapshot;
+  readonly baseline: PrescriptionDraftSnapshot;
+  readonly serverVersion: number;
+}) {
+  const labels = summarizePrescriptionDraftChanges(draft, baseline);
+  const copy = serverDraftDivergenceCopy(serverVersion);
+  return (
+    <div role="group" aria-label="処方下書きの変更項目">
+      <p>
+        {kind === "save-conflict"
+          ? `このタブの未保存入力と、${copy.conflictBaseline}の間で変更された項目です。競合相手の最新内容はまだ取得していません。`
+          : `復元したタブ内入力と、${copy.restoredBaseline}の間で変更された項目です。`}
+        変更値は表示しません。
+      </p>
+      <ul>
+        {labels.length === 0 ? (
+          <li>変更項目を特定できません</li>
+        ) : (
+          labels.map((label) => <li key={label}>{label}</li>)
+        )}
+      </ul>
+    </div>
+  );
+}
 
 function saveDispositionLabel(
   disposition: DraftSaveDisposition,
@@ -559,6 +693,7 @@ export function SelectedPatientWorkspaceView({
             : serverVersion > 0
               ? `サーバー保存済み v${serverVersion}`
               : "新規下書き・未保存";
+  const divergenceCopy = serverDraftDivergenceCopy(serverVersion);
 
   return (
     <section
@@ -591,7 +726,7 @@ export function SelectedPatientWorkspaceView({
       {restoredNoticeVisible ? (
         <InlineNotice title="タブ内の未保存入力を復元しました" tone="info" announce="polite">
           <p>
-            同じタブ内の画面移動から戻ったため未保存入力を復元しました。サーバー保存版との比較後に保存してください。
+            同じタブ内の画面移動から戻ったため未保存入力を復元しました。サーバー側の保存状態を確認した後に保存してください。
           </p>
           <button
             type="button"
@@ -604,12 +739,17 @@ export function SelectedPatientWorkspaceView({
       ) : null}
 
       {serverChangedWhileAway ? (
-        <InlineNotice title="サーバー保存版との差分があります" tone="danger" announce="assertive">
+        <InlineNotice title={divergenceCopy.noticeTitle} tone="danger" announce="assertive">
           <p>
-            復元したタブ内入力と、現在のサーバー保存版
-            {serverVersion === 0 ? "" : `（v${serverVersion}）`}
-            が一致しません。どちらを残すか選ぶまで保存できません。
+            復元したタブ内入力と、{divergenceCopy.currentBaseline}
+            が一致しません。残す状態を選ぶまで保存できません。
           </p>
+          <PrescriptionDraftChangeSummary
+            kind="server-changed-while-away"
+            draft={draft}
+            baseline={baseline}
+            serverVersion={serverVersion}
+          />
           {!divergenceChoiceRequested ? (
             <button type="button" onClick={() => setDivergenceChoiceRequested(true)}>
               残す内容を選ぶ
@@ -628,7 +768,7 @@ export function SelectedPatientWorkspaceView({
                 data-kind="danger"
                 onClick={() => void reloadLatestServerDraft()}
               >
-                復元した入力を破棄してサーバー保存版を使う
+                {divergenceCopy.discardLocal}
               </button>
               <button
                 type="button"
@@ -638,7 +778,7 @@ export function SelectedPatientWorkspaceView({
                   setDivergenceChoiceRequested(false);
                 }}
               >
-                サーバー保存版を破棄してこの入力で上書きする
+                {divergenceCopy.keepLocal}
               </button>
             </div>
           )}
@@ -667,6 +807,12 @@ export function SelectedPatientWorkspaceView({
           <p>
             現在の入力はこのタブに保持されています。サーバー版を確認せずに再保存することはできません。
           </p>
+          <PrescriptionDraftChangeSummary
+            kind="save-conflict"
+            draft={draft}
+            baseline={baseline}
+            serverVersion={serverVersion}
+          />
           {!reloadRequested ? (
             <button type="button" onClick={() => setReloadRequested(true)}>
               サーバー最新版の再読込を確認

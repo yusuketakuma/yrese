@@ -80,6 +80,39 @@ describe("prescription draft web persistence", () => {
     );
   });
 
+  it("identifies the invalid draft field or RP row without echoing its value", () => {
+    expect(() =>
+      toPrescriptionDraftContent({
+        ...createBlankPrescriptionDraft(),
+        defaultDays: "7.5",
+      }),
+    ).toThrow("交付日数は1〜999の整数で入力してください。");
+
+    expect(() =>
+      toPrescriptionDraftContent({
+        ...createBlankPrescriptionDraft(),
+        rows: [
+          {
+            ...createBlankPrescriptionDraft().rows[0]!,
+            days: "7.5",
+          },
+        ],
+      }),
+    ).toThrow("RP1 日数は1〜999の整数で入力してください。");
+
+    expect(() =>
+      toPrescriptionDraftContent({
+        ...createBlankPrescriptionDraft(),
+        rows: [
+          {
+            ...createBlankPrescriptionDraft().rows[0]!,
+            drug: "x".repeat(257),
+          },
+        ],
+      }),
+    ).toThrow("RP1 薬剤名を確認してください。");
+  });
+
   it("loads through the existing API transport without putting patient ID in the URL", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");

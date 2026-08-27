@@ -1,28 +1,29 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-27, WP-5212 local landing + WP-5213 claim):**
+> **ACTIVE SNAPSHOT (2026-08-27, WP-5213 local landing + WP-5214 claim):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** user reply 2026-08-27「承認」は、WP-5212 の1 local commit
-  (pushなし)、本 snapshot / Plans.md 同期、WP-5213 の pharmacist / human pre-review済み
-  meaning boundaryでのTDD実装を承認した。Codex root が唯一の `active_root_writer` である。
+- **Direction / ownership:** current user reply 2026-08-27「承認」は、WP-5213 exact4 と
+  本 snapshot / Plans.md の1 local commit(pushなし)、WP-5214 への遷移・継続実装を承認した。
+  Codex root が唯一の `active_root_writer` である。
 - **Git boundary:** local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、
-  `origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`。WP-5212 は
-  `feat/wp-5212-reception-flow` の**本記録が commit tree に含まれる場合に限り** local landing とし、
-  未commit worktree上では finalization candidate と読む。push / merge は行わない。WP-5213 は
-  その tip から `feat/wp-5213-prescription-safety` を作成する。
-- **Dirty ownership:** WP-5212 exact15 tracked pathsは本local landing対象。`.harness-worktrees/`、
+  `origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`。WP-5213 は
+  `feat/wp-5213-prescription-safety` の**本記録が commit tree に含まれる場合に限り** local landing
+  とし、未commit worktree上では finalization candidate と読む。push / merge は行わない。
+  WP-5214 はその tip から `feat/wp-5214-cross-cutting-patterns` を作成する。
+- **Dirty ownership:** WP-5213 exact4 と Plans.md / State.md は本local landing対象。
+  `.harness-worktrees/`、
   `artifacts/`、`ui-test-tools/` と secondary worktree の既存差分は user-owned / protected であり、
   cleanup、merge、stageを行わない。
-- **Active plan:** Plans.md §17 の順序を維持し、CURRENT=WP-5213 / READY=0。
-  R3 human pre-reviewは上記「承認」で充足。exact allowed/no-edit、acceptance、test、rollbackは
-  Plans.md §3 CURRENT recordを正本とする。
-- **Open gap(P-11 権限確認側):** 破壊的操作是正(WP-5213)は UIX-001 P-11 の二段階確認
-  要素のみを充足する。権限確認要素は production 認証(WP-5121、BLOCKED_SECURITY_REVIEW)
-  未着地のため未充足であり、充足済みと読み替えない。
-- **WP-5213 stop conditions:** 交付日数/行日数の優先関係、新規 RX error code、API / schema /
-  permission変更、未取得の最新 server payload との差分表示、未完成 ConfirmationDialog の U4 使用は
-  対象外。必要になった時点で `SSOT_UPDATE_REQUIRED` として停止する。
+- **Active plan:** Plans.md §17 の順序を維持し、CURRENT=WP-5214 non-JST slice / READY=0。
+  exact allowed/no-edit、acceptance、test、rollbackは Plans.md §3 CURRENT recordを正本とする。
+- **WP-5214 stop condition:** instant→JST helper共通化は APPROVED MOD-011 §4 が事前改版を
+  要求するため `SSOT_UPDATE_REQUIRED`。今回のCURRENTでは新設・移設せず、既存local変換も
+  変更しない。monthly-closing / claim-check / outbox / admin の既存retry identityも再実装しない。
+- **Open validation gap:** Web typecheck は exact4外の既存 `patient-search.test.tsx` fixture mismatch
+  1件で停止する。別のowned fixとして閉じるまで repository-wide typecheck PASSを主張しない。
+- **Preserved WP-5213 gap:** UIX-001 P-11 の二段階確認要素のみを充足した。権限確認要素は
+  production 認証(WP-5121、BLOCKED_SECURITY_REVIEW)未着地のため未充足である。
 - **持ち越し human 検証債務:** WP-5212 の満年齢表示に対する PRC-003 #8 PIA は
   Plans.md §3 の 2026-08-27 human approval recordで充足済み。一方、screen reader 実機・
   200% 拡大手動確認・warning-fatigue 実利用者評価・薬剤師/請求事務/accessibility/privacy の

@@ -82,23 +82,41 @@ export interface PrescriptionDraftContext {
   readonly businessDate: string;
 }
 
-function parseOptionalInteger(value: string): number | null {
+function parseOptionalInteger(value: string, label: string): number | null {
   const normalized = value.trim();
   if (normalized.length === 0) return null;
   if (!/^[0-9]+$/u.test(normalized)) {
     throw new PrescriptionDraftApiError(
       "INVALID_REQUEST",
-      "日数は1〜999の整数で入力してください。",
+      `${label}は1〜999の整数で入力してください。`,
     );
   }
   const parsed = Number(normalized);
   if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > 999) {
     throw new PrescriptionDraftApiError(
       "INVALID_REQUEST",
-      "日数は1〜999の整数で入力してください。",
+      `${label}は1〜999の整数で入力してください。`,
     );
   }
   return parsed;
+}
+
+function validationIssueLabel(path: readonly PropertyKey[]): string {
+  if (path[0] === "rows") {
+    if (typeof path[1] !== "number") return "RP行数";
+    const prefix = `RP${path[1] + 1}`;
+    if (path[2] === "drugText") return `${prefix} 薬剤名`;
+    if (path[2] === "usageText") return `${prefix} 用法用量`;
+    if (path[2] === "days") return `${prefix} 日数`;
+    if (path[2] === "quantityText") return `${prefix} 数量`;
+    return `${prefix} 入力`;
+  }
+  if (path[0] === "prescriptionType") return "処方区分";
+  if (path[0] === "prescriptionDate") return "処方日";
+  if (path[0] === "defaultDays") return "交付日数";
+  if (path[0] === "flags") return "全体指示";
+  if (path[0] === "note") return "メモ";
+  return "入力内容";
 }
 
 export function toPrescriptionDraftContent(
@@ -118,26 +136,24 @@ export function toPrescriptionDraftContent(
       snapshot.prescriptionDate.trim().length === 0
         ? null
         : snapshot.prescriptionDate.trim(),
-    defaultDays: parseOptionalInteger(snapshot.defaultDays),
+    defaultDays: parseOptionalInteger(snapshot.defaultDays, "交付日数"),
     flags: snapshot.options.map((option) => FLAG_TO_WIRE[option]),
     note: snapshot.note,
     rows: snapshot.rows.map((row, index) => ({
       sequence: index + 1,
       drugText: row.drug,
       usageText: row.usage,
-      days: parseOptionalInteger(row.days),
+      days: parseOptionalInteger(row.days, `RP${index + 1} 日数`),
       quantityText: row.quantity,
     })),
   };
 
-  try {
-    return prescriptionDraftSaveRequestSchema.shape.draft.parse(candidate);
-  } catch {
-    throw new PrescriptionDraftApiError(
-      "INVALID_REQUEST",
-      "入力値の長さ、日付、日数または行数を確認してください。",
-    );
-  }
+  const parsed = prescriptionDraftSaveRequestSchema.shape.draft.safeParse(candidate);
+  if (parsed.success) return parsed.data;
+  throw new PrescriptionDraftApiError(
+    "INVALID_REQUEST",
+    `${validationIssueLabel(parsed.error.issues[0]?.path ?? [])}を確認してください。`,
+  );
 }
 
 export function fromPrescriptionDraftResponse(
