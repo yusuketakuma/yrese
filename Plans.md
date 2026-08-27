@@ -34,21 +34,21 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5236 は local commit `913bd48`。WP-5237 は同 commit から `refactor/wp-5237-eligibility-transition-primitive-guard` を作成済み |
+| Candidate branch | WP-5237 は local commit `fbf8557`。WP-5238 は同 commit から `refactor/wp-5238-audit-control-char-primitive-guard` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | eligibility transition predicateのinvalid/coercible source stateを既存state guardでfail closedにする exact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5236 local landing、WP-5237 frozen reviews finding 0・local landing pending、compiled CSS予算12 KiBを維持) |
+| Candidate scope | audit envelope IDのcontrol-char検査前coercionを既存string validatorで遮断する exact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5237 local landing、date-time terminal-line候補NOT_A_BUG、WP-5238 frozen reviews / record rereviews finding 0・local landing pending、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5237 exact2 code/testで、type-erased source stateによるnative error/property-key coercion/fail-openを既存primitive predicateの短絡で閉じる |
-| Main blocker | WP-5237のlive trace、pre-plan、Red→Green、affected gates、frozen independent + eligibility/data-integrity finding 0は完了。record-only最終照合とlocal landingを残す。WP-5235はSSOT-first gate、WP-5226は元exact4不完結でdefer中 |
-| Required verification | shared-kernel eligibility focused/package Red→Green・typecheck、API typecheck、boundaries、exact4 path-set/diff check、frozen R2 reviewsを要求する |
+| Current critical path | WP-5238 exact2 code/testで、`assertNoControlChars`がtype-erased IDをregex coercionしてから拒否するgapを既存validator 1行reuseで閉じる |
+| Main blocker | live trace、pre-plan、Red→Green、affected gates、frozen independent + audit/security review、Low record drift closure、record rereviews finding 0は完了。exact-stageとlocal landingを残す。WP-5235はSSOT-first gate、WP-5226は元exact4不完結でdefer中 |
+| Required verification | pre-planでREADYならaudit focused/package Red→Green・typecheck、events package/typecheck、API typecheck、boundaries、exact4 path-set/diff、risk相応のfrozen reviewsを要求する |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5237である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5238である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,48 +73,46 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5237(eligibility transition primitive guard、R2)1 件である。**
-WP-5236 は local commit `913bd48` で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5238(audit control-char primitive guard、R2 READY)1 件である。**
+WP-5237 は local commit `fbf8557` で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** `isEligibilityTransitionAllowed`が`allowedTransitions[from]`をprimitive確認前に読むため、type-erased
-  unknown/null/undefinedはnative `TypeError`、property-key coercible objectは`UNVERIFIED`等へ化けて許可遷移を`true`にできる
-  root causeを修正する。既存`isReceptionEligibilityState(from)`を短絡guardとして再利用し、新helper/table/branchは作らない。
-- **Allowed / forbidden:** exact4は `packages/shared-kernel/src/eligibility.ts`、`packages/shared-kernel/src/eligibility.test.ts`、
-  `Plans.md`、`State.md`。それ以外、特に`allowedTransitions`/state/method tuples、public signature、calculation/claim eligibility semantics、
-  API repository/error、DB/audit、package/dependency、UI/CSS、APPROVED SSOT、schema/migrationは変更禁止。保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** APPROVED ADP-004 §1/§3は未知・期限切れ・不一致をfail closedとし、§6は状態機械のshared-kernel authorityを
-  明記する。valid transition表やexternal ONS/監査eventを変更せず、公開predicateのtype-erased invalid inputだけを既存state predicateへ
-  閉じる。tracked production callerはAPI eligibility snapshot repository 1件。GBrainにyrese code sourceがないためlive tracked codeを正本にした。
-  live runtimeでunknown/null/undefined sourceは`TypeError`、`Symbol.toPrimitive -> UNVERIFIED` objectはcoercion 1回かつ
-  `VERIFIED_MYNA`遷移を`true`、既存state predicateは同objectをcoercion 0回で`false`と確認した。
-- **Acceptance / tests:** (A1)unknown/null/undefined source stateはthrowせず`false`。(A2)coercible object sourceは`false`かつ
-  `Symbol.toPrimitive`呼出0。(A3)invalid/coercible destination stateも`false`かつcoercionなしを維持する。(A4)APPROVED遷移表の
-  全valid/invalid結果とAPIのvalid-state behaviorは不変。(A5)production差分はreturn式への既存state predicate短絡追加だけで、
-  transition table/helper/error textを追加しない。
-- **PIA / offline:** fixtureはsynthetic state string/null/undefined/object/counterだけで、患者・資格・請求data、credential、production data、
+- **Purpose / layer:** audit側`assertNoControlChars`がprimitive検証なしに`RegExp.test(value)`を実行するため、type-erased envelope IDの
+  attacker-controlled `toString`/`Symbol.toPrimitive`を呼んでから後段`createEventEnvelope`で拒否するroot causeを修正する。
+  既存`assertNonEmptyString(value, label)`をhelper冒頭で1回再利用し、検証前coercionを遮断する。新helper/regex/error textは作らない。
+- **Allowed / forbidden:** exact4候補は `packages/audit/src/index.ts`、`packages/audit/src/audit.test.ts`、`Plans.md`、`State.md`。
+  それ以外、特に`@yrese/events`、EventEnvelope/AuditEvent schema、event registry、hash/canonical payload、valid output、API/DB、
+  package/dependency、UI/CSS、APPROVED SSOT、schema/migrationは変更禁止。保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** APPROVED SEC-007は`@yrese/audit` pure coreとPHI-free/tamper-evident境界を正本化する。APPROVED MOD-009は
+  `@yrese/events`をEventEnvelope正本とし「変更はSSOT改版→review→実装」と明記する。提案はevents/schema/valid semanticsを変えず、
+  audit wrapperが既存events primitive rejectionより前に副作用なく同じTypeErrorへ閉じる内部hardeningである。read-only pre-plan reviewは
+  MOD-009/SEC-007改版不要、R2、追加human gate不要をfinding 0で確認した。events/schema/valid semanticsへ広がる場合は停止する。
+- **Evidence / acceptance:** tracked callerはaudit core内部とAPI audit repository。live synthetic eventId objectは最終的に
+  `TypeError("eventId must be a string")`だが、その前にcoercion 1回を再現した。(A1)同TypeError/messageを維持しcoercion 0回。
+  (A2)required/optional envelope IDのprimitive/non-empty/control-char behaviorを維持する。(A3)valid AuditEvent、canonical payload、entry hash、
+  registry、PHI classification、events consumer出力をbyte-for-byte preserveする。(A4)production差分は既存helper call 1行だけ。
+- **PIA / offline:** fixtureはsynthetic ID/object/counterと既存synthetic audit eventだけで、患者・資格・請求data、credential、production data、
   PHI/PII、保存、log、external send、network、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。read-only mapper evidenceとrootのlive SSOT/caller/runtime traceは完了。
-  `reviewer_roles`はmakerとは別の`pre_plan_reviewer`、`independent_verifier`、`eligibility_data_integrity_reviewer`。資格状態機械の
-  fail-open inputを閉じるR2だがvalid transition/算定・請求意味論を変えず追加human/domain gateなし。transition table、API error contract、
-  DB/audit behavior、ADP-004/MOD-005改版、別path変更が必要なら停止し再計画する。exact4を単一`WP-5237:` commitにし、rollbackは
-  確定commitへの`git revert <commit>`。rootだけがstate-mutating validation、exact-stage/commitを行い、push、merge、deploy、
-  migration/DDL/DMLは認可外。timeboxはpre-plan PASS後のactive root作業60分(外部review待ちを除く)または単一
-  Red→Green→review→commit cycleの早い方で、超過時はscopeを広げず停止・再計画する。pre-plan reviewはfinding 0で完了した。
+- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。mapper、root live trace、read-only pre-plan finding 0は完了。
+  valid semantics/hash/schema/永続化/認可を変えないR2で、追加human gateはない。`reviewer_roles`は`pre_plan_reviewer`、
+  `independent_verifier`、`audit_security_data_integrity_reviewer`。MOD-009/SEC-007改版、
+  error contract/hash/valid output、events/API/DB、別path変更が必要なら停止。READY後exact4を単一`WP-5238:` commit、rollbackは確定commitへの
+  `git revert <commit>`。rootだけがvalidator/stager/committer。push、merge、deploy、migration/DDL/DMLは認可外。timeboxはREADY後の
+  active root作業60分(外部review待ち除外)または単一TDD/review/commit cycleの早い方。
 - **Validation evidence (UTC / exact command):**
-  - `2026-08-27T22:23:52Z` `pnpm --filter @yrese/shared-kernel exec vitest run src/eligibility.test.ts` → exit 1
-    (expected Red: invalid source 3件がnative `TypeError`、coercible source 1件が`true`、既存4件PASS)。
-  - `2026-08-27T22:24:05Z` 同command → exit 0、8/8 PASS。
-  - `2026-08-27T22:24:16Z` `pnpm --filter @yrese/shared-kernel test` → 85/85 PASS、続くshared-kernel typecheck exit 0。
-  - `2026-08-27T22:24:17Z` `pnpm --filter @yrese/api typecheck` → exit 0。
-  - `2026-08-27T22:24:18Z` `pnpm check:boundaries`、`2026-08-27T22:24:36Z` tracked exact4 path-set比較と
-    exact4 `git diff --check` → 各exit 0。
-  - code/test frozen SHA-256は`b1120e4671b445ed863e13d5ad669e8281d8f14109ded738f4a4a5fd87922fac`。
-    reviewed exact4 packet SHA-256は`810da67769a5c3266c4921cac4f8e311e71b4e31320857be34611ec34822a9e2`。
-    frozen independent + eligibility/data-integrity reviewはfinding 0。全49遷移のexhaustive testは非blocking残差で、table不変を
-    static diff/reviewで確認した。DB integrationはDML authority外のため未実行。
+  - `2026-08-27T22:50:01Z` `pnpm --filter @yrese/audit exec vitest run src/audit.test.ts` → exit 1
+    (expected Red: envelope ID 6件がcoercion 1回、既存60件と先行guard済みactorIdはPASS)。
+  - `2026-08-27T22:50:12Z` 同command → exit 0、66/66 PASS。test refactor後の`22:51:13Z`再実行も66/66 PASS。
+  - `2026-08-27T22:51:13Z` `pnpm --filter @yrese/audit test` → 202/202 PASS、続くaudit typecheck exit 0。
+  - `2026-08-27T22:50:29Z` `pnpm --filter @yrese/events test` → 46/46 PASS、続くevents typecheck exit 0。
+  - `2026-08-27T22:50:30Z` API typecheckと`pnpm check:boundaries` → 各exit 0。
+  - code/test frozen SHA-256は`105d63f13e321890c2580f2b19e1372acafcfb2d59b1e034d041f449a6e7d01d`、
+    reviewed exact4 packet SHA-256は`fd4bb42702227a6b60506130032ff385c77c6ca96eeb7e557dc95a76b4259154`。
+    frozen audit/security/data-integrity reviewはfinding 0。independent reviewはcode finding 0、`State.md`のpre-plan時点dirty表現だけを
+    Lowとし、本record-only更新で閉じた。final record rereviewsは両者finding 0。DB integration、network、production runtimeは実行しない。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
+| date-time terminal-line candidate | NOT_A_BUG。live Node 26/V8でCalendarDate/ClaimMonthはLF/CR/CRLF/U+2028/U+2029 suffixを既にRangeError拒否 | packages/date-time live runtime / MOD-011 |
 | WP-5235 EventEnvelope root input guard | SSOT_UPDATE_REQUIRED。APPROVED MOD-009がSSOT改版→review→実装を要求するため未着手 | MOD-009 / live package trace |
 | WP-4250 | FINALIZED / APPROVED(SSOT 改版のみ)。local commit `89275d2` | 下の決定記録 |
 | WP-4258 | FINALIZED / APPROVED(2026-08-01)。改版 `1dedf27`、APPROVED 化 `1ec57d5` | Implemented / Landing State |
@@ -184,6 +182,14 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5237 — Eligibility transition primitive guard(2026-08-28)
+
+- **Status:** `COMMITTED_LOCAL fbf8557 / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** eligibility transition predicateへ既存state guardを1行短絡し、invalid/coercible sourceのnative error/fail-openを拒否。
+  transition table、valid results、API/DB/audit、ADP-004/MOD-005は不変。
+- **Gate:** expected Red 4件→shared-kernel focused 8/package 85、shared-kernel/API typecheck、boundaries、path/diff PASS。
+  frozen independent/eligibility-data-integrityとrecord rereviewsはfinding 0。DB integrationはDML authority外で未実行。
 
 ### WP-5236 — Money round nullish options guard(2026-08-28)
 

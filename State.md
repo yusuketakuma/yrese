@@ -1,35 +1,35 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5237 frozen reviews finding 0 / local landing pending):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5238 frozen reviews / record rereviews finding 0 / local landing pending):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5236はlocal commit `913bd48`へ着地済み。WP-5235 EventEnvelope root guardはAPPROVED MOD-009が
-  SSOT改版→review→実装を要求するため未着手の`SSOT_UPDATE_REQUIRED`。current requestのrepository全体refactoringを
-  WP-5237だけで継続する。WP-5226は元exact4では安全に完結しないためdefer中。Codex rootだけが`active_root_writer`、
+- **Direction / ownership:** WP-5237はlocal commit `fbf8557`へ着地済み。date-time terminal-line候補はlive runtimeで既に拒否される
+  `NOT_A_BUG`。WP-5235 EventEnvelope root guardはMOD-009改版前提で未着手。current requestをWP-5238のpre-plan判定で継続する。
+  WP-5226は元exact4では安全に完結しないためdefer中。Codex rootだけが`active_root_writer`、
   state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5237-eligibility-transition-primitive-guard`、base/HEAD
-  `913bd48963e491a85b6a3c1cc805c29eff834bd5`。push / mergeは行わない。
-- **Dirty ownership:** `packages/shared-kernel/src/eligibility.ts`、`packages/shared-kernel/src/eligibility.test.ts`、`Plans.md`、`State.md` の
-  exact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
+- **Git boundary:** current branch `refactor/wp-5238-audit-control-char-primitive-guard`、base/HEAD
+  `fbf855701079cf7a0939da8a79de5b5def4e0181`。push / mergeは行わない。
+- **Dirty ownership:** exact4は `packages/audit/src/index.ts`、`packages/audit/src/audit.test.ts`、`Plans.md`、`State.md`。
+  pre-plan PASS前はrecords 2 pathだけを変更し、PASS後の現在は同じexact4全pathが変更中である。exact4だけを本local landing対象とする。
+  `.harness-worktrees/`、`artifacts/`、
   `ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5237 / READY=0。`isEligibilityTransitionAllowed`のreturn式へ既存
-  `isReceptionEligibilityState(from)`短絡だけを加え、invalid/coercible sourceをfail closedにする。transition table/state/method tuples、
-  public signature、API/error、DB/audit、calculation/claim意味論、UI/CSS、APPROVED SSOTは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5238 / READY=0。audit側`assertNoControlChars`冒頭へ既存`assertNonEmptyString`を1行再利用し、
+  type-erased envelope IDのregex coercionを遮断する。events/EventEnvelope/AuditEvent schema、registry、hash/canonical payload、
+  valid output、API/DB、UI/CSS、APPROVED SSOTは変更しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** fixtureはsynthetic state string/null/undefined/object/counterだけで、credential、production data、PHI/PII、保存、log、
+- **Security / privacy / offline:** fixtureはsynthetic ID/object/counterと既存synthetic audit eventだけで、credential、production data、PHI/PII、保存、log、
   external send、network、cache、retry/offline stateを追加しない。
-- **Process gate:** rootがAPPROVED ADP-004、live shared-kernel/API caller、runtime invalid/coercible counterexample、既存state predicateの
-  no-coercion behavior、exact4を確認済み。GBrainにyrese code sourceがないためlive tracked codeを正本にした。valid transition/算定・請求
-  意味論を変えないR2で追加human gateなし。fresh pre-plan reviewはfinding 0。timeboxはpre-plan PASS後のactive root作業60分または単一
-  TDD/review/commit cycleの早い方。transition table、API/DB/audit、SSOT、別path変更が必要なら停止・再計画する。
-- **Validation / rollback:** expected Red 4件後、shared-kernel focused 8/package 85、shared-kernel/API typecheck、boundaries、tracked exact4
-  path-set/diff checkをexit 0で実行した。code/test frozen SHA-256は
-  `b1120e4671b445ed863e13d5ad669e8281d8f14109ded738f4a4a5fd87922fac`、reviewed exact4 packet SHA-256は
-  `810da67769a5c3266c4921cac4f8e311e71b4e31320857be34611ec34822a9e2`。frozen independent + eligibility/data-integrity reviewは
-  finding 0。DB integrationはDML authority外のため未実行。record-only最終照合後、exact4の単一`WP-5237:` commitを作り、
-  rollbackは確定commitへの`git revert <commit>`。
+- **Process gate:** rootがAPPROVED SEC-007/MOD-009、live audit/events/API caller、runtime eventId coercion 1回、exact4候補を確認済み。
+  read-only pre-planはaudit wrapper内部hardeningをMOD-009/SEC-007改版不要のR2、追加human gate不要とfinding 0で確認した。
+  SSOT/error contract/hash/valid semantics/events/API/DB変更が必要なら停止する。
+- **Validation / rollback:** expected Red 6件後、audit focused 66/package 202、events package 46、audit/events/API typecheck、boundariesは
+  exit 0。code/test frozen SHA-256は`105d63f13e321890c2580f2b19e1372acafcfb2d59b1e034d041f449a6e7d01d`、reviewed exact4
+  packet SHA-256は`fd4bb42702227a6b60506130032ff385c77c6ca96eeb7e557dc95a76b4259154`。audit/security reviewはfinding 0、
+  independent reviewのLow record driftは本更新で閉じ、final record rereviewsは両者finding 0。DB integration、network、production runtimeは
+  実行しない。
+  exact4の単一`WP-5238:` commit、rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

@@ -220,6 +220,7 @@ function assertNonEmptyString(value: string, label: string): void {
 }
 
 function assertNoControlChars(value: string, label: string): void {
+  assertNonEmptyString(value, label);
   // eslint-disable-next-line no-control-regex
   if (/[\x00-\x1f\x7f]/.test(value)) {
     throw new RangeError(`${label} must not contain control characters`);

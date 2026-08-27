@@ -529,6 +529,34 @@ describe("createAuditEvent", () => {
     ).toThrow(/correlationId/);
   });
 
+  it.each([
+    "eventId",
+    "tenantId",
+    "pharmacyId",
+    "deviceId",
+    "actorId",
+    "causationId",
+    "correlationId",
+  ] as const)("rejects coercible non-string %s without coercion", (field) => {
+    let coercions = 0;
+    const coercibleId = {
+      [Symbol.toPrimitive]() {
+        coercions += 1;
+        return "coerced-id";
+      },
+    };
+    const create = () =>
+      createAuditEvent(
+        baseAuditEvent({
+          [field]: coercibleId,
+        } as unknown as Partial<CreateAuditEventInput>),
+      );
+
+    expect(create).toThrow(TypeError);
+    expect(create).toThrow(new TypeError(`${field} must be a string`));
+    expect(coercions).toBe(0);
+  });
+
   it("drops extra enumerable fields from envelope and audit-only objects", () => {
     const auditEvent = createAuditEvent({
       ...baseAuditEvent(),
