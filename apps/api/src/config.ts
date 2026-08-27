@@ -9,6 +9,22 @@ export const patientSearchCursorHmacConfigurationErrorMessage =
 
 export type ApiRepositoryMode = (typeof apiRepositoryModes)[number];
 
+export interface DbPoolConfiguration {
+  readonly max: number;
+  readonly idleTimeoutMillis: number;
+  readonly connectionTimeoutMillis: number;
+  readonly maxLifetimeSeconds: number;
+}
+
+export const defaultDbPoolConfiguration: DbPoolConfiguration = Object.freeze({
+  max: 5,
+  idleTimeoutMillis: 10_000,
+  connectionTimeoutMillis: 5_000,
+  // Preserve the previous unlimited lifetime until deployment-specific connection
+  // churn and Aurora failover behavior are measured. Operators may opt in explicitly.
+  maxLifetimeSeconds: 0,
+});
+
 export type PatientSearchCursorHmacKeyResolution =
   | {
       readonly kind: 'configured';
@@ -19,6 +35,73 @@ export type PatientSearchCursorHmacKeyResolution =
     };
 
 const decimalIntegerPattern = /^(0|[1-9]\d*)$/;
+
+function parseBoundedDecimalInteger(input: {
+  readonly value: string | undefined;
+  readonly defaultValue: number;
+  readonly variableName: string;
+  readonly minimum: number;
+  readonly maximum: number;
+}): number {
+  if (input.value === undefined) return input.defaultValue;
+
+  const normalizedValue = input.value.trim();
+  if (!decimalIntegerPattern.test(normalizedValue)) {
+    throw new RangeError(
+      `${input.variableName} must be a decimal integer between ${input.minimum} and ${input.maximum}`,
+    );
+  }
+
+  const parsed = Number.parseInt(normalizedValue, 10);
+  if (
+    !Number.isSafeInteger(parsed) ||
+    parsed < input.minimum ||
+    parsed > input.maximum
+  ) {
+    throw new RangeError(
+      `${input.variableName} must be a decimal integer between ${input.minimum} and ${input.maximum}`,
+    );
+  }
+  return parsed;
+}
+
+export function resolveDbPoolConfiguration(input: {
+  readonly max: string | undefined;
+  readonly idleTimeoutMillis: string | undefined;
+  readonly connectionTimeoutMillis: string | undefined;
+  readonly maxLifetimeSeconds: string | undefined;
+}): DbPoolConfiguration {
+  return Object.freeze({
+    max: parseBoundedDecimalInteger({
+      value: input.max,
+      defaultValue: defaultDbPoolConfiguration.max,
+      variableName: 'YRESE_DB_POOL_MAX',
+      minimum: 1,
+      maximum: 100,
+    }),
+    idleTimeoutMillis: parseBoundedDecimalInteger({
+      value: input.idleTimeoutMillis,
+      defaultValue: defaultDbPoolConfiguration.idleTimeoutMillis,
+      variableName: 'YRESE_DB_POOL_IDLE_TIMEOUT_MS',
+      minimum: 1_000,
+      maximum: 600_000,
+    }),
+    connectionTimeoutMillis: parseBoundedDecimalInteger({
+      value: input.connectionTimeoutMillis,
+      defaultValue: defaultDbPoolConfiguration.connectionTimeoutMillis,
+      variableName: 'YRESE_DB_POOL_CONNECTION_TIMEOUT_MS',
+      minimum: 250,
+      maximum: 60_000,
+    }),
+    maxLifetimeSeconds: parseBoundedDecimalInteger({
+      value: input.maxLifetimeSeconds,
+      defaultValue: defaultDbPoolConfiguration.maxLifetimeSeconds,
+      variableName: 'YRESE_DB_POOL_MAX_LIFETIME_SECONDS',
+      minimum: 0,
+      maximum: 86_400,
+    }),
+  });
+}
 
 export function parseApiPort(value: string | undefined): number {
   if (value === undefined || value.trim().length === 0) {
