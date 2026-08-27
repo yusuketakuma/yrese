@@ -114,7 +114,8 @@ async function fetchOperationsJson(
       cache: "no-store",
       ...(signal === undefined ? {} : { signal }),
     });
-  } catch {
+  } catch (error) {
+    if (signal?.aborted === true) throw error;
     throw new OperationsApiError("UNAVAILABLE");
   }
 

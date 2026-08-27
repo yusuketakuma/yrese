@@ -1,33 +1,34 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-27, WP-5217A landed + WP-5219 claim):**
+> **ACTIVE SNAPSHOT (2026-08-27, CSS budget amended + WP-5220 claim):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5217Aはlocal commit `1fedfe3`へ着地済み。current requestのrepository全体
-  refactoringを継続し、次の最小complete sliceとしてWP-5219だけをclaimする。Codex rootだけが
+- **Direction / ownership:** WP-5219はlocal commit `7077b62`へ着地済み。current requestのrepository全体
+  refactoringを継続し、次の最小complete sliceとしてWP-5220だけをclaimする。Codex rootだけが
   `active_root_writer`、state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5219-whoami-transport-reuse`、base/HEAD
-  `1fedfe3ed58bc5fb3232810b3838fbd55fe97cda`。push / mergeは行わない。
-- **Dirty ownership:** `apps/web/app/api/session-client.ts`、同 `.test.ts`、
-  `apps/web/app/admin/admin-data.ts`、同 `.test.ts`、`Plans.md`、`State.md` のexact6だけを
-  本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
+- **Git boundary:** current branch `refactor/wp-5220-operations-abort-semantics`、base/HEAD
+  `7077b620767ee22b94de82f6b3aed36a84f364cb`。push / mergeは行わない。
+- **Dirty ownership:** `apps/web/app/api/operations-client.ts`、同 `.test.ts`、`Plans.md`、`State.md` の
+  exact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
   `ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5219 / READY=0。既存 `fetchSessionScopes`を
-  `/whoami` wire処理の唯一のWeb authorityとして再利用し、admin固有のdevelopment scopeと
-  401/403/error taxonomyだけをconsumer側へ残す。API、contract/OpenAPI、APPROVED SSOT、schema、
-  migration、audit、dependency、UI/CSS/copyは変更しない。
-- **Security / privacy / offline:** `devScopes`はdevelopment header専用で、productionでは送らない。
-  tenant/pharmacy/actor/scopeの既存validated projection以外を追加せず、raw response/error、PHI/PII、
-  secretを表示・log・保存しない。cache/retry/offline stateも追加せず、API deny-by-defaultを認可authorityとする。
-- **Process gate:** mapperはWeb全callerと重複wire pathを確認済み。pre-plan checkerの初回
-  CHANGES_REQUIREDは、`devScopes`命名、HTTP status保持、adminだけの401再分類、exact6 ownership、
-  WP-5217A landing記録をPlans.md §3/§4と本snapshotへ固定し、実装前の再checkはPASS。
-  frozen `independent_verifier` + `security_critic` reviewもfinding 0でPASSし、root landingだけを残す。
-- **Validation / rollback:** custom `devScopes`とHTTP status保持の最小Red→Green、focused
-  testは想定どおり4件FAILし、最小実装後にfocused 2 files / 26 tests、Web 64 files / 745 tests、
-  Web typecheck、`git diff --check`がPASS。frozen candidateは`independent_verifier` +
-  `security_critic`がPASS。exact6の単一
-  `WP-5219:` commitを作り、rollbackは確定commitへの `git revert <commit>`。
+- **Active plan / boundary:** CURRENT=WP-5220 / READY=0。`fetchOperationsJson`のfetch transport catchだけで、
+  signalがabort済みなら元rejectionを再throwし、未abort transport errorは既存`UNAVAILABLE`へ固定する。
+  response JSON、HTTP/schema/scope/error registry、caller state、API、APPROVED SSOT、dependency、UI/CSS/copyは変更しない。
+- **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
+  10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
+  historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
+- **Security / privacy / offline:** 既存の件数・enum・時刻projectionだけを扱い、新規PHI/PII、保存、log、
+  URL、metric、audit payload、cache、retry/offline stateはない。callerのactive/aborted guardとunknown errorの
+  固定noticeを維持し、raw transport detailを表示へ流さない。
+- **Process gate:** mapperはshared clientの4 callerと既存処方clientのcancellation precedentを確認済み。
+  pre-plan checkerの初回CHANGES_REQUIREDは、WP-5219 landing、exact4 ownership、transport-only境界、
+  abort identityとnon-abort分類をPlans.md §3と本snapshotへ固定し、実装前の再checkはPASS。
+  frozen independent/API-client re-reviewもfinding 0でPASSし、root landingだけを残す。
+- **Validation / rollback:** abort identityの最小Red 1件を再現し、production 2行の最小変更後にfocused
+  17 tests、Web 64 files / 746 tests、Web typecheck、`git diff --check`がPASS。初回independent reviewの
+  LOW 1件(active signal付きnon-abort transport failureのtest gap)は既存testを強化し、同じgateを再PASS。
+  変更後のfrozen candidateは`independent_verifier` + `api_contract_reviewer`がfinding 0でPASS。
+  exact4の単一`WP-5220:` commitを作り、rollbackは確定commitへの `git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

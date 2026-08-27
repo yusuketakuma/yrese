@@ -131,6 +131,21 @@ describe("operations client transport", () => {
 
     expect(calls[0]?.init?.signal).toBe(controller.signal);
   });
+
+  it("preserves intentional request cancellation", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const controller = new AbortController();
+    const aborted = new DOMException("Aborted", "AbortError");
+    controller.abort();
+    const fetchImpl: typeof fetch = async () => {
+      throw aborted;
+    };
+
+    await expect(
+      fetchOutboxSummary({ fetchImpl, signal: controller.signal }),
+    ).rejects.toBe(aborted);
+  });
 });
 
 describe("operations client responses", () => {
@@ -191,13 +206,14 @@ describe("operations client failure classification", () => {
   it("maps a transport failure to UNAVAILABLE", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const controller = new AbortController();
     const fetchImpl = vi.fn(async () => {
       throw new Error("network down");
     }) as unknown as typeof fetch;
 
-    await expect(fetchOutboxSummary({ fetchImpl })).rejects.toMatchObject({
-      kind: "UNAVAILABLE",
-    });
+    await expect(
+      fetchOutboxSummary({ fetchImpl, signal: controller.signal }),
+    ).rejects.toMatchObject({ kind: "UNAVAILABLE" });
   });
 
   it("refuses a missing or malformed business date without calling the API", async () => {
