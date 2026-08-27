@@ -1,36 +1,35 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5236 frozen reviews finding 0 / local landing pending):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5237 frozen reviews finding 0 / local landing pending):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5234はlocal commit `41e3389`へ着地済み。WP-5235 EventEnvelope root guardはAPPROVED MOD-009が
-  SSOT改版→review→実装を要求するため未着手の`SSOT_UPDATE_REQUIRED`とし、current requestのrepository全体refactoringを
-  WP-5236だけで継続する。WP-5226は元exact4では安全に完結しないためdefer中。Codex rootだけが`active_root_writer`、
+- **Direction / ownership:** WP-5236はlocal commit `913bd48`へ着地済み。WP-5235 EventEnvelope root guardはAPPROVED MOD-009が
+  SSOT改版→review→実装を要求するため未着手の`SSOT_UPDATE_REQUIRED`。current requestのrepository全体refactoringを
+  WP-5237だけで継続する。WP-5226は元exact4では安全に完結しないためdefer中。Codex rootだけが`active_root_writer`、
   state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5236-money-round-options-guard`、base/HEAD
-  `41e33893962e1437a658a15e27f0f9e0a0c61518`。push / mergeは行わない。
-- **Dirty ownership:** `packages/money/src/index.ts`、`packages/money/src/money.test.ts`、`Plans.md`、`State.md` の
+- **Git boundary:** current branch `refactor/wp-5237-eligibility-transition-primitive-guard`、base/HEAD
+  `913bd48963e491a85b6a3c1cc805c29eff834bd5`。push / mergeは行わない。
+- **Dirty ownership:** `packages/shared-kernel/src/eligibility.ts`、`packages/shared-kernel/src/eligibility.test.ts`、`Plans.md`、`State.md` の
   exact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
   `ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5236 / READY=0。`ScaledDecimal.round`の最初のscale readだけを`options?.scale`へ変え、
-  nullish optionsを既存`assertSafeScale`へ閉じる。public signature、rounding formula/mode/policy/evidenceRefs、constructor/Yen/Points、
-  calculation/apps/API、DB/UI/CSS、APPROVED SSOTは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5237 / READY=0。`isEligibilityTransitionAllowed`のreturn式へ既存
+  `isReceptionEligibilityState(from)`短絡だけを加え、invalid/coercible sourceをfail closedにする。transition table/state/method tuples、
+  public signature、API/error、DB/audit、calculation/claim意味論、UI/CSS、APPROVED SSOTは変更しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** fixtureはsynthetic decimal/null/undefinedだけで、credential、production data、PHI/PII、保存、log、
+- **Security / privacy / offline:** fixtureはsynthetic state string/null/undefined/object/counterだけで、credential、production data、PHI/PII、保存、log、
   external send、network、cache、retry/offline stateを追加しない。
-- **Process gate:** rootがAPPROVED MOD-010/CAL-010、live money code/test/caller、type-erased null/undefined runtime再現、exact4を確認済み。
-  GBrain code indexにyrese sourceがないためlive tracked codeを正本にした。rounding policy/formula/valid output/evidence_idを変えない既存
-  validatorへのinvalid-input normalizationとしてR2、追加human gateなし。fresh pre-plan reviewはfinding 0。timeboxはpre-plan PASS後の
-  active root作業60分または単一TDD/review/commit cycleの早い方。native TypeErrorがnormative、SSOT改版、public API/consumer/
-  別path変更が必要なら停止・再計画する。
-- **Validation / rollback:** expected Red 2件後、money focused/package 17、money typecheck、calculation package 90、calculation typecheck、
-  calculation purity、boundaries、tracked exact4 path-set/diff checkをexit 0で実行した。初回independent finding 0、money/data-integrityの
-  LOW 1件へtypeとexact messageの別assertionを適用し、同gateを再実行済み。更新code/test frozen SHA-256は
-  `5a254953f3a3e481a53875bb6621a884b589854bbb8e15bf263683e3f9939757`、reviewed exact4 packet SHA-256は
-  `007fd3485377961b9a80db476587f1757e3f11427e5156d6f2cab001e8baee93`。new-hash independent + money/data-integrity re-reviewは
-  finding 0。record-only最終照合後、exact4の単一`WP-5236:` commitを作り、rollbackは確定commitへの`git revert <commit>`。
+- **Process gate:** rootがAPPROVED ADP-004、live shared-kernel/API caller、runtime invalid/coercible counterexample、既存state predicateの
+  no-coercion behavior、exact4を確認済み。GBrainにyrese code sourceがないためlive tracked codeを正本にした。valid transition/算定・請求
+  意味論を変えないR2で追加human gateなし。fresh pre-plan reviewはfinding 0。timeboxはpre-plan PASS後のactive root作業60分または単一
+  TDD/review/commit cycleの早い方。transition table、API/DB/audit、SSOT、別path変更が必要なら停止・再計画する。
+- **Validation / rollback:** expected Red 4件後、shared-kernel focused 8/package 85、shared-kernel/API typecheck、boundaries、tracked exact4
+  path-set/diff checkをexit 0で実行した。code/test frozen SHA-256は
+  `b1120e4671b445ed863e13d5ad669e8281d8f14109ded738f4a4a5fd87922fac`、reviewed exact4 packet SHA-256は
+  `810da67769a5c3266c4921cac4f8e311e71b4e31320857be34611ec34822a9e2`。frozen independent + eligibility/data-integrity reviewは
+  finding 0。DB integrationはDML authority外のため未実行。record-only最終照合後、exact4の単一`WP-5237:` commitを作り、
+  rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

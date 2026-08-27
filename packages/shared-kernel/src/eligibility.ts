@@ -61,7 +61,7 @@ export function isEligibilityTransitionAllowed(
   from: ReceptionEligibilityState,
   to: ReceptionEligibilityState,
 ): boolean {
-  return allowedTransitions[from].includes(to);
+  return isReceptionEligibilityState(from) && allowedTransitions[from].includes(to);
 }
 
 /**

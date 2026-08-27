@@ -39,6 +39,24 @@ describe("reception eligibility state machine (ADP-004 §3)", () => {
     expect(isEligibilityTransitionAllowed("UNVERIFIED", "EXPIRED")).toBe(false);
   });
 
+  it.each(["UNKNOWN", null, undefined])("rejects an invalid source state", (from) => {
+    expect(isEligibilityTransitionAllowed(from as never, "VERIFIED_MYNA")).toBe(false);
+  });
+
+  it("does not coerce source or destination state objects", () => {
+    let coercions = 0;
+    const state = {
+      [Symbol.toPrimitive]() {
+        coercions += 1;
+        return "UNVERIFIED";
+      },
+    };
+
+    expect(isEligibilityTransitionAllowed(state as never, "VERIFIED_MYNA")).toBe(false);
+    expect(isEligibilityTransitionAllowed("UNVERIFIED", state as never)).toBe(false);
+    expect(coercions).toBe(0);
+  });
+
   it("binds verification methods to the states they may record", () => {
     expect(stateForVerificationMethod("MYNA_ONLINE")).toBe("VERIFIED_MYNA");
     expect(stateForVerificationMethod("CARD_ONLINE")).toBe("VERIFIED_CARD");
