@@ -34,15 +34,15 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5231 は local commit `e9a597f`。WP-5232 は同 commit から `refactor/wp-5232-trace-array-kind` を作成済み |
+| Candidate branch | WP-5232 は local commit `b1ad99e`。WP-5233 は同 commit から `refactor/wp-5233-error-code-primitive` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | trace共通dense-array assertionへruntime array-kind guardを補う exact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5231 local landing、WP-5232 frozen reviews PASS / local landing pending、compiled CSS予算12 KiBを維持) |
+| Candidate scope | shared-kernel共通error-code predicateへprimitive-string guardを補う exact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5232 local landing、WP-5233 frozen reviews finding 0・local landing pending、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5232 exact2 code/testで、type-erased stringをdense arrayと誤認して文字配列へ変換するtrace shape gapを既存`assertArray`へ閉じる |
-| Main blocker | WP-5232の初回pre-plan MEDIUM/LOWをacceptance/stop条件で閉じ、再review finding 0、Red、既存helper reuse、affected gates、frozen independent/trace-data-integrity reviewはPASS。record-only最終照合とlocal landingを残す。WP-5226は元exact4では安全に完結せずdefer中 |
-| Required verification | trace focused/package Red→Green・typecheck、calculation package/typecheck、contracts calculation-trace/typecheck、calculation purity、boundaries、tracked diff check、frozen R2 reviewsを要求する |
+| Current critical path | WP-5233 exact2 code/testで、type-erased objectを暗黙coercionして有効error codeとして受理する共通predicate gapをprimitive checkへ閉じる |
+| Main blocker | WP-5233のpre-plan finding 2件は計画へ反映後finding 0。Red、1行guard、affected gates、frozen independent/security-contract reviewはPASSし、record-only最終照合とlocal landingを残す。WP-5226は元exact4では安全に完結せずdefer中 |
+| Required verification | shared-kernel focused/package Red→Green・typecheck、contracts error/package/typecheck、Web error-notice/package/typecheck、boundaries、tracked diff check、frozen R2 reviewsを要求する |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
@@ -73,45 +73,46 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5232(trace array-kind guard、R2)1 件である。**
-WP-5231 は local commit `e9a597f` で着地済み。READYは0件である。
+**CURRENT は WP-5233(error-code primitive guard、R2)1 件である。**
+WP-5232 は local commit `b1ad99e` で着地済み。READYは0件である。
 
-- **Purpose / layer:** `@yrese/trace`の共通`assertDenseArray`がarray kindを確認せず、own indexを持つtype-erased primitive stringを
-  dense arrayとして受理するため、`freezeArray`のdirect callerが文字列を文字配列へ変換できるroot causeを修正する。既存`assertArray`を
-  共通dense assertionの先頭で再利用し、全raw array boundaryを1か所でfail closedにする。新helper、public type、fieldは作らない。
-- **Allowed / forbidden:** exact4は `packages/trace/src/index.ts`、`packages/trace/src/trace.test.ts`、`Plans.md`、`State.md`。
-  それ以外、特にtrace public type/signature/export/field、CAL-008/MOD-004、evidence collection/PHI/URL/claim-affecting意味論、
-  calculation/contracts/apps/API/DB、package/dependency、UI/CSS、APPROVED SSOT、schema/migrationは変更禁止。保護untracked 3 pathも
-  参照・変更しない。
-- **Authority / evidence:** APPROVED CAL-008 §1とMOD-004 §3は現行`@yrese/trace`実装をtrace構造の正本とし、既存public typeは対象値を
-  `readonly ...[]`と定義する。runtime array-kind enforcement自体をSSOTの追加要件とは主張せず、既存`assertArray`、`assertDenseArray`、
-  immutable factory contractの内部整合として扱う。live caller traceでは`assertDenseArray`がraw steps/evidenceRefs/input summaryと
-  `freezeArray`の全callerを共有し、primitive stringは`Object.hasOwn`とspreadにより実際に文字配列化する。
-- **Acceptance / tests:** (A1)synthetic `CalculationTraceStep.inputRefs`を型消去したprimitive stringにすると、変更前は文字配列として
-  resolveし、変更後は固定`RangeError("Trace arrays must be an array")`でrejectする。(A2)valid `inputRefs`のexact値・順序
-  `["prescription-001", "drug-master:2026.04"]`と`Object.isFrozen(trace.steps[0].inputRefs) === true`、他のdense array、
-  evidence-id集約を維持する。(A3)既存sparse-array `RangeError("Trace arrays must be dense")`を維持する。
-  (A4)production差分は共通`assertDenseArray`先頭で既存`assertArray`を1回呼ぶだけとし、個別callerを修正しない。
-- **PIA / offline:** fixtureはsynthetic string/既存synthetic traceだけで、患者・処方・薬剤・請求data、credential、production data、
+- **Purpose / layer:** `@yrese/shared-kernel`の共通`isValidErrorCode`がruntime primitive checkなしに`RegExp.test`へ値を渡し、
+  type-erased objectのcoercion hookを実行してvalid codeとして受理できるroot causeを修正する。predicate先頭のshort-circuit
+  primitive-string checkでpredicate自身をfalseへ閉じ、新helper、format、registry codeは作らない。
+- **Allowed / forbidden:** exact4は `packages/shared-kernel/src/error-codes.ts`、`packages/shared-kernel/src/kernel.test.ts`、
+  `Plans.md`、`State.md`。それ以外、特にMOD-006のformat/registered code/domain/severity、ErrorCodeRegistry/KERNEL_ERROR_CODES、
+  public signature/export、contracts/Web/API/OpenAPI、package/dependency、UI/CSS、APPROVED SSOT、schema/migrationは変更禁止。
+  保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** APPROVED MOD-006 §1はerror code形式と`isValidErrorCode`を構造の正本として定め、既存public signatureは
+  `code: string`である。primitive runtime guard自体をSSOTの追加要件とは主張せず、type-erased non-stringをcoerceしない既存string
+  contractの内部整合として扱う。live tracked consumerはErrorCodeRegistry、Zod string refine、Webの事前`typeof raw === "string"` guardで、
+  active exploitとは主張しない。実再現ではsynthetic objectを`CALC-0001`へcoerceしてtrueを返し、hookを1回実行した。
+- **Acceptance / tests:** (A1)synthetic objectの`Symbol.toPrimitive`が`CALC-0001`を返しても、変更前はtrue/hook 1回、変更後はfalse/
+  hook 0回。(A2)primitive `CALC-0001`はtrue、`calc-1`はfalseをexact preserveする。(A3)ErrorCodeRegistryのformat/duplicate/seed、
+  contracts registered-only parse、Web registered-code filteringを維持する。(A4)production差分は`typeof code === "string" &&`の
+  short-circuit追加だけで、個別caller、regex、message、public typeを変えない。
+- **PIA / offline:** fixtureはsynthetic object/counter/code文字列だけで、患者・処方・薬剤・請求data、credential、production data、
   PHI/PII、保存、log、external send、network、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。rootのlive code/caller/APPROVED SSOT照合は完了し、GBrain code
-  indexにはyrese sourceがないためlive `rg`を正本にした。`reviewer_roles`はmakerとは別の`pre_plan_reviewer`、`independent_verifier`、
-  `trace_data_integrity_reviewer`。trace shapeをfail closedにするR2で、法令/薬学/請求判断、risk acceptance、production actionがなく
-  追加human gateなし。planned invalid non-arrayを固定`RangeError`へ正規化する変更はscope内とし、array-like non-array受理がnormative要件、
-  public type/field/valid-inputまたはunplanned public error contract/SSOT/別path変更が必要なら停止し再計画する。exact4を単一
-  `WP-5232:` commitにし、rollbackは確定commitへの`git revert <commit>`。rootだけがstate-mutating
-  validation、exact-stage/commitを行い、push、merge、deploy、migration applyは認可外。pre-plan review完了前はcode/testを編集しない。
+- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。rootのlive code/caller/APPROVED SSOT traceと実再現は完了し、
+  GBrain code indexにyrese sourceがないためlive `rg`を正本にした。`reviewer_roles`はmakerとは別の`pre_plan_reviewer`、
+  `independent_verifier`、`security_contract_reviewer`。common validation predicateのcoercionを閉じるR2で、法令/薬学/請求判断、
+  risk acceptance、production actionがなく追加human gateなし。String-like object coercionがnormative要件であることが判明した場合、
+  またはregistry value/format/consumer/public signature/error contract/SSOT/別path変更が必要になった場合は停止し再計画する。registryがinvalid definitionのerror messageを組み立てる
+  際のtype-erased値coercion totalityはpredicateの受理判定と分離し、本sliceでは主張しない。exact4を単一`WP-5233:` commitにし、rollbackは確定commitへの
+  `git revert <commit>`。rootだけがstate-mutating validation、exact-stage/commitを行い、push、merge、deploy、migration applyは認可外。
+  pre-plan初回MEDIUM/LOWは停止条件とtest-command対応を明確化して再review finding 0。candidate freeze後はreview完了までcode/testを編集しない。
 - **Validation evidence (UTC / exact command):**
-  - `2026-08-27T20:33:27Z` `pnpm --filter @yrese/trace exec vitest run src/trace.test.ts`
-    → exit 1 (expected Red: 1 failed / 40 passed。type-erased string `inputRefs`を誤ってresolve)。
-  - `2026-08-27T20:33:43Z` 同focused command → exit 0、41 passed。
-  - `2026-08-27T20:33:58Z–20:34:09Z` `pnpm --filter @yrese/trace test` → exit 0、1 file / 41 tests、
-    trace typecheck、`pnpm --filter @yrese/calculation test` → exit 0、2 files / 90 tests、calculation typecheck、
-    contracts `src/calculation-trace.test.ts` → exit 0、1 file / 20 tests、contracts typecheck、
-    `pnpm check:calculation-purity`、`pnpm check:boundaries`、tracked exact4 `git diff --check` → 各exit 0。
-  - frozen independent reviewとtrace/data-integrity reviewはfinding 0でPASSした。code/test frozen SHA-256は
-    `14081cefb052af611918fc5e6f63254867152e65cc639e66ad7e98b4735f6e27`。Proxy/revoked Proxy totalityは今回の
-    回帰ではなく、WP-5226のdeferred residualとして別scopeに残す。
+  - `2026-08-27T21:00:08Z` `pnpm --filter @yrese/shared-kernel exec vitest run src/kernel.test.ts`
+    → exit 1 (expected Red: 1 failed / 63 passed。type-erased objectをtrueとして受理)。
+  - `2026-08-27T21:00:18Z` 同focused command → exit 0、64 passed。
+  - `2026-08-27T21:00:32Z–21:00:54Z` shared-kernel package → 3 files / 81 tests + typecheck、contracts
+    `src/error.test.ts` → 1 file / 6 tests、package → 11 files / 136 tests + typecheck、Web
+    `app/components/error-notice.test.tsx` → 1 file / 6 tests、package → 64 files / 747 tests + typecheck、
+    `pnpm check:boundaries`、tracked exact4 `git diff --check` → 各exit 0。
+  - code/test frozen SHA-256は `f564c747534f5da214e64b64f2cb850393a8fccc55d441b901f2aa74dee342c6`。
+    review packet exact4 SHA-256は `604580c1f30cafd384c8df289cc134732634c3377ca8ead2b19cac8195b9f1ca`。
+    frozen independent + security/contract reviewはfinding 0でPASSした。registry invalid-definition error templateのcoercion totalityは
+    記録どおりpredicate acceptance外の既存residualで、record-only最終照合後にlandingする。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
@@ -183,6 +184,14 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5232 — Trace array-kind guard(2026-08-28)
+
+- **Status:** `COMMITTED_LOCAL b1ad99e / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** trace共通dense-array assertionで既存runtime array-kind guardを再利用し、type-erased primitive stringの
+  文字配列化を拒否した。public trace/evidence/claim/PHI/URL contractは不変。
+- **Gate:** expected Red 1件→trace 41、calculation 90、contracts calculation-trace 20、各typecheck、calculation purity、
+  boundaries、`git diff --check`、frozen independent/trace-data-integrity reviewとrecord-only recheckがfinding 0でPASS。
 
 ### WP-5231 — Calculation application-key primitive guard(2026-08-28)
 

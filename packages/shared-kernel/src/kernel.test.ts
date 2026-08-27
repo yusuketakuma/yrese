@@ -265,6 +265,19 @@ describe("error code registry", () => {
     expect(() => registry.register(def)).toThrow(/duplicate/);
   });
 
+  it("rejects type-erased error codes without coercion", () => {
+    let coercionCalls = 0;
+    const code = {
+      [Symbol.toPrimitive]: () => {
+        coercionCalls += 1;
+        return "CALC-0001";
+      },
+    };
+
+    expect(isValidErrorCode(code as unknown as string)).toBe(false);
+    expect(coercionCalls).toBe(0);
+  });
+
   it("seeds approved kernel error codes", () => {
     const registry = createKernelErrorCodeRegistry();
 

@@ -1,35 +1,35 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5232 frozen reviews PASS / local landing pending):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5233 frozen reviews PASS / local landing pending):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5231はlocal commit `e9a597f`へ着地済み。current requestのrepository全体
-  refactoringを継続し、次の最小complete sliceとしてWP-5232だけをclaimする。WP-5226はpre-planで
+- **Direction / ownership:** WP-5232はlocal commit `b1ad99e`へ着地済み。current requestのrepository全体
+  refactoringを継続し、次の最小complete sliceとしてWP-5233だけをclaimする。WP-5226はpre-planで
   downstream verifierを含むrevoked Proxy totality gapが判明し、元exact4では安全に完結しないため未着手でdeferする。Codex rootだけが
   `active_root_writer`、state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5232-trace-array-kind`、base/HEAD
-  `e9a597f1ae34b3571aa52b25fc84288cac0becfc`。push / mergeは行わない。
-- **Dirty ownership:** `packages/trace/src/index.ts`、`packages/trace/src/trace.test.ts`、
+- **Git boundary:** current branch `refactor/wp-5233-error-code-primitive`、base/HEAD
+  `b1ad99e6ce4caac8e1eb7d7e66517a6dd9d793b3`。push / mergeは行わない。
+- **Dirty ownership:** `packages/shared-kernel/src/error-codes.ts`、`packages/shared-kernel/src/kernel.test.ts`、
   `Plans.md`、`State.md` の
   exact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
   `ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5232 / READY=0。trace共通`assertDenseArray`の先頭で既存`assertArray`を再利用する。
-  trace public contract/field、CAL-008/MOD-004、evidence/PHI/URL/claim意味論、calculation/contracts/apps/DB/UI/CSS、package/dependency、
-  APPROVED SSOTは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5233 / READY=0。shared-kernel共通`isValidErrorCode`へprimitive-string short-circuitを補う。
+  MOD-006 format/registered values、registry/public signature、contracts/Web/API/OpenAPI、apps/DB/UI/CSS、package/dependency、APPROVED
+  SSOTは変更しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** synthetic stringと既存synthetic traceだけをfixtureに使い、患者・処方・薬剤・請求data、credential、
+- **Security / privacy / offline:** synthetic object/counter/code文字列だけをfixtureに使い、患者・処方・薬剤・請求data、credential、
   production data、PHI/PII、保存、log、external send、network、cache、retry/offline stateを追加しない。
-- **Process gate:** rootがlive `assertDenseArray`/`freezeArray`全caller、calculation/contracts consumer、APPROVED CAL-008・MOD-004、
-  exact4を確認済み。primitive stringはdense checkを通り文字配列へ変換されることを再現した。GBrain code indexにyrese sourceがないため
-  live `rg`を正本にした。planned invalid non-arrayの固定`RangeError`正規化だけをerror変更scopeに含める。trace shapeをfail closedにする
-  R2で追加human gateなし。初回pre-plan MEDIUM/LOWをacceptance/stop条件へ反映し、再review finding 0。frozen independent +
-  trace/data-integrity reviewもfinding 0でPASSした。Proxy/revoked Proxy totalityは既存WP-5226 residualとしてdeferを維持する。
-- **Validation / rollback:** expected Red 1件後、trace focused/package 41/typecheck、calculation package 90/typecheck、contracts
-  calculation-trace 20/typecheck、calculation purity、boundaries、tracked diff checkをexit 0で実行した。exact commands/UTCとfrozen
-  code/test hashは`Plans.md`へ記録済み。record-only最終照合後にexact4の単一`WP-5232:` commitを作り、rollbackは確定commitへの
-  `git revert <commit>`。
+- **Process gate:** rootがlive `isValidErrorCode`全caller、MOD-006、exact4を確認済み。synthetic objectはcoercion hookを1回実行して
+  valid codeとしてtrueになった。GBrain code indexにyrese sourceがないためlive `rg`を正本にした。common predicateのcoercionを閉じる
+  R2で追加human gateなし。tracked consumerはstring pre-validation済みでactive exploitとは主張しない。pre-plan初回MEDIUM/LOWを
+  計画へ反映し、再review finding 0。frozen independent + security/contract reviewもfinding 0でPASSし、review後もcode/testは不変。
+- **Validation / rollback:** expected Red 1件後、shared-kernel focused 64/package 81/typecheck、contracts error 6/package 136/typecheck、
+  Web error-notice 6/package 747/typecheck、boundaries、tracked exact4 diff checkをexit 0で実行した。code/test frozen SHA-256は
+  `f564c747534f5da214e64b64f2cb850393a8fccc55d441b901f2aa74dee342c6`、review packet exact4 SHA-256は
+  `604580c1f30cafd384c8df289cc134732634c3377ca8ead2b19cac8195b9f1ca`。record-only最終照合後にexact4の単一
+  `WP-5233:` commitを作る。rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

@@ -49,7 +49,7 @@ export interface ErrorCodeDef {
 const CODE_PATTERN = /^[A-Z]{2,10}-\d{4}$/;
 
 export function isValidErrorCode(code: string): boolean {
-  return CODE_PATTERN.test(code);
+  return typeof code === "string" && CODE_PATTERN.test(code);
 }
 
 /** レジストリ(重複コードを拒否する) */
