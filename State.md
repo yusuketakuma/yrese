@@ -1,34 +1,37 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5225 frozen reviews PASS / local landing pending):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5227 frozen reviews PASS / local landing pending):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5224はlocal commit `a7b26c9`へ着地済み。current requestのrepository全体
-  refactoringを継続し、次の最小complete sliceとしてWP-5225だけをclaimする。Codex rootだけが
+- **Direction / ownership:** WP-5225はlocal commit `938d4bb`へ着地済み。current requestのrepository全体
+  refactoringを継続し、次の最小complete sliceとしてWP-5227だけをclaimする。WP-5226はpre-planで
+  downstream verifierを含むrevoked Proxy totality gapが判明し、元exact4では安全に完結しないため未着手でdeferする。Codex rootだけが
   `active_root_writer`、state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5225-hash-string-guards`、base/HEAD
-  `a7b26c932192b4a6d3c61ea0c3c19902c64520e3`。push / mergeは行わない。
-- **Dirty ownership:** `packages/events/src/index.ts`、`packages/events/src/events.test.ts`、
-  `packages/audit/src/index.ts`、`packages/audit/src/audit.test.ts`、`Plans.md`、`State.md` のexact6だけを
-  本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
+- **Git boundary:** current branch `refactor/wp-5227-lockfile-secret-scan`、base/HEAD
+  `938d4bb49fea02f5d377d06fbac92a42584d4d95`。push / mergeは行わない。
+- **Dirty ownership:** `scripts/check-secrets.mjs`、`scripts/check-scripts.mjs`、`Plans.md`、`State.md` の
+  exact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
   `ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5225 / READY=0。events/auditの既存SHA-256 validatorだけを各file内の
-  既存`assertNonEmptyString`へ通し、object coercionを禁止する。public type/export、canonicalization、hash
-  preimage/algorithm、hydration/raw fallback、route/contract/auth、DB/SQL/write/lock、schema/migration/DDL/DML、
-  dependency、UI/CSSは変更しない。完全tamper可視化やcanonical storage semanticsは未claimのまま維持する。
+- **Active plan / boundary:** CURRENT=WP-5227 / READY=0。secret scannerのregular tracked `pnpm-lock.yaml`専用除外を
+  削除し、既存`.yaml` text scanとgeneric detectorへ通す。同名non-fileだけは従来どおりscope failure/skipへ閉じる。
+  lockfile、package/workflow/dependency、pattern/heuristic、scope/symlink/ignore semantics、output payload、
+  product/API/DB/UI/CSSは変更しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** hash-shaped synthetic fixtureだけを扱い、PHI/PII、production data、secret、
-  patient field、保存、log、URL、metric、external send、network、cache、retry/offline stateはない。
-- **Process gate:** mapperとrootのlive traceで両private validator、全caller、既存`assertNonEmptyString`、APPROVED
-  MOD-009/MOD-001/SEC-007、exact6を確認済み。既存primitive-string契約をfail closedに強制するR2で、追加human
-  gateなし。makerとは別のread-only pre-plan reviewはfinding 0でPASS。初回frozen independent reviewのGreen
-  command略記Lowを閉じ、再凍結後のindependent + audit data-integrity/security reviewsはfinding 0でPASSした。
-- **Validation / rollback:** focused Red各1件後、events 46、audit 195、API audit-log 78 tests、events/audit/API
-  typecheck、boundaries、tracked diff checkをexit 0で再実行した。DB操作なし。exact commands/UTC/exitは
-  `Plans.md` Current WIPへ記録済み。record-only最終照合とlocal landingを残す。exact6の単一`WP-5225:`
-  commitを作り、rollbackは確定commitへの`git revert <commit>`。
+- **Security / privacy / offline:** 分割構築したnon-live synthetic値だけをtest fixtureに使い、credential、production
+  data、PHI/PII、raw valueのlog、external send、network、cache、retry/offline stateを追加しない。live scan finding時は
+  raw行/valueを読まず停止してhuman security authorityへ引き渡す。
+- **Process gate:** mapperとrootのlive traceでtracked lockfileのbasename bypass、既存`.yaml`判定、generic detector、
+  metadata-only finding output、CI/root caller、exact4を確認済み。既存gate coverageを強化するR2で追加human gateなし。
+  makerとは別のread-only pre-plan reviewはfinding 0でPASS。初回frozen independent reviewの同名directory scope退行Lowを
+  expected Red 1件とdirect non-file guardで閉じ、Greenを確認した。再freeze後のindependent + security/supply-chain
+  reviewsはfinding 0でPASSした。
+- **Validation / rollback:** expected Red 2 assertions後、script harness、両script syntax check、live exact4を重ねた
+  tracked-only temporary snapshot上の`pnpm check:secrets`、tracked diff checkをexit 0で実行した。protected untracked
+  3 pathはsnapshotへ含めず未参照、workspace package/lock/dependency差分なし。review Low向けexpected Red 1 assertionと
+  remediation Greenも実測した。exact commands/UTC/exitは`Plans.md` Current WIPへ記録済み。record-only最終照合後に
+  exact4の単一`WP-5227:` commitを作り、rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

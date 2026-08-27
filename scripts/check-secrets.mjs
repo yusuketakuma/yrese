@@ -29,7 +29,6 @@ const ignoredDirs = new Set([
   "node_modules",
   "out",
 ]);
-const ignoredFiles = new Set(["pnpm-lock.yaml"]);
 const exactTextBasenames = new Set([".npmrc"]);
 const scopeErrorMessage = "Secret scan could not validate the protected repository scope.";
 class ProtectedScopeError extends Error {
@@ -220,8 +219,8 @@ async function listFiles(dir) {
       if (!entry.isDirectory()) skipOrFailScope(entryPath);
       continue;
     }
-    if (ignoredFiles.has(entry.name)) {
-      if (!entry.isFile()) skipOrFailScope(entryPath);
+    if (entry.name === "pnpm-lock.yaml" && !entry.isFile()) {
+      skipOrFailScope(entryPath);
       continue;
     }
     if (entry.isDirectory()) {

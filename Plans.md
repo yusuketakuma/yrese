@@ -34,15 +34,15 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5224 は local commit `a7b26c9`。WP-5225 は同 commit から `refactor/wp-5225-hash-string-guards` を作成済み |
+| Candidate branch | WP-5225 は local commit `938d4bb`。WP-5227 は同 commit から `refactor/wp-5227-lockfile-secret-scan` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | `@yrese/events` / `@yrese/audit`の既存hash validatorへprimitive-string guardを補う exact4 code/test slice |
-| Last update | 2026-08-28 JST(WP-5224 local landing、WP-5225 frozen reviews PASS / local landing pending、compiled CSS予算12 KiBを維持) |
+| Candidate scope | secret scannerのregular tracked `pnpm-lock.yaml` basename除外を削除し、既存`.yaml`走査へ戻す exact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5225 local landing、WP-5226 pre-plan却下、WP-5227 frozen reviews PASS / local landing pending、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5225 exact4 code/testで、hash regexへ到達する前に既存`assertNonEmptyString`を再利用し、object coercionを禁止する |
-| Main blocker | WP-5225のpre-plan、Red→Green、machine gates、frozen R2 independent/data-integrity-security reviewsはfinding 0でPASS。record-only最終照合とlocal landingを残す。完全tamper可視化契約、WP-5217BのAPI-006/MOD-008/SEC-004 gateは継続保留 |
-| Required verification | events 46、audit 195、API audit-log 78 tests、events/audit/API typecheck、boundaries、tracked diff checkはexit 0。frozen R2 reviewsもfinding 0でPASS |
+| Current critical path | WP-5227 exact2 code/testで、tracked lockfileを既存eligible text scanへ通し、secret gateのsilent coverage holeを閉じる |
+| Main blocker | WP-5227の初回frozen independent reviewが同名directoryのscope fail-closed退行Lowを検出し、追加Red→最小guard→Greenで閉じた。final machine gatesと再frozen independent/security reviewはfinding 0でPASSし、record-only最終照合とlocal landingを残す。WP-5226はrevoked event-element Proxyとdownstream verifierのtotality gapによりexact4では安全に完結せず未着手でdeferする |
+| Required verification | 最終script harness、両script syntax check、protected untrackedを含めないtracked candidate secret scan、tracked diff check、frozen R2 reviewsはPASS |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
@@ -73,59 +73,57 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5225(hash primitive-string guards、R2)1 件である。**
-WP-5224 は local commit `a7b26c9` で着地済み。READYは0件である。
+**CURRENT は WP-5227(lockfile secret-scan coverage、R2)1 件である。**
+WP-5225 は local commit `938d4bb` で着地済み。READYは0件である。
 
-- **Purpose / layer:** `@yrese/events`と`@yrese/audit`の既存SHA-256 validatorがTypeScriptの`string`型だけを
-  信頼して`RegExp.test`へ渡すroot causeを修正し、objectの暗黙`ToString`を実行せず既存のprimitive-string
-  不変条件へfail closedする。新helperやpublic APIは作らず、両file内の既存`assertNonEmptyString`を再利用する。
-- **Allowed / forbidden:** exact6は `packages/events/src/index.ts`、`packages/events/src/events.test.ts`、
-  `packages/audit/src/index.ts`、`packages/audit/src/audit.test.ts`、`Plans.md`、`State.md`。それ以外、特に
-  public type/export、canonicalization、hash preimage/algorithm、hydration/raw fallback、API route/contract/OpenAPI/auth、
-  DB/SQL/write/lock、schema/migration/DDL/DML、UI/CSS、dependency、APPROVED SSOT本文は変更禁止。保護untracked
-  3 pathも参照・変更しない。
-- **Authority / evidence:** APPROVED MOD-009 §1は`payloadHash`をstringかつlowercase SHA-256 hex 64桁、
-  APPROVED SEC-007は`prevHash`/`entryHash`のtamper-evident規律、APPROVED MOD-001は既存common module再利用を
-  要求する。live mapper traceで両private validatorだけがruntime primitive checkを欠き、隣接する既存
-  `assertNonEmptyString`は`typeof value !== "string"`を先に拒否すると確認した。既存契約を厳格化するbug fixで、
-  SSOT semantics・公開schemaの変更ではない。
-- **Acceptance / tests:** (A1)eventsの`payloadHash`へvalid hashを返す`toString`付きsynthetic objectを型消去して渡し、
-  `createEventEnvelope`がrejectしcoercion counterを0に保つ。(A2)audit verifierへ同様のobjectをown-data
-  `prevHash`として持つeventを渡し、throw/echo/coercionなしで既存`hash_format_invalid`、`checkedCount: 0`、
-  `breakIndex: 0`を返す。(A3)既存valid lowercase hash、invalid uppercase/short hash、chain mismatch、hydrationの
-  挙動を変えない。(A4)両validatorは既存`assertNonEmptyString`を1回呼んでから既存regexを適用し、新 abstraction、
-  export、error payload、contract、storage、routeを追加しない。focused Red→Green後、両package test/typecheck、
-  API audit-log focused test/typecheck、boundaries、tracked diff checkを実行する。
-- **PIA / offline:** fixtureはhash-shaped synthetic文字列だけでPHI/PII、production data、secretを含まない。
-  保存、log、URL、metric、external send、network、cache、retry/offline stateを追加しない。
+- **Purpose / layer:** `scripts/check-secrets.mjs`がregular tracked `pnpm-lock.yaml`をbasenameだけで無条件除外するため、
+  repository内容であるlockfileを読まずにPASSできるroot causeを修正する。専用除外を削除し、既存`.yaml`判定と
+  generic secret detectorをそのまま再利用する。新helper、pattern、allowlist、dependencyは作らない。
+- **Allowed / forbidden:** exact4は `scripts/check-secrets.mjs`、`scripts/check-scripts.mjs`、`Plans.md`、`State.md`。
+  `pnpm-lock.yaml`、package manifest、workflow、dependency、secret pattern/heuristic、scope/symlink/ignore semantics、
+  output payload、APPROVED SSOT、product/API/DB/UI/CSSは変更禁止。保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** scanner自身のdocumented scopeはworking directory配下のeligible text fileすべてで、
+  `.yaml`は既存eligible extension、tracked pathはrepository content、CIとroot `check:secrets`はこのscannerを直接使う。
+  live traceで唯一のfile除外が`pnpm-lock.yaml`、finding出力がrelative path・line・pattern名だけでraw valueを出さない
+  ことを確認した。lockfile専用parserや二重scanではなく除外削除がshared root-cause fixである。
+- **Acceptance / tests:** (A1)temporary Git rootへclean `README.md`とsynthetic generic-secret assignmentを含む
+  `pnpm-lock.yaml`を置き、変更前はscannerがlockfileをskipしてexit 0、変更後はexit 1にする。(A2)findingは
+  `pnpm-lock.yaml:1: Generic secret assignment`を含み、synthetic valueを含まない。(A3)既存ignored `.env`、excluded
+  symlink、tracked symlink、`.npmrc`、allow marker、clean repository scanを変えず、同名directory/non-fileは従来の
+  scope failure/skipを維持する。(A4)production差分は`ignoredFiles`定義を削除し、旧branchを同名non-fileだけの
+  direct guardへ狭め、regular lockfileを既存text scanへ自然に流す。
+- **PIA / offline:** fixtureは分割構築したnon-live synthetic値だけを使い、credential、production data、PHI/PIIを
+  含めない。raw valueのlog、external send、network、cache、retry/offline stateを追加しない。
 - **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。read-only mapper完了済み。
-  `reviewer_roles`はmakerとは別の`pre_plan_reviewer`、`independent_verifier`、
-  `audit_data_integrity_security_reviewer`。APPROVED既存string不変条件を狭めず強制するR2で、security/privacy
-  relaxation、risk acceptance、production action、法令/請求/薬学判断がなく追加human gateなし。error reason enum、
-  canonical payload/hash、public type/schema、hydration、API/DB、別pathの変更またはcompatibilityとしてobject coercionを
-  許容する根拠が必要なら停止し再計画する。exact6を単一`WP-5225:` commitにし、rollbackは確定commitへの
-  `git revert <commit>`。rootだけがstate-mutating validation、exact-stage/commitを行い、push、merge、deploy、
-  migration applyは認可外。pre-plan reviewはfinding 0でPASS。初回frozen independent reviewのGreen command略記
-  Lowはexact command記録で閉じ、再凍結後のindependent + audit data-integrity/security reviewsはfinding 0でPASSした。
+  `reviewer_roles`はmakerとは別の`pre_plan_reviewer`、`independent_verifier`、`security_reviewer`。security gateの
+  coverageを狭めず強化するR2で、secret/IAM/dependency/workflow変更、risk acceptance、production actionがなく追加human
+  gateなし。live scanがfindingを返したらraw行/valueを読まず、revoke/rotationを含むhuman security authorityへ停止して
+  引き渡す。workflow、lockfile、dependency、pattern、別path変更が必要なら停止し再計画する。exact4を単一
+  `WP-5227:` commitにし、rollbackは確定commitへの`git revert <commit>`。rootだけがstate-mutating validation、
+  exact-stage/commitを行い、push、merge、deploy、migration applyは認可外。pre-plan reviewはfinding 0でPASSした。
 - **Validation evidence (UTC / exact command):**
-  - `2026-08-27T18:26:58Z–18:26:59Z` `pnpm --filter @yrese/events exec vitest run
-    src/events.test.ts` → exit 1 (expected Red: 1 failed / 45 passed)。
-  - `2026-08-27T18:26:59Z–18:27:00Z` `pnpm --filter @yrese/audit exec vitest run
-    src/audit.test.ts` → exit 1 (expected Red: 1 failed / 58 passed)。
-  - `2026-08-27T18:27:18.787Z–18:27:19.336Z` `pnpm --filter @yrese/events exec vitest run
-    src/events.test.ts` → exit 0、46 passed。
-  - `2026-08-27T18:27:19.401Z–18:27:19.974Z` `pnpm --filter @yrese/audit exec vitest run
-    src/audit.test.ts` → exit 0、59 passed。
-  - `2026-08-27T18:27:37.581Z–18:27:38.206Z` `pnpm --filter @yrese/events test` → exit 0、
-    1 file / 46 tests PASS。
-  - `2026-08-27T18:27:38.266Z–18:27:38.932Z` `pnpm --filter @yrese/audit test` → exit 0、
-    3 files / 195 tests PASS。
-  - `2026-08-27T18:27:38.990Z–18:27:39.925Z` events/audit `typecheck` → 各exit 0。
-  - `2026-08-27T18:27:39.984Z–18:27:40.786Z` `pnpm --filter @yrese/api exec vitest run
-    src/audit-log.test.ts` → exit 0、1 file / 78 tests PASS。
-  - `2026-08-27T18:27:40.848Z–18:27:41.501Z` `pnpm --filter @yrese/api typecheck` → exit 0。
-  - `2026-08-27T18:27:41.561Z–18:27:42.329Z` `pnpm check:boundaries` → exit 0。
-  - `2026-08-27T18:27:42.392Z–18:27:42.502Z` `git diff --check` → exit 0、diagnosticなし。
+  - `2026-08-27T19:00:45Z–19:01:09Z` `pnpm test:scripts` → exit 1 (expected Red: 2 assertions failed。
+    scannerはtracked `pnpm-lock.yaml`を読まず`Secret scan passed.`)。
+  - `2026-08-27T19:01:19Z–19:01:47Z` `pnpm test:scripts` → exit 0、script regression harness PASS。
+  - `2026-08-27T19:02:30Z` `node --check scripts/check-secrets.mjs` と
+    `node --check scripts/check-scripts.mjs` → 各exit 0。
+  - `2026-08-27T19:03:09Z–19:03:11Z` live exact4を重ねたtracked-only temporary snapshotをcwdとして
+    `pnpm check:secrets` → exit 0、`Secret scan passed.`。実tracked lockfileをscanし、protected untracked 3 pathは
+    snapshotへ含めず参照していない。temporary `node_modules`はcontent-addressable storeからsnapshot内だけへ生成され、
+    snapshotとともに削除済み。workspace package/lock/dependency差分なし。
+  - `2026-08-27T19:03:23Z` `git diff --check` → exit 0、diagnosticなし。
+  - 初回frozen independent reviewはregular file scanをAPPROVEしたが、同名directoryが旧scope failureを失うLowを
+    1件検出。初回security reviewはfinding 0だったがcandidate editにより両reviewを無効化した。
+  - `2026-08-27T19:09:41Z–19:10:00Z` `pnpm test:scripts` → exit 1 (expected remediation Red: 1 assertion failed。
+    同名directoryでscannerが`Secret scan passed.`)。
+  - `2026-08-27T19:10:11Z–19:10:31Z` `pnpm test:scripts` → exit 0、non-file direct guard追加後に
+    script regression harness PASS。
+  - `2026-08-27T19:11:25Z–19:11:45Z` final `pnpm test:scripts` → exit 0。
+  - final `node --check scripts/check-secrets.mjs` と `node --check scripts/check-scripts.mjs` → 各exit 0。
+  - `2026-08-27T19:11:56Z–19:11:58Z` final tracked-only exact4 overlay `pnpm check:secrets` → exit 0、
+    `Secret scan passed.`。`2026-08-27T19:12:05Z` `git diff --check` → exit 0。
+  - refrozen independent reviewは初回Low closureを確認してfinding 0でAPPROVE。refrozen security/supply-chain reviewも
+    finding 0でPASS。実lockfile内容、protected untracked、runtime/production/DBはreviewer未読・未検証である。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|

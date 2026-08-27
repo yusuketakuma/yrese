@@ -1960,6 +1960,35 @@ async function testSecretScanRepositoryContentScope() {
   const externalCredential = ["Synthetic", "Excluded", "Credential", "4321"].join("_");
   await writeText(externalTarget, `api_key='${externalCredential}'\n`);
 
+  const lockfileRoot = await initGitRoot("secrets-content-lockfile");
+  await writeText(path.join(lockfileRoot, "README.md"), "clean eligible text\n");
+  await writeText(path.join(lockfileRoot, "pnpm-lock.yaml"), `api_key='${externalCredential}'\n`);
+  const trackLockfile = spawnSync("git", ["add", "--", "README.md", "pnpm-lock.yaml"], {
+    cwd: lockfileRoot,
+    encoding: "utf8",
+  });
+  assert(trackLockfile.status === 0, `lockfile fixture should be tracked: ${outputOf(trackLockfile)}`);
+  const lockfileResult = runNode("check-secrets.mjs", [], { cwd: lockfileRoot });
+  const lockfileOutput = outputOf(lockfileResult);
+  assert(lockfileResult.status === 1, "a tracked pnpm lockfile must be scanned");
+  assert(
+    lockfileOutput.includes("pnpm-lock.yaml:1: Generic secret assignment"),
+    `a lockfile finding should include the relative path, line, and pattern name: ${lockfileOutput}`,
+  );
+  assert(!lockfileOutput.includes(externalCredential), "a lockfile finding must not expose the raw synthetic value");
+
+  const lockfileDirectoryRoot = await initGitRoot("secrets-content-lockfile-directory");
+  await writeText(path.join(lockfileDirectoryRoot, "README.md"), "clean eligible text\n");
+  await mkdir(path.join(lockfileDirectoryRoot, "pnpm-lock.yaml"));
+  const lockfileDirectoryResult = runNode("check-secrets.mjs", [], { cwd: lockfileDirectoryRoot });
+  const lockfileDirectoryOutput = outputOf(lockfileDirectoryResult);
+  assert(
+    lockfileDirectoryResult.status === 1 &&
+      lockfileDirectoryOutput.includes("Secret scan could not validate the protected repository scope.") &&
+      lockfileDirectoryOutput.includes("Scope was broken by: pnpm-lock.yaml"),
+    `a pnpm lockfile directory must preserve the scope failure: ${lockfileDirectoryOutput}`,
+  );
+
   // An excluded symlink is developer-local tooling, so it is skipped and named.
   const excludedRoot = await initGitRoot("secrets-content-excluded");
   await writeText(path.join(excludedRoot, "README.md"), "clean eligible text\n");
