@@ -2301,7 +2301,12 @@ async function testDependencyAuditWrapper() {
 
   await writeText(
     fakePnpmPath,
-    "#!/bin/sh\nprintf '%s\\n' 'not-json'\nprintf '%s\\n' 'ERR_PNPM_META_FETCH_FAIL RAW_LIVE_TRANSIENT_4182' >&2\nexit 1\n",
+    `#!/bin/sh\nprintf '%s\\n' '${JSON.stringify({
+      error: {
+        code: "ERR_PNPM_META_FETCH_FAIL",
+        message: "RAW_LIVE_TRANSIENT_4182",
+      },
+    })}'\nexit 1\n`,
   );
   const liveTransientResult = runNode("check-deps.mjs", [], {
     env: { ...process.env, PATH: `${fakeBin}${path.delimiter}${process.env.PATH ?? ""}` },
@@ -2313,6 +2318,42 @@ async function testDependencyAuditWrapper() {
     "recognized live transient should retain the WP-4177 fixed warning",
   );
   assert(!outputOf(liveTransientResult).includes("RAW_LIVE_TRANSIENT_4182"), "live transient must not replay child output");
+
+  const liveSpoofSentinel = "RAW_LIVE_SPOOF_4182";
+  const spoofedLiveReports = [
+    [
+      "embedded transient code",
+      {
+        error: {
+          code: "prefix ERR_PNPM_META_FETCH_FAIL suffix",
+          message: liveSpoofSentinel,
+        },
+      },
+    ],
+    [
+      "mixed vulnerability report",
+      {
+        error: {
+          code: "ERR_PNPM_META_FETCH_FAIL",
+          message: liveSpoofSentinel,
+        },
+        metadata: { vulnerabilities: { ...cleanCounts, high: 1 } },
+      },
+    ],
+  ];
+  for (const [label, report] of spoofedLiveReports) {
+    await writeText(
+      fakePnpmPath,
+      `#!/bin/sh\nprintf '%s\\n' '${JSON.stringify(report)}'\nexit 1\n`,
+    );
+    const result = runNode("check-deps.mjs", [], {
+      env: { ...process.env, PATH: `${fakeBin}${path.delimiter}${process.env.PATH ?? ""}` },
+    });
+    assert(result.status === 1, `${label} should fail closed`);
+    assert(result.stdout === "", `${label} should keep wrapper stdout empty`);
+    assert(result.stderr === fixedFailure, `${label} should use one fixed failure line`);
+    assert(!outputOf(result).includes(liveSpoofSentinel), `${label} must not replay child output`);
+  }
 
   await writeText(
     fakePnpmPath,

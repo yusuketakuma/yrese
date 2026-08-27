@@ -104,6 +104,23 @@ function isRegistryOrNetworkError(output) {
   return REGISTRY_OR_NETWORK_ERROR_PATTERNS.some((pattern) => pattern.test(output));
 }
 
+function isStructuredRegistryOrNetworkError(report) {
+  if (
+    !isPlainObject(report) ||
+    Object.keys(report).length !== 1 ||
+    !Object.hasOwn(report, "error") ||
+    !isPlainObject(report.error) ||
+    !Object.hasOwn(report.error, "code")
+  ) {
+    return false;
+  }
+  const code = report.error.code;
+  return (
+    typeof code === "string" &&
+    REGISTRY_OR_NETWORK_ERROR_PATTERNS.some((pattern) => pattern.exec(code)?.[0] === code)
+  );
+}
+
 function assertNoThresholdVulnerabilities(counts, auditLevel) {
   let vulnerableCount = 0;
   for (const severity of thresholdSeverities(auditLevel)) {
@@ -164,7 +181,6 @@ async function main() {
   }
 
   const result = runPnpmAudit(args.auditLevel);
-  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
   if (result.error !== undefined) {
     failDependencyAudit();
   }
@@ -188,7 +204,11 @@ async function main() {
     }
   }
 
-  if (result.status !== 0 && reportShapeError !== undefined && isRegistryOrNetworkError(output)) {
+  if (
+    result.status !== 0 &&
+    reportShapeError !== undefined &&
+    isStructuredRegistryOrNetworkError(report)
+  ) {
     console.warn(REGISTRY_WARNING_MESSAGE);
     return;
   }
