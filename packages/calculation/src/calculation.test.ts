@@ -163,6 +163,29 @@ function expectPointsOnly(
   throw new Error("expected points-only result");
 }
 
+describe("calculation rule input validation", () => {
+  it("rejects a non-string application key without invoking its trim method", () => {
+    let trimCalls = 0;
+    const value = {
+      trim() {
+        trimCalls += 1;
+        return "oral-medicine:1";
+      },
+    };
+
+    expect(() =>
+      createOralMedicinePreparationFeeRule(value as unknown as string),
+    ).toThrowError(new RangeError("applicationKey must be a non-empty string"));
+    expect(trimCalls).toBe(0);
+  });
+
+  it.each([null, undefined])("normalizes a type-erased application key to RangeError", (value) => {
+    expect(() =>
+      createOralMedicinePreparationFeeRule(value as unknown as string),
+    ).toThrowError(new RangeError("applicationKey must be a non-empty string"));
+  });
+});
+
 describe("calculate", () => {
   it("always returns BLOCKED for an empty ruleset", () => {
     const result = calculate(request(), { rules: [] });

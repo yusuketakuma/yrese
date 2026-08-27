@@ -180,7 +180,7 @@ function freezeBlocker(blocker: CalculationBlocker): CalculationBlocker {
 }
 
 function assertNonEmptyString(value: string, label: string): void {
-  if (value.trim().length === 0) {
+  if (!isNonEmptyString(value)) {
     throw new RangeError(`${label} must be a non-empty string`);
   }
 }

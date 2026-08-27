@@ -1,34 +1,35 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5230 frozen reviews PASS / local landing pending):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5231 frozen reviews PASS / local landing pending):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5229はlocal commit `d381f0e`へ着地済み。current requestのrepository全体
-  refactoringを継続し、次の最小complete sliceとしてWP-5230だけをclaimする。WP-5226はpre-planで
+- **Direction / ownership:** WP-5230はlocal commit `940b02e`へ着地済み。current requestのrepository全体
+  refactoringを継続し、次の最小complete sliceとしてWP-5231だけをclaimする。WP-5226はpre-planで
   downstream verifierを含むrevoked Proxy totality gapが判明し、元exact4では安全に完結しないため未着手でdeferする。Codex rootだけが
   `active_root_writer`、state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5230-reception-summary-date-binding`、base/HEAD
-  `d381f0e211f4a88da5caec1fa082a43ff617f282`。push / mergeは行わない。
-- **Dirty ownership:** `apps/web/app/api/operations-client.ts`、`apps/web/app/api/operations-client.test.ts`、
+- **Git boundary:** current branch `refactor/wp-5231-calculation-application-key-primitive`、base/HEAD
+  `940b02e9618fddb4a8ee0f47c0d10d8083e488a3`。push / mergeは行わない。
+- **Dirty ownership:** `packages/calculation/src/index.ts`、`packages/calculation/src/calculation.test.ts`、
   `Plans.md`、`State.md` の
   exact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
   `ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5230 / READY=0。Web受付集計clientでcontract-valid responseのdateを要求日へ
-  結び付け、mismatchを既存`INVALID_RESPONSE`へ閉じる。contracts/OpenAPI、API/service/DB、caller DOM/copy/CSS、auth/scope、
+- **Active plan / boundary:** CURRENT=WP-5231 / READY=0。calculation共通`assertNonEmptyString`を既存primitive-string
+  helperへ一本化する。CAL-004/CAL-003、points/formula/rule/evidence、public signature/export、trace/contracts/apps/DB/UI/CSS、
   package/dependency、APPROVED SSOTは変更しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** 既存synthetic count-only responseだけをfixtureに使い、患者identity、credential、production
-  data、PHI/PII、保存、log、external send、network、cache、retry/offline stateを追加しない。
-- **Process gate:** mapper/root traceでoperations client、2 consumer、contracts/OpenAPI、API route/service、既存queue date guard、
-  exact4を確認済み。API-006 equalityはqueue precedent、summary equalityはcurrent producer/consumer相関の事実に限定し、
-  normative contractとは主張しない。別日の件数表示をfixed unknown errorへ閉じるR2で追加human gateなし。初回pre-plan
-  MEDIUMのauthority表現を修正し、再reviewはfinding 0でPASS。frozen independent + data-integrity/privacy reviewもfinding 0でPASSした。
-- **Validation / rollback:** expected Red 1件後、operations-client focused 18、Web 64 files / 747 tests、contracts operations-status
-  28、API operations route/service 33、各package typecheck、boundaries、tracked diff checkをexit 0で実行した。exact commands/UTCは
-  `Plans.md`へ記録済み。record-only最終照合後にexact4の単一`WP-5230:` commitを作り、rollbackは確定commitへの
-  `git revert <commit>`。
+- **Security / privacy / offline:** synthetic object/counter/nullish値だけをfixtureに使い、患者・処方・薬剤・請求data、credential、
+  production data、PHI/PII、保存、log、external send、network、cache、retry/offline stateを追加しない。
+- **Process gate:** packages mapper/root traceで共通assertion全caller、existing primitive helper、public factory boundary、APPROVED
+  CAL-004 identity意味論と既存production string型/validator、exact4を確認済み。tracked appsからのproduction callerは未観測で
+  active exploitとは主張しない。planned non-string/nullish invalid-inputの固定`RangeError`正規化だけをerror contract変更scopeに含める。
+  application identity型をfail closedにするR2で追加human gateなし。初回pre-plan MEDIUM/LOWをauthority/stop条件へ反映し、
+  再reviewはfinding 0でPASS。frozen independent + calculation/data-integrity reviewもfinding 0でPASSした。
+- **Validation / rollback:** expected Red 3件後、calculation focused 60/package 90/typecheck、trace 40/typecheck、calculation purity、
+  boundaries、tracked diff checkをexit 0で実行し、test簡素化後のfocused/package/typecheckも再PASSした。exact commands/UTCは
+  `Plans.md`へ記録済み。record-only最終照合後に
+  exact4の単一`WP-5231:` commitを作り、rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、
