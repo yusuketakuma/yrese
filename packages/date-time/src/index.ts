@@ -99,17 +99,6 @@ function daysInMonth(year: number, month: number): number {
   }
 }
 
-function assertCalendarDate(parts: CalendarDateParts): void {
-  assertYear(parts.year);
-  assertMonth(parts.month);
-  assertInteger(parts.day, "day");
-
-  const maxDay = daysInMonth(parts.year, parts.month);
-  if (parts.day < 1 || parts.day > maxDay) {
-    throw new RangeError("day must be a real day in the provided month");
-  }
-}
-
 function padYear(year: number): string {
   return year.toString().padStart(4, "0");
 }
@@ -140,8 +129,19 @@ export class CalendarDate {
   }
 
   static fromParts(parts: CalendarDateParts): CalendarDate {
-    assertCalendarDate(parts);
-    return new CalendarDate(parts.year, parts.month, parts.day);
+    const year = parts.year;
+    assertYear(year);
+    const month = parts.month;
+    assertMonth(month);
+    const day = parts.day;
+    assertInteger(day, "day");
+
+    const maxDay = daysInMonth(year, month);
+    if (day < 1 || day > maxDay) {
+      throw new RangeError("day must be a real day in the provided month");
+    }
+
+    return new CalendarDate(year, month, day);
   }
 
   compare(other: CalendarDate): -1 | 0 | 1 {

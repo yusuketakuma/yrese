@@ -126,6 +126,68 @@ describe("CalendarDate", () => {
     expect(() => CalendarDate.fromParts({ year: 2026, month: 1, day: 1.2 })).toThrow(RangeError);
   });
 
+  it("constructs from the same parts it validates", () => {
+    let yearReads = 0;
+    let monthReads = 0;
+    let dayReads = 0;
+    const calendarDate = CalendarDate.fromParts({
+      get year() {
+        yearReads += 1;
+        return yearReads < 3 ? 2026 : 0;
+      },
+      get month() {
+        monthReads += 1;
+        return monthReads < 3 ? 12 : 13;
+      },
+      get day() {
+        dayReads += 1;
+        return dayReads < 4 ? 31 : 32;
+      },
+    });
+
+    expect({ yearReads, monthReads, dayReads, value: calendarDate.toString() }).toEqual({
+      yearReads: 1,
+      monthReads: 1,
+      dayReads: 1,
+      value: "2026-12-31",
+    });
+  });
+
+  it("validates each part before reading the next", () => {
+    let monthReads = 0;
+    let dayReads = 0;
+    expect(() =>
+      CalendarDate.fromParts({
+        get year() {
+          return 0;
+        },
+        get month(): number {
+          monthReads += 1;
+          throw new Error("month getter must not run");
+        },
+        get day(): number {
+          dayReads += 1;
+          throw new Error("day getter must not run");
+        },
+      }),
+    ).toThrow(new RangeError("year must be between 1 and 9999"));
+    expect({ monthReads, dayReads }).toEqual({ monthReads: 0, dayReads: 0 });
+
+    expect(() =>
+      CalendarDate.fromParts({
+        year: 2026,
+        get month() {
+          return 13;
+        },
+        get day(): number {
+          dayReads += 1;
+          throw new Error("day getter must not run");
+        },
+      }),
+    ).toThrow(new RangeError("month must be between 1 and 12"));
+    expect(dayReads).toBe(0);
+  });
+
   it("compares and checks equality", () => {
     const earlier = CalendarDate.fromString("2026-07-08");
     const same = CalendarDate.fromString("2026-07-09");

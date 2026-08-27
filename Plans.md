@@ -34,21 +34,21 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5238 は local commit `ab05c4c`。WP-5239 は同 commit から `refactor/wp-5239-claim-month-calendar-date-validation` を作成済み |
+| Candidate branch | WP-5239 は local commit `121bce4`。WP-5240 は同 commit から `refactor/wp-5240-calendar-date-parts-snapshot` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | ClaimMonth partsを1回snapshotして同一値を検証・構築し、CalendarDate導出も同factoryへ集約する exact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5238 local landing、WP-5239 review Medium閉鎖・final frozen reviews finding 0・local landing pending、compiled CSS予算12 KiBを維持) |
+| Candidate scope | CalendarDate partsをvalidation順に1回だけ読み、検証した同じ値で構築する exact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5239 local landing、WP-5240 Red→Green / affected gates PASS・frozen reviews finding 0・local landing pending、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5239 exact2 code/test候補で、`ClaimMonth.fromParts`のcheck/use再読と`fromCalendarDate`のvalidation迂回をsnapshot + factory reuseで同時に閉じる |
-| Main blocker | initial frozen reviewsのMediumはRed→Greenで閉鎖し、affected gatesとfinal frozen reviews finding 0まで完了。record rereview、exact stage、local landingを残す。WP-5235はSSOT-first gate、WP-5226は元exact4不完結でdefer中 |
-| Required verification | pre-planでREADYならdate-time focused/package Red→Green・typecheck、calculation affected gates、boundaries、exact4 path-set/diff、frozen independent + date-time/data-integrity reviewを要求する |
+| Current critical path | WP-5240 exact2 code/test候補で、`CalendarDate.fromParts`の検証後accessor再読をone-shot sequential localsへ収束する |
+| Main blocker | live trace、pre-plan、Red→Green、affected gates、frozen reviews finding 0まで完了。record rereview、exact stage、local landingを残す。WP-5235はSSOT-first gate、WP-5226は元exact4不完結でdefer中 |
+| Required verification | pre-planでREADYならdate-time focused/package Red→Green・typecheck、calculation affected gates、API/Web typecheck、boundaries、exact4 path-set/diff、frozen independent + date-time/data-integrity reviewを要求する |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5239である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5240である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,54 +73,50 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5239(ClaimMonth parts snapshot + CalendarDate validation reuse、R2 READY)1 件である。**
-WP-5238 は local commit `ab05c4c` で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5240(CalendarDate parts sequential snapshot、R2 READY)1 件である。**
+WP-5239 は local commit `121bce4` で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** `ClaimMonth.fromCalendarDate`がprivate constructorを直接呼びyear/month検証を迂回し、既存`fromParts`も
-  検証後にaccessorを再読して構築するため、plain invalid partsとchanging getterの双方からinvalid ClaimMonthを生成できるroot causeを
-  修正候補とする。`fromParts`でyearを読んで検証後にmonthを読んで検証し、同じlocal値で構築する。`fromCalendarDate`も同factoryへrouteする。
-  新validator/error/型は作らない。
+- **Purpose / layer:** one-caller private `assertCalendarDate(parts)`はyear/month/dayを検証した後にaccessorを再読し、
+  `CalendarDate.fromParts`もconstructor引数で再読するため、stateful getterから検証値と異なるinvalid CalendarDateを生成できる。
+  one-caller helperを削除し、factory内でyear read→assert、month read→assert、day read→safe-integer/real-day assertを行い、同じlocal値で構築する。
+  既存validatorと`daysInMonth`だけを再利用し、新helper/error/型は作らない。
 - **Allowed / forbidden:** exact4候補は `packages/date-time/src/index.ts`、`packages/date-time/src/date-time.test.ts`、`Plans.md`、`State.md`。
-  それ以外、特にCalendarDate/ClaimMonthのpublic type/signature、valid formatting/compare/next/prev、timezone、claim-month締め意味論、
+  pre-plan finding 0前はrecords 2 pathだけを変更する。それ以外、特にCalendarDate/wrapper/ClaimMonthのpublic type/signature、
+  valid formatting/compare/equality、timezone、claim-month締め意味論、
   calculation/API/DB、package/dependency、UI/CSS、APPROVED SSOT、schema/migrationは変更禁止。保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** APPROVED MOD-011は`@yrese/date-time`を診療系暦日正本とし、APPROVED MOD-004はClaimMonthを
-  CalendarDate導出の値objectとして登録する。既存`fromParts`がClaimMonth year/month invariantの単一validatorであり、仕様追加ではなく
-  factory間driftの収束候補である。GBrain code sourceにyreseがなくblastは`not_found`のためlive tracked code/callerを正本にした。
-  tracked direct callerは既存testだけだがpublic exported runtime factoryである。live plain objectは`2026-13`を生成した。changing getterでは
-  fromPartsがyear/monthを各2回読み`0000-13`を生成した。既存fromPartsはstable month=13を
-  `RangeError("month must be between 1 and 12")`で拒否し、valid CalendarDateは`2026-08`を維持した。
-- **Acceptance / tests:** (A1)type-erased invalid month/year/unsafe integerは既存assertionのexact RangeError/messageで拒否する。
-  (A2)changing getterのyear/monthは各1回だけsnapshotされ、検証した`2026-12`と同じ値を構築する。(A3)actual CalendarDateからの
-  year/month/toStringとfromString/fromParts/compare/next/prev結果は不変。(A4)production差分はClaimMonth.fromPartsのlocal snapshotと
-  fromCalendarDateの既存factory routingだけ。(A5)timezone、月次締め、算定・請求意味論を変更しない。
+- **Authority / evidence:** APPROVED MOD-011はCalendarDateの実カレンダー検証を`@yrese/date-time`の正本責務とし、APPROVED MOD-004は
+  `{year,month,day}`からの構築とwrapper共有を登録する。本候補はpublic型/valid semanticsを変えず、同factory内のcheck/use driftを閉じる
+  internal data-integrity hardeningである。GBrain code sourceにyreseがなくblastは`not_found`のためlive tracked code/callerを正本にした。
+  `assertCalendarDate`のcallerはfromParts 1件だけで、fromString、3 wrapper、API受付、Web受付が同factoryへrouteする。live changing getterは
+  year/month/dayを各3/3/4回読み、検証後の値で`0000-13-32`を生成した。stable invalid partsは既存RangeErrorで拒否される。
+- **Acceptance / tests:** (A1)changing getterのyear/month/dayは各1回だけ読み、検証した`2026-12-31`と同じ値を構築する。
+  (A2)invalid yearはmonth/day getterを読まず既存exact RangeError、invalid monthはday getterを読まず既存exact RangeErrorでfail-fastする。
+  (A3)unsafe/non-integer day、存在しない日、leap yearの既存RangeError/messageとvalid fromString/fromParts/wrapper/compare/equality結果を維持する。
+  (A4)production差分はone-caller helper削除とCalendarDate.fromParts内の既存validator sequential reuseだけ。
+  (A5)timezone、ClaimMonth、算定・請求、API/DB/UI意味論を変更しない。
 - **PIA / offline:** fixtureはsynthetic number objectだけで、患者・処方・請求data、credential、production data、PHI/PII、保存、log、
   external send、network、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。read-only mapperとroot live traceは完了。pre-planはR2、
-  MOD-004/MOD-011改版不要、追加human gate不要を確認し、1行案のTOCTOU findingを本snapshot + routingへ訂正後finding 0でREADYとした。
-  `reviewer_roles`は`pre_plan_reviewer`、`independent_verifier`、
-  `date_time_data_integrity_reviewer`。CalendarDate.fromPartsの同型gapは別候補で、package-wide invariant完了を主張しない。
-  valid behavior、timezone/締め境界、calculation/API/DB、別path変更が必要なら停止。READY後exact4を単一`WP-5239:` commit、
+- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。root live traceとread-only pre-planは完了。
+  pre-planはfinding 0 / R2 READY、MOD-004/MOD-011改版不要、追加human gate不要を確認した。
+  `reviewer_roles`は`pre_plan_reviewer`、`independent_verifier`、`date_time_data_integrity_reviewer`。
+  public/error/valid behavior、timezone/締め境界、calculation/API/DB、別path変更が必要なら停止。READY後exact4を単一`WP-5240:` commit、
   rollbackは確定commitへの`git revert <commit>`。
   rootだけがvalidator/stager/committer。push、merge、deploy、migration/DDL/DMLは認可外。timeboxはREADY後のactive root作業60分
   (外部review待ち除外)または単一TDD/review/commit cycleの早い方。
 - **Validation evidence (UTC / exact command):**
-  - `2026-08-27T23:22:16Z` `pnpm --filter @yrese/date-time exec vitest run src/date-time.test.ts` → exit 1
-    (expected Red: invalid CalendarDate 3件がthrowせず、changing getterは2回ずつ読まれ`0000-13`を生成。既存13件PASS)。
-  - `2026-08-27T23:22:35Z` 同command → exit 0、17/17 PASS。
-  - initial frozen independent + date-time/data-integrity reviewsは同じMediumを検出した。simultaneous destructureがinvalid yearの検証前に
-    hostile month getterを実行し、既存year RangeError/error precedenceを破るため、sequential read/assertへ訂正した。
-  - `2026-08-27T23:30:03Z` 同focused command → exit 1(expected Red: hostile month getter Error、既存17件PASS)。
-    `23:30:14Z` → 18/18 PASS。fixture型注釈後の`23:30:51Z`最終focusedも18/18 PASS。
-  - `2026-08-27T23:30:52Z` `pnpm --filter @yrese/date-time test` → 18/18 PASS、続くdate-time typecheck exit 0。
-  - `2026-08-27T23:30:53Z` `pnpm --filter @yrese/calculation test` → 90/90 PASS、続くcalculation typecheck exit 0。
-  - `2026-08-27T23:30:54Z` `pnpm check:boundaries` → exit 0。code/test frozen SHA-256は
-    `930e3e41a0fe4e9846eda27c0dff577606b97fdaea8feae8512e451fad7777a8`、reviewed exact4 packet SHA-256は
-    `dbc5dbff1410c4e064ac563c87b13b992549f13b6b610e7327a06f2a5149f82c`。final independent + date-time/data-integrity
-    rereviewsはともにfinding 0。DB integration、network、production runtimeは実行しない。
+  - pre-plan finding 0 / R2 READY。
+  - `2026-08-27T23:42:43Z` `pnpm --filter @yrese/date-time exec vitest run src/date-time.test.ts` → exit 1
+    (expected Red: getter read 3/3/4、value `0000-13-32`。既存+fail-fast 19件PASS)。
+  - `2026-08-27T23:42:58Z` 同command → 20/20 PASS。
+  - `2026-08-27T23:43:11Z` `pnpm --filter @yrese/date-time test` → 20/20 PASS、`23:43:12Z` date-time typecheck exit 0。
+  - `2026-08-27T23:43:12Z` `pnpm --filter @yrese/calculation test` → 90/90 PASS、`23:43:13Z` calculation typecheck exit 0。
+  - `2026-08-27T23:43:13Z` API typecheck、`23:43:14Z` Web typecheckと`pnpm check:boundaries` → 各exit 0。
+  - code/test frozen SHA-256は`42a31cb86c618f62df02ff9afa673c03505919ccc1f0f8c22ebc8f229e11cd0a`、reviewed exact4
+    packet SHA-256は`14612da65dd1fdf40288e8724a7462e84e07ddd73c2f9f8159b55b2f6e74f6b3`。frozen independent +
+    date-time/data-integrity reviewsはともにfinding 0。DB integration、browser、network、production runtimeは実行しない。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
-| CalendarDate.fromParts accessor snapshot | WP-5239外のfollow-up候補。changing getterで`0000-13-32`生成をlive再現したが、ClaimMonth限定sliceへ混ぜない | packages/date-time live runtime / MOD-004 / MOD-011 |
 | date-time terminal-line candidate | NOT_A_BUG。live Node 26/V8でCalendarDate/ClaimMonthはLF/CR/CRLF/U+2028/U+2029 suffixを既にRangeError拒否 | packages/date-time live runtime / MOD-011 |
 | WP-5235 EventEnvelope root input guard | SSOT_UPDATE_REQUIRED。APPROVED MOD-009がSSOT改版→review→実装を要求するため未着手 | MOD-009 / live package trace |
 | WP-4250 | FINALIZED / APPROVED(SSOT 改版のみ)。local commit `89275d2` | 下の決定記録 |
@@ -191,6 +187,14 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5239 — ClaimMonth validation-order snapshot(2026-08-28)
+
+- **Status:** `COMMITTED_LOCAL 121bce4 / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** ClaimMonth partsをyear→month順に1回だけ読み、同じlocal値で検証・構築し、CalendarDate導出を既存factoryへ集約。
+  public signature、valid date/month、timezone/締め、calculation/API/DB、MOD-004/MOD-011は不変。
+- **Gate:** initial Red 4件とreview-closure Red 1件→date-time focused/package 18、calculation 90、両typecheck、boundaries、path/diff PASS。
+  frozen reviewersの同一Medium validation-order findingを閉じ、final/record rereviewsはfinding 0。
 
 ### WP-5238 — Audit identifier primitive guard(2026-08-28)
 

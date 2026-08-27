@@ -1,38 +1,36 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5239 review Medium closure / final frozen reviews finding 0 / local landing pending):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5240 affected gates PASS / frozen reviews finding 0 / local landing pending):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5238はlocal commit `ab05c4c`へ着地済み。date-time terminal-line候補はlive runtimeで既に拒否される
-  `NOT_A_BUG`。WP-5235 EventEnvelope root guardはMOD-009改版前提で未着手。current requestをWP-5239のpre-plan判定で継続する。
+- **Direction / ownership:** WP-5239はlocal commit `121bce4`へ着地済み。date-time terminal-line候補はlive runtimeで既に拒否される
+  `NOT_A_BUG`。WP-5235 EventEnvelope root guardはMOD-009改版前提で未着手。current requestをWP-5240のpre-plan判定で継続する。
   WP-5226は元exact4では安全に完結しないためdefer中。Codex rootだけが`active_root_writer`、
   state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5239-claim-month-calendar-date-validation`、base/HEAD
-  `ab05c4c68e0ed361112a4b080501519b3f68d704`。push / mergeは行わない。
+- **Git boundary:** current branch `refactor/wp-5240-calendar-date-parts-snapshot`、base/HEAD
+  `121bce40fbc3b4dfbd07d98ebfe27b6ff396b85a`。push / mergeは行わない。
 - **Dirty ownership:** exact4は `packages/date-time/src/index.ts`、`packages/date-time/src/date-time.test.ts`、`Plans.md`、`State.md`。
-  pre-plan PASS前はrecords 2 pathだけを変更し、PASS後の現在は同じexact4全pathが変更中である。exact4だけを本local landing対象とする。
+  pre-plan finding 0前の現在はrecords 2 pathだけを変更し、READY後も同じexact4だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、
   `ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5239 / READY=0。`ClaimMonth.fromParts`でyearを読んで検証後にmonthを読んで検証し、
-  同じlocal値で構築する。`fromCalendarDate`のdirect constructorも同factoryへrouteし、plain invalid partsとchanging getterの双方を閉じる。
-  public type/signature、valid date/month behavior、timezone/締め境界、calculation/API/DB、UI/CSS、APPROVED SSOTは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5240 / READY=0。one-caller `assertCalendarDate(parts)`を削除し、
+  `CalendarDate.fromParts`でyear→month→dayを順に1回だけ読み、その場で既存validatorへ通して同じlocal値で構築する候補。
+  public type/signature、valid calendar/wrapper behavior、timezone/締め境界、ClaimMonth、calculation/API/DB、UI/CSS、APPROVED SSOTは変更しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
 - **Security / privacy / offline:** fixtureはsynthetic number objectだけで、credential、production data、PHI/PII、保存、log、
   external send、network、cache、retry/offline stateを追加しない。
-- **Process gate:** rootがAPPROVED MOD-004/MOD-011、live date-time/calculation caller、runtime invalid month `2026-13`、
-  fromParts changing getter `0000-13`、CalendarDate follow-up `0000-13-32`、既存RangeError、GBrain blast not_found、exact4候補を確認済み。
-  pre-planはR2/SSOT改版不要/追加human gate不要を確認し、1行案のTOCTOU findingをsnapshot + routingへ訂正後finding 0でREADYとした。
-  CalendarDate.fromParts同型gapは別候補で、package-wide完了を主張しない。
+- **Process gate:** rootがAPPROVED MOD-004/MOD-011、one-caller helper、fromString/3 wrapper/API/Web caller、runtime changing getter
+  `0000-13-32`とyear/month/day read 3/3/4、既存RangeError、GBrain blast not_found、exact4候補を確認済み。
+  read-only pre-planはfinding 0 / R2 READY、SSOT改版不要、追加human gate不要を確認した。
   SSOT/valid behavior/timezone/締め境界/calculation/API/DB変更が必要なら停止する。
-- **Validation / rollback:** initial Red 4件後のcandidateに対し、frozen independent + date-time/data-integrity reviewsがともに
-  year検証前のmonth getter実行をMediumで検出した。追加expected Red 1件でhostile month getter Errorを再現し、sequential read/assertへ修正後、
-  date-time focused/package 18、calculation package 90、date-time/calculation typecheck、boundariesはexit 0。code/test frozen SHA-256は
-  `930e3e41a0fe4e9846eda27c0dff577606b97fdaea8feae8512e451fad7777a8`、reviewed exact4 packet SHA-256は
-  `dbc5dbff1410c4e064ac563c87b13b992549f13b6b610e7327a06f2a5149f82c`。final両rereviewはfinding 0。
-  DB integration、network、production runtimeは実行しない。
-  exact4の単一`WP-5239:` commit、rollbackは確定commitへの`git revert <commit>`。
+- **Validation / rollback:** expected Redはgetter read 3/3/4・`0000-13-32`を再現し、sequential snapshot後はdate-time focused/package 20、
+  calculation package 90、date-time/calculation/API/Web typecheck、boundariesがexit 0。code/test frozen SHA-256は
+  `42a31cb86c618f62df02ff9afa673c03505919ccc1f0f8c22ebc8f229e11cd0a`、reviewed exact4 packet SHA-256は
+  `14612da65dd1fdf40288e8724a7462e84e07ddd73c2f9f8159b55b2f6e74f6b3`。frozen両reviewはfinding 0。
+  DB integration、browser、network、production runtimeは実行しない。exact4の単一`WP-5240:` commit、rollbackは確定commitへの
+  `git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、
