@@ -34,15 +34,15 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5220 は local commit `0c99bd8`。WP-5221 は同 commit から `refactor/wp-5221-operations-row-snapshots` を作成済み |
+| Candidate branch | WP-5221 は local commit `6bd6296`。WP-5222 は同 commit から `refactor/wp-5222-legacy-orphan-row-snapshot` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | API Postgres operations readerの3 direct query projectionを既存DB row snapshot/own-property authorityへ収束する exact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5221 Red→Green candidate validation、compiled CSS予算12 KiBを維持) |
+| Candidate scope | Postgres reception commandのlegacy-orphan read projectionだけを既存DB row snapshot/own-property/instant authorityへ収束する exact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5221 local landing、WP-5222 pre-plan claim、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5221 exact2で、operations adapterが迂回している既存のdescriptor/Proxy-safe DB row authorityを3 direct readerへ適用する |
-| Main blocker | WP-5221のmachine gateとfrozen R2 independent/API-contract reviewはfinding 0でPASS。record-only再凍結とrootのexact-stage/local commitを残す。WP-5217BはAPI-006/MOD-008/SEC-004の3 gate未成立で継続保留 |
-| Required verification | Red 5件後、2026-08-27T15:58:03Z–15:58:06Zにfocused test、API suite、API typecheckをexit 0で再実行。APIは31 files / 963 tests PASS（`TEST_DATABASE_URL`不在でintegration 8 files / 62 tests SKIP）。tracked/new-file diff checkとfrozen R2 reviewsもPASS |
+| Current critical path | WP-5222 exact2で、operations outbox summaryへ到達するlegacy-orphan DB readerを既存のdescriptor/Proxy-safe authorityへ通す |
+| Main blocker | WP-5222のpre-plan/machine gateとfrozen R2 independent/API-contract reviewはfinding 0でPASS。record-only再凍結とrootのexact-stage/local commitを残す。WP-5217BはAPI-006/MOD-008/SEC-004の3 gate未成立で継続保留 |
+| Required verification | DB-free Red 4件後、2026-08-27T16:23:16Z–16:23:19Zにfocused 5 PASS / 12 integration SKIP、API 32 files / 968 tests PASS・7 files / 62 tests SKIP、API typecheck、tracked diff checkをexit 0で再実行。`TEST_DATABASE_URL`不在。frozen R2 reviewsを要求 |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
@@ -73,49 +73,45 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5221(Postgres operations row snapshots、R2)1 件である。**
-WP-5220 は local commit `0c99bd8` で着地済み。READYは0件である。
+**CURRENT は WP-5222(legacy-orphan row snapshot、R2)1 件である。**
+WP-5221 は local commit `6bd6296` で着地済み。READYは0件である。
 
-- **Purpose / layer:** `PostgresOperationsReadService`内のoutbox、reception、latest-migrationの3 direct
-  query readerが迂回している既存 `database-row.ts` / `instant.ts` authorityを再利用し、DB resultを
-  descriptor/Proxy-safeな固定projectionへ変換してからoperations summaryを組み立てる。対象domainは
-  operations read、implementation layerはAPI Postgres adapterだけである。
-- **Allowed / forbidden:** exact4は `apps/api/src/db/operations-read.ts`、
-  `apps/api/src/db/operations-read.test.ts`、`Plans.md`、`State.md`。それ以外、特にoperations route/service、
-  `database-row.ts` / `instant.ts`、`reception-command.ts`、`migration-runner.ts`、SQL文/parameter、
-  contract/OpenAPI、auth scope、schema/migration/DDL/DML、audit/write path、CSS、dependencyは変更禁止。
-  保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** 同一APIのpatient/reception adapterが既存 `snapshotDatabaseQueryRows` /
-  `snapshotUnboundedDatabaseQueryRows`、`readDatabaseRowOwnDataProperty`、`snapshotDatabaseInstant`を
-  DB projection authorityとして使用し、hostile row-set/rowを固定invariant errorへ閉じる。operationsは既存
-  `operationsSummaryInvariantErrorMessage`を再利用し、算定・請求・帳票・法令logicを変更しないため
-  新規evidence_idは不要。
-- **Acceptance / tests:** (A1) outbox/receptionはunbounded row-set snapshot、latest migrationは最大1件の
-  bounded snapshotを使う。各direct readerでmissing/inherited/sparse/accessor/Proxy/revoked-Proxyの
-  query result / rowsを固定invariant errorで拒否する。(A2)各row fieldはown data propertyだけを読み、
-  stringはprimitive、countは非負safe integer numberまたは10進数字だけのprimitive string(`/^\d+$/`)に
-  限定する。空白・指数・16進・小数・負値・object coercionを拒否する。(A3)instantは既存authority経由で
-  正常値を固定化し、不正値を拒否する。getter / Proxy trap / `valueOf` / `Symbol.toPrimitive`を実行せず、
-  raw detailを返さない。(A4)outbox/reception/latest各正常response、latest 0件/1件、2件以上のinvariant error、
-  tenant/pharmacy/dateを含む既存SQL parameterを1対1のsynthetic testで固定する。(A5)SQL本文、route scope/error、
-  contract shape、orphan source、`checkMigrationState`とその間接readerは不変とし、全operations DB readerの
-  安全化とは主張しない。dedicated Red→Green後、focused operations-read test、API suite/typecheck、
-  `git diff --check`を実行する。
-- **PIA / offline:** DBから既存の件数・enum・時刻・migration version/nameだけを読み、新規PHI/PII field、
-  保存、log、URL、metric、audit payload、cache、retry/offline stateを追加しない。fixtureはsyntheticのみ。
-  患者識別子をrouteへ運ばず、失敗は既存fixed invariant/route errorへ閉じる。
-- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root、`reviewer_roles`は
-  makerとは別のread-only contextによる `independent_verifier` + `api_contract_reviewer`。間接reader、
-  SQL、contract/OpenAPI、auth、migration、
-  audit/write pathの変更が必要なら停止し再計画する。exact4を単一 `WP-5221:` commitにし、rollbackは
-  そのcommitへの `git revert <commit>`。rootだけがexact-stage/commitし、push、merge、deploy、
-  migration applyは認可外である。mapper完了。初回pre-plan CHANGES_REQUIREDはexact path、test matrix、
-  decimal count規則、maker/checker分離を固定し、再checkはPASS。machine gateはRed 5件→focused 7 tests、
-  API 31 files / 963 tests PASS（`TEST_DATABASE_URL`不在でintegration 8 files / 62 tests SKIP）、API typecheck、
-  tracked/new-file diff checkがPASSした。再現コマンドは `pnpm --filter @yrese/api exec vitest run
-  src/db/operations-read.test.ts`、`pnpm --filter @yrese/api test`、`pnpm --filter @yrese/api typecheck`
-  （2026-08-27T15:58:03Z–15:58:06Z、全てexit 0）。live DB/runtime/deployは未検証、追加human gateはなく、
-  frozen independent/API-contract reviewはいずれもfinding 0でPASS。record-only再凍結後のlocal landingを残す。
+- **Purpose / layer:** `PostgresReceptionCreateCommand.listLegacyOrphans`だけが迂回している既存
+  `database-row.ts` / `instant.ts` authorityを再利用し、tenant/pharmacy限定queryの結果を固定projectionへ
+  変換してからoperations outbox summaryへ渡す。対象domainはreception reconciliation read、
+  implementation layerはAPI Postgres adapterだけである。
+- **Allowed / forbidden:** exact4は `apps/api/src/db/reception-command.ts`、
+  `apps/api/src/db/reception-command.integration.test.ts`、`Plans.md`、`State.md`。それ以外、特に
+  `database-row.ts` / `instant.ts` / `reception-repository.ts`、operations route/service、SQL文/parameter、
+  reception create/classify、audit/outbox/write path、contract/OpenAPI、auth scope、schema/migration/DDL/DML、
+  CSS、dependencyは変更禁止。保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** 同じreception adapterの既存 `snapshotUnboundedDatabaseQueryRows`、
+  `readDatabaseRowOwnDataProperty`、`snapshotDatabaseInstant`と既存reception row/row-set/timestamp invariant
+  errorを再利用する。算定・請求・帳票・法令logicを変更しないため新規evidence_idは不要。
+- **Acceptance / tests:** (A1) query resultをunbounded row-set snapshotへ通し、query result / `rows`の
+  accessor・Proxy・revoked Proxyを固定row-set invariant errorで拒否する。async ProxyはPromise assimilation用
+  `then`だけを許可し、semantic getter/trapとraw sentinelを実行・表示しない。(A2) `reception_id` /
+  `accepted_at`各々のmissing・inherited・accessor・object coercionをown primitive string / 既存instant authority
+  で拒否し、invalid instantとinstance `toISOString` overrideも固定messageへ閉じる。(A3)空結果と順序を保持した
+  2件の正常結果、tenant/pharmacy/aggregate/eventの4 parameter、query 1回、write未実行をsynthetic DB-free testで
+  固定する。このtestは既存 `describePostgres` の外側に置き、`TEST_DATABASE_URL`不在でも必ず実行する。
+  (A4)SQL本文、create/classify、audit/outbox/write、operations contractは不変。migration readerその他のraw DB
+  readerまで安全化したとは主張しない。focused Red→Green後、API suite/typecheckと `git diff --check`を実行する。
+- **PIA / offline:** 既存のreception reconciliation identifierと受付時刻だけを返し、新規patient field、保存、
+  log、URL、metric、audit payload、cache、retry/offline stateは追加しない。fixtureはsyntheticのみ。query scopeは
+  trusted tenant/pharmacy parameterのまま維持し、失敗は既存fixed invariantへ閉じる。
+- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root、`reviewer_roles`はmakerとは別の
+  read-only `independent_verifier` + `api_contract_reviewer`。SQL/parameter、create/classify、audit/outbox/write、
+  contract/auth、migration/DDL/DMLの変更が必要なら停止し再計画する。exact4を単一 `WP-5222:` commitにし、
+  rollbackはそのcommitへの `git revert <commit>`。rootだけがexact-stage/commitし、push、merge、deploy、
+  migration applyは認可外。WP-5221 mapperの残余reader inventoryとrootのlive caller/helper traceでmap済み。
+  migration-runner候補はmigration human-gateとの曖昧さを避けて未claim。実DB integrationは安全確認済み
+  disposable test DBだけに限定し、production/stagingまたはauthority不明URLなら停止する。pre-planはPASS。
+  DB-free Red 4件後、focused 5 tests、API 32 files / 968 tests、API typecheck、tracked diff checkがPASSし、
+  integration 7 files / 62 testsは`TEST_DATABASE_URL`不在でSKIP。再現コマンドは `pnpm --filter @yrese/api
+  exec vitest run src/db/reception-command.integration.test.ts`、`pnpm --filter @yrese/api test`、
+  `pnpm --filter @yrese/api typecheck`（2026-08-27T16:23:16Z–16:23:19Z、全てexit 0）。frozen
+  independent/API-contract reviewはいずれもfinding 0でPASSし、record-only再凍結後のlocal landingを残す。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|

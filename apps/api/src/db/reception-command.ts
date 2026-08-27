@@ -3,9 +3,17 @@ import type { Pool } from 'pg';
 
 import { appendAuditEventWithinTransaction } from './audit-repository.js';
 import {
+  readDatabaseRowOwnDataProperty,
+  snapshotUnboundedDatabaseQueryRows,
+} from './database-row.js';
+import {
+  databaseReceptionRowInvariantErrorMessage,
+  databaseReceptionRowSetInvariantErrorMessage,
+  databaseReceptionTimestampInvariantErrorMessage,
   runReceptionCreateWithinTransaction,
   snapshotPostgresReceptionCreate,
 } from './reception-repository.js';
+import { snapshotDatabaseInstant } from '../instant.js';
 import { createOwnDataPropertyReader } from '../own-data-property.js';
 import type { ReceptionCreateProvenance } from '../reception-repository.js';
 import {
@@ -246,10 +254,31 @@ export class PostgresReceptionCreateCommand implements ReceptionCreateCommand {
         ORDER BY r.accepted_at, r.reception_id`,
       [scope.tenantId, scope.pharmacyId, receptionCommandAggregateType, receptionCommandAuditEventType],
     );
-    return result.rows.map((row) => ({
-      receptionId: row.reception_id,
-      acceptedAt: row.accepted_at.toISOString(),
-    }));
+    const rows = snapshotUnboundedDatabaseQueryRows<unknown>(
+      result,
+      databaseReceptionRowSetInvariantErrorMessage,
+    );
+    return rows.map((row) => {
+      const receptionId = readDatabaseRowOwnDataProperty(
+        row,
+        'reception_id',
+        databaseReceptionRowInvariantErrorMessage,
+      );
+      if (typeof receptionId !== 'string') {
+        throw new Error(databaseReceptionRowInvariantErrorMessage);
+      }
+      return {
+        receptionId,
+        acceptedAt: snapshotDatabaseInstant(
+          readDatabaseRowOwnDataProperty(
+            row,
+            'accepted_at',
+            databaseReceptionTimestampInvariantErrorMessage,
+          ),
+          databaseReceptionTimestampInvariantErrorMessage,
+        ),
+      };
+    });
   }
 
   async classifyExisting(

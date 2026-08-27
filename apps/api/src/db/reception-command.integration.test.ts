@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Pool } from 'pg';
 
 import type { PatientSearchResult } from '@yrese/contracts';
@@ -16,7 +16,12 @@ import {
   PostgresReceptionCreateCommand,
   type PostgresReceptionCommandFaultInjection,
 } from './reception-command.js';
-import { PostgresReceptionRepository } from './reception-repository.js';
+import {
+  databaseReceptionRowInvariantErrorMessage,
+  databaseReceptionRowSetInvariantErrorMessage,
+  databaseReceptionTimestampInvariantErrorMessage,
+  PostgresReceptionRepository,
+} from './reception-repository.js';
 import { resolveTestDatabaseUrl } from './test-database-environment.js';
 
 /**
@@ -157,6 +162,200 @@ function buildCommand(
 ): PostgresReceptionCreateCommand {
   return new PostgresReceptionCreateCommand(pool, faultInjection);
 }
+
+const legacyOrphanSql = `SELECT r.reception_id, r.accepted_at
+         FROM reception_entries r
+        WHERE r.tenant_id = $1 AND r.pharmacy_id = $2
+          AND NOT EXISTS (
+            SELECT 1
+              FROM outbox_events o
+              JOIN audit_events a
+                ON a.tenant_id = o.tenant_id AND a.pharmacy_id = o.pharmacy_id
+               AND a.event_id = o.audit_event_id
+               AND a.event_body->>'auditEventType' = o.event_type
+               AND a.event_body->'targetRef'->>'kind' = o.aggregate_type
+               AND a.event_body->'targetRef'->>'id' = o.aggregate_id
+             WHERE o.tenant_id = r.tenant_id AND o.pharmacy_id = r.pharmacy_id
+               AND o.aggregate_type = $3 AND o.aggregate_id = r.reception_id
+               AND o.event_type = $4
+          )
+        ORDER BY r.accepted_at, r.reception_id`;
+
+function buildLegacyOrphanReader(queryResult: unknown): {
+  readonly command: PostgresReceptionCreateCommand;
+  readonly query: ReturnType<typeof vi.fn>;
+} {
+  const query = vi.fn(async () => queryResult);
+  return {
+    command: buildCommand({ query } as unknown as Pool),
+    query,
+  };
+}
+
+async function expectLegacyOrphanReadToReject(
+  queryResult: unknown,
+  errorMessage: string,
+): Promise<void> {
+  const { command } = buildLegacyOrphanReader(queryResult);
+  await expect(command.listLegacyOrphans(scope)).rejects.toEqual(new Error(errorMessage));
+}
+
+describe('PostgresReceptionCreateCommand legacy-orphan row projection', () => {
+  it('returns an empty snapshot and executes the scoped read exactly once', async () => {
+    const { command, query } = buildLegacyOrphanReader({ rows: [] });
+
+    await expect(command.listLegacyOrphans(scope)).resolves.toEqual([]);
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenCalledWith(legacyOrphanSql, [
+      scope.tenantId,
+      scope.pharmacyId,
+      receptionCommandAggregateType,
+      receptionCommandAuditEventType,
+    ]);
+    expect(String(query.mock.calls[0]?.[0])).toMatch(/^SELECT\b/u);
+  });
+
+  it('preserves row order without invoking a Date instance override', async () => {
+    const firstAcceptedAt = new Date('2026-07-30T00:31:00.000Z');
+    const secondAcceptedAt = new Date('2026-07-30T00:32:00.000Z');
+    const override = vi.fn(() => {
+      throw new Error('raw accepted_at override sentinel');
+    });
+    Object.defineProperty(firstAcceptedAt, 'toISOString', { value: override });
+    const { command, query } = buildLegacyOrphanReader({
+      rows: [
+        { reception_id: 'reception-orphan-001', accepted_at: firstAcceptedAt },
+        { reception_id: 'reception-orphan-002', accepted_at: secondAcceptedAt },
+      ],
+    });
+
+    await expect(command.listLegacyOrphans(scope)).resolves.toEqual([
+      { receptionId: 'reception-orphan-001', acceptedAt: '2026-07-30T00:31:00.000Z' },
+      { receptionId: 'reception-orphan-002', acceptedAt: '2026-07-30T00:32:00.000Z' },
+    ]);
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(override).not.toHaveBeenCalled();
+  });
+
+  it('rejects hostile query result and rows containers without invoking semantic traps', async () => {
+    let accessorCalls = 0;
+    const rowsAccessor = {};
+    Object.defineProperty(rowsAccessor, 'rows', {
+      get() {
+        accessorCalls += 1;
+        throw new Error('raw rows accessor sentinel');
+      },
+    });
+
+    let semanticProxyCalls = 0;
+    const queryResultProxy = new Proxy(
+      { rows: [] },
+      {
+        get(target, property, receiver) {
+          if (property === 'then') return undefined;
+          semanticProxyCalls += 1;
+          return Reflect.get(target, property, receiver);
+        },
+      },
+    );
+    const rowsProxy = new Proxy([], {
+      get(target, property, receiver) {
+        semanticProxyCalls += 1;
+        return Reflect.get(target, property, receiver);
+      },
+    });
+    const revokedRows = Proxy.revocable([], {});
+    revokedRows.revoke();
+    const indexedAccessor: unknown[] = [];
+    Object.defineProperty(indexedAccessor, '0', {
+      get() {
+        accessorCalls += 1;
+        throw new Error('raw row index accessor sentinel');
+      },
+    });
+    Object.defineProperty(indexedAccessor, 'length', { value: 1 });
+
+    for (const queryResult of [
+      rowsAccessor,
+      queryResultProxy,
+      { rows: rowsProxy },
+      { rows: revokedRows.proxy },
+      { rows: indexedAccessor },
+    ]) {
+      await expectLegacyOrphanReadToReject(queryResult, databaseReceptionRowSetInvariantErrorMessage);
+    }
+    expect(accessorCalls).toBe(0);
+    expect(semanticProxyCalls).toBe(0);
+  });
+
+  it('rejects non-own reception identifiers without invoking coercion or accessors', async () => {
+    const validAcceptedAt = new Date('2026-07-30T00:31:00.000Z');
+    let trapCalls = 0;
+    const inherited = Object.assign(Object.create({ reception_id: 'inherited-id' }), {
+      accepted_at: validAcceptedAt,
+    });
+    const accessor = { accepted_at: validAcceptedAt };
+    Object.defineProperty(accessor, 'reception_id', {
+      get() {
+        trapCalls += 1;
+        throw new Error('raw reception_id accessor sentinel');
+      },
+    });
+    const coercible = {
+      reception_id: {
+        toString() {
+          trapCalls += 1;
+          return 'coerced-id';
+        },
+      },
+      accepted_at: validAcceptedAt,
+    };
+
+    for (const row of [
+      { accepted_at: validAcceptedAt },
+      inherited,
+      accessor,
+      coercible,
+    ]) {
+      await expectLegacyOrphanReadToReject({ rows: [row] }, databaseReceptionRowInvariantErrorMessage);
+    }
+    expect(trapCalls).toBe(0);
+  });
+
+  it('rejects non-own or invalid accepted instants without invoking coercion or accessors', async () => {
+    let trapCalls = 0;
+    const inherited = Object.assign(Object.create({ accepted_at: '2026-07-30T00:31:00.000Z' }), {
+      reception_id: 'reception-orphan-inherited',
+    });
+    const accessor = { reception_id: 'reception-orphan-accessor' };
+    Object.defineProperty(accessor, 'accepted_at', {
+      get() {
+        trapCalls += 1;
+        throw new Error('raw accepted_at accessor sentinel');
+      },
+    });
+    const coercible = {
+      reception_id: 'reception-orphan-coercible',
+      accepted_at: {
+        toISOString() {
+          trapCalls += 1;
+          throw new Error('raw accepted_at coercion sentinel');
+        },
+      },
+    };
+
+    for (const row of [
+      { reception_id: 'reception-orphan-missing' },
+      inherited,
+      accessor,
+      coercible,
+      { reception_id: 'reception-orphan-invalid', accepted_at: new Date(Number.NaN) },
+    ]) {
+      await expectLegacyOrphanReadToReject({ rows: [row] }, databaseReceptionTimestampInvariantErrorMessage);
+    }
+    expect(trapCalls).toBe(0);
+  });
+});
 
 describePostgres('PostgresReceptionCreateCommand (WP-4050 atomic boundary)', () => {
   it('commits reception, reception.created audit event, and outbox intent atomically', async () => {
