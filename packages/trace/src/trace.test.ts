@@ -377,6 +377,16 @@ describe("createCalculationTrace", () => {
     ).toEqual(["EVD-A", "EVD-B", "EVD-C"]);
   });
 
+  it("rejects sparse evidence collection steps", () => {
+    const steps = new Array<{
+      readonly evidenceRefs: readonly { readonly evidenceId: string }[];
+    }>(1);
+
+    expect(() => collectCalculationTraceEvidenceIds(steps)).toThrow(
+      new RangeError("Trace arrays must be dense"),
+    );
+  });
+
   it("allows non-claim-affecting steps without evidence refs", () => {
     const trace = createCalculationTrace({
       inputsSummary,
@@ -428,6 +438,40 @@ describe("createCalculationTrace", () => {
 });
 
 describe("createLegalTrace", () => {
+  it("rejects sparse evidence refs", () => {
+    expect(() =>
+      createLegalTrace({
+        targetType: "feature",
+        targetId: "feature:claim-preview",
+        evidenceRefs: new Array<EvidenceRef>(1),
+        humanReviewRequired: true,
+      }),
+    ).toThrow(new RangeError("Trace arrays must be dense"));
+  });
+
+  it("rejects inherited evidence refs without invoking accessors", () => {
+    let accessorInvoked = false;
+    const prototype = Object.create(Array.prototype) as EvidenceRef[];
+    Object.defineProperty(prototype, 0, {
+      get() {
+        accessorInvoked = true;
+        return officialEvidence;
+      },
+    });
+    const evidenceRefs = new Array<EvidenceRef>(1);
+    Object.setPrototypeOf(evidenceRefs, prototype);
+
+    expect(() =>
+      createLegalTrace({
+        targetType: "feature",
+        targetId: "feature:claim-preview",
+        evidenceRefs,
+        humanReviewRequired: true,
+      }),
+    ).toThrow(new RangeError("Trace arrays must be dense"));
+    expect(accessorInvoked).toBe(false);
+  });
+
   it("creates immutable legal trace mappings", () => {
     const trace = createLegalTrace({
       targetType: "feature",

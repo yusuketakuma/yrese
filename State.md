@@ -1,35 +1,35 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5221 landed + WP-5222 claim):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5222 landed + WP-5223 claim):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5221はlocal commit `6bd6296`へ着地済み。current requestのrepository全体
-  refactoringを継続し、次の最小complete sliceとしてWP-5222だけをclaimする。Codex rootだけが
+- **Direction / ownership:** WP-5222はlocal commit `69f8ebb`へ着地済み。current requestのrepository全体
+  refactoringを継続し、次の最小complete sliceとしてWP-5223だけをclaimする。Codex rootだけが
   `active_root_writer`、state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5222-legacy-orphan-row-snapshot`、base/HEAD
-  `6bd62961544c7c6658074859a26050518d27b52f`。push / mergeは行わない。
-- **Dirty ownership:** `apps/api/src/db/reception-command.ts`、`apps/api/src/db/reception-command.integration.test.ts`、
+- **Git boundary:** current branch `refactor/wp-5223-trace-dense-arrays`、base/HEAD
+  `69f8ebbe0bc8bebb4445b7b6c5006c9728a38ccf`。push / mergeは行わない。
+- **Dirty ownership:** `packages/trace/src/index.ts`、`packages/trace/src/trace.test.ts`、
   `Plans.md`、`State.md` のexact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
   `ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5222 / READY=0。Postgres reception commandのlegacy-orphan
-  read projectionだけを既存row-set/own-property/instant authorityへ通す。SQL/parameter、create/classify、
-  operations route/service、contract/OpenAPI、auth scope、schema/migration/DDL/DML、audit/outbox/write path、
-  dependency、UI/CSS/copyは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5223 / READY=0。`@yrese/trace` private共通dense-array guardで
+  original配列をmap/iteration前に検証し、ordinary holeと継承index/accessorを値へ変換せず拒否する。
+  public type/enum/export、dense input behavior、calculation/contract consumer、算定/evidence意味論、
+  API/auth、schema/migration/DDL/DML、dependency、UI/CSS/copyは変更しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** 既存のreception reconciliation identifierと受付時刻だけを扱い、新規
-  patient field、保存、log、URL、metric、audit payload、cache、retry/offline stateはない。trusted
-  tenant/pharmacy query scopeを維持し、hostile DB resultはraw trapを実行せず既存fixed invariantへ閉じる。
-- **Process gate:** WP-5221 mapperの残余reader inventoryとrootのlive traceでcaller、既存DB row/instant
-  authority、exact4を確認済み。migration-runner候補はmigration human-gateとの曖昧さを避けて未claim。
-  R2、追加human gateなし、makerとは別のread-only independent/API-contract reviewを要求し、pre-planはPASS。
-- **Validation / rollback:** DB-free top-level testはRed 4件後に5 PASS / 12 integration SKIP。2026-08-27T16:23:16Z–
-  16:23:19Zにfocused、API 32 files / 968 tests、API typecheck、tracked diff checkをexit 0で再実行した。
-  `TEST_DATABASE_URL`不在でintegration 7 files / 62 testsはSKIP。実PostgreSQL integrationは安全確認済み
-  disposable test DBだけに限定し、production/stagingまたはauthority不明URLなら停止する。independent /
-  API-contract reviewはfinding 0でPASSし、record-only再凍結後のlocal landingを残す。
-  exact4の単一 `WP-5222:` commitを作り、rollbackは確定commitへの `git revert <commit>`。
+- **Security / privacy / offline:** syntheticなin-memory array shapeだけを検証し、新規patient field、保存、
+  log、URL、metric、audit payload、network、cache、retry/offline stateはない。PHI/PII/production dataは使わない。
+- **Process gate:** common-package mapperとrootのlive caller traceでprivate shared helper、public factory、
+  exact4を確認済み。audit reader候補はverified Oracle advisoryでも完全tamper可視化契約が未解消のため
+  未claim。R2、追加human gateなし、makerとは別のread-only independent/trace-contract reviewを要求する。
+  production/test edit前pre-plan reviewとfrozen exact4 hash `e8a1626…c708`の両final reviewはfinding 0でPASSした。
+- **Validation / rollback:** 初回frozen reviewのexact command記録不足と、map前の継承index/accessorおよび
+  public collector疎配列gapをexact4内で反映。通常hole Red 1件と追加Red 2件後、2026-08-27T17:33:03Z–
+  17:33:04Zにfocused/package各40 PASS、typecheck/diff checkをexit 0で再実行し、exact command/UTC/exitは
+  `Plans.md` Current WIPへ記録した。frozen independent/trace-contract reviewはfinding 0でPASSし、
+  record-only再凍結後のlocal landingを残す。public contractまたは算定/evidence意味論の変更が必要なら停止する。
+  exact4の単一 `WP-5223:` commitを作り、rollbackは確定commitへの `git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

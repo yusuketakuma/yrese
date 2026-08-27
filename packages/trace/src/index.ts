@@ -192,7 +192,16 @@ function assertArray(value: unknown, label: string): void {
   }
 }
 
+function assertDenseArray<T>(values: readonly T[]): void {
+  for (let index = 0; index < values.length; index += 1) {
+    if (!Object.hasOwn(values, index)) {
+      throw new RangeError("Trace arrays must be dense");
+    }
+  }
+}
+
 function freezeArray<T>(values: readonly T[]): readonly T[] {
+  assertDenseArray(values);
   return Object.freeze([...values]);
 }
 
@@ -247,6 +256,10 @@ function freezeInputsSummary(summary: CalculationInputsSummary): CalculationInpu
   if (summary.ruleVersions !== undefined) {
     assertArray(summary.ruleVersions, "inputsSummary.ruleVersions");
   }
+  assertDenseArray(summary.ids);
+  assertDenseArray(summary.dates);
+  assertDenseArray(summary.masterVersions);
+  assertDenseArray(summary.ruleVersions ?? []);
 
   return Object.freeze({
     ids: freezeArray(summary.ids.map(freezeTraceIdRef)),
@@ -305,6 +318,7 @@ function freezeStep(step: CalculationTraceStep): CalculationTraceStep {
     throw new RangeError("CalculationTraceStep stepStatus is not supported");
   }
 
+  assertDenseArray(step.evidenceRefs);
   const evidenceRefs = freezeArray(step.evidenceRefs.map(freezeEvidenceRef));
   if (step.affectsClaim && evidenceRefs.length === 0) {
     throw new RangeError("Claim-affecting calculation steps require at least one evidenceRef");
@@ -327,8 +341,10 @@ export function collectCalculationTraceEvidenceIds<T extends string>(
     readonly rounding?: { readonly evidenceId: T } | undefined;
   }[],
 ): readonly T[] {
+  assertDenseArray(steps);
   const ids = new Set<T>();
   for (const step of steps) {
+    assertDenseArray(step.evidenceRefs);
     for (const ref of step.evidenceRefs) {
       ids.add(ref.evidenceId);
     }
@@ -343,6 +359,7 @@ export function createCalculationTrace(input: CreateCalculationTraceInput): Calc
   assertNonEmptyString(input.masterVersion, "masterVersion");
   assertNonEmptyString(input.calculationRuleVersion, "calculationRuleVersion");
 
+  assertDenseArray(input.steps);
   const steps = freezeArray(input.steps.map(freezeStep));
 
   return Object.freeze({
@@ -363,6 +380,7 @@ export function createLegalTrace(input: CreateLegalTraceInput): LegalTrace {
     throw new RangeError("LegalTrace humanReviewRequired must be a boolean");
   }
 
+  assertDenseArray(input.evidenceRefs);
   return Object.freeze({
     targetType: input.targetType,
     targetId: input.targetId,

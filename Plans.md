@@ -34,15 +34,15 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5221 は local commit `6bd6296`。WP-5222 は同 commit から `refactor/wp-5222-legacy-orphan-row-snapshot` を作成済み |
+| Candidate branch | WP-5222 は local commit `69f8ebb`。WP-5223 は同 commit から `refactor/wp-5223-trace-dense-arrays` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | Postgres reception commandのlegacy-orphan read projectionだけを既存DB row snapshot/own-property/instant authorityへ収束する exact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5221 local landing、WP-5222 pre-plan claim、compiled CSS予算12 KiBを維持) |
+| Candidate scope | `@yrese/trace` の共通dense-array guardだけでoriginal配列をmap/iteration前に検証し、holeや継承indexを値へ変換しない exact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5222 local landing、WP-5223 frozen reviews PASS、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5222 exact2で、operations outbox summaryへ到達するlegacy-orphan DB readerを既存のdescriptor/Proxy-safe authorityへ通す |
-| Main blocker | WP-5222のpre-plan/machine gateとfrozen R2 independent/API-contract reviewはfinding 0でPASS。record-only再凍結とrootのexact-stage/local commitを残す。WP-5217BはAPI-006/MOD-008/SEC-004の3 gate未成立で継続保留 |
-| Required verification | DB-free Red 4件後、2026-08-27T16:23:16Z–16:23:19Zにfocused 5 PASS / 12 integration SKIP、API 32 files / 968 tests PASS・7 files / 62 tests SKIP、API typecheck、tracked diff checkをexit 0で再実行。`TEST_DATABASE_URL`不在。frozen R2 reviewsを要求 |
+| Current critical path | WP-5223 exact2で、trace factory/collectorのoriginal配列をmap/iteration前にown dense検証し、疎配列や継承indexを拒否する |
+| Main blocker | WP-5223のmachine gatesとfrozen R2 independent/trace-contract reviewsはfinding 0でPASS。record-only再凍結とexact-stage/local landingを残す。WP-5217BはAPI-006/MOD-008/SEC-004の3 gate未成立で継続保留 |
+| Required verification | 通常hole Red 1件、継承index/accessorとpublic collectorのRed 2件後、2026-08-27T17:33:03Z–17:33:04Zにfocused/package各40 PASS、trace typecheck、tracked diff checkをexit 0で再実行。exact commandsはCurrent WIPに記録。frozen exact4 hash `e8a1626…c708`の両R2 reviewsはfinding 0でPASS |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
@@ -73,45 +73,48 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5222(legacy-orphan row snapshot、R2)1 件である。**
-WP-5221 は local commit `6bd6296` で着地済み。READYは0件である。
+**CURRENT は WP-5223(trace dense-array boundary、R2)1 件である。**
+WP-5222 は local commit `69f8ebb` で着地済み。READYは0件である。
 
-- **Purpose / layer:** `PostgresReceptionCreateCommand.listLegacyOrphans`だけが迂回している既存
-  `database-row.ts` / `instant.ts` authorityを再利用し、tenant/pharmacy限定queryの結果を固定projectionへ
-  変換してからoperations outbox summaryへ渡す。対象domainはreception reconciliation read、
-  implementation layerはAPI Postgres adapterだけである。
-- **Allowed / forbidden:** exact4は `apps/api/src/db/reception-command.ts`、
-  `apps/api/src/db/reception-command.integration.test.ts`、`Plans.md`、`State.md`。それ以外、特に
-  `database-row.ts` / `instant.ts` / `reception-repository.ts`、operations route/service、SQL文/parameter、
-  reception create/classify、audit/outbox/write path、contract/OpenAPI、auth scope、schema/migration/DDL/DML、
+- **Purpose / layer:** `@yrese/trace` のprivate共通array境界が疎配列をspreadするとholeを明示的
+  `undefined`へ変換し、mapは継承index/accessorをown値へ実体化できるroot causeだけを閉じる。
+  original配列をmap/iteration前にdense own-index検証し、公開factory/collectorのdense behaviorは維持する。
+- **Allowed / forbidden:** exact4は `packages/trace/src/index.ts`、`packages/trace/src/trace.test.ts`、
+  `Plans.md`、`State.md`。それ以外、特にpublic type/enum/export、`packages/calculation`、
+  `packages/contracts`、算定・請求・帳票・法令logic、evidence意味論、API/auth、schema/migration/DDL/DML、
   CSS、dependencyは変更禁止。保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** 同じreception adapterの既存 `snapshotUnboundedDatabaseQueryRows`、
-  `readDatabaseRowOwnDataProperty`、`snapshotDatabaseInstant`と既存reception row/row-set/timestamp invariant
-  errorを再利用する。算定・請求・帳票・法令logicを変更しないため新規evidence_idは不要。
-- **Acceptance / tests:** (A1) query resultをunbounded row-set snapshotへ通し、query result / `rows`の
-  accessor・Proxy・revoked Proxyを固定row-set invariant errorで拒否する。async ProxyはPromise assimilation用
-  `then`だけを許可し、semantic getter/trapとraw sentinelを実行・表示しない。(A2) `reception_id` /
-  `accepted_at`各々のmissing・inherited・accessor・object coercionをown primitive string / 既存instant authority
-  で拒否し、invalid instantとinstance `toISOString` overrideも固定messageへ閉じる。(A3)空結果と順序を保持した
-  2件の正常結果、tenant/pharmacy/aggregate/eventの4 parameter、query 1回、write未実行をsynthetic DB-free testで
-  固定する。このtestは既存 `describePostgres` の外側に置き、`TEST_DATABASE_URL`不在でも必ず実行する。
-  (A4)SQL本文、create/classify、audit/outbox/write、operations contractは不変。migration readerその他のraw DB
-  readerまで安全化したとは主張しない。focused Red→Green後、API suite/typecheckと `git diff --check`を実行する。
-- **PIA / offline:** 既存のreception reconciliation identifierと受付時刻だけを返し、新規patient field、保存、
-  log、URL、metric、audit payload、cache、retry/offline stateは追加しない。fixtureはsyntheticのみ。query scopeは
-  trusted tenant/pharmacy parameterのまま維持し、失敗は既存fixed invariantへ閉じる。
+- **Authority / evidence:** stdlib `Object.hasOwn`だけを使うprivate `assertDenseArray`を共通authorityとし、
+  既存`freezeArray`とmap/iterationする各callerが値読取前に再利用する。dependency、public helper/error classは
+  追加しない。算定規則・evidence内容を変更しないため新規evidence_idは不要。
+- **Acceptance / tests:** (A1) syntheticな`new Array<EvidenceRef>(1)`を`createLegalTrace`へ渡すと
+  `RangeError`になり、`evidenceRefs: [undefined]`を返さない。(A2)継承index/accessorを持つ疎な
+  `evidenceRefs`もaccessorを実行せず同じ固定RangeErrorで拒否する。(A3)public
+  `collectCalculationTraceEvidenceIds`の疎なstepsも同じ固定RangeErrorで拒否する。(A4)denseな既存
+  LegalTrace/CalculationTraceの順序、値、immutability、evidence集約は不変。(A5)共通guard以外の
+  validation順序、public shape/type/enum/export、calculation/contract consumerを変更しない。Red→Green後、
+  focused `trace.test.ts`、`@yrese/trace` package test/typecheck、tracked diff checkを実行する。
+- **PIA / offline:** syntheticなin-memory配列shapeだけを検証し、新規patient field、保存、log、URL、
+  metric、audit payload、network、cache、retry/offline stateは追加しない。PHI/PII/production dataは使わない。
 - **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root、`reviewer_roles`はmakerとは別の
-  read-only `independent_verifier` + `api_contract_reviewer`。SQL/parameter、create/classify、audit/outbox/write、
-  contract/auth、migration/DDL/DMLの変更が必要なら停止し再計画する。exact4を単一 `WP-5222:` commitにし、
-  rollbackはそのcommitへの `git revert <commit>`。rootだけがexact-stage/commitし、push、merge、deploy、
-  migration applyは認可外。WP-5221 mapperの残余reader inventoryとrootのlive caller/helper traceでmap済み。
-  migration-runner候補はmigration human-gateとの曖昧さを避けて未claim。実DB integrationは安全確認済み
-  disposable test DBだけに限定し、production/stagingまたはauthority不明URLなら停止する。pre-planはPASS。
-  DB-free Red 4件後、focused 5 tests、API 32 files / 968 tests、API typecheck、tracked diff checkがPASSし、
-  integration 7 files / 62 testsは`TEST_DATABASE_URL`不在でSKIP。再現コマンドは `pnpm --filter @yrese/api
-  exec vitest run src/db/reception-command.integration.test.ts`、`pnpm --filter @yrese/api test`、
-  `pnpm --filter @yrese/api typecheck`（2026-08-27T16:23:16Z–16:23:19Z、全てexit 0）。frozen
-  independent/API-contract reviewはいずれもfinding 0でPASSし、record-only再凍結後のlocal landingを残す。
+  read-only `independent_verifier` + `trace_contract_reviewer`。public contract、算定/evidence意味論、
+  contract package、migration/DDL/DMLの変更が必要なら停止し再計画する。R2、追加human gateなし。
+  exact4を単一 `WP-5223:` commitにし、rollbackはそのcommitへの `git revert <commit>`。rootだけが
+  state-mutating validation、exact-stage/commitを行い、push、merge、deploy、migration applyは認可外。
+  audit reader候補はOracle verified advisoryでも完全tamper可視化契約が未解消のため未claimとした。
+  pre-plan reviewはfinding 0でPASS。初回Red 1件は旧実装がthrowせず失敗し、最初のguard後のfocused /
+  package test各38件、package typecheck、tracked diff checkはexit 0だった。初回frozen reviewで、独立checkerは
+  exact command記録不足、trace-contract checkerはmap前の継承index/accessorとcollector gapをMEDIUM指摘。
+  `assertDenseArray`をoriginal配列のmap/iteration前へ適用し、追加Red 2件をGreen化して両findingをexact4内で
+  反映した。frozen exact4 hash `e8a1626…c708`のindependent/trace-contract reviewsはいずれもfinding 0で
+  PASS。record-only再凍結後のlocal landingを残す。
+- **Validation evidence (UTC / exact command):**
+  - `2026-08-27T17:23:50Z` `pnpm --filter @yrese/trace exec vitest run src/trace.test.ts` → exit 1
+    (expected Red: 1 failed / 37 passed)。
+  - `2026-08-27T17:32:15Z` 同command → exit 1 (expected remediation Red: 2 failed / 38 passed)。
+  - `2026-08-27T17:33:03.148Z–17:33:03.661Z` 同command → exit 0、40 passed。
+  - `2026-08-27T17:33:03.661Z–17:33:04.218Z` `pnpm --filter @yrese/trace test` → exit 0、40 passed。
+  - `2026-08-27T17:33:04.218Z–17:33:04.597Z` `pnpm --filter @yrese/trace typecheck` → exit 0。
+  - `2026-08-27T17:33:04.597Z–17:33:04.644Z` `git diff --check` → exit 0、diagnosticなし。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
