@@ -15,10 +15,6 @@ import { PrescriptionOriginProvider } from "./prescriptions/prescription-origin-
 import { SystemModeBadge } from "./system-mode-badge";
 import "./globals.css";
 import "./operator-first.css";
-import "./operator-ux-refinement.css";
-import "./operator-first-navigation.css";
-import "./operator-adversarial-refinement.css";
-import "./operator-completion-refinement.css";
 
 export const metadata: Metadata = {
   title: "yrese 調剤レセプトコンピューター",

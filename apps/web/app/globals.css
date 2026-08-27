@@ -1,10 +1,130 @@
-/*
- * Baseline medical UI styles only. The active operator layer is loaded explicitly from
- * layout.tsx as operator-first.css followed by operator-ux-refinement.css.
- */
+/* L0 token authority. Component and responsive rules live in the imported cascade. */
 @import "./legacy.css";
 
 :root {
+  --color-white: #ffffff;
+  --color-bg: #f4f7fb;
+  --color-fg: #18213a;
+  --color-fg-muted: #667085;
+  --color-fg-strong: #344054;
+  --color-fg-subtle-strong: #3e4a61;
+  --color-fg-label: #445069;
+  --color-fg-list: #465169;
+  --color-fg-disabled: #475467;
+  --color-border: #d9dfeb;
+  --color-border-strong: #cbd3e1;
+  --color-surface: #eef2f8;
+  --color-surface-raised: var(--color-white);
+  --color-surface-muted: #f5f7fa;
+  --color-surface-sunken: #f0f2f5;
+  --color-accent: #5b43f1;
+  --color-accent-strong: #4726e6;
+  --color-accent-fg: #4326c9;
+  --color-accent-soft: #f0edff;
+  --color-accent-border: #cfc8ff;
+  --color-accent-border-soft: #c9c0ff;
+  --color-accent-border-pill: #d2caff;
+  --color-accent-border-floating: #cbc3ff;
+  --color-accent-border-menu: #d6d0ff;
+  --color-accent-surface-subtle: #fbfaff;
+  --color-info: #2563eb;
+  --color-info-fg: #175cd3;
+  --color-info-fg-strong: #1849a9;
+  --color-info-soft: #edf5ff;
+  --color-info-border: #bdd6ff;
+  --color-info-border-pill: #c1d9ff;
+  --color-info-border-banner: #b8d5ff;
+  --color-info-surface-subtle: #f7faff;
+  --color-success: #079455;
+  --color-success-fg: #087443;
+  --color-success-soft: #e9f8f0;
+  --color-success-border: #b8e9ce;
+  --color-warning: #dc6803;
+  --color-warning-fg: #b54708;
+  --color-warning-fg-strong: #7a3e00;
+  --color-warning-fg-banner: #7b3d00;
+  --color-warning-fg-disconnected: #8a3f00;
+  --color-warning-soft: #fff4e5;
+  --color-warning-border: #efc99e;
+  --color-warning-border-pill: #f0c692;
+  --color-warning-border-banner: #f2c086;
+  --color-warning-surface-subtle: #fffaf2;
+  --color-warning-surface-faint: #fffbf4;
+  --color-danger: #d92d20;
+  --color-danger-fg-strong: #8f1e15;
+  --color-danger-soft: #fff0ef;
+  --color-danger-border: #b42318;
+  --color-danger-border-rail: #eda9a2;
+  --color-danger-border-banner: #efa8a1;
+  --color-danger-border-pill: #efaaa4;
+  --color-danger-border-control: #f0aaa4;
+  --color-danger-surface-subtle: #fff8f7;
+  --color-status-ok-bg: #e9f7ef;
+  --color-status-pending-bg: #fff4d6;
+  --color-status-blocked-bg: #feeceb;
+  --color-status-neutral-bg: #eef1f4;
+  --color-status-attention-bg: #fff0df;
+  --color-mode-normal-bg: var(--color-status-ok-bg);
+  --color-mode-degraded-bg: var(--color-status-pending-bg);
+  --color-mode-local-only-bg: var(--color-status-blocked-bg);
+  --color-provisional-bg: var(--color-status-pending-bg);
   --color-focus: #6b4eff;
+  --color-control-fg: #3d365f;
+  --color-control-muted: #4b556d;
+  --color-control-surface-subtle: #f8f9fb;
+  --color-icon-muted: #5f6b82;
+  --color-table-fg: #4f5b70;
+  --color-table-head-bg: #f8f9fc;
+  --color-table-hover-bg: #fafaff;
+  --color-header-border: #e1e7f0;
+  --color-action-disabled-bg: #f2f4f7;
+  --color-command-link-border: #e2e0f5;
+  --color-command-suggestion-bg: #faf9ff;
+  --color-sidebar-start: #081c3e;
+  --color-sidebar-end: #0a315b;
+  --color-sidebar-current: #4657ed;
+  --color-sidebar-current-edge: #aeb7ff;
+  --color-sidebar-label: #9fb2cf;
+  --color-sidebar-link: #dbe6f5;
+  --color-sidebar-muted: #afc0d8;
+  --color-sidebar-fg-strong: #eef4fc;
+  --color-white-a07: rgb(255 255 255 / 0.07);
+  --color-white-a09: rgb(255 255 255 / 0.09);
+  --color-white-a12: rgb(255 255 255 / 0.12);
+  --color-white-a16: rgb(255 255 255 / 0.16);
+  --color-white-a26: rgb(255 255 255 / 0.26);
+  --color-white-a48: rgb(255 255 255 / 0.48);
+  --color-white-a96: rgb(255 255 255 / 0.96);
+  --color-white-a97: rgb(255 255 255 / 0.97);
+  --color-overlay-backdrop: rgba(0, 0, 0, 0.4);
+  --shadow-color-03: rgb(15 23 42 / 0.03);
+  --shadow-color-04: rgb(15 23 42 / 0.04);
+  --shadow-color-05: rgb(15 23 42 / 0.05);
+  --shadow-color-12: rgb(15 23 42 / 0.12);
+  --shadow-color-14: rgb(15 23 42 / 0.14);
+  --shadow-color-16: rgb(15 23 42 / 0.16);
+  --shadow-card: 0 1px 2px var(--shadow-color-04), 0 8px 24px var(--shadow-color-05);
+  --font-size-sm: 0.85rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.4rem;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
   --focus-ring: 3px solid var(--color-focus);
+  --header-height: 64px;
+  --sidebar-width: 178px;
+  --ux-font-caption: 0.8125rem;
+  --ux-font-small: 0.875rem;
+  --ux-font-body: 0.9375rem;
+  --ux-control-min: 40px;
+  --ux-control-primary: 44px;
+  --ux-patient-bar-offset: 5.5rem;
+}
+
+@media (max-width: 1240px) {
+  :root {
+    --sidebar-width: 158px;
+    --ux-patient-bar-offset: 7rem;
+  }
 }

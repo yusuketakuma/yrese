@@ -1,29 +1,37 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-27, WP-5215 local landing + WP-5216 claim):**
+> **ACTIVE SNAPSHOT (2026-08-27, WP-5211 candidate + 10 KiB CSS budget):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** current user reply 2026-08-27「承認」は、4画面のfull gate説明を上部
-  `PrototypeBanner`へ一元化し、rail/downstreamを短い参照にし、gate ID・unavailable-value safety
-  copyを保持したまま実データ面を先に置くWP-5216のhuman interpretationを承認した。Codex root が
-  唯一の `active_root_writer` である。
-- **Git boundary:** current branch `fix/wp-5216-warning-hierarchy`、HEAD
-  `47100b7cd831bf8b2698e64b97c419f26899d4ef`。WP-5215は同HEADでlocal landing済み。
-  WP-5216は未commit candidateで、push / mergeは行わない。
-- **Dirty ownership:** WP-5216 exact6 と Plans.md / State.md のexact8だけを本local landing対象とする。
-  `.harness-worktrees/`、
-  `artifacts/`、`ui-test-tools/` と secondary worktree の既存差分は user-owned / protected であり、
-  cleanup、merge、stageを行わない。
-- **Active plan:** Plans.md §17 の順序を維持し、CURRENT=WP-5216 warning hierarchy / READY=0。
-  exact paths、route別 gate ID、DOM順、test、rollbackは Plans.md §3 CURRENT recordを正本とする。
-- **WP-5216 boundary:** 既存 page composition、monthly-closingのgate参照copy、truthfulness testだけを
-  変更する。API、contract、schema、migration、domain state、action reason、data hook、患者context、
-  APPROVED SSOTは変更しない。
-  technical pre-planのMEDIUM 3件とdelta MEDIUM 1件はroute別ID集合・banner直後DOM assert・
-  monthly-closing全ID集約・R2 reviewer指定で解消し、medical-safety pre-planもPASS。
-- **Validation baseline:** WP-5216はhierarchy Red 1 / 737→Web 64 files / 737 tests、Web typecheck、
-  browser 36 route-viewports / 5 suites(Axe critical/serious 0、console error 0)、4画面目視、
-  `git diff --check`がPASS。frozen independent / medical-safety reviewはlanding時にpre-claimせず確認する。
+- **Direction / ownership:** current user instruction 2026-08-27「着手して」は、WP-5216後の
+  WP-5211 Phase Aを開始し、7 active CSSを3へ統合して単一token authorityへ収束するhuman start
+  gateを充足した。続く「css予算上限を緩和」はcompiled CSS gzip上限を固定10 KiB(10,240 bytes)
+  へ再設定した。source separate-file gzip非増加、pixel差0、CLS非増加は緩和しない。
+  Codex rootだけが `active_root_writer` である。
+- **Git boundary:** current branch `refactor/wp-5211-css-token-authority`、base/HEAD
+  `0782d860b4fabcca802f60f24fb7395d4146633c`。WP-5216は同HEADでlocal landing済み。
+  WP-5211はuncommitted candidateで、push / mergeは行わない。
+- **Dirty ownership:** WP-5211 exact9 と Plans.md / State.md のexact11だけを本local landing対象とする。
+  `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` と secondary worktree の既存差分は
+  user-owned / protectedであり、参照、cleanup、merge、stageを行わない。
+- **Active plan:** Plans.md §17 の順序を維持し、CURRENT=WP-5211 CSS token authority Phase A /
+  READY=0。exact paths、token/cascade/nowrap acceptance、測定gate、rollbackは Plans.md §3 CURRENT
+  recordを正本とする。
+- **WP-5211 boundary:** `globals.css` / `legacy.css` / `operator-first.css`へ既存CSS本文を同一順で統合し、
+  4 refinement CSSを削除、layout direct importを2つへ縮約する。top-level tokenとhex/rgb/rgba直値は
+  globalsへ集約する。DOM、文言、ARIA、contract、API、schema、domain state、dependency、
+  APPROVED SSOTは変更しない。nowrapは保持6 / 是正6のexact allowlist以外を増減しない。
+- **Pre-plan resolution:** UIX-001 §13.1のfile列挙は `source_snapshot_commit=9786fe8` のinventory、
+  §13.2がPhase A authorityであるため事前PRC-007改版は不要と判定した。read-only reviewer 1件は
+  SSOT更新をblocker、別reviewerはPASSと判断したため、Oracle 0.18.0 / verified GPT-5.6 Sol /
+  Pro thinkingで照合し、source実装着手可を確認した。Oracleはadvisoryでapprovalではない。
+- **Validation:** source baselineは7 files / 1,815 lines / 58,528 raw / separate gzip 15,170 /
+  concatenated gzip 12,361 bytes、compiledは47,660 raw / gzip 9,036 bytes。candidateは3 files /
+  1,871 lines / 62,548 raw / separate gzip 13,401 / concatenated gzip 12,682 bytes、compiledは
+  51,896 raw / gzip 9,672 bytesで、source baselineとfixed 10 KiB(10,240)の両gateを満たす。
+  Red 5→Web 64 files / 739 tests、typecheck / lint / build、static token / nowrap / cascade、
+  screenshot 36/36 pixel一致、CLS最大差0、browser 36 route-viewports / 5 suites(Axe critical/serious 0、
+  console error 0)、`git diff --check`がPASS。残るlanding gateはfrozen R2 technical reviewだけである。
 - **Preserved WP-5214 stop:** instant→JST helper共通化は APPROVED MOD-011 §4 が事前改版を要求するため
   `SSOT_UPDATE_REQUIRED`。既存local変換も変更しない。
 - **Preserved WP-5213 gap:** UIX-001 P-11 の二段階確認要素のみを充足した。権限確認要素は

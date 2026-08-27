@@ -1,6 +1,7 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+const appDirectory = new URL(".", import.meta.url);
 const globalsSource = readFileSync(
   new URL("./globals.css", import.meta.url),
   "utf8",
@@ -17,69 +18,114 @@ const legacySource = readFileSync(
   new URL("./legacy.css", import.meta.url),
   "utf8",
 );
-const completionSource = readFileSync(
-  new URL("./operator-completion-refinement.css", import.meta.url),
-  "utf8",
-);
-const duplicateRefinementUrl = new URL(
-  "./operator-first-refinement.css",
-  import.meta.url,
-);
+const removedStyleUrls = [
+  "./operator-ux-refinement.css",
+  "./operator-first-navigation.css",
+  "./operator-adversarial-refinement.css",
+  "./operator-completion-refinement.css",
+].map((path) => new URL(path, import.meta.url));
+const directColorLiteral = /#[0-9a-f]{3,8}\b|rgba?\(/i;
 
-describe("operator stylesheet load order", () => {
-  it("keeps one explicit cascade and loads completion corrections last", () => {
+describe("operator stylesheet authority", () => {
+  it("loads exactly one three-file cascade", () => {
+    expect(
+      readdirSync(appDirectory)
+        .filter((entry) => entry.endsWith(".css"))
+        .sort(),
+    ).toEqual(["globals.css", "legacy.css", "operator-first.css"]);
+    expect(removedStyleUrls.every((url) => !existsSync(url))).toBe(true);
+
     expect(globalsSource).toContain('@import "./legacy.css";');
     expect(globalsSource).not.toContain('@import "./operator.css";');
-
-    const baselineIndex = layoutSource.indexOf('import "./globals.css";');
-    const operatorIndex = layoutSource.indexOf(
+    expect(layoutSource.match(/import "\.\/[^\"]+\.css";/g)).toEqual([
+      'import "./globals.css";',
       'import "./operator-first.css";',
-    );
-    const refinementIndex = layoutSource.indexOf(
-      'import "./operator-ux-refinement.css";',
-    );
-    const navigationIndex = layoutSource.indexOf(
-      'import "./operator-first-navigation.css";',
-    );
-    const adversarialIndex = layoutSource.indexOf(
-      'import "./operator-adversarial-refinement.css";',
-    );
-    const completionIndex = layoutSource.indexOf(
-      'import "./operator-completion-refinement.css";',
-    );
+    ]);
 
-    expect(baselineIndex).toBeGreaterThanOrEqual(0);
-    expect(operatorIndex).toBeGreaterThan(baselineIndex);
-    expect(refinementIndex).toBeGreaterThan(operatorIndex);
-    expect(navigationIndex).toBeGreaterThan(refinementIndex);
-    expect(adversarialIndex).toBeGreaterThan(navigationIndex);
-    expect(completionIndex).toBeGreaterThan(adversarialIndex);
-    expect(layoutSource).not.toContain('import "./operator.css";');
-    expect(layoutSource).not.toContain(
-      'import "./operator-first-refinement.css";',
+    const cascadeMarkers = [
+      ".app-shell {",
+      ".skip-link {",
+      ".app-nav-group + .app-nav-group {",
+      '.table-scroll[tabindex="0"]:focus-visible {',
+      '.operator-rail[data-sticky="false"] {',
+    ].map((marker) => operatorSource.indexOf(marker));
+
+    expect(cascadeMarkers.every((index) => index >= 0)).toBe(true);
+    expect(cascadeMarkers).toEqual(
+      [...cascadeMarkers].sort((left, right) => left - right),
     );
-    expect(existsSync(duplicateRefinementUrl)).toBe(false);
+  });
+
+  it("keeps globals as the only token and literal-color authority", () => {
+    expect(globalsSource).toContain("--color-bg: #f4f7fb;");
+    expect(globalsSource).toContain("--color-focus: #6b4eff;");
+    expect(globalsSource).toContain("--shadow-card:");
+    expect(globalsSource).toContain("--ux-font-body: 0.9375rem;");
+    expect(legacySource).not.toContain(":root");
+    expect(operatorSource).not.toContain(":root");
+    expect(legacySource).not.toMatch(directColorLiteral);
+    expect(operatorSource).not.toMatch(directColorLiteral);
   });
 
   it("keeps keyboard focus visible on light controls and the dark sidebar", () => {
-    expect(globalsSource).toContain("--color-focus: #6b4eff;");
     expect(globalsSource).toContain(
       "--focus-ring: 3px solid var(--color-focus);",
     );
     expect(operatorSource).toMatch(
-      /\.app-sidebar\s*\{[^}]*--color-focus:\s*#fff;[^}]*--focus-ring:\s*3px solid var\(--color-focus\);/s,
+      /\.app-sidebar\s*\{[^}]*--color-focus:\s*var\(--[^)]+\);[^}]*--focus-ring:\s*3px solid var\(--color-focus\);/s,
     );
     expect(operatorSource).not.toMatch(
       /\.operator-command-row input:focus-visible\s*\{[^}]*outline:\s*0;/s,
     );
   });
 
-  it("lays out the desktop shell as a sidebar and workspace grid", () => {
+  it("keeps only the six reviewed nowrap exceptions", () => {
+    expect(operatorSource.match(/white-space:\s*nowrap/g)).toHaveLength(6);
+    expect(operatorSource).toMatch(
+      /\.visually-hidden\s*\{[^}]*white-space:\s*nowrap/s,
+    );
+    expect(operatorSource).toMatch(
+      /\.operator-command-label\s*\{[^}]*white-space:\s*nowrap/s,
+    );
+    expect(operatorSource).toMatch(
+      /\.operator-command-shortcut\s*\{[^}]*white-space:\s*nowrap/s,
+    );
+    expect(operatorSource).toMatch(
+      /\.app-nav-label\s*\{[^}]*white-space:\s*nowrap/s,
+    );
+    expect(operatorSource).toMatch(
+      /\.app-nav-group-label\s*\{[^}]*white-space:\s*nowrap/s,
+    );
+    expect(operatorSource).toMatch(
+      /\.app-nav \.app-nav-link\s*\{[^}]*white-space:\s*nowrap/s,
+    );
+
+    expect(operatorSource).not.toMatch(
+      /\.operator-profile strong,\s*\.operator-profile small\s*\{[^}]*white-space:\s*nowrap/s,
+    );
+    expect(operatorSource).not.toMatch(
+      /\.operator-command-suggestions a\s*\{[^}]*white-space:\s*nowrap/s,
+    );
+    expect(operatorSource).not.toMatch(
+      /\.operator-command-shortcut-hint\s*\{[^}]*white-space:\s*nowrap/s,
+    );
+    expect(operatorSource).not.toMatch(
+      /\.unsaved-work-status (?:strong|small|a)\s*\{[^}]*white-space:\s*nowrap/s,
+    );
+  });
+
+  it("preserves the desktop shell and final disabled-action correction", () => {
     expect(operatorSource).toMatch(
       /\.app-shell\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:/s,
     );
-    expect(completionSource).not.toMatch(
-      /\.app-sidebar\s*\{[^}]*background:/s,
+    expect(operatorSource).toContain(
+      '.integration-chip[data-state="partial"]',
+    );
+    expect(operatorSource).toContain(
+      '.prototype-action-shell > .operator-button[data-kind="primary"]:disabled',
+    );
+    expect(operatorSource).toMatch(
+      /\.prototype-action-shell > \.operator-button\[data-kind="primary"\]:disabled\s*\{[^}]*border-style:\s*dashed;[^}]*background:\s*var\(--[^)]+\);[^}]*opacity:\s*1;/s,
     );
   });
 
@@ -88,18 +134,9 @@ describe("operator stylesheet load order", () => {
     expect(legacySource).not.toContain(".reception-registration-form h3,");
   });
 
-  it("projects partial UI connectivity and neutralizes unavailable primary actions in the final cascade", () => {
+  it("keeps partial UI connectivity truthful", () => {
     expect(layoutSource).toContain('data-state="partial"');
     expect(layoutSource).toContain("段階接続");
     expect(layoutSource).not.toContain('data-state="prototype"');
-    expect(completionSource).toContain(
-      '.integration-chip[data-state="partial"]',
-    );
-    expect(completionSource).toContain(
-      '.prototype-action-shell > .operator-button[data-kind="primary"]:disabled',
-    );
-    expect(completionSource).toMatch(
-      /\.prototype-action-shell > \.operator-button\[data-kind="primary"\]:disabled\s*\{[^}]*border-style:\s*dashed;[^}]*background:\s*#f2f4f7;[^}]*opacity:\s*1;/s,
-    );
   });
 });
