@@ -4,15 +4,21 @@ import { randomUUID } from "node:crypto";
 import { readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+const invalidArgumentsErrorMessage = "SBOM arguments are invalid";
+
 function parseArgs(argv) {
   const args = { fromListJson: undefined, output: undefined };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--from-list-json") {
-      args.fromListJson = argv.at(index + 1);
+      const value = argv.at(index + 1);
+      if (value === undefined || value.startsWith("--")) throw new Error(invalidArgumentsErrorMessage);
+      args.fromListJson = value;
       index += 1;
     } else if (arg === "--output") {
-      args.output = argv.at(index + 1);
+      const value = argv.at(index + 1);
+      if (value === undefined || value.startsWith("--")) throw new Error(invalidArgumentsErrorMessage);
+      args.output = value;
       index += 1;
     } else {
       throw new Error(`unknown argument: ${arg}`);

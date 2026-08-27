@@ -34,15 +34,15 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5225 は local commit `938d4bb`。WP-5227 は同 commit から `refactor/wp-5227-lockfile-secret-scan` を作成済み |
+| Candidate branch | WP-5227 は local commit `61ebafe`。WP-5228 は同 commit から `refactor/wp-5228-sbom-argument-values` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | secret scannerのregular tracked `pnpm-lock.yaml` basename除外を削除し、既存`.yaml`走査へ戻す exact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5225 local landing、WP-5226 pre-plan却下、WP-5227 frozen reviews PASS / local landing pending、compiled CSS予算12 KiBを維持) |
+| Candidate scope | SBOM CLIのvalue flag欠落をparser入口でfail closedにする exact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5227 local landing、WP-5228 frozen reviews PASS / local landing pending、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5227 exact2 code/testで、tracked lockfileを既存eligible text scanへ通し、secret gateのsilent coverage holeを閉じる |
-| Main blocker | WP-5227の初回frozen independent reviewが同名directoryのscope fail-closed退行Lowを検出し、追加Red→最小guard→Greenで閉じた。final machine gatesと再frozen independent/security reviewはfinding 0でPASSし、record-only最終照合とlocal landingを残す。WP-5226はrevoked event-element Proxyとdownstream verifierのtotality gapによりexact4では安全に完結せず未着手でdeferする |
-| Required verification | 最終script harness、両script syntax check、protected untrackedを含めないtracked candidate secret scan、tracked diff check、frozen R2 reviewsはPASS |
+| Current critical path | WP-5228 exact2 code/testで、`--from-list-json` / `--output`のmissing/flag-shaped operandを成功やfallbackへ流さず固定argument errorへ閉じる |
+| Main blocker | WP-5228のpre-plan review、Red、最小parser guard、script/syntax/SBOM/diff gates、frozen independent/security-supply-chain reviewはfinding 0でPASS。record-only最終照合とlocal landingを残す。WP-5226は元exact4では安全に完結せずdefer中 |
+| Required verification | script harness Red→Green、両script syntax check、fixture-backed `check:sbom`、tracked diff check、frozen R2 reviewsを要求する |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
@@ -73,57 +73,45 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5227(lockfile secret-scan coverage、R2)1 件である。**
-WP-5225 は local commit `938d4bb` で着地済み。READYは0件である。
+**CURRENT は WP-5228(SBOM value-flag validation、R2)1 件である。**
+WP-5227 は local commit `61ebafe` で着地済み。READYは0件である。
 
-- **Purpose / layer:** `scripts/check-secrets.mjs`がregular tracked `pnpm-lock.yaml`をbasenameだけで無条件除外するため、
-  repository内容であるlockfileを読まずにPASSできるroot causeを修正する。専用除外を削除し、既存`.yaml`判定と
-  generic secret detectorをそのまま再利用する。新helper、pattern、allowlist、dependencyは作らない。
-- **Allowed / forbidden:** exact4は `scripts/check-secrets.mjs`、`scripts/check-scripts.mjs`、`Plans.md`、`State.md`。
-  `pnpm-lock.yaml`、package manifest、workflow、dependency、secret pattern/heuristic、scope/symlink/ignore semantics、
-  output payload、APPROVED SSOT、product/API/DB/UI/CSSは変更禁止。保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** scanner自身のdocumented scopeはworking directory配下のeligible text fileすべてで、
-  `.yaml`は既存eligible extension、tracked pathはrepository content、CIとroot `check:secrets`はこのscannerを直接使う。
-  live traceで唯一のfile除外が`pnpm-lock.yaml`、finding出力がrelative path・line・pattern名だけでraw valueを出さない
-  ことを確認した。lockfile専用parserや二重scanではなく除外削除がshared root-cause fixである。
-- **Acceptance / tests:** (A1)temporary Git rootへclean `README.md`とsynthetic generic-secret assignmentを含む
-  `pnpm-lock.yaml`を置き、変更前はscannerがlockfileをskipしてexit 0、変更後はexit 1にする。(A2)findingは
-  `pnpm-lock.yaml:1: Generic secret assignment`を含み、synthetic valueを含まない。(A3)既存ignored `.env`、excluded
-  symlink、tracked symlink、`.npmrc`、allow marker、clean repository scanを変えず、同名directory/non-fileは従来の
-  scope failure/skipを維持する。(A4)production差分は`ignoredFiles`定義を削除し、旧branchを同名non-fileだけの
-  direct guardへ狭め、regular lockfileを既存text scanへ自然に流す。
-- **PIA / offline:** fixtureは分割構築したnon-live synthetic値だけを使い、credential、production data、PHI/PIIを
-  含めない。raw valueのlog、external send、network、cache、retry/offline stateを追加しない。
+- **Purpose / layer:** `scripts/check-sbom.mjs`の`parseArgs`が`--from-list-json` / `--output`の次tokenを
+  検証せず、missing operandをlive `pnpm list` fallbackまたはoutput省略の成功へ流すroot causeを修正する。
+  既存`check-deps.mjs`と同じprimitive patternで、値の欠落または次tokenがflagならparser入口で固定errorへ閉じる。
+  新helper、CLI option、dependencyは作らない。
+- **Allowed / forbidden:** exact4は `scripts/check-sbom.mjs`、`scripts/check-scripts.mjs`、`Plans.md`、`State.md`。
+  package manifest、workflow、lockfile/dependency、SBOM graph/validation/CycloneDX内容、live pnpm invocation、publish/atomic
+  rename/cleanup semantics、APPROVED SSOT、product/API/DB/UI/CSSは変更禁止。保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** root `check:sbom`とCIは同CLIを直接使い、既存valid fixtureは両value flagを渡す。live traceで
+  trailing `--output`が`undefined`のままpublishを省略してsuccess logへ到達し、trailing `--from-list-json`がlive
+  `pnpm list`へfallbackすると確認した。sibling `check-deps` parserはmissing/flag-shaped operandを既にfail closedにする。
+- **Acceptance / tests:** (A1)既存valid list fixtureへtrailing `--output`を付けた実行は変更前exit 0 / success、変更後
+  exit 1で固定`SBOM arguments are invalid`を含み、successを含まない。(A2)trailing `--from-list-json`はPATHを空にした
+  fixture processでもload/fallback errorではなく同じfixed argument errorでexit 1にし、live pnpmを起動しない。
+  (A3)value位置が次の`--` flagなら同じfixed errorへ閉じる。(A4)valid fixture、malformed graph、output preservation、
+  atomic publish/cleanup、metadata non-leakの既存testsを変えず、production差分は両branchのlocal value guardだけにする。
+- **PIA / offline:** 既存synthetic package graphだけを使い、credential、production data、PHI/PII、raw registry response、
+  external send、network、cache、retry/offline stateを追加しない。
 - **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。read-only mapper完了済み。
-  `reviewer_roles`はmakerとは別の`pre_plan_reviewer`、`independent_verifier`、`security_reviewer`。security gateの
-  coverageを狭めず強化するR2で、secret/IAM/dependency/workflow変更、risk acceptance、production actionがなく追加human
-  gateなし。live scanがfindingを返したらraw行/valueを読まず、revoke/rotationを含むhuman security authorityへ停止して
-  引き渡す。workflow、lockfile、dependency、pattern、別path変更が必要なら停止し再計画する。exact4を単一
-  `WP-5227:` commitにし、rollbackは確定commitへの`git revert <commit>`。rootだけがstate-mutating validation、
-  exact-stage/commitを行い、push、merge、deploy、migration applyは認可外。pre-plan reviewはfinding 0でPASSした。
+  `reviewer_roles`はmakerとは別の`pre_plan_reviewer`、`independent_verifier`、`security_supply_chain_reviewer`。
+  release evidence checkerをfail closedにするR2で、risk acceptance、production action、secret/IAM変更がなく追加human gateなし。
+  workflow/package/lockfile/dependency、SBOM semantics、new CLI contract、live pnpm/networkをfixtureへ導入する必要が出たら停止し
+  再計画する。exact4を単一`WP-5228:` commitにし、rollbackは確定commitへの`git revert <commit>`。rootだけが
+  state-mutating validation、exact-stage/commitを行い、push、merge、deploy、migration applyは認可外。pre-plan review完了まで
+  code/testを編集しない。pre-plan reviewはfinding 0でPASSした。
 - **Validation evidence (UTC / exact command):**
-  - `2026-08-27T19:00:45Z–19:01:09Z` `pnpm test:scripts` → exit 1 (expected Red: 2 assertions failed。
-    scannerはtracked `pnpm-lock.yaml`を読まず`Secret scan passed.`)。
-  - `2026-08-27T19:01:19Z–19:01:47Z` `pnpm test:scripts` → exit 0、script regression harness PASS。
-  - `2026-08-27T19:02:30Z` `node --check scripts/check-secrets.mjs` と
+  - `2026-08-27T19:28:02Z–19:28:22Z` `pnpm test:scripts` → exit 1 (expected Red: 4 failures。
+    missing input/flag-shaped inputはload error、missing output/flag-shaped outputは誤ってSBOM success)。
+  - `2026-08-27T19:28:37Z–19:28:57Z` `pnpm test:scripts` → exit 0、script regression harness PASS。
+  - `2026-08-27T19:29Z` `node --check scripts/check-sbom.mjs` と
     `node --check scripts/check-scripts.mjs` → 各exit 0。
-  - `2026-08-27T19:03:09Z–19:03:11Z` live exact4を重ねたtracked-only temporary snapshotをcwdとして
-    `pnpm check:secrets` → exit 0、`Secret scan passed.`。実tracked lockfileをscanし、protected untracked 3 pathは
-    snapshotへ含めず参照していない。temporary `node_modules`はcontent-addressable storeからsnapshot内だけへ生成され、
-    snapshotとともに削除済み。workspace package/lock/dependency差分なし。
-  - `2026-08-27T19:03:23Z` `git diff --check` → exit 0、diagnosticなし。
-  - 初回frozen independent reviewはregular file scanをAPPROVEしたが、同名directoryが旧scope failureを失うLowを
-    1件検出。初回security reviewはfinding 0だったがcandidate editにより両reviewを無効化した。
-  - `2026-08-27T19:09:41Z–19:10:00Z` `pnpm test:scripts` → exit 1 (expected remediation Red: 1 assertion failed。
-    同名directoryでscannerが`Secret scan passed.`)。
-  - `2026-08-27T19:10:11Z–19:10:31Z` `pnpm test:scripts` → exit 0、non-file direct guard追加後に
-    script regression harness PASS。
-  - `2026-08-27T19:11:25Z–19:11:45Z` final `pnpm test:scripts` → exit 0。
-  - final `node --check scripts/check-secrets.mjs` と `node --check scripts/check-scripts.mjs` → 各exit 0。
-  - `2026-08-27T19:11:56Z–19:11:58Z` final tracked-only exact4 overlay `pnpm check:secrets` → exit 0、
-    `Secret scan passed.`。`2026-08-27T19:12:05Z` `git diff --check` → exit 0。
-  - refrozen independent reviewは初回Low closureを確認してfinding 0でAPPROVE。refrozen security/supply-chain reviewも
-    finding 0でPASS。実lockfile内容、protected untracked、runtime/production/DBはreviewer未読・未検証である。
+  - `2026-08-27T19:29:08Z–19:29:09Z` `pnpm check:sbom` → exit 0、249 components PASS。
+  - `2026-08-27T19:29:14Z` `git diff --check` → exit 0、diagnosticなし。
+  - `2026-08-27T19:30:00Z–19:30:20Z` final `pnpm test:scripts` → exit 0。同時実行したfinal
+    `pnpm check:sbom`もexit 0、249 components。両scriptのfinal syntax checkも各exit 0。
+  - `2026-08-27T19:30:33Z` final `git diff --check` → exit 0。frozen independent reviewと
+    security/supply-chain reviewはfinding 0でPASSした。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|

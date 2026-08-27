@@ -2390,6 +2390,26 @@ async function testSbomGenerationFixture() {
   const outputPath = path.join(root, "sbom.json");
   await writeText(listJsonPath, JSON.stringify(validFixture(), null, 2));
 
+  const invalidArgumentCases = [
+    { label: "missing list operand", args: ["--from-list-json"], env: { ...process.env, PATH: "" } },
+    { label: "flag-shaped list operand", args: ["--from-list-json", "--output"] },
+    { label: "missing output operand", args: ["--from-list-json", listJsonPath, "--output"] },
+    {
+      label: "flag-shaped output operand",
+      args: ["--from-list-json", listJsonPath, "--output", "--from-list-json"],
+    },
+  ];
+  for (const { label, args, env } of invalidArgumentCases) {
+    const invalidArgumentResult = runNode("check-sbom.mjs", args, { cwd: root, env });
+    const invalidArgumentOutput = outputOf(invalidArgumentResult);
+    assert(
+      invalidArgumentResult.status === 1 &&
+        invalidArgumentOutput.includes("SBOM arguments are invalid") &&
+        !invalidArgumentOutput.includes("SBOM check passed"),
+      `check-sbom should reject ${label} before fallback or success: ${invalidArgumentOutput}`,
+    );
+  }
+
   const result = runNode("check-sbom.mjs", ["--from-list-json", listJsonPath, "--output", outputPath]);
   assert(result.status === 0, `check-sbom should pass for a valid pnpm list fixture: ${outputOf(result)}`);
   const sbom = JSON.parse(await readFile(outputPath, "utf8"));
