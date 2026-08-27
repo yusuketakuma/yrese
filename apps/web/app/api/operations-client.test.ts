@@ -162,6 +162,16 @@ describe("operations client responses", () => {
     );
   });
 
+  it("rejects a reception summary for a different requested date", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const { fetchImpl } = recordingFetch(() => jsonResponse(RECEPTION));
+
+    await expect(
+      fetchReceptionSummary({ fetchImpl, date: "2026-07-10" }),
+    ).rejects.toMatchObject({ kind: "INVALID_RESPONSE" });
+  });
+
   it("rejects a response that does not match the contract", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");

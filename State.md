@@ -1,32 +1,34 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5229 frozen reviews PASS / local landing pending):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5230 frozen reviews PASS / local landing pending):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5228はlocal commit `cd0bb73`へ着地済み。current requestのrepository全体
-  refactoringを継続し、次の最小complete sliceとしてWP-5229だけをclaimする。WP-5226はpre-planで
+- **Direction / ownership:** WP-5229はlocal commit `d381f0e`へ着地済み。current requestのrepository全体
+  refactoringを継続し、次の最小complete sliceとしてWP-5230だけをclaimする。WP-5226はpre-planで
   downstream verifierを含むrevoked Proxy totality gapが判明し、元exact4では安全に完結しないため未着手でdeferする。Codex rootだけが
   `active_root_writer`、state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5229-permission-scope-primitive`、base/HEAD
-  `cd0bb7372bd40d71cd25931b53105cca0144909a`。push / mergeは行わない。
-- **Dirty ownership:** `packages/shared-kernel/src/permissions.ts`、`packages/shared-kernel/src/kernel.test.ts`、
+- **Git boundary:** current branch `refactor/wp-5230-reception-summary-date-binding`、base/HEAD
+  `d381f0e211f4a88da5caec1fa082a43ff617f282`。push / mergeは行わない。
+- **Dirty ownership:** `apps/web/app/api/operations-client.ts`、`apps/web/app/api/operations-client.test.ts`、
   `Plans.md`、`State.md` の
   exact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
   `ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5229 / READY=0。shared-kernel `isPermissionScope`へsplit前primitive-string guard
-  1行だけを補う。scope/resource/action/role一覧、public signature/export、contracts/API/auth、package/dependency、
-  product/DB/UI/CSSは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5230 / READY=0。Web受付集計clientでcontract-valid responseのdateを要求日へ
+  結び付け、mismatchを既存`INVALID_RESPONSE`へ閉じる。contracts/OpenAPI、API/service/DB、caller DOM/copy/CSS、auth/scope、
+  package/dependency、APPROVED SSOTは変更しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** synthetic scope objectとcounterだけをfixtureに使い、credential、production data、
-  PHI/PII、保存、log、external send、network、cache、retry/offline stateを追加しない。
-- **Process gate:** mapper/root traceでpredicate、contracts/API direct consumers、APPROVED permission registry、exact4を
-  確認済み。既存authorization predicateをfail closedにするR2で追加human gateなし。初回pre-plan MEDIUMをtest acceptanceへ
-  反映し、再reviewはfinding 0でPASS。frozen independent + authorization/security reviewもfinding 0でPASSした。
-- **Validation / rollback:** expected Red 3件後、shared-kernel focused 63/package 80/typecheck、contracts whoami 17/typecheck、
-  API server 306、boundaries、tracked diff checkをexit 0で実行した。exact commands/UTC/exitは`Plans.md`へ記録済み。
-  record-only最終照合後にexact4の単一`WP-5229:` commitを作り、rollbackは確定commitへの`git revert <commit>`。
+- **Security / privacy / offline:** 既存synthetic count-only responseだけをfixtureに使い、患者identity、credential、production
+  data、PHI/PII、保存、log、external send、network、cache、retry/offline stateを追加しない。
+- **Process gate:** mapper/root traceでoperations client、2 consumer、contracts/OpenAPI、API route/service、既存queue date guard、
+  exact4を確認済み。API-006 equalityはqueue precedent、summary equalityはcurrent producer/consumer相関の事実に限定し、
+  normative contractとは主張しない。別日の件数表示をfixed unknown errorへ閉じるR2で追加human gateなし。初回pre-plan
+  MEDIUMのauthority表現を修正し、再reviewはfinding 0でPASS。frozen independent + data-integrity/privacy reviewもfinding 0でPASSした。
+- **Validation / rollback:** expected Red 1件後、operations-client focused 18、Web 64 files / 747 tests、contracts operations-status
+  28、API operations route/service 33、各package typecheck、boundaries、tracked diff checkをexit 0で実行した。exact commands/UTCは
+  `Plans.md`へ記録済み。record-only最終照合後にexact4の単一`WP-5230:` commitを作り、rollbackは確定commitへの
+  `git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

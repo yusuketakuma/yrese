@@ -34,15 +34,15 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5228 は local commit `cd0bb73`。WP-5229 は同 commit から `refactor/wp-5229-permission-scope-primitive` を作成済み |
+| Candidate branch | WP-5229 は local commit `d381f0e`。WP-5230 は同 commit から `refactor/wp-5230-reception-summary-date-binding` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | shared-kernel permission predicateへprimitive-string runtime guardを補う exact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5228 local landing、WP-5229 frozen reviews PASS / local landing pending、compiled CSS予算12 KiBを維持) |
+| Candidate scope | Web受付集計clientで要求日とresponse dateを結び付ける exact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5229 local landing、WP-5230 frozen reviews PASS / local landing pending、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5229 exact2 code/testで、type-erased objectが`isPermissionScope`のattacker-controlled `split`を実行してvalid scope扱いされる経路をfalseへ閉じる |
-| Main blocker | WP-5229の初回pre-plan MEDIUMをacceptanceへ反映し、再review finding 0、Red、1-line guard、shared-kernel/direct consumer gates、frozen independent/authorization-security reviewはPASS。record-only最終照合とlocal landingを残す。WP-5226は元exact4では安全に完結せずdefer中 |
-| Required verification | shared-kernel focused/package Red→Green・typecheck、contracts whoami/API server direct consumers、boundaries、tracked diff check、frozen R2 reviewsを要求する |
+| Current critical path | WP-5230 exact2 code/testで、要求日と異なるcontract-valid受付集計を2画面へ渡すresponse-correlation gapを既存`INVALID_RESPONSE`へ閉じる |
+| Main blocker | WP-5230の初回pre-plan MEDIUMをauthority表現修正で閉じ、再review finding 0、Red、最小date equality guard、Web/contract/API producer gates、frozen independent/data-integrity/privacy reviewはPASS。record-only最終照合とlocal landingを残す。WP-5226は元exact4では安全に完結せずdefer中 |
+| Required verification | operations-client focused Red→Green、Web package test/typecheck、contracts operations-status、API operations route/service、boundaries、tracked diff check、frozen R2 reviewsを要求する |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
@@ -73,50 +73,49 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5229(permission-scope primitive guard、R2)1 件である。**
-WP-5228 は local commit `cd0bb73` で着地済み。READYは0件である。
+**CURRENT は WP-5230(reception-summary date binding、R2)1 件である。**
+WP-5229 は local commit `d381f0e` で着地済み。READYは0件である。
 
-- **Purpose / layer:** `@yrese/shared-kernel`のpublic `isPermissionScope(value: string)`がruntime primitive checkなしで
-  `value.split(":")`を呼ぶため、type-erased objectのattacker-controlled methodを実行し、その戻り値をvalid scopeと
-  判定できるroot causeを修正する。既存string解析より前に`typeof value !== "string"`でfalseへ閉じる1-line changeとし、
-  新helper、scope、public signatureは作らない。
-- **Allowed / forbidden:** exact4は `packages/shared-kernel/src/permissions.ts`、
-  `packages/shared-kernel/src/kernel.test.ts`、`Plans.md`、`State.md`。それ以外、特にscope/resource/action/role一覧、
-  `PermissionScope`型、function signature/export、contracts schema、API tenant context/auth/route、package/dependency、
-  APPROVED SSOT、DB/schema/migration、UI/CSSは変更禁止。保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** APPROVED permission scope registryはregistered `resource:action`だけを許可し、common moduleを
-  runtime authorityとする。live traceでproduction direct consumersはcontractsの`z.string()` refineとAPIのtrim/split済み
-  header stringsだが、public predicate自体はtype-erased objectをtrueへ誤分類できる。valid string semanticsを変えない
-  robustness fixで、auth permission意味論やSSOT改版ではない。
-- **Acceptance / tests:** (A1)valid scope pairを返す`split` method付きsynthetic objectを型消去して渡し、変更前はtrueかつ
-  method 1 call、変更後はfalseかつ0 callにする。(A2)型消去した`null` / `undefined`はthrowせずfalseを返す。
-  (A3)既存valid registered scopeはtrue、unknown action/resource、extra segment、empty segmentはfalseを維持する。
-  (A4)contracts whoami schemaとAPI dev-header permission flowの既存testsを変えない。(A5)production差分はsplit前の
-  primitive-string guard 1行だけで、signature/export/list/callerを変更しない。
-- **PIA / offline:** fixtureはsynthetic scope objectとcounterだけで、credential、production data、PHI/PII、保存、log、
+- **Purpose / layer:** Webの`fetchReceptionSummary`がresponse schemaだけを検証し、要求した業務日と
+  `parsed.data.date`を結び付けないため、contract-validな別日集計をclaim-checkとmonthly-closingへ渡せるroot causeを
+  修正する。schema parse直後のdate equality 1条件で既存`INVALID_RESPONSE`へ閉じ、既存queue clientの同じ規則を再利用する。
+  新helper、error kind、retry、cacheは作らない。
+- **Allowed / forbidden:** exact4は `apps/web/app/api/operations-client.ts`、
+  `apps/web/app/api/operations-client.test.ts`、`Plans.md`、`State.md`。それ以外、特にcontracts/OpenAPI、API route/service/DB、
+  caller component、DOM/copy/ARIA/CSS、auth/scope/header、package/dependency、APPROVED SSOT、schema/migrationは変更禁止。
+  保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** APPROVED API-006のresponse `date`=要求日は`/reception/queue`だけの正本precedentであり、
+  `/operations/reception-summary`のnormative equality authorityとは主張しない。generated OpenAPIはrequest/response双方にdateを持ち、
+  current API routeはquery dateをserviceへ渡し、in-memory/DB serviceは同じdateで応答を組み立てる。Web queue clientにも既存の
+  mismatch拒否がある。今回のguardはこのcurrent producer/consumer correlationから外れたpayloadをfail closedにするだけで、
+  contractや画面仕様を追加しない。別日応答を許すnormative要件が判明したら実装せずSSOT改版へ停止する。
+- **Acceptance / tests:** (A1)synthetic `RECEPTION.date=2026-07-09`へ`date=2026-07-10`で要求すると、変更前はresolve、
+  変更後は`OperationsApiError.kind=INVALID_RESPONSE`でrejectする。(A2)request/response date一致時のpayload、URL、scope、
+  `no-store`は不変。(A3)missing/malformed request dateの送信前`INVALID_REQUEST`、403/400/5xx分類、non-JSON/schema-invalid、
+  abort identityを変えない。(A4)mismatchでもserver payload/raw messageをerror/noticeへ含めず、retry/cache/logを追加しない。
+  (A5)production差分はsuccessful schema parse後のdate equality guardだけで、public signature/error vocabulary/callerを変えない。
+- **PIA / offline:** 既存synthetic count-only fixtureだけを使い、患者identity、credential、production data、PHI/PII、保存、log、
   external send、network、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。read-only mapper/root caller trace完了済み。
-  `reviewer_roles`はmakerとは別の`pre_plan_reviewer`、`independent_verifier`、`authorization_security_reviewer`。
-  permission predicateを既存registered scopeへfail closedにするR2で、auth/security relaxation、risk acceptance、production
-  actionがなく追加human gateなし。public signature、scope registry/meaning、contracts/API/auth、別path変更またはnon-stringを
-  trueにするcompatibility根拠が必要なら停止し再計画する。exact4を単一`WP-5229:` commitにし、rollbackは確定commitへの
-  `git revert <commit>`。rootだけがstate-mutating validation、exact-stage/commitを行い、push、merge、deploy、migration
-  applyは認可外。初回pre-plan MEDIUM(null/undefined totality)をacceptanceへ反映し、再reviewはfinding 0でPASSした。
+- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。read-only Web mapper/root producer-consumer trace完了済み。
+  `reviewer_roles`はmakerとは別の`pre_plan_reviewer`、`independent_verifier`、`data_integrity_privacy_reviewer`。別日の実測件数を
+  表示せずunknown errorへ閉じるR2で、contract/auth/privacy緩和、risk acceptance、production actionがなく追加human gateなし。
+  current summary contract/product requirementが意図的な別日応答を許す、contract/API/caller/DOM/CSS変更、別error semanticsが
+  必要なら停止し再計画する。
+  exact4を単一`WP-5230:` commitにし、rollbackは確定commitへの`git revert <commit>`。rootだけがstate-mutating validation、
+  exact-stage/commitを行い、push、merge、deploy、migration applyは認可外。pre-plan review完了前はcode/testを編集しない。
 - **Validation evidence (UTC / exact command):**
-  - `2026-08-27T19:39:53Z–19:39:54Z` `pnpm --filter @yrese/shared-kernel exec vitest run
-    src/kernel.test.ts` → exit 1 (expected Red: 3 failed / 60 passed。objectはtrue・split 1 call、null/undefinedはthrow)。
-  - `2026-08-27T19:40:04Z` 同focused command → exit 0、63 passed。
-  - `2026-08-27T19:40:14Z–19:40:15Z` `pnpm --filter @yrese/shared-kernel test` → exit 0、
-    3 files / 80 tests、同package typecheck → exit 0。contracts `src/whoami.test.ts` → exit 0、17 tests、
-    contracts typecheck → exit 0。
-  - `2026-08-27T19:40:20Z–19:40:21Z` `pnpm --filter @yrese/api exec vitest run src/server.test.ts`
-    → exit 0、306 tests。
-  - `2026-08-27T19:40:27Z–19:40:28Z` `pnpm check:boundaries` → exit 0、同時点の
-    `git diff --check` → exit 0。
-  - test fixture簡素化後の`2026-08-27T19:40:57Z` final shared-kernel test 80 / typecheckと、
-    `2026-08-27T19:41:02Z` final `git diff --check`は各exit 0。
-  - frozen independent reviewとauthorization/security reviewはfinding 0でPASSした。code/test frozen
-    SHA-256は`ba66d3b5ff3b91203f6e862f947a78be28b0b4d3c78d37024fca56970c142ff9`。
+  - `2026-08-27T20:03:27Z–20:03:28Z` `pnpm --filter @yrese/web exec vitest run
+    app/api/operations-client.test.ts` → exit 1 (expected Red: 1 failed / 17 passed。別日payloadを誤ってresolve)。
+  - `2026-08-27T20:03:59Z` 同focused command → exit 0、18 passed。
+  - `2026-08-27T20:04:10Z–20:04:12Z` `pnpm --filter @yrese/web test` → exit 0、64 files / 747 tests。
+    `2026-08-27T20:04:17Z–20:04:18Z` Web typecheck → exit 0。
+  - `2026-08-27T20:04:23Z` contracts `src/operations-status.test.ts` → exit 0、28 tests。
+    `2026-08-27T20:04:30Z` contracts typecheck → exit 0。
+  - `2026-08-27T20:04:38Z–20:04:39Z` API `src/operations-routes.test.ts src/operations-service.test.ts`
+    → exit 0、2 files / 33 tests。`2026-08-27T20:04:44Z` API typecheck → exit 0。
+  - `2026-08-27T20:04:52Z` `pnpm check:boundaries`とtracked exact4 `git diff --check` → 各exit 0。
+  - frozen independent reviewとdata-integrity/privacy reviewはfinding 0でPASSした。code/test frozen SHA-256は
+    `2d68ee2a9c0233cbfaef59339684abf4e075f4bfa52166b1e5a9f466c09e5943`。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|

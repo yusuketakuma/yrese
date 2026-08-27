@@ -160,7 +160,7 @@ export async function fetchReceptionSummary(
     options,
   );
   const parsed = receptionSummaryResponseSchema.safeParse(body);
-  if (!parsed.success) {
+  if (!parsed.success || parsed.data.date !== date) {
     throw new OperationsApiError("INVALID_RESPONSE");
   }
   return parsed.data;
