@@ -7,6 +7,10 @@ import {
   type AuditScope,
   type RecordAuditInput,
 } from '../audit-repository.js';
+import {
+  readDatabaseRowOwnDataProperty,
+  snapshotUnboundedDatabaseQueryRows,
+} from './database-row.js';
 
 /**
  * 監査ログの Postgres 永続実装(SCR-028 / R-AUDIT 永続層 — migrations/000004)。
@@ -23,6 +27,9 @@ import {
 interface AuditEventRow {
   readonly event_body: unknown;
 }
+
+const auditQueryResultInvariantErrorMessage =
+  'Audit query result violated repository invariants';
 
 /** JSON 直列化(bigint → 文字列)。hydrate 側が文字列→BigInt を受けないため読みで復元する。 */
 function serializeEvent(event: AuditEvent): string {
@@ -148,6 +155,18 @@ export class PostgresAuditRepository implements AuditRepository {
         ORDER BY sequence_number ASC`,
       [scope.tenantId, scope.pharmacyId],
     );
-    return result.rows.map(rowToEvent);
+    const rows = snapshotUnboundedDatabaseQueryRows<unknown>(
+      result,
+      auditQueryResultInvariantErrorMessage,
+    );
+    return rows.map((row) =>
+      rowToEvent({
+        event_body: readDatabaseRowOwnDataProperty(
+          row,
+          'event_body',
+          auditQueryResultInvariantErrorMessage,
+        ),
+      }),
+    );
   }
 }

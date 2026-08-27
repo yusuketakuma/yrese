@@ -34,15 +34,15 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5222 は local commit `69f8ebb`。WP-5223 は同 commit から `refactor/wp-5223-trace-dense-arrays` を作成済み |
+| Candidate branch | WP-5223 は local commit `ea53785`。WP-5224 は同 commit から `refactor/wp-5224-audit-row-envelope` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | `@yrese/trace` の共通dense-array guardだけでoriginal配列をmap/iteration前に検証し、holeや継承indexを値へ変換しない exact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5222 local landing、WP-5223 frozen reviews PASS、compiled CSS予算12 KiBを維持) |
+| Candidate scope | `PostgresAuditRepository.list`のquery result/row envelopeだけを既存DB row snapshot/own-property authorityへ通す exact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5223 local landing、WP-5224 frozen R2 reviews PASS、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5223 exact2で、trace factory/collectorのoriginal配列をmap/iteration前にown dense検証し、疎配列や継承indexを拒否する |
-| Main blocker | WP-5223のmachine gatesとfrozen R2 independent/trace-contract reviewsはfinding 0でPASS。record-only再凍結とexact-stage/local landingを残す。WP-5217BはAPI-006/MOD-008/SEC-004の3 gate未成立で継続保留 |
-| Required verification | 通常hole Red 1件、継承index/accessorとpublic collectorのRed 2件後、2026-08-27T17:33:03Z–17:33:04Zにfocused/package各40 PASS、trace typecheck、tracked diff checkをexit 0で再実行。exact commandsはCurrent WIPに記録。frozen exact4 hash `e8a1626…c708`の両R2 reviewsはfinding 0でPASS |
+| Current critical path | WP-5224 exact2で、audit readのraw query result/rowをdescriptor-safe固定projectionへ変換してから既存`rowToEvent`へ渡す |
+| Main blocker | WP-5224のmachine gatesとfrozen R2 independent/data-integrity reviewsはfinding 0でPASS。record-only再凍結とlocal landingを残す。完全tamper可視化契約、WP-5217BのAPI-006/MOD-008/SEC-004 gateは継続保留 |
+| Required verification | DB-free Red 5件後、2026-08-27T18:00:13Z–18:00:17Zにfocused 13 PASS、API 32 files / 976 tests PASS・7 files / 62 tests SKIP、API typecheck、tracked diff checkをexit 0で再実行。`TEST_DATABASE_URL`不在でfocused integration 7 SKIP。frozen R2 reviewsはfinding 0でPASS |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
@@ -73,48 +73,57 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5223(trace dense-array boundary、R2)1 件である。**
-WP-5222 は local commit `69f8ebb` で着地済み。READYは0件である。
+**CURRENT は WP-5224(audit row-envelope snapshot、R2)1 件である。**
+WP-5223 は local commit `ea53785` で着地済み。READYは0件である。
 
-- **Purpose / layer:** `@yrese/trace` のprivate共通array境界が疎配列をspreadするとholeを明示的
-  `undefined`へ変換し、mapは継承index/accessorをown値へ実体化できるroot causeだけを閉じる。
-  original配列をmap/iteration前にdense own-index検証し、公開factory/collectorのdense behaviorは維持する。
-- **Allowed / forbidden:** exact4は `packages/trace/src/index.ts`、`packages/trace/src/trace.test.ts`、
-  `Plans.md`、`State.md`。それ以外、特にpublic type/enum/export、`packages/calculation`、
-  `packages/contracts`、算定・請求・帳票・法令logic、evidence意味論、API/auth、schema/migration/DDL/DML、
-  CSS、dependencyは変更禁止。保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** stdlib `Object.hasOwn`だけを使うprivate `assertDenseArray`を共通authorityとし、
-  既存`freezeArray`とmap/iterationする各callerが値読取前に再利用する。dependency、public helper/error classは
-  追加しない。算定規則・evidence内容を変更しないため新規evidence_idは不要。
-- **Acceptance / tests:** (A1) syntheticな`new Array<EvidenceRef>(1)`を`createLegalTrace`へ渡すと
-  `RangeError`になり、`evidenceRefs: [undefined]`を返さない。(A2)継承index/accessorを持つ疎な
-  `evidenceRefs`もaccessorを実行せず同じ固定RangeErrorで拒否する。(A3)public
-  `collectCalculationTraceEvidenceIds`の疎なstepsも同じ固定RangeErrorで拒否する。(A4)denseな既存
-  LegalTrace/CalculationTraceの順序、値、immutability、evidence集約は不変。(A5)共通guard以外の
-  validation順序、public shape/type/enum/export、calculation/contract consumerを変更しない。Red→Green後、
-  focused `trace.test.ts`、`@yrese/trace` package test/typecheck、tracked diff checkを実行する。
-- **PIA / offline:** syntheticなin-memory配列shapeだけを検証し、新規patient field、保存、log、URL、
-  metric、audit payload、network、cache、retry/offline stateは追加しない。PHI/PII/production dataは使わない。
+- **Purpose / layer:** `PostgresAuditRepository.list`だけが迂回している既存`database-row.ts` authorityを
+  再利用し、tenant/pharmacy限定queryの結果と各rowの`event_body`を固定projectionへ変換してから既存
+  `rowToEvent`へ渡す。対象はaudit readのPostgreSQL adapter row envelopeだけである。
+- **Allowed / forbidden:** exact4は `apps/api/src/db/audit-repository.ts`、
+  `apps/api/src/db/audit-repository.test.ts`、`Plans.md`、`State.md`。それ以外、特に`database-row.ts`、
+  `rowToEvent` / `reviveStoredEvent` / `hydrateAuditEvent` / `verifyAuditHashChain`、SQL/parameter/order、
+  audit record/transaction/lock/write、route/contract/OpenAPI/auth、schema/migration/DDL/DML、UI/CSS、dependencyは
+  変更禁止。保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** APPROVED SEC-007/SEC-008のexact tenant/pharmacy・fail-visible chain規律を維持し、
+  既存`snapshotUnboundedDatabaseQueryRows`と`readDatabaseRowOwnDataProperty`だけを再利用する。mainの
+  `createDbPool`にcustom JSON/JSONB parserやquery wrapperはない。verified Oracle advisoryはbounded
+  row-envelope案だけを支持し、完全tamper可視化やstrong raw fallbackは未解消のため採用しない。
+- **Acceptance / tests:** (A1)query-result ProxyはPromise assimilationの`then`読取だけを許容し、fulfill後に
+  revokeしたfixtureを固定errorへ閉じる。`rows`配列Proxy/revoked Proxyは別caseで、semantic trap/raw sentinelを
+  実行・表示せず既存row-set helperから`Audit query result violated repository invariants`を返す。(A2)raw row
+  Proxyとinherited/accessor `event_body`を別caseにし、own data property以外を同じ固定errorで拒否してaccessor/
+  Proxy trapを実行しない。(A3)own-dataの`null`等既存malformed bodyは早期rejectせず従来のraw fallbackへ渡し、
+  known-field tamperのfail-visible behaviorを維持する。(A4)valid 2 rowsはJSONB同様に`sequenceNumber` /
+  `logicalClock`がdecimal stringのstored bodyを使い、revival→hydration、順序、exact SELECT、tenant/pharmacy
+  parameter、query 1回をDB-free testで固定する。(A5)row-setのsparse/inherited/index-accessor/non-array規律は
+  既存`operations-read.test.ts` / `reception-command.integration.test.ts`のshared-helper回帰とAPI suiteへ委譲する。
+  (A6)SQL、write path、hydration/fallback/verifier、public contract/authは不変。validation順はquery→全row-set
+  snapshot→各row own-data read→wrapper→既存`rowToEvent`に固定する。focused Red→Green後、API suite/typecheckと
+  tracked diff checkを実行する。
+- **PIA / offline:** 既存PHI-free audit event bodyを新規保存・log・URL・metric・external serviceへ出さず、fixtureは
+  synthetic identifierだけを使う。query scopeはtrusted exact tenant/pharmacyのまま。network、cache、retry、
+  offline stateを追加しない。
 - **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root、`reviewer_roles`はmakerとは別の
-  read-only `independent_verifier` + `trace_contract_reviewer`。public contract、算定/evidence意味論、
-  contract package、migration/DDL/DMLの変更が必要なら停止し再計画する。R2、追加human gateなし。
-  exact4を単一 `WP-5223:` commitにし、rollbackはそのcommitへの `git revert <commit>`。rootだけが
-  state-mutating validation、exact-stage/commitを行い、push、merge、deploy、migration applyは認可外。
-  audit reader候補はOracle verified advisoryでも完全tamper可視化契約が未解消のため未claimとした。
-  pre-plan reviewはfinding 0でPASS。初回Red 1件は旧実装がthrowせず失敗し、最初のguard後のfocused /
-  package test各38件、package typecheck、tracked diff checkはexit 0だった。初回frozen reviewで、独立checkerは
-  exact command記録不足、trace-contract checkerはmap前の継承index/accessorとcollector gapをMEDIUM指摘。
-  `assertDenseArray`をoriginal配列のmap/iteration前へ適用し、追加Red 2件をGreen化して両findingをexact4内で
-  反映した。frozen exact4 hash `e8a1626…c708`のindependent/trace-contract reviewsはいずれもfinding 0で
-  PASS。record-only再凍結後のlocal landingを残す。
+  read-only `independent_verifier` + `audit_data_integrity_reviewer`。R2、APPROVED論理層内のadapter validationで
+  追加human gateなし。tamper canonicalization、hydration/fallback/verifier、SQL/parameter/order、write/lock、
+  `event_body` graph自体のProxy/hostile nested semantics、contract/auth、migration/DDL/DML、別path変更が必要なら
+  停止し再計画する。exact4を単一`WP-5224:` commitにし、
+  rollbackはそのcommitへの`git revert <commit>`。rootだけがstate-mutating validation、exact-stage/commitを行い、
+  push、merge、deploy、migration applyは認可外。実DB integrationは安全確認済みdisposable test DBだけに限定する。
+  初回pre-planのMEDIUMはProxy種別/Promise assimilation/JSONB stored fixtureの明確化要求で、上記へ反映済み。
+  follow-up pre-planはfinding 0でPASS。DB-free Redは5 failed / 8 passed、最小production change後のfinal
+  machine gatesは下記のとおりPASS。frozen independent/data-integrity reviewsもfinding 0でPASSし、
+  record-only再凍結とlocal landingだけを残す。
 - **Validation evidence (UTC / exact command):**
-  - `2026-08-27T17:23:50Z` `pnpm --filter @yrese/trace exec vitest run src/trace.test.ts` → exit 1
-    (expected Red: 1 failed / 37 passed)。
-  - `2026-08-27T17:32:15Z` 同command → exit 1 (expected remediation Red: 2 failed / 38 passed)。
-  - `2026-08-27T17:33:03.148Z–17:33:03.661Z` 同command → exit 0、40 passed。
-  - `2026-08-27T17:33:03.661Z–17:33:04.218Z` `pnpm --filter @yrese/trace test` → exit 0、40 passed。
-  - `2026-08-27T17:33:04.218Z–17:33:04.597Z` `pnpm --filter @yrese/trace typecheck` → exit 0。
-  - `2026-08-27T17:33:04.597Z–17:33:04.644Z` `git diff --check` → exit 0、diagnosticなし。
+  - `2026-08-27T17:58:58Z` `pnpm --filter @yrese/api exec vitest run src/db/audit-repository.test.ts`
+    → exit 1 (expected Red: 5 failed / 8 passed)。
+  - `2026-08-27T18:00:13.837Z–18:00:14.405Z` 同command → exit 0、13 passed。
+  - `2026-08-27T18:00:14.405Z–18:00:15.002Z` `pnpm --filter @yrese/api exec vitest run
+    src/db/audit-repository.integration.test.ts` → exit 0、1 file / 7 tests SKIP (`TEST_DATABASE_URL` absent)。
+  - `2026-08-27T18:00:15.002Z–18:00:17.040Z` `pnpm --filter @yrese/api test` → exit 0、
+    32 files / 976 tests PASS、7 files / 62 tests SKIP。
+  - `2026-08-27T18:00:17.040Z–18:00:17.664Z` `pnpm --filter @yrese/api typecheck` → exit 0。
+  - `2026-08-27T18:00:17.664Z–18:00:17.714Z` `git diff --check` → exit 0、diagnosticなし。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
