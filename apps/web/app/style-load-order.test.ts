@@ -61,6 +61,19 @@ describe("operator stylesheet load order", () => {
     expect(existsSync(duplicateRefinementUrl)).toBe(false);
   });
 
+  it("keeps keyboard focus visible on light controls and the dark sidebar", () => {
+    expect(globalsSource).toContain("--color-focus: #6b4eff;");
+    expect(globalsSource).toContain(
+      "--focus-ring: 3px solid var(--color-focus);",
+    );
+    expect(operatorSource).toMatch(
+      /\.app-sidebar\s*\{[^}]*--color-focus:\s*#fff;[^}]*--focus-ring:\s*3px solid var\(--color-focus\);/s,
+    );
+    expect(operatorSource).not.toMatch(
+      /\.operator-command-row input:focus-visible\s*\{[^}]*outline:\s*0;/s,
+    );
+  });
+
   it("lays out the desktop shell as a sidebar and workspace grid", () => {
     expect(operatorSource).toMatch(
       /\.app-shell\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:/s,

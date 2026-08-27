@@ -3,3 +3,8 @@
  * layout.tsx as operator-first.css followed by operator-ux-refinement.css.
  */
 @import "./legacy.css";
+
+:root {
+  --color-focus: #6b4eff;
+  --focus-ring: 3px solid var(--color-focus);
+}

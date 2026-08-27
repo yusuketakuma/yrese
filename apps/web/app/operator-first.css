@@ -40,7 +40,7 @@ body { overflow-x: hidden; background: var(--color-bg); }
 
 .app-shell { display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr); min-height: calc(100vh - var(--header-height)); }
 .app-sidebar, .app-workspace { min-width: 0; }
-.app-sidebar { padding: 0; background: linear-gradient(180deg, #081c3e 0%, #0a315b 100%); color: #fff; }
+.app-sidebar { --color-focus: #fff; --focus-ring: 3px solid var(--color-focus); padding: 0; background: linear-gradient(180deg, #081c3e 0%, #0a315b 100%); color: #fff; }
 .app-workspace { background: var(--color-bg); }
 .app-nav-wrap { position: sticky; top: var(--header-height); display: flex; flex-direction: column; min-height: calc(100vh - var(--header-height)); padding: .9rem .65rem 1rem; }
 .app-nav { position: static; }
@@ -61,7 +61,6 @@ body { overflow-x: hidden; background: var(--color-bg); }
 .operator-command-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: .35rem; min-height: var(--ux-control-primary); padding: .18rem .26rem .18rem 2.2rem; border: 1px solid var(--color-border-strong); border-radius: 11px; background: #fff; box-shadow: 0 3px 12px rgb(15 23 42 / .03); }
 .operator-command-search-icon { position: absolute; left: .75rem; top: 50%; color: #5f6b82; transform: translateY(-50%); }
 .operator-command-row input { min-width: 0; min-height: var(--ux-control-min); padding: .2rem .25rem; border: 0; background: transparent; font-size: var(--ux-font-body); }
-.operator-command-row input:focus-visible { outline: 0; }
 .operator-command-row .operator-command-submit, .operator-command-row .operator-command-voice { min-height: var(--ux-control-min); padding: .26rem .55rem; border: 1px solid var(--color-border); border-radius: 8px; background: #fff; color: var(--color-accent-strong); font-size: var(--ux-font-caption); }
 .operator-command-row .operator-command-submit { background: var(--color-accent-soft); }
 .operator-command-preview { position: absolute; top: calc(100% + .35rem); left: 50%; z-index: 60; width: min(720px, calc(100vw - 2rem)); margin: 0; padding: .65rem .8rem; border: 1px solid #cbc3ff; border-radius: 10px; background: #fff; box-shadow: 0 12px 30px rgb(15 23 42 / .14); font-size: var(--ux-font-small); transform: translateX(-50%); }
