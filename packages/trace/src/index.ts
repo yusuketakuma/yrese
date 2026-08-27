@@ -193,6 +193,7 @@ function assertArray(value: unknown, label: string): void {
 }
 
 function assertDenseArray<T>(values: readonly T[]): void {
+  assertArray(values, "Trace arrays");
   for (let index = 0; index < values.length; index += 1) {
     if (!Object.hasOwn(values, index)) {
       throw new RangeError("Trace arrays must be dense");

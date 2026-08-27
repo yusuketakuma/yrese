@@ -123,8 +123,25 @@ describe("createCalculationTrace", () => {
     expect(Object.isFrozen(trace.steps)).toBe(true);
     expect(Object.isFrozen(trace.steps[0])).toBe(true);
     expect(Object.isFrozen(trace.steps[0]?.evidenceRefs)).toBe(true);
+    expect(trace.steps[0]?.inputRefs).toEqual(["prescription-001", "drug-master:2026.04"]);
+    expect(Object.isFrozen(trace.steps[0]?.inputRefs)).toBe(true);
     expect(Object.isFrozen(trace.evidenceIds)).toBe(true);
     expect(Object.isFrozen(trace.inputsSummary.ids)).toBe(true);
+  });
+
+  it("rejects non-array step input refs", () => {
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary,
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [
+          claimStep({
+            inputRefs: "abc" as unknown as CalculationTraceStep["inputRefs"],
+          }),
+        ],
+      }),
+    ).toThrow(new RangeError("Trace arrays must be an array"));
   });
 
   it("rejects unsupported input id and date kinds", () => {
