@@ -1,34 +1,36 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-27, CSS budget amended + WP-5220 claim):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5220 landed + WP-5221 claim):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5219はlocal commit `7077b62`へ着地済み。current requestのrepository全体
-  refactoringを継続し、次の最小complete sliceとしてWP-5220だけをclaimする。Codex rootだけが
+- **Direction / ownership:** WP-5220はlocal commit `0c99bd8`へ着地済み。current requestのrepository全体
+  refactoringを継続し、次の最小complete sliceとしてWP-5221だけをclaimする。Codex rootだけが
   `active_root_writer`、state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5220-operations-abort-semantics`、base/HEAD
-  `7077b620767ee22b94de82f6b3aed36a84f364cb`。push / mergeは行わない。
-- **Dirty ownership:** `apps/web/app/api/operations-client.ts`、同 `.test.ts`、`Plans.md`、`State.md` の
-  exact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
+- **Git boundary:** current branch `refactor/wp-5221-operations-row-snapshots`、base/HEAD
+  `0c99bd8cd7d4d605d3de3581885190d7423a0850`。push / mergeは行わない。
+- **Dirty ownership:** `apps/api/src/db/operations-read.ts`、`apps/api/src/db/operations-read.test.ts`、
+  `Plans.md`、`State.md` のexact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
   `ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5220 / READY=0。`fetchOperationsJson`のfetch transport catchだけで、
-  signalがabort済みなら元rejectionを再throwし、未abort transport errorは既存`UNAVAILABLE`へ固定する。
-  response JSON、HTTP/schema/scope/error registry、caller state、API、APPROVED SSOT、dependency、UI/CSS/copyは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5221 / READY=0。operations Postgres adapterのoutbox、reception、
+  latest-migrationの3 direct query readerだけを既存row-set/own-property/instant authorityへ通す。
+  間接reader、SQL/parameter、route/service、contract/OpenAPI、auth scope、schema/migration/DDL/DML、
+  audit/write path、dependency、UI/CSS/copyは変更しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** 既存の件数・enum・時刻projectionだけを扱い、新規PHI/PII、保存、log、
-  URL、metric、audit payload、cache、retry/offline stateはない。callerのactive/aborted guardとunknown errorの
-  固定noticeを維持し、raw transport detailを表示へ流さない。
-- **Process gate:** mapperはshared clientの4 callerと既存処方clientのcancellation precedentを確認済み。
-  pre-plan checkerの初回CHANGES_REQUIREDは、WP-5219 landing、exact4 ownership、transport-only境界、
-  abort identityとnon-abort分類をPlans.md §3と本snapshotへ固定し、実装前の再checkはPASS。
-  frozen independent/API-client re-reviewもfinding 0でPASSし、root landingだけを残す。
-- **Validation / rollback:** abort identityの最小Red 1件を再現し、production 2行の最小変更後にfocused
-  17 tests、Web 64 files / 746 tests、Web typecheck、`git diff --check`がPASS。初回independent reviewの
-  LOW 1件(active signal付きnon-abort transport failureのtest gap)は既存testを強化し、同じgateを再PASS。
-  変更後のfrozen candidateは`independent_verifier` + `api_contract_reviewer`がfinding 0でPASS。
-  exact4の単一`WP-5220:` commitを作り、rollbackは確定commitへの `git revert <commit>`。
+- **Security / privacy / offline:** 既存の件数・enum・時刻・migration version/name projectionだけを扱い、
+  新規PHI/PII、保存、log、URL、metric、audit payload、cache、retry/offline stateはない。患者識別子を
+  routeへ運ばず、hostile DB resultはraw trap/coercionを実行せず既存fixed invariantへ閉じる。
+- **Process gate:** mapperは3 direct readerと既存DB row/instant authority、direct caller、間接residualを確認済み。
+  reception-onlyでは同根の2 readerが残るため3 direct readerを同じexact2へ含め、間接する
+  `reception-command.ts` / `migration-runner.ts`は明示除外した。初回pre-plan CHANGES_REQUIREDはexact path、
+  test matrix、COUNT文字列規則、maker/checker分離を本snapshotとPlans.md §3へ固定し、再checkはPASS。
+- **Validation / rollback:** synthetic Red 5件後、2026-08-27T15:58:03Z–15:58:06Zにfocused 7 tests、
+  API 31 files / 963 tests、API typecheckをexit 0で再実行した。`TEST_DATABASE_URL`不在のためintegration
+  8 files / 62 testsはSKIPし、live DB/runtime/deployは未検証。tracked/new-file diff checkもPASSし、makerとは
+  別のread-only `independent_verifier` + `api_contract_reviewer`はfinding 0でPASS。追加human gateはない。
+  record-only再凍結後にexact4の単一 `WP-5221:` commitを作り、rollbackは確定commitへの
+  `git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

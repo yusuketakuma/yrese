@@ -17,6 +17,12 @@ import {
   type OutboxEventTypeTally,
   type ReceptionSummaryInput,
 } from "../operations-service.js";
+import { snapshotDatabaseInstant } from "../instant.js";
+import {
+  readDatabaseRowOwnDataProperty,
+  snapshotDatabaseQueryRows,
+  snapshotUnboundedDatabaseQueryRows,
+} from "./database-row.js";
 import { checkMigrationState } from "./migration-runner.js";
 import { derivedPendingVersions } from "./migration-state.js";
 import type { MigrationFile } from "./migrations.js";
@@ -63,8 +69,14 @@ export interface PostgresOperationsReadServiceOptions {
   readonly legacyOrphanSource?: ReceptionLegacyOrphanSource;
 }
 
-/** COUNT(*) は bigint なので driver から文字列で届きうる。非負整数以外は不変条件違反。 */
-function readCount(value: string | number): number {
+/** COUNT(*) は bigint なので driver から10進文字列で届きうる。非負整数以外は不変条件違反。 */
+function readCount(value: unknown): number {
+  if (
+    (typeof value !== "string" && typeof value !== "number") ||
+    (typeof value === "string" && !/^\d+$/.test(value))
+  ) {
+    throw new Error(operationsSummaryInvariantErrorMessage);
+  }
   const parsed = typeof value === "number" ? value : Number(value);
   if (!Number.isSafeInteger(parsed) || parsed < 0) {
     throw new Error(operationsSummaryInvariantErrorMessage);
@@ -72,13 +84,41 @@ function readCount(value: string | number): number {
   return parsed;
 }
 
-function readInstant(value: Date | string | null): string | undefined {
+function readInstant(value: unknown): string | undefined {
   if (value === null) return undefined;
-  const instant = value instanceof Date ? value : new Date(value);
-  if (!Number.isFinite(instant.getTime())) {
+  return snapshotDatabaseInstant(value, operationsSummaryInvariantErrorMessage);
+}
+
+function readRowString(row: unknown, property: PropertyKey): string {
+  const value = readDatabaseRowOwnDataProperty(
+    row,
+    property,
+    operationsSummaryInvariantErrorMessage,
+  );
+  if (typeof value !== "string") {
     throw new Error(operationsSummaryInvariantErrorMessage);
   }
-  return instant.toISOString();
+  return value;
+}
+
+function readRowCount(row: unknown, property: PropertyKey): number {
+  return readCount(
+    readDatabaseRowOwnDataProperty(
+      row,
+      property,
+      operationsSummaryInvariantErrorMessage,
+    ),
+  );
+}
+
+function readRowInstant(row: unknown, property: PropertyKey): string | undefined {
+  return readInstant(
+    readDatabaseRowOwnDataProperty(
+      row,
+      property,
+      operationsSummaryInvariantErrorMessage,
+    ),
+  );
 }
 
 function isUndefinedTableError(error: unknown): boolean {
@@ -116,12 +156,19 @@ export class PostgresOperationsReadService implements OperationsReadService {
       [scope.tenantId, scope.pharmacyId],
     );
 
-    const tallies: OutboxEventTypeTally[] = result.rows.map((row) => {
-      const oldestPendingCreatedAt = readInstant(row.oldest_pending_created_at);
+    const rows = snapshotUnboundedDatabaseQueryRows<OutboxSummaryRow>(
+      result,
+      operationsSummaryInvariantErrorMessage,
+    );
+    const tallies: OutboxEventTypeTally[] = rows.map((row) => {
+      const oldestPendingCreatedAt = readRowInstant(
+        row,
+        "oldest_pending_created_at",
+      );
       return {
-        eventType: row.event_type,
-        pendingCount: readCount(row.pending_count),
-        deliveredCount: readCount(row.delivered_count),
+        eventType: readRowString(row, "event_type"),
+        pendingCount: readRowCount(row, "pending_count"),
+        deliveredCount: readRowCount(row, "delivered_count"),
         ...(oldestPendingCreatedAt === undefined ? {} : { oldestPendingCreatedAt }),
       };
     });
@@ -155,12 +202,16 @@ export class PostgresOperationsReadService implements OperationsReadService {
       [input.tenantId, input.pharmacyId, input.date],
     );
 
+    const rows = snapshotUnboundedDatabaseQueryRows<ReceptionSummaryRow>(
+      result,
+      operationsSummaryInvariantErrorMessage,
+    );
     return buildReceptionSummary(
       input.date,
-      result.rows.map((row) => ({
-        receptionStatus: row.reception_status,
-        eligibilityStatus: row.eligibility_status,
-        count: readCount(row.entry_count),
+      rows.map((row) => ({
+        receptionStatus: readRowString(row, "reception_status"),
+        eligibilityStatus: readRowString(row, "eligibility_status"),
+        count: readRowCount(row, "entry_count"),
       })),
     );
   }
@@ -202,7 +253,18 @@ export class PostgresOperationsReadService implements OperationsReadService {
       const result = await this.pool.query<LatestAppliedMigrationRow>(
         "SELECT version, name FROM schema_migrations ORDER BY version DESC LIMIT 1",
       );
-      return result.rows[0];
+      const rows = snapshotDatabaseQueryRows<LatestAppliedMigrationRow>(
+        result,
+        1,
+        operationsSummaryInvariantErrorMessage,
+      );
+      const row = rows[0];
+      return row === undefined
+        ? undefined
+        : {
+            version: readRowString(row, "version"),
+            name: readRowString(row, "name"),
+          };
     } catch (error) {
       // schema_migrations 未作成は「まだ何も適用されていない」であって障害ではない。
       if (isUndefinedTableError(error)) {
