@@ -45,13 +45,14 @@ const CAPABILITY_BOUNDARY =
   "取込実装は MST-001 の blocker「マスター取込実装は配布元仕様の evidence_id 発行後に WP 発行（RB-003 相当）」で停止し、" +
   "配布形式・署名/ハッシュ提供の有無と令和8年度改定マスターの適用日・経過措置は未確定です。" +
   "コードマッピングは RB-009 BLOCKED_CODE_MAPPING_REVIEW、点数化は RB-008 で停止しています。" +
+  "UIX-001 §12.3 に SCR-023 の operation registry 行がなく、MOD-007 §3 では本番適用権限も未確定です。" +
   "取得・検証・適用・Edge配布は一切実行されません。「—」は0件・最新・正常を意味しません。";
 
 const GATE_ITEMS = [
-  "MST-001（マスター更新パイプライン）: 取込実装は配布元仕様の evidence_id 発行後に WP 発行（RB-003 相当）",
-  "RB-009 BLOCKED_CODE_MAPPING_REVIEW: コードマッピングは CodeMappingRegistry 承認とマスター取得が前提",
-  "RB-008: 点数・薬価の値そのもの",
-  "UIX-001 §12.3 に SCR-023 の操作registry行が無く、MOD-007 §3 は本番適用権限の割当（admin か finalize か）を未確定にしている",
+  "MST-001（マスター取込）",
+  "RB-009（コードマッピング）",
+  "RB-008（点数・薬価）",
+  "UIX-001 §12.3 / MOD-007 §3（操作・本番適用権限）",
 ] as const;
 
 const UNAVAILABLE_READING =
@@ -77,6 +78,9 @@ export default function Page() {
                   <li key={item}>{item}</li>
                 ))}
               </ul>
+              <p className="rail-muted">
+                境界の詳細は上部の「機能境界」を参照してください。
+              </p>
             </RailCard>
             <RailCard title="未取得の読み方" tone="warning">
               <StatusPill tone="warning">未検証</StatusPill>
@@ -114,6 +118,9 @@ export default function Page() {
           }
         />
         <PrototypeBanner>{CAPABILITY_BOUNDARY}</PrototypeBanner>
+
+        <MasterAuthorityCard />
+
         <MetricGrid>
           <MetricCard
             label="薬価マスター版"
@@ -146,8 +153,6 @@ export default function Page() {
             icon="日"
           />
         </MetricGrid>
-
-        <MasterAuthorityCard />
 
         <Panel
           title="マスター一覧"

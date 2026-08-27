@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import AdminPage from "./admin/page";
+import CheckoutPage from "./checkout/page";
 import ClaimCheckPage from "./claim-check/page";
 import MastersPage from "./masters/page";
 import MonthlyClosingPage from "./monthly-closing/page";
@@ -12,6 +13,78 @@ import ReceptionPage from "./page";
 (globalThis as { React?: typeof React }).React = React;
 
 describe("operator prototype operational truthfulness", () => {
+  it("keeps one full gate boundary above every connected surface", () => {
+    const pages = [
+      {
+        html: renderToStaticMarkup(<CheckoutPage />),
+        gateIds: ["UIX-001 §12.3", "SCR-016", "RB-008", "MST-001", "SCR-018"],
+        safetyCopy: "「—」は0円",
+        fullDetail: "令和8年度調剤報酬点数表の版確認",
+        orderedLiveTitles: [],
+      },
+      {
+        html: renderToStaticMarkup(<ClaimCheckPage />),
+        gateIds: ["UIX-001 §12.3", "SCR-019", "RB-001", "RB-008", "RB-009"],
+        safetyCopy: "「—」は0件",
+        fullDetail: "版確認と evidence_id 発行",
+        orderedLiveTitles: [],
+      },
+      {
+        html: renderToStaticMarkup(<MastersPage />),
+        gateIds: ["MST-001", "RB-009", "RB-008", "UIX-001 §12.3", "MOD-007 §3"],
+        safetyCopy: "「—」は0件・最新・正常",
+        fullDetail: "配布形式・署名/ハッシュ提供の有無",
+        orderedLiveTitles: [],
+      },
+      {
+        html: renderToStaticMarkup(<MonthlyClosingPage />),
+        gateIds: [
+          "UIX-001 §12.3",
+          "RB-001",
+          "RB-004",
+          "ARC-007",
+          "UIX-001 §12.4",
+          "DOM-004",
+          "RB-003",
+          "API-013",
+          "MOD-008",
+          "MOD-009",
+          "AGENTS.md",
+        ],
+        safetyCopy: "「—」は0件・提出済み・対応完了",
+        fullDetail: "公式接続方式・電子証明書・接続試験・運用規約",
+        orderedLiveTitles: ["実行権限とゲート", "指定業務日の受付件数"],
+      },
+    ] as const;
+
+    for (const page of pages) {
+      const boundary =
+        page.html.match(
+          /<div class="prototype-banner"[^>]*>[\s\S]*?<span>([\s\S]*?)<\/span><\/div>/,
+        )?.[1] ?? "";
+
+      for (const gateId of page.gateIds) expect(boundary).toContain(gateId);
+      expect(page.html).toContain(
+        "境界の詳細は上部の「機能境界」を参照してください。",
+      );
+      expect(page.html).toContain(page.safetyCopy);
+      expect(page.html.split(page.fullDetail)).toHaveLength(2);
+      expect(page.html).toMatch(
+        /<div class="prototype-banner"[^>]*>[\s\S]*?<\/span><\/div><section class="operator-panel live-surface-panel"[^>]*>/,
+      );
+      expect(page.html.lastIndexOf("live-surface-panel")).toBeLessThan(
+        page.html.indexOf("metric-grid"),
+      );
+
+      let previousIndex = -1;
+      for (const title of page.orderedLiveTitles) {
+        const titleIndex = page.html.indexOf(title);
+        expect(titleIndex).toBeGreaterThan(previousIndex);
+        previousIndex = titleIndex;
+      }
+    }
+  });
+
   it("does not render fabricated monthly amounts, progress, or return counts", () => {
     const html = renderToStaticMarkup(<MonthlyClosingPage />);
 

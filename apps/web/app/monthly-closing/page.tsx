@@ -23,7 +23,8 @@ import {
  * 締め・請求データロック・オンライン請求送信は実行できない(未登録の不可逆 operation)。
  * 実データとして表示するのはセッション権限(/whoami)と保存済み受付の件数
  * (/operations/reception-summary)だけで、締め進捗・請求バッチ・返戻は未接続のまま
- * 「未取得」と明示する。ゲート名は closing-authority.tsx の CLOSING_BLOCKING_GATES が正本。
+ * 「未取得」と明示する。ゲートID参照は CLOSING_BLOCKING_GATES、full explanation は
+ * 画面上部の PrototypeBanner を正本とする。
  */
 
 const CLOSING_STEPS = [
@@ -44,7 +45,8 @@ export default function Page() {
             <RailCard title="実行可否" tone="danger">
               <StatusPill tone="danger">確定・ロック・送信は実行不可</StatusPill>
               <p className="rail-muted">
-                セッション権限の実測とゲートの内訳は、本文の「実行権限とゲート」で確認してください。権限が付与されていても実行可にはなりません。
+                境界の詳細は上部の「機能境界」を参照してください。セッション権限の実測は本文の
+                「実行権限とゲート」で確認できますが、権限が付与されていても実行可にはなりません。
               </p>
               <ReadOnlyIndicator reason="UIX-001 §12.3 未登録の不可逆 operation・RB-001・RB-004 のため閲覧のみ" />
             </RailCard>
@@ -81,8 +83,26 @@ export default function Page() {
           }
         />
         <PrototypeBanner>
-          月次締め・請求データロックは実行できません。claim:finalize の API operation は UIX-001 §12.3 の operation authorization matrix に未登録で、電子レセプト生成は RB-001、オンライン請求送信は RB-004（公式接続方式・電子証明書・接続試験・運用規約の確認が未了）で停止しています。確定・ロック・送信は AGENTS.md の人間承認ゲート対象であり、システム側で自己承認しません。システムモードは検知APIが存在しないため未検知で、NORMAL を前提にしません。「—」は0件・提出済み・対応完了を意味しません。
+          月次締め・請求データロックは実行できません。claim:finalize の API operation は UIX-001 §12.3 の operation authorization matrix に未登録で、電子レセプト生成は RB-001、オンライン請求送信は RB-004（公式接続方式・電子証明書・接続試験・運用規約の確認が未了）で停止しています。local-finalize / external-register の境界は UIX-001 §12.4 で candidate / blocked であり、DOM-004・RB-003・API-013・MOD-008・MOD-009 が APPROVED になるまで確定とキュー登録を実装しません。ARC-007 は請求確定後の訂正を取消・再作成だけに限定するため、取り消せない操作を接続前に実行しません。確定・ロック・送信は AGENTS.md の人間承認ゲート対象であり、システム側で自己承認しません。システムモードは検知APIが存在しないため未検知で、NORMAL を前提にしません。「—」は0件・提出済み・対応完了を意味しません。
         </PrototypeBanner>
+
+        <Panel
+          title="実行権限とゲート"
+          description="セッションの scope は /whoami の実データです。権限判定とゲート判定を分けて表示します。"
+          className="live-surface-panel"
+          tone="danger"
+        >
+          <ClosingExecutionAuthority />
+        </Panel>
+
+        <Panel
+          title="指定業務日の受付件数"
+          description="保存済みの受付データを業務日単位で集計した実データです。患者識別情報は取得しません。"
+          className="live-surface-panel"
+        >
+          <ClosingReceptionSummary />
+        </Panel>
+
         <MetricGrid>
           <MetricCard
             label="締めの進捗"
@@ -117,27 +137,10 @@ export default function Page() {
         </MetricGrid>
 
         <Panel
-          title="実行権限とゲート"
-          description="セッションの scope は /whoami の実データです。権限判定とゲート判定を分けて表示します。"
-          className="live-surface-panel"
-          tone="danger"
-        >
-          <ClosingExecutionAuthority />
-        </Panel>
-
-        <Panel
           title="システムモード別の確定可否"
           description="shared-kernel のモードガード（allowsClaimFinalization）による静的な可否です。現在のモードは検知していません。"
         >
           <ClaimFinalizationModeMatrix />
-        </Panel>
-
-        <Panel
-          title="指定業務日の受付件数"
-          description="保存済みの受付データを業務日単位で集計した実データです。患者識別情報は取得しません。"
-          className="live-surface-panel"
-        >
-          <ClosingReceptionSummary />
         </Panel>
 
         <Panel

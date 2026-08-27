@@ -34,15 +34,15 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5218 local landing は `fix/wp-5218-web-type-boundary`。WP-5215 は本記録を含む landing commit から `fix/wp-5215-focus-visibility` を作成する |
+| Candidate branch | WP-5215 code landing は `fix/wp-5215-focus-visibility` の local commit `47100b7`。WP-5216 は同 commit から `fix/wp-5216-warning-hierarchy` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
 | Candidate scope | 全画面 UI/UX 改善計画 v2.3(§17 backlog)の READY 昇格と WP-5212 以降の直列消化 |
-| Last update | 2026-08-27 JST(WP-5218 local landing、WP-5215 focus-visibility claim) |
+| Last update | 2026-08-27 JST(WP-5215 local landing、human approval による WP-5216 claim) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | 全画面 UI/UX 改善計画 v2.3(§17)を WIP=1 / READY≤2 の下で段階消化する(WP-5212 → 5213 → 5214 → 5218 → 5215 → 5216 → 5211 → 5217) |
-| Current critical path | UIX-001 が要求する visible focus を既存global ringへ戻し、dark sidebarだけsurface別tokenを使うexact3でWP-5215を閉じる |
-| Main blocker | instant→JST 共通 helper は APPROVED MOD-011 §4 により `SSOT_UPDATE_REQUIRED`。既存画面ローカル変換も変更しない。push/deploy、migration apply、HPKI/legal、RB-003 は別 gate のまま |
-| Required verification | WP-5218 は typecheck Red TS2375→focused 96 tests、Web typecheck、Web 64 files / 735 tests、`git diff --check`、frozen exact1 reviewがPASS。WP-5215はpre-plan accessibility review PASSだが、Red/Green・browser・frozen landing reviewは未実行 |
+| Current critical path | 4つの SSOT_BLOCKED 画面で、full gate 説明を上部 `PrototypeBanner` へ一元化し、実データ面を未取得 metric より先に表示する WP-5216 exact6 |
+| Main blocker | WP-5216 の文言階層は 2026-08-27 human reply「承認」で解消。instant→JST 共通 helper は MOD-011 §4 により `SSOT_UPDATE_REQUIRED`、push/deploy、migration apply、HPKI/legal、RB-003 は別 gate のまま |
+| Required verification | WP-5215 は全gate PASS。WP-5216 は hierarchy Red 1 / 737→Web 64 files / 737 tests、Web typecheck、browser 36 route-viewports / 5 suites(Axe critical/serious 0、console error 0)、4画面目視、`git diff --check`がPASS。frozen independent / medical-safety reviewはlanding gateで実行する |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
 
@@ -72,26 +72,32 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5215(focus visibility / a11y foundation、R2)1 件である。**
-WP-5218 は本記録が `WP-5218:` local commit tree に含まれることを条件に着地し、同じ条件で
-READY 0 件から WP-5215 を claim する。未commit worktree上ではこの遷移全体を
-finalization candidate と読む。APPROVED UIX-001 §4 / §13の既存visible-focus契約へ戻すdefect fixである。
+**CURRENT は WP-5216(warning hierarchy / live-data elevation、R2)1 件である。**
+WP-5215 は local commit `47100b7` で着地済み。依存する WP-5214 / WP-5215 と、計画 v2.3 §7-4 の
+human gate は 2026-08-27 reply「承認」で充足し、READY 0 件から WP-5216 を claim する。
 
-- **Acceptance:** `globals.css` のrootで既存fallback色 `#6b4eff` を通常時のeffective
-  `--color-focus` sourceとし、`--focus-ring`をそのtokenへ接続する。dark `.app-sidebar` は
-  `--color-focus: #fff` と `--focus-ring`の両方を再定義し、既知背景 `#081c3e` / `#0a315b` /
-  active `#4657ed` に対して3:1以上を維持する。command inputの `outline: 0` を削除し、既存global
-  `:focus-visible` ringを継承させる。
-- **Exact allowed paths:** `apps/web/app/globals.css`、`apps/web/app/operator-first.css`、
-  `apps/web/app/style-load-order.test.ts` の3件のみ。
-- **Reuse / no-edit:** `legacy.css` のglobal `:focus-visible` とforced-colors `Highlight`、既存
-  `#6b4eff` fallbackを再利用する。adversarial/completion selectorの防御的fallbackは残し、文字列の
-  完全集中は主張しない。DOM、control、layout、`<=540px` media rule、OperatorPreferences、API、
-  contracts、schema、migration、APPROVED SSOT、新規dependencyは変更しない。
-- **Gate:** static testの最小 Red→Green、focused style test、Web typecheck / suite、synthetic browser、
-  `git diff --check`、frozen independent + accessibility review。actual screen reader、forced-colors、
-  200%/400% zoomのhuman確認はrelease gateとしてpendingを維持する。rollbackはexact3のatomic revert。
-  push、merge、deploy、migration applyは認可外である。
+- **Human-approved interpretation:** 各画面の上部 `PrototypeBanner` だけを full gate 説明の正本とし、
+  rail / downstream は短い参照へ縮約する。全 gate ID と「—」を0件・0円・完了等と読ませない
+  safety copy は残す。全 `live-surface-panel` は banner 直後、未取得 `MetricGrid` より前へ置く。
+- **Canonical banner gate IDs:** checkout=`UIX-001 §12.3` / `SCR-016` / `RB-008` / `MST-001` / `SCR-018`、
+  claim-check=`UIX-001 §12.3` / `SCR-019` / `RB-001` / `RB-008` / `RB-009`、
+  masters=`MST-001` / `RB-009` / `RB-008` / `UIX-001 §12.3` / `MOD-007 §3`、
+  monthly-closing=`UIX-001 §12.3` / `RB-001` / `RB-004` / `ARC-007` / `UIX-001 §12.4` /
+  `DOM-004` / `RB-003` / `API-013` / `MOD-008` / `MOD-009` / `AGENTS.md`。
+- **Acceptance:** 既存 `PrototypeBanner`、`live-surface-panel`、truthfulness render testを再利用し、
+  route別 canonical ID集合、共通short-reference、banner直後のDOM順、monthly-closingの
+  execution-authority→reception-summary順、unavailable-value safety copy、full-detail signature 1回を固定する。
+  actionの実行不可理由、data hook、API、domain state、患者contextは不変とする。
+- **Exact implementation paths:** `apps/web/app/checkout/page.tsx`、
+  `apps/web/app/claim-check/page.tsx`、`apps/web/app/masters/page.tsx`、
+  `apps/web/app/monthly-closing/page.tsx`、`apps/web/app/monthly-closing/closing-authority.tsx`、
+  `apps/web/app/operational-prototype-truthfulness.test.tsx`。
+  required record pathsは `Plans.md` / `State.md`。それ以外は変更しない。
+- **Gate:** 最小 Red→Green、focused truthfulness test、Web typecheck / suite、4 route synthetic browser、
+  `git diff --check`、frozen independent + medical-safety review。pre-plan technical reviewはMEDIUM 3件を
+  上のID集合・DOM順・review gateで解消し、delta reviewのMEDIUM 1件もmonthly-closingの全IDを
+  bannerへ移して解消した。medical-safety pre-planはfindings 0。rollbackはexact6とrequired recordsの
+  atomic revert。push、merge、deploy、migration applyは認可外である。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
@@ -163,6 +169,15 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5215 — フォーカス可視性・a11y 基盤是正(2026-08-27)
+
+- **Status:** `COMMITTED_LOCAL 47100b7 / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** root focus tokenを既存 `#6b4eff` fallbackへ接続し、dark sidebarはwhite ringを再定義、
+  command inputの `outline: 0` を削除した。DOM、layout、forced-colors、API、schemaは不変。
+- **Gate:** static Red→Green、focused 5 tests、Web typecheck、Web 64 files / 736 tests、browser 36
+  route-viewports / 5 suites、keyboard computed-style、`git diff --check`、frozen independent /
+  accessibility reviewがPASS。screen reader実機、forced-colors、zoomのhuman確認はrelease gateのまま。
 
 ### WP-5218 — Web test type boundary repair(2026-08-27)
 

@@ -42,7 +42,7 @@ import { todayAsIsoDate } from "../reception-dashboard";
  * この画面の締め・ロック・オンライン請求送信は実行できない。実行不可の結論は
  * セッション権限の取得結果に依存せず常に fail-closed であり、権限判定(第1段)と
  * operation 認可(第2段)を分けて説明する。第2段を止めているゲートは
- * CLOSING_BLOCKING_GATES として名指しする(トークンだけを操作者に見せない)。
+ * CLOSING_BLOCKING_GATES で短く参照し、full detail は画面上部の機能境界に集約する。
  *
  * 表示する実データは 2 系統だけ:
  * - GET /whoami(セッションの scope。claim:finalize の有無は事実として出す)
@@ -56,42 +56,37 @@ export const CLAIM_FINALIZE_SCOPES = [
 ] as const satisfies readonly PermissionScope[];
 
 export interface ClosingGate {
-  /** 正本側の識別子。必ず日本語の説明と併記する。 */
+  /** 正本側の識別子。短い日本語の参照説明と併記する。 */
   readonly id: string;
   readonly summary: string;
 }
 
-/** 締め・ロック・送信を止めている正本ゲート。 */
+/** 締め・ロック・送信を止めているゲート参照。 */
 export const CLOSING_BLOCKING_GATES: readonly ClosingGate[] = [
   {
     id: "UIX-001 §12.3",
-    summary:
-      "claim:finalize を要する締め・ロックは、operation authorization matrix に行が無い未登録の不可逆 operation です。未登録の operation には認可自体が存在しません。",
+    summary: "claim:finalize を要する未登録の不可逆 operation",
   },
   {
     id: "RB-001",
-    summary:
-      "電子レセプト生成は、記録条件仕様の evidence_id が未発行のため実装できません。",
+    summary: "電子レセプト生成: 記録条件仕様の evidence_id 未発行",
   },
   {
     id: "RB-004 BLOCKED_REGULATORY_REVIEW",
-    summary:
-      "オンライン請求送信は規制レビュー中で停止しています。公式接続方式・電子証明書・接続試験・運用規約の確認が未了です。",
+    summary: "オンライン請求送信: 規制レビュー中",
   },
   {
     id: "ARC-007 claim_finalization_immutability_policy",
-    summary:
-      "請求確定後の不可逆性(訂正は取消・再作成のみ)を規定しています。取り消せない操作を接続前に実行しません。",
+    summary: "請求確定後の不可逆性(訂正は取消・再作成のみ)",
   },
   {
     id: "UIX-001 §12.4",
     summary:
-      "local-finalize / external-register の境界が candidate / blocked です。DOM-004・RB-003・API-013・MOD-008・MOD-009 が APPROVED になるまで、確定とキュー登録の実装を禁止しています。",
+      "local-finalize / external-register 境界: DOM-004・RB-003・API-013・MOD-008・MOD-009 未承認",
   },
   {
     id: "AGENTS.md 人間承認ゲート",
-    summary:
-      "請求確定・送信は人間の明示承認が必要な非放棄ゲートです。システム側で自己承認しません。",
+    summary: "請求確定・送信: human approval 必須、system self-approval 不可",
   },
 ];
 
@@ -163,7 +158,7 @@ export function ClosingAuthorityView({
       <ReadOnlyIndicator reason="RB-001 電子レセプト生成・RB-004 オンライン請求送信が停止中のため閲覧のみ" />
 
       <div>
-        <h4>実行を止めている正本ゲート</h4>
+        <h4>実行を止めているゲート参照</h4>
         <ul className="rail-action-list">
           {CLOSING_BLOCKING_GATES.map((gate) => (
             <li key={gate.id} data-gate={gate.id}>

@@ -37,14 +37,13 @@ export default function Page() {
             </RailCard>
             <RailCard title="算定・請求が停止しているゲート" tone="warning">
               <ul className="rail-action-list">
-                <li>UIX-001 §12.3: SCR-016 の operation 未登録</li>
-                <li>RB-008: 規制レビュー保留で算定エンジン停止</li>
-                <li>MST-001: 薬価マスター取込 blocker</li>
-                <li>SCR-018: 帳票 API operation 未登録</li>
+                <li>UIX-001 §12.3 / SCR-016 / SCR-018</li>
+                <li>RB-008</li>
+                <li>MST-001</li>
               </ul>
               <p className="rail-muted">
-                アラートが表示されないことは安全確認済みを意味しません。
-                金額が表示されないことは0円・請求不要を意味しません。
+                境界の詳細は上部の「機能境界」を参照してください。
+                アラートや金額が表示されないことは、安全確認済み・0円・請求不要を意味しません。
               </p>
             </RailCard>
             <RailCard title="確定前の必須確認" tone="warning">
@@ -66,7 +65,8 @@ export default function Page() {
           meta={<StatusPill tone="warning">算定・会計API未接続</StatusPill>}
         />
         <PrototypeBanner tone="warning">
-          点数・患者負担・公費適用額・請求額は算出できません。算定エンジンは RB-008
+          点数・患者負担・公費適用額・請求額は算出できません。算定・会計操作 SCR-016 は UIX-001
+          §12.3 の operation registry で未登録です。算定エンジンは RB-008
           BLOCKED_REGULATORY_REVIEW（令和8年度調剤報酬点数表の版確認、calculation_rules の
           APPROVED、golden test 期待値の SSOT 化が未了）で停止し、薬価マスターは MST-001 の取込
           blocker（配布元仕様の evidence_id 未発行）で未取得です。領収証・明細書・薬袋の発行（SCR-018）は
@@ -74,40 +74,6 @@ export default function Page() {
         </PrototypeBanner>
 
         <CheckoutReceptionContext />
-
-        <Panel
-          title="算定・請求を止めているゲート"
-          description="どの能力が、どのゲートで止まっているかを名指しします。"
-          tone="warning"
-        >
-          <KeyValueList
-            items={[
-              {
-                label: "UIX-001 §12.3",
-                value:
-                  "operation registry に SCR-016 の行が無く、scope calculation:read は【要確認】のままです。該当SSOTとAPI registryが承認されるまで算定系操作を実装・有効化しません。",
-              },
-              {
-                label: "RB-008",
-                value:
-                  "BLOCKED_REGULATORY_REVIEW（規制レビュー保留）。令和8年度調剤報酬点数表の版確認、calculation_rules の APPROVED、golden test 期待値の SSOT 化が未了のため、算定エンジンを停止しています。",
-              },
-              {
-                label: "MST-001",
-                value:
-                  "薬価マスターの取込 blocker。配布元仕様の evidence_id が未発行のため、薬価を取得していません。",
-              },
-              {
-                label: "SCR-018",
-                value:
-                  "帳票出力は UIX-001 §12.3 で candidate 扱いのまま API operation が未登録です。領収証・調剤明細書・薬袋は発行できません。",
-              },
-            ]}
-          />
-          <p className="operator-empty-copy">
-            この画面の「—」は0円ではありません。未算定・未取得であり、支払完了・請求不要・自己負担なしのいずれも意味しません。
-          </p>
-        </Panel>
 
         <MetricGrid>
           <MetricCard

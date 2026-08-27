@@ -45,7 +45,8 @@ export default function Page() {
             <RailCard title="停止しているゲート" tone="warning">
               <StatusPill tone="warning">点検ルール未提供</StatusPill>
               <p className="rail-muted">
-                記録条件仕様は RB-001（規制レビュー未了）、算定根拠は RB-008、請求コード決定は RB-009（コード対応レビュー未了）で停止しています。UIX-001 §12.3 の operation registry にも SCR-019（claim:read）の行がありません。
+                UIX-001 §12.3 / SCR-019、RB-001、RB-008、RB-009 で停止中です。
+                境界の詳細は上部の「機能境界」を参照してください。
               </p>
             </RailCard>
             <RailCard title="件数の読み方" tone="info">
@@ -75,14 +76,8 @@ export default function Page() {
         />
         <PrototypeBanner tone="danger">
           {/* 行折り返しで JSX が空白を挿入しないよう、境界文言は 1 つの文字列として渡す。 */}
-          {"請求前点検ルールは提供できません。電子レセプトの記録条件仕様は RB-001 BLOCKED_REGULATORY_REVIEW（版確認と evidence_id 発行、electronic_receipt_design の APPROVED が未了）、算定根拠は RB-008、請求コード決定は RB-009 BLOCKED_CODE_MAPPING_REVIEW で停止しています。以下に表示するのは受付と資格確認状態の保存済み実件数のみで、点検結果でも請求可否の判定でもありません。「—」は0件を意味しません。"}
+          {"請求前点検ルールは提供できません。UIX-001 §12.3 の operation registry に SCR-019（claim:read）が未登録です。電子レセプトの記録条件仕様は RB-001 BLOCKED_REGULATORY_REVIEW（版確認と evidence_id 発行、electronic_receipt_design の APPROVED が未了）、算定根拠は RB-008、請求コード決定は RB-009 BLOCKED_CODE_MAPPING_REVIEW で停止しています。以下に表示するのは受付と資格確認状態の保存済み実件数のみで、点検結果でも請求可否の判定でもありません。「—」は0件を意味しません。"}
         </PrototypeBanner>
-        <MetricGrid>
-          <MetricCard label="点検対象件数" value="—" unit="件" detail="点検API未接続（RB-001 停止中）" tone="accent" icon="点" />
-          <MetricCard label="エラー" value="—" unit="件" detail="0件を意味しません" tone="neutral" icon="?" />
-          <MetricCard label="警告・要確認" value="—" unit="件" detail="0件を意味しません" tone="neutral" icon="?" />
-          <MetricCard label="点検完了" value="—" unit="件" detail="完了状態API未接続（RB-001 停止中）" tone="neutral" icon="?" />
-        </MetricGrid>
 
         <Panel
           title="受付・資格確認の保存済み実件数"
@@ -91,6 +86,13 @@ export default function Page() {
         >
           <ReceptionIntegrityBoard />
         </Panel>
+
+        <MetricGrid>
+          <MetricCard label="点検対象件数" value="—" unit="件" detail="点検API未接続（RB-001 停止中）" tone="accent" icon="点" />
+          <MetricCard label="エラー" value="—" unit="件" detail="0件を意味しません" tone="neutral" icon="?" />
+          <MetricCard label="警告・要確認" value="—" unit="件" detail="0件を意味しません" tone="neutral" icon="?" />
+          <MetricCard label="点検完了" value="—" unit="件" detail="完了状態API未接続（RB-001 停止中）" tone="neutral" icon="?" />
+        </MetricGrid>
 
         <Panel title="フィルターと点検項目" description="検索・絞り込みAPI接続後に操作できます。">
           <div className="filter-grid">
