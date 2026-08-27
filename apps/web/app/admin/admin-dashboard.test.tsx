@@ -4,7 +4,10 @@ import { describe, expect, it } from "vitest";
 
 import type { PermissionScope } from "@yrese/shared-kernel";
 
-import type { AdminDashboardSnapshot } from "./admin-data";
+import type {
+  AdminDashboardSnapshot,
+  AdminMigrationSection,
+} from "./admin-data";
 import { AdminDashboardView } from "./admin-dashboard";
 
 (globalThis as { React?: typeof React }).React = React;
@@ -14,6 +17,19 @@ const PREFERENCES = {
   forcedColors: false,
   darkScheme: false,
 } as const;
+
+const MIGRATION_READY: AdminMigrationSection = {
+  status: "ready",
+  data: {
+    available: true,
+    result: "up_to_date",
+    appliedCount: 13,
+    availableCount: 13,
+    pendingVersions: [],
+    latestAppliedVersion: "000013",
+    latestAppliedName: "create_prescription_drafts",
+  },
+};
 
 function snapshotFor(
   tenantId: string,
@@ -35,8 +51,16 @@ function snapshotFor(
         timestamp: "2026-08-25T00:00:00.000Z",
       },
     },
+    migrationState: MIGRATION_READY,
     loadedAt: "2026-08-25T00:01:00.000Z",
   };
+}
+
+function withMigrationState(
+  snapshot: AdminDashboardSnapshot,
+  migrationState: AdminMigrationSection,
+): AdminDashboardSnapshot {
+  return { ...snapshot, migrationState };
 }
 
 function renderSnapshot(
@@ -49,6 +73,7 @@ function renderSnapshot(
     | "accessibility"
     | "commands"
     | "integrations" = "overview",
+  refreshing = false,
 ): string {
   return renderToStaticMarkup(
     <AdminDashboardView
@@ -57,6 +82,7 @@ function renderSnapshot(
       activeTab={activeTab}
       onTabChange={() => undefined}
       onRefresh={() => undefined}
+      refreshing={refreshing}
     />,
   );
 }
@@ -140,6 +166,123 @@ describe("AdminDashboardView", () => {
     expect(html).toContain("UIX-007");
     expect(html).not.toContain("eventId");
     expect(html).not.toContain("監査イベント一覧");
+  });
+
+  it("renders the measured schema migration state inside the integrations tab", () => {
+    const html = renderSnapshot(
+      snapshotFor("tenant-alpha", "pharmacy-alpha", "actor-alpha"),
+      "integrations",
+    );
+
+    expect(html).toContain("DBスキーマ適用状態");
+    expect(html).toContain("定義と一致(適用済み)");
+    expect(html).toContain("13 件");
+    expect(html).toContain("000013");
+    expect(html).toContain("create_prescription_drafts");
+    // checksum の値そのものと接続情報は API も UI も運ばない。
+    expect(html).not.toContain("checksum:");
+    expect(html).not.toContain("DATABASE_URL");
+  });
+
+  it("never renders an omitted pendingVersions as a measured zero", () => {
+    const html = renderSnapshot(
+      withMigrationState(
+        snapshotFor("tenant-alpha", "pharmacy-alpha", "actor-alpha"),
+        {
+          status: "ready",
+          // 照合が 000004 で停止した結果。未適用件数は導出されておらず API も返さない。
+          data: {
+            available: true,
+            result: "checksum_mismatch",
+            appliedCount: 4,
+            availableCount: 13,
+          },
+        },
+      ),
+      "integrations",
+    );
+
+    expect(html).toContain(
+      "—（この照合結果からは導出できません。0件ではありません）",
+    );
+    expect(html).not.toContain("なし（0件）");
+  });
+
+  it("renders a derived empty pendingVersions as the measured zero it is", () => {
+    const html = renderSnapshot(
+      snapshotFor("tenant-alpha", "pharmacy-alpha", "actor-alpha"),
+      "integrations",
+    );
+
+    expect(MIGRATION_READY.status === "ready" && MIGRATION_READY.data.available).toBe(true);
+    expect(html).toContain("なし（0件）");
+  });
+
+  it("states the unconfigured persistent store honestly instead of implying a healthy schema", () => {
+    const html = renderSnapshot(
+      withMigrationState(
+        snapshotFor("tenant-alpha", "pharmacy-alpha", "actor-alpha"),
+        {
+          status: "ready",
+          data: { available: false, reason: "PERSISTENT_STORE_NOT_CONFIGURED" },
+        },
+      ),
+      "integrations",
+    );
+
+    expect(html).toContain(
+      "永続ストアが構成されていないため、スキーマ適用状態を取得していません。",
+    );
+    expect(html).toContain(
+      "未取得であることは、スキーマが最新であること・不整合が無いことのいずれも意味しません。",
+    );
+    expect(html).not.toContain("定義と一致(適用済み)");
+    expect(html).not.toContain("PERSISTENT_STORE_NOT_CONFIGURED");
+  });
+
+  it("keeps a migration-state failure section-scoped and free of server wording", () => {
+    const html = renderSnapshot(
+      withMigrationState(
+        snapshotFor("tenant-alpha", "pharmacy-alpha", "actor-alpha"),
+        {
+          status: "error",
+          notice: {
+            message: "集計APIの応答が契約と一致しません。",
+            nextAction: "表示を中止しました。管理者へ連絡してください。",
+          },
+        },
+      ),
+      "integrations",
+    );
+
+    expect(html).toContain("集計APIの応答が契約と一致しません。");
+    expect(html).toContain("表示を中止しました。管理者へ連絡してください。");
+    // 同じタブの /health パネルは失敗に巻き込まれない。
+    expect(html).toContain("API接続状態");
+    expect(html).toContain("0.0.1");
+  });
+
+  it("keeps the previous result visible while re-fetching and says what is shown", () => {
+    const html = renderSnapshot(
+      snapshotFor("tenant-alpha", "pharmacy-alpha", "actor-alpha"),
+      "overview",
+      true,
+    );
+
+    expect(html).toContain("再取得中");
+    expect(html).toContain("画面上の値はまだ更新されていません。");
+    expect(html).toContain('role="status"');
+    // 前回結果は消さない。
+    expect(html).toContain("tenant-alpha");
+    expect(html).toContain("更新中…");
+  });
+
+  it("keeps exactly the seven approved tabs", () => {
+    const html = renderSnapshot(
+      snapshotFor("tenant-alpha", "pharmacy-alpha", "actor-alpha"),
+    );
+
+    expect(html.match(/role="tab"/g)).toHaveLength(7);
   });
 
   it("keeps health failure section-scoped after identity authorization succeeds", () => {

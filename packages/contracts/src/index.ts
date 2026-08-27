@@ -14,6 +14,7 @@ export * from "./calculation-trace.js";
 export * from "./error.js";
 export * from "./health.js";
 export * from "./openapi.js";
+export * from "./operations-status.js";
 export * from "./partner-event.js";
 export * from "./partner-scope.js";
 export * from "./patient-search.js";

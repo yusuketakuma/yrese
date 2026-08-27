@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  derivedPendingVersions,
   formatMigrationCheckResult,
   reconcileMigrationState,
   type AppliedMigration,
@@ -282,5 +283,69 @@ describe('reconcileMigrationState', () => {
       status: 'unapplied_required',
       pendingVersions: ['000002'],
     });
+  });
+});
+
+describe('derivedPendingVersions', () => {
+  const base = { appliedCount: 4, availableCount: 13 } as const;
+
+  it('reports a measured empty list where the reconciliation completed', () => {
+    expect(
+      derivedPendingVersions({ ok: true, status: 'up_to_date', ...base, extraAppliedVersions: [] }),
+    ).toEqual({ pendingVersions: [] });
+    expect(
+      derivedPendingVersions({
+        ok: true,
+        status: 'db_ahead',
+        ...base,
+        extraAppliedVersions: ['000014'],
+      }),
+    ).toEqual({ pendingVersions: [] });
+  });
+
+  it('reports the actual pending versions where they were derived', () => {
+    expect(
+      derivedPendingVersions({
+        ok: false,
+        status: 'unapplied_required',
+        ...base,
+        pendingVersions: ['000005', '000006'],
+      }),
+    ).toEqual({ pendingVersions: ['000005', '000006'] });
+  });
+
+  it('omits the field where the reconciliation stopped before deriving it', () => {
+    // 0 件と主張すると「未適用なし」を実測したことになる。省略で導出不能を示す。
+    const checksumMismatch = derivedPendingVersions({
+      ok: false,
+      status: 'checksum_mismatch',
+      ...base,
+      version: '000004',
+      expectedChecksumSha256: 'a'.repeat(64),
+      actualChecksumSha256: 'b'.repeat(64),
+    });
+
+    expect('pendingVersions' in checksumMismatch).toBe(false);
+    expect(
+      'pendingVersions' in
+        derivedPendingVersions({
+          ok: false,
+          status: 'version_mismatch',
+          ...base,
+          expectedVersion: '000004',
+          actualVersion: '000009',
+        }),
+    ).toBe(false);
+    expect(
+      'pendingVersions' in
+        derivedPendingVersions({
+          ok: false,
+          status: 'name_mismatch',
+          ...base,
+          version: '000004',
+          expectedName: 'create_receptions',
+          actualName: 'create_reception',
+        }),
+    ).toBe(false);
   });
 });

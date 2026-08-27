@@ -5,12 +5,7 @@ import Link from "next/link";
 import { useOptionalPatientContext } from "./patient-context";
 import { ELIGIBILITY_LABELS, computeAgeYears } from "./patient-header";
 import { KeyValueList, RailCard, StatusPill } from "./operator-ui";
-
-const SEX_LABELS = {
-  male: "男",
-  female: "女",
-  unknown: "不明",
-} as const;
+import { SEX_LABELS } from "../status/visual-status-registry";
 
 export function PatientContextRail() {
   const context = useOptionalPatientContext();

@@ -15,8 +15,15 @@ import {
 
 import { devTenantHeaders } from "../dev-tenant";
 
+import { EmptyState } from "../components/empty-state";
 import { registeredErrorCodeOrUndefined } from "../components/error-code";
-import { MetricCard, MetricGrid, Panel } from "../components/operator-ui";
+import { LoadingState } from "../components/loading-state";
+import {
+  MetricCard,
+  MetricGrid,
+  Panel,
+  TableScroll,
+} from "../components/operator-ui";
 import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
 import {
   type PatientContextData,
@@ -29,7 +36,10 @@ import {
   computeAgeYears,
 } from "../components/patient-header";
 import { SeverityList } from "../components/severity-list";
-import { ELIGIBILITY_PRESENTATION } from "../status/visual-status-registry";
+import {
+  ELIGIBILITY_PRESENTATION,
+  SEX_LABELS,
+} from "../status/visual-status-registry";
 import { resolveWebApiUrl } from "../api-transport";
 
 /**
@@ -42,12 +52,6 @@ import { resolveWebApiUrl } from "../api-transport";
  * 再利用(文言の二重実装禁止 — WP-4041)、カナ併記+同姓同名警告(P-09)、
  * キーボード第一(autoFocus + Enter 送信)。
  */
-
-const SEX_LABELS: Record<PatientSearchResult["sex"], string> = {
-  male: "男",
-  female: "女",
-  unknown: "不明",
-};
 
 const patientSearchPageLimitErrorMessage =
   "Patient search response exceeded the requested page limit";
@@ -465,76 +469,87 @@ export function PatientSearchResults({
       </p>
       {notices.length > 0 && <SeverityList items={notices} />}
       {results.length > 0 && (
-        <div className="table-scroll">
+        <TableScroll label="患者検索結果表。横方向にスクロールできます">
           <table className="patient-search-results">
-          <thead>
-            <tr>
-              <th scope="col">患者番号</th>
-              <th scope="col">氏名(カナ)</th>
-              <th scope="col">生年月日</th>
-              <th scope="col">性別</th>
-              <th scope="col">資格確認状態</th>
-              {onSelect !== undefined && (
-                <th scope="col" className="patient-search-action-column">
-                  操作
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {results.map((p) => {
-              const isDuplicate = duplicates.has(p.kana);
-              return (
-                <tr
-                  key={p.patientId}
-                  {...(isDuplicate ? { "data-duplicate-kana": "true" } : {})}
-                >
-                  <td>{p.patientNumber}</td>
-                  <td>
-                    {isDuplicate && (
-                      <span className="patient-duplicate-kana-label">
-                        【同姓同名注意】
-                      </span>
-                    )}
-                    <span className="patient-kana">{p.kana}</span>
-                    <span className="patient-name">{p.name}</span>
-                  </td>
-                  <td>{p.birthDate}</td>
-                  <td>{SEX_LABELS[p.sex]}</td>
-                  <td>
-                    <span
-                      className="patient-eligibility"
-                      data-status={p.eligibilityStatus}
-                    >
-                      <span className="patient-eligibility-shape" aria-hidden="true">
-                        {ELIGIBILITY_PRESENTATION[p.eligibilityStatus].shape}
-                      </span>
-                      {ELIGIBILITY_LABELS[p.eligibilityStatus]}
-                      {p.eligibilityCheckedAt !== undefined && (
-                        <span className="patient-eligibility-checked-at">
-                          (最終確認: {p.eligibilityCheckedAt})
+            <thead>
+              <tr>
+                <th scope="col">患者番号</th>
+                <th scope="col">氏名(カナ)</th>
+                <th scope="col">生年月日</th>
+                <th scope="col">性別</th>
+                <th scope="col">資格確認状態</th>
+                {onSelect !== undefined && (
+                  <th scope="col" className="patient-search-action-column">
+                    操作
+                  </th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((p) => {
+                const isDuplicate = duplicates.has(p.kana);
+                return (
+                  <tr
+                    key={p.patientId}
+                    {...(isDuplicate ? { "data-duplicate-kana": "true" } : {})}
+                  >
+                    <td>{p.patientNumber}</td>
+                    <td>
+                      {isDuplicate && (
+                        <span className="patient-duplicate-kana-label">
+                          【同姓同名注意】
                         </span>
                       )}
-                    </span>
-                  </td>
-                  {onSelect !== undefined && (
-                    <td className="patient-search-action-column">
-                      <button type="button" onClick={() => onSelect(p)}>
-                        この患者を選択
-                      </button>
+                      <span className="patient-kana">{p.kana}</span>
+                      <span className="patient-name">{p.name}</span>
                     </td>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
+                    <td>{p.birthDate}</td>
+                    <td>{SEX_LABELS[p.sex]}</td>
+                    <td>
+                      <span
+                        className="patient-eligibility"
+                        data-status={p.eligibilityStatus}
+                      >
+                        <span
+                          className="patient-eligibility-shape"
+                          aria-hidden="true"
+                        >
+                          {ELIGIBILITY_PRESENTATION[p.eligibilityStatus].shape}
+                        </span>
+                        {ELIGIBILITY_LABELS[p.eligibilityStatus]}
+                        {p.eligibilityCheckedAt !== undefined && (
+                          <span className="patient-eligibility-checked-at">
+                            (最終確認: {p.eligibilityCheckedAt})
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                    {onSelect !== undefined && (
+                      <td className="patient-search-action-column">
+                        <button
+                          className="operator-button"
+                          type="button"
+                          onClick={() => onSelect(p)}
+                        >
+                          この患者を選択
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
           </table>
-        </div>
+        </TableScroll>
+      )}
+      {results.length === 0 && (
+        <EmptyState message="検索条件に一致する患者は0件でした。氏名・カナ・患者番号の表記(全角・半角、旧字体)を変えて再検索してください。この0件は検索が実行できた結果であり、未接続を意味しません。" />
       )}
       {nextCursor !== undefined && onLoadMore !== undefined && (
         <>
           {appendState.kind === "error" && <ErrorNotice {...appendState.notice} />}
           <button
+            className="operator-button"
             type="button"
             onClick={onLoadMore}
             disabled={appendState.kind === "loading"}
@@ -650,82 +665,111 @@ export function PatientSearch() {
           tone="info"
           icon="選"
         />
-        <MetricCard label="資格未確認" value="—" unit="名" detail="集計API未接続" tone="neutral" icon="?" />
-        <MetricCard label="要フォロー" value="—" unit="名" detail="フォロー機能未接続" tone="neutral" icon="?" />
-      </MetricGrid>
-      <Panel
-        title="患者一覧"
-        description="検索結果は取得時点の鮮度を表示し、古い応答や重複患者IDを安全側で拒否します。"
-        className="live-surface-panel"
-      >
-    <section aria-label="患者検索">
-      {standaloneSelected !== null && (
-        <div className="selected-patient-context">
-          <p className="selected-patient-context-title" role="status">
-            選択中の患者(この患者を業務対象とします)
-          </p>
-          <PatientHeader
-            patientId={patientId(standaloneSelected.patientId)}
-            name={standaloneSelected.name}
-            kana={standaloneSelected.kana}
-            birthDate={standaloneSelected.birthDate}
-            age={computeAgeYears(standaloneSelected.birthDate, new Date())}
-            sex={standaloneSelected.sex}
-            eligibility={standaloneSelected.eligibilityStatus}
-            {...(standaloneSelected.eligibilityCheckedAt !== undefined
-              ? { eligibilityCheckedAt: standaloneSelected.eligibilityCheckedAt }
-              : {})}
-          />
-          <button type="button" onClick={() => setLocalSelected(null)}>
-            選択解除
-          </button>
-        </div>
-      )}
-      <form
-        className="patient-search-form"
-        method="post"
-        action="/patients"
-        onSubmit={(e) => {
-          e.preventDefault();
-          runSearch(q);
-        }}
-      >
-        <label htmlFor="patient-search-q">患者検索(氏名・カナ・患者番号)</label>
-        <div className="patient-search-row">
-          <input
-            id="patient-search-q"
-            type="text"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            maxLength={100}
-            autoFocus
-            autoComplete="off"
-            placeholder="例: ヤマダ / 山田 / P-0001"
-          />
-          <button type="submit" disabled={state.kind === "loading"}>
-            検索
-          </button>
-        </div>
-      </form>
-
-      {state.kind === "loading" && <p role="status">検索中…</p>}
-
-      {state.kind === "error" && <ErrorNotice {...state.notice} />}
-
-      {state.kind === "loaded" && (
-        <PatientSearchResults
-          results={state.results}
-          query={state.query}
-          appendState={state.appendState}
-          {...(state.nextCursor !== undefined
-            ? { nextCursor: state.nextCursor }
-            : {})}
-          onLoadMore={() => runSearch(state.query, state.nextCursor, true)}
-          onSelect={selectPatient}
+        {/* 未接続の集計は「—」のまま理由を名指しする(0を捏造しない — UIX-001 §6)。 */}
+        <MetricCard
+          label="資格未確認"
+          value="—"
+          unit="名"
+          detail="患者横断の集計APIが未登録のため導出できません(0件を意味しません)"
+          tone="neutral"
+          icon="?"
         />
-      )}
-    </section>
-      </Panel>
+        <MetricCard
+          label="要フォロー"
+          value="—"
+          unit="名"
+          detail="フォロー対象の判定基準がAPPROVED SSOTに未登録のため導出できません(0件を意味しません)"
+          tone="neutral"
+          icon="?"
+        />
+      </MetricGrid>
+      <section aria-label="患者検索">
+        <Panel
+          title="患者一覧"
+          description="検索結果は取得時点の鮮度を表示し、古い応答や重複患者IDを安全側で拒否します。"
+          className="live-surface-panel"
+        >
+          {standaloneSelected !== null && (
+            <div className="selected-patient-context">
+              <p className="selected-patient-context-title" role="status">
+                選択中の患者(この患者を業務対象とします)
+              </p>
+              <PatientHeader
+                patientId={patientId(standaloneSelected.patientId)}
+                name={standaloneSelected.name}
+                kana={standaloneSelected.kana}
+                birthDate={standaloneSelected.birthDate}
+                age={computeAgeYears(standaloneSelected.birthDate, new Date())}
+                sex={standaloneSelected.sex}
+                eligibility={standaloneSelected.eligibilityStatus}
+                {...(standaloneSelected.eligibilityCheckedAt !== undefined
+                  ? { eligibilityCheckedAt: standaloneSelected.eligibilityCheckedAt }
+                  : {})}
+              />
+              <button
+                className="operator-button"
+                type="button"
+                onClick={() => setLocalSelected(null)}
+              >
+                選択解除
+              </button>
+            </div>
+          )}
+          <form
+            className="patient-search-form"
+            method="post"
+            action="/patients"
+            onSubmit={(e) => {
+              e.preventDefault();
+              runSearch(q);
+            }}
+          >
+            <label htmlFor="patient-search-q">患者検索(氏名・カナ・患者番号)</label>
+            <div className="patient-search-row">
+              <input
+                id="patient-search-q"
+                type="text"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                maxLength={100}
+                autoFocus
+                autoComplete="off"
+                placeholder="例: ヤマダ / 山田 / P-0001"
+              />
+              <button type="submit" disabled={state.kind === "loading"}>
+                検索
+              </button>
+            </div>
+            {/* 検索語(患者氏名になりうる)を送信本文・URLへ載せないため、
+                入力欄に name 属性を付けない。結果としてJavaScript無効時は
+                検索が実行できないので、その制約を常時可視で説明する。 */}
+            <p className="operator-empty-copy">
+              検索はブラウザ上でのみ実行します。JavaScriptが無効の場合、患者氏名などの検索語をURL・送信本文へ載せない設計のため検索を実行できません。その場合は管理者へ連絡してください。
+            </p>
+          </form>
+
+          {state.kind === "loading" && <LoadingState label="患者を検索中…" />}
+
+          {state.kind === "error" && <ErrorNotice {...state.notice} />}
+
+          {state.kind === "idle" && (
+            <EmptyState message="まだ検索を実行していません。氏名・カナ・患者番号のいずれかを入力して検索してください。患者一覧は検索を実行するまで表示しません。" />
+          )}
+
+          {state.kind === "loaded" && (
+            <PatientSearchResults
+              results={state.results}
+              query={state.query}
+              appendState={state.appendState}
+              {...(state.nextCursor !== undefined
+                ? { nextCursor: state.nextCursor }
+                : {})}
+              onLoadMore={() => runSearch(state.query, state.nextCursor, true)}
+              onSelect={selectPatient}
+            />
+          )}
+        </Panel>
+      </section>
     </>
   );
 }

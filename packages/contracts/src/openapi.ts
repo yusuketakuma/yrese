@@ -8,6 +8,12 @@ import { auditLogQuerySchema, auditLogResponseSchema } from "./audit-log.js";
 import { errorResponseSchema, frameworkErrorResponseSchema } from "./error.js";
 import { healthResponseSchema } from "./health.js";
 import {
+  migrationStateResponseSchema,
+  outboxSummaryResponseSchema,
+  receptionSummaryQuerySchema,
+  receptionSummaryResponseSchema,
+} from "./operations-status.js";
+import {
   patientGetParamsSchema,
   patientSearchQuerySchema,
   patientSearchResponseSchema,
@@ -171,6 +177,29 @@ const prescriptionDraftSaveResponseOpenApiSchema =
     description:
       "Prescription draft save result, including created/updated/unchanged disposition. Contains clinical PHI.",
   });
+
+const outboxSummaryResponseOpenApiSchema = outboxSummaryResponseSchema.meta({
+  id: "OutboxSummaryResponse",
+  description:
+    "Transactional outbox counters and instants only (pending/delivered per event type, oldest pending instant). PHI-free: no reception, patient, or payload content. `legacyOrphanCount` is present only where it was actually derived; an omitted field means not derived, which is not the same as zero.",
+});
+
+const receptionSummaryQueryOpenApiSchema = receptionSummaryQuerySchema.meta({
+  id: "ReceptionSummaryQuery",
+  description: "Business-date selector for the reception count summary",
+});
+
+const receptionSummaryResponseOpenApiSchema = receptionSummaryResponseSchema.meta({
+  id: "ReceptionSummaryResponse",
+  description:
+    "Reception counts for one business date, folded before leaving the service. Every reception status and eligibility status member is listed in declaration order; a zero is a measured count, not a placeholder. PHI-free: no patient identity is enumerated.",
+});
+
+const migrationStateResponseOpenApiSchema = migrationStateResponseSchema.meta({
+  id: "MigrationStateResponse",
+  description:
+    "schema_migrations reconciliation state. Carries the reconciliation result, counts, pending versions, and the latest applied version/name only — never a connection string, host name, or checksum value (a checksum difference appears solely as the `checksum_mismatch` result). `pendingVersions` is present only where it was actually derived (`up_to_date`/`db_ahead` carry a measured empty list, `unapplied_required` the pending versions); a mismatch result stops the reconciliation part-way and omits the field, which is not the same as zero. The `available: false` branch is returned when no persistent store is configured.",
+});
 
 const auditLogQueryOpenApiSchema = auditLogQuerySchema.meta({
   id: "AuditLogQuery",
@@ -565,6 +594,108 @@ const openApiDefinition = {
             "Prescription draft version conflict",
           ),
           "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+    },
+    "/operations/outbox-summary": {
+      get: {
+        operationId: "getOperationsOutboxSummary",
+        tags: ["operations"],
+        summary: "Return transactional outbox counters for the authenticated tenant and pharmacy",
+        description:
+          "Requires sync:read scope. Returns counts and instants derived from persisted outbox intents (migrations/000005 + 000007 `outbox_events`; the in-memory mode reads the in-process intent store). No delivery worker runs in this slice, so intents observed as pending are genuinely pending. The response is PHI-free — counts, event-type labels, and one instant only — so it declares no Cache-Control: no-store. `legacyOrphanCount` is omitted where it is not derived rather than reported as zero, and the orphan reception IDs themselves are never returned.",
+        "x-yrese-ssot": "MOD-009",
+        "x-yrese-required-scope": "sync:read",
+        responses: {
+          "200": {
+            description: "Outbox counters grouped by event type in eventType asc order",
+            content: {
+              [jsonContentType]: {
+                schema: outboxSummaryResponseOpenApiSchema,
+              },
+            },
+          },
+          "403": {
+            description: "Forbidden (AUTH-0003)",
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+          "500": internalErrorResponse({ noStore: false }),
+        },
+      },
+    },
+    "/operations/reception-summary": {
+      get: {
+        operationId: "getOperationsReceptionSummary",
+        tags: ["operations"],
+        summary: "Return reception counts for one explicit calendar date",
+        description:
+          "Requires reception:read only. patient:read is deliberately not required: the service folds the reception list into counts before the route sees it, so no patient identity crosses the route boundary and a batch screen does not need a patient scope. Both count arrays list every enum member in declaration order, so an absent status is reported as a measured zero rather than being dropped. The response is PHI-free and declares no Cache-Control: no-store.",
+        "x-yrese-ssot": "API-006",
+        "x-yrese-required-scope": "reception:read",
+        requestParams: {
+          query: receptionSummaryQueryOpenApiSchema,
+        },
+        responses: {
+          "200": {
+            description: "Reception counts by reception status and eligibility status",
+            content: {
+              [jsonContentType]: {
+                schema: receptionSummaryResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": {
+            description: "Invalid reception summary query (RCV-0001)",
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+          "403": {
+            description: "Forbidden (AUTH-0003)",
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+          "500": internalErrorResponse({ noStore: false }),
+        },
+      },
+    },
+    "/operations/migration-state": {
+      get: {
+        operationId: "getOperationsMigrationState",
+        tags: ["operations"],
+        summary: "Return the schema_migrations reconciliation state",
+        description:
+          "Requires tenant:admin scope. Reuses the same reconciliation the db:check CLI and the startup gate use (checkMigrationState over migrations/000001 `schema_migrations`). Returns the reconciliation result, applied/available counts, the derived pending versions, and the latest applied version and name. `pendingVersions` is omitted where the reconciliation stopped before it could be derived rather than reported as zero. Never returns DATABASE_URL, a connection string, a host name, or a checksum value. When no persistent store is configured the response is the explicit `available: false` branch rather than a fabricated up-to-date state.",
+        "x-yrese-ssot": "DB-002",
+        "x-yrese-required-scope": "tenant:admin",
+        responses: {
+          "200": {
+            description:
+              "Migration reconciliation state, or the explicit not-configured branch",
+            content: {
+              [jsonContentType]: {
+                schema: migrationStateResponseOpenApiSchema,
+              },
+            },
+          },
+          "403": {
+            description: "Forbidden (AUTH-0003)",
+            content: {
+              [jsonContentType]: {
+                schema: errorResponseOpenApiSchema,
+              },
+            },
+          },
+          "500": internalErrorResponse({ noStore: false }),
         },
       },
     },

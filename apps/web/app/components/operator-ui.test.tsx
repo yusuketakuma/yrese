@@ -9,6 +9,7 @@ import {
   PrototypeAction,
   PrototypeBanner,
   StatusPill,
+  TableScroll,
 } from "./operator-ui";
 
 (globalThis as { React?: typeof React }).React = React;
@@ -78,5 +79,37 @@ describe("operator UI capability primitives", () => {
     expect(html).toContain('aria-label="会計補助情報"');
     expect(html).toContain("未接続");
     expect(html).toContain('data-tone="warning"');
+  });
+
+  it("marks the rail as non-sticky only when the caller opts out", () => {
+    const sticky = renderToStaticMarkup(
+      <OperatorPage rail={<p>補助</p>}>
+        <p>本文</p>
+      </OperatorPage>,
+    );
+    const staticRail = renderToStaticMarkup(
+      <OperatorPage rail={<p>補助</p>} railLabel="環境・管理補助情報" railSticky={false}>
+        <p>本文</p>
+      </OperatorPage>,
+    );
+
+    expect(sticky).not.toContain("data-sticky");
+    expect(staticRail).toContain('aria-label="環境・管理補助情報"');
+    expect(staticRail).toContain('data-sticky="false"');
+  });
+
+  it("wraps a horizontally scrolling table as one reachable labelled region", () => {
+    const html = renderToStaticMarkup(
+      <TableScroll label="受付キュー表">
+        <table className="operator-table" />
+      </TableScroll>,
+    );
+
+    expect(html).toContain('class="table-scroll"');
+    expect(html).toContain('tabindex="0"');
+    expect(html).toContain('aria-label="受付キュー表"');
+    // role が無い div は generic へマップされ、aria-label は禁止属性として無視される。
+    // role を落とすと名前の読まれない tab stop になる。
+    expect(html).toContain('role="region"');
   });
 });

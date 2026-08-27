@@ -53,7 +53,6 @@ textarea {
   outline-offset: 2px;
 }
 
-.placeholder-note,
 .empty-state,
 .loading-state {
   border: 1px dashed var(--color-border);
@@ -247,6 +246,7 @@ tr[data-duplicate-kana="true"] > td {
   font-size: 0.9rem;
 }
 
+/* status-badge.tsx(自由label+tone)のレガシー互換。新規ドメイン状態は DomainStatusBadge を使う。 */
 .status-badge {
   display: inline-block;
   padding: 0.15rem 0.6rem;
@@ -291,6 +291,9 @@ tr[data-duplicate-kana="true"] > td {
 
 .table-scroll {
   max-width: 100%;
+  /* grid/flex item の min-width:auto は表の min-content まで広がり、
+     狭幅で親トラックごと押し広げる。横スクロールは内側で受ける。 */
+  min-width: 0;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -307,6 +310,7 @@ tr[data-duplicate-kana="true"] > td {
   font-size: var(--font-size-sm);
 }
 
+/* blocker-banner.tsx。理由なしのBLOCKEDを作らないための共通停止表示。 */
 .blocker-banner {
   padding: var(--space-2) var(--space-3);
   border: 2px solid var(--color-danger-border);
@@ -429,6 +433,10 @@ tr[data-duplicate-kana="true"] > td {
   font-weight: 600;
 }
 
+/*
+ * 意図的な部品箱: record-state-badge / prescription-change-indicator / sync-indicator /
+ * file-upload-status / audit-metadata は画面未配線だが、承認済み状態語彙の実装として残す。
+ */
 .record-state,
 .prescription-change,
 .sync-indicator,
@@ -457,6 +465,7 @@ tr[data-duplicate-kana="true"] > td {
   font-weight: 700;
 }
 
+/* clinical-alert.tsx。臨床警告は重大度と種別が直交するため、専用の視覚レーンを保持する。 */
 .clinical-alert,
 .clinical-alert-summary {
   display: grid;
@@ -519,6 +528,7 @@ tr[data-duplicate-kana="true"] > td {
   list-style: none;
 }
 
+/* mode-capability-view.tsx 系。システムモード検知APIが接続された時に配線する部品箱。 */
 .offline-banner,
 .system-health-banner {
   display: flex;
@@ -547,6 +557,7 @@ tr[data-duplicate-kana="true"] > td {
   font-weight: 700;
 }
 
+/* auth-session.tsx(緊急モード・セッション失効・ログイン)。認証UI接続時に配線する部品箱。 */
 .emergency-mode-banner,
 .session-expiry-warning {
   display: grid;
@@ -585,6 +596,10 @@ tr[data-duplicate-kana="true"] > td {
   font-weight: 700;
 }
 
+/*
+ * confirmation-dialog.tsx。focus trap 未実装のため U3/U4 画面では使わない部品箱であり、
+ * 破壊的確認はインライン確認(prescription-workspace)を参照実装とする。
+ */
 .confirmation-dialog,
 .destructive-action-dialog {
   display: flex;

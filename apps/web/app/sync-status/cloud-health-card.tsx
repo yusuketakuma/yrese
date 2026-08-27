@@ -41,7 +41,11 @@ export async function resolveCloudHealthState(
   }
 }
 
-function checkedAtLabel(checkedAt: string): string {
+/**
+ * 取得時刻を運用者のローカル時刻 HH:MM で示す(同期状態画面が共通で使う)。
+ * 時刻の無い状態表示は「いつの値か」を失い、古い値が現在値として読まれる。
+ */
+export function checkedAtLabel(checkedAt: string): string {
   const at = new Date(checkedAt);
   if (Number.isNaN(at.getTime())) return "確認時刻不明";
   const hh = String(at.getHours()).padStart(2, "0");

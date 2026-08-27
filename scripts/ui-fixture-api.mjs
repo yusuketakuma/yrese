@@ -50,6 +50,66 @@ function receptionEntries(date) {
   ];
 }
 
+// 運用集計フィクスチャ(合成値のみ)。件数・時刻・enum・スキーマ版数だけを返し、
+// 患者識別子・氏名・カナ・生年月日・処方内容は一切含めない。
+const RECEPTION_STATUS_ORDER = [
+  "WAITING",
+  "IN_PROGRESS",
+  "COMPLETED",
+  "CANCELLED",
+];
+const ELIGIBILITY_STATUS_ORDER = [
+  "VERIFIED",
+  "PENDING_REVERIFY",
+  "LOCAL_ONLY_UNVERIFIED",
+  "NOT_CHECKED",
+];
+
+const outboxSummary = {
+  pendingCount: 2,
+  deliveredCount: 1,
+  oldestPendingCreatedAt: "2026-08-25T00:15:00.000Z",
+  byEventType: [
+    { eventType: "reception.created", pendingCount: 2, deliveredCount: 1 },
+  ],
+  legacyOrphanCount: 0,
+};
+
+const migrationState = {
+  available: true,
+  result: "up_to_date",
+  appliedCount: 13,
+  availableCount: 13,
+  pendingVersions: [],
+  latestAppliedVersion: "000013",
+  latestAppliedName: "create_prescription_drafts",
+};
+
+function countByStatus(entries, pick, order) {
+  return order.map((status) => ({
+    status,
+    count: entries.filter((entry) => pick(entry) === status).length,
+  }));
+}
+
+function receptionSummary(date) {
+  const entries = receptionEntries(date);
+  return {
+    date,
+    totalCount: entries.length,
+    byReceptionStatus: countByStatus(
+      entries,
+      (entry) => entry.receptionStatus,
+      RECEPTION_STATUS_ORDER,
+    ),
+    byEligibilityStatus: countByStatus(
+      entries,
+      (entry) => entry.patient.eligibilityStatus,
+      ELIGIBILITY_STATUS_ORDER,
+    ),
+  };
+}
+
 function corsHeaders(request) {
   return {
     "access-control-allow-origin": ALLOWED_ORIGIN,
@@ -162,6 +222,7 @@ const server = createServer(async (request, response) => {
         "reception:read",
         "prescription:read",
         "prescription:write",
+        "sync:read",
       ],
     });
     return;
@@ -216,6 +277,29 @@ const server = createServer(async (request, response) => {
       date,
       entries: receptionEntries(date),
     });
+    return;
+  }
+
+  if (method === "GET" && url.pathname === "/operations/outbox-summary") {
+    sendJson(request, response, 200, outboxSummary);
+    return;
+  }
+
+  if (method === "GET" && url.pathname === "/operations/reception-summary") {
+    const date = url.searchParams.get("date");
+    if (date === null || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      sendJson(request, response, 400, {
+        errorCode: "RCV-0001",
+        message: "Invalid reception request",
+      });
+      return;
+    }
+    sendJson(request, response, 200, receptionSummary(date));
+    return;
+  }
+
+  if (method === "GET" && url.pathname === "/operations/migration-state") {
+    sendJson(request, response, 200, migrationState);
     return;
   }
 

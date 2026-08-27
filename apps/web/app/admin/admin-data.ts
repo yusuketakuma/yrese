@@ -2,6 +2,7 @@ import {
   healthResponseSchema,
   whoamiResponseSchema,
   type HealthResponse,
+  type MigrationStateResponse,
   type WhoamiResponse,
 } from "@yrese/contracts";
 import {
@@ -9,7 +10,9 @@ import {
   type PermissionScope,
 } from "@yrese/shared-kernel";
 
+import { fetchMigrationState, toOperationsNotice } from "../api/operations-client";
 import { resolveWebApiUrl } from "../api-transport";
+import type { ErrorNoticeProps } from "../components/error-notice";
 import { devTenantHeaders } from "../dev-tenant";
 
 export const ADMIN_DASHBOARD_REQUIRED_SCOPES = [
@@ -48,9 +51,19 @@ export type AdminDataSection<T> =
   | { readonly status: "ready"; readonly data: T }
   | { readonly status: "error"; readonly error: AdminDataError };
 
+/**
+ * スキーマ適用状態は operations-client が固定文言 (message + nextAction) を持つため、
+ * ここで AdminDataError へ再分類せず、その ErrorNoticeProps をそのまま運ぶ。
+ * サーバ由来の文字列は operations-client の時点で捨てられている。
+ */
+export type AdminMigrationSection =
+  | { readonly status: "ready"; readonly data: MigrationStateResponse }
+  | { readonly status: "error"; readonly notice: ErrorNoticeProps };
+
 export interface AdminDashboardSnapshot {
   readonly identity: AdminDataSection<WhoamiResponse>;
   readonly health: AdminDataSection<HealthResponse>;
+  readonly migrationState: AdminMigrationSection;
   readonly loadedAt: string;
 }
 
@@ -159,14 +172,22 @@ export async function loadAdminDashboardSnapshot(
   signal?: AbortSignal,
   now: () => Date = () => new Date(),
 ): Promise<AdminDashboardSnapshot> {
-  const [identity, health] = await Promise.allSettled([
+  const [identity, health, migrationState] = await Promise.allSettled([
     fetchAdminIdentity(fetchImpl, signal),
     fetchAdminHealth(fetchImpl, signal),
+    fetchMigrationState({
+      fetchImpl,
+      ...(signal === undefined ? {} : { signal }),
+    }),
   ]);
 
   return {
     identity: settledSection(identity, "認証・権限情報"),
     health: settledSection(health, "API稼働状態"),
+    migrationState:
+      migrationState.status === "fulfilled"
+        ? { status: "ready", data: migrationState.value }
+        : { status: "error", notice: toOperationsNotice(migrationState.reason) },
     loadedAt: now().toISOString(),
   };
 }

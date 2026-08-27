@@ -11,11 +11,8 @@ import {
   resolveDraftLoadOutcome,
   resolveSaveFailureState,
   SelectedPatientWorkspaceView,
-  buildDraftRowsFromPastPrescription,
-  createBlankDraftRows,
-  filterPastPrescriptions,
-  summarizePrescriptionReplacement,
 } from "./prescription-workspace";
+import { createBlankDraftRows } from "./prescription-replacement";
 import { createBlankPrescriptionDraft } from "./prescription-draft";
 import {
   fromPrescriptionDraftResponse,
@@ -33,95 +30,6 @@ const SELECTED_PATIENT = {
   sex: "female",
   eligibilityStatus: "VERIFIED",
 } as const;
-
-const PAST_PRESCRIPTIONS = [
-  {
-    date: "2026/08/24",
-    rows: [
-      {
-        drug: "アムロジピンOD錠5mg",
-        usage: "1日1回 朝食後",
-        days: "7",
-        quantity: "7錠",
-      },
-      {
-        drug: "ロサルタンK錠50mg",
-        usage: "1日1回 朝食後",
-        days: "7",
-        quantity: "7錠",
-      },
-      {
-        drug: "トラゾドン錠25mg",
-        usage: "1日1回 就寝前",
-        days: "7",
-        quantity: "7錠",
-      },
-    ],
-  },
-  {
-    date: "2026/07/27",
-    rows: [
-      {
-        drug: "アムロジピン錠5mg",
-        usage: "1日1回 朝食後",
-        days: "7",
-        quantity: "7錠",
-      },
-      {
-        drug: "ロサルタンK錠50mg",
-        usage: "1日1回 朝食後",
-        days: "7",
-        quantity: "7錠",
-      },
-      {
-        drug: "トラゾドン錠25mg",
-        usage: "1日1回 就寝前",
-        days: "7",
-        quantity: "7錠",
-      },
-    ],
-  },
-  {
-    date: "2026/06/28",
-    rows: [
-      {
-        drug: "アムロジピン錠5mg",
-        usage: "1日1回 朝食後",
-        days: "7",
-        quantity: "7錠",
-      },
-      {
-        drug: "ロサルタンK錠50mg",
-        usage: "1日1回 朝食後",
-        days: "7",
-        quantity: "7錠",
-      },
-      {
-        drug: "トラゾドン錠25mg",
-        usage: "1日1回 就寝前",
-        days: "7",
-        quantity: "7錠",
-      },
-    ],
-  },
-  {
-    date: "2026/05/27",
-    rows: [
-      {
-        drug: "アムロジピン錠5mg",
-        usage: "1日1回 朝食後",
-        days: "14",
-        quantity: "14錠",
-      },
-      {
-        drug: "ロサルタンK錠50mg",
-        usage: "1日1回 朝食後",
-        days: "14",
-        quantity: "14錠",
-      },
-    ],
-  },
-] as const;
 
 describe("PrescriptionWorkspace (connected draft UI / patient safety)", () => {
   it("blocks starting work without a selected patient and routes to search", () => {
@@ -168,113 +76,53 @@ describe("PrescriptionWorkspace (connected draft UI / patient safety)", () => {
     expect(html).not.toContain('value="外来" selected');
   });
 
-  it("filters isolated synthetic fixtures without projecting them into production UI", () => {
-    expect(filterPastPrescriptions(PAST_PRESCRIPTIONS, "2026/07")).toHaveLength(
-      1,
+  it("names the blocking gate for every capability it refuses to provide", () => {
+    const html = renderToStaticMarkup(
+      <SelectedPatientWorkspaceView patient={SELECTED_PATIENT} />,
     );
-    expect(filterPastPrescriptions(PAST_PRESCRIPTIONS, "14日")).toHaveLength(1);
-    expect(
-      filterPastPrescriptions(PAST_PRESCRIPTIONS, "ロサルタン"),
-    ).toHaveLength(4);
-    expect(
-      filterPastPrescriptions(PAST_PRESCRIPTIONS, "一致しない"),
-    ).toHaveLength(0);
+    expect(html).toContain("RB-007 BLOCKED_PMDA_SAMD_REVIEW");
+    expect(html).toContain("SaMD該当性判定と人間レビューが未了");
+    expect(html).toContain("RB-008 BLOCKED_REGULATORY_REVIEW");
+    expect(html).toContain("診療報酬・薬価ロジックの法令レビュー未了");
+    expect(html).toContain("薬剤師確認 (SCR-014, dispensing:confirm)");
+    expect(html).toContain("API operation");
+    expect(html).toContain(
+      "保存済みの内容は「薬剤師確認前」であり、調剤・交付の根拠になりません",
+    );
   });
 
-  it("summarizes ordinary replacement differences", () => {
-    const summary = summarizePrescriptionReplacement(
-      [
-        {
-          id: 1,
-          drug: "アムロジピンOD錠5mg",
-          usage: "1日1回 朝食後",
-          days: "7",
-          quantity: "7錠",
-        },
-        {
-          id: 2,
-          drug: "ロサルタンK錠50mg",
-          usage: "1日1回 朝食後",
-          days: "7",
-          quantity: "7錠",
-        },
-        {
-          id: 3,
-          drug: "トラゾドン錠25mg",
-          usage: "1日1回 就寝前",
-          days: "7",
-          quantity: "7錠",
-        },
-      ],
-      PAST_PRESCRIPTIONS[1]!,
+  it("declares that no clinical judgement ran, rather than reporting a judgement result", () => {
+    const html = renderToStaticMarkup(
+      <SelectedPatientWorkspaceView patient={SELECTED_PATIENT} />,
     );
-
-    expect(summary).toEqual({
-      added: 1,
-      removed: 1,
-      changed: 0,
-      unchanged: 2,
-    });
+    expect(html).toContain("判定そのものが行われていない");
+    expect(html).toContain(
+      "アレルギー歴・既往歴は未接続です。表示されないことは該当なしを意味しません。",
+    );
+    expect(html).toContain("検査値が表示されないことは正常を意味しません");
+    expect(html).not.toContain("すべて正常");
+    expect(html).not.toContain("該当なし。");
   });
 
-  it("preserves duplicate same-drug RP rows as a multiset", () => {
-    const summary = summarizePrescriptionReplacement(
-      [
-        {
-          id: 1,
-          drug: "同一薬10mg",
-          usage: "朝",
-          days: "7",
-          quantity: "7錠",
-        },
-        {
-          id: 2,
-          drug: "同一薬10mg",
-          usage: "夕",
-          days: "7",
-          quantity: "7錠",
-        },
-        {
-          id: 3,
-          drug: "同一薬10mg",
-          usage: "就寝前",
-          days: "7",
-          quantity: "7錠",
-        },
-      ],
-      {
-        date: "2026/08/01",
-        rows: [
-          {
-            drug: "同一薬10mg",
-            usage: "朝",
-            days: "7",
-            quantity: "7錠",
-          },
-          {
-            drug: "同一薬10mg",
-            usage: "夕",
-            days: "14",
-            quantity: "14錠",
-          },
-        ],
-      },
+  it("shows past prescriptions as not-retrieved instead of as an interactive dead control", () => {
+    const html = renderToStaticMarkup(
+      <SelectedPatientWorkspaceView patient={SELECTED_PATIENT} />,
     );
-
-    expect(summary).toEqual({
-      added: 0,
-      removed: 1,
-      changed: 1,
-      unchanged: 1,
-    });
+    expect(html).toContain("この患者の過去処方は未取得です");
+    expect(html).toContain("0件ではなく、取得していません");
+    expect(html).not.toContain("過去処方API接続後に検索できます");
+    expect(html).not.toContain('id="past-prescription-search"');
   });
 
-  it("copies stored fixture rows exactly instead of inferring usage or quantity", () => {
-    const source = PAST_PRESCRIPTIONS[3]!;
-    expect(buildDraftRowsFromPastPrescription(source)).toEqual([
-      { id: 1, ...source.rows[0] },
-      { id: 2, ...source.rows[1] },
-    ]);
+  it("reports the unsaved-draft and pharmacist-confirmation state without claiming completion", () => {
+    const html = renderToStaticMarkup(
+      <SelectedPatientWorkspaceView patient={SELECTED_PATIENT} />,
+    );
+    expect(html).toContain("サーバー下書き版");
+    expect(html).toContain("未作成");
+    expect(html).toContain("薬剤師確認");
+    expect(html).toContain("未実施（実行不可）");
+    expect(html).not.toContain("サーバー保存済み");
   });
 
   it("keeps destructive changes behind an explicit confirmation step", () => {

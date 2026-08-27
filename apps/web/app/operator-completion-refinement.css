@@ -3,18 +3,12 @@
  * Loaded after the adversarial layer. Domain status semantics are unchanged.
  */
 
-/* The generated operator shell declared columns but lost display:grid during consolidation. */
-.app-shell {
-  display: grid;
-}
-
+/*
+ * .app-shell の display:grid と .app-sidebar / .app-workspace の min-width は
+ * operator-first.css が正本。ここには最終カスケードでしか成立しない補正だけを置く。
+ */
 .app-sidebar {
-  min-width: 0;
   border-right: 1px solid var(--color-border);
-}
-
-.app-workspace {
-  min-width: 0;
 }
 
 /* Base semantic hues remain unchanged; small foreground text needs darker projections. */
@@ -61,10 +55,6 @@
   color: #475467;
   cursor: not-allowed;
   opacity: 1;
-}
-
-.prototype-action-shell:focus-visible {
-  outline: none;
 }
 
 .prototype-action-reason {
@@ -147,6 +137,17 @@
 .inline-notice .operator-text-action {
   width: fit-content;
   margin-top: 0.45rem;
+}
+
+/*
+ * 補助レールを sticky にしない選択(OperatorPage railSticky={false})。
+ * 患者文脈を持たない横断画面では、内部スクロールを持つ complementary landmark が
+ * 高ズーム時に入れ子スクロールの罠になるため、通常フローへ戻す。
+ */
+.operator-rail[data-sticky="false"] {
+  position: static;
+  max-height: none;
+  overflow: visible;
 }
 
 @media (max-width: 1420px) {

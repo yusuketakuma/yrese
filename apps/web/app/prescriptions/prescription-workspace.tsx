@@ -18,12 +18,14 @@ import {
 } from "../components/patient-context";
 import {
   InlineNotice,
+  KeyValueList,
   Panel,
   PrototypeAction,
   PrototypeBanner,
   RailCard,
   ScreenHeader,
   StatusPill,
+  TableScroll,
 } from "../components/operator-ui";
 import { SeverityList } from "../components/severity-list";
 import { useOptionalUnsavedWork } from "../components/unsaved-work";
@@ -51,32 +53,9 @@ import type {
 import { useOptionalPrescriptionOrigin } from "./prescription-origin-context";
 import {
   type DraftRow,
-  createBlankDraftRows,
   isDraftRowEmpty,
   removeDraftRow,
 } from "./prescription-replacement";
-
-export type {
-  DraftRow,
-  PastPrescription,
-  PastPrescriptionRow,
-  PrescriptionReplacementSummary,
-} from "./prescription-replacement";
-export {
-  buildDraftRowsFromPastPrescription,
-  createBlankDraftRows,
-  filterPastPrescriptions,
-  isDraftRowEmpty,
-  pastPrescriptionDurationLabel,
-  removeDraftRow,
-  summarizePrescriptionReplacement,
-} from "./prescription-replacement";
-export {
-  clonePrescriptionDraft,
-  createBlankPrescriptionDraft,
-  isPrescriptionDraftDirty,
-  prescriptionDraftWorkId,
-} from "./prescription-draft";
 
 type DraftLoadState =
   | { readonly kind: "unlinked" }
@@ -595,7 +574,7 @@ export function SelectedPatientWorkspaceView({
         meta={<StatusPill tone={headerTone}>{headerLabel}</StatusPill>}
       />
       <PrototypeBanner tone="warning">
-        処方下書きの読込・保存・版競合検知は実APIへ接続しています。過去処方、薬剤マスター照合、相互作用・禁忌・重複・用量判定、算定、処方確定は未接続です。
+        処方下書きの読込・保存・版競合検知は実APIへ接続しています。過去処方と薬剤マスター照合は患者固有APIが未接続、相互作用・禁忌・重複・用量判定は RB-007 BLOCKED_PMDA_SAMD_REVIEW、算定・点数・薬価は RB-008 BLOCKED_REGULATORY_REVIEW、薬剤師確認と処方確定は SCR-014 の API operation 未登録により、いずれも停止しています。未接続を成功・正常として表示しません。
       </PrototypeBanner>
 
       {linkedOrigin === null ? (
@@ -712,26 +691,19 @@ export function SelectedPatientWorkspaceView({
       <div className="prescription-workbench-grid prescription-workbench-grid-safe">
         <Panel title="過去処方一覧" className="prescription-history-panel">
           <StatusPill tone="warning">患者固有API未接続</StatusPill>
-          <label className="visually-hidden" htmlFor="past-prescription-search">
-            過去処方を検索（未接続）
-          </label>
-          <input
-            id="past-prescription-search"
-            className="operator-input"
-            type="search"
-            placeholder="過去処方API接続後に検索できます"
-            disabled
-            aria-describedby="past-prescription-unavailable"
-          />
-          <p id="past-prescription-unavailable" className="prescription-history-empty">
-            この患者の過去処方は未取得です。履歴がない、変更がない、安全である、のいずれも意味しません。従来の薬歴確認手順を継続してください。
+          <EmptyState message="この患者の過去処方は未取得です" />
+          <p className="prescription-history-empty">
+            患者固有の過去処方取得APIが未接続のため、一覧・検索・前回処方の複写は提供しません。0件ではなく、取得していません。
+          </p>
+          <p className="prescription-history-empty">
+            表示が空であることは、履歴がない、変更がない、安全である、のいずれも意味しません。従来の薬歴確認手順を継続してください。
           </p>
         </Panel>
 
         <Panel
           title="処方入力"
           description="サーバー保存後も薬剤師確認・処方確定ではありません。未保存変更はタブ内に保持され、患者切替・離脱時に警告します。"
-          className="prescription-editor-panel"
+          className="prescription-editor-panel live-surface-panel"
           actions={
             <div className="operator-inline-actions">
               <button
@@ -855,11 +827,7 @@ export function SelectedPatientWorkspaceView({
             </label>
           </div>
 
-          <div
-            className="table-scroll"
-            tabIndex={0}
-            aria-label="処方入力表。横方向にスクロールできます"
-          >
+          <TableScroll label="処方入力表。横方向にスクロールできます">
             <table className="operator-table prescription-draft-table">
               <caption className="visually-hidden">選択患者の処方下書き入力行</caption>
               <thead>
@@ -947,7 +915,7 @@ export function SelectedPatientWorkspaceView({
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
 
           <fieldset className="prescription-options" disabled={editorLocked}>
             <legend>全体指示・コメント</legend>
@@ -1040,29 +1008,67 @@ export function SelectedPatientWorkspaceView({
                 {
                   severity: "WARNING",
                   message:
-                    "臨床アラート判定(相互作用・禁忌・重複・用量)は未接続です。アラートが表示されないことは安全確認済みを意味しません。必要な確認は従来手順で実施してください。",
+                    "臨床アラート判定(相互作用・禁忌・重複・用量)は未接続です。これは判定を実行した結果ではなく、判定そのものが行われていないという宣言です。アラートが表示されないことは安全確認済みを意味しません。必要な確認は従来手順で実施してください。",
+                },
+                {
+                  severity: "WARNING",
+                  message:
+                    "重複投薬・併用禁忌チェックは RB-007 BLOCKED_PMDA_SAMD_REVIEW（SaMD該当性判定と人間レビューが未了）のため提供しません。この画面は判定していません。",
+                },
+                {
+                  severity: "INFO",
+                  message:
+                    "アレルギー歴・既往歴は未接続です。表示されないことは該当なしを意味しません。",
                 },
               ]}
             />
           </RailCard>
           <RailCard title="保存・確認状態">
+            <KeyValueList
+              items={[
+                {
+                  label: "サーバー下書き版",
+                  value: serverVersion === 0 ? "未作成" : `v${serverVersion}`,
+                },
+                {
+                  label: "サーバー最終更新",
+                  value: serverUpdatedAt ?? "—",
+                },
+                {
+                  label: "このタブの未保存変更",
+                  value: dirty ? "あり" : "なし",
+                },
+                { label: "薬剤師確認", value: "未実施（実行不可）" },
+              ]}
+            />
             <p className="rail-muted">
-              サーバー下書き版: {serverVersion === 0 ? "未作成" : `v${serverVersion}`}。
-              下書き保存は薬剤師確認・処方確定を意味しません。
+              下書き保存は薬剤師確認・処方確定を意味しません。保存済みの内容は「薬剤師確認前」であり、調剤・交付の根拠になりません。
+            </p>
+            <p className="rail-muted">
+              薬剤師確認 (SCR-014, dispensing:confirm) は API operation
+              が未登録のため実行できません。
             </p>
           </RailCard>
           <RailCard title="検査値" tone="warning">
-            <StatusPill tone="warning">未接続</StatusPill>
-            <p className="rail-muted">検査値が表示されないことは正常を意味しません。</p>
-          </RailCard>
-          <RailCard title="患者固有タスク">
+            <StatusPill tone="warning">検査値連携API未接続</StatusPill>
             <p className="rail-muted">
-              疑義照会、薬歴確認、次回フォローはタスクAPI接続後に表示します。合成件数は表示しません。
+              検査値が表示されないことは正常を意味しません。0件でもなく、取得していません。
             </p>
           </RailCard>
-          <RailCard title="エビデンス">
+          <RailCard title="患者固有タスク">
+            <StatusPill tone="warning">タスクAPI未接続</StatusPill>
+            <p className="rail-muted">
+              疑義照会、薬歴確認、次回フォローはタスクAPI接続後に表示します。件数を推測して表示しません。表示されないことは該当なしを意味しません。
+            </p>
+          </RailCard>
+          <RailCard title="エビデンス" tone="warning">
+            <StatusPill tone="warning">evidence_id 未接続</StatusPill>
             <p className="rail-muted">
               ガイドライン・相互作用根拠・算定根拠は evidence_id 接続後に表示します。
+            </p>
+            <p className="rail-muted">
+              点数・薬価の表示は RB-008
+              BLOCKED_REGULATORY_REVIEW（診療報酬・薬価ロジックの法令レビュー未了）で停止しています。
             </p>
           </RailCard>
         </aside>

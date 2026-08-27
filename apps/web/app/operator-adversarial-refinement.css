@@ -4,22 +4,6 @@
  * Loaded last so it can be removed independently without changing domain status semantics.
  */
 
-.prototype-action-shell {
-  display: inline-flex;
-  max-width: 100%;
-  border-radius: 7px;
-}
-
-.prototype-action-shell > .operator-button {
-  width: 100%;
-  pointer-events: none;
-}
-
-.prototype-action-shell:focus-visible {
-  outline: 3px solid var(--color-focus, #6b4eff);
-  outline-offset: 3px;
-}
-
 .table-scroll[tabindex="0"]:focus-visible {
   outline: 3px solid var(--color-focus, #6b4eff);
   outline-offset: 2px;

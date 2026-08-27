@@ -4,6 +4,7 @@ import type { PatientId } from "@yrese/shared-kernel";
 import {
   ELIGIBILITY_PRESENTATION,
   ELIGIBILITY_STATUS_LABELS,
+  SEX_LABELS,
 } from "../status/visual-status-registry";
 
 /**
@@ -73,12 +74,6 @@ export interface PatientHeaderProps {
   /** 最終資格確認日時(ISO文字列)。未確認時は undefined */
   readonly eligibilityCheckedAt?: string;
 }
-
-const SEX_LABELS: Record<PatientHeaderProps["sex"], string> = {
-  male: "男",
-  female: "女",
-  unknown: "不明",
-};
 
 export function PatientHeader(props: PatientHeaderProps) {
   const verified = props.eligibility === "VERIFIED";

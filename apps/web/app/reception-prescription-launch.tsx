@@ -5,14 +5,11 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import type { ReceptionQueueEntry } from "@yrese/contracts";
 
+import { DomainStatusBadge } from "./components/domain-status-badge";
 import { ErrorNotice, type ErrorNoticeProps } from "./components/error-notice";
 import { useOptionalPatientContext } from "./components/patient-context";
-import { StatusPill } from "./components/operator-ui";
-import {
-  RECEPTION_STATUS_LABELS,
-  ReceptionError,
-  fetchReceptionQueue,
-} from "./reception-dashboard";
+import { TableScroll } from "./components/operator-ui";
+import { ReceptionError, fetchReceptionQueue } from "./reception-dashboard";
 import { ReceptionPrescriptionHandoffAction } from "./reception-prescription-handoff";
 
 type LaunchSearchState =
@@ -99,13 +96,12 @@ export function ReceptionPrescriptionLaunch() {
 
   return (
     <section aria-label="処方入力への受付引き継ぎ">
-      <form className="patient-search-form" onSubmit={submit}>
+      <form className="filter-grid" onSubmit={submit}>
         <label htmlFor="prescription-launch-business-date">
           受付の業務日
-        </label>
-        <div className="patient-search-row">
           <input
             id="prescription-launch-business-date"
+            className="operator-input"
             type="date"
             required
             value={businessDate}
@@ -116,7 +112,14 @@ export function ReceptionPrescriptionLaunch() {
               setState({ status: "idle" });
             }}
           />
-          <button type="submit" disabled={state.status === "loading"}>
+        </label>
+        <div className="operator-inline-actions">
+          <button
+            type="submit"
+            className="operator-button"
+            data-kind="secondary"
+            disabled={state.status === "loading"}
+          >
             {state.status === "loading" ? "確認中…" : "対象受付を確認"}
           </button>
         </div>
@@ -137,22 +140,38 @@ export function ReceptionPrescriptionLaunch() {
       ) : null}
 
       {state.status === "ready" && state.entries.length > 0 ? (
-        <ul className="prescription-launch-list">
-          {state.entries.map((entry) => (
-            <li key={entry.receptionId}>
-              <div>
-                <strong>受付ID: {entry.receptionId}</strong>
-                <StatusPill tone="info">
-                  {RECEPTION_STATUS_LABELS[entry.receptionStatus]}
-                </StatusPill>
-              </div>
-              <ReceptionPrescriptionHandoffAction
-                entry={entry}
-                businessDate={businessDate}
-              />
-            </li>
-          ))}
-        </ul>
+        <TableScroll label="選択患者の該当受付。横方向にスクロールできます">
+          <table className="operator-table operator-table-dense">
+            <caption className="operator-table-caption">
+              {businessDate} の受付キューのうち、選択患者に一致した受付
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">受付ID</th>
+                <th scope="col">受付状態</th>
+                <th scope="col">次の操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {state.entries.map((entry) => (
+                <tr key={entry.receptionId}>
+                  <td>{entry.receptionId}</td>
+                  <td>
+                    <DomainStatusBadge
+                      query={{ domain: "reception", key: entry.receptionStatus }}
+                    />
+                  </td>
+                  <td>
+                    <ReceptionPrescriptionHandoffAction
+                      entry={entry}
+                      businessDate={businessDate}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
       ) : null}
     </section>
   );

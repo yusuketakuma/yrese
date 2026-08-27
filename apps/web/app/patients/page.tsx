@@ -13,9 +13,21 @@ export default function PatientsPage() {
       rail={
         <>
           <PatientContextRail />
-          <RailCard title="患者情報の表示範囲" tone="info">
+          <RailCard title="表示範囲と未接続の理由" tone="warning">
             <p className="rail-muted">
               検索結果はAPI契約に含まれる表示投影だけを使用し、契約外の保険・薬歴情報を推測しません。
+            </p>
+            <p className="rail-muted">
+              保険・公費の適用内容 (SCR-007)
+              は未実装で、insurance:read / public-expense:read の API operation が
+              UIX-001 §12.3 の operation authorization matrix に未登録です。
+            </p>
+            <p className="rail-muted">
+              オンライン資格確認結果 (SCR-008) は RB-002 BLOCKED_REGULATORY_REVIEW
+              (オン資外部IF仕様書の入手と境界SSOTのAPPROVEDが未了) で接続できません。
+            </p>
+            <p className="rail-muted">
+              ここに表示している資格状態は保存済みスナップショットの記録であり、外部照会の結果ではありません。
             </p>
           </RailCard>
           <RailCard title="次の操作">

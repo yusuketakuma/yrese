@@ -11,11 +11,14 @@ import {
 import { PostgresAuditRepository } from './db/audit-repository.js';
 import { assertMigrationStateAllowsStartup } from './db/migration-runner.js';
 import { loadMigrationFiles } from './db/migrations.js';
+import { PostgresOperationsReadService } from './db/operations-read.js';
 import { PostgresPatientRepository } from './db/patient-repository.js';
 import { createDbPool } from './db/pool.js';
 import { PostgresPrescriptionDraftService } from './db/prescription-draft-service.js';
 import { PostgresReceptionCreateCommand } from './db/reception-command.js';
 import { PostgresReceptionRepository } from './db/reception-repository.js';
+import { operationsRoutes } from './operations-routes.js';
+import { InMemoryOperationsReadService } from './operations-service.js';
 import { InMemoryPatientRepository } from './patient-repository.js';
 import {
   createPatientSearchCursorCodec,
@@ -23,6 +26,7 @@ import {
 } from './patient-search-cursor.js';
 import { prescriptionDraftRoutes } from './prescription-draft-routes.js';
 import { InMemoryPrescriptionDraftService } from './prescription-draft-service.js';
+import { InMemoryReceptionOutbox } from './reception-command.js';
 import { InMemoryReceptionRepository } from './reception-repository.js';
 import { buildServer } from './server.js';
 import {
@@ -59,10 +63,14 @@ async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServe
     const patientRepository = new InMemoryPatientRepository();
     const receptionRepository = new InMemoryReceptionRepository();
     const auditRepository = new InMemoryAuditRepository();
+    // 運用状態の読み取りが数えるのは、受付コマンドが実際に追記した intent である。
+    // 同一インスタンスを buildServer と読み取りサービスへ共有する。
+    const receptionOutbox = new InMemoryReceptionOutbox();
     const server = buildServer({
       patientRepository,
       receptionRepository,
       auditRepository,
+      receptionOutbox,
       repositoryMode,
       tenantContextMode,
       patientSearchCursorCodec,
@@ -72,6 +80,9 @@ async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServe
         receptionRepository,
         auditRepository,
       ),
+    });
+    server.register(operationsRoutes, {
+      service: new InMemoryOperationsReadService(receptionOutbox, receptionRepository),
     });
     return server;
   }
@@ -96,6 +107,9 @@ async function buildServerForEnvironment(): Promise<ReturnType<typeof buildServe
     });
     server.register(prescriptionDraftRoutes, {
       service: new PostgresPrescriptionDraftService(pool),
+    });
+    server.register(operationsRoutes, {
+      service: new PostgresOperationsReadService({ pool, migrations }),
     });
     server.addHook('onClose', async () => {
       await pool.end();

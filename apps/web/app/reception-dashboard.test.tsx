@@ -33,6 +33,7 @@ import {
   type QueueState,
   todayAsIsoDate,
 } from "./reception-dashboard";
+import ReceptionPage from "./page";
 
 function patient(over: Partial<PatientSearchResult>): PatientSearchResult {
   return {
@@ -3068,5 +3069,61 @@ describe("ReceptionQueueMetricsView", () => {
       expect(html).toContain(RECEPTION_STATUS_LABELS.COMPLETED);
       expect(html).not.toContain("処理中");
     }
+  });
+});
+
+describe("reception screen surface (SCR-001 refresh)", () => {
+  it("makes the live queue table a keyboard-reachable scroll region", () => {
+    // 静的シェルの表だけが focus 可能なスクロール領域を持つ逆転を防ぐ。
+    const html = renderToStaticMarkup(
+      <ReceptionQueueTable entries={[entry({ receptionId: "rc-scroll" })]} />,
+    );
+
+    expect(html).toContain(
+      '<div class="table-scroll" role="region" tabindex="0" aria-label="受付キュー表。横方向にスクロールできます">',
+    );
+  });
+
+  it("styles the business-date control with the shared operator primitives", () => {
+    const html = renderToStaticMarkup(<ReceptionPage />);
+
+    expect(html).toContain("表示日付");
+    expect(html).toContain('class="operator-input"');
+    expect(html).toContain(
+      '<button type="submit" class="operator-button" data-kind="secondary">表示</button>',
+    );
+  });
+
+  it("names the blocking gate on every disabled intake action", () => {
+    const html = renderToStaticMarkup(<ReceptionPage />);
+
+    for (const gate of [
+      "SCR-005 BLOCKED_JAHIS_SPEC_ACQUISITION",
+      "SCR-006 / RB-003 BLOCKED_REGULATORY_REVIEW",
+      "UIX-001 §12.3 operation registry 未登録",
+    ]) {
+      expect(html).toContain(gate);
+    }
+    // 内部トークンは日本語の説明文と対で提示する(UIX-001 §11)。
+    expect(html).toContain("JAHIS Ver.1.11 仕様本文の正規入手と evidence_id 発行が未了");
+    expect(html).toContain("技術解説書2.04版以降の確認と境界SSOTのAPPROVEDが未了");
+    expect(html).toContain("原本画像の取込・保存・抽出を定めるAPPROVED SSOTが未作成");
+    expect(html).not.toContain("は接続・承認前のため実行できません");
+  });
+
+  it("replaces rail advice with a statement of what is and is not displayed", () => {
+    const html = renderToStaticMarkup(<ReceptionPage />);
+
+    expect(html).toContain("この画面が表示していること");
+    expect(html).toContain("この画面が表示していないこと");
+    expect(html).toContain("アラートが表示されないことは安全確認済みを意味しません");
+    expect(html).toContain("表示されないことは該当なしを意味しません");
+    expect(html).toContain(
+      "資格状態は受付時点で保存されたスナップショットの表示であり",
+    );
+    // 根拠のない助言型コピーは残さない。
+    expect(html).not.toContain("安全チェックのお願い");
+    expect(html).not.toContain("システムからの提案");
+    expect(html).not.toContain("資格確認が必要な受付を優先表示");
   });
 });

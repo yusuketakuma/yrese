@@ -1,7 +1,36 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-26, local main consolidation):** This block alone
-> is current. Everything below is nonauthoritative.
+> **ACTIVE SNAPSHOT (2026-08-27, all-screen UI/UX refresh + real-data wiring):**
+> This block alone is current. Everything below is nonauthoritative.
+
+- **Direction / ownership:** current user instruction「ローカル・リモートリポジトリを同期しながら
+  UIUX画面を改善」「全画面のUIUXを刷新上書き」「バックエンド側の配線を修復。モックではなく
+  実際のデータを表示」。Claude が `active_root_writer`。実装は多エージェント fan-out、
+  gate と Git 操作は root lane が単独実行した。
+- **Git boundary:** 前 snapshot の「push 未認可」は current user instruction で解消。local `main`
+  = `origin/main` = `f11a014`(31 commit を fast-forward push 済み)。作業は branch
+  `feat/all-screens-uiux-real-data`。main への merge は未実施。
+- **Landed on the branch:** 共有 UI foundation(stylesheet 統合・dead rule 削除、`OperatorPage`
+  `railSticky`、`TableScroll`)、実在永続状態に対する読み取り API 3 本
+  (`/operations/outbox-summary`、`/operations/reception-summary`、`/operations/migration-state`)、
+  10 画面すべての UI/UX 刷新と実データ結線。算定・請求・薬価・法令 logic は一切追加していない。
+- **Current gate:** typecheck、workspace 2,290 tests(apps/api 1,001 は実 PostgreSQL 統合・
+  skip 0)、OpenAPI/secrets/boundaries/deps/SBOM/SSOT index/calculation purity/script harness、
+  build、browser 36 routes / 5 interaction suites はいずれも PASS。
+- **Independent evidence:** fresh-context の 5 観点 review と反証 verify で 12 件確定。MEDIUM 8 件は
+  回帰 test 付きで解消、LOW 4 件も解消済み。browser gate が unit test では出ない
+  `/claim-check` 390px reflow 違反(`.operator-status-pill` の `white-space: nowrap`)を検出し、
+  共有 CSS と当該 pill 文言の両方を修正した。
+- **BLOCKER — 未解消の process gate:** `Plans.md §8 UIUX` では実装系 WP-5111 以降が
+  `GATED / NOT_READY`、前提の WP-5104(unique UI/UX SSOT foundation)は PLAN_ONLY で未承認である。
+  本 branch の実装はその SSOT 承認に先行している。したがって main への merge は行わず、
+  WP-5104 の承認または人間による明示の scope 判断まで branch 保持とする。
+- **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、
+  薬剤師確認・確定、migration apply、production/deploy は未解消のまま。SSOT_BLOCKED 4 画面
+  (`/checkout` `/claim-check` `/masters` `/monthly-closing`)は、実在データのみ表示し、
+  停止中の正本 gate 名を明示する状態を維持している。
+
+### PREVIOUS SNAPSHOT (2026-08-26, local main consolidation) — NONAUTHORITATIVE
 
 - **Direction / ownership:** current user confirmation `承認` authorizes local consolidation of
   open PR #5/#6/#9, migration 000013 source landing, WP-5101 blocker closure, required records,

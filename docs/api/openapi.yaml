@@ -444,6 +444,119 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FrameworkErrorResponse"
+  /operations/outbox-summary:
+    get:
+      operationId: getOperationsOutboxSummary
+      tags:
+        - operations
+      summary: Return transactional outbox counters for the authenticated tenant and pharmacy
+      description: "Requires sync:read scope. Returns counts and instants derived from persisted outbox intents
+        (migrations/000005 + 000007 `outbox_events`; the in-memory mode reads the in-process intent store). No delivery
+        worker runs in this slice, so intents observed as pending are genuinely pending. The response is PHI-free —
+        counts, event-type labels, and one instant only — so it declares no Cache-Control: no-store. `legacyOrphanCount`
+        is omitted where it is not derived rather than reported as zero, and the orphan reception IDs themselves are
+        never returned."
+      x-yrese-ssot: MOD-009
+      x-yrese-required-scope: sync:read
+      responses:
+        "200":
+          description: Outbox counters grouped by event type in eventType asc order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OutboxSummaryResponse"
+        "403":
+          description: Forbidden (AUTH-0003)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+  /operations/reception-summary:
+    get:
+      operationId: getOperationsReceptionSummary
+      tags:
+        - operations
+      summary: Return reception counts for one explicit calendar date
+      description: "Requires reception:read only. patient:read is deliberately not required: the service folds the reception
+        list into counts before the route sees it, so no patient identity crosses the route boundary and a batch screen
+        does not need a patient scope. Both count arrays list every enum member in declaration order, so an absent
+        status is reported as a measured zero rather than being dropped. The response is PHI-free and declares no
+        Cache-Control: no-store."
+      x-yrese-ssot: API-006
+      x-yrese-required-scope: reception:read
+      parameters:
+        - in: query
+          name: date
+          schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          required: true
+      responses:
+        "200":
+          description: Reception counts by reception status and eligibility status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceptionSummaryResponse"
+        "400":
+          description: Invalid reception summary query (RCV-0001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden (AUTH-0003)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+  /operations/migration-state:
+    get:
+      operationId: getOperationsMigrationState
+      tags:
+        - operations
+      summary: Return the schema_migrations reconciliation state
+      description: "Requires tenant:admin scope. Reuses the same reconciliation the db:check CLI and the startup gate use
+        (checkMigrationState over migrations/000001 `schema_migrations`). Returns the reconciliation result,
+        applied/available counts, the derived pending versions, and the latest applied version and name.
+        `pendingVersions` is omitted where the reconciliation stopped before it could be derived rather than reported as
+        zero. Never returns DATABASE_URL, a connection string, a host name, or a checksum value. When no persistent
+        store is configured the response is the explicit `available: false` branch rather than a fabricated up-to-date
+        state."
+      x-yrese-ssot: DB-002
+      x-yrese-required-scope: tenant:admin
+      responses:
+        "200":
+          description: Migration reconciliation state, or the explicit not-configured branch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MigrationStateResponse"
+        "403":
+          description: Forbidden (AUTH-0003)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
   /audit/events:
     get:
       operationId: getAuditEvents
@@ -1255,6 +1368,177 @@ components:
         - saveDisposition
       additionalProperties: false
       description: Prescription draft save result, including created/updated/unchanged disposition. Contains clinical PHI.
+    OutboxSummaryResponse:
+      type: object
+      properties:
+        pendingCount:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        deliveredCount:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        oldestPendingCreatedAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+        byEventType:
+          type: array
+          items:
+            type: object
+            properties:
+              eventType:
+                type: string
+                minLength: 1
+                maxLength: 128
+              pendingCount:
+                type: integer
+                minimum: 0
+                maximum: 9007199254740991
+              deliveredCount:
+                type: integer
+                minimum: 0
+                maximum: 9007199254740991
+            required:
+              - eventType
+              - pendingCount
+              - deliveredCount
+            additionalProperties: false
+        legacyOrphanCount:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+      required:
+        - pendingCount
+        - deliveredCount
+        - byEventType
+      additionalProperties: false
+      description: "Transactional outbox counters and instants only (pending/delivered per event type, oldest pending
+        instant). PHI-free: no reception, patient, or payload content. `legacyOrphanCount` is present only where it was
+        actually derived; an omitted field means not derived, which is not the same as zero."
+    ReceptionSummaryResponse:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        totalCount:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        byReceptionStatus:
+          type: array
+          items:
+            type: object
+            properties:
+              status:
+                type: string
+                enum:
+                  - WAITING
+                  - IN_PROGRESS
+                  - COMPLETED
+                  - CANCELLED
+              count:
+                type: integer
+                minimum: 0
+                maximum: 9007199254740991
+            required:
+              - status
+              - count
+            additionalProperties: false
+        byEligibilityStatus:
+          type: array
+          items:
+            type: object
+            properties:
+              status:
+                type: string
+                enum:
+                  - VERIFIED
+                  - PENDING_REVERIFY
+                  - LOCAL_ONLY_UNVERIFIED
+                  - NOT_CHECKED
+              count:
+                type: integer
+                minimum: 0
+                maximum: 9007199254740991
+            required:
+              - status
+              - count
+            additionalProperties: false
+      required:
+        - date
+        - totalCount
+        - byReceptionStatus
+        - byEligibilityStatus
+      additionalProperties: false
+      description: "Reception counts for one business date, folded before leaving the service. Every reception status and
+        eligibility status member is listed in declaration order; a zero is a measured count, not a placeholder.
+        PHI-free: no patient identity is enumerated."
+    MigrationStateResponse:
+      oneOf:
+        - type: object
+          properties:
+            available:
+              type: boolean
+              const: true
+            result:
+              type: string
+              enum:
+                - up_to_date
+                - db_ahead
+                - version_mismatch
+                - checksum_mismatch
+                - name_mismatch
+                - unapplied_required
+            appliedCount:
+              type: integer
+              minimum: 0
+              maximum: 9007199254740991
+            availableCount:
+              type: integer
+              minimum: 0
+              maximum: 9007199254740991
+            pendingVersions:
+              type: array
+              items:
+                type: string
+                pattern: ^\d{6}$
+            latestAppliedVersion:
+              type: string
+              pattern: ^\d{6}$
+            latestAppliedName:
+              type: string
+              minLength: 1
+              maxLength: 128
+              pattern: ^[a-z0-9_]+$
+          required:
+            - available
+            - result
+            - appliedCount
+            - availableCount
+          additionalProperties: false
+        - type: object
+          properties:
+            available:
+              type: boolean
+              const: false
+            reason:
+              type: string
+              const: PERSISTENT_STORE_NOT_CONFIGURED
+          required:
+            - available
+            - reason
+          additionalProperties: false
+      description: "schema_migrations reconciliation state. Carries the reconciliation result, counts, pending versions, and
+        the latest applied version/name only — never a connection string, host name, or checksum value (a checksum
+        difference appears solely as the `checksum_mismatch` result). `pendingVersions` is present only where it was
+        actually derived (`up_to_date`/`db_ahead` carry a measured empty list, `unapplied_required` the pending
+        versions); a mismatch result stops the reconciliation part-way and omits the field, which is not the same as
+        zero. The `available: false` branch is returned when no persistent store is configured."
+      type: object
     AuditLogResponse:
       type: object
       properties:

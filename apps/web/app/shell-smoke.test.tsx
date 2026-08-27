@@ -162,6 +162,11 @@ describe("web shell smoke contracts", () => {
     expect(html).toContain("NORMAL・障害・オフラインのいずれも推測しません");
     expect(html).toContain("判定不可・実行不可");
     expect(html).not.toContain("すべて正常に稼働中");
+    // 内側の wrapper が縦リズムを持たないと、包んだ Panel 群が 0px で密着する
+    // (gap を持つのは operator-page-primary / operator-stack だけ)。
+    expect(html).toContain(
+      'class="operator-stack" data-operational-data="unavailable"',
+    );
     expect(html).toMatch(
       /<table class="operator-table"><thead><tr>(?:<th scope="col">[^<]+<\/th>){5}/,
     );

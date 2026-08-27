@@ -7,6 +7,7 @@ import {
 } from "@yrese/shared-kernel";
 
 import { DomainStatusBadge } from "../components/domain-status-badge";
+import { TableScroll } from "../components/operator-ui";
 
 /**
  * システムモード別 可否早見表(SCR-027 同期状態画面の基盤 / UIX-001 P-19 非常時の見読性)。
@@ -28,7 +29,7 @@ export function ModeOverviewTable({
   readonly currentMode?: SystemMode;
 }) {
   return (
-    <div className="table-scroll">
+    <TableScroll label="システムモード別の操作可否早見表。横方向にスクロールできます">
       <table className="mode-overview-table" aria-label="システムモード別の操作可否早見表">
         <thead>
           <tr>
@@ -62,6 +63,6 @@ export function ModeOverviewTable({
           })}
         </tbody>
       </table>
-    </div>
+    </TableScroll>
   );
 }

@@ -30,7 +30,7 @@ import { EmptyState } from "./components/empty-state";
 import { registeredErrorCodeOrUndefined } from "./components/error-code";
 import { ErrorNotice, type ErrorNoticeProps } from "./components/error-notice";
 import { LoadingState } from "./components/loading-state";
-import { MetricCard, MetricGrid } from "./components/operator-ui";
+import { MetricCard, MetricGrid, TableScroll } from "./components/operator-ui";
 import { devTenantHeaders } from "./dev-tenant";
 import { ReceptionPrescriptionHandoffAction } from "./reception-prescription-handoff";
 
@@ -400,7 +400,7 @@ export function ReceptionQueueTable({
   readonly businessDate?: string;
 }) {
   return (
-    <div className="table-scroll">
+    <TableScroll label="受付キュー表。横方向にスクロールできます">
       <table className="reception-queue">
         <thead>
           <tr>
@@ -441,7 +441,7 @@ export function ReceptionQueueTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </TableScroll>
   );
 }
 
@@ -1098,6 +1098,7 @@ export function ReceptionDashboard() {
     <section aria-label="受付ダッシュボード">
       <ReceptionQueueMetricsView state={queue} />
       <form
+        className="filter-grid"
         onSubmit={(event) => {
           event.preventDefault();
           void load(date);
@@ -1106,12 +1107,17 @@ export function ReceptionDashboard() {
         <label>
           表示日付
           <input
+            className="operator-input"
             type="date"
             value={date}
             onChange={(event) => setDate(event.target.value)}
           />
         </label>
-        <button type="submit">表示</button>
+        <div className="operator-inline-actions">
+          <button type="submit" className="operator-button" data-kind="secondary">
+            表示
+          </button>
+        </div>
       </form>
 
       <ReceptionRegistrationForm

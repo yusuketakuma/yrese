@@ -125,6 +125,28 @@ export function reconcileMigrationState(input: {
   };
 }
 
+/**
+ * 照合結果から未適用 version 一覧を導出する。導出できない結果では
+ * **フィールドごと省略する**(空配列を返すと「未適用なし」を実測したという
+ * 主張になり、照合が途中停止しただけの状態と区別できなくなる)。
+ *
+ * - up_to_date / db_ahead: 未適用は無い。実測の空配列。
+ * - unapplied_required: 実際の未適用 version 一覧。
+ * - version/checksum/name mismatch: 先頭からの照合が途中で停止しており、残りが
+ *   未適用かどうかを判定していない。省略する。
+ */
+export function derivedPendingVersions(
+  result: MigrationCheckResult,
+): { pendingVersions?: readonly string[] } {
+  if (result.status === 'unapplied_required') {
+    return { pendingVersions: [...result.pendingVersions] };
+  }
+  if (result.status === 'up_to_date' || result.status === 'db_ahead') {
+    return { pendingVersions: [] };
+  }
+  return {};
+}
+
 function quoteMigrationDiagnosticValue(value: string): string {
   return JSON.stringify(value).replace(/[\u0085\u2028\u2029]/gu, (separator) =>
     `\\u${separator.charCodeAt(0).toString(16).padStart(4, '0')}`,

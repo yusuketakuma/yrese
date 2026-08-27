@@ -1,13 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import type { MigrationStateResult } from "@yrese/contracts";
 import {
   PERMISSION_ACTIONS,
   PERMISSION_RESOURCES,
@@ -17,14 +13,30 @@ import {
   type PermissionScope,
 } from "@yrese/shared-kernel";
 
+import { EmptyState } from "../components/empty-state";
 import { ErrorNotice } from "../components/error-notice";
+import { LoadingState } from "../components/loading-state";
+import {
+  InlineNotice,
+  KeyValueList,
+  MetricCard,
+  MetricGrid,
+  OperatorPage,
+  Panel,
+  PrototypeAction,
+  PrototypeBanner,
+  RailCard,
+  ScreenHeader,
+  StatusPill,
+  TableScroll,
+  type OperatorTone,
+} from "../components/operator-ui";
 import {
   type AdminDashboardSnapshot,
   countAdminScopes,
   hasRequiredAdminScopes,
   loadAdminDashboardSnapshot,
 } from "./admin-data";
-import styles from "./admin-dashboard.module.css";
 
 type AdminTab =
   | "overview"
@@ -34,6 +46,9 @@ type AdminTab =
   | "accessibility"
   | "commands"
   | "integrations";
+
+/** 凍結: browser gate が accessible name の完全一致で待機する。 */
+const ADMIN_SCREEN_TITLE = "yrese 管理設定ダッシュボード";
 
 interface BrowserPreferenceSnapshot {
   readonly reducedMotion: boolean | null;
@@ -87,6 +102,28 @@ const ACTION_LABELS: Record<PermissionAction, string> = {
   admin: "管理",
 };
 
+/**
+ * schema_migrations の照合結果表示。
+ * これは登録済みドメイン状態(visual-status-registry)ではないため DomainStatusBadge を
+ * 使わず、StatusPill + 常時可視の日本語ラベルで表す。tone は presentation であり
+ * severity ではない。「一致」以外を success にしない。
+ */
+const MIGRATION_RESULT_PRESENTATION: Record<
+  MigrationStateResult,
+  { readonly label: string; readonly tone: OperatorTone }
+> = {
+  up_to_date: { label: "定義と一致(適用済み)", tone: "success" },
+  db_ahead: { label: "DBが定義より先行", tone: "warning" },
+  version_mismatch: { label: "version不一致", tone: "danger" },
+  checksum_mismatch: { label: "checksum不一致", tone: "danger" },
+  name_mismatch: { label: "名称不一致", tone: "danger" },
+  unapplied_required: { label: "未適用のmigrationあり", tone: "warning" },
+};
+
+/** 未提供領域の共通ゲート説明。何が・どのゲートで止まっているかを名指しする。 */
+const AUTHORITY_GATE_NOTE =
+  "利用者ディレクトリと権限変更操作は提供できません。SCR-029-U（user:admin）と SCR-029-T（tenant:admin）は UIX-001 §12.3 で authority status が candidate / API未登録 であり、canonical API/OpenAPI operation registry への登録と contract test による固定が未了です。";
+
 function formatInstant(value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "取得不能";
@@ -97,81 +134,27 @@ function formatInstant(value: string): string {
   }).format(parsed);
 }
 
-function StatusChip({
-  children,
-  tone = "neutral",
-}: {
-  readonly children: ReactNode;
-  readonly tone?: "neutral" | "success" | "warning" | "danger" | "accent";
-}) {
-  return (
-    <span className={styles.statusChip} data-tone={tone}>
-      {children}
-    </span>
-  );
-}
-
-function MetricCard({
-  symbol,
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  readonly symbol: string;
-  readonly label: string;
-  readonly value: ReactNode;
-  readonly detail: string;
-  readonly tone: "accent" | "info" | "warning" | "success";
-}) {
-  return (
-    <article className={styles.metricCard} data-tone={tone} role="listitem">
-      <span className={styles.metricSymbol} aria-hidden="true">
-        {symbol}
-      </span>
-      <div>
-        <p className={styles.metricLabel}>{label}</p>
-        <p className={styles.metricValue}>{value}</p>
-        <p className={styles.metricDetail}>{detail}</p>
-      </div>
-    </article>
-  );
-}
-
-function DisabledAction({
-  label,
-  reason,
-}: {
-  readonly label: string;
-  readonly reason: string;
-}) {
-  return (
-    <div className={styles.disabledAction}>
-      <button type="button" disabled title={reason}>
-        {label}
-      </button>
-      <small>利用不可: {reason}</small>
-    </div>
-  );
-}
-
+/** 承認済み契約がない領域。0件や未設定ではなく「未提供」として描く。 */
 function UnavailablePanel({
   title,
   message,
+  detail,
 }: {
   readonly title: string;
   readonly message: string;
+  readonly detail?: string;
 }) {
   return (
-    <section className={styles.unavailablePanel} aria-labelledby={`${title}-heading`}>
-      <div className={styles.unavailableSymbol} aria-hidden="true">
-        —
-      </div>
-      <div>
-        <h3 id={`${title}-heading`}>{title}</h3>
-        <p>{message}</p>
-      </div>
-    </section>
+    <Panel
+      title={title}
+      tone="warning"
+      actions={<StatusPill tone="warning">未提供</StatusPill>}
+    >
+      <EmptyState message={message} />
+      {detail !== undefined ? (
+        <p className="operator-empty-copy">{detail}</p>
+      ) : null}
+    </Panel>
   );
 }
 
@@ -179,47 +162,33 @@ function AccessOverview({ snapshot }: { readonly snapshot: AdminDashboardSnapsho
   if (snapshot.identity.status !== "ready") return null;
   const identity = snapshot.identity.data;
   return (
-    <div className={styles.sectionStack}>
-      <section className={styles.panel} aria-labelledby="current-context-heading">
-        <header className={styles.panelHeader}>
-          <div>
-            <p className={styles.eyebrow}>AUTHENTICATED CONTEXT</p>
-            <h3 id="current-context-heading">現在の認証・テナント文脈</h3>
-          </div>
-          <StatusChip tone="success">サーバー検証済み</StatusChip>
-        </header>
-        <div className={styles.contextGrid}>
-          <div>
-            <span>操作者ID</span>
-            <strong>{identity.actorId}</strong>
-          </div>
-          <div>
-            <span>テナントID</span>
-            <strong>{identity.tenantId}</strong>
-          </div>
-          <div>
-            <span>薬局ID</span>
-            <strong>{identity.pharmacyId}</strong>
-          </div>
-          <div>
-            <span>管理画面の必要scope</span>
-            <strong>user:admin + tenant:admin</strong>
-          </div>
-        </div>
-      </section>
+    <div className="operator-stack">
+      <Panel
+        className="live-surface-panel"
+        title="現在の認証・テナント文脈"
+        description="認証済みコンテキスト"
+        actions={<StatusPill tone="success">サーバー検証済み</StatusPill>}
+      >
+        <KeyValueList
+          items={[
+            { label: "操作者ID", value: identity.actorId },
+            { label: "テナントID", value: identity.tenantId },
+            { label: "薬局ID", value: identity.pharmacyId },
+            { label: "管理画面の必要scope", value: "user:admin + tenant:admin" },
+          ]}
+        />
+      </Panel>
 
-      <section className={styles.panel} aria-labelledby="current-session-heading">
-        <header className={styles.panelHeader}>
-          <div>
-            <p className={styles.eyebrow}>CURRENT SESSION ONLY</p>
-            <h3 id="current-session-heading">現在の利用者セッション</h3>
-          </div>
-          <StatusChip tone="accent">1セッション</StatusChip>
-        </header>
-        <div className={styles.tableScroll} tabIndex={0} aria-label="現在の利用者セッション表">
-          <table className={styles.dataTable}>
-            <caption className={styles.tableCaption}>
-              利用者ディレクトリAPIは存在しないため、認証済みの現在セッションだけを表示します。
+      <Panel
+        className="live-surface-panel"
+        title="現在の利用者セッション"
+        description="現在のセッションのみ"
+        actions={<StatusPill tone="accent">1セッション</StatusPill>}
+      >
+        <TableScroll label="現在の利用者セッション表">
+          <table className="operator-table operator-table-dense">
+            <caption className="operator-table-caption">
+              利用者ディレクトリAPIは存在しないため、認証済みの現在セッションだけを表示します。表示が1件であることは、テナント内の利用者が1名であることを意味しません。
             </caption>
             <thead>
               <tr>
@@ -237,17 +206,18 @@ function AccessOverview({ snapshot }: { readonly snapshot: AdminDashboardSnapsho
                 <td>{identity.pharmacyId}</td>
                 <td>{identity.scopes.length}</td>
                 <td>
-                  <StatusChip tone="success">許可</StatusChip>
+                  <StatusPill tone="success">許可</StatusPill>
                 </td>
               </tr>
             </tbody>
           </table>
-        </div>
-      </section>
+        </TableScroll>
+      </Panel>
 
       <UnavailablePanel
         title="利用者ディレクトリ"
         message="利用者一覧、氏名、メール、最終ログイン、MFA状態を返す承認済みAPIとdomain modelがないため、架空の利用者を表示しません。"
+        detail={AUTHORITY_GATE_NOTE}
       />
     </div>
   );
@@ -257,53 +227,61 @@ function PermissionMatrix({ snapshot }: { readonly snapshot: AdminDashboardSnaps
   if (snapshot.identity.status !== "ready") return null;
   const granted = new Set<PermissionScope>(snapshot.identity.data.scopes);
   return (
-    <section className={styles.panel} aria-labelledby="permission-matrix-heading">
-      <header className={styles.panelHeader}>
-        <div>
-          <p className={styles.eyebrow}>EFFECTIVE SCOPES</p>
-          <h3 id="permission-matrix-heading">現在の操作者に付与された権限</h3>
-        </div>
-        <StatusChip tone="accent">{granted.size} scope</StatusChip>
-      </header>
-      <p className={styles.panelLead}>
-        表示は <code>/whoami</code> の検証済み応答から導出します。ロール名や既定割当は推測しません。
-      </p>
-      <div className={styles.tableScroll} tabIndex={0} aria-label="権限scopeマトリクス">
-        <table className={styles.dataTable}>
-          <thead>
-            <tr>
-              <th scope="col">リソース</th>
-              {PERMISSION_ACTIONS.map((action) => (
-                <th scope="col" key={action}>{ACTION_LABELS[action]}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {PERMISSION_RESOURCES.map((resource) => (
-              <tr key={resource}>
-                <th scope="row">{RESOURCE_LABELS[resource]}</th>
-                {PERMISSION_ACTIONS.map((action) => {
-                  const allowed = granted.has(permissionScope(resource, action));
-                  return (
-                    <td key={action}>
-                      <StatusChip tone={allowed ? "success" : "neutral"}>
-                        {allowed ? "付与" : "なし"}
-                      </StatusChip>
-                    </td>
-                  );
-                })}
+    <div className="operator-stack">
+      <Panel
+        className="live-surface-panel"
+        title="現在の操作者に付与された権限"
+        description="有効な scope"
+        actions={<StatusPill tone="accent">{granted.size} scope</StatusPill>}
+      >
+        <p className="operator-empty-copy">
+          表示は <code>/whoami</code> の検証済み応答から導出します。ロール名や既定割当は推測しません。
+        </p>
+        <TableScroll label="権限scopeマトリクス">
+          <table className="operator-table operator-table-dense">
+            <caption className="operator-table-caption">
+              「なし」は現在のセッションに付与されていないことだけを示し、権限設計上の禁止を意味しません。
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">リソース</th>
+                {PERMISSION_ACTIONS.map((action) => (
+                  <th scope="col" key={action}>{ACTION_LABELS[action]}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className={styles.panelFooter}>
-        <DisabledAction
-          label="権限を変更"
-          reason="権限変更API、監査付き更新command、ロール既定割当が未承認です"
-        />
-      </div>
-    </section>
+            </thead>
+            <tbody>
+              {PERMISSION_RESOURCES.map((resource) => (
+                <tr key={resource}>
+                  <th scope="row">{RESOURCE_LABELS[resource]}</th>
+                  {PERMISSION_ACTIONS.map((action) => {
+                    const allowed = granted.has(permissionScope(resource, action));
+                    return (
+                      <td key={action}>
+                        <StatusPill tone={allowed ? "success" : "neutral"}>
+                          {allowed ? "付与" : "なし"}
+                        </StatusPill>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
+      </Panel>
+
+      <Panel
+        title="権限変更"
+        tone="warning"
+        actions={<StatusPill tone="warning">未提供</StatusPill>}
+      >
+        <p className="operator-empty-copy">{AUTHORITY_GATE_NOTE}</p>
+        <PrototypeAction reason="権限変更API、監査付き更新command、ロール既定割当が未承認です">
+          権限を変更
+        </PrototypeAction>
+      </Panel>
+    </div>
   );
 }
 
@@ -312,22 +290,22 @@ function NotificationSettings() {
     <UnavailablePanel
       title="通知設定"
       message="通知チャネル、購読状態、配信履歴の承認済み契約がありません。通知件数や設定状態を捏造せず、未登録状態として表示します。"
+      detail="通知が表示されないことは、配信すべき通知が無いことを意味しません。"
     />
   );
 }
 
 function AuditPolicy() {
   return (
-    <div className={styles.sectionStack}>
-      <section className={styles.policyPanel} aria-labelledby="audit-policy-heading">
-        <span className={styles.policySymbol} aria-hidden="true">監</span>
-        <div>
-          <h3 id="audit-policy-heading">監査証跡は維持、一般業務Webでのイベント閲覧は提供しません</h3>
-          <p>
-            監査イベント生成、権限制御API、append-only保全、hash-chain検証は既存境界で維持します。画面台帳UIX-007に従い、この管理画面にはイベント一覧を再実装しません。
-          </p>
-        </div>
-      </section>
+    <div className="operator-stack">
+      <Panel
+        title="監査証跡は維持、一般業務Webでのイベント閲覧は提供しません"
+        actions={<StatusPill tone="neutral">画面台帳 UIX-007</StatusPill>}
+      >
+        <p className="operator-empty-copy">
+          監査イベント生成、権限制御API、append-only保全、hash-chain検証は既存境界で維持します。画面台帳UIX-007に従い、この管理画面には閲覧UIを再実装しません。
+        </p>
+      </Panel>
       <UnavailablePanel
         title="監査ログのエクスポート"
         message="承認済みのexport契約、目的制限、保存期間、再識別防止、監査付き実行commandがないため利用できません。"
@@ -344,32 +322,31 @@ function AccessibilityPanel({
   const label = (value: boolean | null, enabled: string, disabled: string) =>
     value === null ? "取得不能" : value ? enabled : disabled;
   return (
-    <section className={styles.panel} aria-labelledby="accessibility-heading">
-      <header className={styles.panelHeader}>
-        <div>
-          <p className={styles.eyebrow}>BROWSER PREFERENCES</p>
-          <h3 id="accessibility-heading">現在の端末から検出した表示設定</h3>
-        </div>
-        <StatusChip tone="accent">端末ローカル</StatusChip>
-      </header>
-      <div className={styles.settingList}>
-        <div>
-          <span>モーション抑制</span>
-          <strong>{label(preferences.reducedMotion, "有効", "無効")}</strong>
-        </div>
-        <div>
-          <span>強制カラーモード</span>
-          <strong>{label(preferences.forcedColors, "有効", "無効")}</strong>
-        </div>
-        <div>
-          <span>配色設定</span>
-          <strong>{label(preferences.darkScheme, "ダーク優先", "ライト優先")}</strong>
-        </div>
-      </div>
-      <p className={styles.panelLead}>
-        組織共通のアクセシビリティ設定を保存するAPIはないため、この画面から永続設定は変更しません。
+    <Panel
+      title="現在の端末から検出した表示設定"
+      description="この端末のブラウザ設定"
+      actions={<StatusPill tone="accent">端末ローカル</StatusPill>}
+    >
+      <KeyValueList
+        items={[
+          {
+            label: "モーション抑制",
+            value: label(preferences.reducedMotion, "有効", "無効"),
+          },
+          {
+            label: "強制カラーモード",
+            value: label(preferences.forcedColors, "有効", "無効"),
+          },
+          {
+            label: "配色設定",
+            value: label(preferences.darkScheme, "ダーク優先", "ライト優先"),
+          },
+        ]}
+      />
+      <p className="operator-empty-copy">
+        組織共通のアクセシビリティ設定を保存するAPIはないため、この画面から永続設定は変更しません。「取得不能」は設定が無効であることを意味しません。
       </p>
-    </section>
+    </Panel>
   );
 }
 
@@ -382,39 +359,130 @@ function CommandSettings() {
   );
 }
 
-function IntegrationPanel({ snapshot }: { readonly snapshot: AdminDashboardSnapshot }) {
+/**
+ * `pendingVersions` は照合が途中停止した結果(version/checksum/name 不一致)では
+ * API がフィールドごと省略する。省略を「なし（0件）」と描画すると、未適用が
+ * 存在しないという未検証の主張になるため、省略時は導出不能として示す
+ * (`legacyOrphanDisplay` と同じ規則)。
+ */
+export function pendingVersionsDisplay(
+  pendingVersions: readonly string[] | undefined,
+): string {
+  if (pendingVersions === undefined) {
+    return "—（この照合結果からは導出できません。0件ではありません）";
+  }
+  return pendingVersions.length === 0
+    ? "なし（0件）"
+    : pendingVersions.join(", ");
+}
+
+function MigrationStatePanel({
+  section,
+}: {
+  readonly section: AdminDashboardSnapshot["migrationState"];
+}) {
+  if (section.status === "error") {
+    return (
+      <Panel
+        title="DBスキーマ適用状態"
+        actions={<StatusPill tone="warning">取得不能</StatusPill>}
+      >
+        <ErrorNotice severity="WARNING" {...section.notice} />
+      </Panel>
+    );
+  }
+
+  const state = section.data;
+  if (!state.available) {
+    return (
+      <Panel
+        title="DBスキーマ適用状態"
+        tone="warning"
+        actions={<StatusPill tone="warning">未取得</StatusPill>}
+      >
+        <EmptyState message="永続ストアが構成されていないため、スキーマ適用状態を取得していません。" />
+        <p className="operator-empty-copy">
+          未取得であることは、スキーマが最新であること・不整合が無いことのいずれも意味しません。
+        </p>
+      </Panel>
+    );
+  }
+
+  const presentation = MIGRATION_RESULT_PRESENTATION[state.result];
   return (
-    <div className={styles.sectionStack}>
-      <section className={styles.panel} aria-labelledby="integration-health-heading">
-        <header className={styles.panelHeader}>
-          <div>
-            <p className={styles.eyebrow}>LIVE HEALTH ENDPOINT</p>
-            <h3 id="integration-health-heading">API接続状態</h3>
-          </div>
-          {snapshot.health.status === "ready" ? (
-            <StatusChip tone="success">応答あり</StatusChip>
+    <Panel
+      className="live-surface-panel"
+      title="DBスキーマ適用状態"
+      description="ヘルスエンドポイント実測と同じく、サーバー側の実測値です"
+      actions={<StatusPill tone={presentation.tone}>{presentation.label}</StatusPill>}
+    >
+      <KeyValueList
+        items={[
+          { label: "照合結果", value: presentation.label },
+          { label: "適用済みmigration", value: `${state.appliedCount} 件` },
+          { label: "定義済みmigration", value: `${state.availableCount} 件` },
+          {
+            label: "未適用version",
+            value: pendingVersionsDisplay(state.pendingVersions),
+          },
+          {
+            label: "最新適用version",
+            value: state.latestAppliedVersion ?? "—",
+          },
+          {
+            label: "最新適用名",
+            value: state.latestAppliedName ?? "—",
+          },
+        ]}
+      />
+      <p className="operator-empty-copy">
+        checksumの値そのものと接続情報はAPIが返さないため表示しません。
+      </p>
+    </Panel>
+  );
+}
+
+function IntegrationPanel({ snapshot }: { readonly snapshot: AdminDashboardSnapshot }) {
+  const health = snapshot.health;
+  return (
+    <div className="operator-stack">
+      <Panel
+        className="live-surface-panel"
+        title="API接続状態"
+        description="ヘルスエンドポイント実測"
+        actions={
+          health.status === "ready" ? (
+            <StatusPill tone="success">応答あり</StatusPill>
           ) : (
-            <StatusChip tone="warning">取得不能</StatusChip>
-          )}
-        </header>
-        {snapshot.health.status === "ready" ? (
-          <div className={styles.contextGrid}>
-            <div><span>サービス</span><strong>{snapshot.health.data.service}</strong></div>
-            <div><span>バージョン</span><strong>{snapshot.health.data.version}</strong></div>
-            <div><span>状態</span><strong>{snapshot.health.data.status}</strong></div>
-            <div><span>サーバー時刻</span><strong>{formatInstant(snapshot.health.data.timestamp)}</strong></div>
-          </div>
+            <StatusPill tone="warning">取得不能</StatusPill>
+          )
+        }
+      >
+        {health.status === "ready" ? (
+          <KeyValueList
+            items={[
+              { label: "サービス", value: health.data.service },
+              { label: "バージョン", value: health.data.version },
+              { label: "状態", value: health.data.status },
+              { label: "サーバー時刻", value: formatInstant(health.data.timestamp) },
+            ]}
+          />
         ) : (
           <ErrorNotice
             severity="WARNING"
-            message={snapshot.health.error.message}
+            message={health.error.message}
             nextAction="再取得してください。継続する場合は同期状態画面で影響範囲を確認してください。"
           />
         )}
-      </section>
-      <Link className={styles.primaryLink} href="/sync-status">
-        同期状態・外部連携画面を開く
-      </Link>
+      </Panel>
+
+      <MigrationStatePanel section={snapshot.migrationState} />
+
+      <Panel title="関連画面">
+        <Link className="operator-button" data-kind="primary" href="/sync-status">
+          同期状態・外部連携画面を開く
+        </Link>
+      </Panel>
     </div>
   );
 }
@@ -437,53 +505,55 @@ export function AdminDashboardView({
   refreshing = false,
 }: AdminDashboardViewProps) {
   if (snapshot.identity.status === "error") {
-    const denied = snapshot.identity.error.kind === "PERMISSION_DENIED";
-    const unauthenticated = snapshot.identity.error.kind === "UNAUTHENTICATED";
+    const kind = snapshot.identity.error.kind;
     return (
-      <section className={styles.dashboard} aria-labelledby="admin-title">
-        <header className={styles.pageHeader}>
-          <div>
-            <p className={styles.eyebrow}>SCR-029</p>
-            <h2 id="admin-title">yrese 管理設定</h2>
-            <p>認証・tenant境界・権限を確認してから管理情報を表示します。</p>
-          </div>
-        </header>
-        <ErrorNotice
-          severity="ERROR"
-          message={snapshot.identity.error.message}
-          nextAction={
-            unauthenticated
-              ? "認証セッションを確立してから再度開いてください。"
-              : denied
-                ? "管理者に user:admin と tenant:admin の付与状況を確認してください。"
-                : "再取得してください。継続する場合はシステム管理者へ連絡してください。"
+      <OperatorPage>
+        <ScreenHeader
+          title={ADMIN_SCREEN_TITLE}
+          eyebrow="SCR-029 運用・保守"
+          description="認証・tenant境界・権限を確認してから管理情報を表示します。"
+          meta={<StatusPill tone="warning">認証情報取得不能</StatusPill>}
+          actions={
+            <button type="button" className="operator-button" onClick={onRefresh}>
+              再取得
+            </button>
           }
         />
-        <button type="button" className={styles.refreshButton} onClick={onRefresh}>
-          再取得
-        </button>
-      </section>
+        <Panel title="管理情報を表示できません">
+          <ErrorNotice
+            severity="ERROR"
+            message={snapshot.identity.error.message}
+            nextAction={
+              kind === "UNAUTHENTICATED"
+                ? "認証セッションを確立してから再度開いてください。"
+                : kind === "PERMISSION_DENIED"
+                  ? "管理者に user:admin と tenant:admin の付与状況を確認してください。"
+                  : "再取得してください。継続する場合はシステム管理者へ連絡してください。"
+            }
+          />
+        </Panel>
+      </OperatorPage>
     );
   }
 
   const identity = snapshot.identity.data;
   if (!hasRequiredAdminScopes(identity)) {
     return (
-      <section className={styles.dashboard} aria-labelledby="admin-title">
-        <header className={styles.pageHeader}>
-          <div>
-            <p className={styles.eyebrow}>SCR-029</p>
-            <h2 id="admin-title">yrese 管理設定</h2>
-            <p>この画面は user:admin と tenant:admin の両方を要求します。</p>
-          </div>
-          <StatusChip tone="danger">アクセス拒否</StatusChip>
-        </header>
-        <ErrorNotice
-          severity="ERROR"
-          message="管理画面に必要な権限scopeが不足しています。"
-          nextAction="管理者に user:admin と tenant:admin の両方の付与状況を確認してください。"
+      <OperatorPage>
+        <ScreenHeader
+          title={ADMIN_SCREEN_TITLE}
+          eyebrow="SCR-029 運用・保守"
+          description="この画面は user:admin と tenant:admin の両方を要求します。"
+          meta={<StatusPill tone="danger">アクセス拒否</StatusPill>}
         />
-      </section>
+        <Panel title="必要な管理scopeが不足しています" tone="danger">
+          <ErrorNotice
+            severity="ERROR"
+            message="管理画面に必要な権限scopeが不足しています。"
+            nextAction="管理者に user:admin と tenant:admin の両方の付与状況を確認してください。"
+          />
+        </Panel>
+      </OperatorPage>
     );
   }
 
@@ -507,148 +577,187 @@ export function AdminDashboardView({
     }
   };
 
-  return (
-    <section className={styles.dashboard} aria-labelledby="admin-title">
-      <header className={styles.pageHeader}>
-        <div>
-          <p className={styles.eyebrow}>SCR-029 · CONNECTED ADMINISTRATION</p>
-          <h2 id="admin-title">yrese 管理設定ダッシュボード</h2>
-          <p>現在の認証コンテキストと実APIから、権限・環境・接続状態を確認します。</p>
-        </div>
-        <div className={styles.headerActions}>
-          <StatusChip tone="success">管理scope確認済み</StatusChip>
+  const rail = (
+    <>
+      <RailCard
+        title="環境・組織情報"
+        action={<StatusPill tone="success">実API</StatusPill>}
+      >
+        <KeyValueList
+          items={[
+            { label: "テナントID", value: identity.tenantId },
+            { label: "薬局ID", value: identity.pharmacyId },
+            { label: "操作者ID", value: identity.actorId },
+            {
+              label: "APIバージョン",
+              value: healthReady ? snapshot.health.data.version : "—",
+            },
+            { label: "最終取得", value: formatInstant(snapshot.loadedAt) },
+          ]}
+        />
+      </RailCard>
+
+      <RailCard title="管理者クイックアクション">
+        <div className="operator-stack">
           <button
             type="button"
-            className={styles.refreshButton}
+            className="operator-button"
+            onClick={onRefresh}
+            disabled={refreshing}
+          >
+            認証・状態を再取得
+          </button>
+          <Link className="rail-link-button" href="/sync-status">
+            同期状態を確認
+          </Link>
+          <PrototypeAction reason="利用者管理APIが未実装です">
+            利用者を追加
+          </PrototypeAction>
+          <PrototypeAction reason="認証セッション管理APIが未実装です">
+            セッション管理
+          </PrototypeAction>
+          <PrototypeAction reason="承認済みの鍵管理契約がありません">
+            APIキー管理
+          </PrototypeAction>
+          <PrototypeAction reason="目的制限・監査付きexport契約がありません">
+            データエクスポート
+          </PrototypeAction>
+        </div>
+      </RailCard>
+
+      <RailCard title="実装境界" tone="warning">
+        <ul className="rail-action-list">
+          <li>利用者一覧・MFA・最終ログインは未提供</li>
+          <li>権限変更はAPI側command未実装のため不可</li>
+          <li>監査イベント閲覧画面はUIX-007により提供しない</li>
+          <li>自然言語・音声設定は承認済み境界待ち</li>
+        </ul>
+        <p className="operator-empty-copy">
+          ここに列挙されていないことは、その機能が利用可能であることを意味しません。
+        </p>
+      </RailCard>
+    </>
+  );
+
+  return (
+    <OperatorPage rail={rail} railLabel="環境・管理補助情報" railSticky={false}>
+      <ScreenHeader
+        title={ADMIN_SCREEN_TITLE}
+        eyebrow="SCR-029 運用・保守"
+        description="現在の認証コンテキストと実APIから、権限・環境・接続状態を確認します。"
+        meta={<StatusPill tone="success">/whoami・/health 実API接続</StatusPill>}
+        actions={
+          <button
+            type="button"
+            className="operator-button"
+            data-kind="primary"
             onClick={onRefresh}
             disabled={refreshing}
           >
             {refreshing ? "更新中…" : "最新状態に更新"}
           </button>
-        </div>
-      </header>
+        }
+      />
 
-      <div className={styles.metricGrid} role="list" aria-label="管理画面の主要指標">
+      <PrototypeBanner>
+        利用者管理・通知・自然言語コマンドは承認済み契約が未登録のため実行できません。表示されない項目を「該当なし」「正常」として読まないでください。
+      </PrototypeBanner>
+
+      {refreshing ? (
+        <InlineNotice title="再取得中" tone="info" announce="polite">
+          {formatInstant(snapshot.loadedAt)}
+          時点に取得した内容を表示したまま、認証・API状態・スキーマ適用状態を再取得しています。画面上の値はまだ更新されていません。
+        </InlineNotice>
+      ) : null}
+
+      <MetricGrid>
         <MetricCard
-          symbol="人"
+          icon="人"
           label="現在の操作者"
           value={identity.actorId}
           detail="/whoami の認証済みactor"
           tone="accent"
         />
         <MetricCard
-          symbol="鍵"
+          icon="鍵"
           label="付与scope"
-          value={`${identity.scopes.length} 件`}
+          value={identity.scopes.length}
+          unit="件"
           detail="現在の認証コンテキスト"
           tone="info"
         />
         <MetricCard
-          symbol="管"
+          icon="管"
           label="管理scope"
-          value={`${countAdminScopes(identity)} 件`}
+          value={countAdminScopes(identity)}
+          unit="件"
           detail="末尾 :admin のscope"
-          tone="warning"
+          tone="neutral"
         />
         <MetricCard
-          symbol="接"
+          icon="接"
           label="API状態"
-          value={healthReady ? "稼働中" : "取得不能"}
-          detail={healthReady ? `v${snapshot.health.data.version}` : "partial failure"}
+          value={healthReady ? "応答あり" : "—"}
+          detail={
+            healthReady
+              ? `v${snapshot.health.data.version}`
+              : "ヘルス応答を取得できていません。停止とも稼働とも判定していません。"
+          }
           tone={healthReady ? "success" : "warning"}
         />
+      </MetricGrid>
+
+      <div className="check-chip-row" role="tablist" aria-label="管理設定カテゴリ">
+        {TAB_ITEMS.map((tab, index) => {
+          const selected = activeTab === tab.id;
+          return (
+            <button
+              type="button"
+              role="tab"
+              className="operator-button"
+              data-kind={selected ? "primary" : "secondary"}
+              aria-selected={selected}
+              aria-controls={selected ? `admin-tabpanel-${tab.id}` : undefined}
+              id={`admin-tab-${tab.id}`}
+              tabIndex={selected ? 0 : -1}
+              key={tab.id}
+              onClick={() => onTabChange(tab.id)}
+              onKeyDown={(event) => {
+                const nextIndex =
+                  event.key === "ArrowRight"
+                    ? (index + 1) % TAB_ITEMS.length
+                    : event.key === "ArrowLeft"
+                      ? (index - 1 + TAB_ITEMS.length) % TAB_ITEMS.length
+                      : event.key === "Home"
+                        ? 0
+                        : event.key === "End"
+                          ? TAB_ITEMS.length - 1
+                          : null;
+                if (nextIndex === null) return;
+                const nextTab = TAB_ITEMS[nextIndex];
+                if (nextTab === undefined) return;
+                event.preventDefault();
+                onTabChange(nextTab.id);
+                document.getElementById(`admin-tab-${nextTab.id}`)?.focus();
+              }}
+            >
+              {/* 選択状態を色だけに依存させない(形状記号 + aria-selected + 塗り)。 */}
+              <span aria-hidden="true">{selected ? "●" : "○"}</span>
+              <span aria-hidden="true">{tab.symbol}</span>
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      <div className={styles.workspace}>
-        <div className={styles.primaryColumn}>
-          <div className={styles.tabs} role="tablist" aria-label="管理設定カテゴリ">
-            {TAB_ITEMS.map((tab, index) => (
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeTab === tab.id}
-                aria-controls={
-                  activeTab === tab.id ? `admin-tabpanel-${tab.id}` : undefined
-                }
-                id={`admin-tab-${tab.id}`}
-                tabIndex={activeTab === tab.id ? 0 : -1}
-                key={tab.id}
-                onClick={() => onTabChange(tab.id)}
-                onKeyDown={(event) => {
-                  const nextIndex =
-                    event.key === "ArrowRight"
-                      ? (index + 1) % TAB_ITEMS.length
-                      : event.key === "ArrowLeft"
-                        ? (index - 1 + TAB_ITEMS.length) % TAB_ITEMS.length
-                        : event.key === "Home"
-                          ? 0
-                          : event.key === "End"
-                            ? TAB_ITEMS.length - 1
-                            : null;
-                  if (nextIndex === null) return;
-                  const nextTab = TAB_ITEMS[nextIndex];
-                  if (nextTab === undefined) return;
-                  event.preventDefault();
-                  onTabChange(nextTab.id);
-                  document.getElementById(`admin-tab-${nextTab.id}`)?.focus();
-                }}
-              >
-                <span aria-hidden="true">{tab.symbol}</span>
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          <div
-            className={styles.tabPanel}
-            role="tabpanel"
-            id={`admin-tabpanel-${activeTab}`}
-            aria-labelledby={`admin-tab-${activeTab}`}
-          >
-            {renderTab()}
-          </div>
-        </div>
-
-        <aside className={styles.secondaryColumn} aria-label="環境・管理補助情報">
-          <section className={styles.sidePanel} aria-labelledby="environment-heading">
-            <header>
-              <h3 id="environment-heading">環境・組織情報</h3>
-              <StatusChip tone="success">実API</StatusChip>
-            </header>
-            <dl className={styles.keyValueList}>
-              <div><dt>テナントID</dt><dd>{identity.tenantId}</dd></div>
-              <div><dt>薬局ID</dt><dd>{identity.pharmacyId}</dd></div>
-              <div><dt>操作者ID</dt><dd>{identity.actorId}</dd></div>
-              <div><dt>APIバージョン</dt><dd>{healthReady ? snapshot.health.data.version : "取得不能"}</dd></div>
-              <div><dt>最終取得</dt><dd>{formatInstant(snapshot.loadedAt)}</dd></div>
-            </dl>
-          </section>
-
-          <section className={styles.sidePanel} aria-labelledby="quick-actions-heading">
-            <header><h3 id="quick-actions-heading">管理者クイックアクション</h3></header>
-            <div className={styles.quickActions}>
-              <button type="button" onClick={onRefresh} disabled={refreshing}>
-                認証・状態を再取得
-              </button>
-              <Link href="/sync-status">同期状態を確認</Link>
-              <DisabledAction label="利用者を追加" reason="利用者管理APIが未実装です" />
-              <DisabledAction label="セッション管理" reason="認証セッション管理APIが未実装です" />
-              <DisabledAction label="APIキー管理" reason="承認済みの鍵管理契約がありません" />
-              <DisabledAction label="データエクスポート" reason="目的制限・監査付きexport契約がありません" />
-            </div>
-          </section>
-
-          <section className={styles.sidePanel} aria-labelledby="scope-boundary-heading">
-            <header><h3 id="scope-boundary-heading">実装境界</h3></header>
-            <ul className={styles.boundaryList}>
-              <li>利用者一覧・MFA・最終ログインは未提供</li>
-              <li>権限変更はAPI側command未実装のため不可</li>
-              <li>監査イベント閲覧画面はUIX-007により提供しない</li>
-              <li>自然言語・音声設定は承認済み境界待ち</li>
-            </ul>
-          </section>
-        </aside>
+      <div
+        role="tabpanel"
+        id={`admin-tabpanel-${activeTab}`}
+        aria-labelledby={`admin-tab-${activeTab}`}
+      >
+        {renderTab()}
       </div>
-    </section>
+    </OperatorPage>
   );
 }
 
@@ -658,26 +767,23 @@ export function AdminDashboard() {
   const [preferences, setPreferences] = useState<BrowserPreferenceSnapshot>(
     UNKNOWN_BROWSER_PREFERENCES,
   );
-  const [state, setState] = useState<
-    | { readonly kind: "loading" }
-    | { readonly kind: "loaded"; readonly snapshot: AdminDashboardSnapshot }
-  >({ kind: "loading" });
+  // 再取得中も直前の結果を保持する(UIX-001 §6: 前回結果を消してローディングへ戻さない)。
+  const [snapshot, setSnapshot] = useState<AdminDashboardSnapshot | null>(null);
+  const [pending, setPending] = useState(true);
 
   useEffect(() => {
     const controller = new AbortController();
     let current = true;
-    if (state.kind === "loaded") {
-      setState({ kind: "loading" });
-    }
-    loadAdminDashboardSnapshot(fetch, controller.signal).then((snapshot) => {
-      if (current) setState({ kind: "loaded", snapshot });
+    setPending(true);
+    loadAdminDashboardSnapshot(fetch, controller.signal).then((next) => {
+      if (!current) return;
+      setSnapshot(next);
+      setPending(false);
     });
     return () => {
       current = false;
       controller.abort();
     };
-    // state is intentionally excluded: reloadKey is the only reload trigger.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reloadKey]);
 
   useEffect(() => {
@@ -701,34 +807,32 @@ export function AdminDashboard() {
     };
   }, []);
 
-  const refreshing = state.kind === "loading" && reloadKey > 0;
   const loadingMarkup = useMemo(
     () => (
-      <section className={styles.dashboard} aria-labelledby="admin-loading-title" aria-busy="true">
-        <header className={styles.pageHeader}>
-          <div>
-            <p className={styles.eyebrow}>SCR-029</p>
-            <h2 id="admin-loading-title">yrese 管理設定ダッシュボード</h2>
-            <p>認証・tenant境界・API状態を検証しています。</p>
-          </div>
-        </header>
-        <div className={styles.loadingGrid} role="status" aria-live="polite">
-          <span>管理情報を読み込み中…</span>
-        </div>
-      </section>
+      <OperatorPage>
+        <ScreenHeader
+          title={ADMIN_SCREEN_TITLE}
+          eyebrow="SCR-029 運用・保守"
+          description="認証・tenant境界・API状態を検証しています。"
+          meta={<StatusPill tone="neutral">検証中</StatusPill>}
+        />
+        <section aria-label="管理情報の読込状態" aria-busy="true">
+          <LoadingState label="認証・tenant境界・API状態を検証しています。" />
+        </section>
+      </OperatorPage>
     ),
     [],
   );
 
-  if (state.kind === "loading") return loadingMarkup;
+  if (snapshot === null) return loadingMarkup;
   return (
     <AdminDashboardView
-      snapshot={state.snapshot}
+      snapshot={snapshot}
       preferences={preferences}
       activeTab={activeTab}
       onTabChange={setActiveTab}
       onRefresh={() => setReloadKey((current) => current + 1)}
-      refreshing={refreshing}
+      refreshing={pending}
     />
   );
 }

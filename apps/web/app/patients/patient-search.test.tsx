@@ -13,6 +13,7 @@ import {
   computeAgeYears,
 } from "../components/patient-header";
 import { PATIENT_SEARCH_DEV_SCOPES, devTenantHeaders } from "../dev-tenant";
+import { SEX_LABELS } from "../status/visual-status-registry";
 import { patientId } from "@yrese/shared-kernel";
 import {
   createSearchRunner,
@@ -2161,6 +2162,26 @@ describe("PatientHeader with a selected patient (患者取り違え防止表示 
     expect(html).toContain(ELIGIBILITY_LABELS.PENDING_REVERIFY);
     expect(html).toContain('data-patient-id="p-selected"');
   });
+
+  it("renders the sex label from the shared visual status registry (WP-4041)", () => {
+    // 患者ヘッダーが独自の性別文言を持つと、registry を直しても患者スコープの
+    // 全画面上部に出るこのバナーだけ旧文言のまま残る。
+    for (const sex of ["male", "female", "unknown"] as const) {
+      const html = renderToStaticMarkup(
+        <PatientHeader
+          patientId={patientId("p-selected")}
+          name="選択 花子"
+          kana="センタク ハナコ"
+          birthDate="1988-03-20"
+          age={38}
+          sex={sex}
+          eligibility="VERIFIED"
+        />,
+      );
+
+      expect(html).toContain(`歳・${SEX_LABELS[sex]})`);
+    }
+  });
 });
 
 describe("patient search metrics reflect real search state (WP-5101)", () => {
@@ -2206,5 +2227,64 @@ describe("patient search metrics reflect real search state (WP-5101)", () => {
     expect(html).toContain("選択中の患者");
     expect(html).toContain("検索実行後に一覧表示");
     expect(html).toContain("患者一覧");
+  });
+});
+
+describe("patient search shell and unavailable-metric truthfulness (SCR-002 refresh)", () => {
+  it("nests the 患者一覧 panel inside the 患者検索 section landmark", () => {
+    const html = renderToStaticMarkup(<PatientSearch />);
+    const sectionAt = html.indexOf('<section aria-label="患者検索">');
+    const panelAt = html.indexOf('class="operator-panel live-surface-panel"');
+
+    expect(sectionAt).toBeGreaterThanOrEqual(0);
+    expect(panelAt).toBeGreaterThan(sectionAt);
+  });
+
+  it("makes the result table scroll container reachable and named", () => {
+    const html = renderToStaticMarkup(
+      <PatientSearchResults results={[patient({})]} query="テスト" />,
+    );
+    const wrapper = html.match(/<div class="table-scroll"[^>]*>/)?.[0];
+
+    expect(wrapper).toContain('tabindex="0"');
+    expect(wrapper).toContain('aria-label="患者検索結果表。横方向にスクロールできます"');
+  });
+
+  it("distinguishes a measured 0件 from an unavailable derivation", () => {
+    const empty = renderToStaticMarkup(
+      <PatientSearchResults results={[]} query="該当なし" />,
+    );
+
+    expect(empty).toContain("の検索結果");
+    expect(empty).toContain("0件でした");
+    expect(empty).toContain("未接続を意味しません");
+  });
+
+  it("names the blocking reason of every metric that cannot be derived", () => {
+    const html = renderToStaticMarkup(<PatientSearch />);
+
+    // 未接続の集計を 0 として描かない。理由と「0件ではない」ことを併記する。
+    expect(html).toContain("患者横断の集計APIが未登録のため導出できません(0件を意味しません)");
+    expect(html).toContain(
+      "フォロー対象の判定基準がAPPROVED SSOTに未登録のため導出できません(0件を意味しません)",
+    );
+    expect(html).not.toContain("集計API未接続<");
+  });
+
+  it("explains that no-JS cannot search because the query is never sent to the server", () => {
+    const html = renderToStaticMarkup(<PatientSearch />);
+    const inputTag = html.match(/<input\b[^>]*id="patient-search-q"[^>]*>/)?.[0];
+
+    expect(inputTag).not.toMatch(/\sname=/);
+    expect(html).toContain("JavaScriptが無効の場合");
+    expect(html).toContain("URL・送信本文へ載せない設計");
+  });
+
+  it("keeps the idle screen from implying an empty patient list", () => {
+    const html = renderToStaticMarkup(<PatientSearch />);
+
+    expect(html).toContain("まだ検索を実行していません");
+    expect(html).not.toContain("の検索結果");
+    expect(html).not.toContain("patient-search-results");
   });
 });

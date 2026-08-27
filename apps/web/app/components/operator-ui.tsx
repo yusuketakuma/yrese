@@ -18,11 +18,14 @@ export function OperatorPage({
   children,
   rail,
   railLabel = "補助情報",
+  railSticky = true,
   className,
 }: {
   readonly children: ReactNode;
   readonly rail?: ReactNode;
   readonly railLabel?: string;
+  /** false のとき rail を通常フローへ戻す(内部スクロールを持つ complementary を作らない)。 */
+  readonly railSticky?: boolean;
   readonly className?: string;
 }) {
   return (
@@ -35,10 +38,37 @@ export function OperatorPage({
     >
       <div className="operator-page-primary">{children}</div>
       {rail !== undefined ? (
-        <aside className="operator-rail" aria-label={railLabel} tabIndex={0}>
+        <aside
+          className="operator-rail"
+          aria-label={railLabel}
+          tabIndex={0}
+          {...(railSticky ? {} : { "data-sticky": "false" })}
+        >
           {rail}
         </aside>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * 横スクロールする表の共通ラッパ。
+ * ページ本体を横スクロールさせず、スクロール領域自体をキーボードで到達可能にする。
+ *
+ * `role="region"` は必須。role の無い div は generic へマップされ、`aria-label` は
+ * generic 上で禁止属性(axe-core `aria-prohibited-attr`)として無視される。role を
+ * 落とすと、tab stop だけが増えて名前が読み上げられないスクロール領域になる。
+ */
+export function TableScroll({
+  label,
+  children,
+}: {
+  readonly label: string;
+  readonly children: ReactNode;
+}) {
+  return (
+    <div className="table-scroll" role="region" tabIndex={0} aria-label={label}>
+      {children}
     </div>
   );
 }
@@ -279,44 +309,6 @@ export function PrototypeAction({
       </button>
       <small className="prototype-action-reason">利用不可: {reason}</small>
     </span>
-  );
-}
-
-export function IntakeCard({
-  icon,
-  title,
-  description,
-  actionLabel,
-  status = "未接続",
-  tone = "accent",
-}: {
-  readonly icon: string;
-  readonly title: string;
-  readonly description: string;
-  readonly actionLabel: string;
-  readonly status?: string;
-  readonly tone?: OperatorTone;
-}) {
-  return (
-    <article className="intake-card" data-tone={tone}>
-      <div className="intake-card-heading">
-        <span className="intake-icon" aria-hidden="true">
-          {icon}
-        </span>
-        <div>
-          <h3>{title}</h3>
-          <p>{description}</p>
-        </div>
-      </div>
-      <div className="intake-card-footer">
-        <StatusPill tone="warning">{status}</StatusPill>
-        <PrototypeAction
-          reason={`${title}は接続・承認前のため実行できません`}
-        >
-          {actionLabel}
-        </PrototypeAction>
-      </div>
-    </article>
   );
 }
 

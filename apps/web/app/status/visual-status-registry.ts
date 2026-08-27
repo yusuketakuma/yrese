@@ -371,6 +371,15 @@ export const SEVERITY_LABELS: Record<ErrorSeverity, string> = projectLabels(SEVE
 export const SYSTEM_MODE_LABELS: Record<SystemMode, string> = projectLabels(SYSTEM_MODE_PRESENTATION);
 export const ELIGIBILITY_STATUS_LABELS: Record<EligibilityStatus, string> =
   projectLabels(ELIGIBILITY_PRESENTATION);
+/**
+ * 性別の可視ラベル。shared-kernel の状態 enum ではないが、複数画面が同一文言を
+ * 二重定義していたため UI 層の正本をここに置く(文言の二重実装禁止)。
+ */
+export const SEX_LABELS: Record<"male" | "female" | "unknown", string> = {
+  male: "男",
+  female: "女",
+  unknown: "不明",
+};
 export const RECEPTION_STATUS_LABELS: Record<ReceptionStatus, string> =
   projectLabels(RECEPTION_PRESENTATION);
 export const PROVISIONAL_STATUS_LABELS: Record<ProvisionalStatus, string> =
