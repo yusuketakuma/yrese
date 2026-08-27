@@ -23,6 +23,7 @@ import {
   PatientSearch,
   PatientSearchResults,
   ProceedToPrescriptionLink,
+  toPatientContextData,
   type SearchPage,
   type SearchState,
 } from "./patient-search";
@@ -484,7 +485,7 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
   it("shows a link to proceed to prescription entry once a patient is selected (WP-5212-6)", () => {
     const p = patient({ patientId: "p1" });
     const withSelection = renderToStaticMarkup(
-      <ProceedToPrescriptionLink selected={p} />,
+      <ProceedToPrescriptionLink selected={toPatientContextData(p)} />,
     );
     expect(withSelection).toContain('href="/"');
     expect(withSelection).toContain("受付を選んで処方入力へ進む");

@@ -34,15 +34,15 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5214 local landing は `feat/wp-5214-cross-cutting-patterns`。WP-5218 は本記録を含む landing commit から `fix/wp-5218-web-type-boundary` を作成する |
+| Candidate branch | WP-5218 local landing は `fix/wp-5218-web-type-boundary`。WP-5215 は本記録を含む landing commit から `fix/wp-5215-focus-visibility` を作成する |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
 | Candidate scope | 全画面 UI/UX 改善計画 v2.3(§17 backlog)の READY 昇格と WP-5212 以降の直列消化 |
-| Last update | 2026-08-27 JST(WP-5214 local landing、WP-5218 type-boundary repair claim) |
+| Last update | 2026-08-27 JST(WP-5218 local landing、WP-5215 focus-visibility claim) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | 全画面 UI/UX 改善計画 v2.3(§17)を WIP=1 / READY≤2 の下で段階消化する(WP-5212 → 5213 → 5214 → 5218 → 5215 → 5216 → 5211 → 5217) |
-| Current critical path | 既知の Web typecheck blocker を production consumer と同じ既存 adapter で閉じ、その後 WP-5215 の focus visibility 是正へ進む |
+| Current critical path | UIX-001 が要求する visible focus を既存global ringへ戻し、dark sidebarだけsurface別tokenを使うexact3でWP-5215を閉じる |
 | Main blocker | instant→JST 共通 helper は APPROVED MOD-011 §4 により `SSOT_UPDATE_REQUIRED`。既存画面ローカル変換も変更しない。push/deploy、migration apply、HPKI/legal、RB-003 は別 gate のまま |
-| Required verification | WP-5214 は Web 64 files / 735 tests、browser 36 routes / 5 suites、`git diff --check`、frozen technical review が PASS。Web typecheck は exact12 外の既知 `patient-search.test.tsx:487` TS2375 1件で停止し、WP-5218 の Red evidence とする。workspace-wide gate は再測しておらず PASS と主張しない |
+| Required verification | WP-5218 は typecheck Red TS2375→focused 96 tests、Web typecheck、Web 64 files / 735 tests、`git diff --check`、frozen exact1 reviewがPASS。WP-5215はpre-plan accessibility review PASSだが、Red/Green・browser・frozen landing reviewは未実行 |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
 
@@ -72,20 +72,26 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5218(Web test type boundary repair、R1)1 件である。**
-WP-5214 は本記録が `WP-5214:` local commit tree に含まれることを条件に着地し、同じ条件で
-READY 0 件から WP-5218 を claim する。未commit worktree上ではこの遷移全体を
-finalization candidate と読む。継続実装の最小 blocker sliceであり、production挙動は変更しない。
+**CURRENT は WP-5215(focus visibility / a11y foundation、R2)1 件である。**
+WP-5218 は本記録が `WP-5218:` local commit tree に含まれることを条件に着地し、同じ条件で
+READY 0 件から WP-5215 を claim する。未commit worktree上ではこの遷移全体を
+finalization candidate と読む。APPROVED UIX-001 §4 / §13の既存visible-focus契約へ戻すdefect fixである。
 
-- **Acceptance:** Web typecheck の `patient-search.test.tsx:487` TS2375 を閉じる。
-  `PatientSearchResult` を `PatientContextData` へ直接渡さず、production consumer と同じ既存
-  `toPatientContextData` adapterを使う。任意fieldを `undefined` で補う回避や型弱体化はしない。
-- **Exact allowed path:** `apps/web/app/patients/patient-search.test.tsx` 1件のみ。
-- **Reuse / no-edit:** `patient-search.tsx` が既に再exportする `toPatientContextData` を再利用する。
-  production source、contracts、schema、CSS、API、migration、SSOT、新規helper/dependencyは変更しない。
-- **Gate:** current Web typecheck failureを Red evidence とし、focused patient-search test、Web typecheck、
-  Web suite、`git diff --check`でGreenを確認する。rollback は exact1 の atomic revert。
-  push、merge、deploy、migration apply は認可外である。
+- **Acceptance:** `globals.css` のrootで既存fallback色 `#6b4eff` を通常時のeffective
+  `--color-focus` sourceとし、`--focus-ring`をそのtokenへ接続する。dark `.app-sidebar` は
+  `--color-focus: #fff` と `--focus-ring`の両方を再定義し、既知背景 `#081c3e` / `#0a315b` /
+  active `#4657ed` に対して3:1以上を維持する。command inputの `outline: 0` を削除し、既存global
+  `:focus-visible` ringを継承させる。
+- **Exact allowed paths:** `apps/web/app/globals.css`、`apps/web/app/operator-first.css`、
+  `apps/web/app/style-load-order.test.ts` の3件のみ。
+- **Reuse / no-edit:** `legacy.css` のglobal `:focus-visible` とforced-colors `Highlight`、既存
+  `#6b4eff` fallbackを再利用する。adversarial/completion selectorの防御的fallbackは残し、文字列の
+  完全集中は主張しない。DOM、control、layout、`<=540px` media rule、OperatorPreferences、API、
+  contracts、schema、migration、APPROVED SSOT、新規dependencyは変更しない。
+- **Gate:** static testの最小 Red→Green、focused style test、Web typecheck / suite、synthetic browser、
+  `git diff --check`、frozen independent + accessibility review。actual screen reader、forced-colors、
+  200%/400% zoomのhuman確認はrelease gateとしてpendingを維持する。rollbackはexact3のatomic revert。
+  push、merge、deploy、migration applyは認可外である。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
@@ -157,6 +163,18 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5218 — Web test type boundary repair(2026-08-27)
+
+- **Status:** **この記録が `WP-5218:` commit の tree に含まれる場合に限り**
+  `COMMITTED_LOCAL / PUSH_NOT_REQUESTED / NOT_MERGED`。未commit worktree上では landing claim
+  ではなく finalization candidate と読む。
+- **Scope:** patient search test fixtureをproduction consumerと同じ既存 `toPatientContextData`へ通し、
+  `exactOptionalPropertyTypes`の境界不一致を閉じた。production source、type、schema、helper、挙動は
+  変更していない。
+- **Gate:** Web typecheckの既知TS2375をRedとし、focused 96 tests、Web typecheck、Web 64 files /
+  735 tests、`git diff --check`、frozen exact1 reviewがPASS。workspace-wide gateやrelease readinessは
+  主張しない。
 
 ### WP-5214 — 横断 retry / route state 整備(non-JST、2026-08-27)
 

@@ -1,28 +1,29 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-27, WP-5214 local landing + WP-5218 claim):**
+> **ACTIVE SNAPSHOT (2026-08-27, WP-5218 local landing + WP-5215 claim):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** current user reply 2026-08-27「承認」に基づく継続実装で、WP-5214
-  exact12 と本 snapshot / Plans.md を1 local landing candidateにし、着地後は WP-5218へ遷移する。
+- **Direction / ownership:** current user reply 2026-08-27「承認」に基づく継続実装で、WP-5218
+  exact1 と本 snapshot / Plans.md を1 local landing candidateにし、着地後は WP-5215へ遷移する。
   Codex root が唯一の `active_root_writer` である。
-- **Git boundary:** current branch `feat/wp-5214-cross-cutting-patterns`、HEAD
-  `a2475a36106a59496dfacddc7ec163ef10e83707`。WP-5214 は**本記録が `WP-5214:` commit treeに
+- **Git boundary:** current branch `fix/wp-5218-web-type-boundary`、HEAD
+  `a9e4c64f0241180c7dbecef6c43be6001dd97d69`。WP-5218 は**本記録が `WP-5218:` commit treeに
   含まれる場合に限り** local landingとし、未commit worktree上では finalization candidateと読む。
-  push / mergeは行わない。次branchは `fix/wp-5218-web-type-boundary` とする。
-- **Dirty ownership:** WP-5214 exact12 と Plans.md / State.md は本local landing対象。
+  push / mergeは行わない。次branchは `fix/wp-5215-focus-visibility` とする。
+- **Dirty ownership:** WP-5218 exact1 と Plans.md / State.md は本local landing対象。
   `.harness-worktrees/`、
   `artifacts/`、`ui-test-tools/` と secondary worktree の既存差分は user-owned / protected であり、
   cleanup、merge、stageを行わない。
-- **Active plan:** Plans.md §17 の順序を維持し、CURRENT=WP-5218 type-boundary repair / READY=0。
+- **Active plan:** Plans.md §17 の順序を維持し、CURRENT=WP-5215 focus visibility / READY=0。
   exact allowed/no-edit、acceptance、test、rollbackは Plans.md §3 CURRENT recordを正本とする。
-- **WP-5214 boundary:** instant→JST helper共通化は APPROVED MOD-011 §4 が事前改版を要求するため
-  `SSOT_UPDATE_REQUIRED`。実装は non-JST exact12に限定し、既存local変換、monthly-closing /
-  claim-check / outbox のretry identityを変更していない。
-- **Open validation gap / WP-5218 Red:** Web typecheck は WP-5214 exact12外の既存
-  `patient-search.test.tsx:487` fixture mismatch 1件で停止する。production consumerと同じ既存
-  `toPatientContextData` adapterを使う exact1 fixで閉じるまで repository-wide typecheck PASSを
-  主張しない。
+- **WP-5215 boundary:** exact3はCSS token、dark-sidebar context、static testだけ。既存global
+  `:focus-visible` / forced-colorsを再利用し、DOM、control、layout、`<=540px` behavior、
+  OperatorPreferences、APPROVED SSOTを変更しない。pre-plan accessibility reviewはPASS。
+- **Validation baseline:** WP-5218はtypecheck Red TS2375→focused 96 tests、Web typecheck、Web 64 files /
+  735 tests、`git diff --check`、frozen exact1 reviewがPASS。WP-5215のRed/Green、browser、frozen
+  landing reviewは未実行であり、screen reader、forced-colors、zoomのhuman gateはpendingである。
+- **Preserved WP-5214 stop:** instant→JST helper共通化は APPROVED MOD-011 §4 が事前改版を要求するため
+  `SSOT_UPDATE_REQUIRED`。既存local変換も変更しない。
 - **Preserved WP-5213 gap:** UIX-001 P-11 の二段階確認要素のみを充足した。権限確認要素は
   production 認証(WP-5121、BLOCKED_SECURITY_REVIEW)未着地のため未充足である。
 - **持ち越し human 検証債務:** WP-5212 の満年齢表示に対する PRC-003 #8 PIA は
