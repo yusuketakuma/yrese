@@ -9,6 +9,7 @@ import type {
 
 import {
   CheckoutReceptionContext,
+  CheckoutReceptionContextView,
   CheckoutReceptionTable,
   describeDraftSummary,
   loadCheckoutReceptions,
@@ -242,6 +243,31 @@ describe("CheckoutReceptionContext without a selected patient", () => {
     expect(html).toContain("live-surface-panel");
     expect(html).not.toContain("<table");
     expect(html).not.toContain("checkout-business-date");
+  });
+});
+
+describe("CheckoutReceptionContextView retry", () => {
+  it("offers the same-condition fetch again after a context load failure", () => {
+    const html = renderToStaticMarkup(
+      <CheckoutReceptionContextView
+        patientName="合成患者 一"
+        businessDate={BUSINESS_DATE}
+        state={{
+          kind: "error",
+          notice: {
+            message: "受付情報を取得できませんでした。",
+            nextAction: "再取得してください。",
+          },
+        }}
+        onBusinessDateChange={() => undefined}
+        onRetry={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('role="alert"');
+    expect(html).toMatch(
+      /<button[^>]*class="operator-button"[^>]*>再取得<\/button>/,
+    );
   });
 });
 

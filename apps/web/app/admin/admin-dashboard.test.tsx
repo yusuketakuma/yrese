@@ -8,7 +8,10 @@ import type {
   AdminDashboardSnapshot,
   AdminMigrationSection,
 } from "./admin-data";
-import { AdminDashboardView } from "./admin-dashboard";
+import {
+  AdminDashboardView,
+  loadAdminDashboardSafely,
+} from "./admin-dashboard";
 
 (globalThis as { React?: typeof React }).React = React;
 
@@ -302,5 +305,25 @@ describe("AdminDashboardView", () => {
     expect(html).toContain("API稼働状態を取得できませんでした");
     expect(html).toContain("同期状態・外部連携画面を開く");
     expect(html).toContain("tenant-alpha");
+  });
+});
+
+describe("loadAdminDashboardSafely", () => {
+  it.each([
+    [
+      "同期例外",
+      () => {
+        throw new Error("raw sync failure");
+      },
+    ],
+    ["非同期拒否", () => Promise.reject(new Error("raw async failure"))],
+  ])("converges a %s to the fixed unavailable snapshot", async (_label, load) => {
+    const snapshot = await loadAdminDashboardSafely(load);
+
+    expect(snapshot.identity.status).toBe("error");
+    expect(snapshot.health.status).toBe("error");
+    expect(snapshot.migrationState.status).toBe("error");
+    expect(JSON.stringify(snapshot)).toContain("管理情報を取得できませんでした。");
+    expect(JSON.stringify(snapshot)).not.toContain("raw ");
   });
 });

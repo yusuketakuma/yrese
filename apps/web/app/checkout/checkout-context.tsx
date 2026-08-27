@@ -201,6 +201,79 @@ export function CheckoutReceptionTable({
   );
 }
 
+export function CheckoutReceptionContextView({
+  patientName,
+  businessDate,
+  state,
+  onBusinessDateChange,
+  onRetry,
+}: {
+  readonly patientName: string;
+  readonly businessDate: string;
+  readonly state: CheckoutContextState;
+  readonly onBusinessDateChange: (businessDate: string) => void;
+  readonly onRetry: () => void;
+}) {
+  return (
+    <Panel
+      className="live-surface-panel"
+      title={PANEL_TITLE}
+      description="受付API・処方下書きAPIの実応答のみを表示します。点数・金額・薬剤名は含みません。"
+      actions={<StatusPill tone="info">既存受付API・処方下書きAPI配線</StatusPill>}
+    >
+      <section
+        aria-label="選択患者の受付と処方下書きの保存状態"
+        {...(state.kind === "loading" ? { "aria-busy": true } : {})}
+      >
+        <div className="filter-grid">
+          <label htmlFor="checkout-business-date">
+            照会する業務日
+            <input
+              id="checkout-business-date"
+              className="operator-input"
+              type="date"
+              value={businessDate}
+              onChange={(event) => onBusinessDateChange(event.target.value)}
+            />
+          </label>
+        </div>
+        <p className="operator-empty-copy" role="status">
+          表示対象: 選択患者 {patientName}、業務日{" "}
+          {businessDate === "" ? "未指定" : businessDate} の認証済み受付キュー。
+          受付IDは手入力せず、認証済み受付キューから取得しています。
+        </p>
+
+        {state.kind === "loading" ? (
+          <LoadingState label="選択患者の受付と処方下書きの保存状態を取得しています…" />
+        ) : null}
+
+        {state.kind === "error" ? (
+          <div className="operator-stack">
+            <ErrorNotice severity="ERROR" {...state.notice} />
+            <button type="button" className="operator-button" onClick={onRetry}>
+              再取得
+            </button>
+          </div>
+        ) : null}
+
+        {state.kind === "ready" && state.receptions.length === 0 ? (
+          <EmptyState
+            message={
+              businessDate === ""
+                ? "業務日が指定されていないため照会していません。照会する業務日を指定してください。"
+                : "指定した業務日の認証済み受付キューに、この患者の受付はありません。受付が未登録・別業務日・取得不能のいずれかです。会計対象が0件であることを意味しません。"
+            }
+          />
+        ) : null}
+
+        {state.kind === "ready" && state.receptions.length > 0 ? (
+          <CheckoutReceptionTable receptions={state.receptions} />
+        ) : null}
+      </section>
+    </Panel>
+  );
+}
+
 function CheckoutReceptionContextForPatient({
   patientId,
   patientName,
@@ -209,6 +282,7 @@ function CheckoutReceptionContextForPatient({
   readonly patientName: string;
 }) {
   const [businessDate, setBusinessDate] = useState(todayAsIsoDate);
+  const [reloadToken, setReloadToken] = useState(0);
   const [state, setState] = useState<CheckoutContextState>({ kind: "loading" });
 
   useEffect(() => {
@@ -230,60 +304,16 @@ function CheckoutReceptionContextForPatient({
     return () => {
       controller.abort();
     };
-  }, [patientId, businessDate]);
+  }, [patientId, businessDate, reloadToken]);
 
   return (
-    <Panel
-      className="live-surface-panel"
-      title={PANEL_TITLE}
-      description="受付API・処方下書きAPIの実応答のみを表示します。点数・金額・薬剤名は含みません。"
-      actions={<StatusPill tone="info">既存受付API・処方下書きAPI配線</StatusPill>}
-    >
-      <section
-        aria-label="選択患者の受付と処方下書きの保存状態"
-        {...(state.kind === "loading" ? { "aria-busy": true } : {})}
-      >
-        <div className="filter-grid">
-          <label htmlFor="checkout-business-date">
-            照会する業務日
-            <input
-              id="checkout-business-date"
-              className="operator-input"
-              type="date"
-              value={businessDate}
-              onChange={(event) => setBusinessDate(event.target.value)}
-            />
-          </label>
-        </div>
-        <p className="operator-empty-copy" role="status">
-          表示対象: 選択患者 {patientName}、業務日{" "}
-          {businessDate === "" ? "未指定" : businessDate} の認証済み受付キュー。
-          受付IDは手入力せず、認証済み受付キューから取得しています。
-        </p>
-
-        {state.kind === "loading" ? (
-          <LoadingState label="選択患者の受付と処方下書きの保存状態を取得しています…" />
-        ) : null}
-
-        {state.kind === "error" ? (
-          <ErrorNotice severity="ERROR" {...state.notice} />
-        ) : null}
-
-        {state.kind === "ready" && state.receptions.length === 0 ? (
-          <EmptyState
-            message={
-              businessDate === ""
-                ? "業務日が指定されていないため照会していません。照会する業務日を指定してください。"
-                : "指定した業務日の認証済み受付キューに、この患者の受付はありません。受付が未登録・別業務日・取得不能のいずれかです。会計対象が0件であることを意味しません。"
-            }
-          />
-        ) : null}
-
-        {state.kind === "ready" && state.receptions.length > 0 ? (
-          <CheckoutReceptionTable receptions={state.receptions} />
-        ) : null}
-      </section>
-    </Panel>
+    <CheckoutReceptionContextView
+      patientName={patientName}
+      businessDate={businessDate}
+      state={state}
+      onBusinessDateChange={setBusinessDate}
+      onRetry={() => setReloadToken((current) => current + 1)}
+    />
   );
 }
 

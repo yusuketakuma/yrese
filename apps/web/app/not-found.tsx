@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { ErrorNotice } from "./components/error-notice";
+
 /**
  * 全ルート共通の 404 表示(App Router not-found.tsx / 監査 S-01・P-19)。
  *
@@ -10,14 +12,11 @@ import Link from "next/link";
 export default function NotFound() {
   return (
     <section className="route-error" aria-label="ページが見つかりません">
-      <div className="error-notice" role="alert" data-severity="ERROR">
-        <p className="error-notice-message">
-          お探しのページが見つかりません。ページが移動または削除されたか、URL が正しくない可能性があります。
-        </p>
-        <p className="error-notice-next-action">
-          次のアクション: 業務メニューから目的の画面へ移動してください。患者を探す場合は患者検索をご利用ください。
-        </p>
-      </div>
+      <ErrorNotice
+        severity="ERROR"
+        message="お探しのページが見つかりません。ページが移動または削除されたか、URL が正しくない可能性があります。"
+        nextAction="業務メニューから目的の画面へ移動してください。患者を探す場合は患者検索をご利用ください。"
+      />
       <p>
         <Link href="/">受付ダッシュボードへ戻る</Link>
         {" ／ "}

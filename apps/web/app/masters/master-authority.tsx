@@ -100,8 +100,10 @@ function SessionFacts({ session }: { readonly session: SessionScopes }) {
 
 export function MasterAuthorityView({
   state,
+  onRetry,
 }: {
   readonly state: MasterAuthorityState;
+  readonly onRetry: () => void;
 }) {
   return (
     <Panel
@@ -117,7 +119,14 @@ export function MasterAuthorityView({
           <LoadingState label="セッションの権限情報を取得しています…" />
         ) : null}
         {state.kind === "ready" ? <SessionFacts session={state.session} /> : null}
-        {state.kind === "error" ? <ErrorNotice {...state.notice} /> : null}
+        {state.kind === "error" ? (
+          <div className="operator-stack">
+            <ErrorNotice {...state.notice} />
+            <button type="button" className="operator-button" onClick={onRetry}>
+              再取得
+            </button>
+          </div>
+        ) : null}
       </section>
       <p className="operator-empty-copy">{AUTHORITY_VS_EXECUTION}</p>
     </Panel>
@@ -126,6 +135,7 @@ export function MasterAuthorityView({
 
 export function MasterAuthorityCard() {
   const [state, setState] = useState<MasterAuthorityState>({ kind: "loading" });
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -137,7 +147,12 @@ export function MasterAuthorityCard() {
       active = false;
       controller.abort();
     };
-  }, []);
+  }, [reloadToken]);
 
-  return <MasterAuthorityView state={state} />;
+  return (
+    <MasterAuthorityView
+      state={state}
+      onRetry={() => setReloadToken((current) => current + 1)}
+    />
+  );
 }

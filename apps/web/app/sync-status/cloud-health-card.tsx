@@ -75,8 +75,37 @@ export function cloudHealthMetric(state: CloudHealthState): {
   return { value: "確認中", detail: "ヘルスAPIへ問い合わせ中", tone: "info" };
 }
 
+export function CloudHealthCardView({
+  state,
+  onRetry,
+}: {
+  readonly state: CloudHealthState;
+  readonly onRetry: () => void;
+}) {
+  const metric = cloudHealthMetric(state);
+  return (
+    <MetricCard
+      label="クラウド（yrese）"
+      value={
+        <>
+          {metric.value}
+          {state.kind === "error" ? (
+            <button type="button" className="operator-button" onClick={onRetry}>
+              再取得
+            </button>
+          ) : null}
+        </>
+      }
+      detail={metric.detail}
+      tone={metric.tone}
+      icon="雲"
+    />
+  );
+}
+
 export function CloudHealthCard() {
   const [state, setState] = useState<CloudHealthState>({ kind: "loading" });
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -84,16 +113,12 @@ export function CloudHealthCard() {
       if (next !== null) setState(next);
     });
     return () => controller.abort();
-  }, []);
+  }, [reloadToken]);
 
-  const metric = cloudHealthMetric(state);
   return (
-    <MetricCard
-      label="クラウド（yrese）"
-      value={metric.value}
-      detail={metric.detail}
-      tone={metric.tone}
-      icon="雲"
+    <CloudHealthCardView
+      state={state}
+      onRetry={() => setReloadToken((current) => current + 1)}
     />
   );
 }

@@ -131,7 +131,8 @@ describe("cross-screen error display (WP-3007 / SCR-013)", () => {
     expect(html).toContain("予期しないエラーが発生しました");
     expect(html).toContain("次のアクション:");
     expect(html).not.toContain("参照コード");
-    expect(html).toContain('style="margin-top:var(--space-3)"');
+    expect(html).toContain('class="operator-button"');
+    expect(html).not.toContain("style=");
     expect(html).toContain(">再試行</button>");
     expect(html).toContain("再試行");
     // 技術例外は ERROR(CRITICAL は患者安全事象に温存 — UIX-001 §5)

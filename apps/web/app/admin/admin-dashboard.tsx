@@ -32,11 +32,39 @@ import {
   type OperatorTone,
 } from "../components/operator-ui";
 import {
+  AdminDataError,
   type AdminDashboardSnapshot,
   countAdminScopes,
   hasRequiredAdminScopes,
   loadAdminDashboardSnapshot,
 } from "./admin-data";
+
+/** Component boundary fallback: loader internals must never strand the screen in pending. */
+export async function loadAdminDashboardSafely(
+  load: () => AdminDashboardSnapshot | Promise<AdminDashboardSnapshot>,
+): Promise<AdminDashboardSnapshot> {
+  try {
+    return await load();
+  } catch {
+    const error = new AdminDataError(
+      "UNAVAILABLE",
+      "管理情報を取得できませんでした。",
+    );
+    return {
+      identity: { status: "error", error },
+      health: { status: "error", error },
+      migrationState: {
+        status: "error",
+        notice: {
+          message: "管理情報を取得できませんでした。",
+          nextAction:
+            "再取得してください。解消しない場合はシステム管理者へ連絡してください。",
+        },
+      },
+      loadedAt: new Date().toISOString(),
+    };
+  }
+}
 
 type AdminTab =
   | "overview"
@@ -775,7 +803,9 @@ export function AdminDashboard() {
     const controller = new AbortController();
     let current = true;
     setPending(true);
-    loadAdminDashboardSnapshot(fetch, controller.signal).then((next) => {
+    loadAdminDashboardSafely(() =>
+      loadAdminDashboardSnapshot(fetch, controller.signal),
+    ).then((next) => {
       if (!current) return;
       setSnapshot(next);
       setPending(false);

@@ -35,7 +35,9 @@ function jsonFetch(body: unknown, status = 200): typeof fetch {
 }
 
 function render(state: MasterAuthorityState): string {
-  return renderToStaticMarkup(<MasterAuthorityView state={state} />);
+  return renderToStaticMarkup(
+    <MasterAuthorityView state={state} onRetry={() => undefined} />,
+  );
 }
 
 describe("loadMasterAuthorityState", () => {
@@ -120,6 +122,9 @@ describe("MasterAuthorityView", () => {
 
     expect(html).toContain('data-error-code="AUTH-0003"');
     expect(html).toContain("次のアクション:");
+    expect(html).toMatch(
+      /<button[^>]*class="operator-button"[^>]*>再取得<\/button>/,
+    );
     expect(html).toContain("MST-001 の blocker により実行されません");
     expect(html).not.toContain("tenant-test-a");
   });

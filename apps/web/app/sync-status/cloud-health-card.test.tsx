@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   CloudHealthCard,
+  CloudHealthCardView,
   cloudHealthMetric,
   resolveCloudHealthState,
   type CloudHealthState,
@@ -52,6 +53,21 @@ describe("sync-status cloud health card (WP-5101 real wiring)", () => {
     expect(metric.value).toBe("未確認");
     expect(metric.detail).toContain("ヘルスAPIに到達できません");
     expect(metric.tone).toBe("warning");
+  });
+
+  it("offers a retry after a failed probe", () => {
+    const html = renderToStaticMarkup(
+      <CloudHealthCardView
+        state={{ kind: "error", checkedAt: CHECKED_AT }}
+        onRetry={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("未確認");
+    expect(html).toMatch(/^<article[^>]*role="listitem"/);
+    expect(html).toMatch(
+      /<button[^>]*class="operator-button"[^>]*>再取得<\/button>/,
+    );
   });
 
   it("shows an in-progress state before the first response", () => {
