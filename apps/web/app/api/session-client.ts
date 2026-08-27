@@ -53,7 +53,10 @@ const SESSION_NOTICES: Readonly<Record<SessionApiErrorKind, ErrorNoticeProps>> =
 export class SessionApiError extends Error {
   readonly kind: SessionApiErrorKind;
 
-  constructor(kind: SessionApiErrorKind) {
+  constructor(
+    kind: SessionApiErrorKind,
+    readonly status?: number,
+  ) {
     super(kind);
     this.name = "SessionApiError";
     this.kind = kind;
@@ -67,6 +70,7 @@ export class SessionApiError extends Error {
 export interface SessionRequestOptions {
   readonly fetchImpl?: typeof fetch;
   readonly signal?: AbortSignal;
+  readonly devScopes?: readonly PermissionScope[];
 }
 
 /** fetchAdminIdentity と同一の形。別名を用意するが構造は WhoamiResponse のまま。 */
@@ -77,11 +81,12 @@ export async function fetchSessionScopes(
 ): Promise<SessionScopes> {
   const fetchImpl = options?.fetchImpl ?? fetch;
   const signal = options?.signal;
+  const devScopes = options?.devScopes ?? SESSION_SCOPES;
 
   let response: Response;
   try {
     response = await fetchImpl(resolveWebApiUrl("/whoami"), {
-      headers: devTenantHeaders(SESSION_SCOPES),
+      headers: devTenantHeaders(devScopes),
       cache: "no-store",
       ...(signal === undefined ? {} : { signal }),
     });
@@ -91,8 +96,8 @@ export async function fetchSessionScopes(
 
   if (!response.ok) {
     throw response.status === 403
-      ? new SessionApiError("PERMISSION_DENIED")
-      : new SessionApiError("UNAVAILABLE");
+      ? new SessionApiError("PERMISSION_DENIED", response.status)
+      : new SessionApiError("UNAVAILABLE", response.status);
   }
 
   let body: unknown;

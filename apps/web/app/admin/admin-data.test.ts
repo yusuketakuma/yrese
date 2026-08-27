@@ -195,6 +195,47 @@ describe("admin dashboard data boundary", () => {
     });
   });
 
+  it.each([
+    [
+      401,
+      "UNAUTHENTICATED",
+      "認証・権限情報を取得するための認証セッションを確認できません。",
+    ],
+    [404, "UNAVAILABLE", "認証・権限情報を取得できませんでした。"],
+    [500, "UNAVAILABLE", "認証・権限情報を取得できませんでした。"],
+  ] as const)(
+    "keeps the existing whoami HTTP %d classification",
+    async (status, kind, message) => {
+      vi.stubEnv("NODE_ENV", "development");
+      vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+      const fetchImpl = vi.fn(async () =>
+        jsonResponse({}, status),
+      ) as unknown as typeof fetch;
+
+      await expect(fetchAdminIdentity(fetchImpl)).rejects.toMatchObject({
+        kind,
+        status,
+        message,
+      });
+    },
+  );
+
+  it("forwards the abort signal on the whoami request", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const controller = new AbortController();
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse(IDENTITY),
+    ) as unknown as typeof fetch;
+
+    await fetchAdminIdentity(fetchImpl, controller.signal);
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "/_yrese-api/whoami",
+      expect.objectContaining({ signal: controller.signal }),
+    );
+  });
+
   it("rejects an invalid identity response instead of rendering unvalidated fields", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_BASE", "");

@@ -34,15 +34,15 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5211 は `refactor/wp-5211-css-token-authority` の local commit `6e40b5b`。WP-5217A は同 commit から `refactor/wp-5217a-reception-visibility-refresh` を作成済み |
+| Candidate branch | WP-5217A は local commit `1fedfe3`。WP-5219 は同 commit から `refactor/wp-5219-whoami-transport-reuse` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | WP-5217 slice A のうち、受付一覧の hidden→visible 再取得と権限拒否時の旧PHI消去に限定した exact2 Web slice |
-| Last update | 2026-08-27 JST(WP-5217A Red→Greenとcandidate validation完了) |
+| Candidate scope | Web の `/whoami` wire処理を既存 `fetchSessionScopes` へ一元化し、admin固有のscope/error分類を保持する exact4 code/test slice |
+| Last update | 2026-08-27 JST(WP-5219 Red→Greenとcandidate validation完了) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
-| Active Goal | 全画面 UI/UX 改善計画 v2.3(§17)を WIP=1 / READY≤2 の下で段階消化する(WP-5212 → 5213 → 5214 → 5218 → 5215 → 5216 → 5211 → 5217) |
-| Current critical path | WP-5217A exact2で、既存の受付queue runnerとexplicit target trackerを再利用し、hidden→visible edgeだけを安全に再取得する |
-| Main blocker | WP-5217A の初回frozen review finding 2件は是正され、更新candidateのindependent + frontend + privacy/security再reviewは全PASS。root exact-stage local landingだけを残す。slice Bは3 gate未成立 |
-| Required verification | WP-5217A はRed 3件→focused 168 tests、Web 64 files / 740 tests、Web typecheck、`git diff --check`、frozen R2 review 3観点がPASS |
+| Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
+| Current critical path | WP-5219 exact4で、重複した `/whoami` fetch/JSON/schema処理を既存session clientへ収束し、adminの401/403分類を維持する |
+| Main blocker | WP-5219のmachine gateとfrozen R2 reviewは全PASS。root exact-stage local landingだけを残す。WP-5217Bは3 gate未成立で継続保留 |
+| Required verification | custom dev scope/status保持のRed 4件→focused 2 files / 26 tests、Web 64 files / 745 tests、Web typecheck、`git diff --check`、independent/security reviewがPASS |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
 
@@ -72,39 +72,36 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5217A(受付一覧 visibility refresh、R2)1 件である。**
-WP-5211 は local commit `6e40b5b` で着地済み。WP-5217 全体をclaimせず、既存contract内で
-完結するslice Aの最小部分だけをclaimする。READYは0件である。
+**CURRENT は WP-5219(`/whoami` transport reuse、R2)1 件である。**
+WP-5217A は local commit `1fedfe3` で着地済み。READYは0件である。
 
-- **Purpose / layer:** ReceptionDashboardの既存idempotent readを、画面がhiddenからvisibleへ戻った
-  1 edgeにつき1回だけ再実行し、認可拒否後に旧患者queueと一時的な登録結果を残さない。
-  対象domainはreception read、implementation layerはWeb clientだけである。
-- **Allowed / forbidden:** implementationは `apps/web/app/reception-dashboard.tsx`、testは
-  `apps/web/app/reception-dashboard.test.tsx`、required recordは `Plans.md` / `State.md` のexact4。
-  それ以外、特にAPI、contract/OpenAPI、schema/migration、repository、audit registry、SEC-004、
-  UIX-001、dependency、CSS、copyは変更禁止。保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** APPROVED API-006の既存 `GET /reception/queue`、MOD-008の
-  `reception.queue.viewed`、UIX-001 ST-03/ST-05、SEC-004をread-only authorityとして使う。
-  算定・請求・帳票・法令logicを変更しないため新規evidence_idは不要。single-object readの
-  slice Bは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 event判断、SEC-004 PIAの3件が
-  未成立であり、着手しない。
-- **Acceptance / tests:** (A1) synthetic visibility sourceでhidden no-op、hidden→visible edge、
-  repeated visible抑止、最新の明示取得target、typed-but-unsubmitted date無視を固定する。
-  (A2) 同一target pendingは既存runnerへjoinしてfetch/auditを1回にし、unsubscribe後は再取得せず、
-  remount後は再購読する。(A3) network/offline failureは検証済みqueueと固定errorを保持する一方、
-  403 permission denialは旧queue・一時登録結果を消してerrorだけを表示する。(A4) 異なるtargetのabort/generation、
-  stale suppression、unmount cancelは既存runner/lifecycle回帰testを維持する。最小Red→Green後に
-  focused reception test、Web suite、Web typecheck、`git diff --check`を実行する。
-- **PIA / offline:** 新規PHI field・projection・保存・log・URL・metric・audit payloadは追加せず、
-  既存PatientSummaryを同じtenant/pharmacy/scopeで再取得するだけ。fixtureはsyntheticのみ。
-  network rejectionでLOCAL_ONLY / RECOVERY_SYNCへ遷移せず、local read、online event/polling、timer、
-  focus/pageshow retryも追加しない。403時のqueue・登録結果PHI消去により残留表示を防ぐ。
-- **Roles / stop / rollback:** `owner_role: sole_maintainer` はCodex root、`reviewer_roles` は
-  `independent_verifier`、`frontend_reviewer`、`privacy_compliance_reviewer` + `security_critic`。
-  API/audit/PHI scope、
-  offline mode、draft/write flow、APPROVED SSOTの変更が必要になれば停止して再計画する。
-  exact4を単一 `WP-5217A:` commitにし、rollbackはそのcommitへの `git revert <commit>`。
-  rootだけがexact-stage/commitし、push、merge、deploy、migration applyは認可外である。
+- **Purpose / layer:** Web内で二重実装された `/whoami` のURL解決、development header、
+  `no-store` fetch、AbortSignal、JSON parse、`whoamiResponseSchema`検証を、既存
+  `fetchSessionScopes`へ一元化する。対象domainはsession/auth read、implementation layerはWeb clientだけである。
+- **Allowed / forbidden:** implementation/testは `apps/web/app/api/session-client.ts`、同 `.test.ts`、
+  `apps/web/app/admin/admin-data.ts`、同 `.test.ts`、required recordは `Plans.md` / `State.md` のexact6。
+  API、contract/OpenAPI、APPROVED SSOT、schema/migration、repository、audit、UI/CSS/copy、dependencyは
+  変更禁止。保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** APPROVED MOD-007のdeny-by-defaultとdevelopment-only least-privilege header、
+  SEC-006のdev stub起動境界、既存contract `/whoami` の200/403/500を不変とする。算定・請求・帳票・
+  法令logicを変更しないため新規evidence_idは不要。production認証と401契約は新設しない。
+- **Acceptance / tests:** (A1) `SessionRequestOptions.devScopes`はdevelopment header専用で、未指定時は
+  `SESSION_SCOPES`(`tenant:read`)を維持する。(A2) `SessionApiError.status`はHTTP非成功時だけ保持し、
+  session側の403=`PERMISSION_DENIED`、その他=`UNAVAILABLE`を変えない。(A3) adminだけが既存の
+  401=`UNAUTHENTICATED`、403=`PERMISSION_DENIED`、その他=`UNAVAILABLE`へ再分類し、statusと固定文言を保持する。
+  (A4)両consumerで `no-store`、signal同一参照、schema validation、raw body/exception非露出を維持する。
+  custom dev scopeとstatus保持の最小Red→Green後、focused 2 test files、Web suite/typecheck、
+  `git diff --check`を実行する。
+- **PIA / offline:** `/whoami`の既存tenant/pharmacy/actor/scope projectionだけを扱い、新規PHI/PII field、
+  保存、log、URL、metric、audit payload、cache、retry/offline stateを追加しない。fixtureはsyntheticのみ。
+  `devScopes`はproductionでheaderを送らず、UI scope checkをAPI認可の代替にしない。
+- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root、`reviewer_roles`は
+  `independent_verifier` + `security_critic`。production dev header、認可authority、API/contract/SSOT、
+  error registryの変更が必要なら停止し再計画する。exact6を単一 `WP-5219:` commitにし、rollbackは
+  そのcommitへの `git revert <commit>`。rootだけがexact-stage/commitし、push、merge、deploy、
+  migration applyは認可外である。mapperとpre-plan再checkはPASS、machine gateはRed 4件→focused
+  26 tests、Web 745 tests、Web typecheck、`git diff --check`がPASSし、frozen independent/security
+  reviewもfinding 0でPASS。root exact-stage local landingだけを残す。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
@@ -176,6 +173,15 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5217A — Reception visibility refresh(2026-08-27)
+
+- **Status:** `COMMITTED_LOCAL 1fedfe3 / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** 既存queue runnerとexplicit target trackerを再利用し、hidden→visible edgeだけを
+  再取得する。network failureは検証済みqueueを保持し、trusted 403だけは旧queueと一時登録結果を消去する。
+- **Gate:** Red 3件→focused 168 tests、Web 64 files / 740 tests、Web typecheck、
+  `git diff --check`、frozen independent/frontend/privacy-security reviewがPASS。single-object readの
+  slice BはAPI-006/MOD-008/SEC-004の3 gate未成立で、引き続き着手しない。
 
 ### WP-5211 — CSS token authority Phase A(2026-08-27)
 

@@ -1,35 +1,33 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-27, WP-5211 landed + WP-5217A claim):**
+> **ACTIVE SNAPSHOT (2026-08-27, WP-5217A landed + WP-5219 claim):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5211はlocal commit `6e40b5b`へ着地済み。current requestの全体
-  refactoringを継続し、次の最小complete sliceとしてWP-5217Aだけをclaimする。Codex rootだけが
+- **Direction / ownership:** WP-5217Aはlocal commit `1fedfe3`へ着地済み。current requestのrepository全体
+  refactoringを継続し、次の最小complete sliceとしてWP-5219だけをclaimする。Codex rootだけが
   `active_root_writer`、state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5217a-reception-visibility-refresh`、base/HEAD
-  `6e40b5b1deecbd17822d4d182b0a562420aec94c`。push / mergeは行わない。
-- **Dirty ownership:** `apps/web/app/reception-dashboard.tsx`、同 `.test.tsx`、`Plans.md`、
-  `State.md` のexact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
+- **Git boundary:** current branch `refactor/wp-5219-whoami-transport-reuse`、base/HEAD
+  `1fedfe3ed58bc5fb3232810b3838fbd55fe97cda`。push / mergeは行わない。
+- **Dirty ownership:** `apps/web/app/api/session-client.ts`、同 `.test.ts`、
+  `apps/web/app/admin/admin-data.ts`、同 `.test.ts`、`Plans.md`、`State.md` のexact6だけを
+  本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
   `ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5217A / READY=0。既存 `GET /reception/queue`、
-  queue runner、explicit target trackerだけを再利用し、hidden→visible edgeで最新の明示targetを
-  再取得する。同一pending targetはjoinし、連続visibleは抑止する。API、contract、schema、audit
-  registry、APPROVED SSOT、dependency、CSS、copyは変更しない。
-- **Security / privacy / offline:** 既存PatientSummary PHIを同じtenant/pharmacy/scopeで再取得するだけで、
-  新規PHI field・保存・log・URL・metric・audit payloadはない。fixtureはsyntheticのみ。
-  network/offline failureは検証済みqueueと固定errorを保持し、LOCAL_ONLY / RECOVERY_SYNC遷移、
-  local read、polling、timer、focus/pageshow retryを追加しない。403 permission denialだけは旧queueと
-  一時登録結果を消して、PHI残留を防ぐ。
-- **Process gate:** 初回pre-planのDoR/PIA/配線test/rollback、visible連打、403旧PHI保持findingを
-  本snapshotとPlans.md §3へ反映し、再review 2系統はPASS。残るR2 checkerは
-  `independent_verifier` + `frontend_reviewer` + `privacy_compliance_reviewer` / `security_critic`で
-  更新candidateを再確認し、全PASS・finding 0。root exact-stage local landingだけを残す。
-- **Validation / rollback:** 最小Red→Green、focused reception test、Web suite/typecheck、
-  `git diff --check`を要求。実測は403旧queue保持、visibility購読なし、403一時登録結果clear未配線の
-  Red 3件をGreen化し、focused 168 testsとWeb typecheckがPASS。初回frozen reviewのcallback観測盲点と
-  登録結果PHI残留findingは是正済み。Web 64 files / 740 tests、`git diff --check`、更新candidateの
-  frozen R2 review 3観点もPASS。
-  exact4の単一 `WP-5217A:` commitを作り、rollbackは確定commitへの `git revert <commit>`。
+- **Active plan / boundary:** CURRENT=WP-5219 / READY=0。既存 `fetchSessionScopes`を
+  `/whoami` wire処理の唯一のWeb authorityとして再利用し、admin固有のdevelopment scopeと
+  401/403/error taxonomyだけをconsumer側へ残す。API、contract/OpenAPI、APPROVED SSOT、schema、
+  migration、audit、dependency、UI/CSS/copyは変更しない。
+- **Security / privacy / offline:** `devScopes`はdevelopment header専用で、productionでは送らない。
+  tenant/pharmacy/actor/scopeの既存validated projection以外を追加せず、raw response/error、PHI/PII、
+  secretを表示・log・保存しない。cache/retry/offline stateも追加せず、API deny-by-defaultを認可authorityとする。
+- **Process gate:** mapperはWeb全callerと重複wire pathを確認済み。pre-plan checkerの初回
+  CHANGES_REQUIREDは、`devScopes`命名、HTTP status保持、adminだけの401再分類、exact6 ownership、
+  WP-5217A landing記録をPlans.md §3/§4と本snapshotへ固定し、実装前の再checkはPASS。
+  frozen `independent_verifier` + `security_critic` reviewもfinding 0でPASSし、root landingだけを残す。
+- **Validation / rollback:** custom `devScopes`とHTTP status保持の最小Red→Green、focused
+  testは想定どおり4件FAILし、最小実装後にfocused 2 files / 26 tests、Web 64 files / 745 tests、
+  Web typecheck、`git diff --check`がPASS。frozen candidateは`independent_verifier` +
+  `security_critic`がPASS。exact6の単一
+  `WP-5219:` commitを作り、rollbackは確定commitへの `git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

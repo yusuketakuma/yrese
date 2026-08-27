@@ -1,6 +1,5 @@
 import {
   healthResponseSchema,
-  whoamiResponseSchema,
   type HealthResponse,
   type MigrationStateResponse,
   type WhoamiResponse,
@@ -11,9 +10,9 @@ import {
 } from "@yrese/shared-kernel";
 
 import { fetchMigrationState, toOperationsNotice } from "../api/operations-client";
+import { fetchSessionScopes, SessionApiError } from "../api/session-client";
 import { resolveWebApiUrl } from "../api-transport";
 import type { ErrorNoticeProps } from "../components/error-notice";
-import { devTenantHeaders } from "../dev-tenant";
 
 export const ADMIN_DASHBOARD_REQUIRED_SCOPES = [
   permissionScope("user", "admin"),
@@ -101,28 +100,25 @@ export async function fetchAdminIdentity(
   fetchImpl: typeof fetch = fetch,
   signal?: AbortSignal,
 ): Promise<WhoamiResponse> {
-  let response: Response;
   try {
-    response = await fetchImpl(resolveWebApiUrl("/whoami"), {
-      headers: devTenantHeaders(ADMIN_DASHBOARD_DEV_SCOPES),
-      cache: "no-store",
+    return await fetchSessionScopes({
+      fetchImpl,
+      devScopes: ADMIN_DASHBOARD_DEV_SCOPES,
       ...(signal === undefined ? {} : { signal }),
     });
   } catch (error) {
+    if (error instanceof SessionApiError) {
+      if (error.kind === "INVALID_RESPONSE") {
+        throw new AdminDataError(
+          "INVALID_RESPONSE",
+          "認証・権限情報の応答形式を検証できませんでした。",
+        );
+      }
+      if (error.status !== undefined) {
+        throw classifyHttpFailure(error.status, "認証・権限情報");
+      }
+    }
     throw unavailableFromUnknown(error, "認証・権限情報");
-  }
-
-  if (!response.ok) {
-    throw classifyHttpFailure(response.status, "認証・権限情報");
-  }
-
-  try {
-    return whoamiResponseSchema.parse(await response.json());
-  } catch {
-    throw new AdminDataError(
-      "INVALID_RESPONSE",
-      "認証・権限情報の応答形式を検証できませんでした。",
-    );
   }
 }
 

@@ -77,6 +77,19 @@ describe("fetchSessionScopes", () => {
     expect(calls[0]?.init?.signal).toBe(controller.signal);
   });
 
+  it("uses an explicit development scope list when requested", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const devScopes = ["tenant:read", "user:admin", "tenant:admin"] as const;
+    const { calls, fetchImpl } = recordingFetch(() => jsonResponse(IDENTITY));
+
+    await fetchSessionScopes({ fetchImpl, devScopes });
+
+    expect(
+      (calls[0]?.init?.headers as Record<string, string>)["x-dev-scopes"],
+    ).toBe(devScopes.join(","));
+  });
+
   it.each([
     [403, "PERMISSION_DENIED"],
     [500, "UNAVAILABLE"],
@@ -88,7 +101,10 @@ describe("fetchSessionScopes", () => {
       jsonResponse({ errorCode: "AUTH-0003", message: "server detail" }, status),
     );
 
-    await expect(fetchSessionScopes({ fetchImpl })).rejects.toMatchObject({ kind });
+    await expect(fetchSessionScopes({ fetchImpl })).rejects.toMatchObject({
+      kind,
+      status,
+    });
   });
 
   it("maps a transport failure to UNAVAILABLE", async () => {
