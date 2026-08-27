@@ -33,21 +33,21 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` / `origin/main` = `c7b61406c6f6e58363139e3dced79c62f30cebf5`; final local fast-forward前 |
-| Candidate branch | `integrate/main-consolidation-20260826`; exact head/statusはGitを正本とする |
-| Upstream relation | local PR #5/#6 branch tipsとfetched `origin/feat/all-screens-real-data-wiring`(PR #9)をmerge済み。remote pushなし |
-| Candidate scope | user-approved local main consolidation、WP-5101 bounded prescription draft SSOT記録、full gate、到達可能性確認後のmerged worktree削除 |
-| Last update | 2026-08-26 JST(PR #5/#6/#9 local merge、approved SSOT record、fresh backend review MEDIUM 3件の回帰修正、full validation完了。migration apply/deploy/pushは対象外) |
+| Review base | local `main` = `origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(ahead/behind なし、実測 2026-08-27) |
+| Candidate branch | なし(WP-5101/WP-5104 consolidation は landing 完了。次の作業 branch は WP-5212 claim 時に作成) |
+| Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
+| Candidate scope | 全画面 UI/UX 改善計画 v2.3(§17 backlog)の READY 昇格と WP-5212 以降の直列消化 |
+| Last update | 2026-08-27 JST(WP-5210 記録整合: snapshot 更新、landing record 登録、WP-5111→WP-5211 改番、§17 backlog 登録、WP-5121 の §5 転記、untracked disposition 記録) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
-| Active Goal | user-approved open-PR workをlocal `main`へconsolidateし、focused/full gate後にmerged worktreeを安全に削除する |
-| Current critical path | final fix deltaのfresh read-only re-review → remote fetch → local `main` fast-forward → reachability proof → worktree removal |
-| Main blocker | local landingにはなし。migration apply、push/deploy、HPKI/legal、RB-003、未決medical/pharmacist workflowは別human gateのまま |
-| Required verification | workspace 2,132 tests/PostgreSQL integration 0 skip、typecheck/build、OpenAPI/SSOT/secrets/boundaries/deps/SBOM/script/diff checks、browser 36 routes/5 suitesはPASS。fresh reviewのHIGH 0/MEDIUM 3は回帰test付きで修正済み、fix delta re-review待ち |
+| Active Goal | 全画面 UI/UX 改善計画 v2.3(§17)を WIP=1 / READY≤2 の下で段階消化する(WP-5212 → 5213 → 5214 → 5215 → 5216 → 5211 → 5217) |
+| Current critical path | WP-5212 の DoR 充足(PIA 評価 §17.2 注記)→ READY 昇格 → claim → 実装 |
+| Main blocker | local 作業にはなし。migration apply、push/deploy、HPKI/legal、RB-003、未決medical/pharmacist workflowは別human gateのまま |
+| Required verification | gate 記録は branch tip `3bc4805` 時点の実測(workspace 2,290 tests・apps/api 1,001 実 PostgreSQL skip 0、typecheck/build、OpenAPI/secrets/boundaries/deps/SBOM/SSOT index/calculation purity/script、browser 36 routes / 5 suites PASS — State.md 2026-08-27 PREVIOUS snapshot)。**`ad44068`(WP-5201 merge 後)では未再測**(reflog 実測: `ad44068` 生成から main fast-forward まで約 8 分、fast-forward→push 8 秒)。次の実装 WP 着手前の focused gate で再測する |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
-| Next scan cursor | `origin/main=c7b6140`; remote main更新またはfinal gate findingでreset |
+| Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchは既存branch/remote open PRのlocal consolidationである。migration 000013のsourceは
+current batchは §17 の UI/UX 改善 backlog 消化である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -72,10 +72,11 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5101/WP-5104 local main consolidation 1件である。** 承認済みPR #5/#6/#9を
-local integration branchへ束ね、full gateとfresh backend finding closureを完了した。fix deltaの
-read-only re-reviewとreachability proof後にlocal `main`をfast-forwardする。
-push、migration apply、deploy、production mutationはclaimしない。
+**CURRENT は 0 件である。** WP-5101/WP-5104 local main consolidation は完了し、local `main` は
+`f11a014` を経て `ad44068` まで fast-forward・push 済み(push authority: 2026-08-27 human 明示確認、
+State.md ACTIVE SNAPSHOT)。着地後の WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening
+(`ad44068`)は §17.1 の nonclaimable landing record を参照。次の claim は §17 backlog の READY
+昇格後に行う。push、migration apply、deploy、production mutation は引き続き別 human gate である。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
@@ -145,6 +146,17 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 
 本節は landing 済みで claim 対象外の項目を保持する。実装証跡は Git diff と commit
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
+UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
+一元化する(本節と二重登録しない)。
+
+### WP-5210 — 記録整合と計画正規化(PLAN_ONLY、2026-08-27)
+
+- **Status:** 本記録変更 commit(`WP-5210:` prefix)をもって着地。対象は Plans.md /
+  State.md のみ、アプリコード変更ゼロ。maker≠checker の frozen review 済み(証跡は
+  Git 履歴)。内容は §17.0 の human 判断記録と §17 backlog 登録、State.md ACTIVE
+  SNAPSHOT を参照
+- **Claim 根拠:** current user instruction 2026-08-27 に基づく PLAN_ONLY 記録整合であり、
+  WIP slot を消費しない扱い(claim ではない。§3 の CURRENT=0 と両立)
 
 ### WP-4258 — round-5 deferred LOW の改版
 
@@ -350,6 +362,13 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 - **Webhook egress の network 層統制(BLOCKED_SECURITY_REVIEW)。** DNS 解決と fetch の間の rebinding 窓はアプリ側では閉じられない。partner 向け egress の allow-list / proxy を infra で設計するまで production 配送は行わない(WP-6006 review F2 残余)。
 - **JP Core package 再取得(WP-6101)。** external egress は harness の hard floor で agent から実行不可。ユーザー端末での取得コマンド実行待ち(会話に提示済み)。再現後に SRC-FHIR-007 を VERIFIED へ。
 - **`BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b)。** 実行仕様は下に確定済み。
+- **WP-5121 production 認証(BLOCKED_SECURITY_REVIEW)。** §8 Stage 2 の登録が正本。
+  production 認証基盤の human/security 承認(release gate)まで着手しない
+  (2026-08-27 の human 判断により本節へポインタ転記)。
+- **UIX-001 frontmatter の旧 `WP-5111` 参照(SSOT_UPDATE_REQUIRED)。**
+  2026-08-27 の WP-5111→WP-5211 改番は Plans.md 側のみ有効。APPROVED SSOT 側
+  (docs/uiux/medical_ui_ux_principles.md:79 `related_work_packages`)の参照更新は
+  PRC-007 改版・承認まで dangling として登録し、SSOT 本体は触らない(§17.0)。
 - migration application、production write、deploy、external send、pilot、
   standards-conformance 主張、release 判断のすべて。
 
@@ -757,13 +776,13 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 | `patient-search.tsx` のフォームが `method="post" action="/patients"` を持つ | **Not a Bug** | 入力に `name` 属性がなく、JS 無効時のネイティブ送信でも検索語(PHI)は送出されない |
 | `main.ts` の ephemeral cursor HMAC キーがプロセス起動ごとに変わる | **Not a Bug** | `resolvePatientSearchCursorHmacKey` は in_memory + development/test のみ ephemeral を返し、postgres 構成では設定必須で throw する(意図的な dev 限定挙動) |
 
-### UIUX — 一枚盤面刷新パイプライン(WP-5101 REVIEWED / WP-5102〜5124 GATED)
+### UIUX — 一枚盤面刷新パイプライン(WP-5101 REVIEWED / WP-5102〜5124 および改番後 WP-5211 GATED)
 
 > **来歴**: direct user instruction 2026-07-31(丁「一枚盤面」採用と詳細タスク化の指示)。
 > 起草 lane は Claude(fable5)。Document Contract の sole editor 規律に対する例外は
 > この direct user instruction を根拠とし、本グループ以外の記載に触れていない。
 > **queue 規律**: WP-5101 reviewとCandidate Aの製品判断、C-100完了は記録済み。current WIPは
-> §3のWP-5104 PLAN_ONLYだけであり、後続 WP は READY slotを消費せず、WIP=1 / READY≤2を維持し、
+> §3を正本とする(2026-08-27 時点 0 件)。後続 WP は READY slotを消費せず、WIP=1 / READY≤2を維持し、
 > 各 Gate 成立までclaim不可。
 > **設計資料(non-SSOT ドラフト)**: `docs/ui-ux-refresh/13〜17号`。
 > 昇格前は実装根拠にならない(fail-closed)。
@@ -866,15 +885,22 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 #### Stage 1 — 実装基盤(前提: Stage 0 APPROVED)
 
-##### WP-5111 — L0 トークンテーマ基盤(Phase A・挙動不変)
+##### WP-5211 — L0 トークンテーマ基盤(Phase A・挙動不変)
 
+- **Renumber note:** 旧称 WP-5111。landed commit `3bc4805` が WP-5111 を名乗るため採番衝突を
+  2026-08-27 に改番で解消(Plans.md 運用範囲の改番 — human 判断 2026-08-27、PRC-007 対象外。
+  §17.0 参照)。§17.2 の WP-5211(CSS トークン基盤統合 Phase A)は本 entry の改番後継であり、
+  本 entry の Acceptance/Stop を継承する(二重定義ではない)
 - **Status:** GATED / NOT_READY
-- **Gate:** WP-5104
+- **Gate:** WP-5104(FINALIZED / APPROVED だが NOT_IMPLEMENTABLE qualifier — 実装 gate は
+  開かない)。着手可否は §17.2 の実行順(WP-5216 完了後)と READY 昇格時の human 判断に従う。
+  2026-08-27 の human 確認は merge・push authority と branch scope 判断であり、本 WP の
+  実装着手判断ではない(先取りしない)
 - **Scope:** active stylesheet に分散した token/direct color を一つの token authority へ集約
   (甲乙丙テーマ差し替え可能な構造+暫定クローム)。DOM 構造・文言・contract 不変
 - **Acceptance:** relevant web tests PASS + exact-path diff review(各 test の観測範囲だけを証跡化)。
   active stylesheet の token/direct-color static check、UIX-004 の targeted automated+manual
-  verification、typecheck/lint/build PASS。UIX-003 予算内(CSS サイズ・CLS 非悪化)
+  verification、typecheck/lint/build PASS。UIX-001 §8 予算内(旧 UIX-003 は SUPERSEDED。CSS サイズ・CLS 非悪化)
 - **Stop:** L1 以上へ変更が波及したら Phase A を放棄し WP-5113 系へ再分類(全緑主張を捨てる)
 
 ##### WP-5112 — workflow-stage.ts 実装
@@ -1250,7 +1276,7 @@ C-061以降、薬剤師確認・確定・訂正履歴・外部連携のgateは�
 | C-070 | WP-5104 — 選択された unique UI/UX foundation の atomic 昇格【SSOT】 | C-067 |
 | C-071 | WP-5105 — UIX-006/007/PLAN-UIUX-001 改版(3盤面写像)【SSOT】 | C-069/C-070 |
 | C-072 | WP-5106 — 電子薬歴連携手段の経営判断と連携契約 SSOT【HG: 経営判断】【SSOT】 | — |
-| C-073 | WP-5111 — L0 トークンテーマ基盤(Phase A・挙動不変) | C-070 |
+| C-073 | WP-5211 — L0 トークンテーマ基盤(Phase A・挙動不変。旧称 WP-5111、2026-08-27 改番) | C-070 |
 | C-074 | WP-5112 — workflow-stage.ts 実装(UNAVAILABLE shape 事前決定済み) | C-069/C-070 |
 | C-075 | WP-5113 — 調剤盤シェル【U4】【HG: 実装前承認+実装後validation】 | C-071/C-074 |
 | C-076 | WP-5114 — WorkflowSheet / EvidenceDrawer【U4】【HG: medical/privacy/a11y実装前承認+実装後validation】 | C-075 |
@@ -1531,3 +1557,81 @@ JHS-001〜008)は PRC-007 §4 step 6(独立 review)と step 7(human approval)待
 **集計:** Track A=13 / B=12 / C=10 / D=12 / E=8 / F=7 — 合計 62 WP。本節の追加は
 planning record の変更のみであり、実装・検証実行・commit・push・gate 解除・
 `DEVELOPMENT_POLICY.md` 改版をいずれも行っていない。
+
+## 17. 全画面 UI/UX 改善計画 v2.3 backlog(2026-08-27・inventory・claim ではない)
+
+> **queue 規律:** 本節は §15/§16 と同じ inventory である。**READY slot を消費せず、登録は
+> claim ではない。** WIP=1 / READY≤2、human gate、登録済み blocker、§6 NOT NOW、
+> `DEVELOPMENT_POLICY.md §8` work-selection に従い、READY 昇格時に個別の DoR
+> (PRC-003 19 項目)充足確認を行う。
+
+### 17.0 Provenance・規律突合・human 判断記録(2026-08-27)
+
+- **出自:** 計画 v2.3(独立多段敵対レビュー済み — 経過の逐次記録は §0 Document Contract
+  により本書へ残さない。証跡は Git 履歴と非追跡作業文書)。計画全文は
+  `.omc/plans/uiux-refresh-v2-plan.md`(非追跡の作業文書・non-authoritative)。
+  **本節の登録内容だけが claimability の正本**であり、計画全文と
+  食い違う場合は本節と APPROVED SSOT を優先する。
+- **§8 登録規律突合(WP-5210-6):** 登録時点の READY = **0 件**(本書 §3)。
+  DEVELOPMENT_POLICY §8「While two READY items exist, do not discover or register more work」
+  の発動条件を満たさない。inventory 登録は claim でない(§15/§16 前例)。
+  **7 件一括 backlog 登録は §8 適合 — human 判断 2026-08-27。**
+- **WP-5111→WP-5211 改番の管轄:** Plans.md 運用範囲内(PRC-007 対象外)— human 判断
+  2026-08-27。根拠: PRC-007:47 は Plans.md を非 SSOT と規定、旧 WP-5111 に ssot_id なし。
+  定義本体(§8 Stage 1)と C-073 index 行の両方へ適用済み。
+  **SSOT drift 登録(SSOT_UPDATE_REQUIRED):** APPROVED SSOT UIX-001 の frontmatter
+  `related_work_packages`(docs/uiux/medical_ui_ux_principles.md:79)が旧 `WP-5111` を参照
+  したまま dangling になる。本改番は Plans.md 側のみ有効であり、SSOT 側の参照更新は
+  PRC-007 改版まで行わない(docs/ 本体は本 WP で触らない。§5 にも pointer 登録)。
+- **WP-5121 の §5 転記:** 実施 — human 判断 2026-08-27(§5 参照)。
+- **untracked disposition:** 「保持を記録」— human 判断 2026-08-27(§17.4)。
+- **push authority / BLOCKER 解除:** main=`ad44068` までの merge・push はユーザーが
+  2026-08-27 に明示許可したと確認済み(State.md ACTIVE SNAPSHOT に引用・経路を記録)。
+  これにより WP-5210 は分岐 A(遡及記録で整合)で実施した。
+
+### 17.1 Nonclaimable landing records
+
+| landed commit | 内容 | 扱い |
+|---|---|---|
+| `3bc4805` | WP-5111(commit message 上の呼称)— 全 10 画面 UI/UX 刷新+実データ結線、read API 3 本 | FROZEN / GIT_HISTORY_ONLY / NONCLAIMABLE。§8 Stage 1 の L0 トークン WP とは別スコープ(採番衝突は WP-5211 改番で解消) |
+| `ad44068` | WP-5201 runtime hardening(shutdown/pool cleanup races、reentrancy、pool lifetime)の consolidated UI branch への merge(main へは branch `integrate/all-remote-20260827` 経由の fast-forward、reflog 実測) | FROZEN / GIT_HISTORY_ONLY / NONCLAIMABLE。Plans.md 事前登録なしで着地(記録乖離は本節で解消) |
+
+### 17.2 Work Package inventory(WP-5211〜5217、実行順 5212→5213→5214→5215→5216→5211→5217)
+
+全 WP 共通: 実装規約は計画 v2.3 §2.3(8 枚目 CSS 層禁止、表示値三択、破壊的操作の
+二段階確認 UIX-001 P-11、可変長文言への nowrap 禁止)。SSOT_BLOCKED 4 画面+
+/prescriptions RailCard 5 面の誤読防止不変条件(面単位隣接性)を全 WP で維持。
+体制は role/capability ベース(sole writer = active_root_writer、read-only mapper /
+verifier、+PRC-005 §2 の risk 別 specialist のみ追加。固定 reviewer 数の宣言はしない)。
+gate/Git 操作は root lane 単独。R3 判定時は human pre-review record 成立まで実装開始しない。
+
+| WP | 内容(1 行) | effort | risk 分類 | 依存 | DoR gate 条件 / reviewer_roles 候補 |
+|---|---|---|---|---|---|
+| WP-5212 | 受付・患者 動線キーストローク削減(業務日 required 化・引き継ぎ日付同期・選択中 pill・満年齢併記・処方への導線) | M | R2 | WP-5210(本記録変更の着地をもって成立) | 年齢併記は PRC-003 #8 PHI/PII 影響評価(SEC-004 PIA)完了が DoR 条件。reviewer: technical + security/privacy(年齢併記部分) |
+| WP-5213 | 処方入力の破壊的操作安全化(serverChangedWhileAway・409 conflict の両分岐へ差分サマリ+二段階確認)とエラー特定性 | M | R2、unknown 時 R3 へ倒す | WP-5212 | medical_safety reviewer 該当性を DoR で判定(計画 v2.3 §7-3)。交付日数/行日数の優先関係が仕様未確定なら SSOT_UPDATE_REQUIRED で当該項除外。P-11 権限確認側は WP-5121 依存の open gap として State.md 転記 |
+| WP-5214 | 横断パターン整備 — JST 日時共通化・再試行 UI・ルート横断状態ファイル | M | R2 | WP-5210(本記録変更の着地をもって成立)。5212/5213 と独立 | 既存共有フォーマッタとの重複禁止を frozen brief で確認。reviewer: technical |
+| WP-5215 | フォーカス可視性・a11y 基盤是正(--color-focus 定義、リングコントラスト 3:1、コマンドバー focus ring) | M | R2 | WP-5210(本記録変更の着地をもって成立) | WCAG 2.4.7/1.4.11 級欠陥の是正。≤540px コントロール入替は UIX-001 §17 凍結への抵触可否を DoR で判定(抵触なら WP-5124 へ切出し)。reviewer: accessibility_ux_reviewer。OperatorPreferences 削除は human 確認(計画 v2.3 §7-6)後のみ |
+| WP-5216 | 警告階層化と実データ面の視覚昇格(gate 説明の正本 1 箇所+参照化、文言テスト同時改版) | L | R2 | WP-5214、WP-5215 | gate ID・誤読防止文の削除禁止(面単位隣接性不変条件)。gate 文言階層化の最終解釈は human(計画 v2.3 §7-4)。reviewer: medical_safety_reviewer 候補 |
+| WP-5211 | CSS トークン基盤統合 Phase A(§8 Stage 1 の改番後継 entry の Acceptance/Stop を継承。7 層→3〜4 ファイル、nowrap 12 件全数棚卸し(allowlist 6〔sr-only 4+固定短文 2、保持〕/ 是正 6)) | L | R2 | WP-5216 + 着手 gate(§8 Stage 1 entry の Renumber note) | 視覚差分ゼロはスクリーンショット比較+browser gate で証跡化。maker≠checker。reviewer: technical(CSS/regression) |
+| WP-5217 | contract-first 結線強化 — slice A: 自動更新(visibilitychange 再取得ほか)/ slice B: 単一対象 read | A=M, B=M | DoR で確定(先取りしない) | WP-5210(本記録変更の着地をもって成立)、WP-5214。slice B は右記 gate | **slice B は 3 gate すべて成立まで着手禁止(fail-closed)**: API-006 §7 CONTRACT_CHANGE_REQUEST 承認+MOD-008 監査 event 判定+PHI/PII 影響評価(SEC-004 PIA)。reviewer: security/privacy 系必須 |
+
+### 17.3 UI/UX design debt ledger(UIX-001 §16.2 様式)
+
+| WP | affected UIX section | exact code path | observable harm | ux_safety_level | trigger | owner gate | polish/root-cause 区分 |
+|---|---|---|---|---|---|---|---|
+| WP-5211 | UIX-001 §16.2 / §8(予算) | apps/web/app/*.css 7 ファイル(operator-first.css:32-154 ほか)、layout.tsx:16-21 | 「可逆 refinement」契約の破綻(後続層トークンへのフォールバック無し依存)、hex 直値 distinct 82・出現 119(再現コマンドは表下注記)、token 正本二重化 | medium | レビューラウンドごとの CSS 層追加が層間矛盾を蓄積 | WP-5210 分岐 A 遡及記録(本記録変更の着地をもって成立)+§8 Stage 1 Renumber note の着手 gate | **polish ではなく root cause の統合是正**(可逆 refinement 契約破綻の解消) |
+| WP-5215 | UIX-001 §4 実装対応表(キーボード操作)・§9 / WCAG 2.4.7・1.4.11 | operator-first.css:64(focus ring 欠如)、legacy.css:26 vs operator-first.css:43,51(リングコントラスト約 2.9:1 / 約 1.1:1)、--color-focus 未定義 | キーボード操作者がフォーカス位置を視認できない(SSOT は globals.css の focus ring 常時明示を記録するが operator-first.css:64 の outline: 0 が打ち消している — SSOT 記載との乖離) | high | WCAG 違反級欠陥の実測確認(2026-08-27 recon) | accessibility_ux_reviewer による frozen review | **defect 是正**(WCAG 2.4.7/1.4.11 違反級) |
+| WP-5216 | UIX-001 P-01 / 警告設計 | checkout/page.tsx:38-151、monthly-closing/page.tsx:83-85 ほか(同趣旨 gate 説明が 1 画面 6〜7 箇所反復) | 警告過多により唯一の実データ面が埋没し、安全情報が読み飛ばされる | high | warning-fatigue の recon 実測(2026-08-27) | gate 文言階層化の human 最終解釈(計画 v2.3 §7-4)+medical_safety reviewer | **defect 是正**(安全情報埋没の解消) |
+
+> 再現(hex 直値): 出現数 = `grep -hoE '#[0-9a-fA-F]{3,8}' apps/web/app/*.css | wc -l` → 119、
+> distinct = 同コマンド末尾を `| sort -u | wc -l` → 82(表セル内に `|` を置くと GFM が列を破棄するため表外注記とする)。
+
+### 17.4 Untracked disposition(2026-08-27 human 判断)
+
+- `ui-test-tools/`(browser gate 実行スクリプト群+node_modules)と `artifacts/ui-browser/`
+  (検証スクリーンショット証跡)は **browser gate 検証ツール・証跡として保持**する。
+  所有 WP: WP-5211/5215/5216 の browser gate 検証で使用。
+- tracked 化(scripts のみ commit+`.gitignore` へ artifacts/・node_modules 追加)は
+  WP-5211 系の別項として実施する(WP-5210 は「アプリコード変更ゼロ」のため本 WP では
+  行わない)。browser gate の依存が untracked にしか存在しない状態は独立レビューで指摘済みであり、tracked 化完了までは再現手順が本 disposition
+  記録に依存する。

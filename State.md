@@ -1,7 +1,44 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-27, all-screen UI/UX refresh + real-data wiring):**
+> **ACTIVE SNAPSHOT (2026-08-27, WP-5210 record reconciliation + UI/UX v2.3 backlog):**
 > This block alone is current. Everything below is nonauthoritative.
+
+- **Direction / ownership:** current user instruction 2026-08-27「(ultracode)全画面のUIUX改善計画。
+  情報取得・改善方法分析はfable5、実装はsonnet5、レビューはopus5」に基づき、計画 v2.3 を
+  3 ラウンドの多段敵対レビューで確定し、WP-5210(PLAN_ONLY 記録整合)を実施した。
+  Claude が `active_root_writer`。外部/別 model は bounded read-only advisory input としてのみ使用。
+- **Git boundary:** local `main` = `origin/main` = `ad44068`(ahead/behind なし、実測 2026-08-27)。
+  **push authority(遡及記録):** 前 snapshot が保留した UI 作業(`3bc4805` + WP-5201 `ad44068`、
+  main へは branch `integrate/all-remote-20260827` 経由の fast-forward — reflog 実測)の
+  merge・push について、2026-08-27 にユーザーへ「main への merge・push(ad44068 まで)は
+  あなたが許可したものですか?」と本セッション(AskUserQuestion)で明示確認し、
+  回答「**許可した(遡及記録で整合)**」を得た。
+  **Process deviation(記録):** 当該 merge・push は human 承認取得**前**に実行され、承認は
+  2026-08-27 に遡及して得たものである。事前承認があったと読み替えない。以後の merge・push は
+  事前の明示承認を必須とする(fail-closed)。
+  working tree は Plans.md / State.md の本記録変更と untracked 2 dir(§17.4 disposition)のみ。
+- **BLOCKER 解消(遡及記録):** 前 snapshot の BLOCKER「WP-5104 の承認または人間による明示の
+  scope 判断まで branch 保持」は、上記 2026-08-27 ユーザー明示確認が「人間による明示の
+  scope 判断」に該当するため解消。WP-5104 自体は NOT_IMPLEMENTABLE qualifier のまま
+  (Plans.md §8 Stage 0)であり、この解消は WP-5104 の実装 gate を開かない。
+- **Landed records:** `3bc4805`(WP-5111 呼称・全画面刷新+実データ結線)と `ad44068`
+  (WP-5201 runtime hardening)は Plans.md §17.1 の nonclaimable landing record に登録済み。
+  L0 トークン WP は WP-5211 へ改番(採番衝突解消、Plans.md 運用範囲 — human 判断 2026-08-27)。
+- **Active plan:** 全画面 UI/UX 改善計画 v2.3(Plans.md §17 backlog、7 WP、実行順
+  5212→5213→5214→5215→5216→5211→5217)。CURRENT=0 / READY=0。次は WP-5212 の
+  DoR 充足(PIA 評価)→ READY 昇格 → claim。
+- **Open gap(P-11 権限確認側):** 破壊的操作是正(WP-5213)は UIX-001 P-11 の二段階確認
+  要素のみを充足する。権限確認要素は production 認証(WP-5121、BLOCKED_SECURITY_REVIEW)
+  未着地のため未充足であり、充足済みと読み替えない。
+- **持ち越し human 検証債務:** screen reader 実機・200% 拡大手動確認・warning-fatigue
+  実利用者評価・薬剤師/請求事務/accessibility/privacy レビューは pending のまま
+  (計画 v2.3 §7-8)。code_closed を完了と読み替えない。
+- **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、
+  薬剤師確認・確定、migration apply、production/deploy は未解消のまま。SSOT_BLOCKED 4 画面
+  (`/checkout` `/claim-check` `/masters` `/monthly-closing`)は、実在データのみ表示し、
+  停止中の正本 gate 名を明示する状態を維持している。
+
+### PREVIOUS SNAPSHOT (2026-08-27, all-screen UI/UX refresh + real-data wiring) — NONAUTHORITATIVE
 
 - **Direction / ownership:** current user instruction「ローカル・リモートリポジトリを同期しながら
   UIUX画面を改善」「全画面のUIUXを刷新上書き」「バックエンド側の配線を修復。モックではなく
@@ -21,14 +58,13 @@
   回帰 test 付きで解消、LOW 4 件も解消済み。browser gate が unit test では出ない
   `/claim-check` 390px reflow 違反(`.operator-status-pill` の `white-space: nowrap`)を検出し、
   共有 CSS と当該 pill 文言の両方を修正した。
-- **BLOCKER — 未解消の process gate:** `Plans.md §8 UIUX` では実装系 WP-5111 以降が
+- **BLOCKER — 未解消の process gate(2026-08-27 の ACTIVE SNAPSHOT で解消済み):**
+  `Plans.md §8 UIUX` では実装系 WP-5111 以降が
   `GATED / NOT_READY`、前提の WP-5104(unique UI/UX SSOT foundation)は PLAN_ONLY で未承認である。
   本 branch の実装はその SSOT 承認に先行している。したがって main への merge は行わず、
   WP-5104 の承認または人間による明示の scope 判断まで branch 保持とする。
-- **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、
-  薬剤師確認・確定、migration apply、production/deploy は未解消のまま。SSOT_BLOCKED 4 画面
-  (`/checkout` `/claim-check` `/masters` `/monthly-closing`)は、実在データのみ表示し、
-  停止中の正本 gate 名を明示する状態を維持している。
+- (本 snapshot にあった Preserved gates bullet は 2026-08-27 の ACTIVE SNAPSHOT へ移動。
+  内容の削除ではない)
 
 ### PREVIOUS SNAPSHOT (2026-08-26, local main consolidation) — NONAUTHORITATIVE
 
