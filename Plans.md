@@ -34,15 +34,15 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5227 は local commit `61ebafe`。WP-5228 は同 commit から `refactor/wp-5228-sbom-argument-values` を作成済み |
+| Candidate branch | WP-5228 は local commit `cd0bb73`。WP-5229 は同 commit から `refactor/wp-5229-permission-scope-primitive` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | SBOM CLIのvalue flag欠落をparser入口でfail closedにする exact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5227 local landing、WP-5228 frozen reviews PASS / local landing pending、compiled CSS予算12 KiBを維持) |
+| Candidate scope | shared-kernel permission predicateへprimitive-string runtime guardを補う exact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5228 local landing、WP-5229 frozen reviews PASS / local landing pending、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5228 exact2 code/testで、`--from-list-json` / `--output`のmissing/flag-shaped operandを成功やfallbackへ流さず固定argument errorへ閉じる |
-| Main blocker | WP-5228のpre-plan review、Red、最小parser guard、script/syntax/SBOM/diff gates、frozen independent/security-supply-chain reviewはfinding 0でPASS。record-only最終照合とlocal landingを残す。WP-5226は元exact4では安全に完結せずdefer中 |
-| Required verification | script harness Red→Green、両script syntax check、fixture-backed `check:sbom`、tracked diff check、frozen R2 reviewsを要求する |
+| Current critical path | WP-5229 exact2 code/testで、type-erased objectが`isPermissionScope`のattacker-controlled `split`を実行してvalid scope扱いされる経路をfalseへ閉じる |
+| Main blocker | WP-5229の初回pre-plan MEDIUMをacceptanceへ反映し、再review finding 0、Red、1-line guard、shared-kernel/direct consumer gates、frozen independent/authorization-security reviewはPASS。record-only最終照合とlocal landingを残す。WP-5226は元exact4では安全に完結せずdefer中 |
+| Required verification | shared-kernel focused/package Red→Green・typecheck、contracts whoami/API server direct consumers、boundaries、tracked diff check、frozen R2 reviewsを要求する |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
@@ -73,45 +73,50 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5228(SBOM value-flag validation、R2)1 件である。**
-WP-5227 は local commit `61ebafe` で着地済み。READYは0件である。
+**CURRENT は WP-5229(permission-scope primitive guard、R2)1 件である。**
+WP-5228 は local commit `cd0bb73` で着地済み。READYは0件である。
 
-- **Purpose / layer:** `scripts/check-sbom.mjs`の`parseArgs`が`--from-list-json` / `--output`の次tokenを
-  検証せず、missing operandをlive `pnpm list` fallbackまたはoutput省略の成功へ流すroot causeを修正する。
-  既存`check-deps.mjs`と同じprimitive patternで、値の欠落または次tokenがflagならparser入口で固定errorへ閉じる。
-  新helper、CLI option、dependencyは作らない。
-- **Allowed / forbidden:** exact4は `scripts/check-sbom.mjs`、`scripts/check-scripts.mjs`、`Plans.md`、`State.md`。
-  package manifest、workflow、lockfile/dependency、SBOM graph/validation/CycloneDX内容、live pnpm invocation、publish/atomic
-  rename/cleanup semantics、APPROVED SSOT、product/API/DB/UI/CSSは変更禁止。保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** root `check:sbom`とCIは同CLIを直接使い、既存valid fixtureは両value flagを渡す。live traceで
-  trailing `--output`が`undefined`のままpublishを省略してsuccess logへ到達し、trailing `--from-list-json`がlive
-  `pnpm list`へfallbackすると確認した。sibling `check-deps` parserはmissing/flag-shaped operandを既にfail closedにする。
-- **Acceptance / tests:** (A1)既存valid list fixtureへtrailing `--output`を付けた実行は変更前exit 0 / success、変更後
-  exit 1で固定`SBOM arguments are invalid`を含み、successを含まない。(A2)trailing `--from-list-json`はPATHを空にした
-  fixture processでもload/fallback errorではなく同じfixed argument errorでexit 1にし、live pnpmを起動しない。
-  (A3)value位置が次の`--` flagなら同じfixed errorへ閉じる。(A4)valid fixture、malformed graph、output preservation、
-  atomic publish/cleanup、metadata non-leakの既存testsを変えず、production差分は両branchのlocal value guardだけにする。
-- **PIA / offline:** 既存synthetic package graphだけを使い、credential、production data、PHI/PII、raw registry response、
+- **Purpose / layer:** `@yrese/shared-kernel`のpublic `isPermissionScope(value: string)`がruntime primitive checkなしで
+  `value.split(":")`を呼ぶため、type-erased objectのattacker-controlled methodを実行し、その戻り値をvalid scopeと
+  判定できるroot causeを修正する。既存string解析より前に`typeof value !== "string"`でfalseへ閉じる1-line changeとし、
+  新helper、scope、public signatureは作らない。
+- **Allowed / forbidden:** exact4は `packages/shared-kernel/src/permissions.ts`、
+  `packages/shared-kernel/src/kernel.test.ts`、`Plans.md`、`State.md`。それ以外、特にscope/resource/action/role一覧、
+  `PermissionScope`型、function signature/export、contracts schema、API tenant context/auth/route、package/dependency、
+  APPROVED SSOT、DB/schema/migration、UI/CSSは変更禁止。保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** APPROVED permission scope registryはregistered `resource:action`だけを許可し、common moduleを
+  runtime authorityとする。live traceでproduction direct consumersはcontractsの`z.string()` refineとAPIのtrim/split済み
+  header stringsだが、public predicate自体はtype-erased objectをtrueへ誤分類できる。valid string semanticsを変えない
+  robustness fixで、auth permission意味論やSSOT改版ではない。
+- **Acceptance / tests:** (A1)valid scope pairを返す`split` method付きsynthetic objectを型消去して渡し、変更前はtrueかつ
+  method 1 call、変更後はfalseかつ0 callにする。(A2)型消去した`null` / `undefined`はthrowせずfalseを返す。
+  (A3)既存valid registered scopeはtrue、unknown action/resource、extra segment、empty segmentはfalseを維持する。
+  (A4)contracts whoami schemaとAPI dev-header permission flowの既存testsを変えない。(A5)production差分はsplit前の
+  primitive-string guard 1行だけで、signature/export/list/callerを変更しない。
+- **PIA / offline:** fixtureはsynthetic scope objectとcounterだけで、credential、production data、PHI/PII、保存、log、
   external send、network、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。read-only mapper完了済み。
-  `reviewer_roles`はmakerとは別の`pre_plan_reviewer`、`independent_verifier`、`security_supply_chain_reviewer`。
-  release evidence checkerをfail closedにするR2で、risk acceptance、production action、secret/IAM変更がなく追加human gateなし。
-  workflow/package/lockfile/dependency、SBOM semantics、new CLI contract、live pnpm/networkをfixtureへ導入する必要が出たら停止し
-  再計画する。exact4を単一`WP-5228:` commitにし、rollbackは確定commitへの`git revert <commit>`。rootだけが
-  state-mutating validation、exact-stage/commitを行い、push、merge、deploy、migration applyは認可外。pre-plan review完了まで
-  code/testを編集しない。pre-plan reviewはfinding 0でPASSした。
+- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。read-only mapper/root caller trace完了済み。
+  `reviewer_roles`はmakerとは別の`pre_plan_reviewer`、`independent_verifier`、`authorization_security_reviewer`。
+  permission predicateを既存registered scopeへfail closedにするR2で、auth/security relaxation、risk acceptance、production
+  actionがなく追加human gateなし。public signature、scope registry/meaning、contracts/API/auth、別path変更またはnon-stringを
+  trueにするcompatibility根拠が必要なら停止し再計画する。exact4を単一`WP-5229:` commitにし、rollbackは確定commitへの
+  `git revert <commit>`。rootだけがstate-mutating validation、exact-stage/commitを行い、push、merge、deploy、migration
+  applyは認可外。初回pre-plan MEDIUM(null/undefined totality)をacceptanceへ反映し、再reviewはfinding 0でPASSした。
 - **Validation evidence (UTC / exact command):**
-  - `2026-08-27T19:28:02Z–19:28:22Z` `pnpm test:scripts` → exit 1 (expected Red: 4 failures。
-    missing input/flag-shaped inputはload error、missing output/flag-shaped outputは誤ってSBOM success)。
-  - `2026-08-27T19:28:37Z–19:28:57Z` `pnpm test:scripts` → exit 0、script regression harness PASS。
-  - `2026-08-27T19:29Z` `node --check scripts/check-sbom.mjs` と
-    `node --check scripts/check-scripts.mjs` → 各exit 0。
-  - `2026-08-27T19:29:08Z–19:29:09Z` `pnpm check:sbom` → exit 0、249 components PASS。
-  - `2026-08-27T19:29:14Z` `git diff --check` → exit 0、diagnosticなし。
-  - `2026-08-27T19:30:00Z–19:30:20Z` final `pnpm test:scripts` → exit 0。同時実行したfinal
-    `pnpm check:sbom`もexit 0、249 components。両scriptのfinal syntax checkも各exit 0。
-  - `2026-08-27T19:30:33Z` final `git diff --check` → exit 0。frozen independent reviewと
-    security/supply-chain reviewはfinding 0でPASSした。
+  - `2026-08-27T19:39:53Z–19:39:54Z` `pnpm --filter @yrese/shared-kernel exec vitest run
+    src/kernel.test.ts` → exit 1 (expected Red: 3 failed / 60 passed。objectはtrue・split 1 call、null/undefinedはthrow)。
+  - `2026-08-27T19:40:04Z` 同focused command → exit 0、63 passed。
+  - `2026-08-27T19:40:14Z–19:40:15Z` `pnpm --filter @yrese/shared-kernel test` → exit 0、
+    3 files / 80 tests、同package typecheck → exit 0。contracts `src/whoami.test.ts` → exit 0、17 tests、
+    contracts typecheck → exit 0。
+  - `2026-08-27T19:40:20Z–19:40:21Z` `pnpm --filter @yrese/api exec vitest run src/server.test.ts`
+    → exit 0、306 tests。
+  - `2026-08-27T19:40:27Z–19:40:28Z` `pnpm check:boundaries` → exit 0、同時点の
+    `git diff --check` → exit 0。
+  - test fixture簡素化後の`2026-08-27T19:40:57Z` final shared-kernel test 80 / typecheckと、
+    `2026-08-27T19:41:02Z` final `git diff --check`は各exit 0。
+  - frozen independent reviewとauthorization/security reviewはfinding 0でPASSした。code/test frozen
+    SHA-256は`ba66d3b5ff3b91203f6e862f947a78be28b0b4d3c78d37024fca56970c142ff9`。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|

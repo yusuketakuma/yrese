@@ -313,4 +313,21 @@ describe("permission scopes", () => {
       expect(isPermissionScope(value)).toBe(false);
     },
   );
+
+  it("rejects a non-string scope without invoking its split method", () => {
+    let splitCalls = 0;
+    const value = {
+      split() {
+        splitCalls += 1;
+        return ["claim", "finalize"];
+      },
+    };
+
+    expect(isPermissionScope(value as unknown as string)).toBe(false);
+    expect(splitCalls).toBe(0);
+  });
+
+  it.each([null, undefined])("rejects a type-erased non-string scope without throwing", (value) => {
+    expect(isPermissionScope(value as unknown as string)).toBe(false);
+  });
 });

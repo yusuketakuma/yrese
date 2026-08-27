@@ -1,32 +1,32 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5228 frozen reviews PASS / local landing pending):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5229 frozen reviews PASS / local landing pending):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5227はlocal commit `61ebafe`へ着地済み。current requestのrepository全体
-  refactoringを継続し、次の最小complete sliceとしてWP-5228だけをclaimする。WP-5226はpre-planで
+- **Direction / ownership:** WP-5228はlocal commit `cd0bb73`へ着地済み。current requestのrepository全体
+  refactoringを継続し、次の最小complete sliceとしてWP-5229だけをclaimする。WP-5226はpre-planで
   downstream verifierを含むrevoked Proxy totality gapが判明し、元exact4では安全に完結しないため未着手でdeferする。Codex rootだけが
   `active_root_writer`、state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5228-sbom-argument-values`、base/HEAD
-  `61ebafe4b5f1731e18889ffb63d8a34c45d5d3c5`。push / mergeは行わない。
-- **Dirty ownership:** `scripts/check-sbom.mjs`、`scripts/check-scripts.mjs`、`Plans.md`、`State.md` の
+- **Git boundary:** current branch `refactor/wp-5229-permission-scope-primitive`、base/HEAD
+  `cd0bb7372bd40d71cd25931b53105cca0144909a`。push / mergeは行わない。
+- **Dirty ownership:** `packages/shared-kernel/src/permissions.ts`、`packages/shared-kernel/src/kernel.test.ts`、
+  `Plans.md`、`State.md` の
   exact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
   `ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5228 / READY=0。SBOM parserの両value flagだけをmissing/flag-shaped operand時に
-  fixed argument errorへ閉じる。package/workflow/lockfile/dependency、SBOM graph/validation、live pnpm、publish/cleanup、
-  product/API/DB/UI/CSSは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5229 / READY=0。shared-kernel `isPermissionScope`へsplit前primitive-string guard
+  1行だけを補う。scope/resource/action/role一覧、public signature/export、contracts/API/auth、package/dependency、
+  product/DB/UI/CSSは変更しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** 既存synthetic package graphだけをfixtureに使い、credential、production data、
-  PHI/PII、raw registry response、external send、network、cache、retry/offline stateを追加しない。
-- **Process gate:** mapper/root traceで両value flagのoperand欠落、success/fallback経路、existing sibling parser pattern、
-  root/CI caller、exact4を確認済み。release evidence checkerをfail closedにするR2で追加human gateなし。makerとは別の
-  read-only pre-plan、frozen independent、security/supply-chain reviewsはすべてfinding 0でPASSした。
-- **Validation / rollback:** expected Red 4 failures後、script harness、両script syntax check、`pnpm check:sbom`
-  (249 components)、tracked diff checkをexit 0で実行した。外部network、package/lockfile/workflow差分なし。
-  exact commands/UTC/exitは`Plans.md` Current WIPへ記録済み。record-only最終照合後にexact4の単一`WP-5228:` commitを
-  作り、rollbackは確定commitへの`git revert <commit>`。
+- **Security / privacy / offline:** synthetic scope objectとcounterだけをfixtureに使い、credential、production data、
+  PHI/PII、保存、log、external send、network、cache、retry/offline stateを追加しない。
+- **Process gate:** mapper/root traceでpredicate、contracts/API direct consumers、APPROVED permission registry、exact4を
+  確認済み。既存authorization predicateをfail closedにするR2で追加human gateなし。初回pre-plan MEDIUMをtest acceptanceへ
+  反映し、再reviewはfinding 0でPASS。frozen independent + authorization/security reviewもfinding 0でPASSした。
+- **Validation / rollback:** expected Red 3件後、shared-kernel focused 63/package 80/typecheck、contracts whoami 17/typecheck、
+  API server 306、boundaries、tracked diff checkをexit 0で実行した。exact commands/UTC/exitは`Plans.md`へ記録済み。
+  record-only最終照合後にexact4の単一`WP-5229:` commitを作り、rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

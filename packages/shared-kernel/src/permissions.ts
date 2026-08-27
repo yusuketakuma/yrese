@@ -39,6 +39,7 @@ export function permissionScope(
 }
 
 export function isPermissionScope(value: string): value is PermissionScope {
+  if (typeof value !== "string") return false;
   const parts = value.split(":");
   if (parts.length !== 2) {
     return false;
