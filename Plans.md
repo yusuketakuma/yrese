@@ -34,15 +34,15 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5223 は local commit `ea53785`。WP-5224 は同 commit から `refactor/wp-5224-audit-row-envelope` を作成済み |
+| Candidate branch | WP-5224 は local commit `a7b26c9`。WP-5225 は同 commit から `refactor/wp-5225-hash-string-guards` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | `PostgresAuditRepository.list`のquery result/row envelopeだけを既存DB row snapshot/own-property authorityへ通す exact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5223 local landing、WP-5224 frozen R2 reviews PASS、compiled CSS予算12 KiBを維持) |
+| Candidate scope | `@yrese/events` / `@yrese/audit`の既存hash validatorへprimitive-string guardを補う exact4 code/test slice |
+| Last update | 2026-08-28 JST(WP-5224 local landing、WP-5225 frozen reviews PASS / local landing pending、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5224 exact2で、audit readのraw query result/rowをdescriptor-safe固定projectionへ変換してから既存`rowToEvent`へ渡す |
-| Main blocker | WP-5224のmachine gatesとfrozen R2 independent/data-integrity reviewsはfinding 0でPASS。record-only再凍結とlocal landingを残す。完全tamper可視化契約、WP-5217BのAPI-006/MOD-008/SEC-004 gateは継続保留 |
-| Required verification | DB-free Red 5件後、2026-08-27T18:00:13Z–18:00:17Zにfocused 13 PASS、API 32 files / 976 tests PASS・7 files / 62 tests SKIP、API typecheck、tracked diff checkをexit 0で再実行。`TEST_DATABASE_URL`不在でfocused integration 7 SKIP。frozen R2 reviewsはfinding 0でPASS |
+| Current critical path | WP-5225 exact4 code/testで、hash regexへ到達する前に既存`assertNonEmptyString`を再利用し、object coercionを禁止する |
+| Main blocker | WP-5225のpre-plan、Red→Green、machine gates、frozen R2 independent/data-integrity-security reviewsはfinding 0でPASS。record-only最終照合とlocal landingを残す。完全tamper可視化契約、WP-5217BのAPI-006/MOD-008/SEC-004 gateは継続保留 |
+| Required verification | events 46、audit 195、API audit-log 78 tests、events/audit/API typecheck、boundaries、tracked diff checkはexit 0。frozen R2 reviewsもfinding 0でPASS |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
@@ -73,57 +73,59 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5224(audit row-envelope snapshot、R2)1 件である。**
-WP-5223 は local commit `ea53785` で着地済み。READYは0件である。
+**CURRENT は WP-5225(hash primitive-string guards、R2)1 件である。**
+WP-5224 は local commit `a7b26c9` で着地済み。READYは0件である。
 
-- **Purpose / layer:** `PostgresAuditRepository.list`だけが迂回している既存`database-row.ts` authorityを
-  再利用し、tenant/pharmacy限定queryの結果と各rowの`event_body`を固定projectionへ変換してから既存
-  `rowToEvent`へ渡す。対象はaudit readのPostgreSQL adapter row envelopeだけである。
-- **Allowed / forbidden:** exact4は `apps/api/src/db/audit-repository.ts`、
-  `apps/api/src/db/audit-repository.test.ts`、`Plans.md`、`State.md`。それ以外、特に`database-row.ts`、
-  `rowToEvent` / `reviveStoredEvent` / `hydrateAuditEvent` / `verifyAuditHashChain`、SQL/parameter/order、
-  audit record/transaction/lock/write、route/contract/OpenAPI/auth、schema/migration/DDL/DML、UI/CSS、dependencyは
-  変更禁止。保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** APPROVED SEC-007/SEC-008のexact tenant/pharmacy・fail-visible chain規律を維持し、
-  既存`snapshotUnboundedDatabaseQueryRows`と`readDatabaseRowOwnDataProperty`だけを再利用する。mainの
-  `createDbPool`にcustom JSON/JSONB parserやquery wrapperはない。verified Oracle advisoryはbounded
-  row-envelope案だけを支持し、完全tamper可視化やstrong raw fallbackは未解消のため採用しない。
-- **Acceptance / tests:** (A1)query-result ProxyはPromise assimilationの`then`読取だけを許容し、fulfill後に
-  revokeしたfixtureを固定errorへ閉じる。`rows`配列Proxy/revoked Proxyは別caseで、semantic trap/raw sentinelを
-  実行・表示せず既存row-set helperから`Audit query result violated repository invariants`を返す。(A2)raw row
-  Proxyとinherited/accessor `event_body`を別caseにし、own data property以外を同じ固定errorで拒否してaccessor/
-  Proxy trapを実行しない。(A3)own-dataの`null`等既存malformed bodyは早期rejectせず従来のraw fallbackへ渡し、
-  known-field tamperのfail-visible behaviorを維持する。(A4)valid 2 rowsはJSONB同様に`sequenceNumber` /
-  `logicalClock`がdecimal stringのstored bodyを使い、revival→hydration、順序、exact SELECT、tenant/pharmacy
-  parameter、query 1回をDB-free testで固定する。(A5)row-setのsparse/inherited/index-accessor/non-array規律は
-  既存`operations-read.test.ts` / `reception-command.integration.test.ts`のshared-helper回帰とAPI suiteへ委譲する。
-  (A6)SQL、write path、hydration/fallback/verifier、public contract/authは不変。validation順はquery→全row-set
-  snapshot→各row own-data read→wrapper→既存`rowToEvent`に固定する。focused Red→Green後、API suite/typecheckと
-  tracked diff checkを実行する。
-- **PIA / offline:** 既存PHI-free audit event bodyを新規保存・log・URL・metric・external serviceへ出さず、fixtureは
-  synthetic identifierだけを使う。query scopeはtrusted exact tenant/pharmacyのまま。network、cache、retry、
-  offline stateを追加しない。
-- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root、`reviewer_roles`はmakerとは別の
-  read-only `independent_verifier` + `audit_data_integrity_reviewer`。R2、APPROVED論理層内のadapter validationで
-  追加human gateなし。tamper canonicalization、hydration/fallback/verifier、SQL/parameter/order、write/lock、
-  `event_body` graph自体のProxy/hostile nested semantics、contract/auth、migration/DDL/DML、別path変更が必要なら
-  停止し再計画する。exact4を単一`WP-5224:` commitにし、
-  rollbackはそのcommitへの`git revert <commit>`。rootだけがstate-mutating validation、exact-stage/commitを行い、
-  push、merge、deploy、migration applyは認可外。実DB integrationは安全確認済みdisposable test DBだけに限定する。
-  初回pre-planのMEDIUMはProxy種別/Promise assimilation/JSONB stored fixtureの明確化要求で、上記へ反映済み。
-  follow-up pre-planはfinding 0でPASS。DB-free Redは5 failed / 8 passed、最小production change後のfinal
-  machine gatesは下記のとおりPASS。frozen independent/data-integrity reviewsもfinding 0でPASSし、
-  record-only再凍結とlocal landingだけを残す。
+- **Purpose / layer:** `@yrese/events`と`@yrese/audit`の既存SHA-256 validatorがTypeScriptの`string`型だけを
+  信頼して`RegExp.test`へ渡すroot causeを修正し、objectの暗黙`ToString`を実行せず既存のprimitive-string
+  不変条件へfail closedする。新helperやpublic APIは作らず、両file内の既存`assertNonEmptyString`を再利用する。
+- **Allowed / forbidden:** exact6は `packages/events/src/index.ts`、`packages/events/src/events.test.ts`、
+  `packages/audit/src/index.ts`、`packages/audit/src/audit.test.ts`、`Plans.md`、`State.md`。それ以外、特に
+  public type/export、canonicalization、hash preimage/algorithm、hydration/raw fallback、API route/contract/OpenAPI/auth、
+  DB/SQL/write/lock、schema/migration/DDL/DML、UI/CSS、dependency、APPROVED SSOT本文は変更禁止。保護untracked
+  3 pathも参照・変更しない。
+- **Authority / evidence:** APPROVED MOD-009 §1は`payloadHash`をstringかつlowercase SHA-256 hex 64桁、
+  APPROVED SEC-007は`prevHash`/`entryHash`のtamper-evident規律、APPROVED MOD-001は既存common module再利用を
+  要求する。live mapper traceで両private validatorだけがruntime primitive checkを欠き、隣接する既存
+  `assertNonEmptyString`は`typeof value !== "string"`を先に拒否すると確認した。既存契約を厳格化するbug fixで、
+  SSOT semantics・公開schemaの変更ではない。
+- **Acceptance / tests:** (A1)eventsの`payloadHash`へvalid hashを返す`toString`付きsynthetic objectを型消去して渡し、
+  `createEventEnvelope`がrejectしcoercion counterを0に保つ。(A2)audit verifierへ同様のobjectをown-data
+  `prevHash`として持つeventを渡し、throw/echo/coercionなしで既存`hash_format_invalid`、`checkedCount: 0`、
+  `breakIndex: 0`を返す。(A3)既存valid lowercase hash、invalid uppercase/short hash、chain mismatch、hydrationの
+  挙動を変えない。(A4)両validatorは既存`assertNonEmptyString`を1回呼んでから既存regexを適用し、新 abstraction、
+  export、error payload、contract、storage、routeを追加しない。focused Red→Green後、両package test/typecheck、
+  API audit-log focused test/typecheck、boundaries、tracked diff checkを実行する。
+- **PIA / offline:** fixtureはhash-shaped synthetic文字列だけでPHI/PII、production data、secretを含まない。
+  保存、log、URL、metric、external send、network、cache、retry/offline stateを追加しない。
+- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。read-only mapper完了済み。
+  `reviewer_roles`はmakerとは別の`pre_plan_reviewer`、`independent_verifier`、
+  `audit_data_integrity_security_reviewer`。APPROVED既存string不変条件を狭めず強制するR2で、security/privacy
+  relaxation、risk acceptance、production action、法令/請求/薬学判断がなく追加human gateなし。error reason enum、
+  canonical payload/hash、public type/schema、hydration、API/DB、別pathの変更またはcompatibilityとしてobject coercionを
+  許容する根拠が必要なら停止し再計画する。exact6を単一`WP-5225:` commitにし、rollbackは確定commitへの
+  `git revert <commit>`。rootだけがstate-mutating validation、exact-stage/commitを行い、push、merge、deploy、
+  migration applyは認可外。pre-plan reviewはfinding 0でPASS。初回frozen independent reviewのGreen command略記
+  Lowはexact command記録で閉じ、再凍結後のindependent + audit data-integrity/security reviewsはfinding 0でPASSした。
 - **Validation evidence (UTC / exact command):**
-  - `2026-08-27T17:58:58Z` `pnpm --filter @yrese/api exec vitest run src/db/audit-repository.test.ts`
-    → exit 1 (expected Red: 5 failed / 8 passed)。
-  - `2026-08-27T18:00:13.837Z–18:00:14.405Z` 同command → exit 0、13 passed。
-  - `2026-08-27T18:00:14.405Z–18:00:15.002Z` `pnpm --filter @yrese/api exec vitest run
-    src/db/audit-repository.integration.test.ts` → exit 0、1 file / 7 tests SKIP (`TEST_DATABASE_URL` absent)。
-  - `2026-08-27T18:00:15.002Z–18:00:17.040Z` `pnpm --filter @yrese/api test` → exit 0、
-    32 files / 976 tests PASS、7 files / 62 tests SKIP。
-  - `2026-08-27T18:00:17.040Z–18:00:17.664Z` `pnpm --filter @yrese/api typecheck` → exit 0。
-  - `2026-08-27T18:00:17.664Z–18:00:17.714Z` `git diff --check` → exit 0、diagnosticなし。
+  - `2026-08-27T18:26:58Z–18:26:59Z` `pnpm --filter @yrese/events exec vitest run
+    src/events.test.ts` → exit 1 (expected Red: 1 failed / 45 passed)。
+  - `2026-08-27T18:26:59Z–18:27:00Z` `pnpm --filter @yrese/audit exec vitest run
+    src/audit.test.ts` → exit 1 (expected Red: 1 failed / 58 passed)。
+  - `2026-08-27T18:27:18.787Z–18:27:19.336Z` `pnpm --filter @yrese/events exec vitest run
+    src/events.test.ts` → exit 0、46 passed。
+  - `2026-08-27T18:27:19.401Z–18:27:19.974Z` `pnpm --filter @yrese/audit exec vitest run
+    src/audit.test.ts` → exit 0、59 passed。
+  - `2026-08-27T18:27:37.581Z–18:27:38.206Z` `pnpm --filter @yrese/events test` → exit 0、
+    1 file / 46 tests PASS。
+  - `2026-08-27T18:27:38.266Z–18:27:38.932Z` `pnpm --filter @yrese/audit test` → exit 0、
+    3 files / 195 tests PASS。
+  - `2026-08-27T18:27:38.990Z–18:27:39.925Z` events/audit `typecheck` → 各exit 0。
+  - `2026-08-27T18:27:39.984Z–18:27:40.786Z` `pnpm --filter @yrese/api exec vitest run
+    src/audit-log.test.ts` → exit 0、1 file / 78 tests PASS。
+  - `2026-08-27T18:27:40.848Z–18:27:41.501Z` `pnpm --filter @yrese/api typecheck` → exit 0。
+  - `2026-08-27T18:27:41.561Z–18:27:42.329Z` `pnpm check:boundaries` → exit 0。
+  - `2026-08-27T18:27:42.392Z–18:27:42.502Z` `git diff --check` → exit 0、diagnosticなし。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|

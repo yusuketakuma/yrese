@@ -1,38 +1,34 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5224 frozen reviews PASS):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5225 frozen reviews PASS / local landing pending):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5223はlocal commit `ea53785`へ着地済み。current requestのrepository全体
-  refactoringを継続し、次の最小complete sliceとしてWP-5224だけをclaimする。Codex rootだけが
+- **Direction / ownership:** WP-5224はlocal commit `a7b26c9`へ着地済み。current requestのrepository全体
+  refactoringを継続し、次の最小complete sliceとしてWP-5225だけをclaimする。Codex rootだけが
   `active_root_writer`、state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5224-audit-row-envelope`、base/HEAD
-  `ea537855123fa08ce17b8ac5595958dd5d479fc7`。push / mergeは行わない。
-- **Dirty ownership:** `apps/api/src/db/audit-repository.ts`、`apps/api/src/db/audit-repository.test.ts`、
-  `Plans.md`、`State.md` のexact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
+- **Git boundary:** current branch `refactor/wp-5225-hash-string-guards`、base/HEAD
+  `a7b26c932192b4a6d3c61ea0c3c19902c64520e3`。push / mergeは行わない。
+- **Dirty ownership:** `packages/events/src/index.ts`、`packages/events/src/events.test.ts`、
+  `packages/audit/src/index.ts`、`packages/audit/src/audit.test.ts`、`Plans.md`、`State.md` のexact6だけを
+  本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
   `ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5224 / READY=0。`PostgresAuditRepository.list`のquery resultと
-  `event_body` row envelopeだけを既存row-set/own-data helperへ通す。SQL/parameter/order、rowToEvent/revival/
-  hydration/raw fallback/verifier、write/lock、route/contract/auth、schema/migration/DDL/DML、dependency、UI/CSSは
-  変更しない。完全tamper可視化やcanonical storage semanticsは未claimのまま維持する。
+- **Active plan / boundary:** CURRENT=WP-5225 / READY=0。events/auditの既存SHA-256 validatorだけを各file内の
+  既存`assertNonEmptyString`へ通し、object coercionを禁止する。public type/export、canonicalization、hash
+  preimage/algorithm、hydration/raw fallback、route/contract/auth、DB/SQL/write/lock、schema/migration/DDL/DML、
+  dependency、UI/CSSは変更しない。完全tamper可視化やcanonical storage semanticsは未claimのまま維持する。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** 既存PHI-free audit event bodyだけを扱い、新規patient field、保存、log、URL、
-  metric、external send、network、cache、retry/offline stateはない。fixtureはsynthetic identifierだけを使い、
-  trusted exact tenant/pharmacy query scopeを維持する。
-- **Process gate:** mapperとrootのlive traceでPostgres concrete consumer、helper、SEC-007/008、custom parser不在、
-  exact4を確認済み。verified Oracle advisoryはbounded row-envelope案だけを支持し、完全tamper可視化契約は
-  未解消として保留する。R2、追加human gateなし。初回pre-planのProxy種別/Promise assimilation/JSONB stored
-  fixtureのMEDIUMをplanへ反映し、follow-up pre-planはfinding 0でPASSした。makerとは別のread-only
-  independent/data-integrity frozen reviewsもfinding 0でPASSした。
-- **Validation / rollback:** DB-free Red 5件後、2026-08-27T18:00:13Z–18:00:17Zにfocused 13 PASS、
-  API 32 files / 976 tests PASS・7 files / 62 tests SKIP、API typecheck、tracked diff checkをexit 0で再実行。
-  `TEST_DATABASE_URL`不在のためfocused integration 7件はSKIPし、DB操作なし。exact commands/UTC/exitは
-  `Plans.md` Current WIPへ記録した。frozen independent/data-integrity reviewsはfinding 0でPASSし、record-only
-  再凍結を残す。実PostgreSQL integrationは安全確認済みdisposable test DBだけに限定し、production/staging
-  またはauthority不明URLなら停止する。
-  exact4の単一`WP-5224:` commitを作り、rollbackは確定commitへの`git revert <commit>`。
+- **Security / privacy / offline:** hash-shaped synthetic fixtureだけを扱い、PHI/PII、production data、secret、
+  patient field、保存、log、URL、metric、external send、network、cache、retry/offline stateはない。
+- **Process gate:** mapperとrootのlive traceで両private validator、全caller、既存`assertNonEmptyString`、APPROVED
+  MOD-009/MOD-001/SEC-007、exact6を確認済み。既存primitive-string契約をfail closedに強制するR2で、追加human
+  gateなし。makerとは別のread-only pre-plan reviewはfinding 0でPASS。初回frozen independent reviewのGreen
+  command略記Lowを閉じ、再凍結後のindependent + audit data-integrity/security reviewsはfinding 0でPASSした。
+- **Validation / rollback:** focused Red各1件後、events 46、audit 195、API audit-log 78 tests、events/audit/API
+  typecheck、boundaries、tracked diff checkをexit 0で再実行した。DB操作なし。exact commands/UTC/exitは
+  `Plans.md` Current WIPへ記録済み。record-only最終照合とlocal landingを残す。exact6の単一`WP-5225:`
+  commitを作り、rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

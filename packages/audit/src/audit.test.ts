@@ -596,6 +596,27 @@ describe("verifyAuditHashChain totality over corrupt persisted roots (WP-4236)",
     });
   });
 
+  it("reports a coercible non-string prevHash without coercing or echoing it", () => {
+    const valid = createAuditEvent(baseAuditEvent());
+    let coercions = 0;
+    const coercibleHash = {
+      toString() {
+        coercions += 1;
+        return prevHash;
+      },
+    };
+    const corrupt = { ...valid, prevHash: coercibleHash } as unknown as AuditEvent;
+
+    expect(verifyAuditHashChain([corrupt])).toEqual({
+      ok: false,
+      checkedCount: 0,
+      breakIndex: 0,
+      reason: "hash_format_invalid",
+      eventId: valid.eventId,
+    });
+    expect(coercions).toBe(0);
+  });
+
   it("reports a throwing eventId accessor as a break without invoking it in the report", () => {
     const valid = createAuditEvent(baseAuditEvent());
     const hostile = { ...valid } as Record<string, unknown>;

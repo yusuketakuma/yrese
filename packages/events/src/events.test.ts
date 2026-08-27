@@ -135,6 +135,25 @@ describe("createEventEnvelope", () => {
     ).toThrow(/payloadHash/);
   });
 
+  it("rejects a coercible non-string payload hash without coercing it", () => {
+    let coercions = 0;
+    const coercibleHash = {
+      toString() {
+        coercions += 1;
+        return payloadHash;
+      },
+    };
+
+    expect(() =>
+      createEventEnvelope(
+        baseEnvelope({
+          payloadHash: coercibleHash as unknown as string,
+        }),
+      ),
+    ).toThrow(/payloadHash/);
+    expect(coercions).toBe(0);
+  });
+
   it("rejects negative retry counts and invalid versions", () => {
     expect(() =>
       createEventEnvelope(

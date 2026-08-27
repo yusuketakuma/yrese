@@ -227,6 +227,7 @@ function assertNoControlChars(value: string, label: string): void {
 }
 
 function assertSha256Hex(value: string, label: string): void {
+  assertNonEmptyString(value, label);
   if (!sha256HexPattern.test(value)) {
     throw new RangeError(`${label} must be a lowercase sha-256 hex string`);
   }

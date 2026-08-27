@@ -122,6 +122,7 @@ function assertNonNegativeInteger(value: number, label: string): void {
 }
 
 function assertPayloadHash(value: string): void {
+  assertNonEmptyString(value, "payloadHash");
   if (!sha256HexPattern.test(value)) {
     throw new RangeError("payloadHash must be a lowercase sha-256 hex string");
   }
