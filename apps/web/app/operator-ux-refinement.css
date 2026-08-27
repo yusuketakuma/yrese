@@ -186,7 +186,7 @@ body {
 
 .operator-panel-header h3,
 .rail-card-header h3,
-.intake-card h3,
+.intake-card h4,
 .rail-patient-name {
   font-size: 0.9375rem;
 }

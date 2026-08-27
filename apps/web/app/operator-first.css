@@ -147,7 +147,7 @@ body { overflow-x: hidden; background: var(--color-bg); }
 .intake-card { display: grid; gap: .65rem; min-height: 150px; padding: .8rem; border: 1px solid var(--color-border); border-radius: 10px; background: #fff; }
 .intake-card-heading { display: flex; align-items: flex-start; gap: .65rem; }
 .intake-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 999px; background: var(--color-accent-soft); color: var(--color-accent-strong); font-size: .72rem; font-weight: 850; }
-.intake-card h3 { margin: 0; font-size: .85rem; }
+.intake-card h4 { margin: 0; font-size: .85rem; }
 .intake-card p { margin: .14rem 0 0; color: var(--color-fg-muted); font-size: .69rem; }
 .intake-card-footer { display: flex; align-items: center; justify-content: space-between; gap: .45rem; margin-top: auto; }
 

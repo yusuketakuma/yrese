@@ -13,6 +13,10 @@ const operatorSource = readFileSync(
   new URL("./operator-first.css", import.meta.url),
   "utf8",
 );
+const legacySource = readFileSync(
+  new URL("./legacy.css", import.meta.url),
+  "utf8",
+);
 const completionSource = readFileSync(
   new URL("./operator-completion-refinement.css", import.meta.url),
   "utf8",
@@ -64,6 +68,11 @@ describe("operator stylesheet load order", () => {
     expect(completionSource).not.toMatch(
       /\.app-sidebar\s*\{[^}]*background:/s,
     );
+  });
+
+  it("resets the current reception registration heading margin", () => {
+    expect(legacySource).toContain(".reception-registration-form h4,");
+    expect(legacySource).not.toContain(".reception-registration-form h3,");
   });
 
   it("projects partial UI connectivity and neutralizes unavailable primary actions in the final cascade", () => {

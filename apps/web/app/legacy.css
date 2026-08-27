@@ -71,7 +71,7 @@ textarea {
   background: var(--color-surface-raised);
 }
 
-.reception-registration-form h3,
+.reception-registration-form h4,
 .reception-registration-form p {
   margin: 0;
 }
@@ -364,7 +364,6 @@ tr[data-duplicate-kana="true"] > td {
 }
 
 .patient-search-results,
-.reception-queue,
 .mode-overview-table {
   width: 100%;
   max-width: 1100px;
@@ -373,8 +372,6 @@ tr[data-duplicate-kana="true"] > td {
 
 .patient-search-results th,
 .patient-search-results td,
-.reception-queue th,
-.reception-queue td,
 .mode-overview-table th,
 .mode-overview-table td {
   padding: 0.45rem 0.6rem;
@@ -384,7 +381,6 @@ tr[data-duplicate-kana="true"] > td {
 }
 
 .patient-search-results thead,
-.reception-queue thead,
 .mode-overview-table thead {
   background: var(--color-surface);
 }
@@ -401,6 +397,11 @@ tr[data-duplicate-kana="true"] > td {
 .patient-search-results thead .patient-search-action-column {
   z-index: 2;
   background: var(--color-surface);
+}
+
+/* 同姓同名注意(P-09)は既に文字列ラベルで示すため、この背景は補助的な冗長表示。 */
+.patient-search-results tr[data-duplicate-kana="true"] .patient-search-action-column {
+  background: var(--color-warning-soft);
 }
 
 .patient-context-bar {

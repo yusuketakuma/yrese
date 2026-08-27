@@ -33,15 +33,15 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(ahead/behind なし、実測 2026-08-27) |
-| Candidate branch | なし(WP-5101/WP-5104 consolidation は landing 完了。次の作業 branch は WP-5212 claim 時に作成) |
+| Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
+| Candidate branch | WP-5212 local landing は `feat/wp-5212-reception-flow`。WP-5213 は本記録を含む landing commit から `feat/wp-5213-prescription-safety` を作成する |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
 | Candidate scope | 全画面 UI/UX 改善計画 v2.3(§17 backlog)の READY 昇格と WP-5212 以降の直列消化 |
-| Last update | 2026-08-27 JST(WP-5210 記録整合: snapshot 更新、landing record 登録、WP-5111→WP-5211 改番、§17 backlog 登録、WP-5121 の §5 転記、untracked disposition 記録) |
+| Last update | 2026-08-27 JST(WP-5212 local landing、WP-5213 R3 human pre-review と claim) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | 全画面 UI/UX 改善計画 v2.3(§17)を WIP=1 / READY≤2 の下で段階消化する(WP-5212 → 5213 → 5214 → 5215 → 5216 → 5211 → 5217) |
-| Current critical path | WP-5212 の DoR 充足(PIA 評価 §17.2 注記)→ READY 昇格 → claim → 実装 |
-| Main blocker | local 作業にはなし。migration apply、push/deploy、HPKI/legal、RB-003、未決medical/pharmacist workflowは別human gateのまま |
+| Current critical path | WP-5213 の既存 inline 二段階確認を再利用し、labels-only 差分サマリと特定可能な local validation を Red→Green で実装する |
+| Main blocker | WP-5213 の R3 human pre-review は 2026-08-27 の user reply「承認」で充足。日数優先関係、P-11 権限側、push/deploy、migration apply、HPKI/legal、RB-003 は別 gate のまま |
 | Required verification | gate 記録は branch tip `3bc4805` 時点の実測(workspace 2,290 tests・apps/api 1,001 実 PostgreSQL skip 0、typecheck/build、OpenAPI/secrets/boundaries/deps/SBOM/SSOT index/calculation purity/script、browser 36 routes / 5 suites PASS — State.md 2026-08-27 PREVIOUS snapshot)。**`ad44068`(WP-5201 merge 後)では未再測**(reflog 実測: `ad44068` 生成から main fast-forward まで約 8 分、fast-forward→push 8 秒)。次の実装 WP 着手前の focused gate で再測する |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
@@ -72,11 +72,27 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は 0 件である。** WP-5101/WP-5104 local main consolidation は完了し、local `main` は
-`f11a014` を経て `ad44068` まで fast-forward・push 済み(push authority: 2026-08-27 human 明示確認、
-State.md ACTIVE SNAPSHOT)。着地後の WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening
-(`ad44068`)は §17.1 の nonclaimable landing record を参照。次の claim は §17 backlog の READY
-昇格後に行う。push、migration apply、deploy、production mutation は引き続き別 human gate である。
+**CURRENT は WP-5213(処方入力の破壊的操作安全化、R3)1 件である。**
+依存 WP-5212 は本記録が local commit tree に含まれることを条件に着地し、同じ条件で
+READY 0 件から WP-5213 を claim する。未commit worktree上ではこの遷移全体をfinalization
+candidate と読む。
+SCR-004/U4 の臨床 draft 破棄・上書き導線を扱うため R3 とし、2026-08-27 の user reply
+「承認」を pharmacist / human pre-review record とする。承認された意味論は次のとおりである。
+
+- **Acceptance:** `serverChangedWhileAway` と HTTP 409 の両分岐で、現在の local draft と
+  保存済み baseline の**変更項目名だけ**を常時表示し、既存 inline 二段階確認の最終操作前に
+  overwrite / discard / reload / merge を行わない。409 は「最後に読み込んだ server 版からの
+  未保存変更」と明示し、未取得の最新 server payload との差分とは表示しない。
+- **Exact allowed paths:** `apps/web/app/prescriptions/prescription-workspace.tsx`、同 test、
+  `prescription-draft-persistence.ts`、同 test。local validation は field / RP 行を特定するが、
+  未登録 RX error code を発行しない。test は synthetic data のみを使う。
+- **No-edit / stop:** `packages/contracts/**`、`apps/api/**`、migration、APPROVED SSOT、
+  `confirmation-dialog.tsx`、`unsaved-work.tsx`、受付 handoff、browser runner は変更しない。
+  交付日数/行日数の優先関係、P-11 権限側、新規 error code、API payload、schema、permission は
+  `SSOT_UPDATE_REQUIRED` / WP-5121 gate として除外する。
+- **Gate:** 最小 Red→Green focused test、Web relevant suite、既存 browser `/prescriptions`
+  scenario、technical + medical-safety + privacy + accessibility の frozen read-only review。
+  rollback は上記 exact4 の atomic revert。push、merge、deploy、migration apply は認可外である。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
@@ -148,6 +164,15 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5212 — 受付・患者 動線キーストローク削減(2026-08-27)
+
+- **Status:** **この記録が `WP-5212:` commit の tree に含まれる場合に限り** `COMMITTED_LOCAL /
+  PUSH_NOT_REQUESTED / NOT_MERGED`。未commit worktree上では landing claim ではなく finalization
+  candidate と読む。§17.2 の scope を既存 helper / guarded handoff で実装し、API、schema、
+  migration、domain status は変更していない。検証・frozen review の正本は当該 Git diff / commit
+  と local command evidenceであり、production/release readiness や保留中の手動 accessibility
+  gateを示さない。
 
 ### WP-5210 — 記録整合と計画正規化(PLAN_ONLY、2026-08-27)
 

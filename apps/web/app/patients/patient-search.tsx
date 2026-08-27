@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -476,6 +477,7 @@ export function PatientSearchResults({
                 <th scope="col">患者番号</th>
                 <th scope="col">氏名(カナ)</th>
                 <th scope="col">生年月日</th>
+                <th scope="col">満年齢</th>
                 <th scope="col">性別</th>
                 <th scope="col">資格確認状態</th>
                 {onSelect !== undefined && (
@@ -504,6 +506,7 @@ export function PatientSearchResults({
                       <span className="patient-name">{p.name}</span>
                     </td>
                     <td>{p.birthDate}</td>
+                    <td>{computeAgeYears(p.birthDate, new Date())}歳</td>
                     <td>{SEX_LABELS[p.sex]}</td>
                     <td>
                       <span
@@ -592,6 +595,22 @@ export function patientSearchResultMetric(state: SearchState): {
     return { value: "—", detail: "検索エラー" };
   }
   return { value: "—", detail: "検索実行後に一覧表示" };
+}
+
+/** 選択確定後に処方入力へ進む導線(WP-5212-6)。手入力の受付IDは経由しない。 */
+export function ProceedToPrescriptionLink({
+  selected,
+}: {
+  readonly selected: PatientContextData | null;
+}) {
+  if (selected === null) return null;
+  return (
+    <p className="operator-empty-copy">
+      <Link className="operator-text-action" href="/">
+        受付を選んで処方入力へ進む
+      </Link>
+    </p>
+  );
 }
 
 export function PatientSearch() {
@@ -715,6 +734,7 @@ export function PatientSearch() {
               </button>
             </div>
           )}
+          <ProceedToPrescriptionLink selected={selected} />
           <form
             className="patient-search-form"
             method="post"
@@ -728,7 +748,8 @@ export function PatientSearch() {
             <div className="patient-search-row">
               <input
                 id="patient-search-q"
-                type="text"
+                type="search"
+                enterKeyHint="search"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 maxLength={100}

@@ -1,38 +1,32 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-27, WP-5210 record reconciliation + UI/UX v2.3 backlog):**
+> **ACTIVE SNAPSHOT (2026-08-27, WP-5212 local landing + WP-5213 claim):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** current user instruction 2026-08-27「(ultracode)全画面のUIUX改善計画。
-  情報取得・改善方法分析はfable5、実装はsonnet5、レビューはopus5」に基づき、計画 v2.3 を
-  3 ラウンドの多段敵対レビューで確定し、WP-5210(PLAN_ONLY 記録整合)を実施した。
-  Claude が `active_root_writer`。外部/別 model は bounded read-only advisory input としてのみ使用。
-- **Git boundary:** local `main` = `origin/main` = `ad44068`(ahead/behind なし、実測 2026-08-27)。
-  **push authority(遡及記録):** 前 snapshot が保留した UI 作業(`3bc4805` + WP-5201 `ad44068`、
-  main へは branch `integrate/all-remote-20260827` 経由の fast-forward — reflog 実測)の
-  merge・push について、2026-08-27 にユーザーへ「main への merge・push(ad44068 まで)は
-  あなたが許可したものですか?」と本セッション(AskUserQuestion)で明示確認し、
-  回答「**許可した(遡及記録で整合)**」を得た。
-  **Process deviation(記録):** 当該 merge・push は human 承認取得**前**に実行され、承認は
-  2026-08-27 に遡及して得たものである。事前承認があったと読み替えない。以後の merge・push は
-  事前の明示承認を必須とする(fail-closed)。
-  working tree は Plans.md / State.md の本記録変更と untracked 2 dir(§17.4 disposition)のみ。
-- **BLOCKER 解消(遡及記録):** 前 snapshot の BLOCKER「WP-5104 の承認または人間による明示の
-  scope 判断まで branch 保持」は、上記 2026-08-27 ユーザー明示確認が「人間による明示の
-  scope 判断」に該当するため解消。WP-5104 自体は NOT_IMPLEMENTABLE qualifier のまま
-  (Plans.md §8 Stage 0)であり、この解消は WP-5104 の実装 gate を開かない。
-- **Landed records:** `3bc4805`(WP-5111 呼称・全画面刷新+実データ結線)と `ad44068`
-  (WP-5201 runtime hardening)は Plans.md §17.1 の nonclaimable landing record に登録済み。
-  L0 トークン WP は WP-5211 へ改番(採番衝突解消、Plans.md 運用範囲 — human 判断 2026-08-27)。
-- **Active plan:** 全画面 UI/UX 改善計画 v2.3(Plans.md §17 backlog、7 WP、実行順
-  5212→5213→5214→5215→5216→5211→5217)。CURRENT=0 / READY=0。次は WP-5212 の
-  DoR 充足(PIA 評価)→ READY 昇格 → claim。
+- **Direction / ownership:** user reply 2026-08-27「承認」は、WP-5212 の1 local commit
+  (pushなし)、本 snapshot / Plans.md 同期、WP-5213 の pharmacist / human pre-review済み
+  meaning boundaryでのTDD実装を承認した。Codex root が唯一の `active_root_writer` である。
+- **Git boundary:** local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、
+  `origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`。WP-5212 は
+  `feat/wp-5212-reception-flow` の**本記録が commit tree に含まれる場合に限り** local landing とし、
+  未commit worktree上では finalization candidate と読む。push / merge は行わない。WP-5213 は
+  その tip から `feat/wp-5213-prescription-safety` を作成する。
+- **Dirty ownership:** WP-5212 exact15 tracked pathsは本local landing対象。`.harness-worktrees/`、
+  `artifacts/`、`ui-test-tools/` と secondary worktree の既存差分は user-owned / protected であり、
+  cleanup、merge、stageを行わない。
+- **Active plan:** Plans.md §17 の順序を維持し、CURRENT=WP-5213 / READY=0。
+  R3 human pre-reviewは上記「承認」で充足。exact allowed/no-edit、acceptance、test、rollbackは
+  Plans.md §3 CURRENT recordを正本とする。
 - **Open gap(P-11 権限確認側):** 破壊的操作是正(WP-5213)は UIX-001 P-11 の二段階確認
   要素のみを充足する。権限確認要素は production 認証(WP-5121、BLOCKED_SECURITY_REVIEW)
   未着地のため未充足であり、充足済みと読み替えない。
-- **持ち越し human 検証債務:** screen reader 実機・200% 拡大手動確認・warning-fatigue
-  実利用者評価・薬剤師/請求事務/accessibility/privacy レビューは pending のまま
-  (計画 v2.3 §7-8)。code_closed を完了と読み替えない。
+- **WP-5213 stop conditions:** 交付日数/行日数の優先関係、新規 RX error code、API / schema /
+  permission変更、未取得の最新 server payload との差分表示、未完成 ConfirmationDialog の U4 使用は
+  対象外。必要になった時点で `SSOT_UPDATE_REQUIRED` として停止する。
+- **持ち越し human 検証債務:** WP-5212 の満年齢表示に対する PRC-003 #8 PIA は
+  Plans.md §3 の 2026-08-27 human approval recordで充足済み。一方、screen reader 実機・
+  200% 拡大手動確認・warning-fatigue 実利用者評価・薬剤師/請求事務/accessibility/privacy の
+  全体レビューは pending のまま(計画 v2.3 §7-8)。前者を後者の完了やcode_closedと読み替えない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、
   薬剤師確認・確定、migration apply、production/deploy は未解消のまま。SSOT_BLOCKED 4 画面
   (`/checkout` `/claim-check` `/masters` `/monthly-closing`)は、実在データのみ表示し、

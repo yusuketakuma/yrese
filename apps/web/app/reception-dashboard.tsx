@@ -30,7 +30,12 @@ import { EmptyState } from "./components/empty-state";
 import { registeredErrorCodeOrUndefined } from "./components/error-code";
 import { ErrorNotice, type ErrorNoticeProps } from "./components/error-notice";
 import { LoadingState } from "./components/loading-state";
-import { MetricCard, MetricGrid, TableScroll } from "./components/operator-ui";
+import {
+  MetricCard,
+  MetricGrid,
+  StatusPill,
+  TableScroll,
+} from "./components/operator-ui";
 import { devTenantHeaders } from "./dev-tenant";
 import { ReceptionPrescriptionHandoffAction } from "./reception-prescription-handoff";
 
@@ -395,13 +400,20 @@ export function formatAcceptedTime(acceptedAt: string): string {
 export function ReceptionQueueTable({
   entries,
   businessDate,
+  selectedPatientId,
 }: {
   readonly entries: readonly ReceptionQueueEntry[];
   readonly businessDate?: string;
+  readonly selectedPatientId?: string | undefined;
 }) {
   return (
     <TableScroll label="受付キュー表。横方向にスクロールできます">
-      <table className="reception-queue">
+      <table className="operator-table">
+        {businessDate !== undefined ? (
+          <caption className="operator-table-caption">
+            {businessDate} の受付キュー
+          </caption>
+        ) : null}
         <thead>
           <tr>
             <th scope="col">受付時刻</th>
@@ -414,31 +426,40 @@ export function ReceptionQueueTable({
           </tr>
         </thead>
         <tbody>
-          {entries.map((entry) => (
-            <tr key={entry.receptionId}>
-              <td>{formatAcceptedTime(entry.acceptedAt)}</td>
-              <td>{entry.patient.patientNumber}</td>
-              <td>
-                <span className="patient-kana">{entry.patient.kana}</span>
-                <span className="patient-name">{entry.patient.name}</span>
-              </td>
-              <td>{entry.patient.birthDate}</td>
-              <td>
-                <DomainStatusBadge
-                  query={{ domain: "reception", key: entry.receptionStatus }}
-                />
-              </td>
-              <td>{PRESCRIPTION_INTAKE_LABELS[entry.prescriptionIntakeType]}</td>
-              {businessDate !== undefined ? (
+          {entries.map((entry) => {
+            const isSelected = entry.patient.patientId === selectedPatientId;
+            return (
+              <tr
+                key={entry.receptionId}
+                {...(isSelected
+                  ? { "data-selected": "true", "aria-selected": "true" }
+                  : {})}
+              >
+                <td>{formatAcceptedTime(entry.acceptedAt)}</td>
+                <td>{entry.patient.patientNumber}</td>
                 <td>
-                  <ReceptionPrescriptionHandoffAction
-                    entry={entry}
-                    businessDate={businessDate}
+                  <span className="patient-kana">{entry.patient.kana}</span>
+                  <span className="patient-name">{entry.patient.name}</span>
+                  {isSelected ? <StatusPill tone="info">選択中</StatusPill> : null}
+                </td>
+                <td>{entry.patient.birthDate}</td>
+                <td>
+                  <DomainStatusBadge
+                    query={{ domain: "reception", key: entry.receptionStatus }}
                   />
                 </td>
-              ) : null}
-            </tr>
-          ))}
+                <td>{PRESCRIPTION_INTAKE_LABELS[entry.prescriptionIntakeType]}</td>
+                {businessDate !== undefined ? (
+                  <td>
+                    <ReceptionPrescriptionHandoffAction
+                      entry={entry}
+                      businessDate={businessDate}
+                    />
+                  </td>
+                ) : null}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </TableScroll>
@@ -860,7 +881,13 @@ export function createReceptionQueueTargetTracker(initialTarget: string) {
   };
 }
 
-export function ReceptionQueueView({ state }: { readonly state: QueueState }) {
+export function ReceptionQueueView({
+  state,
+  selectedPatientId,
+}: {
+  readonly state: QueueState;
+  readonly selectedPatientId?: string | undefined;
+}) {
   if (state.kind === "loading") {
     return <LoadingState label="受付一覧を読み込み中…" />;
   }
@@ -891,6 +918,7 @@ export function ReceptionQueueView({ state }: { readonly state: QueueState }) {
         <ReceptionQueueTable
           entries={state.response.entries}
           businessDate={state.response.date}
+          selectedPatientId={selectedPatientId}
         />
       </>
     );
@@ -914,6 +942,19 @@ export function ReceptionQueueView({ state }: { readonly state: QueueState }) {
       {content}
     </>
   );
+}
+
+/**
+ * 表示日付 submit ボタンの役割明示(WP-5212-1)。typed date が既に表示中のキューと
+ * 同じなら、この操作は新しい日付の取得ではなく再読み込みであることをラベルで示す。
+ */
+export function receptionDashboardDisplayButtonLabel(
+  queue: QueueState,
+  date: string,
+): string {
+  return queue.kind === "loaded" && queue.response.date === date
+    ? "再読み込み"
+    : "表示";
 }
 
 /**
@@ -1109,13 +1150,14 @@ export function ReceptionDashboard() {
           <input
             className="operator-input"
             type="date"
+            required
             value={date}
             onChange={(event) => setDate(event.target.value)}
           />
         </label>
         <div className="operator-inline-actions">
           <button type="submit" className="operator-button" data-kind="secondary">
-            表示
+            {receptionDashboardDisplayButtonLabel(queue, date)}
           </button>
         </div>
       </form>
@@ -1133,7 +1175,7 @@ export function ReceptionDashboard() {
         </p>
       )}
 
-      <ReceptionQueueView state={queue} />
+      <ReceptionQueueView state={queue} selectedPatientId={selectedPatient?.patientId} />
     </section>
   );
 }
@@ -1156,7 +1198,7 @@ export function ReceptionRegistrationForm({
         void onSubmit();
       }}
     >
-      <h3>受付登録</h3>
+      <h4>受付登録</h4>
       {patient === null ? (
         <p className="reception-registration-empty" role="status">
           受付対象の患者を選択してください。<a href="/patients">患者検索へ</a>

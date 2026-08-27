@@ -22,6 +22,7 @@ import {
   patientSearchResultMetric,
   PatientSearch,
   PatientSearchResults,
+  ProceedToPrescriptionLink,
   type SearchPage,
   type SearchState,
 } from "./patient-search";
@@ -460,6 +461,38 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     expect(html).toContain("[警告(WARNING)]");
     expect(html.match(/data-duplicate-kana="true"/g)).toHaveLength(2);
     expect(html.match(/【同姓同名注意】/g)).toHaveLength(2);
+  });
+
+  it("appends a computed full-age readout to each result row as identity-mismatch support (WP-5212-6)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-11T00:00:00+09:00"));
+    try {
+      const html = renderToStaticMarkup(
+        <PatientSearchResults
+          results={[patient({ patientId: "p1", birthDate: "1990-06-15" })]}
+          query="テスト"
+        />,
+      );
+      expect(html).toContain(
+        `${computeAgeYears("1990-06-15", new Date())}歳`,
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows a link to proceed to prescription entry once a patient is selected (WP-5212-6)", () => {
+    const p = patient({ patientId: "p1" });
+    const withSelection = renderToStaticMarkup(
+      <ProceedToPrescriptionLink selected={p} />,
+    );
+    expect(withSelection).toContain('href="/"');
+    expect(withSelection).toContain("受付を選んで処方入力へ進む");
+
+    const withoutSelection = renderToStaticMarkup(
+      <ProceedToPrescriptionLink selected={null} />,
+    );
+    expect(withoutSelection).toBe("");
   });
 
   it("shows no duplicate warning when all kana are unique", () => {
@@ -2286,5 +2319,13 @@ describe("patient search shell and unavailable-metric truthfulness (SCR-002 refr
     expect(html).toContain("まだ検索を実行していません");
     expect(html).not.toContain("の検索結果");
     expect(html).not.toContain("patient-search-results");
+  });
+
+  it("uses a search input with a search-labeled enter key for a faster mobile keyboard (WP-5212-6)", () => {
+    const html = renderToStaticMarkup(<PatientSearch />);
+    const inputTag = html.match(/<input\b[^>]*id="patient-search-q"[^>]*>/)?.[0];
+
+    expect(inputTag).toContain('type="search"');
+    expect(inputTag).toContain('enterKeyHint="search"');
   });
 });

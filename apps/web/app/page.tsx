@@ -43,7 +43,7 @@ function IntakeGateCard({
           {icon}
         </span>
         <div>
-          <h3>{title}</h3>
+          <h4>{title}</h4>
           <p>{description}</p>
         </div>
       </div>

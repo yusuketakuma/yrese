@@ -13,6 +13,14 @@ const routeSource = readFileSync(
   new URL("./prescription-launch-route.tsx", import.meta.url),
   "utf8",
 );
+const checkoutSource = readFileSync(
+  new URL("../checkout/checkout-context.tsx", import.meta.url),
+  "utf8",
+);
+const patientSearchSource = readFileSync(
+  new URL("../patients/patient-search.tsx", import.meta.url),
+  "utf8",
+);
 const receptionBoundarySource = readFileSync(
   new URL("./prescription-reception-boundary.tsx", import.meta.url),
   "utf8",
@@ -34,6 +42,17 @@ describe("prescription launch URL contract", () => {
     expect(launchSource).not.toContain("href={`/prescriptions/");
     expect(routeSource).toContain("<ReceptionPrescriptionHandoffAction");
     expect(routeSource).not.toContain("<PrescriptionWorkspace");
+    expect(checkoutSource).toContain("<ReceptionPrescriptionHandoffAction");
+    expect(checkoutSource).not.toContain(
+      '<Link className="operator-text-action" href="/prescriptions">',
+    );
+    expect(patientSearchSource).toContain('import Link from "next/link";');
+    expect(patientSearchSource).toContain(
+      '<Link className="operator-text-action" href="/">',
+    );
+    expect(patientSearchSource).not.toContain(
+      '<a className="operator-text-action" href="/prescriptions">',
+    );
   });
 
   it("does not present an unapproved workflow or a stale conflict version", () => {
@@ -42,5 +61,11 @@ describe("prescription launch URL contract", () => {
       "競合・サーバー版 v${serverVersion}",
     );
     expect(workspaceSource).toContain("競合・再読込が必要");
+  });
+
+  it("defaults the handoff business date to today, matching the dashboard's own default (WP-5212-2)", () => {
+    expect(launchSource).toContain("useState(todayAsIsoDate)");
+    expect(launchSource).not.toContain('useState("")');
+    expect(launchSource).toContain("todayAsIsoDate");
   });
 });

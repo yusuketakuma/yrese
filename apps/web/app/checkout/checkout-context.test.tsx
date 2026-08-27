@@ -9,10 +9,14 @@ import type {
 
 import {
   CheckoutReceptionContext,
+  CheckoutReceptionTable,
   describeDraftSummary,
   loadCheckoutReceptions,
   toDraftSummary,
 } from "./checkout-context";
+import { PatientContextProvider } from "../components/patient-context";
+import { UnsavedWorkProvider } from "../components/unsaved-work";
+import { PrescriptionOriginProvider } from "../prescriptions/prescription-origin-context";
 
 (globalThis as { React?: typeof React }).React = React;
 
@@ -147,8 +151,7 @@ describe("loadCheckoutReceptions", () => {
 
     expect(receptions).toEqual([
       {
-        receptionId: "reception-syn-001",
-        receptionStatus: "WAITING",
+        entry: QUEUE.entries[0],
         acceptedTime: "10:00",
         businessDate: BUSINESS_DATE,
         draft: { kind: "saved", rowCount: 2, version: 3 },
@@ -239,5 +242,43 @@ describe("CheckoutReceptionContext without a selected patient", () => {
     expect(html).toContain("live-surface-panel");
     expect(html).not.toContain("<table");
     expect(html).not.toContain("checkout-business-date");
+  });
+});
+
+describe("CheckoutReceptionTable (WP-5212-7)", () => {
+  it("uses the guarded handoff for editable rows and keeps terminal rows closed", () => {
+    const html = renderToStaticMarkup(
+      <UnsavedWorkProvider>
+        <PatientContextProvider>
+          <PrescriptionOriginProvider>
+            <CheckoutReceptionTable
+              receptions={[
+                {
+                  entry: queueEntry("reception-syn-001", SELECTED_PATIENT_ID),
+                  acceptedTime: "09:15",
+                  businessDate: BUSINESS_DATE,
+                  draft: { kind: "absent" },
+                },
+                {
+                  entry: {
+                    ...queueEntry("reception-syn-002", SELECTED_PATIENT_ID),
+                    receptionStatus: "CANCELLED",
+                  },
+                  acceptedTime: "09:20",
+                  businessDate: BUSINESS_DATE,
+                  draft: { kind: "absent" },
+                },
+              ]}
+            />
+          </PrescriptionOriginProvider>
+        </PatientContextProvider>
+      </UnsavedWorkProvider>,
+    );
+
+    expect(html.match(/href="\/prescriptions"/g)).toHaveLength(1);
+    expect(html).toContain(
+      "この受付を処方入力へ引き継ぐ: 合成患者 一（患者番号 SYN-001、受付ID reception-syn-001）",
+    );
+    expect(html).toContain("取消済み受付から処方入力は開始できません");
   });
 });

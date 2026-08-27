@@ -121,6 +121,8 @@ describe("web shell smoke contracts", () => {
     expect(html).toContain("受付キュー");
     expect(html).toContain('aria-label="受付ダッシュボード"');
     expect(html).toContain("処方せんQR");
+    expect(html).toContain("<h4>処方せんQR</h4>");
+    expect(html).not.toContain("<h3>処方せんQR</h3>");
     expect(html).toContain("電子処方箋");
     expect(html).toContain("現在は安全に未接続です");
     expect(html).toContain("disabled");

@@ -11,6 +11,7 @@ import type {
 } from "@yrese/contracts";
 
 import {
+  ReceptionDashboard,
   ReceptionError,
   ReceptionRegistrationForm,
   ReceptionQueueTable,
@@ -26,6 +27,7 @@ import {
   isSettledReceptionCreateFailure,
   parseDateParam,
   RECEPTION_STATUS_LABELS,
+  receptionDashboardDisplayButtonLabel,
   receptionQueueMetrics,
   ReceptionQueueMetricsView,
   registrationPatientChangeNotice,
@@ -2361,6 +2363,112 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
       />,
     );
     expect(html).not.toContain("最終取得:");
+  });
+
+  it("marks the selected patient's row with a boolean marker and visible text, leaking no identifier (WP-5212-3)", () => {
+    const html = renderToStaticMarkup(
+      <ReceptionQueueTable
+        entries={[
+          entry({ receptionId: "rc-1", patient: patient({ patientId: "p1", patientNumber: "T-0001" }) }),
+          entry({ receptionId: "rc-2", patient: patient({ patientId: "p2", patientNumber: "T-0002" }) }),
+        ]}
+        selectedPatientId="p2"
+      />,
+    );
+
+    expect(html).toContain("選択中");
+    expect((html.match(/data-selected="true"/g) ?? []).length).toBe(1);
+    expect(html).not.toContain("data-patient-id");
+    expect(html).not.toContain("p2\"");
+    expect(html).not.toContain(">p2<");
+  });
+
+  it("does not mark any row when no patient is selected (WP-5212-3)", () => {
+    const html = renderToStaticMarkup(
+      <ReceptionQueueTable entries={[entry({ receptionId: "rc-1" })]} />,
+    );
+
+    expect(html).not.toContain("選択中");
+    expect(html).not.toContain("data-selected");
+  });
+
+  it("gives the queue table a visible title caption and drops the legacy reception-queue class (WP-5212-4)", () => {
+    const html = renderToStaticMarkup(
+      <ReceptionQueueTable
+        entries={[entry({ receptionId: "rc-1" })]}
+        businessDate="2026-08-27"
+      />,
+    );
+
+    expect(html).toContain("<caption");
+    expect(html).toContain("operator-table-caption");
+    expect(html).toContain("2026-08-27");
+    expect(html).not.toContain('class="reception-queue"');
+    expect(html).toMatch(/<table class="operator-table/);
+  });
+
+  it("keeps the scroll-region label distinct from the table caption title (WP-5212-4)", () => {
+    const html = renderToStaticMarkup(
+      <ReceptionQueueTable
+        entries={[entry({ receptionId: "rc-1" })]}
+        businessDate="2026-08-27"
+      />,
+    );
+
+    expect(html).toContain("受付キュー表。横方向にスクロールできます");
+    expect(html).toContain("2026-08-27 の受付キュー");
+  });
+});
+
+describe("receptionDashboardDisplayButtonLabel (WP-5212-1)", () => {
+  it("labels the 表示日付 submit action 表示 when no matching queue is loaded yet", () => {
+    expect(
+      receptionDashboardDisplayButtonLabel({ kind: "loading" }, "2026-08-27"),
+    ).toBe("表示");
+    expect(
+      receptionDashboardDisplayButtonLabel(
+        {
+          kind: "error",
+          notice: { message: "エラー", nextAction: "再試行してください。" },
+        },
+        "2026-08-27",
+      ),
+    ).toBe("表示");
+    expect(
+      receptionDashboardDisplayButtonLabel(
+        {
+          kind: "loaded",
+          response: queueResponse("2026-08-26"),
+          refreshState: { kind: "idle" },
+        },
+        "2026-08-27",
+      ),
+    ).toBe("表示");
+  });
+
+  it("labels the submit action 再読み込み when the typed date matches the already-loaded date", () => {
+    expect(
+      receptionDashboardDisplayButtonLabel(
+        {
+          kind: "loaded",
+          response: queueResponse("2026-08-27"),
+          refreshState: { kind: "idle" },
+        },
+        "2026-08-27",
+      ),
+    ).toBe("再読み込み");
+  });
+});
+
+describe("ReceptionDashboard display-date input (WP-5212-1)", () => {
+  it("requires the display-date input to unify native validation with the launch panel", () => {
+    const html = renderToStaticMarkup(<ReceptionDashboard />);
+    expect(html).toMatch(/<input[^>]*type="date"[^>]*required=""/);
+  });
+
+  it("defaults the submit label to 表示 before any queue has loaded", () => {
+    const html = renderToStaticMarkup(<ReceptionDashboard />);
+    expect(html).toContain(">表示<");
   });
 });
 

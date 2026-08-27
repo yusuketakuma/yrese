@@ -9,7 +9,11 @@ import { DomainStatusBadge } from "./components/domain-status-badge";
 import { ErrorNotice, type ErrorNoticeProps } from "./components/error-notice";
 import { useOptionalPatientContext } from "./components/patient-context";
 import { TableScroll } from "./components/operator-ui";
-import { ReceptionError, fetchReceptionQueue } from "./reception-dashboard";
+import {
+  ReceptionError,
+  fetchReceptionQueue,
+  todayAsIsoDate,
+} from "./reception-dashboard";
 import { ReceptionPrescriptionHandoffAction } from "./reception-prescription-handoff";
 
 type LaunchSearchState =
@@ -33,7 +37,7 @@ function noticeFromError(error: unknown): ErrorNoticeProps {
 export function ReceptionPrescriptionLaunch() {
   const patientContext = useOptionalPatientContext();
   const selectedPatient = patientContext?.patient ?? null;
-  const [businessDate, setBusinessDate] = useState("");
+  const [businessDate, setBusinessDate] = useState(todayAsIsoDate);
   const [state, setState] = useState<LaunchSearchState>({ status: "idle" });
   const requestRef = useRef<AbortController | null>(null);
   const selectedPatientId = selectedPatient?.patientId;

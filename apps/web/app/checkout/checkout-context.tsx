@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import type {
   PrescriptionDraftResponse,
-  ReceptionStatus,
+  ReceptionQueueEntry,
 } from "@yrese/contracts";
 
 import { DomainStatusBadge } from "../components/domain-status-badge";
@@ -21,6 +21,7 @@ import {
   formatAcceptedTime,
   todayAsIsoDate,
 } from "../reception-dashboard";
+import { ReceptionPrescriptionHandoffAction } from "../reception-prescription-handoff";
 
 /**
  * 会計画面(SCR-016)の実接続部。
@@ -41,8 +42,7 @@ export type CheckoutDraftSummary =
   | { readonly kind: "unavailable" };
 
 export interface CheckoutReceptionSummary {
-  readonly receptionId: string;
-  readonly receptionStatus: ReceptionStatus;
+  readonly entry: ReceptionQueueEntry;
   /** JST 固定の受付時刻(HH:MM)。 */
   readonly acceptedTime: string;
   readonly businessDate: string;
@@ -115,8 +115,7 @@ export async function loadCheckoutReceptions(
     ),
   );
   return entries.map((entry, index) => ({
-    receptionId: entry.receptionId,
-    receptionStatus: entry.receptionStatus,
+    entry,
     acceptedTime: formatAcceptedTime(entry.acceptedAt),
     businessDate: input.businessDate,
     draft: toDraftSummary(drafts[index]),
@@ -147,6 +146,58 @@ function CheckoutPatientUnselected() {
         患者検索を開く
       </Link>
     </Panel>
+  );
+}
+
+/** 実データ表(WP-5212-7)。受付行から処方入力へ、受付IDを手入力せずに進める。 */
+export function CheckoutReceptionTable({
+  receptions,
+}: {
+  readonly receptions: readonly CheckoutReceptionSummary[];
+}) {
+  return (
+    <TableScroll label="選択患者の受付と処方下書きの保存状態">
+      <table className="operator-table operator-table-dense">
+        <caption className="operator-table-caption">
+          受付API の実応答と、その受付にサーバー保存済みの処方下書きの行数・版。
+          行数は保存済みであることを示すだけで、算定結果ではありません。
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">受付ID</th>
+            <th scope="col">受付状態</th>
+            <th scope="col">受付時刻（JST）</th>
+            <th scope="col">業務日</th>
+            <th scope="col">処方下書きの保存状態</th>
+            <th scope="col">次の操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {receptions.map((reception) => (
+            <tr key={reception.entry.receptionId}>
+              <td>{reception.entry.receptionId}</td>
+              <td>
+                <DomainStatusBadge
+                  query={{
+                    domain: "reception",
+                    key: reception.entry.receptionStatus,
+                  }}
+                />
+              </td>
+              <td>{reception.acceptedTime}</td>
+              <td>{reception.businessDate}</td>
+              <td>{describeDraftSummary(reception.draft)}</td>
+              <td>
+                <ReceptionPrescriptionHandoffAction
+                  entry={reception.entry}
+                  businessDate={reception.businessDate}
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </TableScroll>
   );
 }
 
@@ -229,38 +280,7 @@ function CheckoutReceptionContextForPatient({
         ) : null}
 
         {state.kind === "ready" && state.receptions.length > 0 ? (
-          <TableScroll label="選択患者の受付と処方下書きの保存状態">
-            <table className="operator-table operator-table-dense">
-              <caption className="operator-table-caption">
-                受付API の実応答と、その受付にサーバー保存済みの処方下書きの行数・版。
-                行数は保存済みであることを示すだけで、算定結果ではありません。
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">受付ID</th>
-                  <th scope="col">受付状態</th>
-                  <th scope="col">受付時刻（JST）</th>
-                  <th scope="col">業務日</th>
-                  <th scope="col">処方下書きの保存状態</th>
-                </tr>
-              </thead>
-              <tbody>
-                {state.receptions.map((reception) => (
-                  <tr key={reception.receptionId}>
-                    <td>{reception.receptionId}</td>
-                    <td>
-                      <DomainStatusBadge
-                        query={{ domain: "reception", key: reception.receptionStatus }}
-                      />
-                    </td>
-                    <td>{reception.acceptedTime}</td>
-                    <td>{reception.businessDate}</td>
-                    <td>{describeDraftSummary(reception.draft)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableScroll>
+          <CheckoutReceptionTable receptions={state.receptions} />
         ) : null}
       </section>
     </Panel>
