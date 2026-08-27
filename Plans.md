@@ -34,15 +34,15 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5216 code landing は `fix/wp-5216-warning-hierarchy` の local commit `0782d86`。WP-5211 は同 commit から `refactor/wp-5211-css-token-authority` を作成済み |
+| Candidate branch | WP-5211 は `refactor/wp-5211-css-token-authority` の local commit `6e40b5b`。WP-5217A は同 commit から `refactor/wp-5217a-reception-visibility-refresh` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | 全画面 UI/UX 改善計画 v2.3(§17 backlog)の READY 昇格と WP-5212 以降の直列消化 |
-| Last update | 2026-08-27 JST(WP-5211 candidate validation完了、human instruction「css予算上限を緩和」による compiled CSS 10 KiB 上限の再設定) |
+| Candidate scope | WP-5217 slice A のうち、受付一覧の hidden→visible 再取得と権限拒否時の旧PHI消去に限定した exact2 Web slice |
+| Last update | 2026-08-27 JST(WP-5217A Red→Greenとcandidate validation完了) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | 全画面 UI/UX 改善計画 v2.3(§17)を WIP=1 / READY≤2 の下で段階消化する(WP-5212 → 5213 → 5214 → 5218 → 5215 → 5216 → 5211 → 5217) |
-| Current critical path | WP-5211 Phase A exact9で、7 active CSSを3へ統合し、`globals.css`を唯一のtoken/direct-color authorityにする。DOM・文言・contract・表示結果は不変 |
-| Main blocker | WP-5211 の着手 gate と compiled CSS budget decision は 2026-08-27 human instruction「着手して」「css予算上限を緩和」で解消。candidate gateはPASSし、残るlanding gateはfrozen technical reviewのみ。push/deploy、migration apply、HPKI/legal、RB-003 は別 gate のまま |
-| Required verification | WP-5211 はRed 5→Web 64 files / 739 tests、typecheck/lint/build、static token/nowrap/cascade、browser 36 route-viewports / 5 suites、screenshot 36/36 pixel一致、CLS最大差0、source separate gzip 13,401≤15,170、compiled gzip 9,672≤10,240、`git diff --check`がPASS。frozen technical reviewをlanding gateとして残す |
+| Current critical path | WP-5217A exact2で、既存の受付queue runnerとexplicit target trackerを再利用し、hidden→visible edgeだけを安全に再取得する |
+| Main blocker | WP-5217A の初回frozen review finding 2件は是正され、更新candidateのindependent + frontend + privacy/security再reviewは全PASS。root exact-stage local landingだけを残す。slice Bは3 gate未成立 |
+| Required verification | WP-5217A はRed 3件→focused 168 tests、Web 64 files / 740 tests、Web typecheck、`git diff --check`、frozen R2 review 3観点がPASS |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
 
@@ -72,45 +72,39 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5211(CSS token authority Phase A、R2)1 件である。**
-WP-5216 は local commit `0782d86` で着地済み。依存順と §8 Stage 1 の着手 gate は
-2026-08-27 human instruction「着手して」で充足し、READY 0 件から WP-5211 を claim する。
+**CURRENT は WP-5217A(受付一覧 visibility refresh、R2)1 件である。**
+WP-5211 は local commit `6e40b5b` で着地済み。WP-5217 全体をclaimせず、既存contract内で
+完結するslice Aの最小部分だけをclaimする。READYは0件である。
 
-- **Purpose / boundary:** 7 active CSSを `globals.css` / `legacy.css` / `operator-first.css` の3つへ統合し、
-  `globals.css`を唯一のtop-level token/direct-color authorityにする。既存 cascade 順は
-  operator-first→ux-refinement→navigation→adversarial→completion の本文順で保持し、DOM、文言、
-  ARIA、contract、domain state、API、schema、dependency、APPROVED SSOTは変更しない。
-- **Exact implementation paths:** `apps/web/app/globals.css`、`apps/web/app/legacy.css`、
-  `apps/web/app/operator-first.css`、削除する `apps/web/app/operator-ux-refinement.css` /
-  `operator-first-navigation.css` / `operator-adversarial-refinement.css` /
-  `operator-completion-refinement.css`、`apps/web/app/layout.tsx`、
-  `apps/web/app/style-load-order.test.ts`。required record pathsは `Plans.md` / `State.md`。
-  それ以外は変更しない。
-- **Token / cascade acceptance:** top-level effective token値とresponsive token overrideを
-  `globals.css`へ集約する。`legacy.css` / `operator-first.css`からhex / rgb / rgba直値を0にし、
-  forced-colorsのsystem color keywordは保持する。layoutはglobals→operator-firstだけをdirect importし、
-  globals→legacyのtransitive importを維持する。既存selector順、specificity、focus、forced-colors、
-  reduced-motion、responsive ruleを変えない。
-- **Nowrap acceptance:** 12件を全数固定する。保持6件は `.visually-hidden`、
-  `.operator-command-label`、mobile `.app-nav-label`、mobile `.app-nav-group-label`、
-  `.operator-command-shortcut`、mobile `.app-nav .app-nav-link`。残り6件
-  (`.operator-profile strong/small`、suggestion link、shortcut hint、unsaved strong/small/link)は
-  `white-space: normal`相当へ戻し、既存container内で必要な `min-width: 0` / `overflow-wrap: anywhere` /
-  flex wrapだけを使って高zoom時の横overflowを防ぐ。
-- **Measured gate:** 最小 Red→Green、static exact3/token/nowrap/cascade test、Web suite/typecheck/build、
-  synthetic browserの既存36 route-viewports / 5 interaction suitesをbaseline/candidateで実行する。
-  screenshotはpixel差0、Axe critical/serious 0、console error 0、各route/viewportのCLSはbaseline以下
-  (測定noise上限0.001)とする。2026-08-27 human product/operations instruction「css予算上限を緩和」
-  により、compiled CSS gzip総量は固定10 KiB(10,240 bytes)以下へ再設定し、source separate-file gzip
-  総量はbaseline以下を維持する。測定はNode 26.6.0 / zlib 1.3.2.1、`gzipSync` level 9 / `mtime: 0`、
-  sourceは上記active CSSをcascade順、compiledは`.next/static/css/*.css`を辞書順で連結して行い、
-  source raw / separate-file gzip / concatenated gzipとcompiled raw / gzipを併記する。
-  `git diff --check`後、frozen R2 technical reviewを別contextで行う。
-- **Authority / rollback:** UIX-001 §13.1のfile列挙は `source_snapshot_commit=9786fe8` のinventory、
-  §13.2が本Phase AのAPPROVED authorityである。pre-plan reviewerとverified Oracleで着手可を確認した。
-  live-current inventory同期が必要とfinal reviewで判明した場合はPRC-007の別human gateへ送り、
-  codeで補完しない。rollbackはexact9+required recordsのatomic revert。push、merge、deploy、
-  migration applyは認可外である。
+- **Purpose / layer:** ReceptionDashboardの既存idempotent readを、画面がhiddenからvisibleへ戻った
+  1 edgeにつき1回だけ再実行し、認可拒否後に旧患者queueと一時的な登録結果を残さない。
+  対象domainはreception read、implementation layerはWeb clientだけである。
+- **Allowed / forbidden:** implementationは `apps/web/app/reception-dashboard.tsx`、testは
+  `apps/web/app/reception-dashboard.test.tsx`、required recordは `Plans.md` / `State.md` のexact4。
+  それ以外、特にAPI、contract/OpenAPI、schema/migration、repository、audit registry、SEC-004、
+  UIX-001、dependency、CSS、copyは変更禁止。保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** APPROVED API-006の既存 `GET /reception/queue`、MOD-008の
+  `reception.queue.viewed`、UIX-001 ST-03/ST-05、SEC-004をread-only authorityとして使う。
+  算定・請求・帳票・法令logicを変更しないため新規evidence_idは不要。single-object readの
+  slice Bは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 event判断、SEC-004 PIAの3件が
+  未成立であり、着手しない。
+- **Acceptance / tests:** (A1) synthetic visibility sourceでhidden no-op、hidden→visible edge、
+  repeated visible抑止、最新の明示取得target、typed-but-unsubmitted date無視を固定する。
+  (A2) 同一target pendingは既存runnerへjoinしてfetch/auditを1回にし、unsubscribe後は再取得せず、
+  remount後は再購読する。(A3) network/offline failureは検証済みqueueと固定errorを保持する一方、
+  403 permission denialは旧queue・一時登録結果を消してerrorだけを表示する。(A4) 異なるtargetのabort/generation、
+  stale suppression、unmount cancelは既存runner/lifecycle回帰testを維持する。最小Red→Green後に
+  focused reception test、Web suite、Web typecheck、`git diff --check`を実行する。
+- **PIA / offline:** 新規PHI field・projection・保存・log・URL・metric・audit payloadは追加せず、
+  既存PatientSummaryを同じtenant/pharmacy/scopeで再取得するだけ。fixtureはsyntheticのみ。
+  network rejectionでLOCAL_ONLY / RECOVERY_SYNCへ遷移せず、local read、online event/polling、timer、
+  focus/pageshow retryも追加しない。403時のqueue・登録結果PHI消去により残留表示を防ぐ。
+- **Roles / stop / rollback:** `owner_role: sole_maintainer` はCodex root、`reviewer_roles` は
+  `independent_verifier`、`frontend_reviewer`、`privacy_compliance_reviewer` + `security_critic`。
+  API/audit/PHI scope、
+  offline mode、draft/write flow、APPROVED SSOTの変更が必要になれば停止して再計画する。
+  exact4を単一 `WP-5217A:` commitにし、rollbackはそのcommitへの `git revert <commit>`。
+  rootだけがexact-stage/commitし、push、merge、deploy、migration applyは認可外である。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
@@ -182,6 +176,16 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5211 — CSS token authority Phase A(2026-08-27)
+
+- **Status:** `COMMITTED_LOCAL 6e40b5b / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** 7 active CSSを3へ統合し、`globals.css`を唯一のtop-level token/direct-color
+  authorityにした。cascade、DOM、文言、contract、表示結果を保持し、nowrap 12件を保持6/
+  是正6へ固定した。
+- **Gate:** Red 5→Web 64 files / 739 tests、typecheck/lint/build、browser 36 route-viewports /
+  5 suites、screenshot 36/36 pixel一致、CLS最大差0、source separate gzip 13,401≤15,170、
+  compiled gzip 9,672≤10,240、`git diff --check`、frozen R2 technical reviewがPASS。
 
 ### WP-5216 — 警告階層化と実データ面の視覚昇格(2026-08-27)
 
@@ -1714,8 +1718,8 @@ gate/Git 操作は root lane 単独。R3 判定時は human pre-review record �
 | WP-5218 | Web test type boundary repair — patient search fixtureを既存 patient-context adapterへ通す | XS | R1 | WP-5214 の known typecheck blocker記録 | production consumerと同じ既存 `toPatientContextData` を再利用。exact1、production挙動・型定義・helper追加なし |
 | WP-5215 | フォーカス可視性・a11y 基盤是正(--color-focus 定義、リングコントラスト 3:1、コマンドバー focus ring) | M | R2 | WP-5210(本記録変更の着地をもって成立) | WCAG 2.4.7/1.4.11 級欠陥の是正。≤540px コントロール入替は UIX-001 §17 凍結への抵触可否を DoR で判定(抵触なら WP-5124 へ切出し)。reviewer: accessibility_ux_reviewer。OperatorPreferences 削除は human 確認(計画 v2.3 §7-6)後のみ |
 | WP-5216 | 警告階層化と実データ面の視覚昇格(gate 説明の正本 1 箇所+参照化、文言テスト同時改版) | L | R2 | WP-5214、WP-5215 | gate ID・誤読防止文の削除禁止(面単位隣接性不変条件)。gate 文言階層化の最終解釈は human(計画 v2.3 §7-4)。reviewer: medical_safety_reviewer 候補 |
-| WP-5211 | CSS トークン基盤統合 Phase A(§8 Stage 1 の改番後継 entry の Acceptance/Stop を継承。7 層→3 ファイル、nowrap 12 件全数棚卸し(allowlist 6〔sr-only 4+固定短文 2、保持〕/ 是正 6)) | L | R2 | WP-5216 `0782d86` + 着手 gate(2026-08-27「着手して」) | 視覚差分ゼロはスクリーンショット比較+browser gate で証跡化。maker≠checker。reviewer: technical(CSS/regression) |
-| WP-5217 | contract-first 結線強化 — slice A: 自動更新(visibilitychange 再取得ほか)/ slice B: 単一対象 read | A=M, B=M | DoR で確定(先取りしない) | WP-5210(本記録変更の着地をもって成立)、WP-5214。slice B は右記 gate | **slice B は 3 gate すべて成立まで着手禁止(fail-closed)**: API-006 §7 CONTRACT_CHANGE_REQUEST 承認+MOD-008 監査 event 判定+PHI/PII 影響評価(SEC-004 PIA)。reviewer: security/privacy 系必須 |
+| WP-5211 | CSS トークン基盤統合 Phase A(7 層→3 ファイル、nowrap 保持6/是正6) | L | R2 | `COMMITTED_LOCAL 6e40b5b` | 視覚差分ゼロ、10 KiB compiled CSS、frozen technical review PASS。push/mergeなし |
+| WP-5217 | contract-first 結線強化 — A: 受付一覧hidden→visible再取得 / B: 単一対象 read | A=S, B=M | A=R2、B=未確定 | AはWP-5211 `6e40b5b`、Bは右記3 gate | Aは§3 exact4 DoRに限定。**Bは API-006 §7 CONTRACT_CHANGE_REQUEST + MOD-008 event判断 + SEC-004 PIA の全成立まで着手禁止** |
 
 ### 17.3 UI/UX design debt ledger(UIX-001 §16.2 様式)
 

@@ -1,45 +1,37 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-27, WP-5211 candidate + 10 KiB CSS budget):**
+> **ACTIVE SNAPSHOT (2026-08-27, WP-5211 landed + WP-5217A claim):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** current user instruction 2026-08-27「着手して」は、WP-5216後の
-  WP-5211 Phase Aを開始し、7 active CSSを3へ統合して単一token authorityへ収束するhuman start
-  gateを充足した。続く「css予算上限を緩和」はcompiled CSS gzip上限を固定10 KiB(10,240 bytes)
-  へ再設定した。source separate-file gzip非増加、pixel差0、CLS非増加は緩和しない。
-  Codex rootだけが `active_root_writer` である。
-- **Git boundary:** current branch `refactor/wp-5211-css-token-authority`、base/HEAD
-  `0782d860b4fabcca802f60f24fb7395d4146633c`。WP-5216は同HEADでlocal landing済み。
-  WP-5211はuncommitted candidateで、push / mergeは行わない。
-- **Dirty ownership:** WP-5211 exact9 と Plans.md / State.md のexact11だけを本local landing対象とする。
-  `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` と secondary worktree の既存差分は
-  user-owned / protectedであり、参照、cleanup、merge、stageを行わない。
-- **Active plan:** Plans.md §17 の順序を維持し、CURRENT=WP-5211 CSS token authority Phase A /
-  READY=0。exact paths、token/cascade/nowrap acceptance、測定gate、rollbackは Plans.md §3 CURRENT
-  recordを正本とする。
-- **WP-5211 boundary:** `globals.css` / `legacy.css` / `operator-first.css`へ既存CSS本文を同一順で統合し、
-  4 refinement CSSを削除、layout direct importを2つへ縮約する。top-level tokenとhex/rgb/rgba直値は
-  globalsへ集約する。DOM、文言、ARIA、contract、API、schema、domain state、dependency、
-  APPROVED SSOTは変更しない。nowrapは保持6 / 是正6のexact allowlist以外を増減しない。
-- **Pre-plan resolution:** UIX-001 §13.1のfile列挙は `source_snapshot_commit=9786fe8` のinventory、
-  §13.2がPhase A authorityであるため事前PRC-007改版は不要と判定した。read-only reviewer 1件は
-  SSOT更新をblocker、別reviewerはPASSと判断したため、Oracle 0.18.0 / verified GPT-5.6 Sol /
-  Pro thinkingで照合し、source実装着手可を確認した。Oracleはadvisoryでapprovalではない。
-- **Validation:** source baselineは7 files / 1,815 lines / 58,528 raw / separate gzip 15,170 /
-  concatenated gzip 12,361 bytes、compiledは47,660 raw / gzip 9,036 bytes。candidateは3 files /
-  1,871 lines / 62,548 raw / separate gzip 13,401 / concatenated gzip 12,682 bytes、compiledは
-  51,896 raw / gzip 9,672 bytesで、source baselineとfixed 10 KiB(10,240)の両gateを満たす。
-  Red 5→Web 64 files / 739 tests、typecheck / lint / build、static token / nowrap / cascade、
-  screenshot 36/36 pixel一致、CLS最大差0、browser 36 route-viewports / 5 suites(Axe critical/serious 0、
-  console error 0)、`git diff --check`がPASS。残るlanding gateはfrozen R2 technical reviewだけである。
-- **Preserved WP-5214 stop:** instant→JST helper共通化は APPROVED MOD-011 §4 が事前改版を要求するため
-  `SSOT_UPDATE_REQUIRED`。既存local変換も変更しない。
-- **Preserved WP-5213 gap:** UIX-001 P-11 の二段階確認要素のみを充足した。権限確認要素は
-  production 認証(WP-5121、BLOCKED_SECURITY_REVIEW)未着地のため未充足である。
-- **持ち越し human 検証債務:** WP-5212 の満年齢表示に対する PRC-003 #8 PIA は
-  Plans.md §3 の 2026-08-27 human approval recordで充足済み。一方、screen reader 実機・
-  200% 拡大手動確認・warning-fatigue 実利用者評価・薬剤師/請求事務/accessibility/privacy の
-  全体レビューは pending のまま(計画 v2.3 §7-8)。前者を後者の完了やcode_closedと読み替えない。
+- **Direction / ownership:** WP-5211はlocal commit `6e40b5b`へ着地済み。current requestの全体
+  refactoringを継続し、次の最小complete sliceとしてWP-5217Aだけをclaimする。Codex rootだけが
+  `active_root_writer`、state-mutating validator、stager、committerである。
+- **Git boundary:** current branch `refactor/wp-5217a-reception-visibility-refresh`、base/HEAD
+  `6e40b5b1deecbd17822d4d182b0a562420aec94c`。push / mergeは行わない。
+- **Dirty ownership:** `apps/web/app/reception-dashboard.tsx`、同 `.test.tsx`、`Plans.md`、
+  `State.md` のexact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、
+  `ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
+- **Active plan / boundary:** CURRENT=WP-5217A / READY=0。既存 `GET /reception/queue`、
+  queue runner、explicit target trackerだけを再利用し、hidden→visible edgeで最新の明示targetを
+  再取得する。同一pending targetはjoinし、連続visibleは抑止する。API、contract、schema、audit
+  registry、APPROVED SSOT、dependency、CSS、copyは変更しない。
+- **Security / privacy / offline:** 既存PatientSummary PHIを同じtenant/pharmacy/scopeで再取得するだけで、
+  新規PHI field・保存・log・URL・metric・audit payloadはない。fixtureはsyntheticのみ。
+  network/offline failureは検証済みqueueと固定errorを保持し、LOCAL_ONLY / RECOVERY_SYNC遷移、
+  local read、polling、timer、focus/pageshow retryを追加しない。403 permission denialだけは旧queueと
+  一時登録結果を消して、PHI残留を防ぐ。
+- **Process gate:** 初回pre-planのDoR/PIA/配線test/rollback、visible連打、403旧PHI保持findingを
+  本snapshotとPlans.md §3へ反映し、再review 2系統はPASS。残るR2 checkerは
+  `independent_verifier` + `frontend_reviewer` + `privacy_compliance_reviewer` / `security_critic`で
+  更新candidateを再確認し、全PASS・finding 0。root exact-stage local landingだけを残す。
+- **Validation / rollback:** 最小Red→Green、focused reception test、Web suite/typecheck、
+  `git diff --check`を要求。実測は403旧queue保持、visibility購読なし、403一時登録結果clear未配線の
+  Red 3件をGreen化し、focused 168 testsとWeb typecheckがPASS。初回frozen reviewのcallback観測盲点と
+  登録結果PHI残留findingは是正済み。Web 64 files / 740 tests、`git diff --check`、更新candidateの
+  frozen R2 review 3観点もPASS。
+  exact4の単一 `WP-5217A:` commitを作り、rollbackは確定commitへの `git revert <commit>`。
+- **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
+  decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、
   薬剤師確認・確定、migration apply、production/deploy は未解消のまま。SSOT_BLOCKED 4 画面
   (`/checkout` `/claim-check` `/masters` `/monthly-closing`)は、実在データのみ表示し、

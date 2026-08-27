@@ -94,6 +94,7 @@ const trustedReceptionErrorNotices = new WeakMap<object, ErrorNoticeProps>();
  * ネットワーク失敗・応答喪失・5xx・応答形式違反は結果不明として扱う。
  */
 const settledReceptionCreateFailures = new WeakSet<object>();
+const queuePermissionDeniedFailures = new WeakSet<object>();
 
 export function isSettledReceptionCreateFailure(error: unknown): boolean {
   return (
@@ -189,11 +190,13 @@ export async function fetchReceptionQueue(
   if (!res.ok) {
     const errorCode = await extractErrorCode(res, "queue");
     if (res.status === 403) {
-      throw createTrustedReceptionError(
+      const error = createTrustedReceptionError(
         "権限がありません。",
         "管理者に権限(reception:read / patient:read)の付与状況を確認してください。",
         errorCode,
       );
+      queuePermissionDeniedFailures.add(error);
+      throw error;
     }
     if (res.status === 400) {
       throw createTrustedReceptionError(
@@ -576,6 +579,7 @@ export function createReceptionQueueRunner(
     signal: AbortSignal,
   ) => Promise<ReceptionQueueResponse>,
   emit: (update: QueueStateUpdate) => void,
+  onPermissionDenied?: () => void,
 ): ReceptionQueueRunner {
   let generation = 0;
   let latestFlight:
@@ -676,8 +680,14 @@ export function createReceptionQueueRunner(
       }
 
       const notice = queueLoadErrorNotice(outcome.error);
+      const permissionDenied =
+        typeof outcome.error === "object" &&
+        outcome.error !== null &&
+        queuePermissionDeniedFailures.has(outcome.error);
+      if (permissionDenied) onPermissionDenied?.();
       emit((prev) => {
         if (gen !== generation) return prev;
+        if (permissionDenied) return { kind: "error", notice };
         return prev.kind === "loaded"
           ? {
               ...prev,
@@ -881,6 +891,25 @@ export function createReceptionQueueTargetTracker(initialTarget: string) {
   };
 }
 
+export function subscribeReceptionQueueRefreshOnVisible(
+  source: {
+    readonly visibilityState: DocumentVisibilityState;
+    addEventListener(type: "visibilitychange", listener: () => void): void;
+    removeEventListener(type: "visibilitychange", listener: () => void): void;
+  },
+  targetTracker: ReturnType<typeof createReceptionQueueTargetTracker>,
+  refresh: (targetDate: string) => void,
+): () => void {
+  let visible = source.visibilityState === "visible";
+  const onVisibilityChange = () => {
+    const wasVisible = visible;
+    visible = source.visibilityState === "visible";
+    if (visible && !wasVisible) refresh(targetTracker.current());
+  };
+  source.addEventListener("visibilitychange", onVisibilityChange);
+  return () => source.removeEventListener("visibilitychange", onVisibilityChange);
+}
+
 export function ReceptionQueueView({
   state,
   selectedPatientId,
@@ -1036,6 +1065,10 @@ export function ReceptionDashboard() {
         (requestedDate, signal) =>
           fetchReceptionQueue(requestedDate, fetch, signal),
         (update) => setQueue((prev) => update(prev)),
+        () => {
+          setRegistered(null);
+          setRegisterNotice(null);
+        },
       );
     }
     if (!lifecycle.isMounted()) return;
@@ -1058,7 +1091,14 @@ export function ReceptionDashboard() {
       setDate(fromUrl);
     }
     void load(fromUrl ?? date);
+    const unsubscribeVisibilityRefresh =
+      subscribeReceptionQueueRefreshOnVisible(
+        document,
+        queueTargetTracker,
+        (targetDate) => void load(targetDate),
+      );
     return () => {
+      unsubscribeVisibilityRefresh();
       lifecycle.unmount();
       loadRunner.current?.cancelActive();
     };

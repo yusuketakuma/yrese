@@ -31,6 +31,7 @@ import {
   receptionQueueMetrics,
   ReceptionQueueMetricsView,
   registrationPatientChangeNotice,
+  subscribeReceptionQueueRefreshOnVisible,
   submitReceptionRegistration,
   type QueueState,
   todayAsIsoDate,
@@ -1172,9 +1173,9 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(JSON.stringify(initialStates.at(-1))).not.toContain("2099-12-31");
   });
 
-  it("emits nothing for stale A/B success, failure, or mismatch after current C wins", async () => {
+  it("ignores stale mismatches and trusted 403 failures after current C wins", async () => {
     const staleSuccess = deferredValue<ReceptionQueueResponse>();
-    const staleFailure = deferredValue<ReceptionQueueResponse>();
+    const stalePermissionDenied = deferredValue<Response>();
     const states: QueueState[] = [
       {
         kind: "loaded",
@@ -1185,18 +1186,30 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     const fetcher = vi
       .fn<(target: string) => Promise<ReceptionQueueResponse>>()
       .mockImplementationOnce(() => staleSuccess.promise)
-      .mockImplementationOnce(() => staleFailure.promise)
+      .mockImplementationOnce((target) =>
+        withNodeEnv("development", () =>
+          fetchReceptionQueue(
+            target,
+            vi.fn(() => stalePermissionDenied.promise),
+          ),
+        ),
+      )
       .mockResolvedValueOnce(queueResponse("2026-07-12"));
-    const run = createReceptionQueueRunner(fetcher, (update) => {
-      states.push(update(states[states.length - 1]!));
-    });
+    const clearSensitiveState = vi.fn();
+    const run = createReceptionQueueRunner(
+      fetcher,
+      (update) => {
+        states.push(update(states[states.length - 1]!));
+      },
+      clearSensitiveState,
+    );
 
     const a = run("2026-07-10");
     const b = run("2026-07-11");
     await run("2026-07-12");
     const countAfterC = states.length;
     staleSuccess.resolve(queueResponse("2099-12-31"));
-    staleFailure.reject(new Error("stale B failure"));
+    stalePermissionDenied.resolve(jsonResponse(403, { errorCode: "AUTH-0003" }));
     await Promise.all([a, b]);
 
     expect(states).toHaveLength(countAfterC);
@@ -1205,6 +1218,7 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
       response: { date: "2026-07-12" },
       refreshState: { kind: "idle" },
     });
+    expect(clearSensitiveState).not.toHaveBeenCalled();
   });
 
   it("renders refresh source qualifiers before retained nonempty and empty content while idle stays unchanged", () => {
@@ -1848,7 +1862,7 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(Object.isFrozen(notice)).toBe(true);
   });
 
-  it("uses the frozen creation snapshot after a trusted error is mutated", async () => {
+  it("uses the frozen trusted 403 snapshot and clears a previously verified queue", async () => {
     let trustedError: unknown;
     try {
       await withNodeEnv("development", () =>
@@ -1877,10 +1891,20 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     const fetcher = vi
       .fn<() => Promise<ReceptionQueueResponse>>()
       .mockRejectedValue(trustedError);
-    let state: QueueState = { kind: "loading" };
-    const run = createReceptionQueueRunner(fetcher, (update) => {
-      state = update(state);
-    });
+    const clearSensitiveState = vi.fn();
+    let state: QueueState = {
+      kind: "loaded",
+      response: queueResponse("2026-07-09", [entry({ receptionId: "stale-phi" })]),
+      loadedAt: "08:15",
+      refreshState: { kind: "idle" },
+    };
+    const run = createReceptionQueueRunner(
+      fetcher,
+      (update) => {
+        state = update(state);
+      },
+      clearSensitiveState,
+    );
 
     await run("2026-07-10");
 
@@ -1898,6 +1922,7 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(Object.isFrozen(finalState.notice)).toBe(true);
     expect(JSON.stringify(finalState)).not.toContain("raw mutated reception");
     expect(JSON.stringify(finalState)).not.toContain("SYSTEM-9999");
+    expect(clearSensitiveState).toHaveBeenCalledOnce();
   });
 
   it("maps 409 idempotency conflicts to a duplicate-operation notice (RCV-0003)", async () => {
@@ -2743,6 +2768,107 @@ describe("createReceptionQueueTargetTracker", () => {
     load(restored);
 
     expect(tracker.current()).toBe("2026-07-15");
+  });
+});
+
+describe("subscribeReceptionQueueRefreshOnVisible", () => {
+  it("wires hidden-visible edges to the explicit target and cleans up across remount", async () => {
+    let visibilityState: DocumentVisibilityState = "visible";
+    const listeners = new Set<() => void>();
+    const source: Parameters<typeof subscribeReceptionQueueRefreshOnVisible>[0] = {
+      get visibilityState() {
+        return visibilityState;
+      },
+      addEventListener: (_type, listener) => listeners.add(listener),
+      removeEventListener: (_type, listener) => listeners.delete(listener),
+    };
+    const dispatchVisibility = (next: DocumentVisibilityState) => {
+      visibilityState = next;
+      for (const listener of listeners) listener();
+    };
+    const first = deferredValue<ReceptionQueueResponse>();
+    const cancelled = deferredValue<ReceptionQueueResponse>();
+    const signals: AbortSignal[] = [];
+    let call = 0;
+    const fetcher = vi.fn((target: string, signal: AbortSignal) => {
+      call += 1;
+      signals.push(signal);
+      if (call === 1) return first.promise;
+      if (call === 4) return cancelled.promise;
+      return Promise.resolve(queueResponse(target));
+    });
+    let state: QueueState = { kind: "loading" };
+    const runner = createReceptionQueueRunner(fetcher, (update) => {
+      state = update(state);
+    });
+    const tracker = createReceptionQueueTargetTracker("2026-07-10");
+    const load = vi.fn((target: string) => {
+      tracker.mark(target);
+      return runner(target);
+    });
+    const unsubscribe = subscribeReceptionQueueRefreshOnVisible(
+      source,
+      tracker,
+      load,
+    );
+
+    const initial = load("2026-07-10");
+    const typedButNotSubmitted = "2026-07-11";
+    dispatchVisibility("hidden");
+    expect(load).toHaveBeenCalledOnce();
+    dispatchVisibility("visible");
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(load).toHaveBeenLastCalledWith("2026-07-10");
+    dispatchVisibility("visible");
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(fetcher.mock.calls[0]?.[0]).toBe("2026-07-10");
+    expect(fetcher.mock.calls.map(([target]) => target)).not.toContain(
+      typedButNotSubmitted,
+    );
+
+    first.resolve(queueResponse("2026-07-10"));
+    await initial;
+    await load("2026-07-12");
+    dispatchVisibility("visible");
+    expect(load).toHaveBeenCalledTimes(3);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    dispatchVisibility("hidden");
+    dispatchVisibility("visible");
+    expect(load).toHaveBeenCalledTimes(4);
+    expect(load).toHaveBeenLastCalledWith("2026-07-12");
+    expect(fetcher.mock.calls.map(([target]) => target)).toEqual([
+      "2026-07-10",
+      "2026-07-12",
+      "2026-07-12",
+    ]);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    unsubscribe();
+    dispatchVisibility("hidden");
+    dispatchVisibility("visible");
+    expect(load).toHaveBeenCalledTimes(4);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+
+    const unsubscribeRemount = subscribeReceptionQueueRefreshOnVisible(
+      source,
+      tracker,
+      load,
+    );
+    dispatchVisibility("visible");
+    dispatchVisibility("hidden");
+    dispatchVisibility("visible");
+    expect(load).toHaveBeenCalledTimes(5);
+    expect(fetcher).toHaveBeenCalledTimes(4);
+    unsubscribeRemount();
+    runner.cancelActive();
+    expect(signals[3]?.aborted).toBe(true);
+    dispatchVisibility("hidden");
+    dispatchVisibility("visible");
+    expect(load).toHaveBeenCalledTimes(5);
+    expect(fetcher).toHaveBeenCalledTimes(4);
+    cancelled.resolve(queueResponse("2026-07-12"));
   });
 });
 
