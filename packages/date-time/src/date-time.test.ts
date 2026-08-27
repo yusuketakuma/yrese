@@ -159,6 +159,58 @@ describe("ClaimMonth", () => {
     expect(ClaimMonth.fromCalendarDate(CalendarDate.fromString("2026-12-31")).toString()).toBe("2026-12");
   });
 
+  it.each([
+    [{ year: 2026, month: 13, day: 1 }, "month must be between 1 and 12"],
+    [{ year: 0, month: 1, day: 1 }, "year must be between 1 and 9999"],
+    [
+      { year: Number.MAX_SAFE_INTEGER + 1, month: 1, day: 1 },
+      "year must be a safe integer",
+    ],
+  ] as const)("rejects invalid type-erased CalendarDate parts %#", (parts, expectedMessage) => {
+    const create = () => ClaimMonth.fromCalendarDate(parts as unknown as CalendarDate);
+
+    expect(create).toThrow(RangeError);
+    expect(create).toThrow(new RangeError(expectedMessage));
+  });
+
+  it("snapshots parts before validating and constructing", () => {
+    let yearReads = 0;
+    let monthReads = 0;
+    const claimMonth = ClaimMonth.fromParts({
+      get year() {
+        yearReads += 1;
+        return yearReads === 1 ? 2026 : 0;
+      },
+      get month() {
+        monthReads += 1;
+        return monthReads === 1 ? 12 : 13;
+      },
+    });
+
+    expect({ yearReads, monthReads, value: claimMonth.toString() }).toEqual({
+      yearReads: 1,
+      monthReads: 1,
+      value: "2026-12",
+    });
+  });
+
+  it("rejects an invalid year before reading month", () => {
+    let monthReads = 0;
+    const create = () =>
+      ClaimMonth.fromParts({
+        get year() {
+          return 0;
+        },
+        get month(): number {
+          monthReads += 1;
+          throw new Error("month getter must not run");
+        },
+      });
+
+    expect(create).toThrow(new RangeError("year must be between 1 and 9999"));
+    expect(monthReads).toBe(0);
+  });
+
   it("compares, advances, and rewinds across year boundaries", () => {
     const december = ClaimMonth.fromString("2026-12");
     const january = ClaimMonth.fromString("2027-01");

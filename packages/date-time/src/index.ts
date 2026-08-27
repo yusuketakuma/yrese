@@ -261,13 +261,15 @@ export class ClaimMonth {
   }
 
   static fromParts(parts: ClaimMonthParts): ClaimMonth {
-    assertYear(parts.year);
-    assertMonth(parts.month);
-    return new ClaimMonth(parts.year, parts.month);
+    const year = parts.year;
+    assertYear(year);
+    const month = parts.month;
+    assertMonth(month);
+    return new ClaimMonth(year, month);
   }
 
   static fromCalendarDate(date: CalendarDate): ClaimMonth {
-    return new ClaimMonth(date.year, date.month);
+    return ClaimMonth.fromParts(date);
   }
 
   compare(other: ClaimMonth): -1 | 0 | 1 {

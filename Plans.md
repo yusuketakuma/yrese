@@ -34,21 +34,21 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5237 は local commit `fbf8557`。WP-5238 は同 commit から `refactor/wp-5238-audit-control-char-primitive-guard` を作成済み |
+| Candidate branch | WP-5238 は local commit `ab05c4c`。WP-5239 は同 commit から `refactor/wp-5239-claim-month-calendar-date-validation` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | audit envelope IDのcontrol-char検査前coercionを既存string validatorで遮断する exact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5237 local landing、date-time terminal-line候補NOT_A_BUG、WP-5238 frozen reviews / record rereviews finding 0・local landing pending、compiled CSS予算12 KiBを維持) |
+| Candidate scope | ClaimMonth partsを1回snapshotして同一値を検証・構築し、CalendarDate導出も同factoryへ集約する exact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5238 local landing、WP-5239 review Medium閉鎖・final frozen reviews finding 0・local landing pending、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5238 exact2 code/testで、`assertNoControlChars`がtype-erased IDをregex coercionしてから拒否するgapを既存validator 1行reuseで閉じる |
-| Main blocker | live trace、pre-plan、Red→Green、affected gates、frozen independent + audit/security review、Low record drift closure、record rereviews finding 0は完了。exact-stageとlocal landingを残す。WP-5235はSSOT-first gate、WP-5226は元exact4不完結でdefer中 |
-| Required verification | pre-planでREADYならaudit focused/package Red→Green・typecheck、events package/typecheck、API typecheck、boundaries、exact4 path-set/diff、risk相応のfrozen reviewsを要求する |
+| Current critical path | WP-5239 exact2 code/test候補で、`ClaimMonth.fromParts`のcheck/use再読と`fromCalendarDate`のvalidation迂回をsnapshot + factory reuseで同時に閉じる |
+| Main blocker | initial frozen reviewsのMediumはRed→Greenで閉鎖し、affected gatesとfinal frozen reviews finding 0まで完了。record rereview、exact stage、local landingを残す。WP-5235はSSOT-first gate、WP-5226は元exact4不完結でdefer中 |
+| Required verification | pre-planでREADYならdate-time focused/package Red→Green・typecheck、calculation affected gates、boundaries、exact4 path-set/diff、frozen independent + date-time/data-integrity reviewを要求する |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5238である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5239である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,45 +73,54 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5238(audit control-char primitive guard、R2 READY)1 件である。**
-WP-5237 は local commit `fbf8557` で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5239(ClaimMonth parts snapshot + CalendarDate validation reuse、R2 READY)1 件である。**
+WP-5238 は local commit `ab05c4c` で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** audit側`assertNoControlChars`がprimitive検証なしに`RegExp.test(value)`を実行するため、type-erased envelope IDの
-  attacker-controlled `toString`/`Symbol.toPrimitive`を呼んでから後段`createEventEnvelope`で拒否するroot causeを修正する。
-  既存`assertNonEmptyString(value, label)`をhelper冒頭で1回再利用し、検証前coercionを遮断する。新helper/regex/error textは作らない。
-- **Allowed / forbidden:** exact4候補は `packages/audit/src/index.ts`、`packages/audit/src/audit.test.ts`、`Plans.md`、`State.md`。
-  それ以外、特に`@yrese/events`、EventEnvelope/AuditEvent schema、event registry、hash/canonical payload、valid output、API/DB、
-  package/dependency、UI/CSS、APPROVED SSOT、schema/migrationは変更禁止。保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** APPROVED SEC-007は`@yrese/audit` pure coreとPHI-free/tamper-evident境界を正本化する。APPROVED MOD-009は
-  `@yrese/events`をEventEnvelope正本とし「変更はSSOT改版→review→実装」と明記する。提案はevents/schema/valid semanticsを変えず、
-  audit wrapperが既存events primitive rejectionより前に副作用なく同じTypeErrorへ閉じる内部hardeningである。read-only pre-plan reviewは
-  MOD-009/SEC-007改版不要、R2、追加human gate不要をfinding 0で確認した。events/schema/valid semanticsへ広がる場合は停止する。
-- **Evidence / acceptance:** tracked callerはaudit core内部とAPI audit repository。live synthetic eventId objectは最終的に
-  `TypeError("eventId must be a string")`だが、その前にcoercion 1回を再現した。(A1)同TypeError/messageを維持しcoercion 0回。
-  (A2)required/optional envelope IDのprimitive/non-empty/control-char behaviorを維持する。(A3)valid AuditEvent、canonical payload、entry hash、
-  registry、PHI classification、events consumer出力をbyte-for-byte preserveする。(A4)production差分は既存helper call 1行だけ。
-- **PIA / offline:** fixtureはsynthetic ID/object/counterと既存synthetic audit eventだけで、患者・資格・請求data、credential、production data、
-  PHI/PII、保存、log、external send、network、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。mapper、root live trace、read-only pre-plan finding 0は完了。
-  valid semantics/hash/schema/永続化/認可を変えないR2で、追加human gateはない。`reviewer_roles`は`pre_plan_reviewer`、
-  `independent_verifier`、`audit_security_data_integrity_reviewer`。MOD-009/SEC-007改版、
-  error contract/hash/valid output、events/API/DB、別path変更が必要なら停止。READY後exact4を単一`WP-5238:` commit、rollbackは確定commitへの
-  `git revert <commit>`。rootだけがvalidator/stager/committer。push、merge、deploy、migration/DDL/DMLは認可外。timeboxはREADY後の
-  active root作業60分(外部review待ち除外)または単一TDD/review/commit cycleの早い方。
+- **Purpose / layer:** `ClaimMonth.fromCalendarDate`がprivate constructorを直接呼びyear/month検証を迂回し、既存`fromParts`も
+  検証後にaccessorを再読して構築するため、plain invalid partsとchanging getterの双方からinvalid ClaimMonthを生成できるroot causeを
+  修正候補とする。`fromParts`でyearを読んで検証後にmonthを読んで検証し、同じlocal値で構築する。`fromCalendarDate`も同factoryへrouteする。
+  新validator/error/型は作らない。
+- **Allowed / forbidden:** exact4候補は `packages/date-time/src/index.ts`、`packages/date-time/src/date-time.test.ts`、`Plans.md`、`State.md`。
+  それ以外、特にCalendarDate/ClaimMonthのpublic type/signature、valid formatting/compare/next/prev、timezone、claim-month締め意味論、
+  calculation/API/DB、package/dependency、UI/CSS、APPROVED SSOT、schema/migrationは変更禁止。保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** APPROVED MOD-011は`@yrese/date-time`を診療系暦日正本とし、APPROVED MOD-004はClaimMonthを
+  CalendarDate導出の値objectとして登録する。既存`fromParts`がClaimMonth year/month invariantの単一validatorであり、仕様追加ではなく
+  factory間driftの収束候補である。GBrain code sourceにyreseがなくblastは`not_found`のためlive tracked code/callerを正本にした。
+  tracked direct callerは既存testだけだがpublic exported runtime factoryである。live plain objectは`2026-13`を生成した。changing getterでは
+  fromPartsがyear/monthを各2回読み`0000-13`を生成した。既存fromPartsはstable month=13を
+  `RangeError("month must be between 1 and 12")`で拒否し、valid CalendarDateは`2026-08`を維持した。
+- **Acceptance / tests:** (A1)type-erased invalid month/year/unsafe integerは既存assertionのexact RangeError/messageで拒否する。
+  (A2)changing getterのyear/monthは各1回だけsnapshotされ、検証した`2026-12`と同じ値を構築する。(A3)actual CalendarDateからの
+  year/month/toStringとfromString/fromParts/compare/next/prev結果は不変。(A4)production差分はClaimMonth.fromPartsのlocal snapshotと
+  fromCalendarDateの既存factory routingだけ。(A5)timezone、月次締め、算定・請求意味論を変更しない。
+- **PIA / offline:** fixtureはsynthetic number objectだけで、患者・処方・請求data、credential、production data、PHI/PII、保存、log、
+  external send、network、cache、retry/offline stateを追加しない。
+- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。read-only mapperとroot live traceは完了。pre-planはR2、
+  MOD-004/MOD-011改版不要、追加human gate不要を確認し、1行案のTOCTOU findingを本snapshot + routingへ訂正後finding 0でREADYとした。
+  `reviewer_roles`は`pre_plan_reviewer`、`independent_verifier`、
+  `date_time_data_integrity_reviewer`。CalendarDate.fromPartsの同型gapは別候補で、package-wide invariant完了を主張しない。
+  valid behavior、timezone/締め境界、calculation/API/DB、別path変更が必要なら停止。READY後exact4を単一`WP-5239:` commit、
+  rollbackは確定commitへの`git revert <commit>`。
+  rootだけがvalidator/stager/committer。push、merge、deploy、migration/DDL/DMLは認可外。timeboxはREADY後のactive root作業60分
+  (外部review待ち除外)または単一TDD/review/commit cycleの早い方。
 - **Validation evidence (UTC / exact command):**
-  - `2026-08-27T22:50:01Z` `pnpm --filter @yrese/audit exec vitest run src/audit.test.ts` → exit 1
-    (expected Red: envelope ID 6件がcoercion 1回、既存60件と先行guard済みactorIdはPASS)。
-  - `2026-08-27T22:50:12Z` 同command → exit 0、66/66 PASS。test refactor後の`22:51:13Z`再実行も66/66 PASS。
-  - `2026-08-27T22:51:13Z` `pnpm --filter @yrese/audit test` → 202/202 PASS、続くaudit typecheck exit 0。
-  - `2026-08-27T22:50:29Z` `pnpm --filter @yrese/events test` → 46/46 PASS、続くevents typecheck exit 0。
-  - `2026-08-27T22:50:30Z` API typecheckと`pnpm check:boundaries` → 各exit 0。
-  - code/test frozen SHA-256は`105d63f13e321890c2580f2b19e1372acafcfb2d59b1e034d041f449a6e7d01d`、
-    reviewed exact4 packet SHA-256は`fd4bb42702227a6b60506130032ff385c77c6ca96eeb7e557dc95a76b4259154`。
-    frozen audit/security/data-integrity reviewはfinding 0。independent reviewはcode finding 0、`State.md`のpre-plan時点dirty表現だけを
-    Lowとし、本record-only更新で閉じた。final record rereviewsは両者finding 0。DB integration、network、production runtimeは実行しない。
+  - `2026-08-27T23:22:16Z` `pnpm --filter @yrese/date-time exec vitest run src/date-time.test.ts` → exit 1
+    (expected Red: invalid CalendarDate 3件がthrowせず、changing getterは2回ずつ読まれ`0000-13`を生成。既存13件PASS)。
+  - `2026-08-27T23:22:35Z` 同command → exit 0、17/17 PASS。
+  - initial frozen independent + date-time/data-integrity reviewsは同じMediumを検出した。simultaneous destructureがinvalid yearの検証前に
+    hostile month getterを実行し、既存year RangeError/error precedenceを破るため、sequential read/assertへ訂正した。
+  - `2026-08-27T23:30:03Z` 同focused command → exit 1(expected Red: hostile month getter Error、既存17件PASS)。
+    `23:30:14Z` → 18/18 PASS。fixture型注釈後の`23:30:51Z`最終focusedも18/18 PASS。
+  - `2026-08-27T23:30:52Z` `pnpm --filter @yrese/date-time test` → 18/18 PASS、続くdate-time typecheck exit 0。
+  - `2026-08-27T23:30:53Z` `pnpm --filter @yrese/calculation test` → 90/90 PASS、続くcalculation typecheck exit 0。
+  - `2026-08-27T23:30:54Z` `pnpm check:boundaries` → exit 0。code/test frozen SHA-256は
+    `930e3e41a0fe4e9846eda27c0dff577606b97fdaea8feae8512e451fad7777a8`、reviewed exact4 packet SHA-256は
+    `dbc5dbff1410c4e064ac563c87b13b992549f13b6b610e7327a06f2a5149f82c`。final independent + date-time/data-integrity
+    rereviewsはともにfinding 0。DB integration、network、production runtimeは実行しない。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
+| CalendarDate.fromParts accessor snapshot | WP-5239外のfollow-up候補。changing getterで`0000-13-32`生成をlive再現したが、ClaimMonth限定sliceへ混ぜない | packages/date-time live runtime / MOD-004 / MOD-011 |
 | date-time terminal-line candidate | NOT_A_BUG。live Node 26/V8でCalendarDate/ClaimMonthはLF/CR/CRLF/U+2028/U+2029 suffixを既にRangeError拒否 | packages/date-time live runtime / MOD-011 |
 | WP-5235 EventEnvelope root input guard | SSOT_UPDATE_REQUIRED。APPROVED MOD-009がSSOT改版→review→実装を要求するため未着手 | MOD-009 / live package trace |
 | WP-4250 | FINALIZED / APPROVED(SSOT 改版のみ)。local commit `89275d2` | 下の決定記録 |
@@ -182,6 +191,14 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5238 — Audit identifier primitive guard(2026-08-28)
+
+- **Status:** `COMMITTED_LOCAL ab05c4c / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** auditのcontrol-char helperへ既存string validatorを1行reuseし、7 envelope IDのtype-erased objectをregex coercion前に拒否。
+  events/schema/hash/registry/API/DB、SEC-007/MOD-009は不変。
+- **Gate:** expected Red 6件→audit focused 66/package 202、events 46、audit/events/API typecheck、boundaries、path/diff PASS。
+  frozen independent/audit-security-data-integrityとrecord rereviewsはfinding 0。
 
 ### WP-5237 — Eligibility transition primitive guard(2026-08-28)
 
