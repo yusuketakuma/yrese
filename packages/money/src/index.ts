@@ -208,7 +208,7 @@ export class ScaledDecimal {
   }
 
   round(options: RoundOptions): ScaledDecimal {
-    assertSafeScale(options.scale);
+    assertSafeScale(options?.scale);
     assertRoundingMode(options.mode);
 
     if (options.scale >= this.scale) {

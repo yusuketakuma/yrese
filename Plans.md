@@ -34,21 +34,21 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5233 は local commit `e20bae9`。WP-5234 は同 commit から `refactor/wp-5234-dependency-audit-structured-error` を作成済み |
+| Candidate branch | WP-5234 は local commit `41e3389`。WP-5236 は同 commit から `refactor/wp-5236-money-round-options-guard` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | dependency-audit live transient判定をparsed `error.code`のexact matchへ限定する exact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5233 local landing、WP-5234 frozen reviews PASS・local landing pending、compiled CSS予算12 KiBを維持) |
+| Candidate scope | money `round`のnullish optionsを既存scale validatorへ閉じる exact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5234 local landing、WP-5235 SSOT_UPDATE_REQUIRED、WP-5236 frozen reviews finding 0・local landing pending、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5234 exact2 code/testで、malformed/spoofed live audit出力中のerror-code部分一致をwarn-passするroot causeをparsed structured code判定へ閉じる |
-| Main blocker | WP-5234のpre-plan finding 5件は計画へ反映後finding 0。Red、structured predicate、affected gates、frozen independent/dependency-security reviewはWP scope PASSし、record-only最終照合とlocal landingを残す。WP-5226は元exact4では安全に完結せずdefer中 |
-| Required verification | `pnpm test:scripts` Red→Green、対象2 scriptの`node --check`、boundaries、tracked diff check、frozen R2 reviewsを要求する |
+| Current critical path | WP-5236 exact2 code/testで、nullish round optionsが既存validatorより前のproperty accessでnative TypeErrorとなるgapを1行reuseで閉じる |
+| Main blocker | WP-5236のlive trace、pre-plan、Red→Green、affected gates、frozen independent + money/data-integrity finding 0は完了。record-only最終照合とlocal landingを残す。WP-5235はSSOT-first gate、WP-5226は元exact4不完結でdefer中 |
+| Required verification | money focused/package Red→Green・typecheck、calculation package/typecheck、calculation purity、boundaries、exact4 path-set/diff check、frozen R2 reviewsを要求する |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5234である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5236である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,56 +73,52 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5234(dependency-audit structured transient、R2)1 件である。**
-WP-5233 は local commit `e20bae9` で着地済み。READYは0件である。
+**CURRENT は WP-5236(money round nullish options guard、R2)1 件である。**
+WP-5234 は local commit `41e3389` で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** live `pnpm audit --json`失敗時に、parsed reportのshape検証後もstdout+stderr全体のsubstring regexで
-  transient判定するため、malformed/spoofed出力中の既知code文字列だけでwarn-passできるroot causeを修正する。既存JSON parse、
-  `isPlainObject`、error-code patternsを再利用し、live経路だけをroot `{ error: { code } }`のexact code判定へ閉じる。
-  `--from-audit-error`のraw captured-file判定は維持し、新dependency、policy、workflowは作らない。
-- **Allowed / forbidden:** exact4は `scripts/check-deps.mjs`、`scripts/check-scripts.mjs`、`Plans.md`、`State.md`。
-  それ以外、特に`--from-audit-error` semantics、既存code patterns/warning/failure text、severity/vulnerability count、package.json、
-  pnpm-workspace/lockfile、CI workflow、dependency/version、SBOM/secrets、apps/packages、UI/CSS、APPROVED SSOT、schema/migrationは変更禁止。
-  actual registry/network audit、保護untracked 3 pathも参照・実行・変更しない。
-- **Authority / evidence:** tracked `package.json`とCI/script harnessはpnpm 11.18.0・Node 26.6.0をexact pinし、live実測も一致した。
-  installed pnpm 11.18.0のerror handlerはreporter未初期化時にstdoutへJSON `{ error: { code, message, ... } }`を出し、
-  `META_FETCH_FAIL`を`ERR_PNPM_META_FETCH_FAIL`、HTTP failureを`ERR_PNPM_FETCH_<status>`へ正規化する。installed sourceは
-  runtime観測証拠でAPPROVED SSOTとは主張しない。tracked live callerはCIの`pnpm check:deps`、回帰harnessは`testDependencyAuditWrapper`。
-  GBrain code indexにyrese sourceがないためlive tracked code/searchを正本にした。APPROVED product SSOT/evidence_idは、dependency/version/
-  policy、法令/請求/臨床product logicを変更しないrepository tooling内部のfail-closed hardeningなので非該当とし、tracked pin/CI/harnessと
-  exact upstream runtime sourceを実装根拠とする。
-- **Acceptance / tests:** (A1)synthetic pnpmがstdoutへexact structured
-  `{ "error": { "code": "ERR_PNPM_META_FETCH_FAIL", "message": "<sentinel>" } }`を出してexit 1なら、固定warningだけでexit 0を維持し
-  raw messageを再出力しない。(A2)parsed `error.code`が既知codeをsubstringとして含むだけなら、変更前はwarn-pass、変更後は固定failureで
-  exit 1かつraw output非表示とする。(A3)exact transient codeと別top-level
-  `metadata.vulnerabilities={ info:0, low:0, moderate:0, high:1, critical:0 }`が共存するspoof reportもfixed failure/no-echoでexit 1とし、
-  vulnerability maskingを許さない。(A4)captured raw-error recognition、valid clean、parseable nonzero、malformed、vulnerable report、
-  threshold/no-echoを維持する。(A5)production差分はstructured live predicate追加、不要なraw live output連結削除、live条件置換だけとする。
-- **PIA / offline:** fixtureはsynthetic JSON/error code/count/sentinelだけで、credential、real registry URL、production data、PHI/PII、
-  保存、external send、network、cache、retry/offline stateを追加しない。実audit/networkは実行しない。
-- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。read-only mapper evidenceとrootのlive version/source/caller traceは完了。
-  `reviewer_roles`はmakerとは別の`pre_plan_reviewer`、`independent_verifier`、`dependency_security_reviewer`。supply-chain CI gateの
-  fail-open条件を狭めるR2で、法令/薬学/請求判断、dependency change、paid/external/production actionがなく追加human gateなし。
-  runtime pnpm version/JSON shapeが違う、recognized code policy変更、captured-mode semantics、workflow/dependency/lockfile/別path変更が必要なら
-  停止し再計画する。exact4を単一`WP-5234:` commitにし、rollbackは確定commitへの`git revert <commit>`。rootだけが
-  state-mutating validation、exact-stage/commitを行い、push、merge、deploy、migration applyは認可外。pre-plan初回MEDIUM 2件/LOW 3件は
-  stale batch、timebox、path-set、authority、A3 fixtureを明確化して再review finding 0。candidate freeze後はreview完了までcode/testを
-  編集しない。timeboxはpre-plan PASS後のactive root作業60分(外部review待ちを除く)または単一Red→Green→review→commit cycleの
-  早い方とし、超過時はscopeを広げず停止・再計画する。
+- **Purpose / layer:** `ScaledDecimal.round`が`options.scale`を読む前にroot optionsを検証しないため、type-erased null/undefinedだけが
+  既存`assertSafeScale`へ到達せずnative property-access `TypeError`となるroot causeを修正する。最初のscale readを
+  `options?.scale`へ変えて既存RangeError validatorへ閉じ、新helper、error text、rounding branchは作らない。
+- **Allowed / forbidden:** exact4は `packages/money/src/index.ts`、`packages/money/src/money.test.ts`、`Plans.md`、`State.md`。
+  それ以外、特にROUNDING_MODES/RoundOptions/public signature、rounding formula/scale/mode/policy/evidenceRefs、Yen/Points/constructors、
+  calculation/trace/apps/API、package/dependency、UI/CSS、APPROVED SSOT、schema/migrationは変更禁止。保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** APPROVED MOD-010 §2は`round({ scale, mode })`の明示parameter境界と既存7 modeを正本化し、CAL-010 §2.5は
+  不正入力をdeterministic typed errorへ閉じる。nullish runtime guard自体を新しい丸め政策・計算式とは主張せず、既存
+  `assertSafeScale`の内部整合として扱う。tracked `.round()` callerはmoney testだけで、calculation productionは未使用。
+  live type-erased null/undefinedはいずれもnative `TypeError`を再現した。GBrain code indexにyrese sourceがないためlive tracked codeを正本にした。
+  政策値/evidence_id、法令/請求/臨床判断は変更しない。
+- **Acceptance / tests:** (A1)null/undefined optionsは変更前native `TypeError`、変更後は既存fixed
+  `RangeError("scale must be a non-negative safe integer")`でrejectする。(A2)7 rounding modes、half境界、負値floor/ceiling、
+  explicit scale/modeの出力をexact preserveする。(A3)invalid/missing modeとconstructor/Yen/Points invalid input behaviorを維持する。
+  (A4)production差分は`options.scale`を`options?.scale`へ変える1行だけで、新validator/message/branchを追加しない。
+- **PIA / offline:** fixtureはsynthetic decimal/null/undefinedだけで、患者・処方・薬剤・請求data、credential、production data、PHI/PII、
+  保存、log、external send、network、cache、retry/offline stateを追加しない。
+- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。read-only mapper evidenceとrootのlive SSOT/caller/runtime traceは完了。
+  `reviewer_roles`はmakerとは別の`pre_plan_reviewer`、`independent_verifier`、`money_data_integrity_reviewer`。money共通境界の
+  invalid-input errorを正規化するR2だが、rounding policy/formula/valid outputを変えず追加human/domain gateなし。native TypeErrorがnormative、
+  MOD-010/CAL-010改版、rounding policy/formula/evidence_id、public API/consumer/別path変更が必要なら停止し再計画する。exact4を単一
+  `WP-5236:` commitにし、rollbackは確定commitへの`git revert <commit>`。rootだけがstate-mutating validation、exact-stage/commitを行い、
+  push、merge、deploy、migration applyは認可外。timeboxはpre-plan PASS後のactive root作業60分(外部review待ちを除く)または単一
+  Red→Green→review→commit cycleの早い方で、超過時はscopeを広げず停止・再計画する。pre-plan reviewはfinding 0で完了した。
 - **Validation evidence (UTC / exact command):**
-  - `2026-08-27T21:23:30Z` `pnpm test:scripts` → exit 1 (expected Red: 4 assertions。substring codeと
-    transient+high vulnerability混在reportがともにwarn-pass)。
-  - `2026-08-27T21:24:12Z` 同command → exit 0、`Script regression harness passed.`。
-  - `2026-08-27T21:24:43Z` `node --check scripts/check-deps.mjs`、`node --check scripts/check-scripts.mjs`、
-    `pnpm check:boundaries`、tracked `git diff --name-only` exact4 path-set比較、exact4 `git diff --check` → 各exit 0。
-  - code/test frozen SHA-256は `2f7fd648382ae861e6d454745ef8498c7554e9b3e28de360a96d1c829f2562a9`。
-    review packet exact4 SHA-256は `3a20834bb48222d24818f80164ca22e62e6f74a43b639eb55b3c30a6052b4a3b`。
-    actual registry/network auditはno-network boundaryにより未実行。frozen independent reviewはfinding 0、dependency/security reviewは
-    WP-5234 correctness PASS。後者のlocal compose mutable tagとmanifest semver rangeのP3 2件は本差分が導入していない別候補で、
-    policy/approved digest確認なしにcurrent exact4へ混在させない。record-only最終照合後にlandingする。
+  - `2026-08-27T21:45:56Z` `pnpm --filter @yrese/money exec vitest run src/money.test.ts` → exit 1
+    (expected Red: null/undefinedの2件がnative `TypeError`、15件PASS)。
+  - `2026-08-27T21:46:07Z` 同command → exit 0、17/17 PASS。
+  - `2026-08-27T21:46:24Z` `pnpm --filter @yrese/money test` → 17/17 PASS、続くmoney typecheck exit 0。
+  - `2026-08-27T21:46:25Z` `pnpm --filter @yrese/calculation test` → 90/90 PASS、続くcalculation typecheck exit 0。
+  - `2026-08-27T21:46:26Z` `pnpm check:calculation-purity`、`pnpm check:boundaries`、tracked exact4 path-set比較、
+    exact4 `git diff --check` → 各exit 0。
+  - 初回frozen independent reviewはfinding 0。money/data-integrity reviewのLOW 1件(`toThrow(error)`が型を厳密固定しない)へ、
+    `toThrow(RangeError)`とexact `RangeError(message)`の別assertionを適用した。
+  - `2026-08-27T21:56:37Z` 修正後focused 17/17、続くmoney package 17/typecheck、calculation package 90/typecheck、
+    calculation purity、boundaries、exact4 path-set/diff checkは各exit 0。
+  - 更新code/test frozen SHA-256は`5a254953f3a3e481a53875bb6621a884b589854bbb8e15bf263683e3f9939757`。
+    reviewed exact4 packet SHA-256は`007fd3485377961b9a80db476587f1757e3f11427e5156d6f2cab001e8baee93`。
+    new-hash independent + money/data-integrity re-reviewはfinding 0で、LOWは完全に閉鎖した。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
+| WP-5235 EventEnvelope root input guard | SSOT_UPDATE_REQUIRED。APPROVED MOD-009がSSOT改版→review→実装を要求するため未着手 | MOD-009 / live package trace |
 | WP-4250 | FINALIZED / APPROVED(SSOT 改版のみ)。local commit `89275d2` | 下の決定記録 |
 | WP-4258 | FINALIZED / APPROVED(2026-08-01)。改版 `1dedf27`、APPROVED 化 `1ec57d5` | Implemented / Landing State |
 | WP-4257 | COMMITTED_LOCAL `a911a99` / LANDED | Implemented / Landing State |
@@ -191,6 +187,15 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5234 — Dependency-audit structured transient(2026-08-28)
+
+- **Status:** `COMMITTED_LOCAL 41e3389 / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** live pnpm audit failureのtransient判定をparsed root/error/code exact matchへ限定。
+  captured raw mode/pattern/message/count/dependency/lock/workflowは不変。
+- **Gate:** expected Red 4件→`pnpm test:scripts` Green、対象script checks、boundaries、path/diff、
+  frozen independent finding 0、dependency/security WP PASS、record rereviews PASS。actual network auditは未実行。
+  reviewerのP3 2件は本差分が導入していない別候補。
 
 ### WP-5233 — Error-code primitive guard(2026-08-28)
 

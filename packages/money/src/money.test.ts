@@ -79,6 +79,15 @@ describe("ScaledDecimal", () => {
     expect(() => value.round({ scale: 2 } as unknown as RoundOptions)).toThrow(/mode/);
   });
 
+  it.each([null, undefined])("rejects nullish round options with a typed error", (options) => {
+    const value = ScaledDecimal.fromString("12.345");
+
+    expect(() => value.round(options as never)).toThrow(RangeError);
+    expect(() => value.round(options as never)).toThrow(
+      new RangeError("scale must be a non-negative safe integer"),
+    );
+  });
+
   it("rounds negative values consistently for floor and ceiling", () => {
     const negative = ScaledDecimal.fromString("-12.341");
 
