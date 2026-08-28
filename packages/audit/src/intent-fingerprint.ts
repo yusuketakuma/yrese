@@ -142,11 +142,32 @@ const auditEventIntentFingerprintInputFields = {
   fingerprintSchemaVersion: true,
 } as const satisfies Record<keyof AuditEventIntentFingerprintInput, true>;
 
+const targetRefFields = { id: true, kind: true } as const;
+const businessReasonFields = { code: true } as const;
+const noOptionalFields: ReadonlySet<string> = new Set();
+const targetRefRequiredFields = Object.freeze(Object.keys(targetRefFields));
+const businessReasonRequiredFields = Object.freeze(Object.keys(businessReasonFields));
+const contextFieldNames = Object.freeze(Object.keys(contextFields));
+const fingerprintInputFieldNames = Object.freeze(Object.keys(fingerprintInputFields));
+const intentFieldNames = Object.freeze(Object.keys(intentFields));
+const optionalIntentFieldSet: ReadonlySet<string> = new Set(optionalIntentFields);
+const requiredIntentFields = Object.freeze(
+  intentFieldNames.filter((field) => !optionalIntentFieldSet.has(field)),
+);
+const eventFieldNames = Object.freeze(Object.keys(eventFields));
+const optionalEventFieldSet: ReadonlySet<string> = new Set(optionalEventFields);
+const requiredEventFields = Object.freeze(
+  eventFieldNames.filter((field) => !optionalEventFieldSet.has(field)),
+);
+const auditEventIntentFingerprintInputFieldNames = Object.freeze(
+  Object.keys(auditEventIntentFingerprintInputFields),
+);
+
 function copyExactRecord(
   value: unknown,
   allowedFields: Readonly<Record<string, true>>,
   requiredFields: readonly string[],
-  optionalFields: readonly string[],
+  optionalFields: ReadonlySet<string>,
   label: string,
 ): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -174,11 +195,10 @@ function copyExactRecord(
       throw new TypeError(`${label}.${key} is required`);
     }
   }
-  const optionalFieldSet = new Set(optionalFields);
   const copy: Record<string, unknown> = {};
   for (const [key, descriptor] of descriptors) {
     const fieldValue = descriptor.value;
-    if (optionalFieldSet.has(key) && fieldValue === undefined) {
+    if (optionalFields.has(key) && fieldValue === undefined) {
       throw new TypeError(`${label}.${key} must be omitted instead of undefined`);
     }
     copy[key] = fieldValue;
@@ -188,23 +208,34 @@ function copyExactRecord(
 
 function copyTargetRef(value: unknown, label: string): AuditEvent["targetRef"] {
   return Object.freeze(
-    copyExactRecord(value, { id: true, kind: true }, ["id", "kind"], [], label),
+    copyExactRecord(
+      value,
+      targetRefFields,
+      targetRefRequiredFields,
+      noOptionalFields,
+      label,
+    ),
   ) as unknown as AuditEvent["targetRef"];
 }
 
 function copyBusinessReason(value: unknown, label: string): AuditEvent["businessReason"] {
   return Object.freeze(
-    copyExactRecord(value, { code: true }, ["code"], [], label),
+    copyExactRecord(
+      value,
+      businessReasonFields,
+      businessReasonRequiredFields,
+      noOptionalFields,
+      label,
+    ),
   ) as unknown as NonNullable<AuditEvent["businessReason"]>;
 }
 
 export function copyExactAuditEventShape(value: unknown): AuditEvent {
-  const optionalFields = new Set<string>(optionalEventFields);
   const event = copyExactRecord(
     value,
     eventFields,
-    Object.keys(eventFields).filter((field) => !optionalFields.has(field)),
-    optionalEventFields,
+    requiredEventFields,
+    optionalEventFieldSet,
     "auditEvent",
   );
   event.targetRef = copyTargetRef(event.targetRef, "auditEvent.targetRef");
@@ -216,17 +247,22 @@ export function copyExactAuditEventShape(value: unknown): AuditEvent {
 
 function copyAuditWriteContext(value: unknown): AuditWriteContext {
   return Object.freeze(
-    copyExactRecord(value, contextFields, Object.keys(contextFields), [], "context"),
+    copyExactRecord(
+      value,
+      contextFields,
+      contextFieldNames,
+      noOptionalFields,
+      "context",
+    ),
   ) as unknown as AuditWriteContext;
 }
 
 function copyAuditAppendIntent(value: unknown): AuditAppendIntent {
-  const optionalFields = new Set<string>(optionalIntentFields);
   const intent = copyExactRecord(
     value,
     intentFields,
-    Object.keys(intentFields).filter((field) => !optionalFields.has(field)),
-    optionalIntentFields,
+    requiredIntentFields,
+    optionalIntentFieldSet,
     "intent",
   );
   intent.targetRef = copyTargetRef(intent.targetRef, "intent.targetRef");
@@ -246,8 +282,8 @@ export function projectAuditEventIntentFingerprintInput(
   const input = copyExactRecord(
     value,
     auditEventIntentFingerprintInputFields,
-    Object.keys(auditEventIntentFingerprintInputFields),
-    [],
+    auditEventIntentFingerprintInputFieldNames,
+    noOptionalFields,
     "auditEventFingerprintInput",
   );
   const context = copyAuditWriteContext(input.context);
@@ -261,7 +297,7 @@ export function projectAuditEventIntentFingerprintInput(
   }
 
   const intent: Record<string, unknown> = {};
-  for (const field of Object.keys(intentFields)) {
+  for (const field of intentFieldNames) {
     if (Object.hasOwn(event, field)) {
       intent[field] = event[field as keyof AuditEvent];
     }
@@ -319,8 +355,8 @@ export function snapshotAuditAppendIntentFingerprintInput(
   const input = copyExactRecord(
     value,
     fingerprintInputFields,
-    Object.keys(fingerprintInputFields),
-    [],
+    fingerprintInputFieldNames,
+    noOptionalFields,
     "fingerprintInput",
   );
 

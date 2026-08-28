@@ -1,9 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { deviceId, eventId, pharmacyId, tenantId, userId } from "@yrese/shared-kernel";
 
 import * as auditPublicApi from "./index.js";
 import { canonicalJsonString } from "./canonical-json.js";
-import { canonicalizeAuditAppendIntentFingerprintInput } from "./intent-fingerprint.js";
+import {
+  canonicalizeAuditAppendIntentFingerprintInput,
+  copyExactAuditEventShape,
+  snapshotAuditAppendIntentFingerprintInput,
+} from "./intent-fingerprint.js";
 import {
   AUDIT_GENESIS_PREV_HASH,
   AUDIT_INTENT_FINGERPRINT_SCHEMA_VERSION,
@@ -75,7 +79,36 @@ function fingerprintInput(
   };
 }
 
+function countSetConstructions(run: () => void): number {
+  const NativeSet = globalThis.Set;
+  let constructions = 0;
+  class CountingSet<T> extends NativeSet<T> {
+    constructor(values?: readonly T[] | null) {
+      super(values);
+      constructions += 1;
+    }
+  }
+
+  vi.stubGlobal("Set", CountingSet);
+  try {
+    run();
+  } finally {
+    vi.unstubAllGlobals();
+  }
+  return constructions;
+}
+
 describe("audit append intent fingerprint v1 golden vector", () => {
+  it("reuses static field sets while snapshotting an append intent", () => {
+    const input = fingerprintInput();
+
+    expect(
+      countSetConstructions(() => {
+        snapshotAuditAppendIntentFingerprintInput(input);
+      }),
+    ).toBe(0);
+  });
+
   it("pins the synthetic canonical JSON bytes and lowercase SHA-256", () => {
     const input = fingerprintInput();
 
@@ -511,6 +544,16 @@ describe("stored audit event intent fingerprint projection", () => {
       ...overrides,
     };
   }
+
+  it("reuses static field sets while copying a stored event", () => {
+    const event = eventFromIntent();
+
+    expect(
+      countSetConstructions(() => {
+        copyExactAuditEventShape(event);
+      }),
+    ).toBe(0);
+  });
 
   it("recomputes the M1 golden fingerprint from an exact stored event", () => {
     expect(computeAuditEventIntentFingerprint(storedFingerprintInput(eventFromIntent()))).toEqual({

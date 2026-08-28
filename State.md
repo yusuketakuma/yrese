@@ -1,33 +1,35 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5266 R1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5267 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5265はlocal commit `ac298da`。current requestをWP-5266のscope check includes化で継続する。
+- **Direction / ownership:** WP-5266はlocal commit `ea01c82`。current requestをWP-5267のaudit static field hoistで継続する。
   agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは常に単独writerとする。
-  宣言競合はagmsg timestampの早い方を優先する。本WPのwriterはClaude、Codexはfrozen reviewerでlandingまでread-onlyである。
-- **Git boundary:** current branch `refactor/wp-5266-scope-check-includes`、base `ac298da`(WP-5265 landing)。
+  宣言競合はagmsg timestampの早い方を優先する。本WPのwriterはCodex、Claudeはfrozen audit/data-integrity reviewerでlandingまでread-onlyである。
+- **Git boundary:** current branch `refactor/wp-5267-hoist-audit-static-fields`、base `ea01c82`(WP-5266 landing)。
   push / mergeは行わない。
-- **Dirty ownership:** exact6は`apps/web/app/api/session-client.ts`、`apps/web/app/api/session-client.test.ts`、
-  `apps/web/app/admin/admin-data.ts`、`apps/web/app/admin/admin-data.test.ts`、`Plans.md`、`State.md`。
-  同じexact6だけを本local landing対象とする。
+- **Dirty ownership:** exact4は`packages/audit/src/intent-fingerprint.ts`、
+  `packages/audit/src/intent-fingerprint.test.ts`、`Plans.md`、`State.md`。
+  同じexact4だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5266 / READY=0(WIPはR1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。低fanout scope check 3箇所の
-  一時Setをincludesへ置換し、`hasRequiredAdminScopes`を既存`sessionHasScopes`へ委譲する。truth table・順序・
-  SameValueZero意味論・rendered UIは不変。`PermissionMatrix`のrender Setは意図的に不変。
-  contracts/API/DB、APPROVED SSOTは変更しない。N+1 child INSERT batching候補はHUMAN_GATE_REQUIREDのまま着手しない。
+- **Active plan / boundary:** CURRENT=WP-5267 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。audit fingerprint
+  strict-copy経路の静的Setとfield list導出をmodule定数へhoistし、入力駆動のdescriptor `Map`は残す。
+  public API、validation/error順序と文言、undefined omission、canonical JSON/digest、contracts/API/DB、
+  APPROVED SSOTは変更しない。N+1 child INSERT batching候補はHUMAN_GATE_REQUIREDのまま着手しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** 対象helperはUI表示制御専用で認可の代替ではないと明記されており、
-  Array.includesとSet.hasは同じSameValueZero比較のため受理truth tableはbyte-identical。synthetic identity/scopeだけを使い、
+- **Security / privacy / offline:** audit field定義とoptional listは静的で、required listも同じ`Object.keys`順から一度だけ導出する。
+  descriptor iterationとvalidation順は維持し、synthetic audit fixtureだけを使い、
   credential、production data、PHI/PII、保存、log、external send、real network、DB操作、cache、retry/offline stateを追加しない。
-- **Process gate:** pre-planはR1(UI表示制御の内部機構、DML/SSOT非該当)、human/Oracle/Product Design gate不要と
-  判定した(agmsg 2026-08-28)。truth table差、spy flakiness、大required配列callerの発見、追加path必要が判明したら停止する。
-- **Validation / rollback:** baseline focused 26 PASS実測後、RedはSet spy 2件(session-client窓2構築、admin-data窓1構築)で
-  期待どおり失敗。Greenはfocused 28 PASS、web typecheck PASS、web全体754 PASS、`pnpm check:boundaries` PASS
-  (output: Boundary check passed.、exit 0)、`git diff --check` PASS。frozen reviewはLOW 1件(ponytail comment規約)のcomment-only解消後にdelta review PASS・findings 0、最終hashをCodexが再現した。browser、real network、DB、production runtimeは実行しない。
-  exact6の単一`WP-5266:` commit、rollbackは確定commitへの`git revert <commit>`。
+- **Process gate:** pre-planはR2(audit/data-integrityだが値同一の内部最適化、DML/SSOT非該当)、human/Oracle/Product Design gate不要と
+  判定した(agmsg 2026-08-28)。digest、validation順/error/omission差、spy flakiness、public API差、追加path必要が判明したら停止する。
+- **Validation / rollback:** baseline audit全体202 PASS。Red focusedは80 PASS / 2 expected failureでSet構築6/4を再現し、
+  Green focused 82 PASS。既存M1 golden fingerprint/stored-event再計算を含むaudit全体204 PASS、audit typecheck、
+  API全体983 PASS / 62 skip、boundaries、`git diff --check`もPASS。Claude frozen audit/data-integrity reviewは
+  hash/path再現、findings 0でPASS。
+  browser、real network、DB、production runtimeは実行しない。
+  exact4の単一`WP-5267:` commit、rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、
