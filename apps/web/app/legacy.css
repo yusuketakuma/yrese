@@ -213,11 +213,6 @@ tr[data-duplicate-kana="true"] > td {
   padding: var(--space-3);
 }
 
-.route-error-digest {
-  color: var(--color-fg-muted);
-  font-size: 0.9rem;
-}
-
 /* status-badge.tsx(自由label+tone)のレガシー互換。新規ドメイン状態は DomainStatusBadge を使う。 */
 .status-badge {
   display: inline-block;

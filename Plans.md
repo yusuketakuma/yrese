@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current chainはWP-5242 `fb42c37` + collaboration docs `acc25d9` + WP-5243 `6c23221` + WP-5244 `f632823` + WP-5245 `d9af10b` + WP-5246 `0bebf64` + WP-5247 `ccda519`(実測 2026-08-28) |
-| Candidate branch | WP-5247はlocal commit `ccda519`。WP-5248は同HEADから `refactor/wp-5248-legal-trace-input-snapshot` を作成済み |
+| Review base | local `main` = `origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current chainはWP-5242 `fb42c37` + collaboration docs `acc25d9` + WP-5243 `6c23221` + WP-5244 `f632823` + WP-5245 `d9af10b` + WP-5246 `0bebf64` + WP-5247 `ccda519` + WP-5248 `1fb3487`(実測 2026-08-28) |
+| Candidate branch | WP-5248はlocal commit `1fb3487`。WP-5249は同HEADから `refactor/wp-5249-route-error-css-cleanup` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までmain/originへfast-forward済み(reflog実測)。WP-5242以降のpushは認可・実行しない |
-| Candidate scope | `createLegalTrace`の`targetType`/`targetId`/`humanReviewRequired`/`evidenceRefs`をone-shot snapshotし、validationとfrozen outputで同じfirst-read値を使うexact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5248 frozen reviews + record rechecks finding 0 / local landing pending、compiled CSS予算12 KiBを維持) |
+| Candidate scope | tracked consumerがない`.route-error-digest` selectorだけを削除し、approved status component contractとrendered route-errorを不変に保つexact2 CSS/test slice |
+| Last update | 2026-08-28 JST(WP-5249 frozen review + record recheck finding 0 / local landing pending、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5248 exact2候補で、`createLegalTrace`のtop-level validation後のstateful getter再読による差替えをfirst-read local snapshotへ収束する |
-| Main blocker | WP-5248はRed→Green、affected gates、両frozen review、両record-only recheckがfinding 0。exact stage/local landingを残す。WP-5235はSSOT-first gate、WP-5226は元exact4不完結でdefer中 |
+| Current critical path | WP-5249 exact2候補で、tracked markupから到達しない`.route-error-digest` CSS ruleを削除する |
+| Main blocker | WP-5249はRed→Green、Web/CSS gates、frozen review、record-only recheckがfinding 0。exact stage/local landingを残す。StatusBadge削除はAPPROVED UIX-001との競合でdefer中 |
 | Required verification | exact4 stageのcached paths/hash/diff-checkを確認し、単一local commitへ着地させる |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5248である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5249である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,40 +73,31 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5248(LegalTrace top-level one-shot snapshot、R2 RECORD_RECHECKS_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5247はlocal commit `ccda519`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5249(route-error dead CSS cleanup、R1 RECORD_RECHECK_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5248はlocal commit `1fb3487`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** `createLegalTrace`は`targetType`、`targetId`、`humanReviewRequired`を検証後のoutput構築で再読し、
-  `evidenceRefs`をdense確認後のmapで再読する。stateful getterがvalidated値/arrayとfrozen legal traceの値/arrayを差し替えられる。
-  4 fieldを検証順の最初の読取りで1回だけlocal snapshotし、既存validation/freezeを同じ値に適用する。
-- **Allowed / forbidden:** exact4は`packages/trace/src/index.ts`、`packages/trace/src/trace.test.ts`、`Plans.md`、`State.md`。
-  pre-plan finding 0前はrecords 2 pathだけを変更する。それ以外、特に`createCalculationTrace`、collect/helper/ref freezer、
-  LegalTrace型、contracts/Zod/wire、calculation/API/UI、package/dependency、APPROVED SSOT、schema/migrationは変更禁止。保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** APPROVED CAL-008とconstruction promptは`@yrese/trace`のLegalTrace型/factoryを正本とし、APPROVED SEC-004は
-  calculation/legal traceのPHI非包含を定める。live production consumerは未接続だがpublic factoryとtest helperから到達する。
-  current runtimeは対象4 fieldを各2回読む。field/type/contract変更ではなくruntime data-integrity/privacy強化候補である。
-- **Acceptance / tests:** (A1)`targetType`を1回読み、検証とoutputで同じlocalを使う。invalidなら後続fieldを読まない。
-  (A2)`targetId`を1回読み、検証とoutputで同じlocalを使う。invalidならreview flag/evidenceを読まない。
-  (A3)`humanReviewRequired`を1回読み、boolean検証とoutputで同じlocalを使う。invalidならevidenceを読まない。
-  (A4)`evidenceRefs`を1回読み、同じfirst-read arrayをdense確認・`freezeEvidenceRef` map・freezeする。sparse拒否はevidence field読取りより先。
-  (A5)plain valid/invalid、EvidenceRefのurl/strict known-field/PHI-free semantics、frozen outputは不変。
-  (A6)production差分は4 local bindingと後続参照のlocal化だけ。新helper・型・dependencyを追加しない。
-- **PIA / offline:** fixtureはsynthetic getter/counter、synthetic PHI-free target/evidenceだけで、患者・処方・請求data、credential、production data、
-  PHI/PII、保存、log、external send、network、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。fresh `pre_plan_reviewer`はR2 strengthening-only READY、
-  blocking/non-blocking finding 0、no-consumerでもAPPROVED public factoryの既存境界強化であり、SSOT改版・本slice固有のhuman gate不要と判定した。
-  `reviewer_roles`は`pre_plan_reviewer`、`independent_verifier`、`trace_data_integrity_privacy_reviewer`。
-  CalculationTrace/collect/helper/type/contract/API/UIへ波及するなら停止。
-  READY後exact4を単一`WP-5248:` commit、rollbackは確定commitへの`git revert <commit>`。rootだけがvalidator/stager/committer。
-  push、merge、deploy、migration/DDL/DMLは認可外。
-- **Validation evidence:** GBrain `code_blast`はlocalhost transport downで未取得。local `rg`でproduction consumer未接続、test/helper到達、
-  live functionの再読4 field、既存sparse/url/strict EvidenceRef testを確認。fresh pre-planはfinding 0。
-  expected Redはfocused 1 failure / precedence 1 PASSで対象4 getterの各2回読取を再現。productionは4 local bindingと参照置換だけ。
-  最終focused 2、trace package 59 + typecheck、contracts 136 + typecheck、calculation 90 + typecheck、boundaries、calculation-purity、
-  `git diff --check`がPASS。code/test frozen SHA-256は`c2cc6803bcc2510eede8d09078466bc98839d0758ae8bc15b7fd55fe06780036`。
-  reviewed exact4 SHA-256は`91305b17b71319c4e0e94cba1d102ecb8fd3766c27b45a01cb26ec27d01827b0`。
-  frozen independent + trace/data-integrity/privacy reviewと同じreviewerのrecord-only recheckはすべてblocking/non-blocking finding 0。
-  local landingはpending。
+- **Purpose / layer:** `apps/web/app/legacy.css`の`.route-error-digest`はtracked repository全体で定義1件だけで、
+  `error.tsx`と`not-found.tsx`は`.route-error`だけをrenderする。到達不能な4行のCSS ruleを削除する。
+- **Allowed / forbidden:** exact4は`apps/web/app/legacy.css`、`apps/web/app/style-load-order.test.ts`、`Plans.md`、`State.md`。
+  `status-badge.tsx`、`state-components.test.tsx`、`domain-status-badge.tsx`、status CSS、route component/markup、他stylesheet、
+  package/dependency、APPROVED SSOT、schema/migrationは変更禁止。保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** APPROVED UIX-001 v0.2.0はStatusBadgeをレガシー互換として明示保持するため、その削除案は
+  `SSOT_UPDATE_REQUIRED`としてdeferする。一方`.route-error-digest`はAPPROVED SSOTやtracked markupから参照されない。
+- **Acceptance / tests:** (A1)targeted static testで`.route-error-digest`不存在を固定し、現状Red→削除後Greenにする。
+  (A2)`.route-error`、error/not-found markup、表示文言、ARIAを変更しない。(A3)StatusBadge/DomainStatusBadgeと関連contract/test/CSSを変更しない。
+  (A4)source separate-file gzipをbaseline以下、compiled CSS gzipを12,288 bytes以下に保ち、unused selectorのためpixel/CLSを変えない。
+  (A5)production差分は4行削除だけ。新helper・dependencyを追加しない。
+- **PIA / offline:** PHI/PII、credential、production data、network、storage、log、offline/cache/retry挙動への影響なし。
+- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root、`reviewer_roles: independent_verifier`。PRC-005のR1。
+  tracked consumer、SSOT要求、rendered差分、別path変更が見つかれば停止する。exact4を単一`WP-5249:` commit、rollbackは確定commitへの
+  `git revert <commit>`。rootだけがvalidator/stager/committer。push、merge、deploy、migration/DDL/DMLは認可外。
+- **Validation evidence:** GBrainはlocalhost transport down。local `git grep`で`.route-error-digest`はCSS定義1件だけ、
+  `.route-error`はerror/not-foundの両routeで使用、APPROVED UIX-001のStatusBadge保持を確認。expected Red 1 failure後、4行削除でfocused 1、
+  Web 64 files / 748 tests、typecheck、production build、`git diff --check`がPASS。source separate gzipは13,400→13,380 bytes、
+  compiled CSS gzipは9,682≤12,288 bytes。tracked markup consumerがないためpixel/CLSを変えるcascade経路はなく、browser runtimeは未実行。
+  CSS/test frozen SHA-256は`3baedc1ae663345c169e9a9e3039b72bc25244f2f444ee2a992478c8114defbf`、reviewed exact4 SHA-256は
+  `2754d6fbc50c2d5fb6bc2964457f4adf66290841ebf952fb8822927297ed7dfe`。frozen independent reviewはblocking/non-blocking finding 0。
+  同じreviewerのrecord-only recheckもblocking/non-blocking finding 0。local landingはpending。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|

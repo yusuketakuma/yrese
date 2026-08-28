@@ -67,6 +67,10 @@ describe("operator stylesheet authority", () => {
     expect(operatorSource).not.toMatch(directColorLiteral);
   });
 
+  it("does not retain the unused route error digest selector", () => {
+    expect(legacySource).not.toContain(".route-error-digest");
+  });
+
   it("keeps keyboard focus visible on light controls and the dark sidebar", () => {
     expect(globalsSource).toContain(
       "--focus-ring: 3px solid var(--color-focus);",
