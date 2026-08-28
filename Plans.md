@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `b27b407fb523119545b8b457fbb918a5e6a98233`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5273 `81da457`まで(実測 2026-08-28) |
-| Candidate branch | WP-5273はlocal commit `81da457`。WP-5274は同HEADから `refactor/wp-5274-reuse-database-instant` を作成済み |
+| Review base | local `main` = `b27b407fb523119545b8b457fbb918a5e6a98233`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5274 `d7a3676`まで(実測 2026-08-28) |
+| Candidate branch | WP-5274はlocal commit `d7a3676`。WP-5275は同HEADから `refactor/wp-5275-failure-proof-describe-failure` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までoriginへ反映済み。user指示でWP-5254〜WP-5270の17 commitをlocal main `b27b407`へref-only fast-forward済み。origin pushは実行しない |
-| Candidate scope | DB行instant変換2箇所を既存`snapshotDatabaseInstant`へ収斂し、genuine driver Dateの出力を不変に保つexact4 code/test slice |
-| Last update | 2026-08-28 JST(WP-5273 local landing済み、WP-5274 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Candidate scope | outbox配送の失敗記録検査(reason抽出とtimeout分類)をtotal化し、hostile throw値でも記録経路が落ちないexact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5274 local landing済み、WP-5275 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5274でeligibility/outboxのrow instant変換をhardened helperへ揃え、own Date method実行とraw driver変種throwを排する |
-| Main blocker | なし。WP-5273は`81da457`へlocal landing済み。reception wallClock意味論(MOD-009文字通り vs 実装読み、BUG-4264文脈)はhuman/SSOT明確化待ちでpark |
-| Required verification | DB-less fake-pool Red/Green 4件(own accessor不読・string正規化×2 file)、full API、API typecheck、boundaries、exact path/diff-check、独立frozen review(Codex)、単一local commit |
+| Current critical path | WP-5275でat-least-once配送runのabort経路(describeFailure/instanceofのthrow)を閉じる |
+| Main blocker | なし。WP-5274は`d7a3676`へlocal landing済み。reception wallClock意味論はhuman/SSOT明確化待ちでpark継続 |
+| Required verification | DB-less Red 2件(hostile name getter・Proxy getPrototypeOf trap)+genuine passthrough、full API、API typecheck、boundaries、exact path/diff-check、独立frozen review(Codex)、単一local commit |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5274である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5275である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,36 +73,33 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5274(reuse database instant snapshot、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5273はlocal commit `81da457`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
-reception wallClock意味論(acceptedAtIso再利用 vs rollback対応別サンプル、MOD-009 §4.1とBUG-4264文脈)は
-conformance questionとしてhuman/SSOT明確化待ちでparkする。
+**CURRENT は WP-5275(failure-proof describe failure、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5274はlocal commit `d7a3676`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+reception wallClock意味論はconformance questionとしてhuman/SSOT明確化待ちでpark継続。
 
-- **Purpose / layer:** eligibility-snapshot-repository(verified_at)とoutbox-delivery(created_at)のrow instant
-  変換がown `.toISOString()`直呼びで、hardened `snapshotDatabaseInstant`(brand check+intrinsic dispatch+
-  string変種正規化)をバイパスしていた。兄弟db fileと同じhelperへ収斂する(reuse-first)。
-- **Allowed / forbidden:** exact6は`apps/api/src/db/eligibility-snapshot-repository.ts`、同integration test、
-  `apps/api/src/db/outbox-delivery.ts`、同integration test、`Plans.md`、`State.md`。
-  SQL/query text、genuine driver Dateの出力、contracts/API/DML、APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
-- **Declared behavior deltas(意図的):** string型driver変種は生TypeError→制御メッセージでの正規化/拒否へ、
-  hostile Dateのownメソッドは実行→不読へ。outbox側では従来「配送失敗(at-least-once残留)」になっていた
-  hostile/string instantが正常配送へ変わる — helperの契約と兄弟repoの既存挙動に整合。
-- **Authority / evidence:** `snapshotDatabaseInstant`はinstant.tsで定義済み・prescription-draft等が使用中。
-  row型のDate注釈はruntime driver出力へのcompile-time主張にすぎず、helperがその差を吸収する。
-  pre-planはR2(audit/outbox配送・eligibility読取パス)、SSOT改版・human/Oracle gate不要と判定した(agmsg 2026-08-28)。
-- **Acceptance / tests:** (A1)DB-less fake-pool testでown toISOString accessor不読を両fileで固定。
-  (A2)string driver instantが正規化ISOで通ること(outboxはsink受信createdAtのbyte一致まで)。
-  (A3)genuine Date出力・SQL text・配送/読取フローは不変(DB-gated統合スイートが実DB net)。
-  (A4)full API・typecheck・boundaries PASS。
-- **PIA / offline:** synthetic row/シンクのみ。real network、DB、PHI/PII、credential、cache、retry/offline stateを追加しない。
+- **Purpose / layer:** outbox配送`deliverOne`の失敗記録catch内で、`describeFailure`のown `error.name`/
+  `error.constructor?.name`読取と`error instanceof SinkTimeoutError`分類(Proxy `getPrototypeOf` trapで
+  throw可能)が例外を投げると、失敗1件の記録で済むはずのat-least-once runが全体abortしていた。
+  両検査をtotal化(fail-closed固定fallback)し、記録経路を落とさない。
+- **Allowed / forbidden:** exact4は`apps/api/src/db/outbox-delivery.ts`、同integration test、`Plans.md`、`State.md`。
+  genuine Error/SinkTimeoutErrorのreason・timedOut挙動、SQL/query text、配送フロー、contracts/API/DML、
+  APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
+- **Authority / evidence:** repo内に既存の総称error-name抽出helperはなし(単独出現)につきlocal guarded
+  inspectionのみで共有抽象は作らない(YAGNI、Codex指定)。Codex addendumによりinstanceof分類のProxy trap
+  経路も対象化。pre-planはR2(配送ループのresilience/data-integrity)、SSOT改版・human/Oracle gate不要と
+  判定した(agmsg 2026-08-28)。
+- **Acceptance / tests:** (A1)hostile name getterのErrorでrun継続・failed:1・reason unknown・sentinel非漏洩。
+  (A2)throwする`getPrototypeOf` trapのProxyでrun継続・timedOut false・reason unknown・sentinel非漏洩。
+  (A3)genuine Error(RangeError等)のreason passthroughとSinkTimeoutError分類は不変。(A4)full API・typecheck・boundaries PASS。
+- **PIA / offline:** synthetic sink/rowのみ。real network、DB、PHI/PII、credential、cache、retry/offline stateを追加しない。
 - **Roles / stop / rollback:** `active_root_writer`はClaude、frozen reviewerはCodex。shared treeは単独writer。
-  genuine driver Dateの出力差、SQL text変更、追加path必要、accessor flakinessが判明したら停止。
-  exact6を単一`WP-5274:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
-- **Validation evidence:** RedはDB-less 4件(eligibility 2: sentinel raw throw/string TypeError、outbox 2:
-  hostileがfailed:1へ落ちる/string失敗)が期待どおり失敗。GreenはDB-less 4 PASS、full API 994 PASS / 63 DB-gated skip、
-  API typecheck PASS、`pnpm check:boundaries` PASS(Boundary check passed.)、`git diff --check` PASS。
-  frozen R2 reviewはMEDIUM 1件(fixture契約値)をtest-only修正で解消しdelta PASS・findings 0。
-  レビュー対象のpre-verdict exact6 SHA-256 `f4de7f14b9636bc48602d1f01f92881a528ad1c90a11f409e5d11d9a1761ca14`をCodexが再現した(verdict記録後のexact6は本書へ複製しない)。
+  genuine Errorのreason差、配送フロー/SQL変更、追加path必要が判明したら停止。
+  exact4を単一`WP-5275:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
+- **Validation evidence:** RedはDB-less 2件(hostile name getterでrunOnce reject、Proxy trapでreject)が
+  期待どおり失敗し、genuine passthroughは現行でもPASS。GreenはDB-less 5 PASS(新規3 test込み)、
+  full API 997 PASS / 63 DB-gated skip、API typecheck PASS、`pnpm check:boundaries` PASS(Boundary check passed.)、
+  `git diff --check` PASS。frozen R2 reviewは初回PASS・findings 0。レビュー対象のpre-verdict exact4 SHA-256
+  `0b44ddeacdd5797c83e8503d9f968df4c6b2c59eb465621a3a1f26c22f1ed4f5`をCodexが再現した(verdict記録後のexact4は本書へ複製しない)。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|

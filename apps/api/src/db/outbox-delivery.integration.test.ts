@@ -82,6 +82,76 @@ describe("outbox delivery instant mapping (DB-less / WP-5274)", () => {
     expect(events[0]?.createdAt).toBe("2026-08-24T02:00:00.000Z");
   });
 
+  it("records a hostile sink error as a fixed failure without aborting the run", async () => {
+    const hostileError = new Error("plain");
+    Object.defineProperty(hostileError, "name", {
+      configurable: true,
+      get: () => {
+        throw new Error("raw hostile failure name secret");
+      },
+    });
+    const sink: OutboxDeliverySink = {
+      deliver: async () => {
+        throw hostileError;
+      },
+    };
+    const worker = new PostgresOutboxDeliveryWorker(
+      fakePoolFor({ ...baseRow, created_at: "2026-08-24T02:00:00.000Z" }),
+      sink,
+    );
+
+    const summary = await worker.runOnce({ limit: 2 });
+
+    expect(summary.delivered).toBe(0);
+    expect(summary.failed).toBe(1);
+    expect(summary.failures[0]?.reason).toBe("unknown");
+    expect(JSON.stringify(summary)).not.toContain("raw hostile failure name secret");
+  });
+
+  it("records a throwing-proxy sink error without aborting reason or timeout classification", async () => {
+    const trapProxy = new Proxy(
+      {},
+      {
+        getPrototypeOf: () => {
+          throw new Error("raw proxy trap secret");
+        },
+      },
+    );
+    const sink: OutboxDeliverySink = {
+      deliver: async () => {
+        throw trapProxy;
+      },
+    };
+    const worker = new PostgresOutboxDeliveryWorker(
+      fakePoolFor({ ...baseRow, created_at: "2026-08-24T02:00:00.000Z" }),
+      sink,
+    );
+
+    const summary = await worker.runOnce({ limit: 2 });
+
+    expect(summary.failed).toBe(1);
+    expect(summary.failures[0]?.timedOut).toBe(false);
+    expect(summary.failures[0]?.reason).toBe("unknown");
+    expect(JSON.stringify(summary)).not.toContain("raw proxy trap secret");
+  });
+
+  it("keeps genuine error names as the recorded failure reason", async () => {
+    const sink: OutboxDeliverySink = {
+      deliver: async () => {
+        throw new RangeError("synthetic sink refusal");
+      },
+    };
+    const worker = new PostgresOutboxDeliveryWorker(
+      fakePoolFor({ ...baseRow, created_at: "2026-08-24T02:00:00.000Z" }),
+      sink,
+    );
+
+    const summary = await worker.runOnce({ limit: 2 });
+
+    expect(summary.failed).toBe(1);
+    expect(summary.failures[0]?.reason).toBe("RangeError");
+  });
+
   it("normalizes a string driver created_at instead of failing delivery", async () => {
     const { sink, events } = recordingSink();
     const worker = new PostgresOutboxDeliveryWorker(

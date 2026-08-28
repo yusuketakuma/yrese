@@ -131,10 +131,30 @@ function toPendingEvent(row: OutboxRow): OutboxPendingEvent {
   });
 }
 
+// 失敗記録用の検査は total でなければならない(hostile な throw 値の getter /
+// Proxy trap が投げても、記録経路自体を落とさない)。fail-closed の固定 fallback を返す。
 function describeFailure(error: unknown): string {
-  if (error instanceof Error) return error.name;
-  if (error !== null && typeof error === 'object') return error.constructor?.name ?? 'object';
-  return typeof error;
+  try {
+    if (error instanceof Error) {
+      const name = error.name;
+      return typeof name === 'string' ? name : 'unknown';
+    }
+    if (error !== null && typeof error === 'object') {
+      const name = error.constructor?.name;
+      return typeof name === 'string' ? name : 'object';
+    }
+    return typeof error;
+  } catch {
+    return 'unknown';
+  }
+}
+
+function isSinkTimeout(error: unknown): boolean {
+  try {
+    return error instanceof SinkTimeoutError;
+  } catch {
+    return false;
+  }
 }
 
 class SinkTimeoutError extends Error {
@@ -214,7 +234,7 @@ export class PostgresOutboxDeliveryWorker {
           aggregateType: row.aggregate_type,
           aggregateId: row.aggregate_id,
           reason: describeFailure(error),
-          timedOut: error instanceof SinkTimeoutError,
+          timedOut: isSinkTimeout(error),
         });
         return 'failed';
       }
