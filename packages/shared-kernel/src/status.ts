@@ -34,10 +34,6 @@ export const ELIGIBILITY_STATUSES = [
 ] as const;
 export type EligibilityStatus = (typeof ELIGIBILITY_STATUSES)[number];
 
-export function isEligibilityStatus(value: string): value is EligibilityStatus {
-  return (ELIGIBILITY_STATUSES as readonly string[]).includes(value);
-}
-
 /**
  * 受付キュー専用ステータス。
  *

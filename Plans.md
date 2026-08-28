@@ -33,14 +33,14 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current chainはWP-5242 `fb42c37` + collaboration docs `acc25d9` + WP-5243 `6c23221` + WP-5244 `f632823` + WP-5245 `d9af10b` + WP-5246 `0bebf64` + WP-5247 `ccda519` + WP-5248 `1fb3487` + WP-5249 `0e1785e` + WP-5250 `4a69188`(実測 2026-08-28) |
-| Candidate branch | WP-5250はlocal commit `4a69188`。WP-5251は同HEADから `refactor/wp-5251-remove-dead-status-labels` を作成済み |
+| Review base | local `main` = `origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current chainはWP-5242 `fb42c37` + collaboration docs `acc25d9` + WP-5243 `6c23221` + WP-5244 `f632823` + WP-5245 `d9af10b` + WP-5246 `0bebf64` + WP-5247 `ccda519` + WP-5248 `1fb3487` + WP-5249 `0e1785e` + WP-5250 `4a69188` + WP-5251 `91c74de`(実測 2026-08-28) |
+| Candidate branch | WP-5251はlocal commit `91c74de`。WP-5252は同HEADから `refactor/wp-5252-remove-dead-eligibility-guard` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までmain/originへfast-forward済み(reflog実測)。WP-5242以降のpushは認可・実行しない |
-| Candidate scope | visual status registryからconsumer 0の派生label export 5件だけを削除するexact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5250 local landing済み、WP-5251 R1 RECORD_RECHECK_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Candidate scope | private workspace packageからconsumer 0の`isEligibilityStatus` runtime exportだけを削除するexact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5251 local landing済み、WP-5252 R1 RECORD_RECHECK_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5251 exact2候補で、unused label-only projections 5件をmodule export surfaceとimport-time allocationから除く |
+| Current critical path | WP-5252 exact2候補で、導入以来未使用のeligibility predicateをshared-kernel export surfaceから除く |
 | Main blocker | なし。R1 frozen reviewとrecord-only recheckはfinding 0、exact local landingを残す |
 | Required verification | cached paths/hash/diff-check、単一local commit |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
@@ -48,7 +48,7 @@
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5251である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5252である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,35 +73,34 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5251(dead status label projections removal、R1 RECORD_RECHECK_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5250はlocal commit `4a69188`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5252(dead eligibility guard removal、R1 RECORD_RECHECK_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5251はlocal commit `91c74de`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** visual status registryの`*_PRESENTATION`からmodule import時に生成される派生label mapのうち、
-  tracked consumerが定義以外0件の5 exportだけを削除し、不要なexport surfaceと33 property相当のallocationを除く。
-- **Allowed / forbidden:** exact4は`apps/web/app/status/visual-status-registry.ts`、
-  `apps/web/app/status/visual-status-registry.test.tsx`、`Plans.md`、`State.md`。
-  `*_PRESENTATION`、`resolveStatus`、使用中のlabel map、DOM/CSS/copy/ARIA/enum、component、package/dependency、
-  APPROVED SSOT、schema/migrationは変更禁止。保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** APPROVED UIX-001はRegistryを表示定義の単一正本とし、互換維持対象として
-  MODE/ELIGIBILITY/RECEPTION/SEVERITYの既存label mapを明記する。削除対象5件はこの集合に含まれず、
-  tracked全文検索で各exportは定義以外0 consumerである。
-- **Acceptance / tests:** (A1)`RECORD_LIFECYCLE_LABELS`、`SYNC_STATUS_LABELS`、
-  `PRESCRIPTION_CHANGE_LABELS`、`SESSION_STATUS_LABELS`、`CLINICAL_ALERT_ACK_LABELS`がruntime exportに存在しない。
-  (A2)対応する全`*_PRESENTATION` mapは不変。(A3)使用中のlabel mapは不変。
-  (A4)DOM/CSS/copy/ARIA/enum/rendered behaviorを変えない。(A5)新helper・型・dependency・docs/SSOTを追加しない。
+- **Purpose / layer:** `isEligibilityStatus`はWP-5003で追加後、tracked code/test/docsの唯一のexact-name出現が
+  定義自身である。private workspace packageのruntime export surfaceから、この未使用predicateだけを削除する。
+- **Allowed / forbidden:** exact4は`packages/shared-kernel/src/status.ts`、
+  `packages/shared-kernel/src/kernel.test.ts`、`Plans.md`、`State.md`。
+  `ELIGIBILITY_STATUSES`、`EligibilityStatus`、他guard/claimability、index/package、contracts/API/DB/migration、
+  APPROVED SSOTは変更禁止。保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** APPROVED MOD-005の改版対象はstatus値集合で、保持を明記するguardはsystem-mode 3件と
+  `isClaimable`である。API-001はshared-kernel guard再利用を任意(`may`)とし、本関数を要求しない。
+  tuple/typeとDB CHECKは別 authorityとして残り、packageは`private: true`。pre-planはSSOT更新不要・R1 READYと判定した。
+- **Acceptance / tests:** (A1)`isEligibilityStatus`がruntime module exportに存在しない。
+  (A2)`ELIGIBILITY_STATUSES`と`EligibilityStatus`は不変。(A3)contracts/API/DB/migrationは不変。
+  (A4)他status guardとclaimabilityは不変。(A5)新helper・type・dependency・docs/SSOTを追加しない。
 - **PIA / offline:** module namespaceのsynthetic assertionだけで患者・処方・請求data、credential、production data、
   PHI/PII、保存、log、external send、network、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。R1 pre-planはfinding 0でREADY。
-  `reviewer_roles`は`pre_plan_reviewer`、`independent_verifier`。consumer出現、互換SSOT対象、rendered behavior、
-  別pathへ波及するなら停止。exact4を単一`WP-5251:` commit、rollbackは確定commitへの`git revert <commit>`。
+- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。R1 pre-planはblocking/non-blocking finding 0でREADY。
+  `reviewer_roles`は`pre_plan_reviewer`、`independent_verifier`。consumer出現、out-of-tree互換要求、tuple/type/API/DB/SSOT、
+  別pathへ波及するなら停止。exact4を単一`WP-5252:` commit、rollbackは確定commitへの`git revert <commit>`。
   rootだけがvalidator/stager/committer。push、merge、deploy、migration/DDL/DMLは認可外。
-- **Validation evidence:** GBrain `context_pack`はlocalhost transport down。tracked全文検索で削除対象5件は各定義1件のみ。
-  R1 pre-plan finding 0。module namespace absence testはexpected Red 1 failed / 13 passedからGreen 14 passedへ遷移。
-  productionは9行削除だけで、consumer再検索0件、exact4 `git diff --check` PASS。code/test frozen SHA-256は
-  `3fbd0d6ace107b31a5878aedcda83bb3a018a6630293ac67c5164c1037c9eccf`、reviewed exact4 SHA-256は
-  `c84bbf0d1fc4f8b247c733f8a721a4bbb3cf39e784a238f343ee0495f60cccf3`。frozen independent reviewは
-  blocking/non-blocking finding 0。record-only exact4 SHA-256は
-  `3d8b42acf424029f2eb88c0a02009761819f69a85e22969b0a9e635490f5a328`で、recheckも
+- **Validation evidence:** GBrain `context_pack`/checkpointはlocalhost transport down。exact-name検索は定義1件のみ、
+  導入履歴は`d460ff7`のみ。module namespace absence testはexpected Red 1 failed / 64 passedからGreen 65 passedへ遷移。
+  shared-kernel package 3 files / 86 tests、consumer再検索0件、exact4 `git diff --check`はPASS。
+  productionは4行削除だけ。code/test frozen SHA-256は`f847bdbe35a0aeb84e8a7d3b32916eff36a1e6c1dbba03797017fc608875c019`、
+  reviewed exact4 SHA-256は`48b8ce2a37534ef84cc02213e56f3f5feb1bbedd2db6fc3435f60d4486831661`。
+  frozen independent reviewはblocking/non-blocking finding 0。record-only exact4 SHA-256は
+  `ac3a8783a0f490a7e4a71071ebe202c9834e27b8900453a390f81a4ae9efe011`で、recheckも
   blocking/non-blocking finding 0。local landingはpending。CSS変更はなく12 KiB予算測定の対象外。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
@@ -176,6 +175,14 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5251 — Dead status label projections removal(2026-08-28)
+
+- **Status:** `COMMITTED_LOCAL 91c74de / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** consumer 0の派生label runtime export 5件だけを削除。全presentation map、使用中alias、
+  DOM/CSS/copy/ARIA/enum/rendered behaviorは不変。
+- **Gate:** expected Red 1 failure / 13 PASS→focused/post-commit 14 PASS、consumer再検索/path/diff PASS。
+  frozen independent reviewとrecord-only rechecksはfinding 0。
 
 ### WP-5250 — Evidence-id collector one-shot snapshot(2026-08-28)
 

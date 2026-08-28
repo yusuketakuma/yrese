@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import * as sharedKernel from "./index.js";
 import {
   BLOCKER_TYPES,
   CLAIMABLE_SAFE_STATUSES,
@@ -37,6 +38,12 @@ import {
   userId,
   workPackageId,
 } from "./index.js";
+
+describe("shared-kernel exports", () => {
+  it("does not export the unused eligibility guard", () => {
+    expect(sharedKernel).not.toHaveProperty("isEligibilityStatus");
+  });
+});
 
 describe("branded ids", () => {
   const factories = [

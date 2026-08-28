@@ -1,40 +1,41 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5251 R1 RECORD_RECHECK_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5252 R1 RECORD_RECHECK_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5250はlocal commit `4a69188`、agmsg連携規則は`acc25d9`へ着地済み。date-time terminal-line候補は
+- **Direction / ownership:** WP-5251はlocal commit `91c74de`、agmsg連携規則は`acc25d9`へ着地済み。date-time terminal-line候補は
   live runtimeで既に拒否される`NOT_A_BUG`。WP-5235 EventEnvelope root guardはMOD-009改版前提で未着手。
-  current requestをWP-5251のdead status label projections removalで継続する。
+  current requestをWP-5252のdead eligibility guard removalで継続する。
   WP-5226は元exact4では安全に完結しないためdefer中。Codex rootだけが`active_root_writer`、
   state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5251-remove-dead-status-labels`、base/HEAD
-  `4a69188209c301336d4039827e253e4e0ca33c64`。push / mergeは行わない。
-- **Dirty ownership:** exact4は `apps/web/app/status/visual-status-registry.ts`、
-  `apps/web/app/status/visual-status-registry.test.tsx`、`Plans.md`、`State.md`。
+- **Git boundary:** current branch `refactor/wp-5252-remove-dead-eligibility-guard`、base/HEAD
+  `91c74de024a714cf52e2596a83c4b894059f198e`。push / mergeは行わない。
+- **Dirty ownership:** exact4は `packages/shared-kernel/src/status.ts`、
+  `packages/shared-kernel/src/kernel.test.ts`、`Plans.md`、`State.md`。
   同じexact4だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5251 / READY=0(WIPはR1 RECORD_RECHECK_PASS / LOCAL_LANDING_PENDING)。consumer 0の
-  `RECORD_LIFECYCLE_LABELS`、`SYNC_STATUS_LABELS`、`PRESCRIPTION_CHANGE_LABELS`、
-  `SESSION_STATUS_LABELS`、`CLINICAL_ALERT_ACK_LABELS`だけを削除する。presentation map、使用中のlabel map、
-  DOM/CSS/copy/ARIA/enum/component、APPROVED SSOTは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5252 / READY=0(WIPはR1 RECORD_RECHECK_PASS / LOCAL_LANDING_PENDING)。consumer 0の
+  `isEligibilityStatus` runtime exportだけを削除する。`ELIGIBILITY_STATUSES`/`EligibilityStatus`、他guard、
+  index/package、contracts/API/DB/migration、APPROVED SSOTは変更しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
 - **Security / privacy / offline:** fixtureはmodule namespaceのsynthetic assertionだけでcredential、production data、PHI/PII、保存、log、
   external send、network、cache、retry/offline stateを追加しない。
-- **Process gate:** local tracked全文検索で削除対象5 exportは各定義1件のみ。APPROVED UIX-001が互換維持を明記する
-  MODE/ELIGIBILITY/RECEPTION/SEVERITY label mapには含まれない。R1 pre-planはfinding 0でREADY。
-  consumer出現、互換SSOT対象、rendered behavior、別pathへ波及するなら停止する。
-- **Validation / rollback:** GBrain `context_pack`はlocalhost transport down。module namespace absence testは
-  expected Red 1 failed / 13 passed→Green 14 passed。productionは9行削除だけで、consumer再検索0件、exact4
-  `git diff --check` PASS。code/test frozen SHA-256は`3fbd0d6ace107b31a5878aedcda83bb3a018a6630293ac67c5164c1037c9eccf`、
-  reviewed exact4 SHA-256は`c84bbf0d1fc4f8b247c733f8a721a4bbb3cf39e784a238f343ee0495f60cccf3`。
+- **Process gate:** local exact-name検索で`isEligibilityStatus`は定義1件のみ、導入履歴は`d460ff7`のみ。
+  APPROVED MOD-005はstatus値削除と必須system-mode/isClaimable guardを管理し、本predicate保持は要求しない。
+  pre-planはSSOT更新不要・R1 finding 0でREADY。consumer、out-of-tree互換要求、tuple/type/API/DB/SSOT、別pathへ波及するなら停止する。
+- **Validation / rollback:** GBrain `context_pack`/checkpointはlocalhost transport down。module namespace absence testは
+  expected Red 1 failed / 64 passed→Green 65 passed。shared-kernel package 3 files / 86 tests、consumer再検索0件、
+  exact4 `git diff --check` PASS。productionは4行削除だけ。code/test frozen SHA-256は
+  `f847bdbe35a0aeb84e8a7d3b32916eff36a1e6c1dbba03797017fc608875c019`、reviewed exact4 SHA-256は
+  `48b8ce2a37534ef84cc02213e56f3f5feb1bbedd2db6fc3435f60d4486831661`。
   frozen independent reviewはblocking/non-blocking finding 0。record-only exact4 SHA-256は
-  `3d8b42acf424029f2eb88c0a02009761819f69a85e22969b0a9e635490f5a328`で、recheckも
-  blocking/non-blocking finding 0。local landingはpending。CSS変更はなく12 KiB予算測定の対象外。
+  `ac3a8783a0f490a7e4a71071ebe202c9834e27b8900453a390f81a4ae9efe011`で、recheckも
+  blocking/non-blocking finding 0。local landingはpending。
+  CSS変更はなく12 KiB予算測定の対象外。
   DB integration、browser、network、production runtimeは実行しない。
-  exact4の単一`WP-5251:` commit、rollbackは確定commitへの
+  exact4の単一`WP-5252:` commit、rollbackは確定commitへの
   `git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
