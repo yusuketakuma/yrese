@@ -800,6 +800,47 @@ describe("createCalculationTrace", () => {
     ).toEqual(["EVD-A", "EVD-B", "EVD-C"]);
   });
 
+  it("snapshots evidence collection step fields once", () => {
+    const reads = { evidenceRefs: 0, rounding: 0 };
+    const ids = collectCalculationTraceEvidenceIds([
+      {
+        get evidenceRefs() {
+          reads.evidenceRefs += 1;
+          return reads.evidenceRefs === 1
+            ? [{ evidenceId: "EVD-A" }]
+            : [{ evidenceId: "EVD-FORGED-REF" }];
+        },
+        get rounding() {
+          reads.rounding += 1;
+          return reads.rounding === 1
+            ? { evidenceId: "EVD-B" }
+            : { evidenceId: "EVD-FORGED-ROUNDING" };
+        },
+      },
+    ]);
+
+    expect(reads).toEqual({ evidenceRefs: 1, rounding: 1 });
+    expect(ids).toEqual(["EVD-A", "EVD-B"]);
+    expect(Object.isFrozen(ids)).toBe(true);
+  });
+
+  it("preserves evidence collection field validation precedence", () => {
+    let roundingReads = 0;
+
+    expect(() =>
+      collectCalculationTraceEvidenceIds([
+        {
+          evidenceRefs: new Array<{ readonly evidenceId: string }>(1),
+          get rounding() {
+            roundingReads += 1;
+            return { evidenceId: "EVD-B" };
+          },
+        },
+      ]),
+    ).toThrow(new RangeError("Trace arrays must be dense"));
+    expect(roundingReads).toBe(0);
+  });
+
   it("rejects sparse evidence collection steps", () => {
     const steps = new Array<{
       readonly evidenceRefs: readonly { readonly evidenceId: string }[];

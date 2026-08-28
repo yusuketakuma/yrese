@@ -401,12 +401,14 @@ export function collectCalculationTraceEvidenceIds<T extends string>(
   assertDenseArray(steps);
   const ids = new Set<T>();
   for (const step of steps) {
-    assertDenseArray(step.evidenceRefs);
-    for (const ref of step.evidenceRefs) {
+    const evidenceRefs = step.evidenceRefs;
+    assertDenseArray(evidenceRefs);
+    for (const ref of evidenceRefs) {
       ids.add(ref.evidenceId);
     }
-    if (step.rounding !== undefined) {
-      ids.add(step.rounding.evidenceId);
+    const rounding = step.rounding;
+    if (rounding !== undefined) {
+      ids.add(rounding.evidenceId);
     }
   }
   return freezeArray([...ids]);
