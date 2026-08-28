@@ -150,6 +150,80 @@ describe("createCalculationTrace", () => {
     expect(Object.isFrozen(trace.inputsSummary.ids)).toBe(true);
   });
 
+  it("snapshots top-level calculation trace inputs once", () => {
+    const reads = { masterVersion: 0, calculationRuleVersion: 0, steps: 0 };
+    const firstSteps = [claimStep()];
+    const trace = createCalculationTrace({
+      inputsSummary,
+      get masterVersion() {
+        reads.masterVersion += 1;
+        return reads.masterVersion === 1 ? "2026.04" : "forged-master";
+      },
+      get calculationRuleVersion() {
+        reads.calculationRuleVersion += 1;
+        return reads.calculationRuleVersion === 1 ? "draft-001" : "forged-rule";
+      },
+      get steps() {
+        reads.steps += 1;
+        return reads.steps === 1 ? firstSteps : [];
+      },
+    });
+
+    expect(reads).toEqual({ masterVersion: 1, calculationRuleVersion: 1, steps: 1 });
+    expect(trace.masterVersion).toBe("2026.04");
+    expect(trace.calculationRuleVersion).toBe("draft-001");
+    expect(trace.steps[0]?.stepId).toBe("step-001");
+    expect(Object.isFrozen(trace.steps)).toBe(true);
+  });
+
+  it("preserves top-level calculation trace validation precedence", () => {
+    let stepFieldReads = 0;
+    const prototype = Object.create(Array.prototype) as CalculationTraceStep[];
+    Object.defineProperty(prototype, 0, {
+      get() {
+        stepFieldReads += 1;
+        return claimStep();
+      },
+    });
+    const sparseSteps = new Array<CalculationTraceStep>(1);
+    Object.setPrototypeOf(sparseSteps, prototype);
+
+    const cases = [
+      ["masterVersion", " ", "masterVersion must be a non-empty string", ["masterVersion"]],
+      [
+        "calculationRuleVersion",
+        " ",
+        "calculationRuleVersion must be a non-empty string",
+        ["masterVersion", "calculationRuleVersion"],
+      ],
+      ["steps", sparseSteps, "Trace arrays must be dense", ["masterVersion", "calculationRuleVersion", "steps"]],
+    ] as const;
+
+    for (const [field, invalidValue, message, expectedReads] of cases) {
+      const reads: (string | symbol)[] = [];
+      const input = {
+        inputsSummary,
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [claimStep()],
+      };
+      Object.defineProperty(input, field, { value: invalidValue });
+
+      expect(() =>
+        createCalculationTrace(
+          new Proxy(input, {
+            get(target, property, receiver) {
+              reads.push(property);
+              return Reflect.get(target, property, receiver);
+            },
+          }),
+        ),
+      ).toThrow(new RangeError(message));
+      expect(reads).toEqual(expectedReads);
+    }
+    expect(stepFieldReads).toBe(0);
+  });
+
   it("snapshots known input-ref fields and preserves first-field error precedence", () => {
     const cases = [
       ["ids", "kind", "prescription", "unsupported", "id", "prescription-001", "forged-id", "TraceIdRef kind is not supported"],

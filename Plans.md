@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current chainはWP-5242 `fb42c37` + collaboration docs `acc25d9` + WP-5243 `6c23221` + WP-5244 `f632823` + WP-5245 `d9af10b`(実測 2026-08-28) |
-| Candidate branch | WP-5245はlocal commit `d9af10b`。WP-5246は同HEADから `refactor/wp-5246-input-summary-array-snapshot` を作成済み |
+| Review base | local `main` = `origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current chainはWP-5242 `fb42c37` + collaboration docs `acc25d9` + WP-5243 `6c23221` + WP-5244 `f632823` + WP-5245 `d9af10b` + WP-5246 `0bebf64`(実測 2026-08-28) |
+| Candidate branch | WP-5246はlocal commit `0bebf64`。WP-5247は同HEADから `refactor/wp-5247-calculation-trace-input-snapshot` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までmain/originへfast-forward済み(reflog実測)。WP-5242以降のpushは認可・実行しない |
-| Candidate scope | `freezeInputsSummary`の4 collection fieldをone-shot snapshotし、array/dense/ref validationとfrozen outputで同じfirst-read値を使うexact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5246 frozen reviews + record rechecks finding 0 / local landing pending、compiled CSS予算12 KiBを維持) |
+| Candidate scope | `createCalculationTrace`の`masterVersion`/`calculationRuleVersion`/`steps`をone-shot snapshotし、validationとfrozen outputで同じfirst-read値を使うexact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5247 frozen reviews + record rechecks finding 0 / local landing pending、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5246 exact2候補で、`freezeInputsSummary`のvalidation間にstateful getterがarrayを差し替えられる再読をfirst-read local snapshotへ収束する |
-| Main blocker | WP-5246 implementation/affected gates、両frozen review、両record-only recheckはfinding 0。exact stage/local landingを残す。WP-5235はSSOT-first gate、WP-5226は元exact4不完結でdefer中 |
+| Current critical path | WP-5247 exact2候補で、`createCalculationTrace`のtop-level validation後のstateful getter再読による差替えをfirst-read local snapshotへ収束する |
+| Main blocker | WP-5247 implementation/affected gates、両frozen review、両record-only recheckはfinding 0。exact stage/local landingを残す。WP-5235はSSOT-first gate、WP-5226は元exact4不完結でdefer中 |
 | Required verification | exact4 stageのcached paths/hash/diff-checkを確認し、単一local commitへ着地させる |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5246である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5247である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,41 +73,39 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5246(InputsSummary collection one-shot snapshot、R2 RECORD_RECHECKS_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5245はlocal commit `d9af10b`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5247(CalculationTrace top-level one-shot snapshot、R2 RECORD_RECHECKS_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5246はlocal commit `0bebf64`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** `freezeInputsSummary`は`ids`、`dates`、`masterVersions`、optional `ruleVersions`をarray確認、dense確認、
-  ref mapの各phaseで再読する。stateful getterがphase間で値を差し替え、検証したarrayとfrozen traceのarrayを不一致にできる。
-  4 fieldを最初の読取りで1回だけlocal snapshotし、既存validation/freeze helperを同じ値に適用する。
+- **Purpose / layer:** `createCalculationTrace`は`masterVersion`と`calculationRuleVersion`を検証後のoutput構築で再読し、
+  `steps`をdense確認後のmapで再読する。stateful getterがvalidated値/arrayとfrozen traceの値/arrayを差し替えられる。
+  3 fieldを検証順の最初の読取りで1回だけlocal snapshotし、既存validation/freezeを同じ値に適用する。
 - **Allowed / forbidden:** exact4は`packages/trace/src/index.ts`、`packages/trace/src/trace.test.ts`、`Plans.md`、`State.md`。
-  pre-plan finding 0前はrecords 2 pathだけを変更する。それ以外、特にref freezer、`assertArray`/`assertDenseArray`/`freezeArray`、
-  `freezeEvidenceRef`、top-level factory、Trace型、contracts/Zod/wire、calculation producer/API/UI、package/dependency、APPROVED SSOT、schema/migrationは変更禁止。
+  pre-plan finding 0前はrecords 2 pathだけを変更する。それ以外、特に`freezeInputsSummary`、`freezeStep`、array/ref helper、
+  `createLegalTrace`、collect helper、Trace型、contracts/Zod/wire、calculation producer/API/UI、package/dependency、APPROVED SSOT、schema/migrationは変更禁止。
   保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** APPROVED CAL-008とAPI-007はInputsSummaryをids/dates/masterVersions/ruleVersions?のPHI非包含写像とし、
-  live contractsも同じ4 fieldを配列として検証する。public `createCalculationTrace`が`freezeInputsSummary`へ到達し、calculation producerはplain arrayを供給する。
-  current runtimeはrequired getterを最大3回、optional getterを最大4回読む。型/field/contract変更ではなくruntime data-integrity強化候補である。
-- **Acceptance / tests:** (A1)`summary`のobject拒否を先頭に維持する。`ids`→`dates`→`masterVersions`→`ruleVersions`の順に各1回読み、
-  同じlocalに対し全4 fieldのarray確認を先に終えてから、同順でdense確認、ref map/freezeを行う。
-  (A2)first-read arrayだけがfrozen outputを構成し、summary getterの2回目以降を呼ばない。
-  (A3)`ruleVersions` first-readが`undefined`なら現行どおりfrozen empty arrayをown fieldとして出力し、arrayなら同じfirst-read値を使う。
-  (A4)sparse `ids`とnon-array `dates`が併存する場合など、全fieldのtype-checkをdense/ref検証より先に行う現行error precedenceを維持する。
-  (A5)existing error text、plain valid/invalid、dense拒否、ref one-shot semantics、frozen output、contracts parse、calculation traceは不変。
-  (A6)production差分は4 local bindingと後続参照のlocal化だけ。新helper・型・dependencyを追加しない。
-- **PIA / offline:** fixtureはsynthetic getter/counterとsynthetic PHI-free refsだけで、患者・処方・請求data、credential、production data、
+- **Authority / evidence:** APPROVED CAL-008/API-007はCalculationTraceのtop-level version、steps、InputsSummary、warnings/blockers、evidenceIdsの現行形を正本化する。
+  public callerは`packages/calculation`のplain input構築と1経路で、live contractsも同じfieldを検証する。current runtimeは対象3 fieldを各2回読む。
+  field/type/contract変更ではなくruntime data-integrity強化候補である。
+- **Acceptance / tests:** (A1)`masterVersion`を1回読み、検証とoutputで同じlocalを使う。invalidなら後続fieldを読まない。
+  (A2)`calculationRuleVersion`を1回読み、検証とoutputで同じlocalを使う。invalidなら`steps`以降を読まない。
+  (A3)`steps`を1回読み、同じfirst-read arrayをdense確認・`freezeStep` map・freezeする。sparse拒否はstep field検証より先に維持する。
+  (A4)`inputsSummary`、warnings、blockersは現行どおり1回読取のため変更せず、必須field→steps→inputsSummary→optional arraysのerror/read precedenceを維持する。
+  (A5)plain valid/invalid、step/ref validation、frozen output、evidence aggregation、contracts parse、calculationは不変。
+  (A6)production差分は3 local bindingと後続参照のlocal化だけ。新helper・型・dependencyを追加しない。
+- **PIA / offline:** fixtureはsynthetic getter/counter、synthetic PHI-free version/stepだけで、患者・処方・請求data、credential、production data、
   PHI/PII、保存、log、external send、network、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。Claudeの先行read-only mappingは本候補をWP-5246にdefer済み。
-  fresh `pre_plan_reviewer`はR2 strengthening-only READY、blocking/non-blocking finding 0、SSOT改版・human gate不要と判定した。
-  `reviewer_roles`は`pre_plan_reviewer`、`independent_verifier`、`trace_data_integrity_privacy_reviewer`。helper/ref freezer、
-  contract/schema/calculation/API/UI、unknown field規律、別path変更が必要なら停止。READY後exact4を単一`WP-5246:` commit、
-  rollbackは確定commitへの`git revert <commit>`。rootだけがvalidator/stager/committer。push、merge、deploy、migration/DDL/DMLは認可外。
-- **Validation evidence:** live mappingで`freezeInputsSummary`唯一callerは`createCalculationTrace`、producerは`packages/calculation`のplain array構築と確認。
-  GBrain `code_blast` はlocalhost transport downで未取得。fresh pre-planはREADME/live code/APPROVED CAL-008/API-007に基づきfinding 0。
-  expected Redはinput-summary focusedで1 failure / precedence 1 PASS、optional absent focusedで1 failureとして、required getter 2回読取と
-  optional getter 3回読取を再現。productionは4 local bindingと後続参照置換だけ。最終focused 2、trace package 55 + typecheck、
-  contracts 136 + typecheck、calculation 90 + typecheck、boundaries、calculation-purity、`git diff --check`がPASS。code/test frozen SHA-256は
-  `02324c5196c2c33cb55fbddba87a28f7902e817419e0c7b9924ebec8c65169e6`、reviewed exact4 SHA-256は
-  `5079c47458e90184a662d12b3d2213d49461a79c58af750b283c909cb66bb021`。frozen independent + trace/data-integrity/privacy reviewはどちらも
-  blocking/non-blocking finding 0。同じreviewerのrecord-only recheckもfinding 0。local landingはpending。
+- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。fresh `pre_plan_reviewer`はR2 strengthening-only READY、
+  blocking/non-blocking finding 0、SSOT改版・本slice固有のhuman gate不要と判定した。`reviewer_roles`は`pre_plan_reviewer`、
+  `independent_verifier`、`trace_data_integrity_privacy_reviewer`。LegalTrace/collect/helper/type/contract/calculation/API/UIへ波及するなら停止。
+  READY後exact4を単一`WP-5247:` commit、rollbackは確定commitへの`git revert <commit>`。rootだけがvalidator/stager/committer。
+  push、merge、deploy、migration/DDL/DMLは認可外。
+- **Validation evidence:** GBrain `code_blast`はlocalhost transport downで未取得。local `rg`でproduction caller 1経路、live functionの再読3 field、
+  既存step/input-summary/ref one-shot testを確認。fresh pre-planはfinding 0。expected Redはfocused 1 failure / precedence 1 PASSで
+  `masterVersion`/`calculationRuleVersion`/`steps`が各2回読まれることを再現。productionは3 local bindingと参照置換だけ。
+  最終focused 2、trace package 57 + typecheck、contracts 136 + typecheck、calculation 90 + typecheck、boundaries、calculation-purity、
+  `git diff --check`がPASS。code/test frozen SHA-256は`3057fc6940a36f13d5c84db3336f4a6a6f804033ebcbf5c3582f8e2d78de9043`、
+  reviewed exact4 SHA-256は`a8520a602d8be33d358f9e2334138f893aff15166cc1411dc415d43223e820cc`。
+  frozen independent + trace/data-integrity/privacy reviewはどちらもblocking/non-blocking finding 0。同じreviewerのrecord-only recheckもfinding 0。local landingはpending。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|

@@ -413,16 +413,19 @@ export function collectCalculationTraceEvidenceIds<T extends string>(
 }
 
 export function createCalculationTrace(input: CreateCalculationTraceInput): CalculationTrace {
-  assertNonEmptyString(input.masterVersion, "masterVersion");
-  assertNonEmptyString(input.calculationRuleVersion, "calculationRuleVersion");
+  const masterVersion = input.masterVersion;
+  assertNonEmptyString(masterVersion, "masterVersion");
+  const calculationRuleVersion = input.calculationRuleVersion;
+  assertNonEmptyString(calculationRuleVersion, "calculationRuleVersion");
 
-  assertDenseArray(input.steps);
-  const steps = freezeArray(input.steps.map(freezeStep));
+  const inputSteps = input.steps;
+  assertDenseArray(inputSteps);
+  const steps = freezeArray(inputSteps.map(freezeStep));
 
   return Object.freeze({
     inputsSummary: freezeInputsSummary(input.inputsSummary),
-    masterVersion: input.masterVersion,
-    calculationRuleVersion: input.calculationRuleVersion,
+    masterVersion,
+    calculationRuleVersion,
     steps,
     warnings: freezeArray(input.warnings ?? []),
     blockers: freezeArray(input.blockers ?? []),
