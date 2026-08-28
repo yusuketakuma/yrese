@@ -66,11 +66,13 @@ function projectAuditLogEntry(event: AuditEvent): AuditLogEntry | undefined {
   }
 }
 
+const invalidAuditLogQueryResponseTemplate = errorResponseSchema.parse({
+  errorCode: AUDIT_LOG_INVALID_QUERY_ERROR_CODE,
+  message: 'Invalid audit log query',
+});
+
 function invalidAuditLogQueryResponse() {
-  return errorResponseSchema.parse({
-    errorCode: AUDIT_LOG_INVALID_QUERY_ERROR_CODE,
-    message: 'Invalid audit log query',
-  });
+  return { ...invalidAuditLogQueryResponseTemplate };
 }
 
 const callback: FastifyPluginCallback<AuditLogRoutesOptions> = (server, options, done) => {

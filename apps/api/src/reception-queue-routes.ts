@@ -125,11 +125,13 @@ export function parseReceptionEntrySnapshot(
   }
 }
 
+const invalidReceptionRequestResponseTemplate = errorResponseSchema.parse({
+  errorCode: receptionInvalidRequestErrorCode,
+  message: 'Invalid reception request',
+});
+
 export function invalidReceptionRequestResponse() {
-  return errorResponseSchema.parse({
-    errorCode: receptionInvalidRequestErrorCode,
-    message: 'Invalid reception request',
-  });
+  return { ...invalidReceptionRequestResponseTemplate };
 }
 
 const callback: FastifyPluginCallback<ReceptionQueueRoutesOptions> = (

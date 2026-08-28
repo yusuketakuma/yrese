@@ -110,13 +110,13 @@ export function requireTenantContext(request: FastifyRequest): TenantContext {
   return tenantContext;
 }
 
+const authorizationErrorResponse = errorResponseSchema.parse({
+  errorCode: authorizationErrorCode,
+  message: 'Forbidden',
+});
+
 function sendAuthorizationError(reply: FastifyReply) {
-  return reply.code(403).send(
-    errorResponseSchema.parse({
-      errorCode: authorizationErrorCode,
-      message: 'Forbidden',
-    }),
-  );
+  return reply.code(403).send({ ...authorizationErrorResponse });
 }
 
 export function requirePermission(scope: PermissionScope): preHandlerHookHandler {

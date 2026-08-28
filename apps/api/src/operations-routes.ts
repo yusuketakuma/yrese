@@ -44,13 +44,13 @@ export const operationsMigrationStateReadErrorMessage =
 export const operationsResponseInvariantErrorMessage =
   "Operations summary response is invalid";
 
+const invalidReceptionSummaryResponse = errorResponseSchema.parse({
+  errorCode: RECEPTION_INVALID_REQUEST_ERROR_CODE,
+  message: "Invalid reception request",
+});
+
 function invalidReceptionSummaryRequest(reply: FastifyReply) {
-  return reply.code(400).send(
-    errorResponseSchema.parse({
-      errorCode: RECEPTION_INVALID_REQUEST_ERROR_CODE,
-      message: "Invalid reception request",
-    }),
-  );
+  return reply.code(400).send({ ...invalidReceptionSummaryResponse });
 }
 
 async function readOperationsState<T>(

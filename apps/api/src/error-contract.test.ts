@@ -9,6 +9,7 @@ import {
   patientSearchCursorHmacKeyByteLength,
 } from './patient-search-cursor.js';
 import { type PatientRepository } from './patient-repository.js';
+import { invalidReceptionRequestResponse } from './reception-queue-routes.js';
 import { type ReceptionRepository } from './reception-repository.js';
 import {
   auditLogRepositoryReadErrorMessage,
@@ -48,6 +49,20 @@ const fullScopeHeaders = {
 } as const;
 
 describe('framework-shaped error surface (WP-9008 conformance)', () => {
+  it('reuses static error validation while returning a fresh response object', () => {
+    const parseSpy = vi.spyOn(errorResponseSchema, 'parse');
+    try {
+      const first = invalidReceptionRequestResponse();
+      const second = invalidReceptionRequestResponse();
+
+      expect(parseSpy).not.toHaveBeenCalled();
+      expect(first).toEqual(second);
+      expect(first).not.toBe(second);
+    } finally {
+      parseSpy.mockRestore();
+    }
+  });
+
   it('normalizes a malformed JSON body to a declared framework 400 with no-store', async () => {
     const server = buildDevTestServer();
     const response = await server.inject({

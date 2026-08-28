@@ -163,18 +163,22 @@ function patientSnapshotsMatch(
   );
 }
 
+const receptionPatientNotFoundResponseTemplate = errorResponseSchema.parse({
+  errorCode: receptionPatientNotFoundErrorCode,
+  message: 'Patient not found for reception',
+});
+
 function receptionPatientNotFoundResponse() {
-  return errorResponseSchema.parse({
-    errorCode: receptionPatientNotFoundErrorCode,
-    message: 'Patient not found for reception',
-  });
+  return { ...receptionPatientNotFoundResponseTemplate };
 }
 
+const receptionIdempotencyConflictResponseTemplate = errorResponseSchema.parse({
+  errorCode: receptionIdempotencyConflictErrorCode,
+  message: 'Reception idempotency conflict',
+});
+
 function receptionIdempotencyConflictResponse() {
-  return errorResponseSchema.parse({
-    errorCode: receptionIdempotencyConflictErrorCode,
-    message: 'Reception idempotency conflict',
-  });
+  return { ...receptionIdempotencyConflictResponseTemplate };
 }
 
 const callback: FastifyPluginCallback<ReceptionCreateRoutesOptions> = (

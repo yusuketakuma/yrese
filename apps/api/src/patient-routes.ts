@@ -74,11 +74,13 @@ export const patientViewClockReadErrorMessage = 'Patient view clock read failed'
 export const patientViewClockInvariantErrorMessage =
   'Patient view clock returned an invalid instant';
 
+const invalidPatientSearchQueryResponseTemplate = errorResponseSchema.parse({
+  errorCode: patientSearchInvalidQueryErrorCode,
+  message: 'Invalid patient search query',
+});
+
 function invalidPatientSearchQueryResponse() {
-  return errorResponseSchema.parse({
-    errorCode: patientSearchInvalidQueryErrorCode,
-    message: 'Invalid patient search query',
-  });
+  return { ...invalidPatientSearchQueryResponseTemplate };
 }
 
 function snapshotDecodedPatientSearchCursor(value: unknown): PatientSearchCursor {
@@ -172,11 +174,13 @@ export function parsePatientSearchResultSnapshot(
   }
 }
 
+const patientNotFoundResponseTemplate = errorResponseSchema.parse({
+  errorCode: PATIENT_NOT_FOUND_ERROR_CODE,
+  message: 'Patient not found',
+});
+
 function patientNotFoundResponse() {
-  return errorResponseSchema.parse({
-    errorCode: PATIENT_NOT_FOUND_ERROR_CODE,
-    message: 'Patient not found',
-  });
+  return { ...patientNotFoundResponseTemplate };
 }
 
 const callback: FastifyPluginCallback<PatientRoutesOptions> = (server, options, done) => {
