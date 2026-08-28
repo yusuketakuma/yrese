@@ -1,37 +1,40 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5241 affected gates PASS / frozen reviews finding 0 / local landing pending):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5242 affected gates / frozen reviews / record rechecks finding 0 / local landing pending):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5240はlocal commit `e1aa0cc`へ着地済み。date-time terminal-line候補はlive runtimeで既に拒否される
-  `NOT_A_BUG`。WP-5235 EventEnvelope root guardはMOD-009改版前提で未着手。current requestをWP-5241のpre-plan判定で継続する。
+- **Direction / ownership:** WP-5241はlocal commit `b10ffc9`へ着地済み。date-time terminal-line候補はlive runtimeで既に拒否される
+  `NOT_A_BUG`。WP-5235 EventEnvelope root guardはMOD-009改版前提で未着手。current requestをWP-5242のfrozen reviewで継続する。
   WP-5226は元exact4では安全に完結しないためdefer中。Codex rootだけが`active_root_writer`、
   state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5241-trace-integer-primitive-guard`、base/HEAD
-  `e1aa0cc8c628ac90633b9dead0a857f5fc424f16`。push / mergeは行わない。
+- **Git boundary:** current branch `refactor/wp-5242-trace-step-snapshot`、base/HEAD
+  `b10ffc9e8d06fd4c78484865e819c113ad180141`。push / mergeは行わない。
 - **Dirty ownership:** exact4は `packages/trace/src/index.ts`、`packages/trace/src/trace.test.ts`、`Plans.md`、`State.md`。
   pre-plan finding 0前の現在はrecords 2 pathだけを変更し、READY後も同じexact4だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、
   `ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5241 / READY=0。公開`isCanonicalTraceIntegerString`の既存regex前へ
-  primitive string短絡を1行追加し、type-erased objectのtrue受理/coercionを閉じる候補。signature/regex/valid string、Trace factory、
-  contracts/wire schema、calculation/API/UI、APPROVED SSOTは変更しない。
+  peer-owned `AGENTS.md` / `CLAUDE.md` は合意済みagmsg連携規則のuncommitted変更で、stable handoff済みだが本WPでは参照のみ・stageしない。
+- **Active plan / boundary:** CURRENT=WP-5242 / READY=0。`freezeStep`のCAL-008既知13 top-level fieldを各validation checkpointで
+  1回captureし、検証・nested freeze・explicit object構築を同じlocalへ収束する候補。`stepId`を即時検証するまで後続fieldを読まず、
+  unknown own keyは読まず・拒否せず・保持しない。optional absent/`undefined`は出力keyを省略する。original stepをspreadしない。
+  nested freezer、Trace型/validator、contracts/wire schema、calculation/API/UI、APPROVED SSOTは変更しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** fixtureはsynthetic object/string/counterだけで、credential、production data、PHI/PII、保存、log、
+- **Security / privacy / offline:** fixtureはsynthetic getter/counterとPHI-like sentinel key名だけで、credential、production data、PHI/PII値、保存、log、
   external send、network、cache、retry/offline stateを追加しない。
-- **Process gate:** rootがAPPROVED CAL-008/API-007、live trace/contracts caller、public export、primitive-guarded consumer、
-  regex coercion gap、exact4候補を確認済み。fresh read-only pre-planはfinding 0 / R2 READY、SSOT改版不要、追加human gate不要を
-  確認した。実外部callerは未確認の予防的hardeningである。signature/regex/valid string、Trace/contracts/schema/calculation/API/UI変更が
+- **Process gate:** rootがAPPROVED CAL-008/API-007/SEC-004、live `freezeStep`のvalidation後spread再読、WP-5241 specialist residual、
+  exact4候補を確認済み。contract pre-planはunknown omissionが既知field 1:1写像と整合し、strengthening-only R2、SSOT改版・human gate不要と
+  判定した。指摘したacceptance曖昧性をrecordsへ補正し、record recheckとprivacy/security pre-planはいずれもfinding 0 / R2 READY。
+  R3以上、unknown拒否/保持、contract change、SSOT改版、nested freezer、new validation/error、contracts/schema/calculation/API/UI変更が
   必要なら停止する。
-- **Validation / rollback:** expected Redはtype-erased objectをtrue受理・coercion 1回で再現し、既存guard 1行後はtrace 42、contracts 136、
-  calculation 90、各typecheck、boundariesがexit 0。code/test frozen SHA-256は
-  `438e923cb13d94602ce8711e3bc012a8ddbe6d594a2e5bba6f0a68048fa13ae9`、reviewed exact4 packet SHA-256は
-  `cd986d1c33c5cd8d5fd0a5f8a6ba798229f9c7c739e797d810435a844559ddfb`。frozen両reviewはfinding 0。
-  `freezeStep` optional getter再読は別follow-up候補として分離する。
-  DB integration、browser、network、
-  production runtimeは実行しない。exact4の単一`WP-5241:` commit、rollbackは確定commitへの
+- **Validation / rollback:** expected Redは4 failure / existing 43 PASSでstateful result field、PHI-like intermediateValues、
+  affectsClaim/evidence split、unknown/undefined保持を再現し、A4はPASS。Green後はtrace 47、contracts 136、calculation 90、各typecheck、
+  boundaries、`git diff --check`がPASS。code/test frozen SHA-256は
+  `70053027ebc65e7f101c36120ad9058fd6a2edf4a9bb9a27f9f8b6da49e9d278`、reviewed exact4 SHA-256は
+  `d87e5899f1a4985472dfec55859d6951ab642b357c5c684249f49481126f87ea`。frozen 3 reviewsはfinding 0、
+  結果反映後のrecord-only rechecksもfinding 0。
+  DB integration、browser、network、production runtimeは実行しない。exact4の単一`WP-5242:` commit、rollbackは確定commitへの
   `git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。

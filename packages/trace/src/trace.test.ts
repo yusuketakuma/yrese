@@ -141,6 +141,139 @@ describe("createCalculationTrace", () => {
     expect(Object.isFrozen(trace.inputsSummary.ids)).toBe(true);
   });
 
+  it("reads each known step field once and omits unknown accessors", () => {
+    const values = claimStep({
+      feeItemCode: "FEE_DISPENSING_BASIC_1",
+      formula: "fixed(47)",
+      intermediateValues: { points: "47" },
+      rounding: {
+        method: "none",
+        evidenceId: officialEvidence.evidenceId,
+      },
+      stepStatus: "applied",
+      resultPoints: "47",
+      resultYen: "470",
+    });
+    const reads: Record<string, number> = {};
+    const step = Object.defineProperties(
+      {},
+      Object.fromEntries(
+        Object.entries(values).map(([field, value]) => [
+          field,
+          {
+            enumerable: true,
+            get() {
+              reads[field] = (reads[field] ?? 0) + 1;
+              return field === "resultPoints" && reads[field] > 2 ? "NaN" : value;
+            },
+          },
+        ]),
+      ),
+    ) as CalculationTraceStep;
+    let unknownReads = 0;
+    Object.defineProperty(step, "patient_name", {
+      enumerable: true,
+      get() {
+        unknownReads += 1;
+        return "synthetic";
+      },
+    });
+
+    const trace = createCalculationTrace({
+      inputsSummary,
+      masterVersion: "2026.04",
+      calculationRuleVersion: "draft-001",
+      steps: [step],
+    });
+
+    expect(reads).toEqual(Object.fromEntries(Object.keys(values).map((field) => [field, 1])));
+    expect(trace.steps[0]).toEqual(values);
+    expect(unknownReads).toBe(0);
+    expect(trace.steps[0]).not.toHaveProperty("patient_name");
+  });
+
+  it("rejects the first PHI-like intermediate-values snapshot", () => {
+    let reads = 0;
+    const step = {
+      ...claimStep(),
+      get intermediateValues(): Readonly<Record<string, string>> | undefined {
+        reads += 1;
+        return reads === 1 ? { patient_name: "synthetic" } : undefined;
+      },
+    } as unknown as CalculationTraceStep;
+
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary,
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [step],
+      }),
+    ).toThrow(new RangeError("CalculationTraceStep intermediateValues must not include PHI-like keys"));
+    expect(reads).toBe(1);
+  });
+
+  it("uses one affects-claim snapshot for validation and output", () => {
+    let reads = 0;
+    const step = {
+      ...claimStep({ evidenceRefs: [] }),
+      get affectsClaim() {
+        reads += 1;
+        return reads > 1;
+      },
+    };
+
+    const trace = createCalculationTrace({
+      inputsSummary,
+      masterVersion: "2026.04",
+      calculationRuleVersion: "draft-001",
+      steps: [step],
+    });
+
+    expect({ reads, affectsClaim: trace.steps[0]?.affectsClaim }).toEqual({
+      reads: 1,
+      affectsClaim: false,
+    });
+  });
+
+  it("does not read later step fields after an invalid step id", () => {
+    let laterReads = 0;
+    const step = new Proxy(claimStep(), {
+      get(target, property, receiver) {
+        if (property === "stepId") {
+          return " ";
+        }
+        laterReads += 1;
+        return Reflect.get(target, property, receiver);
+      },
+    });
+
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary,
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [step],
+      }),
+    ).toThrow(new RangeError("CalculationTraceStep stepId must be a non-empty string"));
+    expect(laterReads).toBe(0);
+  });
+
+  it("omits optional step fields whose snapshot is undefined", () => {
+    const step = {
+      ...claimStep(),
+      feeItemCode: undefined,
+    } as unknown as CalculationTraceStep;
+    const trace = createCalculationTrace({
+      inputsSummary,
+      masterVersion: "2026.04",
+      calculationRuleVersion: "draft-001",
+      steps: [step],
+    });
+
+    expect(Object.hasOwn(trace.steps[0] ?? {}, "feeItemCode")).toBe(false);
+  });
+
   it("rejects non-array step input refs", () => {
     expect(() =>
       createCalculationTrace({

@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5240 は local commit `e1aa0cc`。WP-5241 は同 commit から `refactor/wp-5241-trace-integer-primitive-guard` を作成済み |
-| Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | canonical trace integer predicateのregex coercionをprimitive guardで遮断する exact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5240 local landing、WP-5241 affected gates PASS・frozen reviews finding 0・local landing pending、compiled CSS予算12 KiBを維持) |
+| Review base | local `main` = `origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`、current WP-5242 branchも同base(実測 2026-08-28) |
+| Candidate branch | WP-5241 は local commit `b10ffc9`。WP-5242 は同 commit から `refactor/wp-5242-trace-step-snapshot` を作成済み |
+| Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までmain/originへfast-forward済み(reflog実測)。WP-5242のpushは認可・実行しない |
+| Candidate scope | CalculationTraceStepのtop-level fieldを1回snapshotし、検証した同じ値だけをfreezeする exact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5242 affected gates・frozen 3 reviews・record rechecks finding 0、local landing pending、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5241 exact2 code/test候補で、公開`isCanonicalTraceIntegerString`のtype-erased input coercionを既存primitive短絡へ閉じる |
-| Main blocker | live trace、pre-plan、Red→Green、affected gates、frozen reviews finding 0まで完了。record rereview、exact stage、local landingを残す。WP-5235はSSOT-first gate、WP-5226は元exact4不完結でdefer中 |
-| Required verification | pre-planでREADYならtrace focused/package Red→Green・typecheck、contracts/calculation affected tests+typecheck、boundaries、exact4 path-set/diff、frozen independent + trace/data-integrity reviewを要求する |
+| Current critical path | WP-5242 exact2 code/test候補で、`freezeStep`のvalidation後spread再読をknown-field one-shot snapshotへ収束する |
+| Main blocker | pre-plan、expected Red→Green、affected gates、frozen independent + trace/data-integrity + privacy/security reviews、record rechecksはfinding 0。exact stageとlocal landingを残す。WP-5235はSSOT-first gate、WP-5226は元exact4不完結でdefer中 |
+| Required verification | pre-planでREADYならtrace focused/package Red→Green・typecheck、contracts/calculation affected tests+typecheck、boundaries、exact4 path-set/diff、frozen independent + trace/data-integrity + privacy/security reviewを要求する |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
-| Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
+| Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5241である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5242である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,48 +73,47 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5241(trace integer predicate primitive guard、R2 READY)1 件である。**
-WP-5240 は local commit `e1aa0cc` で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5242(CalculationTraceStep top-level one-shot snapshot、R2 READY)1 件である。**
+WP-5241 は local commit `b10ffc9` で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** 公開`isCanonicalTraceIntegerString(value: string)`がprimitive確認なしに`RegExp.test(value)`を実行するため、
-  type-erased objectをcanonical整数としてtrue受理し、attacker-controlled coercionを呼ぶ、または任意例外を投げ得る。
-  既存regexの前へ`typeof value === "string"`短絡を1行追加する。新helper/regex/error/型は作らない。
+- **Purpose / layer:** `freezeStep`はtop-level fieldを検証後、`...step`と個別overrideで再読するため、stateful getterが
+  validated valueをinvalid result値、PHI-like intermediate key、claim-affecting/evidence不整合へ差し替えたままfrozen traceへ保持できる。
+  CAL-008既知13 fieldを各validation checkpointで1回captureし、そのlocalだけを即時検証・nested freeze・explicit object構築へ使う。
+  `stepId`を最初に読んで検証完了前は後続fieldを読まない。
+  original stepのspread、新helper、新validation/error/型は追加しない。
 - **Allowed / forbidden:** exact4候補は `packages/trace/src/index.ts`、`packages/trace/src/trace.test.ts`、`Plans.md`、`State.md`。
-  pre-plan finding 0前はrecords 2 pathだけを変更する。それ以外、特にpredicate signature/canonical regex、Trace型/factory/PHI判定、
-  contracts/Zod/wire schema、calculation/API/UI、package/dependency、APPROVED SSOT、schema/migrationは変更禁止。保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** APPROVED CAL-008は`@yrese/trace`をtrace runtime正本とし、APPROVED API-007はcontractsが同predicateを
-  再利用してdriftを防ぐ。live callerはtrace内部`assertCanonicalTraceIntegerString`が`typeof`後、contractsが`z.string()`後に呼ぶため、
-  tracked consumerは既にprimitive-guardedである。一方predicate自体はpackage exportで、JavaScript/type-erased runtime inputへ到達可能。
-  実外部callerは未確認だが、本候補はvalid string、trace construction、wire contractを変えず公開predicateのinvalid-type
-  fail-open/coercionだけを閉じる予防的internal hardeningである。
-- **Acceptance / tests:** (A1)canonical文字列へcoerceできるtype-erased objectはfalse、coercion 0回。(A2)既存canonical string 4件はtrue、
-  invalid string 9件はfalseのまま。(A3)createCalculationTraceのresultPoints/resultYen canonical拒否、valid output、
-  intermediateValuesの既存string/blank-key/PHI-like検証は不変で、intermediateValues全値のcanonical integer化は行わない。
-  (A4)contractsのz.string→refine順、parse結果、wire schemaは不変。(A5)production差分はpredicateの既存regex前primitive短絡1行だけ。
-- **PIA / offline:** fixtureはsynthetic object/string/counterだけで、患者・処方・請求data、credential、production data、PHI/PII、保存、log、
-  external send、network、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。read-only mapper、root live trace、fresh pre-planは完了。
-  pre-planはfinding 0 / R2 READY、SSOT改版不要、追加human gate不要を確認した。
-  `reviewer_roles`は`pre_plan_reviewer`、`independent_verifier`、`trace_data_integrity_reviewer`。
-  signature/regex/valid string、trace/contracts/schema/calculation/API/UI、別path変更が必要なら停止。READY後exact4を単一`WP-5241:` commit、
-  rollbackは確定commitへの`git revert <commit>`。rootだけがvalidator/stager/committer。push、merge、deploy、migration/DDL/DMLは認可外。
-  timeboxはREADY後のactive root作業60分(外部review待ち除外)または単一TDD/review/commit cycleの早い方。
-- **Validation evidence (UTC / exact command):**
-  - pre-plan finding 0 / R2 READY。
-  - `2026-08-28T00:05:35Z` `pnpm --filter @yrese/trace exec vitest run src/trace.test.ts` → exit 1
-    (expected Red: result true / coercion 1、既存41件PASS)。
-  - `2026-08-28T00:05:49Z` 同command → 42/42 PASS。
-  - `2026-08-28T00:05:59Z` `pnpm --filter @yrese/trace test` → 42/42 PASS、`00:06:01Z` trace typecheck exit 0。
-  - `2026-08-28T00:06:02Z` `pnpm --filter @yrese/contracts test` → 136/136 PASS、`00:06:04Z` contracts typecheck exit 0。
-  - `2026-08-28T00:06:05Z` `pnpm --filter @yrese/calculation test` → 90/90 PASS、`00:06:06Z` calculation typecheck exit 0。
-  - `2026-08-28T00:06:07Z` `pnpm check:boundaries` → exit 0。code/test frozen SHA-256は
-    `438e923cb13d94602ce8711e3bc012a8ddbe6d594a2e5bba6f0a68048fa13ae9`、reviewed exact4 packet SHA-256は
-    `cd986d1c33c5cd8d5fd0a5f8a6ba798229f9c7c739e797d810435a844559ddfb`。frozen independent + trace/data-integrity
-    reviewsはともにfinding 0。DB integration、browser、network、production runtimeは実行しない。
+  pre-plan finding 0前はrecords 2 pathだけを変更する。それ以外、特にnested EvidenceRef/InputSummary/ref/array element freezer、Trace型、
+  canonical/PHI validators、contracts/Zod/wire schema、calculation/API/UI、package/dependency、APPROVED SSOT、schema/migrationは変更禁止。
+  保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** APPROVED CAL-008は`@yrese/trace`のTraceStep field/invariantを正本化し、APPROVED API-007は同fieldのwire写像、
+  APPROVED SEC-004はcalculation_traceのPHI非包含を実装済みcontrolとして扱う。live `freezeStep`はoptional/required fieldをvalidation後に
+  spreadで再読し、evidenceRefs/inputRefs/intermediateValues/roundingだけを後置overrideする。WP-5241 frozen specialistはstateful getterで
+  invalid resultPoints/resultYenまたはPHI-like intermediateValuesを保持できる残余を確認した。required description/affectsClaim等も同じspread
+  root causeを共有するためtop-level known field全体を1 sliceで閉じ、nested object/array freezerの再読はpackage-wide完了を主張せず別候補とする。
+- **Acceptance / tests:** (A1)presentなCAL-008既知13 top-level getterは各1回だけ読み、検証したfirst-read値とfrozen出力が一致する。
+  (A2)first-read PHI-like intermediateValuesをlater undefinedで隠してraw spread保持できず、既存PHI-like RangeErrorで拒否する。
+  (A3)affectsClaim=false→true getterと空evidenceRefsはfirst-read falseの同一snapshotを保持し、claim/evidence判定と出力が分裂しない。
+  (A4)invalid stepIdはdescription以降を読まず既存error precedenceを維持する。(A5)既知fieldのplain valid/invalid steps、nested freeze、
+  evidenceIds、contracts/wire parse、calculation outputは不変。ただしtype-erased unknown own top-level keyは読まず、拒否せず、出力へ保持しない。
+  optional fieldがabsentまたは明示`undefined`なら出力keyを省略する。CAL-008/API-007の既知field 1:1写像と整合し、unknown拒否は行わない。
+- **PIA / offline:** fixtureはsynthetic getter/counterとPHI-like sentinel key名だけで、実患者・処方・請求data、credential、production data、
+  PHI/PII値、保存、log、external send、network、cache、retry/offline stateを追加しない。
+- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。root live traceとfrozen specialist findingを復元し、contract pre-planの
+  acceptance補正後recheckとprivacy/security pre-planはいずれもfinding 0 / R2 READY。strengthening-onlyで、SSOT改版・追加human gate不要。
+  `reviewer_roles`は`pre_plan_reviewer`、`independent_verifier`、`trace_data_integrity_reviewer`、`privacy_security_reviewer`。
+  unknown-key behaviorがcontract change、nested freezer修正、new validation/error、contracts/schema/calculation/API/UI、別path変更を要するなら停止。
+  READY後exact4を単一`WP-5242:` commit、rollbackは確定commitへの`git revert <commit>`。rootだけがvalidator/stager/committer。
+  push、merge、deploy、migration/DDL/DMLは認可外。timeboxはREADY後60分(外部review待ち除外)または単一TDD/review/commit cycleの早い方。
+- **Validation evidence:** focused expected Redは4 failure / existing 43 PASSでA1-A3、unknown accessor、optional undefinedを再現し、
+  A4 error precedenceはPASS。explicit snapshot後はtrace focused/package 47、trace typecheck、contracts 136 + typecheck、calculation 90 +
+  typecheck、boundaries、`git diff --check`がPASS。code/test frozen SHA-256は
+  `70053027ebc65e7f101c36120ad9058fd6a2edf4a9bb9a27f9f8b6da49e9d278`、reviewed exact4 SHA-256は
+  `d87e5899f1a4985472dfec55859d6951ab642b357c5c684249f49481126f87ea`。frozen independent + trace/data-integrity +
+  privacy/security reviewsと結果反映後のrecord-only rechecksはいずれもfinding 0。
+  DB integration、browser、network、production runtimeは実行しない。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
-| trace freezeStep optional getter snapshot | WP-5241外のfollow-up候補。stateful optional getterを検証後spreadで再読し、invalid result値/PHI-like intermediate keyを保持し得る | packages/trace live frozen review / CAL-008 / API-007 |
 | date-time terminal-line candidate | NOT_A_BUG。live Node 26/V8でCalendarDate/ClaimMonthはLF/CR/CRLF/U+2028/U+2029 suffixを既にRangeError拒否 | packages/date-time live runtime / MOD-011 |
 | WP-5235 EventEnvelope root input guard | SSOT_UPDATE_REQUIRED。APPROVED MOD-009がSSOT改版→review→実装を要求するため未着手 | MOD-009 / live package trace |
 | WP-4250 | FINALIZED / APPROVED(SSOT 改版のみ)。local commit `89275d2` | 下の決定記録 |
@@ -185,6 +184,14 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5241 — Trace integer primitive guard(2026-08-28)
+
+- **Status:** `COMMITTED_LOCAL b10ffc9 / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** canonical trace integer predicateをprimitive stringへshort-circuitし、type-erased objectのregex coercion・true受理を拒否。
+  public signature/regex、valid string、Trace/contracts/wire/calculation、CAL-008/API-007は不変。
+- **Gate:** expected Red 1件(true受理・coercion 1回)→trace 42、contracts 136、calculation 90、各typecheck、boundaries、path/diff PASS。
+  frozen independent/trace-data-integrityとrecord rereviewsはfinding 0。
 
 ### WP-5240 — CalendarDate parts sequential snapshot(2026-08-28)
 

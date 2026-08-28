@@ -301,38 +301,60 @@ function freezeRounding(rounding: CalculationTraceRounding): CalculationTraceRou
 }
 
 function freezeStep(step: CalculationTraceStep): CalculationTraceStep {
-  assertNonEmptyString(step.stepId, "CalculationTraceStep stepId");
-  assertNonEmptyString(step.description, "CalculationTraceStep description");
-  if (step.feeItemCode !== undefined) {
-    assertNonEmptyString(step.feeItemCode, "CalculationTraceStep feeItemCode");
+  const stepId = step.stepId;
+  assertNonEmptyString(stepId, "CalculationTraceStep stepId");
+  const description = step.description;
+  assertNonEmptyString(description, "CalculationTraceStep description");
+  const feeItemCode = step.feeItemCode;
+  if (feeItemCode !== undefined) {
+    assertNonEmptyString(feeItemCode, "CalculationTraceStep feeItemCode");
   }
-  if (step.formula !== undefined) {
-    assertNonEmptyString(step.formula, "CalculationTraceStep formula");
+  const formula = step.formula;
+  if (formula !== undefined) {
+    assertNonEmptyString(formula, "CalculationTraceStep formula");
   }
-  if (step.resultPoints !== undefined) {
-    assertCanonicalTraceIntegerString(step.resultPoints, "CalculationTraceStep resultPoints");
+  const resultPoints = step.resultPoints;
+  if (resultPoints !== undefined) {
+    assertCanonicalTraceIntegerString(resultPoints, "CalculationTraceStep resultPoints");
   }
-  if (step.resultYen !== undefined) {
-    assertCanonicalTraceIntegerString(step.resultYen, "CalculationTraceStep resultYen");
+  const resultYen = step.resultYen;
+  if (resultYen !== undefined) {
+    assertCanonicalTraceIntegerString(resultYen, "CalculationTraceStep resultYen");
   }
-  if (step.stepStatus !== undefined && !stepStatuses.has(step.stepStatus)) {
+  const stepStatus = step.stepStatus;
+  if (stepStatus !== undefined && !stepStatuses.has(stepStatus)) {
     throw new RangeError("CalculationTraceStep stepStatus is not supported");
   }
 
-  assertDenseArray(step.evidenceRefs);
-  const evidenceRefs = freezeArray(step.evidenceRefs.map(freezeEvidenceRef));
-  if (step.affectsClaim && evidenceRefs.length === 0) {
+  const sourceEvidenceRefs = step.evidenceRefs;
+  assertDenseArray(sourceEvidenceRefs);
+  const evidenceRefs = freezeArray(sourceEvidenceRefs.map(freezeEvidenceRef));
+  const affectsClaim = step.affectsClaim;
+  if (affectsClaim && evidenceRefs.length === 0) {
     throw new RangeError("Claim-affecting calculation steps require at least one evidenceRef");
   }
+  const inputRefs = freezeArray(step.inputRefs);
+  const output = step.output;
+  const sourceIntermediateValues = step.intermediateValues;
+  const intermediateValues =
+    sourceIntermediateValues === undefined ? undefined : freezeIntermediateValues(sourceIntermediateValues);
+  const sourceRounding = step.rounding;
+  const rounding = sourceRounding === undefined ? undefined : freezeRounding(sourceRounding);
 
   return Object.freeze({
-    ...step,
+    stepId,
+    description,
+    affectsClaim,
     evidenceRefs,
-    inputRefs: freezeArray(step.inputRefs),
-    ...(step.intermediateValues === undefined
-      ? {}
-      : { intermediateValues: freezeIntermediateValues(step.intermediateValues) }),
-    ...(step.rounding === undefined ? {} : { rounding: freezeRounding(step.rounding) }),
+    inputRefs,
+    output,
+    ...(feeItemCode === undefined ? {} : { feeItemCode }),
+    ...(formula === undefined ? {} : { formula }),
+    ...(intermediateValues === undefined ? {} : { intermediateValues }),
+    ...(rounding === undefined ? {} : { rounding }),
+    ...(stepStatus === undefined ? {} : { stepStatus }),
+    ...(resultPoints === undefined ? {} : { resultPoints }),
+    ...(resultYen === undefined ? {} : { resultYen }),
   });
 }
 
