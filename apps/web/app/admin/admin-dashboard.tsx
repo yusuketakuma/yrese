@@ -152,14 +152,17 @@ const MIGRATION_RESULT_PRESENTATION: Record<
 const AUTHORITY_GATE_NOTE =
   "利用者ディレクトリと権限変更操作は提供できません。SCR-029-U（user:admin）と SCR-029-T（tenant:admin）は UIX-001 §12.3 で authority status が candidate / API未登録 であり、canonical API/OpenAPI operation registry への登録と contract test による固定が未了です。";
 
+// JST日時フォーマッタは構築コストが高いためmodule階層で1回だけ構築する(WP-5262)。
+const JST_INSTANT_FORMAT = new Intl.DateTimeFormat("ja-JP", {
+  dateStyle: "medium",
+  timeStyle: "medium",
+  timeZone: "Asia/Tokyo",
+});
+
 function formatInstant(value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "取得不能";
-  return new Intl.DateTimeFormat("ja-JP", {
-    dateStyle: "medium",
-    timeStyle: "medium",
-    timeZone: "Asia/Tokyo",
-  }).format(parsed);
+  return JST_INSTANT_FORMAT.format(parsed);
 }
 
 /** 承認済み契約がない領域。0件や未設定ではなく「未提供」として描く。 */

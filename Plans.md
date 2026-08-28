@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5260 `7b4e311`まで(実測 2026-08-28) |
-| Candidate branch | WP-5260はlocal commit `7b4e311`。WP-5261は同HEADから `refactor/wp-5261-extract-reception-create-routes` を作成済み |
+| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5261 `c6c473c`まで(実測 2026-08-28) |
+| Candidate branch | WP-5261はlocal commit `c6c473c`。WP-5262は同HEADから `refactor/wp-5262-hoist-intl-formatters` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までmain/originへfast-forward済み(reflog実測)。WP-5242以降のpushは認可・実行しない |
-| Candidate scope | `buildServer`の受付create routeとcreate専用helperをmodule分離し、idempotency/audit/outbox/rollbackを不変に保つexact2 code slice |
-| Last update | 2026-08-28 JST(WP-5260 local landing済み、WP-5261 R2 FROZEN_REVIEW_PASS / LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Candidate scope | 呼び出しごとに構築していたJST `Intl.DateTimeFormat`をmodule定数へ引き上げ、出力・locale・timezoneを不変に保つexact2 code slice(patient-header / admin-dashboard) |
+| Last update | 2026-08-28 JST(WP-5261 local landing済み、WP-5262 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5261で`POST /reception`を専用moduleへ移し、`server.ts`をhealth/whoamiとplugin composition中心へ縮小する |
-| Main blocker | なし。WP-5261は全local gateとfrozen R2 review PASS(findings 0)を確認し、local landing待ち。N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDで保留 |
-| Required verification | 移動前後のreception/error/operations characterization、API全体、API typecheck、export/registration/no-store/auth確認、route body差がDI 3種のみ、exact path/diff-check、独立frozen R2 technical/security/privacy/data-integrity review(Claude)、単一local commit |
+| Current critical path | WP-5262で行レンダーごとのIntlフォーマッタ構築を排し、満年齢表示とadmin時刻表示の出力を不変に保つ |
+| Main blocker | なし。WP-5261は`c6c473c`へlocal landing済み。WP-5262 pre-planはR2(患者年齢表示のため)、SSOT改版・human gate不要と判定。N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDで保留 |
+| Required verification | constructor-spy Red/Green、既存出力・JST境界testの維持、web typecheck、web全体、exact path/diff-check、独立frozen R2 review(Codex)、単一local commit |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5261である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5262である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,32 +73,30 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5261(extract reception create route、R2 FROZEN_REVIEW_PASS / LANDING_PENDING)1 件である。**
-WP-5260はlocal commit `7b4e311`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5262(hoist JST Intl formatters、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5261はlocal commit `c6c473c`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** `POST /reception`とcreate専用helper/constantを専用moduleへ移し、
-  `buildServer`が構築済み`receptionCreateCommand`を注入するcomposition rootを明確にする。
-- **Allowed / forbidden:** exact4は`apps/api/src/server.ts`、新規`apps/api/src/reception-create-routes.ts`、
-  `Plans.md`、`State.md`。route bodyは`patientRepository`/`receptionCreateCommand`/`now`のDI置換以外変更禁止。
-  test、contract/schema、repository/command、SQL/DML、migration、APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
-- **Authority / evidence:** create専用helper 6件、constant、public import、route dependencyをlive `rg`で確認済み。
-  moduleはpatient/queue/common helperをreuseしてserverをimportせず、`buildServer`は既に合成済みのcommandを渡す。
-  PRC-003/005 pre-planはbody差ゼロを客観gateとする純粋refactorとしてR2、SSOT改版・human/Oracle gate不要と判定した。
-  DI置換を超えるbody編集が必要なら即停止してR3再分類する。
-- **Acceptance / tests:** (A1)path/status/body/error、auth/no-store、patient lookup/snapshotを不変にする。
-  (A2)idempotency conflict/existing/legacy-orphan、provenance、clock、created snapshot/status/time検証を不変にする。
-  (A3)audit/outbox append error、ensure/rollback、reconciliation headerと監査意図一致を不変にする。
-  (A4)`server.ts` public export、default command compositionを不変にし、循環依存、test/contract/schema/DB/DML変更を作らない。
-- **PIA / offline:** 既存synthetic reception/audit/outbox testsだけを使い、real network、DB、患者・処方・請求data、credential、
-  production data、PHI/PII、保存、log、external send、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `active_root_writer`はCodex、frozen R2 reviewerはClaude。shared treeは単独writer。
-  DI置換以外のbody差、idempotency/data-integrity/auth/privacy/audit/error差、test変更要求、ESM cycleが判明したら停止。
-  exact4を単一`WP-5261:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
-- **Validation evidence:** Claudeのread-only closure/risk/no-overlap ACK、Codex exact4 claimをagmsgへ記録済み。
-  純粋refactorのため人工的なRed testは追加せず、移動前reception/error/operations characterization 336 PASSを確認。
-  移動後も同336 PASS、API全体980 PASS / DB-gated 62 SKIP、API typecheck、boundary、`git diff --check` PASS。
-  DI置換3種を正規化したroute body差はゼロ、test変更・`server.ts` import cycleなし、`server.ts`は578行から210行へ縮小。
-  frozen technical/security/privacy/data-integrity reviewはPASS、finding 0。
+- **Purpose / layer:** `computeAgeYears`(患者行レンダーごと)と`formatInstant`(admin値ごと)が呼び出しの
+  たびにJST `Intl.DateTimeFormat`を構築している。localeとoptionsをbyte-identicalに保ったままmodule定数へ
+  引き上げ、出力を不変にして構築コストを排する。共有helper化はWP-5214(JST日時共通化)がqueueにあるため行わない。
+- **Allowed / forbidden:** exact6は`apps/web/app/components/patient-header.tsx`、
+  `apps/web/app/patients/patient-search.test.tsx`、`apps/web/app/admin/admin-dashboard.tsx`、
+  `apps/web/app/admin/admin-dashboard.test.tsx`、`Plans.md`、`State.md`。出力文字列、locale、timezone、
+  UI copy/DOM/ARIA/CSS、contracts/API/network/DB、APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
+- **Authority / evidence:** 呼び出し箇所はlive rgで確認済み(computeAgeYears production 5箇所、行レンダー含む。
+  formatInstant render投影3箇所)。Intl.DateTimeFormatインスタンスはformat()に対してstatelessで共有安全。
+  pre-planは患者年齢表示に触れるためR2、出力不変を条件にSSOT改版・human/Oracle gate不要と判定した(agmsg 2026-08-28)。
+- **Acceptance / tests:** (A1)constructor-spy Red testで呼び出しを繰り返してもIntl.DateTimeFormat構築0を固定
+  (現行は呼び出しごとに構築されRed)。(A2)既存の満年齢境界test(誕生日前後・当日)を不変維持し、admin時刻表示は新規testが独立フォーマッタ導出の期待文字列でHTML出力を明示的に固定する。
+  (A3)出力文字列・JST境界・locale不変。(A4)web typecheckとweb全体suite PASS。
+- **PIA / offline:** synthetic dataだけを使い、real network、DB、患者・処方・請求data、credential、
+  production data、PHI/PII、保存、log、cache、retry/offline stateを追加しない。
+- **Roles / stop / rollback:** `active_root_writer`はClaude、frozen R2 reviewerはCodex。shared treeは単独writer。
+  出力差、brittleなglobal spy干渉、追加path必要、visual/contract挙動差が判明したら停止。
+  exact6を単一`WP-5262:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
+- **Validation evidence:** Codexの依頼とclaim ACK、caller evidenceをagmsgへ記録済み。
+  Redはconstructor-spy 2件が期待どおり失敗(呼び出しごと構築)。Codex frozen reviewのLOW finding(admin出力未固定)を受け、admin testへ独立フォーマッタ導出のJST出力assertionを追加した。Greenはfocused patient-search+admin 115 PASS、
+  web typecheck PASS、web全体752 PASS(新規2 test込み)。frozen R2 reviewは初回REQUEST_CHANGES(LOW 1件: admin出力未固定)を同一freeze内で解消し、再レビューで両hash(exact6 3aa0e08b / code+test 14af6dd4)をCodexが再現してPASS、findings 0。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|

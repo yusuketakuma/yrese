@@ -34,14 +34,17 @@ export const ELIGIBILITY_LABELS: Record<EligibilityDisplayStatus, string> =
  * 基準日は JST の暦日で判定する(業務日付のタイムゾーン規律 — WP-4053 と整合。
  * 実行環境のタイムゾーンに依存させない)。
  */
+// JST暦日フォーマッタは構築コストが高いためmodule階層で1回だけ構築する(WP-5262)。
+const JST_CALENDAR_DATE_FORMAT = new Intl.DateTimeFormat("sv-SE", {
+  timeZone: "Asia/Tokyo",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 export function computeAgeYears(birthDate: string, asOf: Date): number {
   // asOf を JST の暦日(YYYY-MM-DD)へ正規化する
-  const asOfJst = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(asOf);
+  const asOfJst = JST_CALENDAR_DATE_FORMAT.format(asOf);
 
   const birth = birthDate.split("-");
   const now = asOfJst.split("-");

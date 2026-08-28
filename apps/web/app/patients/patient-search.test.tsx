@@ -2184,6 +2184,19 @@ describe("computeAgeYears (患者年齢 — R-PATCTX)", () => {
   it("counts the birthday on the exact day", () => {
     expect(computeAgeYears("1990-07-11", new Date("2026-07-11T00:00:00+09:00"))).toBe(36);
   });
+
+  it("does not construct Intl.DateTimeFormat per call (WP-5262 hoisted formatter)", () => {
+    const constructorSpy = vi.spyOn(Intl, "DateTimeFormat");
+    try {
+      const asOf = new Date("2026-07-11T00:00:00+09:00");
+      expect(computeAgeYears("1990-06-15", asOf)).toBe(36);
+      expect(computeAgeYears("1990-08-01", asOf)).toBe(35);
+      expect(computeAgeYears("1990-07-11", asOf)).toBe(36);
+      expect(constructorSpy).not.toHaveBeenCalled();
+    } finally {
+      constructorSpy.mockRestore();
+    }
+  });
 });
 
 describe("PatientHeader with a selected patient (患者取り違え防止表示 — R-PATCTX)", () => {

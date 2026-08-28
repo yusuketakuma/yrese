@@ -1,6 +1,6 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { PermissionScope } from "@yrese/shared-kernel";
 
@@ -305,6 +305,29 @@ describe("AdminDashboardView", () => {
     expect(html).toContain("API稼働状態を取得できませんでした");
     expect(html).toContain("同期状態・外部連携画面を開く");
     expect(html).toContain("tenant-alpha");
+  });
+
+  it("does not construct Intl.DateTimeFormat during render and keeps JST output (WP-5262 hoisted formatter)", () => {
+    // spy設置前に、元と同一optionsの独立フォーマッタで期待表示を導出する
+    const expectedLoadedAt = new Intl.DateTimeFormat("ja-JP", {
+      dateStyle: "medium",
+      timeStyle: "medium",
+      timeZone: "Asia/Tokyo",
+    }).format(new Date("2026-08-25T00:01:00.000Z"));
+    const constructorSpy = vi.spyOn(Intl, "DateTimeFormat");
+    try {
+      const first = renderSnapshot(
+        snapshotFor("tenant-alpha", "pharmacy-alpha", "actor-alpha"),
+      );
+      const second = renderSnapshot(
+        snapshotFor("tenant-alpha", "pharmacy-alpha", "actor-alpha"),
+      );
+      expect(first).toContain(expectedLoadedAt);
+      expect(second).toContain(expectedLoadedAt);
+      expect(constructorSpy).not.toHaveBeenCalled();
+    } finally {
+      constructorSpy.mockRestore();
+    }
   });
 });
 

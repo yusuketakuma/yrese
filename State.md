@@ -1,34 +1,35 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5261 R2 FROZEN_REVIEW_PASS / LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5262 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5260はlocal commit `7b4e311`。current requestをWP-5261のreception create route extractionで継続する。
-  agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは常に単独writerとする。
-  宣言競合はagmsg timestampの早い方を優先する。本WPのwriterはCodex、Claudeはfreezeまでread-onlyである。
-- **Git boundary:** current branch `refactor/wp-5261-extract-reception-create-routes`、base
-  `7b4e311c6ccf4fbf0bc072dfc33f77af578c63da`。push / mergeは行わない。
-- **Dirty ownership:** exact4は`apps/api/src/server.ts`、新規`apps/api/src/reception-create-routes.ts`、
-  `Plans.md`、`State.md`。同じexact4だけを本local landing対象とする。
+- **Direction / ownership:** WP-5261はlocal commit `c6c473c`。current requestをWP-5262のJST Intlフォーマッタ
+  module定数化で継続する。agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、
+  shared treeは常に単独writerとする。宣言競合はagmsg timestampの早い方を優先する。
+  本WPのwriterはClaude、Codexはfrozen R2 reviewerでlandingまでread-onlyである。
+- **Git boundary:** current branch `refactor/wp-5262-hoist-intl-formatters`、base
+  `c6c473c250cbf351f51e80e3e24db09759fae04e`。push / mergeは行わない。
+- **Dirty ownership:** exact6は`apps/web/app/components/patient-header.tsx`、
+  `apps/web/app/patients/patient-search.test.tsx`、`apps/web/app/admin/admin-dashboard.tsx`、
+  `apps/web/app/admin/admin-dashboard.test.tsx`、`Plans.md`、`State.md`。同じexact6だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5261 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LANDING_PENDING)。受付createを
-  専用route moduleへ移し、既に合成済みのpatient repository/reception command/clockだけを注入する。
-  path/status/body/error、auth/scope/no-store、contract/schema/repository/DB/DMLは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5262 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。呼び出しごとの
+  JST `Intl.DateTimeFormat`構築をmodule定数へ引き上げ、locale/options/出力をbyte-identicalに保つ。
+  共有helper化はqueue済みWP-5214の領分のため行わない。UI copy/DOM/ARIA/CSS、contracts/API/DB、APPROVED SSOTは変更しない。
   N+1 child INSERT batching候補はHUMAN_GATE_REQUIREDのまま着手しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** 受付createのwrite+patient read permission/no-store、識別子だけの監査、失敗時rollbackをverbatim維持する。
-  既存synthetic testだけを使い、
-  credential、production data、PHI/PII、保存、log、external send、real network、DB操作、cache、retry/offline stateを追加しない。
-- **Process gate:** Claude pre-planはDI置換以外body差ゼロをhard conditionにR2、SSOT/human/Oracle gate不要と判定した。
-  body編集、idempotency/data-integrity/auth/privacy/audit/error差、test変更要求、ESM cycleが判明したら停止して再分類する。
-- **Validation / rollback:** Claude closure/risk/no-overlap ACKとCodex exact4 claimはagmsg記録済み。
-  純粋refactorのため人工的なRed testは追加せず、移動前reception/error/operations characterizationは336 PASS。
-  移動後もfocused 336、API全体980 / DB-gated 62 skip、typecheck、boundary、diff-check PASS。
-  DI置換3種を正規化したroute body差ゼロ、test変更/cycleなし、`server.ts` 578行から210行を確認。
-  frozen technical/security/privacy/data-integrity reviewはPASS、finding 0。record-only refreeze後にlocal landingする。
-  browser、real network、DB、production runtimeは実行しない。exact4の単一`WP-5261:` commit、
+- **Security / privacy / offline:** 満年齢計算のJST暦日規律(WP-4053整合)とadmin時刻表示のlocale/timezoneを
+  不変に保つ。synthetic testだけを使い、credential、production data、PHI/PII、保存、log、external send、
+  real network、DB操作、cache、retry/offline stateを追加しない。
+- **Process gate:** pre-planは患者年齢表示に触れるためR2、出力不変を条件にSSOT改版・human/Oracle gate不要と
+  判定した(agmsg 2026-08-28、Codex依頼とclaim ACK記録済み)。出力差、brittleなglobal spy干渉、追加path必要、
+  visual/contract挙動差が判明したら停止する。
+- **Validation / rollback:** Redはconstructor-spy 2件(patient-search / admin-dashboard)が呼び出しごと構築で
+  期待どおり失敗。Greenはfocused 115 PASS、web typecheck PASS、web全体752 PASS(新規2 test込み)。
+  既存の満年齢境界test(誕生日前後・当日)は無変更のまま維持し、admin時刻表示は新規testが独立フォーマッタ導出の期待文字列でHTML出力を明示固定する(Codex LOW finding反映)。frozen R2 re-reviewは両hashをCodexが再現しPASS、findings 0。
+  browser、real network、DB、production runtimeは実行しない。exact6の単一`WP-5262:` commit、
   rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
