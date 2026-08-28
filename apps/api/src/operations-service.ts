@@ -10,6 +10,7 @@ import {
 import {
   ELIGIBILITY_STATUSES,
   RECEPTION_STATUSES,
+  isReceptionStatus,
   type EligibilityStatus,
   type PharmacyId,
   type ReceptionStatus,
@@ -134,8 +135,6 @@ export function buildReceptionSummary(
   date: string,
   tallies: readonly ReceptionStatusTally[],
 ): ReceptionSummaryResponse {
-  const knownReceptionStatuses = new Set<string>(RECEPTION_STATUSES);
-  const knownEligibilityStatuses = new Set<string>(ELIGIBILITY_STATUSES);
   const receptionCounts = new Map<string, number>();
   const eligibilityCounts = new Map<string, number>();
   let totalCount = 0;
@@ -144,8 +143,8 @@ export function buildReceptionSummary(
     assertOperationsInvariant(
       Number.isSafeInteger(tally.count) &&
         tally.count >= 0 &&
-        knownReceptionStatuses.has(tally.receptionStatus) &&
-        knownEligibilityStatuses.has(tally.eligibilityStatus),
+        isReceptionStatus(tally.receptionStatus) &&
+        (ELIGIBILITY_STATUSES as readonly string[]).includes(tally.eligibilityStatus),
     );
     totalCount += tally.count;
     receptionCounts.set(

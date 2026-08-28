@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   ELIGIBILITY_STATUSES,
@@ -115,6 +115,19 @@ describe("buildReceptionSummary", () => {
     expect(summary.byReceptionStatus.map((row) => row.status)).toEqual([
       ...RECEPTION_STATUSES,
     ]);
+  });
+
+  it("does not construct status Sets per call (WP-5264 reuse-first validation)", () => {
+    const setSpy = vi.spyOn(globalThis, "Set");
+    try {
+      const summary = buildReceptionSummary("2026-07-09", [
+        { receptionStatus: "WAITING", eligibilityStatus: "VERIFIED", count: 2 },
+      ]);
+      expect(setSpy).not.toHaveBeenCalled();
+      expect(summary.totalCount).toBe(2);
+    } finally {
+      setSpy.mockRestore();
+    }
   });
 
   it("returns every member at zero for a date with no receptions", () => {
