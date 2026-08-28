@@ -141,6 +141,74 @@ describe("createCalculationTrace", () => {
     expect(Object.isFrozen(trace.inputsSummary.ids)).toBe(true);
   });
 
+  it("snapshots known input-ref fields and preserves first-field error precedence", () => {
+    const cases = [
+      ["ids", "kind", "prescription", "unsupported", "id", "prescription-001", "forged-id", "TraceIdRef kind is not supported"],
+      ["dates", "kind", "prescription_date", "unsupported", "value", "2026-07-09", "forged-date", "TraceDateRef kind is not supported"],
+      ["masterVersions", "masterName", "drug", " ", "version", "2026.04", "forged-master-version", "TraceMasterVersionRef masterName must be a non-empty string"],
+      ["ruleVersions", "ruleName", "dispensing-fee", " ", "version", "draft-001", "forged-rule-version", "TraceRuleVersionRef ruleName must be a non-empty string"],
+    ] as const;
+
+    for (const [collection, firstField, first, invalidFirst, secondField, second, forged, message] of cases) {
+      const reads = { first: 0, second: 0, unknown: 0 };
+      const ref = Object.defineProperties({}, {
+        [firstField]: {
+          enumerable: true,
+          get() {
+            reads.first += 1;
+            return reads.first === 1 ? first : invalidFirst;
+          },
+        },
+        [secondField]: {
+          enumerable: true,
+          get() {
+            reads.second += 1;
+            return reads.second === 1 ? second : forged;
+          },
+        },
+        patient_name: {
+          enumerable: true,
+          get() {
+            reads.unknown += 1;
+            return "synthetic";
+          },
+        },
+      });
+      const trace = createCalculationTrace({
+        inputsSummary: { ...inputsSummary, [collection]: [ref] } as unknown as CalculationInputsSummary,
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [claimStep()],
+      });
+      const frozenRef = trace.inputsSummary[collection]?.[0];
+
+      expect(reads).toEqual({ first: 1, second: 1, unknown: 0 });
+      expect(frozenRef).toEqual({ [firstField]: first, [secondField]: second });
+      expect(Object.isFrozen(frozenRef)).toBe(true);
+
+      let laterReads = 0;
+      const invalidRef = Object.defineProperties({}, {
+        [firstField]: { enumerable: true, value: invalidFirst },
+        [secondField]: {
+          enumerable: true,
+          get() {
+            laterReads += 1;
+            return second;
+          },
+        },
+      });
+      expect(() =>
+        createCalculationTrace({
+          inputsSummary: { ...inputsSummary, [collection]: [invalidRef] } as unknown as CalculationInputsSummary,
+          masterVersion: "2026.04",
+          calculationRuleVersion: "draft-001",
+          steps: [claimStep()],
+        }),
+      ).toThrow(new RangeError(message));
+      expect(laterReads).toBe(0);
+    }
+  });
+
   it("reads each known step field once and omits unknown accessors", () => {
     const values = claimStep({
       feeItemCode: "FEE_DISPENSING_BASIC_1",

@@ -220,31 +220,39 @@ function freezeEvidenceRef(ref: EvidenceRef): EvidenceRef {
 }
 
 function freezeTraceIdRef(ref: TraceIdRef): TraceIdRef {
-  assertAllowedString(ref.kind, traceIdKinds, "TraceIdRef kind");
-  assertNonEmptyString(ref.id, "TraceIdRef id");
+  const kind = ref.kind;
+  assertAllowedString(kind, traceIdKinds, "TraceIdRef kind");
+  const id = ref.id;
+  assertNonEmptyString(id, "TraceIdRef id");
 
-  return Object.freeze({ ...ref });
+  return Object.freeze({ kind, id });
 }
 
 function freezeTraceDateRef(ref: TraceDateRef): TraceDateRef {
-  assertAllowedString(ref.kind, traceDateKinds, "TraceDateRef kind");
-  assertNonEmptyString(ref.value, "TraceDateRef value");
+  const kind = ref.kind;
+  assertAllowedString(kind, traceDateKinds, "TraceDateRef kind");
+  const value = ref.value;
+  assertNonEmptyString(value, "TraceDateRef value");
 
-  return Object.freeze({ ...ref });
+  return Object.freeze({ kind, value });
 }
 
 function freezeMasterVersionRef(ref: TraceMasterVersionRef): TraceMasterVersionRef {
-  assertNonEmptyString(ref.masterName, "TraceMasterVersionRef masterName");
-  assertNonEmptyString(ref.version, "TraceMasterVersionRef version");
+  const masterName = ref.masterName;
+  assertNonEmptyString(masterName, "TraceMasterVersionRef masterName");
+  const version = ref.version;
+  assertNonEmptyString(version, "TraceMasterVersionRef version");
 
-  return Object.freeze({ ...ref });
+  return Object.freeze({ masterName, version });
 }
 
 function freezeRuleVersionRef(ref: TraceRuleVersionRef): TraceRuleVersionRef {
-  assertNonEmptyString(ref.ruleName, "TraceRuleVersionRef ruleName");
-  assertNonEmptyString(ref.version, "TraceRuleVersionRef version");
+  const ruleName = ref.ruleName;
+  assertNonEmptyString(ruleName, "TraceRuleVersionRef ruleName");
+  const version = ref.version;
+  assertNonEmptyString(version, "TraceRuleVersionRef version");
 
-  return Object.freeze({ ...ref });
+  return Object.freeze({ ruleName, version });
 }
 
 function freezeInputsSummary(summary: CalculationInputsSummary): CalculationInputsSummary {
