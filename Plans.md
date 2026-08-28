@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5259 `99e8660`まで(実測 2026-08-28) |
-| Candidate branch | WP-5259はlocal commit `99e8660`。WP-5260は同HEADから `refactor/wp-5260-extract-reception-queue-routes` を作成済み |
+| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5260 `7b4e311`まで(実測 2026-08-28) |
+| Candidate branch | WP-5260はlocal commit `7b4e311`。WP-5261は同HEADから `refactor/wp-5261-extract-reception-create-routes` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までmain/originへfast-forward済み(reflog実測)。WP-5242以降のpushは認可・実行しない |
-| Candidate scope | `buildServer`のread-only受付キューrouteと共有entry snapshot helperをmodule分離し、create/idempotency/outboxを不変に保つexact2 code slice |
-| Last update | 2026-08-28 JST(WP-5259 local landing済み、WP-5260 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Candidate scope | `buildServer`の受付create routeとcreate専用helperをmodule分離し、idempotency/audit/outbox/rollbackを不変に保つexact2 code slice |
+| Last update | 2026-08-28 JST(WP-5260 local landing済み、WP-5261 R2 FROZEN_REVIEW_PASS / LANDING_PENDING、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5260で`GET /reception/queue`を専用moduleへ移し、共有entry snapshotをcreateが同じ実装で使う状態を維持する |
-| Main blocker | なし。WP-5259は`99e8660`へlocal landing済み。WP-5260 pre-planはread-only routeの純粋移動としてR2、SSOT改版・human gate不要と判定。N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDで保留 |
-| Required verification | 移動前後のreception/PHI-audit/error characterization、API全体、API typecheck、export/registration/no-store/auth確認、POST create body byte同一、exact path/diff-check、独立frozen R2 review(Claude)、単一local commit |
+| Current critical path | WP-5261で`POST /reception`を専用moduleへ移し、`server.ts`をhealth/whoamiとplugin composition中心へ縮小する |
+| Main blocker | なし。WP-5261は全local gateとfrozen R2 review PASS(findings 0)を確認し、local landing待ち。N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDで保留 |
+| Required verification | 移動前後のreception/error/operations characterization、API全体、API typecheck、export/registration/no-store/auth確認、route body差がDI 3種のみ、exact path/diff-check、独立frozen R2 technical/security/privacy/data-integrity review(Claude)、単一local commit |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5260である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5261である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,33 +73,32 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5260(extract reception queue route、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5259はlocal commit `99e8660`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5261(extract reception create route、R2 FROZEN_REVIEW_PASS / LANDING_PENDING)1 件である。**
+WP-5260はlocal commit `7b4e311`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** `GET /reception/queue`と共有entry snapshot/invalid responseを専用moduleへ移し、
-  `POST /reception`が同じhelperを再利用したままread routeとwrite routeの境界を明確にする。
-- **Allowed / forbidden:** exact4は`apps/api/src/server.ts`、新規`apps/api/src/reception-queue-routes.ts`、
-  `Plans.md`、`State.md`。`POST /reception`本体、test、contract/schema、repository、SQL/DML、migration、
-  APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
-- **Authority / evidence:** queue/create間の共有helper 4件と3 test fileのpublic importをlive `rg`で確認済み。
-  helperはqueue moduleからcreateへexportし、invalid request codeを同moduleへ移して`server.ts`からverbatim re-exportする。
-  `buildServer`内登録を維持し、moduleはserverをimportしない。read-only behavior/contract不変の純粋refactorで
-  SSOT改版不要、PHI read/audit境界のためR2、追加human gate不要と判定した。
-- **Acceptance / tests:** (A1)queue path/status/body/error、business-date/duplicate/schema検証を不変にする。
-  (A2)tenant permission、scope、`Cache-Control: no-store`、reception.queue.viewed fail-closed auditを不変にする。
-  (A3)`POST /reception`本体をbyte同一に保ち、createが共有entry snapshot/invalid responseを同じ実装で使う。
-  (A4)`server.ts` public exportを不変にし、循環依存、test file変更、contract/schema/DB/DML変更を作らない。
-- **PIA / offline:** 既存synthetic reception/audit testsだけを使い、real network、DB、患者・処方・請求data、credential、
+- **Purpose / layer:** `POST /reception`とcreate専用helper/constantを専用moduleへ移し、
+  `buildServer`が構築済み`receptionCreateCommand`を注入するcomposition rootを明確にする。
+- **Allowed / forbidden:** exact4は`apps/api/src/server.ts`、新規`apps/api/src/reception-create-routes.ts`、
+  `Plans.md`、`State.md`。route bodyは`patientRepository`/`receptionCreateCommand`/`now`のDI置換以外変更禁止。
+  test、contract/schema、repository/command、SQL/DML、migration、APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
+- **Authority / evidence:** create専用helper 6件、constant、public import、route dependencyをlive `rg`で確認済み。
+  moduleはpatient/queue/common helperをreuseしてserverをimportせず、`buildServer`は既に合成済みのcommandを渡す。
+  PRC-003/005 pre-planはbody差ゼロを客観gateとする純粋refactorとしてR2、SSOT改版・human/Oracle gate不要と判定した。
+  DI置換を超えるbody編集が必要なら即停止してR3再分類する。
+- **Acceptance / tests:** (A1)path/status/body/error、auth/no-store、patient lookup/snapshotを不変にする。
+  (A2)idempotency conflict/existing/legacy-orphan、provenance、clock、created snapshot/status/time検証を不変にする。
+  (A3)audit/outbox append error、ensure/rollback、reconciliation headerと監査意図一致を不変にする。
+  (A4)`server.ts` public export、default command compositionを不変にし、循環依存、test/contract/schema/DB/DML変更を作らない。
+- **PIA / offline:** 既存synthetic reception/audit/outbox testsだけを使い、real network、DB、患者・処方・請求data、credential、
   production data、PHI/PII、保存、log、external send、cache、retry/offline stateを追加しない。
 - **Roles / stop / rollback:** `active_root_writer`はCodex、frozen R2 reviewerはClaude。shared treeは単独writer。
-  create body差、queue/auth/privacy/audit/error差、test変更要求、ESM cycleが判明したら停止。exact4を単一
-  `WP-5260:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
-- **Validation evidence:** Claudeのread-only pre-plan/no-overlap ACK、Codex exact4 claimをagmsgへ記録済み。
-  純粋refactorのため人工的なRed testは追加せず、移動前reception/PHI-audit/error characterization 328 PASSを確認。
-  移動後もfocused 328、API全体980 PASS / DB-gated 62 skip、API typecheck、boundary、exact path/diff-checkがPASS。
-  `POST /reception`本体はbaseとbyte同一、`server.ts`は776行から578行へ縮小。frozen exact4 SHA-256
-  `6deca8944072f5645bd251f1474196c148b8eb9d5605fc3e8aaf5a02c1e2b75f`をClaudeが再現し、
-  technical/security/privacy reviewはblocking/non-blocking/informational finding 0でPASS。
+  DI置換以外のbody差、idempotency/data-integrity/auth/privacy/audit/error差、test変更要求、ESM cycleが判明したら停止。
+  exact4を単一`WP-5261:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
+- **Validation evidence:** Claudeのread-only closure/risk/no-overlap ACK、Codex exact4 claimをagmsgへ記録済み。
+  純粋refactorのため人工的なRed testは追加せず、移動前reception/error/operations characterization 336 PASSを確認。
+  移動後も同336 PASS、API全体980 PASS / DB-gated 62 SKIP、API typecheck、boundary、`git diff --check` PASS。
+  DI置換3種を正規化したroute body差はゼロ、test変更・`server.ts` import cycleなし、`server.ts`は578行から210行へ縮小。
+  frozen technical/security/privacy/data-integrity reviewはPASS、finding 0。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
@@ -173,6 +172,14 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5260 — Reception queue route extraction(2026-08-28)
+
+- **Status:** `COMMITTED_LOCAL 7b4e311 / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** read-only受付キューを専用pluginへ、共有entry snapshot/invalid responseを同moduleへ移動。
+  auth/no-store/PHI audit、受付create本体、contract/schema/DB/DMLは不変。
+- **Gate:** focused 328、API全体980 / DB-gated 62 skip、typecheck、boundary、post-commit focused 328 PASS。
+  frozen technical/security/privacy reviewは全finding 0。
 
 ### WP-5259 — Patient route extraction(2026-08-28)
 
