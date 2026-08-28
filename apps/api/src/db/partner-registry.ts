@@ -7,7 +7,6 @@ import {
 
 import {
   PartnerEndpointPolicyError,
-  assertPublicHttpsEndpoint,
   assertResolvesToPublicAddress,
   defaultAddressLookup,
   type AddressLookup,

@@ -1,41 +1,37 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5252 R1 RECORD_RECHECK_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5253 R1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5251はlocal commit `91c74de`、agmsg連携規則は`acc25d9`へ着地済み。date-time terminal-line候補は
+- **Direction / ownership:** WP-5252はlocal commit `5e29e8e`、agmsg連携規則は`acc25d9`へ着地済み。date-time terminal-line候補は
   live runtimeで既に拒否される`NOT_A_BUG`。WP-5235 EventEnvelope root guardはMOD-009改版前提で未着手。
-  current requestをWP-5252のdead eligibility guard removalで継続する。
+  current requestをWP-5253のunused endpoint-policy import removalで継続する。
   WP-5226は元exact4では安全に完結しないためdefer中。Codex rootだけが`active_root_writer`、
   state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5252-remove-dead-eligibility-guard`、base/HEAD
-  `91c74de024a714cf52e2596a83c4b894059f198e`。push / mergeは行わない。
-- **Dirty ownership:** exact4は `packages/shared-kernel/src/status.ts`、
-  `packages/shared-kernel/src/kernel.test.ts`、`Plans.md`、`State.md`。
-  同じexact4だけを本local landing対象とする。
+- **Git boundary:** current branch `refactor/wp-5253-remove-unused-endpoint-import`、base/HEAD
+  `5e29e8e85a4d82f42a49e85966e79012526bdd06`。push / mergeは行わない。
+- **Dirty ownership:** exact3は`apps/api/src/db/partner-registry.ts`、`Plans.md`、`State.md`。
+  同じexact3だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5252 / READY=0(WIPはR1 RECORD_RECHECK_PASS / LOCAL_LANDING_PENDING)。consumer 0の
-  `isEligibilityStatus` runtime exportだけを削除する。`ELIGIBILITY_STATUSES`/`EligibilityStatus`、他guard、
-  index/package、contracts/API/DB/migration、APPROVED SSOTは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5253 / READY=0(WIPはR1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。Partner Registryの
+  consumer 0 named import `assertPublicHttpsEndpoint`だけを削除する。共有endpoint policy、test、webhook sink、
+  contract/schema/DB/migration、APPROVED SSOTは変更しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** fixtureはmodule namespaceのsynthetic assertionだけでcredential、production data、PHI/PII、保存、log、
-  external send、network、cache、retry/offline stateを追加しない。
-- **Process gate:** local exact-name検索で`isEligibilityStatus`は定義1件のみ、導入履歴は`d460ff7`のみ。
-  APPROVED MOD-005はstatus値削除と必須system-mode/isClaimable guardを管理し、本predicate保持は要求しない。
-  pre-planはSSOT更新不要・R1 finding 0でREADY。consumer、out-of-tree互換要求、tuple/type/API/DB/SSOT、別pathへ波及するなら停止する。
-- **Validation / rollback:** GBrain `context_pack`/checkpointはlocalhost transport down。module namespace absence testは
-  expected Red 1 failed / 64 passed→Green 65 passed。shared-kernel package 3 files / 86 tests、consumer再検索0件、
-  exact4 `git diff --check` PASS。productionは4行削除だけ。code/test frozen SHA-256は
-  `f847bdbe35a0aeb84e8a7d3b32916eff36a1e6c1dbba03797017fc608875c019`、reviewed exact4 SHA-256は
-  `48b8ce2a37534ef84cc02213e56f3f5feb1bbedd2db6fc3435f60d4486831661`。
-  frozen independent reviewはblocking/non-blocking finding 0。record-only exact4 SHA-256は
-  `ac3a8783a0f490a7e4a71071ebe202c9834e27b8900453a390f81a4ae9efe011`で、recheckも
-  blocking/non-blocking finding 0。local landingはpending。
-  CSS変更はなく12 KiB予算測定の対象外。
-  DB integration、browser、network、production runtimeは実行しない。
-  exact4の単一`WP-5252:` commit、rollbackは確定commitへの
+- **Security / privacy / offline:** endpoint security validationとdata flowを変えず、credential、production data、PHI/PII、保存、log、
+  external send、network実行、DB操作、cache、retry/offline stateを追加しない。
+- **Process gate:** local exact-name検索でregistry内の`assertPublicHttpsEndpoint`はimport 1件のみ。
+  `registerEndpoint`は共有`assertResolvesToPublicAddress`へrouteし、同関数がHTTPS/host検証後にDNS/public-address検証を行う。
+  pre-planはSSOT更新不要・R1・human gate不要と判定。唯一のdefer条件だったWP-5252 local landingを`5e29e8e`でreconcileした。
+  実参照、module evaluation差、endpoint policy/API/SSOT/security/DB/productionへの波及が判明したら停止する。
+- **Validation / rollback:** GBrain `context_pack`はprotocol v1で成功。trivial one-line cleanupのため新規source-shape testは作らず、
+  endpoint policy focused 23 tests、changed module import smoke、consumer再検索、exact3 path/diff-checkはPASS。
+  production diffは1行削除、source diff SHA-256は`9a8841ad8cf8611e6167c90dc88ddf475075f741431a4abf9396ae9f5e4f6b6b`。
+  frozen reviewed exact3 SHA-256は`0c12afb5d1f2661aab97ad1951b79acd9b51a1796b6759ed30f7d4189ce9e8df`、
+  独立reviewはblocking/non-blocking finding 0。TEST_DATABASE_URL未設定のためDB integrationは実行せず、local landingはpending。
+  CSS変更はなく12 KiB予算測定の対象外。browser、network、production runtimeは実行しない。
+  exact3の単一`WP-5253:` commit、rollbackは確定commitへの
   `git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
