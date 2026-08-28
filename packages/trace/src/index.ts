@@ -138,6 +138,7 @@ export interface CreateLegalTraceInput {
 }
 
 const sourceTypes = new Set<EvidenceSourceType>(EVIDENCE_SOURCE_TYPES);
+const evidenceRefFields = new Set<string>(["evidenceId", "sourceType", "title", "version", "effectiveFrom"]);
 const traceIdKinds = new Set<TraceIdRefKind>(TRACE_ID_REF_KINDS);
 const traceDateKinds = new Set<TraceDateRefKind>(TRACE_DATE_REF_KINDS);
 const stepStatuses = new Set<CalculationTraceStepStatus>(CALCULATION_TRACE_STEP_STATUSES);
@@ -210,13 +211,32 @@ function freezeEvidenceRef(ref: EvidenceRef): EvidenceRef {
   if ("url" in ref) {
     throw new RangeError("EvidenceRef must not include url; URLs live in source_registry");
   }
-  if (!sourceTypes.has(ref.sourceType)) {
+  const sourceType = ref.sourceType;
+  if (!sourceTypes.has(sourceType)) {
     throw new RangeError("EvidenceRef sourceType is not supported");
   }
-  assertNonEmptyString(ref.evidenceId, "EvidenceRef evidenceId");
-  assertNonEmptyString(ref.title, "EvidenceRef title");
+  const evidenceId = ref.evidenceId;
+  assertNonEmptyString(evidenceId, "EvidenceRef evidenceId");
+  const title = ref.title;
+  assertNonEmptyString(title, "EvidenceRef title");
+  for (const field in ref) {
+    if (!evidenceRefFields.has(field)) {
+      throw new RangeError("EvidenceRef must not include unknown fields");
+    }
+  }
+  const hasVersion = Object.prototype.propertyIsEnumerable.call(ref, "version");
+  const version = hasVersion ? ref.version : undefined;
+  const hasEffectiveFrom = Object.prototype.propertyIsEnumerable.call(ref, "effectiveFrom");
+  const effectiveFrom = hasEffectiveFrom ? ref.effectiveFrom : undefined;
 
-  return Object.freeze({ ...ref });
+  const frozenRef: EvidenceRef = { evidenceId, sourceType, title };
+  if (hasVersion) {
+    Object.defineProperty(frozenRef, "version", { enumerable: true, value: version });
+  }
+  if (hasEffectiveFrom) {
+    Object.defineProperty(frozenRef, "effectiveFrom", { enumerable: true, value: effectiveFrom });
+  }
+  return Object.freeze(frozenRef);
 }
 
 function freezeTraceIdRef(ref: TraceIdRef): TraceIdRef {
