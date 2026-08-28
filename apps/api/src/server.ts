@@ -4,19 +4,13 @@ import {
   healthResponseSchema,
   type PatientSearchResult,
   receptionCreateRequestSchema,
-  receptionQueueEntrySchema,
-  receptionQueueResponseSchema,
-  receptionQueueQuerySchema,
   type HealthResponse,
   type ReceptionQueueEntry,
-  type ReceptionQueueResponse,
   whoamiResponseSchema,
   type WhoamiResponse,
 } from '@yrese/contracts';
-import { CalendarDate } from '@yrese/date-time';
 import {
   RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE,
-  RECEPTION_INVALID_REQUEST_ERROR_CODE,
   RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE,
   patientId,
   permissionScope,
@@ -60,17 +54,21 @@ import {
   type PatientRepository,
 } from './patient-repository.js';
 import {
-  businessDateFromAcceptedAt,
   InMemoryReceptionRepository,
   type ReceptionCreateProvenance,
   type ReceptionRepository,
 } from './reception-repository.js';
 import {
+  invalidReceptionRequestResponse,
+  parseReceptionEntrySnapshot,
+  receptionQueueRoutes,
+  snapshotReceptionEntry,
+  snapshotReceptionEntryIdentity,
+} from './reception-queue-routes.js';
+import {
   assertRecordedAuditMatchesIntent,
-  readOwnEnumerableDataProperty,
   readRequiredOwnEnumerableDataProperty,
   setSensitiveResponseNoStore,
-  snapshotDenseArray,
   snapshotWallClock,
 } from './route-invariants.js';
 
@@ -107,12 +105,22 @@ export {
   receptionPatientSchemaInvariantErrorMessage,
 } from './patient-routes.js';
 
+export {
+  receptionInvalidRequestErrorCode,
+  receptionQueueAuditClockInvariantErrorMessage,
+  receptionQueueAuditClockReadErrorMessage,
+  receptionQueueAuditInvariantErrorMessage,
+  receptionQueueBusinessDateInvariantErrorMessage,
+  receptionQueueDuplicateIdentityInvariantErrorMessage,
+  receptionQueueRepositoryErrorMessage,
+  receptionQueueSchemaInvariantErrorMessage,
+} from './reception-queue-routes.js';
+
 export type { HealthResponse } from '@yrese/contracts';
 
 export const apiVersion = '0.0.1';
 export const healthClockReadErrorMessage = 'Health clock read failed';
 export const healthClockInvariantErrorMessage = 'Health clock returned an invalid instant';
-export const receptionInvalidRequestErrorCode = RECEPTION_INVALID_REQUEST_ERROR_CODE;
 export const receptionPatientNotFoundErrorCode = RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE;
 export const receptionIdempotencyConflictErrorCode = RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE;
 export const receptionReconciliationHeaderName = 'x-yrese-reconciliation';
@@ -136,23 +144,9 @@ export const receptionAcceptedAtClockInvariantErrorMessage =
   'Reception acceptance clock returned an invalid instant';
 export const receptionCreatedAuditInvariantErrorMessage =
   'Audit repository returned mismatched reception creation evidence';
-export const receptionQueueDuplicateIdentityInvariantErrorMessage =
-  'Reception repository returned duplicate reception identities';
-export const receptionQueueBusinessDateInvariantErrorMessage =
-  'Reception repository returned entries outside the requested business date';
-export const receptionQueueRepositoryErrorMessage =
-  'Reception repository queue lookup failed';
-export const receptionQueueSchemaInvariantErrorMessage =
-  'Reception repository returned invalid queue entries';
 export const receptionCreateRepositoryErrorMessage = 'Reception repository create failed';
 export const receptionCreatedOutboxInvariantErrorMessage =
   'Reception outbox intent could not be recorded';
-export const receptionQueueAuditInvariantErrorMessage =
-  'Audit repository returned mismatched reception queue view evidence';
-export const receptionQueueAuditClockReadErrorMessage =
-  'Reception queue audit clock read failed';
-export const receptionQueueAuditClockInvariantErrorMessage =
-  'Reception queue audit clock returned an invalid instant';
 
 export interface BuildServerOptions {
   readonly patientRepository?: PatientRepository;
@@ -255,80 +249,6 @@ function patientSnapshotsMatch(
   );
 }
 
-function snapshotReceptionEntryIdentity(value: unknown, invariantErrorMessage: string) {
-  const receptionIdentity = readRequiredOwnEnumerableDataProperty(
-    value,
-    'receptionId',
-    invariantErrorMessage,
-  );
-  const rawPatient = readRequiredOwnEnumerableDataProperty(
-    value,
-    'patient',
-    invariantErrorMessage,
-  );
-  const patientIdentity = snapshotPatientSearchResultIdentity(
-    rawPatient,
-    invariantErrorMessage,
-  );
-  return Object.freeze({
-    receptionId: receptionIdentity,
-    rawPatient,
-    patientId: patientIdentity,
-  });
-}
-
-function snapshotReceptionEntry(
-  value: unknown,
-  identity: ReturnType<typeof snapshotReceptionEntryIdentity>,
-  invariantErrorMessage: string,
-) {
-  const patientSnapshot = snapshotPatientSearchResult(
-    identity.rawPatient,
-    identity.patientId,
-    invariantErrorMessage,
-  );
-
-  return Object.freeze({
-    receptionId: identity.receptionId,
-    patient: patientSnapshot,
-    acceptedAt: readRequiredOwnEnumerableDataProperty(
-      value,
-      'acceptedAt',
-      invariantErrorMessage,
-    ),
-    receptionStatus: readRequiredOwnEnumerableDataProperty(
-      value,
-      'receptionStatus',
-      invariantErrorMessage,
-    ),
-    prescriptionIntakeType: readRequiredOwnEnumerableDataProperty(
-      value,
-      'prescriptionIntakeType',
-      invariantErrorMessage,
-    ),
-  });
-}
-
-function parseReceptionEntrySnapshot(
-  value: unknown,
-  invariantErrorMessage: string,
-): ReceptionQueueEntry {
-  try {
-    const parsed = receptionQueueEntrySchema.safeParse(value);
-    if (!parsed.success) throw new Error(invariantErrorMessage);
-    return parsed.data;
-  } catch {
-    throw new Error(invariantErrorMessage);
-  }
-}
-
-function invalidReceptionRequestResponse() {
-  return errorResponseSchema.parse({
-    errorCode: receptionInvalidRequestErrorCode,
-    message: 'Invalid reception request',
-  });
-}
-
 function receptionPatientNotFoundResponse() {
   return errorResponseSchema.parse({
     errorCode: receptionPatientNotFoundErrorCode,
@@ -412,129 +332,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     patientSearchCursorCodec,
   });
 
-  server.get(
-    '/reception/queue',
-    {
-      onRequest: setSensitiveResponseNoStore,
-      preHandler: [
-        requirePermission(permissionScope('reception', 'read')),
-        requirePermission(permissionScope('patient', 'read')),
-      ],
-    },
-    async (request, reply): Promise<ReceptionQueueResponse | void> => {
-      const tenantContext = request.tenantContext;
-      if (tenantContext === undefined) {
-        throw new Error('tenantContext is unexpectedly missing after authorization');
-      }
-
-      const query = receptionQueueQuerySchema.safeParse(request.query);
-      if (!query.success) {
-        return reply.code(400).send(invalidReceptionRequestResponse());
-      }
-
-      try {
-        CalendarDate.fromString(query.data.date);
-      } catch {
-        return reply.code(400).send(invalidReceptionRequestResponse());
-      }
-
-      let entries: readonly ReceptionQueueEntry[];
-      try {
-        entries = await receptionRepository.list({
-          tenantId: tenantContext.tenantId,
-          pharmacyId: tenantContext.pharmacyId,
-          date: query.data.date,
-        });
-      } catch {
-        throw new Error(receptionQueueRepositoryErrorMessage);
-      }
-
-      const rawEntries = snapshotDenseArray(entries, receptionQueueSchemaInvariantErrorMessage);
-      const entrySnapshots = rawEntries.map((entry) => {
-        const identity = snapshotReceptionEntryIdentity(
-          entry,
-          receptionQueueSchemaInvariantErrorMessage,
-        );
-        const snapshot = snapshotReceptionEntry(
-          entry,
-          identity,
-          receptionQueueSchemaInvariantErrorMessage,
-        );
-        return parseReceptionEntrySnapshot(snapshot, receptionQueueSchemaInvariantErrorMessage);
-      });
-      let response: ReceptionQueueResponse;
-      try {
-        const parsedResponse = receptionQueueResponseSchema.safeParse({
-          date: query.data.date,
-          entries: entrySnapshots,
-        });
-        if (!parsedResponse.success) throw new Error(receptionQueueSchemaInvariantErrorMessage);
-        response = parsedResponse.data;
-      } catch {
-        throw new Error(receptionQueueSchemaInvariantErrorMessage);
-      }
-      const receptionIds = new Set<string>();
-      for (const entry of response.entries) {
-        if (receptionIds.has(entry.receptionId)) {
-          throw new Error(receptionQueueDuplicateIdentityInvariantErrorMessage);
-        }
-        receptionIds.add(entry.receptionId);
-      }
-      for (const entry of response.entries) {
-        if (
-          businessDateFromAcceptedAt(
-            new Date(entry.acceptedAt),
-            receptionQueueBusinessDateInvariantErrorMessage,
-          ) !== query.data.date
-        ) {
-          throw new Error(receptionQueueBusinessDateInvariantErrorMessage);
-        }
-      }
-
-      // WP-4162: 受付キュー閲覧は要配慮情報の列挙アクセス
-      // (reception.queue.viewed — MOD-008 0.2.4)。payload は業務日付+件数のみ
-      // (PHI 非含有)。0 件でも 1 件記録。記録失敗は 500 で PHI 非返却。
-      const queueViewWallClock = snapshotWallClock(
-        now,
-        receptionQueueAuditClockReadErrorMessage,
-        receptionQueueAuditClockInvariantErrorMessage,
-      );
-      const queueViewTarget = Object.freeze({
-        kind: 'reception_queue',
-        id: `${query.data.date}:results:${response.entries.length}`,
-      });
-      const queueViewIntent = Object.freeze({
-        actorId: userId(tenantContext.actorId),
-        auditEventType: 'reception.queue.viewed',
-        targetRef: queueViewTarget,
-        outcome: 'success',
-        wallClock: queueViewWallClock,
-      });
-      let recordedQueueViewAudit: unknown;
-      try {
-        recordedQueueViewAudit = await auditRepository.record(
-          Object.freeze({
-            tenantId: tenantContext.tenantId,
-            pharmacyId: tenantContext.pharmacyId,
-          }),
-          queueViewIntent,
-        );
-      } catch {
-        throw new Error(receptionQueueAuditInvariantErrorMessage);
-      }
-      assertRecordedAuditMatchesIntent(
-        recordedQueueViewAudit,
-        {
-          tenantId: tenantContext.tenantId,
-          pharmacyId: tenantContext.pharmacyId,
-          ...queueViewIntent,
-        },
-        receptionQueueAuditInvariantErrorMessage,
-      );
-
-      return response;
-    },
-  );
+  server.register(receptionQueueRoutes, {
+    receptionRepository,
+    auditRepository,
+    now,
+  });
 
   server.post(
     '/reception',

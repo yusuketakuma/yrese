@@ -1,35 +1,34 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5259 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5260 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5258はlocal commit `5a84208`。current requestをWP-5259のpatient route extractionで継続する。
+- **Direction / ownership:** WP-5259はlocal commit `99e8660`。current requestをWP-5260のreception queue route extractionで継続する。
   agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは常に単独writerとする。
   宣言競合はagmsg timestampの早い方を優先する。本WPのwriterはCodex、Claudeはfreezeまでread-onlyである。
-- **Git boundary:** current branch `refactor/wp-5259-extract-patient-routes`、base
-  `5a842085b920ba16f6bcb6f7f170d1b733e68aca`。push / mergeは行わない。
-- **Dirty ownership:** exact5は`apps/api/src/server.ts`、新規`apps/api/src/patient-routes.ts`、
-  `apps/api/src/route-invariants.ts`、`Plans.md`、`State.md`。
-  同じexact5だけを本local landing対象とする。
+- **Git boundary:** current branch `refactor/wp-5260-extract-reception-queue-routes`、base
+  `99e86601d806b289826fb08478ac75f0fa521c0a`。push / mergeは行わない。
+- **Dirty ownership:** exact4は`apps/api/src/server.ts`、新規`apps/api/src/reception-queue-routes.ts`、
+  `Plans.md`、`State.md`。同じexact4だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5259 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。患者検索・患者取得を
-  専用route moduleへ移し、cursor/projection/PHI監査と受付createの共有snapshotを同じ実装で維持する。
+- **Active plan / boundary:** CURRENT=WP-5260 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。受付キューを
+  専用route moduleへ移し、entry snapshot/invalid responseを受付createが同じ実装で再利用する。
   path/status/body/error、auth/scope/no-store、contract/schema/repository/DB/DMLは変更しない。
   N+1 child INSERT batching候補はHUMAN_GATE_REQUIREDのまま着手しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** 患者routeのpermission/scope/no-store、query非記録、patient.searched/patient.viewed監査をverbatim維持する。
+- **Security / privacy / offline:** 受付キューのpermission/scope/no-store、件数だけのreception.queue.viewed監査をverbatim維持する。
   既存synthetic testだけを使い、
   credential、production data、PHI/PII、保存、log、external send、real network、DB操作、cache、retry/offline stateを追加しない。
 - **Process gate:** live consumer mappingとClaude pre-planにより、behavior/contract不変ならSSOT更新不要・R2・
-  human gate不要と判定した。route/cursor/auth/privacy/audit/error差、test file変更要求、ESM cycle、
-  受付snapshot behavior差が判明したら停止する。
-- **Validation / rollback:** Claude comparison/no-overlap ACKとCodex exact5 claimはagmsg記録済み。
-  純粋refactorのため人工的なRed testは追加せず、移動前patient/PHI-audit/error characterizationは337 PASS。
-  移動後focused 337、API全体980 PASS / DB-gated 62 skip、API typecheck、boundary、exact path/diff-checkがPASS。
-  frozen exact5 hashをClaudeが再現し、technical/security/privacy reviewはblocking/non-blocking/informational finding 0でPASS。
-  browser、real network、DB、production runtimeは実行しない。exact5の単一`WP-5259:` commit、
+  human gate不要と判定した。create body差、queue/auth/privacy/audit/error差、test file変更要求、ESM cycleが判明したら停止する。
+- **Validation / rollback:** Claude pre-plan/no-overlap ACKとCodex exact4 claimはagmsg記録済み。
+  純粋refactorのため人工的なRed testは追加せず、移動前reception/PHI-audit/error characterizationは328 PASS。
+  移動後focused 328、API全体980 PASS / DB-gated 62 skip、API typecheck、boundary、exact path/diff-checkがPASS。
+  `POST /reception`本体はbaseとbyte同一。frozen exact4 hashをClaudeが再現し、technical/security/privacy reviewは
+  blocking/non-blocking/informational finding 0でPASS。
+  browser、real network、DB、production runtimeは実行しない。exact4の単一`WP-5260:` commit、
   rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。

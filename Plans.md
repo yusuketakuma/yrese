@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5258 `5a84208`まで(実測 2026-08-28) |
-| Candidate branch | WP-5258はlocal commit `5a84208`。WP-5259は同HEADから `refactor/wp-5259-extract-patient-routes` を作成済み |
+| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5259 `99e8660`まで(実測 2026-08-28) |
+| Candidate branch | WP-5259はlocal commit `99e8660`。WP-5260は同HEADから `refactor/wp-5260-extract-reception-queue-routes` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までmain/originへfast-forward済み(reflog実測)。WP-5242以降のpushは認可・実行しない |
-| Candidate scope | `buildServer`の患者検索・患者取得route familyをmodule分離し、cursor/auth/PHI監査/error contractを不変に保つexact3 code slice |
-| Last update | 2026-08-28 JST(WP-5258 local landing済み、WP-5259 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Candidate scope | `buildServer`のread-only受付キューrouteと共有entry snapshot helperをmodule分離し、create/idempotency/outboxを不変に保つexact2 code slice |
+| Last update | 2026-08-28 JST(WP-5259 local landing済み、WP-5260 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5259で患者GET 2経路を専用moduleへ移し、共有snapshot/own-property防御を再利用したまま`server.ts`を縮小する |
-| Main blocker | なし。WP-5258は`5a84208`へlocal landing済み。WP-5259 pre-planはR2、behavior/contract不変のためSSOT改版・human gate不要と判定。N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDで保留 |
-| Required verification | 移動前後のpatient/PHI-audit/error characterization、API全体、API typecheck、export/registration/no-store/auth/cursor確認、exact path/diff-check、独立frozen R2 review(Claude)、単一local commit |
+| Current critical path | WP-5260で`GET /reception/queue`を専用moduleへ移し、共有entry snapshotをcreateが同じ実装で使う状態を維持する |
+| Main blocker | なし。WP-5259は`99e8660`へlocal landing済み。WP-5260 pre-planはread-only routeの純粋移動としてR2、SSOT改版・human gate不要と判定。N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDで保留 |
+| Required verification | 移動前後のreception/PHI-audit/error characterization、API全体、API typecheck、export/registration/no-store/auth確認、POST create body byte同一、exact path/diff-check、独立frozen R2 review(Claude)、単一local commit |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5259である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5260である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,32 +73,32 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5259(extract patient routes、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5258はlocal commit `5a84208`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5260(extract reception queue route、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5259はlocal commit `99e8660`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** `GET /patients/search`と`GET /patients/:patientId`を同じ専用moduleへ移し、
-  cursor検証、患者snapshot、PHI read監査のlive closureを分断せず`buildServer`をcomposition rootへ近づける。
-- **Allowed / forbidden:** exact5は`apps/api/src/server.ts`、新規`apps/api/src/patient-routes.ts`、
-  `apps/api/src/route-invariants.ts`、`Plans.md`、`State.md`。test、contract/schema、repository、SQL/DML、migration、
+- **Purpose / layer:** `GET /reception/queue`と共有entry snapshot/invalid responseを専用moduleへ移し、
+  `POST /reception`が同じhelperを再利用したままread routeとwrite routeの境界を明確にする。
+- **Allowed / forbidden:** exact4は`apps/api/src/server.ts`、新規`apps/api/src/reception-queue-routes.ts`、
+  `Plans.md`、`State.md`。`POST /reception`本体、test、contract/schema、repository、SQL/DML、migration、
   APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
-- **Authority / evidence:** 全helper callerと5 test fileの`server.ts` public importをlive `rg`で確認済み。
-  generic own-property helperだけを既存route-invariantsへ移し、患者snapshot helper 3件はpatient moduleから受付createへexportする。
-  `buildServer`内登録と既存public patient/error constantのverbatim re-exportを維持する。behavior/contract不変の純粋refactorで
+- **Authority / evidence:** queue/create間の共有helper 4件と3 test fileのpublic importをlive `rg`で確認済み。
+  helperはqueue moduleからcreateへexportし、invalid request codeを同moduleへ移して`server.ts`からverbatim re-exportする。
+  `buildServer`内登録を維持し、moduleはserverをimportしない。read-only behavior/contract不変の純粋refactorで
   SSOT改版不要、PHI read/audit境界のためR2、追加human gate不要と判定した。
-- **Acceptance / tests:** (A1)両pathのstatus/body/error、cursor binding/offset/encoding、result projectionを不変にする。
-  (A2)tenant permission、scope、`Cache-Control: no-store`、patient.searched/patient.viewed fail-closed auditを不変にする。
-  (A3)受付createが共有patient snapshotを同じ実装で使い、`BuildServerOptions`と`server.ts` public exportを不変にする。
-  (A4)循環依存、test file変更、contract/schema/DB/DML変更を作らない。
-- **PIA / offline:** 既存synthetic patient/audit testsだけを使い、real network、DB、患者・処方・請求data、credential、
+- **Acceptance / tests:** (A1)queue path/status/body/error、business-date/duplicate/schema検証を不変にする。
+  (A2)tenant permission、scope、`Cache-Control: no-store`、reception.queue.viewed fail-closed auditを不変にする。
+  (A3)`POST /reception`本体をbyte同一に保ち、createが共有entry snapshot/invalid responseを同じ実装で使う。
+  (A4)`server.ts` public exportを不変にし、循環依存、test file変更、contract/schema/DB/DML変更を作らない。
+- **PIA / offline:** 既存synthetic reception/audit testsだけを使い、real network、DB、患者・処方・請求data、credential、
   production data、PHI/PII、保存、log、external send、cache、retry/offline stateを追加しない。
 - **Roles / stop / rollback:** `active_root_writer`はCodex、frozen R2 reviewerはClaude。shared treeは単独writer。
-  route/cursor/auth/privacy/audit/error差、test変更要求、ESM cycle、受付snapshot behavior差が判明したら停止。exact5を単一
-  `WP-5259:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
-- **Validation evidence:** Claudeのread-only comparison/no-overlap ACK、Codex exact5 claimをagmsgへ記録済み。
-  純粋refactorのため人工的なRed testは追加せず、移動前characterizationとしてpatient/PHI-audit/error 337 PASSを確認。
-  移動後もfocused 337、API全体980 PASS / DB-gated 62 skip、API typecheck、boundary、exact path/diff-checkがPASS。
-  `server.ts`は1,190行から776行へ縮小。frozen exact5 SHA-256
-  `0e5a8323642bf069f401664827551d4fa4f927787f59210ddf5286ed7615aa00`をClaudeが再現し、
+  create body差、queue/auth/privacy/audit/error差、test変更要求、ESM cycleが判明したら停止。exact4を単一
+  `WP-5260:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
+- **Validation evidence:** Claudeのread-only pre-plan/no-overlap ACK、Codex exact4 claimをagmsgへ記録済み。
+  純粋refactorのため人工的なRed testは追加せず、移動前reception/PHI-audit/error characterization 328 PASSを確認。
+  移動後もfocused 328、API全体980 PASS / DB-gated 62 skip、API typecheck、boundary、exact path/diff-checkがPASS。
+  `POST /reception`本体はbaseとbyte同一、`server.ts`は776行から578行へ縮小。frozen exact4 SHA-256
+  `6deca8944072f5645bd251f1474196c148b8eb9d5605fc3e8aaf5a02c1e2b75f`をClaudeが再現し、
   technical/security/privacy reviewはblocking/non-blocking/informational finding 0でPASS。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
@@ -173,6 +173,14 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5259 — Patient route extraction(2026-08-28)
+
+- **Status:** `COMMITTED_LOCAL 99e8660 / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** 患者検索・患者取得を専用pluginへ、generic own-property helperを共通moduleへ移動。
+  cursor/auth/no-store/PHI audit、受付createのpatient snapshot、contract/schema/DB/DMLは不変。
+- **Gate:** focused 337、API全体980 / DB-gated 62 skip、typecheck、boundary、post-commit focused 337 PASS。
+  frozen technical/security/privacy reviewは全finding 0。
 
 ### WP-5258 — Audit-log route extraction(2026-08-28)
 
