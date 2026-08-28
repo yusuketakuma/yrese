@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5254 `2c675cc` + WP-5255 `76a4937`まで(実測 2026-08-28) |
-| Candidate branch | WP-5255はlocal commit `76a4937`。WP-5256は同HEADから `refactor/wp-5256-single-pass-draft-hash` を作成済み |
+| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5255 `76a4937` + WP-5256 `d0a159e`まで(実測 2026-08-28) |
+| Candidate branch | WP-5256はlocal commit `d0a159e`。WP-5257は同HEADから `refactor/wp-5257-single-read-duplicate-kana` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までmain/originへfast-forward済み(reflog実測)。WP-5242以降のpushは認可・実行しない |
-| Candidate scope | 処方draft saveのnormalize→hash再normalizeを共有helperで1 pass化し、canonical出力・hash・integrity checkを不変に保つexact3 code/test slice |
-| Last update | 2026-08-28 JST(WP-5255 local landing済み、WP-5256 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Candidate scope | 患者検索の同一カナ検出を各result 1 read・中間配列なしのsingle passへ変え、警告membershipを不変に保つexact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5256 local landing済み、WP-5257 R1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5256で両save実装のcanonical contentとhashを1回のparseから生成し、DB read integrity hashとSQL/DMLを不変に保つ |
-| Main blocker | なし。WP-5255は`76a4937`へlocal landing済み。WP-5256 pre-planはR1-R2、SSOT改版・human gate不要と判定。N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDで保留 |
-| Required verification | DB不要のsave parse回数Red test、focused draft-service/routes test、API typecheck、SQL/DML非変更確認、exact path/diff-check、独立frozen review(Claude)、単一local commit |
+| Current critical path | WP-5257で`duplicateKanaSet`のdouble property readとMap展開/filter/map allocationを除き、P-09警告membershipを維持する |
+| Main blocker | なし。WP-5256は`d0a159e`へlocal landing済み。WP-5257 pre-planはR1、SSOT改版・human gate不要と判定。N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDで保留 |
+| Required verification | DB不要のkana single-read Red test、focused patient-search test、Web typecheck、DOM/copy/ARIA非変更確認、exact path/diff-check、独立frozen review(Claude)、単一local commit |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5256である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5257である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,37 +73,34 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5256(single-pass draft hash、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5255はlocal commit `76a4937`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5257(single-read duplicate kana、R1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5256はlocal commit `d0a159e`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** WP-5255後も両`save`はdraftをnormalizeした直後に公開hash関数で同じcanonical contentを
-  再normalizeし、direct schema parseを2回行う。共有normalize-and-hash helperでcanonical contentとhashを
-  同じ1回のparseから生成し、保存hot pathの残存重複を除く。
-- **Allowed / forbidden:** exact5は`apps/api/src/prescription-draft-service.ts`、
-  `apps/api/src/prescription-draft-service.test.ts`、`apps/api/src/db/prescription-draft-service.ts`、
-  `Plans.md`、`State.md`。DB fileはimportとsave call siteだけ変更可。DB read integrity hash、
-  `replaceChildren`、全SQL/DML text、contracts/schema、DB/network、migration、APPROVED SSOT、dependencyは変更禁止。
+- **Purpose / layer:** `duplicateKanaSet`は各patientの`kana`を2回読み、count Mapを全展開して
+  filter→map→Setを作る。kanaを1回snapshotし、`seen`/`duplicates` Setだけでmembershipを構築して
+  患者検索render hot pathのproperty readと中間allocationを減らす。
+- **Allowed / forbidden:** exact4は`apps/web/app/patients/patient-search.tsx`、
+  `apps/web/app/patients/patient-search.test.tsx`、`Plans.md`、`State.md`。
+  `duplicateKanaSet`以外のproduction、UI copy/DOM/ARIA/CSS、contracts/API/network/DB、APPROVED SSOTは変更禁止。
   保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** canonical contentを直接`JSON.stringify`したdigestは、公開hash関数が同じcontentを
-  再normalizeしてdigestする現行値とbyte-identicalである。helperはin-memory save、Postgres save、公開hash関数の
-  3 consumerでdigest実装を一元化し、inline重複より小さい。pre-planはSSOT改版不要・R1-R2、追加human gate不要と判定した。
-- **Acceptance / tests:** (A1)in-memory saveのdirect schema parseは正確に1回、Postgres saveも同じhelperを使用。
-  (A2)保存response、canonical content、content hash、公開normalize/hash signatureとbehaviorは不変。
-  (A3)DB read integrity hashとSQL/DML textはbyte-identical。(A4)contracts/schema/migration/dependencyは不変。
-  save中のparse回数をspyで数えるDB不要testで現行2回をRedにする。
-- **PIA / offline:** synthetic draft contentだけを使い、real network、DB、患者・処方・請求data、credential、
+- **Authority / evidence:** result Setは`size`と`has`だけで消費され、iteration orderは非観測。
+  UIX-001 P-09の同姓同名warning trigger、row marking、未読込continuation noticeはmembershipだけに依存する。
+  pre-planはmembership不変を条件にSSOT改版不要・R1、追加human gate不要と判定した。
+- **Acceptance / tests:** (A1)各resultの`kana`を正確に1回だけ読む。(A2)empty/all-unique/multi-duplicateの
+  exact-match membershipは不変。(A3)P-09 warning、row marking、continuation notice、UI copy/DOM/ARIA/CSSは不変。
+  (A4)contract/API/network/DBは不変。counting getterのDB不要testで現行2 reads/resultをRedにする。
+- **PIA / offline:** synthetic patient summariesだけを使い、real network、DB、患者・処方・請求data、credential、
   production data、PHI/PII、保存、log、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `active_root_writer`はCodex、frozen reviewerはClaude。agmsg合意によりagentはWPごとに
-  writerを交代できるがshared treeは常に単独writerとする。hash byte差、受理集合差、DB integrity check差、
-  SQL/DML text変更、flaky spyが判明したら停止。exact5を単一`WP-5256:` commit、rollbackは確定commitへの
-  `git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。N+1 child INSERT batching候補は
-  HUMAN_GATE_REQUIREDで保留。
-- **Validation evidence:** Claude pre-planで2 save callerとDB read integrity callerを分離し、共有helperを最小解と判定。
-  Codexがexact5をclaim済み。Redはin-memory saveのdirect parse 2≠1で期待どおり失敗。
-  Greenはfocused draft-service+routes 17 PASS、API全体980 PASS / 62 DB-gated skip、API typecheckとdiff-checkがPASS。
-  DB file diffはimportとsave call siteだけで、read integrity callerとSQL/DML textはbyte-identical。
-  frozen exact5 SHA-256 `c9d253097a852bd84df216c3e7a58045b13d6a774d3c6c170dae0aee3897afe4`を
-  Claudeが再現し、technical/security/privacy/data-integrity reviewはblocking/non-blocking/informational finding 0でPASS。
+- **Roles / stop / rollback:** `active_root_writer`はCodex、frozen reviewerはClaude。shared treeは単独writer。
+  membership差、DOM/copy/ARIA/CSS差、flaky read-countが判明したら停止。exact4を単一`WP-5257:` commit、
+  rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
+  N+1 child INSERT batching候補はHUMAN_GATE_REQUIREDで保留。
+- **Validation evidence:** Claude pre-planはresult Setの全consumerを確認し、membership-onlyであることを実証。
+  Codexがexact4をclaim済み。Redは2 patientの`kana` read 4≠2で期待どおり失敗。
+  Greenはfocused patient-search 97 PASS、Web全体64 files / 750 PASS、Web typecheckとdiff-checkがPASS。
+  production diffは`duplicateKanaSet`だけでDOM/copy/ARIA/CSS差なし。frozen exact4 SHA-256
+  `75d18ac7ee546d9af23df6f2b060856ff9c1040c52a9f5b5e2e06bb0c31ae64b`をClaudeが再現し、
+  technical/security/privacy/accessibility reviewはblocking/non-blocking/informational finding 0でPASS。
   CSS変更はなく12 KiB予算測定の対象外。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
@@ -178,6 +175,14 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5256 — Single-pass draft hash(2026-08-28)
+
+- **Status:** `COMMITTED_LOCAL d0a159e / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** 両draft saveでcanonical contentとhashを1回のschema parseから生成。
+  公開normalize/hash、stored hash、DB read integrity、SQL/DML、contracts/schemaは不変。
+- **Gate:** Red 2≠1、focused 17、API 980 / DB-gated 62 skip、typecheck、post-commit focused 9 PASS。
+  frozen technical/security/privacy/data-integrity reviewは全finding 0。
 
 ### WP-5255 — Single-parse draft normalization(2026-08-28)
 

@@ -413,13 +413,14 @@ export { toPatientContextData } from "../components/patient-context";
 export function duplicateKanaSet(
   results: readonly PatientSearchResult[],
 ): ReadonlySet<string> {
-  const counts = new Map<string, number>();
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
   for (const p of results) {
-    counts.set(p.kana, (counts.get(p.kana) ?? 0) + 1);
+    const kana = p.kana;
+    if (seen.has(kana)) duplicates.add(kana);
+    else seen.add(kana);
   }
-  return new Set(
-    [...counts].filter(([, count]) => count > 1).map(([kana]) => kana),
-  );
+  return duplicates;
 }
 
 export function PatientSearchResults({

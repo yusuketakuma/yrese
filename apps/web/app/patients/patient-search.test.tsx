@@ -542,6 +542,25 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
     expect(set.has("ヤマダ タロー")).toBe(false);
   });
 
+  it("duplicateKanaSet reads each kana once", () => {
+    let reads = 0;
+    const countedPatient = (id: string): PatientSearchResult => ({
+      ...patient({ patientId: id }),
+      get kana() {
+        reads += 1;
+        return "ヤマダ タロウ";
+      },
+    });
+
+    const set = duplicateKanaSet([
+      countedPatient("patient-read-1"),
+      countedPatient("patient-read-2"),
+    ]);
+
+    expect(set.has("ヤマダ タロウ")).toBe(true);
+    expect(reads).toBe(2);
+  });
+
   it("discards stale responses so the last search wins (WP-4037)", async () => {
     const states: SearchState[] = [{ kind: "idle" }];
     const emit = (update: (prev: SearchState) => SearchState) => {

@@ -1,38 +1,36 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5256 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5257 R1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5255はlocal commit `76a4937`。current requestをWP-5256のsingle-pass draft hashで継続する。
+- **Direction / ownership:** WP-5256はlocal commit `d0a159e`。current requestをWP-5257のsingle-read duplicate kanaで継続する。
   agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは常に単独writerとする。
   宣言競合はagmsg timestampの早い方を優先する。本WPのwriterはCodex、Claudeはfreezeまでread-onlyである。
-- **Git boundary:** current branch `refactor/wp-5256-single-pass-draft-hash`、base
-  `76a49373a2e14ffb2b80fb4bf63cbb1221e0015a`。push / mergeは行わない。
-- **Dirty ownership:** exact5は`apps/api/src/prescription-draft-service.ts`、
-  `apps/api/src/prescription-draft-service.test.ts`、`apps/api/src/db/prescription-draft-service.ts`、
-  `Plans.md`、`State.md`。同じexact5だけを本local landing対象とする。
+- **Git boundary:** current branch `refactor/wp-5257-single-read-duplicate-kana`、base
+  `d0a159e3f4f445c7f1e1ab6a8e20ba87a29ef528`。push / mergeは行わない。
+- **Dirty ownership:** exact4は`apps/web/app/patients/patient-search.tsx`、
+  `apps/web/app/patients/patient-search.test.tsx`、`Plans.md`、`State.md`。
+  同じexact4だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5256 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。両draft saveのcanonical contentとhashを
-  1回のschema parseから生成する。DB fileはimportとsave call siteだけ変更可。DB read integrity hash、
-  `replaceChildren`、SQL/DML text、contracts/schema、DB/network、migration、APPROVED SSOT、dependencyは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5257 / READY=0(WIPはR1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。`duplicateKanaSet`を各result 1 read・
+  中間配列なしのsingle passへ変える。P-09 warning、row marking、continuation notice、UI copy/DOM/ARIA/CSS、
+  contracts/API/network/DBは変更しない。
   N+1 child INSERT batching候補はHUMAN_GATE_REQUIREDのまま着手しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** 共有helper内の信頼境界`prescriptionDraftContentSchema.parse` 1回を維持し、
-  公開hash関数とDB read integrity checkは引き続き入力を再normalizeする。synthetic testだけを使い、
+- **Security / privacy / offline:** parsed synthetic patient summaryの`kana`だけをsnapshotし、患者warning membershipを変えない。
+  synthetic testだけを使い、
   credential、production data、PHI/PII、保存、log、external send、real network、DB操作、cache、retry/offline stateを追加しない。
-- **Process gate:** shared helperはcanonical contentを直接`JSON.stringify`して既存SHA-256を生成し、
-  in-memory save、Postgres save、公開hash関数でdigest実装を一元化する。DB read integrity callerは公開hash関数のまま。
-  pre-planはSSOT更新不要・R1-R2・human gate不要と判定した。hash byte差、受理集合差、integrity check差、
-  SQL/DML text変更、flaky spyが判明したら停止する。
-- **Validation / rollback:** Claude assessmentとCodex exact5 claimはagmsg記録済み。
-  DB不要Redはin-memory saveのdirect parse 2≠1で期待どおり失敗。Greenはfocused 17 PASS、
-  API全体980 PASS / 62 DB-gated skip、API typecheckとdiff-checkがPASS。DB file diffはimportとsave call siteだけで、
-  read integrity callerとSQL/DML textはbyte-identical。frozen exact5 hashをClaudeが再現し、
-  technical/security/privacy/data-integrity reviewはblocking/non-blocking/informational finding 0でPASS。
-  browser、real network、DB、production runtimeは実行しない。
-  exact5の単一`WP-5256:` commit、rollbackは確定commitへの`git revert <commit>`。
+- **Process gate:** result Set consumerは`size`/`has`だけでiteration orderは非観測。pre-planは
+  membership不変を条件にSSOT更新不要・R1・human gate不要と判定した。membership差、DOM/copy/ARIA/CSS差、
+  flaky read-countが判明したら停止する。
+- **Validation / rollback:** Claude assessmentとCodex exact4 claimはagmsg記録済み。
+  DB不要Redは2 patientの`kana` read 4≠2で期待どおり失敗。Greenはfocused 97 PASS、
+  Web全体64 files / 750 PASS、Web typecheckとdiff-checkがPASS。production diffは`duplicateKanaSet`だけで
+  DOM/copy/ARIA/CSS差なし。frozen exact4 hashをClaudeが再現し、technical/security/privacy/accessibility reviewは
+  blocking/non-blocking/informational finding 0でPASS。browser、real network、DB、production runtimeは実行しない。
+  exact4の単一`WP-5257:` commit、rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、
