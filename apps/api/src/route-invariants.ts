@@ -3,6 +3,40 @@ import { isDate, isProxy } from 'node:util/types';
 import type { onRequestHookHandler } from 'fastify';
 import { hydrateAuditEvent, type AuditEvent } from '@yrese/audit';
 
+type OwnDataPropertySnapshot =
+  | { readonly present: false }
+  | { readonly present: true; readonly value: unknown };
+
+export function readOwnEnumerableDataProperty(
+  value: unknown,
+  key: string,
+  invariantErrorMessage: string,
+): OwnDataPropertySnapshot {
+  try {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error(invariantErrorMessage);
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor === undefined) return Object.freeze({ present: false });
+    if (descriptor.enumerable !== true || !('value' in descriptor)) {
+      throw new Error(invariantErrorMessage);
+    }
+    return Object.freeze({ present: true, value: descriptor.value });
+  } catch {
+    throw new Error(invariantErrorMessage);
+  }
+}
+
+export function readRequiredOwnEnumerableDataProperty(
+  value: unknown,
+  key: string,
+  invariantErrorMessage: string,
+): unknown {
+  const property = readOwnEnumerableDataProperty(value, key, invariantErrorMessage);
+  if (!property.present) throw new Error(invariantErrorMessage);
+  return property.value;
+}
+
 export function assertRecordedAuditMatchesIntent(
   value: unknown,
   expected: {
