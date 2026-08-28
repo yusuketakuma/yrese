@@ -384,12 +384,3 @@ export const RECEPTION_STATUS_LABELS: Record<ReceptionStatus, string> =
   projectLabels(RECEPTION_PRESENTATION);
 export const PROVISIONAL_STATUS_LABELS: Record<ProvisionalStatus, string> =
   projectLabels(PROVISIONAL_PRESENTATION);
-export const RECORD_LIFECYCLE_LABELS: Record<RecordLifecycleStatus, string> =
-  projectLabels(RECORD_LIFECYCLE_PRESENTATION);
-export const SYNC_STATUS_LABELS: Record<SyncStatus, string> = projectLabels(SYNC_PRESENTATION);
-export const PRESCRIPTION_CHANGE_LABELS: Record<PrescriptionChangeType, string> =
-  projectLabels(PRESCRIPTION_CHANGE_PRESENTATION);
-export const SESSION_STATUS_LABELS: Record<SessionStatus, string> =
-  projectLabels(SESSION_PRESENTATION);
-export const CLINICAL_ALERT_ACK_LABELS: Record<ClinicalAlertAckStatus, string> =
-  projectLabels(CLINICAL_ALERT_ACK_PRESENTATION);

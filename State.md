@@ -1,38 +1,40 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5250 record rechecks finding 0 / local landing pending):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5251 R1 RECORD_RECHECK_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5249はlocal commit `0e1785e`、agmsg連携規則は`acc25d9`へ着地済み。date-time terminal-line候補は
+- **Direction / ownership:** WP-5250はlocal commit `4a69188`、agmsg連携規則は`acc25d9`へ着地済み。date-time terminal-line候補は
   live runtimeで既に拒否される`NOT_A_BUG`。WP-5235 EventEnvelope root guardはMOD-009改版前提で未着手。
-  current requestをWP-5250のevidence-id collector one-shot snapshotで継続する。
+  current requestをWP-5251のdead status label projections removalで継続する。
   WP-5226は元exact4では安全に完結しないためdefer中。Codex rootだけが`active_root_writer`、
   state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5250-evidence-id-collector-snapshot`、base/HEAD
-  `0e1785ef98ecc529bad73c53a6df6e7c0874deef`。push / mergeは行わない。
-- **Dirty ownership:** exact4は `packages/trace/src/index.ts`、`packages/trace/src/trace.test.ts`、`Plans.md`、`State.md`。
+- **Git boundary:** current branch `refactor/wp-5251-remove-dead-status-labels`、base/HEAD
+  `4a69188209c301336d4039827e253e4e0ca33c64`。push / mergeは行わない。
+- **Dirty ownership:** exact4は `apps/web/app/status/visual-status-registry.ts`、
+  `apps/web/app/status/visual-status-registry.test.tsx`、`Plans.md`、`State.md`。
   同じexact4だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5250 / READY=0(WIPはR2 RECORD_RECHECKS_PASS / LOCAL_LANDING_PENDING)。`collectCalculationTraceEvidenceIds`の各stepで
-  `evidenceRefs`と`rounding`を各1回snapshotし、first-read値だけをdense確認・順次収集する。
-  create/freeze/type/signature、contracts/calculation/API/UI、APPROVED SSOTは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5251 / READY=0(WIPはR1 RECORD_RECHECK_PASS / LOCAL_LANDING_PENDING)。consumer 0の
+  `RECORD_LIFECYCLE_LABELS`、`SYNC_STATUS_LABELS`、`PRESCRIPTION_CHANGE_LABELS`、
+  `SESSION_STATUS_LABELS`、`CLINICAL_ALERT_ACK_LABELS`だけを削除する。presentation map、使用中のlabel map、
+  DOM/CSS/copy/ARIA/enum/component、APPROVED SSOTは変更しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** fixtureはsynthetic getter/counterとPHI-free evidence IDだけでcredential、production data、PHI/PII、保存、log、
+- **Security / privacy / offline:** fixtureはmodule namespaceのsynthetic assertionだけでcredential、production data、PHI/PII、保存、log、
   external send、network、cache、retry/offline stateを追加しない。
-- **Process gate:** local mappingでpublic helperの2 field再読、factory/contracts/direct test caller、APPROVED CAL-008/API-007 authorityを確認。
-  pre-planはR2 technical READYで、queue未登録だけをblocker 1としたが本CURRENT登録で解消。
-  order/dedup/freeze/error precedence、signature/contract/API/UI/SSOT、別pathへ波及するなら停止する。
-  frozen independent reviewとtrace data-integrity reviewは同exact4 packetでblocking/non-blocking finding 0。
-  同じreviewerのrecord-only recheckもblocking/non-blocking finding 0。
-- **Validation / rollback:** GBrain `code_blast`はlocalhost transport down。expected Redはfocused 1 failure / 2 PASSで両getterの各2回読取を再現。
-  productionは2 local bindingと参照置換だけ。最終focused 3、trace package 61 + typecheck、contracts 136 + typecheck、
-  calculation 90 + typecheck、boundaries、calculation-purity、`git diff --check`がPASS。code/test frozen SHA-256は
-  `17097486d3f5d54818069577d3c4b8fccb9db1854f545f3745b638f9d57f1de0`、reviewed exact4 SHA-256は
-  `abd01699a7f5ccc72c206434c07704c8d2bc6c11c5afb765e8c514dc3df9d1c8`。両frozen reviewと両record-only recheckはfinding 0、local landingはpending。
+- **Process gate:** local tracked全文検索で削除対象5 exportは各定義1件のみ。APPROVED UIX-001が互換維持を明記する
+  MODE/ELIGIBILITY/RECEPTION/SEVERITY label mapには含まれない。R1 pre-planはfinding 0でREADY。
+  consumer出現、互換SSOT対象、rendered behavior、別pathへ波及するなら停止する。
+- **Validation / rollback:** GBrain `context_pack`はlocalhost transport down。module namespace absence testは
+  expected Red 1 failed / 13 passed→Green 14 passed。productionは9行削除だけで、consumer再検索0件、exact4
+  `git diff --check` PASS。code/test frozen SHA-256は`3fbd0d6ace107b31a5878aedcda83bb3a018a6630293ac67c5164c1037c9eccf`、
+  reviewed exact4 SHA-256は`c84bbf0d1fc4f8b247c733f8a721a4bbb3cf39e784a238f343ee0495f60cccf3`。
+  frozen independent reviewはblocking/non-blocking finding 0。record-only exact4 SHA-256は
+  `3d8b42acf424029f2eb88c0a02009761819f69a85e22969b0a9e635490f5a328`で、recheckも
+  blocking/non-blocking finding 0。local landingはpending。CSS変更はなく12 KiB予算測定の対象外。
   DB integration、browser、network、production runtimeは実行しない。
-  exact4の単一`WP-5250:` commit、rollbackは確定commitへの
+  exact4の単一`WP-5251:` commit、rollbackは確定commitへの
   `git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。

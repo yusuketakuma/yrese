@@ -20,6 +20,7 @@ import { DomainStatusBadge } from "../components/domain-status-badge";
 import { ELIGIBILITY_LABELS } from "../components/patient-header";
 import { RECEPTION_STATUS_LABELS } from "../reception-dashboard";
 import { MODE_LABELS } from "../system-mode-badge";
+import * as visualStatusRegistry from "./visual-status-registry";
 import {
   CLINICAL_ALERT_ACK_PRESENTATION,
   CLINICAL_ALERT_TYPE_IDENTITY,
@@ -89,6 +90,18 @@ describe("Visual Status Registry (UIX-001 / 08-target-design-direction)", () => 
     }
     for (const key of RECEPTION_STATUSES) {
       expect(RECEPTION_STATUS_LABELS[key]).toBe(RECEPTION_PRESENTATION[key].label);
+    }
+  });
+
+  it("does not publish unused label-only projections", () => {
+    for (const name of [
+      "RECORD_LIFECYCLE_LABELS",
+      "SYNC_STATUS_LABELS",
+      "PRESCRIPTION_CHANGE_LABELS",
+      "SESSION_STATUS_LABELS",
+      "CLINICAL_ALERT_ACK_LABELS",
+    ]) {
+      expect(visualStatusRegistry).not.toHaveProperty(name);
     }
   });
 
