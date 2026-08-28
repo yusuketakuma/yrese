@@ -1,3 +1,5 @@
+import { isDate } from "node:util/types";
+
 import { assertIsoInstant } from "@yrese/events";
 
 function assertPlainObject(value: object, label: string): void {
@@ -79,7 +81,7 @@ function canonicalJsonValue(value: unknown, label: string, ancestors: WeakSet<ob
     throw new TypeError(`${label} has an unsupported value type`);
   }
 
-  if (value instanceof Date) {
+  if (isDate(value)) {
     throw new TypeError(`${label} must normalize Date values before canonicalization`);
   }
 
@@ -130,11 +132,12 @@ export function canonicalJsonString(value: object, label: string): string {
 }
 
 export function normalizeCanonicalInstant(value: string | Date, label: string): string {
-  if (value instanceof Date) {
-    if (Number.isNaN(value.getTime())) {
+  if (isDate(value)) {
+    // Intrinsic prototype calls keep own/overridden Date methods from executing.
+    if (Number.isNaN(Date.prototype.getTime.call(value))) {
       throw new RangeError(`${label} must be a valid Date`);
     }
-    return value.toISOString();
+    return Date.prototype.toISOString.call(value);
   }
 
   if (typeof value !== "string" || value.trim().length === 0) {

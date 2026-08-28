@@ -1,3 +1,4 @@
+import { runInNewContext } from "node:vm";
 import { describe, expect, it, vi } from "vitest";
 import { deviceId, eventId, pharmacyId, tenantId, userId } from "@yrese/shared-kernel";
 
@@ -334,7 +335,7 @@ describe("audit append intent fingerprint v1 golden vector", () => {
     expect(descriptorGetterReads).toBe(0);
   });
 
-  it("normalizes a hostile Date subclass exactly once into the shared snapshot", () => {
+  it("normalizes a hostile Date subclass without executing its overridden methods", () => {
     const firstCanonicalInstant = "2026-07-10T00:00:00.000Z";
     class HostileDate extends Date {
       getTimeCalls = 0;
@@ -369,10 +370,60 @@ describe("audit append intent fingerprint v1 golden vector", () => {
       }),
     );
 
-    expect(hostileDate.getTimeCalls).toBe(1);
-    expect(hostileDate.toISOStringCalls).toBe(1);
+    expect(hostileDate.getTimeCalls).toBe(0);
+    expect(hostileDate.toISOStringCalls).toBe(0);
     expect(hostile).toEqual(ordinary);
     expect(hostile.intentFingerprint).toBe(expectedFingerprint);
+  });
+
+  it("canonicalizes a genuine cross-realm Date to the ordinary fingerprint", () => {
+    const firstCanonicalInstant = "2026-07-10T00:00:00.000Z";
+    const crossRealmDate = runInNewContext(
+      `new Date("${firstCanonicalInstant}")`,
+    ) as Date;
+
+    const crossRealm = computeAuditAppendIntentFingerprint(
+      fingerprintInput({
+        intent: syntheticIntent({
+          wallClock: crossRealmDate as unknown as string,
+        }),
+      }),
+    );
+    const ordinary = computeAuditAppendIntentFingerprint(
+      fingerprintInput({
+        intent: syntheticIntent({ wallClock: firstCanonicalInstant }),
+      }),
+    );
+
+    expect(crossRealm).toEqual(ordinary);
+  });
+
+  it("rejects a Date.prototype spoof without executing its own methods", () => {
+    let spoofGetTimeCalls = 0;
+    let spoofToISOStringCalls = 0;
+    const spoof = Object.create(Date.prototype) as Date;
+    Object.defineProperty(spoof, "getTime", {
+      value: () => {
+        spoofGetTimeCalls += 1;
+        return 0;
+      },
+    });
+    Object.defineProperty(spoof, "toISOString", {
+      value: () => {
+        spoofToISOStringCalls += 1;
+        return "2026-07-10T00:00:00.000Z";
+      },
+    });
+
+    expect(() =>
+      computeAuditAppendIntentFingerprint(
+        fingerprintInput({
+          intent: syntheticIntent({ wallClock: spoof as unknown as string }),
+        }),
+      ),
+    ).toThrow("must be a non-empty string");
+    expect(spoofGetTimeCalls).toBe(0);
+    expect(spoofToISOStringCalls).toBe(0);
   });
 
   it.each([

@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = WP-5270 `b27b407fb523119545b8b457fbb918a5e6a98233`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`(実測 2026-08-28) |
-| Candidate branch | WP-5270はlocal commit `b27b407`。WP-5271は同HEADから `refactor/wp-5271-reuse-canonical-flag-order` を作成済み |
+| Review base | local `main` = `b27b407fb523119545b8b457fbb918a5e6a98233`(user指示によるWP-5254..5270 17 commit ref-only FF済み)、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5271 `f114e4c`まで(実測 2026-08-28) |
+| Candidate branch | WP-5271はlocal commit `f114e4c`。WP-5272は同HEADから `refactor/wp-5272-harden-canonical-instant` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までoriginへ反映済み。user指示でWP-5254〜WP-5270の17 commitをlocal main `b27b407`へref-only fast-forward済み。origin pushは実行しない |
-| Candidate scope | prescription draft flag正準順序のcontracts enum / service list / SQL CASE三重実装をcontracts enum由来のshared comparatorへ収束させるexact3 code/test slice |
-| Last update | 2026-08-28 JST(WP-5270 local main反映済み、WP-5271 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Candidate scope | audit canonical instant正規化のown Date method実行を排し、brand check+intrinsic prototype callへ強化するexact2 code/test slice(受理済みstring/same-realm built-in Dateの出力・hash不変。cross-realm Dateの受理化とprototype spoofの拒否/エラー経路変更は意図的) |
+| Last update | 2026-08-28 JST(WP-5271 local landing済み、WP-5272 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5271でflag順序の正本を`prescriptionDraftFlagSchema.options`へ一本化し、DB readbackも同じcomparatorで正準化する |
-| Main blocker | なし。WP-5270は`b27b407`へlocal landing済み。severityはlatent・低確率だが、現在残る同一概念の三重実装としてclaim済み |
-| Required verification | shared comparator Red/Green、既存normalize/hash、使い捨て実PostgreSQLのcanonical roundtrip(skip 0)、full API、API typecheck、boundaries、exact path/diff-check、独立frozen R2 review(Claude)、単一local commit |
+| Current critical path | WP-5272でaudit hash chainへ入るinstantのown/overridden Date method実行経路を閉じる |
+| Main blocker | なし。WP-5271は`f114e4c`へlocal landing済み。scan Rank2(reception-create/webhook sinkのraw now().toISOString 3箇所)とRank3(DB行instantのsnapshotDatabaseInstantバイパス2箇所)はpark |
+| Required verification | 既存hostile-Date testの宣言的強化(rename+own-method呼び出し1→0)をRedとし、audit全suite、audit/API typecheck、full API、boundaries、exact path/diff-check、独立frozen review(Codex)、単一local commit |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5271である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5272である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,34 +73,37 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5271(reuse canonical prescription flag order、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5270はlocal commit `b27b407`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5272(harden canonical instant、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5271はlocal commit `f114e4c`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+scan Rank2(clock hardening残余3箇所)とRank3(DB行instantのhelper未使用2箇所)はparked candidateとして記録する。
 
-- **Purpose / layer:** prescription draft flagの正準順序はcontractsの`prescriptionDraftFlagSchema`宣言順が正本だが、
-  serviceの手書き`FLAG_ORDER`とDBの`ORDER BY CASE`が同じ5値を複製する。schema options由来のshared comparatorへ
-  normalizeとDB readbackを収束し、SQL側の順序複製を削除する。
-- **Allowed / forbidden:** exact5は`apps/api/src/prescription-draft-service.ts`、
-  `apps/api/src/prescription-draft-service.test.ts`、`apps/api/src/db/prescription-draft-service.ts`、`Plans.md`、`State.md`。
-  contracts/schema/migration/DML、response/hash/API意味論、APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
-- **Authority / evidence:** live traceでcontracts enum / service list / SQL CASEの三重実装とcallerを確認。
-  新flag 1つでは両fallbackが末尾となるためseverityはlatent・低確率だが、複数追加またはenum reorderでSQL順序がdriftし得る。
-  pre-planはDQL ordering削除のみのR2、SSOT改版・human/Oracle gate不要と判定した(agmsg 2026-08-28)。
-- **Acceptance / tests:** (A1)shared comparatorがreversed contract optionsをschema宣言順へ正準化するRed/Green。
-  (A2)normalizeとDB readDraftが同じcomparatorを使用し、手書き5値/SQL CASEを残さない。(A3)既存content hash、response、
-  real PostgreSQL multi-flag roundtripをbyte-identicalに維持しDB-gated testをskip 0で実行。(A4)full API/typecheck/boundaries PASS。
-- **PIA / offline:** synthetic dataのみ。DB検証は使い捨てlocal PostgreSQLで行い、production/staging data、PHI/PII、
-  credential、external sendへ接触しない。cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `active_root_writer`はCodex、frozen R2 reviewerはClaude。shared treeは単独writer。
-  contract edit、response/hash/order差、unknown flag受理、SQL変更がflags SELECT削除範囲を超える、追加path必要で停止。
-  exact5を単一`WP-5271:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
-- **Validation evidence:** baseline focused 9 PASS。Redはreversed contract optionsがschema順ではなく文字列順となり1 FAIL / 9 PASSを再現、
-  Green focused 10 PASS。使い捨てloopback PostgreSQL 17でintegration 11 PASS(skip 0)、full API 1051 PASS(skip 0)。
-  API typecheck、`pnpm check:boundaries`(Boundary check passed.)、`git diff --check`はPASS。対象production 2 fileに
-  手書き5 flag literal / `ORDER BY CASE`が残らないことを確認。scratch server停止後、data directoryはTrashへ移動済み。
-  frozen R2 reviewはPASS・findings 0。Claudeがレビュー対象のpre-verdict exact5 SHA-256
-  `821dbdeb5cc742307ba76ab39a73040f106fa3b05a4e489a95f4999f48b10f25`とcode+test SHA-256
-  `a5e65e3489cc9a41f4b5f7bd33ea58f9610247b0e364c9a1e4c54dd5482a8c5c`を再現した
-  (verdict記録後のexact5は本書へ複製しない)。
+- **Purpose / layer:** `normalizeCanonicalInstant`(packages/audit/canonical-json.ts)は`instanceof Date`
+  (prototype偽装可能・cross-realm盲目)とown `getTime()`/`toISOString()`を使い、audit canonical payloadと
+  hash chainへ入るinstantをhostile/faulty Dateのoverridden methodが差し替え得た。`node:util/types.isDate`
+  brand checkとintrinsic `Date.prototype.getTime/toISOString.call`へ強化する。line 82のDate reject分岐も
+  isDateへ揃える。受理済みstringとsame-realm built-in Dateの出力・hash・validity判定は不変。cross-realm genuine Dateは新たに受理され(brand checkの正しい帰結)、Date.prototype spoofはown methodを実行せず拒否される — いずれも意図的な挙動変更として宣言する。
+- **Human gate / test modification:** 既存test「hostile Date subclassをexactly once正規化」は歴史的に
+  bounded hardening test(WP-4078)でありoverride semanticsの正本ではないとCodexが確認。rename+期待1→0の
+  宣言的強化として事前合意の上で変更する(黙示test編集ではない)。
+- **Allowed / forbidden:** exact4は`packages/audit/src/canonical-json.ts`、
+  `packages/audit/src/intent-fingerprint.test.ts`、`Plans.md`、`State.md`。
+  受理済みstring/same-realm built-in Dateのhash出力・挙動・エラー文言、contracts/API/DB/DML、APPROVED SSOT、
+  保護untracked 3 pathは変更・参照しない(cross-realm受理化とspoof拒否/エラー経路変更は宣言済みの意図的差分)。
+- **Authority / evidence:** hardened idiomはapps/api instant.ts / route-invariantsで実証済みで、stdlibのみのため
+  cross-package importなし。canonical-json.test.tsは存在せず、他auditテストに弱挙動のピンなしを実測確認。
+  pre-planはR2 audit/data-integrity、SSOT改版・human/Oracle gate不要と判定した(agmsg 2026-08-28)。
+- **Acceptance / tests:** (A1)強化したhostile-Date testでown getTime/toISOString呼び出し0を固定(hostile==ordinaryとgolden fingerprint assertionは無変更で生存)。(A1b)境界test 2件: genuine cross-realm Dateがordinary fingerprintへ正準化されること、Date.prototype spoofがown methodを実行せず拒否されること — brand checkの両面を固定。(A2)audit全suite・golden vector・M1再計算が不変にPASS。
+  (A3)invalid real Dateの拒否(prototype getTime NaN check)維持。(A4)audit/API typecheck、full API、boundaries PASS。
+- **PIA / offline:** synthetic dataのみ。real network、DB、PHI/PII、credential、cache、retry/offline stateを追加しない。
+- **Roles / stop / rollback:** `active_root_writer`はClaude、frozen R2 reviewerはCodex。shared treeは単独writer。
+  受理済みstring/same-realm built-in Dateに対するhash差・挙動差・エラー文言差、追加path必要が判明したら停止
+  (宣言済みのcross-realm/spoof意図的差分は停止対象外)。
+  exact4を単一`WP-5272:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
+- **Validation evidence:** baseline audit 204 PASS実測後、Redは強化testが呼び出し1≠0で期待どおり失敗。
+  Greenはaudit 206 PASS(強化test+境界test 2件込みfingerprint 84/84)、audit typecheck exit 0、full API 988 PASS / 63 DB-gated skip、
+  API typecheck PASS、`pnpm check:boundaries` PASS(Boundary check passed.)、`git diff --check` PASS。
+  frozen reviewはMEDIUM 1件(brand-check未証明)を境界test 2件で、LOW 3件(record整合)をrecord-only修正で解消し、
+  final PASS・findings 0。レビュー対象のpre-verdict exact4 SHA-256 `bbdc0c3acd47042e03548f8017e9ddda65c4277562bf5cb9d3aaeb13edad2ff9`をCodexが再現した(verdict記録後のexact4は本書へ複製しない)。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|

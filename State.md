@@ -1,31 +1,30 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5271 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5272 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5270はlocal commit `b27b407`。current requestをWP-5271のcanonical flag order再利用で継続する。
-  agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは常に単独writerとする。
-  本WPのwriterはCodex、Claudeはfrozen R2 reviewerでlandingまでread-onlyである。
-- **Git boundary:** current branch `refactor/wp-5271-reuse-canonical-flag-order`、base `b27b407`(WP-5270 landing)。
-  push / mergeは行わない。
-- **Dirty ownership:** exact5は`apps/api/src/prescription-draft-service.ts`、`apps/api/src/prescription-draft-service.test.ts`、
-  `apps/api/src/db/prescription-draft-service.ts`、`Plans.md`、`State.md`。同じexact5だけを本local landing対象とする。
+- **Direction / ownership:** WP-5271はlocal commit `f114e4c`。current requestをWP-5272のcanonical instant
+  hardeningで継続する。agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、
+  shared treeは常に単独writerとする。本WPのwriterはClaude、Codexはfrozen reviewerでlandingまでread-onlyである。
+  scan Rank2/Rank3はparked candidate。
+- **Git boundary:** local `main` = `b27b407`(user指示の17 commit ref-only FF)。current branch
+  `refactor/wp-5272-harden-canonical-instant`、base `f114e4c`(WP-5271 landing)。push / mergeは行わない。
+- **Dirty ownership:** exact4は`packages/audit/src/canonical-json.ts`、
+  `packages/audit/src/intent-fingerprint.test.ts`、`Plans.md`、`State.md`。同じexact4だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5271 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。contracts enum由来の
-  shared comparatorへnormalizeとDB readbackを収束し、serviceの手書きflag listとSQL CASEを削除する。
-  contracts/schema/migration/DML、response/hash/API意味論、APPROVED SSOTは不変。
-- **Human decision:** CSS予算12 KiB(12,288 bytes)のhuman decisionは従前どおり維持。WP-5268のDML user承認は
-  landed記録として保持(scope: 実装+local-CI検証のみ)。
-- **Security / privacy / offline:** unknown flagはresponse schemaでfail closedのまま。synthetic dataのみを使い、
-  DB検証は使い捨てlocal PostgreSQLで行う。credential、production/staging data、PHI/PII、external send、
-  cache、retry/offline stateを追加しない。
-- **Process gate:** contracts enum / service list / SQL CASEの三重実装を閉じるDQL-only R2。SSOT/human/Oracle gate不要。
-  contract edit、response/hash/order差、unknown flag受理、flags SELECT以外のSQL変更、追加path必要で停止する。
-- **Validation / rollback:** baseline focused 9 PASS。Redはcontract順序不一致で1 FAIL / 9 PASS、Green focused 10 PASS。
-  使い捨てloopback PostgreSQL 17でintegration 11 PASS(skip 0)、full API 1051 PASS(skip 0)。API typecheck、
-  boundaries、`git diff --check` PASS。手書きflag literal / SQL CASE残存0。scratch serverは停止しdata directoryはTrashへ移動済み。
-  Claude frozen R2 review PASS・findings 0、pre-verdict exact5/code+test hash再現済み。
-  exact5の単一`WP-5271:` commit、rollbackは確定commitへの`git revert <commit>`。
+- **Active plan / boundary:** CURRENT=WP-5272 / READY=0(WIPはR2 GREEN / FROZEN_REVIEW_PENDING)。
+  `normalizeCanonicalInstant`をisDate brand check+intrinsic prototype callへ強化し、line 82のDate rejectも
+  isDateへ揃える。受理済みstring/same-realm built-in Dateのhash・挙動・エラー文言、contracts/API/DB、APPROVED SSOTは不変。cross-realm Date受理化とspoof拒否/エラー経路変更は意図的と宣言する。
+  既存hostile-Date testはWP-4078由来のbounded hardening testであり、事前合意の宣言的強化(rename+1→0)として変更する。
+- **Human decision:** CSS予算12 KiBのhuman decisionは従前どおり維持。WP-5268のDML user承認はlanded記録として保持。
+- **Security / privacy / offline:** audit hash chainへ入るinstantからown/overridden Date method実行経路を排除する
+  純hardening。synthetic dataのみで、credential、production data、PHI/PII、保存、log、external send、
+  real network、DB操作、cache、retry/offline stateを追加しない。
+- **Process gate:** pre-planはR2 audit/data-integrity、SSOT改版・human/Oracle gate不要(agmsg 2026-08-28、
+  Codex counter-evidence確認とno-overlap ACK済み)。受理済みstring/same-realm built-in Dateに対するhash差・挙動差、追加path必要が判明したら停止する(宣言済みのcross-realm/spoof意図的差分は停止対象外)。
+- **Validation / rollback:** baseline audit 204 PASS実測後、Redは強化testが1≠0で期待どおり失敗。
+  Greenはaudit 206 PASS(fingerprint 84/84、境界test 2件込み)、audit typecheck exit 0、full API 988 PASS / 63 DB-gated skip、API typecheck PASS、
+  boundaries PASS、`git diff --check` PASS。exact4の単一`WP-5272:` commit、rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、
