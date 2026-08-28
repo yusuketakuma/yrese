@@ -291,12 +291,14 @@ function freezeIntermediateValues(values: Readonly<Record<string, string>>): Rea
 }
 
 function freezeRounding(rounding: CalculationTraceRounding): CalculationTraceRounding {
-  assertNonEmptyString(rounding.method, "CalculationTraceStep rounding.method");
-  assertNonEmptyString(rounding.evidenceId, "CalculationTraceStep rounding.evidenceId");
+  const method = rounding.method;
+  assertNonEmptyString(method, "CalculationTraceStep rounding.method");
+  const evidenceId = rounding.evidenceId;
+  assertNonEmptyString(evidenceId, "CalculationTraceStep rounding.evidenceId");
 
   return Object.freeze({
-    method: rounding.method,
-    evidenceId: rounding.evidenceId,
+    method,
+    evidenceId,
   });
 }
 

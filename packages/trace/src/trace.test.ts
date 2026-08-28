@@ -444,6 +444,67 @@ describe("createCalculationTrace", () => {
     ).toThrow(/require at least one evidenceRef/);
   });
 
+  it("uses one rounding-field snapshot for output and evidence aggregation", () => {
+    const firstEvidenceId = evidenceId("evidence:official:rounding:first");
+    const laterEvidenceId = evidenceId("evidence:official:rounding:later");
+    let methodReads = 0;
+    let evidenceIdReads = 0;
+    const trace = createCalculationTrace({
+      inputsSummary,
+      masterVersion: "2026.04",
+      calculationRuleVersion: "draft-001",
+      steps: [
+        claimStep({
+          rounding: {
+            get method() {
+              methodReads += 1;
+              return methodReads === 1 ? "none" : "";
+            },
+            get evidenceId() {
+              evidenceIdReads += 1;
+              return evidenceIdReads === 1 ? firstEvidenceId : laterEvidenceId;
+            },
+          },
+        }),
+      ],
+    });
+
+    expect({ methodReads, evidenceIdReads, rounding: trace.steps[0]?.rounding }).toEqual({
+      methodReads: 1,
+      evidenceIdReads: 1,
+      rounding: { method: "none", evidenceId: firstEvidenceId },
+    });
+    expect(trace.evidenceIds).toEqual([
+      officialEvidence.evidenceId,
+      masterEvidence.evidenceId,
+      firstEvidenceId,
+    ]);
+  });
+
+  it("does not read rounding evidence after an invalid method", () => {
+    let evidenceIdReads = 0;
+
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary,
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [
+          claimStep({
+            rounding: {
+              method: " ",
+              get evidenceId() {
+                evidenceIdReads += 1;
+                return officialEvidence.evidenceId;
+              },
+            },
+          }),
+        ],
+      }),
+    ).toThrow(new RangeError("CalculationTraceStep rounding.method must be a non-empty string"));
+    expect(evidenceIdReads).toBe(0);
+  });
+
   it("rejects rounding without an evidence id", () => {
     expect(() =>
       createCalculationTrace({
