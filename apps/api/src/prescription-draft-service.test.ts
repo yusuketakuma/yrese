@@ -14,6 +14,7 @@ import { InMemoryAuditRepository } from "./audit-repository.js";
 import {
   InMemoryPrescriptionDraftService,
   normalizePrescriptionDraftContent,
+  normalizePrescriptionDraftContentWithHash,
   prescriptionDraftContentHash,
   type PrescriptionDraftSaveInput,
 } from "./prescription-draft-service.js";
@@ -96,9 +97,34 @@ describe("normalizePrescriptionDraftContent", () => {
       parseSpy.mockRestore();
     }
   });
+
+  it("returns the public hash for its canonical content", () => {
+    const result = normalizePrescriptionDraftContentWithHash(input(0).draft);
+    expect(result.contentHash).toBe(
+      prescriptionDraftContentHash(result.normalized),
+    );
+  });
 });
 
 describe("InMemoryPrescriptionDraftService", () => {
+  it("normalizes and hashes a save with one direct schema parse", async () => {
+    const service = new InMemoryPrescriptionDraftService(
+      new InMemoryReceptionRepository(),
+      new InMemoryAuditRepository(),
+      () => prescriptionId("prescription-test-single-pass"),
+    );
+    const parseSpy = vi.spyOn(prescriptionDraftContentSchema, "parse");
+    try {
+      await expect(service.save(input(0))).resolves.toMatchObject({
+        kind: "saved",
+        draft: { saveDisposition: "created" },
+      });
+      expect(parseSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      parseSpy.mockRestore();
+    }
+  });
+
   it("creates, reads, updates, and recognizes an unchanged scoped draft", async () => {
     const audit = new InMemoryAuditRepository();
     const service = new InMemoryPrescriptionDraftService(

@@ -1,38 +1,38 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5255 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5256 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5254はlocal commit `2c675cc`。current requestをWP-5255のsingle-parse draft normalizationで継続する。
+- **Direction / ownership:** WP-5255はlocal commit `76a4937`。current requestをWP-5256のsingle-pass draft hashで継続する。
   agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは常に単独writerとする。
-  宣言競合はagmsg timestampの早い方を優先する。本WPのwriterはClaude、Codexはfrozen reviewerでlandingまでread-onlyである。
-- **Git boundary:** current branch `refactor/wp-5255-single-parse-normalization`、base
-  `2c675cc13ab02eedb1e1cad00d18e7dc9caba554`。push / mergeは行わない。
-- **Dirty ownership:** exact4は`apps/api/src/prescription-draft-service.ts`、
-  `apps/api/src/prescription-draft-service.test.ts`、`Plans.md`、`State.md`。
-  同じexact4だけを本local landing対象とする。
+  宣言競合はagmsg timestampの早い方を優先する。本WPのwriterはCodex、Claudeはfreezeまでread-onlyである。
+- **Git boundary:** current branch `refactor/wp-5256-single-pass-draft-hash`、base
+  `76a49373a2e14ffb2b80fb4bf63cbb1221e0015a`。push / mergeは行わない。
+- **Dirty ownership:** exact5は`apps/api/src/prescription-draft-service.ts`、
+  `apps/api/src/prescription-draft-service.test.ts`、`apps/api/src/db/prescription-draft-service.ts`、
+  `Plans.md`、`State.md`。同じexact5だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5255 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。`normalizePrescriptionDraftContent`の
-  二重schema parseを信頼境界の1回に減らし、canonical出力・hash・受理集合を不変に保つ。
-  contracts schema、`db/prescription-draft-service.ts`、DML/DB/network、migration、APPROVED SSOT、dependencyは変更しない。
-  N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDとして記録し、着手しない。
+- **Active plan / boundary:** CURRENT=WP-5256 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。両draft saveのcanonical contentとhashを
+  1回のschema parseから生成する。DB fileはimportとsave call siteだけ変更可。DB read integrity hash、
+  `replaceChildren`、SQL/DML text、contracts/schema、DB/network、migration、APPROVED SSOT、dependencyは変更しない。
+  N+1 child INSERT batching候補はHUMAN_GATE_REQUIREDのまま着手しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** 信頼境界の`prescriptionDraftContentSchema.parse` 1回目は維持し、受理集合を変えない
-  (削除した2回目parseは再構築オブジェクトで失敗し得ない純検証+冪等trimのみ)。synthetic testだけを使い、
+- **Security / privacy / offline:** 共有helper内の信頼境界`prescriptionDraftContentSchema.parse` 1回を維持し、
+  公開hash関数とDB read integrity checkは引き続き入力を再normalizeする。synthetic testだけを使い、
   credential、production data、PHI/PII、保存、log、external send、real network、DB操作、cache、retry/offline stateを追加しない。
-- **Process gate:** contracts schemaのtransformは冪等trimのみ、refinement(flag重複・sequence連続・日付実在)は
-  純検証で、2回目parseの除去はcanonical出力・JSON.stringifyバイト列・sha256 hashを変えない。
-  pre-planはSSOT更新不要・R1-R2・human gate不要と判定した。schema変更が必要になる、
-  normalize出力やhashに差が出る、受理集合が変わる、flaky assertionが判明したら停止する。
-- **Validation / rollback:** Claude assessmentとCodex no-overlap ACKはagmsg記録済み。
-  DB不要Redは`parse`呼び出し回数 2≠1 で期待どおり失敗。Greenはfocused draft-service+routes 15 PASS、
-  API全体978 PASS / 62 DB-gated skip、API typecheck PASS。unknown-key stripping、flag順序、trim、
-  hash同値をgolden assertionで固定した。frozen exact4 hashをCodexが再現し、
-  technical/security/privacy/data-integrity reviewはblocking/non-blocking finding 0、informational 1件のみでPASS。
+- **Process gate:** shared helperはcanonical contentを直接`JSON.stringify`して既存SHA-256を生成し、
+  in-memory save、Postgres save、公開hash関数でdigest実装を一元化する。DB read integrity callerは公開hash関数のまま。
+  pre-planはSSOT更新不要・R1-R2・human gate不要と判定した。hash byte差、受理集合差、integrity check差、
+  SQL/DML text変更、flaky spyが判明したら停止する。
+- **Validation / rollback:** Claude assessmentとCodex exact5 claimはagmsg記録済み。
+  DB不要Redはin-memory saveのdirect parse 2≠1で期待どおり失敗。Greenはfocused 17 PASS、
+  API全体980 PASS / 62 DB-gated skip、API typecheckとdiff-checkがPASS。DB file diffはimportとsave call siteだけで、
+  read integrity callerとSQL/DML textはbyte-identical。frozen exact5 hashをClaudeが再現し、
+  technical/security/privacy/data-integrity reviewはblocking/non-blocking/informational finding 0でPASS。
   browser、real network、DB、production runtimeは実行しない。
-  exact4の単一`WP-5255:` commit、rollbackは確定commitへの`git revert <commit>`。
+  exact5の単一`WP-5256:` commit、rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

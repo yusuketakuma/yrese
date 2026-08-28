@@ -16,7 +16,7 @@ import {
 import { appendAuditEventWithinTransaction } from "./audit-repository.js";
 import { snapshotDatabaseInstant } from "../instant.js";
 import {
-  normalizePrescriptionDraftContent,
+  normalizePrescriptionDraftContentWithHash,
   prescriptionDraftContentHash,
   type PrescriptionDraftLookupInput,
   type PrescriptionDraftLookupResult,
@@ -311,8 +311,8 @@ export class PostgresPrescriptionDraftService
   async save(
     input: PrescriptionDraftSaveInput,
   ): Promise<PrescriptionDraftSaveResult> {
-    const normalized = normalizePrescriptionDraftContent(input.draft);
-    const contentHash = prescriptionDraftContentHash(normalized);
+    const { normalized, contentHash } =
+      normalizePrescriptionDraftContentWithHash(input.draft);
     const client = await this.pool.connect();
     let destroyClient = false;
 

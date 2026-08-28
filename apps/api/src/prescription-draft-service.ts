@@ -81,12 +81,29 @@ export function normalizePrescriptionDraftContent(
   };
 }
 
+function hashNormalizedPrescriptionDraftContent(
+  value: PrescriptionDraftContent,
+): string {
+  return createHash("sha256").update(JSON.stringify(value), "utf8").digest("hex");
+}
+
+export function normalizePrescriptionDraftContentWithHash(value: unknown): {
+  readonly normalized: PrescriptionDraftContent;
+  readonly contentHash: string;
+} {
+  const normalized = normalizePrescriptionDraftContent(value);
+  return {
+    normalized,
+    contentHash: hashNormalizedPrescriptionDraftContent(normalized),
+  };
+}
+
 export function prescriptionDraftContentHash(
   value: PrescriptionDraftContent,
 ): string {
-  return createHash("sha256")
-    .update(JSON.stringify(normalizePrescriptionDraftContent(value)), "utf8")
-    .digest("hex");
+  return hashNormalizedPrescriptionDraftContent(
+    normalizePrescriptionDraftContent(value),
+  );
 }
 
 function scopeKey(input: PrescriptionDraftLookupInput): string {
@@ -202,8 +219,8 @@ export class InMemoryPrescriptionDraftService
         return { kind: "not_found" };
       }
 
-      const normalized = normalizePrescriptionDraftContent(input.draft);
-      const contentHash = prescriptionDraftContentHash(normalized);
+      const { normalized, contentHash } =
+        normalizePrescriptionDraftContentWithHash(input.draft);
       const existing = this.records.get(key);
 
       if (existing === undefined) {
