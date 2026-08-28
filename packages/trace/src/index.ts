@@ -434,17 +434,21 @@ export function createCalculationTrace(input: CreateCalculationTraceInput): Calc
 }
 
 export function createLegalTrace(input: CreateLegalTraceInput): LegalTrace {
-  assertAllowedString(input.targetType, legalTraceTargetTypes, "LegalTrace targetType");
-  assertNonEmptyString(input.targetId, "targetId");
-  if (typeof input.humanReviewRequired !== "boolean") {
+  const targetType = input.targetType;
+  assertAllowedString(targetType, legalTraceTargetTypes, "LegalTrace targetType");
+  const targetId = input.targetId;
+  assertNonEmptyString(targetId, "targetId");
+  const humanReviewRequired = input.humanReviewRequired;
+  if (typeof humanReviewRequired !== "boolean") {
     throw new RangeError("LegalTrace humanReviewRequired must be a boolean");
   }
 
-  assertDenseArray(input.evidenceRefs);
+  const evidenceRefs = input.evidenceRefs;
+  assertDenseArray(evidenceRefs);
   return Object.freeze({
-    targetType: input.targetType,
-    targetId: input.targetId,
-    evidenceRefs: freezeArray(input.evidenceRefs.map(freezeEvidenceRef)),
-    humanReviewRequired: input.humanReviewRequired,
+    targetType,
+    targetId,
+    evidenceRefs: freezeArray(evidenceRefs.map(freezeEvidenceRef)),
+    humanReviewRequired,
   });
 }

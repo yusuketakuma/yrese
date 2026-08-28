@@ -1,38 +1,39 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5247 record rechecks finding 0 / local landing pending):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5248 record rechecks finding 0 / local landing pending):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5246はlocal commit `0bebf64`、agmsg連携規則は`acc25d9`へ着地済み。date-time terminal-line候補は
+- **Direction / ownership:** WP-5247はlocal commit `ccda519`、agmsg連携規則は`acc25d9`へ着地済み。date-time terminal-line候補は
   live runtimeで既に拒否される`NOT_A_BUG`。WP-5235 EventEnvelope root guardはMOD-009改版前提で未着手。
-  current requestをWP-5247のfresh pre-plan判定で継続する。
+  current requestをWP-5248のfresh pre-plan判定で継続する。
   WP-5226は元exact4では安全に完結しないためdefer中。Codex rootだけが`active_root_writer`、
   state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5247-calculation-trace-input-snapshot`、base/HEAD
-  `0bebf643be801e7c94022c4c09ed3abd87997aab`。push / mergeは行わない。
+- **Git boundary:** current branch `refactor/wp-5248-legal-trace-input-snapshot`、base/HEAD
+  `ccda5190635631d064997eaf292158767b9e9118`。push / mergeは行わない。
 - **Dirty ownership:** exact4は `packages/trace/src/index.ts`、`packages/trace/src/trace.test.ts`、`Plans.md`、`State.md`。
   pre-plan finding 0前の現在はrecords 2 pathだけを変更し、READY後も同じexact4だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5247 / READY=0(WIPはR2 READY)。`createCalculationTrace`の
-  `masterVersion`、`calculationRuleVersion`、`steps`を検証順に各1回snapshotし、first-read値だけをvalidation/frozen outputに使う。
-  InputsSummary/step/ref/array helper、LegalTrace/collect、Trace型/validator、contracts/wire、calculation/API/UI、APPROVED SSOTは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5248 / READY=0(WIPはR2 RECORD_RECHECKS_PASS / LOCAL_LANDING_PENDING)。`createLegalTrace`の
+  `targetType`、`targetId`、`humanReviewRequired`、`evidenceRefs`を検証順に各1回snapshotし、first-read値だけをvalidation/frozen outputに使う。
+  CalculationTrace/collect/ref/array helper、LegalTrace型、contracts/wire、calculation/API/UI、APPROVED SSOTは変更しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** fixtureはsynthetic getter/counterとsynthetic PHI-free version/stepだけで、credential、production data、PHI/PII、保存、log、
+- **Security / privacy / offline:** fixtureはsynthetic getter/counterとsynthetic PHI-free target/evidenceだけで、credential、production data、PHI/PII、保存、log、
   external send、network、cache、retry/offline stateを追加しない。
-- **Process gate:** live mappingで`createCalculationTrace`の3 field再読、production caller 1経路、既存の各nested one-shot強化を確認。
-  fresh pre-planはR2 strengthening-only READY、blocking/non-blocking finding 0、master→calculation rule→steps→inputsSummary→optional arraysの
-  error/read precedence、SSOT改版・本slice固有のhuman gate不要を確定した。
-  frozen independent reviewとtrace/data-integrity/privacy reviewは同exact4 packetでblocking/non-blocking finding 0。同じreviewerのrecord-only recheckもfinding 0。
-  LegalTrace/collect/helper/type/contract/calculation/API/UI、別path変更が必要なら停止する。
-- **Validation / rollback:** GBrain `code_blast`はlocalhost transport down。expected Redはfocused 1 failure / precedence 1 PASSで対象3 getterの各2回読取を再現。
-  productionは3 local bindingと参照置換だけ。最終focused 2、trace package 57 + typecheck、contracts 136 + typecheck、
+- **Process gate:** live mappingで`createLegalTrace`の4 field再読、production consumer未接続、public test/helper到達、
+  APPROVED CAL-008/SEC-004のLegalTrace/PHI非包含境界を確認。fresh pre-planはR2 strengthening-only READY、blocking/non-blocking finding 0、
+  target→id→review flag→evidenceのerror/read precedence、SSOT改版・本slice固有のhuman gate不要を確定した。
+  frozen independent reviewとtrace/data-integrity/privacy reviewは同exact4 packetでblocking/non-blocking finding 0。
+  同じreviewerのrecord-only recheckもblocking/non-blocking finding 0。
+  CalculationTrace/collect/helper/type/contract/API/UI、別path変更が必要なら停止する。
+- **Validation / rollback:** GBrain `code_blast`はlocalhost transport down。expected Redはfocused 1 failure / precedence 1 PASSで4 getterの各2回読取を再現。
+  productionは4 local bindingと参照置換だけ。最終focused 2、trace package 59 + typecheck、contracts 136 + typecheck、
   calculation 90 + typecheck、boundaries、calculation-purity、`git diff --check`がPASS。code/test frozen SHA-256は
-  `3057fc6940a36f13d5c84db3336f4a6a6f804033ebcbf5c3582f8e2d78de9043`、reviewed exact4 SHA-256は
-  `a8520a602d8be33d358f9e2334138f893aff15166cc1411dc415d43223e820cc`。両frozen reviewと両record-only recheckはfinding 0、local landingはpending。
+  `c2cc6803bcc2510eede8d09078466bc98839d0758ae8bc15b7fd55fe06780036`、reviewed exact4 SHA-256は
+  `91305b17b71319c4e0e94cba1d102ecb8fd3766c27b45a01cb26ec27d01827b0`。両frozen reviewと両record-only recheckはfinding 0、local landingはpending。
   DB integration、browser、network、production runtimeは実行しない。
-  exact4の単一`WP-5247:` commit、rollbackは確定commitへの
+  exact4の単一`WP-5248:` commit、rollbackは確定commitへの
   `git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
