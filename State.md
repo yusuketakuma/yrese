@@ -1,36 +1,36 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5257 R1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5258 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5256はlocal commit `d0a159e`。current requestをWP-5257のsingle-read duplicate kanaで継続する。
+- **Direction / ownership:** WP-5257はlocal commit `15a9bc3`。current requestをWP-5258のaudit-log route extractionで継続する。
   agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは常に単独writerとする。
   宣言競合はagmsg timestampの早い方を優先する。本WPのwriterはCodex、Claudeはfreezeまでread-onlyである。
-- **Git boundary:** current branch `refactor/wp-5257-single-read-duplicate-kana`、base
-  `d0a159e3f4f445c7f1e1ab6a8e20ba87a29ef528`。push / mergeは行わない。
-- **Dirty ownership:** exact4は`apps/web/app/patients/patient-search.tsx`、
-  `apps/web/app/patients/patient-search.test.tsx`、`Plans.md`、`State.md`。
-  同じexact4だけを本local landing対象とする。
+- **Git boundary:** current branch `refactor/wp-5258-extract-audit-log-routes`、base
+  `15a9bc380d1fbf2c6cf611e0862d0eeb3ed0554c`。push / mergeは行わない。
+- **Dirty ownership:** exact5は`apps/api/src/server.ts`、新規`apps/api/src/audit-log-routes.ts`、
+  新規`apps/api/src/route-invariants.ts`、`Plans.md`、`State.md`。
+  同じexact5だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5257 / READY=0(WIPはR1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。`duplicateKanaSet`を各result 1 read・
-  中間配列なしのsingle passへ変える。P-09 warning、row marking、continuation notice、UI copy/DOM/ARIA/CSS、
-  contracts/API/network/DBは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5258 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。`GET /audit/events`を
+  専用route moduleへ移し、共有invariant helperを循環依存なしで1箇所に保つ。path/status/body/error、
+  auth/scope/no-store、contract/schema/repository/DB/DMLは変更しない。
   N+1 child INSERT batching候補はHUMAN_GATE_REQUIREDのまま着手しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** parsed synthetic patient summaryの`kana`だけをsnapshotし、患者warning membershipを変えない。
-  synthetic testだけを使い、
+- **Security / privacy / offline:** 監査routeのpermission/scope/no-store/hash-chain/閲覧監査をverbatim維持する。
+  既存synthetic testだけを使い、
   credential、production data、PHI/PII、保存、log、external send、real network、DB操作、cache、retry/offline stateを追加しない。
-- **Process gate:** result Set consumerは`size`/`has`だけでiteration orderは非観測。pre-planは
-  membership不変を条件にSSOT更新不要・R1・human gate不要と判定した。membership差、DOM/copy/ARIA/CSS差、
-  flaky read-countが判明したら停止する。
-- **Validation / rollback:** Claude assessmentとCodex exact4 claimはagmsg記録済み。
-  DB不要Redは2 patientの`kana` read 4≠2で期待どおり失敗。Greenはfocused 97 PASS、
-  Web全体64 files / 750 PASS、Web typecheckとdiff-checkがPASS。production diffは`duplicateKanaSet`だけで
-  DOM/copy/ARIA/CSS差なし。frozen exact4 hashをClaudeが再現し、technical/security/privacy/accessibility reviewは
-  blocking/non-blocking/informational finding 0でPASS。browser、real network、DB、production runtimeは実行しない。
-  exact4の単一`WP-5257:` commit、rollbackは確定commitへの`git revert <commit>`。
+- **Process gate:** live consumer mappingとClaude pre-planにより、behavior/contract不変ならSSOT更新不要・R2・
+  human gate不要と判定した。route/auth/privacy/error差、test file変更要求、ESM cycle、共有helper behavior差が判明したら停止する。
+- **Validation / rollback:** Claude mapping/no-overlap ACKとCodex exact5 claimはagmsg記録済み。
+  純粋refactorのため人工的なRed testは追加せず、移動前characterizationはAPI 980 PASS / DB-gated 62 skip。
+  移動後focused audit/error contract 91、API全体980 PASS / DB-gated 62 skip、API typecheck、boundary、
+  exact path/diff-checkがPASS。frozen exact5 hashをClaudeが再現し、technical/security/privacy reviewは
+  blocking/non-blocking/informational finding 0でPASS。
+  browser、real network、DB、production runtimeは実行しない。exact5の単一`WP-5258:` commit、
+  rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5255 `76a4937` + WP-5256 `d0a159e`まで(実測 2026-08-28) |
-| Candidate branch | WP-5256はlocal commit `d0a159e`。WP-5257は同HEADから `refactor/wp-5257-single-read-duplicate-kana` を作成済み |
+| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5257 `15a9bc3`まで(実測 2026-08-28) |
+| Candidate branch | WP-5257はlocal commit `15a9bc3`。WP-5258は同HEADから `refactor/wp-5258-extract-audit-log-routes` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までmain/originへfast-forward済み(reflog実測)。WP-5242以降のpushは認可・実行しない |
-| Candidate scope | 患者検索の同一カナ検出を各result 1 read・中間配列なしのsingle passへ変え、警告membershipを不変に保つexact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5256 local landing済み、WP-5257 R1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Candidate scope | `buildServer`の監査ログroute familyと共有防御helperを循環依存なしでmodule分離し、route/auth/privacy/error contractを不変に保つexact3 code slice |
+| Last update | 2026-08-28 JST(WP-5257 local landing済み、WP-5258 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5257で`duplicateKanaSet`のdouble property readとMap展開/filter/map allocationを除き、P-09警告membershipを維持する |
-| Main blocker | なし。WP-5256は`d0a159e`へlocal landing済み。WP-5257 pre-planはR1、SSOT改版・human gate不要と判定。N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDで保留 |
-| Required verification | DB不要のkana single-read Red test、focused patient-search test、Web typecheck、DOM/copy/ARIA非変更確認、exact path/diff-check、独立frozen review(Claude)、単一local commit |
+| Current critical path | WP-5258で`/audit/events`を専用route moduleへ移し、共有invariant helperを1箇所へ保ったまま`server.ts`を縮小する |
+| Main blocker | なし。WP-5257は`15a9bc3`へlocal landing済み。WP-5258 pre-planはR2、behavior/contract不変のためSSOT改版・human gate不要と判定。N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDで保留 |
+| Required verification | 移動前後のAPI characterization、focused audit/error contract、API typecheck、export/registration/no-store/auth確認、exact path/diff-check、独立frozen R2 review(Claude)、単一local commit |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5257である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5258である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,35 +73,31 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5257(single-read duplicate kana、R1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5256はlocal commit `d0a159e`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5258(extract audit-log routes、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5257はlocal commit `15a9bc3`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** `duplicateKanaSet`は各patientの`kana`を2回読み、count Mapを全展開して
-  filter→map→Setを作る。kanaを1回snapshotし、`seen`/`duplicates` Setだけでmembershipを構築して
-  患者検索render hot pathのproperty readと中間allocationを減らす。
-- **Allowed / forbidden:** exact4は`apps/web/app/patients/patient-search.tsx`、
-  `apps/web/app/patients/patient-search.test.tsx`、`Plans.md`、`State.md`。
-  `duplicateKanaSet`以外のproduction、UI copy/DOM/ARIA/CSS、contracts/API/network/DB、APPROVED SSOTは変更禁止。
-  保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** result Setは`size`と`has`だけで消費され、iteration orderは非観測。
-  UIX-001 P-09の同姓同名warning trigger、row marking、未読込continuation noticeはmembershipだけに依存する。
-  pre-planはmembership不変を条件にSSOT改版不要・R1、追加human gate不要と判定した。
-- **Acceptance / tests:** (A1)各resultの`kana`を正確に1回だけ読む。(A2)empty/all-unique/multi-duplicateの
-  exact-match membershipは不変。(A3)P-09 warning、row marking、continuation notice、UI copy/DOM/ARIA/CSSは不変。
-  (A4)contract/API/network/DBは不変。counting getterのDB不要testで現行2 reads/resultをRedにする。
-- **PIA / offline:** synthetic patient summariesだけを使い、real network、DB、患者・処方・請求data、credential、
-  production data、PHI/PII、保存、log、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `active_root_writer`はCodex、frozen reviewerはClaude。shared treeは単独writer。
-  membership差、DOM/copy/ARIA/CSS差、flaky read-countが判明したら停止。exact4を単一`WP-5257:` commit、
-  rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
-  N+1 child INSERT batching候補はHUMAN_GATE_REQUIREDで保留。
-- **Validation evidence:** Claude pre-planはresult Setの全consumerを確認し、membership-onlyであることを実証。
-  Codexがexact4をclaim済み。Redは2 patientの`kana` read 4≠2で期待どおり失敗。
-  Greenはfocused patient-search 97 PASS、Web全体64 files / 750 PASS、Web typecheckとdiff-checkがPASS。
-  production diffは`duplicateKanaSet`だけでDOM/copy/ARIA/CSS差なし。frozen exact4 SHA-256
-  `75d18ac7ee546d9af23df6f2b060856ff9c1040c52a9f5b5e2e06bb0c31ae64b`をClaudeが再現し、
-  technical/security/privacy/accessibility reviewはblocking/non-blocking/informational finding 0でPASS。
-  CSS変更はなく12 KiB予算測定の対象外。
+- **Purpose / layer:** `buildServer`に直書きされた最大のbounded route familyである`GET /audit/events`を
+  専用moduleへ移し、複数routeが使うclock/audit/array/no-store防御helperを循環依存なしで共有する。
+- **Allowed / forbidden:** exact5は`apps/api/src/server.ts`、新規`apps/api/src/audit-log-routes.ts`、
+  新規`apps/api/src/route-invariants.ts`、`Plans.md`、`State.md`。test、contract/schema、repository、SQL/DML、
+  migration、APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
+- **Authority / evidence:** 監査route固有helper/constantのconsumerと共有helper全callerをlive `rg`で確認済み。
+  audit moduleはserverをimportせず、`buildServer`内で登録し、既存public `auditLog*` constantはserverからverbatim re-exportする。
+  behavior/contractを変えない純粋refactorなのでSSOT改版不要、監査境界のためR2、追加human gate不要と判定した。
+- **Acceptance / tests:** (A1)path/status/body/error text、query limit/sort/window/hash-chain検証、閲覧監査を不変にする。
+  (A2)tenant permission、scope fail-closed、`Cache-Control: no-store`を不変にする。(A3)`buildServer` consumerと
+  `server.ts` public exportを不変にする。(A4)循環依存、test file変更、contract/schema/DB/DML変更を作らない。
+- **PIA / offline:** 既存synthetic audit testsだけを使い、real network、DB、患者・処方・請求data、credential、
+  production data、PHI/PII、保存、log、external send、cache、retry/offline stateを追加しない。
+- **Roles / stop / rollback:** `active_root_writer`はCodex、frozen R2 reviewerはClaude。shared treeは単独writer。
+  route/auth/privacy/error差、test変更要求、ESM cycle、共有helper behavior変更が判明したら停止。exact5を単一
+  `WP-5258:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
+- **Validation evidence:** Claudeのread-only mappingとno-overlap ACK、Codex exact5 claimをagmsgへ記録済み。
+  純粋refactorのため人工的なRed testは追加せず、移動前characterizationとしてAPI 980 PASS / DB-gated 62 skipを確認。
+  移動後はfocused audit/error contract 91、API全体980 PASS / DB-gated 62 skip、API typecheck、boundary、
+  exact path/diff-checkがPASS。`server.ts`は1,483行から1,190行へ縮小。frozen exact5 SHA-256
+  `654a8a14c7c3a9c7c081de223a7144c6e7741750a5087952725f46feacacb84e`をClaudeが再現し、
+  technical/security/privacy reviewはblocking/non-blocking/informational finding 0でPASS。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
@@ -175,6 +171,14 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5257 — Single-read duplicate kana(2026-08-28)
+
+- **Status:** `COMMITTED_LOCAL 15a9bc3 / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** patient searchのduplicate kana判定を各result 1 readの`seen`/`duplicates` single passへ変更。
+  warning membership、copy/DOM/ARIA/CSS、contract/API/network/DBは不変。
+- **Gate:** Red 4≠2、focused 97、Web全体64 files / 750、typecheck、post-commit focused 97 PASS。
+  frozen technical/security/privacy/accessibility reviewは全finding 0。
 
 ### WP-5256 — Single-pass draft hash(2026-08-28)
 

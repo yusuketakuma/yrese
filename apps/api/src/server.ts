@@ -1,12 +1,6 @@
-import { isDate, isProxy } from 'node:util/types';
-
-import Fastify, { type FastifyInstance, type onRequestHookHandler } from 'fastify';
-import { hydrateAuditEvent, verifyAuditHashChain, type AuditEvent } from '@yrese/audit';
+import Fastify, { type FastifyInstance } from 'fastify';
 import {
   PATIENT_SEARCH_CURSOR_MAX_LENGTH,
-  auditLogEntrySchema,
-  auditLogQuerySchema,
-  auditLogResponseSchema,
   errorResponseSchema,
   healthResponseSchema,
   patientGetParamsSchema,
@@ -18,8 +12,6 @@ import {
   receptionQueueEntrySchema,
   receptionQueueResponseSchema,
   receptionQueueQuerySchema,
-  type AuditLogResponse,
-  type AuditLogEntry,
   type HealthResponse,
   type PatientSearchResponse,
   type ReceptionQueueEntry,
@@ -29,7 +21,6 @@ import {
 } from '@yrese/contracts';
 import { CalendarDate } from '@yrese/date-time';
 import {
-  AUDIT_LOG_INVALID_QUERY_ERROR_CODE,
   PATIENT_NOT_FOUND_ERROR_CODE,
   PATIENT_SEARCH_INVALID_QUERY_ERROR_CODE,
   RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE,
@@ -46,6 +37,7 @@ import {
   patientSearchCursorHmacConfigurationErrorMessage,
   type ApiRepositoryMode,
 } from './config.js';
+import { auditLogRoutes } from './audit-log-routes.js';
 import type { PatientSearchCursorCodec } from './patient-search-cursor.js';
 import {
   requirePermission,
@@ -74,6 +66,23 @@ import {
   type ReceptionCreateProvenance,
   type ReceptionRepository,
 } from './reception-repository.js';
+import {
+  assertRecordedAuditMatchesIntent,
+  setSensitiveResponseNoStore,
+  snapshotDenseArray,
+  snapshotWallClock,
+} from './route-invariants.js';
+
+export {
+  auditLogDuplicateIdentityInvariantErrorMessage,
+  auditLogListSchemaInvariantErrorMessage,
+  auditLogRepositoryReadErrorMessage,
+  auditLogScopeInvariantErrorMessage,
+  auditLogSequenceInvariantErrorMessage,
+  auditLogViewAuditInvariantErrorMessage,
+  auditLogViewClockInvariantErrorMessage,
+  auditLogViewClockReadErrorMessage,
+} from './audit-log-routes.js';
 
 export type { HealthResponse } from '@yrese/contracts';
 
@@ -136,19 +145,6 @@ export const receptionQueueSchemaInvariantErrorMessage =
 export const receptionCreateRepositoryErrorMessage = 'Reception repository create failed';
 export const receptionCreatedOutboxInvariantErrorMessage =
   'Reception outbox intent could not be recorded';
-const auditLogProjectionInvariantErrorMessage =
-  'Audit event display projection failed for a verified hash chain';
-export const auditLogScopeInvariantErrorMessage =
-  'Audit repository returned events outside the requested scope';
-export const auditLogRepositoryReadErrorMessage = 'Audit repository list failed';
-export const auditLogListSchemaInvariantErrorMessage =
-  'Audit repository returned an invalid event list';
-export const auditLogDuplicateIdentityInvariantErrorMessage =
-  'Verified audit chain contains duplicate event identities';
-export const auditLogSequenceInvariantErrorMessage =
-  'Verified audit chain contains a non-contiguous event sequence';
-export const auditLogViewAuditInvariantErrorMessage =
-  'Audit repository returned mismatched audit view evidence';
 export const patientSearchAuditInvariantErrorMessage =
   'Audit repository returned mismatched patient search evidence';
 export const patientSearchAuditClockReadErrorMessage = 'Patient search audit clock read failed';
@@ -165,9 +161,6 @@ export const patientViewAuditInvariantErrorMessage =
 export const patientViewClockReadErrorMessage = 'Patient view clock read failed';
 export const patientViewClockInvariantErrorMessage =
   'Patient view clock returned an invalid instant';
-export const auditLogViewClockReadErrorMessage = 'Audit view clock read failed';
-export const auditLogViewClockInvariantErrorMessage =
-  'Audit view clock returned an invalid instant';
 
 export interface BuildServerOptions {
   readonly patientRepository?: PatientRepository;
@@ -184,65 +177,6 @@ export interface BuildServerOptions {
   readonly repositoryMode?: ApiRepositoryMode;
   readonly tenantContextMode?: TenantContextMode;
   readonly patientSearchCursorCodec?: PatientSearchCursorCodec;
-}
-
-function assertRecordedAuditMatchesIntent(
-  value: unknown,
-  expected: {
-    readonly tenantId: string;
-    readonly pharmacyId: string;
-    readonly actorId: string;
-    readonly auditEventType: string;
-    readonly targetRef: { readonly kind: string; readonly id: string };
-    readonly outcome: string;
-    readonly wallClock: string;
-  },
-  invariantErrorMessage: string,
-): void {
-  let event: AuditEvent;
-  try {
-    event = hydrateAuditEvent(value);
-  } catch {
-    throw new Error(invariantErrorMessage);
-  }
-
-  if (
-    event.tenantId !== expected.tenantId ||
-    event.pharmacyId !== expected.pharmacyId ||
-    event.actorId !== expected.actorId ||
-    event.auditEventType !== expected.auditEventType ||
-    event.targetRef.kind !== expected.targetRef.kind ||
-    event.targetRef.id !== expected.targetRef.id ||
-    event.outcome !== expected.outcome ||
-    event.wallClock !== expected.wallClock ||
-    event.aggregateType !== expected.targetRef.kind ||
-    event.aggregateId !== expected.targetRef.id ||
-    event.reasonCode !== undefined ||
-    event.businessReason !== undefined
-  ) {
-    throw new Error(invariantErrorMessage);
-  }
-}
-
-function snapshotWallClock(
-  now: () => Date,
-  readErrorMessage: string,
-  invariantErrorMessage: string,
-): string {
-  let value: unknown;
-  try {
-    value = now();
-  } catch {
-    throw new Error(readErrorMessage);
-  }
-  if (!isDate(value)) {
-    throw new Error(invariantErrorMessage);
-  }
-  try {
-    return Date.prototype.toISOString.call(value);
-  } catch {
-    throw new Error(invariantErrorMessage);
-  }
 }
 
 function invalidPatientSearchQueryResponse() {
@@ -461,51 +395,6 @@ function patientSnapshotsMatch(
   );
 }
 
-function snapshotDenseArray(
-  value: unknown,
-  invariantErrorMessage: string,
-  maximum?: { readonly length: number; readonly errorMessage: string },
-): readonly unknown[] {
-  let arrayLength: number;
-  try {
-    if (isProxy(value) || !Array.isArray(value)) throw new Error(invariantErrorMessage);
-    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
-    if (
-      lengthDescriptor === undefined ||
-      !('value' in lengthDescriptor) ||
-      !Number.isSafeInteger(lengthDescriptor.value) ||
-      lengthDescriptor.value < 0
-    ) {
-      throw new Error(invariantErrorMessage);
-    }
-    arrayLength = lengthDescriptor.value;
-  } catch {
-    throw new Error(invariantErrorMessage);
-  }
-
-  if (maximum !== undefined && arrayLength > maximum.length) {
-    throw new Error(maximum.errorMessage);
-  }
-
-  try {
-    const snapshot: unknown[] = [];
-    for (let index = 0; index < arrayLength; index += 1) {
-      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
-      if (
-        descriptor === undefined ||
-        descriptor.enumerable !== true ||
-        !('value' in descriptor)
-      ) {
-        throw new Error(invariantErrorMessage);
-      }
-      snapshot.push(descriptor.value);
-    }
-    return Object.freeze(snapshot);
-  } catch {
-    throw new Error(invariantErrorMessage);
-  }
-}
-
 function snapshotReceptionEntryIdentity(value: unknown, invariantErrorMessage: string) {
   const receptionIdentity = readRequiredOwnEnumerableDataProperty(
     value,
@@ -580,26 +469,6 @@ function invalidReceptionRequestResponse() {
   });
 }
 
-function projectAuditLogEntry(event: AuditEvent): AuditLogEntry | undefined {
-  try {
-    const projected = auditLogEntrySchema.safeParse({
-      eventId: event.eventId,
-      wallClock: event.wallClock,
-      actorId: event.actorId,
-      auditEventType: event.auditEventType,
-      targetRef: event.targetRef,
-      outcome: event.outcome,
-      ...(event.reasonCode === undefined ? {} : { reasonCode: event.reasonCode }),
-      ...(event.businessReason === undefined
-        ? {}
-        : { businessReasonCode: event.businessReason.code }),
-    });
-    return projected.success ? projected.data : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 function receptionPatientNotFoundResponse() {
   return errorResponseSchema.parse({
     errorCode: receptionPatientNotFoundErrorCode,
@@ -614,23 +483,12 @@ function receptionIdempotencyConflictResponse() {
   });
 }
 
-function invalidAuditLogQueryResponse() {
-  return errorResponseSchema.parse({
-    errorCode: AUDIT_LOG_INVALID_QUERY_ERROR_CODE,
-    message: 'Invalid audit log query',
-  });
-}
-
 function patientNotFoundResponse() {
   return errorResponseSchema.parse({
     errorCode: PATIENT_NOT_FOUND_ERROR_CODE,
     message: 'Patient not found',
   });
 }
-
-const setSensitiveResponseNoStore: onRequestHookHandler = async (_request, reply) => {
-  reply.header('Cache-Control', 'no-store');
-};
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const tenantContextMode = options.tenantContextMode ?? 'disabled';
@@ -1326,158 +1184,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     },
   );
 
-  server.get(
-    '/audit/events',
-    {
-      onRequest: setSensitiveResponseNoStore,
-      preHandler: requirePermission(permissionScope('audit-log', 'read')),
-    },
-    async (request, reply): Promise<AuditLogResponse | void> => {
-      const tenantContext = request.tenantContext;
-      if (tenantContext === undefined) {
-        throw new Error('tenantContext is unexpectedly missing after authorization');
-      }
-
-      const query = auditLogQuerySchema.safeParse(request.query);
-      if (!query.success) {
-        return reply.code(400).send(invalidAuditLogQueryResponse());
-      }
-
-      const scope = Object.freeze({
-        tenantId: tenantContext.tenantId,
-        pharmacyId: tenantContext.pharmacyId,
-      });
-      let rawEvents: readonly AuditEvent[];
-      try {
-        rawEvents = await auditRepository.list(scope);
-      } catch {
-        throw new Error(auditLogRepositoryReadErrorMessage);
-      }
-      const events = snapshotDenseArray(
-        rawEvents,
-        auditLogListSchemaInvariantErrorMessage,
-      ) as readonly AuditEvent[];
-      // WP-4236: 破損行(JSON null / scalar / array / 敵対的 graph)は scope を
-      // 運搬できないため、この防衛的 scope 検査ではプロパティ読取り不能な要素を
-      // 検査対象外とし、直後の verifyAuditHashChain に構造的破断
-      // (hash_format_invalid)として報告させる。読取れて不一致なら従来どおり
-      // invariant 違反(行レベルの scope は永続化層の WHERE が別途強制している)。
-      const readOwnScopeString = (value: unknown, property: string): string | undefined => {
-        if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-          return undefined;
-        }
-        try {
-          const descriptor = Object.getOwnPropertyDescriptor(value, property);
-          if (
-            descriptor !== undefined &&
-            'value' in descriptor &&
-            typeof descriptor.value === 'string'
-          ) {
-            return descriptor.value;
-          }
-        } catch {
-          // 敵対的 descriptor trap は scope 検査を妨げない(verify が破断報告する)
-        }
-        return undefined;
-      };
-      if (
-        events.some((event) => {
-          const eventTenantId = readOwnScopeString(event, 'tenantId');
-          const eventPharmacyId = readOwnScopeString(event, 'pharmacyId');
-          if (eventTenantId === undefined || eventPharmacyId === undefined) {
-            return false;
-          }
-          return eventTenantId !== scope.tenantId || eventPharmacyId !== scope.pharmacyId;
-        })
-      ) {
-        throw new Error(auditLogScopeInvariantErrorMessage);
-      }
-
-      // 改ざん検知: 保存されている全イベントに対する hash chain 検証(返却分だけではない)。
-      const verification = verifyAuditHashChain(events);
-      if (verification.ok) {
-        const eventIds = new Set<string>();
-        for (const event of events) {
-          if (eventIds.has(event.eventId)) {
-            throw new Error(auditLogDuplicateIdentityInvariantErrorMessage);
-          }
-          eventIds.add(event.eventId);
-        }
-        for (const [index, event] of events.entries()) {
-          if (event.sequenceNumber !== BigInt(index + 1)) {
-            throw new Error(auditLogSequenceInvariantErrorMessage);
-          }
-        }
-      }
-
-      // 検証済みchainは公開契約どおりwallClock降順。同時刻は後のappendを先にする。
-      // 破損chainはwallClockを信頼せず、WP-4093のraw append window/no-backfillを維持する。
-      const displayCandidates = events.map((event, appendIndex) => ({ event, appendIndex }));
-      displayCandidates.sort((left, right) => {
-        if (!verification.ok) return right.appendIndex - left.appendIndex;
-        if (left.event.wallClock < right.event.wallClock) return 1;
-        if (left.event.wallClock > right.event.wallClock) return -1;
-        return right.appendIndex - left.appendIndex;
-      });
-      const displayWindow = displayCandidates
-        .slice(0, query.data.limit)
-        .map(({ event }) => event);
-      const entries: AuditLogEntry[] = [];
-      let projectionFailed = false;
-      for (const event of displayWindow) {
-        const entry = projectAuditLogEntry(event);
-        if (entry === undefined) {
-          projectionFailed = true;
-        } else {
-          entries.push(entry);
-        }
-      }
-      if (projectionFailed && verification.ok) {
-        throw new Error(auditLogProjectionInvariantErrorMessage);
-      }
-
-      const responseSnapshot = auditLogResponseSchema.parse({
-        entries,
-        chainVerification: verification.ok
-          ? { ok: true, checkedCount: verification.checkedCount }
-          : {
-              ok: false,
-              checkedCount: verification.checkedCount,
-              breakIndex: verification.breakIndex,
-              reason: verification.reason,
-            },
-        totalCount: events.length,
-      });
-
-      // 監査ログの閲覧自体を監査する(audit.viewed)。事前検証済みの今回の応答には含めない。
-      const viewWallClock = snapshotWallClock(
-        now,
-        auditLogViewClockReadErrorMessage,
-        auditLogViewClockInvariantErrorMessage,
-      );
-      const viewTarget = Object.freeze({ kind: 'audit_log', id: `view:${events.length}` });
-      const viewIntent = Object.freeze({
-        actorId: userId(tenantContext.actorId),
-        auditEventType: 'audit.viewed',
-        targetRef: viewTarget,
-        outcome: 'success',
-        wallClock: viewWallClock,
-      });
-      let recordedViewAudit: unknown;
-      try {
-        recordedViewAudit = await auditRepository.record(scope, viewIntent);
-      } catch {
-        throw new Error(auditLogViewAuditInvariantErrorMessage);
-      }
-      assertRecordedAuditMatchesIntent(
-        recordedViewAudit,
-        { ...scope, ...viewIntent },
-        auditLogViewAuditInvariantErrorMessage,
-      );
-
-      return responseSnapshot;
-    },
-  );
+  server.register(auditLogRoutes, { repository: auditRepository, now });
 
   return server;
 }
