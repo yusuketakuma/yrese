@@ -191,6 +191,83 @@ async function activeAppWithEndpoint(
   );
 }
 
+describe('PostgresPartnerRegistry delivery DNS revalidation', () => {
+  it('bounds concurrent lookups and preserves database order', async () => {
+    const rows = Array.from({ length: 9 }, (_, index) => ({
+      app_id: `app-${index}`,
+      partner_id: 'partner-yakureki',
+      endpoint_id: `endpoint-${index}`,
+      url: `https://endpoint-${index}.partner.example/hook`,
+      key_id: 'k1',
+      secret_ref: `secret/app-${index}`,
+    }));
+    const query = vi.fn(async (statement: string) => {
+      if (statement.includes('SELECT a.app_id')) return { rows };
+      if (statement.includes('SELECT count(*)'))
+        return { rows: [{ count: '2' }] };
+      return { rows: [] };
+    });
+    const release = vi.fn();
+    const pool = {
+      connect: vi.fn(async () => ({ query, release })),
+    } as unknown as Pool;
+
+    let notifyFirstLookup!: () => void;
+    const firstLookup = new Promise<void>((resolve) => {
+      notifyFirstLookup = resolve;
+    });
+    let releasePending = false;
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const started: string[] = [];
+    const pending: (() => void)[] = [];
+    const lookup: AddressLookup = async (hostname) => {
+      started.push(hostname);
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      notifyFirstLookup();
+      if (!releasePending) {
+        await new Promise<void>((resolve) => pending.push(resolve));
+      }
+      inFlight -= 1;
+      return [
+        {
+          address:
+            hostname === 'endpoint-3.partner.example'
+              ? '169.254.169.254'
+              : '203.0.113.10',
+          family: 4,
+        },
+      ];
+    };
+
+    const resolving = new PostgresPartnerRegistry(pool, { lookup })
+      .resolveDeliveryTargets(scope, 'reception.created');
+    await firstLookup;
+    const initiallyStarted = started.length;
+    releasePending = true;
+    for (const resolve of pending.toReversed()) resolve();
+    const resolution = await resolving;
+
+    expect(initiallyStarted).toBe(8);
+    expect(maxInFlight).toBe(8);
+    expect(started).toHaveLength(9);
+    expect(resolution.targets.map((target) => target.endpointId)).toEqual([
+      'endpoint-0',
+      'endpoint-1',
+      'endpoint-2',
+      'endpoint-4',
+      'endpoint-5',
+      'endpoint-6',
+      'endpoint-7',
+      'endpoint-8',
+    ]);
+    expect(resolution.rejectedEndpointIds).toEqual(['endpoint-3']);
+    expect(resolution.suspendedSubscribers).toBe(2);
+    expect(release).toHaveBeenCalledOnce();
+  });
+});
+
 describePostgres(
   'PostgresPartnerRegistry + RegistryRoutedSink (PostgreSQL)',
   () => {

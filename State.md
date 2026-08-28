@@ -1,38 +1,34 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5253 R1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5254 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5252はlocal commit `5e29e8e`、agmsg連携規則は`acc25d9`へ着地済み。date-time terminal-line候補は
-  live runtimeで既に拒否される`NOT_A_BUG`。WP-5235 EventEnvelope root guardはMOD-009改版前提で未着手。
-  current requestをWP-5253のunused endpoint-policy import removalで継続する。
-  WP-5226は元exact4では安全に完結しないためdefer中。Codex rootだけが`active_root_writer`、
-  state-mutating validator、stager、committerである。
-- **Git boundary:** current branch `refactor/wp-5253-remove-unused-endpoint-import`、base/HEAD
-  `5e29e8e85a4d82f42a49e85966e79012526bdd06`。push / mergeは行わない。
-- **Dirty ownership:** exact3は`apps/api/src/db/partner-registry.ts`、`Plans.md`、`State.md`。
-  同じexact3だけを本local landing対象とする。
+- **Direction / ownership:** WP-5253はlocal commit `5d9bb9c`。current requestをWP-5254のbounded endpoint DNS validationで継続する。
+  agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは常に単独writerとする。
+  宣言競合はagmsg timestampの早い方を優先する。本WPのwriterはCodex、Claudeはfreezeまでread-onlyである。
+- **Git boundary:** current branch `refactor/wp-5254-bounded-endpoint-dns`、base/HEAD
+  `5d9bb9c06df7f534d44330120c94cd078b496f87`。push / mergeは行わない。
+- **Dirty ownership:** exact4は`apps/api/src/db/partner-registry.ts`、
+  `apps/api/src/db/partner-registry.integration.test.ts`、`Plans.md`、`State.md`。
+  同じexact4だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5253 / READY=0(WIPはR1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。Partner Registryの
-  consumer 0 named import `assertPublicHttpsEndpoint`だけを削除する。共有endpoint policy、test、webhook sink、
-  contract/schema/DB/migration、APPROVED SSOTは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5254 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。Partner Registryの配送時DNS再検証を
+  固定上限8で並行化する。endpoint policy、webhook sink、contract/schema/DB/migration、APPROVED SSOTは変更しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** endpoint security validationとdata flowを変えず、credential、production data、PHI/PII、保存、log、
-  external send、network実行、DB操作、cache、retry/offline stateを追加しない。
-- **Process gate:** local exact-name検索でregistry内の`assertPublicHttpsEndpoint`はimport 1件のみ。
-  `registerEndpoint`は共有`assertResolvesToPublicAddress`へrouteし、同関数がHTTPS/host検証後にDNS/public-address検証を行う。
-  pre-planはSSOT更新不要・R1・human gate不要と判定。唯一のdefer条件だったWP-5252 local landingを`5e29e8e`でreconcileした。
-  実参照、module evaluation差、endpoint policy/API/SSOT/security/DB/productionへの波及が判明したら停止する。
-- **Validation / rollback:** GBrain `context_pack`はprotocol v1で成功。trivial one-line cleanupのため新規source-shape testは作らず、
-  endpoint policy focused 23 tests、changed module import smoke、consumer再検索、exact3 path/diff-checkはPASS。
-  production diffは1行削除、source diff SHA-256は`9a8841ad8cf8611e6167c90dc88ddf475075f741431a4abf9396ae9f5e4f6b6b`。
-  frozen reviewed exact3 SHA-256は`0c12afb5d1f2661aab97ad1951b79acd9b51a1796b6759ed30f7d4189ce9e8df`、
-  独立reviewはblocking/non-blocking finding 0。TEST_DATABASE_URL未設定のためDB integrationは実行せず、local landingはpending。
-  CSS変更はなく12 KiB予算測定の対象外。browser、network、production runtimeは実行しない。
-  exact3の単一`WP-5253:` commit、rollbackは確定commitへの
-  `git revert <commit>`。
+- **Security / privacy / offline:** 全候補に既存`assertResolvesToPublicAddress`を適用し、HTTPS/host/DNS/private-address拒否を
+  変えない。synthetic testだけを使い、credential、production data、PHI/PII、保存、log、external send、real network、
+  DB操作、cache、retry/offline stateを追加しない。
+- **Process gate:** API-010は配送時再解決を要求するが直列実行は要求せず、OPS-006にもDNS並行数指定はない。
+  pre-planはSSOT更新不要・R2・human gate不要、最大8・全件guard・DB順序維持を必須と判定した。
+  guard call削除、membership/ordering差、endpoint policy/API/SSOT/DB/productionへの波及が判明したら停止する。
+- **Validation / rollback:** GBrain `context_pack` protocol v1、live caller scan、Claude pre-planはPASS。
+  DB不要Redは`initiallyStarted` 1≠8で期待どおり失敗。Greenはfocused 1 PASS、endpoint policy込み24 PASS / 11 DB-gated skip、
+  API全体977 PASS / 62 DB-gated skip、API typecheckとdiff-checkがPASS。frozen exact4 hashをClaudeが再現し、
+  technical/security/privacy reviewはblocking/non-blocking finding 0、informational 2件のみでPASS。
+  browser、real network、DB、production runtimeは実行しない。
+  exact4の単一`WP-5254:` commit、rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

@@ -34,6 +34,9 @@ export type EndpointState =
 /** SEC-004 §4「越境移転なし」。拡張は privacy/legal review を伴う SSOT 改版で行う。 */
 export const ALLOWED_ENDPOINT_COUNTRIES: readonly string[] = ['JP'];
 
+// ponytail: fixed cap bounds DNS pressure; tune only from measured endpoint fan-out.
+const DELIVERY_TARGET_DNS_CONCURRENCY = 8;
+
 const partnerTransitions: Readonly<
   Record<PartnerState, readonly PartnerState[]>
 > = {
@@ -472,20 +475,36 @@ export class PostgresPartnerRegistry {
     }
     const targets: DeliveryTarget[] = [];
     const rejectedEndpointIds: string[] = [];
-    for (const row of rows) {
-      try {
-        const url = new URL(row.url);
-        await assertResolvesToPublicAddress(url, this.lookup);
-        targets.push({
-          appId: row.app_id,
-          partnerId: row.partner_id,
-          endpointId: row.endpoint_id,
-          url,
-          keyId: row.key_id,
-          secretRef: row.secret_ref,
-        });
-      } catch {
-        rejectedEndpointIds.push(row.endpoint_id);
+    for (
+      let offset = 0;
+      offset < rows.length;
+      offset += DELIVERY_TARGET_DNS_CONCURRENCY
+    ) {
+      const outcomes = await Promise.all(
+        rows
+          .slice(offset, offset + DELIVERY_TARGET_DNS_CONCURRENCY)
+          .map(async (row) => {
+            try {
+              const url = new URL(row.url);
+              await assertResolvesToPublicAddress(url, this.lookup);
+              return {
+                target: {
+                  appId: row.app_id,
+                  partnerId: row.partner_id,
+                  endpointId: row.endpoint_id,
+                  url,
+                  keyId: row.key_id,
+                  secretRef: row.secret_ref,
+                },
+              };
+            } catch {
+              return { rejectedEndpointId: row.endpoint_id };
+            }
+          }),
+      );
+      for (const outcome of outcomes) {
+        if ('target' in outcome) targets.push(outcome.target);
+        else rejectedEndpointIds.push(outcome.rejectedEndpointId);
       }
     }
     return Object.freeze({
