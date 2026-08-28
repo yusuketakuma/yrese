@@ -40,6 +40,18 @@ describe("structured calculation trace integer strings", () => {
       expect(isCanonicalTraceIntegerString(value)).toBe(false);
     },
   );
+
+  it("rejects type-erased non-strings without coercion", () => {
+    let coercions = 0;
+    const result = isCanonicalTraceIntegerString({
+      [Symbol.toPrimitive]() {
+        coercions += 1;
+        return "1";
+      },
+    } as never);
+
+    expect({ result, coercions }).toEqual({ result: false, coercions: 0 });
+  });
 });
 
 const officialEvidence: EvidenceRef = {

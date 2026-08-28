@@ -165,7 +165,7 @@ export function isPhiLikeIntermediateValueKey(key: string): boolean {
  * This remains in @yrese/trace so runtime construction and read contracts cannot drift.
  */
 export function isCanonicalTraceIntegerString(value: string): boolean {
-  return canonicalTraceIntegerPattern.test(value);
+  return typeof value === "string" && canonicalTraceIntegerPattern.test(value);
 }
 
 function assertNonEmptyString(value: unknown, label: string): void {

@@ -34,21 +34,21 @@
 | Field | Current evidence |
 |---|---|
 | Review base | local `main` = `15f6595e0ba63f39d43c7a105630c434aa08adff`、`origin/main` = `ad440680e2d9126f47d48da7845c76dba21730ff`(local main ahead 1、実測 2026-08-27) |
-| Candidate branch | WP-5239 は local commit `121bce4`。WP-5240 は同 commit から `refactor/wp-5240-calendar-date-parts-snapshot` を作成済み |
+| Candidate branch | WP-5240 は local commit `e1aa0cc`。WP-5241 は同 commit から `refactor/wp-5241-trace-integer-primitive-guard` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)に続き、WP-5111 全画面刷新(`3bc4805`)と WP-5201 runtime hardening(`ad44068`)を branch `integrate/all-remote-20260827` 経由の fast-forward で main へ merge・push 済み(reflog 実測)。push authority は 2026-08-27 human 明示確認(State.md ACTIVE SNAPSHOT) |
-| Candidate scope | CalendarDate partsをvalidation順に1回だけ読み、検証した同じ値で構築する exact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5239 local landing、WP-5240 Red→Green / affected gates PASS・frozen reviews finding 0・local landing pending、compiled CSS予算12 KiBを維持) |
+| Candidate scope | canonical trace integer predicateのregex coercionをprimitive guardで遮断する exact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5240 local landing、WP-5241 affected gates PASS・frozen reviews finding 0・local landing pending、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5240 exact2 code/test候補で、`CalendarDate.fromParts`の検証後accessor再読をone-shot sequential localsへ収束する |
+| Current critical path | WP-5241 exact2 code/test候補で、公開`isCanonicalTraceIntegerString`のtype-erased input coercionを既存primitive短絡へ閉じる |
 | Main blocker | live trace、pre-plan、Red→Green、affected gates、frozen reviews finding 0まで完了。record rereview、exact stage、local landingを残す。WP-5235はSSOT-first gate、WP-5226は元exact4不完結でdefer中 |
-| Required verification | pre-planでREADYならdate-time focused/package Red→Green・typecheck、calculation affected gates、API/Web typecheck、boundaries、exact4 path-set/diff、frozen independent + date-time/data-integrity reviewを要求する |
+| Required verification | pre-planでREADYならtrace focused/package Red→Green・typecheck、contracts/calculation affected tests+typecheck、boundaries、exact4 path-set/diff、frozen independent + trace/data-integrity reviewを要求する |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=ad44068`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5240である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5241である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,50 +73,48 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5240(CalendarDate parts sequential snapshot、R2 READY)1 件である。**
-WP-5239 は local commit `121bce4` で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5241(trace integer predicate primitive guard、R2 READY)1 件である。**
+WP-5240 は local commit `e1aa0cc` で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** one-caller private `assertCalendarDate(parts)`はyear/month/dayを検証した後にaccessorを再読し、
-  `CalendarDate.fromParts`もconstructor引数で再読するため、stateful getterから検証値と異なるinvalid CalendarDateを生成できる。
-  one-caller helperを削除し、factory内でyear read→assert、month read→assert、day read→safe-integer/real-day assertを行い、同じlocal値で構築する。
-  既存validatorと`daysInMonth`だけを再利用し、新helper/error/型は作らない。
-- **Allowed / forbidden:** exact4候補は `packages/date-time/src/index.ts`、`packages/date-time/src/date-time.test.ts`、`Plans.md`、`State.md`。
-  pre-plan finding 0前はrecords 2 pathだけを変更する。それ以外、特にCalendarDate/wrapper/ClaimMonthのpublic type/signature、
-  valid formatting/compare/equality、timezone、claim-month締め意味論、
-  calculation/API/DB、package/dependency、UI/CSS、APPROVED SSOT、schema/migrationは変更禁止。保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** APPROVED MOD-011はCalendarDateの実カレンダー検証を`@yrese/date-time`の正本責務とし、APPROVED MOD-004は
-  `{year,month,day}`からの構築とwrapper共有を登録する。本候補はpublic型/valid semanticsを変えず、同factory内のcheck/use driftを閉じる
-  internal data-integrity hardeningである。GBrain code sourceにyreseがなくblastは`not_found`のためlive tracked code/callerを正本にした。
-  `assertCalendarDate`のcallerはfromParts 1件だけで、fromString、3 wrapper、API受付、Web受付が同factoryへrouteする。live changing getterは
-  year/month/dayを各3/3/4回読み、検証後の値で`0000-13-32`を生成した。stable invalid partsは既存RangeErrorで拒否される。
-- **Acceptance / tests:** (A1)changing getterのyear/month/dayは各1回だけ読み、検証した`2026-12-31`と同じ値を構築する。
-  (A2)invalid yearはmonth/day getterを読まず既存exact RangeError、invalid monthはday getterを読まず既存exact RangeErrorでfail-fastする。
-  (A3)unsafe/non-integer day、存在しない日、leap yearの既存RangeError/messageとvalid fromString/fromParts/wrapper/compare/equality結果を維持する。
-  (A4)production差分はone-caller helper削除とCalendarDate.fromParts内の既存validator sequential reuseだけ。
-  (A5)timezone、ClaimMonth、算定・請求、API/DB/UI意味論を変更しない。
-- **PIA / offline:** fixtureはsynthetic number objectだけで、患者・処方・請求data、credential、production data、PHI/PII、保存、log、
+- **Purpose / layer:** 公開`isCanonicalTraceIntegerString(value: string)`がprimitive確認なしに`RegExp.test(value)`を実行するため、
+  type-erased objectをcanonical整数としてtrue受理し、attacker-controlled coercionを呼ぶ、または任意例外を投げ得る。
+  既存regexの前へ`typeof value === "string"`短絡を1行追加する。新helper/regex/error/型は作らない。
+- **Allowed / forbidden:** exact4候補は `packages/trace/src/index.ts`、`packages/trace/src/trace.test.ts`、`Plans.md`、`State.md`。
+  pre-plan finding 0前はrecords 2 pathだけを変更する。それ以外、特にpredicate signature/canonical regex、Trace型/factory/PHI判定、
+  contracts/Zod/wire schema、calculation/API/UI、package/dependency、APPROVED SSOT、schema/migrationは変更禁止。保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** APPROVED CAL-008は`@yrese/trace`をtrace runtime正本とし、APPROVED API-007はcontractsが同predicateを
+  再利用してdriftを防ぐ。live callerはtrace内部`assertCanonicalTraceIntegerString`が`typeof`後、contractsが`z.string()`後に呼ぶため、
+  tracked consumerは既にprimitive-guardedである。一方predicate自体はpackage exportで、JavaScript/type-erased runtime inputへ到達可能。
+  実外部callerは未確認だが、本候補はvalid string、trace construction、wire contractを変えず公開predicateのinvalid-type
+  fail-open/coercionだけを閉じる予防的internal hardeningである。
+- **Acceptance / tests:** (A1)canonical文字列へcoerceできるtype-erased objectはfalse、coercion 0回。(A2)既存canonical string 4件はtrue、
+  invalid string 9件はfalseのまま。(A3)createCalculationTraceのresultPoints/resultYen canonical拒否、valid output、
+  intermediateValuesの既存string/blank-key/PHI-like検証は不変で、intermediateValues全値のcanonical integer化は行わない。
+  (A4)contractsのz.string→refine順、parse結果、wire schemaは不変。(A5)production差分はpredicateの既存regex前primitive短絡1行だけ。
+- **PIA / offline:** fixtureはsynthetic object/string/counterだけで、患者・処方・請求data、credential、production data、PHI/PII、保存、log、
   external send、network、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。root live traceとread-only pre-planは完了。
-  pre-planはfinding 0 / R2 READY、MOD-004/MOD-011改版不要、追加human gate不要を確認した。
-  `reviewer_roles`は`pre_plan_reviewer`、`independent_verifier`、`date_time_data_integrity_reviewer`。
-  public/error/valid behavior、timezone/締め境界、calculation/API/DB、別path変更が必要なら停止。READY後exact4を単一`WP-5240:` commit、
-  rollbackは確定commitへの`git revert <commit>`。
-  rootだけがvalidator/stager/committer。push、merge、deploy、migration/DDL/DMLは認可外。timeboxはREADY後のactive root作業60分
-  (外部review待ち除外)または単一TDD/review/commit cycleの早い方。
+- **Roles / stop / rollback:** `owner_role: sole_maintainer`はCodex root。read-only mapper、root live trace、fresh pre-planは完了。
+  pre-planはfinding 0 / R2 READY、SSOT改版不要、追加human gate不要を確認した。
+  `reviewer_roles`は`pre_plan_reviewer`、`independent_verifier`、`trace_data_integrity_reviewer`。
+  signature/regex/valid string、trace/contracts/schema/calculation/API/UI、別path変更が必要なら停止。READY後exact4を単一`WP-5241:` commit、
+  rollbackは確定commitへの`git revert <commit>`。rootだけがvalidator/stager/committer。push、merge、deploy、migration/DDL/DMLは認可外。
+  timeboxはREADY後のactive root作業60分(外部review待ち除外)または単一TDD/review/commit cycleの早い方。
 - **Validation evidence (UTC / exact command):**
   - pre-plan finding 0 / R2 READY。
-  - `2026-08-27T23:42:43Z` `pnpm --filter @yrese/date-time exec vitest run src/date-time.test.ts` → exit 1
-    (expected Red: getter read 3/3/4、value `0000-13-32`。既存+fail-fast 19件PASS)。
-  - `2026-08-27T23:42:58Z` 同command → 20/20 PASS。
-  - `2026-08-27T23:43:11Z` `pnpm --filter @yrese/date-time test` → 20/20 PASS、`23:43:12Z` date-time typecheck exit 0。
-  - `2026-08-27T23:43:12Z` `pnpm --filter @yrese/calculation test` → 90/90 PASS、`23:43:13Z` calculation typecheck exit 0。
-  - `2026-08-27T23:43:13Z` API typecheck、`23:43:14Z` Web typecheckと`pnpm check:boundaries` → 各exit 0。
-  - code/test frozen SHA-256は`42a31cb86c618f62df02ff9afa673c03505919ccc1f0f8c22ebc8f229e11cd0a`、reviewed exact4
-    packet SHA-256は`14612da65dd1fdf40288e8724a7462e84e07ddd73c2f9f8159b55b2f6e74f6b3`。frozen independent +
-    date-time/data-integrity reviewsはともにfinding 0。DB integration、browser、network、production runtimeは実行しない。
+  - `2026-08-28T00:05:35Z` `pnpm --filter @yrese/trace exec vitest run src/trace.test.ts` → exit 1
+    (expected Red: result true / coercion 1、既存41件PASS)。
+  - `2026-08-28T00:05:49Z` 同command → 42/42 PASS。
+  - `2026-08-28T00:05:59Z` `pnpm --filter @yrese/trace test` → 42/42 PASS、`00:06:01Z` trace typecheck exit 0。
+  - `2026-08-28T00:06:02Z` `pnpm --filter @yrese/contracts test` → 136/136 PASS、`00:06:04Z` contracts typecheck exit 0。
+  - `2026-08-28T00:06:05Z` `pnpm --filter @yrese/calculation test` → 90/90 PASS、`00:06:06Z` calculation typecheck exit 0。
+  - `2026-08-28T00:06:07Z` `pnpm check:boundaries` → exit 0。code/test frozen SHA-256は
+    `438e923cb13d94602ce8711e3bc012a8ddbe6d594a2e5bba6f0a68048fa13ae9`、reviewed exact4 packet SHA-256は
+    `cd986d1c33c5cd8d5fd0a5f8a6ba798229f9c7c739e797d810435a844559ddfb`。frozen independent + trace/data-integrity
+    reviewsはともにfinding 0。DB integration、browser、network、production runtimeは実行しない。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
+| trace freezeStep optional getter snapshot | WP-5241外のfollow-up候補。stateful optional getterを検証後spreadで再読し、invalid result値/PHI-like intermediate keyを保持し得る | packages/trace live frozen review / CAL-008 / API-007 |
 | date-time terminal-line candidate | NOT_A_BUG。live Node 26/V8でCalendarDate/ClaimMonthはLF/CR/CRLF/U+2028/U+2029 suffixを既にRangeError拒否 | packages/date-time live runtime / MOD-011 |
 | WP-5235 EventEnvelope root input guard | SSOT_UPDATE_REQUIRED。APPROVED MOD-009がSSOT改版→review→実装を要求するため未着手 | MOD-009 / live package trace |
 | WP-4250 | FINALIZED / APPROVED(SSOT 改版のみ)。local commit `89275d2` | 下の決定記録 |
@@ -187,6 +185,14 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5240 — CalendarDate parts sequential snapshot(2026-08-28)
+
+- **Status:** `COMMITTED_LOCAL e1aa0cc / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** one-caller date validatorをfactoryへ戻し、year→month→dayを各1回だけ読んで検証した同じlocal値で構築。
+  public signature、valid calendar/leap/wrapper、timezone、ClaimMonth、calculation/API/DB/UI、MOD-004/MOD-011は不変。
+- **Gate:** expected Red 1件(read 3/3/4・`0000-13-32`)→date-time focused/package 20、calculation 90、
+  date-time/calculation/API/Web typecheck、boundaries、path/diff PASS。frozen independent/date-integrityとrecord rereviewsはfinding 0。
 
 ### WP-5239 — ClaimMonth validation-order snapshot(2026-08-28)
 
