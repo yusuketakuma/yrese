@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import { prescriptionDraftContentSchema } from "@yrese/contracts";
 import {
   patientId,
   pharmacyId,
@@ -12,6 +13,8 @@ import {
 import { InMemoryAuditRepository } from "./audit-repository.js";
 import {
   InMemoryPrescriptionDraftService,
+  normalizePrescriptionDraftContent,
+  prescriptionDraftContentHash,
   type PrescriptionDraftSaveInput,
 } from "./prescription-draft-service.js";
 import { InMemoryReceptionRepository } from "./reception-repository.js";
@@ -56,6 +59,44 @@ function input(
     },
   };
 }
+
+describe("normalizePrescriptionDraftContent", () => {
+  it("parses at the trust boundary exactly once and returns canonical content", () => {
+    const raw = {
+      prescriptionType: "OUTPATIENT",
+      prescriptionDate: "2026-07-09",
+      defaultDays: 7,
+      flags: ["NARCOTIC", "PACKAGING"],
+      note: "  正規化テスト  ",
+      rows: [
+        {
+          sequence: 1,
+          drugText: " 合成薬剤A 5mg ",
+          usageText: "1日1回 朝食後",
+          days: 7,
+          quantityText: "7錠",
+        },
+      ],
+      unknownKey: "must be stripped",
+    };
+    const parseSpy = vi.spyOn(prescriptionDraftContentSchema, "parse");
+    try {
+      const normalized = normalizePrescriptionDraftContent(raw);
+      expect(parseSpy).toHaveBeenCalledTimes(1);
+      expect(normalized.flags).toEqual(["PACKAGING", "NARCOTIC"]);
+      expect(normalized.note).toBe("正規化テスト");
+      expect(normalized.rows[0]?.drugText).toBe("合成薬剤A 5mg");
+      expect("unknownKey" in normalized).toBe(false);
+      expect(prescriptionDraftContentHash(normalized)).toBe(
+        prescriptionDraftContentHash(
+          raw as unknown as Parameters<typeof prescriptionDraftContentHash>[0],
+        ),
+      );
+    } finally {
+      parseSpy.mockRestore();
+    }
+  });
+});
 
 describe("InMemoryPrescriptionDraftService", () => {
   it("creates, reads, updates, and recognizes an unchanged scoped draft", async () => {

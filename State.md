@@ -1,34 +1,38 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5254 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5255 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5253はlocal commit `5d9bb9c`。current requestをWP-5254のbounded endpoint DNS validationで継続する。
+- **Direction / ownership:** WP-5254はlocal commit `2c675cc`。current requestをWP-5255のsingle-parse draft normalizationで継続する。
   agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは常に単独writerとする。
-  宣言競合はagmsg timestampの早い方を優先する。本WPのwriterはCodex、Claudeはfreezeまでread-onlyである。
-- **Git boundary:** current branch `refactor/wp-5254-bounded-endpoint-dns`、base/HEAD
-  `5d9bb9c06df7f534d44330120c94cd078b496f87`。push / mergeは行わない。
-- **Dirty ownership:** exact4は`apps/api/src/db/partner-registry.ts`、
-  `apps/api/src/db/partner-registry.integration.test.ts`、`Plans.md`、`State.md`。
+  宣言競合はagmsg timestampの早い方を優先する。本WPのwriterはClaude、Codexはfrozen reviewerでlandingまでread-onlyである。
+- **Git boundary:** current branch `refactor/wp-5255-single-parse-normalization`、base
+  `2c675cc13ab02eedb1e1cad00d18e7dc9caba554`。push / mergeは行わない。
+- **Dirty ownership:** exact4は`apps/api/src/prescription-draft-service.ts`、
+  `apps/api/src/prescription-draft-service.test.ts`、`Plans.md`、`State.md`。
   同じexact4だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5254 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。Partner Registryの配送時DNS再検証を
-  固定上限8で並行化する。endpoint policy、webhook sink、contract/schema/DB/migration、APPROVED SSOTは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5255 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。`normalizePrescriptionDraftContent`の
+  二重schema parseを信頼境界の1回に減らし、canonical出力・hash・受理集合を不変に保つ。
+  contracts schema、`db/prescription-draft-service.ts`、DML/DB/network、migration、APPROVED SSOT、dependencyは変更しない。
+  N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDとして記録し、着手しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** 全候補に既存`assertResolvesToPublicAddress`を適用し、HTTPS/host/DNS/private-address拒否を
-  変えない。synthetic testだけを使い、credential、production data、PHI/PII、保存、log、external send、real network、
-  DB操作、cache、retry/offline stateを追加しない。
-- **Process gate:** API-010は配送時再解決を要求するが直列実行は要求せず、OPS-006にもDNS並行数指定はない。
-  pre-planはSSOT更新不要・R2・human gate不要、最大8・全件guard・DB順序維持を必須と判定した。
-  guard call削除、membership/ordering差、endpoint policy/API/SSOT/DB/productionへの波及が判明したら停止する。
-- **Validation / rollback:** GBrain `context_pack` protocol v1、live caller scan、Claude pre-planはPASS。
-  DB不要Redは`initiallyStarted` 1≠8で期待どおり失敗。Greenはfocused 1 PASS、endpoint policy込み24 PASS / 11 DB-gated skip、
-  API全体977 PASS / 62 DB-gated skip、API typecheckとdiff-checkがPASS。frozen exact4 hashをClaudeが再現し、
-  technical/security/privacy reviewはblocking/non-blocking finding 0、informational 2件のみでPASS。
+- **Security / privacy / offline:** 信頼境界の`prescriptionDraftContentSchema.parse` 1回目は維持し、受理集合を変えない
+  (削除した2回目parseは再構築オブジェクトで失敗し得ない純検証+冪等trimのみ)。synthetic testだけを使い、
+  credential、production data、PHI/PII、保存、log、external send、real network、DB操作、cache、retry/offline stateを追加しない。
+- **Process gate:** contracts schemaのtransformは冪等trimのみ、refinement(flag重複・sequence連続・日付実在)は
+  純検証で、2回目parseの除去はcanonical出力・JSON.stringifyバイト列・sha256 hashを変えない。
+  pre-planはSSOT更新不要・R1-R2・human gate不要と判定した。schema変更が必要になる、
+  normalize出力やhashに差が出る、受理集合が変わる、flaky assertionが判明したら停止する。
+- **Validation / rollback:** Claude assessmentとCodex no-overlap ACKはagmsg記録済み。
+  DB不要Redは`parse`呼び出し回数 2≠1 で期待どおり失敗。Greenはfocused draft-service+routes 15 PASS、
+  API全体978 PASS / 62 DB-gated skip、API typecheck PASS。unknown-key stripping、flag順序、trim、
+  hash同値をgolden assertionで固定した。frozen exact4 hashをCodexが再現し、
+  technical/security/privacy/data-integrity reviewはblocking/non-blocking finding 0、informational 1件のみでPASS。
   browser、real network、DB、production runtimeは実行しない。
-  exact4の単一`WP-5254:` commit、rollbackは確定commitへの`git revert <commit>`。
+  exact4の単一`WP-5255:` commit、rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

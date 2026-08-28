@@ -67,8 +67,10 @@ const FLAG_ORDER = new Map(
 export function normalizePrescriptionDraftContent(
   value: unknown,
 ): PrescriptionDraftContent {
+  // 信頼境界のparseはここで1回だけ。以降はparse済み値の並べ替えとコピーであり、
+  // 再parseは値を変えない(trimは冪等、refinementは再構築後も成立)ため行わない。
   const parsed = prescriptionDraftContentSchema.parse(value);
-  return prescriptionDraftContentSchema.parse({
+  return {
     ...parsed,
     flags: [...parsed.flags].sort(
       (left, right) =>
@@ -76,7 +78,7 @@ export function normalizePrescriptionDraftContent(
         (FLAG_ORDER.get(right) ?? Number.MAX_SAFE_INTEGER),
     ),
     rows: parsed.rows.map((row) => ({ ...row })),
-  });
+  };
 }
 
 export function prescriptionDraftContentHash(

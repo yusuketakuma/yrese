@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5252 `5e29e8e` + WP-5253 `5d9bb9c`まで(実測 2026-08-28) |
-| Candidate branch | WP-5253はlocal commit `5d9bb9c`。WP-5254は同HEADから `refactor/wp-5254-bounded-endpoint-dns` を作成済み |
+| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5253 `5d9bb9c` + WP-5254 `2c675cc`まで(実測 2026-08-28) |
+| Candidate branch | WP-5254はlocal commit `2c675cc`。WP-5255は同HEADから `refactor/wp-5255-single-parse-normalization` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までmain/originへfast-forward済み(reflog実測)。WP-5242以降のpushは認可・実行しない |
-| Candidate scope | Partner Registryの配送時DNS再検証を固定上限8で並行化し、endpoint順序・拒否順序・SSRF guardを維持するexact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5253 local landing済み、WP-5254 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Candidate scope | 処方draft正規化の二重schema parseを信頼境界の1回へ減らし、canonical出力・hash・受理集合を不変に保つexact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5254 local landing済み、WP-5255 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5254で配送先ごとに直列だったDNS再検証待ちをbounded concurrencyへ変え、API-010の全件再検証と既存順序を維持する |
-| Main blocker | なし。WP-5253は`5d9bb9c`へlocal landing済み。WP-5254 pre-planはR2、SSOT改版・human gate不要と判定 |
-| Required verification | DB不要のdeferred lookup回帰test、focused partner-registry test、API typecheck、exact path/diff-check、独立technical/security review、単一local commit |
+| Current critical path | WP-5255で`normalizePrescriptionDraftContent`の二重parseを1回へ減らし、trust-boundary検証・canonical出力・content hashを不変に保つ |
+| Main blocker | なし。WP-5254は`2c675cc`へlocal landing済み。WP-5255 pre-planはR1-R2、SSOT改版・human gate不要と判定。N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDで保留 |
+| Required verification | DB不要のparse回数Red test、focused draft-service/routes test、API typecheck、exact path/diff-check、独立frozen review(Codex)、単一local commit |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5254である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5255である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,36 +73,38 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5254(bounded endpoint DNS validation、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5253はlocal commit `5d9bb9c`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5255(single-parse draft normalization、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5254はlocal commit `2c675cc`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** `PostgresPartnerRegistry.resolveDeliveryTargets`はDB snapshot解放後も配送先ごとの
-  DNS再検証を直列に待つ。stdlibのbounded `Promise.all` batchへ変え、全件再検証を維持したまま待ち時間を短縮する。
-- **Allowed / forbidden:** exact4は`apps/api/src/db/partner-registry.ts`、
-  `apps/api/src/db/partner-registry.integration.test.ts`、`Plans.md`、`State.md`。
-  `partner-endpoint-policy.ts`、webhook sink、contract/schema/DB/migration、APPROVED SSOTは変更禁止。
-  保護untracked 3 pathも参照・変更しない。
-- **Authority / evidence:** API-010は配送時のDNS再解決と同一public-address条件を要求するが直列実行は要求しない。
-  OPS-006にDNS並行数の指定はなく、既存のconstructor-injected lookupでDB不要のdeterministic testが可能。
-  pre-planはSSRF guardを各行で維持する条件でSSOT改版不要・R2、追加human gate不要と判定した。
-- **Acceptance / tests:** (A1)DNS lookupは最大8件だけ同時実行。(A2)全候補で
-  `assertResolvesToPublicAddress`を完了してから採用し、private/non-resolving endpointは従来どおり行単位で拒否。
-  (A3)`targets`と`rejectedEndpointIds`はDB順序を維持し、`suspendedSubscribers`を変えない。
-  (A4)公開API、endpoint policy、webhook sink、contract/schema/DB/migration/dependencyは不変。
-  9件のdeferred synthetic lookupを使うDB不要testで、現行直列loopをRedにする。
-- **PIA / offline:** synthetic hostname/addressだけを使い、real network、DB、患者・処方・請求data、credential、
+- **Purpose / layer:** `normalizePrescriptionDraftContent`は同一schemaで2回parseし、save経路では
+  hash側の再正規化と合わせて4回のdirect parseが走る。信頼境界の1回目parseを維持したまま2回目を除き、
+  canonical出力・content hash・受理集合を不変に保って保存経路のparse回数を半減する。
+- **Allowed / forbidden:** exact4は`apps/api/src/prescription-draft-service.ts`、
+  `apps/api/src/prescription-draft-service.test.ts`、`Plans.md`、`State.md`。
+  contracts schema、`db/prescription-draft-service.ts`、DML/DB/network、migration、APPROVED SSOT、
+  dependencyは変更禁止。保護untracked 3 pathも参照・変更しない。
+- **Authority / evidence:** `prescriptionDraftContentSchema`のtransformは冪等trimのみ、refinement
+  (flag重複・row sequence連続・calendar date実在)は純検証で、再構築オブジェクトでは失敗し得ない。
+  よって2回目parseは値のno-opであり、除去は受理集合を変えない。pre-planはSSOT改版不要・R1-R2、
+  追加human gate不要と判定した(agmsg 2026-08-28、Codex no-overlap ACK済み)。
+- **Acceptance / tests:** (A1)`normalizePrescriptionDraftContent`はtrust-boundary parseを正確に1回だけ実行。
+  (A2)canonical出力(flag順序・trim・unknown-key stripping)と`prescriptionDraftContentHash`は不変。
+  (A3)公開API、contracts schema、DB層、dependencyは不変。(A4)parse回数をspyで数えるDB不要deterministic
+  testで現行二重parseをRedにし、golden assertionでcanonical性を固定する。
+- **PIA / offline:** synthetic draft contentだけを使い、real network、DB、患者・処方・請求data、credential、
   production data、PHI/PII、保存、log、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `active_root_writer`はCodex、frozen reviewerはClaude。agmsg合意によりagentはWPごとに
-  writerを交代できるがshared treeは常に単独writerとする。guard call削除、順序・membership差、
-  `partner-endpoint-policy.ts`やDB/SSOTへの波及、flaky concurrency assertionが判明したら停止。
-  exact4を単一`WP-5254:` commit、rollbackは確定commitへの`git revert <commit>`。
-  push、merge、deploy、migration/DDL/DMLは認可外。
-- **Validation evidence:** GBrain `context_pack` protocol v1とlive caller scanを再実行済み。
-  production callerは`RegistryRoutedSink` 1件、integration test callerは5件。Claude pre-planはblocking finding 0、
-  cap 8・index/order preserving assembly・per-row guard維持を要求した。Redは`initiallyStarted` 1≠8で期待どおり失敗。
-  GreenはDB不要focused 1 PASS、endpoint policy込み24 PASS / DB-gated 11 skip、API全体977 PASS / 62 DB-gated skip、
-  API typecheckとdiff-checkがPASS。frozen exact4 SHA-256 `f3ab9d19188c15ee07deb8e37320bc0c92d31c8363f4e7b9f9e0387b1b2bbba5`を
-  Claudeが再現し、technical/security/privacy reviewはblocking/non-blocking finding 0、informational 2件のみでPASS。
+- **Roles / stop / rollback:** `active_root_writer`はClaude、frozen reviewerはCodex。agmsg合意によりagentはWPごとに
+  writerを交代できるがshared treeは常に単独writerとする。schema変更が必要になる、normalize出力・hash・
+  受理集合に差が出る、flaky assertionが判明したら停止。
+  exact4を単一`WP-5255:` commit、rollbackは確定commitへの`git revert <commit>`。
+  push、merge、deploy、migration/DDL/DMLは認可外。N+1 child INSERT batching候補
+  (`db/prescription-draft-service.ts` `replaceChildren`)はDML変更のためHUMAN_GATE_REQUIREDで保留。
+- **Validation evidence:** Claude read-only assessmentでidempotence・key順序・hash安定性を確認し、
+  Codexがno-overlap ACKを付与(agmsg 2026-08-28)。Redは`parse`呼び出し回数 2≠1 で期待どおり失敗。
+  GreenはDB不要focused draft-service+routes 15 PASS、API全体978 PASS / 62 DB-gated skip、API typecheck PASS。
+  frozen exact4 SHA-256 `37867808495ebceab48cf8e7344c2021a34f5cbbed541a30a64c6778c40d7f01`をCodexが再現し、
+  technical/security/privacy/data-integrity reviewはblocking/non-blocking finding 0、informational 1件
+  (hash同値assertionがrelationalである点、structural proofで十分と判定)のみでPASS。
   CSS変更はなく12 KiB予算測定の対象外。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
