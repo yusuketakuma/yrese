@@ -16,6 +16,7 @@ import {
 import { appendAuditEventWithinTransaction } from "./audit-repository.js";
 import { snapshotDatabaseInstant } from "../instant.js";
 import {
+  comparePrescriptionDraftFlags,
   normalizePrescriptionDraftContentWithHash,
   prescriptionDraftContentHash,
   type PrescriptionDraftLookupInput,
@@ -153,15 +154,7 @@ async function readDraft(
   const flagsResult = await client.query<DraftFlagRecord>(
     `SELECT flag
        FROM prescription_draft_flags
-      WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3
-      ORDER BY CASE flag
-        WHEN 'PACKAGING' THEN 1
-        WHEN 'HOME_CARE' THEN 2
-        WHEN 'NARCOTIC' THEN 3
-        WHEN 'PSYCHOTROPIC' THEN 4
-        WHEN 'LEFTOVER_ADJUSTMENT' THEN 5
-        ELSE 99
-      END`,
+      WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3`,
     [input.tenantId, input.pharmacyId, row.prescription_id],
   );
 
@@ -176,7 +169,9 @@ async function readDraft(
         prescriptionType: row.prescription_type,
         prescriptionDate: row.prescription_date,
         defaultDays: row.default_days,
-        flags: flagsResult.rows.map((flag) => flag.flag),
+        flags: flagsResult.rows
+          .map((flag) => flag.flag)
+          .sort(comparePrescriptionDraftFlags),
         note: row.note,
         rows: rowsResult.rows.map((draftRow) => ({
           sequence: draftRow.row_sequence,

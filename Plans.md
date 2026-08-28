@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5269 `fa40980`まで(実測 2026-08-28) |
-| Candidate branch | WP-5269はlocal commit `fa40980`。WP-5270は同HEADから `refactor/wp-5270-hoist-fixed-failure-validation` を作成済み |
-| Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までmain/originへfast-forward済み(reflog実測)。WP-5242以降のpushは認可・実行しない |
-| Candidate scope | prescription-draft routeの固定failure body 3種のrequest-time schema検証を各bodyにつきmodule-load時1回(import時に計3回)へ移し、body/status/no-storeを不変に保つexact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5269 local landing済み、WP-5270 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Review base | local `main` = WP-5270 `b27b407fb523119545b8b457fbb918a5e6a98233`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`(実測 2026-08-28) |
+| Candidate branch | WP-5270はlocal commit `b27b407`。WP-5271は同HEADから `refactor/wp-5271-reuse-canonical-flag-order` を作成済み |
+| Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までoriginへ反映済み。user指示でWP-5254〜WP-5270の17 commitをlocal main `b27b407`へref-only fast-forward済み。origin pushは実行しない |
+| Candidate scope | prescription draft flag正準順序のcontracts enum / service list / SQL CASE三重実装をcontracts enum由来のshared comparatorへ収束させるexact3 code/test slice |
+| Last update | 2026-08-28 JST(WP-5270 local main反映済み、WP-5271 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5270でWP-5265 pattern漏れ(frameworkErrorResponseSchema側)のfixedFailure request-time検証を閉じる |
-| Main blocker | なし。WP-5269は`fa40980`へlocal landing済み。flag-order tri-plication dedupeはWP-5271としてnonclaimable park(latent・低確率と再評価済み) |
-| Required verification | route-inject parse-spy Red/Green、既存3 error body/status/no-store testの維持、focused routes+error-contract、full API、API typecheck、boundaries、exact path/diff-check、独立frozen review(Codex)、単一local commit |
+| Current critical path | WP-5271でflag順序の正本を`prescriptionDraftFlagSchema.options`へ一本化し、DB readbackも同じcomparatorで正準化する |
+| Main blocker | なし。WP-5270は`b27b407`へlocal landing済み。severityはlatent・低確率だが、現在残る同一概念の三重実装としてclaim済み |
+| Required verification | shared comparator Red/Green、既存normalize/hash、使い捨て実PostgreSQLのcanonical roundtrip(skip 0)、full API、API typecheck、boundaries、exact path/diff-check、独立frozen R2 review(Claude)、単一local commit |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5270である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5271である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,35 +73,37 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5270(hoist fixed failure validation、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5269はlocal commit `fa40980`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
-flag-order tri-plication dedupe(contracts enum / FLAG_ORDER / SQL CASE)はWP-5271としてnonclaimable parkに記録する。
+**CURRENT は WP-5271(reuse canonical prescription flag order、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5270はlocal commit `b27b407`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** `fixedFailure`は3種の完全静的なfailure body(400/404/409)をエラー応答のたびに
-  `frameworkErrorResponseSchema.parse`していた(WP-5265 patternの取りこぼし — schema名が異なりsweepから漏れた)。
-  WP-5265と同じtemplate+fresh spread clone patternで各bodyの検証をmodule-load時1回(import時に計3回)へ移す。
-- **Allowed / forbidden:** exact4は`apps/api/src/prescription-draft-routes.ts`、
-  `apps/api/src/prescription-draft-routes.test.ts`、`Plans.md`、`State.md`。
-  body/status/no-store/エラー文言、contracts/API/DB/DML、APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
-- **Authority / evidence:** 3呼び出し箇所は全てリテラル引数でfixedFailureはmodule-private・他callerなし。
-  bodyはフラット3フィールドでshallow clone完全。fixedFailureはmodule-load時のbuilderとして残置(import時3回のみ実行)。
-  pre-planはR2(WP-5265と同じerror/security応答surface)、SSOT改版・human/Oracle gate不要と判定した(agmsg 2026-08-28、Codex提案・Claude反証チェックなし)。
-- **Acceptance / tests:** (A1)request窓での`frameworkErrorResponseSchema.parse`呼び出し1→0(route-inject
-  parse-spy、`instance.ready()`後にspy設置)。(A2)3 error body/status/no-storeはbyte-identical(既存testが網)。
-  (A3)templateはmodule内部に留め、送信は毎回fresh spread clone。(A4)focused/full API/typecheck/boundaries PASS。
-- **PIA / offline:** synthetic requestのみ。real network、DB、PHI/PII、credential、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `active_root_writer`はClaude、frozen reviewerはCodex。shared treeは単独writer。
-  body/status/文言差、template参照の直接送信、spy flakiness、追加path必要が判明したら停止。
-  exact4を単一`WP-5270:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
-- **Validation evidence:** baseline focused 9 PASS実測後、Redはparse-spyが400窓で呼び出し検出し期待どおり失敗。
-  Greenはfocused routes+error-contract 24 PASS(新規1 test込み)、full API 987 PASS / 63 DB-gated skip、
-  API typecheck PASS、`pnpm check:boundaries` PASS(Boundary check passed.)、`git diff --check` PASS。
-  frozen technical/error-contract/performance reviewは初回REQUEST_CHANGES(record-only LOW 2件: R1-R2ラベル・検証回数文言)を
-  record-only修正で解消し、delta review PASS・findings 0。レビュー対象のpre-verdict exact4 SHA-256 `8f70cd2245d25e1a9485c6f3f7af4648d6e970d5817a0ee35de81a3b0d08d4eb`をCodexが再現した(verdict記録後のexact4は本書へ複製しない)。
+- **Purpose / layer:** prescription draft flagの正準順序はcontractsの`prescriptionDraftFlagSchema`宣言順が正本だが、
+  serviceの手書き`FLAG_ORDER`とDBの`ORDER BY CASE`が同じ5値を複製する。schema options由来のshared comparatorへ
+  normalizeとDB readbackを収束し、SQL側の順序複製を削除する。
+- **Allowed / forbidden:** exact5は`apps/api/src/prescription-draft-service.ts`、
+  `apps/api/src/prescription-draft-service.test.ts`、`apps/api/src/db/prescription-draft-service.ts`、`Plans.md`、`State.md`。
+  contracts/schema/migration/DML、response/hash/API意味論、APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
+- **Authority / evidence:** live traceでcontracts enum / service list / SQL CASEの三重実装とcallerを確認。
+  新flag 1つでは両fallbackが末尾となるためseverityはlatent・低確率だが、複数追加またはenum reorderでSQL順序がdriftし得る。
+  pre-planはDQL ordering削除のみのR2、SSOT改版・human/Oracle gate不要と判定した(agmsg 2026-08-28)。
+- **Acceptance / tests:** (A1)shared comparatorがreversed contract optionsをschema宣言順へ正準化するRed/Green。
+  (A2)normalizeとDB readDraftが同じcomparatorを使用し、手書き5値/SQL CASEを残さない。(A3)既存content hash、response、
+  real PostgreSQL multi-flag roundtripをbyte-identicalに維持しDB-gated testをskip 0で実行。(A4)full API/typecheck/boundaries PASS。
+- **PIA / offline:** synthetic dataのみ。DB検証は使い捨てlocal PostgreSQLで行い、production/staging data、PHI/PII、
+  credential、external sendへ接触しない。cache、retry/offline stateを追加しない。
+- **Roles / stop / rollback:** `active_root_writer`はCodex、frozen R2 reviewerはClaude。shared treeは単独writer。
+  contract edit、response/hash/order差、unknown flag受理、SQL変更がflags SELECT削除範囲を超える、追加path必要で停止。
+  exact5を単一`WP-5271:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
+- **Validation evidence:** baseline focused 9 PASS。Redはreversed contract optionsがschema順ではなく文字列順となり1 FAIL / 9 PASSを再現、
+  Green focused 10 PASS。使い捨てloopback PostgreSQL 17でintegration 11 PASS(skip 0)、full API 1051 PASS(skip 0)。
+  API typecheck、`pnpm check:boundaries`(Boundary check passed.)、`git diff --check`はPASS。対象production 2 fileに
+  手書き5 flag literal / `ORDER BY CASE`が残らないことを確認。scratch server停止後、data directoryはTrashへ移動済み。
+  frozen R2 reviewはPASS・findings 0。Claudeがレビュー対象のpre-verdict exact5 SHA-256
+  `821dbdeb5cc742307ba76ab39a73040f106fa3b05a4e489a95f4999f48b10f25`とcode+test SHA-256
+  `a5e65e3489cc9a41f4b5f7bd33ea58f9610247b0e364c9a1e4c54dd5482a8c5c`を再現した
+  (verdict記録後のexact5は本書へ複製しない)。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
-| prescription draft canonical flag order dedupe | PARKED。shared `FLAG_ORDER`とDB `ORDER BY CASE`の二重実装。current clock defect後にDQL変更R2として再評価 | prescription-draft service / db readDraft live trace |
 | date-time terminal-line candidate | NOT_A_BUG。live Node 26/V8でCalendarDate/ClaimMonthはLF/CR/CRLF/U+2028/U+2029 suffixを既にRangeError拒否 | packages/date-time live runtime / MOD-011 |
 | WP-5235 EventEnvelope root input guard | SSOT_UPDATE_REQUIRED。APPROVED MOD-009がSSOT改版→review→実装を要求するため未着手 | MOD-009 / live package trace |
 | WP-4250 | FINALIZED / APPROVED(SSOT 改版のみ)。local commit `89275d2` | 下の決定記録 |

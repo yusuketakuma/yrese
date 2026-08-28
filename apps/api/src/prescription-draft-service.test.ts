@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { prescriptionDraftContentSchema } from "@yrese/contracts";
+import {
+  prescriptionDraftContentSchema,
+  prescriptionDraftFlagSchema,
+} from "@yrese/contracts";
 import {
   patientId,
   pharmacyId,
@@ -13,6 +16,7 @@ import {
 import { InMemoryAuditRepository } from "./audit-repository.js";
 import {
   InMemoryPrescriptionDraftService,
+  comparePrescriptionDraftFlags,
   normalizePrescriptionDraftContent,
   normalizePrescriptionDraftContentWithHash,
   prescriptionDraftContentHash,
@@ -62,6 +66,14 @@ function input(
 }
 
 describe("normalizePrescriptionDraftContent", () => {
+  it("uses the contract flag declaration as the canonical order", () => {
+    expect(
+      [...prescriptionDraftFlagSchema.options]
+        .reverse()
+        .sort(comparePrescriptionDraftFlags),
+    ).toEqual(prescriptionDraftFlagSchema.options);
+  });
+
   it("parses at the trust boundary exactly once and returns canonical content", () => {
     const raw = {
       prescriptionType: "OUTPATIENT",

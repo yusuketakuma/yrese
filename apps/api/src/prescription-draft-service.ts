@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import {
   PRESCRIPTION_DRAFT_MAX_VERSION,
   prescriptionDraftContentSchema,
+  prescriptionDraftFlagSchema,
   prescriptionDraftResponseSchema,
   prescriptionDraftSaveResponseSchema,
   type PrescriptionDraftContent,
@@ -54,15 +55,21 @@ export interface PrescriptionDraftService {
   save(input: PrescriptionDraftSaveInput): Promise<PrescriptionDraftSaveResult>;
 }
 
-const FLAG_ORDER = new Map(
-  [
-    "PACKAGING",
-    "HOME_CARE",
-    "NARCOTIC",
-    "PSYCHOTROPIC",
-    "LEFTOVER_ADJUSTMENT",
-  ].map((flag, index) => [flag, index] as const),
+const FLAG_ORDER: ReadonlyMap<string, number> = new Map(
+  prescriptionDraftFlagSchema.options.map(
+    (flag, index) => [flag, index] as const,
+  ),
 );
+
+export function comparePrescriptionDraftFlags(
+  left: string,
+  right: string,
+): number {
+  return (
+    (FLAG_ORDER.get(left) ?? Number.MAX_SAFE_INTEGER) -
+    (FLAG_ORDER.get(right) ?? Number.MAX_SAFE_INTEGER)
+  );
+}
 
 export function normalizePrescriptionDraftContent(
   value: unknown,
@@ -72,11 +79,7 @@ export function normalizePrescriptionDraftContent(
   const parsed = prescriptionDraftContentSchema.parse(value);
   return {
     ...parsed,
-    flags: [...parsed.flags].sort(
-      (left, right) =>
-        (FLAG_ORDER.get(left) ?? Number.MAX_SAFE_INTEGER) -
-        (FLAG_ORDER.get(right) ?? Number.MAX_SAFE_INTEGER),
-    ),
+    flags: [...parsed.flags].sort(comparePrescriptionDraftFlags),
     rows: parsed.rows.map((row) => ({ ...row })),
   };
 }
