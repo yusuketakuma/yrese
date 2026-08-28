@@ -279,22 +279,26 @@ function freezeInputsSummary(summary: CalculationInputsSummary): CalculationInpu
   if (typeof summary !== "object" || summary === null) {
     throw new RangeError("inputsSummary must be an object");
   }
-  assertArray(summary.ids, "inputsSummary.ids");
-  assertArray(summary.dates, "inputsSummary.dates");
-  assertArray(summary.masterVersions, "inputsSummary.masterVersions");
-  if (summary.ruleVersions !== undefined) {
-    assertArray(summary.ruleVersions, "inputsSummary.ruleVersions");
+  const ids = summary.ids;
+  assertArray(ids, "inputsSummary.ids");
+  const dates = summary.dates;
+  assertArray(dates, "inputsSummary.dates");
+  const masterVersions = summary.masterVersions;
+  assertArray(masterVersions, "inputsSummary.masterVersions");
+  const ruleVersions = summary.ruleVersions;
+  if (ruleVersions !== undefined) {
+    assertArray(ruleVersions, "inputsSummary.ruleVersions");
   }
-  assertDenseArray(summary.ids);
-  assertDenseArray(summary.dates);
-  assertDenseArray(summary.masterVersions);
-  assertDenseArray(summary.ruleVersions ?? []);
+  assertDenseArray(ids);
+  assertDenseArray(dates);
+  assertDenseArray(masterVersions);
+  assertDenseArray(ruleVersions ?? []);
 
   return Object.freeze({
-    ids: freezeArray(summary.ids.map(freezeTraceIdRef)),
-    dates: freezeArray(summary.dates.map(freezeTraceDateRef)),
-    masterVersions: freezeArray(summary.masterVersions.map(freezeMasterVersionRef)),
-    ruleVersions: freezeArray((summary.ruleVersions ?? []).map(freezeRuleVersionRef)),
+    ids: freezeArray(ids.map(freezeTraceIdRef)),
+    dates: freezeArray(dates.map(freezeTraceDateRef)),
+    masterVersions: freezeArray(masterVersions.map(freezeMasterVersionRef)),
+    ruleVersions: freezeArray((ruleVersions ?? []).map(freezeRuleVersionRef)),
   });
 }
 

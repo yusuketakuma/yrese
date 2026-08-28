@@ -218,6 +218,55 @@ describe("createCalculationTrace", () => {
     }
   });
 
+  it("snapshots input-summary collections once, including an absent ruleVersions", () => {
+    const cases = [
+      ["ids", inputsSummary.ids],
+      ["dates", inputsSummary.dates],
+      ["masterVersions", inputsSummary.masterVersions],
+      ["ruleVersions", inputsSummary.ruleVersions ?? []],
+      ["ruleVersions", undefined],
+    ] as const;
+
+    for (const [collection, firstRead] of cases) {
+      let reads = 0;
+      const summary = { ...inputsSummary };
+      Object.defineProperty(summary, collection, {
+        enumerable: true,
+        get() {
+          reads += 1;
+          return reads === 1 ? firstRead : [];
+        },
+      });
+
+      const trace = createCalculationTrace({
+        inputsSummary: summary,
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [claimStep()],
+      });
+
+      expect(reads).toBe(1);
+      expect(Object.hasOwn(trace.inputsSummary, collection)).toBe(true);
+      expect(trace.inputsSummary[collection]).toEqual(firstRead ?? []);
+      expect(Object.isFrozen(trace.inputsSummary[collection])).toBe(true);
+    }
+  });
+
+  it("checks every input-summary collection type before dense arrays", () => {
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary: {
+          ...inputsSummary,
+          ids: new Array<(typeof inputsSummary.ids)[number]>(1),
+          dates: "not-an-array" as unknown as CalculationInputsSummary["dates"],
+        },
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [claimStep()],
+      }),
+    ).toThrow(new RangeError("inputsSummary.dates must be an array"));
+  });
+
   it("reads each known step field once and omits unknown accessors", () => {
     const values = claimStep({
       feeItemCode: "FEE_DISPENSING_BASIC_1",
