@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 
 import {
   patientId,
@@ -14,9 +14,11 @@ import { buildAuditScopeAdvisoryLockKey } from "./audit-repository.js";
 import { applyPendingMigrations } from "./migration-runner.js";
 import { loadMigrationFiles } from "./migrations.js";
 import { createDbPool } from "./pool.js";
+import { normalizePrescriptionDraftContent } from "../prescription-draft-service.js";
 import {
   PostgresPrescriptionDraftService,
   prescriptionDraftDatabaseInvariantErrorMessage,
+  replaceChildren,
 } from "./prescription-draft-service.js";
 import { resolveTestDatabaseUrl } from "./test-database-environment.js";
 
@@ -165,6 +167,102 @@ function saveInput(
   };
 }
 
+describe("replaceChildren DML shape (DB-less / WP-5268)", () => {
+  function recordingClient(): {
+    client: PoolClient;
+    calls: { text: string; values: readonly unknown[] }[];
+  } {
+    const calls: { text: string; values: readonly unknown[] }[] = [];
+    const client = {
+      query: async (text: string, values: readonly unknown[] = []) => {
+        calls.push({ text, values });
+        return { rows: [] };
+      },
+    } as unknown as PoolClient;
+    return { client, calls };
+  }
+
+  const dmlLookup = {
+    tenantId: tenantId("tenant-dml"),
+    pharmacyId: pharmacyId("pharmacy-dml"),
+    actorId: userId("actor-dml"),
+    receptionId: receptionId("reception-dml"),
+    businessDate: "2026-08-25",
+    wallClock: "2026-08-25T01:00:00.000Z",
+  };
+
+  it("issues exactly one parameterized INSERT per child table regardless of row and flag count", async () => {
+    const draft = normalizePrescriptionDraftContent({
+      prescriptionType: "OUTPATIENT",
+      prescriptionDate: "2026-08-25",
+      defaultDays: 7,
+      flags: ["NARCOTIC", "PACKAGING"],
+      note: "合成バッチ",
+      rows: [
+        { sequence: 1, drugText: "合成薬剤A 5mg", usageText: "1日1回 朝食後", days: 7, quantityText: "7錠" },
+        { sequence: 2, drugText: "合成薬剤B 10mg", usageText: "1日2回 朝夕食後", days: null, quantityText: "14錠" },
+        { sequence: 3, drugText: "合成薬剤C 1mg", usageText: "疼痛時 頓服", days: 3, quantityText: "3錠" },
+      ],
+    });
+    const { client, calls } = recordingClient();
+    await replaceChildren(
+      client,
+      dmlLookup,
+      prescriptionId("prescription-dml-1"),
+      draft,
+    );
+
+    const deletes = calls.filter((call) => call.text.includes("DELETE FROM"));
+    const rowInserts = calls.filter((call) =>
+      call.text.includes("INSERT INTO prescription_draft_rows"),
+    );
+    const flagInserts = calls.filter((call) =>
+      call.text.includes("INSERT INTO prescription_draft_flags"),
+    );
+    expect(deletes).toHaveLength(2);
+    expect(rowInserts).toHaveLength(1);
+    expect(flagInserts).toHaveLength(1);
+    expect(
+      calls.findIndex((call) => call.text.includes("INSERT")),
+    ).toBeGreaterThan(1);
+    for (const call of [...rowInserts, ...flagInserts]) {
+      expect(call.text).not.toContain("合成");
+      expect(call.text).not.toContain("NARCOTIC");
+    }
+    expect(rowInserts[0]?.values).toEqual([
+      "tenant-dml",
+      "pharmacy-dml",
+      "prescription-dml-1",
+      [1, 2, 3],
+      ["合成薬剤A 5mg", "合成薬剤B 10mg", "合成薬剤C 1mg"],
+      ["1日1回 朝食後", "1日2回 朝夕食後", "疼痛時 頓服"],
+      [7, null, 3],
+      ["7錠", "14錠", "3錠"],
+    ]);
+    expect(flagInserts[0]?.values).toEqual([
+      "tenant-dml",
+      "pharmacy-dml",
+      "prescription-dml-1",
+      ["PACKAGING", "NARCOTIC"],
+    ]);
+  });
+
+  it("issues zero child INSERTs for empty rows and flags", async () => {
+    const { client, calls } = recordingClient();
+    await replaceChildren(client, dmlLookup, prescriptionId("prescription-dml-2"), {
+      prescriptionType: "UNSPECIFIED",
+      prescriptionDate: null,
+      defaultDays: null,
+      flags: [],
+      note: "",
+      rows: [],
+    });
+
+    expect(calls.filter((call) => call.text.includes("INSERT"))).toHaveLength(0);
+    expect(calls.filter((call) => call.text.includes("DELETE FROM"))).toHaveLength(2);
+  });
+});
+
 describePostgres(
   "PostgresPrescriptionDraftService (set TEST_DATABASE_URL to run)",
   () => {
@@ -237,6 +335,90 @@ describePostgres(
             aggregate_id: "prescription-draft-db",
           },
         ]);
+      });
+    });
+
+    it("round-trips batched multi-row, multi-flag, null-days content exactly", async () => {
+      await withMigratedSchema(async (pool) => {
+        const batchScope = {
+          ...scopedInput,
+          receptionId: receptionId("reception-draft-batch"),
+          patientId: patientId("patient-draft-batch"),
+        };
+        await seedReception(pool, {
+          tenantId: batchScope.tenantId,
+          pharmacyId: batchScope.pharmacyId,
+          patientId: batchScope.patientId,
+          receptionId: batchScope.receptionId,
+          patientNumber: "DRAFT-DB-BATCH",
+          idempotencyKey: "draft-db-idempotency-batch",
+        });
+        const service = new PostgresPrescriptionDraftService(
+          pool,
+          () => prescriptionId("prescription-draft-batch"),
+        );
+        const batchDraft = {
+          prescriptionType: "OUTPATIENT" as const,
+          prescriptionDate: "2026-08-25",
+          defaultDays: 7,
+          flags: ["PACKAGING" as const, "NARCOTIC" as const],
+          note: "合成バッチroundtrip",
+          rows: [
+            {
+              sequence: 1,
+              drugText: "合成薬剤A 5mg",
+              usageText: "1日1回 朝食後",
+              days: 7,
+              quantityText: "7錠",
+            },
+            {
+              sequence: 2,
+              drugText: "合成薬剤B 10mg",
+              usageText: "1日2回 朝夕食後",
+              days: null,
+              quantityText: "14錠",
+            },
+            {
+              sequence: 3,
+              drugText: "合成薬剤C 1mg",
+              usageText: "疼痛時 頓服",
+              days: 3,
+              quantityText: "3錠",
+            },
+          ],
+        };
+
+        await expect(
+          service.save({
+            ...batchScope,
+            actorId: userId("actor-draft-db"),
+            expectedVersion: 0,
+            wallClock: "2026-08-25T01:10:00.000Z",
+            draft: batchDraft,
+          }),
+        ).resolves.toMatchObject({
+          kind: "saved",
+          draft: { version: 1, saveDisposition: "created" },
+        });
+
+        const read = await service.get(batchScope);
+        if (read.kind !== "found") {
+          throw new Error(`expected found, got ${read.kind}`);
+        }
+        expect(read.draft.draft).toEqual(batchDraft);
+
+        const childCounts = await pool.query<{
+          readonly row_count: string;
+          readonly flag_count: string;
+        }>(
+          `SELECT
+             (SELECT count(*)::text FROM prescription_draft_rows
+               WHERE tenant_id = $1 AND pharmacy_id = $2) AS row_count,
+             (SELECT count(*)::text FROM prescription_draft_flags
+               WHERE tenant_id = $1 AND pharmacy_id = $2) AS flag_count`,
+          [batchScope.tenantId, batchScope.pharmacyId],
+        );
+        expect(childCounts.rows[0]).toEqual({ row_count: "3", flag_count: "2" });
       });
     });
 

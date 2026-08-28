@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5266 `ea01c82`まで(実測 2026-08-28) |
-| Candidate branch | WP-5266はlocal commit `ea01c82`。WP-5267は同HEADから `refactor/wp-5267-hoist-audit-static-fields` を作成済み |
+| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5267 `84a7e9a`まで(実測 2026-08-28) |
+| Candidate branch | WP-5267はlocal commit `84a7e9a`。WP-5268は同HEADから `refactor/wp-5268-batch-draft-child-inserts` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までmain/originへfast-forward済み(reflog実測)。WP-5242以降のpushは認可・実行しない |
-| Candidate scope | audit fingerprint strict-copy経路の静的field list/Setをmodule scopeへhoistし、検証順序・error・omission・digestを不変に保つexact4 code/test slice |
-| Last update | 2026-08-28 JST(WP-5266 local landing済み、WP-5267 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Candidate scope | 処方draft保存の子テーブルINSERTをunnestバッチへ置き換え、格納内容・readback・監査を不変に保つuser承認済みDML exact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5267 local landing済み、WP-5268 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5267でaudit fingerprint strict-copy経路の呼出ごとの静的Set/Object.keys/filter再計算をmodule定数へ集約する |
-| Main blocker | なし。WP-5266は`ea01c82`へlocal landing済み。WP-5267 pre-planはR2、SSOT改版・human/Oracle gate不要と判定。N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDで保留 |
-| Required verification | Set-spy Red/Green 2件、既存golden fingerprint不変、audit focused/full/typecheck、API全体、check:boundaries、exact path/diff-check、独立frozen review(Claude)、単一local commit |
+| Current critical path | WP-5268で保存1回あたり2+N+M statementのN+1書き込みを最大4 statement(非空の子テーブルごとにINSERT 1本。有効保存は3または4、両空はhelper直接入力時のみ2)へ縮め、byte-identicalな格納を保つ |
+| Main blocker | なし。WP-5267は`84a7e9a`へlocal landing済み。旧HUMAN_GATE_REQUIRED候補は2026-08-28のuser直接指示「N+1 DML候補を承認します。実装を進めてください」で解除(scope: 実装+local-CI検証のみ。production/staging DML・migration・deploy・pushは対象外) |
+| Required verification | DB-less statement-count Red/Green、実PostgreSQLでのmulti-row/multi-flag/null-days roundtrip、full API(DB込みskip 0)、API typecheck、boundaries、exact path/diff-check、独立frozen R2 review(Codex)、単一local commit |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5267である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5268である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,32 +73,41 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5267(audit static field hoist、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5266はlocal commit `ea01c82`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5268(batch draft child inserts、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5267はlocal commit `84a7e9a`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** audit fingerprintのstrict-copy経路は静的field定義から同じSetと
-  `Object.keys(...).filter(...)`結果を呼出ごとに再構築している。module定数へhoistし、
-  per-call descriptor `Map`だけを入力駆動の検証状態として残す(reuse-first)。
-- **Allowed / forbidden:** exact4は`packages/audit/src/intent-fingerprint.ts`、
-  `packages/audit/src/intent-fingerprint.test.ts`、`Plans.md`、`State.md`。
-  public API、validation/error順序と文言、undefined omission、canonical JSON/digest、contracts/API/DB、
-  APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
-- **Authority / evidence:** field定義とoptional listはmodule定数で、`copyExactRecord`はoptional membershipを
-  読むだけで順序依存がない。required listは同じ`Object.keys`順を一度だけ導出し、descriptor iterationと
-  validation順は不変。pre-planはR2(audit/data-integrity)だが値同一の内部最適化で、SSOT改版・human/Oracle gate不要と
-  Claude/Codexが判定した(agmsg 2026-08-28)。
-- **Acceptance / tests:** (A1)businessReason付きfixtureのSet-spy Redで
-  `copyExactAuditEventShape` 4構築、`snapshotAuditAppendIntentFingerprintInput` 6構築を再現し、Greenで双方0。
-  (A2)既存M1 golden fingerprintとstored-event再計算を不変維持。(A3)audit focused/full/typecheck、
-  API全体、boundaries PASS。
-- **PIA / offline:** synthetic audit fixtureだけを使い、real network、DB、患者・処方・請求data、credential、
-  production data、PHI/PII、保存、log、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `active_root_writer`はCodex、frozen audit/data-integrity reviewerはClaude。
-  shared treeは単独writer。digest、validation順/error/omission差、spy flakiness、public API差、追加path必要が判明したら停止。
-  exact4を単一`WP-5267:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
-- **Validation evidence:** baseline audit全体202 PASS。Red focusedは80 PASS / 2 expected failureでSet構築6/4を再現、
-  Green focused 82 PASS。audit全体204 PASS、audit typecheck、API全体983 PASS / 62 skip、boundaries、
-  `git diff --check`はいずれもPASS。Claudeのfrozen audit/data-integrity reviewはfindings 0でPASS。
+- **Purpose / layer:** `replaceChildren`は処方draft保存のたびに行ごと・flagごとのINSERTを発行し、保存1回で
+  2+N+M statementを要していた。子テーブルごとに1本のparameterized `INSERT ... SELECT unnest(...)`へバッチし、
+  保存を最大4 statementに縮める(DELETE 2+非空の子テーブルごとにINSERT 1本。有効draftはrows必須・
+  flags空許容のため3または4、両空はhelper直接入力時のみ2)。格納内容・readback・監査・schemaは不変。
+- **Human gate:** 本DML変更は2026-08-28のuser直接指示「N+1 DML候補を承認します。実装を進めてください」により
+  明示承認済み(agmsg記録あり)。承認scopeは実装+local-CI検証のみで、production/staging DML、migration、
+  deploy、pushは含まない。
+- **Allowed / forbidden:** exact4は`apps/api/src/db/prescription-draft-service.ts`、
+  `apps/api/src/db/prescription-draft-service.integration.test.ts`、`Plans.md`、`State.md`。
+  schema/migration、contracts、共有service、SQL文へ値を埋め込むこと、APPROVED SSOT、保護untracked 3 pathは
+  変更・参照しない。statement本文は固定でパラメータのみ可変。
+- **Authority / evidence:** migrations/000013でrow列の型・nullable daysを確認済み。typed array
+  ($4::int[]等)のunnestはstatement本文を固定したままnull込みで値を運ぶ。`replaceChildren`は
+  DB-less DML-shape testのためにexportした(internal注記あり)。
+- **Acceptance / tests:** (A1)子テーブルごとにINSERTはちょうど1本(空rows/flagsは0本)、DELETE 2本が先行。
+  (A2)statement本文に値の埋め込みなし、全行・全flagがDB順の配列パラメータで運ばれる。(A3)実PostgreSQLで
+  multi-row/multi-flag/null-daysのexact contentがroundtripし、子テーブル件数が一致する。(A4)既存の
+  version/conflict/audit/timestamp挙動を含む全statementが不変にpassする。
+- **PIA / offline:** synthetic dataのみ。実DB検証はscratch領域の使い捨てPostgreSQL 17(port 54329、
+  一時schema、実行後停止)で行い、production/staging dataへは接触しない。credential、PHI/PII、
+  external send、cache、retry/offline stateを追加しない。
+- **Roles / stop / rollback:** `active_root_writer`はClaude、frozen R2 reviewerはCodex。shared treeは単独writer。
+  格納内容・readback差、statement本文への値混入、schema変更の必要、DB検証不能が判明したら停止。
+  exact4を単一`WP-5268:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、
+  migration/DDL適用は認可外。
+- **Validation evidence:** Codex read-only pre-review notes 3点(DB-gated multi-row/null-days roundtrip必須、
+  production commentの英語invariant化、抽象化不要)を全て反映。RedはrowInserts 3≠1で期待どおり失敗。
+  GreenはDB-less 2 test PASS、使い捨て実PostgreSQL 17でintegration 11 PASS(skip 0)、
+  full API 1048 PASS(skip 0、全DB-gated実行)、API typecheck PASS、`pnpm check:boundaries` PASS
+  (Boundary check passed.、exit 0)、`git diff --check` PASS。frozen R2 technical/data-integrity/security reviewは
+  初回REQUEST_CHANGES(LOW 1件: statement数のrecord表現)をrecord-only修正で解消し、delta review PASS・findings 0。
+  最終exact4 SHA-256 `6c92a610a47847a3b74929d4b0fc5226090288b5d2036cc4643444e79a44fac9`をCodexが再現した。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|

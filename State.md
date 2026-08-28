@@ -1,35 +1,37 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5267 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5268 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5266はlocal commit `ea01c82`。current requestをWP-5267のaudit static field hoistで継続する。
-  agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは常に単独writerとする。
-  宣言競合はagmsg timestampの早い方を優先する。本WPのwriterはCodex、Claudeはfrozen audit/data-integrity reviewerでlandingまでread-onlyである。
-- **Git boundary:** current branch `refactor/wp-5267-hoist-audit-static-fields`、base `ea01c82`(WP-5266 landing)。
+- **Direction / ownership:** WP-5267はlocal commit `84a7e9a`。current requestをWP-5268のdraft child INSERTバッチ化で
+  継続する。agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは常に
+  単独writerとする。本WPのwriterはClaude、Codexはfrozen R2 reviewerでlandingまでread-onlyである。
+- **Human decision (DML gate):** 旧HUMAN_GATE_REQUIRED候補は2026-08-28のuser直接指示
+  「N+1 DML候補を承認します。実装を進めてください」で明示解除(agmsg記録済み)。承認scopeは実装+local-CI検証のみ。
+  production/staging DML、migration適用、deploy、pushは含まない。CSS予算12 KiB(12,288 bytes)の
+  human decisionは従前のまま維持する。
+- **Git boundary:** current branch `refactor/wp-5268-batch-draft-child-inserts`、base `84a7e9a`(WP-5267 landing)。
   push / mergeは行わない。
-- **Dirty ownership:** exact4は`packages/audit/src/intent-fingerprint.ts`、
-  `packages/audit/src/intent-fingerprint.test.ts`、`Plans.md`、`State.md`。
-  同じexact4だけを本local landing対象とする。
-  `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5267 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。audit fingerprint
-  strict-copy経路の静的Setとfield list導出をmodule定数へhoistし、入力駆動のdescriptor `Map`は残す。
-  public API、validation/error順序と文言、undefined omission、canonical JSON/digest、contracts/API/DB、
-  APPROVED SSOTは変更しない。N+1 child INSERT batching候補はHUMAN_GATE_REQUIREDのまま着手しない。
-- **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
-  10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
-  historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** audit field定義とoptional listは静的で、required listも同じ`Object.keys`順から一度だけ導出する。
-  descriptor iterationとvalidation順は維持し、synthetic audit fixtureだけを使い、
-  credential、production data、PHI/PII、保存、log、external send、real network、DB操作、cache、retry/offline stateを追加しない。
-- **Process gate:** pre-planはR2(audit/data-integrityだが値同一の内部最適化、DML/SSOT非該当)、human/Oracle/Product Design gate不要と
-  判定した(agmsg 2026-08-28)。digest、validation順/error/omission差、spy flakiness、public API差、追加path必要が判明したら停止する。
-- **Validation / rollback:** baseline audit全体202 PASS。Red focusedは80 PASS / 2 expected failureでSet構築6/4を再現し、
-  Green focused 82 PASS。既存M1 golden fingerprint/stored-event再計算を含むaudit全体204 PASS、audit typecheck、
-  API全体983 PASS / 62 skip、boundaries、`git diff --check`もPASS。Claude frozen audit/data-integrity reviewは
-  hash/path再現、findings 0でPASS。
-  browser、real network、DB、production runtimeは実行しない。
-  exact4の単一`WP-5267:` commit、rollbackは確定commitへの`git revert <commit>`。
+- **Dirty ownership:** exact4は`apps/api/src/db/prescription-draft-service.ts`、
+  `apps/api/src/db/prescription-draft-service.integration.test.ts`、`Plans.md`、`State.md`。
+  同じexact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、`ui-test-tools/` と
+  secondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
+- **Active plan / boundary:** CURRENT=WP-5268 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。
+  `replaceChildren`の子テーブルINSERTをunnestバッチへ置き換え、保存を最大4 statement(非空の子テーブルごとにINSERT 1本。有効保存は3または4、両空はhelper直接入力時のみ2)に縮める。
+  格納内容・readback・監査・schema・contracts、APPROVED SSOTは不変。statement本文は固定でパラメータのみ可変。
+- **Security / privacy / offline:** SQL文への値埋め込みなし(typed arrayパラメータのみ)。synthetic dataのみで、
+  実DB検証はscratchpadの使い捨てPostgreSQL 17(port 54329、一時schema、検証後停止済み)で実施し、
+  production/staging dataへ接触しない。credential、PHI/PII、保存、log、external send、cache、
+  retry/offline stateを追加しない。
+- **Process gate:** user承認済みDMLのためR2、追加human gateなし。Codex read-only pre-review notes
+  (DB-gated multi-row/null-days roundtrip、English invariant comment、抽象化不要)を全て反映済み。
+  格納内容差、statement本文への値混入、schema変更必要が判明したら停止する。
+- **Validation / rollback:** RedはDB-less statement-count testがrowInserts 3≠1で期待どおり失敗。
+  GreenはDB-less 2 PASS、使い捨て実PostgreSQL 17でintegration 11 PASS(skip 0、multi-row/multi-flag/
+  null-days exact roundtrip+子テーブル件数一致)、full API 1048 PASS(skip 0、全DB-gated実行)、
+  API typecheck PASS、boundaries PASS(Boundary check passed.)、`git diff --check` PASS。
+  frozen reviewはLOW 1件(record表現)のrecord-only解消後にdelta PASS・findings 0、最終hashをCodexが再現した。
+  exact4の単一`WP-5268:` commit、rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

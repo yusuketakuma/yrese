@@ -206,7 +206,8 @@ async function readDraft(
   }
 }
 
-async function replaceChildren(
+// Internal; exported only for the DB-less DML-shape regression test.
+export async function replaceChildren(
   client: PoolClient,
   input: PrescriptionDraftLookupInput,
   id: PrescriptionId,
@@ -223,30 +224,36 @@ async function replaceChildren(
     [input.tenantId, input.pharmacyId, id],
   );
 
-  for (const row of draft.rows) {
+  // One INSERT per child table; explicit array casts preserve nullable days.
+  if (draft.rows.length > 0) {
     await client.query(
       `INSERT INTO prescription_draft_rows (
          tenant_id, pharmacy_id, prescription_id, row_sequence,
          drug_text, usage_text, days, quantity_text
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+       )
+       SELECT $1, $2, $3, row_sequence, drug_text, usage_text, days, quantity_text
+         FROM unnest(
+           $4::int[], $5::text[], $6::text[], $7::int[], $8::text[]
+         ) AS row_values(row_sequence, drug_text, usage_text, days, quantity_text)`,
       [
         input.tenantId,
         input.pharmacyId,
         id,
-        row.sequence,
-        row.drugText,
-        row.usageText,
-        row.days,
-        row.quantityText,
+        draft.rows.map((row) => row.sequence),
+        draft.rows.map((row) => row.drugText),
+        draft.rows.map((row) => row.usageText),
+        draft.rows.map((row) => row.days),
+        draft.rows.map((row) => row.quantityText),
       ],
     );
   }
-  for (const flag of draft.flags) {
+  if (draft.flags.length > 0) {
     await client.query(
       `INSERT INTO prescription_draft_flags (
          tenant_id, pharmacy_id, prescription_id, flag
-       ) VALUES ($1, $2, $3, $4)`,
-      [input.tenantId, input.pharmacyId, id, flag],
+       )
+       SELECT $1, $2, $3, flag FROM unnest($4::text[]) AS flag_values(flag)`,
+      [input.tenantId, input.pharmacyId, id, [...draft.flags]],
     );
   }
 }
