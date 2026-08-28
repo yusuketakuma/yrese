@@ -23,7 +23,7 @@ import {
   snapshotPatientSearchResult,
   snapshotPatientSearchResultIdentity,
 } from './patient-routes.js';
-import { requirePermission } from './plugins/tenant-context.js';
+import { requirePermission, requireTenantContext } from './plugins/tenant-context.js';
 import {
   isReceptionAuditAppendError,
   isReceptionOutboxAppendError,
@@ -192,10 +192,7 @@ const callback: FastifyPluginCallback<ReceptionCreateRoutesOptions> = (
       ],
     },
     async (request, reply): Promise<ReceptionQueueEntry | void> => {
-      const tenantContext = request.tenantContext;
-      if (tenantContext === undefined) {
-        throw new Error('tenantContext is unexpectedly missing after authorization');
-      }
+      const tenantContext = requireTenantContext(request);
 
       const body = receptionCreateRequestSchema.safeParse(request.body);
       if (!body.success) {

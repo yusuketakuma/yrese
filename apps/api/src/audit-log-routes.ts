@@ -16,7 +16,7 @@ import {
 } from '@yrese/shared-kernel';
 
 import type { AuditRepository } from './audit-repository.js';
-import { requirePermission } from './plugins/tenant-context.js';
+import { requirePermission, requireTenantContext } from './plugins/tenant-context.js';
 import {
   assertRecordedAuditMatchesIntent,
   setSensitiveResponseNoStore,
@@ -81,10 +81,7 @@ const callback: FastifyPluginCallback<AuditLogRoutesOptions> = (server, options,
       preHandler: requirePermission(permissionScope('audit-log', 'read')),
     },
     async (request, reply): Promise<AuditLogResponse | void> => {
-      const tenantContext = request.tenantContext;
-      if (tenantContext === undefined) {
-        throw new Error('tenantContext is unexpectedly missing after authorization');
-      }
+      const tenantContext = requireTenantContext(request);
 
       const query = auditLogQuerySchema.safeParse(request.query);
       if (!query.success) {

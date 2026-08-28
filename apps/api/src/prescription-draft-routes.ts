@@ -17,7 +17,10 @@ import {
   receptionId,
 } from "@yrese/shared-kernel";
 
-import { requirePermission } from "./plugins/tenant-context.js";
+import {
+  requirePermission,
+  requireTenantContext,
+} from "./plugins/tenant-context.js";
 import type { PrescriptionDraftService } from "./prescription-draft-service.js";
 
 export interface PrescriptionDraftRoutesOptions {
@@ -129,12 +132,7 @@ const callback: FastifyPluginCallback<PrescriptionDraftRoutesOptions> = (
       ],
     },
     async (request, reply) => {
-      const tenantContext = request.tenantContext;
-      if (tenantContext === undefined) {
-        throw new Error(
-          "tenantContext is unexpectedly missing after authorization",
-        );
-      }
+      const tenantContext = requireTenantContext(request);
 
       const params = prescriptionDraftParamsSchema.safeParse(request.params);
       const query = prescriptionDraftQuerySchema.safeParse(request.query);
@@ -167,12 +165,7 @@ const callback: FastifyPluginCallback<PrescriptionDraftRoutesOptions> = (
       ],
     },
     async (request, reply) => {
-      const tenantContext = request.tenantContext;
-      if (tenantContext === undefined) {
-        throw new Error(
-          "tenantContext is unexpectedly missing after authorization",
-        );
-      }
+      const tenantContext = requireTenantContext(request);
 
       const params = prescriptionDraftParamsSchema.safeParse(request.params);
       const body = prescriptionDraftSaveRequestSchema.safeParse(request.body);

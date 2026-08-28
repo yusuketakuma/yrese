@@ -1,35 +1,33 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5262 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5263 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5261はlocal commit `c6c473c`。current requestをWP-5262のJST Intlフォーマッタ
-  module定数化で継続する。agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、
-  shared treeは常に単独writerとする。宣言競合はagmsg timestampの早い方を優先する。
-  本WPのwriterはClaude、Codexはfrozen R2 reviewerでlandingまでread-onlyである。
-- **Git boundary:** current branch `refactor/wp-5262-hoist-intl-formatters`、base
-  `c6c473c250cbf351f51e80e3e24db09759fae04e`。push / mergeは行わない。
-- **Dirty ownership:** exact6は`apps/web/app/components/patient-header.tsx`、
-  `apps/web/app/patients/patient-search.test.tsx`、`apps/web/app/admin/admin-dashboard.tsx`、
-  `apps/web/app/admin/admin-dashboard.test.tsx`、`Plans.md`、`State.md`。同じexact6だけを本local landing対象とする。
+- **Direction / ownership:** WP-5262はlocal commit `ded58dd`。current requestをWP-5263のtenant context guard共通化で継続する。
+  agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは常に単独writerとする。
+  宣言競合はagmsg timestampの早い方を優先する。本WPのwriterはCodex、Claudeはfreezeまでread-onlyである。
+- **Git boundary:** current branch `refactor/wp-5263-dedupe-tenant-context-guard`、base
+  `ded58ddf93bdb212f0ec1a4381abe0a9d995b61c`。push / mergeは行わない。
+- **Dirty ownership:** exact11は`apps/api/src/plugins/tenant-context.ts`、新規`apps/api/src/plugins/tenant-context.test.ts`、
+  `apps/api/src/audit-log-routes.ts`、`apps/api/src/operations-routes.ts`、`apps/api/src/patient-routes.ts`、
+  `apps/api/src/prescription-draft-routes.ts`、`apps/api/src/reception-create-routes.ts`、
+  `apps/api/src/reception-queue-routes.ts`、`apps/api/src/server.ts`、`Plans.md`、`State.md`。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5262 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。呼び出しごとの
-  JST `Intl.DateTimeFormat`構築をmodule定数へ引き上げ、locale/options/出力をbyte-identicalに保つ。
-  共有helper化はqueue済みWP-5214の領分のため行わない。UI copy/DOM/ARIA/CSS、contracts/API/DB、APPROVED SSOTは変更しない。
+- **Active plan / boundary:** CURRENT=WP-5263 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。7 route fileの同一
+  tenant context guard 10件を既存pluginの1 helperへ集約する。error/throw順序、permission、contract/schema/DB/DMLは変更しない。
   N+1 child INSERT batching候補はHUMAN_GATE_REQUIREDのまま着手しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** 満年齢計算のJST暦日規律(WP-4053整合)とadmin時刻表示のlocale/timezoneを
-  不変に保つ。synthetic testだけを使い、credential、production data、PHI/PII、保存、log、external send、
+- **Security / privacy / offline:** post-authorization context欠落をdefault/fallbackなしで同じErrorへfail-closedにする。
+  synthetic testだけを使い、credential、production data、PHI/PII、保存、log、external send、
   real network、DB操作、cache、retry/offline stateを追加しない。
-- **Process gate:** pre-planは患者年齢表示に触れるためR2、出力不変を条件にSSOT改版・human/Oracle gate不要と
-  判定した(agmsg 2026-08-28、Codex依頼とclaim ACK記録済み)。出力差、brittleなglobal spy干渉、追加path必要、
-  visual/contract挙動差が判明したら停止する。
-- **Validation / rollback:** Redはconstructor-spy 2件(patient-search / admin-dashboard)が呼び出しごと構築で
-  期待どおり失敗。Greenはfocused 115 PASS、web typecheck PASS、web全体752 PASS(新規2 test込み)。
-  既存の満年齢境界test(誕生日前後・当日)は無変更のまま維持し、admin時刻表示は新規testが独立フォーマッタ導出の期待文字列でHTML出力を明示固定する(Codex LOW finding反映)。frozen R2 re-reviewは両hashをCodexが再現しPASS、findings 0。
-  browser、real network、DB、production runtimeは実行しない。exact6の単一`WP-5262:` commit、
+- **Process gate:** Claude pre-planはauth-adjacent R2、10箇所の機械置換としてSSOT/human/Oracle gate不要と判定した。
+  非機械的route変更、error/throw順序差、fallback、cycle、追加path、test/contract/DB変更が必要なら停止する。
+- **Validation / rollback:** Codex claimとClaude no-overlap/pre-plan ACKはagmsg記録済み。移動前focused 4 suiteは344 PASS。
+  Redはhelper test 1件FAIL、Greenはhelper 1、focused 5 suite 345、API全体981 / DB-gated 62 skip、typecheck、boundary、diff-check PASS。
+  raw error literalはhelper 1件、route call 10件を確認。frozen R2 reviewはPASS、findings 0。record-only refreeze後にlocal landingする。
+  browser、real network、DB、production runtimeは実行しない。exact11の単一`WP-5263:` commit、
   rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。

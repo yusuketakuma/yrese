@@ -17,6 +17,7 @@ import type { PatientSearchCursorCodec } from './patient-search-cursor.js';
 import { patientRoutes } from './patient-routes.js';
 import {
   requirePermission,
+  requireTenantContext,
   tenantContextPlugin,
   type TenantContextMode,
 } from './plugins/tenant-context.js';
@@ -171,10 +172,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       preHandler: requirePermission(permissionScope('tenant', 'read')),
     },
     async (request): Promise<WhoamiResponse> => {
-      const tenantContext = request.tenantContext;
-      if (tenantContext === undefined) {
-        throw new Error('tenantContext is unexpectedly missing after authorization');
-      }
+      const tenantContext = requireTenantContext(request);
 
       return whoamiResponseSchema.parse({
         tenantId: tenantContext.tenantId,

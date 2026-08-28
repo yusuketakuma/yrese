@@ -25,7 +25,7 @@ import type {
   PatientSearchCursor,
   PatientSearchPage,
 } from './patient-repository.js';
-import { requirePermission } from './plugins/tenant-context.js';
+import { requirePermission, requireTenantContext } from './plugins/tenant-context.js';
 import {
   assertRecordedAuditMatchesIntent,
   readOwnEnumerableDataProperty,
@@ -187,10 +187,7 @@ const callback: FastifyPluginCallback<PatientRoutesOptions> = (server, options, 
       preHandler: requirePermission(permissionScope('patient', 'read')),
     },
     async (request, reply): Promise<PatientSearchResponse | void> => {
-      const tenantContext = request.tenantContext;
-      if (tenantContext === undefined) {
-        throw new Error('tenantContext is unexpectedly missing after authorization');
-      }
+      const tenantContext = requireTenantContext(request);
 
       const query = patientSearchQuerySchema.safeParse(request.query);
       if (!query.success) {
@@ -366,10 +363,7 @@ const callback: FastifyPluginCallback<PatientRoutesOptions> = (server, options, 
       preHandler: requirePermission(permissionScope('patient', 'read')),
     },
     async (request, reply): Promise<PatientSearchResult | void> => {
-      const tenantContext = request.tenantContext;
-      if (tenantContext === undefined) {
-        throw new Error('tenantContext is unexpectedly missing after authorization');
-      }
+      const tenantContext = requireTenantContext(request);
 
       const params = patientGetParamsSchema.safeParse(request.params);
       if (!params.success) {

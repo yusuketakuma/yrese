@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5261 `c6c473c`まで(実測 2026-08-28) |
-| Candidate branch | WP-5261はlocal commit `c6c473c`。WP-5262は同HEADから `refactor/wp-5262-hoist-intl-formatters` を作成済み |
+| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5262 `ded58dd`まで(実測 2026-08-28) |
+| Candidate branch | WP-5262はlocal commit `ded58dd`。WP-5263は同HEADから `refactor/wp-5263-dedupe-tenant-context-guard` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までmain/originへfast-forward済み(reflog実測)。WP-5242以降のpushは認可・実行しない |
-| Candidate scope | 呼び出しごとに構築していたJST `Intl.DateTimeFormat`をmodule定数へ引き上げ、出力・locale・timezoneを不変に保つexact2 code slice(patient-header / admin-dashboard) |
-| Last update | 2026-08-28 JST(WP-5261 local landing済み、WP-5262 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Candidate scope | 7 route fileの10個の同一tenant context fail-closed guardを既存tenant-context pluginの1 helperへ集約するexact9 code/test slice |
+| Last update | 2026-08-28 JST(WP-5262 local landing済み、WP-5263 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5262で行レンダーごとのIntlフォーマッタ構築を排し、満年齢表示とadmin時刻表示の出力を不変に保つ |
-| Main blocker | なし。WP-5261は`c6c473c`へlocal landing済み。WP-5262 pre-planはR2(患者年齢表示のため)、SSOT改版・human gate不要と判定。N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDで保留 |
-| Required verification | constructor-spy Red/Green、既存出力・JST境界testの維持、web typecheck、web全体、exact path/diff-check、独立frozen R2 review(Codex)、単一local commit |
+| Current critical path | WP-5263でpost-authorization tenant contextのfail-closed取得を1実装へ集約し、auth/error順序を不変に保つ |
+| Main blocker | なし。WP-5263は全local gateとfrozen R2 review PASS(findings 0)を確認し、local landing待ち。N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDで保留 |
+| Required verification | helper 2 branch Red/Green、10箇所の機械置換、focused/full API、API typecheck、boundary、exact path/diff-check、独立frozen R2 review(Claude)、単一local commit |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5262である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5263である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,30 +73,32 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5262(hoist JST Intl formatters、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5261はlocal commit `c6c473c`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5263(dedupe tenant context guard、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5262はlocal commit `ded58dd`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** `computeAgeYears`(患者行レンダーごと)と`formatInstant`(admin値ごと)が呼び出しの
-  たびにJST `Intl.DateTimeFormat`を構築している。localeとoptionsをbyte-identicalに保ったままmodule定数へ
-  引き上げ、出力を不変にして構築コストを排する。共有helper化はWP-5214(JST日時共通化)がqueueにあるため行わない。
-- **Allowed / forbidden:** exact6は`apps/web/app/components/patient-header.tsx`、
-  `apps/web/app/patients/patient-search.test.tsx`、`apps/web/app/admin/admin-dashboard.tsx`、
-  `apps/web/app/admin/admin-dashboard.test.tsx`、`Plans.md`、`State.md`。出力文字列、locale、timezone、
-  UI copy/DOM/ARIA/CSS、contracts/API/network/DB、APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
-- **Authority / evidence:** 呼び出し箇所はlive rgで確認済み(computeAgeYears production 5箇所、行レンダー含む。
-  formatInstant render投影3箇所)。Intl.DateTimeFormatインスタンスはformat()に対してstatelessで共有安全。
-  pre-planは患者年齢表示に触れるためR2、出力不変を条件にSSOT改版・human/Oracle gate不要と判定した(agmsg 2026-08-28)。
-- **Acceptance / tests:** (A1)constructor-spy Red testで呼び出しを繰り返してもIntl.DateTimeFormat構築0を固定
-  (現行は呼び出しごとに構築されRed)。(A2)既存の満年齢境界test(誕生日前後・当日)を不変維持し、admin時刻表示は新規testが独立フォーマッタ導出の期待文字列でHTML出力を明示的に固定する。
-  (A3)出力文字列・JST境界・locale不変。(A4)web typecheckとweb全体suite PASS。
-- **PIA / offline:** synthetic dataだけを使い、real network、DB、患者・処方・請求data、credential、
+- **Purpose / layer:** authorization通過後の`request.tenantContext` undefined guardが7 route fileへ10回重複している。
+  全対象が既にimportする`plugins/tenant-context.ts`へ`requireTenantContext`を1件追加し、同一errorとfail-closed取得を一元化する。
+- **Allowed / forbidden:** exact11は`apps/api/src/plugins/tenant-context.ts`、新規`apps/api/src/plugins/tenant-context.test.ts`、
+  `apps/api/src/audit-log-routes.ts`、`apps/api/src/operations-routes.ts`、`apps/api/src/patient-routes.ts`、
+  `apps/api/src/prescription-draft-routes.ts`、`apps/api/src/reception-create-routes.ts`、
+  `apps/api/src/reception-queue-routes.ts`、`apps/api/src/server.ts`、`Plans.md`、`State.md`。
+  permission hook、route/repository/clock順序、error文字列、contract/schema/DB/DML、APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
+- **Authority / evidence:** live `rg`で同一runtime error文字列10件(audit 1、operations 2、draft 2、patient 2、queue 1、create 1、whoami 1)を確認。
+  全routeは既にtenant-context pluginをimportし、pluginはrouteをimportしないため新規依存/cycleを作らない。
+  Claude pre-planはauth-adjacent R2、同一guardの機械置換としてSSOT改版・human/Oracle gate不要と判定した。
+- **Acceptance / tests:** (A1)helperはcontext有りで同一object参照を返し、undefinedで既存のexact errorをthrowする。
+  (A2)10箇所はguard blockから1行helper callへの置換だけで、周辺順序を変えない。(A3)default/fallbackを作らず、permission/error/PHI挙動を不変にする。
+  (A4)focused 4 suite、API全体、API typecheck、boundary、diff/path gateを通す。
+- **PIA / offline:** synthetic testだけを使い、real network、DB、患者・処方・請求data、credential、
   production data、PHI/PII、保存、log、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `active_root_writer`はClaude、frozen R2 reviewerはCodex。shared treeは単独writer。
-  出力差、brittleなglobal spy干渉、追加path必要、visual/contract挙動差が判明したら停止。
-  exact6を単一`WP-5262:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
-- **Validation evidence:** Codexの依頼とclaim ACK、caller evidenceをagmsgへ記録済み。
-  Redはconstructor-spy 2件が期待どおり失敗(呼び出しごと構築)。Codex frozen reviewのLOW finding(admin出力未固定)を受け、admin testへ独立フォーマッタ導出のJST出力assertionを追加した。Greenはfocused patient-search+admin 115 PASS、
-  web typecheck PASS、web全体752 PASS(新規2 test込み)。frozen R2 reviewは初回REQUEST_CHANGES(LOW 1件: admin出力未固定)を同一freeze内で解消し、再レビューで両hash(exact6 3aa0e08b / code+test 14af6dd4)をCodexが再現してPASS、findings 0。
+- **Roles / stop / rollback:** `active_root_writer`はCodex、frozen R2 reviewerはClaude。shared treeは単独writer。
+  非機械的route変更、error/throw順序差、fallback、cycle、追加path、test/contract/DB変更が必要なら停止。
+  exact11を単一`WP-5263:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
+- **Validation evidence:** Codex claimとClaude no-overlap/pre-plan ACKをagmsgへ記録済み。
+  移動前focused `server`/`error-contract`/`operations-routes`/`prescription-draft-routes`は344 PASS。
+  Redは新規helper test 1件が未実装exportでFAIL。Greenはhelper 1、focused 5 suite 345、API全体981 PASS / DB-gated 62 SKIP、
+  API typecheck、boundary、`git diff --check` PASS。production raw error literalはhelper 1件、route callは10件。
+  frozen technical/auth/security/privacy/data-integrity reviewはPASS、findings 0。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
@@ -170,6 +172,18 @@ BUG 群は READY へ昇格しうる候補であり、昇格前は claim しな�
 であり、本節はその index にとどめる(`DEVELOPMENT_POLICY.md §8 Record policy`)。
 UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §17.1 に
 一元化する(本節と二重登録しない)。
+
+### WP-5262 — Hoist JST Intl formatters(2026-08-28)
+
+- **Status:** `COMMITTED_LOCAL ded58dd / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** patient age/admin時刻の既存`Intl.DateTimeFormat`を各moduleで1回だけ構築。locale/timezone/output、UI/contract/DBは不変。
+- **Gate:** Red 2件、focused 115、Web全体752、typecheck、post-commit focused 115 PASS。LOW test gap解消後のfrozen R2 reviewはfinding 0。
+
+### WP-5261 — Reception create route extraction(2026-08-28)
+
+- **Status:** `COMMITTED_LOCAL c6c473c / PUSH_NOT_REQUESTED / NOT_MERGED`。
+- **Scope:** `POST /reception`とcreate専用helper/constantを専用pluginへ移動。auth/idempotency/audit/outbox/rollback、contract/schema/DB/DMLは不変。
+- **Gate:** focused 336、API全体980 / DB-gated 62 skip、typecheck、boundary、post-commit focused 336 PASS。frozen R2 reviewはfinding 0。
 
 ### WP-5260 — Reception queue route extraction(2026-08-28)
 

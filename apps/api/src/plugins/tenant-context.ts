@@ -102,6 +102,14 @@ export const tenantContextPlugin = fp(tenantContextPluginCallback, {
   name: 'tenant-context',
 });
 
+export function requireTenantContext(request: FastifyRequest): TenantContext {
+  const tenantContext = request.tenantContext;
+  if (tenantContext === undefined) {
+    throw new Error('tenantContext is unexpectedly missing after authorization');
+  }
+  return tenantContext;
+}
+
 function sendAuthorizationError(reply: FastifyReply) {
   return reply.code(403).send(
     errorResponseSchema.parse({

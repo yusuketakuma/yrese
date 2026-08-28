@@ -15,7 +15,10 @@ import {
 } from "@yrese/shared-kernel";
 
 import type { OperationsReadService } from "./operations-service.js";
-import { requirePermission } from "./plugins/tenant-context.js";
+import {
+  requirePermission,
+  requireTenantContext,
+} from "./plugins/tenant-context.js";
 
 /**
  * BE-1: 運用状態の読み取りルート。
@@ -72,12 +75,7 @@ const callback: FastifyPluginCallback<OperationsRoutesOptions> = (
       preHandler: [requirePermission(permissionScope("sync", "read"))],
     },
     async (request) => {
-      const tenantContext = request.tenantContext;
-      if (tenantContext === undefined) {
-        throw new Error(
-          "tenantContext is unexpectedly missing after authorization",
-        );
-      }
+      const tenantContext = requireTenantContext(request);
 
       const summary = await readOperationsState(
         () =>
@@ -103,12 +101,7 @@ const callback: FastifyPluginCallback<OperationsRoutesOptions> = (
       preHandler: [requirePermission(permissionScope("reception", "read"))],
     },
     async (request, reply) => {
-      const tenantContext = request.tenantContext;
-      if (tenantContext === undefined) {
-        throw new Error(
-          "tenantContext is unexpectedly missing after authorization",
-        );
-      }
+      const tenantContext = requireTenantContext(request);
 
       const query = receptionSummaryQuerySchema.safeParse(request.query);
       if (!query.success) {
