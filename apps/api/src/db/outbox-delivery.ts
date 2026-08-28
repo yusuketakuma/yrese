@@ -1,5 +1,7 @@
 import type { Pool, PoolClient } from 'pg';
 
+import { snapshotDatabaseInstant } from '../instant.js';
+
 /**
  * Transactional outbox 配送 worker(WP-6003、Plans.md §16 Track A)。
  *
@@ -121,7 +123,10 @@ function toPendingEvent(row: OutboxRow): OutboxPendingEvent {
     aggregateId: row.aggregate_id,
     auditEventId: row.audit_event_id,
     payload: row.payload,
-    createdAt: row.created_at.toISOString(),
+    createdAt: snapshotDatabaseInstant(
+      row.created_at,
+      'Outbox delivery database returned an invalid created_at instant',
+    ),
     sequenceNumber: BigInt(row.sequence_number),
   });
 }

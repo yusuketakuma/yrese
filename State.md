@@ -1,30 +1,30 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5273 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5274 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5272はlocal commit `0421b67`。current requestをWP-5273のwebhook signing
-  clock hardeningで継続する。agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、
-  shared treeは常に単独writerとする。本WPのwriterはCodex、Claudeはfrozen reviewerでlandingまでread-onlyである。
-- **Git boundary:** local `main` = `b27b407`(user指示の17 commit ref-only FF)。current branch
-  `refactor/wp-5273-harden-webhook-clock`、base `0421b67`(WP-5272 landing)。push / mergeは行わない。
-- **Dirty ownership:** exact4は`apps/api/src/webhook-partner-sink.ts`、
-  `apps/api/src/webhook-partner-sink.test.ts`、`Plans.md`、`State.md`。同じexact4だけを本local landing対象とする。
+- **Direction / ownership:** WP-5273はlocal commit `81da457`。current requestをWP-5274のdatabase instant helper
+  収斂で継続する。agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは
+  常に単独writerとする。本WPのwriterはClaude、Codexはfrozen reviewerでlandingまでread-onlyである。
+  reception wallClock意味論はconformance questionとしてhuman/SSOT明確化待ちでpark。
+- **Git boundary:** local `main` = `b27b407`。current branch `refactor/wp-5274-reuse-database-instant`、
+  base `81da457`(WP-5273 landing)。push / mergeは行わない。
+- **Dirty ownership:** exact6は`apps/api/src/db/eligibility-snapshot-repository.ts`、同integration test、
+  `apps/api/src/db/outbox-delivery.ts`、同integration test、`Plans.md`、`State.md`。同じexact6だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5273 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。
-  webhook HMACのtimestamp authorityを既存`snapshotWallClock`へ収束し、valid header/body/signature bytesを維持したまま
-  clock throw非echo、own method 0、invalid Date/prototype spoof拒否をfetch前に固定する。
-  reception-create clockはMOD-009/WP-4050 conformanceとBUG-4264 root causeのclarificationまでparkする。
+- **Active plan / boundary:** CURRENT=WP-5274 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。
+  row instant変換2箇所を`snapshotDatabaseInstant`へ収斂。SQL/query text、genuine driver Date出力、
+  contracts/API/DML、APPROVED SSOTは不変。string変種の正規化とhostile Dateの不読化は宣言済み意図的差分。
 - **Human decision:** CSS予算12 KiBのhuman decisionは従前どおり維持。WP-5268のDML user承認はlanded記録として保持。
-- **Security / privacy / offline:** timestampは外部送信署名bytesへ入るためsecurity/data-integrity境界。synthetic event/secretと
-  mock fetchのみを使い、real network、DB、PHI/PII、production data、credential、cache、retry/offline stateを変更しない。
-- **Process gate:** APPROVED API-012 §2のHMAC `timestamp.body`は不変。pre-planはR2 signature/security/data-integrity、
-  human/Oracle gate不要(agmsg 2026-08-28 no-overlap ACK済み)。valid HMAC/header/body差、delivery reason変更、
-  reception path変更、追加path必要で停止する。
-- **Validation / rollback:** baseline focused 3 PASS。Redはown method実行/raw clock detail反射で2 FAIL / 3 PASS、
-  Green/final focused 5 PASS。full API 990 PASS / 63 DB-gated skip、API typecheck、boundaries、diff-checkはPASS。
-  Claude frozen R2 reviewはPASS・findings 0、pre-verdict exact4/code+test hash再現済み。
-  exact4の単一`WP-5273:` commit、rollbackは確定commitへの`git revert <commit>`。
+  reception wallClock conformance questionはhuman/SSOT待ちのopen item。
+- **Security / privacy / offline:** hostile Date/driver変種からのraw詳細伝播とownメソッド実行を排する純hardening/reuse。
+  synthetic row/sinkのみで、credential、production data、PHI/PII、保存、log、external send、real network、
+  DB操作、cache、retry/offline stateを追加しない。
+- **Process gate:** pre-planはR2、SSOT改版・human/Oracle gate不要(agmsg 2026-08-28、Codex no-overlap ACK済み)。
+  genuine Date出力差、SQL text変更、追加path必要が判明したら停止する。
+- **Validation / rollback:** RedはDB-less 4件が期待どおり失敗(sentinel raw throw、string TypeError、
+  outbox failed遷移×2)。GreenはDB-less 4 PASS、full API 994 PASS / 63 DB-gated skip、API typecheck PASS、
+  boundaries PASS、`git diff --check` PASS。exact6の単一`WP-5274:` commit、rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

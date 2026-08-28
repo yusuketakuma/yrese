@@ -1,6 +1,7 @@
 import type { Pool } from 'pg';
 
 import { CalendarDate } from '@yrese/date-time';
+import { snapshotDatabaseInstant } from '../instant.js';
 import {
   allowsFinalCalculationForEligibility,
   allowsProvisionalCalculationForEligibility,
@@ -94,7 +95,10 @@ function toSnapshot(row: SnapshotRow): EligibilitySnapshot {
     patientId: row.patient_id,
     verifiedMethod: row.verified_method,
     state: row.state,
-    verifiedAt: row.verified_at.toISOString(),
+    verifiedAt: snapshotDatabaseInstant(
+      row.verified_at,
+      'Eligibility snapshot database returned an invalid verified_at instant',
+    ),
     validFrom: row.valid_from,
     validTo: row.valid_to,
   });

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Pool } from 'pg';
 
 import {
@@ -13,6 +13,60 @@ import { createDbPool } from './pool.js';
 import { resolveTestDatabaseUrl } from './test-database-environment.js';
 
 /** WP-6303/6304: 受付単位の資格確認スナップショットの統合テスト(synthetic のみ、外部 IF なし)。 */
+describe('eligibility snapshot instant mapping (DB-less / WP-5274)', () => {
+  function poolReturning(row: Record<string, unknown>): Pool {
+    return {
+      query: async () => ({ rows: [row] }),
+    } as unknown as Pool;
+  }
+
+  const baseRow = {
+    snapshot_id: 'snap-dbless-1',
+    patient_id: 'patient-dbless-1',
+    verified_method: 'MYNA_ONLINE',
+    state: 'VERIFIED_MYNA',
+    valid_from: '2026-08-24',
+    valid_to: null,
+  };
+
+  it('maps verified_at without reading an own Date method', async () => {
+    const clock = new Date('2026-08-24T01:00:00.000Z');
+    const ownToISOStringRead = vi.fn(() => {
+      throw new Error('raw eligibility clock secret');
+    });
+    Object.defineProperty(clock, 'toISOString', {
+      configurable: true,
+      get: ownToISOStringRead,
+    });
+    const repository = new PostgresEligibilitySnapshotRepository(
+      poolReturning({ ...baseRow, verified_at: clock }),
+    );
+
+    const eligibility = await repository.receptionEligibility(
+      { tenantId: 'tenant-dbless', pharmacyId: 'pharmacy-dbless' },
+      'reception-dbless-1',
+      '2026-08-24',
+    );
+
+    expect(eligibility.state).toBe('VERIFIED_MYNA');
+    expect(ownToISOStringRead).not.toHaveBeenCalled();
+  });
+
+  it('normalizes a string driver instant instead of throwing raw', async () => {
+    const repository = new PostgresEligibilitySnapshotRepository(
+      poolReturning({ ...baseRow, verified_at: '2026-08-24T01:00:00.000Z' }),
+    );
+
+    const eligibility = await repository.receptionEligibility(
+      { tenantId: 'tenant-dbless', pharmacyId: 'pharmacy-dbless' },
+      'reception-dbless-1',
+      '2026-08-24',
+    );
+
+    expect(eligibility.state).toBe('VERIFIED_MYNA');
+  });
+});
+
 const testDatabaseUrl = resolveTestDatabaseUrl(process.env);
 const describePostgres =
   testDatabaseUrl === undefined ? describe.skip : describe;

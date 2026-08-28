@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `b27b407fb523119545b8b457fbb918a5e6a98233`(user指示によるWP-5254..5270 17 commit ref-only FF済み)、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5272 `0421b67`まで(実測 2026-08-28) |
-| Candidate branch | WP-5272はlocal commit `0421b67`。WP-5273は同HEADから `refactor/wp-5273-harden-webhook-clock` を作成済み |
+| Review base | local `main` = `b27b407fb523119545b8b457fbb918a5e6a98233`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5273 `81da457`まで(実測 2026-08-28) |
+| Candidate branch | WP-5273はlocal commit `81da457`。WP-5274は同HEADから `refactor/wp-5274-reuse-database-instant` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までoriginへ反映済み。user指示でWP-5254〜WP-5270の17 commitをlocal main `b27b407`へref-only fast-forward済み。origin pushは実行しない |
-| Candidate scope | webhook署名timestampのraw clock実行を既存`snapshotWallClock`へ収束し、valid HMAC bytesを維持したままown method実行・raw error反射・prototype spoofを閉じるexact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5272 local landing済み、WP-5273 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Candidate scope | DB行instant変換2箇所を既存`snapshotDatabaseInstant`へ収斂し、genuine driver Dateの出力を不変に保つexact4 code/test slice |
+| Last update | 2026-08-28 JST(WP-5273 local landing済み、WP-5274 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5273で外部送信HMACのtimestamp authorityを既存wall-clock境界へ統一する |
-| Main blocker | current WPにblockerなし。reception-createのraw clock 2箇所は、MOD-009のcommand-start単一snapshotとWP-4050の別audit clock設計が衝突し、単純hardeningではBUG-4264 orphanを残すためhuman/SSOT clarificationまでpark。DB行instant helper未使用2箇所もpark |
-| Required verification | webhook focused Red/Green、valid timestamp/HMAC bytes、clock throw非echo、invalid Date/prototype spoof fetch 0、full API、API typecheck、boundaries、exact path/diff-check、独立frozen R2 review(Claude)、単一local commit |
+| Current critical path | WP-5274でeligibility/outboxのrow instant変換をhardened helperへ揃え、own Date method実行とraw driver変種throwを排する |
+| Main blocker | なし。WP-5273は`81da457`へlocal landing済み。reception wallClock意味論(MOD-009文字通り vs 実装読み、BUG-4264文脈)はhuman/SSOT明確化待ちでpark |
+| Required verification | DB-less fake-pool Red/Green 4件(own accessor不読・string正規化×2 file)、full API、API typecheck、boundaries、exact path/diff-check、独立frozen review(Codex)、単一local commit |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5273である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5274である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,37 +73,36 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5273(harden webhook signing clock、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5272はlocal commit `0421b67`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
-reception-create clockはconformance/human clarification、DB行instant helper未使用2箇所は後続candidateとしてparkする。
+**CURRENT は WP-5274(reuse database instant snapshot、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5273はlocal commit `81da457`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+reception wallClock意味論(acceptedAtIso再利用 vs rollback対応別サンプル、MOD-009 §4.1とBUG-4264文脈)は
+conformance questionとしてhuman/SSOT明確化待ちでparkする。
 
-- **Purpose / layer:** `WebhookPartnerSink.publish`は署名対象`timestamp.body`のtimestampをraw
-  `this.now().toISOString()`で作り、injected clockのthrow detailを反射し、genuine Dateのown methodを実行し、
-  `Date.prototype` spoofを受理し得た。既存`snapshotWallClock`へ収束してauthentic Date brand + intrinsic
-  ISO snapshotを使い、valid timestamp/header/HMAC bytesは不変、invalid authorityはfetch前の固定非echo errorへ倒す。
-- **Allowed / forbidden:** exact4は`apps/api/src/webhook-partner-sink.ts`、
-  `apps/api/src/webhook-partner-sink.test.ts`、`Plans.md`、`State.md`。
-  API-012のheader/body/signature、`WebhookDeliveryError` reason、timeout/network/non-2xx semantics、contracts、DB/DML、
-  reception-create、APPROVED SSOT、保護untracked 3 pathは変更・参照しない。clock failure errorの固定化は意図的差分。
-- **Authority / evidence:** APPROVED API-012 §2はHMAC-SHA256 over `timestamp.body`を正本とする。
-  `route-invariants.ts`の`snapshotWallClock`は同packageのaudit/health/PHI routeで実証済みで、新helperを作らず再利用する。
-  reception-createのraw 2箇所はMOD-009 literal semanticsとWP-4050実装史が衝突し、単純helper化では
-  BUG-4264 orphanを残すため本WPから除外した。pre-planはR2 signature/security/data-integrity、human/Oracle gate不要。
-- **Acceptance / tests:** (A1)clock throw detailは固定read errorへ正規化しraw sentinel非echo、fetch 0。
-  (A2)valid genuine Dateのown `toISOString` accessorを0回のままcanonical timestampをheader/HMACへexact使用。
-  (A3)invalid Dateと`Date.prototype` spoofを固定invariant errorで拒否し、spoof method 0、fetch 0。
-  (A4)既存valid signature、non-2xx/network/timeout、constructor guardとfull API/typecheck/boundariesを維持。
-- **PIA / offline:** synthetic event/secretとmock fetchのみ。real network、DB、PHI/PII、production data、credential、
-  cache、retry/offline stateを追加・変更しない。
-- **Roles / stop / rollback:** `active_root_writer`はCodex、frozen R2 reviewerはClaude。shared treeは単独writer。
-  valid HMAC/header/body差、delivery reason変更、reception path変更、追加path必要で停止。
-  exact4を単一`WP-5273:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
-- **Validation evidence:** baseline focused 3 PASS。Redはown clock method実行/raw throw反射で2 FAIL / 3 PASS、
-  Green/final focused 5 PASS。full API 990 PASS / 63 DB-gated skip、API typecheck、`pnpm check:boundaries`
-  (Boundary check passed.)、`git diff --check`はPASS。Claude frozen R2 reviewはPASS・findings 0。
-  reviewerはpre-verdict exact4 SHA-256 `c4668c70552bafafff816de25a2801a7b8fc866daf0bb70c5ccf26e7ebe8dd91`と
-  code+test SHA-256 `0b7a318f9d7ce4125e34a96f40112cdcc00f94f765377cacd5b3136d3ba6ba70`を再現した
-  (verdict記録後のexact4は本書へ複製しない)。
+- **Purpose / layer:** eligibility-snapshot-repository(verified_at)とoutbox-delivery(created_at)のrow instant
+  変換がown `.toISOString()`直呼びで、hardened `snapshotDatabaseInstant`(brand check+intrinsic dispatch+
+  string変種正規化)をバイパスしていた。兄弟db fileと同じhelperへ収斂する(reuse-first)。
+- **Allowed / forbidden:** exact6は`apps/api/src/db/eligibility-snapshot-repository.ts`、同integration test、
+  `apps/api/src/db/outbox-delivery.ts`、同integration test、`Plans.md`、`State.md`。
+  SQL/query text、genuine driver Dateの出力、contracts/API/DML、APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
+- **Declared behavior deltas(意図的):** string型driver変種は生TypeError→制御メッセージでの正規化/拒否へ、
+  hostile Dateのownメソッドは実行→不読へ。outbox側では従来「配送失敗(at-least-once残留)」になっていた
+  hostile/string instantが正常配送へ変わる — helperの契約と兄弟repoの既存挙動に整合。
+- **Authority / evidence:** `snapshotDatabaseInstant`はinstant.tsで定義済み・prescription-draft等が使用中。
+  row型のDate注釈はruntime driver出力へのcompile-time主張にすぎず、helperがその差を吸収する。
+  pre-planはR2(audit/outbox配送・eligibility読取パス)、SSOT改版・human/Oracle gate不要と判定した(agmsg 2026-08-28)。
+- **Acceptance / tests:** (A1)DB-less fake-pool testでown toISOString accessor不読を両fileで固定。
+  (A2)string driver instantが正規化ISOで通ること(outboxはsink受信createdAtのbyte一致まで)。
+  (A3)genuine Date出力・SQL text・配送/読取フローは不変(DB-gated統合スイートが実DB net)。
+  (A4)full API・typecheck・boundaries PASS。
+- **PIA / offline:** synthetic row/シンクのみ。real network、DB、PHI/PII、credential、cache、retry/offline stateを追加しない。
+- **Roles / stop / rollback:** `active_root_writer`はClaude、frozen reviewerはCodex。shared treeは単独writer。
+  genuine driver Dateの出力差、SQL text変更、追加path必要、accessor flakinessが判明したら停止。
+  exact6を単一`WP-5274:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
+- **Validation evidence:** RedはDB-less 4件(eligibility 2: sentinel raw throw/string TypeError、outbox 2:
+  hostileがfailed:1へ落ちる/string失敗)が期待どおり失敗。GreenはDB-less 4 PASS、full API 994 PASS / 63 DB-gated skip、
+  API typecheck PASS、`pnpm check:boundaries` PASS(Boundary check passed.)、`git diff --check` PASS。
+  frozen R2 reviewはMEDIUM 1件(fixture契約値)をtest-only修正で解消しdelta PASS・findings 0。
+  レビュー対象のpre-verdict exact6 SHA-256 `f4de7f14b9636bc48602d1f01f92881a528ad1c90a11f409e5d11d9a1761ca14`をCodexが再現した(verdict記録後のexact6は本書へ複製しない)。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|

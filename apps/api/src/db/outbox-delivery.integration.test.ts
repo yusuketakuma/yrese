@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Pool } from "pg";
 
 import { pharmacyId, tenantId, userId } from "@yrese/shared-kernel";
@@ -18,6 +18,84 @@ import { resolveTestDatabaseUrl } from "./test-database-environment.js";
  * WP-6003 outbox 配送 worker の PostgreSQL 統合テスト(synthetic のみ)。
  * 受付コマンドを経由せず outbox 行を直接挿入し、worker の規律だけを検証する。
  */
+describe("outbox delivery instant mapping (DB-less / WP-5274)", () => {
+  function fakePoolFor(row: Record<string, unknown>): Pool {
+    let claimed = false;
+    const client = {
+      query: async (text: string) => {
+        if (text.includes("SELECT") && !claimed) {
+          claimed = true;
+          return { rows: [row], rowCount: 1 };
+        }
+        if (text.includes("SELECT")) return { rows: [], rowCount: 0 };
+        if (text.includes("UPDATE")) return { rows: [], rowCount: 1 };
+        return { rows: [], rowCount: 0 };
+      },
+      release: () => undefined,
+    };
+    return { connect: async () => client } as unknown as Pool;
+  }
+
+  const baseRow = {
+    tenant_id: "tenant-obx-dbless",
+    pharmacy_id: "pharmacy-obx-dbless",
+    outbox_event_id: "outbox-dbless-1",
+    event_type: "reception.created",
+    aggregate_type: "reception",
+    aggregate_id: "reception-dbless-1",
+    audit_event_id: "audit-dbless-1",
+    payload: { synthetic: true },
+    sequence_number: "1",
+  };
+
+  function recordingSink(): { sink: OutboxDeliverySink; events: OutboxPendingEvent[] } {
+    const events: OutboxPendingEvent[] = [];
+    return {
+      events,
+      sink: {
+        deliver: async (event) => {
+          events.push(event);
+        },
+      },
+    };
+  }
+
+  it("maps created_at without reading an own Date method and delivers", async () => {
+    const clock = new Date("2026-08-24T02:00:00.000Z");
+    const ownToISOStringRead = vi.fn(() => {
+      throw new Error("raw outbox clock secret");
+    });
+    Object.defineProperty(clock, "toISOString", {
+      configurable: true,
+      get: ownToISOStringRead,
+    });
+    const { sink, events } = recordingSink();
+    const worker = new PostgresOutboxDeliveryWorker(
+      fakePoolFor({ ...baseRow, created_at: clock }),
+      sink,
+    );
+
+    const summary = await worker.runOnce({ limit: 2 });
+
+    expect(summary).toMatchObject({ delivered: 1, failed: 0 });
+    expect(ownToISOStringRead).not.toHaveBeenCalled();
+    expect(events[0]?.createdAt).toBe("2026-08-24T02:00:00.000Z");
+  });
+
+  it("normalizes a string driver created_at instead of failing delivery", async () => {
+    const { sink, events } = recordingSink();
+    const worker = new PostgresOutboxDeliveryWorker(
+      fakePoolFor({ ...baseRow, created_at: "2026-08-24T02:00:00.000Z" }),
+      sink,
+    );
+
+    const summary = await worker.runOnce({ limit: 2 });
+
+    expect(summary).toMatchObject({ delivered: 1, failed: 0 });
+    expect(events[0]?.createdAt).toBe("2026-08-24T02:00:00.000Z");
+  });
+});
+
 const testDatabaseUrl = resolveTestDatabaseUrl(process.env);
 const describePostgres =
   testDatabaseUrl === undefined ? describe.skip : describe;
