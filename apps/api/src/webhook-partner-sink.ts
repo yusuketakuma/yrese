@@ -4,9 +4,10 @@ import type { PartnerEvent } from '@yrese/contracts';
 
 import type { PartnerEventSink } from './db/outbox-partner-projection.js';
 import { assertPublicHttpsEndpoint } from './partner-endpoint-policy.js';
+import { snapshotWallClock } from './route-invariants.js';
 
 /**
- * HMAC 署名付き webhook sink(WP-6005 の最小形、SSOT: API-012 §2 PROPOSED)。
+ * HMAC 署名付き webhook sink(WP-6005 の最小形、SSOT: API-012 §2 APPROVED)。
  *
  * - header: `x-yrese-event-id`(受信側冪等鍵)、`x-yrese-timestamp`(ISO 8601)、
  *   `x-yrese-signature`(`v1=<hex>`、HMAC-SHA256 over `${timestamp}.${body}`)。
@@ -15,8 +16,8 @@ import { assertPublicHttpsEndpoint } from './partner-endpoint-policy.js';
  * - endpoint と secret は呼び出し側が注入する。Partner Registry(WP-6006)が
  *   landing するまで設定値で良い。secret を log・error message に出さない。
  *
- * ponytail: 鍵 rotation(新旧 2 鍵併記)と rate limit は未実装。API-012 の
- * security review 後に Partner Registry と一緒に入れる。
+ * ponytail: 鍵 rotation(新旧 2 鍵併記)と rate limit は未実装。Partner Registry と
+ * 一緒に入れる。
  */
 export const WEBHOOK_SIGNATURE_VERSION = 'v1';
 export const WEBHOOK_EVENT_ID_HEADER = 'x-yrese-event-id';
@@ -85,7 +86,11 @@ export class WebhookPartnerSink implements PartnerEventSink {
 
   async publish(event: PartnerEvent, signal?: AbortSignal): Promise<void> {
     const body = JSON.stringify(event);
-    const timestamp = this.now().toISOString();
+    const timestamp = snapshotWallClock(
+      this.now,
+      'Webhook timestamp clock read failed',
+      'Webhook timestamp clock returned an invalid instant',
+    );
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     const abortFromCaller = () => controller.abort();

@@ -22,12 +22,16 @@ const event: PartnerEvent = {
 
 const fixedNow = () => new Date('2026-08-23T01:02:03.000Z');
 
-function sinkWith(fetchImpl: typeof fetch, timeoutMs?: number) {
+function sinkWith(
+  fetchImpl: typeof fetch,
+  timeoutMs?: number,
+  now: () => Date = fixedNow,
+) {
   return new WebhookPartnerSink({
     endpointUrl: new URL('https://partner.example/hook'),
     signingSecret: 'synthetic-secret',
     fetch: fetchImpl,
-    now: fixedNow,
+    now,
     ...(timeoutMs === undefined ? {} : { timeoutMs }),
   });
 }
@@ -53,6 +57,72 @@ describe('WebhookPartnerSink', () => {
       verifyWebhookSignature('other-secret', headers[WEBHOOK_TIMESTAMP_HEADER]!, body, headers[WEBHOOK_SIGNATURE_HEADER]!),
     ).toBe(false);
     expect(body).not.toContain('synthetic-secret');
+  });
+
+  it('uses an intrinsic clock snapshot without reading an own Date method', async () => {
+    const clock = new Date('2026-08-23T01:02:03.000Z');
+    const ownToISOStringRead = vi.fn(() => {
+      throw new Error('raw webhook clock method secret');
+    });
+    Object.defineProperty(clock, 'toISOString', {
+      configurable: true,
+      get: ownToISOStringRead,
+    });
+    const now = vi.fn(() => clock);
+    const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+
+    await sinkWith(fetchImpl, undefined, now).publish(event);
+
+    expect(now).toHaveBeenCalledOnce();
+    expect(ownToISOStringRead).not.toHaveBeenCalled();
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    const [, init] = fetchImpl.mock.calls[0]!;
+    const headers = init?.headers as Record<string, string>;
+    const body = init?.body as string;
+    expect(headers[WEBHOOK_TIMESTAMP_HEADER]).toBe('2026-08-23T01:02:03.000Z');
+    expect(
+      verifyWebhookSignature(
+        'synthetic-secret',
+        headers[WEBHOOK_TIMESTAMP_HEADER]!,
+        body,
+        headers[WEBHOOK_SIGNATURE_HEADER]!,
+      ),
+    ).toBe(true);
+  });
+
+  it('normalizes invalid clock authorities before signing or fetch', async () => {
+    const rawSentinel = 'raw webhook clock secret';
+    const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+    const throwingNow = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+
+    const thrownFailure = await sinkWith(fetchImpl, undefined, throwingNow)
+      .publish(event)
+      .catch((error: unknown) => error);
+
+    expect(String(thrownFailure)).toBe('Error: Webhook timestamp clock read failed');
+    expect(String(thrownFailure)).not.toContain(rawSentinel);
+    expect(throwingNow).toHaveBeenCalledOnce();
+    expect(fetchImpl).not.toHaveBeenCalled();
+
+    const spoofToISOString = vi.fn(() => '2026-08-23T01:02:03.000Z');
+    const spoof = Object.create(Date.prototype) as Date;
+    Object.defineProperty(spoof, 'toISOString', { value: spoofToISOString });
+
+    for (const invalidClock of [new Date(Number.NaN), spoof]) {
+      const invalidNow = vi.fn(() => invalidClock);
+      const failure = await sinkWith(fetchImpl, undefined, invalidNow)
+        .publish(event)
+        .catch((error: unknown) => error);
+
+      expect(String(failure)).toBe(
+        'Error: Webhook timestamp clock returned an invalid instant',
+      );
+      expect(invalidNow).toHaveBeenCalledOnce();
+      expect(fetchImpl).not.toHaveBeenCalled();
+    }
+    expect(spoofToISOString).not.toHaveBeenCalled();
   });
 
   it('treats non-2xx, network errors, and timeouts as delivery failures without leaking the secret', async () => {

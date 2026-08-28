@@ -1,30 +1,30 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5272 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5273 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5271はlocal commit `f114e4c`。current requestをWP-5272のcanonical instant
-  hardeningで継続する。agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、
-  shared treeは常に単独writerとする。本WPのwriterはClaude、Codexはfrozen reviewerでlandingまでread-onlyである。
-  scan Rank2/Rank3はparked candidate。
+- **Direction / ownership:** WP-5272はlocal commit `0421b67`。current requestをWP-5273のwebhook signing
+  clock hardeningで継続する。agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、
+  shared treeは常に単独writerとする。本WPのwriterはCodex、Claudeはfrozen reviewerでlandingまでread-onlyである。
 - **Git boundary:** local `main` = `b27b407`(user指示の17 commit ref-only FF)。current branch
-  `refactor/wp-5272-harden-canonical-instant`、base `f114e4c`(WP-5271 landing)。push / mergeは行わない。
-- **Dirty ownership:** exact4は`packages/audit/src/canonical-json.ts`、
-  `packages/audit/src/intent-fingerprint.test.ts`、`Plans.md`、`State.md`。同じexact4だけを本local landing対象とする。
+  `refactor/wp-5273-harden-webhook-clock`、base `0421b67`(WP-5272 landing)。push / mergeは行わない。
+- **Dirty ownership:** exact4は`apps/api/src/webhook-partner-sink.ts`、
+  `apps/api/src/webhook-partner-sink.test.ts`、`Plans.md`、`State.md`。同じexact4だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5272 / READY=0(WIPはR2 GREEN / FROZEN_REVIEW_PENDING)。
-  `normalizeCanonicalInstant`をisDate brand check+intrinsic prototype callへ強化し、line 82のDate rejectも
-  isDateへ揃える。受理済みstring/same-realm built-in Dateのhash・挙動・エラー文言、contracts/API/DB、APPROVED SSOTは不変。cross-realm Date受理化とspoof拒否/エラー経路変更は意図的と宣言する。
-  既存hostile-Date testはWP-4078由来のbounded hardening testであり、事前合意の宣言的強化(rename+1→0)として変更する。
+- **Active plan / boundary:** CURRENT=WP-5273 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。
+  webhook HMACのtimestamp authorityを既存`snapshotWallClock`へ収束し、valid header/body/signature bytesを維持したまま
+  clock throw非echo、own method 0、invalid Date/prototype spoof拒否をfetch前に固定する。
+  reception-create clockはMOD-009/WP-4050 conformanceとBUG-4264 root causeのclarificationまでparkする。
 - **Human decision:** CSS予算12 KiBのhuman decisionは従前どおり維持。WP-5268のDML user承認はlanded記録として保持。
-- **Security / privacy / offline:** audit hash chainへ入るinstantからown/overridden Date method実行経路を排除する
-  純hardening。synthetic dataのみで、credential、production data、PHI/PII、保存、log、external send、
-  real network、DB操作、cache、retry/offline stateを追加しない。
-- **Process gate:** pre-planはR2 audit/data-integrity、SSOT改版・human/Oracle gate不要(agmsg 2026-08-28、
-  Codex counter-evidence確認とno-overlap ACK済み)。受理済みstring/same-realm built-in Dateに対するhash差・挙動差、追加path必要が判明したら停止する(宣言済みのcross-realm/spoof意図的差分は停止対象外)。
-- **Validation / rollback:** baseline audit 204 PASS実測後、Redは強化testが1≠0で期待どおり失敗。
-  Greenはaudit 206 PASS(fingerprint 84/84、境界test 2件込み)、audit typecheck exit 0、full API 988 PASS / 63 DB-gated skip、API typecheck PASS、
-  boundaries PASS、`git diff --check` PASS。exact4の単一`WP-5272:` commit、rollbackは確定commitへの`git revert <commit>`。
+- **Security / privacy / offline:** timestampは外部送信署名bytesへ入るためsecurity/data-integrity境界。synthetic event/secretと
+  mock fetchのみを使い、real network、DB、PHI/PII、production data、credential、cache、retry/offline stateを変更しない。
+- **Process gate:** APPROVED API-012 §2のHMAC `timestamp.body`は不変。pre-planはR2 signature/security/data-integrity、
+  human/Oracle gate不要(agmsg 2026-08-28 no-overlap ACK済み)。valid HMAC/header/body差、delivery reason変更、
+  reception path変更、追加path必要で停止する。
+- **Validation / rollback:** baseline focused 3 PASS。Redはown method実行/raw clock detail反射で2 FAIL / 3 PASS、
+  Green/final focused 5 PASS。full API 990 PASS / 63 DB-gated skip、API typecheck、boundaries、diff-checkはPASS。
+  Claude frozen R2 reviewはPASS・findings 0、pre-verdict exact4/code+test hash再現済み。
+  exact4の単一`WP-5273:` commit、rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、
