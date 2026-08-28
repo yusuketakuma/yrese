@@ -10,7 +10,11 @@ import {
 } from "@yrese/shared-kernel";
 
 import { fetchMigrationState, toOperationsNotice } from "../api/operations-client";
-import { fetchSessionScopes, SessionApiError } from "../api/session-client";
+import {
+  fetchSessionScopes,
+  SessionApiError,
+  sessionHasScopes,
+} from "../api/session-client";
 import { resolveWebApiUrl } from "../api-transport";
 import type { ErrorNoticeProps } from "../components/error-notice";
 
@@ -189,8 +193,7 @@ export async function loadAdminDashboardSnapshot(
 }
 
 export function hasRequiredAdminScopes(identity: WhoamiResponse): boolean {
-  const granted = new Set<PermissionScope>(identity.scopes);
-  return ADMIN_DASHBOARD_REQUIRED_SCOPES.every((scope) => granted.has(scope));
+  return sessionHasScopes(identity, ADMIN_DASHBOARD_REQUIRED_SCOPES);
 }
 
 export function countAdminScopes(identity: WhoamiResponse): number {

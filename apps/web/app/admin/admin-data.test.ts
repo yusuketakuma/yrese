@@ -258,4 +258,14 @@ describe("admin dashboard data boundary", () => {
     ).toBe(false);
     expect(countAdminScopes(IDENTITY)).toBe(2);
   });
+
+  it("delegates the scope check without constructing a Set (WP-5266)", () => {
+    const setSpy = vi.spyOn(globalThis, "Set");
+    try {
+      expect(hasRequiredAdminScopes(IDENTITY)).toBe(true);
+      expect(setSpy).not.toHaveBeenCalled();
+    } finally {
+      setSpy.mockRestore();
+    }
+  });
 });

@@ -1,33 +1,33 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5265 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5266 R1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5264はlocal commit `abed144`。current requestをWP-5265のstatic error validation hoistで継続する。
+- **Direction / ownership:** WP-5265はlocal commit `ac298da`。current requestをWP-5266のscope check includes化で継続する。
   agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは常に単独writerとする。
-  宣言競合はagmsg timestampの早い方を優先する。本WPのwriterはCodex、Claudeはfrozen reviewerでlandingまでread-onlyである。
-- **Git boundary:** current branch `refactor/wp-5265-hoist-static-error-validation`、base
-  `abed144` (WP-5264 landing)。push / mergeは行わない。
-- **Dirty ownership:** exact9は`apps/api/src/plugins/tenant-context.ts`、`apps/api/src/operations-routes.ts`、
-  `apps/api/src/reception-queue-routes.ts`、`apps/api/src/patient-routes.ts`、`apps/api/src/reception-create-routes.ts`、
-  `apps/api/src/audit-log-routes.ts`、`apps/api/src/error-contract.test.ts`、`Plans.md`、`State.md`。
+  宣言競合はagmsg timestampの早い方を優先する。本WPのwriterはClaude、Codexはfrozen reviewerでlandingまでread-onlyである。
+- **Git boundary:** current branch `refactor/wp-5266-scope-check-includes`、base `ac298da`(WP-5265 landing)。
+  push / mergeは行わない。
+- **Dirty ownership:** exact6は`apps/web/app/api/session-client.ts`、`apps/web/app/api/session-client.test.ts`、
+  `apps/web/app/admin/admin-data.ts`、`apps/web/app/admin/admin-data.test.ts`、`Plans.md`、`State.md`。
+  同じexact6だけを本local landing対象とする。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5265 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。6 API moduleの
-  static error body 8件をmodule loadで1回だけcontract検証し、request時はfresh shallow cloneを返す。
-  error code/message/status/order/no-store、contracts/schema/API shape、DB/DML、APPROVED SSOTは変更しない。
-  N+1 child INSERT batching候補はHUMAN_GATE_REQUIREDのまま着手しない。
+- **Active plan / boundary:** CURRENT=WP-5266 / READY=0(WIPはR1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。低fanout scope check 3箇所の
+  一時Setをincludesへ置換し、`hasRequiredAdminScopes`を既存`sessionHasScopes`へ委譲する。truth table・順序・
+  SameValueZero意味論・rendered UIは不変。`PermissionMatrix`のrender Setは意図的に不変。
+  contracts/API/DB、APPROVED SSOTは変更しない。N+1 child INSERT batching候補はHUMAN_GATE_REQUIREDのまま着手しない。
 - **Human decision:** current instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を
   10 KiBから12 KiB(12,288 bytes)へ再設定する。WP-5211 landing時の実測9,672≤10,240 bytesは
   historical evidenceのまま保持し、source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない。
-- **Security / privacy / offline:** 固定bodyは登録済みerror codeと固定messageだけで、request dataを含まない。
-  flat 2-field bodyのcloneで従来のfresh mutable plain objectを維持する。synthetic requestだけを使い、credential、production data、
-  PHI/PII、保存、log、external send、real network、DB操作、cache、retry/offline stateを追加しない。
-- **Process gate:** Claude pre-planはerror/security surface R2、static literalの機械的hoistとしてSSOT/human/Oracle gate不要と判定した。
-  non-static literal、body/status/order/no-store差、template reference返却、spy flakiness、追加path必要が判明したら停止する。
-- **Validation / rollback:** baseline focused 13 PASS。Redはhelper 2呼出しでparse 2回を検出してFAIL。
-  Greenはfocused error-contract 14 PASS、API全体983 / DB-gated 62 skip、API typecheck、boundary PASS。
-  frozen reviewは両hashをClaudeが再現しfindings 0でPASS。browser、real network、DB、production runtimeは実行しない。exact9の単一`WP-5265:` commit、
-  rollbackは確定commitへの`git revert <commit>`。
+- **Security / privacy / offline:** 対象helperはUI表示制御専用で認可の代替ではないと明記されており、
+  Array.includesとSet.hasは同じSameValueZero比較のため受理truth tableはbyte-identical。synthetic identity/scopeだけを使い、
+  credential、production data、PHI/PII、保存、log、external send、real network、DB操作、cache、retry/offline stateを追加しない。
+- **Process gate:** pre-planはR1(UI表示制御の内部機構、DML/SSOT非該当)、human/Oracle/Product Design gate不要と
+  判定した(agmsg 2026-08-28)。truth table差、spy flakiness、大required配列callerの発見、追加path必要が判明したら停止する。
+- **Validation / rollback:** baseline focused 26 PASS実測後、RedはSet spy 2件(session-client窓2構築、admin-data窓1構築)で
+  期待どおり失敗。Greenはfocused 28 PASS、web typecheck PASS、web全体754 PASS、`pnpm check:boundaries` PASS
+  (output: Boundary check passed.、exit 0)、`git diff --check` PASS。frozen reviewはLOW 1件(ponytail comment規約)のcomment-only解消後にdelta review PASS・findings 0、最終hashをCodexが再現した。browser、real network、DB、production runtimeは実行しない。
+  exact6の単一`WP-5266:` commit、rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、

@@ -119,8 +119,8 @@ export function sessionHasScopes(
   session: SessionScopes,
   required: readonly PermissionScope[],
 ): boolean {
-  const granted = new Set<string>(session.scopes);
-  return required.every((scope) => granted.has(scope));
+  // ponytail: required is 1-2 fixed scopes; restore a Set if a larger or dynamic caller appears.
+  return required.every((scope) => session.scopes.includes(scope));
 }
 
 /**
@@ -137,8 +137,7 @@ export function scopeAbsenceIsMeasurable(
   if (nodeEnv !== "development") {
     return true;
   }
-  const declared = new Set<string>(SESSION_SCOPES);
-  return required.every((scope) => declared.has(scope));
+  return required.every((scope) => SESSION_SCOPES.includes(scope));
 }
 
 /** 想定外の例外も画面には固定文言だけを見せる(raw message を素通ししない)。 */

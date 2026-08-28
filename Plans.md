@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5264 `abed144`まで(実測 2026-08-28) |
-| Candidate branch | WP-5264はlocal commit `abed144`。WP-5265は同HEADから `refactor/wp-5265-hoist-static-error-validation` を作成済み |
+| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5265 `ac298da`まで(実測 2026-08-28) |
+| Candidate branch | WP-5265はlocal commit `ac298da`。WP-5266は同HEADから `refactor/wp-5266-scope-check-includes` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までmain/originへfast-forward済み(reflog実測)。WP-5242以降のpushは認可・実行しない |
-| Candidate scope | 6 API moduleのstatic error body 8件をmodule loadで1回だけcontract検証し、request時はfresh shallow cloneを返してbody/status/no-store/fresh-object意味論を不変に保つexact7 code/test slice |
-| Last update | 2026-08-28 JST(WP-5264 local landing済み、WP-5265 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Candidate scope | web scope check 3箇所の一時Set構築をincludes/委譲へ置き換え、SameValueZero・順序・truth tableを不変に保つexact4 code/test slice |
+| Last update | 2026-08-28 JST(WP-5265 local landing済み、WP-5266 R1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5265でstatic error bodyのrequest-time Zod/registry再検証を削除し、contract検証をmodule loadへ集約する |
-| Main blocker | なし。WP-5264は`abed144`へlocal landing済み。WP-5265 pre-planはerror/security surface R2、SSOT改版・human gate不要と判定。N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDで保留 |
-| Required verification | parse spy Red/Green、fresh clone同値・別identity、既存error conformance、API全体、API typecheck、boundary、exact path/diff-check、独立frozen R2 review(Claude)、単一local commit |
+| Current critical path | WP-5266でhasRequiredAdminScopesの重複Set+everyを既存sessionHasScopesへ委譲し、低fanout scope checkの一時Setを排する |
+| Main blocker | なし。WP-5265は`ac298da`へlocal landing済み。WP-5266 pre-planはR1、SSOT改版・human gate不要と判定。N+1 child INSERT batching候補はDML変更のためHUMAN_GATE_REQUIREDで保留 |
+| Required verification | Set-spy Red/Green 2件、既存truth-table testの維持、web typecheck、web全体、check:boundaries、exact path/diff-check、独立frozen review(Codex)、単一local commit |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5265である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5266である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,30 +73,32 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5265(hoist static error validation、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5264はlocal commit `abed144`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5266(scope check includes、R1 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5265はlocal commit `ac298da`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** 6 API moduleの固定error body 8件がrequestごとに`errorResponseSchema.parse`を実行している。
-  static templateをmodule loadで一度だけcontract検証し、既存helperはflat 2-field bodyのfresh shallow cloneを返す。
-- **Allowed / forbidden:** exact9は`apps/api/src/plugins/tenant-context.ts`、`apps/api/src/operations-routes.ts`、
-  `apps/api/src/reception-queue-routes.ts`、`apps/api/src/patient-routes.ts`、`apps/api/src/reception-create-routes.ts`、
-  `apps/api/src/audit-log-routes.ts`、`apps/api/src/error-contract.test.ts`、`Plans.md`、`State.md`。
-  error code/message/status/route order/no-store、contracts/schema/API shape、DB/DML、APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
-- **Authority / evidence:** 8 literalは登録済みerror codeと固定messageだけで、interpolationやrequest dataを含まない。
-  shallow cloneで従来のfresh mutable plain objectを維持し、template referenceをrequestへ渡さない。
-  Claude pre-planはerror/security surface R2、SSOT改版・human/Oracle gate不要と判定した。
-- **Acceptance / tests:** (A1)module評価後のparse spy Red/Greenでhelper 2呼出しのrequest-time parseを2→0にする。
-  (A2)2応答はdeep-equalかつ別identity。(A3)8 parse siteはmodule scopeだけに残し、既存error conformanceを不変維持。
-  (A4)focused error-contract、API全体、API typecheck、boundary、path/diff gateを通す。
-- **PIA / offline:** 固定error bodyとsynthetic requestだけを使い、real network、DB、患者・処方・請求data、credential、
+- **Purpose / layer:** `sessionHasScopes`と`scopeAbsenceIsMeasurable`は1-2件の固定required配列に対し毎回
+  一時Setを構築し、`hasRequiredAdminScopes`は同じSet+everyロジックを重複実装している。includesへの置換と
+  既存`sessionHasScopes`への委譲で、一時Set 3箇所と重複概念1つを排する(reuse-first)。
+  `PermissionMatrix`のrender Setはlookup量(約80/render)から意図的に不変とする。
+- **Allowed / forbidden:** exact6は`apps/web/app/api/session-client.ts`、`apps/web/app/api/session-client.test.ts`、
+  `apps/web/app/admin/admin-data.ts`、`apps/web/app/admin/admin-data.test.ts`、`Plans.md`、`State.md`。
+  truth table・順序・SameValueZero意味論、rendered UI、contracts/API/DB、APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
+- **Authority / evidence:** Array.includesとSet.hasは同じSameValueZero比較でevery順序も保存され、意味論同一。
+  callerはclosing-authority/master-authority/admin-dataの3箇所のみで、requiredは全て小さな固定配列と実測済み。
+  `SessionScopes`は`WhoamiResponse`のtype aliasで委譲の型摩擦なし、依存エッジ追加なし。
+  helperはUI表示制御専用と明記され認可の代替ではない。pre-planはR1、SSOT改版・human/Oracle gate不要と判定した
+  (agmsg 2026-08-28、Codex依頼とno-overlap ACK記録済み)。
+- **Acceptance / tests:** (A1)Set-spy Redでcheck中のSet構築0を固定(現行はsession-client窓で2、admin-data窓で1構築のRed)。
+  (A2)既存truth-table test(granted/missing/empty/未宣言scope)を不変維持。(A3)web typecheck・web全体・boundaries PASS。
+- **PIA / offline:** synthetic identity/scopeだけを使い、real network、DB、患者・処方・請求data、credential、
   production data、PHI/PII、保存、log、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `active_root_writer`はCodex、frozen R2 reviewerはClaude。shared treeは単独writer。
-  non-static literal、body/status/order/no-store差、shared template返却、spy flakiness、追加path必要が判明したら停止。
-  exact9を単一`WP-5265:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
-- **Validation evidence:** baseline focused 13 PASS。Redはhelper 2呼出しでparse 2回を検出してFAIL。
-  Greenはfocused error-contract 14 PASS、API全体983 PASS / 62 DB-gated skip、API typecheck、`pnpm check:boundaries` PASS。
-  frozen exact9 SHA-256 `5aba2b71b49e0de8ac13b24c9e7d11ece26cee5b36b79765233024e160a9046c`をClaudeが再現し、
-  technical/error-contract/security/privacy/performance/records reviewはfindings 0でPASS。
+- **Roles / stop / rollback:** `active_root_writer`はClaude、frozen reviewerはCodex。shared treeは単独writer。
+  truth table差、spy flakiness、大きなrequired配列を持つ新callerの発見、追加path必要が判明したら停止。
+  exact6を単一`WP-5266:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
+- **Validation evidence:** baseline focused 26 PASS実測後、RedはSet spy 2件が構築2/1で期待どおり失敗。
+  Greenはfocused 28 PASS(新規2 test込み)、web typecheck PASS、web全体754 PASS、
+  `pnpm check:boundaries` PASS(output: Boundary check passed.、exit 0)、`git diff --check` PASS。
+  frozen reviewは初回REQUEST_CHANGES(LOW 1件: ponytail comment規約)をcomment-only修正で解消し、delta review PASS・findings 0。最終exact6 SHA-256 `7728906221720b76f8b167d64a93236a44e1fb87d6005df4bd88564962d201af`をCodexが再現した。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|

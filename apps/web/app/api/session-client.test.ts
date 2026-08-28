@@ -175,6 +175,17 @@ describe("sessionHasScopes", () => {
     expect(sessionHasScopes(IDENTITY, ["reception:read"])).toBe(false);
     expect(sessionHasScopes(IDENTITY, [])).toBe(true);
   });
+
+  it("does not construct a Set per check (WP-5266 includes-based)", () => {
+    const setSpy = vi.spyOn(globalThis, "Set");
+    try {
+      expect(sessionHasScopes(IDENTITY, ["tenant:admin"])).toBe(true);
+      expect(scopeAbsenceIsMeasurable(["claim:finalize"], "development")).toBe(false);
+      expect(setSpy).not.toHaveBeenCalled();
+    } finally {
+      setSpy.mockRestore();
+    }
+  });
 });
 
 describe("scopeAbsenceIsMeasurable", () => {
