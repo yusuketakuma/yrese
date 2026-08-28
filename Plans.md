@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5267 `84a7e9a`まで(実測 2026-08-28) |
-| Candidate branch | WP-5267はlocal commit `84a7e9a`。WP-5268は同HEADから `refactor/wp-5268-batch-draft-child-inserts` を作成済み |
+| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5268 `c5581d1`まで(実測 2026-08-28) |
+| Candidate branch | WP-5268はlocal commit `c5581d1`。WP-5269は同HEADから `refactor/wp-5269-reuse-route-invariants` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までmain/originへfast-forward済み(reflog実測)。WP-5242以降のpushは認可・実行しない |
-| Candidate scope | 処方draft保存の子テーブルINSERTをunnestバッチへ置き換え、格納内容・readback・監査を不変に保つuser承認済みDML exact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5267 local landing済み、WP-5268 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Candidate scope | prescription draft routeの重複no-store hookと弱いclock snapshotを既存hardened route invariantへ委譲するexact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5268 local landing済み、WP-5269 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5268で保存1回あたり2+N+M statementのN+1書き込みを最大4 statement(非空の子テーブルごとにINSERT 1本。有効保存は3または4、両空はhelper直接入力時のみ2)へ縮め、byte-identicalな格納を保つ |
-| Main blocker | なし。WP-5267は`84a7e9a`へlocal landing済み。旧HUMAN_GATE_REQUIRED候補は2026-08-28のuser直接指示「N+1 DML候補を承認します。実装を進めてください」で解除(scope: 実装+local-CI検証のみ。production/staging DML・migration・deploy・pushは対象外) |
-| Required verification | DB-less statement-count Red/Green、実PostgreSQLでのmulti-row/multi-flag/null-days roundtrip、full API(DB込みskip 0)、API typecheck、boundaries、exact path/diff-check、独立frozen R2 review(Codex)、単一local commit |
+| Current critical path | WP-5269でprescription draft routeを既存のbrand-check+intrinsic Date snapshotと共有no-store hookへ収束させ、faulty clock methodの実行を防ぐ |
+| Main blocker | なし。WP-5268は`c5581d1`へlocal landing済み。canonical flag順序の二重実装候補はcurrent defectより低優先として非claimでpark |
+| Required verification | hostile own-Date-method Red/Green、既存route全体、full API、API typecheck、check:boundaries、exact path/diff-check、独立frozen R2 review(Claude)、単一local commit |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5268である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5269である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,44 +73,35 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5268(batch draft child inserts、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5267はlocal commit `84a7e9a`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5269(reuse prescription route invariants、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5268はlocal commit `c5581d1`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 
-- **Purpose / layer:** `replaceChildren`は処方draft保存のたびに行ごと・flagごとのINSERTを発行し、保存1回で
-  2+N+M statementを要していた。子テーブルごとに1本のparameterized `INSERT ... SELECT unnest(...)`へバッチし、
-  保存を最大4 statementに縮める(DELETE 2+非空の子テーブルごとにINSERT 1本。有効draftはrows必須・
-  flags空許容のため3または4、両空はhelper直接入力時のみ2)。格納内容・readback・監査・schemaは不変。
-- **Human gate:** 本DML変更は2026-08-28のuser直接指示「N+1 DML候補を承認します。実装を進めてください」により
-  明示承認済み(agmsg記録あり)。承認scopeは実装+local-CI検証のみで、production/staging DML、migration、
-  deploy、pushは含まない。
-- **Allowed / forbidden:** exact4は`apps/api/src/db/prescription-draft-service.ts`、
-  `apps/api/src/db/prescription-draft-service.integration.test.ts`、`Plans.md`、`State.md`。
-  schema/migration、contracts、共有service、SQL文へ値を埋め込むこと、APPROVED SSOT、保護untracked 3 pathは
-  変更・参照しない。statement本文は固定でパラメータのみ可変。
-- **Authority / evidence:** migrations/000013でrow列の型・nullable daysを確認済み。typed array
-  ($4::int[]等)のunnestはstatement本文を固定したままnull込みで値を運ぶ。`replaceChildren`は
-  DB-less DML-shape testのためにexportした(internal注記あり)。
-- **Acceptance / tests:** (A1)子テーブルごとにINSERTはちょうど1本(空rows/flagsは0本)、DELETE 2本が先行。
-  (A2)statement本文に値の埋め込みなし、全行・全flagがDB順の配列パラメータで運ばれる。(A3)実PostgreSQLで
-  multi-row/multi-flag/null-daysのexact contentがroundtripし、子テーブル件数が一致する。(A4)既存の
-  version/conflict/audit/timestamp挙動を含む全statementが不変にpassする。
-- **PIA / offline:** synthetic dataのみ。実DB検証はscratch領域の使い捨てPostgreSQL 17(port 54329、
-  一時schema、実行後停止)で行い、production/staging dataへは接触しない。credential、PHI/PII、
-  external send、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `active_root_writer`はClaude、frozen R2 reviewerはCodex。shared treeは単独writer。
-  格納内容・readback差、statement本文への値混入、schema変更の必要、DB検証不能が判明したら停止。
-  exact4を単一`WP-5268:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、
-  migration/DDL適用は認可外。
-- **Validation evidence:** Codex read-only pre-review notes 3点(DB-gated multi-row/null-days roundtrip必須、
-  production commentの英語invariant化、抽象化不要)を全て反映。RedはrowInserts 3≠1で期待どおり失敗。
-  GreenはDB-less 2 test PASS、使い捨て実PostgreSQL 17でintegration 11 PASS(skip 0)、
-  full API 1048 PASS(skip 0、全DB-gated実行)、API typecheck PASS、`pnpm check:boundaries` PASS
-  (Boundary check passed.、exit 0)、`git diff --check` PASS。frozen R2 technical/data-integrity/security reviewは
-  初回REQUEST_CHANGES(LOW 1件: statement数のrecord表現)をrecord-only修正で解消し、delta review PASS・findings 0。
-  最終exact4 SHA-256 `6c92a610a47847a3b74929d4b0fc5226090288b5d2036cc4643444e79a44fac9`をCodexが再現した。
+- **Purpose / layer:** prescription draft routeは共有`route-invariants.ts`と同じno-store hookを重複実装し、
+  clock snapshotは`instanceof Date`後にinstanceの`getTime`/`toISOString`を呼ぶ。既存hardened helperへ委譲し、
+  Date brand checkとintrinsic `Date.prototype.toISOString`でown/override methodを実行しない一つの正本へ収束させる。
+- **Allowed / forbidden:** exact4は`apps/api/src/prescription-draft-routes.ts`、
+  `apps/api/src/prescription-draft-routes.test.ts`、`Plans.md`、`State.md`。HTTP status/body/error message、
+  service call順、now call数、no-store、contracts/service/DB/schema、APPROVED SSOT、保護untracked 3 pathは変更しない。
+- **Authority / evidence:** shared `snapshotWallClock`は`node:util/types.isDate`とintrinsic Date methodを使い、
+  patient/reception/audit routeでも使用済み。対象routeのclock call siteはGET/PUTの2箇所、no-store hook siteも2箇所だけ。
+  pre-planはpresentなaudit wallClock integrity gapを閉じるR2で、SSOT改版・human/Oracle gate不要と判定した。
+- **Acceptance / tests:** (A1)real Dateのown throwing `toISOString` accessorを現行が実行して500になるRedを再現し、
+  Greenはaccessor 0回、now 1回、通常204、no-storeを固定。(A2)既存のclock error文言2つをbyte-identicalに維持。
+  (A3)route focused/full API/typecheck/boundaries PASS。
+- **PIA / offline:** synthetic sentinelだけを使い、real network、DB、患者・処方・請求data、credential、
+  production data、PHI/PII、保存、log、external send、cache、retry/offline stateを追加しない。
+- **Roles / stop / rollback:** `active_root_writer`はCodex、frozen R2 reviewerはClaude。shared treeは単独writer。
+  弱い500挙動をvalid testが要求、HTTP/error/message/order/now-count/service/no-store/public API差、追加path必要が判明したら停止。
+  exact4を単一`WP-5269:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、DB操作は認可外。
+- **Validation evidence:** baseline focused 8 PASS。Redは既存8 PASS / 新規1 expected failureで500≠204を再現、
+  Green focused 9 PASS。API全体986 PASS / 63 DB-gated skip、API typecheck、boundaries、`git diff --check`はPASS。
+  frozen exact4 SHA-256 `9d3fe2c429d5e19521d0193256897a36bd273bca00edfda6eeffc5d4c6baf990`、
+  code+test SHA-256 `15680677d127b99c2e2fd177f8e6272f306ee309a89ef900fb1fcd3b33315dde`をClaudeが再現し、
+  frozen R2 review PASS・findings 0。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|
+| prescription draft canonical flag order dedupe | PARKED。shared `FLAG_ORDER`とDB `ORDER BY CASE`の二重実装。current clock defect後にDQL変更R2として再評価 | prescription-draft service / db readDraft live trace |
 | date-time terminal-line candidate | NOT_A_BUG。live Node 26/V8でCalendarDate/ClaimMonthはLF/CR/CRLF/U+2028/U+2029 suffixを既にRangeError拒否 | packages/date-time live runtime / MOD-011 |
 | WP-5235 EventEnvelope root input guard | SSOT_UPDATE_REQUIRED。APPROVED MOD-009がSSOT改版→review→実装を要求するため未着手 | MOD-009 / live package trace |
 | WP-4250 | FINALIZED / APPROVED(SSOT 改版のみ)。local commit `89275d2` | 下の決定記録 |

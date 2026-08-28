@@ -1,7 +1,6 @@
 import type {
   FastifyPluginCallback,
   FastifyReply,
-  onRequestHookHandler,
 } from "fastify";
 import fp from "fastify-plugin";
 
@@ -22,6 +21,10 @@ import {
   requireTenantContext,
 } from "./plugins/tenant-context.js";
 import type { PrescriptionDraftService } from "./prescription-draft-service.js";
+import {
+  setSensitiveResponseNoStore,
+  snapshotWallClock,
+} from "./route-invariants.js";
 
 export interface PrescriptionDraftRoutesOptions {
   readonly service: PrescriptionDraftService;
@@ -30,13 +33,6 @@ export interface PrescriptionDraftRoutesOptions {
 
 export const prescriptionDraftRepositoryErrorMessage =
   "Prescription draft repository operation failed";
-
-const setSensitiveResponseNoStore: onRequestHookHandler = async (
-  _request,
-  reply,
-) => {
-  reply.header("Cache-Control", "no-store");
-};
 
 function fixedFailure(
   statusCode: 400 | 404 | 409,
@@ -82,17 +78,12 @@ function conflict(reply: FastifyReply) {
     );
 }
 
-function snapshotWallClock(now: () => Date): string {
-  let value: unknown;
-  try {
-    value = now();
-  } catch {
-    throw new Error("Prescription draft clock read failed");
-  }
-  if (!(value instanceof Date) || !Number.isFinite(value.getTime())) {
-    throw new Error("Prescription draft clock returned an invalid instant");
-  }
-  return value.toISOString();
+function snapshotPrescriptionDraftWallClock(now: () => Date): string {
+  return snapshotWallClock(
+    now,
+    "Prescription draft clock read failed",
+    "Prescription draft clock returned an invalid instant",
+  );
 }
 
 async function callPrescriptionDraftService<T>(
@@ -145,7 +136,7 @@ const callback: FastifyPluginCallback<PrescriptionDraftRoutesOptions> = (
           actorId: tenantContext.actorId,
           receptionId: receptionId(params.data.receptionId),
           businessDate: query.data.date,
-          wallClock: snapshotWallClock(now),
+          wallClock: snapshotPrescriptionDraftWallClock(now),
         }),
       );
       if (result.kind === "not_found") return notFound(reply);
@@ -190,7 +181,7 @@ const callback: FastifyPluginCallback<PrescriptionDraftRoutesOptions> = (
           businessDate: body.data.businessDate,
           expectedVersion: body.data.expectedVersion,
           draft: body.data.draft,
-          wallClock: snapshotWallClock(now),
+          wallClock: snapshotPrescriptionDraftWallClock(now),
         }),
       );
 

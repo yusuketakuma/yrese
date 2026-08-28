@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   frameworkErrorResponseSchema,
@@ -58,7 +58,10 @@ const baseBody = {
 
 const auditByServer = new WeakMap<object, InMemoryAuditRepository>();
 
-function buildPrescriptionDraftTestServer(service?: PrescriptionDraftService) {
+function buildPrescriptionDraftTestServer(
+  service?: PrescriptionDraftService,
+  now: () => Date = () => new Date("2026-08-25T00:00:00.000Z"),
+) {
   const receptionRepository = new InMemoryReceptionRepository();
   const auditRepository = new InMemoryAuditRepository();
   const server = buildServer({
@@ -78,7 +81,7 @@ function buildPrescriptionDraftTestServer(service?: PrescriptionDraftService) {
         auditRepository,
         () => prescriptionId("prescription-route-test-001"),
       ),
-    now: () => new Date("2026-08-25T00:00:00.000Z"),
+    now,
   });
   auditByServer.set(server, auditRepository);
   return server;
@@ -91,8 +94,8 @@ describe("prescription draft routes", () => {
     await Promise.all(servers.splice(0).map((server) => server.close()));
   });
 
-  function server(service?: PrescriptionDraftService) {
-    const instance = buildPrescriptionDraftTestServer(service);
+  function server(service?: PrescriptionDraftService, now?: () => Date) {
+    const instance = buildPrescriptionDraftTestServer(service, now);
     servers.push(instance);
     return instance;
   }
@@ -151,6 +154,34 @@ describe("prescription draft routes", () => {
       { auditEventType: "prescription.created" },
       { auditEventType: "prescription.draft.viewed" },
     ]);
+  });
+
+  it("uses the intrinsic wall clock without reading an own Date method", async () => {
+    const rawSentinel = "raw own prescription clock method secret";
+    const clock = new Date("2026-08-25T00:00:00.000Z");
+    const ownToISOStringRead = vi.fn(() => {
+      throw new Error(rawSentinel);
+    });
+    Object.defineProperty(clock, "toISOString", {
+      configurable: true,
+      get: ownToISOStringRead,
+    });
+    const now = vi.fn(() => clock);
+    const instance = server(undefined, now);
+
+    const response = await instance.inject({
+      method: "GET",
+      url:
+        "/prescription-drafts/by-reception/reception-syn-001" +
+        "?date=2026-07-09",
+      headers: authorizedHeaders,
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(now).toHaveBeenCalledOnce();
+    expect(ownToISOStringRead).not.toHaveBeenCalled();
+    expect(response.body).not.toContain(rawSentinel);
   });
 
   it("returns 409 on stale content without echoing draft PHI", async () => {
