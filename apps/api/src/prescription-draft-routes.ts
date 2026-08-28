@@ -42,40 +42,33 @@ function fixedFailure(
   return frameworkErrorResponseSchema.parse({ statusCode, error, message });
 }
 
+// Static failure bodies validate once at module load; request paths send fresh clones.
+const invalidRequestResponseTemplate = fixedFailure(
+  400,
+  "Bad Request",
+  "Invalid prescription draft request",
+);
+const notFoundResponseTemplate = fixedFailure(
+  404,
+  "Not Found",
+  "Prescription draft context not found",
+);
+const conflictResponseTemplate = fixedFailure(
+  409,
+  "Conflict",
+  "Prescription draft version conflict",
+);
+
 function invalidRequest(reply: FastifyReply) {
-  return reply
-    .code(400)
-    .send(
-      fixedFailure(
-        400,
-        "Bad Request",
-        "Invalid prescription draft request",
-      ),
-    );
+  return reply.code(400).send({ ...invalidRequestResponseTemplate });
 }
 
 function notFound(reply: FastifyReply) {
-  return reply
-    .code(404)
-    .send(
-      fixedFailure(
-        404,
-        "Not Found",
-        "Prescription draft context not found",
-      ),
-    );
+  return reply.code(404).send({ ...notFoundResponseTemplate });
 }
 
 function conflict(reply: FastifyReply) {
-  return reply
-    .code(409)
-    .send(
-      fixedFailure(
-        409,
-        "Conflict",
-        "Prescription draft version conflict",
-      ),
-    );
+  return reply.code(409).send({ ...conflictResponseTemplate });
 }
 
 function snapshotPrescriptionDraftWallClock(now: () => Date): string {

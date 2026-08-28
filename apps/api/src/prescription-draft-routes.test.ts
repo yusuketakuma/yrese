@@ -384,4 +384,28 @@ describe("prescription draft routes", () => {
       message: "Invalid prescription draft request",
     });
   });
+
+  it("serves fixed failures without request-time schema validation (WP-5270)", async () => {
+    const instance = server();
+    await instance.ready();
+    const parseSpy = vi.spyOn(frameworkErrorResponseSchema, "parse");
+    try {
+      const response = await instance.inject({
+        method: "PUT",
+        url: "/prescription-drafts/by-reception/reception-syn-001",
+        headers: authorizedHeaders,
+        payload: { ...baseBody, businessDate: "2026-02-30" },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(parseSpy).not.toHaveBeenCalled();
+      expect(response.json()).toEqual({
+        statusCode: 400,
+        error: "Bad Request",
+        message: "Invalid prescription draft request",
+      });
+    } finally {
+      parseSpy.mockRestore();
+    }
+  });
 });

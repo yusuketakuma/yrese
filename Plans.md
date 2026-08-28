@@ -33,22 +33,22 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5268 `c5581d1`まで(実測 2026-08-28) |
-| Candidate branch | WP-5268はlocal commit `c5581d1`。WP-5269は同HEADから `refactor/wp-5269-reuse-route-invariants` を作成済み |
+| Review base | local `main` = `5d9bb9c06df7f534d44330120c94cd078b496f87`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5269 `fa40980`まで(実測 2026-08-28) |
+| Candidate branch | WP-5269はlocal commit `fa40980`。WP-5270は同HEADから `refactor/wp-5270-hoist-fixed-failure-validation` を作成済み |
 | Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までmain/originへfast-forward済み(reflog実測)。WP-5242以降のpushは認可・実行しない |
-| Candidate scope | prescription draft routeの重複no-store hookと弱いclock snapshotを既存hardened route invariantへ委譲するexact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5268 local landing済み、WP-5269 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Candidate scope | prescription-draft routeの固定failure body 3種のrequest-time schema検証を各bodyにつきmodule-load時1回(import時に計3回)へ移し、body/status/no-storeを不変に保つexact2 code/test slice |
+| Last update | 2026-08-28 JST(WP-5269 local landing済み、WP-5270 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5269でprescription draft routeを既存のbrand-check+intrinsic Date snapshotと共有no-store hookへ収束させ、faulty clock methodの実行を防ぐ |
-| Main blocker | なし。WP-5268は`c5581d1`へlocal landing済み。canonical flag順序の二重実装候補はcurrent defectより低優先として非claimでpark |
-| Required verification | hostile own-Date-method Red/Green、既存route全体、full API、API typecheck、check:boundaries、exact path/diff-check、独立frozen R2 review(Claude)、単一local commit |
+| Current critical path | WP-5270でWP-5265 pattern漏れ(frameworkErrorResponseSchema側)のfixedFailure request-time検証を閉じる |
+| Main blocker | なし。WP-5269は`fa40980`へlocal landing済み。flag-order tri-plication dedupeはWP-5271としてnonclaimable park(latent・低確率と再評価済み) |
+| Required verification | route-inject parse-spy Red/Green、既存3 error body/status/no-store testの維持、focused routes+error-contract、full API、API typecheck、boundaries、exact path/diff-check、独立frozen review(Codex)、単一local commit |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
 | Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
 | Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5269である。migration 000013のsourceは
+current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5270である。migration 000013のsourceは
 承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
 external actionも行わない。
 
@@ -73,31 +73,31 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5269(reuse prescription route invariants、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
-WP-5268はlocal commit `c5581d1`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は WP-5270(hoist fixed failure validation、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
+WP-5269はlocal commit `fa40980`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+flag-order tri-plication dedupe(contracts enum / FLAG_ORDER / SQL CASE)はWP-5271としてnonclaimable parkに記録する。
 
-- **Purpose / layer:** prescription draft routeは共有`route-invariants.ts`と同じno-store hookを重複実装し、
-  clock snapshotは`instanceof Date`後にinstanceの`getTime`/`toISOString`を呼ぶ。既存hardened helperへ委譲し、
-  Date brand checkとintrinsic `Date.prototype.toISOString`でown/override methodを実行しない一つの正本へ収束させる。
+- **Purpose / layer:** `fixedFailure`は3種の完全静的なfailure body(400/404/409)をエラー応答のたびに
+  `frameworkErrorResponseSchema.parse`していた(WP-5265 patternの取りこぼし — schema名が異なりsweepから漏れた)。
+  WP-5265と同じtemplate+fresh spread clone patternで各bodyの検証をmodule-load時1回(import時に計3回)へ移す。
 - **Allowed / forbidden:** exact4は`apps/api/src/prescription-draft-routes.ts`、
-  `apps/api/src/prescription-draft-routes.test.ts`、`Plans.md`、`State.md`。HTTP status/body/error message、
-  service call順、now call数、no-store、contracts/service/DB/schema、APPROVED SSOT、保護untracked 3 pathは変更しない。
-- **Authority / evidence:** shared `snapshotWallClock`は`node:util/types.isDate`とintrinsic Date methodを使い、
-  patient/reception/audit routeでも使用済み。対象routeのclock call siteはGET/PUTの2箇所、no-store hook siteも2箇所だけ。
-  pre-planはpresentなaudit wallClock integrity gapを閉じるR2で、SSOT改版・human/Oracle gate不要と判定した。
-- **Acceptance / tests:** (A1)real Dateのown throwing `toISOString` accessorを現行が実行して500になるRedを再現し、
-  Greenはaccessor 0回、now 1回、通常204、no-storeを固定。(A2)既存のclock error文言2つをbyte-identicalに維持。
-  (A3)route focused/full API/typecheck/boundaries PASS。
-- **PIA / offline:** synthetic sentinelだけを使い、real network、DB、患者・処方・請求data、credential、
-  production data、PHI/PII、保存、log、external send、cache、retry/offline stateを追加しない。
-- **Roles / stop / rollback:** `active_root_writer`はCodex、frozen R2 reviewerはClaude。shared treeは単独writer。
-  弱い500挙動をvalid testが要求、HTTP/error/message/order/now-count/service/no-store/public API差、追加path必要が判明したら停止。
-  exact4を単一`WP-5269:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、DB操作は認可外。
-- **Validation evidence:** baseline focused 8 PASS。Redは既存8 PASS / 新規1 expected failureで500≠204を再現、
-  Green focused 9 PASS。API全体986 PASS / 63 DB-gated skip、API typecheck、boundaries、`git diff --check`はPASS。
-  frozen exact4 SHA-256 `9d3fe2c429d5e19521d0193256897a36bd273bca00edfda6eeffc5d4c6baf990`、
-  code+test SHA-256 `15680677d127b99c2e2fd177f8e6272f306ee309a89ef900fb1fcd3b33315dde`をClaudeが再現し、
-  frozen R2 review PASS・findings 0。
+  `apps/api/src/prescription-draft-routes.test.ts`、`Plans.md`、`State.md`。
+  body/status/no-store/エラー文言、contracts/API/DB/DML、APPROVED SSOT、保護untracked 3 pathは変更・参照しない。
+- **Authority / evidence:** 3呼び出し箇所は全てリテラル引数でfixedFailureはmodule-private・他callerなし。
+  bodyはフラット3フィールドでshallow clone完全。fixedFailureはmodule-load時のbuilderとして残置(import時3回のみ実行)。
+  pre-planはR2(WP-5265と同じerror/security応答surface)、SSOT改版・human/Oracle gate不要と判定した(agmsg 2026-08-28、Codex提案・Claude反証チェックなし)。
+- **Acceptance / tests:** (A1)request窓での`frameworkErrorResponseSchema.parse`呼び出し1→0(route-inject
+  parse-spy、`instance.ready()`後にspy設置)。(A2)3 error body/status/no-storeはbyte-identical(既存testが網)。
+  (A3)templateはmodule内部に留め、送信は毎回fresh spread clone。(A4)focused/full API/typecheck/boundaries PASS。
+- **PIA / offline:** synthetic requestのみ。real network、DB、PHI/PII、credential、cache、retry/offline stateを追加しない。
+- **Roles / stop / rollback:** `active_root_writer`はClaude、frozen reviewerはCodex。shared treeは単独writer。
+  body/status/文言差、template参照の直接送信、spy flakiness、追加path必要が判明したら停止。
+  exact4を単一`WP-5270:` commit、rollbackは確定commitへの`git revert <commit>`。push、merge、deploy、migration/DDL/DMLは認可外。
+- **Validation evidence:** baseline focused 9 PASS実測後、Redはparse-spyが400窓で呼び出し検出し期待どおり失敗。
+  Greenはfocused routes+error-contract 24 PASS(新規1 test込み)、full API 987 PASS / 63 DB-gated skip、
+  API typecheck PASS、`pnpm check:boundaries` PASS(Boundary check passed.)、`git diff --check` PASS。
+  frozen technical/error-contract/performance reviewは初回REQUEST_CHANGES(record-only LOW 2件: R1-R2ラベル・検証回数文言)を
+  record-only修正で解消し、delta review PASS・findings 0。レビュー対象のpre-verdict exact4 SHA-256 `8f70cd2245d25e1a9485c6f3f7af4648d6e970d5817a0ee35de81a3b0d08d4eb`をCodexが再現した(verdict記録後のexact4は本書へ複製しない)。
 
 | prior nonclaimable item | 現在の扱い | 参照 |
 |---|---|---|

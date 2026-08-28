@@ -1,31 +1,30 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5269 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-08-28, WP-5270 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5268はlocal commit `c5581d1`。current requestをWP-5269のprescription route invariant再利用で
-  継続する。agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは常に
-  単独writerとする。本WPのwriterはCodex、Claudeはfrozen R2 reviewerでlandingまでread-onlyである。
-- **Human decision:** CSS予算12 KiB(12,288 bytes)のhuman decisionは従前のまま維持する。WP-5268のDML承認は
-  local commit `c5581d1`で消化済みで、production/staging DML、migration適用、deploy、pushは引き続き含まない。
-- **Git boundary:** current branch `refactor/wp-5269-reuse-route-invariants`、base `c5581d1`(WP-5268 landing)。
+- **Direction / ownership:** WP-5269はlocal commit `fa40980`。current requestをWP-5270のfixed failure検証hoistで継続する。
+  agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは常に単独writerとする。
+  本WPのwriterはClaude、Codexはfrozen reviewerでlandingまでread-onlyである。
+  flag-order tri-plication dedupeはWP-5271としてnonclaimable park。
+- **Git boundary:** current branch `refactor/wp-5270-hoist-fixed-failure-validation`、base `fa40980`(WP-5269 landing)。
   push / mergeは行わない。
 - **Dirty ownership:** exact4は`apps/api/src/prescription-draft-routes.ts`、
-  `apps/api/src/prescription-draft-routes.test.ts`、`Plans.md`、`State.md`。
-  同じexact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、`ui-test-tools/` と
-  secondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5269 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。prescription draft routeの
-  重複no-store hookとinstance-method依存clock snapshotを、既存`route-invariants.ts`へ委譲する。
-  HTTP/error/message/order/now-count/service/no-store、contracts/service/DB/schema、APPROVED SSOTは不変。
-- **Security / privacy / offline:** shared helperのDate brand check+intrinsic snapshotによりown/override methodを実行せず、
-  faulty clockがaudit wallClockを置換する経路を閉じる。synthetic sentinelだけを使い、credential、production data、
-  PHI/PII、保存、log、external send、real network、DB、cache、retry/offline stateを追加しない。
-- **Process gate:** presentなaudit wallClock integrity gapを閉じるR2。SSOT/human/Oracle/Product Design gate不要。
-  弱い500挙動をvalid testが要求、HTTP/error/message/order/now-count/service/no-store/public API差、追加path必要で停止する。
-- **Validation / rollback:** baseline focused 8 PASS。Redは既存8 PASS / 新規1 expected failureで500≠204を再現し、
-  Green focused 9 PASS。API全体986 PASS / 63 DB-gated skip、API typecheck、boundaries、`git diff --check` PASS。
-  frozen exact4/code+test hashをClaudeが再現し、R2 review PASS・findings 0。browser、real network、DB、production runtimeは実行しない。
-  exact4の単一`WP-5269:` commit、rollbackは確定commitへの`git revert <commit>`。
+  `apps/api/src/prescription-draft-routes.test.ts`、`Plans.md`、`State.md`。同じexact4だけを本local landing対象とする。
+  `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
+- **Active plan / boundary:** CURRENT=WP-5270 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。
+  WP-5265 pattern漏れのfixedFailure request-time検証を、module-loadで各1回検証されるtemplate 3つ+fresh spread cloneへ移す。
+  body/status/no-store/文言、contracts/API/DB、APPROVED SSOTは不変。
+- **Human decision:** CSS予算12 KiB(12,288 bytes)のhuman decisionは従前どおり維持。WP-5268のDML user承認は
+  landed記録として保持(scope: 実装+local-CI検証のみ)。
+- **Security / privacy / offline:** エラーbodyは固定・PHIなし。templateはmodule内部、送信は毎回fresh clone。
+  synthetic requestのみで、credential、production data、PHI/PII、保存、log、external send、real network、
+  DB操作、cache、retry/offline stateを追加しない。
+- **Process gate:** pre-planはR2(WP-5265と同じerror/security応答surface)、SSOT改版・human/Oracle gate不要(agmsg 2026-08-28、Codex提案+Claude反証なし)。
+  body/status/文言差、template直接送信、spy flakiness、追加path必要が判明したら停止する。
+- **Validation / rollback:** baseline focused 9 PASS実測後、Redはparse-spyが期待どおり失敗。Greenはfocused 24 PASS、
+  full API 987 PASS / 63 DB-gated skip、API typecheck PASS、boundaries PASS、`git diff --check` PASS。
+  exact4の単一`WP-5270:` commit、rollbackは確定commitへの`git revert <commit>`。
 - **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
   decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、
