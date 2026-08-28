@@ -48,6 +48,22 @@ generated directory、DBを分離し、shared mutable stateを持たせない。
 sliceを実装し、focused gateから検証し、fresh-context checkerのfindingを閉じる。
 未実行gateをPASSと呼ばず、完了またはreal blockerまで進める。
 
+## Inter-agent collaboration (agmsg)
+
+local開発はagmsg team `yrese` の2 agent(`claude` = Claude Code、`codex` = Codex)で
+連携する。連携ルールはclaudeとcodexの2者合意でのみ決定・変更し(2026-08-28 user指示)、
+合意内容はagmsgメッセージ履歴を正本とする。2026-08-28合意済みルール:
+
+1. 受信メッセージには受領した旨を短く返信する。
+2. shared treeへの書き込みは同時に行わず、開始前に対象exact pathsをagmsgで宣言して
+   重複を避ける。
+3. ルールの追加・変更は提案と合意の往復後にのみ有効とする。
+
+active WPの`active_root_writer`は宣言したexact pathsを占有し、他方はそのWP landingまで
+当該pathsに対してread-only mapper/reviewerとして動く。branch切替を含むGit state変更は
+`active_root_writer`が行い、他方は事前合意なしに行わない。current user requestは
+本節の合意に優先するが、その場合も実行前にagmsgで相手へ宣言する。
+
 ## Independent model advice
 
 外部provider、Fable、Oracleその他のmodel送信は、その時点のhigher-level user、managed、
