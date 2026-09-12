@@ -9,14 +9,15 @@ owner: codex_root
 reviewers:
   - independent_verifier
   - human_review_if_required
-version: 0.2.1
+version: 0.3.0
 created_at: 2026-07-09
-updated_at: 2026-08-26
-approved_at: 2026-08-26
-approved_by: direct_user_instruction (WP-5104 limited finalization; reference-only cutover); prior approval provenance preserved in Git history
-effective_from: 2026-07-10
+updated_at: 2026-09-08
+approved_at: 2026-09-08
+approved_by: "direct_user_approval (2026-09-08; Codex cleanup operating revision); native independent review FINDINGS_NONE; frozen_diff_sha256 59b1e57cc7bd18570828c7ac7baf63acd6b8b7be0e1449f5387369c61b37a855"
+effective_from: 2026-09-08
 effective_to: null
 source_refs:
+  - human_instruction Codex environment cleanup approval (2026-09-08)
   - docs/spec/construction_prompt_v0.2.0.md §0.4
   - docs/agents/codex_single_lane_operating_model.md
 depends_on:
@@ -29,6 +30,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.3.0 2026-09-08 APPROVED — user-requested root-owned mapping/planning; required independent, A3/A4, safety and human gates preserved; prior approval provenance remains in Git history; direct user approval and frozen independent review FINDINGS_NONE recorded"
   - 0.2.1 2026-08-26 WP-5104 reference-only cutover from UIX-007 to UIX-001 §12; DoR semantics unchanged
   - 0.2.0 2026-07-10 direct user instruction (WP-9001) とrequired reviews PASSによりmapper/pre-plan/sole-maintainer/independent-verifier gateへ改定
   - 0.1.0 2026-07-09 初版
@@ -56,16 +58,16 @@ blockers: []
 | 12 | offline影響がある場合LOCAL_ONLY / RECOVERY_SYNCを定義 | ARC-001 / ARC-002参照 |
 | 13 | 外部公的system影響がある場合Official Adapter境界を定義 | ADP-001 / ADP-002参照 |
 | 14 | common module再利用を確認済み | 既存packagesで実現できる概念の再実装は`COMMON_MODULE_DUPLICATION_BLOCKED` |
-| 15 | maker/checkerが分離されている | `owner_role: sole_maintainer`、別contextの`reviewer_roles: [independent_verifier, ...]` |
-| 16 | mapperがimpact radiusを確認済み | 関連SSOT/code/test/dependency/dirty stateをmapper_findingsへ記録 |
-| 17 | pre-plan reviewが完了 | scope、edge case、test、rollback、specialist、human gateをread-only reviewerが確認 |
+| 15 | 必要なmaker/checker分離が定義済み | rootがsole maintainer。PRC-005または明示gateで独立reviewが必要なら変更作成に関与しない別contextを用いる |
+| 16 | rootがimpact radiusを確認済み | 関連SSOT/code/test/dependency/dirty stateをmapper_findingsへ記録 |
+| 17 | 計画確認と必要な事前reviewが完了 | rootがscope、edge case、test、rollback、specialist、human gateを確認し、PRC-005/明示gateに必要な独立reviewを完了 |
 | 18 | landing authorityが明確 | rootだけがverification後にexact-stageし、landing_requiredに従う |
 | 19 | ambiguityが解消済み | A3はrequired human/spec authorityの解消record、必要なSSOT改版、再計画・pre-plan reviewが完了。A4はREADY不可 |
 
 ## 運用
 
-- Codex rootがcurrent WPを作成し、mapperとpre-plan reviewerのevidenceを確認してREADY判定する。
-- mapperとpre-plan reviewerはread-onlyであり、READY前にファイルを編集しない。
+- Codex rootがcurrent WPを作成し、関連根拠と必要な事前review evidenceを確認してREADY判定する。
+- 独立reviewerは実行環境でread-onlyとし、変更・再委譲を行わない。
 - sole maintainerは着手直前にSSOT status、evidence、allowed files、dirty state、human gateを再確認する。DRAFT / PROPOSED / STALE / PENDING_REVISIONの旧結論を単独根拠にしない。
 - independent verifierが事前にmakerの変更作成へ関与してはならない。
 - DoRを形式的に埋めるだけで、根拠不足、安全risk、scope conflictを無視してはならない。

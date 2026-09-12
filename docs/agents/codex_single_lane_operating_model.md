@@ -9,14 +9,15 @@ owner: codex_root
 reviewers:
   - independent_verifier
   - human_review_if_required
-version: 0.1.0
+version: 0.2.0
 created_at: 2026-07-10
-updated_at: 2026-07-10
-approved_at: 2026-07-10
-approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; spec_guardian APPROVED; medical_safety_reviewer APPROVED; privacy_compliance_reviewer APPROVED; security_critic APPROVED; data_integrity_auditor APPROVED
-effective_from: 2026-07-10
+updated_at: 2026-09-08
+approved_at: 2026-09-08
+approved_by: "direct_user_approval (2026-09-08; Codex cleanup operating revision); native independent review FINDINGS_NONE; frozen_diff_sha256 59b1e57cc7bd18570828c7ac7baf63acd6b8b7be0e1449f5387369c61b37a855"
+effective_from: 2026-09-08
 effective_to: null
 source_refs:
+  - human_instruction Codex environment cleanup approval (2026-09-08)
   - human_instruction WP-9001 (2026-07-10)
   - docs/spec/construction_prompt_v0.2.0.md
 depends_on: []
@@ -49,6 +50,7 @@ supersedes:
   - AGT-016
   - AGT-017
 change_log:
+  - "0.2.0 2026-09-08 APPROVED — user-requested removal of automatic delegation and universal review gates; R3+, product, safety, privacy and release gates preserved; prior approval provenance remains in Git history; direct user approval and frozen independent review FINDINGS_NONE recorded"
   - 0.1.0 2026-07-10 Codex単一レーン、maker/checker分離、全layer所有、human gateをAPPROVED化(WP-9001、required reviews PASS)
 open_questions: []
 blockers: []
@@ -56,9 +58,9 @@ blockers: []
 
 ## 1. 目的と適用範囲
 
-本書は yrese におけるエージェントの計画、実装、review、verification、landing の唯一の運用正本である。Codex root agent と Codex native subagent だけで単一レーンを構成し、SSOT/docs、frontend、backend、shared packages、database/IaC、tests、scripts、CIを含む全layerを一貫して扱う。
+本書は yrese におけるエージェントの計画、実装、review、verification、landing の唯一の運用正本である。Codex root agentを主担当とし、SSOT/docs、frontend、backend、shared packages、database/IaC、tests、scripts、CIを含む全layerを一貫して扱う。
 
-単一レーンは「1人ですべてを自己承認する」ことを意味しない。編集権を sole maintainer 1名に限定し、maker と checker を別context・別役割に分離して、並行編集と自己reviewを防ぐ。
+編集権はCodex root 1名に限定する。通常作業の独立レビューはriskと対象変更に応じて選び、全taskで一律に必須化しない。明示されたSSOT改版、specialist、human、release gateは維持し、独立checkerが必要な場合はmakerと別contextにする。
 
 ## 2. 優先順位
 
@@ -84,42 +86,25 @@ blockers: []
 - human gate対象のproduction操作、external action、risk受容、SSOT昇格を承認する。
 - 実装詳細や通常のread-only調査まで逐次承認する役割ではない。
 
-### 3.2 Codex root agent
+### 3.2 Codex root agent / sole maintainer
 
-- repository current stateを復元し、acceptance criteria、所有範囲、停止条件を確定する。
-- mapper、plan reviewer、sole maintainer、independent verifier、domain specialistを割り当てる。
-- 同時editorが1名だけであることと、unrelated dirty changeが保護されていることを確認する。
-- 最終validation、exact staging、commit/push、`State.md`等のlanding記録に責任を持つ。
+- 調査、repository探索、計画、実装、test、修正、validationを直接行う。
+- current state、acceptance criteria、exact path scope、dirty ownership、停止条件を確認する。
+- shared treeの唯一のwriterとして、generated artifact更新、stage、authorized commit/push、必要な記録を担当する。
+- 通常作業をmapper、planner、implementerなどの別agentへ自動割当しない。
 
-### 3.3 Code mapper / explorer
+### 3.3 Independent reviewer / checker
 
-- read-onlyで関連SSOT、code path、test、dependency、dirty state、impact radiusを特定する。
-- 事実と推測を分離し、`path:line`、実行command、再現手順など検証可能なevidenceをrootへ返す。
-- ファイルを編集せず、実装を先取りしない。
+- 独立レビュー、反証、監査が必要な場合にCodex標準subagentを使う。固定modelや役割階層を設けない。
+- reviewerは変更を作成していない別contextとし、allowlisted code/diffとsynthetic evidenceだけを確認する。
+- read-only sandbox、deny hook、read-only mountまたは同等の実行環境で変更を禁止する。prompt上の宣言だけでは不十分。
+- 実装・修正、shared treeでのstate-mutating validation、再委譲、外部model相談、Git操作を行わない。
+- findingと根拠をrootへ返す。採否、修正、統合、再検証、最終判断はrootが行う。必要な独立再検証をrootの自己検証で代替しない。
+- 通常作業の委譲はcurrent userが明示要求した範囲だけとし、共有資産保護とhuman gateは維持する。
 
-### 3.4 Plan reviewer
+### 3.4 Domain specialists
 
-- `implementation_planner` または `spec_guardian` としてread-onlyで計画を確認する。
-- SSOTの承認状態、acceptance criteria、edge case、migration/rollback、test範囲、human gate、scope過不足を確認する。
-- 仕様不足は `SSOT_UPDATE_REQUIRED`、evidence不足はBLOCKEDとしてrootへ返す。
-
-### 3.5 Sole maintainer (maker)
-
-- 1つのactive work scopeで唯一ファイルを編集できる役割である。
-- approved scope内の最小で完全な変更を、repo-local patternを使って実装する。
-- root causeを修正し、必要なtestとprogress記録を更新する。
-- commit/pushは行わず、変更pathとvalidation結果をrootへ返す。
-
-### 3.6 Independent verifier (checker)
-
-- 対象変更を作成していない別contextのCodex agentを割り当てる。
-- read-onlyでdiff、acceptance criteria、test妥当性、security/privacy、data integrity、performance、unrelated change混入を確認する。
-- failureやfindingを隠さずsole maintainerへ戻す。verifier自身は修正しない。
-- 修正後は再度独立検証し、evidence付きでPASS / CHANGES_REQUIRED / BLOCKEDを返す。
-
-### 3.7 Domain specialists
-
-対象に応じ、次のread-only reviewerを追加する。
+PRC-005のriskと明示gateに応じ、次の専門観点を独立レビューへ含める。role名は観点の識別であり、各項目ごとのagent起動や固定人数を要求しない。
 
 - medical / pharmacy / patient / prescription / medication / inventory / claim / audit: `medical_safety_reviewer` + `privacy_compliance_reviewer`
 - auth / authorization / tenant boundary / secret / external request: `security_critic` + 必要なら `threat_modeler`
@@ -132,21 +117,14 @@ specialistは最終human authorityを代替せず、編集もしない。
 
 ## 4. 標準フロー
 
-非自明な作業は次の順序で行う。
+1. rootがGit、`Plans.md`、`State.md`、関連SSOT/code/testからcurrent stateとimpact radiusを確認する。
+2. rootが対象、acceptance criteria、edge case、test、rollback、risk、必要なspecialist/human gateを確定する。
+3. 必要な事前gateを満たした後、rootが最小complete sliceを実装し、focused validationから必要範囲を検証する。
+4. PRC-005のrisk、明示gateまたは対象変更の反証必要性に応じて独立レビューを行う。rootがfindingを修正し、影響validationと必要な独立再検証を行う。
+5. rootがdiff、validation、human gateを確認する。commit前に確定できる記録を完成させる。
+6. rootだけがauthorized exact pathsをstageし、staged diffを確認する。commit/pushはcurrent request/WPの許可範囲に限る。
 
-1. rootが `git status --short`、`Plans.md`、`State.md`、progress file、既存validationからcurrent stateを復元する。
-2. code mapperが関連SSOT/code/testとimpact radiusをread-onlyで特定する。
-3. rootがsingle highest-value taskと具体的acceptance criteriaを定義する。
-4. plan reviewerがSSOT、edge case、test、human gate、停止条件を確認する。
-5. rootがsole maintainer 1名とexact path scopeを指定する。
-6. sole maintainerが最小のcomplete fixと必要なtestを実装し、validationする。
-7. independent verifierと必要なdomain specialistがread-onlyでmaker/checker reviewを行う。
-8. findingがあればsole maintainerが修正し、checkerが再検証する。
-9. rootがstaged前のdiff、validation、human gateを確認する。
-10. rootだけがexact pathをstageし、staged diffを再確認してcommit/pushする。
-11. rootが`State.md`、必要なprogress/PR記録へcommit、validation、残riskを残す。
-
-read-only調査は安全に並列化できる。編集は並列化せず、常にsole maintainer 1名に限定する。root自身が編集する場合はrootがsole maintainerを兼ね、その間ほかのeditorを置かない。
+`State.md`はinterruption、blocker、human gate、dirty ownershipの再開用pointerとし、通常の成功履歴はGit/CIに残す。commit後の記録更新や追加pushを暗黙の完了条件にしない。current request/WPが明示要求する場合だけ行う。
 
 ## 5. 全layerの所有
 
@@ -198,7 +176,7 @@ layer間の担当分割を別agentレーンの境界にしない。代わりにS
 ## 9. モデルと通信の禁止事項
 
 - actual model ID、marketing name、reasoning tier、Cloud availability、sandbox/permissionを推測しない。
-- task assignmentは `code_mapper`、`maintainer`、`verifier` などrole/capabilityで行い、未確認のモデル名でroutingしない。
+- 固定model階層、cost/token/complexityによる自動routing、automatic fan-outを行わない。
 - exact modelまたはruntime capabilityがacceptanceに必要なら、実行環境または公式情報で確認する。確認不能ならblockerとして記録する。
 - Claude / Opus その他の別agentレーンを起動・依頼・必須gate化しない。
 - agmsgをtask assignment、handoff、approval、status、reviewに使用しない。repository recordとCodex native orchestrationを使う。
@@ -207,7 +185,7 @@ layer間の担当分割を別agentレーンの境界にしない。代わりにS
 
 - `package.json`、CI、scriptsから実在commandを選び、focused checkから必要なfull gateへ広げる。
 - validation failureを無視せず、実行不能なcheckは理由と未検証範囲を記録する。
-- maintainerとcheckerの結果が一致し、critical findingが解消するまで完了にしない。
+- 必要なvalidation/review/human gateが完了し、critical findingが解消するまで完了にしない。
 - subagentはcommit/pushしない。rootだけがowned exact pathを明示stageし、staged diffを再確認する。
 - commit messageはWP-IDを先頭にし、unrelated dirty changeを混ぜない。
 - pushは現在のhuman instructionまたはapproved WPが要求する場合だけrootが行う。
@@ -215,32 +193,8 @@ layer間の担当分割を別agentレーンの境界にしない。代わりにS
 
 ## 11. 旧文書の扱い
 
-本書がPROPOSEDの間、AGT-001〜AGT-017は既存のAPPROVED statusを維持する。本書がindependent verificationとrequired human gateを通過してAPPROVEDになる同一batchで、AGT-001〜AGT-017をmetadata-onlyで`SUPERSEDED`へ変更する。旧文書の本文は決定履歴・provenanceとして保持するが、cutover後の割当、model routing、Claude/Opus gate、dual lane、agmsg、lock/handoff手順の根拠には使用しない。
-
-cutover後に旧文書と本書が競合する場合は本書を適用する。旧文書の一部を復活させる場合は、暗黙に参照せず、本AGT-018を人間承認付きで改版する。
+AGT-001〜AGT-017はWP-9001でSUPERSEDEDとなった決定履歴であり、本書の再改版中もそのstatusを維持する。旧割当、model routing、別agent lane、通信・lock/handoff手順を現行運用へ復活させない。初回cutoverの承認・metadata移行証拠はGit履歴を参照する。
 
 ## 12. 承認・発効シーケンス
 
-1. WP-9001のworking diffでは本書と関連改版を`PROPOSED`に保ち、`approved_at` / `approved_by` / `effective_from`を空欄にする。
-2. 変更を作成していないindependent verifierとrequired specialistsが、scope、SSOT間整合、human gate、機械validationを確認する。
-3. findingをsole maintainerが修正し、checkerが再検証する。
-4. direct user instructionによるcutover承認とverification PASSをrecordした後、次のstatus matrixどおりに同一finalization batchを作る。元のstatusを無視して全SSOTを一括APPROVEDにしてはならない。
-5. Codex rootがfinalization diffとvalidationを再確認してからlandingする。途中状態をmainへlandingしない。
-
-### 12.1 WP-9001 finalization status matrix
-
-| 対象 | `a5eb9a8`時点 | review中 | required review後のtarget |
-|---|---|---|---|
-| AGT-018 | 文書なし | PROPOSED | direct cutover approval + independent verifier + required specialistsのPASS後にAPPROVED |
-| SPEC-001/002、PRC-001〜007、OPS-012、REG-006、PLAN-PHASE0-001、IDX-001 | APPROVED | PROPOSED revision | routing改版のindependent verifier、relevant specialists、既存のapplicable human gate完了後にAPPROVEDへ戻す |
-| PLAN-UIUX-001 | PROPOSED | PROPOSED routing-overlay revision | **PROPOSEDを維持**。WP-9001のcutover approvalをdesign/product/human approvalへ流用せず、別のrequired design/human gateなしにAPPROVED化しない |
-| AGT-001〜AGT-017 | APPROVED | APPROVEDのまま・本文無変更 | AGT-018のAPPROVED化と同一batchでmetadata-only SUPERSEDED |
-| `AGENTS.md`、`CLAUDE.md`、`Plans.md`、`State.md` | SSOT status対象外 | review diff | SSOT statusを付与しない |
-
-### 12.2 旧AGT metadata finalization gate
-
-AGT-001〜AGT-017のSUPERSEDED化は本文を変更せず、frontmatterだけを更新する。ただし`metadata-only`を理由にPRC-007の共通metadataを省略してはならない。finalization前に17件すべてについて次の23 fieldを機械監査する。
-
-`ssot_id` / `title` / `domain` / `status` / `owner` / `reviewers` / `version` / `created_at` / `updated_at` / `approved_at` / `approved_by` / `effective_from` / `effective_to` / `source_refs` / `depends_on` / `impacts` / `related_work_packages` / `related_tests` / `related_prs` / `evidence_ids` / `change_log` / `open_questions` / `blockers`
-
-2026-07-10のreview-stage監査ではAGT-001〜015は23 fieldを満たし、AGT-016/017に`effective_from` / `effective_to` / `depends_on` / `impacts` / `related_work_packages` / `related_tests` / `related_prs` / `evidence_ids` / `change_log`の不足を確認した。finalization sole maintainerはAGT-016/017へ不足fieldをprovenanceに基づいて追加し、全17件へversion、`updated_at`、`effective_to`、`superseded_by: AGT-018`、SUPERSEDED change logを整合させる。旧本文がbaseからbyte-identicalであること、23-field監査、index status同期をindependent verifierが確認するまでlandingしない。
+本書の改版はPRC-007に従う。レビュー中は改版対象をPROPOSEDとし、承認・発効欄を空欄にする。required independent/specialist review、finding解消、必要なhuman approval、index同期を完了した後だけ承認・発効を記録する。今回の通常レビュー任意化を、本改版自体のrequired gateの免除へ先取り適用しない。rootがfinalization diffとvalidationを確認し、未完了の中間状態をlandingしない。

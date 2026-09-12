@@ -342,9 +342,10 @@ production-readiness conformance claim is currently justified.
 
 ### Development topology
 
-Use one sole writer, read-only mapping/planning, one independent verifier, and
-only the risk specialists required by the changed boundary. Fixed reviewer
-counts and repeated review generations are prohibited. Human authority remains
+The root performs mapping, planning, implementation, and validation as the sole
+writer. Select independent read-only review according to risk and explicit gates;
+reviewers cannot edit or delegate. Fixed reviewer counts, automatic delegation,
+and repeated review generations are prohibited. Human authority remains
 mandatory for R3+, clinical/legal conclusions, production operations, and
 security/privacy relaxation.
 

@@ -35,8 +35,8 @@ current requestを最初に分類する。
   だけをclaimし、WIP 1 / READY最大2等は`DEVELOPMENT_POLICY.md §8`に従う。
 
 `active_root_writer`をsole maintainer、state-mutating validator、stager、committer、
-optional pusherの同一主体とする。他contextはmapper、planner、reviewer、verifierの
-read-only checklistであり、Edit/Write/Gitやunrestricted state-mutating shellを与えない。
+optional pusherの同一主体とする。他contextは必要な独立reviewerに限定し、変更と再委譲を禁止する。
+Edit/Write/Gitやunrestricted state-mutating shellを与えない。
 prompt上のread-only宣言だけに頼らず、harness permission、deny hook、read-only mount、
 または同等のsandboxで強制する。
 
@@ -45,75 +45,8 @@ shared treeのtest、build、formatter、generated artifact、snapshot、cache�
 generated directory、DBを分離し、shared mutable stateを持たせない。
 
 非自明taskではcurrent state、target diff、ownership、acceptanceを復元し、最小complete
-sliceを実装し、focused gateから検証し、fresh-context checkerのfindingを閉じる。
+sliceを実装し、focused gateから検証する。独立レビューを実施した場合はfindingを閉じる。
 未実行gateをPASSと呼ばず、完了またはreal blockerまで進める。
-
-## Inter-agent collaboration (agmsg)
-
-local開発はagmsg team `yrese` の2 agent(`claude` = Claude Code、`codex` = Codex)で
-連携する。連携ルールはclaudeとcodexの2者合意でのみ決定・変更し(2026-08-28 user指示)、
-合意内容はagmsgメッセージ履歴を正本とする。2026-08-28合意済みルール:
-
-1. 受信メッセージには受領した旨を短く返信する。
-2. shared treeへの書き込みは同時に行わず、開始前に対象exact pathsをagmsgで宣言して
-   重複を避ける。
-3. ルールの追加・変更は提案と合意の往復後にのみ有効とする。
-
-active WPの`active_root_writer`は宣言したexact pathsを占有し、他方はそのWP landingまで
-当該pathsに対してread-only mapper/reviewerとして動く。branch切替を含むGit state変更は
-`active_root_writer`が行い、他方は事前合意なしに行わない。current user requestは
-本節の合意に優先するが、その場合も実行前にagmsgで相手へ宣言する。
-
-## Independent model advice
-
-外部provider、Fable、Oracleその他のmodel送信は、その時点のhigher-level user、managed、
-またはmachine policyが明示許可した場合だけ使う。このfile自体はstanding authorization、
-paid API authorization、AGT-018の恒久topology改版を与えない。
-
-- AGT-018のactive Codex laneとsole writerは維持する。外部modelは、現在許可された
-  bounded read-only advisory inputであり、writer、agent lane、approval authorityにしない。
-- provider能力を恒久的事実にせず、task-scoped preferenceとして扱う。runtimeがeffective
-  modelを検証できる場合だけ、GPT-5.6へtool-heavy mapping、Fable 5へcross-document
-  consistency/counterexample reviewを優先できる。
-- 同じfrozen briefにscope、acceptance、stop condition、base SHA、exact path allowlist、
-  synthetic/redacted evidenceを含め、fact、inference、finding、recommendation、
-  missing evidenceを分離させる。
-- Fableがrerouteされた、またはeffective modelが未検証なら
-  `independence_not_satisfied`と記録し、Fable evidenceに数えない。必要ならsafe packetで
-  再実行するか該当human gateへ送る。majority voteや相互validation代替は禁止する。
-
-### Oracle
-
-Oracleは、cross-cutting/costly architecture計画、medical/security/privacy/data-integrity
-risk、重要なmodel disagreement、原因不明の反復失敗、high-impact pre-landing reviewで
-使う。最初のpassにはoriginal frozen briefとcandidate evidenceだけを渡し、先行modelの
-結論は渡さない。disagreementはfollow-upでのみ提示する。
-
-実行前に次を満たす。
-
-1. `oracle --version`を記録し、higher-level machine policyまたはfrozen task briefが
-   承認したknown-tested exact release/commitと一致すること、および
-   `oracle --help --verbose`で必要flagが存在することを確認する。不一致なら
-   `Oracle unavailable`とする。
-2. `oracle status --hours 72`を確認し、repo、brief hash、base SHA、attachment、engine、
-   model、effortが全て一致するsessionだけをreuseする。
-3. tracked exact-path allowlistを使い、generated/untrackedをdefault rejectする。
-   `pnpm check:secrets`が利用可能なら実行し、`--dry-run summary --files-report`と
-   rendered `--dry-run full`を送信前に確認する。
-4. live runはdry-runと同じ引数からdry-run flagだけを外す。
-
-```bash
-oracle --engine browser --model gpt-5-pro \
-  --browser-model-strategy select \
-  -p "<task>" --file "<allowlisted-path>"
-```
-
-automatic engine、API fallback、別modelを使わない。latest generic Proのverified picker
-labelを記録する。未検証、Chrome failure、session recovery不能は
-`Oracle unavailable`とし、別human gateがOracle evidenceを必須にしない限り継続する。
-Oracleはadvisoryであり、SSOT、official evidence、independent verification、approvalの
-代替ではない。artifactはowner-onlyとし、finding反映と必要handoff後にmachine retention
-policyへ従って削除する。
 
 ## Product, SSOT, and safety boundaries
 
@@ -175,11 +108,8 @@ authorityやriskが不明なら上位risk/gateへ倒し、推測しない。
 - `active_root_writer`だけがowned exact pathをstageし、authorized時だけcommitし、
   current request/WPが要求する場合だけpushする。commit messageはWP-IDを先頭にする。
   required record更新はfinal commit前に完了し、implicit post-push metadata commitを作らない。
-- `State.md` landing recordは上位APPROVED `AGT-018 §§3.2, 4`に従う。非SSOTの
-  `DEVELOPMENT_POLICY.md §8 Record policy`またはcurrent State schemaと競合する場合は、
-  `PRC-007`改版までfail-closedで停止し、下位規則を暗黙に優先しない。final commit前に
-  確定可能なrecordを完成させ、post-commit record updateやsecond pushはcurrent
-  request/WPが明示許可した場合だけ行う。許可がなければ`FINALIZATION_PENDING`として
-  conflictを報告する。
-- affected path/consumer確認、必要変更、objective gate、frozen independent review、
+- `State.md`はinterruption、blocker、human gate、dirty ownershipの再開pointerとする。
+  通常の完了証拠はGit/CIへ残し、commit前に確定可能な記録を完成させる。
+  post-commit記録更新や追加pushはcurrent request/WPが明示要求する場合だけ行う。
+- affected path/consumer確認、必要変更、objective gate、riskに必要なreview、
   critical finding解消が揃って初めて完了とする。
