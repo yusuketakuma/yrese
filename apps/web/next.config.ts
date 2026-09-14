@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // NextのTypeScript API検査は6、shellのtscは7という既存分離を維持する。
+  experimental: { useTypeScriptCli: false },
   allowedDevOrigins: ["127.0.0.1"],
   async rewrites() {
     if (process.env.NODE_ENV !== "development") {

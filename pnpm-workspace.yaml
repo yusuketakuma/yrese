@@ -11,6 +11,6 @@ overrides:
   find-my-way@<=9.6.0: ^9.6.1
   nanoid@>=3.0.0 <3.3.18: ^3.3.18
   postcss@<=8.5.17: ^8.5.18
-  sharp@<0.35.0: ^0.35.0
+  sharp@<0.35.4: ^0.35.4
 minimumReleaseAgeExclude:
   - fast-uri@3.1.6 || 4.1.3

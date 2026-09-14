@@ -1,37 +1,19 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-08-28, WP-5275 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-09-14, WP-5276 R2 FROZEN_REVIEW_PASS / ORACLE_PLAN_REVIEW_COMPLETE / ORACLE_IMPLEMENTATION_REVIEW_COMPLETE):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5274はlocal commit `d7a3676`。current requestをWP-5275の失敗記録total化で継続する。
-  agmsg合意によりCodex/ClaudeのどちらもWP単位で`active_root_writer`になれるが、shared treeは常に単独writerとする。
-  本WPのwriterはClaude、Codexはfrozen reviewerでlandingまでread-onlyである。
-  reception wallClock意味論はhuman/SSOT明確化待ちでpark継続。
-- **Git boundary:** local `main` = `b27b407`。current branch `refactor/wp-5275-failure-proof-describe-failure`、
-  base `d7a3676`(WP-5274 landing)。push / mergeは行わない。
-- **Dirty ownership:** exact4は`apps/api/src/db/outbox-delivery.ts`、同integration test、`Plans.md`、`State.md`。
-  同じexact4だけを本local landing対象とする。`.harness-worktrees/`、`artifacts/`、`ui-test-tools/` と
-  secondary worktreeはuser-owned / protectedで、参照、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5275 / READY=0(WIPはR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)。
-  失敗記録のreason抽出とtimeout分類をtotal化。genuine Error/SinkTimeoutError挙動、SQL/query text、
-  配送フロー、contracts/API/DML、APPROVED SSOTは不変。hostile値のcrash→記録済み失敗への降格は宣言済み意図的差分。
-- **Human decision:** CSS予算12 KiBのhuman decisionは従前どおり維持。WP-5268のDML user承認はlanded記録として保持。
-  reception wallClock conformance questionはhuman/SSOT待ちのopen item。
-- **Security / privacy / offline:** hostile throw値のgetter/trap実行による記録経路abortとsentinel漏洩を排する
-  純hardening。synthetic sink/rowのみで、credential、production data、PHI/PII、保存、log、external send、
-  real network、DB操作、cache、retry/offline stateを追加しない。
-- **Process gate:** pre-planはR2、SSOT改版・human/Oracle gate不要(agmsg 2026-08-28、Codex no-overlap ACK+
-  instanceof Proxy trap addendum反映済み)。genuine Errorのreason差、配送フロー/SQL変更、追加path必要が
-  判明したら停止する。
-- **Validation / rollback:** RedはDB-less 2件が期待どおり失敗(hostile name getter/Proxy trapでrunOnce reject)。
-  GreenはDB-less 5 PASS、full API 997 PASS / 63 DB-gated skip、API typecheck PASS、boundaries PASS、
-  `git diff --check` PASS。exact4の単一`WP-5275:` commit、rollbackは確定commitへの`git revert <commit>`。
-- **Blocked slice B:** single-object readは API-006 §7 CONTRACT_CHANGE_REQUEST、MOD-008 audit event
-  decision、SEC-004 PIAの3 gateがすべて未成立で、着手しない。
-- **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、
-  薬剤師確認・確定、migration apply、production/deploy は未解消のまま。SSOT_BLOCKED 4 画面
-  (`/checkout` `/claim-check` `/masters` `/monthly-closing`)は、実在データのみ表示し、
-  停止中の正本 gate 名を明示する状態を維持している。
+- **Direction / ownership:** 7日計画はWP-5276を唯一のCURRENTとする。shared treeは単独の`active_root_writer`が変更・検証し、Astraはread-only reviewを完了した。
+  WP-5275のoutbox hardeningは`c3a0829`へ着地済み。reception wallClock、FHIR、薬剤師確認・確定はgate待ちでpark継続。
+- **Git boundary:** local `main` / current branch = `9c0b357`、`origin/main` = `c3a0829`。localは1 commit先行。push / merge / deployは行わない。
+- **Dirty ownership:** WP-5276のtracked変更・レビュー対象はexact6(`apps/web/next.config.ts`、`apps/web/package.json`、`pnpm-workspace.yaml`、`pnpm-lock.yaml`、`Plans.md`、`State.md`)に限定する。`.git/info/exclude`はnested worktreeの`.git` metadataだけを対象にしたlocal metadata exceptionであり、repository変更ではない。保護untracked 3 pathは手動参照・編集・exportせず、必要な自動read-only secret scanだけが通常ファイルを走査する(除外は既存`.codegraph`と指定nested `.git` metadataのみ)。
+  `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、cleanup、merge、stageしない。
+- **Active plan / boundary:** CURRENT=WP-5276 / READY=0。Next.js 16.3.3、sharp 0.35.4の監査修正と、NextのTypeScript API mode固定だけを行った。API/schema/DML、算定・請求・資格・FHIR/JAHIS logic、APPROVED SSOTは不変。
+- **Security / privacy / offline:** package metadata、synthetic test、local buildを基本とし、今回のJP Core公式package取得は保存なしのhash/size確認に限定した。credential、production data、PHI/PII、migration apply、log、external send、外部状態変更は追加しない。
+- **Process gate:** 既存WP-4253 baseline、live dependency audit、BUG-4263のscope方針を根拠にしたR2。exact6以外のtracked変更、secret scanの緩和、API/SSOT影響が判明したら停止する。Oracle計画レビューは完了し、実装後レビューは別packetで行う。
+- **Validation:** `pnpm audit` / `check:deps` high=0・critical=0、Web 754/754、full API 997/997、DB-gated 3 skipped files / 63 skipped tests、workspace typecheck/build、OpenAPI/boundary/calculation/SSOT/SBOM/script、`check:secrets`、`git diff --check` PASS。secret scanは`.codegraph`とprotected nested worktreeの`.git` metadataだけをskipし、通常ファイル走査は維持した。
+- **Seven-day gates:** 9/14 draft契約検証、9/15 synthetic受付→draft縦切り、9/16 FHIR前提packet、9/17 confirmed defectがある場合のみ別Task Packet、9/18必要gate集約、9/19 frozen review/final evidence。Astra final reviewとOracle計画・実装後レビューは完了、DB・FHIR SSOT・既存human gateは未成立のまま。
+- **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、薬剤師確認・確定、migration apply、production/deployは未解消のまま。SSOT_BLOCKED 4画面は停止中の正本gate名を明示する状態を維持する。
 
 ### PREVIOUS SNAPSHOT (2026-08-27, all-screen UI/UX refresh + real-data wiring) — NONAUTHORITATIVE
 

@@ -33,24 +33,40 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `b27b407fb523119545b8b457fbb918a5e6a98233`、`origin/main` = `b10ffc9e8d06fd4c78484865e819c113ad180141`。current local chainはWP-5274 `d7a3676`まで(実測 2026-08-28) |
-| Candidate branch | WP-5274はlocal commit `d7a3676`。WP-5275は同HEADから `refactor/wp-5275-failure-proof-describe-failure` を作成済み |
-| Upstream relation | PR #5/#6/#9 consolidation(`f11a014`)、WP-5111(`3bc4805`)、WP-5201(`ad44068`)に続くlocal refactor列をWP-5241 `b10ffc9`までoriginへ反映済み。user指示でWP-5254〜WP-5270の17 commitをlocal main `b27b407`へref-only fast-forward済み。origin pushは実行しない |
-| Candidate scope | outbox配送の失敗記録検査(reason抽出とtimeout分類)をtotal化し、hostile throw値でも記録経路が落ちないexact2 code/test slice |
-| Last update | 2026-08-28 JST(WP-5274 local landing済み、WP-5275 R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING、compiled CSS予算12 KiBを維持) |
+| Review base | local `main` / current branch = `9c0b357915919b94a1f4fadeca42d1a05403cf91`、`origin/main` = `c3a082919f4965915fb11671b12db402a157d990`。実測 2026-09-13 JST |
+| Candidate branch | `refactor/wp-5275-failure-proof-describe-failure`。WP-5275は`c3a0829`へ着地済み、WP-5276の未commit差分を保持 |
+| Upstream relation | localはoriginより1 commit先行。push、merge、deployは行わない |
+| Candidate scope | WP-5276: Next.js 16.3.3 / sharp 0.35.4の監査修正と、既存TypeScript 6 API・7 CLI分離を保つWeb typecheck/build互換修正 |
+| Last update | 2026-09-14 JST(WP-5276実装・検証済み、Astra review PASS、Oracle計画レビュー完了、保護untracked 3 pathは不変) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
-| Active Goal | tracked repository全体を走査し、証拠のある最小complete sliceごとに本番コードをreuse-firstでrefactorする |
-| Current critical path | WP-5275でat-least-once配送runのabort経路(describeFailure/instanceofのthrow)を閉じる |
-| Main blocker | なし。WP-5274は`d7a3676`へlocal landing済み。reception wallClock意味論はhuman/SSOT明確化待ちでpark継続 |
-| Required verification | DB-less Red 2件(hostile name getter・Proxy getPrototypeOf trap)+genuine passthrough、full API、API typecheck、boundaries、exact path/diff-check、独立frozen review(Codex)、単一local commit |
+| Active Goal | 2026-09-13〜09-19の7日間で、既存の受付→処方箋draft縦切りを壊さず、証拠のある最小修正・検証・ゲート整理だけを完了する |
+| Current critical path | WP-5276の依存監査修正とWeb toolchain互換 → draft縦切りのDB-less/DB-gated検証 → FHIR provenance/mapping gateの再判定 |
+| Main blocker | secret scanはnested worktreeの`.git` metadataだけを除外し、保護3 pathの通常ファイルを走査してPASS。Oracle計画レビューは完了、PostgreSQL統合とFHIR SSOT昇格は既存human gate待ち |
+| Required verification | full workspace test/typecheck/build、dependency/OpenAPI/boundary/calculation/SSOT/SBOM/script/secrets gate、`git diff --check`。PostgreSQL統合は未接続時の3 skipped files / 63 skipped testsとして明示する |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
-| Work-selection drift | C-100 `9786fe8`で解消。CURRENT/READYは本書だけを正とする |
-| Next scan cursor | `origin/main=b10ffc9`; remote main更新またはfinal gate findingでreset |
+| Work-selection drift | 現在のCURRENTはWP-5276、READYは0。WP-5275以前の実装記録はGit evidenceとして扱い、未実装表現をそのまま再claimしない |
+| Next scan cursor | `origin/main=c3a0829`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchはtracked repository全体refactoringの最小complete slice消化で、current WIPはWP-5275である。migration 000013のsourceは
-承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、
-external actionも行わない。
+current batchは7日計画の最小complete slice消化で、current WIPはWP-5276である。migration 000013のsourceは
+承認対象だが環境適用は行わない。push、deploy、production変更、risk/release acceptance、外部状態変更は行わない。
+ユーザー承認済みの公式JP Core packageについては、保存せずhash/sizeだけを再確認した。
+
+### 1.1 Seven-day execution plan (2026-09-13〜2026-09-19 JST)
+
+過去のGit履歴(WP-5101のdraft縦切り、WP-6003〜6006の連携基盤、WP-5271〜5275のhardening)とlive codeを突合した。今週の実装はWP-5276だけとし、仕様・人間承認・外部手続き待ちの項目は実装済みと数えない。
+
+| 日 | 実装 / 検証項目 | 完了条件 | 状態 |
+|---|---|---|---|
+| 9/13 | WP-5276の技術受入整理 | 実装をやり直さず、レビュー対象・ゲート対象・未commit所有・DB不可を分離 | 完了(Astra PASS・Oracle計画レビュー完了) |
+| 9/14 | 既存draftのroute／service契約検証 | CAS、tenant／pharmacy／scope拒否、terminal reception拒否、受付→患者→draft紐づけを全suite内で再確認。DB-gated 3 files / 63 testsは未実施扱い | 実施済み(API 997 PASS / Web 754 PASS) |
+| 9/15 | syntheticな受付→draft API／Web縦切りの確認 | 保存・再取得・競合時の非上書き、既存read audit／非漏洩境界を確認。薬剤師確定や完全なNorth Star E2Eとは呼ばない。migration 000013はsource確認のみ | 予定 |
+| 9/16 | FHIR前提の判断packet整理 | JP Core hashは再取得・一致を確認済み。SSOTのVERIFIED昇格、mapping／ownership、単一writerの未充足条件は区別し、FHIR routeは実装しない | GATED |
+| 9/17 | 確定不具合がある場合だけ、別Task Packetを判断 | 再現根拠・scope・受入条件・停止条件・着手認可・WIP整理が揃った場合のみ修正。なければ変更なし | 条件付き |
+| 9/18 | 最終候補に必要なゲートを集約 | 実行コード・依存・環境に変更があった場合だけ関連回帰と全体gateを再実施。同一候補の既存PASSは再利用し、SKIPをPASSへ変えない | 予定 |
+| 9/19 | 最終判断・引継ぎ | 技術受入、未commit、未実施検証、human gateを分離。Plansはactive情報、Stateはpointerのみ。未認可のcommit／push／deployはしない | 予定 |
+
+薬剤師確認・確定(C-061以降)、FHIR facade、JAHIS/オン資/外部partner接続は今週の実装対象に昇格させない。前提gateが成立した時点で別WPとして再計画する。
 
 ## 2. Product and Architecture Guardrails
 
@@ -73,7 +89,21 @@ external actionも行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5275(failure-proof describe failure、R2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)1 件である。**
+**CURRENT は WP-5276(dependency baseline + Web TypeScript compatibility、R2 FROZEN_REVIEW_PASS / ORACLE_PLAN_REVIEW_COMPLETE / ORACLE_IMPLEMENTATION_REVIEW_COMPLETE)1 件である。**
+WP-5275は`c3a0829`へlocal landing済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+reception wallClock意味論、FHIR provenance/mapping、薬剤師確認・確定はgate待ちでpark継続。
+
+- **Purpose / layer:** `pnpm audit --audit-level high`で検出したNext.js 16.2.12 / sharp 0.35.3を修正版へ更新し、Next.js 16.3.3の既定TypeScript CLI選択と、既存のTypeScript 6 programmatic API・7 CLI分離の衝突を解消する。
+- **Allowed / forbidden:** trackedの変更・レビュー対象はexact6(`apps/web/next.config.ts`、`apps/web/package.json`、`pnpm-workspace.yaml`、`pnpm-lock.yaml`、`Plans.md`、`State.md`)に限定する。`.git/info/exclude`はnested worktreeの`.git` metadataだけを対象にしたlocal metadata exceptionであり、repository変更ではない。保護untracked 3 pathは手動参照・編集・exportせず、必要な自動read-only secret scanだけが通常ファイルを走査する(除外は既存`.codegraph`と指定nested `.git` metadataのみ)。API/schema/DML、算定・請求・資格・FHIR/JAHIS logic、APPROVED SSOTは変更しない。
+- **Authority / evidence:** WP-4253の依存baseline更新方式、現行`pnpm audit` advisory、Nextのlive configuration、既存`check-scripts`のTypeScript authority contract、BUG-4263のignore境界方針を根拠とする。新規dependencyや共有抽象は作らず、`sharp@<0.35.4`を`^0.35.4`へoverrideして下限`>=0.35.4`、現行解決0.35.4とする。現行graphのsharp利用元はNextのみ。
+- **Acceptance / tests:** Next.js 16.3.3、sharp 0.35.4へ解決しhigh/critical 0。Web 754/754、full API 997/997、DB-gated 3 skipped files / 63 skipped tests、workspace typecheck/build、OpenAPI/boundary/calculation/SSOT/SBOM/deps/script、`git diff --check`、`check:secrets` PASS。secret scanは`.codegraph`とprotected nested worktreeの`.git` metadataだけをskipし、通常ファイル走査は維持した。
+- **PIA / offline:** package metadataとsynthetic/local buildを基本とし、今回の公式JP Core package取得は保存なしのhash/size確認に限定した。DB、PHI/PII、credential、migration apply、external send、外部状態変更は追加しない。
+- **Roles / stop / rollback:** `active_root_writer`は本lane。tracked変更はexact6に限定し、local metadata exceptionは指定nested `.git` metadataだけに限定する。Next configの警告を隠すための緩和、API/SSOT影響が判明したら停止。commit、push、merge、deploy、migration/DDL/DMLは認可外。
+- **Validation evidence:** `pnpm audit --audit-level high` / `pnpm check:deps` high=0・critical=0、Web typecheck/build、full workspace test/typecheck/build、required static gates、`check:secrets`、`git diff --check`を実測済み。Astra final delta reviewは全severity findingなし、Oracle計画レビュー(`yrese-seven-day-plan`)と実装後レビュー(`yrese-final-implementa-review`)はblocking findingなしで完了した。
+
+### Historical landed WIP — WP-5275
+
+**WP-5275(failure-proof describe failure、旧状態ではR2 FROZEN_REVIEW_PASS / LOCAL_LANDING_PENDING)は`c3a0829`へ着地済みで、CURRENTではない。**
 WP-5274はlocal commit `d7a3676`で着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 reception wallClock意味論はconformance questionとしてhuman/SSOT明確化待ちでpark継続。
 
@@ -696,7 +726,7 @@ UI/UX 系(WP-5111 呼称 `3bc4805` / WP-5201 `ad44068`)の landing record は §
   存在せず、適用先の出現時に runbook(dangling行棚卸し→reconciliation evidence→専用forward
   migration)と別human approvalを要する。
 - **Webhook egress の network 層統制(BLOCKED_SECURITY_REVIEW)。** DNS 解決と fetch の間の rebinding 窓はアプリ側では閉じられない。partner 向け egress の allow-list / proxy を infra で設計するまで production 配送は行わない(WP-6006 review F2 残余)。
-- **JP Core package 再取得(WP-6101)。** external egress は harness の hard floor で agent から実行不可。ユーザー端末での取得コマンド実行待ち(会話に提示済み)。再現後に SRC-FHIR-007 を VERIFIED へ。
+- **JP Core package hash再確認(WP-6101)。** ユーザー承認下で公式packageを保存せずstreamし、SHA-256 `6094c8b9ebd975cb738c66cc999774c06a0aacf4480c068a8465e597117e52a3`、2,391,515 bytesが既存identityと一致した。SRC-FHIR-007のVERIFIED昇格、mapping/ownership/legal gateは未実施のまま維持する。
 - **`BLOCKED_KEY_CANONICAL_FORM_ENFORCEMENT` 残余 (b)。** 実行仕様は下に確定済み。
 - **WP-5121 production 認証(BLOCKED_SECURITY_REVIEW)。** §8 Stage 2 の登録が正本。
   production 認証基盤の human/security 承認(release gate)まで着手しない
@@ -1000,20 +1030,21 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
   別の 3 件が落ちる。
 - **効果:** `pnpm check:secrets` が exit 0 に復帰(`.codegraph` を skip として報告)。
 - **Confidence:** High(現象と原因は実測済み — BUG-4261 の evidence を参照)。
-- **問題:** `scripts/check-secrets.mjs:13` は `rootDir = process.cwd()` を走査根と
-  し、`.gitignore` / `.git/info/exclude` を一切参照しない。したがって開発者ローカルの
-  ツール成果物(`.codegraph` symlink、`.claude/`、`.omc/`、`.harness-mem/`、`.omo/` 等)
-  が走査対象・scope 判定対象に含まれる。symlink は 1 件でもゲート全体を止める。
+- **問題(旧事実・BUG-4263実装前):** `scripts/check-secrets.mjs:13` は当時
+  `rootDir = process.cwd()`を走査根とし、`.gitignore` / `.git/info/exclude`を一切参照しなかった。
+  BUG-4263実装前は開発者ローカルのツール成果物(`.codegraph` symlink、`.claude/`、`.omc/`、
+  `.harness-mem/`、`.omo/`等)が走査対象・scope判定対象に含まれ、symlinkは1件でもゲート全体を止めた。
 - **なぜ自動修正しないか:** スコープを「リポジトリ内容」へ寄せると、現在走査対象で
   ある gitignore 済みファイル(特に `.env`、`isTextFile` が明示的に対象化している)が
   カバレッジから外れる。これは security posture の変更であり、`AGENTS.md`
   「auth/security/privacy 制約の緩和は人間の明示承認なしに実行・自己承認しない」に
   該当する。また既存 fixture は非 git の一時ディレクトリで実行されるため、
   git 由来のスコープ判定を入れると本番経路が fixture で未検証になる。
-- **決定が必要な論点:** (a) 走査スコープの定義(リポジトリ内容 / cwd 配下 /
-  両方の和)、(b) gitignore 済み `.env` を走査対象に残すか、(c) 非 git ルートでの
-  フォールバック挙動と、その経路の fixture 追加。
-- **暫定回避:** 開発者は当該 symlink を退避するか、決定後の実装を待つ。
+- **決定が必要だった論点(旧事実・BUG-4263実装前):** (a) 走査スコープの定義
+  (リポジトリ内容 / cwd 配下 / 両方の和)、(b) gitignore 済み `.env` を走査対象に
+  残すか、(c) 非 git ルートでのフォールバック挙動と、その経路の fixture 追加。
+- **暫定回避だった措置(旧事実・BUG-4263実装前):** 開発者は当該 symlink を退避するか、
+  決定後の実装を待つ。
 - **Reason for prioritization:** P2 — BUG-4261 の上流原因。実害はローカルゲートに
   限定されるが、決定なしに触れてはならない領域。
 
@@ -1227,7 +1258,7 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
   2026-08-27 に改番で解消(Plans.md 運用範囲の改番 — human 判断 2026-08-27、PRC-007 対象外。
   §17.0 参照)。§17.2 の WP-5211(CSS トークン基盤統合 Phase A)は本 entry の改番後継であり、
   本 entry の Acceptance/Stop を継承する(二重定義ではない)
-- **Status:** IN_PROGRESS / VALIDATED / FROZEN_REVIEW_PENDING / HUMAN_START_AUTHORIZED(2026-08-27「着手して」)
+- **Status (historical start record, 2026-08-27):** IN_PROGRESS / VALIDATED / FROZEN_REVIEW_PENDING / HUMAN_START_AUTHORIZED(「着手して」)。現況は§4および§17.2の`COMMITTED_LOCAL 6e40b5b / PUSH_NOT_REQUESTED / NOT_MERGED`を参照する。
 - **Gate:** WP-5104(FINALIZED / APPROVED だが NOT_IMPLEMENTABLE qualifier — 実装 gate は
   単独では開かない)。§17.2 の実行順は WP-5216 local landing `0782d86` で成立し、
   2026-08-27 human instruction「着手して」が本 WP の実装着手判断を明示した。
