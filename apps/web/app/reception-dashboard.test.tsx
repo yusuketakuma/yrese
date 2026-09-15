@@ -323,7 +323,7 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
         }}
       />,
     );
-    expect(error).toContain('role="alert"');
+    expect(error).toContain('role="status"');
     expect(error).toContain("次のアクション:");
   });
 
@@ -1282,8 +1282,8 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(errorHtml.indexOf("取得できなかったため")).toBeLessThan(
       errorHtml.indexOf("2026-07-10 の受付はまだありません"),
     );
-    expect(roleCount(errorHtml, "status")).toBe(1);
-    expect(roleCount(errorHtml, "alert")).toBe(1);
+    expect(roleCount(errorHtml, "status")).toBe(2); // qualifier + nonblocking error
+    expect(roleCount(errorHtml, "alert")).toBe(0);
 
     const errorNonemptyHtml = renderToStaticMarkup(
       <ReceptionQueueView
@@ -1302,8 +1302,8 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
         }}
       />,
     );
-    expect(roleCount(errorNonemptyHtml, "status")).toBe(2); // qualifier + row status badge
-    expect(roleCount(errorNonemptyHtml, "alert")).toBe(1);
+    expect(roleCount(errorNonemptyHtml, "status")).toBe(3); // qualifier + row status badge + nonblocking error
+    expect(roleCount(errorNonemptyHtml, "alert")).toBe(0);
     expect(errorNonemptyHtml.indexOf("取得できなかったため")).toBeLessThan(
       errorNonemptyHtml.indexOf("2026-07-10 の受付: 1件"),
     );

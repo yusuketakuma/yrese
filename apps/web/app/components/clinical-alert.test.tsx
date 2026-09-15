@@ -43,6 +43,8 @@ describe("ClinicalAlert (R-CLINALERT / H-08)", () => {
       />,
     );
     expect(html).toContain('data-ack="UNACKNOWLEDGED"');
+    expect(html).toContain('role="alert"');
+    expect(html).toContain('aria-live="assertive"');
     expect(html).toContain("未確認");
     expect(html).toContain("続行前に確認が必要");
     expect(html).toContain('data-blocking="true"');
@@ -66,6 +68,19 @@ describe("ClinicalAlert (R-CLINALERT / H-08)", () => {
     const html = renderToStaticMarkup(
       <ClinicalAlert alertType="DOSAGE_LIMIT" severity="WARNING" drugName="薬X" detail="上限近接" />,
     );
+    expect(html).toContain('aria-live="polite"');
+  });
+
+  it("keeps a nonblocking ERROR polite", () => {
+    const html = renderToStaticMarkup(
+      <ClinicalAlert
+        alertType="ALLERGY"
+        severity="ERROR"
+        drugName="薬X"
+        detail="確認が必要です"
+      />,
+    );
+    expect(html).toContain('role="status"');
     expect(html).toContain('aria-live="polite"');
   });
 });
@@ -120,5 +135,16 @@ describe("ClinicalAlertSummary", () => {
     expect(html).toContain('data-top-severity="CRITICAL"');
     expect(html).toContain('role="alert"');
     expect(html).toContain("未確認の最重大: 重大");
+  });
+
+  it("announces an unacknowledged blocking ERROR assertively", () => {
+    const html = renderToStaticMarkup(
+      <ClinicalAlertSummary
+        alerts={[{ severity: "ERROR", alertType: "ALLERGY", blocking: true }]}
+      />,
+    );
+    expect(html).toContain('data-top-severity="ERROR"');
+    expect(html).toContain('role="alert"');
+    expect(html).toContain('aria-live="assertive"');
   });
 });

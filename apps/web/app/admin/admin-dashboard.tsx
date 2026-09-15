@@ -561,6 +561,7 @@ export function AdminDashboardView({
                   ? "管理者に user:admin と tenant:admin の付与状況を確認してください。"
                   : "再取得してください。継続する場合はシステム管理者へ連絡してください。"
             }
+            blocking
           />
         </Panel>
       </OperatorPage>
@@ -582,6 +583,7 @@ export function AdminDashboardView({
             severity="ERROR"
             message="管理画面に必要な権限scopeが不足しています。"
             nextAction="管理者に user:admin と tenant:admin の両方の付与状況を確認してください。"
+            blocking
           />
         </Panel>
       </OperatorPage>

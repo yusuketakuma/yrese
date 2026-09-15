@@ -76,7 +76,7 @@ export interface StatusPresentation {
 export const SEVERITY_PRESENTATION: Record<ErrorSeverity, StatusPresentation> = {
   CRITICAL: { label: "重大", tone: "blocked", shape: "◆", ariaRole: "alert", ariaLive: "assertive" },
   BLOCKER: { label: "停止", tone: "blocked", shape: "■", ariaRole: "alert", ariaLive: "assertive" },
-  ERROR: { label: "エラー", tone: "attention", shape: "▲", ariaRole: "alert", ariaLive: "polite" },
+  ERROR: { label: "エラー", tone: "attention", shape: "▲", ariaRole: "status", ariaLive: "polite" },
   WARNING: { label: "警告", tone: "pending", shape: "△", ariaRole: "status", ariaLive: "polite" },
   INFO: { label: "情報", tone: "neutral", shape: "・", ariaRole: "status", ariaLive: "polite" },
 };

@@ -113,6 +113,8 @@ describe("Visual Status Registry (UIX-001 / 08-target-design-direction)", () => 
     expect(SEVERITY_PRESENTATION.CRITICAL.ariaRole).toBe("alert");
     expect(SEVERITY_PRESENTATION.CRITICAL.ariaLive).toBe("assertive");
     expect(SEVERITY_PRESENTATION.BLOCKER.ariaLive).toBe("assertive");
+    expect(SEVERITY_PRESENTATION.ERROR.ariaRole).toBe("status");
+    expect(SEVERITY_PRESENTATION.ERROR.ariaLive).toBe("polite");
     // 技術例外(ERROR)以下は assertive にしない(警告過多防止)
     expect(SEVERITY_PRESENTATION.WARNING.ariaLive).toBe("polite");
     expect(SEVERITY_PRESENTATION.INFO.ariaRole).toBe("status");

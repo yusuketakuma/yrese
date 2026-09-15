@@ -2091,7 +2091,7 @@ describe("patient search hardening (WP-3008 / SCR-002)", () => {
 
     expect(html).toContain("T-0001");
     expect(html).toContain("未読込の続きがあります");
-    expect(html).toContain('role="alert"');
+    expect(html).toContain('role="status"');
     expect(html).toContain("続きの読み込みを再試行");
   });
 
@@ -2226,7 +2226,7 @@ describe("PatientHeader with a selected patient (患者取り違え防止表示 
     expect(html).toContain("1988-03-20");
     expect(html).toContain("38歳");
     expect(html).toContain(ELIGIBILITY_LABELS.PENDING_REVERIFY);
-    expect(html).toContain('data-patient-id="p-selected"');
+    expect(html).not.toContain('data-patient-id="p-selected"');
   });
 
   it("renders the sex label from the shared visual status registry (WP-4041)", () => {

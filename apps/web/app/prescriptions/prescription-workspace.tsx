@@ -5,6 +5,7 @@ import {
   type ChangeEvent,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -405,6 +406,13 @@ export function SelectedPatientWorkspaceView({
   const [pendingRemovalRowId, setPendingRemovalRowId] = useState<number | null>(
     null,
   );
+  const draftRequestRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      draftRequestRef.current?.abort();
+    };
+  }, []);
 
   const dirty = useMemo(
     () =>
@@ -424,6 +432,8 @@ export function SelectedPatientWorkspaceView({
     }
 
     const controller = new AbortController();
+    draftRequestRef.current?.abort();
+    draftRequestRef.current = controller;
     let current = true;
     setLoadState({ kind: "loading" });
     setSaveState({ kind: "idle" });
@@ -471,6 +481,7 @@ export function SelectedPatientWorkspaceView({
     return () => {
       current = false;
       controller.abort();
+      if (draftRequestRef.current === controller) draftRequestRef.current = null;
     };
   }, [initialDraft, linkedOrigin]);
 
@@ -566,6 +577,9 @@ export function SelectedPatientWorkspaceView({
   async function saveDraft() {
     if (linkedOrigin === null || loadState.kind !== "ready" || !dirty) return;
     const submitted = clonePrescriptionDraft(draft);
+    const controller = new AbortController();
+    draftRequestRef.current?.abort();
+    draftRequestRef.current = controller;
     setSaveState({ kind: "saving" });
     try {
       const response = await savePrescriptionDraft(
@@ -575,7 +589,10 @@ export function SelectedPatientWorkspaceView({
           businessDate: linkedOrigin.businessDate,
         },
         { expectedVersion: serverVersion, snapshot: submitted },
+        fetch,
+        controller.signal,
       );
+      if (controller.signal.aborted || draftRequestRef.current !== controller) return;
       const savedDraft = fromPrescriptionDraftResponse(response);
       setDraft(savedDraft);
       setBaseline(savedDraft);
@@ -587,35 +604,47 @@ export function SelectedPatientWorkspaceView({
       setSaveState({ kind: "saved", disposition: response.saveDisposition });
       removeWork?.(workId);
     } catch (error) {
+      if (controller.signal.aborted || draftRequestRef.current !== controller) return;
       setSaveState(resolveSaveFailureState(error));
+    } finally {
+      if (draftRequestRef.current === controller) draftRequestRef.current = null;
     }
   }
 
-  async function reloadLatestServerDraft() {
+  async function reloadLatestServerDraft(discardLocal = false) {
     if (linkedOrigin === null) return;
     setReloadRequested(false);
+    const controller = new AbortController();
+    draftRequestRef.current?.abort();
+    draftRequestRef.current = controller;
     setLoadState({ kind: "loading" });
     try {
-      const response = await loadPrescriptionDraft({
-        receptionId: linkedOrigin.receptionId,
-        patientId: linkedOrigin.patientId,
-        businessDate: linkedOrigin.businessDate,
-      });
-      const latest =
-        response === null
-          ? createBlankPrescriptionDraft()
-          : fromPrescriptionDraftResponse(response);
-      setDraft(latest);
-      setBaseline(latest);
-      setServerVersion(response?.version ?? 0);
-      setServerUpdatedAt(response?.updatedAt ?? null);
-      setServerChangedWhileAway(false);
+      const response = await loadPrescriptionDraft(
+        {
+          receptionId: linkedOrigin.receptionId,
+          patientId: linkedOrigin.patientId,
+          businessDate: linkedOrigin.businessDate,
+        },
+        fetch,
+        controller.signal,
+      );
+      if (controller.signal.aborted || draftRequestRef.current !== controller) return;
+      const outcome = resolveDraftLoadOutcome(
+        response,
+        discardLocal || !dirty ? null : draft,
+      );
+      setBaseline(outcome.baseline);
+      setServerVersion(outcome.serverVersion);
+      setServerUpdatedAt(outcome.serverUpdatedAt);
+      setServerChangedWhileAway(outcome.serverChangedWhileAway);
       setDivergenceChoiceRequested(false);
-      setRestoredNoticeVisible(false);
+      if (outcome.adoptServerDraft) setDraft(outcome.baseline);
+      if (discardLocal) setRestoredNoticeVisible(false);
       setSaveState({ kind: "idle" });
       setLoadState({ kind: "ready" });
-      removeWork?.(workId);
+      if (discardLocal) removeWork?.(workId);
     } catch (error) {
+      if (controller.signal.aborted || draftRequestRef.current !== controller) return;
       setLoadState({
         kind: "error",
         error:
@@ -626,6 +655,8 @@ export function SelectedPatientWorkspaceView({
                 "処方下書きAPIを利用できません。",
               ),
       });
+    } finally {
+      if (draftRequestRef.current === controller) draftRequestRef.current = null;
     }
   }
 
@@ -663,10 +694,18 @@ export function SelectedPatientWorkspaceView({
           severity="ERROR"
           message={loadState.error.message}
           nextAction={loadErrorNextAction(loadState.error)}
+          blocking
         />
-        <p>
+        <div className="operator-inline-actions">
+          <button
+            type="button"
+            className="operator-button"
+            onClick={() => void reloadLatestServerDraft()}
+          >
+            再取得
+          </button>
           <Link href="/">受付画面へ戻る</Link>
-        </p>
+        </div>
       </section>
     );
   }
@@ -766,7 +805,7 @@ export function SelectedPatientWorkspaceView({
               <button
                 type="button"
                 data-kind="danger"
-                onClick={() => void reloadLatestServerDraft()}
+                onClick={() => void reloadLatestServerDraft(true)}
               >
                 {divergenceCopy.discardLocal}
               </button>
@@ -825,7 +864,7 @@ export function SelectedPatientWorkspaceView({
               <button
                 type="button"
                 data-kind="danger"
-                onClick={() => void reloadLatestServerDraft()}
+                onClick={() => void reloadLatestServerDraft(true)}
               >
                 未保存入力を破棄して再読込
               </button>

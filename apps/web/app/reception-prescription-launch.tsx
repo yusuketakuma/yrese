@@ -134,7 +134,7 @@ export function ReceptionPrescriptionLaunch() {
       </p>
 
       {state.status === "error" ? (
-        <ErrorNotice severity="ERROR" {...state.notice} />
+        <ErrorNotice severity="ERROR" {...state.notice} blocking />
       ) : null}
 
       {state.status === "ready" && state.entries.length === 0 ? (

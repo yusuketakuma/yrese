@@ -264,7 +264,7 @@ describe("CheckoutReceptionContextView retry", () => {
       />,
     );
 
-    expect(html).toContain('role="alert"');
+    expect(html).toContain('role="status"');
     expect(html).toMatch(
       /<button[^>]*class="operator-button"[^>]*>再取得<\/button>/,
     );

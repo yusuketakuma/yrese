@@ -39,8 +39,12 @@ for (const workspaceDir of workspaceDirs) {
   await removeGeneratedDirs(path.join(rootDir, workspaceDir));
 }
 
-for (const tsBuildInfoFile of await findTsBuildInfoFiles(rootDir)) {
-  await removePath(tsBuildInfoFile);
+// ponytail: scope cache cleanup to tracked workspaces; add an explicit generated
+// root only if a tracked build starts emitting a root-level tsbuildinfo file.
+for (const workspaceDir of workspaceDirs) {
+  for (const tsBuildInfoFile of await findTsBuildInfoFiles(path.join(rootDir, workspaceDir))) {
+    await removePath(tsBuildInfoFile);
+  }
 }
 
 console.log("Generated artifacts removed.");

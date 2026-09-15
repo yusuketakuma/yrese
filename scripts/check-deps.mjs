@@ -8,8 +8,8 @@ const DEPENDENCY_AUDIT_FAILURE_MESSAGE =
   "Dependency audit failed: audit report or command result was invalid.";
 const CAPTURED_AUDIT_ERROR_MESSAGE =
   "Dependency audit failed: captured audit error was not a recognized transient.";
-const REGISTRY_WARNING_MESSAGE =
-  "Dependency audit registry/network warning (non-blocking): recognized transient error code.";
+const REGISTRY_UNVERIFIED_MESSAGE =
+  "Dependency audit unavailable: registry/network error; vulnerability status is unverified.";
 const REGISTRY_OR_NETWORK_ERROR_PATTERNS = [
   /\bERR_PNPM_META_FETCH_FAIL\b/i,
   /\bERR_PNPM_FETCH(?:_[A-Z0-9]+)*\b/i,
@@ -165,7 +165,8 @@ async function main() {
       process.exitCode = 1;
       return;
     }
-    console.warn(REGISTRY_WARNING_MESSAGE);
+    console.error(REGISTRY_UNVERIFIED_MESSAGE);
+    process.exitCode = 1;
     return;
   }
 
@@ -209,7 +210,8 @@ async function main() {
     reportShapeError !== undefined &&
     isStructuredRegistryOrNetworkError(report)
   ) {
-    console.warn(REGISTRY_WARNING_MESSAGE);
+    console.error(REGISTRY_UNVERIFIED_MESSAGE);
+    process.exitCode = 1;
     return;
   }
   if (reportShapeError !== undefined) {

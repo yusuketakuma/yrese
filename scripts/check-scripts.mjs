@@ -18,6 +18,8 @@ const expectedTypescriptCliSpecifier = "^7.0.2";
 const expectedTypescriptCompatSpecifier = "^6.0.2";
 const expectedPostgresImage =
   "postgres:18.4@sha256:3a82e1f56c8f0f5616a11103ac3d47e632c3938698946a7ad26da0df1334744a";
+const expectedComposePostgresImage =
+  "postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73";
 
 function scriptPath(name) {
   return path.join(repoRoot, "scripts", name);
@@ -489,6 +491,22 @@ async function testCiWorkflowTrustBoundary() {
   assert(
     validateCiWorkflowTrustBoundary(flowJobPermission).length > 0,
     "CI trust check should reject flow-style job-level permissions",
+  );
+}
+
+async function testComposePostgresImagePinned() {
+  const composeSource = await readFile(path.join(repoRoot, "compose.yaml"), "utf8");
+  let document;
+  try {
+    document = parseDocument(composeSource, { uniqueKeys: true });
+  } catch {
+    assert(false, "compose.yaml should be parseable as YAML");
+    return;
+  }
+  assert(document.errors.length === 0, "compose.yaml should have no YAML errors");
+  assert(
+    document.getIn(["services", "postgres", "image"]) === expectedComposePostgresImage,
+    "local PostgreSQL image should retain major 17 and use the reviewed immutable digest",
   );
 }
 
@@ -2044,6 +2062,52 @@ async function testSecretScanRepositoryContentScope() {
     !ignoredEnvOutput.includes("Secret scan skipped"),
     "an ordinary ignored file is scanned, not skipped",
   );
+
+  const protectedRoot = await initGitRoot("secrets-content-protected");
+  const protectedCredential = ["Synthetic", "Protected", "Credential", "4321"].join("_");
+  await writeText(path.join(protectedRoot, "README.md"), "clean eligible text\n");
+  for (const protectedRootName of [".harness-worktrees", "artifacts", "ui-test-tools"]) {
+    await writeText(
+      path.join(protectedRoot, protectedRootName, "fixture.md"),
+      `api_key='${protectedCredential}'\n`,
+    );
+  }
+  const protectedResult = runNode("check-secrets.mjs", [], { cwd: protectedRoot });
+  const protectedOutput = outputOf(protectedResult);
+  assert(
+    protectedResult.status === 0,
+    `known untracked developer-local roots should be skipped: ${protectedOutput}`,
+  );
+  assert(
+    protectedOutput.includes("Secret scan skipped 3 entries excluded from repository content:") &&
+      [".harness-worktrees", "artifacts", "ui-test-tools"].every((rootName) =>
+        protectedOutput.includes(`- ${rootName}`),
+      ),
+    "protected root skips must be explicit and complete",
+  );
+
+  const trackedProtectedRoot = await initGitRoot("secrets-content-tracked-protected");
+  const trackedProtectedPath = path.join("artifacts", "tracked.md");
+  const trackedProtectedCredential = ["Synthetic", "Tracked", "Credential", "4321"].join("_");
+  await writeText(
+    path.join(trackedProtectedRoot, trackedProtectedPath),
+    `api_key='${trackedProtectedCredential}'\n`,
+  );
+  const trackedProtectedAdd = spawnSync("git", ["add", "--", trackedProtectedPath], {
+    cwd: trackedProtectedRoot,
+    encoding: "utf8",
+  });
+  assert(
+    trackedProtectedAdd.status === 0,
+    `tracked protected-root fixture should be staged: ${outputOf(trackedProtectedAdd)}`,
+  );
+  const trackedProtectedResult = runNode("check-secrets.mjs", [], { cwd: trackedProtectedRoot });
+  const trackedProtectedOutput = outputOf(trackedProtectedResult);
+  assert(
+    trackedProtectedResult.status === 1 &&
+      trackedProtectedOutput.includes("artifacts/tracked.md:1: Generic secret assignment"),
+    "tracked content under a protected-root name must remain in scan scope",
+  );
 }
 
 async function testCleanRemovesGeneratedArtifacts() {
@@ -2058,9 +2122,17 @@ async function testCleanRemovesGeneratedArtifacts() {
     path.join(root, "packages", "money", "coverage", "coverage-final.json"),
     path.join(root, "packages", "trace", "src", "index.tsbuildinfo"),
   ];
+  const protectedPaths = [
+    path.join(root, ".harness-worktrees", "sentinel.tsbuildinfo"),
+    path.join(root, "artifacts", "sentinel.tsbuildinfo"),
+    path.join(root, "ui-test-tools", "sentinel.tsbuildinfo"),
+  ];
 
   for (const generatedPath of generatedPaths) {
     await writeText(generatedPath, "generated\n");
+  }
+  for (const protectedPath of protectedPaths) {
+    await writeText(protectedPath, "protected\n");
   }
 
   const result = runNode("clean.mjs", [], { cwd: root });
@@ -2069,14 +2141,17 @@ async function testCleanRemovesGeneratedArtifacts() {
   for (const generatedPath of generatedPaths) {
     assert(!existsSync(generatedPath), `clean should remove ${path.relative(root, generatedPath)}`);
   }
+  for (const protectedPath of protectedPaths) {
+    assert(existsSync(protectedPath), `clean should preserve ${path.relative(root, protectedPath)}`);
+  }
 }
 
 async function testDependencyAuditWrapper() {
   const root = path.join(tempRoot, "dependency-audit");
   const fixedFailure =
     "Dependency audit failed: audit report or command result was invalid.\n";
-  const registryWarning =
-    "Dependency audit registry/network warning (non-blocking): recognized transient error code.\n";
+  const registryUnverified =
+    "Dependency audit unavailable: registry/network error; vulnerability status is unverified.\n";
   const thresholdFailure = (count, level) =>
     `Dependency audit failed: ${count} ${level}+ vulnerabilities found.\n`;
   const cleanCounts = { info: 0, low: 0, moderate: 0, high: 0, critical: 0 };
@@ -2227,12 +2302,11 @@ async function testDependencyAuditWrapper() {
     `ERR_PNPM_META_FETCH_FAIL\r\nhttps://synthetic:${rawSentinel}@registry.example.invalid/private?token=${rawSentinel}\r\n\u001b[31m${rawSentinel}\u001b[0m`,
   );
   const registryResult = runNode("check-deps.mjs", ["--from-audit-error", registryErrorPath]);
-  assert(registryResult.status === 0, "check-deps should warn-only for registry/network outages");
+  assert(registryResult.status === 1, "check-deps should fail closed for registry/network outages");
   assert(registryResult.stdout === "", "captured registry warning should not write stdout");
   assert(
-    registryResult.stderr ===
-      "Dependency audit registry/network warning (non-blocking): recognized transient error code.\n",
-    "registry outage should use one fixed warning line",
+    registryResult.stderr === registryUnverified,
+    "registry outage should use one fixed unverified line",
   );
   assert(!outputOf(registryResult).includes(rawSentinel), "registry warning must not replay raw audit stderr");
   assert(!outputOf(registryResult).includes(registryErrorPath), "registry warning must not expose the input path");
@@ -2246,7 +2320,7 @@ async function testDependencyAuditWrapper() {
     assert(result.status === 1, "dual captured source modes should fail closed");
     assert(result.stdout === "", "dual captured source failure should keep stdout empty");
     assert(result.stderr === fixedFailure, "dual captured source failure should use one fixed line");
-    assert(!result.stderr.includes(registryWarning), "dual captured source failure must not warn-pass");
+    assert(!result.stderr.includes(registryUnverified), "dual captured source failure must not unverified-pass");
     assert(!outputOf(result).includes("AUDIT_JSON_RAW_SENTINEL_4182"), "dual source failure must omit report sentinel");
     assert(!outputOf(result).includes(rawSentinel), "dual source failure must omit error sentinel");
     assert(!outputOf(result).includes(vulnerableReportPath), "dual source failure must omit report path");
@@ -2311,11 +2385,10 @@ async function testDependencyAuditWrapper() {
   const liveTransientResult = runNode("check-deps.mjs", [], {
     env: { ...process.env, PATH: `${fakeBin}${path.delimiter}${process.env.PATH ?? ""}` },
   });
-  assert(liveTransientResult.status === 0, "recognized live transient should remain non-blocking");
+  assert(liveTransientResult.status === 1, "recognized live transient should fail closed");
   assert(
-    liveTransientResult.stderr ===
-      "Dependency audit registry/network warning (non-blocking): recognized transient error code.\n",
-    "recognized live transient should retain the WP-4177 fixed warning",
+    liveTransientResult.stderr === registryUnverified,
+    "recognized live transient should use one fixed unverified line",
   );
   assert(!outputOf(liveTransientResult).includes("RAW_LIVE_TRANSIENT_4182"), "live transient must not replay child output");
 
@@ -3118,6 +3191,7 @@ async function testOpenApiGenerationPublishesAtomically() {
 
 try {
   await testCiWorkflowTrustBoundary();
+  await testComposePostgresImagePinned();
   await testPnpmToolchainAuthority();
   await testBoundaryViolationDetection();
   await testBoundaryCleanFixturePasses();

@@ -50,7 +50,7 @@ shape: 形状記号(テキスト由来・非絵文字・forced-colors 耐性)。
 | --- | --- | --- | --- | --- | --- |
 | CRITICAL | 重大 | blocked | ◆(塗り菱形) | alert | assertive |
 | BLOCKER | 停止 | blocked | ■(塗り四角) | alert | assertive |
-| ERROR | エラー | attention | ▲(塗り三角) | alert | polite |
+| ERROR | エラー | attention | ▲(塗り三角) | status (blocking時はalert) | polite (blocking時はassertive) |
 | WARNING | 警告 | pending | △(白三角) | status | polite |
 | INFO | 情報 | neutral | ・(中点) | status | polite |
 

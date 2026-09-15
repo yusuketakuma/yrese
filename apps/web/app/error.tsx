@@ -31,6 +31,7 @@ export default function RouteError({
         severity="ERROR"
         message="画面の処理中に予期しないエラーが発生しました。"
         nextAction="「再試行」を押してください。解消しない場合はシステム管理者へ連絡してください。"
+        blocking
       />
       <button type="button" className="operator-button" onClick={reset}>
         再試行

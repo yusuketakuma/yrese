@@ -84,7 +84,6 @@ export function PatientHeader(props: PatientHeaderProps) {
     <section
       className="patient-header"
       aria-label="患者情報"
-      data-patient-id={props.patientId}
     >
       <div className="patient-header-identity">
         <span className="patient-kana">{props.kana}</span>

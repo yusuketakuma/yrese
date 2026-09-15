@@ -351,7 +351,7 @@ export function PrescriptionLaunchRoute({
         />
         <section aria-label="受付コンテキスト確認エラー">
           <Panel title="この受付から処方入力を開始できません">
-            <ErrorNotice severity="ERROR" {...state.notice} />
+            <ErrorNotice severity="ERROR" {...state.notice} blocking />
             <p>
               <Link className="operator-button" href="/">
                 受付ダッシュボードへ戻る

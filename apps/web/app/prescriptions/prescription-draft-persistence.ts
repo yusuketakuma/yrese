@@ -82,6 +82,26 @@ export interface PrescriptionDraftContext {
   readonly businessDate: string;
 }
 
+/** 受付登録と同じ既存のブラウザ通信上限。SLO確定前の性能最適化値ではない。 */
+export const PRESCRIPTION_DRAFT_TIMEOUT_MS = 30_000;
+
+function draftRequestSignal(
+  callerSignal: AbortSignal | undefined,
+  timeoutMs: number,
+): AbortSignal {
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  return callerSignal === undefined
+    ? timeoutSignal
+    : AbortSignal.any([callerSignal, timeoutSignal]);
+}
+
+function draftTimeoutError(): PrescriptionDraftApiError {
+  return new PrescriptionDraftApiError(
+    "UNAVAILABLE",
+    "処方下書きAPIへの応答が時間内にありませんでした。",
+  );
+}
+
 function parseOptionalInteger(value: string, label: string): number | null {
   const normalized = value.trim();
   if (normalized.length === 0) return null;
@@ -238,19 +258,22 @@ export async function loadPrescriptionDraft(
   context: PrescriptionDraftContext,
   fetchImpl: typeof fetch = fetch,
   signal?: AbortSignal,
+  timeoutMs: number = PRESCRIPTION_DRAFT_TIMEOUT_MS,
 ): Promise<PrescriptionDraftResponse | null> {
   const query = new URLSearchParams({
     date: context.businessDate,
   });
+  const requestSignal = draftRequestSignal(signal, timeoutMs);
   let response: Response;
   try {
     response = await fetchImpl(`${endpoint(context)}?${query.toString()}`, {
       headers: devTenantHeaders(READ_SCOPES),
       cache: "no-store",
-      ...(signal === undefined ? {} : { signal }),
+      signal: requestSignal,
     });
   } catch (error) {
     if (signal?.aborted === true) throw error;
+    if (requestSignal.aborted) throw draftTimeoutError();
     throw new PrescriptionDraftApiError(
       "UNAVAILABLE",
       "処方下書きAPIへ接続できませんでした。",
@@ -262,7 +285,9 @@ export async function loadPrescriptionDraft(
 
   try {
     return prescriptionDraftResponseSchema.parse(await response.json());
-  } catch {
+  } catch (error) {
+    if (signal?.aborted === true) throw error;
+    if (requestSignal.aborted) throw draftTimeoutError();
     throw new PrescriptionDraftApiError(
       "INVALID_RESPONSE",
       "処方下書きAPIの応答形式を検証できませんでした。",
@@ -278,6 +303,7 @@ export async function savePrescriptionDraft(
   },
   fetchImpl: typeof fetch = fetch,
   signal?: AbortSignal,
+  timeoutMs: number = PRESCRIPTION_DRAFT_TIMEOUT_MS,
 ): Promise<PrescriptionDraftSaveResponse> {
   let body: unknown;
   try {
@@ -295,6 +321,7 @@ export async function savePrescriptionDraft(
     );
   }
 
+  const requestSignal = draftRequestSignal(signal, timeoutMs);
   let response: Response;
   try {
     response = await fetchImpl(endpoint(context), {
@@ -308,10 +335,11 @@ export async function savePrescriptionDraft(
       },
       cache: "no-store",
       body: JSON.stringify(body),
-      ...(signal === undefined ? {} : { signal }),
+      signal: requestSignal,
     });
   } catch (error) {
     if (signal?.aborted === true) throw error;
+    if (requestSignal.aborted) throw draftTimeoutError();
     throw new PrescriptionDraftApiError(
       "UNAVAILABLE",
       "処方下書きAPIへ接続できませんでした。",
@@ -322,7 +350,9 @@ export async function savePrescriptionDraft(
 
   try {
     return prescriptionDraftSaveResponseSchema.parse(await response.json());
-  } catch {
+  } catch (error) {
+    if (signal?.aborted === true) throw error;
+    if (requestSignal.aborted) throw draftTimeoutError();
     throw new PrescriptionDraftApiError(
       "INVALID_RESPONSE",
       "処方下書きAPIの応答形式を検証できませんでした。",

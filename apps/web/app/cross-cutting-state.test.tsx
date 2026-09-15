@@ -30,7 +30,7 @@ describe("cross-cutting state files (App Router / 監査 S-01)", () => {
     expect(html).toContain("次のアクション:");
     expect(html).toContain('href="/"');
     expect(html).toContain('href="/patients"');
-    expect(html).toContain('role="alert"');
+    expect(html).toContain('role="status"');
     expect(html).toContain("[エラー(ERROR)]");
   });
 

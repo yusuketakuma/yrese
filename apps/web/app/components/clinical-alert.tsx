@@ -49,6 +49,9 @@ export function ClinicalAlert(props: ClinicalAlertProps) {
   const severity = SEVERITY_PRESENTATION[props.severity];
   const identity = CLINICAL_ALERT_TYPE_IDENTITY[props.alertType];
   const ack: ClinicalAlertAckStatus = props.ack ?? "UNACKNOWLEDGED";
+  const isBlockingError = props.severity === "ERROR" && props.blocking === true;
+  const role = isBlockingError ? "alert" : severity.ariaRole;
+  const ariaLive = isBlockingError ? "assertive" : severity.ariaLive;
   return (
     <section
       className="clinical-alert"
@@ -57,8 +60,8 @@ export function ClinicalAlert(props: ClinicalAlertProps) {
       data-tone={severity.tone}
       data-blocking={props.blocking ? "true" : "false"}
       data-ack={ack}
-      role={severity.ariaRole}
-      aria-live={severity.ariaLive}
+      role={role}
+      aria-live={ariaLive}
     >
       <div className="clinical-alert-header">
         <span className="clinical-alert-shape" aria-hidden="true">
@@ -97,6 +100,7 @@ export interface ClinicalAlertSummaryProps {
     readonly severity: ErrorSeverity;
     readonly alertType: ClinicalAlertType;
     readonly ack?: ClinicalAlertAckStatus;
+    readonly blocking?: boolean;
   }[];
 }
 
@@ -128,13 +132,21 @@ export function ClinicalAlertSummary(props: ClinicalAlertSummaryProps) {
   })).filter((c) => c.count > 0);
   const top = highestUnacknowledgedSeverity(props.alerts);
   const topPresentation = top ? SEVERITY_PRESENTATION[top] : null;
+  const topIsBlockingError =
+    top === "ERROR" &&
+    props.alerts.some(
+      (alert) =>
+        alert.severity === "ERROR" &&
+        alert.blocking === true &&
+        (alert.ack ?? "UNACKNOWLEDGED") === "UNACKNOWLEDGED",
+    );
   return (
     <div
       className="clinical-alert-summary"
       data-total={total}
       data-top-severity={top ?? "NONE"}
-      role={topPresentation?.ariaRole ?? "status"}
-      aria-live={topPresentation?.ariaLive ?? "polite"}
+      role={topIsBlockingError ? "alert" : (topPresentation?.ariaRole ?? "status")}
+      aria-live={topIsBlockingError ? "assertive" : (topPresentation?.ariaLive ?? "polite")}
     >
       <span className="clinical-alert-summary-total">要確認 {total}件</span>
       {top && (

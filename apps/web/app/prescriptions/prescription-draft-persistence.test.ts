@@ -4,6 +4,7 @@ import type { PrescriptionDraftResponse } from "@yrese/contracts";
 
 import {
   PrescriptionDraftApiError,
+  PRESCRIPTION_DRAFT_TIMEOUT_MS,
   fromPrescriptionDraftResponse,
   loadPrescriptionDraft,
   prescriptionDraftSnapshotsEqual,
@@ -184,6 +185,37 @@ describe("prescription draft web persistence", () => {
         controller.signal,
       ),
     ).rejects.toBe(aborted);
+  });
+
+  it("bounds load and save attempts and reports a timeout as unavailable", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const fetchImpl: typeof fetch = async (_input, init) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener(
+          "abort",
+          () => reject(new DOMException("Aborted", "AbortError")),
+          { once: true },
+        );
+      });
+
+    await expect(loadPrescriptionDraft(context, fetchImpl, undefined, 5)).rejects.toMatchObject({
+      kind: "UNAVAILABLE",
+      message: "処方下書きAPIへの応答が時間内にありませんでした。",
+    });
+    await expect(
+      savePrescriptionDraft(
+        context,
+        { expectedVersion: 2, snapshot: fromPrescriptionDraftResponse(serverDraft) },
+        fetchImpl,
+        undefined,
+        5,
+      ),
+    ).rejects.toMatchObject({
+      kind: "UNAVAILABLE",
+      message: "処方下書きAPIへの応答が時間内にありませんでした。",
+    });
+    expect(PRESCRIPTION_DRAFT_TIMEOUT_MS).toBe(30_000);
   });
 
   it("sends the update precondition and maps a stale writer to a fixed conflict", async () => {

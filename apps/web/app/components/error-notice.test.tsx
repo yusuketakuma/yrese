@@ -17,7 +17,7 @@ vi.mock("react", async (importOriginal) => {
 (globalThis as { React?: typeof React }).React = React;
 
 describe("cross-screen error display (WP-3007 / SCR-013)", () => {
-  it("ErrorNotice pairs error code with next action as alert", () => {
+  it("ErrorNotice pairs error code with next action as a polite status", () => {
     const html = renderToStaticMarkup(
       <ErrorNotice
         errorCode="AUTH-0003"
@@ -26,7 +26,8 @@ describe("cross-screen error display (WP-3007 / SCR-013)", () => {
       />,
     );
 
-    expect(html).toContain('role="alert"');
+    expect(html).toContain('role="status"');
+    expect(html).toContain('aria-live="polite"');
     expect(html).toContain('data-error-code="AUTH-0003"');
     expect(html).toContain("権限がありません。(エラーコード: AUTH-0003)");
     expect(html).toContain("次のアクション: 管理者に権限の付与状況を確認してください。");
@@ -69,7 +70,7 @@ describe("cross-screen error display (WP-3007 / SCR-013)", () => {
     expect(html).toContain("次のアクション: SSOT の改版を依頼してください。");
   });
 
-  it("uses a polite status role for WARNING/INFO but an assertive alert role for ERROR/BLOCKER (§11.4-18)", () => {
+  it("uses polite status semantics for nonblocking messages (§11.4-18)", () => {
     const warning = renderToStaticMarkup(
       <ErrorNotice severity="WARNING" message="確認してください。" nextAction="確認する。" />,
     );
@@ -87,9 +88,23 @@ describe("cross-screen error display (WP-3007 / SCR-013)", () => {
     expect(warning).toContain('role="status"');
     expect(warning).not.toContain('role="alert"');
     expect(info).toContain('role="status"');
-    // 重大側は alert(assertive 含意)で埋没させない
-    expect(error).toContain('role="alert"');
+    expect(error).toContain('role="status"');
+    expect(error).toContain('aria-live="polite"');
     expect(blocker).toContain('role="alert"');
+  });
+
+  it("uses assertive alert semantics only for a blocking ERROR", () => {
+    const html = renderToStaticMarkup(
+      <ErrorNotice
+        severity="ERROR"
+        message="入力を開始できません。"
+        nextAction="受付を確認してください。"
+        blocking
+      />,
+    );
+
+    expect(html).toContain('role="alert"');
+    expect(html).toContain('aria-live="assertive"');
   });
 
   it("RouteError never reads or renders untrusted error properties", () => {

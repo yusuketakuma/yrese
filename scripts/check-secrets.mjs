@@ -30,6 +30,7 @@ const ignoredDirs = new Set([
   "out",
 ]);
 const exactTextBasenames = new Set([".npmrc"]);
+const protectedLocalRoots = new Set([".harness-worktrees", "artifacts", "ui-test-tools"]);
 const scopeErrorMessage = "Secret scan could not validate the protected repository scope.";
 class ProtectedScopeError extends Error {
   constructor(offendingPath) {
@@ -82,6 +83,25 @@ function isExcludedFromRepositoryContent(entryPath) {
     stdio: "ignore",
   });
   return probe.status === 0;
+}
+
+function isUntrackedProtectedLocalRoot(entryPath, entry) {
+  if (!insideGitWorkTree || (!entry.isDirectory() && !entry.isSymbolicLink())) {
+    return false;
+  }
+
+  const relativePath = toPosix(path.relative(rootDir, entryPath));
+  if (!protectedLocalRoots.has(relativePath)) {
+    return false;
+  }
+
+  // Keep tracked content under a similarly named root in scan scope. Only the
+  // known untracked developer-local roots are excluded without descending.
+  const probe = spawnSync("git", ["ls-files", "--error-unmatch", "--", `${relativePath}/`], {
+    cwd: rootDir,
+    stdio: "ignore",
+  });
+  return probe.status === 1 && probe.error === undefined && probe.signal === null;
 }
 
 /**
@@ -211,6 +231,10 @@ async function listFiles(dir) {
 
   for (const entry of entries) {
     const entryPath = path.join(dir, entry.name);
+    if (isUntrackedProtectedLocalRoot(entryPath, entry)) {
+      skippedExcludedPaths.push(toPosix(path.relative(rootDir, entryPath)));
+      continue;
+    }
     if (entry.isSymbolicLink()) {
       skipOrFailScope(entryPath);
       continue;

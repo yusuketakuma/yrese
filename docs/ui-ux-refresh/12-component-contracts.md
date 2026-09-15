@@ -11,7 +11,7 @@
 ### DomainStatusBadge(実装済)
 - Purpose: ドメイン状態キー(domain+key)から label/tone/shape/ARIA を Registry 経由で一元表示。
 - Props: `query: StatusQuery`(discriminated union)。**自由 label/tone/severity は受けない**(A-01)。
-- ARIA: severity=CRITICAL/BLOCKER→role=alert、他→role=status。shape は aria-hidden。
+- ARIA: Registry の固定値として severity=CRITICAL/BLOCKER→role=alert、ERROR→role=status。blocking の上書きは持たず、操作停止を表す `ErrorNotice` / `ClinicalAlert` の責務とする。shape は aria-hidden。
 - Prohibited: hex 直指定、任意アイコン、PHI をログ/計測へ。
 - Tests: visual-status-registry.test.tsx(網羅・直交・ARIA)。
 
@@ -36,7 +36,7 @@
   clinical alert は「種別 identity(label+形状)」と「severity 駆動のトーン/ARIA」を直交合成。
 
 ### SystemModeBadge / ModeCapabilityView / SeverityList / ErrorNotice / BlockerBanner / Empty/LoadingState(実装済)
-- 各々 §04/§06 に契約準拠を記載。ErrorNotice は role を重要度別に(A-05)。
+- 各々 §04/§06 に契約準拠を記載。ErrorNotice は重要度と`blocking`属性でroleを決める(A-05)。
 
 ## B. 実装済(2026-07-11 — 人間承認により実装レーン拡大)
 
@@ -54,7 +54,7 @@
 - Purpose: severity/alert type/対象患者/対象薬剤/検出理由/情報源/評価日時/推奨確認/blocking・override/監査。
 - 実装: `clinical-alert.ts` enum(種別6・ack4)、Registry(種別 identity + ack 軸)、`clinical-alert.tsx`
   (`ClinicalAlert`/`ClinicalAlertSummary`/`highestUnacknowledgedSeverity`)。種別別形状、severity 駆動のトーン/ARIA、
-  CRITICAL のみ assertive、未確認を解決済みに見せない、override は理由記録前提、集約で最重大の未確認を先頭強調。
+  CRITICAL/BLOCKER と blocking ERROR は assertive、非blocking ERROR は polite、未確認を解決済みに見せない、override は理由記録前提、集約で最重大の未確認を先頭強調。
 - 残(実装とは別・必須): **判定ロジック・医薬品データの正確性・医療安全レビュー・機能単位の SaMD 該当性評価**。
   表示は実装したが、**判定エンジン接続前にレビューと該当性評価を行う**(未登録医療機器化を避ける)。
 

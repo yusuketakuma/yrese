@@ -9,6 +9,8 @@ import { resolveStatus, type StatusQuery } from "../status/visual-status-registr
  * 状態がドメイン enum に対応する箇所では本コンポーネントを優先する。
  *
  * 冗長エンコード: 色(tone)+ 形状(shape, aria-hidden)+ ラベル(必須・意味の主担)。
+ * ARIA は Registry の固定値を使う。操作を止める blocking は ErrorNotice/ClinicalAlert の責務であり、
+ * このバッジに任意の blocking prop を追加して意味を上書きしてはならない。
  * shape は支援技術には読ませず(aria-hidden)、label が accessible name を担う。
  * PHI をこのコンポーネント経由でログ・計測へ渡してはならない。
  */

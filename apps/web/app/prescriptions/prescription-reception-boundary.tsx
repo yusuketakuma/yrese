@@ -78,11 +78,15 @@ export function PrescriptionReceptionBoundary({
 
     const key = originKey(origin);
     const controller = new AbortController();
+    let current = true;
     setVerification({ kind: "loading", key });
     void loadPrescriptionReceptionOrigin(origin, fetch, controller.signal).then(
-      (entry) => setVerification({ kind: "ready", key, entry }),
+      (entry) => {
+        if (!current || controller.signal.aborted) return;
+        setVerification({ kind: "ready", key, entry });
+      },
       (error: unknown) => {
-        if (controller.signal.aborted) return;
+        if (!current || controller.signal.aborted) return;
         setVerification({
           kind: "error",
           key,
@@ -96,7 +100,10 @@ export function PrescriptionReceptionBoundary({
         });
       },
     );
-    return () => controller.abort();
+    return () => {
+      current = false;
+      controller.abort();
+    };
   }, [origin, selectedPatientId]);
 
   const hasPatientDraft = useMemo(
@@ -124,6 +131,7 @@ export function PrescriptionReceptionBoundary({
           severity="ERROR"
           message="受付から引き継いだ患者と現在選択中の患者が一致しません。"
           nextAction="受付画面へ戻り、患者のカナ・生年月日・患者番号を確認してから再度引き継いでください。"
+          blocking
         />
         <Link className="operator-button" href="/">
           受付画面へ戻る
@@ -162,6 +170,7 @@ export function PrescriptionReceptionBoundary({
           severity="ERROR"
           message={verification.error.message}
           nextAction={errorNextAction(verification.error)}
+          blocking
         />
         <Link className="operator-button" href="/">
           受付画面へ戻る

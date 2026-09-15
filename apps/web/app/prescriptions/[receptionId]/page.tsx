@@ -51,6 +51,7 @@ export default async function Page({
               severity="ERROR"
               message="処方入力の開始情報を確認できませんでした。"
               nextAction={`${parsed.reason} 受付ダッシュボードから該当の受付を選び直してください。URLの受付IDを手入力しないでください。`}
+              blocking
             />
             <p>
               <Link className="operator-button" href="/">
