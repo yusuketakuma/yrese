@@ -1,16 +1,16 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-09-15, WP-5277 LANDED `011ac26` / 独立review findings 0 / 9/18 gate集約を前倒し実施済み):**
+> **ACTIVE SNAPSHOT (2026-09-15, WP-5278 LANDED `6d005ee` / OpenAPI dedupe・生成yaml byte-identical):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5277は`011ac26`へ着地済み。fresh-context独立review(2026-09-15 Devinセッション)はfindings 0でACCEPT。9/18予定のgate集約は同日へ前倒し実施した。`active_root_writer`は本lane(Devin)。
+- **Direction / ownership:** WP-5278は`6d005ee`へ着地済み(全フォルダ走査でOpenAPI error-response dedupeのみ確定・実施)。WP-5277は`011ac26`、独立review findings 0で閉鎖。9/18予定のgate集約は同日へ前倒し実施した。`active_root_writer`は本lane(Devin)。
   WP-5276は`a463fac`へ着地済み。FHIR、reception wallClock、薬剤師確認・確定はgate待ちでpark継続。
-- **Git boundary:** local `main` / current branch = 本record commit、`origin/main` = `c3a0829`。localは3 commit先行。push / merge / deployは行わない。
+- **Git boundary:** local `main` / current branch = 本record commit、`origin/main` = `c3a0829`。localは7 commit先行。push / merge / deployは行わない。
 - **Dirty ownership:** tracked差分なし(本record更新はlanding commitへ含む)。`.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、cleanup、merge、stageしない。
-- **Active plan / boundary:** WP-5277 dedupeは完了。9/16 FHIR判断packetは整理済み・人間判断待ち(実装なし)、9/17は確定不具合なしで該当なし。残りは9/19最終判断のみ。実行コード・依存・環境の追加変更なし。
+- **Active plan / boundary:** WP-5277/WP-5278 dedupeは完了(WP-5278は生成`openapi.yaml`がbyte-identical)。9/16 FHIR判断packetは整理済み・人間判断待ち(実装なし)、9/17は確定不具合なしで該当なし。残りは9/19最終判断のみ。実行コード・依存・環境の追加変更なし。
 - **Security / privacy / offline:** DB-gated suiteはlocal PostgreSQL@18(127.0.0.1:5433、専用`yrese_test` DB、testごとの分離schemaへmigration適用)のsynthetic dataのみ。credential、production data、PHI/PII、migration環境適用、external send、外部状態変更は追加しない。
 - **Process gate:** R2相当の内部dedupeはfrozen review通過済み、独立review findings 0で閉鎖。9/19は最終候補packetのfreezeと最終判断のみ。
-- **Validation:** workspace 2,417 PASS(api 1,001・web 754・packages 662)。DB-gated suiteは`TEST_DATABASE_URL`(local `yrese_test`)接続で1,064/1,064・0 skip(63 skip解消)。typecheck 10 projects、build、OpenAPI/boundaries/calculation/SSOT index 185/SBOM 249/deps high=0・critical=0/script harness/secrets、`git diff --check` 全PASS。
+- **Validation:** workspace 2,417 PASS(api 1,001・web 754・packages 662)。DB-gated suiteは`TEST_DATABASE_URL`(local `yrese_test`)接続で1,064/1,064・0 skip(63 skip解消)。typecheck 10 projects、build、OpenAPI/boundaries/calculation/SSOT index 185/SBOM 249/deps high=0・critical=0/script harness/secrets、`git diff --check` 全PASS。WP-5278後の再検証: `check:openapi` PASS(byte-identical)・contracts 136/136・workspace 2,417 PASS・typecheck clean。
 - **Seven-day gates:** 9/16 FHIR判断packetは整理済み・人間判断待ち(実装なし)、9/17は確定不具合なしで該当なし、9/18 gate集約は9/15前倒しで実施済み、9/19 frozen review/final evidence。FHIR SSOT昇格・既存human gateは未成立のまま。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、薬剤師確認・確定、migration環境適用、production/deployは未解消のまま。SSOT_BLOCKED 4画面は停止中の正本gate名を明示する状態を維持する。
 

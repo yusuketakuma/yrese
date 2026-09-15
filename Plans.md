@@ -33,23 +33,23 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` / current branch = `011ac26`(WP-5277 landing)+本record commit、`origin/main` = `c3a082919f4965915fb11671b12db402a157d990`。実測 2026-09-15 JST |
-| Candidate branch | `refactor/wp-5275-failure-proof-describe-failure`。WP-5275は`c3a0829`、WP-5276は`a463fac`、WP-5277は`011ac26`へ着地済み |
-| Upstream relation | localはoriginより3 commit先行。push、merge、deployは行わない |
-| Candidate scope | WP-5277: pool管理transaction wrapper(`connect`→`BEGIN`→catch内`ROLLBACK`→`finally release`)を`runInPooledTransaction`へ7サイトで集約するexact10 slice。実装・独立review・全gate完了 |
-| Last update | 2026-09-15 JST(WP-5277実装・検証・独立review findings 0、9/18 gate集約を前倒し実施。DB-gated suiteはlocal PostgreSQL@18 `yrese_test`で1,064/1,064・0 skip。保護untracked 3 pathは不変) |
+| Review base | local `main` / current branch = `6d005ee`(WP-5278 landing)+本record commit、`origin/main` = `c3a082919f4965915fb11671b12db402a157d990`。実測 2026-09-15 JST |
+| Candidate branch | `refactor/wp-5275-failure-proof-describe-failure`。WP-5275は`c3a0829`、WP-5276は`a463fac`、WP-5277は`011ac26`、WP-5278は`6d005ee`へ着地済み |
+| Upstream relation | localはoriginより7 commit先行。push、merge、deployは行わない |
+| Candidate scope | WP-5278: 全フォルダ調査で確定した`packages/contracts/src/openapi.ts`の重複domain error response 19ブロックを`forbiddenErrorResponse`/`domainErrorResponse`へ集約するexact1 slice。生成`openapi.yaml`はbyte-identical |
+| Last update | 2026-09-15 JST(WP-5278実装・検証。全フォルダ走査でtimeout実装・web client・JST helper・permission scopeの統合は意味論差で見送り、OpenAPI dedupeのみ実施。`check:openapi` drift PASS・workspace 2,417 PASS・typecheck clean。保護untracked 3 pathは不変) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | 2026-09-13〜09-19の7日間で、既存の受付→処方箋draft縦切りを壊さず、証拠のある最小修正・検証・ゲート整理だけを完了する |
 | Current critical path | 9/19最終判断(人間)。FHIR判断packetは整理済みで人間提示待ち |
 | Main blocker | FHIR SSOT昇格・migration環境適用・production/deployは既存human gate待ち。DB-gated suiteはlocal接続で実施済み(0 skip) |
 | Required verification | full workspace test/typecheck/build、dependency/OpenAPI/boundary/calculation/SSOT/SBOM/script/secrets gate、`git diff --check`を最終候補で実施済み。PostgreSQL統合はlocal `yrese_test`接続で0 skip、CIは`postgres:18.4` serviceで常時実行 |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
-| Work-selection drift | 現在のCURRENTは0件、READYは0。WP-5277以前の実装記録はGit evidenceとして扱い、未実装表現をそのまま再claimしない |
+| Work-selection drift | 現在のCURRENTは0件、READYは0。WP-5278以前の実装記録はGit evidenceとして扱い、未実装表現をそのまま再claimしない |
 | Next scan cursor | `origin/main=c3a0829`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
 current batchは7日計画の最小complete slice消化で、current WIPは0件である(WP-5277は`011ac26`へ着地・
-独立review findings 0で閉鎖。9/16 packetは整理済み・人間判断待ち、残りは9/19最終判断のみ)。migration 000013のsourceは承認対象だが
+独立review findings 0で閉鎖、WP-5278は`6d005ee`へ着地。9/16 packetは整理済み・人間判断待ち、残りは9/19最終判断のみ)。migration 000013のsourceは承認対象だが
 環境適用は行わない。push、deploy、production変更、risk/release acceptance、外部状態変更は行わない。
 ユーザー承認済みの公式JP Core packageについては、保存せずhash/sizeだけを再確認した。
 
@@ -91,8 +91,21 @@ current batchは7日計画の最小complete slice消化で、current WIPは0件�
 ### WIP — exactly one
 
 **CURRENT は 0 件である。** WP-5277は`011ac26`へ着地済みで、fresh-context独立review(2026-09-15 Devin)は
-findings 0で閉鎖。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+findings 0で閉鎖。WP-5278は`6d005ee`へ着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 reception wallClock意味論、FHIR provenance/mapping、薬剤師確認・確定はgate待ちでpark継続。
+
+### Historical landed WIP — WP-5278
+
+**WP-5278(dedupe OpenAPI domain error responses)は`6d005ee`へ着地済みで、CURRENTではない。**
+全フォルダ走査(`apps/api/src` 87・`apps/web/app` 137・`packages` 95ファイル)で重複候補を棚卸し、
+timeout実装(意味論差)、web API client(error taxonomy差)、JST helper(意味論差)、route別scope定数(意図的分散)の
+統合は見送りとした上で、`packages/contracts/src/openapi.ts`の重複domain error response 19ブロック
+(403×11・400×5・404×2・409×1)を`forbiddenErrorResponse({noStore})`/`domainErrorResponse(description)`へ
+集約したexact1 slice。prescription-draft 2サイトの`headers: noStoreHeaders`付き403は`{noStore:true}`で保持。
+reception-create 400(union schema)とframework shapeは対象外。着手認可は human instruction
+2026-09-15「全フォルダ対象のコードリファクタリングを実行」。
+検証 evidence: `check:openapi` drift PASS(生成`docs/api/openapi.yaml`がbyte-identical)、contracts 136/136、
+workspace 2,417 PASS、typecheck 10 projects clean、`git diff --check` clean。
 
 ### Historical landed WIP — WP-5277
 
