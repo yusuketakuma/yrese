@@ -210,6 +210,82 @@ throw、warnings 重複排除と必須 warning 付与、`check:calculation-purit
 golden test 作成→opus4.8 相当レビュー→CAL-001 行 status の APPROVED_FOR_IMPLEMENTATION
 昇格。これらなしに算定 workflow 実装へ進まない。
 
+##### Oracle 独立 review 結果(2026-09-15・session `wp5279-calculatio-review`)
+
+browser engine・requested=gpt-6-pro(解決: model picker「Latest」+ thinking「Pro」、
+いずれも verified=yes)・12ファイル/~78k tokens・33m47s。判定: **CHANGES_REQUESTED**。
+transcript 保存済み `~/.oracle/sessions/wp5279-calculatio-review/artifacts/transcript.md`
+(sha256 0c35277c…c944)。注意点: ChatGPT 側 archive は skipped(artifact-save-failed —
+model 生成の sandbox 添付 .md/.zip の download fallback 失敗に連動。会話 URL は meta.json に
+保存済み)、reviewer の検算は @yrese/date-time・shared-kernel・trace の test double による
+隔離実行で、実 workspace の vitest/typecheck とは別物。以下の採否は実コード照合済み。
+
+**F1〜F6 への判定:**
+
+- **F1 成立(確定不具合 P1):** 旧基本料1+合成ルールで同一基本料が94点まで二重計上。
+  最小修正は旧ルールへの根拠付き exclusivityGroup 付与(統合は後でよい)。混在経路は
+  既存 test 未カバー。
+- **F2 成立(確定不具合〔実装範囲欠落〕P2):** 通常点数の照合は一致するが 10% 分岐の
+  指定経路がない。特別Aの5段階は全て非整数となるため、現行規律では正しい実装結果は
+  **全件 requires_rounding_evidence → BLOCKED**。推測丸め禁止。
+- **F3 成立(確定不具合 P1・成立期間は2027-06-01以降):** `effectiveTo=2027-05-31` の
+  宣言が最小修正。旧版・新版併存時の不適用版 BLOCKED 挙動に注意。
+- **F4 限定成立(確定不具合 P1/一部懸念):** 指導料1+「1以外」の2(45+59=104点)のような
+  台帳上矛盾する組合せは確定。ただし**全カテゴリの一律排他までは台帳だけでは確定
+  できず**、確定組合せへの限定付与 + 対象単位の明確化が最小修正。
+- **F5 構造的限界は成立・現行契約違反は不成立(懸念 P2):** `maxApplications` は1回の
+  calculate 内の制限であり、履歴を要する frequency_limit は CAL-006 が明示的に未実装・
+  BLOCKED 扱い。固定 applicationKey のルールは同一呼出し内で duplicate に既に止まるため
+  「未宣言=無制限」という従来の主張は訂正。**副次懸念:** 調剤管理料1イ/ロの「上限3剤」が
+  共通上限か区分別か台帳上不明(イ3+ロ3=210点が通る)→SSOT 確認事項。
+- **F6 一部成立(P3):** dangling コメントは CAL-004 §8 への参照に置換が適切。demo 束命名は
+  任意改善。`ruleStep` 非freezeは **不具合として不成立** — 実 trace 層 `freezeStep`
+  (packages/trace/src/index.ts:337)が step を copy+deep-freeze するため最終 trace は
+  不変(実コード照合で判定不能→非該当を確認)。
+
+**新規 finding(採否は実コード照合済み):**
+
+- **A1 採用(確定不具合 P1):** `formulas.ts` が Points 変換前に number 演算
+  (`190+(d-7)*10`、`Math.ceil(d/7)`、`34*units`、`20*units`)。通常域で値誤りなしだが
+  MOD-010 の IEEE-754 禁止規律違反、かつ巨大 daysSupply で中間積が safe integer を超え
+  RangeError(宣言済み入力域と実装の不一致)。bigint 化が最小修正。
+- **A2 採用(確定不具合 P1):** 湯薬・一包化の ruleId が段階 evidenceId 込み
+  (`${fee.appliedEvidenceId}:…`)のため、同一対象に異段階を渡すと重複検知を回避して
+  二重計上(湯薬7+8日=390点、一包化42+43日=444点)。項目種別+対象単位の排他が最小修正。
+- **A3 採用(確定不具合 P2):** `createDrugFeeRule` 等が点数を factory 時点で計算する一方、
+  apply の説明・output が `input.unitPriceYen` の live 参照を読む。factory 後の入力変更で
+  点数と trace が乖離(2点のまま trace は 105円)。`DISPENSING_BASIC_FEE_BASES` の
+  浅い freeze・Points 値オブジェクトの非 freeze も同系。入口で値を snapshot するのが最小修正。
+- **A4 採用(確定不具合 P2):** `composeDispensingBasicFeePoints` が minimumPoints の非負を
+  検証せず clamp を負値検査より先に実行(負 min で `points:-3` を成功形返却)、
+  `selfPreparationAdditionPoints` の switch に default 拒否なし(未知 kind で
+  `points:undefined`)。組込み経路からは非到達だが公式 API 境界の確定不具合。
+- **A5 採用(確定不具合 P2):** `ruleStep` が applicationKey・入力値・拒否理由を trace に
+  残さない(rp:a→rp:b の変更が trace 上区別不能、重複/上限/排他拒否が step に残らない)。
+  構造化追加は CAL-008 整合が前提。
+- **C1 採用(P1 相当懸念・実 trace 層で確認済み):** `affectsClaim:false`+正点数+evidence 空
+  の項目が計算層を通り、trace 層も evidence 強制は affectsClaim=true のみ
+  (trace/src/index.ts:367)のため合算に混入可能。正点数合算項目への evidence 必須化が最小修正。
+- **C2 採用(P1 相当懸念):** 多剤逓減ルールは逓減後総額(90%)を正点数で返すため、元の
+  薬剤料との併用で 19点(本来9点)。置換契約の不足 — 合成 factory 化か同一対象の排他が必要。
+- **C3 採用・人間ゲート送り(P2):** 自家製剤/一包化の「7日又はその端数を増すごとに」の
+  端数単位は添付 SSOT 文言に未展開(コードコメント由来の解釈)。原本再照合(P-01〜04)で
+  確定するまで **変更禁止**(floor 化等は誤修正リスク)。
+- **C4 採用・SSOT 改版事項(P2):** CAL-003(処方日・調剤日ともに2026-05-31以前禁止)と
+  CAL-004 §3(調剤日のみガード)の適用日基準が不整合。コードではなく SSOT governance
+  (PRC-007)で解消。
+
+**棄却された過剰指摘:** 薬価変換 ceil・基本料合成順(乗率→減算→下限)は CAL-004 が明示する
+暫定式であり無断実装ではない。0008/0013-0015/0060 の未実装は明示的除外で欠落ではない。
+エンジンガード(期間/重複/上限/排他/StepResult 検証)と固定点数 78 ケースの台帳照合は
+反証なし。claimable 到達経路は引き続き存在しない。
+
+**修正優先度(実施は別 WP・R2+ 独立 review 前提、本記録で着手しない):**
+① A1 bigint 化、② F1/F4-確定分/A2 の重複・排他、③ F3 の effectiveTo、④ F2 variant
+(全件 BLOCKED 形)、⑤ A3〜A5、⑥ C1 evidence 強制、⑦ C2 置換契約。F5 頻度・混在上限・
+C3 端数単位・C4 日付基準は SSOT/人間ゲート確定後。Oracle 助言は承認ではなく、実装可否は
+CAL-001 昇格プロセスとリスク分類に従う。
+
 ### Historical landed WIP — WP-5278
 
 **WP-5278(dedupe OpenAPI domain error responses)は`6d005ee`へ着地済みで、CURRENTではない。**
