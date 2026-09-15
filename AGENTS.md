@@ -113,3 +113,12 @@ authorityやriskが不明なら上位risk/gateへ倒し、推測しない。
   post-commit記録更新や追加pushはcurrent request/WPが明示要求する場合だけ行う。
 - affected path/consumer確認、必要変更、objective gate、riskに必要なreview、
   critical finding解消が揃って初めて完了とする。
+
+## Devin Wiki
+
+`.devin/wiki.md` が存在する場合、Devin Cloud がこのリポジトリ用に生成した wiki へのリンクである。
+アーキテクチャ、モジュール配置、ドメイン用語などプロジェクトレベルの質問に答える前にまず読み、
+その後で実コードと照合する。無い場合は `~/.local/share/devin/cli/wiki/*/meta.json` の
+`repo_identifier` を `git remote get-url origin` 由来の `host/owner/repo` と照合し、一致する
+ディレクトリの `wiki.md` を参照する。`devin-wiki-sync` を実行するとリンクが更新される。
+wiki は概要把握の補助であり、正本は常にこのリポジトリのコードとドキュメントとする。
