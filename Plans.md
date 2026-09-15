@@ -33,25 +33,24 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` / current branch = `a463fac`(WP-5276 landing)、`origin/main` = `c3a082919f4965915fb11671b12db402a157d990`。実測 2026-09-15 JST |
-| Candidate branch | `refactor/wp-5275-failure-proof-describe-failure`。WP-5275は`c3a0829`、WP-5276は`a463fac`へ着地済み。WP-5277の差分を保持 |
-| Upstream relation | localはoriginより2 commit先行。push、merge、deployは行わない |
-| Candidate scope | WP-5277: pool管理transaction wrapper(`connect`→`BEGIN`→catch内`ROLLBACK`→`finally release`)を`runInPooledTransaction`へ7サイトで集約するexact10 slice |
-| Last update | 2026-09-15 JST(WP-5276 local landing済み、9/15縦切り検証完了、WP-5277実装・検証済み、保護untracked 3 pathは不変) |
+| Review base | local `main` / current branch = `011ac26`(WP-5277 landing)+本record commit、`origin/main` = `c3a082919f4965915fb11671b12db402a157d990`。実測 2026-09-15 JST |
+| Candidate branch | `refactor/wp-5275-failure-proof-describe-failure`。WP-5275は`c3a0829`、WP-5276は`a463fac`、WP-5277は`011ac26`へ着地済み |
+| Upstream relation | localはoriginより3 commit先行。push、merge、deployは行わない |
+| Candidate scope | WP-5277: pool管理transaction wrapper(`connect`→`BEGIN`→catch内`ROLLBACK`→`finally release`)を`runInPooledTransaction`へ7サイトで集約するexact10 slice。実装・独立review・全gate完了 |
+| Last update | 2026-09-15 JST(WP-5277実装・検証・独立review findings 0、9/18 gate集約を前倒し実施。DB-gated suiteはlocal PostgreSQL@18 `yrese_test`で1,064/1,064・0 skip。保護untracked 3 pathは不変) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | 2026-09-13〜09-19の7日間で、既存の受付→処方箋draft縦切りを壊さず、証拠のある最小修正・検証・ゲート整理だけを完了する |
-| Current critical path | WP-5277のtransaction wrapper集約 → 9/16 FHIR前提packet整理(GATED) → 9/18-19 gate集約・最終判断 |
-| Main blocker | WP-5277はhuman instruction 2026-09-15「新規WPとしてrefactor続行」で7日計画の「実装はWP-5276のみ」境界を明示的に更新したもの。PostgreSQL統合とFHIR SSOT昇格は既存human gate待ち |
-| Required verification | full workspace test/typecheck/build、dependency/OpenAPI/boundary/calculation/SSOT/SBOM/script/secrets gate、`git diff --check`。PostgreSQL統合は未接続時の3 skipped files / 63 skipped testsとして明示する |
+| Current critical path | 9/16 FHIR前提packet整理(GATED) → 9/19最終判断 |
+| Main blocker | FHIR SSOT昇格・migration環境適用・production/deployは既存human gate待ち。DB-gated suiteはlocal接続で実施済み(0 skip) |
+| Required verification | full workspace test/typecheck/build、dependency/OpenAPI/boundary/calculation/SSOT/SBOM/script/secrets gate、`git diff --check`を最終候補で実施済み。PostgreSQL統合はlocal `yrese_test`接続で0 skip、CIは`postgres:18.4` serviceで常時実行 |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
-| Work-selection drift | 現在のCURRENTはWP-5277、READYは0。WP-5276以前の実装記録はGit evidenceとして扱い、未実装表現をそのまま再claimしない |
+| Work-selection drift | 現在のCURRENTは0件、READYは0。WP-5277以前の実装記録はGit evidenceとして扱い、未実装表現をそのまま再claimしない |
 | Next scan cursor | `origin/main=c3a0829`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchは7日計画の最小complete slice消化で、current WIPはWP-5277である(human instruction 2026-09-15
-「新規WPとしてrefactor続行」が旧refactor Goalの方式での新規slice着手を認可し、「今週の実装はWP-5276だけ」の
-境界を更新した)。migration 000013のsourceは承認対象だが環境適用は行わない。push、deploy、production変更、
-risk/release acceptance、外部状態変更は行わない。
+current batchは7日計画の最小complete slice消化で、current WIPは0件である(WP-5277は`011ac26`へ着地・
+独立review findings 0で閉鎖。残りは9/16 GATED packetと9/19最終判断のみ)。migration 000013のsourceは承認対象だが
+環境適用は行わない。push、deploy、production変更、risk/release acceptance、外部状態変更は行わない。
 ユーザー承認済みの公式JP Core packageについては、保存せずhash/sizeだけを再確認した。
 
 ### 1.1 Seven-day execution plan (2026-09-13〜2026-09-19 JST)
@@ -65,7 +64,7 @@ risk/release acceptance、外部状態変更は行わない。
 | 9/15 | syntheticな受付→draft API／Web縦切りの確認 | 保存・再取得・競合時の非上書き、既存read audit／非漏洩境界を確認。薬剤師確定や完全なNorth Star E2Eとは呼ばない。migration 000013はsource確認のみ | 実施済み(API 155 PASS / Web 209 PASSの縦切りsuite、DB-gated 63 skip)。同日、human instructionでWP-5277着手を認可 |
 | 9/16 | FHIR前提の判断packet整理 | JP Core hashは再取得・一致を確認済み。SSOTのVERIFIED昇格、mapping／ownership、単一writerの未充足条件は区別し、FHIR routeは実装しない | GATED |
 | 9/17 | 確定不具合がある場合だけ、別Task Packetを判断 | 再現根拠・scope・受入条件・停止条件・着手認可・WIP整理が揃った場合のみ修正。なければ変更なし | 条件付き |
-| 9/18 | 最終候補に必要なゲートを集約 | 実行コード・依存・環境に変更があった場合だけ関連回帰と全体gateを再実施。同一候補の既存PASSは再利用し、SKIPをPASSへ変えない | 予定 |
+| 9/18 | 最終候補に必要なゲートを集約 | 実行コード・依存・環境に変更があった場合だけ関連回帰と全体gateを再実施。同一候補の既存PASSは再利用し、SKIPをPASSへ変えない | 実施済み(9/15前倒し: workspace 2,417 PASS・DB-gated 1,064/1,064・0 skip・全static gate PASS・diff clean) |
 | 9/19 | 最終判断・引継ぎ | 技術受入、未commit、未実施検証、human gateを分離。Plansはactive情報、Stateはpointerのみ。未認可のcommit／push／deployはしない | 予定 |
 
 薬剤師確認・確定(C-061以降)、FHIR facade、JAHIS/オン資/外部partner接続は今週の実装対象に昇格させない。前提gateが成立した時点で別WPとして再計画する。
@@ -91,35 +90,20 @@ risk/release acceptance、外部状態変更は行わない。
 
 ### WIP — exactly one
 
-**CURRENT は WP-5277(dedupe pooled transaction wrapper、実装・検証済み / LOCAL_LANDING_PENDING)1 件である。**
-WP-5276は`a463fac`へlocal landing済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
+**CURRENT は 0 件である。** WP-5277は`011ac26`へ着地済みで、fresh-context独立review(2026-09-15 Devin)は
+findings 0で閉鎖。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
 reception wallClock意味論、FHIR provenance/mapping、薬剤師確認・確定はgate待ちでpark継続。
-着手認可は human instruction 2026-09-15「新規WPとしてrefactor続行」(7日計画の「実装はWP-5276だけ」境界の明示更新)。
 
-- **Purpose / layer:** `apps/api/src/db`で7サイトに重複していたpool管理transaction wrapper
-  (`connect`→`BEGIN`→catch内`ROLLBACK`→`finally release`、失敗時は`release(true)`で破棄)を
-  `runInPooledTransaction`(`db/pool.ts`)へ集約するreuse-first dedupe。
-- **Allowed / forbidden:** trackedの変更・レビュー対象はexact10(`db/pool.ts`、`db/pool.test.ts`、
-  `db/audit-repository.ts`、`db/reception-repository.ts`、`db/reception-command.ts`、
-  `db/prescription-draft-service.ts`、`db/outbox-delivery.ts`、`db/eligibility-snapshot-repository.ts`、
-  `Plans.md`、`State.md`)に限定する。`partner-registry.ts`の`REPEATABLE READ READ ONLY`と
-  migration-runnerのmigrationごとの個別txは別構造で対象外。API/contract/schema/DML、
-  算定・請求・資格・FHIR/JAHIS logic、APPROVED SSOTは変更しない。
-- **Authority / evidence:** 7サイトの同一boilerplateと、BEGIN/ROLLBACK順序・release call shapeを
-  検証する既存mock test(`reception-repository.test.ts`、`audit-repository.test.ts`)が根拠。
-  宣言済み意図的差分: eligibilityはROLLBACK失敗時にclientをpoolへ戻さず破棄する挙動へ統一
-  (他6サイトと一致するfail-visible化)。
-- **Acceptance / tests:** helper契約をpinするDB-less test 4件追加(BEGIN順序、失敗時ROLLBACK+再利用release、
-  ROLLBACK失敗時`release(true)`+元error保持、connect失敗伝播)。full API 997+4=1,001 PASS /
-  DB-gated 3 skipped files / 63 skipped tests、API typecheck、boundaries、`git diff --check` PASS。
-- **PIA / offline:** mock pool/clientのみ。synthetic data、DB・PHI/PII・credential・external send・
-  外部状態変更は追加しない。
-- **Roles / stop / rollback:** `active_root_writer`は本lane(Devin)。exact10以外のtracked変更、
-  release call shapeの変化、query順序の変化が判明したら停止。rollbackは確定commitへの`git revert`。
-  push、merge、deploy、migration/DDL/DMLは認可外。
-- **Validation evidence:** focused 245 PASS、full API 1,001/1,001 PASS / 63 DB-gated skip、
-  API typecheck、`check:boundaries`、`git diff --check`を実測済み。fresh-context独立reviewは
-  本laneでは未取得(9/18-19のfinal gate判断材料として残す)。
+### Historical landed WIP — WP-5277
+
+**WP-5277(dedupe pooled transaction wrapper)は`011ac26`へ着地済みで、CURRENTではない。**
+`apps/api/src/db`の7サイトに重複していたpool管理transaction wrapperを`runInPooledTransaction`(`db/pool.ts`)
+へ集約したreuse-first dedupe。`partner-registry.ts`(REPEATABLE READ READ ONLY)とmigration-runner(個別tx)は
+別構造で対象外。宣言済み意図的差分: eligibilityはROLLBACK失敗時にclientをpoolへ戻さず破棄する挙動へ統一。
+着手認可は human instruction 2026-09-15「新規WPとしてrefactor続行」(7日計画の「実装はWP-5276だけ」境界の明示更新)。
+検証・review evidence: helper契約DB-less test 4件追加、full API 1,001/1,001、独立review findings 0(ACCEPT)、
+9/15前倒しのgate集約でworkspace 2,417 PASS・DB-gated suite 1,064/1,064・0 skip(local PostgreSQL@18
+`yrese_test`)・全static gate PASS・`git diff --check` clean。
 
 ### Historical landed WIP — WP-5276
 

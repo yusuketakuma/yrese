@@ -1,19 +1,18 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-09-15, WP-5277 実装・検証済み / LOCAL_LANDING_PENDING):**
+> **ACTIVE SNAPSHOT (2026-09-15, WP-5277 LANDED `011ac26` / 独立review findings 0 / 9/18 gate集約を前倒し実施済み):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** CURRENT=WP-5277。着手認可はhuman instruction 2026-09-15「新規WPとしてrefactor続行」で、7日計画の「実装はWP-5276だけ」境界を明示的に更新した。`active_root_writer`は本lane(Devin)。
-  WP-5276は`a463fac`へ着地済み。reception wallClock、FHIR、薬剤師確認・確定はgate待ちでpark継続。
-- **Git boundary:** local `main` / current branch = `a463fac`、`origin/main` = `c3a0829`。localは2 commit先行。push / merge / deployは行わない。
-- **Dirty ownership:** WP-5277のtracked変更・レビュー対象はexact10(`apps/api/src/db/pool.ts`、`db/pool.test.ts`、`db/audit-repository.ts`、`db/reception-repository.ts`、`db/reception-command.ts`、`db/prescription-draft-service.ts`、`db/outbox-delivery.ts`、`db/eligibility-snapshot-repository.ts`、`Plans.md`、`State.md`)に限定する。
-  `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、cleanup、merge、stageしない。
-- **Active plan / boundary:** pool管理transaction wrapperを`runInPooledTransaction`へ7サイトで集約するdedupeのみ。`partner-registry.ts`(REPEATABLE READ)とmigration-runner(個別tx)は対象外。宣言済み意図的差分はeligibilityのROLLBACK失敗時client破棄への統一。API/schema/DML、算定・請求・資格・FHIR/JAHIS logic、APPROVED SSOTは不変。
-- **Security / privacy / offline:** mock pool/clientのみ。credential、production data、PHI/PII、migration apply、log、external send、外部状態変更は追加しない。
-- **Process gate:** R2相当の内部dedupe。exact10以外のtracked変更、release call shape・query順序の変化、API/SSOT影響が判明したら停止する。fresh-context独立reviewは本laneでは未取得で、9/18-19のfinal gate判断材料として残す。
-- **Validation:** helper契約DB-less test 4件追加。focused 245 PASS、full API 1,001/1,001 PASS、DB-gated 3 skipped files / 63 skipped tests、API typecheck、`check:boundaries`、`git diff --check` PASS。同日の9/15縦切り検証(API 155 / Web 209 PASS)も完了済み。
-- **Seven-day gates:** 9/16 FHIR前提packet(GATED、実装なし)、9/17 confirmed defectがある場合のみ別Task Packet、9/18必要gate集約、9/19 frozen review/final evidence。DB・FHIR SSOT・既存human gateは未成立のまま。
-- **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、薬剤師確認・確定、migration apply、production/deployは未解消のまま。SSOT_BLOCKED 4画面は停止中の正本gate名を明示する状態を維持する。
+- **Direction / ownership:** WP-5277は`011ac26`へ着地済み。fresh-context独立review(2026-09-15 Devinセッション)はfindings 0でACCEPT。9/18予定のgate集約は同日へ前倒し実施した。`active_root_writer`は本lane(Devin)。
+  WP-5276は`a463fac`へ着地済み。FHIR、reception wallClock、薬剤師確認・確定はgate待ちでpark継続。
+- **Git boundary:** local `main` / current branch = 本record commit、`origin/main` = `c3a0829`。localは3 commit先行。push / merge / deployは行わない。
+- **Dirty ownership:** tracked差分なし(本record更新はlanding commitへ含む)。`.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、cleanup、merge、stageしない。
+- **Active plan / boundary:** WP-5277 dedupeは完了。残りは9/16 FHIR前提packet(GATED、実装なし)と9/19最終判断のみ。実行コード・依存・環境の追加変更なし。
+- **Security / privacy / offline:** DB-gated suiteはlocal PostgreSQL@18(127.0.0.1:5433、専用`yrese_test` DB、testごとの分離schemaへmigration適用)のsynthetic dataのみ。credential、production data、PHI/PII、migration環境適用、external send、外部状態変更は追加しない。
+- **Process gate:** R2相当の内部dedupeはfrozen review通過済み、独立review findings 0で閉鎖。9/19は最終候補packetのfreezeと最終判断のみ。
+- **Validation:** workspace 2,417 PASS(api 1,001・web 754・packages 662)。DB-gated suiteは`TEST_DATABASE_URL`(local `yrese_test`)接続で1,064/1,064・0 skip(63 skip解消)。typecheck 10 projects、build、OpenAPI/boundaries/calculation/SSOT index 185/SBOM 249/deps high=0・critical=0/script harness/secrets、`git diff --check` 全PASS。
+- **Seven-day gates:** 9/16 FHIR前提packet(GATED、実装なし)、9/17 confirmed defectがある場合のみ別Task Packet、9/18 gate集約は9/15前倒しで実施済み、9/19 frozen review/final evidence。FHIR SSOT昇格・既存human gateは未成立のまま。
+- **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、薬剤師確認・確定、migration環境適用、production/deployは未解消のまま。SSOT_BLOCKED 4画面は停止中の正本gate名を明示する状態を維持する。
 
 ### PREVIOUS SNAPSHOT (2026-08-27, all-screen UI/UX refresh + real-data wiring) — NONAUTHORITATIVE
 
