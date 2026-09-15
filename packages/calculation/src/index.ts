@@ -96,6 +96,12 @@ export interface BlockedStepResult extends StepTraceOutput {
 export interface CalculationExclusivityGroup {
   readonly groupId: string;
   readonly evidenceRef: EvidenceRef;
+  /**
+   * この項目が、指定接頭辞の groupId を持つ他項目との併算定を禁じる(非対称排他)。
+   * 調剤管理料2「1以外の場合」が剤別 group を持つ料1の任意適用と衝突する等、
+   * 「同一 group 内の相互排他」では表現できない区分間排他に使う。評価は順序非依存。
+   */
+  readonly blocksGroupIdPrefixes?: readonly string[];
 }
 
 export interface ItemCalculatedStepResult extends StepTraceOutput {
@@ -309,14 +315,18 @@ function ruleStep(rule: CalculationRule, result: StepResult): CalculationTraceSt
       ? [...rule.evidenceRefs, result.exclusivityGroup.evidenceRef]
       : rule.evidenceRefs;
 
-  return {
+  return Object.freeze({
     stepId: rule.ruleId,
     description: result.description,
     affectsClaim: result.affectsClaim,
     evidenceRefs,
     inputRefs: result.inputRefs ?? [],
-    output: result.output,
-  };
+    // 計算項目は適用対象識別子を output に残す(trace 上で対象を区別できるようにする — A5)
+    output:
+      result.status === "ITEM_CALCULATED"
+        ? `${result.output};applicationKey=${result.applicationKey}`
+        : result.output,
+  });
 }
 
 function effectiveFromBlockedStep(rule: CalculationRule): CalculationTraceStep {
@@ -418,6 +428,39 @@ function createExclusivityBlocker(groupId: string): CalculationBlocker {
   };
 }
 
+function duplicateBlockedStep(rule: CalculationRule, applicationKey: string): CalculationTraceStep {
+  return Object.freeze({
+    stepId: `${rule.ruleId}:duplicate-application:${applicationKey}`,
+    description: "Reject application because the same (ruleId, applicationKey) pair was already calculated",
+    affectsClaim: false,
+    evidenceRefs: rule.evidenceRefs,
+    inputRefs: [],
+    output: `BLOCKED_REGULATORY_REVIEW:重複適用(applicationKey=${applicationKey})`,
+  });
+}
+
+function maxApplicationsBlockedStep(rule: CalculationRule, maxApplications: number): CalculationTraceStep {
+  return Object.freeze({
+    stepId: `${rule.ruleId}:max-applications-exceeded`,
+    description: "Reject application because the declared maxApplications limit was exceeded",
+    affectsClaim: false,
+    evidenceRefs: rule.evidenceRefs,
+    inputRefs: [],
+    output: `BLOCKED_REGULATORY_REVIEW:上限超過(maxApplications=${maxApplications})`,
+  });
+}
+
+function exclusivityBlockedStep(rule: CalculationRule, groupId: string): CalculationTraceStep {
+  return Object.freeze({
+    stepId: `${rule.ruleId}:exclusivity:${groupId}`,
+    description: "Reject application because an exclusivity group (or blocked prefix) was already applied",
+    affectsClaim: false,
+    evidenceRefs: rule.evidenceRefs,
+    inputRefs: [],
+    output: `BLOCKED_REGULATORY_REVIEW:排他グループ衝突(${groupId})`,
+  });
+}
+
 function createInvalidStepResultBlocker(ruleId: string, reason: string): CalculationBlocker {
   return {
     type: "SSOT_UPDATE_REQUIRED",
@@ -498,12 +541,32 @@ function validateEvidenceRefShape(value: unknown, label: string): string | undef
   return undefined;
 }
 
+const EXCLUSIVITY_GROUP_FIELDS = new Set<string>([
+  "groupId",
+  "evidenceRef",
+  "blocksGroupIdPrefixes",
+]);
+
 function validateExclusivityGroupShape(value: unknown): string | undefined {
   if (!isRecord(value)) {
     return "exclusivityGroup must be an object";
   }
+  const unknownField = Object.keys(value).find((key) => !EXCLUSIVITY_GROUP_FIELDS.has(key));
+  if (unknownField !== undefined) {
+    return `unknown exclusivityGroup field outside the approved SSOT: ${unknownField}`;
+  }
   if (!isNonEmptyString(value.groupId)) {
     return "exclusivityGroup.groupId must be a non-empty string";
+  }
+  if (value.blocksGroupIdPrefixes !== undefined) {
+    // Array.from で疎配列の hole を undefined として検査対象に含める
+    // (Array.prototype.every/some は hole を skip するため malformed を見逃す)
+    if (
+      !Array.isArray(value.blocksGroupIdPrefixes) ||
+      !Array.from(value.blocksGroupIdPrefixes).every(isNonEmptyString)
+    ) {
+      return "exclusivityGroup.blocksGroupIdPrefixes must be an array of non-empty strings";
+    }
   }
   return validateEvidenceRefShape(value.evidenceRef, "exclusivityGroup.evidenceRef");
 }
@@ -566,6 +629,11 @@ function validateStepResult(value: unknown): StepResultValidation {
   if (value.itemPoints.compare(zeroPoints) < 0) {
     return { ok: false, reason: "itemPoints must not be negative (減算は CAL-004 §2 スコープ外)" };
   }
+  // 合算対象の計算項目は必ず claim-affecting とする。affectsClaim:false の正点数は
+  // trace 層の evidenceRefs 強制(CAL-004 §2)を回避して合計に混入できてしまうため拒否。
+  if (value.affectsClaim !== true) {
+    return { ok: false, reason: "ITEM_CALCULATED items must be affectsClaim: true (合算項目は evidence 強制対象)" };
+  }
   if (!isNonEmptyString(value.applicationKey)) {
     return { ok: false, reason: "applicationKey must be a non-empty string" };
   }
@@ -593,26 +661,51 @@ function createFixedPointsRule(input: {
   readonly description: string;
   readonly output: string;
   readonly maxApplications?: number;
+  readonly effectiveTo?: CalendarDate;
+  readonly exclusivityGroup?: CalculationExclusivityGroup;
 }): CalculationRule {
-  assertNonEmptyString(input.applicationKey, "applicationKey");
-  if (input.maxApplications !== undefined) {
-    assertPositiveSafeInteger(input.maxApplications, "maxApplications");
+  const {
+    ruleId,
+    evidenceRef,
+    itemPoints,
+    applicationKey,
+    description,
+    output,
+    maxApplications,
+    effectiveTo,
+    exclusivityGroup,
+  } = input;
+  assertNonEmptyString(applicationKey, "applicationKey");
+  if (maxApplications !== undefined) {
+    assertPositiveSafeInteger(maxApplications, "maxApplications");
   }
+  const frozenExclusivityGroup =
+    exclusivityGroup === undefined
+      ? undefined
+      : Object.freeze({
+          groupId: exclusivityGroup.groupId,
+          evidenceRef: exclusivityGroup.evidenceRef,
+          ...(exclusivityGroup.blocksGroupIdPrefixes !== undefined
+            ? { blocksGroupIdPrefixes: freezeArray(exclusivityGroup.blocksGroupIdPrefixes) }
+            : {}),
+        });
 
   return Object.freeze({
-    ruleId: input.ruleId,
-    evidenceRefs: freezeArray([input.evidenceRef]),
+    ruleId,
+    evidenceRefs: freezeArray([evidenceRef]),
     effectiveFrom: ruleEffectiveFrom,
+    ...(effectiveTo !== undefined ? { effectiveTo } : {}),
     apply: () =>
       Object.freeze({
         status: "ITEM_CALCULATED",
-        description: input.description,
+        description,
         affectsClaim: true,
         inputRefs: [],
-        output: input.output,
-        itemPoints: input.itemPoints,
-        applicationKey: input.applicationKey,
-        ...(input.maxApplications !== undefined ? { maxApplications: input.maxApplications } : {}),
+        output,
+        itemPoints,
+        applicationKey,
+        ...(maxApplications !== undefined ? { maxApplications } : {}),
+        ...(frozenExclusivityGroup !== undefined ? { exclusivityGroup: frozenExclusivityGroup } : {}),
       }),
   });
 }
@@ -624,6 +717,11 @@ export const dispensingBasicFee1Rule: CalculationRule = createFixedPointsRule({
   applicationKey: "prescription",
   description: "Dispensing basic fee 1: 47 points per prescription reception",
   output: "itemPoints=47",
+  // 区分00 は1処方箋受付につき1区分のみ(合成ルールと同じ group で排他 — WP-5280 F1)
+  exclusivityGroup: {
+    groupId: "dispensing-basic-fee",
+    evidenceRef: calculationEvidenceRef("EVD-CAL-0001"),
+  },
 });
 
 export function createOralMedicinePreparationFeeRule(applicationKey: string): CalculationRule {
@@ -645,6 +743,12 @@ export const dispensingManagementFee2Rule: CalculationRule = createFixedPointsRu
   applicationKey: "prescription",
   description: "Dispensing management fee 2: 10 points",
   output: "itemPoints=10",
+  // 料2 は「1以外の場合」(EVD-CAL-0037): 料1(剤別 groupId 接頭辞)の任意適用と非対称排他
+  exclusivityGroup: {
+    groupId: "dispensing-management-fee-2",
+    evidenceRef: calculationEvidenceRef("EVD-CAL-0037"),
+    blocksGroupIdPrefixes: ["dispensing-management-fee-1:"],
+  },
 });
 
 export const medicationManagementGuidanceFee3Rule: CalculationRule = createFixedPointsRule({
@@ -775,6 +879,12 @@ export function createDecoctionPreparationFeeRule(
         output: `itemPoints=${fee.points.toString()};daysSupply=${daysSupply}`,
         itemPoints: fee.points,
         applicationKey,
+        // 段階ごとに ruleId が分かれるため重複検知をすり抜ける — 同一対象の併算定は排他
+        // (別対象 applicationKey への正当な複数適用は妨げない — WP-5280 A2)
+        exclusivityGroup: {
+          groupId: `decoction-preparation-fee:${applicationKey}`,
+          evidenceRef: calculationEvidenceRef(fee.appliedEvidenceId),
+        },
       }),
   });
 }
@@ -789,8 +899,10 @@ export function createDrugFeeRule(input: {
   /** 所定単位あたり薬価(円)。ScaledDecimal(小数薬価対応)。 */
   readonly unitPriceYen: ScaledDecimal;
 }): CalculationRule {
-  assertNonEmptyString(input.applicationKey, "applicationKey");
-  const points = drugPriceToPoints(input.unitPriceYen);
+  const { applicationKey, unitPriceYen } = input;
+  assertNonEmptyString(applicationKey, "applicationKey");
+  const unitPriceYenSnapshot = unitPriceYen.toString();
+  const points = drugPriceToPoints(unitPriceYen);
   return Object.freeze({
     ruleId: "EVD-CAL-0067:drug-fee",
     evidenceRefs: freezeArray([calculationEvidenceRef("EVD-CAL-0067")]),
@@ -798,12 +910,17 @@ export function createDrugFeeRule(input: {
     apply: () =>
       Object.freeze({
         status: "ITEM_CALCULATED",
-        description: `Drug fee converted from unit price ${input.unitPriceYen.toString()} yen`,
+        description: `Drug fee converted from unit price ${unitPriceYenSnapshot} yen`,
         affectsClaim: true,
         inputRefs: ["unitPriceYen"],
-        output: `itemPoints=${points.toString()};unitPriceYen=${input.unitPriceYen.toString()}`,
+        output: `itemPoints=${points.toString()};unitPriceYen=${unitPriceYenSnapshot}`,
         itemPoints: points,
-        applicationKey: input.applicationKey,
+        applicationKey,
+        // 多剤逓減(EVD-CAL-0068)は逓減後総額を返す置換型 — 元の薬剤料との併用は逓減側が block
+        exclusivityGroup: {
+          groupId: `drug-fee:${applicationKey}`,
+          evidenceRef: calculationEvidenceRef("EVD-CAL-0067"),
+        },
         warnings: [drugFeeProvisionalRoundingWarning],
       }),
   });
@@ -834,6 +951,12 @@ export function createOnePackagingSupportFeeRule(
         output: `itemPoints=${fee.points.toString()};daysSupply=${daysSupply}`,
         itemPoints: fee.points,
         applicationKey,
+        // 段階ごとに ruleId が分かれるため重複検知をすり抜ける — 同一対象の併算定は排他
+        // (別対象 applicationKey への正当な複数適用は妨げない — WP-5280 A2)
+        exclusivityGroup: {
+          groupId: `one-packaging-support-fee:${applicationKey}`,
+          evidenceRef: calculationEvidenceRef(fee.appliedEvidenceId),
+        },
       }),
   });
 }
@@ -854,21 +977,22 @@ export interface SelfPreparationAdditionRuleInput {
 export function createSelfPreparationAdditionRule(
   input: SelfPreparationAdditionRuleInput,
 ): CalculationRule {
-  assertNonEmptyString(input.applicationKey, "applicationKey");
+  const { applicationKey, kind, daysSupply, prePrepared } = input;
+  assertNonEmptyString(applicationKey, "applicationKey");
   const outcome = selfPreparationAdditionPoints({
-    kind: input.kind,
-    ...(input.daysSupply !== undefined ? { daysSupply: input.daysSupply } : {}),
-    ...(input.prePrepared !== undefined ? { prePrepared: input.prePrepared } : {}),
+    kind,
+    ...(daysSupply !== undefined ? { daysSupply } : {}),
+    ...(prePrepared !== undefined ? { prePrepared } : {}),
   });
   return Object.freeze({
-    ruleId: `EVD-CAL-0033:self-preparation-addition:${input.kind}`,
+    ruleId: `EVD-CAL-0033:self-preparation-addition:${kind}`,
     evidenceRefs: freezeArray([calculationEvidenceRef("EVD-CAL-0033")]),
     effectiveFrom: ruleEffectiveFrom,
     apply: (): StepResult => {
       if (outcome.kind === "requires_rounding_evidence") {
         return Object.freeze({
           status: "BLOCKED",
-          description: `Self-preparation addition (${input.kind}): pre-prepared multiplier produced a fractional value`,
+          description: `Self-preparation addition (${kind}): pre-prepared multiplier produced a fractional value`,
           affectsClaim: false,
           inputRefs: [],
           output: `BLOCKED_REGULATORY_REVIEW:丸め根拠未発行(${outcome.exactFraction})`,
@@ -880,12 +1004,17 @@ export function createSelfPreparationAdditionRule(
       }
       return Object.freeze({
         status: "ITEM_CALCULATED",
-        description: `Self-preparation addition (${input.kind})`,
+        description: `Self-preparation addition (${kind})`,
         affectsClaim: true,
-        inputRefs: input.daysSupply !== undefined ? ["daysSupply"] : [],
-        output: `itemPoints=${outcome.points.toString()};kind=${input.kind}`,
+        inputRefs: daysSupply !== undefined ? ["daysSupply"] : [],
+        output: [
+          `itemPoints=${outcome.points.toString()}`,
+          `kind=${kind}`,
+          ...(daysSupply !== undefined ? [`daysSupply=${daysSupply}`] : []),
+          `prePrepared=${prePrepared === true}`,
+        ].join(";"),
         itemPoints: outcome.points,
-        applicationKey: input.applicationKey,
+        applicationKey,
       });
     },
   });
@@ -905,17 +1034,18 @@ export interface WeighingMixingAdditionRuleInput {
 export function createWeighingMixingAdditionRule(
   input: WeighingMixingAdditionRuleInput,
 ): CalculationRule {
-  assertNonEmptyString(input.applicationKey, "applicationKey");
-  const outcome = weighingMixingAdditionPoints(input.kind, input.prePrepared ?? false);
+  const { applicationKey, kind, prePrepared } = input;
+  assertNonEmptyString(applicationKey, "applicationKey");
+  const outcome = weighingMixingAdditionPoints(kind, prePrepared ?? false);
   return Object.freeze({
-    ruleId: `EVD-CAL-0034:weighing-mixing-addition:${input.kind}`,
+    ruleId: `EVD-CAL-0034:weighing-mixing-addition:${kind}`,
     evidenceRefs: freezeArray([calculationEvidenceRef("EVD-CAL-0034")]),
     effectiveFrom: ruleEffectiveFrom,
     apply: (): StepResult => {
       if (outcome.kind === "requires_rounding_evidence") {
         return Object.freeze({
           status: "BLOCKED",
-          description: `Weighing-mixing addition (${input.kind}): pre-prepared multiplier produced a fractional value`,
+          description: `Weighing-mixing addition (${kind}): pre-prepared multiplier produced a fractional value`,
           affectsClaim: false,
           inputRefs: [],
           output: `BLOCKED_REGULATORY_REVIEW:丸め根拠未発行(${outcome.exactFraction})`,
@@ -927,12 +1057,12 @@ export function createWeighingMixingAdditionRule(
       }
       return Object.freeze({
         status: "ITEM_CALCULATED",
-        description: `Weighing-mixing addition (${input.kind})`,
+        description: `Weighing-mixing addition (${kind})`,
         affectsClaim: true,
         inputRefs: [],
-        output: `itemPoints=${outcome.points.toString()};kind=${input.kind}`,
+        output: `itemPoints=${outcome.points.toString()};kind=${kind};prePrepared=${prePrepared === true}`,
         itemPoints: outcome.points,
-        applicationKey: input.applicationKey,
+        applicationKey,
       });
     },
   });
@@ -951,12 +1081,12 @@ export interface DispensingBasicFeeBase {
 
 /** 区分00 の基礎点数プリセット(CAL-003 EVD-CAL-0001〜0006)。 */
 export const DISPENSING_BASIC_FEE_BASES = Object.freeze({
-  FEE_1: { evidenceId: "EVD-CAL-0001", points: Points.fromInteger(47), label: "調剤基本料1" },
-  FEE_2: { evidenceId: "EVD-CAL-0002", points: Points.fromInteger(30), label: "調剤基本料2" },
-  FEE_3_I: { evidenceId: "EVD-CAL-0003", points: Points.fromInteger(25), label: "調剤基本料3イ" },
-  FEE_3_RO: { evidenceId: "EVD-CAL-0004", points: Points.fromInteger(20), label: "調剤基本料3ロ" },
-  FEE_3_HA: { evidenceId: "EVD-CAL-0005", points: Points.fromInteger(37), label: "調剤基本料3ハ" },
-  SPECIAL_A: { evidenceId: "EVD-CAL-0006", points: Points.fromInteger(5), label: "特別調剤基本料A" },
+  FEE_1: Object.freeze({ evidenceId: "EVD-CAL-0001", points: Points.fromInteger(47), label: "調剤基本料1" }),
+  FEE_2: Object.freeze({ evidenceId: "EVD-CAL-0002", points: Points.fromInteger(30), label: "調剤基本料2" }),
+  FEE_3_I: Object.freeze({ evidenceId: "EVD-CAL-0003", points: Points.fromInteger(25), label: "調剤基本料3イ" }),
+  FEE_3_RO: Object.freeze({ evidenceId: "EVD-CAL-0004", points: Points.fromInteger(20), label: "調剤基本料3ロ" }),
+  FEE_3_HA: Object.freeze({ evidenceId: "EVD-CAL-0005", points: Points.fromInteger(37), label: "調剤基本料3ハ" }),
+  SPECIAL_A: Object.freeze({ evidenceId: "EVD-CAL-0006", points: Points.fromInteger(5), label: "特別調剤基本料A" }),
 } satisfies Readonly<Record<string, DispensingBasicFeeBase>>);
 
 export interface DispensingBasicFeeRuleInput {
@@ -977,7 +1107,12 @@ export interface DispensingBasicFeeRuleInput {
  * 同一処方箋受付での基本料区分の重複適用は exclusivityGroup で排他する。
  */
 export function createDispensingBasicFeeRule(input: DispensingBasicFeeRuleInput): CalculationRule {
-  const evidenceRefs: EvidenceRef[] = [calculationEvidenceRef(input.base.evidenceId)];
+  const { base } = input;
+  // factory 入口で基礎区分の値を固定し、呼び出し後の入力オブジェクト変更に不感性を持たせる
+  const baseEvidenceId = base.evidenceId;
+  const basePoints = base.points;
+  const baseLabel = base.label;
+  const evidenceRefs: EvidenceRef[] = [calculationEvidenceRef(baseEvidenceId)];
   const reductions: Points[] = [];
   const noteOutputs: string[] = [];
 
@@ -1002,7 +1137,7 @@ export function createDispensingBasicFeeRule(input: DispensingBasicFeeRuleInput)
   evidenceRefs.push(calculationEvidenceRef("EVD-CAL-0020"));
 
   const composed = composeDispensingBasicFeePoints({
-    basePoints: input.base.points,
+    basePoints,
     ...(multiplier !== undefined ? { multiplier } : {}),
     reductions,
     minimumPoints: Points.fromInteger(3),
@@ -1010,20 +1145,20 @@ export function createDispensingBasicFeeRule(input: DispensingBasicFeeRuleInput)
   const usesComposition = multiplier !== undefined || reductions.length > 0;
 
   return Object.freeze({
-    ruleId: `${input.base.evidenceId}:dispensing-basic-fee`,
+    ruleId: `${baseEvidenceId}:dispensing-basic-fee`,
     evidenceRefs: freezeArray(evidenceRefs),
     effectiveFrom: ruleEffectiveFrom,
     apply: (): StepResult => {
       if (composed.kind === "requires_rounding_evidence") {
         return Object.freeze({
           status: "BLOCKED",
-          description: `${input.base.label}: multiplier produced a fractional value and no rounding evidence is issued`,
+          description: `${baseLabel}: multiplier produced a fractional value and no rounding evidence is issued`,
           affectsClaim: false,
           inputRefs: [],
           output: `BLOCKED_REGULATORY_REVIEW:丸め根拠未発行(${composed.exactFraction})`,
           blocker: {
             type: "BLOCKED_REGULATORY_REVIEW" as const,
-            detail: `丸め根拠未発行: ${input.base.label} の乗率適用結果 ${composed.exactFraction} 点は整数でない。丸め evidence 発行まで算定不可(MOD-010 §1-4)`,
+            detail: `丸め根拠未発行: ${baseLabel} の乗率適用結果 ${composed.exactFraction} 点は整数でない。丸め evidence 発行まで算定不可(MOD-010 §1-4)`,
           },
         });
       }
@@ -1031,19 +1166,19 @@ export function createDispensingBasicFeeRule(input: DispensingBasicFeeRuleInput)
         // minimumPoints=3 を常時宣言しているため到達しない(防御)
         return Object.freeze({
           status: "BLOCKED",
-          description: `${input.base.label}: reductions produced a negative value without a floor`,
+          description: `${baseLabel}: reductions produced a negative value without a floor`,
           affectsClaim: false,
           inputRefs: [],
           output: "SSOT_UPDATE_REQUIRED:減算結果が負",
           blocker: {
             type: "SSOT_UPDATE_REQUIRED" as const,
-            detail: `${input.base.label}: 減算結果が負(下限宣言なし)`,
+            detail: `${baseLabel}: 減算結果が負(下限宣言なし)`,
           },
         });
       }
       return Object.freeze({
         status: "ITEM_CALCULATED",
-        description: `${input.base.label}: composed dispensing basic fee (base=${input.base.points.toString()})`,
+        description: `${baseLabel}: composed dispensing basic fee (base=${basePoints.toString()})`,
         affectsClaim: true,
         inputRefs: [],
         output: [
@@ -1055,7 +1190,7 @@ export function createDispensingBasicFeeRule(input: DispensingBasicFeeRuleInput)
         applicationKey: "dispensing-basic-fee",
         exclusivityGroup: {
           groupId: "dispensing-basic-fee",
-          evidenceRef: calculationEvidenceRef(input.base.evidenceId),
+          evidenceRef: calculationEvidenceRef(baseEvidenceId),
         },
         ...(usesComposition ? { warnings: [basicFeeCompositionOrderWarning] } : {}),
       });
@@ -1074,31 +1209,51 @@ function multiplierAppliedStep(input: {
   readonly descriptionEn: string;
   readonly inputRefs: readonly string[];
   readonly extraWarnings?: readonly string[];
+  readonly exclusivityGroup?: CalculationExclusivityGroup;
 }): StepResult {
-  const outcome = applyPointsMultiplier(input.base, input.ratio);
+  const {
+    base,
+    ratio,
+    applicationKey,
+    ruleLabelJa,
+    descriptionEn,
+    inputRefs,
+    extraWarnings,
+    exclusivityGroup,
+  } = input;
+  const outcome = applyPointsMultiplier(base, ratio);
   if (outcome.kind === "requires_rounding_evidence") {
     return Object.freeze({
       status: "BLOCKED",
-      description: `${input.descriptionEn}: multiplier produced a fractional value`,
+      description: `${descriptionEn}: multiplier produced a fractional value`,
       affectsClaim: false,
       inputRefs: [],
       output: `BLOCKED_REGULATORY_REVIEW:丸め根拠未発行(${outcome.exactFraction})`,
       blocker: {
         type: "BLOCKED_REGULATORY_REVIEW" as const,
-        detail: `丸め根拠未発行: ${input.ruleLabelJa} の乗率適用結果 ${outcome.exactFraction} 点は整数でない。丸め evidence 発行まで算定不可(MOD-010 §1-4)`,
+        detail: `丸め根拠未発行: ${ruleLabelJa} の乗率適用結果 ${outcome.exactFraction} 点は整数でない。丸め evidence 発行まで算定不可(MOD-010 §1-4)`,
       },
     });
   }
   return Object.freeze({
     status: "ITEM_CALCULATED",
-    description: input.descriptionEn,
+    description: descriptionEn,
     affectsClaim: true,
-    inputRefs: input.inputRefs,
+    inputRefs,
     output: `itemPoints=${outcome.points.toString()}`,
     itemPoints: outcome.points,
-    applicationKey: input.applicationKey,
-    ...(input.extraWarnings && input.extraWarnings.length > 0
-      ? { warnings: input.extraWarnings }
+    applicationKey,
+    ...(extraWarnings && extraWarnings.length > 0 ? { warnings: extraWarnings } : {}),
+    ...(exclusivityGroup !== undefined
+      ? {
+          exclusivityGroup: Object.freeze({
+            groupId: exclusivityGroup.groupId,
+            evidenceRef: exclusivityGroup.evidenceRef,
+            ...(exclusivityGroup.blocksGroupIdPrefixes !== undefined
+              ? { blocksGroupIdPrefixes: freezeArray(exclusivityGroup.blocksGroupIdPrefixes) }
+              : {}),
+          }),
+        }
       : {}),
   });
 }
@@ -1106,11 +1261,17 @@ function multiplierAppliedStep(input: {
 /* ==================================================================
  * 区分00 調剤基本料 加算(注5〜注14)。施設基準(P-05)前提のため呼び出し側指定。
  * 注4別薬局減算(EVD-CAL-0008 100分の50)・特別調剤基本料B(保留P-01)・
- * 分割調剤(EVD-CAL-0013〜0015 除算)は本バッチ対象外(下部コメント参照)。
+ * 分割調剤(EVD-CAL-0013〜0015 除算)は本バッチ対象外(対象外項目の一覧は CAL-004 §8 参照)。
  * ================================================================== */
 
 /** EVD-CAL-0009 注5 地域支援体制加算・医薬品供給対応体制加算 1〜5(27/59/67/37/59点)。 */
 export type RegionalSupportAdditionLevel = 1 | 2 | 3 | 4 | 5;
+/**
+ * EVD-CAL-0009 の variant。"special_basic_fee_a" は特別調剤基本料A薬局(所定点数の
+ * 100分の10)。全 level で 10/100 が非整数となるため、丸め evidence 発行まで常に
+ * BLOCKED(MOD-010 §1-4 — 推測丸めしない)。
+ */
+export type RegionalSupportAdditionVariant = "standard" | "special_basic_fee_a";
 const regionalSupportAdditionPoints: Readonly<Record<RegionalSupportAdditionLevel, number>> = {
   1: 27,
   2: 59,
@@ -1121,7 +1282,25 @@ const regionalSupportAdditionPoints: Readonly<Record<RegionalSupportAdditionLeve
 export function createRegionalSupportSystemAdditionRule(
   level: RegionalSupportAdditionLevel,
   applicationKey = "prescription",
+  variant: RegionalSupportAdditionVariant = "standard",
 ): CalculationRule {
+  if (variant === "special_basic_fee_a") {
+    const standardBasePoints = Points.fromInteger(regionalSupportAdditionPoints[level]);
+    return Object.freeze({
+      ruleId: `EVD-CAL-0009:regional-support-system-addition:${level}:special-basic-fee-a`,
+      evidenceRefs: freezeArray([calculationEvidenceRef("EVD-CAL-0009")]),
+      effectiveFrom: ruleEffectiveFrom,
+      apply: (): StepResult =>
+        multiplierAppliedStep({
+          base: standardBasePoints,
+          ratio: { numerator: 10, denominator: 100 },
+          applicationKey,
+          ruleLabelJa: `地域支援体制加算・医薬品供給対応体制加算 level${level}(特別調剤基本料A薬局 100分の10)`,
+          descriptionEn: `Regional support / drug supply system addition level ${level} (special basic fee A pharmacy: 10/100)`,
+          inputRefs: [],
+        }),
+    });
+  }
   return createFixedPointsRule({
     ruleId: `EVD-CAL-0009:regional-support-system-addition:${level}`,
     evidenceRef: calculationEvidenceRef("EVD-CAL-0009"),
@@ -1213,18 +1392,19 @@ export function createTimeSurchargeAdditionRule(input: {
   readonly basePoints: Points;
   readonly kind: TimeSurchargeKind;
 }): CalculationRule {
-  assertNonEmptyString(input.applicationKey, "applicationKey");
+  const { applicationKey, basePoints, kind } = input;
+  assertNonEmptyString(applicationKey, "applicationKey");
   return Object.freeze({
-    ruleId: `EVD-CAL-0031:time-surcharge-addition:${input.kind}`,
+    ruleId: `EVD-CAL-0031:time-surcharge-addition:${kind}`,
     evidenceRefs: freezeArray([calculationEvidenceRef("EVD-CAL-0031")]),
     effectiveFrom: ruleEffectiveFrom,
     apply: (): StepResult =>
       multiplierAppliedStep({
-        base: input.basePoints,
-        ratio: timeSurchargeRatios[input.kind],
-        applicationKey: input.applicationKey,
-        ruleLabelJa: `時間外等加算(${input.kind})`,
-        descriptionEn: `Time surcharge addition (${input.kind})`,
+        base: basePoints,
+        ratio: timeSurchargeRatios[kind],
+        applicationKey,
+        ruleLabelJa: `時間外等加算(${kind})`,
+        descriptionEn: `Time surcharge addition (${kind})`,
         inputRefs: ["basePoints"],
         extraWarnings: [timeSurchargeProvisionalWarning],
       }),
@@ -1245,6 +1425,11 @@ export function createDispensingManagementFee1IRule(applicationKey: string): Cal
     description: "Dispensing management fee 1-i (oral, 28+ days): 60 points per group, up to 3",
     output: "itemPoints=60",
     maxApplications: 3,
+    // ロは「イ以外」(EVD-CAL-0036): 同一剤のイ/ロ併算定を排他(剤単位 — 料2 との区分間排他は料2側が宣言)
+    exclusivityGroup: {
+      groupId: `dispensing-management-fee-1:${applicationKey}`,
+      evidenceRef: calculationEvidenceRef("EVD-CAL-0035"),
+    },
   });
 }
 
@@ -1258,6 +1443,10 @@ export function createDispensingManagementFee1RoRule(applicationKey: string): Ca
     description: "Dispensing management fee 1-ro (other): 10 points per group, up to 3",
     output: "itemPoints=10",
     maxApplications: 3,
+    exclusivityGroup: {
+      groupId: `dispensing-management-fee-1:${applicationKey}`,
+      evidenceRef: calculationEvidenceRef("EVD-CAL-0036"),
+    },
   });
 }
 
@@ -1327,6 +1516,11 @@ export const medicationManagementGuidanceFee1Rule: CalculationRule = createFixed
   applicationKey: "prescription",
   description: "Medication management guidance fee 1: 45 points",
   output: "itemPoints=45",
+  // 料2 は「1以外の患者」(EVD-CAL-0041): 同一処方箋受付での1↔2併算定を排他(WP-5280 F4)
+  exclusivityGroup: {
+    groupId: "medication-management-guidance-fee-1-or-2",
+    evidenceRef: calculationEvidenceRef("EVD-CAL-0040"),
+  },
 });
 
 /** EVD-CAL-0041 服薬管理指導料2(1以外の患者): 59点。 */
@@ -1337,6 +1531,10 @@ export const medicationManagementGuidanceFee2Rule: CalculationRule = createFixed
   applicationKey: "prescription",
   description: "Medication management guidance fee 2: 59 points",
   output: "itemPoints=59",
+  exclusivityGroup: {
+    groupId: "medication-management-guidance-fee-1-or-2",
+    evidenceRef: calculationEvidenceRef("EVD-CAL-0041"),
+  },
 });
 
 /** EVD-CAL-0043 服薬管理指導料4(情報通信機器): イ45点 / ロ・ハ・ニ 59点。 */
@@ -1637,20 +1835,35 @@ export function createMultiDrugReductionRule(input: {
   readonly applicationKey: string;
   /** 逓減対象の使用薬剤料 所定点数(呼び出し側指定)。 */
   readonly basePoints: Points;
+  /**
+   * 逓減が置き換える薬剤料の exclusivityGroup 接頭辞(既定 "drug-fee:" = 全使用薬剤料)。
+   * 逓減後総額を返す置換型ルールのため、元の薬剤料との併算定(二重計上)を非対称排他する。
+   * 対象を絞る場合は薬剤料側の applicationKey 接頭辞に合わせて指定する。
+   * 前方一致契約: "drug-fee:rp:1" は "drug-fee:rp:10" にも一致するため、
+   * 完全一致が必要なら区切りを含む applicationKey 命名規約が呼び出し側に必要。
+   */
+  readonly reducedDrugFeeGroupPrefix?: string;
 }): CalculationRule {
-  assertNonEmptyString(input.applicationKey, "applicationKey");
+  const { applicationKey, basePoints, reducedDrugFeeGroupPrefix = "drug-fee:" } = input;
+  assertNonEmptyString(applicationKey, "applicationKey");
+  assertNonEmptyString(reducedDrugFeeGroupPrefix, "reducedDrugFeeGroupPrefix");
   return Object.freeze({
     ruleId: "EVD-CAL-0068:multi-drug-reduction",
     evidenceRefs: freezeArray([calculationEvidenceRef("EVD-CAL-0068")]),
     effectiveFrom: ruleEffectiveFrom,
     apply: (): StepResult =>
       multiplierAppliedStep({
-        base: input.basePoints,
+        base: basePoints,
         ratio: { numerator: 90, denominator: 100 },
-        applicationKey: input.applicationKey,
+        applicationKey,
         ruleLabelJa: "多剤逓減(100分の90)",
         descriptionEn: "Multi-drug reduction (90/100)",
         inputRefs: ["basePoints"],
+        exclusivityGroup: {
+          groupId: `multi-drug-reduction:${applicationKey}`,
+          evidenceRef: calculationEvidenceRef("EVD-CAL-0068"),
+          blocksGroupIdPrefixes: [reducedDrugFeeGroupPrefix],
+        },
       }),
   });
 }
@@ -1664,8 +1877,10 @@ export function createSpecificMedicalMaterialFeeRule(input: {
   readonly applicationKey: string;
   readonly materialPriceYen: ScaledDecimal;
 }): CalculationRule {
-  assertNonEmptyString(input.applicationKey, "applicationKey");
-  const outcome = materialPriceToPoints(input.materialPriceYen);
+  const { applicationKey, materialPriceYen } = input;
+  assertNonEmptyString(applicationKey, "applicationKey");
+  const materialPriceYenSnapshot = materialPriceYen.toString();
+  const outcome = materialPriceToPoints(materialPriceYen);
   return Object.freeze({
     ruleId: "EVD-CAL-0069:specific-medical-material-fee",
     evidenceRefs: freezeArray([calculationEvidenceRef("EVD-CAL-0069")]),
@@ -1686,17 +1901,23 @@ export function createSpecificMedicalMaterialFeeRule(input: {
       }
       return Object.freeze({
         status: "ITEM_CALCULATED",
-        description: `Specific medical material fee from material price ${input.materialPriceYen.toString()} yen`,
+        description: `Specific medical material fee from material price ${materialPriceYenSnapshot} yen`,
         affectsClaim: true,
         inputRefs: ["materialPriceYen"],
-        output: `itemPoints=${outcome.points.toString()};materialPriceYen=${input.materialPriceYen.toString()}`,
+        output: `itemPoints=${outcome.points.toString()};materialPriceYen=${materialPriceYenSnapshot}`,
         itemPoints: outcome.points,
-        applicationKey: input.applicationKey,
+        applicationKey,
         warnings: [materialFeeProvisionalWarning],
       });
     },
   });
 }
+
+/**
+ * EVD-CAL-0070/0071 の時限規定: 「令和9年(2027年)6月以降は所定点数の100分の200」。
+ * 現行点数(4点/1点)の最終有効日。以降の点数は改定 evidence 発行後に別ルールで追加する。
+ */
+const evdCal0070_0071EffectiveTo = CalendarDate.fromString("2027-05-31");
 
 /** EVD-CAL-0070 区分40 調剤ベースアップ評価料: 4点(施設基準届出。令和9年6月以降は100分の200)。 */
 export const dispensingBaseUpEvaluationFeeRule: CalculationRule = createFixedPointsRule({
@@ -1706,6 +1927,7 @@ export const dispensingBaseUpEvaluationFeeRule: CalculationRule = createFixedPoi
   applicationKey: "prescription",
   description: "Dispensing base-up evaluation fee: 4 points",
   output: "itemPoints=4",
+  effectiveTo: evdCal0070_0071EffectiveTo,
 });
 
 /** EVD-CAL-0071 区分41 調剤物価対応料: 1点(処方箋受付、3月に1回。令和9年6月以降は100分の200)。 */
@@ -1716,8 +1938,14 @@ export const dispensingPriceResponseFeeRule: CalculationRule = createFixedPoints
   applicationKey: "prescription",
   description: "Dispensing price response fee: 1 point",
   output: "itemPoints=1",
+  effectiveTo: evdCal0070_0071EffectiveTo,
 });
 
+/**
+ * 暫定の参照用ルール束(例示 — 全ルールカタログでも既定の算定セットでもない)。
+ * 適用可否・組合せの自動選択は行われず、呼び出し側が rules を明示指定する。
+ * claimable=false の表示専用出力のみに使う。
+ */
 export const calculationRulesV20260601 = Object.freeze([
   dispensingBasicFee1Rule,
   createOralMedicinePreparationFeeRule("oral-medicine:1"),
@@ -1741,6 +1969,10 @@ export function calculate(request: CalculationRequest, ruleSet: CalculationRuleS
   // (evidence 文言との1:1対応 — CAL-004 §2)。値は undefined(未宣言)も区別して記録する。
   const declaredMaxApplicationsByRuleId = new Map<string, number | undefined>();
   const seenExclusivityGroups = new Set<string>();
+  // 非対称排他(blocksGroupIdPrefixes)が宣言した接頭辞。後続項目の groupId が
+  // これに前方一致すれば拒否し、宣言項目の接頭辞が既出 groupId に前方一致しても拒否する
+  // (順序非依存)。
+  const seenExclusivityGroupPrefixes: string[] = [];
   let total = Points.fromInteger(0);
   let hasItemCalculation = false;
 
@@ -1806,6 +2038,7 @@ export function calculate(request: CalculationRequest, ruleSet: CalculationRuleS
     const applicationIdentity = `${rule.ruleId}\u0000${result.applicationKey}`;
     if (seenApplications.has(applicationIdentity)) {
       blockers.push(createDuplicateBlocker(rule.ruleId, result.applicationKey));
+      steps.push(duplicateBlockedStep(rule, result.applicationKey));
       continue;
     }
     seenApplications.add(applicationIdentity);
@@ -1832,17 +2065,27 @@ export function calculate(request: CalculationRequest, ruleSet: CalculationRuleS
       assertPositiveSafeInteger(result.maxApplications, "maxApplications");
       if (nextCount > result.maxApplications) {
         blockers.push(createMaxApplicationsBlocker(rule.ruleId, result.maxApplications));
+        steps.push(maxApplicationsBlockedStep(rule, result.maxApplications));
         continue;
       }
     }
 
     if (result.exclusivityGroup !== undefined) {
-      assertNonEmptyString(result.exclusivityGroup.groupId, "exclusivityGroup.groupId");
-      if (seenExclusivityGroups.has(result.exclusivityGroup.groupId)) {
-        blockers.push(createExclusivityBlocker(result.exclusivityGroup.groupId));
+      const { groupId, blocksGroupIdPrefixes } = result.exclusivityGroup;
+      assertNonEmptyString(groupId, "exclusivityGroup.groupId");
+      const blockedBySeenPrefix = seenExclusivityGroupPrefixes.find((prefix) => groupId.startsWith(prefix));
+      const blocksSeenGroup = (blocksGroupIdPrefixes ?? []).find((prefix) =>
+        [...seenExclusivityGroups].some((seen) => seen.startsWith(prefix)),
+      );
+      if (seenExclusivityGroups.has(groupId) || blockedBySeenPrefix !== undefined || blocksSeenGroup !== undefined) {
+        blockers.push(createExclusivityBlocker(groupId));
+        steps.push(exclusivityBlockedStep(rule, groupId));
         continue;
       }
-      seenExclusivityGroups.add(result.exclusivityGroup.groupId);
+      seenExclusivityGroups.add(groupId);
+      for (const prefix of blocksGroupIdPrefixes ?? []) {
+        seenExclusivityGroupPrefixes.push(prefix);
+      }
     }
 
     total = total.add(result.itemPoints);

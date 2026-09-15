@@ -76,7 +76,7 @@ export function decoctionPreparationFeePoints(daysSupply: number): DecoctionFee 
   }
   if (daysSupply <= 28) {
     return {
-      points: Points.fromInteger(190 + (daysSupply - 7) * 10),
+      points: Points.fromInteger(190n + (BigInt(daysSupply) - 7n) * 10n),
       appliedEvidenceId: "EVD-CAL-0025",
     };
   }
@@ -139,10 +139,10 @@ export function materialPriceToPoints(priceYen: ScaledDecimal): MaterialFeeOutco
   };
 }
 
-/** 「7日又はその端数を増すごとに」の単位数(⌈days/7⌉)。 */
-export function perSevenDayUnits(daysSupply: number): number {
+/** 「7日又はその端数を増すごとに」の単位数(⌈days/7⌉、bigint で計算)。 */
+export function perSevenDayUnits(daysSupply: number): bigint {
   assertPositiveSafeInteger(daysSupply, "daysSupply");
-  return Math.ceil(daysSupply / 7);
+  return (BigInt(daysSupply) + 6n) / 7n;
 }
 
 /** 一包化(外来服薬支援料2)で適用された区分の evidence_id。 */
@@ -163,7 +163,7 @@ export function onePackagingSupportFeePoints(daysSupply: number): OnePackagingSu
   assertPositiveSafeInteger(daysSupply, "daysSupply");
   if (daysSupply <= 42) {
     return {
-      points: Points.fromInteger(34 * perSevenDayUnits(daysSupply)),
+      points: Points.fromInteger(34n * perSevenDayUnits(daysSupply)),
       appliedEvidenceId: "EVD-CAL-0055",
     };
   }
@@ -213,7 +213,7 @@ export function selfPreparationAdditionPoints(input: SelfPreparationInput): Mult
       if (input.daysSupply === undefined) {
         throw new RangeError("daysSupply is required for oral_tablet_like (7日ごと)");
       }
-      base = Points.fromInteger(20 * perSevenDayUnits(input.daysSupply));
+      base = Points.fromInteger(20n * perSevenDayUnits(input.daysSupply));
       break;
     }
     case "tonpuku":
@@ -231,6 +231,8 @@ export function selfPreparationAdditionPoints(input: SelfPreparationInput): Mult
     case "external_liquid":
       base = Points.fromInteger(45);
       break;
+    default:
+      throw new RangeError(`unknown selfPreparation kind: ${String(input.kind)}`);
   }
   if (input.kind !== "oral_tablet_like" && input.daysSupply !== undefined) {
     throw new RangeError("daysSupply is only applicable to oral_tablet_like");
@@ -299,6 +301,9 @@ export function composeDispensingBasicFeePoints(
 ): DispensingBasicFeeOutcome {
   if (input.basePoints.compare(zeroPoints) < 0) {
     throw new RangeError("basePoints must not be negative");
+  }
+  if (input.minimumPoints !== undefined && input.minimumPoints.compare(zeroPoints) < 0) {
+    throw new RangeError("minimumPoints must not be negative");
   }
 
   let value = input.basePoints;

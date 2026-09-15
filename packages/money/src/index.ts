@@ -143,6 +143,7 @@ export class ScaledDecimal {
     readonly scale: number,
   ) {
     assertSafeScale(scale);
+    Object.freeze(this);
   }
 
   static fromCoefficient(coefficient: IntegerInput, scale: number): ScaledDecimal {
@@ -253,7 +254,9 @@ export class ScaledDecimal {
 }
 
 export class Yen {
-  private constructor(readonly amount: bigint) {}
+  private constructor(readonly amount: bigint) {
+    Object.freeze(this);
+  }
 
   static fromInteger(value: IntegerInput): Yen {
     return new Yen(parseIntegerInput(value, "Yen"));
@@ -287,7 +290,9 @@ export class Yen {
 }
 
 export class Points {
-  private constructor(readonly value: bigint) {}
+  private constructor(readonly value: bigint) {
+    Object.freeze(this);
+  }
 
   static fromInteger(value: IntegerInput): Points {
     return new Points(parseIntegerInput(value, "Points"));

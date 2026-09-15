@@ -66,6 +66,11 @@ describe("decoctionPreparationFeePoints (EVD-CAL-0024/0025/0026 湯薬)", () => 
   it("rejects non-positive day counts", () => {
     expect(() => decoctionPreparationFeePoints(0)).toThrow(/daysSupply/);
   });
+
+  it("rejects day counts outside the safe-integer domain (number 中間演算を持ち込まない)", () => {
+    expect(() => decoctionPreparationFeePoints(2 ** 53)).toThrow(/daysSupply/);
+    expect(() => decoctionPreparationFeePoints(1.5)).toThrow(/daysSupply/);
+  });
 });
 
 describe("drugPriceToPoints (EVD-CAL-0067 使用薬剤料)", () => {
@@ -165,16 +170,53 @@ describe("materialPriceToPoints (EVD-CAL-0069 特定保険医療材料料 = 材�
   });
 });
 
-describe("perSevenDayUnits (「7日又はその端数を増すごとに」= ⌈days/7⌉)", () => {
-  it("counts each started 7-day block (1→1 / 7→1 / 8→2 / 42→6)", () => {
-    expect(perSevenDayUnits(1)).toBe(1);
-    expect(perSevenDayUnits(7)).toBe(1);
-    expect(perSevenDayUnits(8)).toBe(2);
-    expect(perSevenDayUnits(42)).toBe(6);
+describe("composeDispensingBasicFeePoints malformed inputs (A4)", () => {
+  it("rejects a negative minimumPoints (成功 union に malformed 値を入れない)", () => {
+    expect(() =>
+      composeDispensingBasicFeePoints({
+        basePoints: Points.fromInteger(47),
+        minimumPoints: Points.fromInteger(-3),
+      }),
+    ).toThrow(/minimumPoints/);
   });
 
-  it("rejects non-positive day counts", () => {
+  it("accepts a zero minimumPoints as a legitimate floor (5−15→0点にクランプ)", () => {
+    expect(
+      composeDispensingBasicFeePoints({
+        basePoints: Points.fromInteger(5),
+        reductions: [Points.fromInteger(15)],
+        minimumPoints: Points.fromInteger(0),
+      }),
+    ).toEqual({ kind: "calculated", points: Points.fromInteger(0), clampedToMinimum: true });
+  });
+
+  it("rejects negative reductions", () => {
+    expect(() =>
+      composeDispensingBasicFeePoints({
+        basePoints: Points.fromInteger(47),
+        reductions: [Points.fromInteger(-1)],
+      }),
+    ).toThrow(/reductions/);
+  });
+});
+
+describe("perSevenDayUnits (「7日又はその端数を増すごとに」= ⌈days/7⌉)", () => {
+  it("counts each started 7-day block (1→1 / 7→1 / 8→2 / 42→6)", () => {
+    expect(perSevenDayUnits(1)).toBe(1n);
+    expect(perSevenDayUnits(7)).toBe(1n);
+    expect(perSevenDayUnits(8)).toBe(2n);
+    expect(perSevenDayUnits(42)).toBe(6n);
+  });
+
+  it("computes in bigint without number intermediates (10^15 日でも正確)", () => {
+    // ⌈10^15 / 7⌉ = 142857142857143 — number 演算では IEEE-754 依存になるため bigint で返す
+    expect(perSevenDayUnits(10 ** 15)).toBe(142857142857143n);
+  });
+
+  it("rejects non-positive day counts and inputs outside the safe-integer domain", () => {
     expect(() => perSevenDayUnits(0)).toThrow(/daysSupply/);
+    expect(() => perSevenDayUnits(2 ** 53)).toThrow(/daysSupply/);
+    expect(() => perSevenDayUnits(1.5)).toThrow(/daysSupply/);
   });
 });
 
@@ -247,6 +289,15 @@ describe("selfPreparationAdditionPoints (自家製剤加算 EVD-CAL-0033)", () =
     expect(() =>
       selfPreparationAdditionPoints({ kind: "tonpuku", daysSupply: 7 }),
     ).toThrow(/daysSupply/);
+  });
+
+  it("型消去後の未知 kind は default 分岐で拒否する (成功 union に undefined を返さない)", () => {
+    expect(() =>
+      selfPreparationAdditionPoints({ kind: "not-a-kind" as unknown as "tonpuku" }),
+    ).toThrow(/unknown selfPreparation kind/);
+    expect(() =>
+      selfPreparationAdditionPoints({} as unknown as { kind: "tonpuku" }),
+    ).toThrow(/unknown selfPreparation kind/);
   });
 });
 
