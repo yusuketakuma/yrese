@@ -90,6 +90,25 @@ const frameworkFailureResponse = (description: string) => ({
   },
 });
 
+const domainErrorResponse = (description: string) => ({
+  description,
+  content: {
+    [jsonContentType]: {
+      schema: errorResponseOpenApiSchema,
+    },
+  },
+});
+
+const forbiddenErrorResponse = (options: { readonly noStore: boolean }) => ({
+  description: "Forbidden (AUTH-0003)",
+  ...(options.noStore ? { headers: noStoreHeaders } : {}),
+  content: {
+    [jsonContentType]: {
+      schema: errorResponseOpenApiSchema,
+    },
+  },
+});
+
 const healthResponseOpenApiSchema = healthResponseSchema.meta({
   id: "HealthResponse",
   description: "Health check response",
@@ -259,14 +278,7 @@ const openApiDefinition = {
               },
             },
           },
-          "403": {
-            description: "Forbidden (AUTH-0003)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
+          "403": forbiddenErrorResponse({ noStore: false }),
           "500": internalErrorResponse({ noStore: false }),
         },
       },
@@ -293,22 +305,10 @@ const openApiDefinition = {
               },
             },
           },
-          "400": {
-            description: "Invalid patient search query (PAT-0001)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
-          "403": {
-            description: "Forbidden (AUTH-0003)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
+          "400": domainErrorResponse(
+            "Invalid patient search query (PAT-0001)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: false }),
           "500": internalErrorResponse({ noStore: true }),
         },
       },
@@ -335,31 +335,10 @@ const openApiDefinition = {
               },
             },
           },
-          "400": {
-            description: "Invalid patient ID (PAT-0001)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
-          "403": {
-            description: "Forbidden (AUTH-0003)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
+          "400": domainErrorResponse("Invalid patient ID (PAT-0001)"),
+          "403": forbiddenErrorResponse({ noStore: false }),
           "500": internalErrorResponse({ noStore: true }),
-          "404": {
-            description: "Patient not found (PAT-0002)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
+          "404": domainErrorResponse("Patient not found (PAT-0002)"),
         },
       },
     },
@@ -385,22 +364,10 @@ const openApiDefinition = {
               },
             },
           },
-          "400": {
-            description: "Invalid reception queue query (RCV-0001)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
-          "403": {
-            description: "Forbidden (AUTH-0003)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
+          "400": domainErrorResponse(
+            "Invalid reception queue query (RCV-0001)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: false }),
           "500": internalErrorResponse({ noStore: true }),
         },
       },
@@ -458,31 +425,12 @@ const openApiDefinition = {
               },
             },
           },
-          "403": {
-            description: "Forbidden (AUTH-0003)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
+          "403": forbiddenErrorResponse({ noStore: false }),
           "500": internalErrorResponse({ noStore: true }),
-          "404": {
-            description: "Patient not found for reception (RCV-0002)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
-          "409": {
-            description: "Idempotency conflict (RCV-0003)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
+          "404": domainErrorResponse(
+            "Patient not found for reception (RCV-0002)",
+          ),
+          "409": domainErrorResponse("Idempotency conflict (RCV-0003)"),
         },
       },
     },
@@ -519,15 +467,7 @@ const openApiDefinition = {
             headers: noStoreHeaders,
           },
           "400": frameworkFailureResponse("Invalid prescription draft request"),
-          "403": {
-            description: "Forbidden (AUTH-0003)",
-            headers: noStoreHeaders,
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
+          "403": forbiddenErrorResponse({ noStore: true }),
           "404": frameworkFailureResponse(
             "Verified reception context not found",
           ),
@@ -578,15 +518,7 @@ const openApiDefinition = {
             },
           },
           "400": frameworkFailureResponse("Invalid prescription draft request"),
-          "403": {
-            description: "Forbidden (AUTH-0003)",
-            headers: noStoreHeaders,
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
+          "403": forbiddenErrorResponse({ noStore: true }),
           "404": frameworkFailureResponse(
             "Verified reception and patient context not found",
           ),
@@ -615,14 +547,7 @@ const openApiDefinition = {
               },
             },
           },
-          "403": {
-            description: "Forbidden (AUTH-0003)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
+          "403": forbiddenErrorResponse({ noStore: false }),
           "500": internalErrorResponse({ noStore: false }),
         },
       },
@@ -648,22 +573,10 @@ const openApiDefinition = {
               },
             },
           },
-          "400": {
-            description: "Invalid reception summary query (RCV-0001)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
-          "403": {
-            description: "Forbidden (AUTH-0003)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
+          "400": domainErrorResponse(
+            "Invalid reception summary query (RCV-0001)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: false }),
           "500": internalErrorResponse({ noStore: false }),
         },
       },
@@ -687,14 +600,7 @@ const openApiDefinition = {
               },
             },
           },
-          "403": {
-            description: "Forbidden (AUTH-0003)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
+          "403": forbiddenErrorResponse({ noStore: false }),
           "500": internalErrorResponse({ noStore: false }),
         },
       },
@@ -721,22 +627,8 @@ const openApiDefinition = {
               },
             },
           },
-          "400": {
-            description: "Invalid audit log query (AUD-0001)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
-          "403": {
-            description: "Forbidden (AUTH-0003)",
-            content: {
-              [jsonContentType]: {
-                schema: errorResponseOpenApiSchema,
-              },
-            },
-          },
+          "400": domainErrorResponse("Invalid audit log query (AUD-0001)"),
+          "403": forbiddenErrorResponse({ noStore: false }),
           "500": internalErrorResponse({ noStore: true }),
         },
       },
