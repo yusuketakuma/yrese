@@ -1,4 +1,4 @@
-import { Pool, type PoolConfig } from 'pg';
+import { Pool, type PoolClient, type PoolConfig } from 'pg';
 
 import {
   defaultDbPoolConfiguration,
@@ -54,6 +54,37 @@ export function observeDatabasePoolBackgroundErrors(
     observing = false;
     pool.off('error', onBackgroundError);
   };
+}
+
+/**
+ * pool から client を借りて BEGIN し `run` を実行する。helper は COMMIT しない:
+ * `run` は正常系の early exit も含めて自身で COMMIT / ROLLBACK を発行する。
+ * `run` が投げた場合は ROLLBACK を試み、ROLLBACK 自体が失敗した client は
+ * pool へ戻さず破棄する(release(true))。
+ */
+export async function runInPooledTransaction<T>(
+  pool: Pool,
+  run: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await pool.connect();
+  let destroyClient = false;
+  try {
+    await client.query('BEGIN');
+    return await run(client);
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      destroyClient = true;
+    }
+    throw error;
+  } finally {
+    if (destroyClient) {
+      client.release(true);
+    } else {
+      client.release();
+    }
+  }
 }
 
 export async function closeObservedDatabasePool(

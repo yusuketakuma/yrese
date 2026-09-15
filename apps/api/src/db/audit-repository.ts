@@ -11,6 +11,7 @@ import {
   readDatabaseRowOwnDataProperty,
   snapshotUnboundedDatabaseQueryRows,
 } from './database-row.js';
+import { runInPooledTransaction } from './pool.js';
 
 /**
  * 監査ログの Postgres 永続実装(SCR-028 / R-AUDIT 永続層 — migrations/000004)。
@@ -124,27 +125,11 @@ export class PostgresAuditRepository implements AuditRepository {
   constructor(private readonly pool: Pool) {}
 
   async record(scope: AuditScope, input: RecordAuditInput): Promise<AuditEvent> {
-    const client = await this.pool.connect();
-    let destroyClient = false;
-    try {
-      await client.query('BEGIN');
+    return runInPooledTransaction(this.pool, async (client) => {
       const event = await appendAuditEventWithinTransaction(client, scope, input);
       await client.query('COMMIT');
       return event;
-    } catch (error) {
-      try {
-        await client.query('ROLLBACK');
-      } catch {
-        destroyClient = true;
-      }
-      throw error;
-    } finally {
-      if (destroyClient) {
-        client.release(true);
-      } else {
-        client.release();
-      }
-    }
+    });
   }
 
   async list(scope: AuditScope): Promise<readonly AuditEvent[]> {

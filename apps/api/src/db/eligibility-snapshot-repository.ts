@@ -2,6 +2,7 @@ import type { Pool } from 'pg';
 
 import { CalendarDate } from '@yrese/date-time';
 import { snapshotDatabaseInstant } from '../instant.js';
+import { runInPooledTransaction } from './pool.js';
 import {
   allowsFinalCalculationForEligibility,
   allowsProvisionalCalculationForEligibility,
@@ -168,9 +169,7 @@ export class PostgresEligibilitySnapshotRepository {
     if (input.validTo !== undefined && input.validTo !== null)
       businessDate(input.validTo, 'validTo');
     businessDate(input.asOfDate, 'asOfDate');
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
+    return runInPooledTransaction(this.pool, async (client) => {
       await client.query(
         'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
         [
@@ -239,16 +238,7 @@ export class PostgresEligibilitySnapshotRepository {
         throw new RangeError('reception eligibility changed concurrently');
       await client.query('COMMIT');
       return toSnapshot(inserted.rows[0]!);
-    } catch (error) {
-      try {
-        await client.query('ROLLBACK');
-      } catch {
-        // already rolled back
-      }
-      throw error;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   /** 受付の資格状態を導出する(fail-closed: 紐づけなし = UNVERIFIED、期間外 = EXPIRED)。 */

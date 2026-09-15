@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 
 import { appendAuditEventWithinTransaction } from './audit-repository.js';
+import { runInPooledTransaction } from './pool.js';
 import {
   readDatabaseRowOwnDataProperty,
   snapshotUnboundedDatabaseQueryRows,
@@ -79,10 +80,7 @@ export class PostgresReceptionCreateCommand implements ReceptionCreateCommand {
   ): Promise<ReceptionCreateCommandResult> {
     const snapshot = snapshotPostgresReceptionCreate(input);
     const scope = { tenantId: snapshot.tenantId, pharmacyId: snapshot.pharmacyId };
-    const client = await this.pool.connect();
-    let destroyClient = false;
-    try {
-      await client.query('BEGIN');
+    return runInPooledTransaction(this.pool, async (client) => {
       const result = await runReceptionCreateWithinTransaction(client, snapshot);
 
       if (result.kind === 'idempotency_conflict') {
@@ -183,20 +181,7 @@ export class PostgresReceptionCreateCommand implements ReceptionCreateCommand {
           deliveredAt: null,
         },
       };
-    } catch (error) {
-      try {
-        await client.query('ROLLBACK');
-      } catch {
-        destroyClient = true;
-      }
-      throw error;
-    } finally {
-      if (destroyClient) {
-        client.release(true);
-      } else {
-        client.release();
-      }
-    }
+    });
   }
 
   /**

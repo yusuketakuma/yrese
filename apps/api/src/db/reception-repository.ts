@@ -29,6 +29,7 @@ import {
   snapshotUnboundedDatabaseQueryRows,
 } from './database-row.js';
 import { patientRowToSearchResult } from './patient-repository.js';
+import { runInPooledTransaction } from './pool.js';
 
 interface ReceptionEntryRow {
   readonly reception_id: string;
@@ -493,26 +494,10 @@ export class PostgresReceptionRepository implements ReceptionRepository {
 
   async create(input: ReceptionCreateInput): Promise<ReceptionCreateResult> {
     const snapshot = snapshotPostgresReceptionCreate(input);
-    const client = await this.pool.connect();
-    let destroyClient = false;
-    try {
-      await client.query('BEGIN');
+    return runInPooledTransaction(this.pool, async (client) => {
       const result = await runReceptionCreateWithinTransaction(client, snapshot);
       await client.query('COMMIT');
       return result;
-    } catch (error) {
-      try {
-        await client.query('ROLLBACK');
-      } catch {
-        destroyClient = true;
-      }
-      throw error;
-    } finally {
-      if (destroyClient) {
-        client.release(true);
-      } else {
-        client.release();
-      }
-    }
+    });
   }
 }

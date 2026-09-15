@@ -1,18 +1,18 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-09-14, WP-5276 R2 FROZEN_REVIEW_PASS / ORACLE_PLAN_REVIEW_COMPLETE / ORACLE_IMPLEMENTATION_REVIEW_COMPLETE):**
+> **ACTIVE SNAPSHOT (2026-09-15, WP-5277 実装・検証済み / LOCAL_LANDING_PENDING):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** 7日計画はWP-5276を唯一のCURRENTとする。shared treeは単独の`active_root_writer`が変更・検証し、Astraはread-only reviewを完了した。
-  WP-5275のoutbox hardeningは`c3a0829`へ着地済み。reception wallClock、FHIR、薬剤師確認・確定はgate待ちでpark継続。
-- **Git boundary:** local `main` / current branch = `9c0b357`、`origin/main` = `c3a0829`。localは1 commit先行。push / merge / deployは行わない。
-- **Dirty ownership:** WP-5276のtracked変更・レビュー対象はexact6(`apps/web/next.config.ts`、`apps/web/package.json`、`pnpm-workspace.yaml`、`pnpm-lock.yaml`、`Plans.md`、`State.md`)に限定する。`.git/info/exclude`はnested worktreeの`.git` metadataだけを対象にしたlocal metadata exceptionであり、repository変更ではない。保護untracked 3 pathは手動参照・編集・exportせず、必要な自動read-only secret scanだけが通常ファイルを走査する(除外は既存`.codegraph`と指定nested `.git` metadataのみ)。
+- **Direction / ownership:** CURRENT=WP-5277。着手認可はhuman instruction 2026-09-15「新規WPとしてrefactor続行」で、7日計画の「実装はWP-5276だけ」境界を明示的に更新した。`active_root_writer`は本lane(Devin)。
+  WP-5276は`a463fac`へ着地済み。reception wallClock、FHIR、薬剤師確認・確定はgate待ちでpark継続。
+- **Git boundary:** local `main` / current branch = `a463fac`、`origin/main` = `c3a0829`。localは2 commit先行。push / merge / deployは行わない。
+- **Dirty ownership:** WP-5277のtracked変更・レビュー対象はexact10(`apps/api/src/db/pool.ts`、`db/pool.test.ts`、`db/audit-repository.ts`、`db/reception-repository.ts`、`db/reception-command.ts`、`db/prescription-draft-service.ts`、`db/outbox-delivery.ts`、`db/eligibility-snapshot-repository.ts`、`Plans.md`、`State.md`)に限定する。
   `.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、cleanup、merge、stageしない。
-- **Active plan / boundary:** CURRENT=WP-5276 / READY=0。Next.js 16.3.3、sharp 0.35.4の監査修正と、NextのTypeScript API mode固定だけを行った。API/schema/DML、算定・請求・資格・FHIR/JAHIS logic、APPROVED SSOTは不変。
-- **Security / privacy / offline:** package metadata、synthetic test、local buildを基本とし、今回のJP Core公式package取得は保存なしのhash/size確認に限定した。credential、production data、PHI/PII、migration apply、log、external send、外部状態変更は追加しない。
-- **Process gate:** 既存WP-4253 baseline、live dependency audit、BUG-4263のscope方針を根拠にしたR2。exact6以外のtracked変更、secret scanの緩和、API/SSOT影響が判明したら停止する。Oracle計画レビューは完了し、実装後レビューは別packetで行う。
-- **Validation:** `pnpm audit` / `check:deps` high=0・critical=0、Web 754/754、full API 997/997、DB-gated 3 skipped files / 63 skipped tests、workspace typecheck/build、OpenAPI/boundary/calculation/SSOT/SBOM/script、`check:secrets`、`git diff --check` PASS。secret scanは`.codegraph`とprotected nested worktreeの`.git` metadataだけをskipし、通常ファイル走査は維持した。
-- **Seven-day gates:** 9/14 draft契約検証、9/15 synthetic受付→draft縦切り、9/16 FHIR前提packet、9/17 confirmed defectがある場合のみ別Task Packet、9/18必要gate集約、9/19 frozen review/final evidence。Astra final reviewとOracle計画・実装後レビューは完了、DB・FHIR SSOT・既存human gateは未成立のまま。
+- **Active plan / boundary:** pool管理transaction wrapperを`runInPooledTransaction`へ7サイトで集約するdedupeのみ。`partner-registry.ts`(REPEATABLE READ)とmigration-runner(個別tx)は対象外。宣言済み意図的差分はeligibilityのROLLBACK失敗時client破棄への統一。API/schema/DML、算定・請求・資格・FHIR/JAHIS logic、APPROVED SSOTは不変。
+- **Security / privacy / offline:** mock pool/clientのみ。credential、production data、PHI/PII、migration apply、log、external send、外部状態変更は追加しない。
+- **Process gate:** R2相当の内部dedupe。exact10以外のtracked変更、release call shape・query順序の変化、API/SSOT影響が判明したら停止する。fresh-context独立reviewは本laneでは未取得で、9/18-19のfinal gate判断材料として残す。
+- **Validation:** helper契約DB-less test 4件追加。focused 245 PASS、full API 1,001/1,001 PASS、DB-gated 3 skipped files / 63 skipped tests、API typecheck、`check:boundaries`、`git diff --check` PASS。同日の9/15縦切り検証(API 155 / Web 209 PASS)も完了済み。
+- **Seven-day gates:** 9/16 FHIR前提packet(GATED、実装なし)、9/17 confirmed defectがある場合のみ別Task Packet、9/18必要gate集約、9/19 frozen review/final evidence。DB・FHIR SSOT・既存human gateは未成立のまま。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、薬剤師確認・確定、migration apply、production/deployは未解消のまま。SSOT_BLOCKED 4画面は停止中の正本gate名を明示する状態を維持する。
 
 ### PREVIOUS SNAPSHOT (2026-08-27, all-screen UI/UX refresh + real-data wiring) — NONAUTHORITATIVE

@@ -1,4 +1,4 @@
-import type { PoolConfig } from 'pg';
+import type { Pool, PoolClient, PoolConfig } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -10,6 +10,7 @@ import {
   closeObservedDatabasePool,
   createDbPool,
   observeDatabasePoolBackgroundErrors,
+  runInPooledTransaction,
   snapshotDatabasePool,
 } from './pool.js';
 
@@ -182,6 +183,86 @@ describe('createDbPool', () => {
 
     stopObserving();
     await pool.end();
+  });
+});
+
+describe('runInPooledTransaction', () => {
+  function createClient(options: { readonly rollbackError?: Error } = {}) {
+    const release = vi.fn();
+    const query = vi.fn(async (sql: string) => {
+      if (sql.trim() === 'ROLLBACK' && options.rollbackError !== undefined) {
+        throw options.rollbackError;
+      }
+      return { rows: [] };
+    });
+    const client = {
+      query: query as unknown as PoolClient['query'],
+      release,
+    } as unknown as PoolClient;
+    const pool = {
+      connect: vi.fn(async () => client),
+    } as unknown as Pool;
+    return { pool, query, release };
+  }
+
+  it('begins before run and leaves commit or rollback to the caller', async () => {
+    const { pool, query, release } = createClient();
+
+    const result = await runInPooledTransaction(pool, async (client) => {
+      await client.query('SELECT 1');
+      await client.query('COMMIT');
+      return 'done';
+    });
+
+    expect(result).toBe('done');
+    expect(query.mock.calls.map(([sql]) => String(sql).trim())).toEqual([
+      'BEGIN',
+      'SELECT 1',
+      'COMMIT',
+    ]);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('rolls back and reuses the client when run throws', async () => {
+    const { pool, query, release } = createClient();
+    const operationError = new Error('synthetic operation failure');
+
+    await expect(
+      runInPooledTransaction(pool, async () => {
+        throw operationError;
+      }),
+    ).rejects.toBe(operationError);
+    expect(query.mock.calls.map(([sql]) => String(sql).trim())).toEqual([
+      'BEGIN',
+      'ROLLBACK',
+    ]);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('destroys the client when rollback fails without masking the original error', async () => {
+    const operationError = new Error('synthetic operation failure');
+    const rollbackError = new Error('synthetic rollback failure');
+    const { pool, release } = createClient({ rollbackError });
+
+    await expect(
+      runInPooledTransaction(pool, async () => {
+        throw operationError;
+      }),
+    ).rejects.toBe(operationError);
+    expect(release.mock.calls).toEqual([[true]]);
+  });
+
+  it('propagates a connect failure without touching release', async () => {
+    const connectError = new Error('synthetic connect failure');
+    const pool = {
+      connect: vi.fn(async () => {
+        throw connectError;
+      }),
+    } as unknown as Pool;
+
+    await expect(
+      runInPooledTransaction(pool, async () => 'unreachable'),
+    ).rejects.toBe(connectError);
   });
 });
 

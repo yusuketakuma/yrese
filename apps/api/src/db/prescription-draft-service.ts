@@ -14,6 +14,7 @@ import {
 } from "@yrese/shared-kernel";
 
 import { appendAuditEventWithinTransaction } from "./audit-repository.js";
+import { runInPooledTransaction } from "./pool.js";
 import { snapshotDatabaseInstant } from "../instant.js";
 import {
   comparePrescriptionDraftFlags,
@@ -265,12 +266,9 @@ export class PostgresPrescriptionDraftService
   async get(
     input: PrescriptionDraftLookupInput,
   ): Promise<PrescriptionDraftLookupResult> {
-    const client = await this.pool.connect();
-    let destroyClient = false;
-    try {
+    return runInPooledTransaction(this.pool, async (client) => {
       // Audit append serializes by scope and must read the post-lock chain head.
       // READ COMMITTED gives that statement a fresh snapshot; REPEATABLE READ does not.
-      await client.query("BEGIN");
       const reception = await receptionMatches(client, input, false);
       if (reception === undefined) {
         await client.query("COMMIT");
@@ -297,17 +295,7 @@ export class PostgresPrescriptionDraftService
       return draft === undefined
         ? { kind: "empty" }
         : { kind: "found", draft };
-    } catch (error) {
-      try {
-        await client.query("ROLLBACK");
-      } catch {
-        destroyClient = true;
-      }
-      throw error;
-    } finally {
-      if (destroyClient) client.release(true);
-      else client.release();
-    }
+    });
   }
 
   async save(
@@ -315,11 +303,7 @@ export class PostgresPrescriptionDraftService
   ): Promise<PrescriptionDraftSaveResult> {
     const { normalized, contentHash } =
       normalizePrescriptionDraftContentWithHash(input.draft);
-    const client = await this.pool.connect();
-    let destroyClient = false;
-
-    try {
-      await client.query("BEGIN");
+    return runInPooledTransaction(this.pool, async (client) => {
       // Serializes all draft writers for the same verified reception row. This closes the
       // create/create race before either transaction decides that no draft exists while still
       // permitting unrelated receptions to proceed concurrently.
@@ -476,16 +460,6 @@ export class PostgresPrescriptionDraftService
           saveDisposition: "updated",
         }),
       };
-    } catch (error) {
-      try {
-        await client.query("ROLLBACK");
-      } catch {
-        destroyClient = true;
-      }
-      throw error;
-    } finally {
-      if (destroyClient) client.release(true);
-      else client.release();
-    }
+    });
   }
 }

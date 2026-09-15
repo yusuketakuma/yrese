@@ -1,6 +1,7 @@
-import type { Pool, PoolClient } from 'pg';
+import type { Pool } from 'pg';
 
 import { snapshotDatabaseInstant } from '../instant.js';
+import { runInPooledTransaction } from './pool.js';
 
 /**
  * Transactional outbox 配送 worker(WP-6003、Plans.md §16 Track A)。
@@ -208,10 +209,7 @@ export class PostgresOutboxDeliveryWorker {
     failedAggregates: string[],
     failures: OutboxDeliveryFailure[],
   ): Promise<'delivered' | 'failed' | 'none'> {
-    const client: PoolClient = await this.pool.connect();
-    let destroyClient = false;
-    try {
-      await client.query('BEGIN');
+    return runInPooledTransaction(this.pool, async (client) => {
       const claimed = await client.query<OutboxRow>(claimOldestPendingSql, [
         failedAggregates,
         aggregateKeyDelimiter,
@@ -249,15 +247,6 @@ export class PostgresOutboxDeliveryWorker {
       }
       await client.query('COMMIT');
       return 'delivered';
-    } catch (error) {
-      try {
-        await client.query('ROLLBACK');
-      } catch {
-        destroyClient = true;
-      }
-      throw error;
-    } finally {
-      client.release(destroyClient);
-    }
+    });
   }
 }
