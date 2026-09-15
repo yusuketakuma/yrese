@@ -90,9 +90,75 @@ WP-5279は`ad3aec2`へ着地済み。migration 000013を含む環境適用、pus
 
 ### WIP — exactly one
 
-**CURRENT は 0 件である。** WP-5277は`011ac26`、WP-5278は`6d005ee`、WP-5279は`ad3aec2`へ着地済みで、
-WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。reception wallClock意味論、FHIR provenance/mapping、
-薬剤師確認・確定、今回監査で見つかった高リスク項目はgate待ちでpark継続。
+**CURRENT は 0 件である。** WP-5280は`b6d38e6`へ着地済み(実装+frozen-diff 独立 review
+PASS、後述の Historical 節を参照)。READYは0件である。reception wallClock意味論、FHIR
+provenance/mapping、薬剤師確認・確定、その他の高リスク項目はgate待ちでpark継続。
+
+### Historical landed WIP — WP-5280 Calculation finding remediation
+
+ユーザ指示 2026-09-15「これらを改善する計画を立ててから実装」により、WP-5279 分離記録の
+Oracle review で確定した finding を修正した。claimable 経路・算定要件判定・API/DB 配線は
+対象外のまま(`POINTS_ONLY_COPAY_BLOCKED` / `claimable=false` 固定を維持)。
+
+- **Risk / review:** 算定 logic・evidence_id 付き領域のため R3 相当で扱う
+  (sole maintainer + maker≠checker の独立 verifier)。実装後、frozen diff への Oracle
+  独立 review を完了条件とし、critical finding は閉じる。
+- **Owned paths:** `packages/calculation/src/index.ts` / `formulas.ts` /
+  `calculation.test.ts` / `formulas.test.ts`、`packages/money/src/index.ts`(+ test)、
+  `Plans.md` / `State.md`。`packages/trace`・SSOT 文書は変更しない。
+- **Scope(Oracle 確定 finding のみ):**
+  1. A1 — `formulas.ts` の数量/点数中間演算を bigint 化
+     (`Points.fromInteger` は bigint 受入済み)。`perSevenDayUnits` を
+     `(BigInt(d)+6n)/7n` で計算し巨大入力の RangeError を解消。
+  2. F1 — `createFixedPointsRule` に `exclusivityGroup`/`effectiveTo` 引数を追加し、
+     `dispensingBasicFee1Rule` へ `{groupId:"dispensing-basic-fee", evidenceRef:EVD-CAL-0001}`。
+  3. A2 — 湯薬・一包化の段階別ルールへ対象単位排他
+     (`groupId` に `...:${applicationKey}` を含め、別対象の正当複数適用は維持)。
+  4. F4 確定分 — 指導料1↔2(「1以外の患者」台帳文言)を同一 group、
+     調剤管理料1イ↔ロ(「イ以外」)を剤単位 group。料2-vs-料1 と C2 の非対称排他は
+     `exclusivityGroup.blocksGroupIdPrefixes`(任意フィールド)の最小機構拡張で順序非依存に
+     実現: 料2 は `dmf-1:` 接頭辞を block、逓減は `drug-fee:` 接頭辞を block。
+     表現不能分(指導料3/4・支援料1/2 の台帳未確定ペア)は排他を付与しない。
+  5. F3 — EVD-CAL-0070/0071 に `effectiveTo=CalendarDate.fromString("2027-05-31")`。
+  6. F2 — `createRegionalSupportSystemAdditionRule` に variant 引数を追加し、
+     特別Aは `10/100` 乗率経路(全 level 非整数 → `requires_rounding_evidence` で
+     BLOCKED。推測丸めしない)。
+  7. A3 — factory 入口で入力値を snapshot(説明/output 用に文字列化して保持)。
+     `DISPENSING_BASIC_FEE_BASES` の深い freeze、`Points`/`ScaledDecimal`/`Yen` の
+     実行時 freeze(money package)。
+  8. A4 — `composeDispensingBasicFeePoints` で `minimumPoints` 非負を検証、
+     自家製剤 switch に `default` 拒否を追加。
+  9. A5-lite — step の `output` に `applicationKey=` を付与し、重複/上限/排他拒否で
+     専用 blocked step を追加(既存の trace 語彙内・新規 field は追加しない)。
+     自家製剤の `output` に daysSupply/prePrepared 値を残す。
+  10. C1 — `validateStepResult` が `ITEM_CALCULATED && affectsClaim!==true` を拒否
+      (合算される正点数は全て claim-affecting → trace 層の evidence 強制に接続)。
+  11. F6 — index.ts:1109 の dangling 参照を CAL-004 §8 へ修正、demo 束に
+      provisional 注記、`ruleStep` を freeze 統一。
+- **Out of scope(コード不変・gate 送り):** C3 「7日又はその端数」の単位定義
+  (原本再照合 P-01〜P-04 で確定まで変更禁止)、C4 適用日基準の CAL-003/CAL-004 不整合
+  (PRC-007 改版候補)、F5 frequency_limit・0035/0036 混在上限の集計単位(SSOT 確定待ち)、
+  A5 構造化 trace field(CAL-008 改版事項)。`calculationRulesV20260601` の
+  rename は破壊的 export 変更のためコメント注記に留める。
+- **Acceptance:** 各 finding に回帰 test を追加(成立ケース→BLOCKED、単独適用→従来点数維持、
+  境界日、入力後変更の不感性)。`packages/calculation`・`packages/money` の全 test、
+  workspace typecheck、`check:calculation-purity`、`git diff --check` PASS。
+  frozen diff の独立 review で確定不具合 0。
+- **Rollback / stop:** owned exact path の差分のみ保持。`blocksGroupIdPrefixes` が
+  review で SSOT 改版相当と判定された場合はその部分のみ切り戻し、対称 group で
+  表現可能な範囲(F1/指導料1-2/料1イ-ロ/A2/C2 部分)で着地する。算定要件の推測実装、
+  rounding evidence の捏造、claimable 化は行わない。
+- **Status:** 実装・検証・独立 review 完了。frozen packet v1(diff SHA-256 `671c090e…a117f`)は
+  Oracle `wp5280-impl-review` で CHANGES_REQUESTED(疎配列 shape 検証の不備 +
+  A3/両順序/限定prefix の回帰テスト不足の2件)。修正後 v2(`8bff3685…b1e8`)で
+  `wp5280-impl-review-v2` PASS、非ブロッキング補足(prefix 曖昧境界 pin・許容逆順序)を
+  反映した v3(`1010e9da…0d10d`)で `wp5280-impl-review-v3` PASS。critical finding 0。
+  計算出力は引き続き `claimable=false` 固定。**`check:secrets` は clean HEAD でも
+  tracked symlink `CLAUDE.md`→`AGENTS.md` で scope error となる既存不具合を確認済み
+  (本 diff 起因でない。gate script 修正は別WP候補)。**
+- **Landed:** `b6d38e6`(実装 5 owned paths)。C3・C4・F5・A5 構造化 field・F2 丸め
+  evidence 本体は deferred/gate 送りのまま。`check:secrets` の CLAUDE.md symlink 既存
+  不具合は別WP候補として記録。
 
 ### Historical landed WIP — WP-5279 Root maintenance and safe failure-boundary slices
 
