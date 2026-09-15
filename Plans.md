@@ -40,7 +40,7 @@
 | Last update | 2026-09-15 JST(WP-5277実装・検証・独立review findings 0、9/18 gate集約を前倒し実施。DB-gated suiteはlocal PostgreSQL@18 `yrese_test`で1,064/1,064・0 skip。保護untracked 3 pathは不変) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | 2026-09-13〜09-19の7日間で、既存の受付→処方箋draft縦切りを壊さず、証拠のある最小修正・検証・ゲート整理だけを完了する |
-| Current critical path | 9/16 FHIR前提packet整理(GATED) → 9/19最終判断 |
+| Current critical path | 9/19最終判断(人間)。FHIR判断packetは整理済みで人間提示待ち |
 | Main blocker | FHIR SSOT昇格・migration環境適用・production/deployは既存human gate待ち。DB-gated suiteはlocal接続で実施済み(0 skip) |
 | Required verification | full workspace test/typecheck/build、dependency/OpenAPI/boundary/calculation/SSOT/SBOM/script/secrets gate、`git diff --check`を最終候補で実施済み。PostgreSQL統合はlocal `yrese_test`接続で0 skip、CIは`postgres:18.4` serviceで常時実行 |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
@@ -49,7 +49,7 @@
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
 current batchは7日計画の最小complete slice消化で、current WIPは0件である(WP-5277は`011ac26`へ着地・
-独立review findings 0で閉鎖。残りは9/16 GATED packetと9/19最終判断のみ)。migration 000013のsourceは承認対象だが
+独立review findings 0で閉鎖。9/16 packetは整理済み・人間判断待ち、残りは9/19最終判断のみ)。migration 000013のsourceは承認対象だが
 環境適用は行わない。push、deploy、production変更、risk/release acceptance、外部状態変更は行わない。
 ユーザー承認済みの公式JP Core packageについては、保存せずhash/sizeだけを再確認した。
 
@@ -62,8 +62,8 @@ current batchは7日計画の最小complete slice消化で、current WIPは0件�
 | 9/13 | WP-5276の技術受入整理 | 実装をやり直さず、レビュー対象・ゲート対象・未commit所有・DB不可を分離 | 完了(Astra PASS・Oracle計画レビュー完了) |
 | 9/14 | 既存draftのroute／service契約検証 | CAS、tenant／pharmacy／scope拒否、terminal reception拒否、受付→患者→draft紐づけを全suite内で再確認。DB-gated 3 files / 63 testsは未実施扱い | 実施済み(API 997 PASS / Web 754 PASS) |
 | 9/15 | syntheticな受付→draft API／Web縦切りの確認 | 保存・再取得・競合時の非上書き、既存read audit／非漏洩境界を確認。薬剤師確定や完全なNorth Star E2Eとは呼ばない。migration 000013はsource確認のみ | 実施済み(API 155 PASS / Web 209 PASSの縦切りsuite、DB-gated 63 skip)。同日、human instructionでWP-5277着手を認可 |
-| 9/16 | FHIR前提の判断packet整理 | JP Core hashは再取得・一致を確認済み。SSOTのVERIFIED昇格、mapping／ownership、単一writerの未充足条件は区別し、FHIR routeは実装しない | GATED |
-| 9/17 | 確定不具合がある場合だけ、別Task Packetを判断 | 再現根拠・scope・受入条件・停止条件・着手認可・WIP整理が揃った場合のみ修正。なければ変更なし | 条件付き |
+| 9/16 | FHIR前提の判断packet整理 | JP Core hashは再取得・一致を確認済み。SSOTのVERIFIED昇格、mapping／ownership、単一writerの未充足条件は区別し、FHIR routeは実装しない | packet整理済み・人間判断待ち(JP Core hash一致・REG-001はPROPOSED維持・単一writer未充足条件を区別済み。実装なし) |
+| 9/17 | 確定不具合がある場合だけ、別Task Packetを判断 | 再現根拠・scope・受入条件・停止条件・着手認可・WIP整理が揃った場合のみ修正。なければ変更なし | 該当なし(WP-5277独立review findings 0・確定不具合なし) |
 | 9/18 | 最終候補に必要なゲートを集約 | 実行コード・依存・環境に変更があった場合だけ関連回帰と全体gateを再実施。同一候補の既存PASSは再利用し、SKIPをPASSへ変えない | 実施済み(9/15前倒し: workspace 2,417 PASS・DB-gated 1,064/1,064・0 skip・全static gate PASS・diff clean) |
 | 9/19 | 最終判断・引継ぎ | 技術受入、未commit、未実施検証、human gateを分離。Plansはactive情報、Stateはpointerのみ。未認可のcommit／push／deployはしない | 予定 |
 
