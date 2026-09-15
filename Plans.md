@@ -105,36 +105,110 @@ WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。reception wa
 
 #### WP-5279 分離記録 — 点数計算 package の read-only 監査 finding(2026-09-15・別WP候補。claimしない)
 
-ユーザ指示「点数計算ロジックを重点レビュー」に対する read-only 監査(`packages/calculation`
-330+1861行、test 90 PASS 実測)の確定 finding。consumer 不在・`claimable=false` 固定のため
-現時点の blast radius は表示値の誤りまでだが、claim 配線前の must-fix 候補である。算定 logic
-変更は R2+ 独立 review 対象であり、charter 上 P3 DEFER・CAL-001 の解除手順
-(APPROVED_FOR_IMPLEMENTATION 未達)の管理下にある。**本記録は claim ではなく、READY 昇格と
-risk 分類を経るまでは着手しない。**
+ユーザ指示「点数計算ロジックを重点レビュー」に対する read-only 監査の確定 finding。
+対象は `packages/calculation/src/formulas.ts`(330行)、`index.ts`(1861行)、
+`calculation.test.ts` + `formulas.test.ts`(90件・実測全 PASS)、および根拠 SSOT
+CAL-001/CAL-003/CAL-004/CAL-005/CAL-006/CAL-010・MOD-010。`apps/` に consumer は存在せず、
+`calculate()` は copay evidence 未発行により常に `POINTS_ONLY_COPAY_BLOCKED`
+(`claimable=false`)を返すため、現時点の blast radius は表示値の誤りまでである。
+ただし claim 配線前の must-fix 候補群であり、算定 logic 変更は R2+ 独立 review 対象、
+charter 上 P3 DEFER・CAL-001 解除手順(APPROVED_FOR_IMPLEMENTATION 未達)の管理下にある。
+**本記録は claim ではなく、READY 昇格と risk 分類を経るまでは着手しない。**
 
-- **F1 排他バイパス(コード確認済み):** `dispensingBasicFee1Rule` は `exclusivityGroup` 非宣言・
-  `applicationKey="prescription"` のため、`createDispensingBasicFeeRule` 系と併用すると
-  調剤基本料の二重算定が blocker なく通る。`calculationRulesV20260601` が当該形式を内包。
-  候補対応: 固定ルール形式へ exclusivityGroup 付与、または基本料生成経路の一本化。
-- **F2 EVD-CAL-0009 特別調剤基本料A variant 未実装:** evidence は「特別A薬局は100分の10」
-  を含むが `createRegionalSupportSystemAdditionRule` は満額のみ。表現経路自体がなく、
-  SPECIAL_A 併用時に過大算定となる。
-- **F3 EVD-CAL-0070/0071 の effectiveTo 未設定:** evidence は「令和9年6月以降は100分の200」
-  の時限規定を含むが失効ガードなし。2027-06 以降も 4点/1点を出力し続ける。
-- **F4 相互排他カテゴリの exclusivityGroup 未宣言:** 服薬管理指導料1/2/3/4、外来服薬支援料1/2、
-  調剤管理料1/2 は択一だが宣言なしで合算可能。現行の単一 groupId では「1以外の場合」型の
-  条件付き排他を表現不能であり、機構拡張の要否を含む。
-- **F5 頻度キャップ不統一・構造的限界:** 月1回系のみ claim-month+maxApplications 宣言、
-  6月/3月に1回系は未宣言。受付横断の頻度判定は `CalculationRequest` に履歴・施設基準
-  snapshot(CAL-005 §4 `priorCalculationHistoryRef`/`FacilityBasisSnapshotRef`)が存在せず
-  表現不能 — contract 拡張は SSOT 影響あり。
-- **F6 軽微:** index.ts「下部コメント参照」が dangling、`ruleStep` のみ freeze 漏れ、
-  `calculationRulesV20260601` が正式版付き名に見える任意5件束。
+監査で正しさを確認済みの領域(反証なし): IEEE-754 不使用・bigint/ScaledDecimal
+演算(MOD-010)、端数は丸めず `requires_rounding_evidence` → BLOCKED、StepResult の
+unknown-field/負 itemPoints/instanceof 検証、effectiveFrom/effectiveTo・duplicate・
+maxApplications・exclusivityGroup の各ガード、`affectsClaim`⇒evidenceRefs 必須の実行時
+throw、warnings 重複排除と必須 warning 付与、`check:calculation-purity` による
+`Date.now`/`new Date`/`Math.random`/`parseFloat`/`Math.round` の静的拒否。
 
-算定 package の本来の unblock は human/external gate: 留意事項通知精読(P-06)、原本再照合
-(P-01〜P-04)、修正版確認(P-08)、golden test 作成→レビュー→CAL-001 行 status の
-APPROVED_FOR_IMPLEMENTATION 昇格。Oracle 独立 review は非機密 packet の明示送信許可リストが
-未提供のため未実行。
+##### F1 — 調剤基本料の排他バイパス(確定不具合)
+
+- **重要度:** MEDIUM(claimable=false で封じ込め済み。claim 配線時は誤請求経路)
+- **箇所:** `packages/calculation/src/index.ts` — `dispensingBasicFee1Rule`(620-627)、
+  `createDispensingBasicFeeRule`(979-1064)、`calculationRulesV20260601`(1721-1727)
+- **成立条件:** `dispensingBasicFee1Rule`(`exclusivityGroup` 非宣言、
+  `applicationKey="prescription"`)と `createDispensingBasicFeeRule({base: FEE_2})`
+  (applicationKey `"dispensing-basic-fee"` + exclusivityGroup)を同一 ruleset に入れると、
+  ruleId/applicationKey が別物で重複・排他のいずれにも抵触せず、47+30=77点が
+  blocker なしで合算される。出荷済み `calculationRulesV20260601` がこの bypass 可能な
+  旧式固定ルールを内包している。
+- **根拠:** exclusivity 判定は StepResult の `exclusivityGroup` 宣言がある場合のみ発火
+  (index.ts 1839-1846)。旧式 `createFixedPointsRule` 経路は同 field を持たない。
+- **最小修正案:** (a) 基本料の生成経路を `createDispensingBasicFeeRule` に一本化し
+  `dispensingBasicFee1Rule` を廃止、(b) `createFixedPointsRule` に exclusivityGroup
+  引数を追加し基本料ルールへ適用、のいずれか。同一 evidence 系列(区分00)の
+  「1受付1区分」を engine 不変条件として扱うかは CAL-004/005 側の確認事項。
+- **確認方法:** `[dispensingBasicFee1Rule, createDispensingBasicFeeRule({base:FEE_2})]`
+  で total=77・blocker なしになる回帰 test(現状再現)→ 修正後は exclusivity BLOCKED。
+
+##### F2 — EVD-CAL-0009 特別調剤基本料A variant 未実装(確定 gap)
+
+- **重要度:** MEDIUM(同上。SPECIAL_A 薬局で過大算定)
+- **箇所:** `createRegionalSupportSystemAdditionRule`(index.ts 1121-1133)、
+  evidence `docs/calculation/evidence_register.md:74`
+- **成立条件:** evidence 文言は「27/59/67/37/59点(特別調剤基本料A薬局は100分の10)」。
+  実装は満額固定のみで、特別A薬局における逓減(100分の10)を表現する経路が存在しない。
+  SPECIAL_A 基本料と併用しても満額が算定される。なお「100分の10」の母数
+  (加算の所定点数か基本料か)は evidence 文言が曖昧で、解釈確認が前提。
+- **最小修正案:** variant 入力(特別A薬局フラグ)を追加し 100分の10 乗率経路を用意
+  (端数は既存の requires_rounding_evidence 規律に従う)。母数解釈は CAL-002/留意事項
+  通知で確定させる。
+- **確認方法:** SPECIAL_A + level1 で満額27点が出る現状 test → 修正後は 100分の10 結果。
+
+##### F3 — EVD-CAL-0070/0071 の effectiveTo 未設定(確定 gap・時限爆弾)
+
+- **重要度:** LOW→MEDIUM(現時点では正しい値を出すが、2027-06-01 以降に stale 化)
+- **箇所:** `dispensingBaseUpEvaluationFeeRule` / `dispensingPriceResponseFeeRule`
+  (index.ts 1701-1719)、evidence `evidence_register.md:165-166`
+- **成立条件:** evidence は「令和9年6月以降は所定点数の100分の200」。両ルールは
+  `effectiveFrom=2026-06-01`・`effectiveTo` 未設定で、2027-06-01 以降も 4点/1点を
+  出し続ける。CAL-006 §3.1 の失効ガード機構が存在するのに未適用。
+- **最小修正案:** `effectiveTo=2027-05-31` を設定し、2027-06 版は evidence 発行後に
+  別ルール(乗率型)として追加。少なくとも失効日の設定で stale 出力を機械的に止める。
+- **確認方法:** dispensingDate=2027-06-01 で当該ルールが BLOCKED になる test。
+
+##### F4 — 相互排他カテゴリの exclusivityGroup 未宣言(確定 gap・機構不足を含む)
+
+- **重要度:** MEDIUM(同上。caller 選択ミスで silent 二重算定)
+- **箇所:** 服薬管理指導料1/2/3/4(index.ts 1322-1359、650-657)、
+  外来服薬支援料1/2(1484-1492、818-839)、調剤管理料1/2(1238-1262、641-648)
+- **成立条件:** これらは患者条件・施設基準により択一のカテゴリだが exclusivityGroup を
+  宣言せず、同一 ruleset に複数入れると合算される(例: 指導料1 45点+指導料2 59点)。
+- **根拠/限界:** 現行機構は ruleset 全体で一意な `groupId` のみ。「1以外の場合」
+  (調剤管理料2)や剤単位の条件付き排他は表現不能で、機構拡張か caller 側仕様
+  (CAL-004/005)の確認が前提。
+- **最小修正案:** 少なくとも同一処方箋で択一が明確なカテゴリへ groupId を付与。
+  条件付き排他が必要なら exclusivity 機構の拡張設計を SSOT 側で確定してから実装。
+- **確認方法:** 排他ペア同時適用で exclusivity BLOCKED になる回帰 test。
+
+##### F5 — 頻度キャップの宣言不統一と構造的限界(確定 gap + 設計課題)
+
+- **重要度:** LOW(同一 calculate 呼出し内でのみ観測可能)
+- **箇所:** 宣言あり — EVD-CAL-0018/0046/0057(`claim-month`+maxApplications=1)、
+  0063(`patient`+1)、0059 各 variant(maxApplications=1)。未宣言 —
+  0050/0052/0065(6月に1回)、0051/0071(3月に1回)。
+- **成立条件:** 未宣言ルールは同一呼出し内で applicationKey を変えて複数適用可能。
+  受付横断の頻度判定(月1回/6月に1回等)は `CalculationRequest` に履歴・施設基準
+  snapshot が存在せず構造的に表現不能(CAL-005 §4 の `priorCalculationHistoryRef`/
+  `FacilityBasisSnapshotRef` が contract に未導入)。
+- **最小修正案:** 同一呼出し内の防御として未宣言系へ maxApplications=1 を付与。
+  受付横断の頻度判定は snapshot 入力の contract 拡張(SSOT 影響)として別途設計。
+- **確認方法:** 同一 ruleId で applicationKey 違いの2適用が BLOCKED になる test。
+
+##### F6 — 軽微(任意改善)
+
+- index.ts 1108-1109「(下部コメント参照)」は dangling — 対象外項目の説明コメントが
+  ファイル末尾に存在しない。参照先を削除するか注記を実体化する。
+- `ruleStep`(306-320)のみ `Object.freeze` 漏れ(他の step builder は frozen)。
+- `calculationRulesV20260601` は正式版付き名だが任意の5件デモ束(施設訪問の指導料3を
+  含む点も不自然)。demo 用途を名前または doc で明示する余地。
+
+##### 本来の unblock(human/external gate)
+
+留意事項通知精読(P-06)、原本再照合(P-01〜P-04)、修正版確認(P-08)、
+golden test 作成→opus4.8 相当レビュー→CAL-001 行 status の APPROVED_FOR_IMPLEMENTATION
+昇格。これらなしに算定 workflow 実装へ進まない。
 
 ### Historical landed WIP — WP-5278
 
