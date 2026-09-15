@@ -33,29 +33,29 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` / current branch = `6d005ee`(WP-5278 landing)+本record commit、`origin/main` = `c3a082919f4965915fb11671b12db402a157d990`。実測 2026-09-15 JST |
-| Candidate branch | `refactor/wp-5275-failure-proof-describe-failure`。WP-5275は`c3a0829`、WP-5276は`a463fac`、WP-5277は`011ac26`、WP-5278は`6d005ee`へ着地済み |
-| Upstream relation | localはoriginより7 commit先行。push、merge、deployは行わない |
-| Candidate scope | WP-5278: 全フォルダ調査で確定した`packages/contracts/src/openapi.ts`の重複domain error response 19ブロックを`forbiddenErrorResponse`/`domainErrorResponse`へ集約するexact1 slice。生成`openapi.yaml`はbyte-identical |
-| Last update | 2026-09-15 JST(WP-5278実装・検証。全フォルダ走査でtimeout実装・web client・JST helper・permission scopeの統合は意味論差で見送り、OpenAPI dedupeのみ実施。`check:openapi` drift PASS・workspace 2,417 PASS・typecheck clean。保護untracked 3 pathは不変) |
+| Review base | local `main` = `9c0b357915919b94a1f4fadeca42d1a05403cf91`、current branch = `refactor/wp-5275-failure-proof-describe-failure` / HEAD = `ad3aec2`(WP-5279 landing)+本record commit、`origin/main` = `c3a082919f4965915fb11671b12db402a157d990`。実測 2026-09-15 JST |
+| Candidate branch | `refactor/wp-5275-failure-proof-describe-failure`。WP-5275は`c3a0829`、WP-5276は`a463fac`、WP-5277は`011ac26`、WP-5278は`6d005ee`、WP-5279は`ad3aec2`へ着地済み |
+| Upstream relation | local `main` / current branchの差分と`origin/main`との差分を上記SHAで固定。push、merge、deployは行わない |
+| Candidate scope | WP-5279: 15領域監査で確認した低リスク範囲のうち、active snapshot、清掃・秘密スキャン境界、UIのARIA/患者識別子露出、処方下書き通信のtimeout/abort/再取得、依存監査の通信障害判定、local ComposeのPostgreSQL 17系digest固定を修正済み。認証、DB/migration、永続化/idempotency、observability、PHI/retention、backup/DRは対象外のまま |
+| Last update | 2026-09-15 JST(15領域の4件の読取り専用監査を完了。GBrainは対象0件、Oracleは明示的送信許可リスト不足で安全拒否。UI/Web 758 tests・typecheck、workspace typecheck/test/build、`test:scripts`・`check:deps`・`check:sbom`、`docker compose config`、`check:openapi`/`check:boundaries`/`check:calculation-purity`/`check:ssot-index`、`check:secrets`/`git diff --check`をPASS。ComposeのPostgreSQL 17系mutable tagをdigest固定。最終exact-hash reviewはhash一致・重大な確定不具合なし。WP-5279はhuman commit認可により`ad3aec2`へ着地。点数計算packageのread-only監査 findingを別WP候補として分離記録) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
-| Active Goal | 2026-09-13〜09-19の7日間で、既存の受付→処方箋draft縦切りを壊さず、証拠のある最小修正・検証・ゲート整理だけを完了する |
-| Current critical path | 9/19最終判断(人間)。FHIR判断packetは整理済みで人間提示待ち |
-| Main blocker | FHIR SSOT昇格・migration環境適用・production/deployは既存human gate待ち。DB-gated suiteはlocal接続で実施済み(0 skip) |
-| Required verification | full workspace test/typecheck/build、dependency/OpenAPI/boundary/calculation/SSOT/SBOM/script/secrets gate、`git diff --check`を最終候補で実施済み。PostgreSQL統合はlocal `yrese_test`接続で0 skip、CIは`postgres:18.4` serviceで常時実行 |
+| Active Goal | 2026-09-15 runで、15領域の全項目を監査し、仕様根拠のある安全な項目は修正・検証し、承認が必要な項目は未完了ゲートとして明示する |
+| Current critical path | human/security/privacy/data-integrity gateが必要な残件の承認または明示的な未実施受入。高リスク項目はゲート成立後に別WPで再計画 |
+| Main blocker | tenant/system認可、append-only DB/migration、下書きserver autosave/idempotency、structured observability、PHI/retention、backup/restore/DR、lint/fixture policy、PostgreSQL major version alignmentは、仕様・運用・人間/security/privacy/data-integrity gate待ち。Composeの17系mutable tagはdigest固定済み |
+| Required verification | current diffのfocused test、`pnpm test:scripts`、`pnpm check:deps`、`pnpm check:secrets`、static gates、workspace typecheck/test/build、`docker compose config`、`git diff --check`を確認する。DB migration/apply、production、browser/AT、backup/restore、CI実行は未実施のまま成功扱いしない |
 | Current CSS budget | 2026-08-27 human instruction「css予算上限を緩和」により、今後のcompiled CSS gzip上限を12 KiB(12,288 bytes)へ再設定。source separate-file gzip非増加、pixel一致、CLS非増加は緩和しない |
-| Work-selection drift | 現在のCURRENTは0件、READYは0。WP-5278以前の実装記録はGit evidenceとして扱い、未実装表現をそのまま再claimしない |
+| Work-selection drift | CURRENTは0件、READYは0。WP-5279以前の実装記録はGit evidenceとして扱い、15領域の未解消ゲートを実装済みと数えない |
 | Next scan cursor | `origin/main=c3a0829`; remote main更新またはfinal gate findingでreset |
 
 実装証跡はGit diff/commit/CIを正本とし、本書へself-referential candidate hashを複製しない。
-current batchは7日計画の最小complete slice消化で、current WIPは0件である(WP-5277は`011ac26`へ着地・
-独立review findings 0で閉鎖、WP-5278は`6d005ee`へ着地。9/16 packetは整理済み・人間判断待ち、残りは9/19最終判断のみ)。migration 000013のsourceは承認対象だが
-環境適用は行わない。push、deploy、production変更、risk/release acceptance、外部状態変更は行わない。
+current batchはWP-5279の安全なcomplete slice消化で、current WIPは0件である。WP-5277は`011ac26`、WP-5278は`6d005ee`、
+WP-5279は`ad3aec2`へ着地済み。migration 000013を含む環境適用、push、deploy、production変更、risk/release acceptance、外部状態変更は行わない。
 ユーザー承認済みの公式JP Core packageについては、保存せずhash/sizeだけを再確認した。
 
 ### 1.1 Seven-day execution plan (2026-09-13〜2026-09-19 JST)
 
-過去のGit履歴(WP-5101のdraft縦切り、WP-6003〜6006の連携基盤、WP-5271〜5275のhardening)とlive codeを突合した。今週の実装はWP-5276だけとし、仕様・人間承認・外部手続き待ちの項目は実装済みと数えない。
+過去のGit履歴(WP-5101のdraft縦切り、WP-6003〜6006の連携基盤、WP-5271〜5278のhardening/refactor)とlive codeを突合した。
+本runではWP-5279だけを実装対象とし、仕様・人間承認・外部手続き待ちの項目は実装済みと数えない。
 
 | 日 | 実装 / 検証項目 | 完了条件 | 状態 |
 |---|---|---|---|
@@ -63,9 +63,9 @@ current batchは7日計画の最小complete slice消化で、current WIPは0件�
 | 9/14 | 既存draftのroute／service契約検証 | CAS、tenant／pharmacy／scope拒否、terminal reception拒否、受付→患者→draft紐づけを全suite内で再確認。DB-gated 3 files / 63 testsは未実施扱い | 実施済み(API 997 PASS / Web 754 PASS) |
 | 9/15 | syntheticな受付→draft API／Web縦切りの確認 | 保存・再取得・競合時の非上書き、既存read audit／非漏洩境界を確認。薬剤師確定や完全なNorth Star E2Eとは呼ばない。migration 000013はsource確認のみ | 実施済み(API 155 PASS / Web 209 PASSの縦切りsuite、DB-gated 63 skip)。同日、human instructionでWP-5277着手を認可 |
 | 9/16 | FHIR前提の判断packet整理 | JP Core hashは再取得・一致を確認済み。SSOTのVERIFIED昇格、mapping／ownership、単一writerの未充足条件は区別し、FHIR routeは実装しない | packet整理済み・人間判断待ち(JP Core hash一致・REG-001はPROPOSED維持・単一writer未充足条件を区別済み。実装なし) |
-| 9/17 | 確定不具合がある場合だけ、別Task Packetを判断 | 再現根拠・scope・受入条件・停止条件・着手認可・WIP整理が揃った場合のみ修正。なければ変更なし | 該当なし(WP-5277独立review findings 0・確定不具合なし) |
-| 9/18 | 最終候補に必要なゲートを集約 | 実行コード・依存・環境に変更があった場合だけ関連回帰と全体gateを再実施。同一候補の既存PASSは再利用し、SKIPをPASSへ変えない | 実施済み(9/15前倒し: workspace 2,417 PASS・DB-gated 1,064/1,064・0 skip・全static gate PASS・diff clean) |
-| 9/19 | 最終判断・引継ぎ | 技術受入、未commit、未実施検証、human gateを分離。Plansはactive情報、Stateはpointerのみ。未認可のcommit／push／deployはしない | 予定 |
+| 9/17 | 15領域監査の確定不具合・懸念をfinite queue化 | 再現根拠・scope・受入条件・停止条件・着手認可・WIP整理が揃った低リスク項目だけ修正。高リスクはgate待ち | 実施済み(WP-5279でroot boundary、UI状態/PHI、draft通信、dependency gateを修正。tenant認可、DB、durable recovery、observability、DRは別gateへ分離) |
+| 9/18 | 最終候補に必要なゲートを集約 | 実行コード・依存・環境に変更があった場合だけ関連回帰と全体gateを実施。同一候補の既存PASSは再利用し、SKIPをPASSへ変えない | WP-5279の全体validation・frozen独立reviewを完了。browser/DB/restore/CI未実施は未実施のまま記録 |
+| 9/19 | 最終判断・引継ぎ | 技術受入、未commit、未実施検証、human gateを分離。Plansはactive情報、Stateはpointerのみ。未認可のcommit／push／deployはしない | WP-5279はhuman commit認可により`ad3aec2`+本record commitへ着地。残件はhuman/security/privacy/data-integrity gate待ち |
 
 薬剤師確認・確定(C-061以降)、FHIR facade、JAHIS/オン資/外部partner接続は今週の実装対象に昇格させない。前提gateが成立した時点で別WPとして再計画する。
 
@@ -90,9 +90,51 @@ current batchは7日計画の最小complete slice消化で、current WIPは0件�
 
 ### WIP — exactly one
 
-**CURRENT は 0 件である。** WP-5277は`011ac26`へ着地済みで、fresh-context独立review(2026-09-15 Devin)は
-findings 0で閉鎖。WP-5278は`6d005ee`へ着地済み。WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。
-reception wallClock意味論、FHIR provenance/mapping、薬剤師確認・確定はgate待ちでpark継続。
+**CURRENT は 0 件である。** WP-5277は`011ac26`、WP-5278は`6d005ee`、WP-5279は`ad3aec2`へ着地済みで、
+WP-5235はSSOT_UPDATE_REQUIREDで未claim、READYは0件である。reception wallClock意味論、FHIR provenance/mapping、
+薬剤師確認・確定、今回監査で見つかった高リスク項目はgate待ちでpark継続。
+
+### Historical landed WIP — WP-5279 Root maintenance and safe failure-boundary slices
+
+- **Purpose / layer:** active Plans/State snapshotを実測Gitへ同期し、清掃・秘密スキャン境界、UIのARIA/患者識別子露出、処方下書き通信のtimeout/abort/再取得、依存監査の通信障害判定を最小差分で是正する。算定・法令logic、DB schema、認証モデル、durable recoveryは変更しない。
+- **Allowed files:** `Plans.md`、`State.md`、`compose.yaml`、`scripts/clean.mjs`、`scripts/check-secrets.mjs`、`scripts/check-scripts.mjs`、`scripts/check-deps.mjs`、`apps/web/app/admin/admin-dashboard.tsx`、`apps/web/app/checkout/checkout-context.test.tsx`、`apps/web/app/components/clinical-alert.test.tsx`、`apps/web/app/components/clinical-alert.tsx`、`apps/web/app/components/domain-status-badge.tsx`、`apps/web/app/components/error-notice.test.tsx`、`apps/web/app/components/error-notice.tsx`、`apps/web/app/components/patient-header.tsx`、`apps/web/app/cross-cutting-state.test.tsx`、`apps/web/app/error.tsx`、`apps/web/app/patients/patient-search.test.tsx`、`apps/web/app/prescriptions/[receptionId]/page.tsx`、`apps/web/app/prescriptions/prescription-draft-persistence.test.ts`、`apps/web/app/prescriptions/prescription-draft-persistence.ts`、`apps/web/app/prescriptions/prescription-launch-route.tsx`、`apps/web/app/prescriptions/prescription-reception-boundary.tsx`、`apps/web/app/prescriptions/prescription-workspace.tsx`、`apps/web/app/reception-dashboard.test.tsx`、`apps/web/app/reception-prescription-launch.tsx`、`apps/web/app/status/visual-status-registry.test.tsx`、`apps/web/app/status/visual-status-registry.ts`、`docs/ui-ux-refresh/08-target-design-direction.md`、`docs/ui-ux-refresh/12-component-contracts.md`。protected untracked roots、生成artifact、DB、`.env`は変更・参照しない。
+- **Authority / risk:** AGT-018、PRC-003、PRC-005、SPEC-002、既存の15領域監査 evidence、UIX-001の既存契約。R1/R2のfilesystem、UI state、request failure、dependency-supply-chain boundary。Oracleは明示送信許可リスト不足で未実行。security/auth、privacy、data-integrity、migration、production gateはこのWPの範囲外。
+- **Acceptance:** (A1) active snapshotがcurrent branch/HEAD/local main/origin main/ownershipを一致表示。(A2) `clean.mjs`は`apps`/`packages`内の生成物だけを一時rootで削除し、保護rootのsentinelを保持。(A3) `check-secrets.mjs`は既知の未追跡保護rootを降下せず明示報告し、同名のtracked contentと通常のignored `.env`は従来どおり検査。(A4) 非blocking ERRORは`status`/polite、blocking ERRORは`alert`/assertive、患者IDはDOM属性へ出さない。(A5) draft load/save/reloadはcaller abortと30秒timeoutを分類し、再取得操作を提供する。(A6) registry/network errorの依存監査はunverifiedでexit 1。(A7) syntax、focused/full applicable tests、typecheck、static gates、secret/dependency scan、diff checkがPASS。(A8) local ComposeのPostgreSQL 17系は検証済みimmutable digestを使用し、major versionは変更しない。
+- **Rollback / stop:** 未commitのowned exact path差分を戻せる状態で保持する。新たなtracked/production/PHI/DB/auth scope、保護rootの読み取り要求、secret/dependency coverageの不明確化、draft idempotencyやdurable persistenceが必要と判明したら停止し、未検証扱いにする。
+- **Status:** LANDED `ad3aec2` / validation PASS / Compose pin added / final exact-hash independent review PASS。commitはhuman認可済み、push/merge/deployは行わない。高リスク監査findingは下記の別gate/別WP候補として記録し、WP-5279の完了条件に混ぜない。
+
+#### WP-5279 分離記録 — 点数計算 package の read-only 監査 finding(2026-09-15・別WP候補。claimしない)
+
+ユーザ指示「点数計算ロジックを重点レビュー」に対する read-only 監査(`packages/calculation`
+330+1861行、test 90 PASS 実測)の確定 finding。consumer 不在・`claimable=false` 固定のため
+現時点の blast radius は表示値の誤りまでだが、claim 配線前の must-fix 候補である。算定 logic
+変更は R2+ 独立 review 対象であり、charter 上 P3 DEFER・CAL-001 の解除手順
+(APPROVED_FOR_IMPLEMENTATION 未達)の管理下にある。**本記録は claim ではなく、READY 昇格と
+risk 分類を経るまでは着手しない。**
+
+- **F1 排他バイパス(コード確認済み):** `dispensingBasicFee1Rule` は `exclusivityGroup` 非宣言・
+  `applicationKey="prescription"` のため、`createDispensingBasicFeeRule` 系と併用すると
+  調剤基本料の二重算定が blocker なく通る。`calculationRulesV20260601` が当該形式を内包。
+  候補対応: 固定ルール形式へ exclusivityGroup 付与、または基本料生成経路の一本化。
+- **F2 EVD-CAL-0009 特別調剤基本料A variant 未実装:** evidence は「特別A薬局は100分の10」
+  を含むが `createRegionalSupportSystemAdditionRule` は満額のみ。表現経路自体がなく、
+  SPECIAL_A 併用時に過大算定となる。
+- **F3 EVD-CAL-0070/0071 の effectiveTo 未設定:** evidence は「令和9年6月以降は100分の200」
+  の時限規定を含むが失効ガードなし。2027-06 以降も 4点/1点を出力し続ける。
+- **F4 相互排他カテゴリの exclusivityGroup 未宣言:** 服薬管理指導料1/2/3/4、外来服薬支援料1/2、
+  調剤管理料1/2 は択一だが宣言なしで合算可能。現行の単一 groupId では「1以外の場合」型の
+  条件付き排他を表現不能であり、機構拡張の要否を含む。
+- **F5 頻度キャップ不統一・構造的限界:** 月1回系のみ claim-month+maxApplications 宣言、
+  6月/3月に1回系は未宣言。受付横断の頻度判定は `CalculationRequest` に履歴・施設基準
+  snapshot(CAL-005 §4 `priorCalculationHistoryRef`/`FacilityBasisSnapshotRef`)が存在せず
+  表現不能 — contract 拡張は SSOT 影響あり。
+- **F6 軽微:** index.ts「下部コメント参照」が dangling、`ruleStep` のみ freeze 漏れ、
+  `calculationRulesV20260601` が正式版付き名に見える任意5件束。
+
+算定 package の本来の unblock は human/external gate: 留意事項通知精読(P-06)、原本再照合
+(P-01〜P-04)、修正版確認(P-08)、golden test 作成→レビュー→CAL-001 行 status の
+APPROVED_FOR_IMPLEMENTATION 昇格。Oracle 独立 review は非機密 packet の明示送信許可リストが
+未提供のため未実行。
 
 ### Historical landed WIP — WP-5278
 

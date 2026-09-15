@@ -1,17 +1,16 @@
 # State.md — Pointer-only resume snapshot
 
-> **ACTIVE SNAPSHOT (2026-09-15, WP-5278 LANDED `6d005ee` / OpenAPI dedupe・生成yaml byte-identical):**
+> **ACTIVE SNAPSHOT (2026-09-15, WP-5279 LANDED `ad3aec2` / calculation findings recorded as candidates):**
 > This block alone is current. Everything below is nonauthoritative.
 
-- **Direction / ownership:** WP-5278は`6d005ee`へ着地済み(全フォルダ走査でOpenAPI error-response dedupeのみ確定・実施)。WP-5277は`011ac26`、独立review findings 0で閉鎖。9/18予定のgate集約は同日へ前倒し実施した。`active_root_writer`は本lane(Devin)。
-  WP-5276は`a463fac`へ着地済み。FHIR、reception wallClock、薬剤師確認・確定はgate待ちでpark継続。
-- **Git boundary:** local `main` / current branch = 本record commit、`origin/main` = `c3a0829`。localは7 commit先行。push / merge / deployは行わない。
-- **Dirty ownership:** tracked差分なし(本record更新はlanding commitへ含む)。`.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、cleanup、merge、stageしない。
-- **Active plan / boundary:** WP-5277/WP-5278 dedupeは完了(WP-5278は生成`openapi.yaml`がbyte-identical)。9/16 FHIR判断packetは整理済み・人間判断待ち(実装なし)、9/17は確定不具合なしで該当なし。残りは9/19最終判断のみ。実行コード・依存・環境の追加変更なし。
-- **Security / privacy / offline:** DB-gated suiteはlocal PostgreSQL@18(127.0.0.1:5433、専用`yrese_test` DB、testごとの分離schemaへmigration適用)のsynthetic dataのみ。credential、production data、PHI/PII、migration環境適用、external send、外部状態変更は追加しない。
-- **Process gate:** R2相当の内部dedupeはfrozen review通過済み、独立review findings 0で閉鎖。9/19は最終候補packetのfreezeと最終判断のみ。
-- **Validation:** workspace 2,417 PASS(api 1,001・web 754・packages 662)。DB-gated suiteは`TEST_DATABASE_URL`(local `yrese_test`)接続で1,064/1,064・0 skip(63 skip解消)。typecheck 10 projects、build、OpenAPI/boundaries/calculation/SSOT index 185/SBOM 249/deps high=0・critical=0/script harness/secrets、`git diff --check` 全PASS。WP-5278後の再検証: `check:openapi` PASS(byte-identical)・contracts 136/136・workspace 2,417 PASS・typecheck clean。
-- **Seven-day gates:** 9/16 FHIR判断packetは整理済み・人間判断待ち(実装なし)、9/17は確定不具合なしで該当なし、9/18 gate集約は9/15前倒しで実施済み、9/19 frozen review/final evidence。FHIR SSOT昇格・既存human gateは未成立のまま。
+- **Direction / ownership:** WP-5279はhuman commit認可により`ad3aec2`へ着地済み(15領域監査の低リスク範囲: root boundary、UI ARIA/患者識別子、draft通信のtimeout/abort/再取得、dependency audit failure classification、local Compose PostgreSQL 17系digest pin)。`active_root_writer`は本lane。点数計算packageのread-only監査 findingは`Plans.md` WP-5279分離記録へ別WP候補として登録(claimしない)。WP-5278は`6d005ee`、WP-5277は`011ac26`、WP-5276は`a463fac`へ着地済み。FHIR、reception wallClock、薬剤師確認・確定はgate待ちでpark継続。
+- **Git boundary:** local `main` = `9c0b357915919b94a1f4fadeca42d1a05403cf91`、current branch = `refactor/wp-5275-failure-proof-describe-failure` / HEAD = `ad3aec2`(landing)+本record commit、`origin/main` = `c3a082919f4965915fb11671b12db402a157d990`。push / merge / deployは行わない。
+- **Dirty ownership:** tracked差分なし(本record更新はlanding後のrecord commit)。`.harness-worktrees/`、`artifacts/`、`ui-test-tools/` とsecondary worktreeはuser-owned / protectedで、cleanup、merge、stage、内容参照をしない。
+- **Active plan / boundary:** WP-5279は`ad3aec2`へ着地しCURRENT=0・READY=0。tenant/system認可、append-only DB/migration、draftのserver autosave/idempotency、structured observability、PHI/retention、backup/restore/DR、lint/fixture policy、PostgreSQL major version alignmentは別のhuman/security/privacy/data-integrity gateへ分離し、推測実装しない。算定finding(F1〜F6)は別WP候補でREADY昇格・risk分類まで着手しない。
+- **Security / privacy / offline:** WP-5279は一時rootのsynthetic sentinelだけで清掃・スキャン境界を検証する。credential、production data、PHI/PII、migration環境適用、DB mutation、external send、外部状態変更は追加しない。
+- **Process gate:** 15領域の4件のread-only auditは完了。Oracleは、明示的な非機密ファイル送信許可リストがないため安全拒否となり未実行。fresh UI/draft/dependency read-only reviewは重大な確定不具合なし。clean.mjsのroot生成に関する条件付き懸念はtracked設定に根拠がなく、保護root再走査は追加しない。ComposeのPostgreSQL 17系mutable tagはdigest固定済み。最終exact-hash reviewはhash一致・重大な確定不具合なし。高リスクfindingの実装承認・専門家レビュー・human gateは未成立。
+- **Validation:** UI/Web 758 tests・typecheck、workspace typecheck、workspace tests（API 1,001 PASS + 63 DB-gated skip、Web 758 PASS、packages 662 PASS）、workspace build、`test:scripts`・`check:deps`・`check:sbom`、`docker compose config`、`check:openapi`、`check:boundaries`、`check:calculation-purity`、`check:ssot-index`(185)、`check:secrets`、`git diff --check`、対象Node syntaxはPASS。秘密スキャンは`.codegraph`と保護3 rootを含む4 skipを明示。browser/AT、CI、DB migration/apply、backup/restore、performance SLOは未実施として扱う。
+- **Seven-day gates:** FHIR判断packet、人間承認、migration環境適用、production/deploy、HPKI legal authority、REG-004 RB-003、薬剤師確認・確定は未解消。tenant/system認可、DB/migration DDL、draft idempotency/durable recovery、observability sink、PHI retention、backup/restore/DRも未解消。WP-5279はexact-hash review・commit認可を経て着地済み。
 - **Preserved gates:** HPKI legal authority、REG-004 RB-003、RB-001/RB-008/RB-009、MST-001、薬剤師確認・確定、migration環境適用、production/deployは未解消のまま。SSOT_BLOCKED 4画面は停止中の正本gate名を明示する状態を維持する。
 
 ### PREVIOUS SNAPSHOT (2026-08-27, all-screen UI/UX refresh + real-data wiring) — NONAUTHORITATIVE
