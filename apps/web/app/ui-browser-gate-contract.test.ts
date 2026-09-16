@@ -85,7 +85,7 @@ describe("UI browser validation gate", () => {
     // fixture のエラー応答は KERNEL_ERROR_CODES に登録済みの実 wire コードだけを
     // 使う(架空コード禁止)。UI-FIXTURE-404 は登録外 route の fixture 固有
     // catch-all で、wire 契約を装わない名前空間付きの例外としてだけ許容する。
-    const registeredErrorCodes = new Set(
+    const registeredErrorCodes = new Set<string>(
       KERNEL_ERROR_CODES.map((entry) => entry.code),
     );
     const fixtureOnlyErrorCodes = new Set(["UI-FIXTURE-404"]);
