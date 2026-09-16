@@ -207,6 +207,59 @@ export function resolveTenantContextMode(input: {
   return 'dev_headers';
 }
 
+export interface OutboxDeliveryConfiguration {
+  readonly enabled: boolean;
+  readonly intervalMs: number;
+  readonly runLimit: number;
+}
+
+export const outboxDeliveryConfigurationErrorMessage =
+  'Outbox delivery runner configuration is invalid';
+
+/**
+ * WP-7103: outbox 配送 runner の構成。既定は無効。
+ * 有効化は postgres かつ非 production のみ — production の外部配送は
+ * BLOCKED_SECURITY_REVIEW(egress)gate 下であり、local/CI 用 sink 以外は
+ * 結線しない。in_memory では durable outbox が存在しないため有効化は拒否する
+ * (黙って無効化すると「配送されているはず」の誤認を生む)。
+ */
+export function resolveOutboxDeliveryConfiguration(input: {
+  readonly enabled: string | undefined;
+  readonly intervalMs: string | undefined;
+  readonly runLimit: string | undefined;
+  readonly nodeEnv: string | undefined;
+  readonly repositoryMode: ApiRepositoryMode;
+}): OutboxDeliveryConfiguration {
+  const intervalMs = parseBoundedDecimalInteger({
+    value: input.intervalMs,
+    defaultValue: 5_000,
+    variableName: 'YRESE_OUTBOX_DELIVERY_INTERVAL_MS',
+    minimum: 100,
+    maximum: 600_000,
+  });
+  const runLimit = parseBoundedDecimalInteger({
+    value: input.runLimit,
+    defaultValue: 100,
+    variableName: 'YRESE_OUTBOX_DELIVERY_RUN_LIMIT',
+    minimum: 1,
+    maximum: 1_000,
+  });
+
+  if (input.enabled === undefined || input.enabled === 'false') {
+    return Object.freeze({ enabled: false, intervalMs, runLimit });
+  }
+  if (input.enabled !== 'true') {
+    throw new Error(outboxDeliveryConfigurationErrorMessage);
+  }
+  if (input.repositoryMode !== 'postgres') {
+    throw new Error(outboxDeliveryConfigurationErrorMessage);
+  }
+  if (input.nodeEnv === 'production') {
+    throw new Error(outboxDeliveryConfigurationErrorMessage);
+  }
+  return Object.freeze({ enabled: true, intervalMs, runLimit });
+}
+
 export function resolvePatientSearchCursorHmacKey(input: {
   readonly configuredKey: string | undefined;
   readonly nodeEnv: string | undefined;

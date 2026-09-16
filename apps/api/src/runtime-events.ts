@@ -33,6 +33,34 @@ export type RuntimeOperationalEvent =
   | {
       readonly kind: 'database.pool.background_error';
       readonly databasePool: DatabasePoolSnapshot;
+    }
+  | {
+      readonly kind: 'outbox.runner.started';
+      readonly intervalMs: number;
+    }
+  | {
+      readonly kind: 'outbox.runner.stopped';
+    }
+  | {
+      readonly kind: 'outbox.runner.lock_acquired';
+    }
+  | {
+      readonly kind: 'outbox.runner.lock_waiting';
+    }
+  | {
+      readonly kind: 'outbox.runner.run_failed';
+    }
+  | {
+      readonly kind: 'outbox.delivery.delivered';
+      readonly outboxEventId: string;
+      readonly eventType: string;
+      readonly aggregateType: string;
+      readonly aggregateId: string;
+    }
+  | {
+      readonly kind: 'outbox.delivery.deferred';
+      readonly delivered: number;
+      readonly failed: number;
     };
 
 export interface RuntimeOperationalEventSink {
@@ -49,11 +77,18 @@ function eventLevel(event: RuntimeOperationalEvent): 'ERROR' | 'INFO' {
   switch (event.kind) {
     case 'api.shutdown.failed':
     case 'database.pool.background_error':
+    case 'outbox.runner.run_failed':
       return 'ERROR';
     case 'api.shutdown.completed':
     case 'api.shutdown.started':
     case 'api.startup.listening':
     case 'api.startup.port_selected':
+    case 'outbox.runner.started':
+    case 'outbox.runner.stopped':
+    case 'outbox.runner.lock_acquired':
+    case 'outbox.runner.lock_waiting':
+    case 'outbox.delivery.delivered':
+    case 'outbox.delivery.deferred':
       return 'INFO';
   }
 }

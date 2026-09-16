@@ -6,6 +6,7 @@ import {
   parseDatabaseUrl,
   resolveApiRepositoryMode,
   resolveDbPoolConfiguration,
+  resolveOutboxDeliveryConfiguration,
   resolvePatientSearchCursorHmacKey,
   resolveTenantContextMode,
 } from './config.js';
@@ -13,6 +14,11 @@ import { PostgresAuditRepository } from './db/audit-repository.js';
 import { assertMigrationStateAllowsStartup } from './db/migration-runner.js';
 import { loadMigrationFiles } from './db/migrations.js';
 import { PostgresOperationsReadService } from './db/operations-read.js';
+import { PostgresOutboxDeliveryWorker } from './db/outbox-delivery.js';
+import {
+  createRuntimeEventOutboxDeliverySink,
+  PostgresOutboxDeliveryRunner,
+} from './db/outbox-delivery-runner.js';
 import { PostgresPatientRepository } from './db/patient-repository.js';
 import {
   closeObservedDatabasePool,
@@ -68,6 +74,13 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
     nodeEnv: process.env.NODE_ENV,
     repositoryMode,
     databaseUrl,
+  });
+  const outboxDelivery = resolveOutboxDeliveryConfiguration({
+    enabled: process.env.YRESE_OUTBOX_DELIVERY_ENABLED,
+    intervalMs: process.env.YRESE_OUTBOX_DELIVERY_INTERVAL_MS,
+    runLimit: process.env.YRESE_OUTBOX_DELIVERY_RUN_LIMIT,
+    nodeEnv: process.env.NODE_ENV,
+    repositoryMode,
   });
   const cursorKeyResolution = resolvePatientSearchCursorHmacKey({
     configuredKey: process.env.YRESE_PATIENT_SEARCH_CURSOR_HMAC_KEY,
@@ -140,7 +153,28 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
     server.register(operationsRoutes, {
       service: new PostgresOperationsReadService({ pool, migrations }),
     });
+    // WP-7103: outbox 配送 runner。既定 off。有効化は非 production のみ
+    // (resolveOutboxDeliveryConfiguration が fail-closed)。sink は runtime event
+    // 記録のみで外部 egress には結線しない(BLOCKED_SECURITY_REVIEW 維持)。
+    let outboxRunner: PostgresOutboxDeliveryRunner | undefined;
+    if (outboxDelivery.enabled) {
+      outboxRunner = new PostgresOutboxDeliveryRunner(
+        pool,
+        new PostgresOutboxDeliveryWorker(
+          pool,
+          createRuntimeEventOutboxDeliverySink(runtimeEvents),
+        ),
+        {
+          intervalMs: outboxDelivery.intervalMs,
+          runLimit: outboxDelivery.runLimit,
+          events: runtimeEvents,
+        },
+      );
+      outboxRunner.start();
+    }
     server.addHook('onClose', async () => {
+      // in-flight の配送 run を完了させてから lock を解放し、pool を閉じる。
+      await outboxRunner?.stop();
       await closeObservedDatabasePool(pool, stopObservingPool ?? (() => {}));
     });
     return Object.freeze({

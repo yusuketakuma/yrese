@@ -5,9 +5,11 @@ import {
   defaultApiPort,
   devTenantContextConfigurationErrorMessage,
   patientSearchCursorHmacConfigurationErrorMessage,
+  outboxDeliveryConfigurationErrorMessage,
   parseApiPort,
   parseDatabaseUrl,
   resolveApiRepositoryMode,
+  resolveOutboxDeliveryConfiguration,
   resolvePatientSearchCursorHmacKey,
   resolveTenantContextMode,
 } from './config.js';
@@ -291,6 +293,74 @@ describe('resolvePatientSearchCursorHmacKey', () => {
           expect((error as Error).message).not.toContain(configuredKey);
         }
       }
+    }
+  });
+});
+
+describe('resolveOutboxDeliveryConfiguration', () => {
+  const base = {
+    enabled: undefined,
+    intervalMs: undefined,
+    runLimit: undefined,
+    nodeEnv: 'development',
+    repositoryMode: 'postgres' as const,
+  };
+
+  it('is disabled by default with documented bounds', () => {
+    expect(resolveOutboxDeliveryConfiguration(base)).toEqual({
+      enabled: false,
+      intervalMs: 5_000,
+      runLimit: 100,
+    });
+    expect(
+      resolveOutboxDeliveryConfiguration({ ...base, enabled: 'false' }),
+    ).toEqual({ enabled: false, intervalMs: 5_000, runLimit: 100 });
+  });
+
+  it('enables for non-production postgres mode', () => {
+    expect(
+      resolveOutboxDeliveryConfiguration({
+        ...base,
+        enabled: 'true',
+        intervalMs: '250',
+        runLimit: '10',
+      }),
+    ).toEqual({ enabled: true, intervalMs: 250, runLimit: 10 });
+  });
+
+  it('fails closed in production (external delivery stays behind the egress gate)', () => {
+    expect(() =>
+      resolveOutboxDeliveryConfiguration({
+        ...base,
+        enabled: 'true',
+        nodeEnv: 'production',
+      }),
+    ).toThrowError(new Error(outboxDeliveryConfigurationErrorMessage));
+  });
+
+  it('fails closed in in-memory mode (no durable outbox exists)', () => {
+    expect(() =>
+      resolveOutboxDeliveryConfiguration({
+        ...base,
+        enabled: 'true',
+        repositoryMode: 'in_memory',
+      }),
+    ).toThrowError(new Error(outboxDeliveryConfigurationErrorMessage));
+  });
+
+  it('rejects malformed enable, interval, and run-limit values', () => {
+    expect(() =>
+      resolveOutboxDeliveryConfiguration({ ...base, enabled: 'yes' }),
+    ).toThrowError(new Error(outboxDeliveryConfigurationErrorMessage));
+    for (const bad of ['0', '99', '600001', 'abc']) {
+      expect(() =>
+        resolveOutboxDeliveryConfiguration({ ...base, intervalMs: bad }),
+      ).toThrow(RangeError);
+    }
+    for (const bad of ['0', '1001', '-1']) {
+      expect(() =>
+        resolveOutboxDeliveryConfiguration({ ...base, runLimit: bad }),
+      ).toThrow(RangeError);
     }
   });
 });
