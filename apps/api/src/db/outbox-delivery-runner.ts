@@ -259,8 +259,13 @@ export class PostgresOutboxDeliveryRunner {
         clearTimeout(this.timer);
         this.timer = undefined;
       }
-      await this.inFlight;
-      await this.releaseLock();
+      try {
+        await this.inFlight;
+      } finally {
+        // in-flight work の成否に関わらず lock client は必ず解放する
+        // (失敗伝播で releaseLock が skip され lock が retained にならないように)。
+        await this.releaseLock();
+      }
     } finally {
       this.stopping = false;
     }
