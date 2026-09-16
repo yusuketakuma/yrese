@@ -1124,7 +1124,7 @@ DB 層で止まる。既存スキーマは各 ID 列に `length(x) > 0` の CHEC
 | WP-4250 | FINALIZED / APPROVED at `89275d2`(2026-08-01)。承認範囲は SSOT 改版のみで、登録済み blocker は全件据え置き |
 | WP-4256 / WP-4257 / WP-4258 | COMMITTED_LOCAL at `ab63db6` / `a911a99` / `1dedf27`。WP-4258 は 2026-08-01 の direct human approval で APPROVED 化済み(DB-005 / ARC-008 0.1.4、IDX-001 0.4.49) |
 | BUG-4263 | DECIDED(案①)/ COMMITTED_LOCAL at `bf0b402`。`check:secrets` が exit 0 へ復帰 |
-| BUG-4260 / BUG-4262 / BUG-4261 | COMMITTED_LOCAL at `fe03cf0` / `fe03cf0` / `6813750`(2026-08-01 バグ走査)。独立レビュー未取得 |
+| BUG-4260 / BUG-4262 / BUG-4261 | COMMITTED_LOCAL at `fe03cf0` / `fe03cf0` / `6813750`(2026-08-01 バグ走査)。独立レビュー 2026-09-16 PASS(finding 0) |
 | WP-0042 / WP-7001 / broad FHIR-AWS work | bounded by APPROVED WP-4250 decisions and the current `Plans.md` queue; remainder NOT_NOW |
 | WP-9002 / WP-4158 / WP-4159 / WP-4160 | FROZEN / GIT_HISTORY_ONLY |
 | all other incomplete entries below | NOT_NOW until a READY slot is deliberately opened |
@@ -1141,7 +1141,7 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 - **Classification:** Confirmed Bug。
 - **Status:** COMMITTED_LOCAL `fe03cf0` / PUSH_NOT_REQUESTED(2026-08-01。direct
-  user instruction「バグ探索・修復ミッション」に基づく実装。独立レビュー未取得)
+  user instruction「バグ探索・修復ミッション」に基づく実装。独立レビュー 2026-09-16 PASS(finding 0))
 - **Confidence:** High。
 - **User / safety impact:** 中心ユーザーフロー(受付登録)。応答喪失・タイムアウト後に
   薬剤師が再試行すると、同一患者・同一業務日に受付が2件作られる。受付一覧が実態と
@@ -1185,7 +1185,7 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 #### WP-4162 — Audit every reachable PHI read without leaking PHI
 
-- **Status:** COMMITTED_LOCAL / MACHINE_VALIDATED / INDEPENDENT_REVIEW_PENDING
+- **Status:** COMMITTED_LOCAL / MACHINE_VALIDATED / INDEPENDENT_REVIEW 2026-09-16 PASS(finding 0)
   (2026-07-31。local commits `02a3409` patient.viewed +
   `566f386` patient.searched / reception.queue.viewed。MOD-008 v0.2.4 改版で
   列挙アクセス 2 種を登録し、データ最小化 — クエリ文字列・PHI をペイロードへ
@@ -1218,7 +1218,7 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 #### WP-4236 — Make audit corruption verification total before projection
 
-- **Status:** COMMITTED_LOCAL / MACHINE_VALIDATED / INDEPENDENT_REVIEW_PENDING
+- **Status:** COMMITTED_LOCAL / MACHINE_VALIDATED / INDEPENDENT_REVIEW 2026-09-16 PASS(finding 0)
   (2026-07-31。local commit `68e0d77`。verifyAuditHashChain を任意の永続入力
   — JSON null/scalar/array root、敵対的 accessor/Proxy/変異 graph — に対して
   全域化し、破断報告自身が対象へ触れない形へ。migrations/000006 が新規
@@ -1254,7 +1254,7 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 - **Classification:** Strongly Supported Bug。
 - **Status:** COMMITTED_LOCAL `fe03cf0` / PUSH_NOT_REQUESTED(2026-08-01。
-  BUG-4260 と同一スライス・同一コミット。独立レビュー未取得)
+  BUG-4260 と同一スライス・同一コミット。独立レビュー 2026-09-16 PASS(finding 0))
 - **Confidence:** High。
 - **User / safety impact:** 応答が返らない場合、`submitting` が解除されず
   「登録中…」のまま再試行も中止もできない。薬剤師は受付が成立したか判断できず、
@@ -1326,7 +1326,7 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 - **Classification:** Design Debt / DECISION_REQUIRED → **DECIDED**(2026-08-01、
   direct user instruction「全て承認」により案①を採用)。
-- **Status:** COMMITTED_LOCAL / MACHINE_VALIDATED。独立レビュー未取得。
+- **Status:** COMMITTED_LOCAL / MACHINE_VALIDATED。独立レビュー 2026-09-16 PASS(finding 0)。
 - **採用した決定(案①):** 走査カバレッジは一切変えない。ignore データを使うのは
   **scope violation を abort するか skip するかの判定 1 点のみ**とする。すなわち
   (a) 走査スコープは cwd 配下のまま、(b) gitignore 済み `.env` は従来どおり走査対象
@@ -1365,7 +1365,7 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
 
 #### WP-9008 — Align the reachable API error contract with runtime behavior
 
-- **Status:** COMMITTED_LOCAL / MACHINE_VALIDATED / INDEPENDENT_REVIEW_PENDING
+- **Status:** COMMITTED_LOCAL / MACHINE_VALIDATED / INDEPENDENT_REVIEW 2026-09-16 PASS(finding 0)
   (2026-07-31。local commit `2c84e66`。実挙動を probe してから宣言を一致させる
   方式で wire 変更ゼロ: FrameworkErrorResponse を契約化し全ルートへ 500 宣言、
   POST /reception 400 を RCV-0001 ∪ parser 形の正直な union に、PHI ルートの
@@ -1698,6 +1698,19 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
   unmeasured one-pharmacy/day cardinality assumption.
 - **Question:** is an approved measured maximum sufficient, or must the route
   gain scope-bound stable pagination and an explicit response cap?
+- **Measurement (2026-09-16, embedded PostgreSQL 18.4, synthetic rows, real
+  queue query + serialized payload):** ~318 B/entry JSON。n=100 → 31 KiB /
+  1.1ms、n=300 → 93 KiB / 4.5ms、n=1000 → 310 KiB / 40ms、n=3000 →
+  933 KiB / 282ms。線形・`reception_entries_queue_idx` による index-ordered
+  scan(Incremental Sort)。WHERE は tenant+pharmacy+business_date で scope-bound
+  — 日次 queue は日またぎで蓄積しないため、入力任意性ではなく薬局1日の
+  業務量が構造的 bound になる。現実的 volume(50〜500/日)では 16〜160 KiB /
+  <10ms で問題なし。residual は pathological volume(3000+/日)での ~1MB
+  応答のみ。
+- **Recommendation(人間判断待ち):** measured maximum で十分 — pagination は
+  このデータ形状では不要な複雑さ。選択肢: (a) 現状維持(構造 bound に依存)、
+  (b) 防御的 row cap(例 N 超過で明示 error)を最小差分で追加。決定は
+  approved bound/pagination judgment として human に残す。
 - **Exit:** synthetic volume measurement and an approved bound/pagination
   decision with a separate Task Packet. Do not issue an implementation task
   until the user-value/complexity tradeoff is established.
@@ -1764,7 +1777,10 @@ when it is promoted into READY under `DEVELOPMENT_POLICY.md §8`.
   台帳(`f91ae78`)。landing 直前の tree 全体に対して `typecheck` / `lint` /
   `test:scripts` / apps/web 437 tests / `check-ssot-index` 173 / `git diff --check`
   がいずれも PASS。**各グループを exact-path stage で分離したため、中間 commit 単体
-  では gate 検証していない。** push・deploy・production 変更なし。独立レビュー未取得。
+  では gate 検証していない。** push・deploy・production 変更なし。独立レビュー:
+  コード commit は 2026-09-16 PASS(finding 0。`fe03cf0`/`6813750`/`bf0b402`/
+  `2db1ec1`/WP-4162 `02a3409`+`566f386`)、docs/record commit(`7650cad`/`f7eeb67`/
+  `f91ae78`)は runtime surface なしのため対象外。
 
 ## 13. Superseded / Archived
 
@@ -1826,7 +1842,7 @@ version of this note; it remains NONCLAIMABLE history.
 | 既存の失敗ゲート | `check:secrets` のみ exit 1 → BUG-4261 / BUG-4263 として起票 |
 | 走査範囲 | apps/api 全 src(server / plugins / db / audit / reception / patient / config / startup)、apps/web 全 app、packages 全 8、scripts 全 11、migrations 6、CI workflow |
 | 起票 | P1 1 件(BUG-4260)、P2 3 件(BUG-4261 / BUG-4262 / BUG-4263)、P3 2 件(BUG-4264 / BUG-4265)。重複 1 件・Not a Bug 3 件を明示除外 |
-| 実装 | Active Batch = BUG-4260 / BUG-4261 / BUG-4262。BUG-4260 と BUG-4262 は `fe03cf0`、BUG-4261 は `6813750` へ COMMITTED_LOCAL。回帰テスト付き、独立レビュー未取得、push 未要求 |
+| 実装 | Active Batch = BUG-4260 / BUG-4261 / BUG-4262。BUG-4260 と BUG-4262 は `fe03cf0`、BUG-4261 は `6813750` へ COMMITTED_LOCAL。回帰テスト付き、独立レビュー 2026-09-16 PASS(finding 0)、push 未要求 |
 | 未解決 | `check:secrets` は `.codegraph` により exit 1 のまま(BUG-4263 の決定待ち)。リポジトリスコープ内容 450 ファイルのみの走査は `Secret scan passed.` を実測 |
 
 ## 15. Candidate Work Inventory — 次期100項目(2026-08-02)
