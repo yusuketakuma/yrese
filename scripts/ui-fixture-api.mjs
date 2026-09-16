@@ -273,7 +273,7 @@ const server = createServer(async (request, response) => {
     const patient = patients.find((candidate) => candidate.patientId === patientId);
     if (patient === undefined) {
       sendJson(request, response, 404, {
-        errorCode: "PATIENT-0001",
+        errorCode: "PAT-0002",
         message: "Patient not found",
       });
       return;

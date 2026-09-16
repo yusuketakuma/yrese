@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+import { KERNEL_ERROR_CODES } from "@yrese/shared-kernel";
+
 const workflow = readFileSync(
   new URL("../../../.github/workflows/ui-browser.yml", import.meta.url),
   "utf8",
@@ -80,10 +82,26 @@ describe("UI browser validation gate", () => {
     expect(fixtureApi).toContain('url.pathname === "/reception/queue"');
     expect(fixtureApi).toContain('url.pathname === "/reception"');
     expect(fixtureApi).toContain("idempotencyKey");
-    // fixture のエラー応答は実 wire の RCV 系コードを使う(架空の RECEPTION-* 禁止)。
-    expect(fixtureApi).toContain("RCV-0001");
-    expect(fixtureApi).toContain("RCV-0003");
-    expect(fixtureApi).not.toContain("RECEPTION-000");
+    // fixture のエラー応答は KERNEL_ERROR_CODES に登録済みの実 wire コードだけを
+    // 使う(架空コード禁止)。UI-FIXTURE-404 は登録外 route の fixture 固有
+    // catch-all で、wire 契約を装わない名前空間付きの例外としてだけ許容する。
+    const registeredErrorCodes = new Set(
+      KERNEL_ERROR_CODES.map((entry) => entry.code),
+    );
+    const fixtureOnlyErrorCodes = new Set(["UI-FIXTURE-404"]);
+    const usedErrorCodes = [
+      ...fixtureApi.matchAll(/errorCode:\s*"([^"]+)"/g),
+    ].flatMap((match) => (match[1] === undefined ? [] : [match[1]]));
+    expect(usedErrorCodes.length).toBeGreaterThan(0);
+    for (const code of usedErrorCodes) {
+      expect(
+        registeredErrorCodes.has(code) || fixtureOnlyErrorCodes.has(code),
+        `fixture errorCode ${code} must be a registered wire code`,
+      ).toBe(true);
+    }
+    expect(usedErrorCodes).toContain("RCV-0001");
+    expect(usedErrorCodes).toContain("RCV-0003");
+    expect(usedErrorCodes).toContain("PAT-0002");
     expect(fixtureApi).toContain("/prescription-drafts/by-reception/");
     expect(fixtureApi).toContain("expectedVersion");
     expect(fixtureApi).toContain('request.headers["if-match"]');
