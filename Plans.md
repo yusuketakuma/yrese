@@ -2597,16 +2597,28 @@ R4 以降は R3 の確定調剤なしに開始できない(算定・帳票・会
 
 現行 queue は CURRENT=0 / READY=0。2026-09-16 のユーザ指示「Plans.md 内のタスクが全て実装完了と
 みなせるまでループ」により候補 1・2 を実装し、それぞれ `ea021f5`(WP-7104)・`c0d98b9`(WP-7103)へ
-着地済みである。残る候補は次のとおり。
+着地済みである。候補 3 の SSOT 起案 batch は 2026-09-17 に `f3dcf31` で **PROPOSED 起案として着地**
+(API-006 0.3.0 / API-001 0.3.0 / API-019・API-020 新規 / DOM-002 0.1.4 / MOD-006 0.1.3 /
+MOD-008 0.2.7 / IDX-001 0.4.63・総数 187)。全件 PROPOSED であり APPROVED 昇格・実装は
+independent review + human approval まで行わない。残る候補は次のとおり。
 
 | 順 | 候補 | 種別 | 根拠 |
 |---|---|---|---|
 | ~~1~~ | ~~WP-7104 North Star 部分 E2E harness~~ | 着地済み `ea021f5` | API 層 3 tests + browser 層実 UI journey PASS |
 | ~~2~~ | ~~WP-7103 outbox 配送 runner(local/CI sink 限定)~~ | 着地済み `c0d98b9` | runner + config(既定 off)+ PG 18.4 integration 8 tests。production egress は BLOCKED_SECURITY_REVIEW 維持 |
-| 3 | **SSOT 起案 batch(PLAN_ONLY)** — 7201(API-006 改版)、7202(C-028)、7203/7204(契約)、7205/7302(DOM-002 §4.1) | 文書 | 実装を直接 unlock する documentation-only work。READY slot ではなく PRC-007 の PROPOSED 起案として並行可能。起案順は 7201 → 7204 → 7202 → 7203 → 7205/7302(依存の浅い順) |
-| 4 | **human 決定待ち** — 7105(bound)、7102(migration 適用)、7101(認証境界) | 決定 | 決定なしに実装しない |
+| ~~3~~ | ~~SSOT 起案 batch(PLAN_ONLY)~~ | 起案着地済み `f3dcf31` | 7 文書 PROPOSED(新規 2 + 改版 5)。承認は human gate のまま |
+| 4 | **human 決定待ち** — 7105(bound)、7102(migration 適用)、7101(認証境界)、起案 batch の承認 | 決定 | 決定なしに実装しない |
 
-**明示的に READY へ推奨しないもの:** 7202 以降の全実装 WP(SSOT 未起案)、R4〜R6(確定調剤が存在しない)、
+**ループ終端(2026-09-17 時点):** gate なしで実装可能な WP は残っていない。§18 の残り全 WP は
+(a) 上記 PROPOSED SSOT の APPROVED 昇格待ち、(b) 明示【HG】(security / DDL / medical safety /
+診療報酬 / legal)、(c)【EXT】(JAHIS・オン資・電子処方箋・診療報酬公式資料等の外部仕様未入手)、
+(d) PRC-005 の R3+ 独立 review 要件(maker≠checker、root 自己検証で代替不可)のいずれかで
+停止している。§16 Track A の未着地 WP(6005 webhook delivery / 6006 partner registry / 6009 sandbox /
+6010 contract test 等)は SSOT 上は起票可能な面があるが、partner 向け external action 面であり
+PRC-005 §2 の human gate(external action・security 制約)と §18 の工程順序(R7/Track A は core
+journey 完了後)の双方に該当するため、本ループの対象外と判断した。
+
+**明示的に READY へ推奨しないもの:** 7202 以降の全実装 WP(根拠 SSOT が PROPOSED 止まり)、R4〜R6(確定調剤が存在しない)、
 外部 IF 系(仕様未入手)。「関連コードが既に存在する」ことは READY の根拠にならない(§18.1 の眠っている資産は
 配線先の契約 SSOT が無いため)。
 
