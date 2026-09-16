@@ -2,24 +2,24 @@
 
 ```yaml
 ssot_id: API-006
-title: 受付キュー API 契約(GET /reception/queue, POST /reception)
+title: 受付キュー API 契約(GET /reception/queue, POST /reception, POST /reception/{receptionId}/transitions)
 domain: api
-status: APPROVED
-approved_at: 2026-07-09
-approved_by: codex 実装可能性レビュー(CONTRACT_REVIEW 全反映)+ fable5
+status: PROPOSED
+approved_at:
+approved_by:
 effective_from: null
 effective_to: null
 owner: fable5
 reviewers:
   - opus4.8
   - codex (backend実装可能性)
-version: 0.2.3
+version: 0.3.0
 created_at: 2026-07-09
-updated_at: 2026-08-26
-source_refs: [UIX-001 §12(SCR-001), UIX-001 §11(業務導線), API-001 v0.2.2(様式先例), API-003(公開API共通土台)]
-depends_on: [API-001, API-002, API-003, DOM-004(処方ライフサイクルとの分界), MOD-005(状態台帳 — 改版前提), MOD-006(error_code_registry — 改版前提), MOD-007(permission registry — 改版前提), MOD-011(date-time policy)]
+updated_at: 2026-09-17
+source_refs: [UIX-001 §12(SCR-001), UIX-001 §11(業務導線), API-001 v0.2.2(様式先例), API-003(公開API共通土台), DOM-004 §2(受付副状態機械)]
+depends_on: [API-001, API-002, API-003, DOM-004(処方ライフサイクルとの分界), MOD-005(状態台帳 — 改版前提), MOD-006(error_code_registry — 改版前提), MOD-007(permission registry — 改版前提), MOD-008(監査種別 — 改版前提), MOD-011(date-time policy)]
 impacts: [packages/contracts, apps/api, apps/web(WP-3009 SCR-001), packages/shared-kernel(RECEPTION_STATUSES / PERMISSION_RESOURCES / RCV エラーコード / ReceptionId factory 追加)]
-related_work_packages: [WP-3009, WP-3009-BE, WP-3009-UI, WP-4046, WP-4049, WP-5003, WP-9002-W5A]
+related_work_packages: [WP-3009, WP-3009-BE, WP-3009-UI, WP-4046, WP-4049, WP-5003, WP-7201, WP-9002-W5A]
 related_tests:
   - packages/shared-kernel/src/kernel.test.ts
   - packages/contracts/src/reception-queue.test.ts
@@ -30,6 +30,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.3.0 2026-09-17 WP-7201 PROPOSED: 受付状態遷移 endpoint `POST /reception/{receptionId}/transitions` を §2.3 として追加(遷移表の正本は DOM-004 §2、CAS は expectedVersion+If-Match 併用、CANCELLED は businessReason 必須)。エラーへ RCV-0004(不許可遷移 409)/ RCV-0005(version conflict 409)を追加し MOD-006 へ登録提案。監査は MOD-008 へ `reception.started` / `reception.completed` を追加提案(`reception.cancelled` は既存)。既存 GET/POST の wire・認可・冪等規則は不変。review と human approval まで実装根拠にしない"
   - "0.2.3 2026-08-26 WP-5104 reference-only cutover to UIX-001 §§11〜12; API contract semantics unchanged"
   - "body history authority: 本文§8変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W5A metadata-only completion: body/status/version/approval/effective semantics unchanged"
@@ -84,9 +85,39 @@ ReceptionQueueEntry = {
   - 同一 key + **異なる patientId** → **409 + `RCV-0003`**(idempotency conflict)。誤患者のエントリを返さない(fail-closed)。実装は payload(patientId)を key と併せて保存し不一致を検出する。
 - レスポンス(201 / 冪等再送時 200): 登録された ReceptionQueueEntry。
 
+### POST /reception/{receptionId}/transitions (0.3.0 PROPOSED — review/human approval まで実装根拠禁止)
+
+受付状態の副状態機械を駆動する唯一の write 経路。許可遷移の**正本は DOM-004 §2**
+(本契約で遷移表を再定義しない):
+
+| to | 許可元 | 意味 | 監査種別(MOD-008) |
+|---|---|---|---|
+| IN_PROGRESS | WAITING | 対応開始 | `reception.started` |
+| COMPLETED | IN_PROGRESS | 対応完了(終端) | `reception.completed` |
+| CANCELLED | WAITING / IN_PROGRESS | 取消(終端)。`businessReason` 必須 | `reception.cancelled`(既存・businessReason 必須) |
+
+- `receptionId` path パラメータは §2 POST と同一の wire ID 検証水準(非空・空白のみ拒否・制御文字拒否・最大128文字)。
+- ボディ: `{ to: ReceptionStatus, expectedVersion: integer, businessReason?: string }`
+  - `to` は上表の 3 値のみ。`WAITING` への遷移・その他の値は 400(契約 parse 拒否)。
+  - `expectedVersion` は 1 以上の整数。**`If-Match: "<expectedVersion>"` ヘッダも併せて必須**とし、
+    両者が一致しない場合・If-Match 欠落・形式不正は 400(`RCV-0001`)。
+  - `businessReason` は `to: CANCELLED` のとき**必須**(非空・空白のみ拒否・最大 512 文字。
+    MOD-008 `reception.cancelled` の businessReason 規律)。`to` が CANCELLED 以外で
+    `businessReason` を送った場合は 400(理由なき変更と取消の混同を防ぐ)。
+- 楽観ロック: 現在 version が `expectedVersion` と一致しない場合は **409 + `RCV-0005`**
+  (version conflict)。version は遷移ごとに単調増加する。
+- 不許可遷移(逆行、終端後の遷移、WAITING→COMPLETED 等の表にない遷移)は **409 + `RCV-0004`**。
+- レスポンス(200): `{ receptionId, receptionStatus, version, statusChangedAt }`。
+  **patient(PHI)を含めない**ため、要求 scope は `reception:write` のみ(`patient:read` 併須は不要)。
+- 副作用の原子性: 状態遷移・監査イベント記録・(将来 partner event 種別が登録された場合の)
+  outbox intent は同一 transaction で commit する。部分成功レスポンスを返さない。
+- 終端(COMPLETED/CANCELLED)の受付に対する server-saved draft write 拒否は DOM-004 §2 と
+  既存 draft guard に委譲し、本 endpoint の応答へは影響しない。
+
 ## 3. 認可・テナント境界(API-003 準拠)
 
-- **GET: `reception:read` + `patient:read` 併須 / POST: `reception:write` + `patient:read` 併須**
+- **GET: `reception:read` + `patient:read` 併須 / POST: `reception:write` + `patient:read` 併須 /
+  POST transitions: `reception:write` のみ**(応答が PatientSummary を含まないため併須不要 — 0.3.0)
   (requirePermission — deny-by-default)。ReceptionQueueEntry.patient は PHI(氏名・カナ・生年月日・
   患者番号・資格状態)を含むため、reception scope 単独では患者 PHI を読めない設計とする
   (codex 実装可能性レビューの指摘1を採用。POST もレスポンスに PatientSummary を返すため併須)。
@@ -126,6 +157,7 @@ shared-kernel へ同一バッチで実装済み**(WP-3009-BE/93aefa1。CAL-007 �
 - 403: scope 不足(AUTH-0003、既存)
 - 404: patientId が当該テナントに存在しない → `RCV-0002`(patient not found for reception)。テナント越え探索を許さない(存在有無の応答もテナント内に限定)。
 - 409: idempotencyKey conflict(同一 key + 異なる patientId)→ `RCV-0003`(idempotency conflict)
+- 409(0.3.0): 不許可遷移 → `RCV-0004`、version conflict → `RCV-0005`(MOD-006 への登録提案を含む)
 - **エラーコードの体系: domain は `RECEPTION`、code prefix は `RCV`**(「domain RCV」ではない — 現行 shared-kernel の ErrorDomain 体系に従い、MOD-006 に「RECEPTION domain は RCV prefix を使用する」旨を明記して登録済み)。`RCV-0001/0002/0003` は MOD-006 + shared-kernel KERNEL_ERROR_CODES へ登録済み(WP-3009-BE/93aefa1)。WP-4036 以降、registry 未登録 errorCode は契約 parse で fail-closed に落ちる。
 - キュー0件は 200 + 空配列(エラーではない)。
 
@@ -142,11 +174,19 @@ shared-kernel へ同一バッチで実装済み**(WP-3009-BE/93aefa1。CAL-007 �
 - zod schema は @yrese/contracts に置き(単一契約 — API-002)、frontend は契約外フィールドを仮定しない。
 - 契約変更は CONTRACT_CHANGE_REQUEST 経由(API-001 §5 と同一)。
 - 受付の登録・状態変更・取消は監査イベント対象(MOD-008 の文法に従う種別を実装 WP で台帳追加)。
+  0.3.0 の遷移操作は 1 操作 = 1 監査イベント(`reception.started` / `reception.completed` /
+  既存 `reception.cancelled`)を response 返却前に永続化する。
 - fixtures は完全合成データのみ(MOD-013)。
 - **本契約は APPROVED 後に実装する**。backend 側(shared-kernel / contracts / apps/api)は WP-3009-BE/93aefa1 で実装済み。frontend 側は WP-3009-UI の対象。
 
 ## 変更履歴
 
+- 0.3.0 (2026-09-17): WP-7201 PROPOSED 起案 — 受付状態遷移 endpoint(§2 transitions)を追加。
+  遷移表の正本は DOM-004 §2、CAS は expectedVersion + `If-Match` 併用、CANCELLED は
+  businessReason 必須(MOD-008 `reception.cancelled` 規律)。エラーへ RCV-0004(不許可遷移)/
+  RCV-0005(version conflict)を追加提案。監査は `reception.started` / `reception.completed` の
+  MOD-008 追加提案と対になる。既存 GET/POST の wire・認可・冪等規則は不変。
+  **PROPOSED のため実装根拠にしない。**
 - 0.2.2 (2026-07-09): WP-4046 — `receptionId` / POST `patientId` の wire ID 検証を shared-kernel branded ID factory 由来の共通 refine へ統一。wire 型は string 維持。
 - 0.2.1 (2026-07-09): WP-4049 実装状態 drift 整備。WP-3009-BE/93aefa1 による shared-kernel / contracts / OpenAPI / apps/api の backend 実装完了状態を反映。契約の要求・wire 形状は不変更。
 - 0.2.0 (2026-07-09): codex 実装可能性レビュー(CONTRACT_REVIEW)の指摘5点+安定順序を反映 — GET/POST とも patient:read 併須、idempotencyKey 制約と 409/RCV-0003 の conflict 定義、domain RECEPTION / prefix RCV への訂正、shared-kernel 原子的着地の DoR 精緻化(リソース数14に訂正・ReceptionId factory 追加)、date の実在暦日検証、acceptedAt+receptionId の安定順序。

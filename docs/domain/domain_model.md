@@ -4,9 +4,9 @@
 ssot_id: DOM-002
 title: ドメインモデル(集約・不変条件)
 domain: domain
-status: APPROVED
-approved_at: 2026-08-26
-approved_by: "direct human authority 2026-08-26 (WP-5101 prescription draft landing confirmation: 承認); direct human authority 2026-08-01 (WP-4250 exact11 全て承認); round-5 independent verifier PASS on packet body with no HIGH finding (frozen packet ab086c9f8d6e6bfd26e32fbfe9daa21a3b8b6ccd3f324f413b4d2975731cfab6, base SHA 9d8dbc0c3f5201c762dbb39fd9b15fc3ddc4b875); round-5 security/privacy findings closed in Revision 14; round-5 data-integrity findings closed in Revision 13; codex second opinion unavailable until 2026-08-05 and not counted as evidence"
+status: PROPOSED
+approved_at:
+approved_by:
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -15,19 +15,20 @@ reviewers:
   - medical_safety_reviewer
   - privacy_compliance_reviewer
   - human_pharmacist_product_authority
-version: 0.1.3
+version: 0.1.4
 created_at: 2026-07-09
-updated_at: 2026-08-26
-effective_from: 2026-08-26
+updated_at: 2026-09-17
+effective_from:
 effective_to: null
 source_refs: 構築プロンプト v0.2.0 §12, §17, §18
 depends_on: [DOM-001, PRD-001, SAF-001, MOD-004, MOD-005]
 impacts: [DOM-004]
-related_work_packages: [WP-1101, WP-9002-W5F, WP-4250, WP-5101]
+related_work_packages: [WP-1101, WP-9002-W5F, WP-4250, WP-5101, WP-7205, WP-7302]
 related_tests: [pnpm check:ssot-index, git diff --check]
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.1.4 2026-09-17 WP-7205/WP-7302 PROPOSED 起案: §4.2 を追加し server-saved draft の構造化拡張(原本 metadata + Rp 構造化行 + UNRESOLVED_TEXT 移行)を提案。§4.1 の既承認不変条件は不変。本版は 2026-08-26 bounded approval の範囲拡張を含むため human approval 必須。review と承認まで実装根拠にしない"
   - "0.1.3 2026-08-26 WP-5101: 受付に従属するserver-saved prescription draftのbounded不変条件を承認。保存事実を処方ライフサイクル状態へ昇格せず、tenant/pharmacy/reception scope、受付由来patient、終端受付へのwrite拒否、version/If-Match conflict、content hash検証、read auditを固定。薬剤師確認・確定・訂正履歴・外部連携は対象外"
   - "0.1.2 2026-08-01 WP-4250 exact11 finalization: round-5の独立review三レーン完了(independent verifier PASS・本文HIGHなし)とdirect human approvalによりPROPOSED→APPROVED。本文semanticsは不変。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置き"
   - "0.1.2 2026-07-31 WP-4250 PROPOSED Revision 14: round-5 security/privacy re-reviewの同期。§2のPATIENTLINK gateをmembership+cardinalityの合成(集合等価)として明示し、SKが生patientIdではなくhmacPatientIdであることを追記"
@@ -183,6 +184,44 @@ cutover時点でのみ成立し、**PostgreSQLがwriterでなくなった後の�
 - successful readはMOD-008の`prescription.draft.viewed`をresponse前に永続化する。targetは
   prescription IDだけとし、処方本文・患者識別子・検索条件を監査payloadへ入れない。
 - 本sliceは薬剤師確認、処方確定、確定後訂正/version history、outbox、外部連携を含まない。
+
+### 4.2 Draft の構造化拡張(0.1.4 PROPOSED — WP-7205/WP-7302、bounded approval 範囲拡張)
+
+**本節は review と human approval まで実装根拠にしない。** §4.1 の不変条件(authority key・
+write guard・version/If-Match・content hash・read audit・非ライフサイクル性)は全て維持する。
+
+**(a) 処方箋原本 metadata(WP-7205)**: draft は以下を保持する。全項目は手入力値であり、
+システムは妥当性の制度判定をしない。
+
+| field | 内容 | 不変条件 |
+|---|---|---|
+| medicalInstitution | 医療機関コード( nullable — 未コード化可)+ 医療機関名称 | — |
+| prescriberName | 医師名 | — |
+| issueDate | 発行日(実在暦日) | 必須 |
+| validUntil | 有効期限。**発行日+4日の既定計算は UI 側の入力補助であり、保存値は入力値そのもの** | 必須。`validUntil < issueDate` は拒否 |
+| refill | リフィル総回数・残回数 | `0 ≤ remaining ≤ total` |
+| splitDispensing | 分割調剤指示(自由記載区分) | nullable |
+
+有効期限超過(`asOf > validUntil`)は**警告**であり拒否しない(薬剤師判断を残す)。
+警告の表示形は UIX-001 の ClinicalAlert 表示器に委譲する。
+
+**(b) Rp 構造化行(WP-7302)**: draft の明細は Rp 単位に構造化する。
+
+- `rp_groups`: 剤形区分(内服/外用/注射/頓服等)、用法参照(自局用法コードまたは
+  未解決自由記載)、日数または回数。
+- `rp_items`: 医薬品参照 — **master 版 + item ID**(`master_versions` への参照、
+  WP-7301)または `UNRESOLVED_TEXT`(未解決の自由記載行)。1 回量・1 日量・総量・単位、
+  一般名処方 flag、後発品変更可否。
+- **移行規則**: 既存の free-text 行(`drug_text`/`usage_text`/`quantity_text`)は
+  `UNRESOLVED_TEXT` の品目として保持し、読み替えで内容を失わない。
+  `prescription_draft_rows` 旧構造は読み専用で残し、次版 draft から新構造のみを書く。
+- **解決必須 guard**: `UNRESOLVED_TEXT` 行を含む draft は薬剤師確認(WP-7402)へ進めず、
+  `CODE_MAPPING_REVIEW_REQUIRED` で停止する(DOM-004 §1 遷移 2 のガード)。
+  UI は未解決行の残る draft を「確認可能」と表示しない。
+- version/CAS/content hash の規則は §4.1 を継承し、content hash は新構造を含む
+  全体を覆う。行数・文字数の上限は新構造へ写し替えて維持する(上限値自体は
+  contracts 層の定数で確定)。
+- **用量・用法の妥当性計算は行わない**(算定・添文書チェックは別工程)。
 
 **Prescription対MedicationRequestのownership未解決(HIGH-3 訂正)**:
 Prescriptionは本書の内部authority集約であり、WP-4250候補のoral/topical

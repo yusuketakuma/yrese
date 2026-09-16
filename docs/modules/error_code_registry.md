@@ -4,15 +4,15 @@
 ssot_id: MOD-006
 title: エラーコードレジストリ
 domain: modules
-status: APPROVED
+status: PROPOSED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.2
+version: 0.1.3
 created_at: 2026-07-09
-updated_at: 2026-07-11
-approved_at: 2026-07-09
-approved_by: human_review (ユーザー承認「人間レビューはOKです」)
+updated_at: 2026-09-17
+approved_at:
+approved_by:
 effective_from: null
 effective_to: null
 source_refs:
@@ -30,6 +30,7 @@ related_work_packages:
   - WP-4036
   - WP-4062
   - WP-3009-BE
+  - WP-7201
   - WP-9002-W3
 related_tests:
   - packages/shared-kernel/src/kernel.test.ts
@@ -44,6 +45,7 @@ open_questions:
   - エラーコードとUI表示文言(次に何をすべきか)の対応表の管理場所(UIX-001 と連動)
 blockers: []
 change_log:
+  - "0.1.3 (2026-09-17): §18 SSOT 起案 batch。WP-7201 / API-006 0.3.0 起案に伴い RCV-0004(不許可遷移 409)/ RCV-0005(受付 version conflict 409)、WP-7204 / API-019 起案に伴い INS-0007〜0010(資格確認 snapshot route の 400/404/409/422)、WP-7203 / API-020 起案に伴い INS-0001〜0006(coverage route の 400/404/409 群)、WP-7202 / API-001 0.3.0 起案に伴い PAT-0003(patientNumber 重複 409)/ PAT-0004(version conflict 412)/ PAT-0005(不変 field 変更 422)/ PAT-0006(idempotency conflict 409)を追加提案。併せて shared-kernel に実装済みで台帳未登録だった PAT-0002 の drift を追記登録。review と human approval まで PROPOSED、実装根拠にしない"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W3 metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - 0.1.2 (2026-07-09): WP-3009-BE / API-006 v0.2.0 に基づき、RECEPTION domain の prefix を RCV と確定し、受付キュー API 用 RCV-0001/0002/0003 を登録。
@@ -74,9 +76,26 @@ change_log:
 |---|---|---|---|---|---|---|
 | AUTH-0003 | AUTH | ERROR | false | false | 権限不足・コンテキスト不在(403)。deny-by-default の一律応答 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / apps/api errorResponseSchema) |
 | PAT-0001 | PATIENT | ERROR | false | false | 患者検索クエリ不正(400)。q/limit/cursor の契約違反や cursor 境界不一致 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-001 patient search) |
+| PAT-0002 | PATIENT | ERROR | false | false | 対象患者が当該テナント・薬局内に存在しない(404)。テナント越え探索は禁止 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-001 patient get。0.1.3 で台帳 drift を追記登録) |
+| PAT-0003 | PATIENT | ERROR | false | false | 患者番号重複(409)。(tenant, pharmacy, patientNumber) 一意性違反 | PROPOSED(API-001 0.3.0 / WP-7202。未実装) |
+| PAT-0004 | PATIENT | ERROR | false | false | 患者 version conflict(412)。PUT の If-Match/expectedVersion と現在 version の不一致 | PROPOSED(API-001 0.3.0 / WP-7202。未実装) |
+| PAT-0005 | PATIENT | ERROR | false | false | 不変 field(patientNumber 等)の変更試行(422)。訂正は identity history / merge 経路 | PROPOSED(API-001 0.3.0 / WP-7202。未実装) |
+| PAT-0006 | PATIENT | ERROR | false | false | idempotencyKey conflict(同一 key + 異なる patient payload)(409) | PROPOSED(API-001 0.3.0 / WP-7202。未実装) |
 | RCV-0001 | RECEPTION | ERROR | false | false | 受付キューリクエスト不正(400)。date 欠落/形式不正/非実在暦日、patientId 不正、idempotencyKey 欠落/形式不正 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-006 reception queue) |
 | RCV-0002 | RECEPTION | ERROR | false | false | 当該テナント・薬局内で受付対象 patientId が存在しない(404)。テナント越え探索は禁止 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-006 reception queue) |
 | RCV-0003 | RECEPTION | ERROR | false | false | idempotencyKey conflict(同一 key + 異なる patientId)(409)。誤患者の受付エントリを返さず fail-closed | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-006 reception queue) |
+| RCV-0004 | RECEPTION | ERROR | false | false | 不許可の受付状態遷移(409)。逆行・終端(COMPLETED/CANCELLED)後の遷移・遷移表(DOM-004 §2)にない組合せ | PROPOSED(API-006 0.3.0 / WP-7201。未実装) |
+| RCV-0005 | RECEPTION | ERROR | false | false | 受付 version conflict(409)。transitions の expectedVersion / If-Match と現在 version の不一致 | PROPOSED(API-006 0.3.0 / WP-7201。未実装) |
+| INS-0001 | INSURANCE | ERROR | false | false | coverage request 不正(400)。asOf 欠落/非実在暦日、必須項目欠落、copayRatio 範囲外、Idempotency-Key 不正 | PROPOSED(API-020 / WP-7203。未実装) |
+| INS-0002 | INSURANCE | ERROR | false | false | 対象患者が当該テナント・薬局内に存在しない(404)。非露出規則は PAT-0002 と同型 | PROPOSED(API-020 / WP-7203。未実装) |
+| INS-0003 | INSURANCE | ERROR | false | false | InsuranceCard の有効期間重複(409)。supersede なしの重複登録は拒否 | PROPOSED(API-020 / WP-7203。未実装) |
+| INS-0004 | PUBLIC_EXPENSE | ERROR | false | false | PublicExpense の優先順位重複(409)。同一患者・同期間で priority 重複は拒否 | PROPOSED(API-020 / WP-7203。未実装) |
+| INS-0005 | INSURANCE | ERROR | false | false | supersede 対象不存在または二重 supersede(409) | PROPOSED(API-020 / WP-7203。未実装) |
+| INS-0006 | INSURANCE | ERROR | false | false | idempotencyKey conflict(同一 key + 異なる payload)(409) | PROPOSED(API-020 / WP-7203。未実装) |
+| INS-0007 | INSURANCE | ERROR | false | false | 資格確認スナップショット request 不正(400)。snapshotId/方式/状態/日付形式、method-state 不整合 | PROPOSED(API-019 / WP-7204。未実装) |
+| INS-0008 | INSURANCE | ERROR | false | false | 対象受付が当該テナント・薬局内に存在しない(404)。テナント越え探索は禁止 | PROPOSED(API-019 / WP-7204。未実装) |
+| INS-0009 | INSURANCE | ERROR | false | false | 同一 snapshotId + 異なる payload の conflict(409)。snapshot は append-only | PROPOSED(API-019 / WP-7204。未実装) |
+| INS-0010 | INSURANCE | ERROR | false | false | 手動記録不可の状態/方式(VERIFIED_MYNA 等)または ADP-004 §3 遷移表にない遷移(422) | PROPOSED(API-019 / WP-7204。未実装) |
 
 (初期セットは `KERNEL_ERROR_CODES` seed として登録済み。今後の拡充は、各ドメイン実装WPの DoR で「使用するエラーコードが本台帳に登録済みであること」を要求することで行う)
 

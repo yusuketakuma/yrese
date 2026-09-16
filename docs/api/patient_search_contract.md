@@ -1,10 +1,10 @@
-# patient_search_contract — 患者検索・患者summary取得 API 契約
+# patient_search_contract — 患者 API 契約(検索・summary取得・登録・更新)
 
 ```yaml
 ssot_id: API-001
-title: 患者検索・患者summary取得 API 契約
+title: 患者 API 契約(検索・summary取得・登録・更新)
 domain: api
-status: APPROVED
+status: PROPOSED
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -12,17 +12,17 @@ reviewers:
   - privacy_compliance_reviewer
   - medical_safety_reviewer
   - human_pharmacist_product_authority
-version: 0.2.5
+version: 0.3.0
 created_at: 2026-07-09
-updated_at: 2026-08-26
-approved_at: 2026-08-26
-approved_by: "direct_user_instruction (WP-5104 limited finalization; reference-only cutover); prior 0.2.4 approval provenance preserved in Git history"
-effective_from: 2026-08-01
+updated_at: 2026-09-17
+approved_at:
+approved_by:
+effective_from:
 effective_to: null
 source_refs: [DOM-002(患者集約), UIX-001 §12(SCR患者検索), SEC-004(PIA), MOD-012(validation policy)]
 depends_on: [DOM-001..004(PROPOSED — 本契約はR1-R2骨格範囲で先行、Phase 1ゲートで両者同時承認)]
 impacts: [packages/contracts, apps/api, apps/web(WP-3003)]
-related_work_packages: [WP-2008, WP-3003, WP-4014, WP-4029, WP-4045, WP-4046, WP-4074, WP-5003, WP-9002-W5A, WP-4250]
+related_work_packages: [WP-2008, WP-3003, WP-4014, WP-4029, WP-4045, WP-4046, WP-4074, WP-5003, WP-7202, WP-9002-W5A, WP-4250]
 related_tests:
   - packages/contracts/src/patient-search.test.ts
   - apps/api/src/patient-search-cursor.test.ts
@@ -35,6 +35,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.3.0 2026-09-17 WP-7202 PROPOSED: 患者登録・更新(`POST /patients`・`PUT /patients/{patientId}`)を追加し C-028(BLOCKED_PATIENT_CREATE_UNIQUENESS)の起案を固定。patientNumber は省略時サーバー採番・指定時一意性検査、identity field 変更は append-only history 記録、同姓同名・同生年月日の重複候補は非ブロッキング warning として応答。既存 read 契約の wire・認可・blocker は不変。review と human approval まで実装根拠にしない"
   - "0.2.5 2026-08-26 WP-5104 reference-only cutover from UIX-007 to UIX-001 §12; API contract semantics unchanged"
   - "0.2.4 2026-08-01 WP-4250 exact11 finalization: round-5の独立review三レーン完了(independent verifier PASS・本文HIGHなし)とdirect human approvalによりPROPOSED→APPROVED。本文semanticsは不変。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置き"
   - "0.2.4 2026-07-31 WP-4250 PROPOSED Revision 8: re-review round 1訂正。bound超過の非露出が防げる範囲を「精度の高い推測の防止」へ正直に限定し、503/200の1 bitが閾値oracleとして残ることを明記"
@@ -95,6 +96,55 @@ cursorを変更せず、PostgreSQLの過去historyを本projectionまたはFHIR 
 - Patient cutover前後を通じて本routeを維持し、`/fhir/R4/Patient/{id}`へ
   redirectしない。既存R-PATCTX consumer互換を壊さない。
 
+### POST /patients (0.3.0 PROPOSED — review/human approval まで実装根拠禁止)
+
+患者の新規登録。内部 authority(PostgreSQL `patients`)への write 経路であり、
+FHIR cutover(API-008)の対象外 — cutover 後の Patient create 経路は API-008 §2.1 の
+initially disabled 規律が引き続き正本であり、本 endpoint はその規律を変更しない
+(§5 の blocker 参照)。
+
+- 認可: `patient:write` scope 必須。tenantContext 必須。
+- ヘッダ: **`Idempotency-Key` 必須**(非空・最大128文字・PHI 禁止 — クライアント生成の
+  不透明キー)。一意性境界は (tenantId, pharmacyId, idempotencyKey)。
+  同一 key + 同一 payload の再送 → 既存 patient を 200 で返す。
+  同一 key + 異なる payload → **409 `PAT-0006`**(idempotency conflict)。
+- ボディ:
+  `{ name: string, kana: string, birthDate: 'YYYY-MM-DD', sex: 'male'|'female'|'unknown', patientNumber?: string, phone?: string, note?: string }`
+  - `kana` は**必須**(DOM-002 §2「カナなしで確定登録不可」)。`birthDate` は実在暦日。
+  - `patientNumber` 省略時はサーバーが (tenant, pharmacy) 内で採番する
+    (薬局採番運用のため指定も可。指定時は一意性検査)。
+  - 一意性の authority は PostgreSQL `patients_tenant_pharmacy_patient_number_unique`
+    (tenant_id + pharmacy_id + patientNumber)。重複は **409 `PAT-0003`**。
+- **取り違え防止(UIX-001 / SAF-001)**: 同一 (tenant, pharmacy) 内に同姓同名または
+  同生年月日の既存患者がある場合、登録は成功するが response に
+  `warnings: [{ type: 'POSSIBLE_DUPLICATE', candidates: PatientSearchResult[] }]`
+  を返す(非ブロッキング。candidates は最大 5 件、§3 と同一 shape。
+  候補の自動選択・自動 merge は禁止)。
+- レスポンス(201 / 冪等再送時 200): `{ patient: PatientSearchResult & { version: 1 }, warnings?: [...] }`。
+  監査は MOD-008 既存種別 `patient.created`(payload は patientId のみ)を
+  response 返却前に永続化する。
+
+### PUT /patients/{patientId} (0.3.0 PROPOSED)
+
+患者属性の更新。全項目置換ではなく差分 update とする。
+
+- 認可: `patient:write` scope 必須。
+- ヘッダ: **`If-Match: "<version>"` 必須** + ボディ `expectedVersion` 必須。
+  不一致は **412 `PAT-0004`**(version conflict)。version は更新ごとに単調増加。
+- ボディ: `{ expectedVersion: integer, name?, kana?, birthDate?, sex?, phone?, note? }`
+- **identity field(氏名・カナ・生年月日・性別)の変更は「訂正」として
+  append-only の `patient_identity_history` に旧値を記録する**(migration 000015、
+  C-029 identityDigest 構造 backstop の wire 反映)。history への逆戻し・削除経路は
+  存在しない。
+- `patientNumber` は PUT では**不変** — 変更を含む request は **422 `PAT-0005`**
+  で拒否する。付け替え・誤登録の訂正は uniqueness guard / merge lineage の承認まで
+  実施しない(`BLOCKED_PATIENT_IDENTITY_MUTATION` の規律を pre-cutover の
+  PostgreSQL writer にも適用する)。
+- unknown または cross-tenant/pharmacy の patientId は 404 `PAT-0002` で
+  存在を漏らさない(GET と同一)。
+- レスポンス(200): `{ patient: PatientSearchResult & { version } }`。
+  監査は `patient.updated`(payload は patientId のみ、変更差分・PHI 値を載せない)。
+
 ## 3. レスポンス(200)
 
 ```
@@ -132,6 +182,10 @@ PatientSearchResult = {
 
 - 400: **クエリ検証失敗の全ケース**(q 欠落/空白のみ/長さ超過、limit 範囲外、cursor 不正形式・境界不一致)→ `PAT-0001`(invalid patient search query)。`PAT-0001` は実装前に error_code_registry(MOD-006)と shared-kernel シードへ登録する。
 - 403: scope不足(AUTH-0003、既存)
+- 404: unknown/cross-tenant の patientId → `PAT-0002`(GET と同一の非露出規則)
+- 409(0.3.0): patientNumber 重複 → `PAT-0003`。idempotencyKey + 異なる payload → `PAT-0006`(いずれも MOD-006 へ登録提案)
+- 412(0.3.0): PUT の If-Match/expectedVersion 不一致 → `PAT-0004`(MOD-006 へ登録提案)
+- 422(0.3.0): `patientNumber` その他不変 field の変更試行 → `PAT-0005`(MOD-006 へ登録提案)
 - 検索0件は 200 + 空配列(エラーではない)
 - **503: 候補集合フェッチ上限の超過(§5 MEDIUM-2 訂正)**。`Retry-After` を付け、
   結果を一切返さない。partial results、truncated results、近似 `nextCursor` の

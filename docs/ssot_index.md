@@ -20,9 +20,9 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.62
+version: 0.4.63
 created_at: 2026-07-09
-updated_at: 2026-09-08
+updated_at: 2026-09-17
 approved_at: 2026-09-08
 previous_version_approved_by: direct_user_instruction (WP-9001); independent_verifier APPROVED; spec_guardian APPROVED; data_integrity_auditor APPROVED; WP-9002-W1 independent_verifier APPROVED; WP-9002-W1 spec_guardian APPROVED; WP-9002-W1 data_integrity_auditor APPROVED; WP-9002-W1 medical_safety_reviewer APPROVED; WP-9002-W1 privacy_compliance_reviewer APPROVED; WP-9002-W1 security_critic APPROVED; WP-9002-W2 independent_verifier APPROVED; WP-9002-W2 test_architect APPROVED; WP-9002-W2 spec_guardian APPROVED; WP-9002-W2 api_contract_reviewer APPROVED; WP-9002-W2 data_integrity_auditor APPROVED; WP-9002-W2 medical_safety_reviewer APPROVED; WP-9002-W2 privacy_compliance_reviewer APPROVED; WP-9002-W3 independent_verifier APPROVED; WP-9002-W3 spec_guardian APPROVED; WP-9002-W3 data_integrity_auditor APPROVED; WP-9002-W3 security_critic APPROVED; WP-9002-W3 api_contract_reviewer APPROVED; WP-9002-W3 test_architect APPROVED; WP-9002-W3 medical_safety_reviewer APPROVED; WP-9002-W3 privacy_compliance_reviewer APPROVED; WP-9002-W4 independent_verifier APPROVED; WP-9002-W4 spec_guardian APPROVED; WP-9002-W4 data_integrity_auditor APPROVED; WP-9002-W4 test_architect APPROVED; WP-9002-W4 security_critic APPROVED; WP-9002-W4 api_contract_reviewer APPROVED; WP-9002-W4 medical_safety_reviewer APPROVED; WP-9002-W4 privacy_compliance_reviewer APPROVED; WP-9002-W5A independent_verifier APPROVED; WP-9002-W5A spec_guardian APPROVED; WP-9002-W5A data_integrity_auditor APPROVED; WP-9002-W5A api_contract_reviewer APPROVED; WP-9002-W5A test_architect APPROVED; WP-9002-W5A security_critic APPROVED; WP-9002-W5A privacy_compliance_reviewer APPROVED; WP-9002-W5A medical_safety_reviewer APPROVED; WP-9002-W5B independent_verifier APPROVED; WP-9002-W5B spec_guardian APPROVED; WP-9002-W5B data_integrity_auditor APPROVED; WP-9002-W5B architect APPROVED; WP-9002-W5B test_architect APPROVED; WP-9002-W5B security_critic APPROVED; WP-9002-W5B privacy_compliance_reviewer APPROVED; WP-9002-W5B medical_safety_reviewer APPROVED; WP-9002-W5B api_contract_reviewer APPROVED; WP-9002-W5C independent_verifier APPROVED; WP-9002-W5C spec_guardian APPROVED; WP-9002-W5C data_integrity_auditor APPROVED; WP-9002-W5C architect APPROVED; WP-9002-W5C api_contract_reviewer APPROVED; WP-9002-W5C test_architect APPROVED; WP-9002-W5C security_critic APPROVED; WP-9002-W5C privacy_compliance_reviewer APPROVED; WP-9002-W5C medical_safety_reviewer APPROVED; WP-9002-W5D independent_verifier APPROVED; WP-9002-W5D spec_guardian APPROVED; WP-9002-W5D data_integrity_auditor APPROVED; WP-9002-W5D architect APPROVED; WP-9002-W5D test_architect APPROVED; WP-9002-W5D security_critic APPROVED; WP-9002-W5D privacy_compliance_reviewer APPROVED; WP-9002-W5D medical_safety_reviewer APPROVED; WP-9002-W5D claims_evidence_or_master_data_specialist APPROVED; WP-9002-W5E independent_verifier APPROVED; WP-9002-W5E spec_guardian APPROVED; WP-9002-W5E data_integrity_auditor APPROVED; WP-9002-W5E architect APPROVED; WP-9002-W5E db_steward APPROVED; WP-9002-W5E test_architect APPROVED; WP-9002-W5E api_contract_reviewer APPROVED; WP-9002-W5E security_critic APPROVED; WP-9002-W5E privacy_compliance_reviewer APPROVED; WP-9002-W5E medical_safety_reviewer APPROVED; WP-9002-W5F independent_verifier APPROVED; WP-9002-W5F spec_guardian APPROVED; WP-9002-W5F data_integrity_auditor APPROVED; WP-9002-W5F architect APPROVED; WP-9002-W5F test_architect APPROVED; WP-9002-W5F api_contract_reviewer APPROVED; WP-9002-W5F claims_evidence_specialist APPROVED; WP-9002-W5F security_critic APPROVED; WP-9002-W5F privacy_compliance_reviewer APPROVED; WP-9002-W5F medical_safety_reviewer APPROVED; WP-9002-W6A independent_verifier APPROVED; WP-9002-W6A spec_guardian APPROVED; WP-9002-W6A data_integrity_auditor APPROVED; WP-9002-W6A architect APPROVED; WP-9002-W6A db_steward APPROVED; WP-9002-W6A test_architect APPROVED; WP-9002-W6A claims_evidence_specialist APPROVED; WP-9002-W6A security_critic APPROVED; WP-9002-W6A privacy_compliance_reviewer APPROVED; WP-9002-W6A medical_safety_reviewer APPROVED; WP-9002-W6B independent_verifier APPROVED; WP-9002-W6B spec_guardian APPROVED; WP-9002-W6B data_integrity_auditor APPROVED; WP-9002-W6B architect APPROVED; WP-9002-W6B test_architect APPROVED; WP-9002-W6B security_critic APPROVED; WP-9002-W6B privacy_compliance_reviewer APPROVED; WP-9002-W6B medical_safety_reviewer APPROVED; WP-9002-W6B claims_evidence_specialist APPROVED; WP-9005 independent_verifier APPROVED; WP-9005 spec_guardian APPROVED; WP-9005 data_integrity_auditor APPROVED; WP-9005 test_architect APPROVED; WP-9005 security_critic APPROVED; WP-9005 privacy_compliance_reviewer APPROVED; WP-9005 medical_safety_reviewer APPROVED; WP-9005 claims_evidence_specialist APPROVED; WP-9002-W6C independent_verifier APPROVED; WP-9002-W6C spec_guardian APPROVED; WP-9002-W6C data_integrity_auditor APPROVED; WP-9002-W6C architect APPROVED; WP-9002-W6C test_architect APPROVED; WP-9002-W6C claims_evidence_specialist APPROVED; WP-9002-W6C security_critic APPROVED; WP-9002-W6C privacy_compliance_reviewer APPROVED; WP-9002-W6C medical_safety_reviewer APPROVED; WP-9006 independent_verifier APPROVED; WP-9006 spec_guardian APPROVED; WP-9006 data_integrity_auditor APPROVED; WP-9006 architect APPROVED; WP-9006 api_contract_reviewer APPROVED; WP-9006 test_architect APPROVED; WP-9006 claims_evidence_specialist APPROVED; WP-9006 security_critic APPROVED; WP-9006 privacy_compliance_reviewer APPROVED; WP-9006 medical_safety_reviewer APPROVED; WP-9002-W7A independent_verifier APPROVED; WP-9002-W7A spec_guardian APPROVED; WP-9002-W7A data_integrity_auditor APPROVED; WP-9002-W7A architect APPROVED; WP-9002-W7A db_steward APPROVED; WP-9002-W7A api_contract_reviewer APPROVED; WP-9002-W7A test_architect APPROVED; WP-9002-W7A security_critic APPROVED; WP-9002-W7A privacy_compliance_reviewer APPROVED; WP-9002-W7A medical_safety_reviewer APPROVED; WP-9002-W7B independent_verifier APPROVED; WP-9002-W7B spec_guardian APPROVED; WP-9002-W7B data_integrity_auditor APPROVED; WP-9002-W7B architect APPROVED; WP-9002-W7B db_steward APPROVED; WP-9002-W7B test_architect APPROVED; WP-9002-W7B claims_evidence_specialist APPROVED; WP-9002-W7B security_critic APPROVED; WP-9002-W7B privacy_compliance_reviewer APPROVED; WP-9002-W7B medical_safety_reviewer APPROVED; WP-9007 independent_verifier APPROVED; WP-9007 spec_guardian APPROVED; WP-9007 data_integrity_auditor APPROVED; WP-9007 architect APPROVED; WP-9007 db_steward APPROVED; WP-9007 api_contract_reviewer APPROVED; WP-9007 test_architect APPROVED; WP-9007 security_critic APPROVED; WP-9007 privacy_compliance_reviewer APPROVED; WP-9007 medical_safety_reviewer APPROVED; WP-9002-W7C independent_verifier APPROVED; WP-9002-W7C spec_guardian APPROVED; WP-9002-W7C data_integrity_auditor APPROVED; WP-9002-W7C architect APPROVED; WP-9002-W7C db_steward APPROVED; WP-9002-W7C test_architect APPROVED; WP-9002-W7C claims_evidence_specialist APPROVED; WP-9002-W7C security_critic APPROVED; WP-9002-W7C privacy_compliance_reviewer APPROVED; WP-9002-W7C medical_safety_reviewer APPROVED; WP-9002-W8 independent_verifier APPROVED; WP-9002-W8 spec_guardian APPROVED; WP-9002-W8 data_integrity_auditor APPROVED; WP-9002-W8 architect APPROVED; WP-9002-W8 test_architect APPROVED; WP-9002-W8 claims_evidence_specialist APPROVED; WP-9002-W8 security_critic APPROVED; WP-9002-W8 privacy_compliance_reviewer APPROVED; WP-9002-W8 medical_safety_reviewer APPROVED; WP-9002-W9 independent_verifier APPROVED; WP-9002-W9 spec_guardian APPROVED; WP-9002-W9 data_integrity_auditor APPROVED; WP-9002-W9 architect APPROVED; WP-9002-W9 test_architect APPROVED; WP-9002-W9 claims_evidence_specialist APPROVED; WP-9002-W9 security_critic APPROVED; WP-9002-W9 privacy_compliance_reviewer APPROVED; WP-9002-W9 medical_safety_reviewer APPROVED; WP-9002-W10 independent_verifier APPROVED; WP-9002-W10 spec_guardian APPROVED; WP-9002-W10 data_integrity_auditor APPROVED; WP-9002-W10 architect APPROVED; WP-9002-W10 db_steward APPROVED; WP-9002-W10 test_architect APPROVED; WP-9002-W10 claims_evidence_specialist APPROVED; WP-9002-W10 security_critic APPROVED; WP-9002-W10 privacy_compliance_reviewer APPROVED; WP-9002-W10 medical_safety_reviewer APPROVED; WP-9002-W11 independent_verifier APPROVED; WP-9002-W11 spec_guardian APPROVED; WP-9002-W11 data_integrity_auditor APPROVED; WP-9002-W11 architect APPROVED; WP-9002-W11 db_steward APPROVED; WP-9002-W11 test_architect APPROVED; WP-9002-W11 claims_evidence_specialist APPROVED; WP-9002-W11 security_critic APPROVED; WP-9002-W11 privacy_compliance_reviewer APPROVED; WP-9002-W11 medical_safety_reviewer APPROVED; WP-9002-W12 independent_verifier APPROVED; WP-9002-W12 spec_guardian APPROVED; WP-9002-W12 data_integrity_auditor APPROVED; WP-9002-W12 architect APPROVED; WP-9002-W12 db_steward APPROVED; WP-9002-W12 test_architect APPROVED; WP-9002-W12 claims_evidence_specialist APPROVED; WP-9002-W12 security_critic APPROVED; WP-9002-W12 privacy_compliance_reviewer APPROVED; WP-9002-W12 medical_safety_reviewer APPROVED; WP-9002-W13 independent_verifier APPROVED; WP-9002-W13 spec_guardian APPROVED; WP-9002-W13 data_integrity_auditor APPROVED; WP-9002-W13 architect APPROVED; WP-9002-W13 db_steward APPROVED; WP-9002-W13 test_architect APPROVED; WP-9002-W13 claims_evidence_specialist APPROVED; WP-9002-W13 security_critic APPROVED; WP-9002-W13 privacy_compliance_reviewer APPROVED; WP-9002-W13 medical_safety_reviewer APPROVED; WP-9002-W14 independent_verifier APPROVED; WP-9002-W14 spec_guardian APPROVED; WP-9002-W14 data_integrity_auditor APPROVED; WP-9002-W14 architect APPROVED; WP-9002-W14 test_architect APPROVED; WP-9002-W14 claims_evidence_specialist APPROVED; WP-9002-W14 security_critic APPROVED; WP-9002-W14 privacy_compliance_reviewer APPROVED; WP-9002-W14 medical_safety_reviewer APPROVED; WP-9002-W14 product_quality_reviewer APPROVED
   ; WP-9002-W15 independent_verifier APPROVED; WP-9002-W15 spec_guardian APPROVED; WP-9002-W15 data_integrity_auditor APPROVED; WP-9002-W15 architect APPROVED; WP-9002-W15 test_architect APPROVED; WP-9002-W15 product_quality_reviewer APPROVED; WP-9002-W15 claims_evidence_specialist APPROVED; WP-9002-W15 security_critic APPROVED; WP-9002-W15 privacy_compliance_reviewer APPROVED; WP-9002-W15 medical_safety_reviewer APPROVED
@@ -159,6 +159,7 @@ related_prs:
   - PR #6
 evidence_ids: []
 change_log:
+  - "0.4.63 2026-09-17 Plans.md §18 SSOT 起案 batch(WP-7201〜7205/7302): API-019(eligibility_snapshot_contract)・API-020(coverage_contract)を PROPOSED で新規登録、API-001・API-006・DOM-002・MOD-006・MOD-008 を改版提案のため APPROVED→PROPOSED へ降格。総文書数 185→187、docs/api 18→20。status 集計は APPROVED 158→153、PROPOSED 4→11、SUPERSEDED 23 不変(合計187)。全件 PROPOSED であり実装根拠にしない。登録済み blocker は据え置き。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.62 2026-09-08 user-approved Codex cleanup finalization: AGT-018 v0.2.0 / PRC-003 v0.3.0 / PRC-005 v0.3.0 to APPROVED after frozen independent review FINDINGS_NONE; inventory unchanged"
   - "0.4.61 2026-08-26 WP-5101 bounded prescription draft finalization: DOM-002 0.1.3、DOM-004 0.1.2、MOD-008 0.2.6へscope/invariants/read auditを同期。文書status・総数185・inventory集計は不変。migration 000013 source landingは承認済みだが、環境への適用は別human gateのまま"
   - "0.4.60 2026-08-26 WP-5104 atomic finalization: UIX-001 0.2.0をAPPROVED、UIX-002〜007をSUPERSEDEDへ同期。未決blocker、UNMAPPED、HPKI/legal/RB-003、実装・risk acceptance・external action禁止を維持。総文書数185不変、inventory rowsはAPPROVED 163→158、PROPOSED 5→4、SUPERSEDED 17→23"
@@ -260,7 +261,7 @@ WP-9002-W1はHEAD `6198068`の23-field exact-key scanをbaselineとし、173文�
 
 WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbaselineとし、MOD-011とMOD-014の不足8 fieldだけをmetadata-onlyで補完した。final inventoryは173文書 / 不足139 / 充足34である。両文書の本文、version、status、approval、effective semanticsと、本索引の各行(`APPROVED` / `modules/date_time_policy.md`, `APPROVED` / `modules/generated_code_policy.md`)および総文書数173は変更していない。independent_verifier、test_architect、spec_guardian、api_contract_reviewer、data_integrity_auditor、medical_safety_reviewer、privacy_compliance_reviewerのAPPROVEDとfull validation後、IDX-001 v0.4.3をAPPROVEDとしてfinalizeした。W2 human approvalは主張しない。historical 173/142およびW1 173/141/32 recordはprovenanceとして維持する。
 
-総文書数: 185(本索引を除く)
+総文書数: 187(本索引を除く)
 
 ## docs/accounting/ (11件)
 
@@ -310,7 +311,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | AGT-016 | [llm_capability_registry.md](agents/llm_capability_registry.md) | SUPERSEDED |
 | AGT-004 | [sol_ultra_mode_execution_policy.md](agents/sol_ultra_mode_execution_policy.md) | SUPERSEDED |
 
-## docs/api/ (18件)
+## docs/api/ (20件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
@@ -318,19 +319,21 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | API-011 | [api_scope_registry.md](api/api_scope_registry.md) | APPROVED |
 | API-007 | [calculation_trace_read_contract.md](api/calculation_trace_read_contract.md) | APPROVED |
 | API-015 | [contract_test_policy.md](api/contract_test_policy.md) | APPROVED |
+| API-020 | [coverage_contract.md](api/coverage_contract.md) | PROPOSED |
 | API-016 | [data_portability_policy.md](api/data_portability_policy.md) | APPROVED |
 | API-018 | [data_sharing_module_inventory.md](api/data_sharing_module_inventory.md) | APPROVED |
 | API-017 | [data_sharing_policy.md](api/data_sharing_policy.md) | APPROVED |
+| API-019 | [eligibility_snapshot_contract.md](api/eligibility_snapshot_contract.md) | PROPOSED |
 | API-008 | [fhir_rest_facade_contract.md](api/fhir_rest_facade_contract.md) | APPROVED |
 | API-013 | [idempotency_policy.md](api/idempotency_policy.md) | APPROVED |
 | API-009 | [integration_hub_architecture.md](api/integration_hub_architecture.md) | APPROVED |
 | API-005 | [oss_sdk_and_schema_publication_policy.md](api/oss_sdk_and_schema_publication_policy.md) | APPROVED |
 | API-010 | [partner_registry_policy.md](api/partner_registry_policy.md) | APPROVED |
 | API-014 | [partner_sandbox_policy.md](api/partner_sandbox_policy.md) | APPROVED |
-| API-001 | [patient_search_contract.md](api/patient_search_contract.md) | APPROVED |
+| API-001 | [patient_search_contract.md](api/patient_search_contract.md) | PROPOSED |
 | API-004 | [ph_os_reference_integration.md](api/ph_os_reference_integration.md) | APPROVED |
 | API-003 | [platform_api_architecture.md](api/platform_api_architecture.md) | APPROVED |
-| API-006 | [reception_queue_contract.md](api/reception_queue_contract.md) | APPROVED |
+| API-006 | [reception_queue_contract.md](api/reception_queue_contract.md) | PROPOSED |
 | API-012 | [webhook_event_catalog.md](api/webhook_event_catalog.md) | APPROVED |
 
 ## docs/architecture/ (10件)
@@ -386,7 +389,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | ssot_id | 文書 | status |
 |---|---|---|
 | DOM-001 | [bounded_contexts.md](domain/bounded_contexts.md) | APPROVED |
-| DOM-002 | [domain_model.md](domain/domain_model.md) | APPROVED |
+| DOM-002 | [domain_model.md](domain/domain_model.md) | PROPOSED |
 | DOM-006 | [fhir_mapping_registry.md](domain/fhir_mapping_registry.md) | APPROVED |
 | DOM-005 | [fhir_native_canonical_model.md](domain/fhir_native_canonical_model.md) | APPROVED |
 | DOM-004 | [state_transition.md](domain/state_transition.md) | APPROVED |
@@ -416,12 +419,12 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 
 | ssot_id | 文書 | status |
 |---|---|---|
-| MOD-008 | [audit_event_registry.md](modules/audit_event_registry.md) | APPROVED |
+| MOD-008 | [audit_event_registry.md](modules/audit_event_registry.md) | PROPOSED |
 | MOD-002 | [common_module_boundary.md](modules/common_module_boundary.md) | APPROVED |
 | MOD-001 | [common_module_inventory.md](modules/common_module_inventory.md) | APPROVED |
 | MOD-011 | [date_time_policy.md](modules/date_time_policy.md) | APPROVED |
 | MOD-003 | [dependency_direction_policy.md](modules/dependency_direction_policy.md) | APPROVED |
-| MOD-006 | [error_code_registry.md](modules/error_code_registry.md) | APPROVED |
+| MOD-006 | [error_code_registry.md](modules/error_code_registry.md) | PROPOSED |
 | MOD-009 | [event_envelope_schema.md](modules/event_envelope_schema.md) | APPROVED |
 | MOD-013 | [fixture_policy.md](modules/fixture_policy.md) | APPROVED |
 | MOD-014 | [generated_code_policy.md](modules/generated_code_policy.md) | APPROVED |
