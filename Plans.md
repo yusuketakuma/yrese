@@ -33,9 +33,9 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = current branch HEAD への fast-forward 済み(ユーザ指示 2026-09-16)、current branch = `refactor/wp-5275-failure-proof-describe-failure` / HEAD = `24319bf`(WP-5281 landing)+record commits、`origin/main` = `c3a082919f4965915fb11671b12db402a157d990`。実測 2026-09-16 JST |
+| Review base | local `main` = `origin/main` = `d8844ce`+record commits(2026-09-16 ユーザ指示で fast-forward merge + push 済み)、current branch = `refactor/wp-5275-failure-proof-describe-failure`。実測 2026-09-16 JST |
 | Candidate branch | `refactor/wp-5275-failure-proof-describe-failure`。WP-5275は`c3a0829`、WP-5276は`a463fac`、WP-5277は`011ac26`、WP-5278は`6d005ee`、WP-5279は`ad3aec2`、WP-5280は`b6d38e6`、WP-5281は`24319bf`へ着地済み |
-| Upstream relation | local `main` は branch HEAD へ fast-forward(2026-09-16 ユーザ指示)。`origin/main` との差分は上記SHAで固定。push、deployは行わない |
+| Upstream relation | local `main` = `origin/main`(2026-09-16 ユーザ指示で push 済み)。deployは行わない |
 | Candidate scope | WP-5279: 15領域監査で確認した低リスク範囲のうち、active snapshot、清掃・秘密スキャン境界、UIのARIA/患者識別子露出、処方下書き通信のtimeout/abort/再取得、依存監査の通信障害判定、local ComposeのPostgreSQL 17系digest固定を修正済み。認証、DB/migration、永続化/idempotency、observability、PHI/retention、backup/DRは対象外のまま。WP-5281: リポジトリ横断監査の確定 finding を修正 — pooled tx settle probe、postgres 構成 guard、eligibility idempotent retry、text 照合のコードポイント parity、queue reload force、draft conflict 維持、疎配列 fail-closed、秘密 scan・清掃・境界 script 強化 |
 | Last update | 2026-09-16 JST(repository-wide audit で確定した不具合を修正し、workspace typecheck、unit tests(api 1,009 / web 763 / calculation 121 / shared-kernel 87)、embedded PG 18.4 実DB integration 81 tests、`test:scripts`、`check:boundaries`/`check:calculation-purity`/`check:secrets`/`check:deps`(high=0/critical=0)/`check:sbom`(249)/`check:ssot-index`(185)/`check:openapi`、`git diff --check`をPASS。独立 adversarial review は finding 0 で PASS。WP-5281は`24319bf`+本record commitへ着地) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
