@@ -33,11 +33,11 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `9c0b357915919b94a1f4fadeca42d1a05403cf91`、current branch = `refactor/wp-5275-failure-proof-describe-failure` / HEAD = `ad3aec2`(WP-5279 landing)+本record commit、`origin/main` = `c3a082919f4965915fb11671b12db402a157d990`。実測 2026-09-15 JST |
-| Candidate branch | `refactor/wp-5275-failure-proof-describe-failure`。WP-5275は`c3a0829`、WP-5276は`a463fac`、WP-5277は`011ac26`、WP-5278は`6d005ee`、WP-5279は`ad3aec2`へ着地済み |
+| Review base | local `main` = `9c0b357915919b94a1f4fadeca42d1a05403cf91`、current branch = `refactor/wp-5275-failure-proof-describe-failure` / HEAD = `24319bf`(WP-5281 landing)+本record commit、`origin/main` = `c3a082919f4965915fb11671b12db402a157d990`。実測 2026-09-16 JST |
+| Candidate branch | `refactor/wp-5275-failure-proof-describe-failure`。WP-5275は`c3a0829`、WP-5276は`a463fac`、WP-5277は`011ac26`、WP-5278は`6d005ee`、WP-5279は`ad3aec2`、WP-5280は`b6d38e6`、WP-5281は`24319bf`へ着地済み |
 | Upstream relation | local `main` / current branchの差分と`origin/main`との差分を上記SHAで固定。push、merge、deployは行わない |
-| Candidate scope | WP-5279: 15領域監査で確認した低リスク範囲のうち、active snapshot、清掃・秘密スキャン境界、UIのARIA/患者識別子露出、処方下書き通信のtimeout/abort/再取得、依存監査の通信障害判定、local ComposeのPostgreSQL 17系digest固定を修正済み。認証、DB/migration、永続化/idempotency、observability、PHI/retention、backup/DRは対象外のまま |
-| Last update | 2026-09-15 JST(15領域の4件の読取り専用監査を完了。GBrainは対象0件、Oracleは明示的送信許可リスト不足で安全拒否。UI/Web 758 tests・typecheck、workspace typecheck/test/build、`test:scripts`・`check:deps`・`check:sbom`、`docker compose config`、`check:openapi`/`check:boundaries`/`check:calculation-purity`/`check:ssot-index`、`check:secrets`/`git diff --check`をPASS。ComposeのPostgreSQL 17系mutable tagをdigest固定。最終exact-hash reviewはhash一致・重大な確定不具合なし。WP-5279はhuman commit認可により`ad3aec2`へ着地。点数計算packageのread-only監査 findingを別WP候補として分離記録) |
+| Candidate scope | WP-5279: 15領域監査で確認した低リスク範囲のうち、active snapshot、清掃・秘密スキャン境界、UIのARIA/患者識別子露出、処方下書き通信のtimeout/abort/再取得、依存監査の通信障害判定、local ComposeのPostgreSQL 17系digest固定を修正済み。認証、DB/migration、永続化/idempotency、observability、PHI/retention、backup/DRは対象外のまま。WP-5281: リポジトリ横断監査の確定 finding を修正 — pooled tx settle probe、postgres 構成 guard、eligibility idempotent retry、text 照合のコードポイント parity、queue reload force、draft conflict 維持、疎配列 fail-closed、秘密 scan・清掃・境界 script 強化 |
+| Last update | 2026-09-16 JST(repository-wide audit で確定した不具合を修正し、workspace typecheck、unit tests(api 1,009 / web 763 / calculation 121 / shared-kernel 87)、embedded PG 18.4 実DB integration 81 tests、`test:scripts`、`check:boundaries`/`check:calculation-purity`/`check:secrets`/`check:deps`(high=0/critical=0)/`check:sbom`(249)/`check:ssot-index`(185)/`check:openapi`、`git diff --check`をPASS。独立 adversarial review は finding 0 で PASS。WP-5281は`24319bf`+本record commitへ着地) |
 | C-100 review evidence | read-only independent context `wp5101_human_authority_map`; frozen exact3 SHA-256 `cdc6ac3ff79c78fd5e19d2a1b5aa990ac39c50a287d3f8f6fedb137ea211c4cf`; `git diff --check` PASS; findings 0; landed commit `9786fe8` |
 | Active Goal | 2026-09-15 runで、15領域の全項目を監査し、仕様根拠のある安全な項目は修正・検証し、承認が必要な項目は未完了ゲートとして明示する |
 | Current critical path | human/security/privacy/data-integrity gateが必要な残件の承認または明示的な未実施受入。高リスク項目はゲート成立後に別WPで再計画 |
@@ -90,9 +90,40 @@ WP-5279は`ad3aec2`へ着地済み。migration 000013を含む環境適用、pus
 
 ### WIP — exactly one
 
-**CURRENT は 0 件である。** WP-5280は`b6d38e6`へ着地済み(実装+frozen-diff 独立 review
-PASS、後述の Historical 節を参照)。READYは0件である。reception wallClock意味論、FHIR
+**CURRENT は 0 件である。** WP-5280は`b6d38e6`、WP-5281は`24319bf`へ着地済み(実装+
+独立 review PASS、後述の Historical 節を参照)。READYは0件である。reception wallClock意味論、FHIR
 provenance/mapping、薬剤師確認・確定、その他の高リスク項目はgate待ちでpark継続。
+
+### Historical landed WIP — WP-5281 Repository-wide audit finding remediation
+
+repository-wide audit の確定 finding を修正した。推測・LOC 削減のみの変更は実施しない。
+
+- **Scope(確定 finding のみ):** pooled transaction の callback 後 settle probe
+  (`pg_current_xact_id_if_assigned` + 安全側 ROLLBACK + 検証不能時 client 破棄)、
+  postgres mode で `receptionCreateCommand` 未指定を拒否(in-memory unit-of-work への
+  silent fallback 遮断)、eligibility snapshot の idempotent retry を全 payload field 比較化
+  (retry 時計 `now` は除外)と PK 衝突の domain error 化、user-facing text ソートの
+  `COLLATE "C"` と in-memory コードポイント比較の parity(U+E000 vs U+10000)、
+  reception queue の mutation 後 reload を `force` 化(mutation 前に開始した in-flight
+  fetch への join を遮断)、処方下書きの server-conflict 状態を編集後も維持し draft
+  response の identity 検証を追加、`isClaimable` と step-result 検証で疎配列 hole を
+  fail-closed、結果の未知 field・負点数拒否・警告 dedup、secrets scan の in-root
+  symlink/未 tracked protected root skip(out-of-root・dangling は引き続き abort)、
+  clean.mjs の lstat guard、boundary check の `..` 接頭辞 directory 偽陰性修正・
+  manifest 駆動 app 名・深い `aws-sdk/` import 検出・non-src package file 走査、
+  purity check の qualified `parseFloat` 検出。
+- **Out of scope:** tenant/system 認可、DB/migration 適用、durable recovery、
+  observability sink、PHI retention、backup/restore/DR、FHIR、薬剤師確認・確定は
+  引き続き gate 待ち。PostgreSQL major version alignment も未解消のまま。
+- **Validation:** workspace typecheck;unit tests(api 1,009 / web 763 /
+  calculation 121 / shared-kernel 87);embedded PostgreSQL 18.4 上の実 DB
+  integration 81 tests(全 file PASS);`test:scripts`、`check:boundaries`、
+  `check:calculation-purity`、`check:secrets`、`check:deps`(high=0/critical=0)、
+  `check:sbom`(249)、`check:ssot-index`(185)、`check:openapi`、`git diff --check`。
+- **Status:** 実装・検証・独立 adversarial review 完了。critical finding 0。
+  WP-5280 で記録した `check:secrets` の tracked symlink `CLAUDE.md`→`AGENTS.md`
+  既存不具合は本 WP の secrets-scan 修正で解消。
+- **Landed:** `24319bf`(実装 39 paths)+本 record commit(Plans.md/State.md)。
 
 ### Historical landed WIP — WP-5280 Calculation finding remediation
 
