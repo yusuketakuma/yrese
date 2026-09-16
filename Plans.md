@@ -33,8 +33,8 @@
 
 | Field | Current evidence |
 |---|---|
-| Review base | local `main` = `origin/main` = `d8844ce`+record commits(2026-09-16 ユーザ指示で fast-forward merge + push 済み)、current branch = `refactor/wp-5275-failure-proof-describe-failure`。実測 2026-09-16 JST |
-| Candidate branch | `refactor/wp-5275-failure-proof-describe-failure`。WP-5275は`c3a0829`、WP-5276は`a463fac`、WP-5277は`011ac26`、WP-5278は`6d005ee`、WP-5279は`ad3aec2`、WP-5280は`b6d38e6`、WP-5281は`24319bf`へ着地済み |
+| Review base | local `main` = `origin/main` = `02027c1`(2026-09-16 ユーザ指示で fast-forward merge + push + 全非 main ブランチ削除済み)、current branch = `main`。実測 2026-09-16 JST |
+| Candidate branch | なし(作業ブランチ `refactor/wp-5275-failure-proof-describe-failure` は main へ取込後に削除)。WP-5275は`c3a0829`、WP-5276は`a463fac`、WP-5277は`011ac26`、WP-5278は`6d005ee`、WP-5279は`ad3aec2`、WP-5280は`b6d38e6`、WP-5281は`24319bf`へ着地済み(全て main の祖先) |
 | Upstream relation | local `main` = `origin/main`(2026-09-16 ユーザ指示で push 済み)。deployは行わない |
 | Candidate scope | WP-5279: 15領域監査で確認した低リスク範囲のうち、active snapshot、清掃・秘密スキャン境界、UIのARIA/患者識別子露出、処方下書き通信のtimeout/abort/再取得、依存監査の通信障害判定、local ComposeのPostgreSQL 17系digest固定を修正済み。認証、DB/migration、永続化/idempotency、observability、PHI/retention、backup/DRは対象外のまま。WP-5281: リポジトリ横断監査の確定 finding を修正 — pooled tx settle probe、postgres 構成 guard、eligibility idempotent retry、text 照合のコードポイント parity、queue reload force、draft conflict 維持、疎配列 fail-closed、秘密 scan・清掃・境界 script 強化 |
 | Last update | 2026-09-16 JST(repository-wide audit で確定した不具合を修正し、workspace typecheck、unit tests(api 1,009 / web 763 / calculation 121 / shared-kernel 87)、embedded PG 18.4 実DB integration 81 tests、`test:scripts`、`check:boundaries`/`check:calculation-purity`/`check:secrets`/`check:deps`(high=0/critical=0)/`check:sbom`(249)/`check:ssot-index`(185)/`check:openapi`、`git diff --check`をPASS。独立 adversarial review は finding 0 で PASS。WP-5281は`24319bf`+本record commitへ着地) |
@@ -52,7 +52,10 @@ current batchはWP-5279の安全なcomplete slice消化で、current WIPは0件�
 WP-5279は`ad3aec2`へ着地済み。migration 000013を含む環境適用、push、deploy、production変更、risk/release acceptance、外部状態変更は行わない。
 ユーザー承認済みの公式JP Core packageについては、保存せずhash/sizeだけを再確認した。
 
-### 1.1 Seven-day execution plan (2026-09-13〜2026-09-19 JST)
+### 1.1 Seven-day execution plan (2026-09-13〜2026-09-19 JST) — 履行済み・歴史記録
+
+> 本表の実装対象(WP-5279〜5281)は全件着地済み。以後の work selection は §18(調剤レセコン
+> 機能ギャップのロードマップ)と §16 の依存順序に従い、本表を claim 根拠にしない。
 
 過去のGit履歴(WP-5101のdraft縦切り、WP-6003〜6006の連携基盤、WP-5271〜5278のhardening/refactor)とlive codeを突合した。
 本runではWP-5279だけを実装対象とし、仕様・人間承認・外部手続き待ちの項目は実装済みと数えない。
@@ -2335,3 +2338,278 @@ gate/Git 操作は root lane 単独。R3 判定時は human pre-review record �
   WP-5211 系の別項として実施する(WP-5210 は「アプリコード変更ゼロ」のため本 WP では
   行わない)。browser gate の依存が untracked にしか存在しない状態は独立レビューで指摘済みであり、tracked 化完了までは再現手順が本 disposition
   記録に依存する。
+
+## 18. 調剤レセコン機能ギャップの現状再評価と実装ロードマップ(2026-09-16)
+
+> **来歴:** direct user instruction 2026-09-16「Plans.md 内のプランをレビュー。またコードベースを
+> 探索して開発すべき計画を追加して。調剤薬局のレセプトコンピューターとして不足している機能を
+> 特定して実装までの道筋を細かく立てること」。task mode は `PLAN_ONLY`(本書と State.md の
+> pointer 以外を変更しない)。
+> **調査根拠(live code、main=`02027c1`):** `apps/api/src/server.ts` / `main.ts` / `config.ts` /
+> `plugins/tenant-context.ts` / `*-routes.ts`、`apps/api/src/db/*`、`migrations/000001〜000013`、
+> `packages/{shared-kernel,contracts,calculation}/src`、`apps/web/app/*`、`scripts/ui-browser-check.mjs`、
+> `.github/workflows/*`。SSOT は IDX-001(185 文書)の frontmatter status、PRD-001 M1〜M12、
+> PRD-005(PROPOSED)§2「MVP 必須機能セット」、DOM-002/004、API-006/007、CAL-001、REG-004、
+> ADP-004、ACC-001〜011、RCP-001〜006、CLM-001、MST-001/002、SPEC-002 §8〜§13。
+> **queue 規律:** 本節は §15/§16 と同じ **inventory** であり、READY slot を消費せず登録は claim
+> ではない。WIP=1 / READY≤2、human gate、登録済み blocker、§6 NOT NOW、§11 release blockers、
+> `DEVELOPMENT_POLICY.md §9/§11` を上書きしない。昇格は `DEVELOPMENT_POLICY.md §8` に従う。
+> 既登録の C-xxx / WP-6xxx は置換せず参照で結ぶ。新規 ID は WP-71xx〜WP-78xx(工程 R0〜R7)。
+> **凡例:** 【HG】human gate、【SSOT】PRC-007 改版必須、【EXT】外部手続き前提、【REG】既登録項目参照、
+> 【GATED】前提未成立、【REF】§15/§16 の既登録 ID を詳細化(重複起票ではない)。
+
+### 18.0 既存プランのレビュー結果(§1〜§17)
+
+live code との突合で見つかった stale 記載・要注記事項。gate 判断を誤らせる矛盾は検出しなかった。
+
+| 節 | 記載 | 実測(2026-09-16) | 処置 |
+|---|---|---|---|
+| §1 Review base / Candidate branch | current branch = `refactor/wp-5275-…` | 当該ブランチはユーザ指示で main 取込後に削除。local/remote 共に `main` のみ | 本 record で訂正済み |
+| §1.1 Seven-day plan | 9/13〜9/19 の実装計画 | 対象 WP は全件着地。期間内の計画として履行済み | 歴史記録として保持し注記を付与(削除しない) |
+| §6 NOT NOW「billing/claims/receipt」 | 無条件に読める | charter §9 は「North Star 前提の前」に限定 | 矛盾なし。本節 R5/R6 はその前提充足後の順序記録であり、NOT NOW を解除しない |
+| §8 P1〜P3 | 独立レビュー待ちの記載が残存 | 2026-09-16 に 8 code commit 全件 PASS(finding 0)。残るのは BUG-4264(C-017【GATED】)/BUG-4265(C-018/019【SSOT】) | 各行は同日訂正済み。追加変更なし |
+| §16.1 処方行 | 「なし(UI shell)」 | bounded server-saved draft が稼働(`GET/PUT /prescription-drafts/by-reception/{id}`、CAS、read audit、migration 000013)。ただし行は **free-text**(`drug_text`/`usage_text`/`quantity_text`)で Rp・医薬品コード・構造化用量なし | §18.2 で「部分稼働(非構造化)」へ更新。§16.1 本体は 2026-08-23 時点の記録として不変 |
+| §16.1 保険行 | 「なし(`eligibility_status` 列のみ)」 | `eligibility_snapshots`(000009/000011)+ `PostgresEligibilitySnapshotRepository` + shared-kernel 状態機械(ADP-004 §3)が着地。**HTTP route 0、main composition 未配線** | §18.2 で「永続層のみ・未配線」へ更新 |
+| §16.1 Partner API 行 | 「配送 worker 0」 | `PostgresOutboxDeliveryWorker.runOnce`、HMAC webhook sink、registry-routed sink、partner registry 永続化(000008/000010/000012)が着地(WP-6003〜6006)。**runner process 0、登録 HTTP route 0** | §18.2 で「worker class あり・常駐 runner なし」へ更新 |
+| §16.1 認証行 | 「dev header stub のみ」 | 追記: `tenantContextMode` は `disabled`/`dev_headers` の 2 値で、`dev_headers` は **in_memory mode 限定**(`server.ts` guard)。postgres mode では context が常に `undefined` → `requirePermission` 付き全 route が 403。**durable mode に認証済み到達経路が存在しない**(fail-closed 設計の帰結だが、North Star を実 DB で貫通できない構造要因) | §18.1 構造的発見 (1) として登録。R0 の最上位前提 |
+| §16.1 算定行 | 「既定セット 5 本」 | `calculationRulesV20260601` はコード注記で「既定の算定セットではない例示。claimable=false 表示専用」と明示 | §18.3 WP-7501 では「参照用ルール束(例示)」として扱う。§16.1 本体は不変 |
+| §16.5 進捗表 | 2026-08-23 時点 | 以後の WP-5101 draft 着地・WP-52xx・WP-527x〜5281 を反映しない | 当時の記録として不変。現状は §18.1 が正 |
+| §17 / §15.6 UIUX pipeline | WP-5211〜5218 landed、WP-5112〜5124 GATED | 変化なし | 不変 |
+
+### 18.1 実装実測 — 何が動き、何が眠り、何が無いか(main=`02027c1`)
+
+**到達可能 runtime(12 operation、OpenAPI 同期・drift gate 有効):** `/health`、`/whoami`、
+`GET /patients/search`(cursor、no-store、`patient.searched` 監査)、`GET /patients/{id}`、
+`POST /reception`(冪等、WP-4050 原子境界: reception+audit intent+outbox intent 同一 tx)、
+`GET /reception/queue`(unbounded、INV-20260730-01 実測済み)、`GET/PUT /prescription-drafts/by-reception/{id}`
+(CAS `If-Match`、受付 WAITING/IN_PROGRESS write guard、`prescription.draft.viewed`)、`GET /audit/events`
+(hash chain 検証、破損 total)、`GET /operations/{outbox-summary,reception-summary,migration-state}`。
+
+**永続(migration 000001〜000013、全て forward-only、環境適用は【HG】):** `patients`、`reception_entries`、
+`audit_events`(+object-root CHECK)、`outbox_events`(+FK/sequence)、partner registry 3 系(+history/country)、
+`eligibility_snapshots`、`prescription_drafts`/`_rows`/`_flags`。`reception_entries` に version /
+status 変更時刻 / 取消理由の列はない。
+
+**眠っている資産(実装済みだが配線・消費者がない):**
+
+| 資産 | 所在 | 欠けている接続 |
+|---|---|---|
+| 算定エンジン(68 evidence ルール、`calculate()`、trace、`POINTS_ONLY_COPAY_BLOCKED`) | `packages/calculation` | apps/api・apps/web に import 0。`packages/contracts/src/calculation-trace.ts` と API-007 契約は存在するが route なし |
+| outbox 配送 worker + HMAC sink + registry-routed sink | `apps/api/src/db/outbox-delivery.ts` ほか | `main.ts` に runner なし(常駐 process / interval / 停止処理 / 単一 runner 排他) |
+| eligibility snapshot repository + 状態機械 | `apps/api/src/db/eligibility-snapshot-repository.ts`、shared-kernel `eligibility.ts` | HTTP route・契約 SSOT・Web 表示接続なし |
+| partner registry 永続化 + SSRF endpoint policy | `apps/api/src/db/partner-registry.ts`、`partner-endpoint-policy.ts` | 登録/照会 route なし、`partner.*` 監査発火なし |
+| `calculation-trace-view` / `clinical-alert` / `mode-capability-view` component | `apps/web/app/components` | 供給する API が無い(表示器のみ) |
+| `RECORD_LIFECYCLE_STATUSES`(UNSAVED〜FINALIZED/AMENDED/SUPERSEDED) | shared-kernel | サーバ側に対応する処方ライフサイクル永続なし(draft は「保存事実」のみ) |
+
+**Web 9 route の実態:** `/`(受付ダッシュボード: 実データ)、`/patients`(検索: 実データ、登録 UI なし)、
+`/prescriptions/[receptionId]`(draft 編集: 実データ)は業務可能。`/checkout`、`/claim-check`、`/monthly-closing`、
+`/masters`、`/sync-status`、`/admin` は **読取専用シェル**(受付 summary・scope・migration state・停止中 gate 名の
+表示のみ)。`/sync-status` の system mode は NORMAL 固定。
+
+**CI:** PostgreSQL 18.4 service での integration(81 tests)+ Playwright/axe による 9 route × viewport の
+見出し・a11y smoke。**業務 journey を貫通する E2E は存在しない**(C-064 未着手)。
+
+**構造的発見(3 点。以降の全 WP の前提):**
+
+1. **postgres mode に認証済み到達経路がない**(§18.0 認証行)。実 DB で動かすには production AuthContext
+   (C-083)か、少なくとも「認証済み context を信頼境界から注入する adapter」の SSOT 承認が要る。
+2. **受付状態遷移の route がない。** `reception_status` は `WAITING` で登録後、`IN_PROGRESS`/`COMPLETED`/
+   `CANCELLED` へ遷移させる操作が API に存在しない(DOM-004 §2 の遷移表は APPROVED だが API-006 は
+   GET/POST のみ)。draft の write guard が参照する終端状態に、実運用で到達できない。
+3. **患者 write route がない。** `POST /patients` / `PUT /patients/{id}` は未実装(C-028/C-029【SSOT】)。
+   in_memory fixture 以外で患者を系に入れる手段が DB 直接操作しかなく、紙運用の第一歩(初回来局患者の登録)が
+   成立しない。
+
+### 18.2 ギャップマトリクス(PRD-001 M1〜M12 × 実測 × SSOT × 主 gate)
+
+「稼働」= 認可済み HTTP で到達可能、「永続のみ」= schema/repository あり route なし、「型のみ」= shared-kernel/contracts
+の型・enum のみ、「なし」= コード 0。SSOT 列は IDX-001 status。
+
+| M | 業務工程 | 機能 | 実測 | SSOT | 主 gate / 参照 |
+|---|---|---|---|---|---|
+| M1 | 受付 | 紙処方箋受付・冪等登録・当日キュー | **稼働** | API-006 APPROVED | queue bound 決定(C-021、INV-20260730-01) |
+| M1 | 受付 | 状態遷移(対応開始・完了・取消) | **なし**(発見 2) | DOM-004 §2 APPROVED、API-006 に route なし | API-006 改版【SSOT】→ WP-7201 |
+| M1 | 受付 | 処方箋原本 metadata(医療機関・医師・発行日・有効期限・リフィル) | なし(`prescription_date` のみ) | DOM-002 §4 主要属性 | DOM-002 §4.1 bounded 範囲拡張【HG】→ WP-7205 |
+| M1 | 受付 | 2 次元シンボル / 電子処方箋 / OCR 取込 | なし(`prescription_intake_type` 列のみ) | JHS PROPOSED、RB-003 | §16 Track C/D【EXT】 |
+| M2 | 患者 | 検索・取得 | **稼働** | API-001 APPROVED | 検索語 URL PHI(C-038) |
+| M2 | 患者 | 登録・更新・取り違え防止 | **なし**(発見 3) | DOM-002 §2 APPROVED、API-001 は read のみ | C-028/C-029【SSOT】→ WP-7202 |
+| M2 | 保険 | 保険証・公費受給者証の履歴(保険者番号・記号番号・負担割合・有効期間) | **なし** | DOM-002 §3 APPROVED(契約 SSOT なし) | 契約起案【SSOT】→ WP-7203 |
+| M2/M3 | 資格 | 資格確認 snapshot(券面・目視の手動記録) | **永続のみ**(000009/000011、状態機械) | ADP-004 APPROVED §3 | 契約起案【SSOT】→ WP-7204 |
+| M3 | 資格 | オンライン資格確認 | なし | ADP-004、RB-002 | 【EXT】WP-6301/6306 |
+| M4 | 処方 | 手入力 draft(受付 1:1、CAS、監査) | **部分稼働(free-text 行)** | DOM-002 §4.1 APPROVED bounded | — |
+| M4 | 処方 | Rp 構造化(医薬品参照・用法・用量・日数・数量・一般名・後発可否) | **なし** | DOM-002 §4 Rp APPROVED | DOM-002 §4.1 改版【SSOT】+ 医薬品マスター → WP-7302 |
+| M4 | 処方 | 前回 Do | なし | PRD-005 §2(PROPOSED、PRD-001 未記載) | PRD-001 改版提案【SSOT】→ WP-7304 |
+| M4 | 処方 | 疑義照会記録・残薬調整記録 | なし(`LEFTOVER_ADJUSTMENT` flag のみ) | DOM-002 §4/§5 | WP-7403 / WP-7404 |
+| M4 | 確認 | 薬剤師確認・確定・訂正=新版 | **なし** | DOM-004 §1 APPROVED、C-061〜063 | C-084 資格境界【HG medical safety】→ WP-7401〜7403 |
+| M4 | 調剤 | 調剤記録(Rp ごと実施・後発品変更・薬剤師確認) | **なし** | DOM-002 §5 APPROVED(契約 SSOT なし) | 契約起案【SSOT】→ WP-7404 |
+| M5 | 算定 | 調剤報酬点数(consumer 配線・trace 永続・API-007 read) | **孤立**(engine のみ) | CAL-001 16 行 EVIDENCE_ISSUED、API-007 APPROVED | RB-008 行単位解除(step 3〜5)【HG 診療報酬】→ WP-7501 |
+| M5 | 算定 | 一部負担金・公費按分・選定療養 | 型のみ(`POINTS_ONLY_COPAY_BLOCKED`) | CAL-R-024/025/020 BLOCKED | 【HG】【EXT】→ WP-7601/7605 |
+| M6 | 会計 | 患者請求・未収・一部入金・返金・日計(append-only ledger) | **なし**(`/checkout` シェル) | ACC-001〜011 APPROVED | WP-7601 後 → WP-7602〜7604 |
+| M7 | 帳票 | 調剤録(法定)・薬袋・薬情 | **なし** | RCP-005 APPROVED、REG-003 | 帳票 legal review【HG】→ WP-7503/7504 |
+| M7 | 帳票 | 領収証・調剤明細書(採番・再発行・取消) | なし | RCP-001〜004/006 APPROVED | WP-7603 |
+| M8 | 請求 | レセプト中間モデル・請求前点検 | なし(`/claim-check` シェル) | CLM-001 工程 2/6 | WP-7701/7702 |
+| M8 | 請求 | 電算生成・記録条件検証 | なし | CLM-001 工程 3/4、RB-001 | 【HG】【EXT】WP-7705 |
+| M8 | 請求 | 月次締め・ロック・返戻再請求 | なし(`/monthly-closing` シェル) | ARC-007、CLM-001 工程 7〜10 | WP-7703/7704 |
+| M9 | マスター | 医薬品・薬価・用法・調剤行為・保険者・公費 | **なし**(`/masters` シェル) | MST-001/002 APPROVED | synthetic 先行 → WP-7301/7303、実データは RB-009【EXT】→ WP-7801 |
+| M10 | BCP | 5 モード検知・LOCAL_ONLY・RECOVERY_SYNC | なし(NORMAL 固定) | ARC-001/002 APPROVED | WP-6507/6312【REF】→ WP-7802 |
+| M11 | 基盤 | 認証(production AuthContext / OIDC) | **なし**(発見 1) | SEC-006/007/008 | C-083【HG security】→ WP-7101 |
+| M11 | 基盤 | RBAC(scope 強制) | **稼働**(`requirePermission`、UI+API) | MOD-007 APPROVED | 資格(C-084)・runtime role/RLS(C-085) |
+| M11 | 基盤 | 監査ログ(append-only、hash chain、PHI read 監査) | **稼働** | SEC-007、MOD-008 APPROVED | bounded 検証(C-088)・export(C-090)・自己増殖(C-089) |
+| M11 | 基盤 | migration 環境適用 | source のみ | DB-002 | 【HG DDL】→ WP-7102 |
+| M11 | 基盤 | structured logging / observability | **なし**(logger 全面無効、BUG-4265) | OPS-009 APPROVED | C-018/019【SSOT】→ WP-7803 |
+| M11 | 基盤 | backup / restore / DR 演習 | なし | OPS-013 | 【HG】→ WP-7804 |
+| M12 | 連携 | outbox 配送 runner・partner 登録 route・sandbox・contract test | worker class のみ | API-009〜018 APPROVED | egress 統制【HG security】(production のみ)→ WP-7103、§16 Track A |
+| — | 検証 | North Star journey E2E | **なし**(route smoke のみ) | C-064 | → WP-7104(部分)/ WP-7405(全行程) |
+
+**総括:** 「受付 → 患者検索 → 下書き → 監査」の骨格は稼働しているが、調剤レセコンとしての
+**業務完結に必要な 3 系統 — (a) 患者・保険・資格の登録系、(b) 処方の構造化 → 薬剤師確認 → 調剤記録、
+(c) 算定 → 会計 → 帳票 → 請求 — はいずれも未着手または孤立**している。(c) は法令 evidence gate が支配的で
+順序を変えられないが、(a)(b) は APPROVED domain SSOT を持ちながら**契約 SSOT と実装だけが欠けている**領域であり、
+ここが次の主戦場になる。
+
+### 18.3 実装ロードマップ — 工程 R0〜R7(WP-71xx〜78xx、全件 inventory)
+
+各 WP は **目的 / 現状 / 実装 phase(contract → schema → repository → route → web → test の順を既定)/
+受入条件 / 検証 / gate・停止条件** を持つ。risk は PRC-005 §2 の分類で、R3 以上は human pre-review record
+まで開始しない。実装 phase の「契約」は API-002(契約先行)と MOD-012 に従い `packages/contracts` + OpenAPI
+再生成 + `check:openapi` を同一 WP で同期する。migration は DB-002 に従い forward-only・環境適用は別【HG】。
+
+#### R0 — 稼働前提(durable runtime を人が使える状態にする)
+
+| WP | 目的 / 内容 | 前提 / gate | risk |
+|---|---|---|---|
+| WP-7101 | **認証済み context 注入境界の SSOT**(C-083【REF】の詳細化)。`TenantContextMode` に production 用 provider(OIDC claims → `TenantContext`)を追加する**設計**と、CI/E2E 用の「署名付き test-auth adapter」(dev header と別物。in_memory 限定 guard を postgres でも安全に外せる条件)を SEC-006 系 SSOT へ起案。**コードは書かない。** 受入: provider 抽象(interface)、claims→scope 写像、失敗時 401/403 応答族(C-034)、dev header の production 不可条件が 1 文書で確定 | 【SSOT】【HG security】 | R3 |
+| WP-7102 | **migration 000001〜000013 の環境適用 runbook**(C-058 apply gate の実行仕様)。対象環境の列挙、`db:check` 事前確認、適用順、失敗時 forward-fix 方針、適用記録の置き場(Git ではなく運用記録)。§5「残余 (b)」と同じ様式で**手順だけを確定**し実行しない | 【HG DDL】 | R3 |
+| WP-7103 | **outbox 配送 worker の runner**(WP-6003【REF】の未接続部)。`main.ts` composition に `PostgresOutboxDeliveryWorker` の常駐 loop(interval、`runOnce` の直列化、graceful shutdown で in-flight 完了、複数 process 時の単一 runner 排他 = advisory lock)を追加。sink は injected(local/CI では synthetic sink)に限定し、**production 配送は BLOCKED_SECURITY_REVIEW(egress)維持**。受入: `reception.created` が at-least-once 配送・重複なし・sink 障害注入で backoff・停止時に途中 event を失わない、を PG integration test で証明 | gate なし(local/CI 限定。config で既定 off) | R2 |
+| WP-7104 | **North Star 部分 E2E harness**(C-064 の前身)。in_memory + dev header の現行到達可能 journey: 患者検索 → 選択 → 紙受付 → queue 反映 → draft 保存 → 再取得 → CAS 競合 → audit read で `patient.searched`/`reception.created`/`prescription.draft.viewed` を確認。API 層(fastify inject)と browser 層(既存 `ui-browser-check.mjs` の journey suite 追加)の 2 層。**アプリコード変更なし**。受入: CI で決定的に PASS、PHI fixture は MOD-013 synthetic のみ、失敗時 artifact(スクリーンショット)は `artifacts/` 配下 | gate なし | R1 |
+| WP-7105 | reception queue 防御的 cap(INV-20260730-01 の選択肢 (b))。決定後に最小差分(N 超過で明示 error + `nextAction`)【REG: C-021】 | 【HG: bound 決定】 | R1 |
+
+#### R1 — 受付・患者・保険の業務完結(APPROVED domain SSOT を持ち、契約 + 実装が欠ける領域)
+
+| WP | 目的 / 内容 | 前提 / gate | risk |
+|---|---|---|---|
+| WP-7201 | **受付状態遷移 API**(発見 2 の解消)。phase 1【SSOT】: API-006 CONTRACT_CHANGE_REQUEST — `POST /reception/{receptionId}/transitions` body `{to: IN_PROGRESS|COMPLETED|CANCELLED, expectedVersion, businessReason?}`(CANCELLED は businessReason 必須 = MOD-008 `reception.cancelled` 規律)、`If-Match` 併用、逆行/終端後遷移は 409 `RCV-0004`(MOD-006 追加)。MOD-008 に `reception.started` / `reception.completed` を追加(`reception.cancelled` は既存)。phase 2: migration 000014 — `reception_entries` に `version INTEGER NOT NULL DEFAULT 1`、`status_changed_at TIMESTAMPTZ`、`cancel_reason TEXT`(CHECK: CANCELLED ⇔ non-null)。phase 3: WP-4050 の command 境界を再利用し、遷移 + audit intent + outbox intent を同一 tx(in_memory 側も同型)。phase 4: Web queue 行に「対応開始 / 完了 / 取消」操作(confirmation-dialog 既存、取消理由入力)。受入: 遷移表(DOM-004 §2)の許可 4 / 禁止 全組合せを表駆動テスト、cross-tenant 404、stale version 409、終端後の draft PUT が既存 guard で 409、audit 1 操作 = 1 event、queue reload が force | 【SSOT: API-006/MOD-006/MOD-008】。000014 の環境適用は【HG】 | R2 |
+| WP-7202 | **患者登録・更新 API**(発見 3 の解消、C-028/C-029【REF】)。phase 1【SSOT】: C-028 起案 — `patientNumber` 発番方式(薬局採番 / 自動採番)、一意性(既存 `patients_tenant_pharmacy_patient_number_unique` を authority とする)、identityDigest(C-029)の更新制約(氏名・生年月日・性別の変更は「訂正」として履歴保持)、同姓同名・同生年月日の登録時警告(取り違え防止、UIX-001)。API-001 を write 対応へ改版: `POST /patients`(Idempotency-Key 必須)、`PUT /patients/{id}`(`If-Match` 必須、412)。監査は MOD-008 **既存**種別 `patient.created` / `patient.updated` を発火(payload は patientId のみ。registry 改版不要)。phase 2: migration 000015 — `patients` に `version`、`created_at/updated_at/created_by/updated_by`、`patient_identity_history`(append-only)。phase 3/4: repository(tx + audit)、route、Web 登録フォーム(カナ・生年月日の二重確認、重複候補表示は既存 search 再利用)。受入: 冪等 replay、重複 patientNumber 409、cross-tenant 拒否、identity 変更で history 行、PHI が URL/log に出ない | 【SSOT: C-028、API-001】【HG: C-029 は cutover blocker としての位置づけ確認】 | R3 |
+| WP-7203 | **保険・公費(Coverage)登録**。phase 1【SSOT】: `coverage_contract.md`(API-0xx 新規)起案 — DOM-002 §3 の InsuranceCard 履歴(保険者番号・記号・番号・枝番・本人/家族・負担割合・有効期間)、PublicExpense 履歴(負担者番号・受給者番号・優先順位・有効期間)。**負担割合は入力値であり本 WP は計算しない**(CAL-R-024 BLOCKED を侵さない)。有効期間の重なり・優先順位の重複は 409。phase 2: migration 000016 `insurance_cards` / `public_expense_certificates`(append-only、`superseded_by`)。phase 3/4: repository、`GET/POST /patients/{id}/coverage`(scope は既存 resource `insurance` = `insurance:read` / `insurance:write`)、Web(患者コンテキスト rail に保険タブ)。受入: 期間重複拒否、履歴保持(上書きなし)、MOD-008 **既存**種別 `insurance.viewed` / `insurance.updated` の監査、cross-tenant 拒否 | 【SSOT: 新契約】(MOD-007/008 改版不要) | R3 |
+| WP-7204 | **資格確認 snapshot の手動記録 route**(眠っている 000009/000011 の配線)。phase 1【SSOT】: `eligibility_snapshot_contract.md` 起案 — ADP-004 §3 状態機械を wire に写す。手動記録できる遷移は `VERIFIED_CARD`(券面確認)/ `PROVISIONAL_VISUAL` のみ、`VERIFIED_MYNA` は外部 IF 由来限定で本 WP では 422。phase 2: `POST /reception/{id}/eligibility-snapshots`、`GET` 同、Web 受付行・patient-header の eligibility 表示を snapshot 由来へ切替。受入: 既存 repository の idempotent retry / conflict テストを route 層まで貫通、`eligibility.*` 監査(MOD-008 0.2.5 で登録済み種別)、`allowsFinalCalculationForEligibility` が UI のみで判断されない | 【SSOT: 新契約】。ONS 接続は含まない(RB-002) | R2 |
+| WP-7205 | **処方箋原本 metadata**(医療機関コード/名称、医師名、発行日、有効期限 = 発行日+4 日の既定は**入力値**、リフィル回数・残回数、分割調剤指示)。DOM-002 §4.1 bounded slice の範囲外のため、まず §4.1 改版【HG: 2026-08-26 bounded approval の拡張】。migration 000017 で `prescription_drafts` に列追加(nullable、後方互換)。有効期限超過は警告(`ClinicalAlert` 表示器再利用)であり拒否しない(薬剤師判断) | 【SSOT: DOM-002 §4.1】【HG】 | R2 |
+
+#### R2 — 処方の構造化とマスター(算定・帳票・連携が消費できる形にする)
+
+| WP | 目的 / 内容 | 前提 / gate | risk |
+|---|---|---|---|
+| WP-7301 | **医薬品マスター基盤(synthetic 先行)**。MST-001 の「版・有効日・上書き禁止」だけを先に実装: migration 000018 `master_versions`(種別・版・有効開始・廃止・経過措置・配布状態、DOM-002 §9)、`medication_items`(版 FK、自局コード、YJ/レセ電/HOT コード列は nullable、名称、規格単位、薬価(整数・単位付き、MOD-010)、後発区分、一般名コード、麻/向/毒/劇 区分)。`GET /masters/medications?asOf=&q=` 読取 route(no-store 不要 — PHI ではない。ただし tenant 横断で共有可否は DB-003 で確定)。**実データ取込は本 WP に含めない**(RB-009、source registry 登録後の WP-7801)。fixture は MOD-013 synthetic(架空名称・架空コード)。受入: as-of 解決が(処方日・調剤日)明示入力、版上書き不可、廃止日以降の解決は `PENDING_MASTER_VALIDATION` 相当の blocker | 【SSOT: MST-001 の実装分解記録】。実データ【EXT】 | R2 |
+| WP-7302 | **Rp 構造化**。phase 1【SSOT】: DOM-002 §4.1 改版 — draft 行を Rp(`rp_groups`: 剤形区分・用法参照・日数/回数)と品目(`rp_items`: 医薬品参照 = master 版 + item ID、1 回量・1 日量・総量・単位、一般名処方 flag、後発品変更可否、`UNRESOLVED_TEXT` = 未解決自由記載)へ。**移行**: 既存 free-text 行は `UNRESOLVED_TEXT` として保持し、薬剤師確認(WP-7402)前に解決必須(`CODE_MAPPING_REVIEW_REQUIRED` で停止 = DOM-004 §1 遷移 2 のガード)。phase 2: migration 000019(新テーブル追加のみ。`prescription_draft_rows` は読み専用で残し、次版 draft から新構造)。phase 3/4: contracts 改版(draft schema v2、`check:openapi`)、Web 処方 workspace の Rp 編集 UI(医薬品 incremental search、用法選択、用量計算は**しない**)。受入: 行数/文字数上限の維持、CAS 継続、content hash が新構造を覆う、未解決行が残る draft を「確認可能」と表示しない | 【SSOT: DOM-002 §4.1、contracts】、WP-7301 | R3 |
+| WP-7303 | **用法マスター(synthetic)**。自局用法コード・用法文・服用タイミング構造(1 日 N 回、食前/食後/就寝前、頓用)。JAHIS 用法コードへの写像列は仕様入手(WP-6201)まで空。薬袋・薬情(WP-7504)の用法印字の供給元 | WP-7301 | R1 |
+| WP-7304 | **前回 Do(過去処方の複製起点)**。PRD-001 M4 未記載 → PRD-005 §4 の改版提案に沿い PRD-001 改版【SSOT】。実装: 確定済み処方版(WP-7402)からの新 draft 生成(`POST /prescription-drafts/by-reception/{id}:from-prior`)、PHI read 監査、コピー元参照を draft に保持。**マスター版が変わっていれば再解決**し、廃止品目は `UNRESOLVED_TEXT` へ落とす | 【SSOT: PRD-001】、WP-7302、WP-7402 | R2 |
+
+#### R3 — 薬剤師確認・確定・調剤記録(Milestone 3 中核。C-061〜C-066【REF】を実行可能な粒度へ)
+
+| WP | 目的 / 内容 | 前提 / gate | risk |
+|---|---|---|---|
+| WP-7401 | **薬剤師 actor/qualification 境界 SSOT**(C-084【REF】)。`prescription:confirm` / `dispensing:confirm` scope の付与条件(薬剤師免許 evidence の保持形・確認者・有効性)、資格 evidence の tenant 内管理と監査、HPKI は境界外(RB-003)、非薬剤師 actor の確定操作拒否(403 + 監査 deny = C-022)。**コードなし** | 【SSOT】【HG medical safety + security】 | R3 |
+| WP-7402 | **処方確認・確定 command**(C-061/C-063)。`POST /prescriptions/{id}/confirm`(DRAFT → PHARMACIST_CONFIRMED、ガード: 全 Rp 解決済み・原本 metadata 必須項目充足・受付 IN_PROGRESS)、`POST /prescriptions/{id}/finalize`(→ PRESCRIPTION_FINALIZED)。同一 tx で `prescription_versions` へ immutable snapshot(version、content hash、確定者、時刻)、audit `prescription.confirmed` / `prescription.finalized`(MOD-008 は現在 `prescription.created/updated` のみ → **種別追加【SSOT: MOD-008】**)、outbox `prescription.finalized`(Event Catalog 第 2 event。`PARTNER_EVENT_TYPES` は現在 `reception.created` のみ → **API-012 / MOD-009 追加【SSOT】**)。migration 000020。Web: 確認画面は「差分なし・未解決 0・原本 metadata 完備」を確認者に見せてから確定(UIX-001 誤操作防止、confirmation-dialog)。受入: 非資格 actor 403、未解決行あり 409、確定後の draft PUT 409、version 1 の snapshot と draft の content hash 一致、逆行なし | WP-7401、WP-7302、WP-7201(IN_PROGRESS 到達)、WP-7205 | R3 |
+| WP-7403 | **訂正 = 新版 + 疑義照会記録**(C-062)。finalized 後の変更は `POST /prescriptions/{id}/amend`(新 version、`supersedes` 参照、理由 = 疑義照会 ID 必須)。`prescription_inquiries`(照会先・照会内容・回答・回答者・時刻・結果 = 変更なし/変更あり)。DOM-002 §5「疑義照会による処方変更は Prescription の訂正版経由(Dispensing 側で書き換え禁止)」を DB 制約と route で強制。受入: 旧版が読める・書けない、amend に inquiry なしは 422、監査 `prescription.amended`(MOD-008 追加【SSOT】、WP-7402 と同一 batch) | WP-7402 | R3 |
+| WP-7404 | **調剤記録(DispensingRecord)**。phase 1【SSOT】: `dispensing_record_contract.md` 起案 — DOM-002 §5 を wire に写す(対象 prescription version、調剤日、Rp ごと実施記録: 実調剤品目 = 後発品変更記録、数量、残薬調整記録、調剤者、薬剤師確認者・時刻)。phase 2: migration 000021 `dispensing_records` / `dispensing_items`(append-only、確認後不変)。phase 3: `POST /dispensings`(`dispensing:write`)、`POST /dispensings/{id}/confirm`(`dispensing:confirm`、DISPENSING_RECORDED)、同一 tx で audit `dispensing.confirmed`(MOD-008 **既存**)+ outbox `dispense.confirmed`(§16.3 S3 の partner 受信 event。Event Catalog 追加【SSOT: API-012 / MOD-009】)。phase 4: Web 調剤盤(WP-5113【REF】と統合。§17 の gate に従う)。受入: 未確定処方への調剤 409、疑義未解決(WP-7403)409、確認後の変更拒否、後発品変更時に一般名/変更可否の整合 check、`dispense.confirmed` が outbox に 1 件 | WP-7402/7403、【SSOT: 新契約】、Web 側は §17 gate | R3 |
+| WP-7405 | **North Star 全行程 E2E**(C-064)。WP-7104 を拡張し、受付 → 原本 metadata → Rp 構造化 → 薬剤師確認 → 確定 → 調剤記録 → audit / outbox evidence を browser + API で貫通。in_memory と **postgres(WP-7101 の test-auth adapter 承認後)** の両 mode。fail-closed 経路(非資格 actor、未解決行、終端受付)を必ず含む | WP-7402〜7404、WP-7101 | R2 |
+| WP-7406 | **fail-closed 可視化総点検 + 薬剤師 human safety/UX review packet**(C-065/C-066)。算定・請求・帳票・連携の各画面が「未実施」を成功に見せていないことの点検表と、pilot 判断前 human review の入力 packet | WP-7405 | 【HG】 |
+
+#### R4 — 算定配線(点数のみ)と法定帳票
+
+| WP | 目的 / 内容 | 前提 / gate | risk |
+|---|---|---|---|
+| WP-7501 | **算定 consumer 配線**(WP-6501【REF】の詳細化)。`dispense.confirmed` を契機に `CalculationRequest` を組立(patient / insuranceSnapshot = WP-7204 の snapshot ID / publicExpenses = WP-7203 / prescription version / dispensing / receptionDate / claimMonth / masterVersion = WP-7301 / calculationRuleVersion 明示)→ `calculate()` → `calculation_traces`(CAL-008 schema、append-only、入力の再現に必要な全参照を保持、migration 000022)→ `GET /calculations/{dispensingId}`(API-007 契約 APPROVED、`packages/contracts/src/calculation-trace.ts` 既存)→ Web `calculation-trace-view`(既存 component)へ供給。監査は MOD-008 **既存** `calculation.finalized`。**`POINTS_ONLY_COPAY_BLOCKED` を維持し金額を表示しない**。参照用ルール束 `calculationRulesV20260601`(5 本。コード注記どおり「既定の算定セットではない例示」であり、適用ルールは呼び出し側 = WP-7502 が明示指定)に限る `claimable=false` 表示専用の bounded slice から始め、EVIDENCE_ISSUED 16 行は RB-008 step 3〜5(rule 実装 → golden test 期待値 SSOT 化 → APPROVED_FOR_IMPLEMENTATION)を行単位で通す。受入: 純粋性 gate(`check:calculation-purity`)不変、trace なし結果が存在しない(型)、`affectsClaim` step は evidenceRefs≥1、同一入力の再計算で同一 trace hash、`isClaimable=false` の表示が外れない | WP-7404、WP-7204、WP-7301、【HG 診療報酬: RB-008 行単位解除】 | R3 |
+| WP-7502 | **算定要件入力(applicationKey)と施設基準**。`requirementsNotVerifiedWarning` が示す「呼び出し側指定」項目(時間外・休日・深夜、一包化、自家製剤、計量混合、麻薬/向精神薬加算、施設基準届出 = `facility_basis_version`)を、薬局設定(施設基準届出の版・有効日、migration 000023 `pharmacy_facility_basis`)と調剤記録の flag から組み立てる。**適用可否の判断はしない**(入力と evidence 参照の記録のみ) | WP-7501 | R2 |
+| WP-7503 | **調剤録**(薬剤師法 §28、REG-003)。RCP-005 template registry と `report_instances`(DOM-002 §8: 種別・版・出力日時・出力者・hash・出力時点の算定根拠/マスター版参照、migration 000024)。PDF 生成は pure renderer(外部 network なし)。再出力 = 新 instance、内容改変なし、hash による改ざん検知。法定記載事項と保存期間は REG-003【要確認】→ DB-004 retention と接続。受入: 出力後の元データ変更で hash 不一致が検出される、出力者・時刻・版が instance に固定、PHI が file 名・log に出ない | WP-7404(調剤記録)、WP-7501(点数記載は任意)、【HG: 帳票 legal reviewer】 | R3 |
+| WP-7504 | **薬袋・薬剤情報提供文書**。同 template registry。用法印字は WP-7303、品目名は WP-7301。薬情の効能・副作用文言は医薬品添付情報(実データ【EXT】)が要るため synthetic template で構造のみ先行。受入: 患者交付済み flag と取消監査(DOM-002 §8) | WP-7503 | R2 |
+| WP-7505 | **請求前点検リスト帳票**(RCP-005、PRD-001 M7)— R6 WP-7702 の点検結果を帳票化 | WP-7702 | R1 |
+
+#### R5 — 会計・領収(一部負担金 evidence 後)
+
+| WP | 目的 / 内容 | 前提 / gate | risk |
+|---|---|---|---|
+| WP-7601 | **CAL-R-024 一部負担金 evidence 発行 + golden test**(WP-6502【REF】前半)。負担割合・高額療養費限度額区分・端数処理(MOD-010)の公式資料を source registry に登録し、CAL-003 evidence_register へ行追加、golden test 期待値を SSOT 化。**コード実装は evidence APPROVED 後** | 【HG 診療報酬】【EXT: 公式資料】 | R4 |
+| WP-7602 | **会計 append-only ledger**(ACC-001 の Charge / PatientReceivable / Payment / PartialPayment / Refund / Adjustment、ACC-002〜006)。migration 000025。修正は reversal/adjustment 行の追加のみ(SPEC §9)。一部入金・入金割当(ACC-003)・ar_status(ACC-006)・日計(ACC-007)・支払方法(ACC-008、現金のみ先行)。受入: 未入金額を領収済みとして返す経路がない、reversal で残高が整数一致、同一 receipt への二重入金は冪等 | WP-7601、WP-7501 | R3 |
+| WP-7603 | **領収証・調剤明細書**(RCP-001〜004/006)。採番(RCP-002、tenant+pharmacy+年度で単調)、再発行・取消(RCP-003、新 instance + 取消監査)、明細書の記載項目(RCP-004)。監査は MOD-008 **既存** `receipt.issued/reissued/cancelled/voided`。WP-7503 の report_instances 基盤を共有 | WP-7602、WP-7503 | R3 |
+| WP-7604 | **会計 UI**(`/checkout` シェルの実体化。既存 `checkout-context` は受付 queue 読取のみ)。未収・一部入金・返金の状態を `ar_status` バッジで区別、金額は ledger 由来のみ(UI 側計算禁止) | WP-7602/7603 | R2 |
+| WP-7605 | **公費按分(CAL-R-025)+ PMH 境界**(WP-6311【REF】)。evidence 発行【HG】【EXT】。解除まで公費併用受付の算定は `PENDING_PMH_REVERIFY` / `MANUAL_REVIEW_REQUIRED` を付与し `isClaimable=false` | 【HG】【EXT】 | R4 |
+
+#### R6 — レセプト請求・月次締め(CLM-001 の工程分解)
+
+| WP | 目的 / 内容 | 前提 / gate | risk |
+|---|---|---|---|
+| WP-7701 | **レセプト中間モデル生成**(CLM-001 工程 2)。算定 trace + coverage + patient + dispensing から請求月・保険者単位の `claim_drafts`(projection、ARC-005/006 に従い再投影可能、migration 000026)。**電算 file 生成(工程 3)は RB-001 解除まで `BLOCKED_REGULATORY_REVIEW` を API/UI に明示**し、生成 route を置かない | WP-7501、WP-7602 | R3 |
+| WP-7702 | **請求前点検**(工程 6)。点検項目: 入力漏れ(原本 metadata・Rp 解決)、算定根拠(trace の evidenceRefs)、資格未確認(`isClaimable` + WP-7204 状態)、公費(WP-7605 解除前は保留)、薬歴未記載(WP-6401【REF】接続後)、レセプト形式(工程 4 解除後)。結果は `claim_check_results`(append-only)、監査は MOD-008 **既存** `claim.checked`。`/claim-check` シェルの実体化 | WP-7701 | R2 |
+| WP-7703 | **月次締め = claim snapshot / lock**(ARC-007、工程 7/8)。`allowsClaimFinalization(mode)` NORMAL のみ、RECOVERY_SYNC 未完了ゼロ、締め操作者と承認者の分離【要確認 DOM-004: 単独薬局での二者承認の現実性 → human 判断】、ロック後の変更禁止(DB 制約 + route)。監査は MOD-008 **既存** `claim.closed` / `claim.locked`。`/monthly-closing` シェルの実体化。締め中も受付・調剤・会計を止めない(SPEC §13) | WP-7702、【HG: 二者承認方針】 | R3 |
+| WP-7704 | **返戻・再請求管理**(工程 10)。返戻受領登録、新版レセプト生成(元データ改変禁止)、点検再通過。状態細分は審査支払機関運用確認後【要確認】 | WP-7703、【EXT】 | R3 |
+| WP-7705 | **電子レセプト生成 + 記録条件検証**(工程 3/4)。RB-001 解除(記録条件仕様の版確認 + evidence + `electronic_receipt_design` APPROVED)後のみ。CLM-002 reading notes を起点 | 【HG】【EXT: RB-001】 | R4 |
+
+#### R7 — マスター運用・BCP・基盤
+
+| WP | 目的 / 内容 | 前提 / gate | risk |
+|---|---|---|---|
+| WP-7801 | **MST-001 24 段 pipeline の最小実装**(取得 → hash → 形式/文字コード/schema → 差分 → 有効日/廃止日/経過措置 → 参照整合 → 回帰 → 影響レポート → staging → 承認 → 反映 → rollback point → 監査)。実データは source registry 登録 + RB-009 解除後。WP-7301 の `master_versions` を配布状態管理に使い、監査は MOD-008 **既存** `master.approved/applied/rolled_back` | WP-7301、【EXT】【HG: 承認・本番反映】 | R3 |
+| WP-7802 | **システムモード検知 backend**(WP-6507/6312【REF】)。NORMAL 固定を ARC-001 の 5 モードへ。外部公的システム疎通・Cloud Core 疎通の probe、LOCAL_ONLY での `PROVISIONAL_CALCULATION` 付与、RECOVERY_SYNC の `CONFLICT_REQUIRES_HUMAN_REVIEW`。`/sync-status` `mode-overview` を実データへ | WP-7204(資格保留)、WP-7501(仮算定) | R3 |
+| WP-7803 | **PHI-safe structured logging**(C-018/019【REF】、BUG-4265)。SEC 系 SSOT で出力境界(identifier のみ・PHI sentinel test)を確定後、Fastify logger 有効化 + request id + PHI-free error 相関。OPS-009 の最小実装 | 【SSOT】【HG security/privacy】 | R2 |
+| WP-7804 | **backup / restore 演習 runbook + restore test**。対象(PostgreSQL 論理/物理)、RPO/RTO(OPS-005)、restore 後の audit chain 再検証(SEC-007)、migration 状態の整合確認。実行は【HG】 | 【HG】 | R3 |
+| WP-7805 | 監査 bounded chain verification(C-088)/ retention-complete export(C-090)/ 自己増殖(C-089)【REF】 | 【SSOT】【HG】 | R3 |
+| WP-7806 | **在庫 read-only projection API 口**(PRD-005 #10、WP-6403【REF】)。調剤記録(WP-7404)由来の払出 projection のみ。書込みなし | WP-7404 | R1 |
+
+### 18.4 段階 exit criteria(R0〜R7)
+
+| 段階 | 主 WP | exit(全件 synthetic。production/pilot 判断は含まない) |
+|---|---|---|
+| **R0** | 7101〜7104(7105 は決定待ち) | 認証境界 SSOT が PROPOSED、migration runbook が確定、outbox runner が CI で at-least-once 証明、部分 journey E2E が CI で決定的 PASS |
+| **R1** | 7201〜7205 | 受付が WAITING→IN_PROGRESS→COMPLETED/CANCELLED を API/Web で遷移し監査 1:1、新規患者を UI から登録して受付できる、保険・公費履歴と券面資格確認が snapshot として受付に紐づく、未確認受付が「確定算定可」と表示されない |
+| **R2** | 7301〜7304 | synthetic 医薬品/用法マスターに対し Rp 構造化 draft が保存・CAS・hash 検証を通り、未解決行を含む draft が「確認可能」と表示されない |
+| **R3** | 7401〜7406 | Milestone 3 exit(`DEVELOPMENT_POLICY.md §4`)全項目: 仮/確定の状態分離、資格境界必須、訂正=新版、全遷移に version/audit/outbox evidence、North Star E2E PASS、算定/請求/JAHIS/PH-OS の fail-closed 可視化、human pharmacist review packet 提出 |
+| **R4** | 7501〜7505 | 確定調剤 → trace 永続 → API-007 read → Web 表示が evidence 済みルール限定で貫通、金額非表示、調剤録 instance が hash 付きで出力・改変検知 |
+| **R5** | 7601〜7605 | CAL-R-024 evidence APPROVED、ledger が append-only で一部入金・返金を表現、領収証/明細書が採番・再発行・取消の履歴を持つ |
+| **R6** | 7701〜7704(7705 は RB-001) | 中間モデル・点検・月次 snapshot/lock が NORMAL 限定で動作、電算生成は明示 BLOCKED 表示 |
+| **R7** | 7801〜7806 | 実マスター取込 pipeline が承認 flow を持つ、5 モード検知、PHI-safe log、restore 演習記録 |
+
+R0〜R2 は互いに独立性が高く並行起案できるが、**実装は WIP=1**。R3 は R1(7201/7205)と R2(7302)に依存し、
+R4 以降は R3 の確定調剤なしに開始できない(算定・帳票・会計・請求は確定事実の消費者)。R7 の 7803/7804 は
+任意時点で差し込める(pilot 前には必須)。
+
+### 18.5 human gate・SSOT 改版・外部手続きの集約(本節が新たに要求するもの)
+
+- **SSOT 改版(PRC-007)、実装を直接 unlock するもの(documentation-only work として `DEVELOPMENT_POLICY.md §8`
+  が許容する範囲):** API-006 遷移 route + MOD-006 `RCV-0004` + MOD-008 `reception.started/completed`(7201)、
+  C-028 Patient create 一意性 + API-001 write 改版 + MOD-008 `patient.created/updated`(7202)、coverage 契約(7203)、
+  eligibility snapshot 契約(7204)、DOM-002 §4.1 拡張 — 原本 metadata と Rp 構造化(7205/7302)、dispensing 契約(7404)、
+  MST-001 実装分解(7301)、PRD-001 前回 Do(7304)、MOD-008 種別追加 `prescription.confirmed/finalized/amended`
+  (7402/7403)、API-012 / MOD-009 Event Catalog 追加 `prescription.finalized` / `dispense.confirmed`(7402/7404)。
+  **既存種別で足りるもの(改版不要):** `patient.created/updated`、`insurance.viewed/updated`、`eligibility.*`、
+  `dispensing.confirmed`、`calculation.finalized`、`claim.checked/closed/locked`、`receipt.*`、`master.*`。
+- **human gate(security/privacy):** 認証済み context 注入境界と test-auth adapter(7101)、PHI-safe logging 境界(7803)、
+  restore 演習(7804)、egress 統制(production 配送、既登録)。
+- **human gate(medical safety):** 薬剤師 actor/qualification 境界(7401)、pharmacist safety/UX review(7406)、
+  帳票 legal review(7503)、月次締め二者承認方針(7703)。
+- **human gate(DDL/運用):** migration 000001〜000013 適用(7102)、以降の 000014〜000026 も各 WP で source landing と
+  環境適用を分離。
+- **human gate(診療報酬)+ 外部手続き:** RB-008 行単位解除(7501)、CAL-R-024(7601)、CAL-R-025(7605)、RB-001(7705)、
+  RB-009 + 実マスター(7801)、bound 決定(7105)。
+- **本節が解除しないもの:** REG-004 RB-001〜RB-010 全件、HPKI、FHIR/JAHIS conformance 主張、production/deploy/pilot、
+  §11 release blockers。いずれも既登録 gate のまま。
+
+### 18.6 READY 昇格候補(slot は消費しない。順序は推奨)
+
+現行 queue は CURRENT=0 / READY=0。`DEVELOPMENT_POLICY.md §8`「current milestone exit を閉じる work を選ぶ」に
+照らすと、現 milestone(3: 薬剤師 vertical journey)の exit を直接前進させ、かつ gate なしで着手できるコード変更は
+次の 2 件に限られる。
+
+| 順 | 候補 | 種別 | 根拠 |
+|---|---|---|---|
+| 1 | **WP-7104** North Star 部分 E2E harness | コード(test/harness のみ、アプリ変更なし) | C-064 の前身。現行到達可能 journey の回帰基盤を先に置かないと、R1〜R3 の各 slice が journey 破壊を検出できない。gate なし・R1 |
+| 2 | **WP-7103** outbox 配送 runner(local/CI sink 限定) | コード(composition + PG integration test) | Milestone 2.5 exit「worker が `reception.created` を at-least-once 配送」の未接続部。production 配送は既登録 gate のまま。gate なし・R2 |
+| 3 | **SSOT 起案 batch(PLAN_ONLY)** — 7201(API-006 改版)、7202(C-028)、7203/7204(契約)、7205/7302(DOM-002 §4.1) | 文書 | 実装を直接 unlock する documentation-only work。READY slot ではなく PRC-007 の PROPOSED 起案として並行可能。起案順は 7201 → 7204 → 7202 → 7203 → 7205/7302(依存の浅い順) |
+| 4 | **human 決定待ち** — 7105(bound)、7102(migration 適用)、7101(認証境界) | 決定 | 決定なしに実装しない |
+
+**明示的に READY へ推奨しないもの:** 7202 以降の全実装 WP(SSOT 未起案)、R4〜R6(確定調剤が存在しない)、
+外部 IF 系(仕様未入手)。「関連コードが既に存在する」ことは READY の根拠にならない(§18.1 の眠っている資産は
+配線先の契約 SSOT が無いため)。
+
+**集計:** R0=5 / R1=5 / R2=4 / R3=6 / R4=5 / R5=5 / R6=5 / R7=6 — 合計 41 WP(うち既登録 C-xxx/WP-6xxx の
+詳細化【REF】11 件、新規 30 件)。本節の追加は planning record の変更のみであり、実装・検証実行・SSOT 改版・
+migration 適用・gate 解除・commit 以外の Git 操作をいずれも行っていない。
