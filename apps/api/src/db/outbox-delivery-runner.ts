@@ -20,11 +20,14 @@ import type {
  * - `stop()` は新規 tick を止め、in-flight の `runOnce` 完了を待ってから lock を
  *   解放する。配送中 event は sink 成功 → delivered_at → COMMIT の順で確定する
  *   ため、待機することで「sink 成功したのに delivered 未記録」の窓を閉じる。
+ *   stop 進行中の `start()` は拒否する(完了後の再 start は可能)。
  * - sink は注入専用。composition(main.ts)は local/CI 用の runtime event 記録
  *   sink だけを結線し、外部 egress 向け sink は結線しない
  *   (production 配送は BLOCKED_SECURITY_REVIEW egress gate のまま)。
- * - runOnce / lock 取得の失敗は runner を落とさない。lock 経路の失敗では client を
- *   破棄して次 tick で再接続し、run の失敗では lock を保持したまま次 tick で
+ * - runOnce / lock 取得の失敗は runner を落とさない。lock client は保持中に
+ *   'error' listener を持ち、socket 断(= session 死で advisory lock は自動解放
+ *   済み)でも即座に client を破棄し次 tick で再接続・再獲得する。query 経路の
+ *   失敗も同じ破棄経路を通る。run の失敗では lock を保持したまま次 tick で
  *   再試行する(at-least-once、永続失敗の可視化は API-012 後)。
  */
 export interface OutboxDeliveryRunnerWorker {
@@ -71,9 +74,11 @@ export class PostgresOutboxDeliveryRunner {
   private readonly events: RuntimeOperationalEventSink | undefined;
 
   private running = false;
+  private stopping = false;
   private timer: NodeJS.Timeout | undefined;
   private inFlight: Promise<void> | undefined;
   private lockClient: PoolClient | undefined;
+  private lockClientOnError: (() => void) | undefined;
   private lockHeld = false;
   private lockWaitingReported = false;
 
@@ -94,8 +99,11 @@ export class PostgresOutboxDeliveryRunner {
    * lock 未獲得の standby は interval ごとに獲得を再試行する。
    */
   start(): void {
-    if (this.running) {
-      throw new Error('outbox delivery runner is already running');
+    if (this.running || this.stopping) {
+      // stop 中の再 start を許すと、drain 待ちの旧 tick が完了時に
+      // `this.running` を見て第 2 の timer chain を作り、runOnce の
+      // 直列性が崩れる。stop() の await 完了後に再 start すること。
+      throw new Error('outbox delivery runner is already running or stopping');
     }
     this.running = true;
     recordSafely(this.events, {
@@ -130,7 +138,20 @@ export class PostgresOutboxDeliveryRunner {
   private async tickOnce(): Promise<void> {
     try {
       if (this.lockClient === undefined) {
-        this.lockClient = await this.pool.connect();
+        const client = await this.pool.connect();
+        // checked-out client は pool の idle error listener が外れているため、
+        // socket 断が 'error' emit で listener 不在 → uncaught となり得る。
+        // session 級 advisory lock は session 死で自動解放済みなので、保持扱いの
+        // まま配送を続けず破棄して次 tick で再接続・再獲得する。
+        const onError = (): void => {
+          recordSafely(this.events, { kind: 'outbox.runner.lock_lost' });
+          if (this.lockClient === client) {
+            this.discardLockClient();
+          }
+        };
+        client.on('error', onError);
+        this.lockClient = client;
+        this.lockClientOnError = onError;
       }
       if (!this.lockHeld) {
         const result = await this.lockClient.query<{ acquired: boolean }>(
@@ -180,11 +201,23 @@ export class PostgresOutboxDeliveryRunner {
     this.lockClient = undefined;
     this.lockHeld = false;
     if (client === undefined) return;
+    this.detachLockClientErrorHandler(client);
     try {
       client.release(new Error('outbox delivery runner lock client reset'));
     } catch {
       // release 失敗でも client 参照は既に切り離している。
     }
+  }
+
+  /**
+   * 管理下の client から runner 固有の error handler を外す。pool へ返す・
+   * 破棄する前に呼ばないと、返却済み client に handler が残り、別用途で使われた
+   * ときの error を lock 喪失として誤記録する(滞留で listener 上限警告にもなる)。
+   */
+  private detachLockClientErrorHandler(client: PoolClient): void {
+    if (this.lockClientOnError === undefined) return;
+    client.off('error', this.lockClientOnError);
+    this.lockClientOnError = undefined;
   }
 
   private async releaseLock(): Promise<void> {
@@ -204,6 +237,10 @@ export class PostgresOutboxDeliveryRunner {
       client.release();
     } catch {
       // 同上。
+    } finally {
+      // release() が pool の idle listener を付け直した後で runner 側を外す
+      // (外す順を逆にすると query〜release 間に listener 不在の窓ができる)。
+      this.detachLockClientErrorHandler(client);
     }
   }
 
@@ -215,13 +252,18 @@ export class PostgresOutboxDeliveryRunner {
     if (!this.running && this.timer === undefined && this.inFlight === undefined) {
       return;
     }
+    this.stopping = true;
     this.running = false;
-    if (this.timer !== undefined) {
-      clearTimeout(this.timer);
-      this.timer = undefined;
+    try {
+      if (this.timer !== undefined) {
+        clearTimeout(this.timer);
+        this.timer = undefined;
+      }
+      await this.inFlight;
+      await this.releaseLock();
+    } finally {
+      this.stopping = false;
     }
-    await this.inFlight;
-    await this.releaseLock();
     recordSafely(this.events, { kind: 'outbox.runner.stopped' });
   }
 }

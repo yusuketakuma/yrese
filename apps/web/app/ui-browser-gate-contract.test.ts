@@ -80,6 +80,10 @@ describe("UI browser validation gate", () => {
     expect(fixtureApi).toContain('url.pathname === "/reception/queue"');
     expect(fixtureApi).toContain('url.pathname === "/reception"');
     expect(fixtureApi).toContain("idempotencyKey");
+    // fixture のエラー応答は実 wire の RCV 系コードを使う(架空の RECEPTION-* 禁止)。
+    expect(fixtureApi).toContain("RCV-0001");
+    expect(fixtureApi).toContain("RCV-0003");
+    expect(fixtureApi).not.toContain("RECEPTION-000");
     expect(fixtureApi).toContain("/prescription-drafts/by-reception/");
     expect(fixtureApi).toContain("expectedVersion");
     expect(fixtureApi).toContain('request.headers["if-match"]');

@@ -286,7 +286,7 @@ const server = createServer(async (request, response) => {
     const date = url.searchParams.get("date");
     if (date === null) {
       sendJson(request, response, 400, {
-        errorCode: "RECEPTION-0001",
+        errorCode: "RCV-0001",
         message: "date is required",
       });
       return;
@@ -311,7 +311,7 @@ const server = createServer(async (request, response) => {
       body = await readJsonBody(request);
     } catch {
       sendJson(request, response, 400, {
-        errorCode: "RECEPTION-0001",
+        errorCode: "RCV-0001",
         message: "Invalid reception request",
       });
       return;
@@ -324,7 +324,7 @@ const server = createServer(async (request, response) => {
       idempotencyKey.trim().length === 0
     ) {
       sendJson(request, response, 400, {
-        errorCode: "RECEPTION-0001",
+        errorCode: "RCV-0001",
         message: "Invalid reception request",
       });
       return;
@@ -334,7 +334,7 @@ const server = createServer(async (request, response) => {
     );
     if (patient === undefined) {
       sendJson(request, response, 404, {
-        errorCode: "RECEPTION-0002",
+        errorCode: "RCV-0002",
         message: "Patient not found for reception",
       });
       return;
@@ -343,7 +343,7 @@ const server = createServer(async (request, response) => {
     if (existing !== undefined) {
       if (existing.patient.patientId !== patientId) {
         sendJson(request, response, 409, {
-          errorCode: "RECEPTION-0003",
+          errorCode: "RCV-0003",
           message: "Reception idempotency conflict",
         });
         return;

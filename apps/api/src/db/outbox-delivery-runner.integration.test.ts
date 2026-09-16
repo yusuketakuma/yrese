@@ -1,3 +1,5 @@
+import { EventEmitter } from "node:events";
+
 import { describe, expect, it } from "vitest";
 import type { Pool } from "pg";
 
@@ -187,32 +189,50 @@ const lockKeyFor = (name: string) => `yrese.test.outbox_runner.${name}`;
 
 /** DB-less: lock 応答を制御できる fake client/pool で loop 規律を検証する。 */
 describe("PostgresOutboxDeliveryRunner (DB-less)", () => {
+  // runner は保持中の client に 'error' listener を付けるため、fake client は
+  // EventEmitter を継承させて socket 断を emit できるようにする。
+  type FakeClient = EventEmitter & {
+    query: (text: string) => Promise<{ rows: unknown[] }>;
+    release: (error?: unknown) => void;
+  };
+
+  function fakeClient(
+    acquired: boolean,
+    sink: { queries: string[]; released: unknown[] },
+  ): FakeClient {
+    const client = new EventEmitter() as FakeClient;
+    client.query = async (text: string) => {
+      sink.queries.push(text);
+      if (text.includes("pg_try_advisory_lock")) {
+        return { rows: [{ acquired }] };
+      }
+      if (text.includes("pg_advisory_unlock")) {
+        return { rows: [{ unlocked: true }] };
+      }
+      return { rows: [] };
+    };
+    client.release = (error?: unknown) => {
+      sink.released.push(error);
+    };
+    return client;
+  }
+
   function fakePool(acquired: boolean): {
     pool: Pool;
     queries: string[];
-    released: boolean[];
+    released: unknown[];
+    clients: FakeClient[];
   } {
     const queries: string[] = [];
-    const released: boolean[] = [];
-    const client = {
-      query: async (text: string) => {
-        queries.push(text);
-        if (text.includes("pg_try_advisory_lock")) {
-          return { rows: [{ acquired }] };
-        }
-        if (text.includes("pg_advisory_unlock")) {
-          return { rows: [{ unlocked: true }] };
-        }
-        return { rows: [] };
-      },
-      release: () => {
-        released.push(true);
-      },
-    };
+    const released: unknown[] = [];
+    const clients: FakeClient[] = [];
+    const client = fakeClient(acquired, { queries, released });
+    clients.push(client);
     return {
       pool: { connect: async () => client } as unknown as Pool,
       queries,
       released,
+      clients,
     };
   }
 
@@ -277,10 +297,7 @@ describe("PostgresOutboxDeliveryRunner (DB-less)", () => {
       connect: async () => {
         connectCalls += 1;
         if (connectCalls === 1) throw new Error("synthetic connect failure");
-        return {
-          query: async () => ({ rows: [{ acquired: true }] }),
-          release: () => undefined,
-        };
+        return fakeClient(true, { queries: [], released: [] });
       },
     } as unknown as Pool;
     const worker = countingWorker();
@@ -296,6 +313,79 @@ describe("PostgresOutboxDeliveryRunner (DB-less)", () => {
     expect(
       events.events.some((e) => e.kind === "outbox.runner.run_failed"),
     ).toBe(true);
+    await runner.stop();
+  });
+
+  it("discards a dead lock client and re-acquires the lock on the next tick", async () => {
+    const queries: string[] = [];
+    const released: unknown[] = [];
+    const clients: FakeClient[] = [];
+    const pool = {
+      connect: async () => {
+        const client = fakeClient(true, { queries, released });
+        clients.push(client);
+        return client;
+      },
+    } as unknown as Pool;
+    const worker = countingWorker();
+    const events = recordingEvents();
+    const runner = new PostgresOutboxDeliveryRunner(pool, worker, {
+      intervalMs: 10,
+      lockKey: lockKeyFor("lock-death"),
+      events,
+    });
+    runner.start();
+    await waitUntil(() => worker.calls.length >= 1, "first run");
+    const first = clients[0];
+    // session 死亡(socket 断)。'error' listener が無ければ uncaught で
+    // process が落ちる経路だった。
+    first?.emit("error", new Error("synthetic socket reset"));
+    expect(
+      events.events.some((e) => e.kind === "outbox.runner.lock_lost"),
+    ).toBe(true);
+    // 死んだ client は error 付きで release(= pool から破棄)される。
+    expect(released).toHaveLength(1);
+    expect(released[0]).toBeInstanceOf(Error);
+    // 次 tick で別 client に再接続し、lock を再獲得して runOnce を続ける。
+    await waitUntil(
+      () => clients.length >= 2 && worker.calls.length >= 2,
+      "reconnect, re-acquire, rerun",
+    );
+    await runner.stop();
+    // 停止後に runner の handler は client から外れている(返却済み client に
+    // stale listener を残さない)。
+    expect(first?.listenerCount("error")).toBe(0);
+  });
+
+  it("rejects start while stop is draining in-flight work", async () => {
+    const { pool } = fakePool(true);
+    let releaseRun: (() => void) | undefined;
+    let markEntered!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      markEntered = resolve;
+    });
+    const worker: OutboxDeliveryRunnerWorker = {
+      async runOnce() {
+        markEntered();
+        await new Promise<void>((resolve) => {
+          releaseRun = resolve;
+        });
+        return { delivered: 0, failed: 0, failures: [] };
+      },
+    };
+    const runner = new PostgresOutboxDeliveryRunner(pool, worker, {
+      intervalMs: 10,
+      lockKey: lockKeyFor("stop-drain"),
+    });
+    runner.start();
+    await entered;
+    const stopPromise = runner.stop();
+    // drain 中の start は第 2 の timer chain を残すため拒否する。
+    expect(() => runner.start()).toThrow(/already running or stopping/);
+    releaseRun?.();
+    await stopPromise;
+    // stop 完了後の再 start は可能で、直列 tick を維持する。
+    runner.start();
     await runner.stop();
   });
 });

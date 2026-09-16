@@ -48,6 +48,9 @@ export type RuntimeOperationalEvent =
       readonly kind: 'outbox.runner.lock_waiting';
     }
   | {
+      readonly kind: 'outbox.runner.lock_lost';
+    }
+  | {
       readonly kind: 'outbox.runner.run_failed';
     }
   | {
@@ -77,6 +80,7 @@ function eventLevel(event: RuntimeOperationalEvent): 'ERROR' | 'INFO' {
   switch (event.kind) {
     case 'api.shutdown.failed':
     case 'database.pool.background_error':
+    case 'outbox.runner.lock_lost':
     case 'outbox.runner.run_failed':
       return 'ERROR';
     case 'api.shutdown.completed':
