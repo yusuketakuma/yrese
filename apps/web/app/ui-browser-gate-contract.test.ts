@@ -44,7 +44,7 @@ describe("UI browser validation gate", () => {
     expect(browserCheck).toContain("window.scrollTo(0, 0)");
     expect(browserCheck).toContain("mobile safety context");
     expect(browserCheck).toContain("admin tabs");
-    expect(browserCheck.match(/caret: "initial"/g)).toHaveLength(4);
+    expect(browserCheck.match(/caret: "initial"/g)).toHaveLength(5);
     expect(browserCheck).toContain("reception-to-prescription-handoff");
     expect(browserCheck).toContain("受付との関連を確認しました");
     expect(browserCheck).toContain("waitForPersistedDraft");
@@ -64,6 +64,12 @@ describe("UI browser validation gate", () => {
     expect(browserCheck).toContain("dialog.dismiss");
     expect(browserCheck).toContain("dialog.accept");
     expect(browserCheck).toContain('forcedColors: "active"');
+    // WP-7104: North Star 部分 journey(検索→受付登録→キュー→引継ぎ→下書き保存)。
+    expect(browserCheck).toContain("checkNorthStarJourney");
+    expect(browserCheck).toContain(
+      "north-star-patient-reception-draft-journey",
+    );
+    expect(browserCheck).toContain("この患者を受付登録");
   });
 
   it("uses synthetic fixture patients and receptions with no production endpoint", () => {
@@ -72,6 +78,8 @@ describe("UI browser validation gate", () => {
     expect(fixtureApi).toContain("テスト患者 一");
     expect(fixtureApi).toContain('url.pathname === "/whoami"');
     expect(fixtureApi).toContain('url.pathname === "/reception/queue"');
+    expect(fixtureApi).toContain('url.pathname === "/reception"');
+    expect(fixtureApi).toContain("idempotencyKey");
     expect(fixtureApi).toContain("/prescription-drafts/by-reception/");
     expect(fixtureApi).toContain("expectedVersion");
     expect(fixtureApi).toContain('request.headers["if-match"]');

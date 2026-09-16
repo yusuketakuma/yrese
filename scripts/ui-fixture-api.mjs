@@ -31,8 +31,18 @@ const patients = [
 
 const prescriptionDrafts = new Map();
 
+/**
+ * UI 経由で登録された受付(冪等キー → entry)。
+ * fixture サーバープロセス内だけで有効な揮発状態であり、合成値のみを保持する。
+ * 種受付と同じく、登録分はどの業務日のキューにも出現させる — 日跨ぎ境界で
+ * 登録時刻の JST 業務日と表示中の日付がずれても browser check が決定的に
+ * PASS するための fixture 簡略化である(本物の日付帰属は API 層で検証済み)。
+ */
+const createdReceptionsByKey = new Map();
+let createdReceptionSequence = 100;
+
 function receptionEntries(date) {
-  return [
+  const seeds = [
     {
       receptionId: "reception-e2e-001",
       patient: patients[0],
@@ -48,6 +58,7 @@ function receptionEntries(date) {
       prescriptionIntakeType: "paper",
     },
   ];
+  return [...seeds, ...createdReceptionsByKey.values()];
 }
 
 // 運用集計フィクスチャ(合成値のみ)。件数・時刻・enum・スキーマ版数だけを返し、
@@ -65,15 +76,22 @@ const ELIGIBILITY_STATUS_ORDER = [
   "NOT_CHECKED",
 ];
 
-const outboxSummary = {
-  pendingCount: 2,
-  deliveredCount: 1,
-  oldestPendingCreatedAt: "2026-08-25T00:15:00.000Z",
-  byEventType: [
-    { eventType: "reception.created", pendingCount: 2, deliveredCount: 1 },
-  ],
-  legacyOrphanCount: 0,
-};
+function currentOutboxSummary() {
+  const pendingCount = 2 + createdReceptionsByKey.size;
+  return {
+    pendingCount,
+    deliveredCount: 1,
+    oldestPendingCreatedAt: "2026-08-25T00:15:00.000Z",
+    byEventType: [
+      {
+        eventType: "reception.created",
+        pendingCount,
+        deliveredCount: 1,
+      },
+    ],
+    legacyOrphanCount: 0,
+  };
+}
 
 const migrationState = {
   available: true,
@@ -281,7 +299,68 @@ const server = createServer(async (request, response) => {
   }
 
   if (method === "GET" && url.pathname === "/operations/outbox-summary") {
-    sendJson(request, response, 200, outboxSummary);
+    sendJson(request, response, 200, currentOutboxSummary());
+    return;
+  }
+
+  // POST /reception: 実サーバーと同じ冪等契約。同一 idempotencyKey の再送は
+  // 既存 entry を 200 で返し、別 patientId への key 再利用は 409。
+  if (method === "POST" && url.pathname === "/reception") {
+    let body;
+    try {
+      body = await readJsonBody(request);
+    } catch {
+      sendJson(request, response, 400, {
+        errorCode: "RECEPTION-0001",
+        message: "Invalid reception request",
+      });
+      return;
+    }
+    const patientId = body?.patientId;
+    const idempotencyKey = body?.idempotencyKey;
+    if (
+      typeof patientId !== "string" ||
+      typeof idempotencyKey !== "string" ||
+      idempotencyKey.trim().length === 0
+    ) {
+      sendJson(request, response, 400, {
+        errorCode: "RECEPTION-0001",
+        message: "Invalid reception request",
+      });
+      return;
+    }
+    const patient = patients.find(
+      (candidate) => candidate.patientId === patientId,
+    );
+    if (patient === undefined) {
+      sendJson(request, response, 404, {
+        errorCode: "RECEPTION-0002",
+        message: "Patient not found for reception",
+      });
+      return;
+    }
+    const existing = createdReceptionsByKey.get(idempotencyKey);
+    if (existing !== undefined) {
+      if (existing.patient.patientId !== patientId) {
+        sendJson(request, response, 409, {
+          errorCode: "RECEPTION-0003",
+          message: "Reception idempotency conflict",
+        });
+        return;
+      }
+      sendJson(request, response, 200, existing);
+      return;
+    }
+    createdReceptionSequence += 1;
+    const entry = {
+      receptionId: `reception-e2e-${createdReceptionSequence}`,
+      patient,
+      acceptedAt: new Date().toISOString(),
+      receptionStatus: "WAITING",
+      prescriptionIntakeType: "paper",
+    };
+    createdReceptionsByKey.set(idempotencyKey, entry);
+    sendJson(request, response, 201, entry);
     return;
   }
 

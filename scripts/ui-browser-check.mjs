@@ -602,6 +602,69 @@ async function checkDraftRecoveryAndPatientGuard(page) {
   await page.emulateMedia({ forcedColors: "none" });
 }
 
+/**
+ * WP-7104 layer 2: North Star 部分 journey の browser 層。
+ * 患者検索→選択→受付登録(POST /reception)→キュー反映→処方入力へ引き継ぎ→
+ * サーバー下書き保存、を実 UI で貫通する。薬剤師確認・確定は未実装のため
+ * 対象外。fixture API は冪等キー収容済み(scripts/ui-fixture-api.mjs)。
+ */
+async function checkNorthStarJourney(page) {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto(`${BASE_URL}/patients`, { waitUntil: "networkidle" });
+  await searchPatients(page);
+  await selectPatient(page, 0);
+  await page
+    .locator(".patient-context-bar")
+    .getByText("テスト患者 一")
+    .waitFor();
+
+  await page.locator('.app-nav-link[href="/"]').click();
+  await waitForRoute(page, "/");
+  const queueRows = page.locator(
+    'section[aria-label="受付ダッシュボード"] tbody tr',
+  );
+  // キューは非同期ロード — 件数表示が出てから種行を数える。
+  await page.getByText(/\d{4}-\d{2}-\d{2} の受付: \d+件/u).waitFor();
+  const seededRowCount = await queueRows.count();
+  const registration = page.locator('form[aria-label="受付登録"]');
+  await registration
+    .getByRole("button", { name: "この患者を受付登録" })
+    .click();
+  await page.getByText(/受付を登録しました/u).waitFor();
+  await page.waitForFunction(
+    (expectedCount) =>
+      document.querySelectorAll(
+        'section[aria-label="受付ダッシュボード"] tbody tr',
+      ).length === expectedCount,
+    seededRowCount + 1,
+  );
+
+  const createdRow = queueRows.last();
+  await createdRow
+    .getByRole("link", { name: "この受付を処方入力へ引き継ぐ" })
+    .click();
+  await page.waitForURL(`${BASE_URL}/prescriptions`);
+  await page.getByText("受付との関連を確認しました").waitFor();
+
+  await page.getByLabel("RP1 薬剤名").fill("E2E受付経由薬5mg");
+  await page.getByLabel("RP1 用法用量").fill("1日1回 夕食後");
+  await page.getByLabel("RP1 日数").fill("5");
+  await page.getByLabel("RP1 数量").fill("5錠");
+  await page.getByRole("button", { name: "処方下書きを保存" }).click();
+  await page.getByText("サーバー保存が完了しました").waitFor();
+  await waitForPersistedDraft(page, 1, "E2E受付経由薬5mg");
+
+  findings.interactionChecks.push({
+    name: "north-star-patient-reception-draft-journey",
+    status: "pass",
+  });
+  await page.screenshot({
+    path: path.join(ARTIFACT_DIR, "north-star-journey.png"),
+    fullPage: true,
+    caret: "initial",
+  });
+}
+
 const browser = await chromium.launch({ headless: true });
 try {
   const context = await browser.newContext({
@@ -619,6 +682,7 @@ try {
   await checkKeyboardLandmarks(page);
   await checkReceptionHandoff(page);
   await checkDraftRecoveryAndPatientGuard(page);
+  await checkNorthStarJourney(page);
 
   assert(
     findings.consoleErrors.length === 0,
