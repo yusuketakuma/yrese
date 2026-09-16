@@ -744,13 +744,29 @@ async function testBoundaryViolationDetection() {
   );
   await writeText(
     path.join(root, "packages", "example", "src", "index.ts"),
-    "import { buildServer } from '@yrese/api';\nexport const server = buildServer;\n",
+    [
+      // manifest 由来の app package 名で検出する(hardcode 名への rename 迂回を防ぐ)
+      "import { app } from '@fixture/web';",
+      "import { internal } from '@fixture/web/internal';",
+      // `..` 始まりの dir 名を apps 外と誤判定しない
+      "import { hidden } from '../../../apps/..foo/x';",
+      "export const refs = { app, internal, hidden };",
+      "",
+    ].join("\n"),
   );
 
   const result = runNode("check-boundaries.mjs", [root]);
   const output = outputOf(result);
-  assert(result.status === 1, "check-boundaries should fail for packages importing @yrese/api");
+  assert(result.status === 1, "check-boundaries should fail for packages importing app code");
   assert(output.includes("packages/** source must not import app code"), "boundary violation should explain packages -> app import");
+  assert(
+    output.includes("packages/example/src/index.ts: packages/** source must not import app code (@fixture/web/internal)"),
+    "deep import into an app package should be detected via the manifest name",
+  );
+  assert(
+    output.includes("packages/example/src/index.ts: packages/** source must not import app code (../../../apps/..foo/x)"),
+    "relative import into an apps/..-prefixed directory should still count as app code",
+  );
 }
 
 async function testBoundaryCleanFixturePasses() {
@@ -814,9 +830,10 @@ async function testPureCoreRejectsAwsAndDynamoDbImports() {
     path.join(root, "packages", "audit", "src", "index.ts"),
     [
       "import AWS from 'aws-sdk';",
+      "import S3 from 'aws-sdk/clients/s3';",
       "import { DynamoDBClient } from '@aws-sdk/client-dynamodb';",
       "import { Table } from 'dynamodb-toolbox';",
-      "export const sdk = { AWS, DynamoDBClient, Table };",
+      "export const sdk = { AWS, S3, DynamoDBClient, Table };",
       "",
     ].join("\n"),
   );
@@ -825,8 +842,12 @@ async function testPureCoreRejectsAwsAndDynamoDbImports() {
   const output = outputOf(result);
   assert(result.status === 1, "check-boundaries should fail when pure core packages import AWS or DynamoDB modules");
   assert(
-    output.includes("pure core package 'audit' must not import AWS SDK"),
+    output.includes("pure core package 'audit' must not import AWS SDK (aws-sdk)"),
     "pure core AWS SDK finding should name the package and AWS SDK",
+  );
+  assert(
+    output.includes("pure core package 'audit' must not import AWS SDK (aws-sdk/clients/s3)"),
+    "pure core AWS SDK finding should include aws-sdk deep imports",
   );
   assert(
     output.includes("pure core package 'audit' must not import DynamoDB module (dynamodb-toolbox)"),
@@ -866,6 +887,11 @@ async function testPureCoreRejectsAwsAndDynamoDbImportsThroughNonStaticForms() {
 async function testBoundarySyntaxAwareImportExtraction() {
   const positiveRoot = path.join(tempRoot, "boundary-syntax-aware-imports");
   await writeText(
+    path.join(positiveRoot, "apps", "api", "package.json"),
+    JSON.stringify({ name: "@fixture/api", dependencies: {} }, null, 2),
+  );
+  await writeText(path.join(positiveRoot, "apps", "api", "src", "index.ts"), "export const app = 'api';\n");
+  await writeText(
     path.join(positiveRoot, "apps", "web", "package.json"),
     JSON.stringify({ name: "@fixture/web", dependencies: {} }, null, 2),
   );
@@ -877,12 +903,12 @@ async function testBoundarySyntaxAwareImportExtraction() {
   await writeText(
     path.join(positiveRoot, "packages", "trace", "src", "index.ts"),
     [
-      'import api = require("@yrese/api/import-equals");',
-      'type ApiContract = import("@yrese/api/import-type").ApiContract;',
-      'const withOptions = import("@yrese/api/options", { with: { type: "json" } });',
-      "const templateImport = import(`@yrese/web/template`);",
-      'const bareRequire = require("@yrese/api/bare");',
-      "const moduleRequire = module.require(`@yrese/web/module`);",
+      'import api = require("@fixture/api/import-equals");',
+      'type ApiContract = import("@fixture/api/import-type").ApiContract;',
+      'const withOptions = import("@fixture/api/options", { with: { type: "json" } });',
+      "const templateImport = import(`@fixture/web/template`);",
+      'const bareRequire = require("@fixture/api/bare");',
+      "const moduleRequire = module.require(`@fixture/web/module`);",
       "const aws = import(`@aws-sdk/client-dynamodb`);",
       "export const refs = { api, withOptions, templateImport, bareRequire, moduleRequire, aws } satisfies Record<string, unknown>;",
       "",
@@ -893,12 +919,12 @@ async function testBoundarySyntaxAwareImportExtraction() {
   const positiveOutput = outputOf(positiveResult);
   assert(positiveResult.status === 1, "syntax-aware boundary scan should detect static module-loading forms");
   for (const specifier of [
-    "@yrese/api/import-equals",
-    "@yrese/api/import-type",
-    "@yrese/api/options",
-    "@yrese/web/template",
-    "@yrese/api/bare",
-    "@yrese/web/module",
+    "@fixture/api/import-equals",
+    "@fixture/api/import-type",
+    "@fixture/api/options",
+    "@fixture/web/template",
+    "@fixture/api/bare",
+    "@fixture/web/module",
   ]) {
     assert(positiveOutput.includes(`(${specifier})`), `boundary output should retain static specifier ${specifier}`);
   }
@@ -921,20 +947,20 @@ async function testBoundarySyntaxAwareImportExtraction() {
   await writeText(
     path.join(lexicalRoot, "packages", "feature", "src", "index.tsx"),
     [
-      "// import '@yrese/api'; require('@yrese/api');",
-      "/* export * from '@yrese/api'; import('@yrese/api'); */",
-      'export const docs = "import \'@yrese/api\'; require(\'@yrese/api\')";',
-      "export const templateDocs = `import('@yrese/api')`;",
-      "export const matcher = /require\\('@yrese\\/api'\\)/;",
-      'export const Copy = () => <div>import("@yrese/api") require("@yrese/api")</div>;',
-      'const appName = "api";',
-      "export const dynamicLoad = () => import(`@yrese/${appName}`);",
+      "// import '@fixture/web'; require('@fixture/web');",
+      "/* export * from '@fixture/web'; import('@fixture/web'); */",
+      'export const docs = "import \'@fixture/web\'; require(\'@fixture/web\')";',
+      "export const templateDocs = `import('@fixture/web')`;",
+      "export const matcher = /require\\('@fixture\\/web'\\)/;",
+      'export const Copy = () => <div>import("@fixture/web") require("@fixture/web")</div>;',
+      'const appName = "web";',
+      "export const dynamicLoad = () => import(`@fixture/${appName}`);",
       "const load = require;",
-      'export const aliasLoad = () => load("@yrese/api");',
+      'export const aliasLoad = () => load("@fixture/web");',
       "const importMethod = { import: (_value: string) => undefined };",
-      'importMethod.import("@yrese/api");',
+      'importMethod.import("@fixture/web");',
       "const requireMethod = { require: (_value: string) => undefined };",
-      'requireMethod.require("@yrese/api");',
+      'requireMethod.require("@fixture/web");',
       "",
     ].join("\n"),
   );
@@ -947,6 +973,11 @@ async function testBoundarySyntaxAwareImportExtraction() {
 
   const extensionRoot = path.join(tempRoot, "boundary-source-extensions");
   await writeText(
+    path.join(extensionRoot, "apps", "api", "package.json"),
+    JSON.stringify({ name: "@fixture/api", dependencies: {} }, null, 2),
+  );
+  await writeText(path.join(extensionRoot, "apps", "api", "src", "index.ts"), "export const app = 'api';\n");
+  await writeText(
     path.join(extensionRoot, "apps", "web", "package.json"),
     JSON.stringify({ name: "@fixture/web", dependencies: {} }, null, 2),
   );
@@ -956,14 +987,14 @@ async function testBoundarySyntaxAwareImportExtraction() {
     JSON.stringify({ name: "@fixture/feature", dependencies: {} }, null, 2),
   );
   const extensionSources = new Map([
-    [".js", 'import("@yrese/api/js");\n'],
-    [".jsx", 'export const View = () => <span>{import("@yrese/api/jsx") && null}</span>;\n'],
-    [".mjs", 'import("@yrese/api/mjs");\n'],
-    [".cjs", 'import("@yrese/api/cjs");\n'],
-    [".ts", 'import("@yrese/api/ts");\n'],
-    [".tsx", 'export const View = () => <span>{import("@yrese/api/tsx") && null}</span>;\n'],
-    [".mts", 'import("@yrese/api/mts");\n'],
-    [".cts", 'import("@yrese/api/cts");\n'],
+    [".js", 'import("@fixture/api/js");\n'],
+    [".jsx", 'export const View = () => <span>{import("@fixture/api/jsx") && null}</span>;\n'],
+    [".mjs", 'import("@fixture/api/mjs");\n'],
+    [".cjs", 'import("@fixture/api/cjs");\n'],
+    [".ts", 'import("@fixture/api/ts");\n'],
+    [".tsx", 'export const View = () => <span>{import("@fixture/api/tsx") && null}</span>;\n'],
+    [".mts", 'import("@fixture/api/mts");\n'],
+    [".cts", 'import("@fixture/api/cts");\n'],
   ]);
   for (const [extension, source] of extensionSources) {
     await writeText(path.join(extensionRoot, "packages", "feature", "src", `source${extension}`), source);
@@ -976,7 +1007,7 @@ async function testBoundarySyntaxAwareImportExtraction() {
   for (const extension of extensionSources.keys()) {
     const label = extension.slice(1);
     assert(
-      extensionOutput.includes(`packages/feature/src/source${extension}: packages/** source must not import app code (@yrese/api/${label})`),
+      extensionOutput.includes(`packages/feature/src/source${extension}: packages/** source must not import app code (@fixture/api/${label})`),
       `boundary scan should parse and report ${extension} source`,
     );
   }
@@ -1056,6 +1087,11 @@ async function testInlineCompositeKeyConstructionDetection() {
       "",
     ].join("\n"),
   );
+  // src/ 以外の package file でも複合キー構築は検出される。
+  await writeText(
+    path.join(root, "packages", "shared-kernel", "tools", "seed.ts"),
+    "export const seedKey = `TENANT#t#PHARMACY#p#SEED`;\n",
+  );
 
   const result = runNode("check-boundaries.mjs", [root]);
   const output = outputOf(result);
@@ -1063,6 +1099,10 @@ async function testInlineCompositeKeyConstructionDetection() {
   assert(
     output.includes("apps/api/src/reception-repository.ts: composite key segment 'TENANT#'"),
     "inline composite key finding should name the offending file and marker",
+  );
+  assert(
+    output.includes("packages/shared-kernel/tools/seed.ts: composite key segment 'TENANT#'"),
+    "composite key construction outside src/ should still be detected",
   );
   assert(
     output.includes("approved DynamoDB key codec"),
@@ -1412,7 +1452,6 @@ async function testCalculationPurityCleanFixturePasses() {
       'const randomMember = "random";',
       "export const dynamicNow = Date[dateMember]();",
       "export const dynamicRandom = Math[randomMember]();",
-      'export const numberParsed = Number.parseFloat("1.25");',
       "export const truncated = Math.trunc(1.25);",
       "const dateNowAlias = Date.now;",
       "const dateConstructorAlias = Date;",
@@ -1522,7 +1561,6 @@ async function testCalculationPuritySyntaxAwareDetection() {
       'export const dynamicNow = Date[dateMember]();',
       'export const dynamicQualifiedNow = globalThis[globalDateName].now();',
       'export const dynamicQualifiedRandom = globalThis[globalMathName].random();',
-      'export const numberParsed = Number.parseFloat("1.25");',
       "export const truncated = Math.trunc(1.25);",
       "",
     ].join("\n"),
@@ -1536,6 +1574,9 @@ async function testCalculationPuritySyntaxAwareDetection() {
       'globalThis["Math"]["round"](1.25);',
       "new globalThis.Date();",
       'new globalThis["Date"]();',
+      'globalThis.parseFloat("1.25");',
+      'globalThis["parseFloat"]("1.25");',
+      'Number.parseFloat("1.25");',
       "",
     ].join("\n"),
   );
@@ -1574,7 +1615,7 @@ async function testCalculationPuritySyntaxAwareDetection() {
   );
   assert(
     !lexicalOutput.includes("packages/calculation/src/non-equivalents.ts"),
-    "dynamic members, Number.parseFloat, and unrelated Math calls should remain outside the five rule families",
+    "dynamic members and unrelated Math calls should remain outside the five rule families",
   );
   const expectedQualifiedFindings = [
     "- packages/calculation/src/qualified.ts:1: Date.now() is forbidden. CAL-010 forbids implicit current time in calculation code.",
@@ -1583,6 +1624,9 @@ async function testCalculationPuritySyntaxAwareDetection() {
     "- packages/calculation/src/qualified.ts:6: new Date() is forbidden. CAL-010 requires dates to be explicit inputs.",
     "- packages/calculation/src/qualified.ts:3: Math.random() is forbidden. CAL-010 requires deterministic calculation output.",
     "- packages/calculation/src/qualified.ts:4: Math.round() is forbidden. CAL-010 requires rounding to go through approved money/point helpers.",
+    "- packages/calculation/src/qualified.ts:7: parseFloat() is forbidden. CAL-010 forbids floating-point parsing in calculation code.",
+    "- packages/calculation/src/qualified.ts:8: parseFloat() is forbidden. CAL-010 forbids floating-point parsing in calculation code.",
+    "- packages/calculation/src/qualified.ts:9: parseFloat() is forbidden. CAL-010 forbids floating-point parsing in calculation code.",
   ];
   for (const expectedFinding of expectedQualifiedFindings) {
     assert(
@@ -1590,7 +1634,7 @@ async function testCalculationPuritySyntaxAwareDetection() {
       `qualified receiver finding should preserve path, line, name, and reason: ${expectedFinding}`,
     );
   }
-  assert(lexicalOutput.includes("failed with 21 violation(s)"), "syntax-aware fixture should retain its exact finding count");
+  assert(lexicalOutput.includes("failed with 24 violation(s)"), "syntax-aware fixture should retain its exact finding count");
 
   const extensionRoot = path.join(tempRoot, "calculation-purity-extensions");
   const extensionSources = new Map([
@@ -2045,6 +2089,91 @@ async function testSecretScanRepositoryContentScope() {
     "a content symlink must not report PASS",
   );
 
+  // A tracked symlink that resolves inside the scan root adds no new scope:
+  // its target is repository content scanned at the canonical path, so the
+  // link is skipped without aborting — but the skip stays visible in the
+  // report so a link can never silently shadow content.
+  const inRootLinkRoot = await initGitRoot("secrets-content-in-root-symlink");
+  await writeText(path.join(inRootLinkRoot, "README.md"), "clean eligible text\n");
+  await writeText(path.join(inRootLinkRoot, "AGENTS.md"), "clean eligible text\n");
+  await symlink("AGENTS.md", path.join(inRootLinkRoot, "CLAUDE.md"));
+  await symlink("docs", path.join(inRootLinkRoot, "linked-docs"));
+  await writeText(path.join(inRootLinkRoot, "docs", "guide.md"), "clean eligible text\n");
+  const trackInRootLinks = spawnSync("git", ["add", "--", "README.md", "AGENTS.md", "CLAUDE.md", "linked-docs", "docs/guide.md"], {
+    cwd: inRootLinkRoot,
+    encoding: "utf8",
+  });
+  assert(trackInRootLinks.status === 0, `in-root symlink fixtures should be tracked: ${outputOf(trackInRootLinks)}`);
+  const inRootLinkResult = runNode("check-secrets.mjs", [], { cwd: inRootLinkRoot });
+  const inRootLinkOutput = outputOf(inRootLinkResult);
+  assert(
+    inRootLinkResult.status === 0,
+    `an in-root tracked symlink must not abort the scan: ${inRootLinkOutput}`,
+  );
+  assert(
+    inRootLinkOutput.includes("Secret scan passed."),
+    "the in-root symlink fixture should report PASS",
+  );
+  assert(
+    inRootLinkOutput.includes("Secret scan skipped") &&
+      inRootLinkOutput.includes("CLAUDE.md") &&
+      inRootLinkOutput.includes("linked-docs"),
+    `an in-root link's skip must stay visible in the report: ${inRootLinkOutput}`,
+  );
+
+  // Coverage is preserved through the canonical path: a secret in the target
+  // is still reported, at the target's own path rather than the alias's.
+  const inRootLeakRoot = await initGitRoot("secrets-content-in-root-symlink-leak");
+  const inRootCredential = ["Synthetic", "InRoot", "Credential", "4321"].join("_");
+  await writeText(path.join(inRootLeakRoot, "docs", "target.ts"), `api_key='${inRootCredential}'\n`);
+  await symlink(path.join("docs", "target.ts"), path.join(inRootLeakRoot, "alias.ts"));
+  const inRootLeakResult = runNode("check-secrets.mjs", [], { cwd: inRootLeakRoot });
+  const inRootLeakOutput = outputOf(inRootLeakResult);
+  assert(inRootLeakResult.status === 1, "a secret behind an in-root symlink must still be found");
+  assert(
+    inRootLeakOutput.includes("docs/target.ts:1: Generic secret assignment"),
+    `the finding should use the canonical target path: ${inRootLeakOutput}`,
+  );
+  assert(
+    !inRootLeakOutput.includes(inRootCredential),
+    "the in-root leak finding must not expose the raw synthetic value",
+  );
+
+  // `..`-prefixed names are legal in-root entries: a tracked link to `..foo.ts`
+  // resolves inside the root and must not be misread as a parent escape.
+  const dotDotNameRoot = await initGitRoot("secrets-content-dotdot-name");
+  await writeText(path.join(dotDotNameRoot, "README.md"), "clean eligible text\n");
+  await writeText(path.join(dotDotNameRoot, "..foo.ts"), "clean eligible text\n");
+  await symlink("..foo.ts", path.join(dotDotNameRoot, "alias.ts"));
+  const trackDotDotName = spawnSync("git", ["add", "--", "README.md", "..foo.ts", "alias.ts"], {
+    cwd: dotDotNameRoot,
+    encoding: "utf8",
+  });
+  assert(trackDotDotName.status === 0, `dotdot-name fixtures should be tracked: ${outputOf(trackDotDotName)}`);
+  const dotDotNameResult = runNode("check-secrets.mjs", [], { cwd: dotDotNameRoot });
+  assert(
+    dotDotNameResult.status === 0,
+    `a link to an in-root ".."-prefixed name must not abort the scan: ${outputOf(dotDotNameResult)}`,
+  );
+
+  // A tracked symlink that cannot be resolved stays unverifiable and therefore
+  // remains a scope violation.
+  const danglingRoot = await initGitRoot("secrets-content-dangling-symlink");
+  await writeText(path.join(danglingRoot, "README.md"), "clean eligible text\n");
+  await symlink("missing-target.md", path.join(danglingRoot, "ghost.md"));
+  const trackDangling = spawnSync("git", ["add", "--", "README.md", "ghost.md"], {
+    cwd: danglingRoot,
+    encoding: "utf8",
+  });
+  assert(trackDangling.status === 0, `dangling symlink fixture should be tracked: ${outputOf(trackDangling)}`);
+  const danglingResult = runNode("check-secrets.mjs", [], { cwd: danglingRoot });
+  const danglingOutput = outputOf(danglingResult);
+  assert(
+    danglingResult.status === 1 &&
+      danglingOutput.includes("Scope was broken by: ghost.md"),
+    `an unresolvable tracked symlink must abort: ${danglingOutput}`,
+  );
+
   // Coverage is unchanged: an ignored .env is still scanned, which is the whole
   // reason the skip is limited to scope violations instead of to ignored entries.
   const ignoredEnvRoot = await initGitRoot("secrets-content-ignored-env");
@@ -2144,6 +2273,45 @@ async function testCleanRemovesGeneratedArtifacts() {
   for (const protectedPath of protectedPaths) {
     assert(existsSync(protectedPath), `clean should preserve ${path.relative(root, protectedPath)}`);
   }
+}
+
+async function testCleanRefusesSymlinkedWorkspaceRoots() {
+  const root = path.join(tempRoot, "clean-symlinked-scope");
+  // apps -> outside: readdir は link target を列挙するため、旧実装では target 内の
+  // generated file が削除対象に化けた。lstat gate で fail closed にする。
+  const outside = path.join(tempRoot, "clean-symlink-target");
+  const victimDist = path.join(outside, "victim", "dist", "keep.js");
+  const victimBuildInfo = path.join(outside, "victim", "src", "index.tsbuildinfo");
+  await writeText(victimDist, "keep\n");
+  await writeText(victimBuildInfo, "keep\n");
+  await mkdir(root, { recursive: true });
+  await symlink(outside, path.join(root, "apps"), "dir");
+
+  const result = runNode("clean.mjs", [], { cwd: root });
+  const output = outputOf(result);
+  assert(result.status !== 0, `clean must fail closed on a symlinked workspace root: ${output}`);
+  assert(
+    !output.includes("Generated artifacts removed."),
+    "clean must not report success after refusing a symlinked workspace root",
+  );
+  assert(existsSync(victimDist), "clean must not delete generated dirs inside a symlinked workspace target");
+  assert(
+    existsSync(victimBuildInfo),
+    "clean must not delete tsbuildinfo inside a symlinked workspace target",
+  );
+}
+
+async function testCleanToleratesMissingWorkspaceRoot() {
+  const root = path.join(tempRoot, "clean-missing-scope");
+  // apps/ が存在しない partial tree でも root の generated dir は除去できる。
+  // 削除対象の escape は symlink 経由だけなので、absent scope は no-op とする。
+  await writeText(path.join(root, "packages", "money", "dist", "index.js"), "generated\n");
+  await writeText(path.join(root, "dist", "index.js"), "generated\n");
+
+  const result = runNode("clean.mjs", [], { cwd: root });
+  assert(result.status === 0, `clean should tolerate a missing workspace root: ${outputOf(result)}`);
+  assert(!existsSync(path.join(root, "packages", "money", "dist", "index.js")), "clean should remove real workspace artifacts");
+  assert(!existsSync(path.join(root, "dist")), "clean should remove root generated dirs");
 }
 
 async function testDependencyAuditWrapper() {
@@ -3213,6 +3381,8 @@ try {
   await testSecretAllowlistAndDetection();
   await testSecretScanRepositoryContentScope();
   await testCleanRemovesGeneratedArtifacts();
+  await testCleanRefusesSymlinkedWorkspaceRoots();
+  await testCleanToleratesMissingWorkspaceRoot();
   await testDependencyAuditWrapper();
   await testSbomGenerationFixture();
   await testSsotIndexCleanFixturePasses();

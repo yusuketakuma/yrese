@@ -569,7 +569,7 @@ function queueResponseDateMismatchNotice(): ErrorNoticeProps {
 }
 
 export interface ReceptionQueueRunner {
-  (targetDate: string): Promise<void>;
+  (targetDate: string, options?: { readonly force?: boolean }): Promise<void>;
   cancelActive(): void;
 }
 
@@ -592,11 +592,13 @@ export function createReceptionQueueRunner(
     | undefined;
   let isCancelling = false;
 
-  const run: ReceptionQueueRunner = (targetDate) => {
+  const run: ReceptionQueueRunner = (targetDate, options) => {
     if (isCancelling) {
       return Promise.resolve();
     }
-    if (latestFlight?.targetDate === targetDate) {
+    // force 時は join しない。mutation直後の再読込がmutation前に開始した
+    // in-flight fetch へ join すると、登録結果を含まない一覧を最新表示する。
+    if (latestFlight?.targetDate === targetDate && options?.force !== true) {
       return latestFlight.sharedPromise;
     }
 
@@ -1057,30 +1059,33 @@ export function ReceptionDashboard() {
   const queueTargetTracker = queueTargetTrackerRef.current;
   const lifecycle = lifecycleRef.current;
 
-  const load = useCallback(async (targetDate: string) => {
-    if (!lifecycle.isMounted()) return;
-    queueTargetTracker.mark(targetDate);
-    if (loadRunner.current === null) {
-      loadRunner.current = createReceptionQueueRunner(
-        (requestedDate, signal) =>
-          fetchReceptionQueue(requestedDate, fetch, signal),
-        (update) => setQueue((prev) => update(prev)),
-        () => {
-          setRegistered(null);
-          setRegisterNotice(null);
-        },
-      );
-    }
-    if (!lifecycle.isMounted()) return;
-    // 業務日付(非PHI)を URL に反映して共有・リロード復元を可能にする(監査 S-03)
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.set("date", targetDate);
-      window.history.replaceState(null, "", url);
-    }
-    if (!lifecycle.isMounted()) return;
-    await loadRunner.current(targetDate);
-  }, []);
+  const load = useCallback(
+    async (targetDate: string, options?: { readonly force?: boolean }) => {
+      if (!lifecycle.isMounted()) return;
+      queueTargetTracker.mark(targetDate);
+      if (loadRunner.current === null) {
+        loadRunner.current = createReceptionQueueRunner(
+          (requestedDate, signal) =>
+            fetchReceptionQueue(requestedDate, fetch, signal),
+          (update) => setQueue((prev) => update(prev)),
+          () => {
+            setRegistered(null);
+            setRegisterNotice(null);
+          },
+        );
+      }
+      if (!lifecycle.isMounted()) return;
+      // 業務日付(非PHI)を URL に反映して共有・リロード復元を可能にする(監査 S-03)
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("date", targetDate);
+        window.history.replaceState(null, "", url);
+      }
+      if (!lifecycle.isMounted()) return;
+      await loadRunner.current(targetDate, options);
+    },
+    [],
+  );
 
   useEffect(() => {
     lifecycle.mount();
@@ -1148,7 +1153,7 @@ export function ReceptionDashboard() {
         if (patientChangeNotice !== null) {
           setRegisterNotice(patientChangeNotice);
         }
-        await load(queueTargetTracker.current());
+        await load(queueTargetTracker.current(), { force: true });
       } catch (error) {
         if (!lifecycle.isMounted()) return;
         const patientChangeNotice = registrationPatientChangeNotice(

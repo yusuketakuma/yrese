@@ -354,6 +354,17 @@ export function resolveSaveFailureState(error: unknown): DraftSaveState {
     : { kind: "error", error: normalized };
 }
 
+/**
+ * 編集時の保存状態遷移。競合はサーバー版の確認(再読込)を経るまで解除しない。
+ * 編集でidleへ戻すと stale expectedVersion のまま再保存でき、確認強制が
+ * 形骸化する。
+ */
+export function resolveSaveStateAfterEdit(
+  current: DraftSaveState,
+): DraftSaveState {
+  return current.kind === "conflict" ? current : { kind: "idle" };
+}
+
 export function SelectedPatientWorkspaceView({
   patient,
 }: {
@@ -508,7 +519,7 @@ export function SelectedPatientWorkspaceView({
     setResetRequested(false);
     setReloadRequested(false);
     setPendingRemovalRowId(null);
-    setSaveState({ kind: "idle" });
+    setSaveState((current) => resolveSaveStateAfterEdit(current));
   }
 
   function updateRow(

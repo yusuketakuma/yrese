@@ -152,7 +152,7 @@ export class PostgresOperationsReadService implements OperationsReadService {
        FROM outbox_events
        WHERE tenant_id = $1 AND pharmacy_id = $2
        GROUP BY event_type
-       ORDER BY event_type ASC`,
+       ORDER BY event_type COLLATE "C" ASC`,
       [scope.tenantId, scope.pharmacyId],
     );
 

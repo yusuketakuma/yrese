@@ -266,6 +266,27 @@ describe('PostgresPartnerRegistry delivery DNS revalidation', () => {
     expect(resolution.suspendedSubscribers).toBe(2);
     expect(release).toHaveBeenCalledOnce();
   });
+
+  it('destroys the client when rollback after a query failure also fails', async () => {
+    const operationError = new Error('synthetic resolution query failure');
+    const rollbackError = new Error('synthetic rollback failure');
+    const query = vi.fn(async (statement: string) => {
+      if (statement.includes('SELECT a.app_id')) throw operationError;
+      if (statement.trim() === 'ROLLBACK') throw rollbackError;
+      return { rows: [] };
+    });
+    const release = vi.fn();
+    const pool = {
+      connect: vi.fn(async () => ({ query, release })),
+    } as unknown as Pool;
+
+    await expect(
+      new PostgresPartnerRegistry(pool, {
+        lookup: async () => [{ address: '203.0.113.10', family: 4 }],
+      }).resolveDeliveryTargets(scope, 'reception.created'),
+    ).rejects.toBe(operationError);
+    expect(release.mock.calls).toEqual([[true]]);
+  });
 });
 
 describePostgres(

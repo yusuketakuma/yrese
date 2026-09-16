@@ -101,6 +101,26 @@ describe('InMemoryPatientRepository search ordering', () => {
 
     expect(page.results.map((result) => result.patientId)).toEqual(['patient-a', 'patient-z']);
   });
+
+  it('orders supplementary-plane patient numbers by code point, matching PostgreSQL C collation', async () => {
+    // JS の `<` は UTF-16 code unit 順で U+10000(lead surrogate 0xD800)を
+    // U+E000 より先に並べる。PostgreSQL `COLLATE "C"`(code point 順)では
+    // U+E000 が先 — parity を保つため in-memory 側も code point 順に揃える。
+    const bmpPrivateUse = '\uE000'; // U+E000 — UTF-16: 0xE000
+    const supplementary = '\u{10000}'; // U+10000 — UTF-16: 0xD800 0xDC00
+    expect(bmpPrivateUse < supplementary).toBe(false); // code unit 順との発散を固定
+    const repository = new InMemoryPatientRepository([
+      syntheticRecord('patient-supplementary', `N-${supplementary}`),
+      syntheticRecord('patient-bmp', `N-${bmpPrivateUse}`),
+    ]);
+
+    const page = await repository.search({ ...SCOPE, q: 'N-', limit: 2 });
+
+    expect(page.results.map((result) => result.patientId)).toEqual([
+      'patient-bmp',
+      'patient-supplementary',
+    ]);
+  });
 });
 
 describe('InMemoryPatientRepository command authority', () => {

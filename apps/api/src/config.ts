@@ -6,6 +6,8 @@ export const devTenantContextConfigurationErrorMessage =
   'DEV tenant context headers require exact opt-in for an in-memory development or test server';
 export const patientSearchCursorHmacConfigurationErrorMessage =
   'Patient search cursor HMAC key configuration is invalid';
+export const postgresCompositionConfigurationErrorMessage =
+  'Postgres repository mode requires an explicit receptionCreateCommand (in-memory composition would lose transactional atomicity)';
 
 export type ApiRepositoryMode = (typeof apiRepositoryModes)[number];
 

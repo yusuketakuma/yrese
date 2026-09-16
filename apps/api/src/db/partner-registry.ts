@@ -390,6 +390,7 @@ export class PostgresPartnerRegistry {
     eventType: string,
   ): Promise<DeliveryResolution> {
     const client = await this.pool.connect();
+    let destroyClient = false;
     let rows: {
       app_id: string;
       partner_id: string;
@@ -424,7 +425,8 @@ export class PostgresPartnerRegistry {
             AND s.event_type = $3
             AND g.scope = $4
             AND p.state = 'ACTIVE' AND a.state = 'ACTIVE' AND e.state = 'ACTIVE'
-          ORDER BY a.app_id, e.endpoint_id`,
+          -- C collation: delivery fan-out 順を database locale から独立させる。
+          ORDER BY a.app_id COLLATE "C", e.endpoint_id COLLATE "C"`,
         [
           scope.tenantId,
           scope.pharmacyId,
@@ -467,11 +469,17 @@ export class PostgresPartnerRegistry {
       try {
         await client.query('ROLLBACK');
       } catch {
-        // ignore
+        // ROLLBACK 自体が失敗した client は open transaction を残し得るため
+        // pool へ戻さず破棄する(runInPooledTransaction と同じ規律)。
+        destroyClient = true;
       }
       throw error;
     } finally {
-      client.release();
+      if (destroyClient) {
+        client.release(true);
+      } else {
+        client.release();
+      }
     }
     const targets: DeliveryTarget[] = [];
     const rejectedEndpointIds: string[] = [];

@@ -3,6 +3,7 @@ import type { Pool } from 'pg';
 
 import {
   EligibilityMethodError,
+  EligibilitySnapshotConflictError,
   EligibilityTransitionError,
   PostgresEligibilitySnapshotRepository,
   type RecordEligibilitySnapshotInput,
@@ -425,6 +426,88 @@ describePostgres('PostgresEligibilitySnapshotRepository (PostgreSQL)', () => {
         'SELECT count(*)::text AS count FROM eligibility_snapshots',
       );
       expect(count.rows[0]?.count).toBe('1');
+    });
+  });
+
+  it('rejects a same-snapshotId retry whose payload diverges from the stored snapshot', async () => {
+    await withMigratedSchema(async (pool) => {
+      await seedPatientAndReception(
+        pool,
+        'patient-elig-001',
+        'reception-elig-001',
+      );
+      const repo = new PostgresEligibilitySnapshotRepository(pool);
+      await repo.recordForReception(scope, 'reception-elig-001', input());
+
+      // 同一 snapshotId で validTo が異なる再送は冪等 retry ではない。
+      await expect(
+        repo.recordForReception(
+          scope,
+          'reception-elig-001',
+          input({ validTo: '2026-10-31' }),
+        ),
+      ).rejects.toThrow(EligibilitySnapshotConflictError);
+      // recordedBy / rawResponseRef / verifiedAt の差分も同様に衝突。
+      await expect(
+        repo.recordForReception(
+          scope,
+          'reception-elig-001',
+          input({ recordedBy: 'user-elig-002' }),
+        ),
+      ).rejects.toThrow(EligibilitySnapshotConflictError);
+      await expect(
+        repo.recordForReception(
+          scope,
+          'reception-elig-001',
+          input({ rawResponseRef: null }),
+        ),
+      ).rejects.toThrow(EligibilitySnapshotConflictError);
+      await expect(
+        repo.recordForReception(
+          scope,
+          'reception-elig-001',
+          input({ verifiedAt: new Date('2026-08-24T02:00:00.000Z') }),
+        ),
+      ).rejects.toThrow(EligibilitySnapshotConflictError);
+
+      // 衝突は記録を変更しない(append-only のまま)。
+      const stored = await repo.receptionEligibility(
+        scope,
+        'reception-elig-001',
+        today,
+      );
+      expect(stored).toMatchObject({
+        state: 'VERIFIED_MYNA',
+        snapshotId: 'snap-001',
+      });
+    });
+  });
+
+  it('maps snapshotId reuse on another reception to a domain conflict, not a raw driver error', async () => {
+    await withMigratedSchema(async (pool) => {
+      await seedPatientAndReception(
+        pool,
+        'patient-elig-001',
+        'reception-elig-001',
+      );
+      await seedPatientAndReception(
+        pool,
+        'patient-elig-002',
+        'reception-elig-002',
+      );
+      const repo = new PostgresEligibilitySnapshotRepository(pool);
+      await repo.recordForReception(scope, 'reception-elig-001', input());
+
+      await expect(
+        repo.recordForReception(
+          scope,
+          'reception-elig-002',
+          input(),
+        ),
+      ).rejects.toThrow(EligibilitySnapshotConflictError);
+      await expect(
+        repo.receptionEligibility(scope, 'reception-elig-002', today),
+      ).resolves.toMatchObject({ state: 'UNVERIFIED', snapshotId: null });
     });
   });
 

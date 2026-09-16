@@ -3,6 +3,8 @@ import { lstat, readdir, readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { compareTextByCodePoints } from '../text-order.js';
+
 export interface MigrationFile {
   readonly version: string;
   readonly name: string;
@@ -106,7 +108,9 @@ export async function loadMigrationFiles(migrationsDirectory = defaultMigrations
     }),
   );
 
-  const sorted = [...migrations].sort((left, right) => left.version.localeCompare(right.version));
+  const sorted = [...migrations].sort((left, right) =>
+    compareTextByCodePoints(left.version, right.version),
+  );
   const seen = new Set<string>();
   for (const migration of sorted) {
     if (seen.has(migration.version)) {

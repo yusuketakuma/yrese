@@ -1374,6 +1374,57 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     });
   });
 
+  it("does not join a pre-mutation in-flight fetch when the reload is forced", async () => {
+    const first = deferredValue<ReceptionQueueResponse>();
+    const second = deferredValue<ReceptionQueueResponse>();
+    const signals: AbortSignal[] = [];
+    const states: QueueState[] = [
+      {
+        kind: "loaded",
+        response: queueResponse("2026-07-10"),
+        refreshState: { kind: "idle" },
+      },
+    ];
+    const fetcher = vi.fn((_date: string, signal: AbortSignal) => {
+      signals.push(signal);
+      return signals.length === 1 ? first.promise : second.promise;
+    });
+    const run = createReceptionQueueRunner(fetcher, (update) => {
+      states.push(update(states[states.length - 1]!));
+    });
+
+    // mutation前に開始された同一日付の in-flight fetch がある状態で、
+    // mutation後の再読込は join せず新しい fetch を開始する
+    const preMutation = run("2026-07-11");
+    const postMutation = run("2026-07-11", { force: true });
+
+    expect(postMutation).not.toBe(preMutation);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(signals[0]?.aborted).toBe(true);
+    expect(signals[1]?.aborted).toBe(false);
+
+    // mutation前のfetchが遅れて解決しても、その結果は採用されない。
+    // stale/current は識別可能な marker で分離する(同一内容では stale 採用を検出できない)。
+    first.resolve(
+      queueResponse("2026-07-11", [entry({ receptionId: "pre-mutation-stale" })]),
+    );
+    await preMutation;
+    second.resolve(
+      queueResponse("2026-07-11", [entry({ receptionId: "post-mutation-current" })]),
+    );
+    await postMutation;
+
+    expect(states.at(-1)).toMatchObject({
+      kind: "loaded",
+      response: {
+        date: "2026-07-11",
+        entries: [{ receptionId: "post-mutation-current" }],
+      },
+      refreshState: { kind: "idle" },
+    });
+    expect(JSON.stringify(states)).not.toContain("pre-mutation-stale");
+  });
+
   it("cleans successful, handled-failure, and mismatch flights so same-target retries are admitted", async () => {
     const scenarios: Array<{
       first: () => Promise<ReceptionQueueResponse>;

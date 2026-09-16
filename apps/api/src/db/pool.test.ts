@@ -215,12 +215,109 @@ describe('runInPooledTransaction', () => {
     });
 
     expect(result).toBe('done');
+    // COMMIT 済みなら xact id は採番されていない → safety ROLLBACK は no-op。
     expect(query.mock.calls.map(([sql]) => String(sql).trim())).toEqual([
       'BEGIN',
       'SELECT 1',
       'COMMIT',
+      'SELECT pg_current_xact_id_if_assigned() AS xid',
+      'ROLLBACK',
     ]);
     expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('discards a forgotten open transaction instead of returning the client to the pool', async () => {
+    // callback が COMMIT を発行しないまま正常 return しても、open transaction の
+    // client を pool へ戻さない。無書込みの open tx は ROLLBACK で閉じて result を返す。
+    const { pool, query, release } = createClient();
+
+    const result = await runInPooledTransaction(pool, async (client) => {
+      await client.query('SELECT 1');
+      return 'done';
+    });
+
+    expect(result).toBe('done');
+    expect(query.mock.calls.map(([sql]) => String(sql).trim())).toEqual([
+      'BEGIN',
+      'SELECT 1',
+      'SELECT pg_current_xact_id_if_assigned() AS xid',
+      'ROLLBACK',
+    ]);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('fails visibly when a successful callback leaves uncommitted writes behind', async () => {
+    // 採番済み xact id が残る = 書込みが commit されていない。成功と誤認させず
+    // 契約違反として throw し、open transaction は破棄する。
+    const release = vi.fn();
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('pg_current_xact_id_if_assigned')) {
+        return { rows: [{ xid: '42' }] };
+      }
+      return { rows: [] };
+    });
+    const client = {
+      query: query as unknown as PoolClient['query'],
+      release,
+    } as unknown as PoolClient;
+    const pool = {
+      connect: vi.fn(async () => client),
+    } as unknown as Pool;
+
+    await expect(
+      runInPooledTransaction(pool, async (client) => {
+        await client.query('INSERT INTO synthetic VALUES (1)');
+        return 'phantom-write';
+      }),
+    ).rejects.toThrowError(/uncommitted transaction/);
+    expect(query.mock.calls.map(([sql]) => String(sql).trim())).toEqual([
+      'BEGIN',
+      'INSERT INTO synthetic VALUES (1)',
+      'SELECT pg_current_xact_id_if_assigned() AS xid',
+      'ROLLBACK',
+    ]);
+    // 契約違反の caller は session 状態を残し得るため client は破棄する
+    expect(release.mock.calls).toEqual([[true]]);
+  });
+
+  it('fails visibly when a swallowed statement error leaves the transaction aborted', async () => {
+    // callback 内で SQL error を握り潰すと tx は aborted (25P02) になり、
+    // 終了状態 probe 自体が失敗する。書込みが commit されたか不明なまま
+    // 成功を返すと fail-open になるため reject し client を破棄する。
+    const release = vi.fn();
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes('pg_current_xact_id_if_assigned')) {
+        throw Object.assign(new Error('current transaction is aborted'), {
+          code: '25P02',
+        });
+      }
+      return { rows: [] };
+    });
+    const client = {
+      query: query as unknown as PoolClient['query'],
+      release,
+    } as unknown as PoolClient;
+    const pool = {
+      connect: vi.fn(async () => client),
+    } as unknown as Pool;
+
+    await expect(
+      runInPooledTransaction(pool, async (client) => {
+        try {
+          await client.query('INSERT INTO synthetic VALUES (1)');
+        } catch {
+          // caller が内部で握り潰した SQL error
+        }
+        return 'phantom-success';
+      }),
+    ).rejects.toThrowError(/transaction state could not be verified/);
+    expect(query.mock.calls.map(([sql]) => String(sql).trim())).toEqual([
+      'BEGIN',
+      'INSERT INTO synthetic VALUES (1)',
+      'SELECT pg_current_xact_id_if_assigned() AS xid',
+      'ROLLBACK',
+    ]);
+    expect(release.mock.calls).toEqual([[true]]);
   });
 
   it('rolls back and reuses the client when run throws', async () => {

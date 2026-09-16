@@ -218,6 +218,27 @@ function endpoint(context: PrescriptionDraftContext): string {
   );
 }
 
+/**
+ * 応答の echo identity を要求文脈と照合する。スキーマ上は valid でも別
+ * 受付・患者・業務日の下書きが返った場合、このタブへ取り込むと患者
+ * 取り違えになるため INVALID_RESPONSE として失敗させる。
+ */
+function assertDraftResponseContext(
+  response: PrescriptionDraftResponse,
+  context: PrescriptionDraftContext,
+): void {
+  if (
+    response.receptionId !== context.receptionId ||
+    response.patientId !== context.patientId ||
+    response.businessDate !== context.businessDate
+  ) {
+    throw new PrescriptionDraftApiError(
+      "INVALID_RESPONSE",
+      "処方下書きAPIの応答が要求した受付・患者・業務日と一致しませんでした。",
+    );
+  }
+}
+
 function classifyFailure(status: number): PrescriptionDraftApiError {
   if (status === 400) {
     return new PrescriptionDraftApiError(
@@ -283,8 +304,9 @@ export async function loadPrescriptionDraft(
   if (response.status === 204) return null;
   if (!response.ok) throw classifyFailure(response.status);
 
+  let parsed: PrescriptionDraftResponse;
   try {
-    return prescriptionDraftResponseSchema.parse(await response.json());
+    parsed = prescriptionDraftResponseSchema.parse(await response.json());
   } catch (error) {
     if (signal?.aborted === true) throw error;
     if (requestSignal.aborted) throw draftTimeoutError();
@@ -293,6 +315,8 @@ export async function loadPrescriptionDraft(
       "処方下書きAPIの応答形式を検証できませんでした。",
     );
   }
+  assertDraftResponseContext(parsed, context);
+  return parsed;
 }
 
 export async function savePrescriptionDraft(
@@ -348,8 +372,9 @@ export async function savePrescriptionDraft(
 
   if (!response.ok) throw classifyFailure(response.status);
 
+  let parsed: PrescriptionDraftSaveResponse;
   try {
-    return prescriptionDraftSaveResponseSchema.parse(await response.json());
+    parsed = prescriptionDraftSaveResponseSchema.parse(await response.json());
   } catch (error) {
     if (signal?.aborted === true) throw error;
     if (requestSignal.aborted) throw draftTimeoutError();
@@ -358,4 +383,6 @@ export async function savePrescriptionDraft(
       "処方下書きAPIの応答形式を検証できませんでした。",
     );
   }
+  assertDraftResponseContext(parsed, context);
+  return parsed;
 }

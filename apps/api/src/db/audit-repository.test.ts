@@ -107,8 +107,11 @@ describe('PostgresAuditRepository client lifecycle', () => {
     const event = await repository.record(scope, input);
 
     expect(event.sequenceNumber).toBe(1n);
-    expect(query.mock.calls.map(([sql]) => String(sql).trim())).toContain('COMMIT');
-    expect(query.mock.calls.map(([sql]) => String(sql).trim())).not.toContain('ROLLBACK');
+    const statements = query.mock.calls.map(([sql]) => String(sql).trim());
+    expect(statements).toContain('COMMIT');
+    // 成功時の安全rollbackはCOMMIT後のno-opとして1回だけ発行される
+    expect(statements.filter((sql) => sql === 'ROLLBACK')).toHaveLength(1);
+    expect(statements.indexOf('COMMIT')).toBeLessThan(statements.indexOf('ROLLBACK'));
     expect(release.mock.calls).toEqual([[]]);
   });
 });

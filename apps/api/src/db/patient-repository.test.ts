@@ -648,6 +648,8 @@ describe('Postgres patient eligibility timestamp adapter', () => {
       expect.stringContaining('INSERT INTO reception_entries'),
       expect.stringContaining('SELECT'),
       'COMMIT',
+      expect.stringContaining('SELECT'),
+      'ROLLBACK',
     ]);
     expect(release.mock.calls).toEqual([[]]);
   });
@@ -685,6 +687,8 @@ describe('Postgres patient eligibility timestamp adapter', () => {
       expect.stringContaining('INSERT INTO reception_entries'),
       expect.stringContaining('SELECT'),
       'COMMIT',
+      expect.stringContaining('SELECT'),
+      'ROLLBACK',
     ]);
     expect(release.mock.calls).toEqual([[]]);
   });

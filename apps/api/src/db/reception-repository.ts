@@ -476,7 +476,8 @@ export class PostgresReceptionRepository implements ReceptionRepository {
         AND p.pharmacy_id = r.pharmacy_id
         AND p.patient_id = r.patient_id
        WHERE r.tenant_id = $1 AND r.pharmacy_id = $2 AND r.business_date = $3::date
-       ORDER BY r.accepted_at ASC, r.reception_id ASC`,
+       -- C collation: database locale に依存しない code point 順で in-memory 実装と一致させる。
+       ORDER BY r.accepted_at ASC, r.reception_id COLLATE "C" ASC`,
       [command.tenantId, command.pharmacyId, command.date],
     );
 

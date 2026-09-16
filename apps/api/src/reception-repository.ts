@@ -27,6 +27,7 @@ import {
   snapshotRepositoryPharmacyId,
   snapshotRepositoryTenantId,
 } from './repository-command.js';
+import { compareTextByCodePoints } from './text-order.js';
 
 export const inMemoryReceptionTimestampInvariantErrorMessage =
   'in-memory reception acceptedAt must be a valid Date';
@@ -305,11 +306,14 @@ function toProvenance(record: ReceptionRecord): ReceptionCreateProvenance {
 }
 
 function sortRecords(left: ReceptionRecord, right: ReceptionRecord): number {
-  const acceptedAtOrder = left.acceptedAt.localeCompare(right.acceptedAt);
+  const acceptedAtOrder = compareTextByCodePoints(
+    left.acceptedAt,
+    right.acceptedAt,
+  );
   if (acceptedAtOrder !== 0) {
     return acceptedAtOrder;
   }
-  return left.receptionId.localeCompare(right.receptionId);
+  return compareTextByCodePoints(left.receptionId, right.receptionId);
 }
 
 // MOD-011 defines MVP business dates as fixed JST. IANA Asia/Tokyo applies

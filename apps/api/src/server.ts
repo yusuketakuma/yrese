@@ -10,6 +10,7 @@ import { permissionScope } from '@yrese/shared-kernel';
 import {
   devTenantContextConfigurationErrorMessage,
   patientSearchCursorHmacConfigurationErrorMessage,
+  postgresCompositionConfigurationErrorMessage,
   type ApiRepositoryMode,
 } from './config.js';
 import { auditLogRoutes } from './audit-log-routes.js';
@@ -134,6 +135,16 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     throw new Error(patientSearchCursorHmacConfigurationErrorMessage);
   }
   const patientSearchCursorCodec = options.patientSearchCursorCodec;
+
+  // Postgres 構成で receptionCreateCommand 未指定なら、受付・監査・outbox を束ねる
+  // unit of work が in-memory 合成に fallback して原子性を失う。production 経路
+  // (main.ts)は PostgresReceptionCreateCommand を注入する。
+  if (
+    options.repositoryMode === 'postgres' &&
+    options.receptionCreateCommand === undefined
+  ) {
+    throw new Error(postgresCompositionConfigurationErrorMessage);
+  }
 
   const patientRepository = options.patientRepository ?? new InMemoryPatientRepository();
   const receptionRepository = options.receptionRepository ?? new InMemoryReceptionRepository();

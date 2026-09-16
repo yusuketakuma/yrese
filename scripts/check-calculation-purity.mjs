@@ -6,7 +6,7 @@ import ts from "@typescript/typescript6";
 const rootDir = path.resolve(process.argv[2] ?? process.cwd());
 const targetDir = path.join(rootDir, "packages", "calculation");
 const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"]);
-const ignoredDirs = new Set([".git", ".next", "coverage", "dist", "node_modules"]);
+const ignoredDirs = new Set([".git", ".next", ".turbo", "coverage", "dist", "node_modules", "out"]);
 const invalidScopeMessage =
   "Calculation purity check failed: protected source scope is unavailable or contains no production source files.";
 
@@ -29,8 +29,22 @@ const forbiddenRules = [
   {
     name: "parseFloat()",
     reason: "CAL-010 forbids floating-point parsing in calculation code",
-    matches: (node) =>
-      ts.isCallExpression(node) && isIdentifierNamed(node.expression, "parseFloat"),
+    // bare identifier だけでなく globalThis.parseFloat / Number.parseFloat /
+    // obj["parseFloat"] 等の qualified call も同一関数なので検出する
+    // (Number.parseFloat === parseFloat。receiver 名は限定しない)。
+    matches: (node) => {
+      if (!ts.isCallExpression(node)) {
+        return false;
+      }
+      const callee = unwrapExpression(node.expression);
+      if (ts.isIdentifier(callee)) {
+        return callee.text === "parseFloat";
+      }
+      return (
+        (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) &&
+        staticMemberName(callee) === "parseFloat"
+      );
+    },
   },
   {
     name: "Math.round()",

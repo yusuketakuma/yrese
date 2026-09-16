@@ -74,5 +74,9 @@ export const CLAIMABLE_SAFE_STATUSES = [] as const;
 
 /** 請求データ生成を許可してよいか(未知ステータスを含め、allow-list外が1つでもあれば不可) */
 export function isClaimable(statuses: readonly string[]): boolean {
-  return statuses.every((s) => (CLAIMABLE_SAFE_STATUSES as readonly string[]).includes(s));
+  // Array.from で疎配列の hole を undefined として検査する
+  // (Array.prototype.every は hole を skip し、allow-list 判定を素通りさせる)。
+  return Array.from(statuses).every((s) =>
+    (CLAIMABLE_SAFE_STATUSES as readonly string[]).includes(s),
+  );
 }

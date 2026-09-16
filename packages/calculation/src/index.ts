@@ -205,8 +205,18 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+// applicationKey / groupId / blocksGroupIdPrefixes は Map キーや prefix 一致で
+// 同一性を判定する。前後空白を含む値は同一性判定をすり抜けるため canonical
+// form(前後空白なし)を要求する。
+function isCanonicalIdentityString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 && value === value.trim();
+}
+
+// Array.from で疎配列の hole を undefined として検査対象に含める
+// (Array.prototype.every は hole を skip するため malformed を見逃す。
+// blocksGroupIdPrefixes の検査と同じ規律)。
 function isStringArray(value: unknown): value is readonly string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
+  return Array.isArray(value) && Array.from(value).every((item) => typeof item === "string");
 }
 
 function calculationEvidenceRef(id: string): EvidenceRef {
@@ -500,9 +510,15 @@ function validateCommonStepTraceOutput(result: Readonly<Record<string, unknown>>
   return undefined;
 }
 
+const BLOCKER_FIELDS = new Set<string>(["type", "detail"]);
+
 function validateBlockerShape(value: unknown): string | undefined {
   if (!isRecord(value)) {
     return "blocker must be an object";
+  }
+  const unknownField = findUnknownField(value, BLOCKER_FIELDS);
+  if (unknownField !== undefined) {
+    return `unknown blocker field outside the approved SSOT: ${unknownField}`;
   }
   if (typeof value.type !== "string" || !isBlockerType(value.type)) {
     return "blocker.type must be a registered BlockerType";
@@ -519,6 +535,10 @@ function validateEvidenceRefShape(value: unknown, label: string): string | undef
   }
   if ("url" in value) {
     return `${label}.url must not be present`;
+  }
+  const unknownField = findUnknownField(value, EVIDENCE_REF_FIELDS);
+  if (unknownField !== undefined) {
+    return `${label} must not include unknown field: ${unknownField}`;
   }
   if (!isNonEmptyString(value.evidenceId)) {
     return `${label}.evidenceId must be a non-empty string`;
@@ -541,6 +561,14 @@ function validateEvidenceRefShape(value: unknown, label: string): string | undef
   return undefined;
 }
 
+const EVIDENCE_REF_FIELDS = new Set<string>([
+  "evidenceId",
+  "sourceType",
+  "title",
+  "version",
+  "effectiveFrom",
+]);
+
 const EXCLUSIVITY_GROUP_FIELDS = new Set<string>([
   "groupId",
   "evidenceRef",
@@ -558,6 +586,9 @@ function validateExclusivityGroupShape(value: unknown): string | undefined {
   if (!isNonEmptyString(value.groupId)) {
     return "exclusivityGroup.groupId must be a non-empty string";
   }
+  if (!isCanonicalIdentityString(value.groupId)) {
+    return "exclusivityGroup.groupId must be a canonical string without surrounding whitespace";
+  }
   if (value.blocksGroupIdPrefixes !== undefined) {
     // Array.from で疎配列の hole を undefined として検査対象に含める
     // (Array.prototype.every/some は hole を skip するため malformed を見逃す)
@@ -566,6 +597,9 @@ function validateExclusivityGroupShape(value: unknown): string | undefined {
       !Array.from(value.blocksGroupIdPrefixes).every(isNonEmptyString)
     ) {
       return "exclusivityGroup.blocksGroupIdPrefixes must be an array of non-empty strings";
+    }
+    if (!Array.from(value.blocksGroupIdPrefixes).every(isCanonicalIdentityString)) {
+      return "exclusivityGroup.blocksGroupIdPrefixes must not contain surrounding whitespace";
     }
   }
   return validateEvidenceRefShape(value.evidenceRef, "exclusivityGroup.evidenceRef");
@@ -636,6 +670,9 @@ function validateStepResult(value: unknown): StepResultValidation {
   }
   if (!isNonEmptyString(value.applicationKey)) {
     return { ok: false, reason: "applicationKey must be a non-empty string" };
+  }
+  if (!isCanonicalIdentityString(value.applicationKey)) {
+    return { ok: false, reason: "applicationKey must be a canonical string without surrounding whitespace" };
   }
   if (
     value.maxApplications !== undefined &&
@@ -1992,11 +2029,12 @@ export function calculate(request: CalculationRequest, ruleSet: CalculationRuleS
     // 適用期間の宣言不正(終了日が開始日より前)はルール定義エラーとして即時停止
     if (rule.effectiveTo !== undefined && rule.effectiveTo.compare(rule.effectiveFrom) < 0) {
       const blocker = createInvalidEffectiveRangeBlocker(rule, rule.effectiveTo);
+      pushWarnings([invalidStepResultWarning]);
       return createBlockedResult(
         request,
         [...blockers, blocker],
         [...steps, invalidEffectiveRangeStep(rule)],
-        [...warnings, invalidStepResultWarning],
+        warnings,
       );
     }
 
@@ -2017,11 +2055,12 @@ export function calculate(request: CalculationRequest, ruleSet: CalculationRuleS
     const resultValidation = validateStepResult(rule.apply(Object.freeze({ request, ruleId: rule.ruleId })));
     if (!resultValidation.ok) {
       const blocker = createInvalidStepResultBlocker(rule.ruleId, resultValidation.reason);
+      pushWarnings([invalidStepResultWarning]);
       return createBlockedResult(
         request,
         [...blockers, blocker],
         [...steps, invalidStepResultStep(rule, resultValidation.reason)],
-        [...warnings, invalidStepResultWarning],
+        warnings,
       );
     }
 
@@ -2048,11 +2087,12 @@ export function calculate(request: CalculationRequest, ruleSet: CalculationRuleS
       const declared = declaredMaxApplicationsByRuleId.get(rule.ruleId);
       if (declared !== result.maxApplications) {
         const blocker = createMaxApplicationsMismatchBlocker(rule.ruleId, declared, result.maxApplications);
+        pushWarnings([invalidStepResultWarning]);
         return createBlockedResult(
           request,
           [...blockers, blocker],
           [...steps, maxApplicationsMismatchStep(rule)],
-          [...warnings, invalidStepResultWarning],
+          warnings,
         );
       }
     } else {

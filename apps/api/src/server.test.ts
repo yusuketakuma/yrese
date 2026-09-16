@@ -15,6 +15,7 @@ import { patientId, pharmacyId, receptionId, tenantId, userId } from '@yrese/sha
 import {
   devTenantContextConfigurationErrorMessage,
   patientSearchCursorHmacConfigurationErrorMessage,
+  postgresCompositionConfigurationErrorMessage,
 } from './config.js';
 import {
   createPatientSearchCursorCodec,
@@ -633,6 +634,19 @@ describe('buildServer', () => {
       tenantContextMode: 'dev_headers',
     });
     await inMemoryServer.close();
+  });
+
+  it('rejects postgres mode without an explicit receptionCreateCommand', () => {
+    // in-memory 合成 command への silent fallback は受付・監査・outbox の
+    // 単一 transaction を失わせるため、postgres mode では明示注入を強制する。
+    expect(() =>
+      buildServer({
+        patientSearchCursorCodec: createPatientSearchCursorCodec(
+          randomBytes(patientSearchCursorHmacKeyByteLength),
+        ),
+        repositoryMode: 'postgres',
+      }),
+    ).toThrowError(new Error(postgresCompositionConfigurationErrorMessage));
   });
 
   it('denies /patients/search when dev tenant context headers are absent', async () => {

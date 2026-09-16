@@ -19,6 +19,7 @@ import {
 
 import type { InMemoryReceptionOutbox } from "./reception-command.js";
 import type { ReceptionRepository } from "./reception-repository.js";
+import { compareTextByCodePoints } from "./text-order.js";
 
 /**
  * BE-1: 実在する永続状態に対する読み取りサービス。
@@ -70,8 +71,7 @@ function assertOperationsInvariant(condition: boolean): void {
 }
 
 function compareEventType(left: string, right: string): number {
-  if (left === right) return 0;
-  return left < right ? -1 : 1;
+  return compareTextByCodePoints(left, right);
 }
 
 /**

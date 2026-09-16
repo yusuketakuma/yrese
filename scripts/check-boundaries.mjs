@@ -6,7 +6,7 @@ import ts from "@typescript/typescript6";
 const rootDir = path.resolve(process.argv[2] ?? process.cwd());
 const violations = [];
 const sourceExtensions = new Set([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"]);
-const ignoredDirs = new Set([".git", ".next", "coverage", "dist", "node_modules"]);
+const ignoredDirs = new Set([".git", ".next", ".turbo", "coverage", "dist", "node_modules", "out"]);
 const scopeError = "Boundary check could not validate the protected workspace scope.";
 const sourceFileCache = new Map();
 const dependencySections = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"];
@@ -342,7 +342,9 @@ function resolveRelativeImport(filePath, specifier) {
 
 function isInsideDir(candidatePath, dirPath) {
   const relative = path.relative(dirPath, candidatePath);
-  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+  // `..` で始まる file 名(例: `..foo.ts`)は dirPath 内の正当な entry。
+  // 脱出は `..` 単独または `..` + separator のときだけ。
+  return relative === "" || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
 }
 
 function workspaceAppNameFromPath(filePath) {
@@ -358,7 +360,7 @@ function packageNameFromPath(filePath) {
 }
 
 function forbiddenPureCoreImportReason(specifier) {
-  if (specifier === "aws-sdk" || specifier.startsWith("@aws-sdk/")) {
+  if (specifier === "aws-sdk" || specifier.startsWith("aws-sdk/") || specifier.startsWith("@aws-sdk/")) {
     return "AWS SDK";
   }
 
@@ -374,7 +376,7 @@ function isTestSourceFile(filePath) {
   return /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(basename);
 }
 
-async function checkImportBoundaries(packageNameByDir, appPackageNames) {
+async function checkImportBoundaries(appPackageNames) {
   const sourcePredicate = (filePath) => sourceExtensions.has(path.extname(filePath));
   const packageFiles = await listFiles(path.join(rootDir, "packages"), sourcePredicate);
   const appFiles = await listFiles(path.join(rootDir, "apps"), sourcePredicate);
@@ -393,12 +395,16 @@ async function checkImportBoundaries(packageNameByDir, appPackageNames) {
       }
 
       const relativeTarget = resolveRelativeImport(filePath, specifier);
+      // package 名は manifest から解決する(hardcode した @yrese/* 名への
+      // rename や unscoped 名での迂回を防ぐ)。scoped は 2 segment、
+      // unscoped は 1 segment の deep import まで同一 package とみなす。
+      const importedAppByName =
+        appPackageNames.get(specifier) ??
+        appPackageNames.get(specifier.split("/").slice(0, 2).join("/")) ??
+        appPackageNames.get(specifier.split("/")[0]);
       const importsApps =
         specifier.startsWith("apps/") ||
-        specifier === "@yrese/api" ||
-        specifier.startsWith("@yrese/api/") ||
-        specifier === "@yrese/web" ||
-        specifier.startsWith("@yrese/web/") ||
+        importedAppByName !== undefined ||
         (relativeTarget !== null && isInsideDir(relativeTarget, path.join(rootDir, "apps")));
 
       if (importsApps) {
@@ -422,7 +428,10 @@ async function checkImportBoundaries(packageNameByDir, appPackageNames) {
         : relativeTarget !== null && isInsideDir(relativeTarget, path.join(rootDir, "apps"))
           ? workspaceAppNameFromPath(relativeTarget)
           : null;
-      const appImportByPackage = appPackageNames.get(specifier) ?? appPackageNames.get(specifier.split("/").slice(0, 2).join("/"));
+      const appImportByPackage =
+        appPackageNames.get(specifier) ??
+        appPackageNames.get(specifier.split("/").slice(0, 2).join("/")) ??
+        appPackageNames.get(specifier.split("/")[0]);
       const importedAppName = appImportByPath ?? appImportByPackage;
 
       if (importedAppName !== null && importedAppName !== undefined && importedAppName !== appName) {
@@ -430,8 +439,6 @@ async function checkImportBoundaries(packageNameByDir, appPackageNames) {
       }
     }
   }
-
-  void packageNameByDir;
 }
 
 function workspaceDependencies(packageJson) {
@@ -531,7 +538,9 @@ function hasDuplicateConstDeclaration(sourceFile, constName, requiresAsConst) {
 async function checkDuplicateConstArrays() {
   const sourcePredicate = (filePath) => {
     const relative = toPosix(path.relative(rootDir, filePath));
-    const isPackageSource = /^packages\/[^/]+\/src\/.+\.[cm]?[jt]sx?$/.test(relative);
+    // src/ 以外の package file(tools・生成script等)も検査する。SSOT 定数の
+    // 複製は配置場所に関係なく二重定義になる。
+    const isPackageSource = /^packages\/[^/]+\/.+\.[cm]?[jt]sx?$/.test(relative);
     const isAppSource = /^apps\/[^/]+\/.+\.[cm]?[jt]sx?$/.test(relative);
     if (!isPackageSource && !isAppSource) {
       return false;
@@ -580,7 +589,9 @@ function literalTextsIn(sourceFile) {
 async function checkCompositeKeyConstruction() {
   const sourcePredicate = (filePath) => {
     const relative = toPosix(path.relative(rootDir, filePath));
-    const isPackageSource = /^packages\/[^/]+\/src\/.+\.[cm]?[jt]sx?$/.test(relative);
+    // src/ 以外の package file も検査する。複合キー marker の inline 構築は
+    // 配置場所に関係なくテナント境界を弱める。
+    const isPackageSource = /^packages\/[^/]+\/.+\.[cm]?[jt]sx?$/.test(relative);
     const isAppSource = /^apps\/[^/]+\/.+\.[cm]?[jt]sx?$/.test(relative);
     if (!isPackageSource && !isAppSource) {
       return false;
@@ -616,18 +627,16 @@ async function main() {
   await validateProtectedScopes();
   const workspacePackageDirs = await listWorkspacePackageDirs();
   const workspaceManifests = await readWorkspaceManifests(workspacePackageDirs);
-  const packageNameByDir = new Map();
   const appPackageNames = new Map();
 
   for (const dir of workspacePackageDirs) {
     const packageJson = workspaceManifests.get(dir);
-    packageNameByDir.set(dir, packageJson.name);
     if (toPosix(path.relative(rootDir, dir)).startsWith("apps/")) {
       appPackageNames.set(packageJson.name, path.basename(dir));
     }
   }
 
-  await checkImportBoundaries(packageNameByDir, appPackageNames);
+  await checkImportBoundaries(appPackageNames);
   checkWorkspaceCycles(workspaceManifests);
   await checkDuplicateConstArrays();
   await checkCompositeKeyConstruction();

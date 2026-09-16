@@ -236,7 +236,7 @@ export class PostgresReceptionCreateCommand implements ReceptionCreateCommand {
                AND o.aggregate_type = $3 AND o.aggregate_id = r.reception_id
                AND o.event_type = $4
           )
-        ORDER BY r.accepted_at, r.reception_id`,
+        ORDER BY r.accepted_at, r.reception_id COLLATE "C"`,
       [scope.tenantId, scope.pharmacyId, receptionCommandAggregateType, receptionCommandAuditEventType],
     );
     const rows = snapshotUnboundedDatabaseQueryRows<unknown>(

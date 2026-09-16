@@ -8,7 +8,7 @@
  * (a symlink, a non-file, an unreadable entry) belongs to repository content and must
  * therefore abort the scan, or belongs to developer-local tooling and may be skipped.
  * Skips are always reported. Outside a git work tree there is no ignore data and the
- * scan aborts on any violation, as it always did.
+ * scan aborts on any out-of-root or unresolvable violation, as it always did.
  *
  * False positives can be allowlisted per line by adding:
  *   secret-scan: allow
@@ -16,7 +16,7 @@
  * Keep allowlists rare and local to non-secret examples only.
  */
 import { spawnSync } from "node:child_process";
-import { lstat, readdir, readFile } from "node:fs/promises";
+import { lstat, readdir, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 
 const rootDir = process.cwd();
@@ -114,6 +114,35 @@ function skipOrFailScope(entryPath) {
   }
   skippedExcludedPaths.push(toPosix(path.relative(rootDir, entryPath)));
   return true;
+}
+
+/**
+ * A symlink whose target stays inside the scan root never widens the scanned
+ * scope: the link adds no path outside the root, and the target — when it is
+ * repository content — is scanned at its canonical path already (a target under
+ * an always-skipped subtree such as `out/` was never in scope to begin with).
+ * Such links — e.g. a tracked `CLAUDE.md -> AGENTS.md` alias — are therefore
+ * skipped without aborting, but the skip stays visible in the skip report so a
+ * link can never silently shadow content the operator expects to be scanned.
+ * Links that resolve outside the root, or cannot be resolved at all, remain
+ * scope violations subject to the ignore check.
+ */
+let scanRootRealpathPromise;
+function scanRootRealpath() {
+  scanRootRealpathPromise ??= realpath(rootDir).catch(() => rootDir);
+  return scanRootRealpathPromise;
+}
+
+async function isInsideScanRoot(resolvedPath) {
+  const scanRoot = await scanRootRealpath();
+  const relative = path.relative(scanRoot, resolvedPath);
+  // `..foo` is a legal in-root name; only `..` itself or `../`-prefixed relatives escape.
+  return (
+    relative === "" ||
+    (relative !== ".." &&
+      !relative.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relative))
+  );
 }
 
 const secretPatterns = [
@@ -236,7 +265,14 @@ async function listFiles(dir) {
       continue;
     }
     if (entry.isSymbolicLink()) {
-      skipOrFailScope(entryPath);
+      const resolved = await realpath(entryPath).catch(() => undefined);
+      if (resolved === undefined || !(await isInsideScanRoot(resolved))) {
+        skipOrFailScope(entryPath);
+      } else {
+        // in-root link: coverageはcanonical path側で担保されるが、skip自体は
+        // 報告対象に含めて「symlink越しの内容が読まれていない」状態を可視化する。
+        skippedExcludedPaths.push(toPosix(path.relative(rootDir, entryPath)));
+      }
       continue;
     }
     if (ignoredDirs.has(entry.name)) {

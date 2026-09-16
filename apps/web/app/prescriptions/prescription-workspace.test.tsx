@@ -11,6 +11,7 @@ import {
   PrescriptionWorkspace,
   resolveDraftLoadOutcome,
   resolveSaveFailureState,
+  resolveSaveStateAfterEdit,
   serverDraftDivergenceCopy,
   SelectedPatientWorkspaceView,
   summarizePrescriptionDraftChanges,
@@ -392,5 +393,34 @@ describe("connected draft state machine (WP-5101 review HIGH-1/HIGH-2)", () => {
     expect(canSavePrescriptionDraft({ ...base, linked: false })).toBe(false);
     expect(canSavePrescriptionDraft({ ...base, loadKind: "loading" })).toBe(false);
     expect(canSavePrescriptionDraft({ ...base, dirty: false })).toBe(false);
+  });
+
+  it("keeps the save-conflict gate across edits until the server version is reloaded", () => {
+    expect(resolveSaveStateAfterEdit({ kind: "conflict" })).toEqual({
+      kind: "conflict",
+    });
+    expect(
+      canSavePrescriptionDraft({
+        linked: true,
+        loadKind: "ready",
+        dirty: true,
+        saveKind: resolveSaveStateAfterEdit({ kind: "conflict" }).kind,
+        serverChangedWhileAway: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("clears non-conflict save states on the next edit", () => {
+    expect(resolveSaveStateAfterEdit({ kind: "idle" })).toEqual({ kind: "idle" });
+    expect(resolveSaveStateAfterEdit({ kind: "saving" })).toEqual({ kind: "idle" });
+    expect(
+      resolveSaveStateAfterEdit({ kind: "saved", disposition: "updated" }),
+    ).toEqual({ kind: "idle" });
+    expect(
+      resolveSaveStateAfterEdit({
+        kind: "error",
+        error: new PrescriptionDraftApiError("UNAVAILABLE", "合成の保存失敗"),
+      }),
+    ).toEqual({ kind: "idle" });
   });
 });

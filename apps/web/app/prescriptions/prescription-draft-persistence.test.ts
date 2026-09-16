@@ -261,4 +261,46 @@ describe("prescription draft web persistence", () => {
       kind: "INVALID_RESPONSE",
     });
   });
+
+  it("rejects a schema-valid load response whose identity differs from the request context", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    for (const override of [
+      { receptionId: "reception-test-other" },
+      { patientId: "patient-test-other" },
+      { businessDate: "2026-08-26" },
+    ] as const) {
+      const foreignDraft = { ...serverDraft, ...override };
+      const fetchImpl: typeof fetch = async () => response(foreignDraft);
+      await expect(
+        loadPrescriptionDraft(context, fetchImpl),
+      ).rejects.toMatchObject({
+        kind: "INVALID_RESPONSE",
+        message:
+          "処方下書きAPIの応答が要求した受付・患者・業務日と一致しませんでした。",
+      });
+    }
+  });
+
+  it("rejects a schema-valid save response whose identity differs from the request context", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const foreignDraft = {
+      ...serverDraft,
+      patientId: "patient-test-other",
+      saveDisposition: "updated" as const,
+    };
+    const fetchImpl: typeof fetch = async () => response(foreignDraft);
+
+    await expect(
+      savePrescriptionDraft(
+        context,
+        {
+          expectedVersion: 2,
+          snapshot: fromPrescriptionDraftResponse(serverDraft),
+        },
+        fetchImpl,
+      ),
+    ).rejects.toMatchObject({ kind: "INVALID_RESPONSE" });
+  });
 });

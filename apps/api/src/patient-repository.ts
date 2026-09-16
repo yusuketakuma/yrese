@@ -20,6 +20,7 @@ import {
   snapshotRepositoryPharmacyId,
   snapshotRepositoryTenantId,
 } from './repository-command.js';
+import { compareTextByCodePoints } from './text-order.js';
 
 export const patientRepositoryCommandSnapshotInvariantErrorMessage =
   'Patient repository command snapshot is invalid';
@@ -350,11 +351,12 @@ function comparePatientSearchOrder(
   left: SyntheticPatientRecord,
   right: SyntheticPatientRecord,
 ): number {
-  if (left.patientNumber < right.patientNumber) return -1;
-  if (left.patientNumber > right.patientNumber) return 1;
-  if (left.patientId < right.patientId) return -1;
-  if (left.patientId > right.patientId) return 1;
-  return 0;
+  const patientNumberOrder = compareTextByCodePoints(
+    left.patientNumber,
+    right.patientNumber,
+  );
+  if (patientNumberOrder !== 0) return patientNumberOrder;
+  return compareTextByCodePoints(left.patientId, right.patientId);
 }
 
 export class InMemoryPatientRepository implements PatientRepository {

@@ -228,6 +228,13 @@ describe("provisional statuses (v0.2.0 §14)", () => {
     expect(isClaimable(["PENDING_REVERIFY", "UNKNOWN_FUTURE_STATUS"])).toBe(false);
   });
 
+  it("fails closed on sparse status lists instead of skipping holes", () => {
+    expect(isClaimable(Array(3) as string[])).toBe(false);
+    const sparseTail = ["PENDING_REVERIFY"];
+    sparseTail.length = 2;
+    expect(isClaimable(sparseTail)).toBe(false);
+  });
+
   it("starts with no claimable safe statuses", () => {
     expect(CLAIMABLE_SAFE_STATUSES).toEqual([]);
   });

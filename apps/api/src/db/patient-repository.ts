@@ -134,7 +134,8 @@ export class PostgresPatientRepository implements PatientRepository {
        WHERE tenant_id = $1
          AND pharmacy_id = $2
          AND (name ILIKE $3 ESCAPE '\\' OR kana ILIKE $3 ESCAPE '\\' OR patient_number ILIKE $3 ESCAPE '\\')
-       ORDER BY patient_number ASC, patient_id ASC
+       -- C collation: database locale に依存しない code point 順で in-memory 実装と一致させる。
+       ORDER BY patient_number COLLATE "C" ASC, patient_id COLLATE "C" ASC
        LIMIT $4 OFFSET $5`,
       [
         command.tenantId,

@@ -1707,3 +1707,150 @@ describe("WP-5280 regressions (Oracle-confirmed findings)", () => {
     );
   });
 });
+
+describe("audit regressions (StepResult validation hardening)", () => {
+  function itemRule(ruleId: string, result: Record<string, unknown>): CalculationRule {
+    return {
+      ruleId,
+      evidenceRefs: [evidenceRef("EVD-CAL-0001")],
+      effectiveFrom: CalendarDate.fromString("2026-06-01"),
+      apply: () => result as never,
+    };
+  }
+
+  const validItemResult: Record<string, unknown> = {
+    status: "ITEM_CALCULATED",
+    description: "item",
+    affectsClaim: true,
+    output: "itemPoints=1",
+    itemPoints: Points.fromInteger(1),
+    applicationKey: "prescription",
+  };
+
+  it("疎配列の warnings は hole を検査し BLOCKED (undefined の混入/裸 throw を防止)", () => {
+    const sparseWarnings = [, "w"]; // hole at index 0
+    const blocked = expectBlocked(
+      calculate(request(), {
+        rules: [itemRule("rule:sparse-warnings", { ...validItemResult, warnings: sparseWarnings })],
+      }),
+    );
+    expect(blocked.blockers[0]?.type).toBe("SSOT_UPDATE_REQUIRED");
+    expect(blocked.blockers[0]?.detail).toContain("warnings must be a string array");
+    expect(blocked.trace.warnings).toEqual([invalidStepResultWarning]);
+  });
+
+  it("疎配列の inputRefs は BLOCKED (trace 層 assertDenseArray の裸 throw ではない)", () => {
+    const sparseInputRefs = [, "dispensing.dispensingDate"];
+    const blocked = expectBlocked(
+      calculate(request(), {
+        rules: [itemRule("rule:sparse-input-refs", { ...validItemResult, inputRefs: sparseInputRefs })],
+      }),
+    );
+    expect(blocked.blockers[0]?.type).toBe("SSOT_UPDATE_REQUIRED");
+    expect(blocked.blockers[0]?.detail).toContain("inputRefs must be a string array");
+  });
+
+  it("blocker の unknown field 密輸を拒否", () => {
+    const blocked = expectBlocked(
+      calculate(request(), {
+        rules: [
+          itemRule("rule:blocker-unknown-field", {
+            status: "BLOCKED",
+            description: "blocked",
+            affectsClaim: false,
+            output: "BLOCKED",
+            blocker: { type: "SSOT_UPDATE_REQUIRED", detail: "d", smuggled: "x" },
+          }),
+        ],
+      }),
+    );
+    expect(blocked.blockers[0]?.detail).toContain(
+      "unknown blocker field outside the approved SSOT: smuggled",
+    );
+  });
+
+  it("evidenceRef の unknown field 密輸を拒否", () => {
+    const blocked = expectBlocked(
+      calculate(request(), {
+        rules: [
+          itemRule("rule:evidence-ref-unknown-field", {
+            ...validItemResult,
+            exclusivityGroup: {
+              groupId: "g",
+              evidenceRef: { ...evidenceRef("EVD-CAL-0001"), injected: "y" },
+            },
+          }),
+        ],
+      }),
+    );
+    expect(blocked.blockers[0]?.detail).toContain(
+      "exclusivityGroup.evidenceRef must not include unknown field: injected",
+    );
+  });
+
+  it("前後空白を含む applicationKey は同一性判定回避として拒否", () => {
+    const blocked = expectBlocked(
+      calculate(request(), {
+        rules: [itemRule("rule:padded-application-key", { ...validItemResult, applicationKey: " prescription" })],
+      }),
+    );
+    expect(blocked.blockers[0]?.detail).toContain(
+      "applicationKey must be a canonical string without surrounding whitespace",
+    );
+  });
+
+  it("前後空白を含む exclusivityGroup.groupId / prefix を拒否", () => {
+    const paddedGroupId = expectBlocked(
+      calculate(request(), {
+        rules: [
+          itemRule("rule:padded-group-id", {
+            ...validItemResult,
+            exclusivityGroup: { groupId: "g ", evidenceRef: evidenceRef("EVD-CAL-0001") },
+          }),
+        ],
+      }),
+    );
+    expect(paddedGroupId.blockers[0]?.detail).toContain(
+      "exclusivityGroup.groupId must be a canonical string without surrounding whitespace",
+    );
+
+    const paddedPrefix = expectBlocked(
+      calculate(request(), {
+        rules: [
+          itemRule("rule:padded-prefix", {
+            ...validItemResult,
+            exclusivityGroup: {
+              groupId: "g",
+              evidenceRef: evidenceRef("EVD-CAL-0001"),
+              blocksGroupIdPrefixes: [" g2"],
+            },
+          }),
+        ],
+      }),
+    );
+    expect(paddedPrefix.blockers[0]?.detail).toContain(
+      "exclusivityGroup.blocksGroupIdPrefixes must not contain surrounding whitespace",
+    );
+  });
+
+  it("早期 return 経路でも必須警告は重複蓄積しない", () => {
+    const ruleSet: CalculationRuleSet = {
+      rules: [
+        itemRule("rule:emits-required-warning", {
+          ...validItemResult,
+          warnings: [invalidStepResultWarning, "custom-warning-1"],
+        }),
+        {
+          ruleId: "rule:invalid-range",
+          evidenceRefs: [evidenceRef("EVD-CAL-0001")],
+          effectiveFrom: CalendarDate.fromString("2026-06-01"),
+          effectiveTo: CalendarDate.fromString("2026-05-01"),
+          apply: () => validItemResult as never,
+        },
+      ],
+    };
+
+    const blocked = expectBlocked(calculate(request(), ruleSet));
+    expect(blocked.trace.warnings).toEqual([invalidStepResultWarning, "custom-warning-1"]);
+  });
+});

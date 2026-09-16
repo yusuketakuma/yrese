@@ -529,7 +529,7 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(insertSql).toContain('idempotency_key AS stored_idempotency_key');
     expect(insertSql).toContain('patient_id AS stored_patient_id');
     expect(insertSql).not.toMatch(/\$[1247]\s*(?:::text)?\s+AS stored_/);
-    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT']);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT', 'SELECT', 'ROLLBACK']);
     expect(release.mock.calls).toEqual([[]]);
   });
 
@@ -793,7 +793,7 @@ describe('PostgresReceptionRepository client lifecycle', () => {
       kind: 'created',
       entry: { patient: { eligibilityCheckedAt: '2026-07-13T00:00:00.000Z' } },
     });
-    expect(queryLabels(equivalent.query)).toEqual(['BEGIN', 'INSERT', 'COMMIT']);
+    expect(queryLabels(equivalent.query)).toEqual(['BEGIN', 'INSERT', 'COMMIT', 'SELECT', 'ROLLBACK']);
   });
 
   it('captures the patient command before awaiting a DB connection', async () => {
@@ -825,7 +825,7 @@ describe('PostgresReceptionRepository client lifecycle', () => {
       kind: 'created',
       entry: { patient: { name: patient.name, patientNumber: patient.patientNumber } },
     });
-    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT']);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT', 'SELECT', 'ROLLBACK']);
     expect(release.mock.calls).toEqual([[]]);
   });
 
@@ -940,7 +940,7 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     const { repository, query, release } = createRepository({ scenario: 'created' });
 
     await expect(repository.create(command)).resolves.toMatchObject({ kind: 'created' });
-    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT']);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT', 'SELECT', 'ROLLBACK']);
     expect(release.mock.calls).toEqual([[]]);
   });
 
@@ -1070,7 +1070,7 @@ describe('PostgresReceptionRepository client lifecycle', () => {
       kind: 'created',
       entry: { acceptedAt: input.acceptedAt.toISOString(), receptionStatus: 'WAITING' },
     });
-    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT']);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT', 'SELECT', 'ROLLBACK']);
     expect(release.mock.calls).toEqual([[]]);
   });
 
@@ -1127,7 +1127,7 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(selectSql).toContain('r.pharmacy_id AS stored_pharmacy_id');
     expect(selectSql).toContain('r.idempotency_key AS stored_idempotency_key');
     expect(selectSql).toContain('r.patient_id AS stored_patient_id');
-    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT', 'SELECT', 'ROLLBACK']);
     expect(release.mock.calls).toEqual([[]]);
   });
 
@@ -1148,7 +1148,7 @@ describe('PostgresReceptionRepository client lifecycle', () => {
           receptionStatus,
         },
       });
-      expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
+      expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT', 'SELECT', 'ROLLBACK']);
       expect(release.mock.calls).toEqual([[]]);
     },
   );
@@ -1205,7 +1205,7 @@ describe('PostgresReceptionRepository client lifecycle', () => {
       },
     });
     expect('entry' in result).toBe(false);
-    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT', 'SELECT', 'ROLLBACK']);
     expect(release.mock.calls).toEqual([[]]);
   });
 
@@ -1478,7 +1478,9 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(String(sql)).toContain(
       'WHERE r.tenant_id = $1 AND r.pharmacy_id = $2 AND r.business_date = $3::date',
     );
-    expect(String(sql)).toContain('ORDER BY r.accepted_at ASC, r.reception_id ASC');
+    expect(String(sql)).toContain(
+      'ORDER BY r.accepted_at ASC, r.reception_id COLLATE "C" ASC',
+    );
     expect(String(sql)).not.toMatch(/\b(?:LIMIT|OFFSET)\b/i);
   });
 
@@ -1844,7 +1846,7 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(result.kind).toBe('idempotency_conflict');
     expect('entry' in result).toBe(false);
     expect(timestampTraps).toBe(0);
-    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT', 'SELECT', 'ROLLBACK']);
     expect(release.mock.calls).toEqual([[]]);
   });
 
@@ -1868,7 +1870,7 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(result.kind).toBe('idempotency_conflict');
     expect('entry' in result).toBe(false);
     expect(accessorReads).toBe(0);
-    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT', 'SELECT', 'ROLLBACK']);
     expect(release.mock.calls).toEqual([[]]);
   });
 
@@ -1892,7 +1894,7 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     expect(result.kind).toBe('idempotency_conflict');
     expect('entry' in result).toBe(false);
     expect(statusReads).toBe(0);
-    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT']);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT', 'SELECT', 'ROLLBACK']);
     expect(release.mock.calls).toEqual([[]]);
   });
 
@@ -2012,6 +2014,8 @@ describe('PostgresReceptionRepository client lifecycle', () => {
         'INSERT',
         ...(scenario === 'created' ? [] : ['SELECT']),
         'COMMIT',
+        'SELECT',
+        'ROLLBACK',
       ]);
       expect(release.mock.calls).toEqual([[]]);
     },

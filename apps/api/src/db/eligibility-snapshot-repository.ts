@@ -80,6 +80,16 @@ export class EligibilityMethodError extends RangeError {
   }
 }
 
+/** 同一 snapshotId が異なる payload で既に存在する場合の競合(冪等 retry ではない)。 */
+export class EligibilitySnapshotConflictError extends Error {
+  constructor(snapshotId: string) {
+    super(
+      `eligibility snapshot ${snapshotId} already exists with a different payload`,
+    );
+    this.name = 'EligibilitySnapshotConflictError';
+  }
+}
+
 interface SnapshotRow {
   readonly snapshot_id: string;
   readonly patient_id: string;
@@ -88,6 +98,8 @@ interface SnapshotRow {
   readonly verified_at: Date;
   readonly valid_from: string;
   readonly valid_to: string | null;
+  readonly raw_response_ref: string | null;
+  readonly recorded_by: string;
 }
 
 function toSnapshot(row: SnapshotRow): EligibilitySnapshot {
@@ -133,7 +145,8 @@ export function deriveEligibilityState(
 
 /** DateStyle 非依存の ISO 暦日文字列(L1)。 */
 const selectSnapshotColumns = `s.snapshot_id, s.patient_id, s.verified_method, s.state, s.verified_at,
-  to_char(s.valid_from, 'YYYY-MM-DD') AS valid_from, to_char(s.valid_to, 'YYYY-MM-DD') AS valid_to`;
+  to_char(s.valid_from, 'YYYY-MM-DD') AS valid_from, to_char(s.valid_to, 'YYYY-MM-DD') AS valid_to,
+  s.raw_response_ref, s.recorded_by`;
 
 const selectReceptionSnapshotSql = `
   SELECT r.patient_id AS reception_patient_id, ${selectSnapshotColumns}
@@ -185,15 +198,36 @@ export class PostgresEligibilitySnapshotRepository {
       const row = current.rows[0];
       if (row === undefined)
         throw new RangeError('reception not found in scope');
+      const currentSnapshotRow =
+        row.snapshot_id === null ? undefined : (row as SnapshotRow);
       const currentSnapshot =
-        row.snapshot_id === null ? undefined : toSnapshot(row as SnapshotRow);
+        currentSnapshotRow === undefined
+          ? undefined
+          : toSnapshot(currentSnapshotRow);
       // 応答喪失後の同一入力リトライ(M6): 既に当該 snapshot が受付に紐づいていれば成功扱いで返す。
+      // 冪等判定は保存された全入力フィールドの一致を要求する。同一 snapshotId で
+      // 内容の異なる再送は retry ではなく payload 衝突として拒否する(旧実装は
+      // 3 field のみ比較し、変更済み入力を旧 snapshot として黙って受理した)。
       if (
         currentSnapshot !== undefined &&
-        currentSnapshot.snapshotId === input.snapshotId &&
-        currentSnapshot.state === input.state &&
-        currentSnapshot.verifiedMethod === input.verifiedMethod
+        currentSnapshotRow !== undefined &&
+        currentSnapshot.snapshotId === input.snapshotId
       ) {
+        const identical =
+          currentSnapshot.state === input.state &&
+          currentSnapshot.verifiedMethod === input.verifiedMethod &&
+          currentSnapshot.verifiedAt ===
+            snapshotDatabaseInstant(
+              input.verifiedAt,
+              'Eligibility snapshot input returned an invalid verified_at instant',
+            ) &&
+          currentSnapshot.validFrom === input.validFrom &&
+          currentSnapshot.validTo === (input.validTo ?? null) &&
+          currentSnapshotRow.raw_response_ref === (input.rawResponseRef ?? null) &&
+          currentSnapshotRow.recorded_by === input.recordedBy;
+        if (!identical) {
+          throw new EligibilitySnapshotConflictError(input.snapshotId);
+        }
         await client.query('ROLLBACK');
         return currentSnapshot;
       }
@@ -201,27 +235,48 @@ export class PostgresEligibilitySnapshotRepository {
       if (!isEligibilityTransitionAllowed(from, input.state)) {
         throw new EligibilityTransitionError(from, input.state);
       }
-      const inserted = await client.query<SnapshotRow>(
-        `INSERT INTO eligibility_snapshots AS s
-           (tenant_id, pharmacy_id, snapshot_id, patient_id, verified_method, state, verified_at,
-            valid_from, valid_to, raw_response_ref, recorded_by, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9::date, $10, $11, $12)
-         RETURNING ${selectSnapshotColumns}`,
-        [
-          scope.tenantId,
-          scope.pharmacyId,
-          input.snapshotId,
-          row.reception_patient_id,
-          input.verifiedMethod,
-          input.state,
-          input.verifiedAt,
-          input.validFrom,
-          input.validTo ?? null,
-          input.rawResponseRef ?? null,
-          input.recordedBy,
-          input.now,
-        ],
-      );
+      let inserted: { rows: SnapshotRow[] };
+      try {
+        inserted = await client.query<SnapshotRow>(
+          `INSERT INTO eligibility_snapshots AS s
+             (tenant_id, pharmacy_id, snapshot_id, patient_id, verified_method, state, verified_at,
+              valid_from, valid_to, raw_response_ref, recorded_by, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9::date, $10, $11, $12)
+           RETURNING ${selectSnapshotColumns}`,
+          [
+            scope.tenantId,
+            scope.pharmacyId,
+            input.snapshotId,
+            row.reception_patient_id,
+            input.verifiedMethod,
+            input.state,
+            input.verifiedAt,
+            input.validFrom,
+            input.validTo ?? null,
+            input.rawResponseRef ?? null,
+            input.recordedBy,
+            input.now,
+          ],
+        );
+      } catch (error) {
+        // snapshotId は scope 内で一意(PK)。当該受付に紐づいていない snapshotId が
+        // 既に存在する(別受付への付与・同時 INSERT race)場合は生の 23505 を
+        // 漏らさず domain conflict に正規化する。constraint 名のピンではなく
+        // table 単位で判定する(制約追加や index 作成順で報告 constraint が
+        // 変わっても raw 23505 を漏らさない)。この文が到達し得る一意違反は
+        // snapshot 識別子の衝突だけ — sequence_number は GENERATED ALWAYS で
+        // 文が値を供給しないため sequence_unique はここでは発火しない。将来
+        // この table に非 snapshotId 系の一意制約を足す場合はこの判定を見直すこと。
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          (error as { code?: unknown }).code === '23505' &&
+          (error as { table?: unknown }).table === 'eligibility_snapshots'
+        ) {
+          throw new EligibilitySnapshotConflictError(input.snapshotId);
+        }
+        throw error;
+      }
       const attached = await client.query(
         `UPDATE reception_entries SET eligibility_snapshot_id = $4
           WHERE tenant_id = $1 AND pharmacy_id = $2 AND reception_id = $3
