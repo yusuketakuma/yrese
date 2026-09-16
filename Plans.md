@@ -2458,8 +2458,8 @@ status 変更時刻 / 取消理由の列はない。
 | M11 | 基盤 | migration 環境適用 | source のみ | DB-002 | 【HG DDL】→ WP-7102 |
 | M11 | 基盤 | structured logging / observability | **なし**(logger 全面無効、BUG-4265) | OPS-009 APPROVED | C-018/019【SSOT】→ WP-7803 |
 | M11 | 基盤 | backup / restore / DR 演習 | なし | OPS-013 | 【HG】→ WP-7804 |
-| M12 | 連携 | outbox 配送 runner・partner 登録 route・sandbox・contract test | worker class のみ | API-009〜018 APPROVED | egress 統制【HG security】(production のみ)→ WP-7103、§16 Track A |
-| — | 検証 | North Star journey E2E | **なし**(route smoke のみ) | C-064 | → WP-7104(部分)/ WP-7405(全行程) |
+| M12 | 連携 | outbox 配送 runner・partner 登録 route・sandbox・contract test | worker + runner(WP-7103 着地・既定 off・local/CI sink のみ) | API-009〜018 APPROVED | egress 統制【HG security】(production のみ)→ §16 Track A |
+| — | 検証 | North Star journey E2E | 部分 journey 稼働(WP-7104 着地: 検索〜draft〜audit/outbox) | C-064 | → WP-7405(全行程: 確認・確定・調剤記録を含む) |
 
 **総括:** 「受付 → 患者検索 → 下書き → 監査」の骨格は稼働しているが、調剤レセコンとしての
 **業務完結に必要な 3 系統 — (a) 患者・保険・資格の登録系、(b) 処方の構造化 → 薬剤師確認 → 調剤記録、
@@ -2480,8 +2480,8 @@ status 変更時刻 / 取消理由の列はない。
 |---|---|---|---|
 | WP-7101 | **認証済み context 注入境界の SSOT**(C-083【REF】の詳細化)。`TenantContextMode` に production 用 provider(OIDC claims → `TenantContext`)を追加する**設計**と、CI/E2E 用の「署名付き test-auth adapter」(dev header と別物。in_memory 限定 guard を postgres でも安全に外せる条件)を SEC-006 系 SSOT へ起案。**コードは書かない。** 受入: provider 抽象(interface)、claims→scope 写像、失敗時 401/403 応答族(C-034)、dev header の production 不可条件が 1 文書で確定 | 【SSOT】【HG security】 | R3 |
 | WP-7102 | **migration 000001〜000013 の環境適用 runbook**(C-058 apply gate の実行仕様)。対象環境の列挙、`db:check` 事前確認、適用順、失敗時 forward-fix 方針、適用記録の置き場(Git ではなく運用記録)。§5「残余 (b)」と同じ様式で**手順だけを確定**し実行しない | 【HG DDL】 | R3 |
-| WP-7103 | **outbox 配送 worker の runner**(WP-6003【REF】の未接続部)。`main.ts` composition に `PostgresOutboxDeliveryWorker` の常駐 loop(interval、`runOnce` の直列化、graceful shutdown で in-flight 完了、複数 process 時の単一 runner 排他 = advisory lock)を追加。sink は injected(local/CI では synthetic sink)に限定し、**production 配送は BLOCKED_SECURITY_REVIEW(egress)維持**。受入: `reception.created` が at-least-once 配送・重複なし・sink 障害注入で backoff・停止時に途中 event を失わない、を PG integration test で証明 | gate なし(local/CI 限定。config で既定 off) | R2 |
-| WP-7104 | **North Star 部分 E2E harness**(C-064 の前身)。in_memory + dev header の現行到達可能 journey: 患者検索 → 選択 → 紙受付 → queue 反映 → draft 保存 → 再取得 → CAS 競合 → audit read で `patient.searched`/`reception.created`/`prescription.draft.viewed` を確認。API 層(fastify inject)と browser 層(既存 `ui-browser-check.mjs` の journey suite 追加)の 2 層。**アプリコード変更なし**。受入: CI で決定的に PASS、PHI fixture は MOD-013 synthetic のみ、失敗時 artifact(スクリーンショット)は `artifacts/` 配下 | gate なし | R1 |
+| WP-7103(着地済み `c0d98b9`) | **outbox 配送 worker の runner**(WP-6003【REF】の未接続部)。`main.ts` composition に `PostgresOutboxDeliveryWorker` の常駐 loop(interval、`runOnce` の直列化、graceful shutdown で in-flight 完了、複数 process 時の単一 runner 排他 = advisory lock)を追加。sink は injected(local/CI では synthetic sink)に限定し、**production 配送は BLOCKED_SECURITY_REVIEW(egress)維持**。受入: `reception.created` が at-least-once 配送・重複なし・sink 障害注入で backoff・停止時に途中 event を失わない、を PG integration test で証明。**実績:** `PostgresOutboxDeliveryRunner` + `YRESE_OUTBOX_DELIVERY_*` config(既定 off)+ runtime event sink(local/CI 専用・外部送信なし)。PG 18.4 integration 8 tests で at-least-once・直列化・retry・standby 待機/failover・graceful stop・運用 event を実証 | gate なし(local/CI 限定。config で既定 off)→ 着地 | R2 |
+| WP-7104(着地済み `ea021f5`) | **North Star 部分 E2E harness**(C-064 の前身)。in_memory + dev header の現行到達可能 journey: 患者検索 → 選択 → 紙受付 → queue 反映 → draft 保存 → 再取得 → CAS 競合 → audit read で `patient.searched`/`reception.created`/`prescription.draft.viewed` を確認。API 層(fastify inject)と browser 層(既存 `ui-browser-check.mjs` の journey suite 追加)の 2 層。**アプリコード変更なし**。受入: CI で決定的に PASS、PHI fixture は MOD-013 synthetic のみ、失敗時 artifact(スクリーンショット)は `artifacts/` 配下。**実績:** API 層 `north-star-journey.test.ts` 3 tests(tenant 横断・scope 不足の fail-closed・hash chain 検証含む)。browser 層 `checkNorthStarJourney` + fixture `POST /reception` 冪等収容、実 UI 36 routes / 6 suites PASS(`north-star-journey.png`) | gate なし → 着地 | R1 |
 | WP-7105 | reception queue 防御的 cap(INV-20260730-01 の選択肢 (b))。決定後に最小差分(N 超過で明示 error + `nextAction`)【REG: C-021】 | 【HG: bound 決定】 | R1 |
 
 #### R1 — 受付・患者・保険の業務完結(APPROVED domain SSOT を持ち、契約 + 実装が欠ける領域)
@@ -2595,14 +2595,14 @@ R4 以降は R3 の確定調剤なしに開始できない(算定・帳票・会
 
 ### 18.6 READY 昇格候補(slot は消費しない。順序は推奨)
 
-現行 queue は CURRENT=0 / READY=0。`DEVELOPMENT_POLICY.md §8`「current milestone exit を閉じる work を選ぶ」に
-照らすと、現 milestone(3: 薬剤師 vertical journey)の exit を直接前進させ、かつ gate なしで着手できるコード変更は
-次の 2 件に限られる。
+現行 queue は CURRENT=0 / READY=0。2026-09-16 のユーザ指示「Plans.md 内のタスクが全て実装完了と
+みなせるまでループ」により候補 1・2 を実装し、それぞれ `ea021f5`(WP-7104)・`c0d98b9`(WP-7103)へ
+着地済みである。残る候補は次のとおり。
 
 | 順 | 候補 | 種別 | 根拠 |
 |---|---|---|---|
-| 1 | **WP-7104** North Star 部分 E2E harness | コード(test/harness のみ、アプリ変更なし) | C-064 の前身。現行到達可能 journey の回帰基盤を先に置かないと、R1〜R3 の各 slice が journey 破壊を検出できない。gate なし・R1 |
-| 2 | **WP-7103** outbox 配送 runner(local/CI sink 限定) | コード(composition + PG integration test) | Milestone 2.5 exit「worker が `reception.created` を at-least-once 配送」の未接続部。production 配送は既登録 gate のまま。gate なし・R2 |
+| ~~1~~ | ~~WP-7104 North Star 部分 E2E harness~~ | 着地済み `ea021f5` | API 層 3 tests + browser 層実 UI journey PASS |
+| ~~2~~ | ~~WP-7103 outbox 配送 runner(local/CI sink 限定)~~ | 着地済み `c0d98b9` | runner + config(既定 off)+ PG 18.4 integration 8 tests。production egress は BLOCKED_SECURITY_REVIEW 維持 |
 | 3 | **SSOT 起案 batch(PLAN_ONLY)** — 7201(API-006 改版)、7202(C-028)、7203/7204(契約)、7205/7302(DOM-002 §4.1) | 文書 | 実装を直接 unlock する documentation-only work。READY slot ではなく PRC-007 の PROPOSED 起案として並行可能。起案順は 7201 → 7204 → 7202 → 7203 → 7205/7302(依存の浅い順) |
 | 4 | **human 決定待ち** — 7105(bound)、7102(migration 適用)、7101(認証境界) | 決定 | 決定なしに実装しない |
 
