@@ -2,18 +2,20 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Pool } from 'pg';
 
 import type { PatientSearchResult } from '@yrese/contracts';
-import { patientId, pharmacyId, tenantId, userId } from '@yrese/shared-kernel';
+import { patientId, pharmacyId, receptionId, tenantId, userId } from '@yrese/shared-kernel';
 
 import {
   receptionCommandAggregateType,
   receptionCommandAuditEventType,
   type ReceptionCreateCommandInput,
+  type ReceptionTransitionCommandInput,
 } from '../reception-command.js';
 import { applyPendingMigrations } from './migration-runner.js';
 import { loadMigrationFiles } from './migrations.js';
 import { createDbPool } from './pool.js';
 import {
   PostgresReceptionCreateCommand,
+  PostgresReceptionTransitionCommand,
   type PostgresReceptionCommandFaultInjection,
 } from './reception-command.js';
 import {
@@ -684,6 +686,193 @@ describePostgres('PostgresReceptionCreateCommand (WP-4050 atomic boundary)', () 
           [scope.tenantId],
         ),
       ).rejects.toThrow(/single pending -> delivered transition/);
+    });
+  });
+});
+
+/**
+ * WP-7201 受入(Postgres 遷移コマンド境界):
+ * 遷移と監査イベントは単一トランザクションで確定する。監査追記失敗は
+ * 状態・version・cancel_reason を含めて全て巻き戻し、成功遷移が
+ * 監査なしで durable に残らない。不許可遷移は version 検査より先に
+ * transition_not_allowed で返す(API-006 §2.3 の 409 区別の正本順序)。
+ */
+describePostgres('PostgresReceptionTransitionCommand (WP-7201 atomic boundary)', () => {
+  function transitionCommand(
+    pool: Pool,
+    faultInjection?: PostgresReceptionCommandFaultInjection,
+  ): PostgresReceptionTransitionCommand {
+    return new PostgresReceptionTransitionCommand(pool, faultInjection);
+  }
+
+  async function createWaitingReception(pool: Pool): Promise<string> {
+    await seedPatient(pool, commandPatient);
+    const created = await buildCommand(pool).execute(commandInput());
+    if (created.kind !== 'created') {
+      throw new Error('unreachable');
+    }
+    return created.provenance.receptionId;
+  }
+
+  function transitionInput(
+    receptionIdValue: string,
+    overrides: Partial<ReceptionTransitionCommandInput> = {},
+  ): ReceptionTransitionCommandInput {
+    return {
+      ...scope,
+      receptionId: receptionId(receptionIdValue),
+      to: 'IN_PROGRESS',
+      expectedVersion: 1,
+      statusChangedAt: new Date('2026-07-30T01:00:00.000Z'),
+      actorId,
+      auditWallClock: () => auditWallClockIso,
+      ...overrides,
+    };
+  }
+
+  async function receptionRow(pool: Pool, receptionIdValue: string) {
+    const result = await pool.query<{
+      reception_status: string;
+      version: number;
+      status_changed_at: Date | null;
+      cancel_reason: string | null;
+    }>(
+      `SELECT reception_status, version, status_changed_at, cancel_reason
+         FROM reception_entries
+        WHERE tenant_id = $1 AND pharmacy_id = $2 AND reception_id = $3`,
+      [scope.tenantId, scope.pharmacyId, receptionIdValue],
+    );
+    return result.rows[0];
+  }
+
+  it('commits WAITING -> IN_PROGRESS with bumped version and reception.started audit atomically', async () => {
+    await withMigratedSchema(async (pool) => {
+      const id = await createWaitingReception(pool);
+      const result = await transitionCommand(pool).execute(transitionInput(id));
+
+      expect(result.kind).toBe('transitioned');
+      if (result.kind !== 'transitioned' || !('auditEvent' in result)) {
+        throw new Error('unreachable');
+      }
+      expect(result.receptionStatus).toBe('IN_PROGRESS');
+      expect(result.version).toBe(2);
+      expect(result.auditEvent.auditEventType).toBe('reception.started');
+      expect(result.auditEvent.businessReason).toBeUndefined();
+
+      await expect(receptionRow(pool, id)).resolves.toMatchObject({
+        reception_status: 'IN_PROGRESS',
+        version: 2,
+        cancel_reason: null,
+      });
+      await expect(counts(pool)).resolves.toEqual({
+        receptions: 1,
+        auditEvents: 2,
+        outboxIntents: 1,
+      });
+    });
+  });
+
+  it('persists the structured cancel_reason code and reception.cancelled audit', async () => {
+    await withMigratedSchema(async (pool) => {
+      const id = await createWaitingReception(pool);
+      const result = await transitionCommand(pool).execute(
+        transitionInput(id, { to: 'CANCELLED', businessReason: 'PATIENT_REQUEST' }),
+      );
+
+      expect(result.kind).toBe('transitioned');
+      if (result.kind !== 'transitioned' || !('auditEvent' in result)) {
+        throw new Error('unreachable');
+      }
+      expect(result.auditEvent.auditEventType).toBe('reception.cancelled');
+      expect(result.auditEvent.businessReason).toEqual({ code: 'PATIENT_REQUEST' });
+      await expect(receptionRow(pool, id)).resolves.toMatchObject({
+        reception_status: 'CANCELLED',
+        version: 2,
+        cancel_reason: 'PATIENT_REQUEST',
+      });
+    });
+  });
+
+  it('returns version_conflict without writing when expectedVersion is stale', async () => {
+    await withMigratedSchema(async (pool) => {
+      const id = await createWaitingReception(pool);
+      const result = await transitionCommand(pool).execute(
+        transitionInput(id, { expectedVersion: 7 }),
+      );
+
+      expect(result.kind).toBe('version_conflict');
+      await expect(receptionRow(pool, id)).resolves.toMatchObject({
+        reception_status: 'WAITING',
+        version: 1,
+      });
+      await expect(counts(pool)).resolves.toEqual({
+        receptions: 1,
+        auditEvents: 1,
+        outboxIntents: 1,
+      });
+    });
+  });
+
+  it('returns transition_not_allowed before version checks for terminal receptions', async () => {
+    await withMigratedSchema(async (pool) => {
+      const id = await createWaitingReception(pool);
+      await transitionCommand(pool).execute(
+        transitionInput(id, { to: 'CANCELLED', businessReason: 'PATIENT_REQUEST' }),
+      );
+
+      // 終端受付への遷移: version 不一致でも transition_not_allowed が先。
+      const result = await transitionCommand(pool).execute(
+        transitionInput(id, { to: 'IN_PROGRESS', expectedVersion: 99 }),
+      );
+      expect(result.kind).toBe('transition_not_allowed');
+      if (result.kind !== 'transition_not_allowed') throw new Error('unreachable');
+      expect(result.currentStatus).toBe('CANCELLED');
+      expect(result.currentVersion).toBe(2);
+      await expect(counts(pool)).resolves.toEqual({
+        receptions: 1,
+        auditEvents: 2,
+        outboxIntents: 1,
+      });
+    });
+  });
+
+  it('returns not_found for a reception outside the pharmacy scope', async () => {
+    await withMigratedSchema(async (pool) => {
+      const id = await createWaitingReception(pool);
+      const result = await transitionCommand(pool).execute(
+        transitionInput(id, {
+          pharmacyId: pharmacyId('pharmacy-cmd-int-other'),
+        }),
+      );
+      expect(result.kind).toBe('not_found');
+      await expect(receptionRow(pool, id)).resolves.toMatchObject({
+        reception_status: 'WAITING',
+        version: 1,
+      });
+    });
+  });
+
+  it('rolls back the transition when the audit append fails (no durable transition without evidence)', async () => {
+    await withMigratedSchema(async (pool) => {
+      const id = await createWaitingReception(pool);
+      const command = transitionCommand(pool, {
+        beforeAuditAppend: () => {
+          throw new Error('injected audit failure');
+        },
+      });
+
+      await expect(command.execute(transitionInput(id))).rejects.toThrow();
+      await expect(receptionRow(pool, id)).resolves.toMatchObject({
+        reception_status: 'WAITING',
+        version: 1,
+        status_changed_at: null,
+        cancel_reason: null,
+      });
+      await expect(counts(pool)).resolves.toEqual({
+        receptions: 1,
+        auditEvents: 1,
+        outboxIntents: 1,
+      });
     });
   });
 });
