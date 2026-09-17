@@ -4,7 +4,7 @@
 ssot_id: API-001
 title: 患者 API 契約(検索・summary取得・登録・更新)
 domain: api
-status: PROPOSED
+status: APPROVED
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -15,9 +15,9 @@ reviewers:
 version: 0.3.0
 created_at: 2026-07-09
 updated_at: 2026-09-17
-approved_at:
-approved_by:
-effective_from:
+approved_at: 2026-09-17
+approved_by: "direct human authority 2026-09-17 (SSOT batch 一括 APPROVE); independent review: Devin in-session primary-source cross-check (Oracle 不使用), findings closed in PROPOSED revisions"
+effective_from: 2026-09-17
 effective_to: null
 source_refs: [DOM-002(患者集約), UIX-001 §12(SCR患者検索), SEC-004(PIA), MOD-012(validation policy)]
 depends_on: [DOM-001..004(PROPOSED — 本契約はR1-R2骨格範囲で先行、Phase 1ゲートで両者同時承認)]
@@ -36,6 +36,8 @@ related_prs: []
 evidence_ids: []
 change_log:
   - "0.3.0 2026-09-17 WP-7202 PROPOSED: 患者登録・更新(`POST /patients`・`PUT /patients/{patientId}`)を追加し C-028(BLOCKED_PATIENT_CREATE_UNIQUENESS)の起案を固定。patientNumber は省略時サーバー採番・指定時一意性検査、identity field 変更は append-only history 記録、同姓同名・同生年月日の重複候補は非ブロッキング warning として応答。既存 read 契約の wire・認可・blocker は不変。review と human approval まで実装根拠にしない"
+  - "0.3.0 2026-09-17 独立 review(Devin in-session、Oracle 不使用)訂正: (a) POST /patients は warnings の candidates が他患者 PHI を返すため `patient:read` 併須へ、候補列挙に `patient.searched` 監査を追加 (b) phone/note は永続列・wire 露出・DOM-002 §2 属性定義がなく write-only PHI となるため除外 (c) Idempotency-Key を API-013 の `[A-Za-z0-9_-]{16,128}` 規則へ揃え、冪等記録の永続化(migration 000015 内の UNIQUE + fingerprint 保持)を明記 (d) 新規患者の eligibilityStatus 初期値 NOT_CHECKED を明記 (e) PUT は If-Match CAS による冪等性を明記"
+  - "0.3.0 2026-09-17 finalization: 独立 review 反映済み本文のまま direct human approval(SSOT batch 一括 APPROVE)により PROPOSED→APPROVED。承認範囲は SSOT 改版のみで、migration 000015 適用・実装完了・production action を含まない。登録済み blocker(URL PHI・scale bound)は据え置き"
   - "0.2.5 2026-08-26 WP-5104 reference-only cutover from UIX-007 to UIX-001 §12; API contract semantics unchanged"
   - "0.2.4 2026-08-01 WP-4250 exact11 finalization: round-5の独立review三レーン完了(independent verifier PASS・本文HIGHなし)とdirect human approvalによりPROPOSED→APPROVED。本文semanticsは不変。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置き"
   - "0.2.4 2026-07-31 WP-4250 PROPOSED Revision 8: re-review round 1訂正。bound超過の非露出が防げる範囲を「精度の高い推測の防止」へ正直に限定し、503/200の1 bitが閾値oracleとして残ることを明記"
@@ -103,23 +105,39 @@ FHIR cutover(API-008)の対象外 — cutover 後の Patient create 経路は AP
 initially disabled 規律が引き続き正本であり、本 endpoint はその規律を変更しない
 (§5 の blocker 参照)。
 
-- 認可: `patient:write` scope 必須。tenantContext 必須。
-- ヘッダ: **`Idempotency-Key` 必須**(非空・最大128文字・PHI 禁止 — クライアント生成の
-  不透明キー)。一意性境界は (tenantId, pharmacyId, idempotencyKey)。
+- 認可: **`patient:write` + `patient:read` 併須**。tenantContext 必須。
+  (POSSIBLE_DUPLICATE の `candidates` が既存患者の PatientSearchResult = PHI を返すため、
+  GET/POST /reception と同じ「応答に PHI を含む route は read scope 併須」の規則を適用する
+  — 0.3.0 独立 review 訂正。write のみの actor へ他患者の列挙結果を返さない)
+- ヘッダ: **`Idempotency-Key` 必須**。形式・検証は API-013 の規則に従う
+  (opaque、`[A-Za-z0-9_-]{16,128}`、非適合は 400。key を log・metric label・
+  raw error に出さない)。一意性境界は (tenantId, pharmacyId, idempotencyKey)。
   同一 key + 同一 payload の再送 → 既存 patient を 200 で返す。
   同一 key + 異なる payload → **409 `PAT-0006`**(idempotency conflict)。
+  冪等判定の authority は永続化された (key → request fingerprint + patientId) 記録であり、
+  migration 000015 に patients 冪等記録(reception_entries の idempotency_key 方式と同型の
+  `UNIQUE(tenant_id, pharmacy_id, idempotency_key)` + request fingerprint 保持列)を含める。
 - ボディ:
-  `{ name: string, kana: string, birthDate: 'YYYY-MM-DD', sex: 'male'|'female'|'unknown', patientNumber?: string, phone?: string, note?: string }`
+  `{ name: string, kana: string, birthDate: 'YYYY-MM-DD', sex: 'male'|'female'|'unknown', patientNumber?: string }`
   - `kana` は**必須**(DOM-002 §2「カナなしで確定登録不可」)。`birthDate` は実在暦日。
   - `patientNumber` 省略時はサーバーが (tenant, pharmacy) 内で採番する
     (薬局採番運用のため指定も可。指定時は一意性検査)。
   - 一意性の authority は PostgreSQL `patients_tenant_pharmacy_patient_number_unique`
     (tenant_id + pharmacy_id + patientNumber)。重複は **409 `PAT-0003`**。
+  - **連絡先・備考は 0.3.0 の対象外** — `patients` に連絡先列がなく DOM-002 §2 の
+    主要属性にも備考がないため、永続化・wire 露出・属性定義のない write-only PHI field を
+    契約に含めない(0.3.0 独立 review 訂正。連絡先の追加は DOM-002 §2 の属性定義と
+    永続列を揃える別改版で扱う)。
+  - 新規患者の `eligibilityStatus` 初期値は **`NOT_CHECKED`**、`eligibilityCheckedAt` は null
+    (患者要約状態 — 受付単位の資格確認とは別概念。API-019 参照)。
 - **取り違え防止(UIX-001 / SAF-001)**: 同一 (tenant, pharmacy) 内に同姓同名または
   同生年月日の既存患者がある場合、登録は成功するが response に
   `warnings: [{ type: 'POSSIBLE_DUPLICATE', candidates: PatientSearchResult[] }]`
   を返す(非ブロッキング。candidates は最大 5 件、§3 と同一 shape。
   候補の自動選択・自動 merge は禁止)。
+  **候補列挙は要配慮情報の列挙アクセスであり、warnings を返した場合は
+  `patient.searched`(MOD-008 既存種別)を `patient.created` と併せて永続化する**
+  (0.3.0 独立 review 訂正 — write 経路での無監査の患者列挙を許さない)。
 - レスポンス(201 / 冪等再送時 200): `{ patient: PatientSearchResult & { version: 1 }, warnings?: [...] }`。
   監査は MOD-008 既存種別 `patient.created`(payload は patientId のみ)を
   response 返却前に永続化する。
@@ -131,7 +149,10 @@ initially disabled 規律が引き続き正本であり、本 endpoint はその
 - 認可: `patient:write` scope 必須。
 - ヘッダ: **`If-Match: "<version>"` 必須** + ボディ `expectedVersion` 必須。
   不一致は **412 `PAT-0004`**(version conflict)。version は更新ごとに単調増加。
-- ボディ: `{ expectedVersion: integer, name?, kana?, birthDate?, sex?, phone?, note? }`
+  冪等性は If-Match CAS が担い Idempotency-Key は要求しない(API-013 の update 規則。
+  応答喪失後の再送は 412 で検出可能であり、GET で現在値を確認して収束する)。
+- ボディ: `{ expectedVersion: integer, name?, kana?, birthDate?, sex? }`
+  (連絡先・備考は POST と同じく 0.3.0 の対象外 — 永続列・wire 露出なし)
 - **identity field(氏名・カナ・生年月日・性別)の変更は「訂正」として
   append-only の `patient_identity_history` に旧値を記録する**(migration 000015、
   C-029 identityDigest 構造 backstop の wire 反映)。history への逆戻し・削除経路は

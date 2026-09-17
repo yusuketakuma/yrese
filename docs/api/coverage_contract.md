@@ -4,7 +4,7 @@
 ssot_id: API-020
 title: 保険・公費(Coverage)登録 API 契約(GET/POST /patients/{patientId}/coverage)
 domain: api
-status: PROPOSED
+status: APPROVED
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -16,9 +16,9 @@ reviewers:
 version: 0.1.0
 created_at: 2026-09-17
 updated_at: 2026-09-17
-approved_at:
-approved_by:
-effective_from:
+approved_at: 2026-09-17
+approved_by: "direct human authority 2026-09-17 (SSOT batch 一括 APPROVE); independent review: Devin in-session primary-source cross-check (Oracle 不使用), findings closed in PROPOSED revisions"
+effective_from: 2026-09-17
 effective_to: null
 source_refs: [DOM-002 §3(Coverage 集約), DOM-004 §3, ADP-004 §2(EligibilitySnapshot との分界), MOD-007(insurance/public-expense resource), MOD-008(insurance.* 監査種別), MOD-011(日付), API-013(冪等性), UIX-001 §12]
 depends_on: [DOM-002, DOM-004, MOD-005, MOD-006, MOD-007, MOD-008, MOD-011, API-001, API-003]
@@ -31,11 +31,12 @@ related_prs: []
 evidence_ids: []
 change_log:
   - "0.1.0 2026-09-17 WP-7203 初版起案(PROPOSED)。InsuranceCard / PublicExpense の append-only 履歴登録のみ。負担割合の計算・算定入力への接続は CAL-R-024 BLOCKED の範囲外として含めない。review と human approval まで実装根拠にしない"
+  - "0.1.0 2026-09-17 独立 review(Devin in-session、Oracle 不使用)訂正: Idempotency-Key を API-013 の `[A-Za-z0-9_-]{16,128}` 規則へ揃え、一意性境界に patientId を含め、冪等記録の永続化(migration 000016)を明記"
+  - "0.1.0 2026-09-17 finalization: 独立 review 反映済み本文のまま direct human approval(SSOT batch 一括 APPROVE)により PROPOSED→APPROVED。承認範囲は SSOT 策定のみで、migration 000016 適用・実装完了・production action を含まない。API_CONTRACT_BLOCKED は昇格により解除、CAL-R-024(算定利用は範囲外)は据え置き"
 open_questions:
   - 公費の優先順位・併用組合せの決定根拠は evidence_id 必須(DOM-002 §3【要確認】と同期)。本契約は順位の**記録**のみを扱い、順位の正しさの判定規則は算定 SSOT 側に残す
   - InsuranceCard の「本人/家族」区分と被保険者・被扶養者の詳細粒度(続柄等)の必要範囲
 blockers:
-  - API_CONTRACT_BLOCKED: 本契約 APPROVED 前の実装禁止(API-001 §5 と同一手順)
   - CAL-R-024 BLOCKED: 負担割合・公費の**算定利用**は本契約の範囲外(入力値の記録のみ)
 ```
 
@@ -100,7 +101,11 @@ PublicExpense = {
 
 ### POST /patients/{patientId}/coverage
 
-- ヘッダ: **`Idempotency-Key` 必須**(API-001 0.3.0 と同規則: 不透明・PHI 禁止・最大128文字)。
+- ヘッダ: **`Idempotency-Key` 必須**。形式・検証は API-013 の規則に従う
+  (opaque、`[A-Za-z0-9_-]{16,128}`、非適合は 400。key を log・metric label・raw error に出さない)。
+  一意性境界は (tenantId, pharmacyId, patientId, idempotencyKey)。冪等判定の authority は
+  永続化された (key → request fingerprint + 行 ID) 記録であり、migration 000016 に
+  coverage 冪等記録を含める(reception_entries / patients の方式と同型)。
   同一 key + 同一 payload → 既存行を 200 で返す。同一 key + 異なる payload → 409 `INS-0006`。
 - ボディ(discriminated union):
 

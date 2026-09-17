@@ -4,9 +4,9 @@
 ssot_id: DOM-002
 title: ドメインモデル(集約・不変条件)
 domain: domain
-status: PROPOSED
-approved_at:
-approved_by:
+status: APPROVED
+approved_at: 2026-09-17
+approved_by: "direct human authority 2026-09-17 (SSOT batch 一括 APPROVE); independent review: Devin in-session primary-source cross-check (Oracle 不使用), findings closed in PROPOSED revisions"
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -18,7 +18,7 @@ reviewers:
 version: 0.1.4
 created_at: 2026-07-09
 updated_at: 2026-09-17
-effective_from:
+effective_from: 2026-09-17
 effective_to: null
 source_refs: 構築プロンプト v0.2.0 §12, §17, §18
 depends_on: [DOM-001, PRD-001, SAF-001, MOD-004, MOD-005]
@@ -29,6 +29,7 @@ related_prs: []
 evidence_ids: []
 change_log:
   - "0.1.4 2026-09-17 WP-7205/WP-7302 PROPOSED 起案: §4.2 を追加し server-saved draft の構造化拡張(原本 metadata + Rp 構造化行 + UNRESOLVED_TEXT 移行)を提案。§4.1 の既承認不変条件は不変。本版は 2026-08-26 bounded approval の範囲拡張を含むため human approval 必須。review と承認まで実装根拠にしない"
+  - "0.1.4 2026-09-17 finalization: direct human approval(SSOT batch 一括 APPROVE)により PROPOSED→APPROVED。承認範囲は SSOT 改版のみで、実装完了・cutover・登録済み blocker(reception FK 互換・MedicationRequest ownership・identity 不変・write fence)の解除を含まない"
   - "0.1.3 2026-08-26 WP-5101: 受付に従属するserver-saved prescription draftのbounded不変条件を承認。保存事実を処方ライフサイクル状態へ昇格せず、tenant/pharmacy/reception scope、受付由来patient、終端受付へのwrite拒否、version/If-Match conflict、content hash検証、read auditを固定。薬剤師確認・確定・訂正履歴・外部連携は対象外"
   - "0.1.2 2026-08-01 WP-4250 exact11 finalization: round-5の独立review三レーン完了(independent verifier PASS・本文HIGHなし)とdirect human approvalによりPROPOSED→APPROVED。本文semanticsは不変。承認範囲はSSOT改版のみであり、実装着手・schema/data migration・production action・conformance主張を含まない。登録済みblockerは全て据え置き"
   - "0.1.2 2026-07-31 WP-4250 PROPOSED Revision 14: round-5 security/privacy re-reviewの同期。§2のPATIENTLINK gateをmembership+cardinalityの合成(集合等価)として明示し、SKが生patientIdではなくhmacPatientIdであることを追記"

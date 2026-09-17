@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.63
+version: 0.4.64
 created_at: 2026-07-09
 updated_at: 2026-09-17
 approved_at: 2026-09-08
@@ -159,6 +159,7 @@ related_prs:
   - PR #6
 evidence_ids: []
 change_log:
+  - "0.4.64 2026-09-17 finalization: 独立 review(Devin in-session 一次資料突合、Oracle 不使用)の finding を PROPOSED 本文へ反映済みの上で direct human approval(SSOT batch 一括 APPROVE)により 7 文書を PROPOSED→APPROVED(API-001 0.3.0、API-006 0.3.0、API-019 0.1.0、API-020 0.1.0、DOM-002 0.1.4、MOD-006 0.1.3、MOD-008 0.2.7)。総文書数 187 不変。status 集計は APPROVED 153→160、PROPOSED 11→4、SUPERSEDED 23 不変(合計187)。承認範囲は SSOT 改版のみで、実装完了・migration 000014〜000016 適用・外部接続・production action・登録済み blocker の解除を含まない。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.63 2026-09-17 Plans.md §18 SSOT 起案 batch(WP-7201〜7205/7302): API-019(eligibility_snapshot_contract)・API-020(coverage_contract)を PROPOSED で新規登録、API-001・API-006・DOM-002・MOD-006・MOD-008 を改版提案のため APPROVED→PROPOSED へ降格。総文書数 185→187、docs/api 18→20。status 集計は APPROVED 158→153、PROPOSED 4→11、SUPERSEDED 23 不変(合計187)。全件 PROPOSED であり実装根拠にしない。登録済み blocker は据え置き。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.62 2026-09-08 user-approved Codex cleanup finalization: AGT-018 v0.2.0 / PRC-003 v0.3.0 / PRC-005 v0.3.0 to APPROVED after frozen independent review FINDINGS_NONE; inventory unchanged"
   - "0.4.61 2026-08-26 WP-5101 bounded prescription draft finalization: DOM-002 0.1.3、DOM-004 0.1.2、MOD-008 0.2.6へscope/invariants/read auditを同期。文書status・総数185・inventory集計は不変。migration 000013 source landingは承認済みだが、環境への適用は別human gateのまま"
@@ -319,21 +320,21 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | API-011 | [api_scope_registry.md](api/api_scope_registry.md) | APPROVED |
 | API-007 | [calculation_trace_read_contract.md](api/calculation_trace_read_contract.md) | APPROVED |
 | API-015 | [contract_test_policy.md](api/contract_test_policy.md) | APPROVED |
-| API-020 | [coverage_contract.md](api/coverage_contract.md) | PROPOSED |
+| API-020 | [coverage_contract.md](api/coverage_contract.md) | APPROVED |
 | API-016 | [data_portability_policy.md](api/data_portability_policy.md) | APPROVED |
 | API-018 | [data_sharing_module_inventory.md](api/data_sharing_module_inventory.md) | APPROVED |
 | API-017 | [data_sharing_policy.md](api/data_sharing_policy.md) | APPROVED |
-| API-019 | [eligibility_snapshot_contract.md](api/eligibility_snapshot_contract.md) | PROPOSED |
+| API-019 | [eligibility_snapshot_contract.md](api/eligibility_snapshot_contract.md) | APPROVED |
 | API-008 | [fhir_rest_facade_contract.md](api/fhir_rest_facade_contract.md) | APPROVED |
 | API-013 | [idempotency_policy.md](api/idempotency_policy.md) | APPROVED |
 | API-009 | [integration_hub_architecture.md](api/integration_hub_architecture.md) | APPROVED |
 | API-005 | [oss_sdk_and_schema_publication_policy.md](api/oss_sdk_and_schema_publication_policy.md) | APPROVED |
 | API-010 | [partner_registry_policy.md](api/partner_registry_policy.md) | APPROVED |
 | API-014 | [partner_sandbox_policy.md](api/partner_sandbox_policy.md) | APPROVED |
-| API-001 | [patient_search_contract.md](api/patient_search_contract.md) | PROPOSED |
+| API-001 | [patient_search_contract.md](api/patient_search_contract.md) | APPROVED |
 | API-004 | [ph_os_reference_integration.md](api/ph_os_reference_integration.md) | APPROVED |
 | API-003 | [platform_api_architecture.md](api/platform_api_architecture.md) | APPROVED |
-| API-006 | [reception_queue_contract.md](api/reception_queue_contract.md) | PROPOSED |
+| API-006 | [reception_queue_contract.md](api/reception_queue_contract.md) | APPROVED |
 | API-012 | [webhook_event_catalog.md](api/webhook_event_catalog.md) | APPROVED |
 
 ## docs/architecture/ (10件)
@@ -389,7 +390,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | ssot_id | 文書 | status |
 |---|---|---|
 | DOM-001 | [bounded_contexts.md](domain/bounded_contexts.md) | APPROVED |
-| DOM-002 | [domain_model.md](domain/domain_model.md) | PROPOSED |
+| DOM-002 | [domain_model.md](domain/domain_model.md) | APPROVED |
 | DOM-006 | [fhir_mapping_registry.md](domain/fhir_mapping_registry.md) | APPROVED |
 | DOM-005 | [fhir_native_canonical_model.md](domain/fhir_native_canonical_model.md) | APPROVED |
 | DOM-004 | [state_transition.md](domain/state_transition.md) | APPROVED |
@@ -419,12 +420,12 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 
 | ssot_id | 文書 | status |
 |---|---|---|
-| MOD-008 | [audit_event_registry.md](modules/audit_event_registry.md) | PROPOSED |
+| MOD-008 | [audit_event_registry.md](modules/audit_event_registry.md) | APPROVED |
 | MOD-002 | [common_module_boundary.md](modules/common_module_boundary.md) | APPROVED |
 | MOD-001 | [common_module_inventory.md](modules/common_module_inventory.md) | APPROVED |
 | MOD-011 | [date_time_policy.md](modules/date_time_policy.md) | APPROVED |
 | MOD-003 | [dependency_direction_policy.md](modules/dependency_direction_policy.md) | APPROVED |
-| MOD-006 | [error_code_registry.md](modules/error_code_registry.md) | PROPOSED |
+| MOD-006 | [error_code_registry.md](modules/error_code_registry.md) | APPROVED |
 | MOD-009 | [event_envelope_schema.md](modules/event_envelope_schema.md) | APPROVED |
 | MOD-013 | [fixture_policy.md](modules/fixture_policy.md) | APPROVED |
 | MOD-014 | [generated_code_policy.md](modules/generated_code_policy.md) | APPROVED |

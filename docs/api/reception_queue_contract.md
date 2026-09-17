@@ -4,10 +4,10 @@
 ssot_id: API-006
 title: 受付キュー API 契約(GET /reception/queue, POST /reception, POST /reception/{receptionId}/transitions)
 domain: api
-status: PROPOSED
-approved_at:
-approved_by:
-effective_from: null
+status: APPROVED
+approved_at: 2026-09-17
+approved_by: "direct human authority 2026-09-17 (SSOT batch 一括 APPROVE); independent review: Devin in-session primary-source cross-check (Oracle 不使用), findings closed in PROPOSED revisions"
+effective_from: 2026-09-17
 effective_to: null
 owner: fable5
 reviewers:
@@ -31,13 +31,14 @@ related_prs: []
 evidence_ids: []
 change_log:
   - "0.3.0 2026-09-17 WP-7201 PROPOSED: 受付状態遷移 endpoint `POST /reception/{receptionId}/transitions` を §2.3 として追加(遷移表の正本は DOM-004 §2、CAS は expectedVersion+If-Match 併用、CANCELLED は businessReason 必須)。エラーへ RCV-0004(不許可遷移 409)/ RCV-0005(version conflict 409)を追加し MOD-006 へ登録提案。監査は MOD-008 へ `reception.started` / `reception.completed` を追加提案(`reception.cancelled` は既存)。既存 GET/POST の wire・認可・冪等規則は不変。review と human approval まで実装根拠にしない"
+  - "0.3.0 2026-09-17 独立 review(Devin in-session、Oracle 不使用)訂正: migration 000014(version/status_changed_at/cancel_reason 列)への依存と、Idempotency-Key を要求しない If-Match CAS 冪等性の根拠(API-013 update 規則)を明記"
+  - "0.3.0 2026-09-17 finalization: 独立 review 反映済み本文のまま direct human approval(SSOT batch 一括 APPROVE)により PROPOSED→APPROVED。承認範囲は SSOT 改版のみで、migration 000014 適用・実装完了・production action を含まない。API_CONTRACT_BLOCKED は昇格により解除"
   - "0.2.3 2026-08-26 WP-5104 reference-only cutover to UIX-001 §§11〜12; API contract semantics unchanged"
   - "body history authority: 本文§8変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W5A metadata-only completion: body/status/version/approval/effective semantics unchanged"
 open_questions:
   - キュー状態と DOM-004 処方ライフサイクル(RECEIVED_PROVISIONAL 等)の対応付け(処方箋取込 WP で確定)
-blockers:
-  - API_CONTRACT_BLOCKED: 本契約 APPROVED 前の実装禁止(API-001 §5 と同一手順。WP-3009-BE/93aefa1 で backend 側は実装済み)
+blockers: []
 ```
 
 ## 1. 目的とスコープ
@@ -106,6 +107,11 @@ ReceptionQueueEntry = {
     `businessReason` を送った場合は 400(理由なき変更と取消の混同を防ぐ)。
 - 楽観ロック: 現在 version が `expectedVersion` と一致しない場合は **409 + `RCV-0005`**
   (version conflict)。version は遷移ごとに単調増加する。
+  冪等性は If-Match + expectedVersion の CAS が担い `Idempotency-Key` は要求しない
+  (API-013 の update 規則 — 応答喪失後の再送は 409 で検出可能であり、GET /reception/queue で
+  現在状態を確認して収束する)。
+- 永続化: `version` / `status_changed_at` / `cancel_reason` 列は migration 000014 で追加する
+  (WP-7201 phase 2。`reception_status` CHECK は 000002 で既に4値を包含し、CHECK 変更は不要)。
 - 不許可遷移(逆行、終端後の遷移、WAITING→COMPLETED 等の表にない遷移)は **409 + `RCV-0004`**。
 - レスポンス(200): `{ receptionId, receptionStatus, version, statusChangedAt }`。
   **patient(PHI)を含めない**ため、要求 scope は `reception:write` のみ(`patient:read` 併須は不要)。

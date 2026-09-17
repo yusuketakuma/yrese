@@ -4,16 +4,16 @@
 ssot_id: MOD-006
 title: エラーコードレジストリ
 domain: modules
-status: PROPOSED
+status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
 version: 0.1.3
 created_at: 2026-07-09
 updated_at: 2026-09-17
-approved_at:
-approved_by:
-effective_from: null
+approved_at: 2026-09-17
+approved_by: "direct human authority 2026-09-17 (SSOT batch 一括 APPROVE); independent review: Devin in-session primary-source cross-check (Oracle 不使用), findings closed in PROPOSED revisions"
+effective_from: 2026-09-17
 effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §0.0.3.3, §7(エラー表示原則)
@@ -46,6 +46,7 @@ open_questions:
 blockers: []
 change_log:
   - "0.1.3 (2026-09-17): §18 SSOT 起案 batch。WP-7201 / API-006 0.3.0 起案に伴い RCV-0004(不許可遷移 409)/ RCV-0005(受付 version conflict 409)、WP-7204 / API-019 起案に伴い INS-0007〜0010(資格確認 snapshot route の 400/404/409/422)、WP-7203 / API-020 起案に伴い INS-0001〜0006(coverage route の 400/404/409 群)、WP-7202 / API-001 0.3.0 起案に伴い PAT-0003(patientNumber 重複 409)/ PAT-0004(version conflict 412)/ PAT-0005(不変 field 変更 422)/ PAT-0006(idempotency conflict 409)を追加提案。併せて shared-kernel に実装済みで台帳未登録だった PAT-0002 の drift を追記登録。review と human approval まで PROPOSED、実装根拠にしない"
+  - "0.1.3 (2026-09-17) finalization: direct human approval(SSOT batch 一括 APPROVE)により PROPOSED→APPROVED。承認範囲はエラーコード台帳の登録のみで、実装完了・production action を含まない"
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W3 metadata-only completion: body/status/version/approval/effective semantics unchanged"
   - 0.1.2 (2026-07-09): WP-3009-BE / API-006 v0.2.0 に基づき、RECEPTION domain の prefix を RCV と確定し、受付キュー API 用 RCV-0001/0002/0003 を登録。
