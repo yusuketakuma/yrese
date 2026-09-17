@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.66
+version: 0.4.69
 created_at: 2026-07-09
 updated_at: 2026-09-18
 approved_at: 2026-09-08
@@ -159,6 +159,9 @@ related_prs:
   - PR #6
 evidence_ids: []
 change_log:
+  - "0.4.69 2026-09-18 WP-7101 SSOT 起案: SEC-009(authenticated_context_boundary — production OIDC provider・署名付き test-auth adapter・dev header 禁止条件・401/403/404 応答族 C-034 決定案)を PROPOSED で新規登録。総文書数 188→189、status 集計は APPROVED 159 不変 / PROPOSED 6→7 / SUPERSEDED 23 不変(合計189)。全件 PROPOSED であり実装根拠にしない。本索引自体は派生記録であり APPROVED を維持する"
+  - "0.4.68 2026-09-18 WP-7304 SSOT 起案: PRD-001(mvp_scope)を 0.1.2 へ改版提案のため APPROVED→PROPOSED へ降格 — PRD-005 §4 item 1 に沿い M4 へ『前回Do(確定済み処方版からの複製起点)』を追加。総文書数 188 不変、status 集計は APPROVED 160→159 / PROPOSED 5→6 / SUPERSEDED 23 不変(合計188)。全件 PROPOSED であり実装根拠にしない。本索引自体は派生記録であり APPROVED を維持する"
+  - "0.4.67 2026-09-18 WP-7301/7303 SSOT 起案: MST-003(master_foundation_contract — synthetic マスター基盤の実装分解)を PROPOSED で新規登録。総文書数 187→188、status 集計は APPROVED 160 不変 / PROPOSED 4→5 / SUPERSEDED 23 不変(合計188)。全件 PROPOSED であり実装根拠にしない。登録済み blocker は据え置き。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.66 2026-09-18 WP-7203 bounded amendment: UIX-001 0.2.2(§12.3 matrix へ SCR-007-R/C 追加 — pre-review packet D-4 の human approval に基づく)。総文書数 187 不変、status 集計不変(APPROVED 160 / PROPOSED 4 / SUPERSEDED 23)。実装完了・production action を含まない。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.65 2026-09-17 WP-7202 bounded amendments: API-001 0.3.1(write 400 コード `PAT-0007` の契約ギャップ解消)、MOD-006 0.1.5(PAT-0007 登録)、UIX-001 0.2.1(§12.3 matrix へ SCR-002-C/U 追加 — pre-review packet D-4 の human approval に基づく)。総文書数 187 不変、status 集計不変(APPROVED 160 / PROPOSED 4 / SUPERSEDED 23)。実装完了・production action を含まない。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.64 2026-09-17 finalization: 独立 review(Devin in-session 一次資料突合、Oracle 不使用)の finding を PROPOSED 本文へ反映済みの上で direct human approval(SSOT batch 一括 APPROVE)により 7 文書を PROPOSED→APPROVED(API-001 0.3.0、API-006 0.3.0、API-019 0.1.0、API-020 0.1.0、DOM-002 0.1.4、MOD-006 0.1.3、MOD-008 0.2.7)。総文書数 187 不変。status 集計は APPROVED 153→160、PROPOSED 11→4、SUPERSEDED 23 不変(合計187)。承認範囲は SSOT 改版のみで、実装完了・migration 000014〜000016 適用・外部接続・production action・登録済み blocker の解除を含まない。本索引自体は派生記録であり APPROVED を維持する"
@@ -264,7 +267,7 @@ WP-9002-W1はHEAD `6198068`の23-field exact-key scanをbaselineとし、173文�
 
 WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbaselineとし、MOD-011とMOD-014の不足8 fieldだけをmetadata-onlyで補完した。final inventoryは173文書 / 不足139 / 充足34である。両文書の本文、version、status、approval、effective semanticsと、本索引の各行(`APPROVED` / `modules/date_time_policy.md`, `APPROVED` / `modules/generated_code_policy.md`)および総文書数173は変更していない。independent_verifier、test_architect、spec_guardian、api_contract_reviewer、data_integrity_auditor、medical_safety_reviewer、privacy_compliance_reviewerのAPPROVEDとfull validation後、IDX-001 v0.4.3をAPPROVEDとしてfinalizeした。W2 human approvalは主張しない。historical 173/142およびW1 173/141/32 recordはprovenanceとして維持する。
 
-総文書数: 187(本索引を除く)
+総文書数: 189(本索引を除く)
 
 ## docs/accounting/ (11件)
 
@@ -411,11 +414,12 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | JHS-008 | [jahis_roundtrip_test_policy.md](jahis/jahis_roundtrip_test_policy.md) | APPROVED |
 | JHS-004 | [jahis_version_watchlist.md](jahis/jahis_version_watchlist.md) | APPROVED |
 
-## docs/masters/ (2件)
+## docs/masters/ (3件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
 | MST-002 | [code_mapping_registry_design.md](masters/code_mapping_registry_design.md) | APPROVED |
+| MST-003 | [master_foundation_contract.md](masters/master_foundation_contract.md) | PROPOSED |
 | MST-001 | [master_update_pipeline.md](masters/master_update_pipeline.md) | APPROVED |
 
 ## docs/modules/ (14件)
@@ -483,7 +487,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 |---|---|---|
 | PRD-007 | [jp_core_fhir_platform_strategy.md](product/jp_core_fhir_platform_strategy.md) | APPROVED |
 | PRD-005 | [major_rececon_feature_matrix.md](product/major_rececon_feature_matrix.md) | PROPOSED |
-| PRD-001 | [mvp_scope.md](product/mvp_scope.md) | APPROVED |
+| PRD-001 | [mvp_scope.md](product/mvp_scope.md) | PROPOSED |
 | PRD-002 | [non_mvp_scope.md](product/non_mvp_scope.md) | APPROVED |
 | PRD-006 | [product_concept.md](product/product_concept.md) | APPROVED |
 | PRD-004 | [rececon_feature_benchmark.md](product/rececon_feature_benchmark.md) | PROPOSED |
@@ -535,12 +539,13 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | SAF-001 | [medical_safety_risk_register.md](safety/medical_safety_risk_register.md) | APPROVED |
 | SAF-002 | [safety_case.md](safety/safety_case.md) | APPROVED |
 
-## docs/security/ (8件)
+## docs/security/ (9件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
 | SEC-007 | [audit_log_design.md](security/audit_log_design.md) | APPROVED |
 | SEC-008 | [audit_worm_and_tenant_isolation_strategy.md](security/audit_worm_and_tenant_isolation_strategy.md) | APPROVED |
+| SEC-009 | [authenticated_context_boundary.md](security/authenticated_context_boundary.md) | PROPOSED |
 | SEC-005 | [edge_node_security_design.md](security/edge_node_security_design.md) | APPROVED |
 | SEC-004 | [privacy_impact_assessment.md](security/privacy_impact_assessment.md) | APPROVED |
 | SEC-002 | [provider_security_guideline_mapping.md](security/provider_security_guideline_mapping.md) | APPROVED |

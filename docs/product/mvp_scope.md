@@ -4,7 +4,7 @@
 ssot_id: PRD-001
 title: MVP対象範囲
 domain: product
-status: APPROVED
+status: PROPOSED
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -18,9 +18,9 @@ reviewers:
   - security_critic
   - api_contract_reviewer
   - human_review_if_required
-version: 0.1.1
+version: 0.1.2
 created_at: 2026-07-09
-updated_at: 2026-07-11
+updated_at: 2026-09-18
 approved_at: 2026-07-11
 approved_by: direct_user_instruction (WP-9001 AGT-018 cutover); independent_verifier APPROVED; spec_guardian APPROVED; data_integrity_auditor APPROVED; architect APPROVED; api_contract_reviewer APPROVED; test_architect APPROVED; claims_evidence_specialist APPROVED; security_critic APPROVED; privacy_compliance_reviewer APPROVED; medical_safety_reviewer APPROVED
 effective_from: 2026-07-11
@@ -41,6 +41,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - 0.1.2 (2026-09-18): WP-7304 起案 — PRD-005 §4 改版提案の item 1 に沿い、M4 の MVP範囲へ「前回Do(確定済み処方版からの複製起点。コピー元参照を保持し、マスター版変更時は再解決・廃止品目は UNRESOLVED_TEXT へ降格)」を追加する改版提案。本版は PROPOSED であり、review と human approval まで実装根拠にしない。
   - 0.1.1 (2026-07-11): WP-9006 AGT-018 routing compatibility amendmentを10-role review後にfinalize。M1-M12、claim-stop、open questions、blocker、human product/pharmacist/claims/legal authorityは不変更。0.1.0 human approvalはhistorical provenanceとして保持し、本版のscope承認には流用しない。
   - 0.1.0 (2026-07-09): Phase 0 human reviewで承認。
 open_questions:
@@ -64,7 +65,7 @@ blockers:
 | M1 | 受付 | 紙処方箋受付、JAHIS 2次元シンボル読取(仮取込→薬剤師確認→確定)。電子処方箋は**受付境界の設計のみ** | 仮取込が確定と明確に区別され、原本照合手順が動作する |
 | M2 | 患者・保険 | 患者管理、保険情報履歴、負担割合、主要公費登録、資格確認結果スナップショット | 保険者変更・期限切れが検出され、請求前再確認へ導かれる |
 | M3 | 資格確認 | 公式外部IF経由の結果取込・表示・請求前資格確認・障害時状態管理(接続実装はONS資料確認後) | 未確認状態が全画面で誤認なく表示される |
-| M4 | 処方・調剤入力 | RP単位入力、用法・用量・日数・数量、後発品変更、一般名処方、疑義照会記録、残薬調整記録 | キーボード完結・薬剤師確認前後の状態分離 |
+| M4 | 処方・調剤入力 | RP単位入力、用法・用量・日数・数量、後発品変更、一般名処方、**前回Do(確定済み処方版からの複製起点 — コピー元参照を保持し、マスター版変更時は再解決、廃止品目は UNRESOLVED_TEXT へ降格)**、疑義照会記録、残薬調整記録 | キーボード完結・薬剤師確認前後の状態分離 |
 | M5 | 算定 | calculation_coverage_matrix で「MVP」判定の項目のみ。純粋関数+calculation_trace 必須 | golden test + 既知案件照合。evidence_id のない項目は算定不能 |
 | M6 | 会計 | 一部負担金請求、未収・返金・差額精算の基本 | 金額根拠(trace)を画面で説明できる |
 | M7 | 帳票 | 領収証、調剤明細書、調剤録、薬袋、薬剤情報提供文書、請求前点検リスト(版管理・ハッシュ・再出力) | 出力時点の算定根拠・マスター版が保存される |
