@@ -188,7 +188,7 @@ cutover時点でのみ成立し、**PostgreSQLがwriterでなくなった後の�
 
 ### 4.2 Draft の構造化拡張(0.1.4 — WP-7205/WP-7302。bounded approval 範囲拡張は 2026-09-17 一括 APPROVE 済み)
 
-**本節は 2026-09-17 の一括 APPROVE で承認済み。(a) は WP-7205 で実装済み(migration 000017)、(b) は WP-7302 で行う。** §4.1 の不変条件(authority key・
+**本節は 2026-09-17 の一括 APPROVE で承認済み。(a) は WP-7205 で実装済み(migration 000017)、(b) は WP-7302 で実装済み(migration 000019)。** §4.1 の不変条件(authority key・
 write guard・version/If-Match・content hash・read audit・非ライフサイクル性)は全て維持する。
 
 **(a) 処方箋原本 metadata(WP-7205)**: draft は以下を保持する。全項目は手入力値であり、

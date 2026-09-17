@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import type {
-  PrescriptionDraftResponse,
-  ReceptionQueueEntry,
-  ReceptionQueueResponse,
+import {
+  prescriptionDraftEffectiveRpGroups,
+  type PrescriptionDraftResponse,
+  type ReceptionQueueEntry,
+  type ReceptionQueueResponse,
 } from "@yrese/contracts";
 import { patientId } from "@yrese/shared-kernel";
 
@@ -213,7 +214,13 @@ function DraftStatusPanel({ draft }: { readonly draft: DraftOutcome }) {
         items={[
           { label: "サーバー保存版", value: `v${draft.draft.version}` },
           { label: "最終更新", value: draft.draft.updatedAt },
-          { label: "保存済み行数", value: `${draft.draft.draft.rows.length}行` },
+          {
+            label: "保存済み行数",
+            // WP-7302: 品目数は effective Rp 構造から数える(rows は legacy 鏡)。
+            value: `${prescriptionDraftEffectiveRpGroups(
+              draft.draft.draft,
+            ).reduce((count, group) => count + group.items.length, 0)}行`,
+          },
         ]}
       />
     </Panel>

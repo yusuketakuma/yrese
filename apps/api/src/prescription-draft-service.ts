@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import {
   PRESCRIPTION_DRAFT_MAX_VERSION,
   prescriptionDraftContentSchema,
+  prescriptionDraftEffectiveRpGroups,
   prescriptionDraftFlagSchema,
   prescriptionDraftResponseSchema,
   prescriptionDraftSaveResponseSchema,
@@ -81,6 +82,29 @@ export function normalizePrescriptionDraftContent(
     ...parsed,
     flags: [...parsed.flags].sort(comparePrescriptionDraftFlags),
     rows: parsed.rows.map((row) => ({ ...row })),
+    rpGroups: parsed.rpGroups.map((group) => ({
+      ...group,
+      items: group.items.map((item) => ({ ...item })),
+    })),
+  };
+}
+
+/**
+ * DOM-002 §4.2b: 保存時の実効構造。rpGroups が正本であり、rows のみの入力は
+ * UNRESOLVED_TEXT へ決定的に読み替える(deriveRpGroupsFromLegacyRows)。
+ * prescription_draft_rows 旧構造は次版 draft から書かないため、保存内容の
+ * rows は常に空とする。
+ */
+export function materializePrescriptionDraftContent(
+  normalized: PrescriptionDraftContent,
+): PrescriptionDraftContent {
+  return {
+    ...normalized,
+    rows: [],
+    rpGroups: prescriptionDraftEffectiveRpGroups(normalized).map((group) => ({
+      ...group,
+      items: group.items.map((item) => ({ ...item })),
+    })),
   };
 }
 
@@ -99,6 +123,23 @@ export function normalizePrescriptionDraftContentWithHash(value: unknown): {
   };
 }
 
+/**
+ * 保存用の normalize + hash。DOM-002 §4.2b の materialize(rows→UNRESOLVED_TEXT
+ * 読み替え・rows 空化)を適用した実効構造に対して hash を計算する。
+ */
+export function normalizePrescriptionDraftContentForStorage(value: unknown): {
+  readonly normalized: PrescriptionDraftContent;
+  readonly contentHash: string;
+} {
+  const materialized = materializePrescriptionDraftContent(
+    normalizePrescriptionDraftContent(value),
+  );
+  return {
+    normalized: materialized,
+    contentHash: hashJsonDeterministically(materialized),
+  };
+}
+
 export function prescriptionDraftContentHash(
   value: PrescriptionDraftContent,
 ): string {
@@ -108,16 +149,34 @@ export function prescriptionDraftContentHash(
 }
 
 /**
- * WP-7205 以前に保存された draft の content hash は `sourceMetadata` キーを含まない
- * JSON から計算されている。列が全て NULL の既存行を読み替える際の比較用。
- * sourceMetadata は schema 末尾キーなので除去後も key order が一致する。
+ * WP-7205 以前に保存された draft の content hash は `sourceMetadata`/`rpGroups`
+ * キーを含まない JSON から計算されている。両者は schema 末尾キーなので
+ * 除去後も key order が一致する。
  */
 export function prescriptionDraftContentHashWithoutSourceMetadata(
   value: PrescriptionDraftContent,
 ): string {
-  const { sourceMetadata: _sourceMetadata, ...legacy } =
+  const { sourceMetadata: _sourceMetadata, rpGroups: _rpGroups, ...legacy } =
     normalizePrescriptionDraftContent(value);
   return hashJsonDeterministically(legacy);
+}
+
+/**
+ * 永続行の content_hash 照合候補。schema 改版で additive に追加された末尾キー
+ * (rpGroups → sourceMetadata の順に除去)を段階的に落として旧形式 hash を
+ * 再現する。wp-7302 以降の行は先頭候補が一致する。
+ */
+export function prescriptionDraftContentHashCandidates(
+  value: PrescriptionDraftContent,
+): readonly string[] {
+  const normalized = normalizePrescriptionDraftContent(value);
+  const { rpGroups: _rpGroups, ...withoutRpGroups } = normalized;
+  const { sourceMetadata: _sourceMetadata, ...legacy } = withoutRpGroups;
+  return [
+    hashJsonDeterministically(normalized),
+    hashJsonDeterministically(withoutRpGroups),
+    hashJsonDeterministically(legacy),
+  ];
 }
 
 function scopeKey(input: PrescriptionDraftLookupInput): string {
@@ -234,7 +293,7 @@ export class InMemoryPrescriptionDraftService
       }
 
       const { normalized, contentHash } =
-        normalizePrescriptionDraftContentWithHash(input.draft);
+        normalizePrescriptionDraftContentForStorage(input.draft);
       const existing = this.records.get(key);
 
       if (existing === undefined) {

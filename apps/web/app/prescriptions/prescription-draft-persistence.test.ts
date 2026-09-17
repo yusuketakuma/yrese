@@ -13,6 +13,21 @@ import {
 } from "./prescription-draft-persistence";
 import { createBlankPrescriptionDraft } from "./prescription-draft";
 
+/** 自由記載の実入力行を1件持つ draft(全空 draft は保存対象外)。 */
+function draftWithTextRow() {
+  const base = createBlankPrescriptionDraft();
+  return {
+    ...base,
+    rows: [
+      {
+        ...base.rows[0]!,
+        drug: "合成薬剤 5mg",
+        usage: "1日1回 朝食後",
+      },
+    ],
+  };
+}
+
 const context = {
   receptionId: "reception-test-001",
   patientId: "patient-test-001",
@@ -32,13 +47,30 @@ const serverDraft: PrescriptionDraftResponse = {
     defaultDays: 7,
     flags: ["PACKAGING"],
     note: "確認メモ",
-    rows: [
+    rows: [],
+    rpGroups: [
       {
+        rpGroupId: "00000000-0000-4000-8000-000000000011",
         sequence: 1,
-        drugText: "合成薬剤 5mg",
-        usageText: "1日1回 朝食後",
-        days: 7,
-        quantityText: "7錠",
+        dosageForm: "ORAL",
+        usage: { kind: "unresolved" as const, text: "1日1回 朝食後" },
+        daysOrCount: 7,
+        items: [
+          {
+            rpItemId: "00000000-0000-4000-a000-000000000011",
+            sequence: 1,
+            medication: {
+              kind: "unresolved" as const,
+              text: "合成薬剤 5mg",
+            },
+            doseOnce: null,
+            dosePerDay: null,
+            doseTotal: "7錠",
+            unit: null,
+            genericNamePrescription: false,
+            genericSubstitutionPermitted: null,
+          },
+        ],
       },
     ],
   },
@@ -72,14 +104,70 @@ describe("prescription draft web persistence", () => {
     ).toBe(true);
   });
 
+  it("rejects an all-empty draft with a dedicated message (R3 fix)", () => {
+    expect(() =>
+      toPrescriptionDraftContent(createBlankPrescriptionDraft()),
+    ).toThrow("少なくとも1行のRP内容を入力してください。");
+  });
+
+  it("compares drafts flag-order-insensitively (canonical order)", () => {
+    const base = {
+      ...draftWithTextRow(),
+      options: ["麻薬", "一包化"] as const,
+    };
+    const reordered = {
+      ...draftWithTextRow(),
+      options: ["一包化", "麻薬"] as const,
+    };
+    expect(prescriptionDraftSnapshotsEqual(base, reordered)).toBe(true);
+    // 全空 draft 同士も等価(永続化不可同士の比較)。
+    expect(
+      prescriptionDraftSnapshotsEqual(
+        createBlankPrescriptionDraft(),
+        createBlankPrescriptionDraft(),
+      ),
+    ).toBe(true);
+  });
+
+  it("emits structured rpGroups and never legacy rows on save (WP-7302)", () => {
+    const snapshot = fromPrescriptionDraftResponse(serverDraft);
+    const content = toPrescriptionDraftContent(snapshot);
+    expect(content.rows).toEqual([]);
+    expect(content.rpGroups).toHaveLength(1);
+    expect(content.rpGroups[0]).toMatchObject({
+      rpGroupId: "00000000-0000-4000-8000-000000000011",
+      usage: { kind: "unresolved" },
+      items: [{ medication: { kind: "unresolved" } }],
+    });
+  });
+
+  it("recombines same-rpGroupId rows into one group on save", () => {
+    const snapshot = fromPrescriptionDraftResponse(serverDraft);
+    const secondItem = {
+      ...snapshot.rows[0]!,
+      id: 2,
+      rpItemId: "00000000-0000-4000-a000-000000000012",
+      drug: "別の合成薬剤 10mg",
+    };
+    const content = toPrescriptionDraftContent({
+      ...snapshot,
+      rows: [snapshot.rows[0]!, secondItem],
+    });
+    expect(content.rpGroups).toHaveLength(1);
+    expect(content.rpGroups[0]?.items).toHaveLength(2);
+    expect(content.rpGroups[0]?.items[1]?.rpItemId).toBe(
+      "00000000-0000-4000-a000-000000000012",
+    );
+  });
+
   it("round-trips source metadata and defaults it to null when untouched", () => {
     // 未入力なら additive の null を送る(既存 draft との互換)。
     expect(
-      toPrescriptionDraftContent(createBlankPrescriptionDraft()).sourceMetadata,
+      toPrescriptionDraftContent(draftWithTextRow()).sourceMetadata,
     ).toBeNull();
 
     const withMetadata = {
-      ...createBlankPrescriptionDraft(),
+      ...draftWithTextRow(),
       institutionCode: "1312345",
       institutionName: "合成クリニック",
       prescriberName: "合成 医師",
@@ -173,7 +261,7 @@ describe("prescription draft web persistence", () => {
           },
         ],
       }),
-    ).toThrow("RP1 日数は1〜999の整数で入力してください。");
+    ).toThrow("RP1 日数・回数は1〜999の整数で入力してください。");
 
     expect(() =>
       toPrescriptionDraftContent({
@@ -181,11 +269,24 @@ describe("prescription draft web persistence", () => {
         rows: [
           {
             ...createBlankPrescriptionDraft().rows[0]!,
-            drug: "x".repeat(257),
+            drug: "x".repeat(501),
           },
         ],
       }),
-    ).toThrow("RP1 薬剤名を確認してください。");
+    ).toThrow("RP1 品目1 薬剤を確認してください。");
+
+    // コード選択モードで未選択は送信前に fail-closed。
+    expect(() =>
+      toPrescriptionDraftContent({
+        ...createBlankPrescriptionDraft(),
+        rows: [
+          {
+            ...createBlankPrescriptionDraft().rows[0]!,
+            medicationMode: "master" as const,
+          },
+        ],
+      }),
+    ).toThrow("RP1 薬剤をマスターから選択するか、自由記載に切り替えてください。");
   });
 
   it("loads through the existing API transport without putting patient ID in the URL", async () => {

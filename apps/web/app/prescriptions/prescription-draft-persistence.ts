@@ -1,4 +1,6 @@
 import {
+  prescriptionDraftEffectiveRpGroups,
+  prescriptionDraftFlagSchema,
   prescriptionDraftResponseSchema,
   prescriptionDraftSaveRequestSchema,
   prescriptionDraftSaveResponseSchema,
@@ -7,6 +9,10 @@ import {
   type PrescriptionDraftResponse,
   type PrescriptionDraftSaveResponse,
   type PrescriptionDraftType,
+  type PrescriptionRpGroup,
+  type PrescriptionRpItem,
+  type PrescriptionRpMedicationRef,
+  type PrescriptionRpUsageRef,
 } from "@yrese/contracts";
 import { permissionScope } from "@yrese/shared-kernel";
 
@@ -16,6 +22,7 @@ import {
   type PrescriptionDraftSnapshot,
   type PrescriptionOption,
 } from "./prescription-draft";
+import { isDraftRowEmpty, type DraftRow } from "./prescription-replacement";
 
 const READ_SCOPES = [
   permissionScope("prescription", "read"),
@@ -49,7 +56,10 @@ const FLAG_TO_WIRE: Record<PrescriptionOption, PrescriptionDraftFlag> = {
   残薬調整: "LEFTOVER_ADJUSTMENT",
 };
 
-const FLAG_FROM_WIRE: Record<PrescriptionDraftFlag, PrescriptionOption> = {
+export const FLAG_FROM_WIRE: Record<
+  PrescriptionDraftFlag,
+  PrescriptionOption
+> = {
   PACKAGING: "一包化",
   HOME_CARE: "在宅",
   NARCOTIC: "麻薬",
@@ -207,6 +217,173 @@ function toSourceMetadata(
   };
 }
 
+const DOSAGE_FORM_TO_WIRE: Record<string, PrescriptionRpGroup["dosageForm"]> = {
+  "": "UNSPECIFIED",
+  内服: "ORAL",
+  外用: "TOPICAL",
+  注射: "INJECTION",
+  頓服: "AS_NEEDED",
+  その他: "OTHER",
+};
+
+const DOSAGE_FORM_FROM_WIRE: Record<
+  PrescriptionRpGroup["dosageForm"],
+  string
+> = {
+  UNSPECIFIED: "",
+  ORAL: "内服",
+  TOPICAL: "外用",
+  INJECTION: "注射",
+  AS_NEEDED: "頓服",
+  OTHER: "その他",
+};
+
+function optionalText(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? null : value;
+}
+
+function rowToRpItem(
+  row: DraftRow,
+  sequence: number,
+  groupSequence: number,
+): PrescriptionRpItem {
+  let medication: PrescriptionRpMedicationRef;
+  if (row.medicationMode === "master") {
+    if (
+      row.masterVersionId.trim().length === 0 ||
+      row.medicationItemId.trim().length === 0
+    ) {
+      throw new PrescriptionDraftApiError(
+        "INVALID_REQUEST",
+        `RP${groupSequence} 薬剤をマスターから選択するか、自由記載に切り替えてください。`,
+      );
+    }
+    medication = {
+      kind: "resolved",
+      masterVersionId: row.masterVersionId,
+      medicationItemId: row.medicationItemId,
+    };
+  } else {
+    medication = { kind: "unresolved", text: row.drug };
+  }
+  const substitution =
+    row.genericSubstitution === "permitted"
+      ? true
+      : row.genericSubstitution === "forbidden"
+        ? false
+        : null;
+  return {
+    rpItemId: row.rpItemId,
+    sequence,
+    medication,
+    doseOnce: optionalText(row.doseOnce),
+    dosePerDay: optionalText(row.dosePerDay),
+    doseTotal: optionalText(row.quantity),
+    unit: optionalText(row.unit),
+    genericNamePrescription: row.genericNamePrescription,
+    genericSubstitutionPermitted: substitution,
+  };
+}
+
+/**
+ * WP-7302: UI 行(1行=1品目)を wire rpGroups へ組み立てる。
+ * 同一 rpGroupId を共有する行は読み込み時に同じ group へ展開された
+ * 品目であり、保存時は同じ group の items として再結合する。
+ * 空行(未入力の addRow/removeDraftRow 残余)は Rp へ含めない —
+ * 空の UNRESOLVED_TEXT 品目を永続化すると unresolved 件数が架空に
+ * 計上され、WP-7402 の確認 guard を実質ロックする。
+ */
+function rowsToRpGroups(snapshot: PrescriptionDraftSnapshot): PrescriptionRpGroup[] {
+  const materialRows = snapshot.rows.filter((row) => !isDraftRowEmpty(row));
+  const grouped = new Map<string, DraftRow[]>();
+  for (const row of materialRows) {
+    const bucket = grouped.get(row.rpGroupId);
+    if (bucket === undefined) {
+      grouped.set(row.rpGroupId, [row]);
+    } else {
+      bucket.push(row);
+    }
+  }
+  const groups: PrescriptionRpGroup[] = [];
+  let groupSequence = 0;
+  for (const rows of grouped.values()) {
+    groupSequence += 1;
+    const head = rows[0] as DraftRow;
+    const dosageForm = DOSAGE_FORM_TO_WIRE[head.dosageForm];
+    if (dosageForm === undefined) {
+      throw new PrescriptionDraftApiError(
+        "INVALID_REQUEST",
+        `RP${groupSequence} 剤形区分を確認してください。`,
+      );
+    }
+    let usage: PrescriptionRpUsageRef;
+    if (head.usageMode === "code") {
+      if (head.usageItemId.trim().length === 0) {
+        throw new PrescriptionDraftApiError(
+          "INVALID_REQUEST",
+          `RP${groupSequence} 用法コードを選択するか、自由記載に切り替えてください。`,
+        );
+      }
+      usage = { kind: "resolved", usageItemId: head.usageItemId };
+    } else {
+      usage = { kind: "unresolved", text: head.usage };
+    }
+    groups.push({
+      rpGroupId: head.rpGroupId,
+      sequence: groupSequence,
+      dosageForm,
+      usage,
+      daysOrCount: parseOptionalInteger(
+        head.days,
+        `RP${groupSequence} 日数・回数`,
+      ),
+      items: rows.map((row, index) =>
+        rowToRpItem(row, index + 1, groupSequence),
+      ),
+    });
+  }
+  return groups;
+}
+
+export function rpItemToDraftRow(
+  group: PrescriptionRpGroup,
+  item: PrescriptionRpItem,
+  id: number,
+): DraftRow {
+  const medication = item.medication;
+  const usage = group.usage;
+  return {
+    id,
+    rpGroupId: group.rpGroupId,
+    rpItemId: item.rpItemId,
+    dosageForm: DOSAGE_FORM_FROM_WIRE[group.dosageForm],
+    usageMode: usage.kind === "resolved" ? "code" : "text",
+    usageItemId: usage.kind === "resolved" ? usage.usageItemId : "",
+    usageItemLabel: "",
+    usage: usage.kind === "unresolved" ? usage.text : "",
+    medicationMode: medication.kind === "resolved" ? "master" : "text",
+    masterVersionId:
+      medication.kind === "resolved" ? medication.masterVersionId : "",
+    medicationItemId:
+      medication.kind === "resolved" ? medication.medicationItemId : "",
+    medicationItemLabel: "",
+    drug: medication.kind === "unresolved" ? medication.text : "",
+    doseOnce: item.doseOnce ?? "",
+    dosePerDay: item.dosePerDay ?? "",
+    days: group.daysOrCount === null ? "" : String(group.daysOrCount),
+    quantity: item.doseTotal ?? "",
+    unit: item.unit ?? "",
+    genericNamePrescription: item.genericNamePrescription,
+    genericSubstitution:
+      item.genericSubstitutionPermitted === true
+        ? "permitted"
+        : item.genericSubstitutionPermitted === false
+          ? "forbidden"
+          : "",
+  };
+}
+
 function validationIssueLabel(path: readonly PropertyKey[]): string {
   if (path[0] === "rows") {
     if (typeof path[1] !== "number") return "RP行数";
@@ -215,6 +392,22 @@ function validationIssueLabel(path: readonly PropertyKey[]): string {
     if (path[2] === "usageText") return `${prefix} 用法用量`;
     if (path[2] === "days") return `${prefix} 日数`;
     if (path[2] === "quantityText") return `${prefix} 数量`;
+    return `${prefix} 入力`;
+  }
+  if (path[0] === "rpGroups") {
+    if (typeof path[1] !== "number") return "RP構造";
+    const prefix = `RP${path[1] + 1}`;
+    if (path[2] === "usage") return `${prefix} 用法`;
+    if (path[2] === "daysOrCount") return `${prefix} 日数・回数`;
+    if (path[2] === "items" && typeof path[3] === "number") {
+      const itemPrefix = `${prefix} 品目${path[3] + 1}`;
+      if (path[4] === "medication") return `${itemPrefix} 薬剤`;
+      if (path[4] === "doseOnce") return `${itemPrefix} 1回量`;
+      if (path[4] === "dosePerDay") return `${itemPrefix} 1日量`;
+      if (path[4] === "doseTotal") return `${itemPrefix} 総量`;
+      if (path[4] === "unit") return `${itemPrefix} 単位`;
+      return `${itemPrefix} 入力`;
+    }
     return `${prefix} 入力`;
   }
   if (path[0] === "prescriptionType") return "処方区分";
@@ -245,6 +438,9 @@ export function toPrescriptionDraftContent(
     );
   }
 
+  // sourceMetadata の入力検証(発行日・有効期限の必須)を RP 構築より先に
+  // 行い、metadata-only の不備が行エラーに隠れないようにする。
+  const sourceMetadata = toSourceMetadata(snapshot);
   const candidate = {
     prescriptionType,
     prescriptionDate:
@@ -254,18 +450,28 @@ export function toPrescriptionDraftContent(
     defaultDays: parseOptionalInteger(snapshot.defaultDays, "交付日数"),
     flags: snapshot.options.map((option) => FLAG_TO_WIRE[option]),
     note: snapshot.note,
-    rows: snapshot.rows.map((row, index) => ({
-      sequence: index + 1,
-      drugText: row.drug,
-      usageText: row.usage,
-      days: parseOptionalInteger(row.days, `RP${index + 1} 日数`),
-      quantityText: row.quantity,
-    })),
-    sourceMetadata: toSourceMetadata(snapshot),
+    rows: [],
+    rpGroups: rowsToRpGroups(snapshot),
+    sourceMetadata,
   };
 
   const parsed = prescriptionDraftSaveRequestSchema.shape.draft.safeParse(candidate);
   if (parsed.success) return parsed.data;
+  // rows=[] && rpGroups=[] の superRefine issue(custom, path ["rpGroups"])
+  // は全空 draft の拒否 — field 別エラーより後置して専用メッセージを返す。
+  // 同 signature の itemCount 超過 issue と混同しないよう、
+  // materialize 結果が実際に空であることも確認する。
+  if (
+    candidate.rpGroups.length === 0 &&
+    parsed.error.issues[0]?.code === "custom" &&
+    parsed.error.issues[0].path.length === 1 &&
+    parsed.error.issues[0].path[0] === "rpGroups"
+  ) {
+    throw new PrescriptionDraftApiError(
+      "INVALID_REQUEST",
+      "少なくとも1行のRP内容を入力してください。",
+    );
+  }
   throw new PrescriptionDraftApiError(
     "INVALID_REQUEST",
     `${validationIssueLabel(parsed.error.issues[0]?.path ?? [])}を確認してください。`,
@@ -301,14 +507,144 @@ export function fromPrescriptionDraftResponse(
         ? ""
         : String(response.draft.sourceMetadata.refill.remaining),
     splitDispensing: response.draft.sourceMetadata?.splitDispensing ?? "",
-    rows: response.draft.rows.map((row) => ({
-      id: row.sequence,
-      drug: row.drugText,
-      usage: row.usageText,
-      days: row.days === null ? "" : String(row.days),
-      quantity: row.quantityText,
+    rows: prescriptionDraftEffectiveRpGroups(response.draft).flatMap(
+      (group) =>
+        group.items.map((item, index) =>
+          rpItemToDraftRow(group, item, (group.sequence - 1) * 1000 + index + 1),
+        ),
+    ),
+  };
+}
+
+/**
+ * snapshot が保持する resolved 参照の itemId 集合。
+ * master 表示名の hydrate に使う。
+ */
+export function collectResolvedMasterIds(
+  snapshot: PrescriptionDraftSnapshot,
+): {
+  readonly medicationRefs: readonly {
+    readonly masterVersionId: string;
+    readonly medicationItemId: string;
+  }[];
+  readonly usageItemIds: readonly string[];
+} {
+  const medicationRefs = new Map<string, string>();
+  const usageItemIds = new Set<string>();
+  for (const row of snapshot.rows) {
+    if (
+      row.medicationMode === "master" &&
+      row.medicationItemId.length > 0 &&
+      row.masterVersionId.length > 0
+    ) {
+      medicationRefs.set(row.medicationItemId, row.masterVersionId);
+    }
+    if (row.usageMode === "code" && row.usageItemId.length > 0) {
+      usageItemIds.add(row.usageItemId);
+    }
+  }
+  return {
+    medicationRefs: [...medicationRefs].map(
+      ([medicationItemId, masterVersionId]) => ({
+        medicationItemId,
+        masterVersionId,
+      }),
+    ),
+    usageItemIds: [...usageItemIds],
+  };
+}
+
+/**
+ * resolved 参照へ master の表示名を付与する。版内で append-only のため
+ * itemId → 名称は不変。解決不能な ID は表示を変えない。
+ */
+export function applyMasterLabels(
+  snapshot: PrescriptionDraftSnapshot,
+  labels: {
+    readonly medications: ReadonlyMap<string, string>;
+    readonly medicationVersionId: string | null;
+    readonly usages: ReadonlyMap<string, string>;
+  },
+): PrescriptionDraftSnapshot {
+  return {
+    ...snapshot,
+    rows: snapshot.rows.map((row) => ({
+      ...row,
+      // ラベルは解決した版の行にのみ適用する(同一 itemId が別版の行に
+      // 紛れ込んだ場合に版違いの表示名を貼らない)。
+      medicationItemLabel:
+        row.medicationItemLabel.length > 0
+          ? row.medicationItemLabel
+          : row.masterVersionId === labels.medicationVersionId &&
+              labels.medicationVersionId !== null
+            ? (labels.medications.get(row.medicationItemId) ?? "")
+            : "",
+      usageItemLabel:
+        row.usageItemLabel.length > 0
+          ? row.usageItemLabel
+          : (labels.usages.get(row.usageItemId) ?? ""),
     })),
   };
+}
+
+/**
+ * サーバーと同じ canonical 順(contracts の enum 定義順)で flag を整列する。
+ * toggle 順差を phantom dirty にしないため、比較時は常にこの順へ揃える。
+ */
+const FLAG_CANONICAL_ORDER: ReadonlyMap<string, number> = new Map(
+  prescriptionDraftFlagSchema.options.map((flag, index) => [flag, index]),
+);
+export function sortDraftFlagsCanonically(
+  flags: readonly PrescriptionDraftFlag[],
+): PrescriptionDraftFlag[] {
+  return [...flags].sort(
+    (left, right) =>
+      (FLAG_CANONICAL_ORDER.get(left) ?? Number.MAX_SAFE_INTEGER) -
+      (FLAG_CANONICAL_ORDER.get(right) ?? Number.MAX_SAFE_INTEGER),
+  );
+}
+
+/**
+ * 比較用に wire content から行の同一性 ID を落とす。
+ * UI 行の rpGroupId/rpItemId は新規行で毎回採番されるため、
+ * 「内容が同じ」かの判定に identity を混ぜると空行同士も不一致になる。
+ */
+function stripRpIdentity(
+  content: PrescriptionDraftContent,
+): PrescriptionDraftContent {
+  return {
+    ...content,
+    flags: sortDraftFlagsCanonically(content.flags),
+    rpGroups: content.rpGroups.map((group) => ({
+      ...group,
+      rpGroupId: "",
+      items: group.items.map((item) => ({ ...item, rpItemId: "" })),
+    })),
+  };
+}
+
+/**
+ * snapshot が永続化対象を持たない(= 全行空かつ header 未入力)か。
+ * toPrescriptionDraftContent は全空 draft を拒否するため、
+ * 空同士の比較は materialize を通さずここで判定する。
+ */
+function isDraftSnapshotEmpty(snapshot: PrescriptionDraftSnapshot): boolean {
+  return (
+    snapshot.rows.every(isDraftRowEmpty) &&
+    snapshot.prescriptionType.trim().length === 0 &&
+    snapshot.prescriptionDate.trim().length === 0 &&
+    snapshot.defaultDays.trim().length === 0 &&
+    snapshot.options.length === 0 &&
+    snapshot.note.trim().length === 0 &&
+    snapshot.institutionCode.trim().length === 0 &&
+    snapshot.institutionName.trim().length === 0 &&
+    snapshot.prescriberName.trim().length === 0 &&
+    snapshot.issueDate.trim().length === 0 &&
+    snapshot.validUntil.trim().length === 0 &&
+    snapshot.refillTotal.trim().length === 0 &&
+    snapshot.refillRemaining.trim().length === 0 &&
+    snapshot.splitDispensing.trim().length === 0
+  );
 }
 
 export function prescriptionDraftSnapshotsEqual(
@@ -317,11 +653,13 @@ export function prescriptionDraftSnapshotsEqual(
 ): boolean {
   try {
     return (
-      JSON.stringify(toPrescriptionDraftContent(left)) ===
-      JSON.stringify(toPrescriptionDraftContent(right))
+      JSON.stringify(stripRpIdentity(toPrescriptionDraftContent(left))) ===
+      JSON.stringify(stripRpIdentity(toPrescriptionDraftContent(right)))
     );
   } catch {
-    return false;
+    // 両方とも永続化不可の全空 draft なら等価とみなす
+    // (blank baseline と blank draft の比較)。
+    return isDraftSnapshotEmpty(left) && isDraftSnapshotEmpty(right);
   }
 }
 

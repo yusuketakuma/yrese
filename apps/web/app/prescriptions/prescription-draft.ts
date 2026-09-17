@@ -86,6 +86,7 @@ export function clonePrescriptionDraft(
 export function isPrescriptionDraftDirty(
   draft: PrescriptionDraftSnapshot,
 ): boolean {
+  // 行の追加・削除は内容の有無に関わらず未保存の編集として扱う。
   if (draft.rows.length !== 1) return true;
   if (!isDraftRowEmpty(draft.rows[0]!)) return true;
   return (

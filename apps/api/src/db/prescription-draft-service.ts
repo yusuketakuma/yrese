@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 
 import {
+  deriveRpGroupsFromLegacyRows,
   prescriptionDraftResponseSchema,
   prescriptionDraftSaveResponseSchema,
   type PrescriptionDraftContent,
@@ -18,9 +19,8 @@ import { runInPooledTransaction } from "./pool.js";
 import { snapshotDatabaseInstant } from "../instant.js";
 import {
   comparePrescriptionDraftFlags,
-  normalizePrescriptionDraftContentWithHash,
-  prescriptionDraftContentHash,
-  prescriptionDraftContentHashWithoutSourceMetadata,
+  normalizePrescriptionDraftContentForStorage,
+  prescriptionDraftContentHashCandidates,
   type PrescriptionDraftLookupInput,
   type PrescriptionDraftLookupResult,
   type PrescriptionDraftSaveInput,
@@ -46,6 +46,7 @@ interface MetadataRow {
   readonly refill_total: number | null;
   readonly refill_remaining: number | null;
   readonly split_dispensing: string | null;
+  readonly rp_groups: unknown;
   readonly content_hash: string;
   readonly created_at: Date | string;
   readonly updated_at: Date | string;
@@ -95,6 +96,7 @@ async function selectMetadata(
        refill_total,
        refill_remaining,
        split_dispensing,
+       rp_groups,
        content_hash,
        created_at,
        updated_at,
@@ -187,23 +189,33 @@ function sourceMetadataFromRow(row: MetadataRow) {
   };
 }
 
-/** 行が WP-7205 以前の hash 形式(sourceMetadata キーなし)で保存されているか。 */
-function isLegacySourceMetadataRow(row: MetadataRow): boolean {
-  return row.issue_date === null;
-}
-
 function storedHashMatches(
   row: MetadataRow,
   draft: PrescriptionDraftContent,
 ): boolean {
-  if (prescriptionDraftContentHash(draft) === row.content_hash) return true;
-  if (!isLegacySourceMetadataRow(row) || draft.sourceMetadata !== null) {
-    return false;
-  }
-  return (
-    prescriptionDraftContentHashWithoutSourceMetadata(draft) ===
-    row.content_hash
+  return prescriptionDraftContentHashCandidates(draft).includes(
+    row.content_hash,
   );
+}
+
+/**
+ * 永続化済み rp_groups があればそれを返し、無ければ legacy free-text 行から
+ * UNRESOLVED_TEXT へ読み替える(DOM-002 §4.2b。永続行は書き換えない)。
+ */
+function effectiveRpGroupsFromRow(
+  row: MetadataRow,
+  rows: readonly {
+    sequence: number;
+    drugText: string;
+    usageText: string;
+    days: number | null;
+    quantityText: string;
+  }[],
+): unknown {
+  if (Array.isArray(row.rp_groups) && row.rp_groups.length > 0) {
+    return row.rp_groups;
+  }
+  return deriveRpGroupsFromLegacyRows(rows);
 }
 
 async function readDraft(
@@ -232,6 +244,13 @@ async function readDraft(
   );
 
   try {
+    const legacyRows = rowsResult.rows.map((draftRow) => ({
+      sequence: draftRow.row_sequence,
+      drugText: draftRow.drug_text,
+      usageText: draftRow.usage_text,
+      days: draftRow.days,
+      quantityText: draftRow.quantity_text,
+    }));
     const response = prescriptionDraftResponseSchema.parse({
       prescriptionId: row.prescription_id,
       receptionId: row.reception_id,
@@ -246,14 +265,9 @@ async function readDraft(
           .map((flag) => flag.flag)
           .sort(comparePrescriptionDraftFlags),
         note: row.note,
-        rows: rowsResult.rows.map((draftRow) => ({
-          sequence: draftRow.row_sequence,
-          drugText: draftRow.drug_text,
-          usageText: draftRow.usage_text,
-          days: draftRow.days,
-          quantityText: draftRow.quantity_text,
-        })),
+        rows: legacyRows,
         sourceMetadata: sourceMetadataFromRow(row),
+        rpGroups: effectiveRpGroupsFromRow(row, legacyRows),
       },
       createdAt: snapshotDatabaseInstant(
         row.created_at,
@@ -282,6 +296,8 @@ export async function replaceChildren(
   id: PrescriptionId,
   draft: PrescriptionDraftContent,
 ): Promise<void> {
+  // DOM-002 §4.2b: prescription_draft_rows は読み専用。構造化移行済み draft の
+  // 旧行は DELETE で掃除し、INSERT は行わない(migration 000019 が DB 側でも拒否)。
   await client.query(
     `DELETE FROM prescription_draft_rows
       WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3`,
@@ -293,29 +309,6 @@ export async function replaceChildren(
     [input.tenantId, input.pharmacyId, id],
   );
 
-  // One INSERT per child table; explicit array casts preserve nullable days.
-  if (draft.rows.length > 0) {
-    await client.query(
-      `INSERT INTO prescription_draft_rows (
-         tenant_id, pharmacy_id, prescription_id, row_sequence,
-         drug_text, usage_text, days, quantity_text
-       )
-       SELECT $1, $2, $3, row_sequence, drug_text, usage_text, days, quantity_text
-         FROM unnest(
-           $4::int[], $5::text[], $6::text[], $7::int[], $8::text[]
-         ) AS row_values(row_sequence, drug_text, usage_text, days, quantity_text)`,
-      [
-        input.tenantId,
-        input.pharmacyId,
-        id,
-        draft.rows.map((row) => row.sequence),
-        draft.rows.map((row) => row.drugText),
-        draft.rows.map((row) => row.usageText),
-        draft.rows.map((row) => row.days),
-        draft.rows.map((row) => row.quantityText),
-      ],
-    );
-  }
   if (draft.flags.length > 0) {
     await client.query(
       `INSERT INTO prescription_draft_flags (
@@ -375,7 +368,7 @@ export class PostgresPrescriptionDraftService
     input: PrescriptionDraftSaveInput,
   ): Promise<PrescriptionDraftSaveResult> {
     const { normalized, contentHash } =
-      normalizePrescriptionDraftContentWithHash(input.draft);
+      normalizePrescriptionDraftContentForStorage(input.draft);
     return runInPooledTransaction(this.pool, async (client) => {
       // Serializes all draft writers for the same verified reception row. This closes the
       // create/create race before either transaction decides that no draft exists while still
@@ -408,12 +401,12 @@ export class PostgresPrescriptionDraftService
              prescription_date, default_days, note, content_hash,
              medical_institution_code, medical_institution_name, prescriber_name,
              issue_date, valid_until, refill_total, refill_remaining,
-             split_dispensing,
+             split_dispensing, rp_groups,
              created_at, updated_at, created_by, updated_by
            ) VALUES (
              $1, $2, $3, $4, $5, $6::date, 1, $7,
              $8::date, $9, $10, $11,
-             $14, $15, $16, $17::date, $18::date, $19, $20, $21,
+             $14, $15, $16, $17::date, $18::date, $19, $20, $21, $22::jsonb,
              $12, $12, $13, $13
            )`,
           [
@@ -438,6 +431,7 @@ export class PostgresPrescriptionDraftService
             sourceMetadata?.refill?.total ?? null,
             sourceMetadata?.refill?.remaining ?? null,
             sourceMetadata?.splitDispensing ?? null,
+            JSON.stringify(normalized.rpGroups),
           ],
         );
         await replaceChildren(client, input, id, normalized);
@@ -509,7 +503,8 @@ export class PostgresPrescriptionDraftService
                 valid_until = $18::date,
                 refill_total = $19,
                 refill_remaining = $20,
-                split_dispensing = $21
+                split_dispensing = $21,
+                rp_groups = $22::jsonb
           WHERE tenant_id = $1
             AND pharmacy_id = $2
             AND reception_id = $3
@@ -537,6 +532,7 @@ export class PostgresPrescriptionDraftService
           nextSourceMetadata?.refill?.total ?? null,
           nextSourceMetadata?.refill?.remaining ?? null,
           nextSourceMetadata?.splitDispensing ?? null,
+          JSON.stringify(normalized.rpGroups),
         ],
       );
       const id = prescriptionId(existing.prescription_id);

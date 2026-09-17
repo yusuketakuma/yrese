@@ -6,6 +6,7 @@ import {
   isPrescriptionDraftDirty,
   prescriptionDraftWorkId,
 } from "./prescription-draft";
+import { createBlankDraftRow } from "./prescription-replacement";
 
 describe("prescription draft tab-memory policy", () => {
   it("starts clean and uses a stable patient-scoped internal key", () => {
@@ -42,7 +43,7 @@ describe("prescription draft tab-memory policy", () => {
         ...blank,
         rows: [
           ...blank.rows,
-          { id: 2, drug: "", usage: "", days: "", quantity: "" },
+          createBlankDraftRow(2),
         ],
       }),
     ).toBe(true);
@@ -59,7 +60,13 @@ describe("prescription draft tab-memory policy", () => {
     const source = {
       ...createBlankPrescriptionDraft(),
       rows: [
-        { id: 1, drug: "合成薬A", usage: "朝", days: "7", quantity: "7錠" },
+        {
+          ...createBlankDraftRow(1),
+          drug: "合成薬A",
+          usage: "朝",
+          days: "7",
+          quantity: "7錠",
+        },
       ],
       options: ["一包化"] as const,
     };

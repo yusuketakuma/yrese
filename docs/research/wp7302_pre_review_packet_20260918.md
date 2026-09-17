@@ -2,17 +2,17 @@
 
 ```yaml
 document_kind: human_pre_review_packet
-status: PROPOSED
+status: DECIDED_ALL_APPROVED
 work_packages: [WP-7302]
 created_at: 2026-09-18
-decided_at: null
-decided_by: null
+decided_at: 2026-09-19
+decided_by: "direct human authority「次に進んで」(2026-09-19) — 直前 report の残決定事項 1 として D-1〜D-5 の approve が実装着手条件と提示されていた経緯から、推奨案どおりの全項目 APPROVE と解釈"
 risk_class: R3 (prescription draft 構造化 — DOM-002 改版実装 + migration)
 prepared_by: devin active_root_writer (maker — 本packetは判断材料であり、makerの自己承認ではない)
 oracle_used: false (user instruction 2026-09-17: oracleは使用しない)
-implementation_authority: none yet — 本packetの human 決定記録が揃うまで実装しない
+implementation_authority: WP-7302 scope approved (migration 適用・production action は引き続き別 gate)
 decisions_required: 5
-decisions_resolved: 0
+decisions_resolved: 5
 ```
 
 ## 1. 目的
@@ -82,19 +82,21 @@ human authority の事前 review record」が揃うまで開始しない。本 p
 - **双方向同期なし**: MedicationRequest との関係は ownership 未解決のまま
   (BLOCKED_MEDICATIONREQUEST_PRESCRIPTION_OWNERSHIP) — 本 WP は FHIR 投影を行わない。
 
-## 6. 人間への決定事項
+## 6. 人間への決定事項 — 決定記録(2026-09-19)
 
-| # | 論点 | 推奨 |
-|---|---|---|
-| D-1 | UNRESOLVED_TEXT と master 参照行の混在許可 | APPROVE |
-| D-2 | 用法・品目参照の discriminated union 形式 | APPROVE |
-| D-3 | 構造化行を content JSONB 内に保持(正規化表は確定段階で別途) | APPROVE |
-| D-4 | 上限値案(rp_groups ≤50 / rp_items ≤200 / text ≤500) | APPROVE |
-| D-5 | CODE_MAPPING_REVIEW_REQUIRED の MOD-006 新規登録(RX-0001 系) | APPROVE |
+| # | 論点 | 推奨 | 決定 |
+|---|---|---|---|
+| D-1 | UNRESOLVED_TEXT と master 参照行の混在許可 | APPROVE | **APPROVED** |
+| D-2 | 用法・品目参照の discriminated union 形式 | APPROVE | **APPROVED** |
+| D-3 | 構造化行を content JSONB 内に保持(正規化表は確定段階で別途) | APPROVE | **APPROVED** |
+| D-4 | 上限値案(rp_groups ≤50 / rp_items ≤200 / text ≤500) | APPROVE | **APPROVED** |
+| D-5 | CODE_MAPPING_REVIEW_REQUIRED の MOD-006 新規登録(RX-0001 系) | APPROVE | **APPROVED** |
 
-いずれか REJECT/AMEND の場合は該当節を修正して再提出する。
-全項目 APPROVE の場合は status を DECIDED_ALL_APPROVED に更新し、
-WP-7302 を実装可能キューへ移す。
+決定者: direct human authority「次に進んで」(2026-09-19)。packet 提示の
+推奨案どおりの全項目 APPROVE。D-3 により migration 000019 は
+「構造化行を content JSONB 内に保持するため新規テーブルは不要」
+となる — `prescription_drafts` への additive 列(`content_format`
+discriminator)のみに留める。
 
 ## 7. 検証計画(実装時)
 
@@ -104,3 +106,95 @@ WP-7302 を実装可能キューへ移す。
   を返すこと(WP-7402 route が未実装なら guard 関数単位で検証)
 - PG 統合: migration 000019 の適用・append-only trigger・既存行の無改変
 - 非目標の確認: 用量計算が発生しないこと(calculation-purity gate)
+
+## 8. 実装状況記録(2026-09-19)
+
+`status: DECIDED_ALL_APPROVED` のまま、実装完了・検証状況を追記する。
+
+実装済み:
+
+- contracts: `rpGroups`/`rpItems` schema(剤形区分 enum、用法・品目参照の
+  discriminated union resolved/unresolved)、groups ≤50 / items ≤200 /
+  text ≤500 / dose ≤64、連番・ID 一意性、rows/rpGroups 同時指定は 400、
+  `deriveRpGroupsFromLegacyRows`(UNRESOLVED_TEXT 決定的読み替え、
+  content-hash 安定性のため sequence 由来 UUID 形 ID)、
+  `prescriptionDraftUnresolvedCounts`/`HasUnresolvedMedicationItems` guard。
+- shared-kernel: `RX-0001 CODE_MAPPING_REVIEW_REQUIRED`(PRESCRIPTION /
+  BLOCKER / affectsClaimability / requiresHumanReview)登録、MOD-006 0.1.8。
+- migration `000019`: `prescription_drafts.rp_groups JSONB NOT NULL
+  DEFAULT '[]'` + JSONB 形状/サイズ検証 + `prescription_draft_rows`
+  INSERT/UPDATE/TRUNCATE 拒否 trigger(旧構造 read-only 化)。
+- API: save 時 materialize(rows-only 入力→構造化→rows:[] で保持)、
+  read は永続 rpGroups 優先・無ければ legacy rows から導出、
+  content hash は現行・pre-rpGroups・pre-sourceMetadata の3形式を受理、
+  CAS/監査/no-store/404 非開示は不変。
+- Web: 構造化 Rp エディタ(剤形 select、薬剤/用法のコード選択 or 自由記載、
+  1回量/1日量/総量/単位、一般名・後発品)、master picker
+  (GET /masters/{medications,usages}、asOf=業務日、明示検索のみ)、
+  resolved 参照の表示名 hydrate、RX-0001 未解決バッジと rail 表示
+  (未解決品目の残る draft を「確認可能」と表示しない)。
+
+D-3 記録との差異(明示): 決定記録では `content_format discriminator` 列を
+想定していたが、実装は `rp_groups` 列そのものを保持する形とした
+(新規テーブルなし・JSONB 内保持の趣旨は同一)。discriminator は
+rows/rpGroups の空判定で同義に判定できるため別途不要と判断。
+
+検証(実行済みのみ):
+
+- contracts 12 tests、API service/route 21 tests、web 117 tests、
+  PG 統合(prescription-draft 15 tests、実 `yrese_dev` への 000019 適用 +
+  trigger 拒否 + legacy 行無改変読取)全 PASS。
+- WP-7402 route は未実装のため guard は関数単位で検証済み
+  (packet §7 の代替条件どおり)。
+
+残る gate(全て人間): production/staging への 000019 適用(runbook 経路)、
+WP-7402 route 実装時の RX-0001 応答結線。
+
+## 9. R3 独立 review 記録(2026-09-19)
+
+Round 1(6 MEDIUM / 6 LOW)→ 全件修正:
+
+- M1 group 共通 field が非先頭行編集で消失 → `applyDraftRowPatch` 抽出 +
+  rpGroupId 伝播(unit test 付き)。
+- M2 空行が phantom UNRESOLVED 品目を永続化 → `isDraftRowEmpty` フィルタ +
+  全空 draft 拒否(専用メッセージ、contract エラーより後置)。
+- M3/M4 checkout/launch route の `rows.length` 0 表示 →
+  `prescriptionDraftEffectiveRpGroups` の items 総数へ。
+- M5 master lookup 無限待機 → 10s timeout + AbortSignal.any 合成、
+  caller signal 結線。
+- M6 新規 Rp text field に制御文字拒否(`normalizedRpText`)。
+- L 系: 比較正規化(flags canonical sort・persist 済み正規形で比較)、
+  LIKE メタ文字エスケープ、版一致 label hydrate、
+  UPDATE/TRUNCATE trigger 実実行テスト、WP-7205 中間 hash 統合テスト。
+
+Round 2(2 MEDIUM / 8 LOW)→ 修正:
+
+- M1 `rowToRpItem` エラーが常に RP1 → groupSequence 渡し。
+- M2 モード切替の orphan 参照が phantom unresolved 品目化 →
+  toggle 時に参照クリア + `isDraftRowEmpty` で mode 不整合 id を orphan 扱い。
+- L: dead empty check 除去・superRefine issue → 専用メッセージ、
+  hydrate 後 abort 再確認、json() → INVALID_RESPONSE、
+  版一致 label 適用(applyMasterLabels)、flag canonical sort、
+  LIKE 回帰テスト、applyDraftRowPatch 単体テスト。
+  LOW-10(dirty の行数非対称)は既存仕様(行追加=未保存)優先で wontfix。
+
+Round 3(1 LOW + informational)→ 修正:
+
+- `["rpGroups"]` path の issue 混同(上限超過時に「1行入力」を表示)→
+  `code === "custom"` で superRefine 由来のみ専用メッセージ。
+- テスト追加: 全空拒否メッセージ、flag 順非依存 snapshotsEqual、
+  orphan-id `isDraftRowEmpty` 分岐。
+
+Round 4(1 LOW)→ 修正:
+
+- 同 signature を持つ itemCount>200 superRefine issue との残存混同 →
+  `candidate.rpGroups.length === 0` も条件に追加し、materialize が
+  実際に空の場合のみ専用メッセージ(上限超過は「RP構造を確認して
+  ください」へ正しく落ちる)。
+
+Frozen diff: base `2464bf6`、sha256 `769fba012d45c7fcac5cc532086a0bc0faf4c5d6085297f52d8df9b5e8fa13b0`(36 files)。
+
+最終検証(実行済みのみ): contracts 231 / web 121+796 / api 1,249
+(実 PG 統合: prescription-draft 16・master 8 tests 含む)全 PASS、
+typecheck・lint・OpenAPI drift・SSOT index(189)・boundaries・secrets・
+calculation-purity・deps・sbom・`git diff --check` 全 PASS。

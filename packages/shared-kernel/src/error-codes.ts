@@ -300,6 +300,15 @@ export const KERNEL_ERROR_CODES = [
     requiresHumanReview: false,
     description: "master version lookup reserved",
   },
+  {
+    code: "RX-0001",
+    domain: "PRESCRIPTION",
+    severity: "BLOCKER",
+    affectsClaimability: true,
+    requiresHumanReview: true,
+    description:
+      "prescription draft contains UNRESOLVED_TEXT medication rows and cannot proceed to pharmacist confirmation",
+  },
 ] as const satisfies readonly ErrorCodeDef[];
 
 export const AUTH_PERMISSION_DENIED_ERROR_CODE = KERNEL_ERROR_CODES[0].code;
@@ -336,6 +345,8 @@ export const RECEPTION_QUEUE_BOUND_EXCEEDED_ERROR_CODE =
   KERNEL_ERROR_CODES[25].code;
 export const MASTER_INVALID_QUERY_ERROR_CODE = KERNEL_ERROR_CODES[26].code;
 export const MASTER_VERSION_NOT_FOUND_ERROR_CODE = KERNEL_ERROR_CODES[27].code;
+export const PRESCRIPTION_CODE_MAPPING_REVIEW_REQUIRED_ERROR_CODE =
+  KERNEL_ERROR_CODES[28].code;
 
 export function createKernelErrorCodeRegistry(): ErrorCodeRegistry {
   const registry = new ErrorCodeRegistry();

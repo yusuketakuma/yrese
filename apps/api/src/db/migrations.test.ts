@@ -198,6 +198,7 @@ describe('loadMigrationFiles', () => {
           '000016_coverage_tables.sql',
           '000017_add_prescription_draft_source_metadata.sql',
           '000018_master_foundation_tables.sql',
+          '000019_prescription_draft_rp_groups.sql',
         ]);
       } finally {
         process.chdir(originalCwd);

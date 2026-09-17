@@ -8,7 +8,7 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.7
+version: 0.1.8
 created_at: 2026-07-09
 updated_at: 2026-09-18
 approved_at: 2026-09-17
@@ -47,6 +47,7 @@ blockers: []
 change_log:
   - "0.1.6 (2026-09-18): WP-7105 — C-021 queue bound 決定(選択肢 b 防御的 cap、direct human approval)に伴い `RCV-0007`(queue 件数が cap 超過 503 + nextAction)を登録"
   - "0.1.7 (2026-09-18): WP-7301/WP-7303 — MST-003 実装に伴い `MST-0001`(master query 不正 400)を実装済みで登録、`MST-0002`(版参照 404)を予約登録。併せて INS-0001〜0006 の stale『未実装』表記を『実装済み(API-020 / WP-7203)』へ訂正"
+  - "0.1.8 (2026-09-19): WP-7302 — DOM-002 §4.2b 解決必須 guard 用に `RX-0001`(UNRESOLVED_TEXT 品目を含む draft の薬剤師確認ブロック、PRESCRIPTION domain 初コード、prefix RX)を登録。WP-7302 pre-review packet D-5 で承認済み"
   - "0.1.5 (2026-09-17): WP-7202 実装着手時の契約ギャップ解消 — write 系 route の 400(ボディ検証失敗・Idempotency-Key/If-Match ヘッダ欠落・異形)に対応するコードが未登録だったため `PAT-0007` を追加。RCV-0006(0.1.4)と同型の実装期ギャップ訂正"
   - "0.1.3 (2026-09-17): §18 SSOT 起案 batch。WP-7201 / API-006 0.3.0 起案に伴い RCV-0004(不許可遷移 409)/ RCV-0005(受付 version conflict 409)、WP-7204 / API-019 起案に伴い INS-0007〜0010(資格確認 snapshot route の 400/404/409/422)、WP-7203 / API-020 起案に伴い INS-0001〜0006(coverage route の 400/404/409 群)、WP-7202 / API-001 0.3.0 起案に伴い PAT-0003(patientNumber 重複 409)/ PAT-0004(version conflict 412)/ PAT-0005(不変 field 変更 422)/ PAT-0006(idempotency conflict 409)を追加提案。併せて shared-kernel に実装済みで台帳未登録だった PAT-0002 の drift を追記登録。review と human approval まで PROPOSED、実装根拠にしない"
   - "0.1.3 (2026-09-17) finalization: direct human approval(SSOT batch 一括 APPROVE)により PROPOSED→APPROVED。承認範囲はエラーコード台帳の登録のみで、実装完了・production action を含まない"
@@ -106,6 +107,7 @@ change_log:
 | INS-0010 | INSURANCE | ERROR | false | false | 手動記録不可の状態/方式(VERIFIED_MYNA 等)または ADP-004 §3 遷移表にない遷移(422) | APPROVED(API-019 / WP-7204 で実装済み) |
 | MST-0001 | MASTER | ERROR | false | false | master query 不正(400)。asOf 欠落/非実在暦日、q 上限(100 文字)超過・制御文字 | 実装済み(MST-003 / WP-7301+7303) |
 | MST-0002 | MASTER | ERROR | false | false | 指定 master_version_id が scope 内に存在しない(404)。将来の版参照 API 用に予約(現在未配線) | APPROVED(MST-003 — 予約、未実装) |
+| RX-0001 | PRESCRIPTION | BLOCKER | true | true | UNRESOLVED_TEXT の品目を含む処方 draft は薬剤師確認へ進めない(DOM-002 §4.2b CODE_MAPPING_REVIEW_REQUIRED guard)。確認 route は WP-7402 範囲のため現段階は guard 関数 + Web 表示に適用 | 実装済み(DOM-002 §4.2b / WP-7302) |
 
 (初期セットは `KERNEL_ERROR_CODES` seed として登録済み。今後の拡充は、各ドメイン実装WPの DoR で「使用するエラーコードが本台帳に登録済みであること」を要求することで行う)
 

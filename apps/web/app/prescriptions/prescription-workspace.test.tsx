@@ -6,11 +6,13 @@ import { PatientContextProvider } from "../components/patient-context";
 import type { PrescriptionDraftResponse } from "@yrese/contracts";
 
 import {
+  applyDraftRowPatch,
   canSavePrescriptionDraft,
   defaultValidUntil,
   isPrescriptionSourceExpired,
   PrescriptionDraftChangeSummary,
   PrescriptionWorkspace,
+  prescriptionDraftUnresolvedDisplay,
   resolveDraftLoadOutcome,
   resolveSaveFailureState,
   resolveSaveStateAfterEdit,
@@ -18,7 +20,10 @@ import {
   SelectedPatientWorkspaceView,
   summarizePrescriptionDraftChanges,
 } from "./prescription-workspace";
-import { createBlankDraftRows } from "./prescription-replacement";
+import {
+  createBlankDraftRow,
+  createBlankDraftRows,
+} from "./prescription-replacement";
 import { createBlankPrescriptionDraft } from "./prescription-draft";
 import {
   fromPrescriptionDraftResponse,
@@ -67,9 +72,17 @@ describe("PrescriptionWorkspace (connected draft UI / patient safety)", () => {
   });
 
   it("starts blank and fails closed without a verified reception origin", () => {
-    expect(createBlankDraftRows()).toEqual([
-      { id: 1, drug: "", usage: "", days: "", quantity: "" },
-    ]);
+    const rows = createBlankDraftRows();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      id: 1,
+      drug: "",
+      usage: "",
+      days: "",
+      quantity: "",
+      medicationMode: "text",
+      usageMode: "text",
+    });
     const html = renderToStaticMarkup(
       <SelectedPatientWorkspaceView patient={SELECTED_PATIENT} />,
     );
@@ -179,13 +192,30 @@ const SERVER_DRAFT_RESPONSE: PrescriptionDraftResponse = {
     defaultDays: 7,
     flags: [],
     note: "サーバー保存版のメモ",
-    rows: [
+    rows: [],
+    rpGroups: [
       {
+        rpGroupId: "00000000-0000-4000-8000-000000000011",
         sequence: 1,
-        drugText: "合成薬剤 5mg",
-        usageText: "1日1回 朝食後",
-        days: 7,
-        quantityText: "7錠",
+        dosageForm: "ORAL",
+        usage: { kind: "unresolved" as const, text: "1日1回 朝食後" },
+        daysOrCount: 7,
+        items: [
+          {
+            rpItemId: "00000000-0000-4000-a000-000000000011",
+            sequence: 1,
+            medication: {
+              kind: "unresolved" as const,
+              text: "合成薬剤 5mg",
+            },
+            doseOnce: null,
+            dosePerDay: null,
+            doseTotal: "7錠",
+            unit: null,
+            genericNamePrescription: false,
+            genericSubstitutionPermitted: null,
+          },
+        ],
       },
     ],
   },
@@ -238,7 +268,12 @@ describe("connected draft state machine (WP-5101 review HIGH-1/HIGH-2)", () => {
           days: "14",
           quantity: "28錠",
         },
-        { id: 2, drug: "追加薬", usage: "頓服", days: "", quantity: "3回分" },
+        {
+          ...createBlankDraftRow(2),
+          drug: "追加薬",
+          usage: "頓服",
+          quantity: "3回分",
+        },
       ],
     };
 
@@ -251,10 +286,10 @@ describe("connected draft state machine (WP-5101 review HIGH-1/HIGH-2)", () => {
       "全体指示",
       "メモ",
       "RP行数",
-      "RP1 薬剤名",
-      "RP1 用法用量",
-      "RP1 日数",
-      "RP1 数量",
+      "RP1 薬剤",
+      "RP1 用法・剤形",
+      "RP1 日数・回数",
+      "RP1 用量",
     ]);
 
     const conflictHtml = renderToStaticMarkup(
@@ -267,7 +302,7 @@ describe("connected draft state machine (WP-5101 review HIGH-1/HIGH-2)", () => {
     );
     expect(conflictHtml).toContain("最後に読み込んだサーバー版");
     expect(conflictHtml).toContain("競合相手の最新内容はまだ取得していません");
-    expect(conflictHtml).toContain("RP1 薬剤名");
+    expect(conflictHtml).toContain("RP1 薬剤");
     expect(conflictHtml).not.toContain("別の合成薬剤 10mg");
     expect(conflictHtml).not.toContain("28錠");
     expect(conflictHtml).not.toContain("サーバー最新版との差分");
@@ -469,5 +504,81 @@ describe("prescription source metadata helpers (WP-7205 / DOM-002 §4.2a)", () =
     );
     expect(labels.join("")).not.toContain("2026-08-20");
     expect(labels.join("")).not.toContain("合成 医師");
+  });
+});
+
+describe("unresolved code guard display (WP-7302 / RX-0001)", () => {
+  it("suppresses the guard on an all-empty new form", () => {
+    expect(
+      prescriptionDraftUnresolvedDisplay(createBlankPrescriptionDraft()),
+    ).toBeNull();
+  });
+
+  it("counts an unresolved free-text medication as a confirmation blocker", () => {
+    const snapshot = {
+      ...createBlankPrescriptionDraft(),
+      rows: [
+        {
+          ...createBlankDraftRow(1),
+          drug: "合成薬剤 5mg",
+          usage: "1日1回 朝食後",
+        },
+      ],
+    };
+    expect(prescriptionDraftUnresolvedDisplay(snapshot)).toEqual({
+      unresolvedMedicationItems: 1,
+      unresolvedUsages: 1,
+    });
+  });
+
+  it("reports zero unresolved items once medication and usage are code-resolved", () => {
+    const snapshot = {
+      ...createBlankPrescriptionDraft(),
+      rows: [
+        {
+          ...createBlankDraftRow(1),
+          medicationMode: "master" as const,
+          masterVersionId: "00000000-0000-4000-8000-000000000001",
+          medicationItemId: "00000000-0000-4000-8000-000000000002",
+          usageMode: "code" as const,
+          usageItemId: "00000000-0000-4000-8000-000000000003",
+        },
+      ],
+    };
+    expect(prescriptionDraftUnresolvedDisplay(snapshot)).toEqual({
+      unresolvedMedicationItems: 0,
+      unresolvedUsages: 0,
+    });
+  });
+});
+
+describe("applyDraftRowPatch (WP-7302 R3 MEDIUM-1)", () => {
+  it("propagates group-level fields to all rows sharing the rpGroupId", () => {
+    const groupId = "00000000-0000-4000-8000-0000000000aa";
+    const other = createBlankDraftRow(3);
+    const rows = [
+      { ...createBlankDraftRow(1), rpGroupId: groupId, drug: "薬A" },
+      { ...createBlankDraftRow(2), rpGroupId: groupId, drug: "薬B" },
+      other,
+    ];
+    // 非先頭行(id=2)への group field 編集が同 group の全行へ伝播する。
+    const patched = applyDraftRowPatch(rows, 2, { days: "14" });
+    expect(patched[0]?.days).toBe("14");
+    expect(patched[1]?.days).toBe("14");
+    // 別 group の行と item 固有 field は変えない。
+    expect(patched[2]?.days).toBe("");
+    expect(patched[0]?.drug).toBe("薬A");
+    expect(patched[1]?.drug).toBe("薬B");
+  });
+
+  it("does not propagate item-level fields to sibling rows", () => {
+    const groupId = "00000000-0000-4000-8000-0000000000bb";
+    const rows = [
+      { ...createBlankDraftRow(1), rpGroupId: groupId },
+      { ...createBlankDraftRow(2), rpGroupId: groupId },
+    ];
+    const patched = applyDraftRowPatch(rows, 1, { drug: "薬X" });
+    expect(patched[0]?.drug).toBe("薬X");
+    expect(patched[1]?.drug).toBe("");
   });
 });

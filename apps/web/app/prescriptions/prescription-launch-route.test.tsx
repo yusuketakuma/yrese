@@ -154,6 +154,7 @@ const SAVED_DRAFT: PrescriptionDraftResponse = {
         quantityText: "3錠",
       },
     ],
+    rpGroups: [],
   },
   createdAt: "2026-08-25T00:31:00.000Z",
   updatedAt: "2026-08-25T00:45:00.000Z",

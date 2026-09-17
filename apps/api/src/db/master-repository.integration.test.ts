@@ -223,4 +223,42 @@ describePostgres('WP-7301/7303 master foundation (Postgres)', () => {
       expect(lower.items).toHaveLength(0);
     });
   });
+
+  it('treats LIKE metacharacters in q as literals (in-memory parity)', async () => {
+    await withMigratedSchema(async (pool) => {
+      const repository = new PostgresMasterRepository(pool);
+      await seedSyntheticMasters(repository, scope, recordedAt);
+      // '_' がワイルドカードなら任意1文字として全 localCode に prefix 一致する。
+      // リテラル扱いなら '_' 始まりの code が無い限り 0 件。
+      for (const q of ['_', '\\']) {
+        const result = await repository.list({
+          ...brandedScope,
+          kind: 'medication',
+          asOf: '2026-06-01',
+          q,
+        });
+        if (result.kind !== 'listed') throw new Error('expected listed');
+        expect(result.items).toHaveLength(0);
+      }
+      // '%' はリテラル部分一致 — seed には '%' 含有名があり得るため、
+      // 返却品目が全て '%' を名前に含むこと(= wildcard ではない)を検証する。
+      const percent = await repository.list({
+        ...brandedScope,
+        kind: 'medication',
+        asOf: '2026-06-01',
+        q: '%',
+      });
+      if (percent.kind !== 'listed') throw new Error('expected listed');
+      const all = await repository.list({
+        ...brandedScope,
+        kind: 'medication',
+        asOf: '2026-06-01',
+      });
+      if (all.kind !== 'listed') throw new Error('expected listed');
+      expect(percent.items.length).toBeLessThan(all.items.length);
+      for (const item of percent.items) {
+        expect('name' in item && item.name.includes('%')).toBe(true);
+      }
+    });
+  });
 });

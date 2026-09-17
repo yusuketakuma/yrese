@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import type {
-  PrescriptionDraftResponse,
-  ReceptionQueueEntry,
+import {
+  prescriptionDraftEffectiveRpGroups,
+  type PrescriptionDraftResponse,
+  type ReceptionQueueEntry,
 } from "@yrese/contracts";
 
 import { DomainStatusBadge } from "../components/domain-status-badge";
@@ -70,7 +71,12 @@ export function toDraftSummary(
   if (result.value === null) return { kind: "absent" };
   return {
     kind: "saved",
-    rowCount: result.value.draft.rows.length,
+    // WP-7302: 新構造の明細は rpGroups 内の品目。legacy rows のみの
+    // 旧 draft も effective 展開で同じ件数が得られる。
+    rowCount: prescriptionDraftEffectiveRpGroups(result.value.draft).reduce(
+      (count, group) => count + group.items.length,
+      0,
+    ),
     version: result.value.version,
   };
 }

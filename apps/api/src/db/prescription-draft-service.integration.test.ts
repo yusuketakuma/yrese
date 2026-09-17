@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Pool, PoolClient } from "pg";
 
+import { deriveRpGroupsFromLegacyRows } from "@yrese/contracts";
 import {
   patientId,
   pharmacyId,
@@ -16,6 +17,7 @@ import { loadMigrationFiles } from "./migrations.js";
 import { createDbPool } from "./pool.js";
 import {
   normalizePrescriptionDraftContent,
+  prescriptionDraftContentHashCandidates,
   prescriptionDraftContentHashWithoutSourceMetadata,
 } from "../prescription-draft-service.js";
 import {
@@ -154,6 +156,7 @@ function saveInput(
     draft: {
       prescriptionType: "OUTPATIENT" as const,
       sourceMetadata: null,
+      rpGroups: [],
       prescriptionDate: "2026-08-25",
       defaultDays: 7,
       flags: ["PACKAGING" as const],
@@ -195,10 +198,11 @@ describe("replaceChildren DML shape (DB-less / WP-5268)", () => {
     wallClock: "2026-08-25T01:00:00.000Z",
   };
 
-  it("issues exactly one parameterized INSERT per child table regardless of row and flag count", async () => {
+  it("issues only a flags INSERT — prescription_draft_rows stays read-only", async () => {
     const draft = normalizePrescriptionDraftContent({
       prescriptionType: "OUTPATIENT",
       sourceMetadata: null,
+      rpGroups: [],
       prescriptionDate: "2026-08-25",
       defaultDays: 7,
       flags: ["NARCOTIC", "PACKAGING"],
@@ -224,26 +228,14 @@ describe("replaceChildren DML shape (DB-less / WP-5268)", () => {
     const flagInserts = calls.filter((call) =>
       call.text.includes("INSERT INTO prescription_draft_flags"),
     );
+    // DOM-002 §4.2b: 旧構造は読み専用。DELETE(移行掃除)は許すが INSERT しない。
     expect(deletes).toHaveLength(2);
-    expect(rowInserts).toHaveLength(1);
+    expect(rowInserts).toHaveLength(0);
     expect(flagInserts).toHaveLength(1);
-    expect(
-      calls.findIndex((call) => call.text.includes("INSERT")),
-    ).toBeGreaterThan(1);
-    for (const call of [...rowInserts, ...flagInserts]) {
+    for (const call of flagInserts) {
       expect(call.text).not.toContain("合成");
       expect(call.text).not.toContain("NARCOTIC");
     }
-    expect(rowInserts[0]?.values).toEqual([
-      "tenant-dml",
-      "pharmacy-dml",
-      "prescription-dml-1",
-      [1, 2, 3],
-      ["合成薬剤A 5mg", "合成薬剤B 10mg", "合成薬剤C 1mg"],
-      ["1日1回 朝食後", "1日2回 朝夕食後", "疼痛時 頓服"],
-      [7, null, 3],
-      ["7錠", "14錠", "3錠"],
-    ]);
     expect(flagInserts[0]?.values).toEqual([
       "tenant-dml",
       "pharmacy-dml",
@@ -257,6 +249,7 @@ describe("replaceChildren DML shape (DB-less / WP-5268)", () => {
     await replaceChildren(client, dmlLookup, prescriptionId("prescription-dml-2"), {
       prescriptionType: "UNSPECIFIED",
       sourceMetadata: null,
+      rpGroups: [],
       prescriptionDate: null,
       defaultDays: null,
       flags: [],
@@ -310,7 +303,19 @@ describePostgres(
           draft: {
             version: 2,
             draft: {
-              rows: [{ drugText: "合成薬剤B 10mg" }],
+              rows: [],
+              rpGroups: [
+                {
+                  items: [
+                    {
+                      medication: {
+                        kind: "unresolved",
+                        text: "合成薬剤B 10mg",
+                      },
+                    },
+                  ],
+                },
+              ],
             },
           },
         });
@@ -366,6 +371,7 @@ describePostgres(
         const batchDraft = {
           prescriptionType: "OUTPATIENT" as const,
           sourceMetadata: null,
+          rpGroups: [],
           prescriptionDate: "2026-08-25",
           defaultDays: 7,
           flags: ["PACKAGING" as const, "NARCOTIC" as const],
@@ -412,20 +418,35 @@ describePostgres(
         if (read.kind !== "found") {
           throw new Error(`expected found, got ${read.kind}`);
         }
-        expect(read.draft.draft).toEqual(batchDraft);
+        // rows 入力は UNRESOLVED_TEXT へ読み替えて rp_groups に永続化される
+        // (次版 draft から新構造のみを書く — DOM-002 §4.2b)。
+        expect(read.draft.draft).toEqual(
+          normalizePrescriptionDraftContent({
+            ...batchDraft,
+            rows: [],
+            rpGroups: deriveRpGroupsFromLegacyRows(batchDraft.rows),
+          }),
+        );
 
         const childCounts = await pool.query<{
           readonly row_count: string;
           readonly flag_count: string;
+          readonly group_count: number;
         }>(
           `SELECT
              (SELECT count(*)::text FROM prescription_draft_rows
                WHERE tenant_id = $1 AND pharmacy_id = $2) AS row_count,
              (SELECT count(*)::text FROM prescription_draft_flags
-               WHERE tenant_id = $1 AND pharmacy_id = $2) AS flag_count`,
+               WHERE tenant_id = $1 AND pharmacy_id = $2) AS flag_count,
+             (SELECT jsonb_array_length(rp_groups) FROM prescription_drafts
+               WHERE tenant_id = $1 AND pharmacy_id = $2) AS group_count`,
           [batchScope.tenantId, batchScope.pharmacyId],
         );
-        expect(childCounts.rows[0]).toEqual({ row_count: "3", flag_count: "2" });
+        expect(childCounts.rows[0]).toEqual({
+          row_count: "0",
+          flag_count: "2",
+          group_count: 3,
+        });
       });
     });
 
@@ -458,25 +479,20 @@ describePostgres(
 
         const rows = await pool.query<{
           readonly version: number;
-          readonly row_count: string;
+          readonly group_count: number;
         }>(
-          `SELECT d.version, count(r.*)::text AS row_count
+          `SELECT d.version, jsonb_array_length(d.rp_groups) AS group_count
              FROM prescription_drafts d
-             JOIN prescription_draft_rows r
-               ON r.tenant_id = d.tenant_id
-              AND r.pharmacy_id = d.pharmacy_id
-              AND r.prescription_id = d.prescription_id
             WHERE d.tenant_id = $1
               AND d.pharmacy_id = $2
-              AND d.reception_id = $3
-            GROUP BY d.version`,
+              AND d.reception_id = $3`,
           [
             scopedInput.tenantId,
             scopedInput.pharmacyId,
             scopedInput.receptionId,
           ],
         );
-        expect(rows.rows).toEqual([{ version: 1, row_count: "1" }]);
+        expect(rows.rows).toEqual([{ version: 1, group_count: 1 }]);
       });
     });
 
@@ -882,6 +898,93 @@ describePostgres(
       });
     });
 
+    it("rejects INSERT/UPDATE on read-only prescription_draft_rows (WP-7302)", async () => {
+      await withMigratedSchema(async (pool) => {
+        await seedReception(pool, {
+          tenantId: scopedInput.tenantId,
+          pharmacyId: scopedInput.pharmacyId,
+          patientId: scopedInput.patientId,
+          receptionId: scopedInput.receptionId,
+          patientNumber: "DRAFT-DB-RO",
+          idempotencyKey: "draft-db-idempotency-ro",
+        });
+        const service = new PostgresPrescriptionDraftService(
+          pool,
+          () => prescriptionId("prescription-draft-db"),
+        );
+        await service.save(saveInput(0));
+
+        // 旧構造への直接 INSERT は trigger で拒否される。
+        await expect(
+          pool.query(
+            `INSERT INTO prescription_draft_rows (
+               tenant_id, pharmacy_id, prescription_id, row_sequence,
+               drug_text, usage_text, days, quantity_text
+             ) VALUES ($1, $2, 'prescription-draft-db', 1,
+               'legacy', 'legacy', 1, '1')`,
+            [scopedInput.tenantId, scopedInput.pharmacyId],
+          ),
+        ).rejects.toMatchObject({
+          message: expect.stringContaining("read-only"),
+        });
+        // UPDATE も実行レベルで拒否される。対象行は INSERT trigger を
+        // 一時解除して seed する(pre-migration 行の再現)。
+        await pool.query(
+          `ALTER TABLE prescription_draft_rows
+             DISABLE TRIGGER prescription_draft_rows_block_insert`,
+        );
+        try {
+          await pool.query(
+            `INSERT INTO prescription_draft_rows (
+               tenant_id, pharmacy_id, prescription_id, row_sequence,
+               drug_text, usage_text, days, quantity_text
+             ) VALUES ($1, $2, 'prescription-draft-db', 1,
+               'legacy', 'legacy', 1, '1')`,
+            [scopedInput.tenantId, scopedInput.pharmacyId],
+          );
+        } finally {
+          await pool.query(
+            `ALTER TABLE prescription_draft_rows
+               ENABLE TRIGGER prescription_draft_rows_block_insert`,
+          );
+        }
+        await expect(
+          pool.query(
+            `UPDATE prescription_draft_rows
+               SET drug_text = 'changed'
+             WHERE tenant_id = $1 AND pharmacy_id = $2`,
+            [scopedInput.tenantId, scopedInput.pharmacyId],
+          ),
+        ).rejects.toMatchObject({
+          message: expect.stringContaining("read-only"),
+        });
+        // TRUNCATE も trigger で拒否される(スキーマは使い捨て)。
+        await expect(
+          pool.query(`TRUNCATE prescription_draft_rows`),
+        ).rejects.toMatchObject({
+          message: expect.stringContaining("read-only"),
+        });
+        // DELETE は migration-on-write 掃除のため許可される。
+        await expect(
+          pool.query(
+            `DELETE FROM prescription_draft_rows
+             WHERE tenant_id = $1 AND pharmacy_id = $2`,
+            [scopedInput.tenantId, scopedInput.pharmacyId],
+          ),
+        ).resolves.toBeDefined();
+        const triggers = await pool.query(
+          `SELECT tgname FROM pg_trigger
+            WHERE tgrelid = 'prescription_draft_rows'::regclass
+              AND tgname IN (
+                'prescription_draft_rows_block_insert',
+                'prescription_draft_rows_block_update',
+                'prescription_draft_rows_truncate_guard'
+              )`,
+        );
+        expect(triggers.rows).toHaveLength(3);
+      });
+    });
+
     it("reads WP-7205 以前の legacy hash 行(sourceMetadata キーなし)を後方互換で受理する", async () => {
       await withMigratedSchema(async (pool) => {
         const legacyScope = {
@@ -940,35 +1043,211 @@ describePostgres(
             legacyHash,
           ],
         );
+        // legacy 行の seed は migration 000019 の read-only trigger を
+        // fixture 内でのみ一時解除して行う(pre-migration 状態の再現)。
         await pool.query(
-          `INSERT INTO prescription_draft_rows (
-             tenant_id, pharmacy_id, prescription_id, row_sequence,
-             drug_text, usage_text, days, quantity_text
-           ) VALUES ($1, $2, 'prescription-draft-legacy', 1,
-             '合成薬剤A 5mg', '1日1回 朝食後', 7, '7錠')`,
-          [legacyScope.tenantId, legacyScope.pharmacyId],
+          `ALTER TABLE prescription_draft_rows
+             DISABLE TRIGGER prescription_draft_rows_block_insert`,
         );
+        try {
+          await pool.query(
+            `INSERT INTO prescription_draft_rows (
+               tenant_id, pharmacy_id, prescription_id, row_sequence,
+               drug_text, usage_text, days, quantity_text
+             ) VALUES ($1, $2, 'prescription-draft-legacy', 1,
+               '合成薬剤A 5mg', '1日1回 朝食後', 7, '7錠')`,
+            [legacyScope.tenantId, legacyScope.pharmacyId],
+          );
+        } finally {
+          await pool.query(
+            `ALTER TABLE prescription_draft_rows
+               ENABLE TRIGGER prescription_draft_rows_block_insert`,
+          );
+        }
 
-        // legacy 行は sourceMetadata=null で読み出せ、hash は旧形式で受理される。
+        // legacy 行は sourceMetadata=null で読み出せ、hash は旧形式で受理され、
+        // rpGroups は free-text 行から UNRESOLVED_TEXT へ読み替えられる。
         const fetched = await service.get({
           ...scopedInput,
           receptionId: legacyScope.receptionId,
         });
         expect(fetched).toMatchObject({
           kind: "found",
-          draft: { version: 1, draft: { sourceMetadata: null } },
+          draft: {
+            version: 1,
+            draft: {
+              sourceMetadata: null,
+              rpGroups: [
+                {
+                  sequence: 1,
+                  dosageForm: "UNSPECIFIED",
+                  usage: { kind: "unresolved", text: "1日1回 朝食後" },
+                  daysOrCount: 7,
+                  items: [
+                    {
+                      sequence: 1,
+                      medication: {
+                        kind: "unresolved",
+                        text: "合成薬剤A 5mg",
+                      },
+                      doseTotal: "7錠",
+                    },
+                  ],
+                },
+              ],
+            },
+          },
         });
 
-        // 同一内容の再保存は unchanged(legacy hash との一致で判定)。
-        const unchanged = await service.save({
+        // 同一内容の再保存は構造移行を伴うため updated となり、
+        // rp_groups へ永続化・旧 rows は掃除される(次版から新構造のみを書く)。
+        const migrated = await service.save({
           ...saveInput(1),
           receptionId: legacyScope.receptionId,
           patientId: legacyScope.patientId,
           draft: legacyContent,
         });
-        expect(unchanged).toMatchObject({
+        expect(migrated).toMatchObject({
           kind: "saved",
-          draft: { saveDisposition: "unchanged", version: 1 },
+          draft: {
+            saveDisposition: "updated",
+            version: 2,
+            draft: { rows: [] },
+          },
+        });
+        const persistedRows = await pool.query(
+          `SELECT count(*)::int AS count
+             FROM prescription_draft_rows
+            WHERE tenant_id = $1 AND pharmacy_id = $2`,
+          [legacyScope.tenantId, legacyScope.pharmacyId],
+        );
+        expect(persistedRows.rows[0]?.count).toBe(0);
+        const persistedGroups = await pool.query(
+          `SELECT jsonb_array_length(rp_groups) AS count
+             FROM prescription_drafts
+            WHERE tenant_id = $1 AND pharmacy_id = $2`,
+          [legacyScope.tenantId, legacyScope.pharmacyId],
+        );
+        expect(persistedGroups.rows[0]?.count).toBe(1);
+      });
+    });
+
+    it("reads WP-7205 期の中間 hash 行(sourceMetadata あり・rpGroups キーなし)を受理する", async () => {
+      await withMigratedSchema(async (pool) => {
+        const middleScope = {
+          ...scopedInput,
+          receptionId: receptionId("reception-draft-middle"),
+          patientId: patientId("patient-draft-middle"),
+        };
+        await seedReception(pool, {
+          tenantId: middleScope.tenantId,
+          pharmacyId: middleScope.pharmacyId,
+          patientId: middleScope.patientId,
+          receptionId: middleScope.receptionId,
+          patientNumber: "DRAFT-DB-MIDDLE",
+          idempotencyKey: "draft-db-idempotency-middle",
+        });
+        const service = new PostgresPrescriptionDraftService(
+          pool,
+          () => prescriptionId("prescription-draft-middle"),
+        );
+
+        const middleContent = normalizePrescriptionDraftContent({
+          prescriptionType: "OUTPATIENT",
+          sourceMetadata: {
+            medicalInstitution: { code: "1234567", name: "合成病院" },
+            prescriberName: "合成 医師",
+            issueDate: "2026-08-20",
+            validUntil: "2026-08-24",
+            refill: null,
+            splitDispensing: null,
+          },
+          prescriptionDate: "2026-08-25",
+          defaultDays: 7,
+          flags: [],
+          note: "",
+          rows: [
+            {
+              sequence: 1,
+              drugText: "合成薬剤B 10mg",
+              usageText: "1日2回 朝夕食後",
+              days: 5,
+              quantityText: "10錠",
+            },
+          ],
+        });
+        // WP-7205 期の hash は sourceMetadata 込み・rpGroups キーなし。
+        const middleHash =
+          prescriptionDraftContentHashCandidates(middleContent)[1];
+        expect(middleHash).toBeDefined();
+        await pool.query(
+          `INSERT INTO prescription_drafts (
+             tenant_id, pharmacy_id, prescription_id, reception_id,
+             patient_id, business_date, version,
+             prescription_type, prescription_date, default_days, note,
+             content_hash,
+             medical_institution_code, medical_institution_name,
+             prescriber_name, issue_date, valid_until,
+             refill_total, refill_remaining, split_dispensing,
+             created_at, updated_at, created_by, updated_by
+           ) VALUES (
+             $1, $2, 'prescription-draft-middle', $3, $4,
+             '2026-08-25'::date, 1, 'OUTPATIENT', '2026-08-25'::date,
+             7, '', $5,
+             '1234567', '合成病院', '合成 医師',
+             '2026-08-20'::date, '2026-08-24'::date,
+             NULL, NULL, NULL,
+             now(), now(), 'actor', 'actor'
+           )`,
+          [
+            middleScope.tenantId,
+            middleScope.pharmacyId,
+            middleScope.receptionId,
+            middleScope.patientId,
+            middleHash,
+          ],
+        );
+        await pool.query(
+          `ALTER TABLE prescription_draft_rows
+             DISABLE TRIGGER prescription_draft_rows_block_insert`,
+        );
+        try {
+          await pool.query(
+            `INSERT INTO prescription_draft_rows (
+               tenant_id, pharmacy_id, prescription_id, row_sequence,
+               drug_text, usage_text, days, quantity_text
+             ) VALUES ($1, $2, 'prescription-draft-middle', 1,
+               '合成薬剤B 10mg', '1日2回 朝夕食後', 5, '10錠')`,
+            [middleScope.tenantId, middleScope.pharmacyId],
+          );
+        } finally {
+          await pool.query(
+            `ALTER TABLE prescription_draft_rows
+               ENABLE TRIGGER prescription_draft_rows_block_insert`,
+          );
+        }
+
+        // 中間 hash で受理され、sourceMetadata と導出 rpGroups を返す。
+        const fetched = await service.get({
+          ...scopedInput,
+          receptionId: middleScope.receptionId,
+        });
+        expect(fetched).toMatchObject({
+          kind: "found",
+          draft: {
+            version: 1,
+            draft: {
+              sourceMetadata: {
+                medicalInstitution: { code: "1234567" },
+              },
+              rpGroups: [
+                {
+                  usage: { kind: "unresolved", text: "1日2回 朝夕食後" },
+                  daysOrCount: 5,
+                },
+              ],
+            },
+          },
         });
       });
     });

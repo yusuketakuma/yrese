@@ -42,20 +42,34 @@ import {
   prescriptionDraftWorkId,
 } from "./prescription-draft";
 import {
+  FLAG_FROM_WIRE,
   PrescriptionDraftApiError,
+  applyMasterLabels,
+  collectResolvedMasterIds,
   fromPrescriptionDraftResponse,
   loadPrescriptionDraft,
   prescriptionDraftSnapshotsEqual,
+  rpItemToDraftRow,
   savePrescriptionDraft,
+  sortDraftFlagsCanonically,
   toPrescriptionDraftContent,
 } from "./prescription-draft-persistence";
-import type {
-  PrescriptionDraftResponse,
-  PrescriptionDraftSaveResponse,
+import {
+  PRESCRIPTION_DRAFT_RP_DOSE_MAX_LENGTH,
+  PRESCRIPTION_DRAFT_RP_TEXT_MAX_LENGTH,
+  prescriptionDraftUnresolvedCounts,
+  type PrescriptionDraftResponse,
+  type PrescriptionDraftSaveResponse,
 } from "@yrese/contracts";
+import {
+  MasterCodePicker,
+  type MasterCodeSelection,
+} from "../masters/master-code-picker";
+import { resolveMasterItemLabels } from "../masters/master-lookup";
 import { useOptionalPrescriptionOrigin } from "./prescription-origin-context";
 import {
   type DraftRow,
+  createBlankDraftRow,
   isDraftRowEmpty,
   removeDraftRow,
 } from "./prescription-replacement";
@@ -95,11 +109,15 @@ function normalizedDraftForComparison(
   const content = toPrescriptionDraftContent(snapshot);
   const sourceMetadata = content.sourceMetadata;
   return {
-    prescriptionType: snapshot.prescriptionType,
+    // 保存 materialize と同じ正規化を比較にも使い、trim/重複差で
+    // dirty が誤発火しないようにする。
+    prescriptionType: content.prescriptionType,
     prescriptionDate: content.prescriptionDate ?? "",
     defaultDays:
       content.defaultDays === null ? "" : String(content.defaultDays),
-    options: snapshot.options,
+    options: sortDraftFlagsCanonically(content.flags).map(
+      (flag) => FLAG_FROM_WIRE[flag],
+    ),
     note: content.note,
     institutionCode: sourceMetadata?.medicalInstitution.code ?? "",
     institutionName: sourceMetadata?.medicalInstitution.name ?? "",
@@ -115,13 +133,11 @@ function normalizedDraftForComparison(
         ? ""
         : String(sourceMetadata.refill.remaining),
     splitDispensing: sourceMetadata?.splitDispensing ?? "",
-    rows: content.rows.map((row) => ({
-      id: row.sequence,
-      drug: row.drugText,
-      usage: row.usageText,
-      days: row.days === null ? "" : String(row.days),
-      quantity: row.quantityText,
-    })),
+    rows: content.rpGroups.flatMap((group) =>
+      group.items.map((item, index) =>
+        rpItemToDraftRow(group, item, (group.sequence - 1) * 1000 + index + 1),
+      ),
+    ),
   };
 }
 
@@ -235,10 +251,36 @@ export function summarizePrescriptionDraftChanges(
     const current = comparedDraft.rows[index]!;
     const saved = comparedBaseline.rows[index]!;
     const prefix = `RP${index + 1}`;
-    if (current.drug !== saved.drug) labels.push(`${prefix} 薬剤名`);
-    if (current.usage !== saved.usage) labels.push(`${prefix} 用法用量`);
-    if (current.days !== saved.days) labels.push(`${prefix} 日数`);
-    if (current.quantity !== saved.quantity) labels.push(`${prefix} 数量`);
+    if (
+      current.drug !== saved.drug ||
+      current.medicationMode !== saved.medicationMode ||
+      current.medicationItemId !== saved.medicationItemId
+    ) {
+      labels.push(`${prefix} 薬剤`);
+    }
+    if (
+      current.usage !== saved.usage ||
+      current.usageMode !== saved.usageMode ||
+      current.usageItemId !== saved.usageItemId ||
+      current.dosageForm !== saved.dosageForm
+    ) {
+      labels.push(`${prefix} 用法・剤形`);
+    }
+    if (current.days !== saved.days) labels.push(`${prefix} 日数・回数`);
+    if (
+      current.doseOnce !== saved.doseOnce ||
+      current.dosePerDay !== saved.dosePerDay ||
+      current.quantity !== saved.quantity ||
+      current.unit !== saved.unit
+    ) {
+      labels.push(`${prefix} 用量`);
+    }
+    if (
+      current.genericNamePrescription !== saved.genericNamePrescription ||
+      current.genericSubstitution !== saved.genericSubstitution
+    ) {
+      labels.push(`${prefix} 後発品`);
+    }
   }
 
   return labels;
@@ -343,6 +385,95 @@ export function PrescriptionWorkspace() {
       patient={patient}
     />
   );
+}
+
+/**
+ * 行の更新。rpGroups の group 共通 field(剤形・用法・日数)は
+ * 同一 rpGroupId を共有する全行へ伝播させる — サーバー上の
+ * multi-item group は行へ展開されているため、非先頭行への
+ * 共通 field 編集が保存時に捨てられないようにする。
+ */
+export function applyDraftRowPatch(
+  rows: readonly DraftRow[],
+  id: number,
+  patch: Partial<DraftRow>,
+): DraftRow[] {
+  const groupKeys = [
+    "dosageForm",
+    "usageMode",
+    "usageItemId",
+    "usageItemLabel",
+    "usage",
+    "days",
+  ] as const;
+  const groupPatch: Partial<DraftRow> = {};
+  for (const key of groupKeys) {
+    if (key in patch) {
+      Object.assign(groupPatch, { [key]: patch[key] });
+    }
+  }
+  const touchesGroupFields = Object.keys(groupPatch).length > 0;
+  const target = rows.find((row) => row.id === id);
+  const propagate =
+    touchesGroupFields && target !== undefined ? target.rpGroupId : null;
+  return rows.map((row) => {
+    if (row.id === id) return { ...row, ...patch };
+    if (propagate !== null && row.rpGroupId === propagate) {
+      return { ...row, ...groupPatch };
+    }
+    return row;
+  });
+}
+
+/**
+ * WP-7302 / RX-0001: 未解決(UNRESOLVED_TEXT)品目を残す draft は
+ * 薬剤師確認へ進めない。未解決用法は制度上許容されるが警告対象。
+ * 全行空の新規フォームと schema 不適合な入力途中は null を返す。
+ */
+export function prescriptionDraftUnresolvedDisplay(
+  snapshot: PrescriptionDraftSnapshot,
+): {
+  readonly unresolvedMedicationItems: number;
+  readonly unresolvedUsages: number;
+} | null {
+  if (snapshot.rows.every((row) => isDraftRowEmpty(row))) return null;
+  try {
+    return prescriptionDraftUnresolvedCounts(
+      toPrescriptionDraftContent(snapshot),
+    );
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * resolved 参照の表示名を master API で補完する(WP-7302)。
+ * 契約は ID のみ保持するため、表示名は読み込み時に解決する。
+ * 解決不能(master API 障害等)でも draft 読込自体は妨げない。
+ */
+async function hydrateDraftMasterLabels(
+  snapshot: PrescriptionDraftSnapshot,
+  asOf: string,
+  signal?: AbortSignal,
+): Promise<PrescriptionDraftSnapshot> {
+  const ids = collectResolvedMasterIds(snapshot);
+  if (ids.medicationRefs.length === 0 && ids.usageItemIds.length === 0) {
+    return snapshot;
+  }
+  try {
+    const labels = await resolveMasterItemLabels(
+      {
+        asOf,
+        medicationRefs: ids.medicationRefs,
+        usageItemIds: ids.usageItemIds,
+      },
+      fetch,
+      signal,
+    );
+    return applyMasterLabels(snapshot, labels);
+  } catch {
+    return snapshot;
+  }
 }
 
 /**
@@ -499,6 +630,11 @@ export function SelectedPatientWorkspaceView({
     [baseline, draft, linkedOrigin],
   );
 
+  const unresolvedCounts = useMemo(
+    () => prescriptionDraftUnresolvedDisplay(draft),
+    [draft],
+  );
+
   useEffect(() => {
     if (linkedOrigin === null) {
       setLoadState({ kind: "unlinked" });
@@ -524,19 +660,25 @@ export function SelectedPatientWorkspaceView({
       fetch,
       controller.signal,
     ).then(
-      (response) => {
+      async (response) => {
         if (!current) return;
         const outcome = resolveDraftLoadOutcome(
           response,
           initialDraft.restored ? initialDraft.draft : null,
         );
-        setBaseline(outcome.baseline);
+        const hydrated = await hydrateDraftMasterLabels(
+          outcome.baseline,
+          linkedOrigin.businessDate,
+          controller.signal,
+        );
+        if (!current) return;
+        setBaseline(hydrated);
         setServerVersion(outcome.serverVersion);
         setServerUpdatedAt(outcome.serverUpdatedAt);
         setServerChangedWhileAway(outcome.serverChangedWhileAway);
         setDivergenceChoiceRequested(false);
         if (outcome.adoptServerDraft) {
-          setDraft(outcome.baseline);
+          setDraft(hydrated);
         }
         setLoadState({ kind: "ready" });
       },
@@ -588,17 +730,34 @@ export function SelectedPatientWorkspaceView({
     setSaveState((current) => resolveSaveStateAfterEdit(current));
   }
 
-  function updateRow(
-    id: number,
-    field: keyof Omit<DraftRow, "id">,
-    value: string,
-  ) {
+  function updateRow(id: number, patch: Partial<DraftRow>) {
     updateDraft((current) => ({
       ...current,
-      rows: current.rows.map((row) =>
-        row.id === id ? { ...row, [field]: value } : row,
-      ),
+      rows: applyDraftRowPatch(current.rows, id, patch),
     }));
+  }
+
+  /**
+   * master 選択の写像。解除時は表示名も消す。選択は常に resolved
+   * 参照へ変換される(契約は kind 別 union)。
+   */
+  function applyMasterSelection(
+    rowId: number,
+    target: "medication" | "usage",
+    selection: MasterCodeSelection | null,
+  ) {
+    if (target === "medication") {
+      updateRow(rowId, {
+        medicationItemId: selection?.itemId ?? "",
+        masterVersionId: selection?.masterVersionId ?? "",
+        medicationItemLabel: selection?.label ?? "",
+      });
+      return;
+    }
+    updateRow(rowId, {
+      usageItemId: selection?.itemId ?? "",
+      usageItemLabel: selection?.label ?? "",
+    });
   }
 
   function addRow() {
@@ -606,13 +765,9 @@ export function SelectedPatientWorkspaceView({
       ...current,
       rows: [
         ...current.rows,
-        {
-          id: Math.max(0, ...current.rows.map((row) => row.id)) + 1,
-          drug: "",
-          usage: "",
-          days: "",
-          quantity: "",
-        },
+        createBlankDraftRow(
+          Math.max(0, ...current.rows.map((row) => row.id)) + 1,
+        ),
       ],
     }));
   }
@@ -670,7 +825,12 @@ export function SelectedPatientWorkspaceView({
         controller.signal,
       );
       if (controller.signal.aborted || draftRequestRef.current !== controller) return;
-      const savedDraft = fromPrescriptionDraftResponse(response);
+      const savedDraft = await hydrateDraftMasterLabels(
+        fromPrescriptionDraftResponse(response),
+        linkedOrigin.businessDate,
+        controller.signal,
+      );
+      if (controller.signal.aborted || draftRequestRef.current !== controller) return;
       setDraft(savedDraft);
       setBaseline(savedDraft);
       setServerVersion(response.version);
@@ -710,12 +870,18 @@ export function SelectedPatientWorkspaceView({
         response,
         discardLocal || !dirty ? null : draft,
       );
-      setBaseline(outcome.baseline);
+      const hydrated = await hydrateDraftMasterLabels(
+        outcome.baseline,
+        linkedOrigin.businessDate,
+        controller.signal,
+      );
+      if (controller.signal.aborted || draftRequestRef.current !== controller) return;
+      setBaseline(hydrated);
       setServerVersion(outcome.serverVersion);
       setServerUpdatedAt(outcome.serverUpdatedAt);
       setServerChangedWhileAway(outcome.serverChangedWhileAway);
       setDivergenceChoiceRequested(false);
-      if (outcome.adoptServerDraft) setDraft(outcome.baseline);
+      if (outcome.adoptServerDraft) setDraft(hydrated);
       if (discardLocal) setRestoredNoticeVisible(false);
       setSaveState({ kind: "idle" });
       setLoadState({ kind: "ready" });
@@ -1246,10 +1412,12 @@ export function SelectedPatientWorkspaceView({
               <thead>
                 <tr>
                   <th scope="col">RP</th>
-                  <th scope="col">薬剤名・規格</th>
-                  <th scope="col">用法・用量</th>
-                  <th scope="col">日数</th>
-                  <th scope="col">数量</th>
+                  <th scope="col">剤形</th>
+                  <th scope="col">薬剤</th>
+                  <th scope="col">用法</th>
+                  <th scope="col">日数・回数</th>
+                  <th scope="col">用量</th>
+                  <th scope="col">一般名・後発品</th>
                   <th scope="col">操作</th>
                 </tr>
               </thead>
@@ -1258,53 +1426,240 @@ export function SelectedPatientWorkspaceView({
                   <tr key={row.id}>
                     <th scope="row">{index + 1}</th>
                     <td>
-                      <input
-                        aria-label={`RP${index + 1} 薬剤名`}
-                        value={row.drug}
-                        maxLength={256}
+                      <select
+                        aria-label={`RP${index + 1} 剤形区分`}
+                        value={row.dosageForm}
                         disabled={editorLocked}
-                        onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                          updateRow(row.id, "drug", event.target.value)
+                        onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                          updateRow(row.id, {
+                            dosageForm: event.target.value,
+                          })
                         }
-                        placeholder="薬剤名・規格を入力"
-                        autoComplete="off"
-                      />
+                      >
+                        <option value="">未指定</option>
+                        <option value="内服">内服</option>
+                        <option value="外用">外用</option>
+                        <option value="注射">注射</option>
+                        <option value="頓服">頓服</option>
+                        <option value="その他">その他</option>
+                      </select>
+                    </td>
+                    <td>
+                      <label className="prescription-mode-toggle">
+                        <input
+                          type="checkbox"
+                          aria-label={`RP${index + 1} 薬剤をマスターから選択`}
+                          checked={row.medicationMode === "master"}
+                          disabled={editorLocked}
+                          onChange={() =>
+                            updateRow(row.id, {
+                              medicationMode:
+                                row.medicationMode === "master"
+                                  ? "text"
+                                  : "master",
+                              // text へ戻すときは resolved 参照を残さない
+                              // (orphan id が空行判定をすり抜けて phantom
+                              // unresolved item を永続化するのを防ぐ)。
+                              ...(row.medicationMode === "master"
+                                ? {
+                                    masterVersionId: "",
+                                    medicationItemId: "",
+                                    medicationItemLabel: "",
+                                  }
+                                : {}),
+                            })
+                          }
+                        />
+                        コード
+                      </label>
+                      {row.medicationMode === "master" ? (
+                        <MasterCodePicker
+                          kind="medication"
+                          asOf={linkedOrigin?.businessDate ?? ""}
+                          disabled={editorLocked}
+                          selectedLabel={
+                            row.medicationItemLabel.length > 0
+                              ? row.medicationItemLabel
+                              : row.medicationItemId.length > 0
+                                ? "コード選択済み(表示名未取得)"
+                                : ""
+                          }
+                          onSelect={(selection) =>
+                            applyMasterSelection(
+                              row.id,
+                              "medication",
+                              selection,
+                            )
+                          }
+                          onClear={() =>
+                            applyMasterSelection(row.id, "medication", null)
+                          }
+                        />
+                      ) : (
+                        <input
+                          aria-label={`RP${index + 1} 薬剤名(自由記載)`}
+                          value={row.drug}
+                          maxLength={PRESCRIPTION_DRAFT_RP_TEXT_MAX_LENGTH}
+                          disabled={editorLocked}
+                          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                            updateRow(row.id, { drug: event.target.value })
+                          }
+                          placeholder="薬剤名・規格を入力"
+                          autoComplete="off"
+                        />
+                      )}
+                    </td>
+                    <td>
+                      <label className="prescription-mode-toggle">
+                        <input
+                          type="checkbox"
+                          aria-label={`RP${index + 1} 用法をコードから選択`}
+                          checked={row.usageMode === "code"}
+                          disabled={editorLocked}
+                          onChange={() =>
+                            updateRow(row.id, {
+                              usageMode:
+                                row.usageMode === "code" ? "text" : "code",
+                              ...(row.usageMode === "code"
+                                ? {
+                                    usageItemId: "",
+                                    usageItemLabel: "",
+                                  }
+                                : {}),
+                            })
+                          }
+                        />
+                        コード
+                      </label>
+                      {row.usageMode === "code" ? (
+                        <MasterCodePicker
+                          kind="usage"
+                          asOf={linkedOrigin?.businessDate ?? ""}
+                          disabled={editorLocked}
+                          selectedLabel={
+                            row.usageItemLabel.length > 0
+                              ? row.usageItemLabel
+                              : row.usageItemId.length > 0
+                                ? "コード選択済み(表示名未取得)"
+                                : ""
+                          }
+                          onSelect={(selection) =>
+                            applyMasterSelection(row.id, "usage", selection)
+                          }
+                          onClear={() =>
+                            applyMasterSelection(row.id, "usage", null)
+                          }
+                        />
+                      ) : (
+                        <input
+                          aria-label={`RP${index + 1} 用法(自由記載)`}
+                          value={row.usage}
+                          maxLength={PRESCRIPTION_DRAFT_RP_TEXT_MAX_LENGTH}
+                          disabled={editorLocked}
+                          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                            updateRow(row.id, { usage: event.target.value })
+                          }
+                          placeholder="用法(例: 1日3回 毎食後)"
+                          autoComplete="off"
+                        />
+                      )}
                     </td>
                     <td>
                       <input
-                        aria-label={`RP${index + 1} 用法用量`}
-                        value={row.usage}
-                        maxLength={256}
-                        disabled={editorLocked}
-                        onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                          updateRow(row.id, "usage", event.target.value)
-                        }
-                        placeholder="用法・用量"
-                        autoComplete="off"
-                      />
-                    </td>
-                    <td>
-                      <input
-                        aria-label={`RP${index + 1} 日数`}
+                        aria-label={`RP${index + 1} 日数・回数`}
                         value={row.days}
                         inputMode="numeric"
                         disabled={editorLocked}
                         onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                          updateRow(row.id, "days", event.target.value)
+                          updateRow(row.id, { days: event.target.value })
                         }
                       />
                     </td>
                     <td>
-                      <input
-                        aria-label={`RP${index + 1} 数量`}
-                        value={row.quantity}
-                        maxLength={64}
+                      <div className="prescription-dose-fields">
+                        <input
+                          aria-label={`RP${index + 1} 1回量`}
+                          value={row.doseOnce}
+                          maxLength={PRESCRIPTION_DRAFT_RP_DOSE_MAX_LENGTH}
+                          disabled={editorLocked}
+                          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                            updateRow(row.id, {
+                              doseOnce: event.target.value,
+                            })
+                          }
+                          placeholder="1回量"
+                          autoComplete="off"
+                        />
+                        <input
+                          aria-label={`RP${index + 1} 1日量`}
+                          value={row.dosePerDay}
+                          maxLength={PRESCRIPTION_DRAFT_RP_DOSE_MAX_LENGTH}
+                          disabled={editorLocked}
+                          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                            updateRow(row.id, {
+                              dosePerDay: event.target.value,
+                            })
+                          }
+                          placeholder="1日量"
+                          autoComplete="off"
+                        />
+                        <input
+                          aria-label={`RP${index + 1} 総量`}
+                          value={row.quantity}
+                          maxLength={PRESCRIPTION_DRAFT_RP_DOSE_MAX_LENGTH}
+                          disabled={editorLocked}
+                          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                            updateRow(row.id, {
+                              quantity: event.target.value,
+                            })
+                          }
+                          placeholder="総量"
+                          autoComplete="off"
+                        />
+                        <input
+                          aria-label={`RP${index + 1} 単位`}
+                          value={row.unit}
+                          maxLength={PRESCRIPTION_DRAFT_RP_DOSE_MAX_LENGTH}
+                          disabled={editorLocked}
+                          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                            updateRow(row.id, { unit: event.target.value })
+                          }
+                          placeholder="単位"
+                          autoComplete="off"
+                        />
+                      </div>
+                    </td>
+                    <td>
+                      <label className="prescription-mode-toggle">
+                        <input
+                          type="checkbox"
+                          aria-label={`RP${index + 1} 一般名処方`}
+                          checked={row.genericNamePrescription}
+                          disabled={editorLocked}
+                          onChange={() =>
+                            updateRow(row.id, {
+                              genericNamePrescription:
+                                !row.genericNamePrescription,
+                            })
+                          }
+                        />
+                        一般名
+                      </label>
+                      <select
+                        aria-label={`RP${index + 1} 後発品変更可否`}
+                        value={row.genericSubstitution}
                         disabled={editorLocked}
-                        onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                          updateRow(row.id, "quantity", event.target.value)
+                        onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                          updateRow(row.id, {
+                            genericSubstitution: event.target
+                              .value as DraftRow["genericSubstitution"],
+                          })
                         }
-                        autoComplete="off"
-                      />
+                      >
+                        <option value="">未指定</option>
+                        <option value="permitted">変更可</option>
+                        <option value="forbidden">変更不可</option>
+                      </select>
                     </td>
                     <td>
                       <button
@@ -1329,6 +1684,27 @@ export function SelectedPatientWorkspaceView({
               </tbody>
             </table>
           </TableScroll>
+
+          {unresolvedCounts !== null &&
+          unresolvedCounts.unresolvedMedicationItems > 0 ? (
+            <InlineNotice
+              tone="warning"
+              title={`未解決の薬剤が ${unresolvedCounts.unresolvedMedicationItems} 件あります`}
+            >
+              自由記載の薬剤はマスターコード未解決のため、この下書きは薬剤師確認へ進めません
+              (RX-0001 CODE_MAPPING_REVIEW_REQUIRED)。「コード」へ切り替えて
+              マスターから選択するか、自由記載のままコード対応レビューを待ってください。
+            </InlineNotice>
+          ) : null}
+          {unresolvedCounts !== null &&
+          unresolvedCounts.unresolvedUsages > 0 ? (
+            <InlineNotice
+              tone="warning"
+              title={`自由記載の用法が ${unresolvedCounts.unresolvedUsages} 件あります`}
+            >
+              用法の自由記載は制度上許容されますが、コード化できる場合は用法マスターからの選択を推奨します。
+            </InlineNotice>
+          ) : null}
 
           <fieldset className="prescription-options" disabled={editorLocked}>
             <legend>全体指示・コメント</legend>
@@ -1450,6 +1826,15 @@ export function SelectedPatientWorkspaceView({
                 {
                   label: "このタブの未保存変更",
                   value: dirty ? "あり" : "なし",
+                },
+                {
+                  label: "コード未解決品目",
+                  value:
+                    unresolvedCounts === null
+                      ? "確認不能"
+                      : unresolvedCounts.unresolvedMedicationItems === 0
+                        ? "なし"
+                        : `${unresolvedCounts.unresolvedMedicationItems}件（確認不可）`,
                 },
                 { label: "薬剤師確認", value: "未実施（実行不可）" },
               ]}

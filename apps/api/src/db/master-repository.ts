@@ -174,6 +174,15 @@ function medicationItemRowToWire(row: MedicationItemRow): MedicationItem {
   });
 }
 
+/**
+ * LIKE のメタ文字をエスケープし、q をリテラル検索語として扱う。
+ * in-memory は raw substring/prefix 比較なので、こちらも同一 semantics に
+ * 揃える(Postgres LIKE の既定エスケープはバックスラッシュ)。
+ */
+function escapeLikeLiteral(value: string): string {
+  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
 function usageItemRowToWire(row: UsageItemRow): UsageItem {
   return usageItemSchema.parse({
     usageItemId: readRowString(row, 'usage_item_id'),
@@ -223,6 +232,8 @@ export class PostgresMasterRepository implements MasterRepository {
         throw new Error(databaseMasterRowSetInvariantErrorMessage);
       }
       const version = masterVersionRowToWire(versionRow);
+      const likeQuery =
+        command.q === undefined ? null : escapeLikeLiteral(command.q);
       if (command.kind === 'medication') {
         // q: localCode prefix / name substring。COLLATE "C" で code-point 比較
         // (in-memory の compareTextByCodePoints と parity)。
@@ -237,7 +248,7 @@ export class PostgresMasterRepository implements MasterRepository {
             command.tenantId,
             command.pharmacyId,
             version.masterVersionId,
-            command.q ?? null,
+            likeQuery,
           ],
         );
         await client.query('COMMIT');
@@ -263,7 +274,7 @@ export class PostgresMasterRepository implements MasterRepository {
           command.tenantId,
           command.pharmacyId,
           version.masterVersionId,
-          command.q ?? null,
+          likeQuery,
         ],
       );
       await client.query('COMMIT');

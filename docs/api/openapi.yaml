@@ -1632,7 +1632,6 @@ components:
               type: string
               maxLength: 2000
             rows:
-              minItems: 1
               maxItems: 100
               type: array
               items:
@@ -1722,6 +1721,151 @@ components:
                     - refill
                     - splitDispensing
                 - type: "null"
+            rpGroups:
+              default: []
+              maxItems: 50
+              type: array
+              items:
+                type: object
+                properties:
+                  rpGroupId:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  sequence:
+                    type: integer
+                    minimum: 1
+                    maximum: 50
+                  dosageForm:
+                    type: string
+                    enum:
+                      - UNSPECIFIED
+                      - ORAL
+                      - TOPICAL
+                      - INJECTION
+                      - AS_NEEDED
+                      - OTHER
+                  usage:
+                    oneOf:
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            const: resolved
+                          usageItemId:
+                            type: string
+                            format: uuid
+                            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        required:
+                          - kind
+                          - usageItemId
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            const: unresolved
+                          text:
+                            type: string
+                            maxLength: 500
+                        required:
+                          - kind
+                          - text
+                    type: object
+                  daysOrCount:
+                    anyOf:
+                      - type: integer
+                        minimum: 1
+                        maximum: 999
+                      - type: "null"
+                  items:
+                    minItems: 1
+                    maxItems: 200
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        rpItemId:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        sequence:
+                          type: integer
+                          minimum: 1
+                          maximum: 200
+                        medication:
+                          oneOf:
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  const: resolved
+                                masterVersionId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                medicationItemId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                              required:
+                                - kind
+                                - masterVersionId
+                                - medicationItemId
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  const: unresolved
+                                text:
+                                  type: string
+                                  maxLength: 500
+                              required:
+                                - kind
+                                - text
+                          type: object
+                        doseOnce:
+                          anyOf:
+                            - type: string
+                              maxLength: 64
+                            - type: "null"
+                        dosePerDay:
+                          anyOf:
+                            - type: string
+                              maxLength: 64
+                            - type: "null"
+                        doseTotal:
+                          anyOf:
+                            - type: string
+                              maxLength: 64
+                            - type: "null"
+                        unit:
+                          anyOf:
+                            - type: string
+                              maxLength: 64
+                            - type: "null"
+                        genericNamePrescription:
+                          type: boolean
+                        genericSubstitutionPermitted:
+                          anyOf:
+                            - type: boolean
+                            - type: "null"
+                      required:
+                        - rpItemId
+                        - sequence
+                        - medication
+                        - doseOnce
+                        - dosePerDay
+                        - doseTotal
+                        - unit
+                        - genericNamePrescription
+                        - genericSubstitutionPermitted
+                required:
+                  - rpGroupId
+                  - sequence
+                  - dosageForm
+                  - usage
+                  - daysOrCount
+                  - items
           required:
             - prescriptionType
             - prescriptionDate
@@ -3114,7 +3258,6 @@ components:
               type: string
               maxLength: 2000
             rows:
-              minItems: 1
               maxItems: 100
               type: array
               items:
@@ -3208,6 +3351,157 @@ components:
                     - splitDispensing
                   additionalProperties: false
                 - type: "null"
+            rpGroups:
+              default: []
+              maxItems: 50
+              type: array
+              items:
+                type: object
+                properties:
+                  rpGroupId:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  sequence:
+                    type: integer
+                    minimum: 1
+                    maximum: 50
+                  dosageForm:
+                    type: string
+                    enum:
+                      - UNSPECIFIED
+                      - ORAL
+                      - TOPICAL
+                      - INJECTION
+                      - AS_NEEDED
+                      - OTHER
+                  usage:
+                    oneOf:
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            const: resolved
+                          usageItemId:
+                            type: string
+                            format: uuid
+                            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        required:
+                          - kind
+                          - usageItemId
+                        additionalProperties: false
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            const: unresolved
+                          text:
+                            type: string
+                            maxLength: 500
+                        required:
+                          - kind
+                          - text
+                        additionalProperties: false
+                    type: object
+                  daysOrCount:
+                    anyOf:
+                      - type: integer
+                        minimum: 1
+                        maximum: 999
+                      - type: "null"
+                  items:
+                    minItems: 1
+                    maxItems: 200
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        rpItemId:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        sequence:
+                          type: integer
+                          minimum: 1
+                          maximum: 200
+                        medication:
+                          oneOf:
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  const: resolved
+                                masterVersionId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                medicationItemId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                              required:
+                                - kind
+                                - masterVersionId
+                                - medicationItemId
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  const: unresolved
+                                text:
+                                  type: string
+                                  maxLength: 500
+                              required:
+                                - kind
+                                - text
+                              additionalProperties: false
+                          type: object
+                        doseOnce:
+                          anyOf:
+                            - type: string
+                              maxLength: 64
+                            - type: "null"
+                        dosePerDay:
+                          anyOf:
+                            - type: string
+                              maxLength: 64
+                            - type: "null"
+                        doseTotal:
+                          anyOf:
+                            - type: string
+                              maxLength: 64
+                            - type: "null"
+                        unit:
+                          anyOf:
+                            - type: string
+                              maxLength: 64
+                            - type: "null"
+                        genericNamePrescription:
+                          type: boolean
+                        genericSubstitutionPermitted:
+                          anyOf:
+                            - type: boolean
+                            - type: "null"
+                      required:
+                        - rpItemId
+                        - sequence
+                        - medication
+                        - doseOnce
+                        - dosePerDay
+                        - doseTotal
+                        - unit
+                        - genericNamePrescription
+                        - genericSubstitutionPermitted
+                      additionalProperties: false
+                required:
+                  - rpGroupId
+                  - sequence
+                  - dosageForm
+                  - usage
+                  - daysOrCount
+                  - items
+                additionalProperties: false
           required:
             - prescriptionType
             - prescriptionDate
@@ -3216,6 +3510,7 @@ components:
             - note
             - rows
             - sourceMetadata
+            - rpGroups
           additionalProperties: false
         createdAt:
           type: string
@@ -3305,7 +3600,6 @@ components:
               type: string
               maxLength: 2000
             rows:
-              minItems: 1
               maxItems: 100
               type: array
               items:
@@ -3399,6 +3693,157 @@ components:
                     - splitDispensing
                   additionalProperties: false
                 - type: "null"
+            rpGroups:
+              default: []
+              maxItems: 50
+              type: array
+              items:
+                type: object
+                properties:
+                  rpGroupId:
+                    type: string
+                    format: uuid
+                    pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                  sequence:
+                    type: integer
+                    minimum: 1
+                    maximum: 50
+                  dosageForm:
+                    type: string
+                    enum:
+                      - UNSPECIFIED
+                      - ORAL
+                      - TOPICAL
+                      - INJECTION
+                      - AS_NEEDED
+                      - OTHER
+                  usage:
+                    oneOf:
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            const: resolved
+                          usageItemId:
+                            type: string
+                            format: uuid
+                            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        required:
+                          - kind
+                          - usageItemId
+                        additionalProperties: false
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            const: unresolved
+                          text:
+                            type: string
+                            maxLength: 500
+                        required:
+                          - kind
+                          - text
+                        additionalProperties: false
+                    type: object
+                  daysOrCount:
+                    anyOf:
+                      - type: integer
+                        minimum: 1
+                        maximum: 999
+                      - type: "null"
+                  items:
+                    minItems: 1
+                    maxItems: 200
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        rpItemId:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                        sequence:
+                          type: integer
+                          minimum: 1
+                          maximum: 200
+                        medication:
+                          oneOf:
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  const: resolved
+                                masterVersionId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                medicationItemId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                              required:
+                                - kind
+                                - masterVersionId
+                                - medicationItemId
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  const: unresolved
+                                text:
+                                  type: string
+                                  maxLength: 500
+                              required:
+                                - kind
+                                - text
+                              additionalProperties: false
+                          type: object
+                        doseOnce:
+                          anyOf:
+                            - type: string
+                              maxLength: 64
+                            - type: "null"
+                        dosePerDay:
+                          anyOf:
+                            - type: string
+                              maxLength: 64
+                            - type: "null"
+                        doseTotal:
+                          anyOf:
+                            - type: string
+                              maxLength: 64
+                            - type: "null"
+                        unit:
+                          anyOf:
+                            - type: string
+                              maxLength: 64
+                            - type: "null"
+                        genericNamePrescription:
+                          type: boolean
+                        genericSubstitutionPermitted:
+                          anyOf:
+                            - type: boolean
+                            - type: "null"
+                      required:
+                        - rpItemId
+                        - sequence
+                        - medication
+                        - doseOnce
+                        - dosePerDay
+                        - doseTotal
+                        - unit
+                        - genericNamePrescription
+                        - genericSubstitutionPermitted
+                      additionalProperties: false
+                required:
+                  - rpGroupId
+                  - sequence
+                  - dosageForm
+                  - usage
+                  - daysOrCount
+                  - items
+                additionalProperties: false
           required:
             - prescriptionType
             - prescriptionDate
@@ -3407,6 +3852,7 @@ components:
             - note
             - rows
             - sourceMetadata
+            - rpGroups
           additionalProperties: false
         createdAt:
           type: string

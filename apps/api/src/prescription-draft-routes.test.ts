@@ -142,9 +142,29 @@ describe("prescription draft routes", () => {
 
     expect(read.statusCode).toBe(200);
     expect(read.headers["cache-control"]).toBe("no-store");
+    // rows-only 入力は UNRESOLVED_TEXT 構造へ読み替えて応答する(DOM-002 §4.2b)。
     expect(prescriptionDraftResponseSchema.parse(read.json())).toMatchObject({
       prescriptionId: "prescription-route-test-001",
       version: 1,
+      draft: {
+        rows: [],
+        rpGroups: [
+          {
+            sequence: 1,
+            dosageForm: "UNSPECIFIED",
+            usage: { kind: "unresolved", text: "1日1回 朝食後" },
+            items: [
+              {
+                sequence: 1,
+                medication: {
+                  kind: "unresolved",
+                  text: "合成薬剤 5mg",
+                },
+              },
+            ],
+          },
+        ],
+      },
     });
     await expect(
       auditByServer.get(instance)?.list({
@@ -155,6 +175,93 @@ describe("prescription draft routes", () => {
       { auditEventType: "prescription.created" },
       { auditEventType: "prescription.draft.viewed" },
     ]);
+  });
+
+  it("round-trips structured rpGroups and rejects rows+rpGroups dual input", async () => {
+    const instance = server();
+    const structuredBody = {
+      ...baseBody,
+      draft: {
+        ...baseBody.draft,
+        rows: [],
+        rpGroups: [
+          {
+            rpGroupId: "00000000-0000-4000-8000-000000000001",
+            sequence: 1,
+            dosageForm: "ORAL",
+            usage: {
+              kind: "resolved",
+              usageItemId: "00000000-0000-4000-8000-000000000002",
+            },
+            daysOrCount: 7,
+            items: [
+              {
+                rpItemId: "00000000-0000-4000-a000-000000000001",
+                sequence: 1,
+                medication: {
+                  kind: "resolved",
+                  masterVersionId:
+                    "00000000-0000-4000-8000-000000000003",
+                  medicationItemId:
+                    "00000000-0000-4000-8000-000000000004",
+                },
+                doseOnce: "1錠",
+                dosePerDay: "3錠",
+                doseTotal: "21錠",
+                unit: "錠",
+                genericNamePrescription: false,
+                genericSubstitutionPermitted: true,
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    const created = await instance.inject({
+      method: "PUT",
+      url: "/prescription-drafts/by-reception/reception-syn-001",
+      headers: authorizedHeaders,
+      payload: structuredBody,
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({
+      draft: {
+        rows: [],
+        rpGroups: [
+          {
+            sequence: 1,
+            dosageForm: "ORAL",
+            usage: { kind: "resolved" },
+            items: [
+              {
+                medication: {
+                  kind: "resolved",
+                  medicationItemId:
+                    "00000000-0000-4000-8000-000000000004",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    // rows と rpGroups の両方を含む書込は曖昧なため 400 で拒否する。
+    const dual = await instance.inject({
+      method: "PUT",
+      url: "/prescription-drafts/by-reception/reception-syn-001",
+      headers: authorizedHeaders,
+      payload: {
+        ...baseBody,
+        draft: {
+          ...baseBody.draft,
+          rpGroups: structuredBody.draft.rpGroups,
+        },
+      },
+    });
+    expect(dual.statusCode).toBe(400);
+    expect(dual.headers["cache-control"]).toBe("no-store");
   });
 
   it("uses the intrinsic wall clock without reading an own Date method", async () => {

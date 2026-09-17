@@ -49,6 +49,7 @@ function input(
     draft: {
       prescriptionType: "OUTPATIENT",
       sourceMetadata: null,
+      rpGroups: [],
       prescriptionDate: "2026-07-09",
       defaultDays: 7,
       flags: ["PACKAGING"],
@@ -176,7 +177,21 @@ describe("InMemoryPrescriptionDraftService", () => {
       kind: "found",
       draft: {
         version: 2,
-        draft: { rows: [{ drugText: "合成薬剤B 10mg" }] },
+        draft: {
+          rows: [],
+          rpGroups: [
+            {
+              items: [
+                {
+                  medication: {
+                    kind: "unresolved",
+                    text: "合成薬剤B 10mg",
+                  },
+                },
+              ],
+            },
+          ],
+        },
       },
     });
 
@@ -207,7 +222,21 @@ describe("InMemoryPrescriptionDraftService", () => {
       kind: "found",
       draft: {
         version: 1,
-        draft: { rows: [{ drugText: "合成薬剤A 5mg" }] },
+        draft: {
+          rows: [],
+          rpGroups: [
+            {
+              items: [
+                {
+                  medication: {
+                    kind: "unresolved",
+                    text: "合成薬剤A 5mg",
+                  },
+                },
+              ],
+            },
+          ],
+        },
       },
     });
   });
