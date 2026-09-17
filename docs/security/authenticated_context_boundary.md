@@ -4,7 +4,7 @@
 ssot_id: SEC-009
 title: 認証済み TenantContext 注入境界(production provider / 署名付き test-auth adapter / dev header 禁止条件)
 domain: security
-status: PROPOSED
+status: APPROVED
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -16,9 +16,9 @@ reviewers:
 version: 0.1.0
 created_at: 2026-09-18
 updated_at: 2026-09-18
-approved_at: null
-approved_by: null
-effective_from: null
+approved_at: 2026-09-18
+approved_by: direct_user_instruction (2026-09-18 一括承認); independent read-only review findings applied before finalization
+effective_from: 2026-09-18
 effective_to: null
 source_refs:
   - C-083(production AuthContext / OIDC 設計 — dev header の非 production 化を固定)
@@ -27,7 +27,7 @@ source_refs:
   - SEC-006(tenant_isolation_design)
   - apps/api/src/plugins/tenant-context.ts(現行実装)
   - apps/api/src/config.ts `resolveTenantContextMode`(現行 guard)
-depends_on: [MOD-007, SEC-006]
+depends_on: [MOD-006, MOD-007, SEC-006]
 impacts:
   - apps/api/src/plugins/tenant-context.ts
   - apps/api/src/config.ts
@@ -38,10 +38,12 @@ related_tests: []
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.1.0 2026-09-18 finalization: 独立 read-only review の finding(AUTH-0004 採番・forbidden 除去・role→scope 表追加・405 行・opt-in flag 明記・MOD-006 依存)を反映後、direct human approval(一括承認)により PROPOSED→APPROVED"
   - "0.1.0 2026-09-18 WP-7101 初版起案(PROPOSED)。provider 抽象・claims→scope 写像・失敗応答族・dev header 禁止条件・署名付き test-auth adapter の条件を 1 文書へ固定する提案。コードは書かない。review と human approval まで実装根拠にしない"
 open_questions:
   - OIDC provider の製品選定(IdP 自己ホスト vs 外部 IdP)は本記録では interface 抽象までに留め、具体製品は別決定
   - actor の薬剤師資格(qualification)検証は C-084【HG】— scope 写像は資格 claim を透過するだけで、資格の真正性検証は別 gate
+  - role→scope 写像表(§3)は初版の仮確定であり、MOD-007 の role 既定割当 open_question を本表で閉じるか、MOD-007 側へ正本を移すかは承認時に決定
   - break-glass アクセス(C-086)は本境界の通常経路と分離し、監査必須の別 adapter として扱う(本記録では境界のみ規定)
 blockers:
   - production 環境での有効化は C-083/C-085(runtime role + RLS proof)の human security approval まで禁止
@@ -52,8 +54,9 @@ blockers:
 
 現行 `TenantContextMode` は `'disabled' | 'dev_headers'` のみ。`dev_headers` は
 `x-dev-tenant`/`x-dev-pharmacy`/`x-dev-actor`/`x-dev-scopes` を無検証で信頼するため、
-`resolveTenantContextMode` が `NODE_ENV ∈ {development,test}` かつ
-`repositoryMode === 'in_memory'` かつ `DATABASE_URL` 未設定のときだけ許可する。
+`resolveTenantContextMode` が `YRESE_ALLOW_DEV_TENANT_STUB=true` かつ
+`NODE_ENV ∈ {development,test}` かつ `repositoryMode === 'in_memory'` かつ
+`DATABASE_URL` 未設定のときだけ許可する。
 この結果、**postgres mode には認証済み到達経路が存在しない** — durable 環境では
 全 scope 必須 route が 403 で fail-closed。
 
@@ -76,12 +79,13 @@ interface TenantContextProvider {
 }
 type TenantContextResolution =
   | { readonly kind: 'resolved'; readonly context: TenantContext }
-  | { readonly kind: 'unauthenticated' }   // 資格情報なし/不正 → 401
-  | { readonly kind: 'forbidden' };        // 認証済みだが scope 不足は route 側が判定
+  | { readonly kind: 'unauthenticated' };  // 資格情報なし/不正/受理不能 → 401
 ```
 
 - provider は `TenantContext` を返すだけ。route 側の scope 判定(MOD-007)は
-  現行どおり provider 非依存とし、認可ロジックを provider に漏らさない。
+  現行どおり provider 非依存とし、認可ロジックを provider に漏らさない
+  (provider 側に `forbidden` 解決は存在しない — scope 不足は常に route が 403
+  `AUTH-0003` を返す)。
 - 認証失敗の分類(`unauthenticated` / 受理不能)は provider が決める。
   受理不能な credential(署名不正・期限切れ・未知 issuer)は 401 であり、
   存在非開示(404)や 403 に倒さない。
@@ -93,7 +97,20 @@ type TenantContextResolution =
 | tenantId | `tenant` claim(IdP で tenant 単位の audience/issuer 分離) | 必須。欠落・未知値は 401 |
 | pharmacyId | `pharmacy` claim | 必須。actor の所属 pharmacy 集合に含まれない値は 401 |
 | actorId | `sub` + IdP 側 user registry の写像 | 必須 |
-| scopes | `roles` claim → MOD-007 role→scope 写像表で展開 | claim 内の生 scope 文字列を直接信頼しない。写像表にない role は捨てる(最小権限) |
+| scopes | `roles` claim → 下表の role→scope 写像で展開 | claim 内の生 scope 文字列を直接信頼しない。写像表にない role は捨てる(最小権限) |
+
+**role→scope 写像表(初版 — MOD-007 の role 既定割当 open_question をここで仮確定)**
+【要確認 — C-084 薬剤師資格検証の確定時に再審】:
+
+| role | scopes |
+|---|---|
+| `pharmacist` | `patient:*`, `reception:*`, `insurance:*`, `public-expense:*`, `prescription:*`, `dispensing:*`(confirm 含む), `calculation:*`, `claim:read`, `report:*`, `master:read`, `audit-log:read` |
+| `clerk`(事務) | `patient:*`, `reception:*`, `insurance:*`, `public-expense:read`, `prescription:read`, `calculation:read`, `claim:*`, `report:*`, `master:read` |
+| `admin` | 全 resource の全 action(`master:admin`・`claim:finalize` 含む)。tenant 外へは及ばない |
+
+- 薬剤師確認(`dispensing:confirm`)を `clerk` に与えないのは意図的(資格 boundary、
+  C-084 と連動)。`admin` は運用管理者向けで、薬学的確定の human-gate を
+  迂回しない(qualification 検証は別層)。
 
 不変条件:
 
@@ -127,14 +144,16 @@ dev header と別物の `test_signed` mode:
 
 | 状況 | 応答 | code |
 |---|---|---|
-| 資格情報なし・署名不正・期限切れ・未知 issuer | 401 | `AUTH-0001`(認証失敗の汎用。理由内訳を応答に含めない) |
+| 資格情報なし・署名不正・期限切れ・未知 issuer | 401 | `AUTH-0004`(認証失敗の汎用。理由内訳を応答に含めない。**MOD-006 へ bounded amendment で登録** — 0001〜0002 は欠番として再利用しない) |
 | 認証済み・route 要求 scope 不足 | 403 | `AUTH-0003`(現行維持) |
 | 認証済み・scope 内だが対象が別 tenant/pharmacy | 404 | 存在非開示(現行維持。403 に倒さない) |
+| route 存在・method 不一致 | 405 | framework 既定(Fastify)。route 契約外のため個別 code なし |
 | `TenantContextMode === 'disabled'` で scope 必須 route | 403 | `AUTH-0003`(現行維持) |
 | provider 内部障害(検証鍵取得失敗等) | 503 + retry なし | 汎用 error(PHI/内部情報を出さない) |
 
 - 401/403/404 の区別は**リクエスト時点の位相**だけで決まり、対象行の存在有無に
-  依存しない(存在非開示との整合)。
+  依存しない(存在非開示との整合)。405 は C-034 の範囲を framework 既定の
+  まま固定する記録であり、新規 code は割当ない。
 
 ## 6. dev header の production 不可条件(明文化)
 

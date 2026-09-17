@@ -4,7 +4,7 @@
 ssot_id: PRD-001
 title: MVP対象範囲
 domain: product
-status: PROPOSED
+status: APPROVED
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -21,9 +21,9 @@ reviewers:
 version: 0.1.2
 created_at: 2026-07-09
 updated_at: 2026-09-18
-approved_at: 2026-07-11
-approved_by: direct_user_instruction (WP-9001 AGT-018 cutover); independent_verifier APPROVED; spec_guardian APPROVED; data_integrity_auditor APPROVED; architect APPROVED; api_contract_reviewer APPROVED; test_architect APPROVED; claims_evidence_specialist APPROVED; security_critic APPROVED; privacy_compliance_reviewer APPROVED; medical_safety_reviewer APPROVED
-effective_from: 2026-07-11
+approved_at: 2026-09-18
+approved_by: direct_user_instruction (2026-09-18 一括承認); independent read-only review findings applied before finalization
+effective_from: 2026-09-18
 effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §2, §3, §18, §19 / docs/plan/phase0_plan.md §2.1
@@ -35,13 +35,13 @@ depends_on:
   - docs/claim/claim_scope_matrix.md
 impacts:
   - すべての実装WP
-related_work_packages: [WP-0006, WP-0019, WP-0038, WP-9001, WP-9006]
+related_work_packages: [WP-0006, WP-0019, WP-0038, WP-9001, WP-9006, WP-7304]
 related_tests:
   - packages/shared-kernel/src/kernel.test.ts
 related_prs: []
 evidence_ids: []
 change_log:
-  - 0.1.2 (2026-09-18): WP-7304 起案 — PRD-005 §4 改版提案の item 1 に沿い、M4 の MVP範囲へ「前回Do(確定済み処方版からの複製起点。コピー元参照を保持し、マスター版変更時は再解決・廃止品目は UNRESOLVED_TEXT へ降格)」を追加する改版提案。本版は PROPOSED であり、review と human approval まで実装根拠にしない。
+  - 0.1.2 (2026-09-18): WP-7304 起案 — PRD-005 §4 改版提案の item 1 に沿い、M4 の MVP範囲へ「前回Do(確定済み処方版からの複製起点。コピー元参照を保持し、マスター版変更時は再解決・廃止品目は UNRESOLVED_TEXT へ降格)」を追加。独立 read-only review の finding(approval metadata 空欄化・related_work_packages へ WP-7304 追加)を反映後、direct human approval(一括承認)により APPROVED。
   - 0.1.1 (2026-07-11): WP-9006 AGT-018 routing compatibility amendmentを10-role review後にfinalize。M1-M12、claim-stop、open questions、blocker、human product/pharmacist/claims/legal authorityは不変更。0.1.0 human approvalはhistorical provenanceとして保持し、本版のscope承認には流用しない。
   - 0.1.0 (2026-07-09): Phase 0 human reviewで承認。
 open_questions:

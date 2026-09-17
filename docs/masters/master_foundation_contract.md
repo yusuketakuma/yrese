@@ -4,7 +4,7 @@
 ssot_id: MST-003
 title: マスター基盤(synthetic)実装分解記録 — master_versions / medication_items / usage_items と読取 API
 domain: masters
-status: PROPOSED
+status: APPROVED
 owner: codex_root
 reviewers:
   - independent_verifier
@@ -15,14 +15,14 @@ reviewers:
 version: 0.1.0
 created_at: 2026-09-18
 updated_at: 2026-09-18
-approved_at: null
-approved_by: null
-effective_from: null
+approved_at: 2026-09-18
+approved_by: direct_user_instruction (2026-09-18 一括承認); independent read-only review findings applied before finalization
+effective_from: 2026-09-18
 effective_to: null
 source_refs:
   - MST-001(版・有効日・上書き禁止・PENDING_MASTER_VALIDATION)
   - DOM-002 §9(Master 集約の不変条件)
-  - DOM-002 §4(rp_items の医薬品参照 = master 版 + item ID)
+  - DOM-002 §4.2(rp_items の医薬品参照 = master 版 + item ID)
   - MOD-010(金額・点数の表現規則)
   - MOD-011(明示日付入力 — 暗黙の「今日」をサーバーで解決しない)
   - MOD-013(fixture は合成データのみ)
@@ -38,6 +38,7 @@ related_tests: []
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.1.0 2026-09-18 finalization: 独立 read-only review の finding(§4.2 参照修正・q 一致規則の明確化)を反映後、direct human approval(一括承認)により PROPOSED→APPROVED"
   - "0.1.0 2026-09-18 WP-7301/WP-7303 初版起案(PROPOSED)。MST-001 の『版・有効日・上書き禁止』だけを synthetic データで先行実装するための実装分解。実データ取込(RB-009・source registry 登録)・24 段パイプライン(WP-7801)は範囲外。review と human approval まで実装根拠にしない"
 open_questions:
   - マスター行の tenant/pharmacy 帰属: 本記録は scope 列を必須とするが、tenant 横断共有(グローバル版)の可否は DB-003 の確定待ち。共有化は将来の別 SSOT でのみ行う
@@ -105,7 +106,7 @@ RB-009 で別途)。
 ### GET /masters/medications?asOf=YYYY-MM-DD&q=…
 
 - scope: `master:read`(MOD-007 既存 resource)。認可なしは 403。
-- `asOf` 必須。`q` は名称/localCode の前方・部分一致(実装側で定義)。
+- `asOf` 必須。`q` の一致規則: `localCode` へは**前方一致**、`name` へは**部分一致**(いずれも case-sensitive、`COLLATE "C"` 相当のコードポイント比較 — 既存 text 照合 parity 規則と同じ)。`q` 省略・空文字は全件(asOf 有効版内)。上限は route 側で `q <= 100 chars`、items 応答は版内全件(マスター版の品目数は有限かつ小規模 — synthetic 前提)。
 - 応答: `{ masterVersion: { masterVersionId, masterKind, version, validFrom, validTo } | null, items: [...] }`
 - マスターデータは PHI を含まないため `no-store` は要求しないが、tenant/pharmacy scope による絞込みは必須。
 - エラー: `400 MST-0001`(asOf/query 不正)、`403 AUTH-0003`。

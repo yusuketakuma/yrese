@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.69
+version: 0.4.70
 created_at: 2026-07-09
 updated_at: 2026-09-18
 approved_at: 2026-09-08
@@ -159,6 +159,7 @@ related_prs:
   - PR #6
 evidence_ids: []
 change_log:
+  - "0.4.70 2026-09-18 finalization: 独立 read-only review(別 context)の finding(MST-003: §4.2 参照・q 規則 / PRD-001: approval metadata 空欄化・related_work_packages / SEC-009: AUTH-0004 採番・forbidden 除去・role→scope 表・405 行)を反映後、direct human approval(一括承認)により MST-003・SEC-009・PRD-001 0.1.2 を PROPOSED→APPROVED。総文書数 189 不変、status 集計は APPROVED 159→162 / PROPOSED 7→4 / SUPERSEDED 23 不変(合計189)。承認範囲は SSOT 改版のみで、実装完了・migration 適用・外部接続・production action・登録済み blocker の解除を含まない。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.69 2026-09-18 WP-7101 SSOT 起案: SEC-009(authenticated_context_boundary — production OIDC provider・署名付き test-auth adapter・dev header 禁止条件・401/403/404 応答族 C-034 決定案)を PROPOSED で新規登録。総文書数 188→189、status 集計は APPROVED 159 不変 / PROPOSED 6→7 / SUPERSEDED 23 不変(合計189)。全件 PROPOSED であり実装根拠にしない。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.68 2026-09-18 WP-7304 SSOT 起案: PRD-001(mvp_scope)を 0.1.2 へ改版提案のため APPROVED→PROPOSED へ降格 — PRD-005 §4 item 1 に沿い M4 へ『前回Do(確定済み処方版からの複製起点)』を追加。総文書数 188 不変、status 集計は APPROVED 160→159 / PROPOSED 5→6 / SUPERSEDED 23 不変(合計188)。全件 PROPOSED であり実装根拠にしない。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.67 2026-09-18 WP-7301/7303 SSOT 起案: MST-003(master_foundation_contract — synthetic マスター基盤の実装分解)を PROPOSED で新規登録。総文書数 187→188、status 集計は APPROVED 160 不変 / PROPOSED 4→5 / SUPERSEDED 23 不変(合計188)。全件 PROPOSED であり実装根拠にしない。登録済み blocker は据え置き。本索引自体は派生記録であり APPROVED を維持する"
@@ -419,7 +420,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | ssot_id | 文書 | status |
 |---|---|---|
 | MST-002 | [code_mapping_registry_design.md](masters/code_mapping_registry_design.md) | APPROVED |
-| MST-003 | [master_foundation_contract.md](masters/master_foundation_contract.md) | PROPOSED |
+| MST-003 | [master_foundation_contract.md](masters/master_foundation_contract.md) | APPROVED |
 | MST-001 | [master_update_pipeline.md](masters/master_update_pipeline.md) | APPROVED |
 
 ## docs/modules/ (14件)
@@ -487,7 +488,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 |---|---|---|
 | PRD-007 | [jp_core_fhir_platform_strategy.md](product/jp_core_fhir_platform_strategy.md) | APPROVED |
 | PRD-005 | [major_rececon_feature_matrix.md](product/major_rececon_feature_matrix.md) | PROPOSED |
-| PRD-001 | [mvp_scope.md](product/mvp_scope.md) | PROPOSED |
+| PRD-001 | [mvp_scope.md](product/mvp_scope.md) | APPROVED |
 | PRD-002 | [non_mvp_scope.md](product/non_mvp_scope.md) | APPROVED |
 | PRD-006 | [product_concept.md](product/product_concept.md) | APPROVED |
 | PRD-004 | [rececon_feature_benchmark.md](product/rececon_feature_benchmark.md) | PROPOSED |
@@ -545,7 +546,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 |---|---|---|
 | SEC-007 | [audit_log_design.md](security/audit_log_design.md) | APPROVED |
 | SEC-008 | [audit_worm_and_tenant_isolation_strategy.md](security/audit_worm_and_tenant_isolation_strategy.md) | APPROVED |
-| SEC-009 | [authenticated_context_boundary.md](security/authenticated_context_boundary.md) | PROPOSED |
+| SEC-009 | [authenticated_context_boundary.md](security/authenticated_context_boundary.md) | APPROVED |
 | SEC-005 | [edge_node_security_design.md](security/edge_node_security_design.md) | APPROVED |
 | SEC-004 | [privacy_impact_assessment.md](security/privacy_impact_assessment.md) | APPROVED |
 | SEC-002 | [provider_security_guideline_mapping.md](security/provider_security_guideline_mapping.md) | APPROVED |
