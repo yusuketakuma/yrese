@@ -71,6 +71,7 @@ const SAVED_DRAFT: PrescriptionDraftResponse = {
   version: 3,
   draft: {
     prescriptionType: "OUTPATIENT",
+    sourceMetadata: null,
     prescriptionDate: BUSINESS_DATE,
     defaultDays: 7,
     flags: [],

@@ -140,6 +140,7 @@ const SAVED_DRAFT: PrescriptionDraftResponse = {
   version: 3,
   draft: {
     prescriptionType: "OUTPATIENT",
+    sourceMetadata: null,
     prescriptionDate: "2026-08-25",
     defaultDays: 7,
     flags: [],

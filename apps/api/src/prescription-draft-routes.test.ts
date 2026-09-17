@@ -40,6 +40,7 @@ const baseBody = {
   expectedVersion: 0,
   draft: {
     prescriptionType: "OUTPATIENT",
+    sourceMetadata: null,
     prescriptionDate: "2026-07-09",
     defaultDays: 7,
     flags: ["PACKAGING"],

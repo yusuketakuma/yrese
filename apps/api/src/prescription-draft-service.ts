@@ -84,9 +84,7 @@ export function normalizePrescriptionDraftContent(
   };
 }
 
-function hashNormalizedPrescriptionDraftContent(
-  value: PrescriptionDraftContent,
-): string {
+function hashJsonDeterministically(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value), "utf8").digest("hex");
 }
 
@@ -97,16 +95,29 @@ export function normalizePrescriptionDraftContentWithHash(value: unknown): {
   const normalized = normalizePrescriptionDraftContent(value);
   return {
     normalized,
-    contentHash: hashNormalizedPrescriptionDraftContent(normalized),
+    contentHash: hashJsonDeterministically(normalized),
   };
 }
 
 export function prescriptionDraftContentHash(
   value: PrescriptionDraftContent,
 ): string {
-  return hashNormalizedPrescriptionDraftContent(
+  return hashJsonDeterministically(
     normalizePrescriptionDraftContent(value),
   );
+}
+
+/**
+ * WP-7205 以前に保存された draft の content hash は `sourceMetadata` キーを含まない
+ * JSON から計算されている。列が全て NULL の既存行を読み替える際の比較用。
+ * sourceMetadata は schema 末尾キーなので除去後も key order が一致する。
+ */
+export function prescriptionDraftContentHashWithoutSourceMetadata(
+  value: PrescriptionDraftContent,
+): string {
+  const { sourceMetadata: _sourceMetadata, ...legacy } =
+    normalizePrescriptionDraftContent(value);
+  return hashJsonDeterministically(legacy);
 }
 
 function scopeKey(input: PrescriptionDraftLookupInput): string {

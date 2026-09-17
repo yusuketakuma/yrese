@@ -48,6 +48,7 @@ function input(
     wallClock: `2026-08-25T00:00:0${Math.min(expectedVersion, 9)}.000Z`,
     draft: {
       prescriptionType: "OUTPATIENT",
+      sourceMetadata: null,
       prescriptionDate: "2026-07-09",
       defaultDays: 7,
       flags: ["PACKAGING"],
@@ -77,6 +78,7 @@ describe("normalizePrescriptionDraftContent", () => {
   it("parses at the trust boundary exactly once and returns canonical content", () => {
     const raw = {
       prescriptionType: "OUTPATIENT",
+      sourceMetadata: null,
       prescriptionDate: "2026-07-09",
       defaultDays: 7,
       flags: ["NARCOTIC", "PACKAGING"],

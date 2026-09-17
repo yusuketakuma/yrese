@@ -61,6 +61,7 @@ const draftBody = (expectedVersion: number, note: string) => ({
   expectedVersion,
   draft: {
     prescriptionType: "OUTPATIENT",
+    sourceMetadata: null,
     prescriptionDate: "2026-09-15",
     defaultDays: 7,
     flags: [],

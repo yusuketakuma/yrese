@@ -121,6 +121,92 @@ function parseOptionalInteger(value: string, label: string): number | null {
   return parsed;
 }
 
+function parseOptionalCount(value: string, label: string): number | null {
+  const normalized = value.trim();
+  if (normalized.length === 0) return null;
+  if (!/^[0-9]+$/u.test(normalized)) {
+    throw new PrescriptionDraftApiError(
+      "INVALID_REQUEST",
+      `${label}は0〜999の整数で入力してください。`,
+    );
+  }
+  const parsed = Number(normalized);
+  if (!Number.isSafeInteger(parsed) || parsed < 0 || parsed > 999) {
+    throw new PrescriptionDraftApiError(
+      "INVALID_REQUEST",
+      `${label}は0〜999の整数で入力してください。`,
+    );
+  }
+  return parsed;
+}
+
+const SOURCE_METADATA_FIELDS = [
+  "institutionCode",
+  "institutionName",
+  "prescriberName",
+  "issueDate",
+  "validUntil",
+  "refillTotal",
+  "refillRemaining",
+  "splitDispensing",
+] as const;
+
+function hasAnySourceMetadataInput(
+  snapshot: PrescriptionDraftSnapshot,
+): boolean {
+  return SOURCE_METADATA_FIELDS.some(
+    (field) => snapshot[field].trim().length > 0,
+  );
+}
+
+/**
+ * DOM-002 §4.2a: 原本 metadata は全項目手入力。一項目でも入力があれば
+ * issueDate/validUntil を必須とし、有効期限の前後関係とリフィル残数の
+ * 不変条件は contract schema に委譲する(二重実装しない)。
+ */
+function toSourceMetadata(
+  snapshot: PrescriptionDraftSnapshot,
+): PrescriptionDraftContent["sourceMetadata"] {
+  if (!hasAnySourceMetadataInput(snapshot)) return null;
+  if (snapshot.issueDate.trim().length === 0) {
+    throw new PrescriptionDraftApiError(
+      "INVALID_REQUEST",
+      "処方箋の発行日を入力してください。",
+    );
+  }
+  if (snapshot.validUntil.trim().length === 0) {
+    throw new PrescriptionDraftApiError(
+      "INVALID_REQUEST",
+      "処方箋の有効期限を入力してください。",
+    );
+  }
+  const refillTotal = parseOptionalCount(snapshot.refillTotal, "リフィル総回数");
+  const refillRemaining = parseOptionalCount(
+    snapshot.refillRemaining,
+    "リフィル残回数",
+  );
+  return {
+    medicalInstitution: {
+      code:
+        snapshot.institutionCode.trim().length === 0
+          ? null
+          : snapshot.institutionCode,
+      name: snapshot.institutionName,
+    },
+    prescriberName: snapshot.prescriberName,
+    issueDate: snapshot.issueDate.trim(),
+    validUntil: snapshot.validUntil.trim(),
+    refill:
+      refillTotal === null && refillRemaining === null
+        ? null
+        : { total: refillTotal ?? 0, remaining: refillRemaining ?? 0 },
+    splitDispensing:
+      snapshot.splitDispensing.trim().length === 0
+        ? null
+        : snapshot.splitDispensing,
+  };
+}
+
 function validationIssueLabel(path: readonly PropertyKey[]): string {
   if (path[0] === "rows") {
     if (typeof path[1] !== "number") return "RP行数";
@@ -136,6 +222,15 @@ function validationIssueLabel(path: readonly PropertyKey[]): string {
   if (path[0] === "defaultDays") return "交付日数";
   if (path[0] === "flags") return "全体指示";
   if (path[0] === "note") return "メモ";
+  if (path[0] === "sourceMetadata") {
+    if (path[1] === "issueDate") return "発行日";
+    if (path[1] === "validUntil") return "有効期限";
+    if (path[1] === "prescriberName") return "医師名";
+    if (path[1] === "medicalInstitution") return "医療機関";
+    if (path[1] === "refill") return "リフィル回数";
+    if (path[1] === "splitDispensing") return "分割調剤指示";
+    return "原本情報";
+  }
   return "入力内容";
 }
 
@@ -166,6 +261,7 @@ export function toPrescriptionDraftContent(
       days: parseOptionalInteger(row.days, `RP${index + 1} 日数`),
       quantityText: row.quantity,
     })),
+    sourceMetadata: toSourceMetadata(snapshot),
   };
 
   const parsed = prescriptionDraftSaveRequestSchema.shape.draft.safeParse(candidate);
@@ -188,6 +284,23 @@ export function fromPrescriptionDraftResponse(
         : String(response.draft.defaultDays),
     options: response.draft.flags.map((flag) => FLAG_FROM_WIRE[flag]),
     note: response.draft.note,
+    institutionCode: response.draft.sourceMetadata?.medicalInstitution.code ?? "",
+    institutionName:
+      response.draft.sourceMetadata?.medicalInstitution.name ?? "",
+    prescriberName: response.draft.sourceMetadata?.prescriberName ?? "",
+    issueDate: response.draft.sourceMetadata?.issueDate ?? "",
+    validUntil: response.draft.sourceMetadata?.validUntil ?? "",
+    refillTotal:
+      response.draft.sourceMetadata?.refill === null ||
+      response.draft.sourceMetadata?.refill === undefined
+        ? ""
+        : String(response.draft.sourceMetadata.refill.total),
+    refillRemaining:
+      response.draft.sourceMetadata?.refill === null ||
+      response.draft.sourceMetadata?.refill === undefined
+        ? ""
+        : String(response.draft.sourceMetadata.refill.remaining),
+    splitDispensing: response.draft.sourceMetadata?.splitDispensing ?? "",
     rows: response.draft.rows.map((row) => ({
       id: row.sequence,
       drug: row.drugText,

@@ -14,7 +14,10 @@ import { buildAuditScopeAdvisoryLockKey } from "./audit-repository.js";
 import { applyPendingMigrations } from "./migration-runner.js";
 import { loadMigrationFiles } from "./migrations.js";
 import { createDbPool } from "./pool.js";
-import { normalizePrescriptionDraftContent } from "../prescription-draft-service.js";
+import {
+  normalizePrescriptionDraftContent,
+  prescriptionDraftContentHashWithoutSourceMetadata,
+} from "../prescription-draft-service.js";
 import {
   PostgresPrescriptionDraftService,
   prescriptionDraftDatabaseInvariantErrorMessage,
@@ -150,6 +153,7 @@ function saveInput(
     wallClock: `2026-08-25T01:00:0${Math.min(expectedVersion, 9)}.000Z`,
     draft: {
       prescriptionType: "OUTPATIENT" as const,
+      sourceMetadata: null,
       prescriptionDate: "2026-08-25",
       defaultDays: 7,
       flags: ["PACKAGING" as const],
@@ -194,6 +198,7 @@ describe("replaceChildren DML shape (DB-less / WP-5268)", () => {
   it("issues exactly one parameterized INSERT per child table regardless of row and flag count", async () => {
     const draft = normalizePrescriptionDraftContent({
       prescriptionType: "OUTPATIENT",
+      sourceMetadata: null,
       prescriptionDate: "2026-08-25",
       defaultDays: 7,
       flags: ["NARCOTIC", "PACKAGING"],
@@ -251,6 +256,7 @@ describe("replaceChildren DML shape (DB-less / WP-5268)", () => {
     const { client, calls } = recordingClient();
     await replaceChildren(client, dmlLookup, prescriptionId("prescription-dml-2"), {
       prescriptionType: "UNSPECIFIED",
+      sourceMetadata: null,
       prescriptionDate: null,
       defaultDays: null,
       flags: [],
@@ -359,6 +365,7 @@ describePostgres(
         );
         const batchDraft = {
           prescriptionType: "OUTPATIENT" as const,
+          sourceMetadata: null,
           prescriptionDate: "2026-08-25",
           defaultDays: 7,
           flags: ["PACKAGING" as const, "NARCOTIC" as const],
@@ -727,6 +734,241 @@ describePostgres(
         ).rejects.toMatchObject({
           code: "23503",
           constraint: "prescription_drafts_reception_patient_fk",
+        });
+      });
+    });
+
+    it("persists and reads back source metadata (WP-7205 / DOM-002 §4.2a)", async () => {
+      await withMigratedSchema(async (pool) => {
+        const metadataScope = {
+          ...scopedInput,
+          receptionId: receptionId("reception-draft-metadata"),
+          patientId: patientId("patient-draft-metadata"),
+        };
+        await seedReception(pool, {
+          tenantId: metadataScope.tenantId,
+          pharmacyId: metadataScope.pharmacyId,
+          patientId: metadataScope.patientId,
+          receptionId: metadataScope.receptionId,
+          patientNumber: "DRAFT-DB-META",
+          idempotencyKey: "draft-db-idempotency-meta",
+        });
+        const service = new PostgresPrescriptionDraftService(
+          pool,
+          () => prescriptionId("prescription-draft-metadata"),
+        );
+        const sourceMetadata = {
+          medicalInstitution: { code: "1312345", name: "合成クリニック" },
+          prescriberName: "合成 医師",
+          issueDate: "2026-08-20",
+          validUntil: "2026-08-24",
+          refill: { total: 3, remaining: 2 },
+          splitDispensing: "分割指示あり",
+        } as const;
+
+        const saved = await service.save({
+          ...saveInput(0),
+          receptionId: metadataScope.receptionId,
+          patientId: metadataScope.patientId,
+          draft: {
+            ...saveInput(0).draft,
+            sourceMetadata,
+          },
+        });
+        expect(saved).toMatchObject({
+          kind: "saved",
+          draft: { saveDisposition: "created" },
+        });
+
+        const fetched = await service.get({
+          ...scopedInput,
+          receptionId: metadataScope.receptionId,
+        });
+        expect(fetched).toMatchObject({
+          kind: "found",
+          draft: { draft: { sourceMetadata } },
+        });
+
+        // 同一内容の再保存は unchanged(metadata 差分なし)。
+        const unchanged = await service.save({
+          ...saveInput(1),
+          receptionId: metadataScope.receptionId,
+          patientId: metadataScope.patientId,
+          draft: {
+            ...saveInput(1).draft,
+            sourceMetadata,
+          },
+        });
+        expect(unchanged).toMatchObject({
+          kind: "saved",
+          draft: { saveDisposition: "unchanged", version: 1 },
+        });
+
+        // metadata 変更は content hash 差分として updated になる。
+        const updated = await service.save({
+          ...saveInput(1),
+          receptionId: metadataScope.receptionId,
+          patientId: metadataScope.patientId,
+          draft: {
+            ...saveInput(1).draft,
+            sourceMetadata: { ...sourceMetadata, prescriberName: "別 医師" },
+          },
+        });
+        expect(updated).toMatchObject({
+          kind: "saved",
+          draft: { saveDisposition: "updated", version: 2 },
+        });
+      });
+    });
+
+    it("rejects inconsistent metadata columns at the database boundary (WP-7205 CHECK)", async () => {
+      await withMigratedSchema(async (pool) => {
+        await seedReception(pool, {
+          tenantId: scopedInput.tenantId,
+          pharmacyId: scopedInput.pharmacyId,
+          patientId: scopedInput.patientId,
+          receptionId: scopedInput.receptionId,
+          patientNumber: "DRAFT-DB-METACHECK",
+          idempotencyKey: "draft-db-idempotency-metacheck",
+        });
+        // issue_date NULL だが他列が埋まっている半端な行は CHECK で拒否。
+        await expect(
+          pool.query(
+            `INSERT INTO prescription_drafts (
+               tenant_id, pharmacy_id, prescription_id, reception_id,
+               patient_id, business_date, version,
+               prescription_type, prescription_date, default_days, note,
+               prescriber_name,
+               content_hash, created_at, updated_at, created_by, updated_by
+             ) VALUES (
+               $1, $2, 'prescription-meta-partial', $3, $4,
+               '2026-08-25'::date, 1, 'UNSPECIFIED', NULL,
+               NULL, '', '合成 医師',
+               repeat('a', 64), now(), now(), 'actor', 'actor'
+             )`,
+            [
+              scopedInput.tenantId,
+              scopedInput.pharmacyId,
+              scopedInput.receptionId,
+              scopedInput.patientId,
+            ],
+          ),
+        ).rejects.toMatchObject({ code: "23514" });
+        // valid_until < issue_date も拒否。
+        await expect(
+          pool.query(
+            `INSERT INTO prescription_drafts (
+               tenant_id, pharmacy_id, prescription_id, reception_id,
+               patient_id, business_date, version,
+               prescription_type, prescription_date, default_days, note,
+               medical_institution_name, prescriber_name,
+               issue_date, valid_until,
+               content_hash, created_at, updated_at, created_by, updated_by
+             ) VALUES (
+               $1, $2, 'prescription-meta-inverted', $3, $4,
+               '2026-08-25'::date, 1, 'UNSPECIFIED', NULL,
+               NULL, '', '合成機関', '合成 医師',
+               '2026-08-25'::date, '2026-08-24'::date,
+               repeat('a', 64), now(), now(), 'actor', 'actor'
+             )`,
+            [
+              scopedInput.tenantId,
+              scopedInput.pharmacyId,
+              scopedInput.receptionId,
+              scopedInput.patientId,
+            ],
+          ),
+        ).rejects.toMatchObject({ code: "23514" });
+      });
+    });
+
+    it("reads WP-7205 以前の legacy hash 行(sourceMetadata キーなし)を後方互換で受理する", async () => {
+      await withMigratedSchema(async (pool) => {
+        const legacyScope = {
+          ...scopedInput,
+          receptionId: receptionId("reception-draft-legacy"),
+          patientId: patientId("patient-draft-legacy"),
+        };
+        await seedReception(pool, {
+          tenantId: legacyScope.tenantId,
+          pharmacyId: legacyScope.pharmacyId,
+          patientId: legacyScope.patientId,
+          receptionId: legacyScope.receptionId,
+          patientNumber: "DRAFT-DB-LEGACY",
+          idempotencyKey: "draft-db-idempotency-legacy",
+        });
+        const service = new PostgresPrescriptionDraftService(
+          pool,
+          () => prescriptionId("prescription-draft-legacy"),
+        );
+
+        const legacyContent = normalizePrescriptionDraftContent({
+          prescriptionType: "OUTPATIENT",
+          sourceMetadata: null,
+          prescriptionDate: "2026-08-25",
+          defaultDays: 7,
+          flags: [],
+          note: "",
+          rows: [
+            {
+              sequence: 1,
+              drugText: "合成薬剤A 5mg",
+              usageText: "1日1回 朝食後",
+              days: 7,
+              quantityText: "7錠",
+            },
+          ],
+        });
+        const legacyHash =
+          prescriptionDraftContentHashWithoutSourceMetadata(legacyContent);
+        await pool.query(
+          `INSERT INTO prescription_drafts (
+             tenant_id, pharmacy_id, prescription_id, reception_id,
+             patient_id, business_date, version,
+             prescription_type, prescription_date, default_days, note,
+             content_hash, created_at, updated_at, created_by, updated_by
+           ) VALUES (
+             $1, $2, 'prescription-draft-legacy', $3, $4,
+             '2026-08-25'::date, 1, 'OUTPATIENT', '2026-08-25'::date,
+             7, '', $5, now(), now(), 'actor', 'actor'
+           )`,
+          [
+            legacyScope.tenantId,
+            legacyScope.pharmacyId,
+            legacyScope.receptionId,
+            legacyScope.patientId,
+            legacyHash,
+          ],
+        );
+        await pool.query(
+          `INSERT INTO prescription_draft_rows (
+             tenant_id, pharmacy_id, prescription_id, row_sequence,
+             drug_text, usage_text, days, quantity_text
+           ) VALUES ($1, $2, 'prescription-draft-legacy', 1,
+             '合成薬剤A 5mg', '1日1回 朝食後', 7, '7錠')`,
+          [legacyScope.tenantId, legacyScope.pharmacyId],
+        );
+
+        // legacy 行は sourceMetadata=null で読み出せ、hash は旧形式で受理される。
+        const fetched = await service.get({
+          ...scopedInput,
+          receptionId: legacyScope.receptionId,
+        });
+        expect(fetched).toMatchObject({
+          kind: "found",
+          draft: { version: 1, draft: { sourceMetadata: null } },
+        });
+
+        // 同一内容の再保存は unchanged(legacy hash との一致で判定)。
+        const unchanged = await service.save({
+          ...saveInput(1),
+          receptionId: legacyScope.receptionId,
+          patientId: legacyScope.patientId,
+          draft: legacyContent,
+        });
+        expect(unchanged).toMatchObject({
+          kind: "saved",
+          draft: { saveDisposition: "unchanged", version: 1 },
         });
       });
     });

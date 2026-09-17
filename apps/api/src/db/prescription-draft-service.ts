@@ -20,6 +20,7 @@ import {
   comparePrescriptionDraftFlags,
   normalizePrescriptionDraftContentWithHash,
   prescriptionDraftContentHash,
+  prescriptionDraftContentHashWithoutSourceMetadata,
   type PrescriptionDraftLookupInput,
   type PrescriptionDraftLookupResult,
   type PrescriptionDraftSaveInput,
@@ -37,6 +38,14 @@ interface MetadataRow {
   readonly prescription_date: string | null;
   readonly default_days: number | null;
   readonly note: string;
+  readonly medical_institution_code: string | null;
+  readonly medical_institution_name: string | null;
+  readonly prescriber_name: string | null;
+  readonly issue_date: string | null;
+  readonly valid_until: string | null;
+  readonly refill_total: number | null;
+  readonly refill_remaining: number | null;
+  readonly split_dispensing: string | null;
   readonly content_hash: string;
   readonly created_at: Date | string;
   readonly updated_at: Date | string;
@@ -78,6 +87,14 @@ async function selectMetadata(
        prescription_date::text AS prescription_date,
        default_days,
        note,
+       medical_institution_code,
+       medical_institution_name,
+       prescriber_name,
+       issue_date::text AS issue_date,
+       valid_until::text AS valid_until,
+       refill_total,
+       refill_remaining,
+       split_dispensing,
        content_hash,
        created_at,
        updated_at,
@@ -134,6 +151,61 @@ async function receptionMatches(
   return { patientId: row.patient_id };
 }
 
+/**
+ * 行の sourceMetadata 列を wire 形状へ戻す。migration 000017 の CHECK が
+ * 「全列 NULL または必須列すべて非 NULL」のみ許容するため、issue_date NULL の
+ * 行で他列が残っている状態は不変条件違反として fail-closed にする。
+ */
+function sourceMetadataFromRow(row: MetadataRow) {
+  const hasAnyMetadataColumn =
+    row.medical_institution_code !== null ||
+    row.medical_institution_name !== null ||
+    row.prescriber_name !== null ||
+    row.valid_until !== null ||
+    row.refill_total !== null ||
+    row.refill_remaining !== null ||
+    row.split_dispensing !== null;
+  if (row.issue_date === null) {
+    if (hasAnyMetadataColumn) {
+      throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+    }
+    return null;
+  }
+  return {
+    medicalInstitution: {
+      code: row.medical_institution_code,
+      name: row.medical_institution_name,
+    },
+    prescriberName: row.prescriber_name,
+    issueDate: row.issue_date,
+    validUntil: row.valid_until,
+    refill:
+      row.refill_total === null
+        ? null
+        : { total: row.refill_total, remaining: row.refill_remaining },
+    splitDispensing: row.split_dispensing,
+  };
+}
+
+/** 行が WP-7205 以前の hash 形式(sourceMetadata キーなし)で保存されているか。 */
+function isLegacySourceMetadataRow(row: MetadataRow): boolean {
+  return row.issue_date === null;
+}
+
+function storedHashMatches(
+  row: MetadataRow,
+  draft: PrescriptionDraftContent,
+): boolean {
+  if (prescriptionDraftContentHash(draft) === row.content_hash) return true;
+  if (!isLegacySourceMetadataRow(row) || draft.sourceMetadata !== null) {
+    return false;
+  }
+  return (
+    prescriptionDraftContentHashWithoutSourceMetadata(draft) ===
+    row.content_hash
+  );
+}
+
 async function readDraft(
   client: PoolClient,
   input: PrescriptionDraftLookupInput,
@@ -181,6 +253,7 @@ async function readDraft(
           days: draftRow.days,
           quantityText: draftRow.quantity_text,
         })),
+        sourceMetadata: sourceMetadataFromRow(row),
       },
       createdAt: snapshotDatabaseInstant(
         row.created_at,
@@ -193,7 +266,7 @@ async function readDraft(
       createdBy: row.created_by,
       updatedBy: row.updated_by,
     });
-    if (prescriptionDraftContentHash(response.draft) !== row.content_hash) {
+    if (!storedHashMatches(row, response.draft)) {
       throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
     }
     return response;
@@ -327,15 +400,21 @@ export class PostgresPrescriptionDraftService
           return { kind: "conflict", currentVersion: 0 };
         }
         const id = this.nextPrescriptionId();
+        const sourceMetadata = normalized.sourceMetadata;
         await client.query(
           `INSERT INTO prescription_drafts (
              tenant_id, pharmacy_id, prescription_id, reception_id, patient_id,
              business_date, version, prescription_type,
              prescription_date, default_days, note, content_hash,
+             medical_institution_code, medical_institution_name, prescriber_name,
+             issue_date, valid_until, refill_total, refill_remaining,
+             split_dispensing,
              created_at, updated_at, created_by, updated_by
            ) VALUES (
              $1, $2, $3, $4, $5, $6::date, 1, $7,
-             $8::date, $9, $10, $11, $12, $12, $13, $13
+             $8::date, $9, $10, $11,
+             $14, $15, $16, $17::date, $18::date, $19, $20, $21,
+             $12, $12, $13, $13
            )`,
           [
             input.tenantId,
@@ -351,6 +430,14 @@ export class PostgresPrescriptionDraftService
             contentHash,
             input.wallClock,
             input.actorId,
+            sourceMetadata?.medicalInstitution.code ?? null,
+            sourceMetadata?.medicalInstitution.name ?? null,
+            sourceMetadata?.prescriberName ?? null,
+            sourceMetadata?.issueDate ?? null,
+            sourceMetadata?.validUntil ?? null,
+            sourceMetadata?.refill?.total ?? null,
+            sourceMetadata?.refill?.remaining ?? null,
+            sourceMetadata?.splitDispensing ?? null,
           ],
         );
         await replaceChildren(client, input, id, normalized);
@@ -389,7 +476,7 @@ export class PostgresPrescriptionDraftService
         return { kind: "conflict", currentVersion: existing.version };
       }
 
-      if (existing.content_hash === contentHash) {
+      if (storedHashMatches(existing, normalized)) {
         await client.query("COMMIT");
         return {
           kind: "saved",
@@ -404,6 +491,7 @@ export class PostgresPrescriptionDraftService
         throw new Error(prescriptionDraftVersionExhaustedErrorMessage);
       }
       const nextVersion = existing.version + 1;
+      const nextSourceMetadata = normalized.sourceMetadata;
       await client.query(
         `UPDATE prescription_drafts
             SET version = $6,
@@ -413,7 +501,15 @@ export class PostgresPrescriptionDraftService
                 note = $10,
                 content_hash = $11,
                 updated_at = GREATEST(updated_at, $12::timestamptz),
-                updated_by = $13
+                updated_by = $13,
+                medical_institution_code = $14,
+                medical_institution_name = $15,
+                prescriber_name = $16,
+                issue_date = $17::date,
+                valid_until = $18::date,
+                refill_total = $19,
+                refill_remaining = $20,
+                split_dispensing = $21
           WHERE tenant_id = $1
             AND pharmacy_id = $2
             AND reception_id = $3
@@ -433,6 +529,14 @@ export class PostgresPrescriptionDraftService
           contentHash,
           input.wallClock,
           input.actorId,
+          nextSourceMetadata?.medicalInstitution.code ?? null,
+          nextSourceMetadata?.medicalInstitution.name ?? null,
+          nextSourceMetadata?.prescriberName ?? null,
+          nextSourceMetadata?.issueDate ?? null,
+          nextSourceMetadata?.validUntil ?? null,
+          nextSourceMetadata?.refill?.total ?? null,
+          nextSourceMetadata?.refill?.remaining ?? null,
+          nextSourceMetadata?.splitDispensing ?? null,
         ],
       );
       const id = prescriptionId(existing.prescription_id);

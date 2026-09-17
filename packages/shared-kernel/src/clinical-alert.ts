@@ -27,6 +27,8 @@ export const CLINICAL_ALERT_TYPES = [
   "HIGH_RISK_DRUG",
   /** 用量・投与量の上限/下限逸脱。 */
   "DOSAGE_LIMIT",
+  /** 処方箋原本等の文書有効期限(発行日+期限の超過。薬剤ではなく文書を対象とする)。 */
+  "DOCUMENT_VALIDITY",
 ] as const;
 
 export type ClinicalAlertType = (typeof CLINICAL_ALERT_TYPES)[number];

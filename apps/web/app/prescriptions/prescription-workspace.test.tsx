@@ -7,6 +7,8 @@ import type { PrescriptionDraftResponse } from "@yrese/contracts";
 
 import {
   canSavePrescriptionDraft,
+  defaultValidUntil,
+  isPrescriptionSourceExpired,
   PrescriptionDraftChangeSummary,
   PrescriptionWorkspace,
   resolveDraftLoadOutcome,
@@ -172,6 +174,7 @@ const SERVER_DRAFT_RESPONSE: PrescriptionDraftResponse = {
   version: 2,
   draft: {
     prescriptionType: "OUTPATIENT",
+    sourceMetadata: null,
     prescriptionDate: "2026-08-26",
     defaultDays: 7,
     flags: [],
@@ -422,5 +425,49 @@ describe("connected draft state machine (WP-5101 review HIGH-1/HIGH-2)", () => {
         error: new PrescriptionDraftApiError("UNAVAILABLE", "合成の保存失敗"),
       }),
     ).toEqual({ kind: "idle" });
+  });
+});
+
+describe("prescription source metadata helpers (WP-7205 / DOM-002 §4.2a)", () => {
+  it("computes the issueDate+4d default as input assistance only", () => {
+    expect(defaultValidUntil("2026-08-20")).toBe("2026-08-24");
+    // 月末跨ぎ
+    expect(defaultValidUntil("2026-08-29")).toBe("2026-09-02");
+    // 不正な入力は既定値を出さない(保存値は入力値そのもの)
+    expect(defaultValidUntil("")).toBeNull();
+    expect(defaultValidUntil("not-a-date")).toBeNull();
+    expect(defaultValidUntil("2026-02-30")).toBeNull();
+  });
+
+  it("flags expiry only against the explicit business date and never blocks", () => {
+    expect(isPrescriptionSourceExpired("2026-08-24", "2026-08-25")).toBe(true);
+    expect(isPrescriptionSourceExpired("2026-08-25", "2026-08-25")).toBe(false);
+    expect(isPrescriptionSourceExpired("", "2026-08-25")).toBe(false);
+    expect(isPrescriptionSourceExpired("not-a-date", "2026-08-25")).toBe(false);
+  });
+
+  it("renders the validity warning via ClinicalAlert when expired", () => {
+    const html = renderToStaticMarkup(
+      <SelectedPatientWorkspaceView patient={SELECTED_PATIENT} />,
+    );
+    // 未入力の draft では警告を出さない
+    expect(html).not.toContain('data-alert-type="DOCUMENT_VALIDITY"');
+  });
+
+  it("names metadata fields in the change summary without echoing values", () => {
+    const baseline = createBlankPrescriptionDraft();
+    const changed = {
+      ...createBlankPrescriptionDraft(),
+      issueDate: "2026-08-20",
+      validUntil: "2026-08-24",
+      prescriberName: "合成 医師",
+      refillTotal: "3",
+    };
+    const labels = summarizePrescriptionDraftChanges(changed, baseline);
+    expect(labels).toEqual(
+      expect.arrayContaining(["医師名", "発行日", "有効期限", "リフィル回数"]),
+    );
+    expect(labels.join("")).not.toContain("2026-08-20");
+    expect(labels.join("")).not.toContain("合成 医師");
   });
 });

@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 
+import { ClinicalAlert } from "../components/clinical-alert";
 import { DomainStatusBadge } from "../components/domain-status-badge";
 import { EmptyState } from "../components/empty-state";
 import { ErrorNotice } from "../components/error-notice";
@@ -92,6 +93,7 @@ function normalizedDraftForComparison(
   snapshot: PrescriptionDraftSnapshot,
 ): PrescriptionDraftSnapshot {
   const content = toPrescriptionDraftContent(snapshot);
+  const sourceMetadata = content.sourceMetadata;
   return {
     prescriptionType: snapshot.prescriptionType,
     prescriptionDate: content.prescriptionDate ?? "",
@@ -99,6 +101,20 @@ function normalizedDraftForComparison(
       content.defaultDays === null ? "" : String(content.defaultDays),
     options: snapshot.options,
     note: content.note,
+    institutionCode: sourceMetadata?.medicalInstitution.code ?? "",
+    institutionName: sourceMetadata?.medicalInstitution.name ?? "",
+    prescriberName: sourceMetadata?.prescriberName ?? "",
+    issueDate: sourceMetadata?.issueDate ?? "",
+    validUntil: sourceMetadata?.validUntil ?? "",
+    refillTotal:
+      sourceMetadata?.refill === null || sourceMetadata?.refill === undefined
+        ? ""
+        : String(sourceMetadata.refill.total),
+    refillRemaining:
+      sourceMetadata?.refill === null || sourceMetadata?.refill === undefined
+        ? ""
+        : String(sourceMetadata.refill.remaining),
+    splitDispensing: sourceMetadata?.splitDispensing ?? "",
     rows: content.rows.map((row) => ({
       id: row.sequence,
       drug: row.drugText,
@@ -107,6 +123,32 @@ function normalizedDraftForComparison(
       quantity: row.quantityText,
     })),
   };
+}
+
+/** DOM-002 §4.2a: 発行日+4日の既定は UI 側の入力補助。保存値は入力値そのもの。 */
+export function defaultValidUntil(issueDate: string): string | null {
+  const trimmed = issueDate.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(trimmed)) return null;
+  const instant = new Date(`${trimmed}T00:00:00.000Z`);
+  // 実在暦日のみ(2026-02-30 のような rollover を拒否する — contract の calendarDate と同規則)。
+  if (
+    !Number.isFinite(instant.getTime()) ||
+    instant.toISOString().slice(0, 10) !== trimmed
+  ) {
+    return null;
+  }
+  instant.setUTCDate(instant.getUTCDate() + 4);
+  return instant.toISOString().slice(0, 10);
+}
+
+/** DOM-002 §4.2a: 有効期限超過(asOf > validUntil)は警告のみ。 */
+export function isPrescriptionSourceExpired(
+  validUntil: string,
+  businessDate: string,
+): boolean {
+  const until = validUntil.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(until)) return false;
+  return businessDate > until;
 }
 
 export function serverDraftDivergenceCopy(serverVersion: number) {
@@ -159,6 +201,30 @@ export function summarizePrescriptionDraftChanges(
     labels.push("全体指示");
   }
   if (comparedDraft.note !== comparedBaseline.note) labels.push("メモ");
+  if (
+    comparedDraft.institutionCode !== comparedBaseline.institutionCode ||
+    comparedDraft.institutionName !== comparedBaseline.institutionName
+  ) {
+    labels.push("医療機関");
+  }
+  if (comparedDraft.prescriberName !== comparedBaseline.prescriberName) {
+    labels.push("医師名");
+  }
+  if (comparedDraft.issueDate !== comparedBaseline.issueDate) {
+    labels.push("発行日");
+  }
+  if (comparedDraft.validUntil !== comparedBaseline.validUntil) {
+    labels.push("有効期限");
+  }
+  if (
+    comparedDraft.refillTotal !== comparedBaseline.refillTotal ||
+    comparedDraft.refillRemaining !== comparedBaseline.refillRemaining
+  ) {
+    labels.push("リフィル回数");
+  }
+  if (comparedDraft.splitDispensing !== comparedBaseline.splitDispensing) {
+    labels.push("分割調剤指示");
+  }
   if (comparedDraft.rows.length !== comparedBaseline.rows.length) labels.push("RP行数");
 
   const sharedRowCount = Math.min(
@@ -1022,6 +1088,157 @@ export function SelectedPatientWorkspaceView({
               />
             </label>
           </div>
+
+          <fieldset
+            className="prescription-source-metadata"
+            disabled={editorLocked}
+          >
+            <legend>処方箋原本情報（手入力。発行日・有効期限は原本の記載どおり入力）</legend>
+            <div className="prescription-meta-grid">
+              <label>
+                医療機関コード
+                <input
+                  value={draft.institutionCode}
+                  maxLength={64}
+                  disabled={editorLocked}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      institutionCode: event.target.value,
+                    }))
+                  }
+                  placeholder="未コード化可"
+                  autoComplete="off"
+                />
+              </label>
+              <label>
+                医療機関名称
+                <input
+                  value={draft.institutionName}
+                  maxLength={128}
+                  disabled={editorLocked}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      institutionName: event.target.value,
+                    }))
+                  }
+                  autoComplete="off"
+                />
+              </label>
+              <label>
+                医師名
+                <input
+                  value={draft.prescriberName}
+                  maxLength={128}
+                  disabled={editorLocked}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      prescriberName: event.target.value,
+                    }))
+                  }
+                  autoComplete="off"
+                />
+              </label>
+              <label>
+                発行日
+                <input
+                  type="date"
+                  value={draft.issueDate}
+                  disabled={editorLocked}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      issueDate: event.target.value,
+                      // DOM-002 §4.2a: 発行日+4日は入力補助の既定値。保存値は入力値。
+                      validUntil:
+                        current.validUntil.trim().length === 0
+                          ? defaultValidUntil(event.target.value) ??
+                            current.validUntil
+                          : current.validUntil,
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                有効期限
+                <input
+                  type="date"
+                  value={draft.validUntil}
+                  disabled={editorLocked}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      validUntil: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                リフィル総回数
+                <input
+                  value={draft.refillTotal}
+                  inputMode="numeric"
+                  disabled={editorLocked}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      refillTotal: event.target.value,
+                    }))
+                  }
+                  placeholder="なし"
+                />
+              </label>
+              <label>
+                リフィル残回数
+                <input
+                  value={draft.refillRemaining}
+                  inputMode="numeric"
+                  disabled={editorLocked}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      refillRemaining: event.target.value,
+                    }))
+                  }
+                  placeholder="なし"
+                />
+              </label>
+              <label>
+                分割調剤指示
+                <input
+                  value={draft.splitDispensing}
+                  maxLength={256}
+                  disabled={editorLocked}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                    updateDraft((current) => ({
+                      ...current,
+                      splitDispensing: event.target.value,
+                    }))
+                  }
+                  autoComplete="off"
+                />
+              </label>
+            </div>
+          </fieldset>
+
+          {linkedOrigin !== null &&
+          isPrescriptionSourceExpired(
+            draft.validUntil,
+            linkedOrigin.businessDate,
+          ) ? (
+            <ClinicalAlert
+              alertType="DOCUMENT_VALIDITY"
+              severity="WARNING"
+              drugName="処方箋原本"
+              detail={`有効期限(${draft.validUntil})を過ぎています。原本を確認してください。`}
+              source="手入力の原本情報"
+              evaluatedAt={linkedOrigin.businessDate}
+              recommendedAction="薬剤師の判断で継続可否を確認してください。保存はブロックされません。"
+              blocking={false}
+            />
+          ) : null}
 
           <TableScroll label="処方入力表。横方向にスクロールできます">
             <table className="operator-table prescription-draft-table">

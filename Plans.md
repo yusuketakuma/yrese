@@ -2492,7 +2492,7 @@ status 変更時刻 / 取消理由の列はない。
 | WP-7202 | **患者登録・更新 API**(発見 3 の解消、C-028/C-029【REF】)。phase 1【SSOT】: C-028 起案 — `patientNumber` 発番方式(薬局採番 / 自動採番)、一意性(既存 `patients_tenant_pharmacy_patient_number_unique` を authority とする)、identityDigest(C-029)の更新制約(氏名・生年月日・性別の変更は「訂正」として履歴保持)、同姓同名・同生年月日の登録時警告(取り違え防止、UIX-001)。API-001 を write 対応へ改版: `POST /patients`(Idempotency-Key 必須)、`PUT /patients/{id}`(`If-Match` 必須、412)。監査は MOD-008 **既存**種別 `patient.created` / `patient.updated` を発火(payload は patientId のみ。registry 改版不要)。phase 2: migration 000015 — `patients` に `version`、`created_at/updated_at/created_by/updated_by`、`patient_identity_history`(append-only)。phase 3/4: repository(tx + audit)、route、Web 登録フォーム(カナ・生年月日の二重確認、重複候補表示は既存 search 再利用)。受入: 冪等 replay、重複 patientNumber 409、cross-tenant 拒否、identity 変更で history 行、PHI が URL/log に出ない | 【SSOT: C-028、API-001】【HG: C-029 は cutover blocker としての位置づけ確認】 | R3 |
 | WP-7203 | **保険・公費(Coverage)登録**。phase 1【SSOT】: `coverage_contract.md`(API-0xx 新規)起案 — DOM-002 §3 の InsuranceCard 履歴(保険者番号・記号・番号・枝番・本人/家族・負担割合・有効期間)、PublicExpense 履歴(負担者番号・受給者番号・優先順位・有効期間)。**負担割合は入力値であり本 WP は計算しない**(CAL-R-024 BLOCKED を侵さない)。有効期間の重なり・優先順位の重複は 409。phase 2: migration 000016 `insurance_cards` / `public_expense_certificates`(append-only、`superseded_by`)。phase 3/4: repository、`GET/POST /patients/{id}/coverage`(scope は既存 resource `insurance` = `insurance:read` / `insurance:write`)、Web(患者コンテキスト rail に保険タブ)。受入: 期間重複拒否、履歴保持(上書きなし)、MOD-008 **既存**種別 `insurance.viewed` / `insurance.updated` の監査、cross-tenant 拒否 | 【SSOT: 新契約】(MOD-007/008 改版不要) | R3 |
 | WP-7204(着地済み) | **資格確認 snapshot の手動記録 route**(眠っている 000009/000011 の配線)。phase 1【SSOT】: `eligibility_snapshot_contract.md` 起案 — ADP-004 §3 状態機械を wire に写す。手動記録できる遷移は `VERIFIED_CARD`(券面確認)/ `PROVISIONAL_VISUAL` のみ、`VERIFIED_MYNA` は外部 IF 由来限定で本 WP では 422。phase 2: `POST /reception/{id}/eligibility-snapshots`、`GET` 同、Web 受付行・patient-header の eligibility 表示を snapshot 由来へ切替。受入: 既存 repository の idempotent retry / conflict テストを route 層まで貫通、`eligibility.*` 監査(MOD-008 0.2.5 で登録済み種別)、`allowsFinalCalculationForEligibility` が UI のみで判断されない。**実績:** POST/GET `/reception/{id}/eligibility-snapshots`(POST=insurance:write+reception:read、GET=insurance:read+reception:read)、INS-0007〜0010(MOD-006 登録済み・実装済みへ更新)、asOfDate 必須(MOD-011 明示日付権威)、append-only + 同一内容再送 200 / 別内容 409、Postgres は advisory lock + snapshot INSERT + 受付紐づけ + 監査を同一 tx(監査失敗は全 rollback)、in-memory は undo 補償、監査 `eligibility.verified`/`eligibility.provisional_recorded`/`insurance.viewed`、queue entry に `eligibility` 公開(API-006 0.3.2 additive)、Web は受付行バッジ・metrics・launch 画面を snapshot 由来へ切替(reception-eligibility ドメインを visual-status-registry へ追加)。route 24 tests + contract テスト + 実 PG 統合 14 tests | 【SSOT: 新契約】。ONS 接続は含まない(RB-002) | R2 |
-| WP-7205 | **処方箋原本 metadata**(医療機関コード/名称、医師名、発行日、有効期限 = 発行日+4 日の既定は**入力値**、リフィル回数・残回数、分割調剤指示)。DOM-002 §4.1 bounded slice の範囲外のため、まず §4.1 改版【HG: 2026-08-26 bounded approval の拡張】。migration 000017 で `prescription_drafts` に列追加(nullable、後方互換)。有効期限超過は警告(`ClinicalAlert` 表示器再利用)であり拒否しない(薬剤師判断) | 【SSOT: DOM-002 §4.1】【HG】 | R2 |
+| WP-7205(着地済み) | **処方箋原本 metadata**(医療機関コード/名称、医師名、発行日、有効期限 = 発行日+4 日の既定は**入力値**、リフィル回数・残回数、分割調剤指示)。DOM-002 §4.1 bounded slice の範囲外のため、まず §4.1 改版【HG: 2026-08-26 bounded approval の拡張】。migration 000017 で `prescription_drafts` に列追加(nullable、後方互換)。有効期限超過は警告(`ClinicalAlert` 表示器再利用)であり拒否しない(薬剤師判断)。**実績:** DOM-002 §4.2a は 2026-09-17 一括 APPROVE で承認済み【HG 解消】— `sourceMetadata`(medicalInstitution{code nullable,name}/prescriberName/issueDate/validUntil/refill{total,remaining}/splitDispensing)を draft content schema へ additive 追加(省略時 null、validUntil<issueDate と remaining>total を schema 拒否)、migration 000017 は 8 列 nullable + 「全列 NULL または必須列すべて非 NULL + valid_until≥issue_date + refill 整合」CHECK で fail-closed、content hash は新構造を含み既存行は sourceMetadata キーなしの legacy hash で後方互換受理、Web は原本情報入力欄 + 発行日+4日の入力補助(保存値は入力値)+ 期限超過を ClinicalAlert(DOCUMENT_VALIDITY 新規 alertType・非ブロッキング)で警告。contract テスト + 実 PG 統合(metadata round-trip・CHECK 拒否・legacy hash 受理・unchanged 判定) | 【SSOT: DOM-002 §4.2】 | R2 |
 
 #### R2 — 処方の構造化とマスター(算定・帳票・連携が消費できる形にする)
 
@@ -2597,11 +2597,12 @@ R4 以降は R3 の確定調剤なしに開始できない(算定・帳票・会
 
 現行 queue は CURRENT=0 / READY=0。2026-09-17 に起案 batch が direct human approval で
 **APPROVED 昇格済み**(`ee4f49a`)、**WP-7201 は `f96e236` で着地済み**(受付状態遷移 API +
-Web 行操作 + migration 000014 作成)、**WP-7204 も着地済み**(資格確認 snapshot route +
+Web 行操作 + migration 000014 作成)、**WP-7204 は着地済み**(資格確認 snapshot route +
 queue entry `eligibility` + Web 切替。migration 000014 のローカル適用と push は
-2026-09-18 のユーザ許可で実施済み)。R1 残り WP-7202(R3・
-human pre-review record 必須)/ WP-7203(R3・同)/ WP-7205(R2)は SSOT
-APPROVED 済みだが queue 昇格は未実施。2026-09-16 のユーザ指示「Plans.md 内のタスクが全て実装完了と
+2026-09-18 のユーザ許可で実施済み)、**WP-7205 も着地済み**(処方箋原本 metadata +
+migration 000017 + Web 原本情報入力と期限警告)。R1 残り WP-7202(R3・
+human pre-review record 必須)/ WP-7203(R3・同)は SSOT
+APPROVED 済みだが R3 のため実装は human pre-review record 待ち。2026-09-16 のユーザ指示「Plans.md 内のタスクが全て実装完了と
 みなせるまでループ」により候補 1・2 を実装し、それぞれ `ea021f5`(WP-7104)・`c0d98b9`(WP-7103)へ
 着地済みである。候補 3 の SSOT 起案 batch は 2026-09-17 に `f3dcf31` で **PROPOSED 起案として着地**
 (API-006 0.3.0 / API-001 0.3.0 / API-019・API-020 新規 / DOM-002 0.1.4 / MOD-006 0.1.3 /

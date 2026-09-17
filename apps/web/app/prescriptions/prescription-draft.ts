@@ -21,6 +21,15 @@ export interface PrescriptionDraftSnapshot {
   readonly defaultDays: string;
   readonly options: readonly PrescriptionOption[];
   readonly note: string;
+  /** DOM-002 §4.2a 原本 metadata(手入力値。全フィールド文字列、空文字=未入力)。 */
+  readonly institutionCode: string;
+  readonly institutionName: string;
+  readonly prescriberName: string;
+  readonly issueDate: string;
+  readonly validUntil: string;
+  readonly refillTotal: string;
+  readonly refillRemaining: string;
+  readonly splitDispensing: string;
 }
 
 export function prescriptionDraftWorkId(
@@ -42,6 +51,14 @@ export function createBlankPrescriptionDraft(): PrescriptionDraftSnapshot {
     defaultDays: "",
     options: [],
     note: "",
+    institutionCode: "",
+    institutionName: "",
+    prescriberName: "",
+    issueDate: "",
+    validUntil: "",
+    refillTotal: "",
+    refillRemaining: "",
+    splitDispensing: "",
   };
 }
 
@@ -55,6 +72,14 @@ export function clonePrescriptionDraft(
     defaultDays: draft.defaultDays,
     options: [...draft.options],
     note: draft.note,
+    institutionCode: draft.institutionCode,
+    institutionName: draft.institutionName,
+    prescriberName: draft.prescriberName,
+    issueDate: draft.issueDate,
+    validUntil: draft.validUntil,
+    refillTotal: draft.refillTotal,
+    refillRemaining: draft.refillRemaining,
+    splitDispensing: draft.splitDispensing,
   };
 }
 
@@ -68,6 +93,14 @@ export function isPrescriptionDraftDirty(
     draft.prescriptionDate.trim().length > 0 ||
     draft.defaultDays.trim().length > 0 ||
     draft.options.length > 0 ||
-    draft.note.trim().length > 0
+    draft.note.trim().length > 0 ||
+    draft.institutionCode.trim().length > 0 ||
+    draft.institutionName.trim().length > 0 ||
+    draft.prescriberName.trim().length > 0 ||
+    draft.issueDate.trim().length > 0 ||
+    draft.validUntil.trim().length > 0 ||
+    draft.refillTotal.trim().length > 0 ||
+    draft.refillRemaining.trim().length > 0 ||
+    draft.splitDispensing.trim().length > 0
   );
 }

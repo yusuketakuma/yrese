@@ -45,6 +45,7 @@ export type StatusShape =
   | "▲"
   | "△"
   | "■"
+  | "□"
   | "◆"
   | "◇"
   | "↻"
@@ -370,6 +371,7 @@ export const CLINICAL_ALERT_TYPE_IDENTITY: Record<ClinicalAlertType, AlertTypeId
   DUPLICATE_THERAPY: { label: "重複投薬", shape: "○" },
   HIGH_RISK_DRUG: { label: "ハイリスク薬", shape: "◇" },
   DOSAGE_LIMIT: { label: "用量逸脱", shape: "△" },
+  DOCUMENT_VALIDITY: { label: "文書有効期限", shape: "□" },
 };
 
 /**

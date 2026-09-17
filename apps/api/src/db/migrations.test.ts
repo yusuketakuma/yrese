@@ -194,6 +194,7 @@ describe('loadMigrationFiles', () => {
           '000012_partner_registry_history_and_country.sql',
           '000013_create_prescription_drafts.sql',
           '000014_add_reception_transition_columns.sql',
+          '000017_add_prescription_draft_source_metadata.sql',
         ]);
       } finally {
         process.chdir(originalCwd);

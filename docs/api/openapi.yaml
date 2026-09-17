@@ -988,6 +988,65 @@ components:
                   - usageText
                   - days
                   - quantityText
+            sourceMetadata:
+              default: null
+              anyOf:
+                - type: object
+                  properties:
+                    medicalInstitution:
+                      type: object
+                      properties:
+                        code:
+                          anyOf:
+                            - type: string
+                              maxLength: 64
+                            - type: "null"
+                        name:
+                          type: string
+                          maxLength: 128
+                      required:
+                        - code
+                        - name
+                    prescriberName:
+                      type: string
+                      maxLength: 128
+                    issueDate:
+                      type: string
+                      format: date
+                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                    validUntil:
+                      type: string
+                      format: date
+                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                    refill:
+                      anyOf:
+                        - type: object
+                          properties:
+                            total:
+                              type: integer
+                              minimum: 0
+                              maximum: 999
+                            remaining:
+                              type: integer
+                              minimum: 0
+                              maximum: 999
+                          required:
+                            - total
+                            - remaining
+                        - type: "null"
+                    splitDispensing:
+                      anyOf:
+                        - type: string
+                          maxLength: 256
+                        - type: "null"
+                  required:
+                    - medicalInstitution
+                    - prescriberName
+                    - issueDate
+                    - validUntil
+                    - refill
+                    - splitDispensing
+                - type: "null"
           required:
             - prescriptionType
             - prescriptionDate
@@ -1735,6 +1794,68 @@ components:
                   - days
                   - quantityText
                 additionalProperties: false
+            sourceMetadata:
+              default: null
+              anyOf:
+                - type: object
+                  properties:
+                    medicalInstitution:
+                      type: object
+                      properties:
+                        code:
+                          anyOf:
+                            - type: string
+                              maxLength: 64
+                            - type: "null"
+                        name:
+                          type: string
+                          maxLength: 128
+                      required:
+                        - code
+                        - name
+                      additionalProperties: false
+                    prescriberName:
+                      type: string
+                      maxLength: 128
+                    issueDate:
+                      type: string
+                      format: date
+                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                    validUntil:
+                      type: string
+                      format: date
+                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                    refill:
+                      anyOf:
+                        - type: object
+                          properties:
+                            total:
+                              type: integer
+                              minimum: 0
+                              maximum: 999
+                            remaining:
+                              type: integer
+                              minimum: 0
+                              maximum: 999
+                          required:
+                            - total
+                            - remaining
+                          additionalProperties: false
+                        - type: "null"
+                    splitDispensing:
+                      anyOf:
+                        - type: string
+                          maxLength: 256
+                        - type: "null"
+                  required:
+                    - medicalInstitution
+                    - prescriberName
+                    - issueDate
+                    - validUntil
+                    - refill
+                    - splitDispensing
+                  additionalProperties: false
+                - type: "null"
           required:
             - prescriptionType
             - prescriptionDate
@@ -1742,6 +1863,7 @@ components:
             - flags
             - note
             - rows
+            - sourceMetadata
           additionalProperties: false
         createdAt:
           type: string
@@ -1863,6 +1985,68 @@ components:
                   - days
                   - quantityText
                 additionalProperties: false
+            sourceMetadata:
+              default: null
+              anyOf:
+                - type: object
+                  properties:
+                    medicalInstitution:
+                      type: object
+                      properties:
+                        code:
+                          anyOf:
+                            - type: string
+                              maxLength: 64
+                            - type: "null"
+                        name:
+                          type: string
+                          maxLength: 128
+                      required:
+                        - code
+                        - name
+                      additionalProperties: false
+                    prescriberName:
+                      type: string
+                      maxLength: 128
+                    issueDate:
+                      type: string
+                      format: date
+                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                    validUntil:
+                      type: string
+                      format: date
+                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                    refill:
+                      anyOf:
+                        - type: object
+                          properties:
+                            total:
+                              type: integer
+                              minimum: 0
+                              maximum: 999
+                            remaining:
+                              type: integer
+                              minimum: 0
+                              maximum: 999
+                          required:
+                            - total
+                            - remaining
+                          additionalProperties: false
+                        - type: "null"
+                    splitDispensing:
+                      anyOf:
+                        - type: string
+                          maxLength: 256
+                        - type: "null"
+                  required:
+                    - medicalInstitution
+                    - prescriberName
+                    - issueDate
+                    - validUntil
+                    - refill
+                    - splitDispensing
+                  additionalProperties: false
+                - type: "null"
           required:
             - prescriptionType
             - prescriptionDate
@@ -1870,6 +2054,7 @@ components:
             - flags
             - note
             - rows
+            - sourceMetadata
           additionalProperties: false
         createdAt:
           type: string

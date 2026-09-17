@@ -27,6 +27,7 @@ const serverDraft: PrescriptionDraftResponse = {
   version: 2,
   draft: {
     prescriptionType: "OUTPATIENT",
+    sourceMetadata: null,
     prescriptionDate: "2026-08-25",
     defaultDays: 7,
     flags: ["PACKAGING"],
@@ -69,6 +70,79 @@ describe("prescription draft web persistence", () => {
         fromPrescriptionDraftResponse(serverDraft),
       ),
     ).toBe(true);
+  });
+
+  it("round-trips source metadata and defaults it to null when untouched", () => {
+    // 未入力なら additive の null を送る(既存 draft との互換)。
+    expect(
+      toPrescriptionDraftContent(createBlankPrescriptionDraft()).sourceMetadata,
+    ).toBeNull();
+
+    const withMetadata = {
+      ...createBlankPrescriptionDraft(),
+      institutionCode: "1312345",
+      institutionName: "合成クリニック",
+      prescriberName: "合成 医師",
+      issueDate: "2026-08-20",
+      validUntil: "2026-08-24",
+      refillTotal: "3",
+      refillRemaining: "2",
+      splitDispensing: "分割指示あり",
+    };
+    const content = toPrescriptionDraftContent(withMetadata);
+    expect(content.sourceMetadata).toEqual({
+      medicalInstitution: { code: "1312345", name: "合成クリニック" },
+      prescriberName: "合成 医師",
+      issueDate: "2026-08-20",
+      validUntil: "2026-08-24",
+      refill: { total: 3, remaining: 2 },
+      splitDispensing: "分割指示あり",
+    });
+
+    const roundTripped = fromPrescriptionDraftResponse({
+      ...serverDraft,
+      draft: { ...serverDraft.draft, sourceMetadata: content.sourceMetadata },
+    });
+    expect(roundTripped).toMatchObject({
+      institutionCode: "1312345",
+      issueDate: "2026-08-20",
+      refillTotal: "3",
+      refillRemaining: "2",
+    });
+  });
+
+  it("requires issue/validity dates once any metadata is entered and delegates ordering to the contract", () => {
+    expect(() =>
+      toPrescriptionDraftContent({
+        ...createBlankPrescriptionDraft(),
+        prescriberName: "合成 医師",
+      }),
+    ).toThrow("処方箋の発行日を入力してください。");
+    expect(() =>
+      toPrescriptionDraftContent({
+        ...createBlankPrescriptionDraft(),
+        issueDate: "2026-08-20",
+        prescriberName: "合成 医師",
+      }),
+    ).toThrow("処方箋の有効期限を入力してください。");
+    // validUntil < issueDate は contract schema が拒否し、ラベルは有効期限。
+    expect(() =>
+      toPrescriptionDraftContent({
+        ...createBlankPrescriptionDraft(),
+        issueDate: "2026-08-20",
+        validUntil: "2026-08-19",
+      }),
+    ).toThrow("有効期限を確認してください。");
+    // refill 残数超過も contract が拒否。
+    expect(() =>
+      toPrescriptionDraftContent({
+        ...createBlankPrescriptionDraft(),
+        issueDate: "2026-08-20",
+        validUntil: "2026-08-24",
+        refillTotal: "2",
+        refillRemaining: "3",
+      }),
+    ).toThrow("リフィル回数を確認してください。");
   });
 
   it("rejects non-integer days before sending clinical content", () => {

@@ -10,6 +10,7 @@ import {
 
 const validDraft = {
   prescriptionType: "OUTPATIENT",
+  sourceMetadata: null,
   prescriptionDate: "2026-08-25",
   defaultDays: 7,
   flags: ["PACKAGING"],
@@ -94,6 +95,87 @@ describe("prescription draft contracts", () => {
       prescriptionDraftContentSchema.parse({
         ...validDraft,
         note: "😀".repeat(PRESCRIPTION_DRAFT_NOTE_MAX_LENGTH + 1),
+      }),
+    ).toThrow();
+  });
+
+  it("accepts and validates source metadata (DOM-002 §4.2a / WP-7205)", () => {
+    const metadata = {
+      medicalInstitution: { code: "1312345", name: "合成クリニック" },
+      prescriberName: "合成 医師",
+      issueDate: "2026-08-20",
+      validUntil: "2026-08-24",
+      refill: { total: 3, remaining: 2 },
+      splitDispensing: "分割指示あり",
+    };
+    const parsed = prescriptionDraftContentSchema.parse({
+      ...validDraft,
+      sourceMetadata: metadata,
+    });
+    expect(parsed.sourceMetadata).toEqual(metadata);
+    // 省略時は additive に null へ既定。
+    expect(
+      prescriptionDraftContentSchema.parse({
+        prescriptionType: "OUTPATIENT",
+        prescriptionDate: null,
+        defaultDays: null,
+        flags: [],
+        note: "",
+        rows: validDraft.rows,
+      }).sourceMetadata,
+    ).toBeNull();
+  });
+
+  it("rejects invalid source metadata invariants", () => {
+    const base = {
+      medicalInstitution: { code: null, name: "合成クリニック" },
+      prescriberName: "合成 医師",
+      issueDate: "2026-08-20",
+      validUntil: "2026-08-24",
+      refill: null,
+      splitDispensing: null,
+    };
+    // validUntil < issueDate は拒否
+    expect(() =>
+      prescriptionDraftContentSchema.parse({
+        ...validDraft,
+        sourceMetadata: { ...base, validUntil: "2026-08-19" },
+      }),
+    ).toThrow();
+    // 実在しない暦日は拒否
+    expect(() =>
+      prescriptionDraftContentSchema.parse({
+        ...validDraft,
+        sourceMetadata: { ...base, issueDate: "2026-02-30" },
+      }),
+    ).toThrow();
+    // refill.remaining > total は拒否
+    expect(() =>
+      prescriptionDraftContentSchema.parse({
+        ...validDraft,
+        sourceMetadata: {
+          ...base,
+          refill: { total: 2, remaining: 3 },
+        },
+      }),
+    ).toThrow();
+    // 負数・小数は拒否
+    expect(() =>
+      prescriptionDraftContentSchema.parse({
+        ...validDraft,
+        sourceMetadata: {
+          ...base,
+          refill: { total: -1, remaining: 0 },
+        },
+      }),
+    ).toThrow();
+    expect(() =>
+      prescriptionDraftContentSchema.parse({
+        ...validDraft,
+        sourceMetadata: {
+          ...base,
+          refill: { total: 2.5, remaining: 1 },
+        },
       }),
     ).toThrow();
   });
