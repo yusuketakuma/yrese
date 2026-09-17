@@ -98,7 +98,7 @@ cursorを変更せず、PostgreSQLの過去historyを本projectionまたはFHIR 
 - Patient cutover前後を通じて本routeを維持し、`/fhir/R4/Patient/{id}`へ
   redirectしない。既存R-PATCTX consumer互換を壊さない。
 
-### POST /patients (0.3.0 PROPOSED — review/human approval まで実装根拠禁止)
+### POST /patients (0.3.0 — APPROVED 2026-09-17。実装は WP-7202)
 
 患者の新規登録。内部 authority(PostgreSQL `patients`)への write 経路であり、
 FHIR cutover(API-008)の対象外 — cutover 後の Patient create 経路は API-008 §2.1 の
@@ -142,7 +142,7 @@ initially disabled 規律が引き続き正本であり、本 endpoint はその
   監査は MOD-008 既存種別 `patient.created`(payload は patientId のみ)を
   response 返却前に永続化する。
 
-### PUT /patients/{patientId} (0.3.0 PROPOSED)
+### PUT /patients/{patientId} (0.3.0 — APPROVED 2026-09-17。実装は WP-7202)
 
 患者属性の更新。全項目置換ではなく差分 update とする。
 
