@@ -34,12 +34,15 @@ import {
 } from './db/reception-command.js';
 import { PostgresCoverageRecordCommand } from './db/coverage-command.js';
 import { PostgresCoverageRepository } from './db/coverage-repository.js';
+import { PostgresMasterRepository } from './db/master-repository.js';
 import { PostgresEligibilityRecordCommand } from './db/eligibility-snapshot-command.js';
 import { PostgresEligibilitySnapshotRepository } from './db/eligibility-snapshot-repository.js';
 import { PostgresReceptionRepository } from './db/reception-repository.js';
 import { operationsRoutes } from './operations-routes.js';
 import { InMemoryOperationsReadService } from './operations-service.js';
 import { InMemoryPatientRepository } from './patient-repository.js';
+import { InMemoryMasterRepository } from './master-repository.js';
+import { seedSyntheticMasters } from './master-seed.js';
 import {
   createPatientSearchCursorCodec,
   patientSearchCursorHmacKeyByteLength,
@@ -108,11 +111,25 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
     // 運用状態の読み取りが数えるのは、受付コマンドが実際に追記した intent である。
     // 同一インスタンスを buildServer と読み取りサービスへ共有する。
     const receptionOutbox = new InMemoryReceptionOutbox();
+    const masterRepository = new InMemoryMasterRepository();
+    // WP-7301/7303(MST-003): in-memory dev では synthetic master を
+    // 固定 dev scope へ seed する。dev header 経路の caller は
+    // x-dev-tenant=dev-tenant / x-dev-pharmacy=dev-pharmacy を使うこと。
+    // 他 scope への参照は空集合(scope 絞込み)。seed は冪等で監査対象外。
+    await seedSyntheticMasters(
+      masterRepository,
+      {
+        tenantId: process.env.YRESE_MASTER_SEED_TENANT_ID ?? 'dev-tenant',
+        pharmacyId: process.env.YRESE_MASTER_SEED_PHARMACY_ID ?? 'dev-pharmacy',
+      },
+      new Date().toISOString(),
+    );
     const server = buildServer({
       patientRepository,
       receptionRepository,
       auditRepository,
       receptionOutbox,
+      masterRepository,
       repositoryMode,
       tenantContextMode,
       patientSearchCursorCodec,
@@ -162,6 +179,9 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
       // WP-7203: coverage 記録・監査を単一トランザクションで原子化する。
       coverageRepository: new PostgresCoverageRepository(pool),
       coverageRecordCommand: new PostgresCoverageRecordCommand(pool),
+      // WP-7301/7303: master 読取(seed 投入は別経路 — 起動時の自動 seed は
+      // postgres では行わない。環境適用は WP-7102 runbook の管理下)。
+      masterRepository: new PostgresMasterRepository(pool),
       repositoryMode,
       tenantContextMode,
       patientSearchCursorCodec,

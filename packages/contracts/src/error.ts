@@ -14,6 +14,9 @@ export const errorResponseSchema = z.object({
       message: "errorCode must be registered in the error code registry",
     }),
   message: z.string().min(1),
+  // C-021(選択肢 b): queue bound 超過等の明示 error が運用者への次操作を
+  // 示すための optional 案内文。既存応答には出さない(additive)。
+  nextAction: z.string().min(1).max(500).optional(),
 });
 
 export type ErrorResponse = z.infer<typeof errorResponseSchema>;

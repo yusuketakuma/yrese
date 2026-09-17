@@ -49,6 +49,11 @@ import {
 } from './coverage-command.js';
 import { coverageRoutes } from './coverage-routes.js';
 import {
+  InMemoryMasterRepository,
+  type MasterRepository,
+} from './master-repository.js';
+import { masterRoutes } from './master-routes.js';
+import {
   InMemoryReceptionRepository,
   type ReceptionRepository,
 } from './reception-repository.js';
@@ -190,6 +195,11 @@ export interface BuildServerOptions {
    */
   readonly coverageRepository?: CoverageRepository;
   readonly coverageRecordCommand?: CoverageRecordCommand;
+  /**
+   * WP-7301/WP-7303: master 読取境界。in-memory 既定は空リポジトリ
+   * (seed は main.ts / seedSyntheticMasters が行う。テストは自前で seed)。
+   */
+  readonly masterRepository?: MasterRepository;
   readonly receptionOutbox?: InMemoryReceptionOutbox;
   readonly now?: () => Date;
   readonly repositoryMode?: ApiRepositoryMode;
@@ -219,7 +229,8 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       options.eligibilityRecordCommand === undefined ||
       options.patientWriteCommand === undefined ||
       options.coverageRepository === undefined ||
-      options.coverageRecordCommand === undefined)
+      options.coverageRecordCommand === undefined ||
+      options.masterRepository === undefined)
   ) {
     throw new Error(postgresCompositionConfigurationErrorMessage);
   }
@@ -282,6 +293,8 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       coverageRepository,
       auditRepository,
     });
+  const masterRepository =
+    options.masterRepository ?? new InMemoryMasterRepository();
   const now = options.now ?? (() => new Date());
   const server = Fastify({
     logger: false,
@@ -361,6 +374,8 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     auditRepository,
     now,
   });
+
+  server.register(masterRoutes, { masterRepository });
 
   server.register(auditLogRoutes, { repository: auditRepository, now });
 

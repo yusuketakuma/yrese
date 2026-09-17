@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from 'pg';
 import {
   patientSearchResultSchema,
   receptionQueueEntrySchema,
+  RECEPTION_QUEUE_MAX_ENTRIES,
   type PatientSearchResult,
   type ReceptionQueueEntry,
 } from '@yrese/contracts';
@@ -764,8 +765,16 @@ export class PostgresReceptionRepository implements ReceptionRepository {
         AND es.snapshot_id = r.eligibility_snapshot_id
        WHERE r.tenant_id = $1 AND r.pharmacy_id = $2 AND r.business_date = $3::date
        -- C collation: database locale に依存しない code point 順で in-memory 実装と一致させる。
-       ORDER BY r.accepted_at ASC, r.reception_id COLLATE "C" ASC`,
-      [command.tenantId, command.pharmacyId, command.date],
+       ORDER BY r.accepted_at ASC, r.reception_id COLLATE "C" ASC
+       -- C-021(選択肢 b): 防御的 cap。超過検出用に cap+1 まで読み、
+       -- route が cap 超過を検出して明示 error にする。
+       LIMIT $4`,
+      [
+        command.tenantId,
+        command.pharmacyId,
+        command.date,
+        RECEPTION_QUEUE_MAX_ENTRIES + 1,
+      ],
     );
 
     const rows = snapshotUnboundedDatabaseQueryRows<ReceptionEntryRow>(

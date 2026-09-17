@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from 'pg';
 
 import {
   RECEPTION_IDEMPOTENCY_KEY_MAX_LENGTH,
+  RECEPTION_QUEUE_MAX_ENTRIES,
   type PatientSearchResult,
 } from '@yrese/contracts';
 import { patientId, pharmacyId, tenantId } from '@yrese/shared-kernel';
@@ -1480,14 +1481,21 @@ describe('PostgresReceptionRepository client lifecycle', () => {
     const firstCall = query.mock.calls[0] as unknown[] | undefined;
     const sql = firstCall?.[0];
     const values = firstCall?.[1];
-    expect(values).toEqual([listInput.tenantId, listInput.pharmacyId, listInput.date]);
+    expect(values).toEqual([
+      listInput.tenantId,
+      listInput.pharmacyId,
+      listInput.date,
+      RECEPTION_QUEUE_MAX_ENTRIES + 1,
+    ]);
     expect(String(sql)).toContain(
       'WHERE r.tenant_id = $1 AND r.pharmacy_id = $2 AND r.business_date = $3::date',
     );
     expect(String(sql)).toContain(
       'ORDER BY r.accepted_at ASC, r.reception_id COLLATE "C" ASC',
     );
-    expect(String(sql)).not.toMatch(/\b(?:LIMIT|OFFSET)\b/i);
+    // C-021(選択肢 b): cap+1 件まで読み、route が超過を検出する防御的 LIMIT。
+    expect(String(sql)).toContain('LIMIT $4');
+    expect(String(sql)).not.toMatch(/\bOFFSET\b/i);
   });
 
   it('requires own data authority for reception ID and status in list projection', async () => {
@@ -2276,6 +2284,7 @@ describe('Reception list command authority parity', () => {
       listInput.tenantId,
       listInput.pharmacyId,
       listInput.date,
+      RECEPTION_QUEUE_MAX_ENTRIES + 1,
     ]);
   });
 
@@ -2372,6 +2381,7 @@ describe('Reception list command authority parity', () => {
         listInput.tenantId,
         listInput.pharmacyId,
         listInput.date,
+        RECEPTION_QUEUE_MAX_ENTRIES + 1,
       ]);
       return { rows: [] };
     });

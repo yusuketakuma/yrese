@@ -7,6 +7,11 @@ import { patientIdWireSchema, receptionIdWireSchema } from "./wire-id.js";
 
 export const RECEPTION_IDEMPOTENCY_KEY_MAX_LENGTH = 128;
 
+// C-021(選択肢 b / INV-20260730-01): 日次 queue の防御的 cap。
+// 実測 1000 件 ≒ 310KiB/40ms で病理的水準(3000+/日 ≒ 933KiB)の手前。
+// repository は cap+1 件まで返し、route が `> cap` で明示 error にする。
+export const RECEPTION_QUEUE_MAX_ENTRIES = 1000;
+
 const controlCharacterPattern = /[\u0000-\u001f\u007f]/;
 
 function hasNoControlCharacters(value: string): boolean {

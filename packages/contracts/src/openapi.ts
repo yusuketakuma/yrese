@@ -22,6 +22,11 @@ import {
 import { errorResponseSchema, frameworkErrorResponseSchema } from "./error.js";
 import { healthResponseSchema } from "./health.js";
 import {
+  masterMedicationsResponseSchema,
+  masterQuerySchema,
+  masterUsagesResponseSchema,
+} from "./master.js";
+import {
   migrationStateResponseSchema,
   outboxSummaryResponseSchema,
   receptionSummaryQuerySchema,
@@ -342,6 +347,25 @@ const prescriptionDraftSaveResponseOpenApiSchema =
     description:
       "Prescription draft save result, including created/updated/unchanged disposition. Contains clinical PHI.",
   });
+
+const masterQueryOpenApiSchema = masterQuerySchema.meta({
+  id: "MasterQuery",
+  description:
+    "Explicit asOf date is mandatory — the server never resolves an implicit 'today' (MOD-011). q is optional, max 100 chars: prefix match on localCode, substring match on name/text, case-sensitive code-point comparison (COLLATE \"C\" parity).",
+});
+
+const masterMedicationsResponseOpenApiSchema =
+  masterMedicationsResponseSchema.meta({
+    id: "MasterMedicationsResponse",
+    description:
+      "Medication items of the master version valid at asOf (masterVersion is null when no version covers asOf — empty result, not 404). Non-PHI; synthetic distribution only (RB-009).",
+  });
+
+const masterUsagesResponseOpenApiSchema = masterUsagesResponseSchema.meta({
+  id: "MasterUsagesResponse",
+  description:
+    "Usage items of the master version valid at asOf (masterVersion is null when no version covers asOf). Non-PHI; synthetic distribution only (RB-009).",
+});
 
 const outboxSummaryResponseOpenApiSchema = outboxSummaryResponseSchema.meta({
   id: "OutboxSummaryResponse",
@@ -666,6 +690,64 @@ const openApiDefinition = {
         },
       },
     },
+    "/masters/medications": {
+      get: {
+        operationId: "listMedicationMasters",
+        tags: ["masters"],
+        summary: "List medication master items valid at an explicit asOf (MST-003)",
+        description:
+          "Requires master:read scope. asOf is mandatory — the server never resolves an implicit 'today'. q filters by localCode prefix or name substring (case-sensitive, code-point order). Returns masterVersion=null with an empty items array when no version covers asOf (existence is not disclosed across scopes). Synthetic data only — real master import remains blocked by RB-009. Non-PHI: no read audit and no no-store requirement (MST-003 §5).",
+        "x-yrese-ssot": "MST-003",
+        "x-yrese-required-scopes": ["master:read"],
+        requestParams: {
+          query: masterQueryOpenApiSchema,
+        },
+        responses: {
+          "200": {
+            description: "Medication items of the version valid at asOf",
+            content: {
+              [jsonContentType]: {
+                schema: masterMedicationsResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse(
+            "Invalid master query (missing/invalid asOf or q — MST-0001)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: false }),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+    },
+    "/masters/usages": {
+      get: {
+        operationId: "listUsageMasters",
+        tags: ["masters"],
+        summary: "List usage master items valid at an explicit asOf (MST-003)",
+        description:
+          "Requires master:read scope. asOf is mandatory — the server never resolves an implicit 'today'. q filters by localCode prefix or text substring (case-sensitive, code-point order). Returns masterVersion=null with an empty items array when no version covers asOf. Synthetic data only — real master import remains blocked by RB-009. Non-PHI: no read audit and no no-store requirement (MST-003 §5).",
+        "x-yrese-ssot": "MST-003",
+        "x-yrese-required-scopes": ["master:read"],
+        requestParams: {
+          query: masterQueryOpenApiSchema,
+        },
+        responses: {
+          "200": {
+            description: "Usage items of the version valid at asOf",
+            content: {
+              [jsonContentType]: {
+                schema: masterUsagesResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse(
+            "Invalid master query (missing/invalid asOf or q — MST-0001)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: false }),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+    },
     "/reception/queue": {
       get: {
         operationId: "getReceptionQueue",
@@ -693,6 +775,9 @@ const openApiDefinition = {
           ),
           "403": forbiddenErrorResponse({ noStore: false }),
           "500": internalErrorResponse({ noStore: true }),
+          "503": domainErrorResponse(
+            "Queue exceeds the defensive bound RECEPTION_QUEUE_MAX_ENTRIES (RCV-0007). PHI-free response carrying nextAction; no queue.viewed audit is recorded",
+          ),
         },
       },
     },

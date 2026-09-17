@@ -197,6 +197,7 @@ describe('loadMigrationFiles', () => {
           '000015_patient_write_and_identity_history.sql',
           '000016_coverage_tables.sql',
           '000017_add_prescription_draft_source_metadata.sql',
+          '000018_master_foundation_tables.sql',
         ]);
       } finally {
         process.chdir(originalCwd);

@@ -15,6 +15,7 @@ export * from "./coverage.js";
 export * from "./eligibility-snapshot.js";
 export * from "./error.js";
 export * from "./health.js";
+export * from "./master.js";
 export * from "./openapi.js";
 export * from "./operations-status.js";
 export * from "./partner-event.js";

@@ -13,9 +13,9 @@ owner: fable5
 reviewers:
   - opus4.8
   - codex (backend実装可能性)
-version: 0.3.2
+version: 0.3.3
 created_at: 2026-07-09
-updated_at: 2026-09-17
+updated_at: 2026-09-18
 source_refs: [UIX-001 §12(SCR-001), UIX-001 §11(業務導線), API-001 v0.2.2(様式先例), API-003(公開API共通土台), DOM-004 §2(受付副状態機械)]
 depends_on: [API-001, API-002, API-003, DOM-004(処方ライフサイクルとの分界), MOD-005(状態台帳 — 改版前提), MOD-006(error_code_registry — 改版前提), MOD-007(permission registry — 改版前提), MOD-008(監査種別 — 改版前提), MOD-011(date-time policy)]
 impacts: [packages/contracts, apps/api, apps/web(WP-3009 SCR-001), packages/shared-kernel(RECEPTION_STATUSES / PERMISSION_RESOURCES / RCV エラーコード / ReceptionId factory 追加)]
@@ -34,6 +34,7 @@ change_log:
   - "0.3.0 2026-09-17 独立 review(Devin in-session、Oracle 不使用)訂正: migration 000014(version/status_changed_at/cancel_reason 列)への依存と、Idempotency-Key を要求しない If-Match CAS 冪等性の根拠(API-013 update 規則)を明記"
   - "0.3.0 2026-09-17 finalization: 独立 review 反映済み本文のまま direct human approval(SSOT batch 一括 APPROVE)により PROPOSED→APPROVED。承認範囲は SSOT 改版のみで、migration 000014 適用・実装完了・production action を含まない。API_CONTRACT_BLOCKED は昇格により解除"
   - "0.3.1 2026-09-17 WP-7201 実装着手時の契約ギャップ解消(direct human approval による APPROVED 維持改版): (a) transitions の受付不存在 404 へ RCV-0006 を割当(MOD-006 0.1.4 に登録) (b) `businessReason` の形式を MOD-008 構造化理由コード `/^[A-Z][A-Z0-9_]{2,63}$/` に確定(自由記述禁止 — wire・cancel_reason 列・監査 businessReason.code に同値) (c) ReceptionQueueEntry に `version: integer >=1` を追加 — expectedVersion CAS は現在 version の取得経路を必要とし、queue 応答が唯一の監視 read であるため(PHI 非含有の additive 変更)"
+  - "0.3.3 2026-09-18 WP-7105 — C-021 queue bound 決定(選択肢 b、direct human approval)を実装反映: GET /reception/queue に `RECEPTION_QUEUE_MAX_ENTRIES = 1000` の防御的 cap を追加(超過は 503 + `RCV-0007` + `nextAction`、監査非記録)。errorResponseSchema に optional `nextAction` を additive 追加。既存の wire・認可・冪等規則は不変"
   - "0.3.2 2026-09-18 WP-7204 実装着手時の additive 改版: ReceptionQueueEntry に `eligibility` を追加(API-019 の受付単位資格状態を queue が公開 — state / snapshotId / allowsProvisionalCalculation / allowsFinalCalculation は全てサーバ導出で、UI は患者要約 eligibilityStatus や独自推測で代替しない。PHI 非含有の additive 変更)"
   - "0.2.3 2026-08-26 WP-5104 reference-only cutover to UIX-001 §§11〜12; API contract semantics unchanged"
   - "body history authority: 本文§8変更履歴をversioned content historyのauthoritative sourceとして維持"
@@ -81,6 +82,7 @@ ReceptionQueueEntry = {
 ```
 
 - 1薬局・1日のキューは有界のため初期契約はページネーションなし(全件)。肥大が実測された場合は API-001 と同型の cursor を改版で追加する。
+- **防御的 cap(0.3.3 — C-021 選択肢 b、direct human approval 2026-09-18)**: 応答上限は `RECEPTION_QUEUE_MAX_ENTRIES = 1000` 件。repository は cap+1 件まで読み、超過時は `503` + `RCV-0007` + `nextAction` を返す(errorResponseSchema の optional `nextAction`)。超過応答は PHI を含まず、`reception.queue.viewed` 監査は記録しない(結果を返却していないため)。実測根拠: INV-20260730-01(1000件 ≒ 310KiB/40ms)。
 - キューの並びは **acceptedAt 昇順 + receptionId 昇順の安定順序**を契約とする(acceptedAt 同値時も決定的な順序 — テストの安定性と表示の再現性のため。並び替えはクライアント責務)。
 - `receptionId` は wire 上は素の string を維持する。ただし契約検証は shared-kernel の `receptionId()` factory と同水準に揃え、非空・空白のみ拒否・制御文字拒否・最大128文字を fail-closed に拒否する(WP-4046)。
 
@@ -175,6 +177,7 @@ shared-kernel へ同一バッチで実装済み**(WP-3009-BE/93aefa1。CAL-007 �
 - 404(0.3.1): transitions の対象 receptionId が当該テナント・薬局内に存在しない → `RCV-0006`(reception not found。非露出規則は RCV-0002 と同型)
 - 409: idempotencyKey conflict(同一 key + 異なる patientId)→ `RCV-0003`(idempotency conflict)
 - 409(0.3.0): 不許可遷移 → `RCV-0004`、version conflict → `RCV-0005`(MOD-006 への登録提案を含む)
+- 503(0.3.3): queue 件数が cap(`RECEPTION_QUEUE_MAX_ENTRIES`)超過 → `RCV-0007`(queue bound exceeded)+ `nextAction`(MOD-006 0.1.6)
 - **エラーコードの体系: domain は `RECEPTION`、code prefix は `RCV`**(「domain RCV」ではない — 現行 shared-kernel の ErrorDomain 体系に従い、MOD-006 に「RECEPTION domain は RCV prefix を使用する」旨を明記して登録済み)。`RCV-0001/0002/0003` は MOD-006 + shared-kernel KERNEL_ERROR_CODES へ登録済み(WP-3009-BE/93aefa1)。WP-4036 以降、registry 未登録 errorCode は契約 parse で fail-closed に落ちる。
 - キュー0件は 200 + 空配列(エラーではない)。
 

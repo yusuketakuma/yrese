@@ -5,12 +5,14 @@ import {
   receptionQueueEntrySchema,
   receptionQueueQuerySchema,
   receptionQueueResponseSchema,
+  RECEPTION_QUEUE_MAX_ENTRIES,
   type ReceptionQueueEntry,
   type ReceptionQueueResponse,
 } from '@yrese/contracts';
 import { CalendarDate } from '@yrese/date-time';
 import {
   RECEPTION_INVALID_REQUEST_ERROR_CODE,
+  RECEPTION_QUEUE_BOUND_EXCEEDED_ERROR_CODE,
   permissionScope,
   userId,
 } from '@yrese/shared-kernel';
@@ -54,6 +56,11 @@ export const receptionQueueAuditClockReadErrorMessage =
   'Reception queue audit clock read failed';
 export const receptionQueueAuditClockInvariantErrorMessage =
   'Reception queue audit clock returned an invalid instant';
+// C-021(選択肢 b): cap 超過を schema invariant の 500 と区別する sentinel。
+// snapshotDenseArray の maximum.errorMessage として渡し、route が同値比較で
+// 503 + RCV-0007 へ写像する(PHI 非含有・監査非記録 — 結果を返却しないため)。
+export const receptionQueueBoundExceededMessage =
+  'Reception queue exceeds the servable bound';
 
 export function snapshotReceptionEntryIdentity(
   value: unknown,
@@ -183,7 +190,32 @@ const callback: FastifyPluginCallback<ReceptionQueueRoutesOptions> = (
         throw new Error(receptionQueueRepositoryErrorMessage);
       }
 
-      const rawEntries = snapshotDenseArray(entries, receptionQueueSchemaInvariantErrorMessage);
+      let rawEntries: readonly unknown[];
+      try {
+        rawEntries = snapshotDenseArray(
+          entries,
+          receptionQueueSchemaInvariantErrorMessage,
+          {
+            length: RECEPTION_QUEUE_MAX_ENTRIES,
+            errorMessage: receptionQueueBoundExceededMessage,
+          },
+        );
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === receptionQueueBoundExceededMessage
+        ) {
+          return reply.code(503).send(
+            errorResponseSchema.parse({
+              errorCode: RECEPTION_QUEUE_BOUND_EXCEEDED_ERROR_CODE,
+              message: receptionQueueBoundExceededMessage,
+              nextAction:
+                '当日受付件数が上限を超えています。件数が正常であれば運用手順に従ってシステム管理者へ連絡してください。',
+            }),
+          );
+        }
+        throw error;
+      }
       const entrySnapshots = rawEntries.map((entry) => {
         const identity = snapshotReceptionEntryIdentity(
           entry,

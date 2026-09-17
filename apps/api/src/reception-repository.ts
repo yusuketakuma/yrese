@@ -3,6 +3,7 @@ import {
   receptionIdempotencyKeySchema,
   patientSearchResultSchema,
   RECEPTION_BUSINESS_REASON_CODE_PATTERN,
+  RECEPTION_QUEUE_MAX_ENTRIES,
   type PatientSearchResult,
   type ReceptionQueueEntry,
   type ReceptionStatus,
@@ -566,6 +567,10 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
           record.date === command.date,
       )
       .sort(sortRecords)
+      // C-021(選択肢 b): Postgres 側の LIMIT cap+1 と同じ bound を
+      // in-memory にも適用し、route が `> RECEPTION_QUEUE_MAX_ENTRIES` を
+      // 検出できるようにする(超過検出用に +1)。
+      .slice(0, RECEPTION_QUEUE_MAX_ENTRIES + 1)
       .map((record) => toEntry(record, this.eligibilityStore));
   }
 

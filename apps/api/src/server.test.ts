@@ -8,6 +8,7 @@ import {
 import {
   PATIENT_SEARCH_CURSOR_MAX_LENGTH,
   PATIENT_SEARCH_DEFAULT_LIMIT,
+  RECEPTION_QUEUE_MAX_ENTRIES,
   type PatientSearchResult,
   type PatientVersionedSummary,
 } from '@yrese/contracts';
@@ -2778,6 +2779,36 @@ describe('buildServer', () => {
     expect(response.json()).toMatchObject({
       message: receptionQueueSchemaInvariantErrorMessage,
     });
+  });
+
+  it('returns 503 RCV-0007 when the queue exceeds the defensive cap and does not record a view audit', async () => {
+    const record = vi.fn<AuditRepository['record']>();
+    const entries = new Array(RECEPTION_QUEUE_MAX_ENTRIES + 1).fill({});
+    const server = buildDevTestServer({
+      receptionRepository: {
+        list: vi.fn<ReceptionRepository['list']>(async () => entries as never),
+        transition: vi.fn<ReceptionRepository['transition']>(),
+        create: vi.fn<ReceptionRepository['create']>(),
+      },
+      auditRepository: { record, list: vi.fn<AuditRepository['list']>(async () => []) },
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/reception/queue?date=2026-07-09',
+      headers: tenantOneReceptionReadHeaders,
+    });
+    await server.close();
+
+    expect(response.statusCode).toBe(503);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toEqual({
+      errorCode: 'RCV-0007',
+      message: 'Reception queue exceeds the servable bound',
+      nextAction:
+        '当日受付件数が上限を超えています。件数が正常であれば運用手順に従ってシステム管理者へ連絡してください。',
+    });
+    expect(record).not.toHaveBeenCalled();
   });
 
   it('rejects a reception queue array index accessor without invoking it', async () => {

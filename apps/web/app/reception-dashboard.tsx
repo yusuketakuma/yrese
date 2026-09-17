@@ -20,6 +20,7 @@ import {
   RECEPTION_INVALID_TRANSITION_ERROR_CODE,
   RECEPTION_NOT_FOUND_ERROR_CODE,
   RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE,
+  RECEPTION_QUEUE_BOUND_EXCEEDED_ERROR_CODE,
   RECEPTION_VERSION_CONFLICT_ERROR_CODE,
   permissionScope,
   type EligibilityStatus,
@@ -159,6 +160,8 @@ function expectedReceptionErrorCode(
   if (operation === "queue") {
     if (status === 400) return RECEPTION_INVALID_REQUEST_ERROR_CODE;
     if (status === 403) return AUTH_PERMISSION_DENIED_ERROR_CODE;
+    // C-021(選択肢 b): 防御的 cap 超過は 503 + RCV-0007 で返る。
+    if (status === 503) return RECEPTION_QUEUE_BOUND_EXCEEDED_ERROR_CODE;
     return undefined;
   }
   if (operation === "transition") {
@@ -231,6 +234,13 @@ export async function fetchReceptionQueue(
       throw createTrustedReceptionError(
         "日付の指定が不正です。",
         "日付(YYYY-MM-DD)を確認して再表示してください。",
+        errorCode,
+      );
+    }
+    if (res.status === 503) {
+      throw createTrustedReceptionError(
+        "当日の受付件数が表示上限を超えています。",
+        "件数が正常であれば運用手順に従ってシステム管理者へ連絡してください。",
         errorCode,
       );
     }

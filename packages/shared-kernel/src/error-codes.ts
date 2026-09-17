@@ -276,6 +276,30 @@ export const KERNEL_ERROR_CODES = [
     requiresHumanReview: false,
     description: "invalid patient write request",
   },
+  {
+    code: "RCV-0007",
+    domain: "RECEPTION",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "reception queue bound exceeded",
+  },
+  {
+    code: "MST-0001",
+    domain: "MASTER",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "invalid master query",
+  },
+  {
+    code: "MST-0002",
+    domain: "MASTER",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "master version lookup reserved",
+  },
 ] as const satisfies readonly ErrorCodeDef[];
 
 export const AUTH_PERMISSION_DENIED_ERROR_CODE = KERNEL_ERROR_CODES[0].code;
@@ -308,6 +332,10 @@ export const PATIENT_VERSION_CONFLICT_ERROR_CODE = KERNEL_ERROR_CODES[21].code;
 export const PATIENT_IMMUTABLE_FIELD_ERROR_CODE = KERNEL_ERROR_CODES[22].code;
 export const PATIENT_IDEMPOTENCY_CONFLICT_ERROR_CODE = KERNEL_ERROR_CODES[23].code;
 export const PATIENT_WRITE_INVALID_REQUEST_ERROR_CODE = KERNEL_ERROR_CODES[24].code;
+export const RECEPTION_QUEUE_BOUND_EXCEEDED_ERROR_CODE =
+  KERNEL_ERROR_CODES[25].code;
+export const MASTER_INVALID_QUERY_ERROR_CODE = KERNEL_ERROR_CODES[26].code;
+export const MASTER_VERSION_NOT_FOUND_ERROR_CODE = KERNEL_ERROR_CODES[27].code;
 
 export function createKernelErrorCodeRegistry(): ErrorCodeRegistry {
   const registry = new ErrorCodeRegistry();
