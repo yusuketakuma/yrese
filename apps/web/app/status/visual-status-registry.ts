@@ -23,6 +23,7 @@ import type {
   ErrorSeverity,
   PrescriptionChangeType,
   ProvisionalStatus,
+  ReceptionEligibilityState,
   ReceptionStatus,
   RecordLifecycleStatus,
   SessionStatus,
@@ -144,6 +145,67 @@ export const ELIGIBILITY_PRESENTATION: Record<EligibilityStatus, StatusPresentat
     label: "資格未確認",
     tone: "attention",
     shape: "△",
+    ariaRole: "status",
+    ariaLive: "polite",
+  },
+};
+
+/**
+ * 受付単位の資格確認状態(shared-kernel ReceptionEligibilityState、API-019/WP-7204)。
+ * 患者要約の EligibilityStatus とは別概念 — 受付に紐づく snapshot からサーバが
+ * 導出する値であり、画面はこのドメイン経由でのみ表示する(推測・再実装禁止)。
+ * EXPIRED/MISMATCH は請求不可の終端なので blocked、PROVISIONAL 系は pending。
+ */
+export const RECEPTION_ELIGIBILITY_PRESENTATION: Record<
+  ReceptionEligibilityState,
+  StatusPresentation
+> = {
+  UNVERIFIED: {
+    label: "資格未確認",
+    tone: "attention",
+    shape: "△",
+    ariaRole: "status",
+    ariaLive: "polite",
+  },
+  VERIFIED_MYNA: {
+    label: "資格確認済み(マイナ)",
+    tone: "ok",
+    shape: "●",
+    ariaRole: "status",
+    ariaLive: "polite",
+  },
+  VERIFIED_CARD: {
+    label: "資格確認済み(保険証)",
+    tone: "ok",
+    shape: "●",
+    ariaRole: "status",
+    ariaLive: "polite",
+  },
+  PROVISIONAL_VISUAL: {
+    label: "資格仮確認(目視)",
+    tone: "pending",
+    shape: "↻",
+    ariaRole: "status",
+    ariaLive: "polite",
+  },
+  OFFLINE_PROVISIONAL: {
+    label: "資格仮確認(オフライン)",
+    tone: "pending",
+    shape: "↻",
+    ariaRole: "status",
+    ariaLive: "polite",
+  },
+  EXPIRED: {
+    label: "資格有効期限切れ(請求不可)",
+    tone: "blocked",
+    shape: "■",
+    ariaRole: "status",
+    ariaLive: "polite",
+  },
+  MISMATCH: {
+    label: "資格不一致(要照合)",
+    tone: "blocked",
+    shape: "■",
     ariaRole: "status",
     ariaLive: "polite",
   },
@@ -319,6 +381,10 @@ export type StatusQuery =
   | { readonly domain: "severity"; readonly key: ErrorSeverity }
   | { readonly domain: "system-mode"; readonly key: SystemMode }
   | { readonly domain: "eligibility"; readonly key: EligibilityStatus }
+  | {
+      readonly domain: "reception-eligibility";
+      readonly key: ReceptionEligibilityState;
+    }
   | { readonly domain: "reception"; readonly key: ReceptionStatus }
   | { readonly domain: "provisional"; readonly key: ProvisionalStatus }
   | { readonly domain: "record-lifecycle"; readonly key: RecordLifecycleStatus }
@@ -338,6 +404,8 @@ export function resolveStatus(query: StatusQuery): StatusPresentation {
       return SYSTEM_MODE_PRESENTATION[query.key];
     case "eligibility":
       return ELIGIBILITY_PRESENTATION[query.key];
+    case "reception-eligibility":
+      return RECEPTION_ELIGIBILITY_PRESENTATION[query.key];
     case "reception":
       return RECEPTION_PRESENTATION[query.key];
     case "provisional":
@@ -382,5 +450,9 @@ export const SEX_LABELS: Record<"male" | "female" | "unknown", string> = {
 };
 export const RECEPTION_STATUS_LABELS: Record<ReceptionStatus, string> =
   projectLabels(RECEPTION_PRESENTATION);
+export const RECEPTION_ELIGIBILITY_STATUS_LABELS: Record<
+  ReceptionEligibilityState,
+  string
+> = projectLabels(RECEPTION_ELIGIBILITY_PRESENTATION);
 export const PROVISIONAL_STATUS_LABELS: Record<ProvisionalStatus, string> =
   projectLabels(PROVISIONAL_PRESENTATION);

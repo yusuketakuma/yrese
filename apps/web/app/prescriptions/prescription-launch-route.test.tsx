@@ -34,6 +34,13 @@ import {
 } from "./prescription-launch-route";
 import { ReceptionError } from "../reception-dashboard";
 
+const unverifiedEligibility = {
+  state: "UNVERIFIED" as const,
+  snapshotId: null,
+  allowsProvisionalCalculation: false,
+  allowsFinalCalculation: false,
+};
+
 (globalThis as { React?: typeof React }).React = React;
 
 const LAUNCH = {
@@ -98,6 +105,7 @@ const QUEUE_ENTRY: ReceptionQueueEntry = {
   acceptedAt: "2026-08-25T00:30:00.000Z",
   receptionStatus: "WAITING",
   prescriptionIntakeType: "paper",
+  eligibility: unverifiedEligibility,
   version: 1,
   patient: {
     patientId: "patient-b",

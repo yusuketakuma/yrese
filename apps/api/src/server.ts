@@ -40,6 +40,16 @@ import {
 } from './reception-repository.js';
 import { receptionCreateRoutes } from './reception-create-routes.js';
 import { receptionQueueRoutes } from './reception-queue-routes.js';
+import {
+  ComposedEligibilityRecordCommand,
+  type EligibilityRecordCommand,
+} from './eligibility-snapshot-command.js';
+import {
+  EligibilityReceptionNotFoundError,
+  InMemoryEligibilitySnapshotRepository,
+  type EligibilitySnapshotRepository,
+} from './eligibility-snapshot-repository.js';
+import { eligibilitySnapshotRoutes } from './eligibility-snapshot-routes.js';
 import { receptionTransitionRoutes } from './reception-transition-routes.js';
 import { snapshotWallClock } from './route-invariants.js';
 
@@ -141,6 +151,18 @@ export interface BuildServerOptions {
    * (Postgres 構成は main.ts が PostgresReceptionTransitionCommand を注入する)。
    */
   readonly receptionTransitionCommand?: ReceptionTransitionCommand;
+  /**
+   * WP-7204: 資格 snapshot 永続境界。in-memory 既定では receptionRepository と
+   * 同一 store を共有する。独自 receptionRepository 注入時は未指定なら
+   * fail-closed(常に受付不在として振る舞う)の stub を使う。
+   */
+  readonly eligibilitySnapshotRepository?: EligibilitySnapshotRepository;
+  /**
+   * WP-7204: 資格記録コマンド境界。未指定なら eligibilitySnapshotRepository /
+   * auditRepository を合成した in-memory unit of work を使う
+   * (Postgres 構成は main.ts が PostgresEligibilityRecordCommand を注入する)。
+   */
+  readonly eligibilityRecordCommand?: EligibilityRecordCommand;
   readonly receptionOutbox?: InMemoryReceptionOutbox;
   readonly now?: () => Date;
   readonly repositoryMode?: ApiRepositoryMode;
@@ -165,7 +187,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   if (
     options.repositoryMode === 'postgres' &&
     (options.receptionCreateCommand === undefined ||
-      options.receptionTransitionCommand === undefined)
+      options.receptionTransitionCommand === undefined ||
+      options.eligibilitySnapshotRepository === undefined ||
+      options.eligibilityRecordCommand === undefined)
   ) {
     throw new Error(postgresCompositionConfigurationErrorMessage);
   }
@@ -173,6 +197,28 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const patientRepository = options.patientRepository ?? new InMemoryPatientRepository();
   const receptionRepository = options.receptionRepository ?? new InMemoryReceptionRepository();
   const auditRepository = options.auditRepository ?? new InMemoryAuditRepository();
+  // WP-7204: 独自 receptionRepository が注入された場合は資格 store を共有できない。
+  // その構成では eligibility 経路を fail-closed(常に受付不在)に倒す
+  // (テスト用注入モックは eligibility route を叩かない前提)。
+  const eligibilitySnapshotRepository: EligibilitySnapshotRepository =
+    options.eligibilitySnapshotRepository ??
+    (receptionRepository instanceof InMemoryReceptionRepository
+      ? new InMemoryEligibilitySnapshotRepository(
+          receptionRepository,
+          receptionRepository.eligibilityStore,
+        )
+      : {
+          recordForReception: () =>
+            Promise.reject(new EligibilityReceptionNotFoundError()),
+          viewForReception: () =>
+            Promise.reject(new EligibilityReceptionNotFoundError()),
+        });
+  const eligibilityRecordCommand =
+    options.eligibilityRecordCommand ??
+    new ComposedEligibilityRecordCommand({
+      eligibilitySnapshotRepository,
+      auditRepository,
+    });
   const receptionOutbox = options.receptionOutbox ?? new InMemoryReceptionOutbox();
   const receptionCreateCommand =
     options.receptionCreateCommand ??
@@ -245,6 +291,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   server.register(receptionTransitionRoutes, {
     receptionTransitionCommand,
+    now,
+  });
+
+  server.register(eligibilitySnapshotRoutes, {
+    eligibilityRecordCommand,
+    eligibilitySnapshotRepository,
+    auditRepository,
     now,
   });
 

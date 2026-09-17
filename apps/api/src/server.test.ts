@@ -126,6 +126,14 @@ function buildDefaultTestServer(options: BuildServerOptions = {}) {
   });
 }
 
+// WP-7204: queue entry の資格表示(API-006 0.3.2)。未確認受付の既定値。
+const unverifiedEligibility = {
+  state: 'UNVERIFIED' as const,
+  snapshotId: null,
+  allowsProvisionalCalculation: false,
+  allowsFinalCalculation: false,
+};
+
 const tenantOnePatientReadHeaders = {
   'x-dev-tenant': 'tenant-001',
   'x-dev-pharmacy': 'pharmacy-001',
@@ -2802,6 +2810,7 @@ describe('buildServer', () => {
       },
       receptionStatus: 'WAITING' as const,
       prescriptionIntakeType: 'paper' as const,
+      eligibility: unverifiedEligibility,
       version: 1,
     };
     Object.defineProperty(entry, 'acceptedAt', { enumerable: true, get: getterRead });
@@ -2915,6 +2924,7 @@ describe('buildServer', () => {
       acceptedAt: '2026-07-09T09:00:00.000Z',
       receptionStatus: 'WAITING' as const,
       prescriptionIntakeType: 'paper' as const,
+      eligibility: unverifiedEligibility,
       version: 1,
     });
     const entries = [entry];
@@ -2949,11 +2959,12 @@ describe('buildServer', () => {
           acceptedAt: '2026-07-09T09:00:00.000Z',
           receptionStatus: 'WAITING',
           prescriptionIntakeType: 'paper',
+          eligibility: unverifiedEligibility,
           version: 1,
         },
       ],
     });
-    expect(descriptorRead).toHaveBeenCalledTimes(14);
+    expect(descriptorRead).toHaveBeenCalledTimes(15);
     expect(directRead).not.toHaveBeenCalled();
   });
 
@@ -2963,6 +2974,7 @@ describe('buildServer', () => {
       acceptedAt: '2026-07-09T15:00:00.000Z',
       receptionStatus: 'WAITING' as const,
       prescriptionIntakeType: 'paper' as const,
+      eligibility: unverifiedEligibility,
       version: 1,
       patient: {
         patientId: 'patient-jst-boundary',
@@ -3004,6 +3016,7 @@ describe('buildServer', () => {
         acceptedAt,
         receptionStatus: 'WAITING' as const,
         prescriptionIntakeType: 'paper' as const,
+        eligibility: unverifiedEligibility,
         version: 1,
         patient: {
           patientId: `patient-canonical-${date}`,
@@ -3043,6 +3056,7 @@ describe('buildServer', () => {
         acceptedAt,
         receptionStatus: 'WAITING' as const,
         prescriptionIntakeType: 'paper' as const,
+        eligibility: unverifiedEligibility,
         version: 1,
         patient: {
           patientId: 'patient-calendar-sensitive-4232',
@@ -3096,6 +3110,7 @@ describe('buildServer', () => {
       acceptedAt,
       receptionStatus: 'WAITING' as const,
       prescriptionIntakeType: 'paper' as const,
+      eligibility: unverifiedEligibility,
       version: 1,
       patient: {
         patientId: 'patient-wrong-date-sensitive',
@@ -3147,6 +3162,7 @@ describe('buildServer', () => {
       acceptedAt: '2026-07-09T00:15:00.000Z',
       receptionStatus: 'WAITING' as const,
       prescriptionIntakeType: 'paper' as const,
+      eligibility: unverifiedEligibility,
       version: 1,
       patient: {
         patientId: 'patient-valid-sensitive',
@@ -3209,6 +3225,7 @@ describe('buildServer', () => {
         acceptedAt: '2026-07-09T00:15:00.000Z',
         receptionStatus: 'WAITING' as const,
         prescriptionIntakeType: 'paper' as const,
+        eligibility: unverifiedEligibility,
         version: 1,
         patient: {
           patientId: 'patient-reception-duplicate-a',
@@ -3287,6 +3304,7 @@ describe('buildServer', () => {
       acceptedAt: '2026-07-09T09:00:00.000Z',
       receptionStatus: 'WAITING' as const,
       prescriptionIntakeType: 'paper' as const,
+      eligibility: unverifiedEligibility,
       version: 1,
       patient: {
         patientId: 'patient-schema-before-duplicate-a-4202',
@@ -3461,6 +3479,7 @@ describe('buildServer', () => {
       acceptedAt: acceptedAt.toISOString(),
       receptionStatus: 'WAITING',
       prescriptionIntakeType: 'paper',
+      eligibility: unverifiedEligibility,
       version: 1,
       patient: {
         patientId: 'patient-syn-004',
@@ -3664,6 +3683,7 @@ describe('buildServer', () => {
             acceptedAt: acceptedAt.toISOString(),
             receptionStatus: 'WAITING' as const,
             prescriptionIntakeType: 'paper' as const,
+            eligibility: unverifiedEligibility,
             version: 1,
             patient: input.patient,
           },
@@ -3739,6 +3759,7 @@ describe('buildServer', () => {
               acceptedAt: acceptedAt.toISOString(),
               receptionStatus: 'COMPLETED',
               prescriptionIntakeType: 'paper',
+              eligibility: unverifiedEligibility,
               version: 1,
               patient: input.patient,
             },
@@ -3960,6 +3981,7 @@ describe('buildServer', () => {
             acceptedAt: acceptedAt.toISOString(),
             receptionStatus: 'WAITING',
             prescriptionIntakeType: 'paper',
+            eligibility: unverifiedEligibility,
             version: 1,
             patient: input.patient,
           };
@@ -4029,6 +4051,7 @@ describe('buildServer', () => {
               acceptedAt: acceptedAt.toISOString(),
               receptionStatus: 'WAITING',
               prescriptionIntakeType: 'paper',
+              eligibility: unverifiedEligibility,
               version: 1,
               patient,
             };
@@ -4110,6 +4133,7 @@ describe('buildServer', () => {
               acceptedAt: acceptedAt.toISOString(),
               receptionStatus: 'WAITING',
               prescriptionIntakeType: 'paper',
+              eligibility: unverifiedEligibility,
               version: 1,
               patient: layer === 'patient' ? hostileProxy : patient,
             };
@@ -4194,6 +4218,7 @@ describe('buildServer', () => {
             acceptedAt: acceptedAt.toISOString(),
             receptionStatus: 'WAITING',
             prescriptionIntakeType: 'paper',
+            eligibility: unverifiedEligibility,
             version: 1,
             patient,
           });
@@ -4226,7 +4251,7 @@ describe('buildServer', () => {
       receptionId: 'reception-descriptor-graph-4199',
       patient: { eligibilityCheckedAt: '2026-07-09T08:16:15.000Z' },
     });
-    expect(descriptorRead).toHaveBeenCalledTimes(22);
+    expect(descriptorRead).toHaveBeenCalledTimes(23);
     expect(directRead).not.toHaveBeenCalled();
   });
 
@@ -4248,6 +4273,7 @@ describe('buildServer', () => {
             acceptedAt: acceptedAt.toISOString(),
             receptionStatus: 'WAITING' as const,
             prescriptionIntakeType: 'paper' as const,
+            eligibility: unverifiedEligibility,
             version: 1,
             patient: input.patient,
           };
@@ -4565,6 +4591,7 @@ describe('buildServer', () => {
           acceptedAt: acceptedAt.toISOString(),
           receptionStatus: 'WAITING',
           prescriptionIntakeType: 'paper',
+          eligibility: unverifiedEligibility,
           version: 1,
           patient: input.patient,
         },
@@ -5035,6 +5062,7 @@ describe('buildServer', () => {
               acceptedAt: 'invalid-sensitive-instant',
               receptionStatus: 'WAITING',
               prescriptionIntakeType: 'paper',
+              eligibility: unverifiedEligibility,
               version: 1,
               patient: {
                 patientId: 'patient-syn-004',
@@ -5119,6 +5147,7 @@ describe('buildServer', () => {
               acceptedAt: '2026-07-09T09:00:00.000Z',
               receptionStatus: 'WAITING',
               prescriptionIntakeType: 'paper',
+              eligibility: unverifiedEligibility,
               version: 1,
               patient: {
                 patientId: mismatchedPatientId,
@@ -5193,6 +5222,7 @@ describe('buildServer', () => {
           acceptedAt: input.acceptedAt.toISOString(),
           receptionStatus: 'WAITING' as const,
           prescriptionIntakeType: 'paper' as const,
+          eligibility: unverifiedEligibility,
           version: 1,
           patient: { ...input.patient, ...patientMutation },
         },
@@ -5277,6 +5307,7 @@ describe('buildServer', () => {
             acceptedAt: input.acceptedAt.toISOString(),
             receptionStatus: 'WAITING' as const,
             prescriptionIntakeType: 'paper' as const,
+            eligibility: unverifiedEligibility,
             version: 1,
             patient: returnedPatient as unknown as PatientSearchResult,
           },
@@ -5344,6 +5375,7 @@ describe('buildServer', () => {
           acceptedAt: input.acceptedAt.toISOString(),
           receptionStatus: 'WAITING',
           prescriptionIntakeType: 'paper',
+          eligibility: unverifiedEligibility,
           version: 1,
           patient: { ...input.patient, name: '合成返却差替4207' },
         },
@@ -5401,6 +5433,7 @@ describe('buildServer', () => {
             acceptedAt: '2026-07-09T09:00:00.001Z',
             receptionStatus: 'COMPLETED',
             prescriptionIntakeType: 'paper',
+            eligibility: unverifiedEligibility,
             version: 1,
             patient: { ...input.patient, patientNumber: 'PRECEDENCE-DRIFT-4207' },
           },
@@ -5439,6 +5472,7 @@ describe('buildServer', () => {
         acceptedAt: 'invalid-sensitive-instant',
         receptionStatus: 'WAITING' as const,
         prescriptionIntakeType: 'paper' as const,
+        eligibility: unverifiedEligibility,
         version: 1,
         patient: {
           patientId: 'patient-syn-004',
@@ -5522,6 +5556,7 @@ describe('buildServer', () => {
               acceptedAt: '2026-07-09T09:00:00.000Z',
               receptionStatus,
               prescriptionIntakeType: 'paper',
+              eligibility: unverifiedEligibility,
               version: 1,
               patient: input.patient,
             },
@@ -5587,6 +5622,7 @@ describe('buildServer', () => {
               acceptedAt: returnedAcceptedAt,
               receptionStatus: 'WAITING',
               prescriptionIntakeType: 'paper',
+              eligibility: unverifiedEligibility,
               version: 1,
               patient: input.patient,
             },
@@ -5882,6 +5918,7 @@ describe('buildServer', () => {
           acceptedAt: acceptedAtIso,
           receptionStatus: 'WAITING',
           prescriptionIntakeType: 'paper',
+          eligibility: unverifiedEligibility,
           version: 1,
           patient: input.patient,
         },
@@ -5939,6 +5976,7 @@ describe('buildServer', () => {
         acceptedAt: acceptedAt.toISOString(),
         receptionStatus: 'WAITING',
         prescriptionIntakeType: 'paper',
+        eligibility: unverifiedEligibility,
         version: 1,
         patient: input.patient,
       },
@@ -6331,6 +6369,7 @@ describe('buildServer', () => {
             acceptedAt: '2026-07-09T09:00:00.000Z',
             receptionStatus: 'IN_PROGRESS',
             prescriptionIntakeType: 'paper',
+            eligibility: unverifiedEligibility,
             version: 1,
             patient: {
               patientId: 'patient-syn-004',

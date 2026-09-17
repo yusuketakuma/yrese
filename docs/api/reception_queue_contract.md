@@ -13,7 +13,7 @@ owner: fable5
 reviewers:
   - opus4.8
   - codex (backend実装可能性)
-version: 0.3.1
+version: 0.3.2
 created_at: 2026-07-09
 updated_at: 2026-09-17
 source_refs: [UIX-001 §12(SCR-001), UIX-001 §11(業務導線), API-001 v0.2.2(様式先例), API-003(公開API共通土台), DOM-004 §2(受付副状態機械)]
@@ -34,6 +34,7 @@ change_log:
   - "0.3.0 2026-09-17 独立 review(Devin in-session、Oracle 不使用)訂正: migration 000014(version/status_changed_at/cancel_reason 列)への依存と、Idempotency-Key を要求しない If-Match CAS 冪等性の根拠(API-013 update 規則)を明記"
   - "0.3.0 2026-09-17 finalization: 独立 review 反映済み本文のまま direct human approval(SSOT batch 一括 APPROVE)により PROPOSED→APPROVED。承認範囲は SSOT 改版のみで、migration 000014 適用・実装完了・production action を含まない。API_CONTRACT_BLOCKED は昇格により解除"
   - "0.3.1 2026-09-17 WP-7201 実装着手時の契約ギャップ解消(direct human approval による APPROVED 維持改版): (a) transitions の受付不存在 404 へ RCV-0006 を割当(MOD-006 0.1.4 に登録) (b) `businessReason` の形式を MOD-008 構造化理由コード `/^[A-Z][A-Z0-9_]{2,63}$/` に確定(自由記述禁止 — wire・cancel_reason 列・監査 businessReason.code に同値) (c) ReceptionQueueEntry に `version: integer >=1` を追加 — expectedVersion CAS は現在 version の取得経路を必要とし、queue 応答が唯一の監視 read であるため(PHI 非含有の additive 変更)"
+  - "0.3.2 2026-09-18 WP-7204 実装着手時の additive 改版: ReceptionQueueEntry に `eligibility` を追加(API-019 の受付単位資格状態を queue が公開 — state / snapshotId / allowsProvisionalCalculation / allowsFinalCalculation は全てサーバ導出で、UI は患者要約 eligibilityStatus や独自推測で代替しない。PHI 非含有の additive 変更)"
   - "0.2.3 2026-08-26 WP-5104 reference-only cutover to UIX-001 §§11〜12; API contract semantics unchanged"
   - "body history authority: 本文§8変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W5A metadata-only completion: body/status/version/approval/effective semantics unchanged"
@@ -67,8 +68,15 @@ ReceptionQueueEntry = {
   patient: PatientSummary,       // §4(患者検索の結果形状を再利用)
   acceptedAt: string,            // ISO datetime(サーバー採番)
   receptionStatus: ReceptionStatus,       // §5
-  prescriptionIntakeType: 'paper'         // 初期は紙のみ。電子処方箋は BLOCKED(ONS=WP-0016)—
+  prescriptionIntakeType: 'paper',        // 初期は紙のみ。電子処方箋は BLOCKED(ONS=WP-0016)—
                                           // 'electronic' は解除後に後方互換な enum 追加として改版
+  version: integer,              // >=1(0.3.1)。遷移 CAS(expectedVersion/If-Match)の現在値取得経路
+  eligibility: {                 // 0.3.2 — API-019 の受付単位資格状態(サーバ導出、snapshot 由来)
+    state: ReceptionEligibilityState,     // shared-kernel RECEPTION_ELIGIBILITY_STATES(UNVERIFIED 等)
+    snapshotId: string | null,            // 紐づく snapshot。UNVERIFIED では null
+    allowsProvisionalCalculation: boolean, // shared-kernel 導出関数由来(UI は再推測しない)
+    allowsFinalCalculation: boolean        // 同上
+  }
 }
 ```
 
@@ -190,6 +198,9 @@ shared-kernel へ同一バッチで実装済み**(WP-3009-BE/93aefa1。CAL-007 �
 
 ## 変更履歴
 
+- 0.3.2 (2026-09-18): WP-7204 — `ReceptionQueueEntry.eligibility` を追加(API-019 の
+  受付単位資格状態を queue entry が公開。サーバ導出の state / snapshotId /
+  allowsProvisionalCalculation / allowsFinalCalculation のみで PHI 非含有の additive 変更)。
 - 0.3.0 (2026-09-17): WP-7201 — 受付状態遷移 endpoint(§2 transitions)を追加。
   遷移表の正本は DOM-004 §2、CAS は expectedVersion + `If-Match` 併用、CANCELLED は
   businessReason 必須(MOD-008 `reception.cancelled` 規律)。エラーへ RCV-0004(不許可遷移)/

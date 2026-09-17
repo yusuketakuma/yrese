@@ -22,6 +22,13 @@ import {
   type TenantId,
 } from '@yrese/shared-kernel';
 
+import {
+  createInMemoryEligibilityStore,
+  findLinkedSnapshot,
+  toReceptionEligibility,
+  type InMemoryEligibilityStore,
+  type ReceptionEligibility,
+} from './eligibility-snapshot-repository.js';
 import { snapshotDateInstant } from './instant.js';
 import {
   createOwnDataPropertyReader,
@@ -183,6 +190,11 @@ interface ReceptionRecord {
   readonly statusChangedAt: string;
   readonly cancelReason?: string;
   readonly idempotencyKey?: string;
+  /**
+   * 現在紐づく資格 snapshot(API-019)。未確認は null。
+   * eligibility リポジトリ内部境界(linkEligibilitySnapshot)経由でのみ更新する。
+   */
+  readonly eligibilitySnapshotId: string | null;
 }
 
 interface IdempotencyRecord {
@@ -236,6 +248,7 @@ const syntheticReceptionRecords = [
     receptionStatus: 'WAITING',
     version: 1,
     statusChangedAt: '2026-07-09T08:30:00.000Z',
+    eligibilitySnapshotId: null,
   },
   {
     tenantId: tenantId('tenant-001'),
@@ -248,6 +261,7 @@ const syntheticReceptionRecords = [
     receptionStatus: 'IN_PROGRESS',
     version: 2,
     statusChangedAt: '2026-07-09T08:35:00.000Z',
+    eligibilitySnapshotId: null,
   },
   {
     tenantId: tenantId('tenant-001'),
@@ -260,6 +274,7 @@ const syntheticReceptionRecords = [
     receptionStatus: 'COMPLETED',
     version: 2,
     statusChangedAt: '2026-07-09T09:00:00.000Z',
+    eligibilitySnapshotId: null,
   },
 ] as const satisfies readonly ReceptionRecord[];
 
@@ -345,7 +360,16 @@ function snapshotInMemoryPatient(
   }
 }
 
-function toEntry(record: ReceptionRecord): ReceptionQueueEntry {
+function toEntry(
+  record: ReceptionRecord,
+  eligibilityStore: InMemoryEligibilityStore,
+): ReceptionQueueEntry {
+  // queue entry の資格表示は受付業務日付で導出した snapshot 状態(API-006 0.3.2)。
+  // 患者要約の eligibilityStatus とは別概念であり、UI はこの値だけを表示する。
+  const eligibility: ReceptionEligibility = toReceptionEligibility(
+    findLinkedSnapshot(eligibilityStore, record.eligibilitySnapshotId),
+    record.date,
+  );
   return receptionQueueEntrySchema.parse({
     receptionId: record.receptionId,
     patient: record.patient,
@@ -353,6 +377,7 @@ function toEntry(record: ReceptionRecord): ReceptionQueueEntry {
     receptionStatus: record.receptionStatus,
     prescriptionIntakeType: 'paper',
     version: record.version,
+    eligibility,
   });
 }
 
@@ -519,10 +544,16 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
   private nextSequence: number;
   private readonly records: ReceptionRecord[];
   private readonly idempotencyRecords = new Map<string, IdempotencyRecord>();
+  /**
+   * WP-7204: queue entry の資格導出が参照する共有 store。
+   * buildServer が同じインスタンスを InMemoryEligibilitySnapshotRepository へ渡す。
+   */
+  readonly eligibilityStore: InMemoryEligibilityStore;
 
-  constructor() {
-    this.records = [...syntheticReceptionRecords];
+  constructor(eligibilityStore?: InMemoryEligibilityStore) {
+    this.records = syntheticReceptionRecords.map((record) => ({ ...record }));
     this.nextSequence = syntheticReceptionRecords.length + 1;
+    this.eligibilityStore = eligibilityStore ?? createInMemoryEligibilityStore();
   }
 
   async list(input: ReceptionListInput): Promise<readonly ReceptionQueueEntry[]> {
@@ -535,7 +566,7 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
           record.date === command.date,
       )
       .sort(sortRecords)
-      .map(toEntry);
+      .map((record) => toEntry(record, this.eligibilityStore));
   }
 
   async create(input: ReceptionCreateInput): Promise<ReceptionCreateResult> {
@@ -589,7 +620,7 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
       }
       return {
         kind: 'existing',
-        entry: toEntry(existingRecord),
+        entry: toEntry(existingRecord, this.eligibilityStore),
         provenance,
       };
     }
@@ -628,6 +659,7 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
       version: 1,
       statusChangedAt: acceptedAt,
       idempotencyKey: command.idempotencyKey,
+      eligibilitySnapshotId: null,
     };
     this.nextSequence += 1;
     this.records.push(record);
@@ -637,8 +669,91 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
 
     return {
       kind: 'created',
-      entry: toEntry(record),
+      entry: toEntry(record, this.eligibilityStore),
       provenance: toProvenance(record),
+    };
+  }
+
+  /**
+   * WP-7204: in-memory eligibility リポジトリとの内部境界(API 面には出さない)。
+   * 受付のスコープ内存在検査・患者紐づけ・現在の snapshot link を返す。
+   */
+  eligibilityLinkTarget(command: {
+    readonly tenantId: TenantId;
+    readonly pharmacyId: PharmacyId;
+    readonly receptionId: ReceptionId;
+  }): { readonly patientId: string; readonly snapshotId: string | null; readonly businessDate: string } | undefined {
+    const record = this.records.find(
+      (entry) =>
+        entry.tenantId === command.tenantId &&
+        entry.pharmacyId === command.pharmacyId &&
+        entry.receptionId === command.receptionId,
+    );
+    if (record === undefined) {
+      return undefined;
+    }
+    return {
+      patientId: record.patientId,
+      snapshotId: record.eligibilitySnapshotId,
+      businessDate: record.date,
+    };
+  }
+
+  /**
+   * WP-7204: eligibility snapshot 記録と同一 unit of work で受付の link を更新する
+   * (in-memory)。link の単独 API は持たない。
+   */
+  linkEligibilitySnapshot(command: {
+    readonly tenantId: TenantId;
+    readonly pharmacyId: PharmacyId;
+    readonly receptionId: ReceptionId;
+    readonly snapshotId: string;
+  }): void {
+    const index = this.records.findIndex(
+      (entry) =>
+        entry.tenantId === command.tenantId &&
+        entry.pharmacyId === command.pharmacyId &&
+        entry.receptionId === command.receptionId,
+    );
+    const record = this.records[index];
+    if (record === undefined) {
+      throw new Error(inMemoryReceptionIdempotencyInvariantErrorMessage);
+    }
+    this.records[index] = {
+      ...record,
+      eligibilitySnapshotId: command.snapshotId,
+    };
+  }
+
+  /**
+   * WP-7204: in-memory unit of work の補償専用。直前に link した受付を、
+   * 監査追記が失敗した同一 unit of work 内でだけ直前の link へ戻す。
+   * 現行 link が巻き戻し対象の snapshotId と一致しない限り復元しない
+   * (rollbackTransition と同じ規律)。
+   */
+  restoreEligibilityLink(command: {
+    readonly tenantId: TenantId;
+    readonly pharmacyId: PharmacyId;
+    readonly receptionId: ReceptionId;
+    readonly snapshotId: string;
+    readonly priorSnapshotId: string | null;
+  }): void {
+    const index = this.records.findIndex(
+      (entry) =>
+        entry.tenantId === command.tenantId &&
+        entry.pharmacyId === command.pharmacyId &&
+        entry.receptionId === command.receptionId,
+    );
+    const record = this.records[index];
+    if (
+      record === undefined ||
+      record.eligibilitySnapshotId !== command.snapshotId
+    ) {
+      throw new Error(receptionTransitionUndoInvariantErrorMessage);
+    }
+    this.records[index] = {
+      ...record,
+      eligibilitySnapshotId: command.priorSnapshotId,
     };
   }
 

@@ -114,6 +114,11 @@ export function snapshotReceptionEntry(
       'version',
       invariantErrorMessage,
     ),
+    eligibility: readRequiredOwnEnumerableDataProperty(
+      value,
+      'eligibility',
+      invariantErrorMessage,
+    ),
   });
 }
 

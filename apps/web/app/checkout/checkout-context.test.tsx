@@ -19,6 +19,13 @@ import { PatientContextProvider } from "../components/patient-context";
 import { UnsavedWorkProvider } from "../components/unsaved-work";
 import { PrescriptionOriginProvider } from "../prescriptions/prescription-origin-context";
 
+const unverifiedEligibility = {
+  state: "UNVERIFIED" as const,
+  snapshotId: null,
+  allowsProvisionalCalculation: false,
+  allowsFinalCalculation: false,
+};
+
 (globalThis as { React?: typeof React }).React = React;
 
 const BUSINESS_DATE = "2026-08-25";
@@ -43,6 +50,7 @@ function queueEntry(
     acceptedAt: "2026-08-25T01:00:00.000Z",
     receptionStatus: "WAITING",
     prescriptionIntakeType: "paper",
+    eligibility: unverifiedEligibility,
     version: 1,
   };
 }

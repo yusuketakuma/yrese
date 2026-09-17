@@ -115,6 +115,11 @@ const storedRow = {
   patient_number: patient.patientNumber,
   eligibility_status: patient.eligibilityStatus,
   eligibility_checked_at: null,
+  business_date: '2026-07-13',
+  elig_snapshot_id: null,
+  elig_state: null,
+  elig_valid_from: null,
+  elig_valid_to: null,
 };
 
 function createdRowFromInsertValues(values: readonly unknown[] | undefined) {

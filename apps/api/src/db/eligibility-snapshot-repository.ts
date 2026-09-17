@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 
 import { CalendarDate } from '@yrese/date-time';
 import { snapshotDatabaseInstant } from '../instant.js';
@@ -80,6 +80,14 @@ export class EligibilityMethodError extends RangeError {
   }
 }
 
+/** 受付が tenant/pharmacy スコープ内に存在しない(route は 404 INS-0008 へ正規化)。 */
+export class EligibilityReceptionNotFoundError extends RangeError {
+  constructor() {
+    super('reception not found in scope');
+    this.name = 'EligibilityReceptionNotFoundError';
+  }
+}
+
 /** 同一 snapshotId が異なる payload で既に存在する場合の競合(冪等 retry ではない)。 */
 export class EligibilitySnapshotConflictError extends Error {
   constructor(snapshotId: string) {
@@ -127,7 +135,9 @@ function businessDate(value: string, label: string): CalendarDate {
 
 /** 有効期間外は EXPIRED(有効開始前も含む。fail-closed)。 */
 export function deriveEligibilityState(
-  snapshot: EligibilitySnapshot | undefined,
+  snapshot:
+    | Pick<EligibilitySnapshot, 'state' | 'validFrom' | 'validTo'>
+    | undefined,
   asOfDate: string,
 ): ReceptionEligibilityState {
   const asOf = businessDate(asOfDate, 'asOfDate');
@@ -149,7 +159,9 @@ const selectSnapshotColumns = `s.snapshot_id, s.patient_id, s.verified_method, s
   s.raw_response_ref, s.recorded_by`;
 
 const selectReceptionSnapshotSql = `
-  SELECT r.patient_id AS reception_patient_id, ${selectSnapshotColumns}
+  SELECT r.patient_id AS reception_patient_id,
+         to_char(r.business_date, 'YYYY-MM-DD') AS reception_business_date,
+         ${selectSnapshotColumns}
     FROM reception_entries r
     LEFT JOIN eligibility_snapshots s
       ON s.tenant_id = r.tenant_id AND s.pharmacy_id = r.pharmacy_id
@@ -158,10 +170,160 @@ const selectReceptionSnapshotSql = `
 
 type ReceptionSnapshotRow = Partial<SnapshotRow> & {
   readonly reception_patient_id: string;
+  readonly reception_business_date: string;
   readonly snapshot_id: string | null;
 };
 
 const lockKeyDelimiter = '\u001f';
+
+/** record 結果の区別(API-019 §2: 新規 201 / 冪等再送 200 の根拠)。 */
+export interface EligibilitySnapshotRecordResult {
+  readonly kind: 'recorded' | 'existing';
+  readonly snapshot: EligibilitySnapshot;
+  /**
+   * in-memory unit of work の補償用 opaque 証跡(監査失敗時の巻き戻し)。
+   * Postgres 実装はトランザクションで巻き戻すため null を返す。
+   */
+  readonly undo: unknown;
+}
+
+/** GET /eligibility-snapshots 用の一括読出し結果(受付業務日付で導出)。 */
+export interface EligibilitySnapshotView {
+  readonly businessDate: string;
+  readonly current: ReceptionEligibility;
+  readonly snapshots: readonly EligibilitySnapshot[];
+}
+
+/**
+ * 呼び出し側が所有するトランザクション内で snapshot 記録 + 受付紐づけを実行する
+ * (BEGIN/COMMIT/ROLLBACK は呼び出し側の責務 — runReceptionCreateWithinTransaction と
+ * 同じ規律)。PostgresEligibilitySnapshotCommand が監査追記と同一 tx で束ねる。
+ */
+export async function runEligibilityRecordWithinTransaction(
+  client: PoolClient,
+  scope: EligibilityScope,
+  receptionId: string,
+  input: RecordEligibilitySnapshotInput,
+): Promise<EligibilitySnapshotRecordResult> {
+  if (!isEligibilityMethodConsistent(input.verifiedMethod, input.state)) {
+    throw new EligibilityMethodError(input.verifiedMethod, input.state);
+  }
+  businessDate(input.validFrom, 'validFrom');
+  if (input.validTo !== undefined && input.validTo !== null)
+    businessDate(input.validTo, 'validTo');
+  businessDate(input.asOfDate, 'asOfDate');
+  await client.query(
+    'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+    [
+      ['eligibility', scope.tenantId, scope.pharmacyId, receptionId].join(
+        lockKeyDelimiter,
+      ),
+    ],
+  );
+  const current = await client.query<ReceptionSnapshotRow>(
+    selectReceptionSnapshotSql,
+    [scope.tenantId, scope.pharmacyId, receptionId],
+  );
+  const row = current.rows[0];
+  if (row === undefined) throw new EligibilityReceptionNotFoundError();
+  const currentSnapshotRow =
+    row.snapshot_id === null ? undefined : (row as SnapshotRow);
+  const currentSnapshot =
+    currentSnapshotRow === undefined
+      ? undefined
+      : toSnapshot(currentSnapshotRow);
+  // 応答喪失後の同一入力リトライ(M6): 既に当該 snapshot が受付に紐づいていれば成功扱いで返す。
+  // 冪等判定は保存された全入力フィールドの一致を要求する。同一 snapshotId で
+  // 内容の異なる再送は retry ではなく payload 衝突として拒否する(旧実装は
+  // 3 field のみ比較し、変更済み入力を旧 snapshot として黙って受理した)。
+  if (
+    currentSnapshot !== undefined &&
+    currentSnapshotRow !== undefined &&
+    currentSnapshot.snapshotId === input.snapshotId
+  ) {
+    const identical =
+      currentSnapshot.state === input.state &&
+      currentSnapshot.verifiedMethod === input.verifiedMethod &&
+      currentSnapshot.verifiedAt ===
+        snapshotDatabaseInstant(
+          input.verifiedAt,
+          'Eligibility snapshot input returned an invalid verified_at instant',
+        ) &&
+      currentSnapshot.validFrom === input.validFrom &&
+      currentSnapshot.validTo === (input.validTo ?? null) &&
+      currentSnapshotRow.raw_response_ref === (input.rawResponseRef ?? null) &&
+      currentSnapshotRow.recorded_by === input.recordedBy;
+    if (!identical) {
+      throw new EligibilitySnapshotConflictError(input.snapshotId);
+    }
+    return { kind: 'existing', snapshot: currentSnapshot, undo: null };
+  }
+  const from = deriveEligibilityState(currentSnapshot, input.asOfDate);
+  if (!isEligibilityTransitionAllowed(from, input.state)) {
+    throw new EligibilityTransitionError(from, input.state);
+  }
+  let inserted: { rows: SnapshotRow[] };
+  try {
+    inserted = await client.query<SnapshotRow>(
+      `INSERT INTO eligibility_snapshots AS s
+         (tenant_id, pharmacy_id, snapshot_id, patient_id, verified_method, state, verified_at,
+          valid_from, valid_to, raw_response_ref, recorded_by, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9::date, $10, $11, $12)
+       RETURNING ${selectSnapshotColumns}`,
+      [
+        scope.tenantId,
+        scope.pharmacyId,
+        input.snapshotId,
+        row.reception_patient_id,
+        input.verifiedMethod,
+        input.state,
+        input.verifiedAt,
+        input.validFrom,
+        input.validTo ?? null,
+        input.rawResponseRef ?? null,
+        input.recordedBy,
+        input.now,
+      ],
+    );
+  } catch (error) {
+    // snapshotId は scope 内で一意(PK)。当該受付に紐づいていない snapshotId が
+    // 既に存在する(別受付への付与・同時 INSERT race)場合は生の 23505 を
+    // 漏らさず domain conflict に正規化する。constraint 名のピンではなく
+    // table 単位で判定する(制約追加や index 作成順で報告 constraint が
+    // 変わっても raw 23505 を漏らさない)。この文が到達し得る一意違反は
+    // snapshot 識別子の衝突だけ — sequence_number は GENERATED ALWAYS で
+    // 文が値を供給しないため sequence_unique はここでは発火しない。将来
+    // この table に非 snapshotId 系の一意制約を足す場合はこの判定を見直すこと。
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      (error as { code?: unknown }).code === '23505' &&
+      (error as { table?: unknown }).table === 'eligibility_snapshots'
+    ) {
+      throw new EligibilitySnapshotConflictError(input.snapshotId);
+    }
+    throw error;
+  }
+  const attached = await client.query(
+    `UPDATE reception_entries SET eligibility_snapshot_id = $4
+      WHERE tenant_id = $1 AND pharmacy_id = $2 AND reception_id = $3
+        AND eligibility_snapshot_id IS NOT DISTINCT FROM $5`,
+    [
+      scope.tenantId,
+      scope.pharmacyId,
+      receptionId,
+      input.snapshotId,
+      currentSnapshot?.snapshotId ?? null,
+    ],
+  );
+  if (attached.rowCount !== 1)
+    throw new RangeError('reception eligibility changed concurrently');
+  return {
+    kind: 'recorded',
+    snapshot: toSnapshot(inserted.rows[0]!),
+    undo: null,
+  };
+}
 
 export class PostgresEligibilitySnapshotRepository {
   constructor(private readonly pool: Pool) {}
@@ -174,125 +336,58 @@ export class PostgresEligibilitySnapshotRepository {
     scope: EligibilityScope,
     receptionId: string,
     input: RecordEligibilitySnapshotInput,
-  ): Promise<EligibilitySnapshot> {
-    if (!isEligibilityMethodConsistent(input.verifiedMethod, input.state)) {
-      throw new EligibilityMethodError(input.verifiedMethod, input.state);
-    }
-    businessDate(input.validFrom, 'validFrom');
-    if (input.validTo !== undefined && input.validTo !== null)
-      businessDate(input.validTo, 'validTo');
-    businessDate(input.asOfDate, 'asOfDate');
+  ): Promise<EligibilitySnapshotRecordResult> {
     return runInPooledTransaction(this.pool, async (client) => {
-      await client.query(
-        'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
-        [
-          ['eligibility', scope.tenantId, scope.pharmacyId, receptionId].join(
-            lockKeyDelimiter,
-          ),
-        ],
+      const result = await runEligibilityRecordWithinTransaction(
+        client,
+        scope,
+        receptionId,
+        input,
       );
-      const current = await client.query<ReceptionSnapshotRow>(
-        selectReceptionSnapshotSql,
-        [scope.tenantId, scope.pharmacyId, receptionId],
-      );
-      const row = current.rows[0];
-      if (row === undefined)
-        throw new RangeError('reception not found in scope');
-      const currentSnapshotRow =
-        row.snapshot_id === null ? undefined : (row as SnapshotRow);
-      const currentSnapshot =
-        currentSnapshotRow === undefined
-          ? undefined
-          : toSnapshot(currentSnapshotRow);
-      // 応答喪失後の同一入力リトライ(M6): 既に当該 snapshot が受付に紐づいていれば成功扱いで返す。
-      // 冪等判定は保存された全入力フィールドの一致を要求する。同一 snapshotId で
-      // 内容の異なる再送は retry ではなく payload 衝突として拒否する(旧実装は
-      // 3 field のみ比較し、変更済み入力を旧 snapshot として黙って受理した)。
-      if (
-        currentSnapshot !== undefined &&
-        currentSnapshotRow !== undefined &&
-        currentSnapshot.snapshotId === input.snapshotId
-      ) {
-        const identical =
-          currentSnapshot.state === input.state &&
-          currentSnapshot.verifiedMethod === input.verifiedMethod &&
-          currentSnapshot.verifiedAt ===
-            snapshotDatabaseInstant(
-              input.verifiedAt,
-              'Eligibility snapshot input returned an invalid verified_at instant',
-            ) &&
-          currentSnapshot.validFrom === input.validFrom &&
-          currentSnapshot.validTo === (input.validTo ?? null) &&
-          currentSnapshotRow.raw_response_ref === (input.rawResponseRef ?? null) &&
-          currentSnapshotRow.recorded_by === input.recordedBy;
-        if (!identical) {
-          throw new EligibilitySnapshotConflictError(input.snapshotId);
-        }
+      if (result.kind === 'existing') {
+        // 書込みなし(advisory lock のみ)。空のまま閉じる。
         await client.query('ROLLBACK');
-        return currentSnapshot;
+        return result;
       }
-      const from = deriveEligibilityState(currentSnapshot, input.asOfDate);
-      if (!isEligibilityTransitionAllowed(from, input.state)) {
-        throw new EligibilityTransitionError(from, input.state);
-      }
-      let inserted: { rows: SnapshotRow[] };
-      try {
-        inserted = await client.query<SnapshotRow>(
-          `INSERT INTO eligibility_snapshots AS s
-             (tenant_id, pharmacy_id, snapshot_id, patient_id, verified_method, state, verified_at,
-              valid_from, valid_to, raw_response_ref, recorded_by, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8::date, $9::date, $10, $11, $12)
-           RETURNING ${selectSnapshotColumns}`,
-          [
-            scope.tenantId,
-            scope.pharmacyId,
-            input.snapshotId,
-            row.reception_patient_id,
-            input.verifiedMethod,
-            input.state,
-            input.verifiedAt,
-            input.validFrom,
-            input.validTo ?? null,
-            input.rawResponseRef ?? null,
-            input.recordedBy,
-            input.now,
-          ],
-        );
-      } catch (error) {
-        // snapshotId は scope 内で一意(PK)。当該受付に紐づいていない snapshotId が
-        // 既に存在する(別受付への付与・同時 INSERT race)場合は生の 23505 を
-        // 漏らさず domain conflict に正規化する。constraint 名のピンではなく
-        // table 単位で判定する(制約追加や index 作成順で報告 constraint が
-        // 変わっても raw 23505 を漏らさない)。この文が到達し得る一意違反は
-        // snapshot 識別子の衝突だけ — sequence_number は GENERATED ALWAYS で
-        // 文が値を供給しないため sequence_unique はここでは発火しない。将来
-        // この table に非 snapshotId 系の一意制約を足す場合はこの判定を見直すこと。
-        if (
-          typeof error === 'object' &&
-          error !== null &&
-          (error as { code?: unknown }).code === '23505' &&
-          (error as { table?: unknown }).table === 'eligibility_snapshots'
-        ) {
-          throw new EligibilitySnapshotConflictError(input.snapshotId);
-        }
-        throw error;
-      }
-      const attached = await client.query(
-        `UPDATE reception_entries SET eligibility_snapshot_id = $4
-          WHERE tenant_id = $1 AND pharmacy_id = $2 AND reception_id = $3
-            AND eligibility_snapshot_id IS NOT DISTINCT FROM $5`,
-        [
-          scope.tenantId,
-          scope.pharmacyId,
-          receptionId,
-          input.snapshotId,
-          currentSnapshot?.snapshotId ?? null,
-        ],
-      );
-      if (attached.rowCount !== 1)
-        throw new RangeError('reception eligibility changed concurrently');
       await client.query('COMMIT');
-      return toSnapshot(inserted.rows[0]!);
+      return result;
+    });
+  }
+
+  /**
+   * GET 用の一括読出し: 受付の業務日付(business_date)で導出した現在状態と
+   * 同一患者の snapshot 履歴(sequence_number 降順)を返す(API-019 §3)。
+   */
+  async viewForReception(
+    scope: EligibilityScope,
+    receptionId: string,
+  ): Promise<EligibilitySnapshotView> {
+    const reception = await this.pool.query<ReceptionSnapshotRow>(
+      selectReceptionSnapshotSql,
+      [scope.tenantId, scope.pharmacyId, receptionId],
+    );
+    const row = reception.rows[0];
+    if (row === undefined) throw new EligibilityReceptionNotFoundError();
+    const snapshot =
+      row.snapshot_id === null ? undefined : toSnapshot(row as SnapshotRow);
+    const history = await this.pool.query<SnapshotRow>(
+      `SELECT ${selectSnapshotColumns}
+         FROM eligibility_snapshots s
+        WHERE s.tenant_id = $1 AND s.pharmacy_id = $2 AND s.patient_id = $3
+        ORDER BY s.sequence_number DESC`,
+      [scope.tenantId, scope.pharmacyId, row.reception_patient_id],
+    );
+    const state = deriveEligibilityState(snapshot, row.reception_business_date);
+    return Object.freeze({
+      businessDate: row.reception_business_date,
+      current: Object.freeze({
+        state,
+        snapshotId: snapshot?.snapshotId ?? null,
+        allowsProvisionalCalculation:
+          allowsProvisionalCalculationForEligibility(state),
+        allowsFinalCalculation: allowsFinalCalculationForEligibility(state),
+      }),
+      snapshots: history.rows.map(toSnapshot),
     });
   }
 

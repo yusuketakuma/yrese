@@ -8,6 +8,13 @@ import {
   PostgresEligibilitySnapshotRepository,
   type RecordEligibilitySnapshotInput,
 } from './eligibility-snapshot-repository.js';
+import { PostgresEligibilityRecordCommand } from './eligibility-snapshot-command.js';
+import {
+  pharmacyId,
+  receptionId,
+  tenantId,
+  userId,
+} from '@yrese/shared-kernel';
 import { applyPendingMigrations } from './migration-runner.js';
 import { loadMigrationFiles } from './migrations.js';
 import { createDbPool } from './pool.js';
@@ -184,12 +191,13 @@ describePostgres('PostgresEligibilitySnapshotRepository (PostgreSQL)', () => {
         'reception-elig-001',
       );
       const repo = new PostgresEligibilitySnapshotRepository(pool);
-      const snapshot = await repo.recordForReception(
+      const record = await repo.recordForReception(
         scope,
         'reception-elig-001',
         input(),
       );
-      expect(snapshot).toMatchObject({
+      expect(record.kind).toBe('recorded');
+      expect(record.snapshot).toMatchObject({
         snapshotId: 'snap-001',
         patientId: 'patient-elig-001',
         state: 'VERIFIED_MYNA',
@@ -246,7 +254,10 @@ describePostgres('PostgresEligibilitySnapshotRepository (PostgreSQL)', () => {
             validTo: null,
           }),
         ),
-      ).resolves.toMatchObject({ state: 'OFFLINE_PROVISIONAL' });
+      ).resolves.toMatchObject({
+        kind: 'recorded',
+        snapshot: expect.objectContaining({ state: 'OFFLINE_PROVISIONAL' }),
+      });
       await expect(
         repo.receptionEligibility(scope, 'reception-today', today),
       ).resolves.toMatchObject({
@@ -421,7 +432,9 @@ describePostgres('PostgresEligibilitySnapshotRepository (PostgreSQL)', () => {
         'reception-elig-001',
         input(),
       );
-      expect(retry).toEqual(first);
+      // WP-7204: 冪等再送は 'existing' で返す(同一 snapshot、新規監査なし)。
+      expect(retry.kind).toBe('existing');
+      expect(retry.snapshot).toEqual(first.snapshot);
       const count = await pool.query<{ count: string }>(
         'SELECT count(*)::text AS count FROM eligibility_snapshots',
       );
@@ -542,6 +555,117 @@ describePostgres('PostgresEligibilitySnapshotRepository (PostgreSQL)', () => {
       expect((rejected[0] as PromiseRejectedResult).reason).toBeInstanceOf(
         EligibilityTransitionError,
       );
+    });
+  });
+});
+
+/**
+ * WP-7204: コマンド境界の原子性 — snapshot INSERT + 受付紐づけ + 監査追記は
+ * 同一 tx(API-019 §4: 1 操作 = 1 監査、監査なしの durable snapshot は禁止)。
+ */
+describePostgres('PostgresEligibilityRecordCommand (PostgreSQL)', () => {
+  function commandInput(
+    overrides: Record<string, unknown> = {},
+  ): Parameters<PostgresEligibilityRecordCommand['execute']>[0] {
+    return {
+      tenantId: tenantId(scope.tenantId),
+      pharmacyId: pharmacyId(scope.pharmacyId),
+      receptionId: receptionId('reception-elig-cmd-001'),
+      ...input({ snapshotId: 'snap-cmd-001' }),
+      recordedBy: userId('user-elig-001'),
+      auditWallClock: () => now.toISOString(),
+      ...overrides,
+    } as Parameters<PostgresEligibilityRecordCommand['execute']>[0];
+  }
+
+  it('atomically persists snapshot, reception link, and eligibility.verified audit in one transaction', async () => {
+    await withMigratedSchema(async (pool) => {
+      await seedPatientAndReception(
+        pool,
+        'patient-elig-001',
+        'reception-elig-cmd-001',
+      );
+      const command = new PostgresEligibilityRecordCommand(pool);
+      const result = await command.execute(commandInput());
+      expect(result.kind).toBe('recorded');
+      expect(result.auditEvent).toBeDefined();
+
+      const link = await pool.query(
+        `SELECT eligibility_snapshot_id FROM reception_entries
+          WHERE tenant_id = $1 AND pharmacy_id = $2 AND reception_id = $3`,
+        [scope.tenantId, scope.pharmacyId, 'reception-elig-cmd-001'],
+      );
+      expect(link.rows[0]?.eligibility_snapshot_id).toBe('snap-cmd-001');
+
+      const audits = await pool.query(
+        `SELECT event_body
+           FROM audit_events
+          WHERE tenant_id = $1 AND pharmacy_id = $2`,
+        [scope.tenantId, scope.pharmacyId],
+      );
+      expect(audits.rows).toHaveLength(1);
+      expect(audits.rows[0]?.event_body).toMatchObject({
+        auditEventType: 'eligibility.verified',
+        targetRef: { kind: 'eligibility_snapshot', id: 'snap-cmd-001' },
+        outcome: 'success',
+      });
+    });
+  });
+
+  it('rolls back snapshot and link when the audit append fails (fail-closed)', async () => {
+    await withMigratedSchema(async (pool) => {
+      await seedPatientAndReception(
+        pool,
+        'patient-elig-001',
+        'reception-elig-cmd-001',
+      );
+      const command = new PostgresEligibilityRecordCommand(pool, {
+        beforeAuditAppend: () => {
+          throw new Error('injected audit failure');
+        },
+      });
+      await expect(command.execute(commandInput())).rejects.toThrow();
+
+      const snapshots = await pool.query(
+        `SELECT snapshot_id FROM eligibility_snapshots
+          WHERE tenant_id = $1 AND pharmacy_id = $2`,
+        [scope.tenantId, scope.pharmacyId],
+      );
+      expect(snapshots.rows).toHaveLength(0);
+      const link = await pool.query(
+        `SELECT eligibility_snapshot_id FROM reception_entries
+          WHERE tenant_id = $1 AND pharmacy_id = $2 AND reception_id = $3`,
+        [scope.tenantId, scope.pharmacyId, 'reception-elig-cmd-001'],
+      );
+      expect(link.rows[0]?.eligibility_snapshot_id).toBeNull();
+      const audits = await pool.query(
+        `SELECT event_id FROM audit_events
+          WHERE tenant_id = $1 AND pharmacy_id = $2`,
+        [scope.tenantId, scope.pharmacyId],
+      );
+      expect(audits.rows).toHaveLength(0);
+    });
+  });
+
+  it('emits no second audit for an identical retry (idempotent resend)', async () => {
+    await withMigratedSchema(async (pool) => {
+      await seedPatientAndReception(
+        pool,
+        'patient-elig-001',
+        'reception-elig-cmd-001',
+      );
+      const command = new PostgresEligibilityRecordCommand(pool);
+      const first = await command.execute(commandInput());
+      expect(first.kind).toBe('recorded');
+      const retry = await command.execute(commandInput());
+      expect(retry.kind).toBe('existing');
+
+      const audits = await pool.query(
+        `SELECT event_id FROM audit_events
+          WHERE tenant_id = $1 AND pharmacy_id = $2`,
+        [scope.tenantId, scope.pharmacyId],
+      );
+      expect(audits.rows).toHaveLength(1);
     });
   });
 });

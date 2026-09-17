@@ -1,6 +1,7 @@
 import { RECEPTION_STATUSES, type ReceptionStatus } from "@yrese/shared-kernel";
 import { z } from "zod";
 
+import { receptionEligibilitySchema } from "./eligibility-snapshot.js";
 import { patientSearchResultSchema } from "./patient-search.js";
 import { patientIdWireSchema, receptionIdWireSchema } from "./wire-id.js";
 
@@ -39,6 +40,10 @@ export const receptionQueueEntrySchema = z.object({
   prescriptionIntakeType: z.literal("paper"),
   // API-006 0.3.1: transitions の expectedVersion CAS には現在 version の取得経路が必要。
   version: z.number().int().min(1),
+  // API-006 0.3.2: 受付行の資格表示は snapshot 由来の導出状態(API-019)。
+  // 患者要約の eligibilityStatus とは別概念。UI が allows* を推測しないための
+  // サーバー導出値(shared-kernel guard が唯一の判定実装)。
+  eligibility: receptionEligibilitySchema,
 });
 
 export const receptionQueueResponseSchema = z.object({

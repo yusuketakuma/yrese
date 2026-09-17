@@ -7,14 +7,22 @@ import {
   type ReceptionQueueEntry,
 } from '@yrese/contracts';
 import {
+  allowsFinalCalculationForEligibility,
+  allowsProvisionalCalculationForEligibility,
+  isReceptionEligibilityState,
   isReceptionStatus,
   isReceptionTransitionAllowed,
   patientId,
   pharmacyId,
   receptionId,
   tenantId,
+  type RecordedEligibilityState,
 } from '@yrese/shared-kernel';
 
+import {
+  deriveEligibilityState,
+  type EligibilitySnapshot,
+} from './eligibility-snapshot-repository.js';
 import {
   businessDateFromAcceptedAt,
   snapshotReceptionIdempotencyKey,
@@ -55,6 +63,18 @@ interface ReceptionEntryRow {
   readonly patient_number: string;
   readonly eligibility_status: string;
   readonly eligibility_checked_at: Date | string | null;
+  /**
+   * queue entry の資格表示導出用(API-006 0.3.2)。LEFT JOIN 由来のため
+   * 紐づけなしでは null。INSERT RETURNING 経路では列自体が存在しない
+   * (その場合も未確認 = UNVERIFIED として扱う)。
+   */
+  readonly elig_snapshot_id?: string | null;
+  readonly elig_state?: string | null;
+  readonly elig_verified_method?: string | null;
+  readonly elig_valid_from?: string | null;
+  readonly elig_valid_to?: string | null;
+  /** 資格導出の業務日付権威(idempotency replay 経路でSELECTされる)。 */
+  readonly business_date?: string;
 }
 
 interface IdempotencyRow extends ReceptionEntryRow {
@@ -152,7 +172,62 @@ function patientSnapshotsMatch(
   );
 }
 
-function rowToEntry(row: ReceptionEntryRow): ReceptionQueueEntry {
+/** queue entry の資格表示(API-006 0.3.2): 紐づく snapshot を業務日付で導出。 */
+function rowToEligibility(
+  row: ReceptionEntryRow,
+  asOfDate: string,
+): {
+  readonly state:
+    | 'UNVERIFIED'
+    | 'VERIFIED_MYNA'
+    | 'VERIFIED_CARD'
+    | 'PROVISIONAL_VISUAL'
+    | 'OFFLINE_PROVISIONAL'
+    | 'EXPIRED'
+    | 'MISMATCH';
+  readonly snapshotId: string | null;
+  readonly allowsProvisionalCalculation: boolean;
+  readonly allowsFinalCalculation: boolean;
+} {
+  const snapshotId = row.elig_snapshot_id;
+  if (typeof snapshotId !== 'string') {
+    return {
+      state: 'UNVERIFIED',
+      snapshotId: null,
+      allowsProvisionalCalculation: false,
+      allowsFinalCalculation: false,
+    };
+  }
+  const state = row.elig_state;
+  const validFrom = row.elig_valid_from;
+  const validTo = row.elig_valid_to;
+  if (
+    typeof state !== 'string' ||
+    !isReceptionEligibilityState(state) ||
+    state === 'UNVERIFIED' ||
+    typeof validFrom !== 'string' ||
+    (validTo !== null && typeof validTo !== 'string')
+  ) {
+    throw new Error(databaseReceptionRowInvariantErrorMessage);
+  }
+  const derived = deriveEligibilityState(
+    {
+      state: state as RecordedEligibilityState,
+      validFrom,
+      validTo: validTo ?? null,
+    },
+    asOfDate,
+  );
+  return {
+    state: derived,
+    snapshotId,
+    allowsProvisionalCalculation:
+      allowsProvisionalCalculationForEligibility(derived),
+    allowsFinalCalculation: allowsFinalCalculationForEligibility(derived),
+  };
+}
+
+function rowToEntry(row: ReceptionEntryRow, asOfDate: string): ReceptionQueueEntry {
   const receptionIdValue = readDatabaseRowOwnDataProperty(
     row,
     'reception_id',
@@ -183,6 +258,7 @@ function rowToEntry(row: ReceptionEntryRow): ReceptionQueueEntry {
     'version',
     databaseReceptionRowInvariantErrorMessage,
   );
+  const eligibility = rowToEligibility(row, asOfDate);
   try {
     return receptionQueueEntrySchema.parse({
       receptionId: receptionIdValue,
@@ -191,6 +267,7 @@ function rowToEntry(row: ReceptionEntryRow): ReceptionQueueEntry {
       receptionStatus,
       prescriptionIntakeType: 'paper',
       version,
+      eligibility,
     });
   } catch {
     throw new Error(databaseReceptionRowInvariantErrorMessage);
@@ -248,12 +325,22 @@ async function selectByIdempotencyKey(
        p.sex,
        p.patient_number,
        p.eligibility_status,
-       p.eligibility_checked_at
+       p.eligibility_checked_at,
+       r.business_date::text AS business_date,
+       es.snapshot_id AS elig_snapshot_id,
+       es.state AS elig_state,
+       es.valid_from::text AS elig_valid_from,
+       es.valid_to::text AS elig_valid_to
      FROM reception_entries r
      INNER JOIN patients p
        ON p.tenant_id = r.tenant_id
       AND p.pharmacy_id = r.pharmacy_id
       AND p.patient_id = r.patient_id
+     LEFT JOIN eligibility_snapshots es
+       ON es.tenant_id = r.tenant_id
+      AND es.pharmacy_id = r.pharmacy_id
+      AND es.patient_id = r.patient_id
+      AND es.snapshot_id = r.eligibility_snapshot_id
      WHERE r.tenant_id = $1 AND r.pharmacy_id = $2 AND r.idempotency_key = $3`,
     [input.tenantId, input.pharmacyId, input.idempotencyKey],
   );
@@ -416,7 +503,7 @@ export async function runReceptionCreateWithinTransaction(
     ) {
       throw new Error(databaseReceptionCommandProvenanceInvariantErrorMessage);
     }
-    const entry = rowToEntry(insertedRow);
+    const entry = rowToEntry(insertedRow, businessDate);
     if (
       entry.receptionId !== provenance.receptionId ||
       entry.patient.patientId !== provenance.patientId
@@ -460,7 +547,15 @@ export async function runReceptionCreateWithinTransaction(
     return { kind: 'idempotency_conflict', provenance };
   }
 
-  const entry = rowToEntry(existing);
+  const existingBusinessDate = readDatabaseRowOwnDataProperty(
+    existing,
+    'business_date',
+    databaseReceptionRowInvariantErrorMessage,
+  );
+  if (typeof existingBusinessDate !== 'string') {
+    throw new Error(databaseReceptionRowInvariantErrorMessage);
+  }
+  const entry = rowToEntry(existing, existingBusinessDate);
   if (
     entry.receptionId !== provenance.receptionId ||
     entry.patient.patientId !== provenance.patientId
@@ -652,12 +747,21 @@ export class PostgresReceptionRepository implements ReceptionRepository {
          p.sex,
          p.patient_number,
          p.eligibility_status,
-         p.eligibility_checked_at
+         p.eligibility_checked_at,
+         es.snapshot_id AS elig_snapshot_id,
+         es.state AS elig_state,
+         es.valid_from::text AS elig_valid_from,
+         es.valid_to::text AS elig_valid_to
        FROM reception_entries r
        INNER JOIN patients p
          ON p.tenant_id = r.tenant_id
         AND p.pharmacy_id = r.pharmacy_id
         AND p.patient_id = r.patient_id
+       LEFT JOIN eligibility_snapshots es
+         ON es.tenant_id = r.tenant_id
+        AND es.pharmacy_id = r.pharmacy_id
+        AND es.patient_id = r.patient_id
+        AND es.snapshot_id = r.eligibility_snapshot_id
        WHERE r.tenant_id = $1 AND r.pharmacy_id = $2 AND r.business_date = $3::date
        -- C collation: database locale に依存しない code point 順で in-memory 実装と一致させる。
        ORDER BY r.accepted_at ASC, r.reception_id COLLATE "C" ASC`,
@@ -673,7 +777,7 @@ export class PostgresReceptionRepository implements ReceptionRepository {
         throw new Error(databaseReceptionRowSetInvariantErrorMessage);
       }
     }
-    return rows.map(rowToEntry);
+    return rows.map((row) => rowToEntry(row, command.date));
   }
 
   async create(input: ReceptionCreateInput): Promise<ReceptionCreateResult> {

@@ -38,6 +38,13 @@ import {
 } from "./reception-dashboard";
 import ReceptionPage from "./page";
 
+const unverifiedEligibility = {
+  state: "UNVERIFIED" as const,
+  snapshotId: null,
+  allowsProvisionalCalculation: false,
+  allowsFinalCalculation: false,
+};
+
 function patient(over: Partial<PatientSearchResult>): PatientSearchResult {
   return {
     patientId: "patient-test-001",
@@ -58,6 +65,7 @@ function entry(over: Partial<ReceptionQueueEntry>): ReceptionQueueEntry {
     acceptedAt: "2026-07-09T00:15:00.000Z",
     receptionStatus: "WAITING",
     prescriptionIntakeType: "paper",
+    eligibility: unverifiedEligibility,
     version: 1,
     ...over,
   };
@@ -1241,7 +1249,7 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(loadingHtml.indexOf("取得中です")).toBeLessThan(
       loadingHtml.indexOf("2026-07-10 の受付: 1件"),
     );
-    expect(roleCount(loadingHtml, "status")).toBe(2); // qualifier + row status badge
+    expect(roleCount(loadingHtml, "status")).toBe(3); // qualifier + row status badge + eligibility badge
     expect(roleCount(loadingHtml, "alert")).toBe(0);
 
     const loadingEmptyHtml = renderToStaticMarkup(
@@ -1303,7 +1311,7 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
         }}
       />,
     );
-    expect(roleCount(errorNonemptyHtml, "status")).toBe(3); // qualifier + row status badge + nonblocking error
+    expect(roleCount(errorNonemptyHtml, "status")).toBe(4); // qualifier + row status badge + eligibility badge + nonblocking error
     expect(roleCount(errorNonemptyHtml, "alert")).toBe(0);
     expect(errorNonemptyHtml.indexOf("取得できなかったため")).toBeLessThan(
       errorNonemptyHtml.indexOf("2026-07-10 の受付: 1件"),
@@ -1322,7 +1330,7 @@ describe("reception dashboard (WP-3009-UI / SCR-001)", () => {
     expect(idleHtml).not.toContain("の内容を表示しています");
     expect(idleHtml).toContain("2026-07-10 の受付: 1件");
     expect(idleHtml).toContain("最終取得: 08:15(JST)");
-    expect(roleCount(idleHtml, "status")).toBe(2); // count + row status badge
+    expect(roleCount(idleHtml, "status")).toBe(3); // count + row status badge + eligibility badge
     expect(roleCount(idleHtml, "alert")).toBe(0);
 
     const idleEmptyHtml = renderToStaticMarkup(
@@ -3271,19 +3279,38 @@ describe("reception create response timeout (BUG-4262)", () => {
 
 describe("receptionQueueMetrics", () => {
   it("counts queue statuses and eligibility attention from real entries", () => {
+    // WP-7204: 資格要確認は受付 snapshot の eligibility.state で数える
+    // (患者要約 eligibilityStatus ではない)。VERIFIED_* 以外かつ非取消が対象。
+    const verifiedEligibility: ReceptionQueueEntry["eligibility"] = {
+      state: "VERIFIED_CARD",
+      snapshotId: "snapshot-test-001",
+      allowsProvisionalCalculation: true,
+      allowsFinalCalculation: true,
+    };
     const entries: readonly ReceptionQueueEntry[] = [
-      entry({ receptionId: "rc-1", receptionStatus: "WAITING" }),
+      entry({
+        receptionId: "rc-1",
+        receptionStatus: "WAITING",
+        eligibility: verifiedEligibility,
+      }),
       entry({
         receptionId: "rc-2",
         receptionStatus: "WAITING",
-        patient: patient({ patientId: "patient-test-002", eligibilityStatus: "NOT_CHECKED" }),
+        patient: patient({ patientId: "patient-test-002", eligibilityStatus: "VERIFIED" }),
       }),
-      entry({ receptionId: "rc-3", receptionStatus: "IN_PROGRESS" }),
-      entry({ receptionId: "rc-4", receptionStatus: "COMPLETED" }),
+      entry({
+        receptionId: "rc-3",
+        receptionStatus: "IN_PROGRESS",
+        eligibility: verifiedEligibility,
+      }),
+      entry({
+        receptionId: "rc-4",
+        receptionStatus: "COMPLETED",
+        eligibility: verifiedEligibility,
+      }),
       entry({
         receptionId: "rc-5",
         receptionStatus: "CANCELLED",
-        patient: patient({ patientId: "patient-test-003", eligibilityStatus: "PENDING_REVERIFY" }),
       }),
     ];
     expect(receptionQueueMetrics(entries)).toEqual({

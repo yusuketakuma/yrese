@@ -31,6 +31,8 @@ import {
   PostgresReceptionCreateCommand,
   PostgresReceptionTransitionCommand,
 } from './db/reception-command.js';
+import { PostgresEligibilityRecordCommand } from './db/eligibility-snapshot-command.js';
+import { PostgresEligibilitySnapshotRepository } from './db/eligibility-snapshot-repository.js';
 import { PostgresReceptionRepository } from './db/reception-repository.js';
 import { operationsRoutes } from './operations-routes.js';
 import { InMemoryOperationsReadService } from './operations-service.js';
@@ -148,6 +150,10 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
       receptionCreateCommand: new PostgresReceptionCreateCommand(pool),
       // WP-7201: 遷移・監査を単一トランザクションで原子化する。
       receptionTransitionCommand: new PostgresReceptionTransitionCommand(pool),
+      // WP-7204: 資格 snapshot 記録・監査を単一トランザクションで原子化する。
+      eligibilitySnapshotRepository:
+        new PostgresEligibilitySnapshotRepository(pool),
+      eligibilityRecordCommand: new PostgresEligibilityRecordCommand(pool),
       repositoryMode,
       tenantContextMode,
       patientSearchCursorCodec,

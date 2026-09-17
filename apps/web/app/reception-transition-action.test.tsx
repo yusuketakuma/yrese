@@ -15,6 +15,13 @@ import {
 } from "./reception-transition-action";
 import { ReceptionError, transitionReception } from "./reception-dashboard";
 
+const unverifiedEligibility = {
+  state: "UNVERIFIED" as const,
+  snapshotId: null,
+  allowsProvisionalCalculation: false,
+  allowsFinalCalculation: false,
+};
+
 function entry(over: Partial<ReceptionQueueEntry>): ReceptionQueueEntry {
   return {
     receptionId: "reception-transition-001",
@@ -28,6 +35,7 @@ function entry(over: Partial<ReceptionQueueEntry>): ReceptionQueueEntry {
       eligibilityStatus: "VERIFIED",
     },
     prescriptionIntakeType: "paper",
+    eligibility: unverifiedEligibility,
     receptionStatus: "WAITING",
     acceptedAt: "2026-09-17T01:00:00.000Z",
     version: 3,

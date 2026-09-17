@@ -95,10 +95,10 @@ change_log:
 | INS-0004 | PUBLIC_EXPENSE | ERROR | false | false | PublicExpense の優先順位重複(409)。同一患者・同期間で priority 重複は拒否 | PROPOSED(API-020 / WP-7203。未実装) |
 | INS-0005 | INSURANCE | ERROR | false | false | supersede 対象不存在または二重 supersede(409) | PROPOSED(API-020 / WP-7203。未実装) |
 | INS-0006 | INSURANCE | ERROR | false | false | idempotencyKey conflict(同一 key + 異なる payload)(409) | PROPOSED(API-020 / WP-7203。未実装) |
-| INS-0007 | INSURANCE | ERROR | false | false | 資格確認スナップショット request 不正(400)。snapshotId/方式/状態/日付形式、method-state 不整合 | PROPOSED(API-019 / WP-7204。未実装) |
-| INS-0008 | INSURANCE | ERROR | false | false | 対象受付が当該テナント・薬局内に存在しない(404)。テナント越え探索は禁止 | PROPOSED(API-019 / WP-7204。未実装) |
-| INS-0009 | INSURANCE | ERROR | false | false | 同一 snapshotId + 異なる payload の conflict(409)。snapshot は append-only | PROPOSED(API-019 / WP-7204。未実装) |
-| INS-0010 | INSURANCE | ERROR | false | false | 手動記録不可の状態/方式(VERIFIED_MYNA 等)または ADP-004 §3 遷移表にない遷移(422) | PROPOSED(API-019 / WP-7204。未実装) |
+| INS-0007 | INSURANCE | ERROR | false | false | 資格確認スナップショット request 不正(400)。snapshotId/方式/状態/日付形式、method-state 不整合 | APPROVED(API-019 / WP-7204 で実装済み) |
+| INS-0008 | INSURANCE | ERROR | false | false | 対象受付が当該テナント・薬局内に存在しない(404)。テナント越え探索は禁止 | APPROVED(API-019 / WP-7204 で実装済み) |
+| INS-0009 | INSURANCE | ERROR | false | false | 同一 snapshotId + 異なる payload の conflict(409)。snapshot は append-only | APPROVED(API-019 / WP-7204 で実装済み) |
+| INS-0010 | INSURANCE | ERROR | false | false | 手動記録不可の状態/方式(VERIFIED_MYNA 等)または ADP-004 §3 遷移表にない遷移(422) | APPROVED(API-019 / WP-7204 で実装済み) |
 
 (初期セットは `KERNEL_ERROR_CODES` seed として登録済み。今後の拡充は、各ドメイン実装WPの DoR で「使用するエラーコードが本台帳に登録済みであること」を要求することで行う)
 

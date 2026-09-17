@@ -12,6 +12,13 @@ import {
   canOpenPrescriptionFromReception,
 } from "./reception-prescription-handoff";
 
+const unverifiedEligibility = {
+  state: "UNVERIFIED" as const,
+  snapshotId: null,
+  allowsProvisionalCalculation: false,
+  allowsFinalCalculation: false,
+};
+
 (globalThis as { React?: typeof React }).React = React;
 
 function entry(status: ReceptionQueueEntry["receptionStatus"]): ReceptionQueueEntry {
@@ -29,6 +36,7 @@ function entry(status: ReceptionQueueEntry["receptionStatus"]): ReceptionQueueEn
     acceptedAt: "2026-08-25T00:15:00.000Z",
     receptionStatus: status,
     prescriptionIntakeType: "paper",
+    eligibility: unverifiedEligibility,
     version: 1,
   };
 }

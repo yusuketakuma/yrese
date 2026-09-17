@@ -22,6 +22,7 @@ import {
   RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE,
   RECEPTION_VERSION_CONFLICT_ERROR_CODE,
   permissionScope,
+  type EligibilityStatus,
   type PermissionScope,
 } from "@yrese/shared-kernel";
 
@@ -531,6 +532,7 @@ export function ReceptionQueueTable({
             <th scope="col">氏名(カナ)</th>
             <th scope="col">生年月日</th>
             <th scope="col">受付状態</th>
+            <th scope="col">資格</th>
             <th scope="col">処方箋</th>
             {businessDate !== undefined ? <th scope="col">次の操作</th> : null}
           </tr>
@@ -556,6 +558,14 @@ export function ReceptionQueueTable({
                 <td>
                   <DomainStatusBadge
                     query={{ domain: "reception", key: entry.receptionStatus }}
+                  />
+                </td>
+                <td>
+                  <DomainStatusBadge
+                    query={{
+                      domain: "reception-eligibility",
+                      key: entry.eligibility.state,
+                    }}
                   />
                 </td>
                 <td>{PRESCRIPTION_INTAKE_LABELS[entry.prescriptionIntakeType]}</td>
@@ -600,9 +610,29 @@ export type QueueRefreshState =
 type QueueStateUpdate = (prev: QueueState) => QueueState;
 
 /**
+ * 受付 snapshot の資格状態を患者要約用 EligibilityStatus へ射影する(WP-7204)。
+ * PatientHeader 等の患者級コンポーネントが受付文脈で使う場合の単一正本。
+ * EXPIRED/MISMATCH など請求不可の終端は PENDING_REVERIFY に潰さず扱いたいが、
+ * 患者級 enum には対応値がないため最も近い「再確認必須」に寄せる。
+ */
+export function receptionEligibilityToPatientStatus(
+  state: ReceptionQueueEntry["eligibility"]["state"],
+): EligibilityStatus {
+  switch (state) {
+    case "VERIFIED_MYNA":
+    case "VERIFIED_CARD":
+      return "VERIFIED";
+    case "UNVERIFIED":
+      return "NOT_CHECKED";
+    default:
+      return "PENDING_REVERIFY";
+  }
+}
+
+/**
  * 受付キュー実データからの真実集計。CANCELLED は稼働指標に数えない。
- * 資格要確認は取消済みを除く VERIFIED 以外(NOT_CHECKED / PENDING_REVERIFY /
- * LOCAL_ONLY_UNVERIFIED)の件数。
+ * 資格要確認は取消済みを除く受付 snapshot が VERIFIED_MYNA / VERIFIED_CARD でない件数
+ * (WP-7204。患者要約の eligibilityStatus ではなく受付単位の資格状態で数える)。
  */
 export interface ReceptionQueueMetrics {
   readonly waiting: number;
@@ -622,9 +652,11 @@ export function receptionQueueMetrics(
     if (entry.receptionStatus === "WAITING") waiting += 1;
     else if (entry.receptionStatus === "IN_PROGRESS") inProgress += 1;
     else if (entry.receptionStatus === "COMPLETED") completed += 1;
+    // 資格要確認は受付 snapshot 由来(WP-7204)。VERIFIED_* 以外は要対応として数える。
     if (
       entry.receptionStatus !== "CANCELLED" &&
-      entry.patient.eligibilityStatus !== "VERIFIED"
+      entry.eligibility.state !== "VERIFIED_MYNA" &&
+      entry.eligibility.state !== "VERIFIED_CARD"
     ) {
       eligibilityAttention += 1;
     }

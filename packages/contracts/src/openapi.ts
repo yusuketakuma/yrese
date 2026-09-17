@@ -5,6 +5,12 @@ import { createDocument, type ZodOpenApiObject } from "zod-openapi";
 import { z } from "zod";
 
 import { auditLogQuerySchema, auditLogResponseSchema } from "./audit-log.js";
+import {
+  eligibilitySnapshotListResponseSchema,
+  eligibilitySnapshotParamsSchema,
+  eligibilitySnapshotRecordRequestSchema,
+  eligibilitySnapshotRecordResponseSchema,
+} from "./eligibility-snapshot.js";
 import { errorResponseSchema, frameworkErrorResponseSchema } from "./error.js";
 import { healthResponseSchema } from "./health.js";
 import {
@@ -186,6 +192,33 @@ const receptionTransitionResponseOpenApiSchema = receptionTransitionResponseSche
   description:
     "Reception transition result. PHI-free: carries reception identity, new status, and version only.",
 });
+
+const eligibilitySnapshotParamsOpenApiSchema =
+  eligibilitySnapshotParamsSchema.meta({
+    id: "EligibilitySnapshotParams",
+    description: "Eligibility snapshot path parameters scoped by reception ID.",
+  });
+
+const eligibilitySnapshotRecordRequestOpenApiSchema =
+  eligibilitySnapshotRecordRequestSchema.meta({
+    id: "EligibilitySnapshotRecordRequest",
+    description:
+      "Manual eligibility confirmation record. Only counter-verifiable pairs are accepted: CARD_ONLINE→VERIFIED_CARD, CARD_VISUAL→PROVISIONAL_VISUAL (API-019). rawResponseRef is an opaque external-evidence handle — never qualification content.",
+  });
+
+const eligibilitySnapshotRecordResponseOpenApiSchema =
+  eligibilitySnapshotRecordResponseSchema.meta({
+    id: "EligibilitySnapshotRecordResponse",
+    description:
+      "Recorded eligibility snapshot. PHI-free: identifiers, method, state, and dates only — no insurer or card identifiers.",
+  });
+
+const eligibilitySnapshotListResponseOpenApiSchema =
+  eligibilitySnapshotListResponseSchema.meta({
+    id: "EligibilitySnapshotListResponse",
+    description:
+      "Current reception eligibility (derived at the reception business date) plus append-only snapshot history, newest first. PHI-free identifiers and state only.",
+  });
 
 const prescriptionDraftParamsOpenApiSchema = prescriptionDraftParamsSchema.meta({
   id: "PrescriptionDraftParams",
@@ -501,6 +534,92 @@ const openApiDefinition = {
           ),
           "409": domainErrorResponse(
             "Transition not allowed (RCV-0004) or version conflict (RCV-0005)",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+    },
+    "/reception/{receptionId}/eligibility-snapshots": {
+      post: {
+        operationId: "recordEligibilitySnapshot",
+        tags: ["reception"],
+        summary: "Record a manual eligibility confirmation snapshot (API-019)",
+        description:
+          "Requires insurance:write and reception:read scopes. Counter-verifiable pairs only (CARD_ONLINE→VERIFIED_CARD, CARD_VISUAL→PROVISIONAL_VISUAL); EXPIRED/MISMATCH/MYNA states are system- or external-IF-derived and rejected with 422. Idempotent resend of the same snapshotId+payload returns 200; a different payload returns 409. Success emits eligibility.verified or eligibility.provisional_recorded audit before the response.",
+        "x-yrese-ssot": "API-019",
+        "x-yrese-required-scopes": ["insurance:write", "reception:read"],
+        requestParams: {
+          path: eligibilitySnapshotParamsOpenApiSchema,
+        },
+        requestBody: {
+          required: true,
+          content: {
+            [jsonContentType]: {
+              schema: eligibilitySnapshotRecordRequestOpenApiSchema,
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Eligibility snapshot recorded and linked to the reception",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: eligibilitySnapshotRecordResponseOpenApiSchema,
+              },
+            },
+          },
+          "200": {
+            description:
+              "Idempotent resend returned the existing snapshot (no new audit event)",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: eligibilitySnapshotRecordResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse(
+            "Invalid eligibility request or method-state inconsistency (INS-0007)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: true }),
+          "404": domainErrorResponse(
+            "Reception not found within tenant/pharmacy scope (INS-0008)",
+          ),
+          "409": domainErrorResponse(
+            "snapshotId exists with a different payload (INS-0009)",
+          ),
+          "422": domainErrorResponse(
+            "State/method pair not manually recordable or transition not allowed (INS-0010)",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+      get: {
+        operationId: "listEligibilitySnapshots",
+        tags: ["reception"],
+        summary: "Read current reception eligibility and snapshot history (API-019)",
+        description:
+          "Requires insurance:read and reception:read scopes. Current state is derived from the reception business date; history is append-only and returned newest first. Emits insurance.viewed audit before the response.",
+        "x-yrese-ssot": "API-019",
+        "x-yrese-required-scopes": ["insurance:read", "reception:read"],
+        requestParams: {
+          path: eligibilitySnapshotParamsOpenApiSchema,
+        },
+        responses: {
+          "200": {
+            description: "Current eligibility and snapshot history",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: eligibilitySnapshotListResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse("Invalid reception ID (INS-0007)"),
+          "403": forbiddenErrorResponse({ noStore: true }),
+          "404": domainErrorResponse(
+            "Reception not found within tenant/pharmacy scope (INS-0008)",
           ),
           "500": internalErrorResponse({ noStore: true }),
         },

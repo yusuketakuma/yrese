@@ -156,6 +156,38 @@ export const KERNEL_ERROR_CODES = [
     requiresHumanReview: false,
     description: "reception not found",
   },
+  {
+    code: "INS-0007",
+    domain: "INSURANCE",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "invalid eligibility snapshot request",
+  },
+  {
+    code: "INS-0008",
+    domain: "INSURANCE",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "reception not found for eligibility snapshot",
+  },
+  {
+    code: "INS-0009",
+    domain: "INSURANCE",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "eligibility snapshot conflict",
+  },
+  {
+    code: "INS-0010",
+    domain: "INSURANCE",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "eligibility transition not allowed",
+  },
 ] as const satisfies readonly ErrorCodeDef[];
 
 export const AUTH_PERMISSION_DENIED_ERROR_CODE = KERNEL_ERROR_CODES[0].code;
@@ -168,6 +200,14 @@ export const PATIENT_NOT_FOUND_ERROR_CODE = KERNEL_ERROR_CODES[6].code;
 export const RECEPTION_INVALID_TRANSITION_ERROR_CODE = KERNEL_ERROR_CODES[7].code;
 export const RECEPTION_VERSION_CONFLICT_ERROR_CODE = KERNEL_ERROR_CODES[8].code;
 export const RECEPTION_NOT_FOUND_ERROR_CODE = KERNEL_ERROR_CODES[9].code;
+export const INSURANCE_ELIGIBILITY_INVALID_REQUEST_ERROR_CODE =
+  KERNEL_ERROR_CODES[10].code;
+export const INSURANCE_ELIGIBILITY_RECEPTION_NOT_FOUND_ERROR_CODE =
+  KERNEL_ERROR_CODES[11].code;
+export const INSURANCE_ELIGIBILITY_SNAPSHOT_CONFLICT_ERROR_CODE =
+  KERNEL_ERROR_CODES[12].code;
+export const INSURANCE_ELIGIBILITY_TRANSITION_ERROR_CODE =
+  KERNEL_ERROR_CODES[13].code;
 
 export function createKernelErrorCodeRegistry(): ErrorCodeRegistry {
   const registry = new ErrorCodeRegistry();

@@ -33,6 +33,7 @@ import {
   ReceptionError,
   fetchReceptionQueue,
   formatAcceptedTime,
+  receptionEligibilityToPatientStatus,
 } from "../reception-dashboard";
 import { ReceptionPrescriptionHandoffAction } from "../reception-prescription-handoff";
 import { loadPrescriptionDraft } from "./prescription-draft-persistence";
@@ -413,10 +414,9 @@ export function PrescriptionLaunchVerifiedView({
           birthDate={patient.birthDate}
           age={computeAgeYears(patient.birthDate, asOf ?? new Date())}
           sex={patient.sex}
-          eligibility={patient.eligibilityStatus}
-          {...(patient.eligibilityCheckedAt === undefined
-            ? {}
-            : { eligibilityCheckedAt: patient.eligibilityCheckedAt })}
+          eligibility={receptionEligibilityToPatientStatus(
+            entry.eligibility.state,
+          )}
         />
 
         <Panel
@@ -437,6 +437,17 @@ export function PrescriptionLaunchVerifiedView({
                 value: (
                   <DomainStatusBadge
                     query={{ domain: "reception", key: entry.receptionStatus }}
+                  />
+                ),
+              },
+              {
+                label: "資格状態",
+                value: (
+                  <DomainStatusBadge
+                    query={{
+                      domain: "reception-eligibility",
+                      key: entry.eligibility.state,
+                    }}
                   />
                 ),
               },

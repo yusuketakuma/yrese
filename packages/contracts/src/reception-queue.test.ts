@@ -24,6 +24,13 @@ const patientSummary = {
   eligibilityCheckedAt: "2026-07-09T08:16:15.000Z",
 } as const;
 
+const unverifiedEligibility = {
+  state: "UNVERIFIED",
+  snapshotId: null,
+  allowsProvisionalCalculation: false,
+  allowsFinalCalculation: false,
+} as const;
+
 const queueEntry = {
   receptionId: "reception-syn-001",
   patient: patientSummary,
@@ -31,6 +38,7 @@ const queueEntry = {
   receptionStatus: "WAITING",
   prescriptionIntakeType: "paper",
   version: 1,
+  eligibility: unverifiedEligibility,
 } as const;
 
 describe("receptionQueueQuerySchema", () => {

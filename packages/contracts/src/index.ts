@@ -11,6 +11,7 @@
 
 export * from "./audit-log.js";
 export * from "./calculation-trace.js";
+export * from "./eligibility-snapshot.js";
 export * from "./error.js";
 export * from "./health.js";
 export * from "./openapi.js";

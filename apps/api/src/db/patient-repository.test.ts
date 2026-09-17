@@ -977,6 +977,8 @@ function receptionRow(storedPatientId: string) {
     reception_id: 'reception-patient-db-4215',
     accepted_at: receptionInput.acceptedAt,
     reception_status: 'WAITING',
+    version: 1,
+    business_date: '2026-07-17',
     ...patientRow,
     eligibility_checked_at: { toISOString: () => 'fake eligibility timestamp' },
   };

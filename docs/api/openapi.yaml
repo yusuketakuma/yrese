@@ -369,6 +369,141 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FrameworkErrorResponse"
+  /reception/{receptionId}/eligibility-snapshots:
+    post:
+      operationId: recordEligibilitySnapshot
+      tags:
+        - reception
+      summary: Record a manual eligibility confirmation snapshot (API-019)
+      description: Requires insurance:write and reception:read scopes. Counter-verifiable pairs only
+        (CARD_ONLINE→VERIFIED_CARD, CARD_VISUAL→PROVISIONAL_VISUAL); EXPIRED/MISMATCH/MYNA states are system- or
+        external-IF-derived and rejected with 422. Idempotent resend of the same snapshotId+payload returns 200; a
+        different payload returns 409. Success emits eligibility.verified or eligibility.provisional_recorded audit
+        before the response.
+      x-yrese-ssot: API-019
+      x-yrese-required-scopes:
+        - insurance:write
+        - reception:read
+      parameters:
+        - in: path
+          name: receptionId
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EligibilitySnapshotRecordRequest"
+      responses:
+        "200":
+          description: Idempotent resend returned the existing snapshot (no new audit event)
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibilitySnapshotRecordResponse"
+        "201":
+          description: Eligibility snapshot recorded and linked to the reception
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibilitySnapshotRecordResponse"
+        "400":
+          description: Invalid eligibility request or method-state inconsistency (INS-0007)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden (AUTH-0003)
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Reception not found within tenant/pharmacy scope (INS-0008)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: snapshotId exists with a different payload (INS-0009)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: State/method pair not manually recordable or transition not allowed (INS-0010)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+    get:
+      operationId: listEligibilitySnapshots
+      tags:
+        - reception
+      summary: Read current reception eligibility and snapshot history (API-019)
+      description: Requires insurance:read and reception:read scopes. Current state is derived from the reception business
+        date; history is append-only and returned newest first. Emits insurance.viewed audit before the response.
+      x-yrese-ssot: API-019
+      x-yrese-required-scopes:
+        - insurance:read
+        - reception:read
+      parameters:
+        - in: path
+          name: receptionId
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: true
+      responses:
+        "200":
+          description: Current eligibility and snapshot history
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibilitySnapshotListResponse"
+        "400":
+          description: Invalid reception ID (INS-0007)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden (AUTH-0003)
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Reception not found within tenant/pharmacy scope (INS-0008)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
   /prescription-drafts/by-reception/{receptionId}:
     get:
       operationId: getPrescriptionDraftByReception
@@ -715,6 +850,62 @@ components:
       additionalProperties: false
       description: Reception status transition command. businessReason is a structured uppercase reason code required only
         when to=CANCELLED.
+    EligibilitySnapshotRecordRequest:
+      type: object
+      properties:
+        snapshotId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        verifiedMethod:
+          type: string
+          enum:
+            - MYNA_ONLINE
+            - CARD_ONLINE
+            - CARD_VISUAL
+            - NONE
+        state:
+          type: string
+          enum:
+            - VERIFIED_MYNA
+            - VERIFIED_CARD
+            - PROVISIONAL_VISUAL
+            - OFFLINE_PROVISIONAL
+            - EXPIRED
+            - MISMATCH
+        verifiedAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+        asOfDate:
+          type: string
+          format: date
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        validFrom:
+          type: string
+          format: date
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        validTo:
+          anyOf:
+            - type: string
+              format: date
+              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+            - type: "null"
+        rawResponseRef:
+          type: string
+          minLength: 1
+          maxLength: 512
+      required:
+        - snapshotId
+        - verifiedMethod
+        - state
+        - verifiedAt
+        - asOfDate
+        - validFrom
+      additionalProperties: false
+      description: "Manual eligibility confirmation record. Only counter-verifiable pairs are accepted:
+        CARD_ONLINE→VERIFIED_CARD, CARD_VISUAL→PROVISIONAL_VISUAL (API-019). rawResponseRef is an opaque
+        external-evidence handle — never qualification content."
     PrescriptionDraftSaveRequest:
       type: object
       properties:
@@ -1082,6 +1273,35 @@ components:
                 type: integer
                 minimum: 1
                 maximum: 9007199254740991
+              eligibility:
+                type: object
+                properties:
+                  state:
+                    type: string
+                    enum:
+                      - UNVERIFIED
+                      - VERIFIED_MYNA
+                      - VERIFIED_CARD
+                      - PROVISIONAL_VISUAL
+                      - OFFLINE_PROVISIONAL
+                      - EXPIRED
+                      - MISMATCH
+                  snapshotId:
+                    anyOf:
+                      - type: string
+                        minLength: 1
+                        maxLength: 128
+                      - type: "null"
+                  allowsProvisionalCalculation:
+                    type: boolean
+                  allowsFinalCalculation:
+                    type: boolean
+                required:
+                  - state
+                  - snapshotId
+                  - allowsProvisionalCalculation
+                  - allowsFinalCalculation
+                additionalProperties: false
             required:
               - receptionId
               - patient
@@ -1089,6 +1309,7 @@ components:
               - receptionStatus
               - prescriptionIntakeType
               - version
+              - eligibility
             additionalProperties: false
       required:
         - date
@@ -1166,6 +1387,35 @@ components:
           type: integer
           minimum: 1
           maximum: 9007199254740991
+        eligibility:
+          type: object
+          properties:
+            state:
+              type: string
+              enum:
+                - UNVERIFIED
+                - VERIFIED_MYNA
+                - VERIFIED_CARD
+                - PROVISIONAL_VISUAL
+                - OFFLINE_PROVISIONAL
+                - EXPIRED
+                - MISMATCH
+            snapshotId:
+              anyOf:
+                - type: string
+                  minLength: 1
+                  maxLength: 128
+                - type: "null"
+            allowsProvisionalCalculation:
+              type: boolean
+            allowsFinalCalculation:
+              type: boolean
+          required:
+            - state
+            - snapshotId
+            - allowsProvisionalCalculation
+            - allowsFinalCalculation
+          additionalProperties: false
       required:
         - receptionId
         - patient
@@ -1173,6 +1423,7 @@ components:
         - receptionStatus
         - prescriptionIntakeType
         - version
+        - eligibility
       additionalProperties: false
       description: Reception queue entry. Contains PatientSummary PHI and must not be logged in plaintext.
     ReceptionCreateBadRequest:
@@ -1240,6 +1491,159 @@ components:
         - statusChangedAt
       additionalProperties: false
       description: "Reception transition result. PHI-free: carries reception identity, new status, and version only."
+    EligibilitySnapshotRecordResponse:
+      type: object
+      properties:
+        snapshotId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        receptionId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        state:
+          type: string
+          enum:
+            - VERIFIED_MYNA
+            - VERIFIED_CARD
+            - PROVISIONAL_VISUAL
+            - OFFLINE_PROVISIONAL
+            - EXPIRED
+            - MISMATCH
+        verifiedMethod:
+          type: string
+          enum:
+            - MYNA_ONLINE
+            - CARD_ONLINE
+            - CARD_VISUAL
+            - NONE
+        verifiedAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+        validFrom:
+          type: string
+          format: date
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        validTo:
+          anyOf:
+            - type: string
+              format: date
+              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+            - type: "null"
+        derivedState:
+          type: string
+          enum:
+            - UNVERIFIED
+            - VERIFIED_MYNA
+            - VERIFIED_CARD
+            - PROVISIONAL_VISUAL
+            - OFFLINE_PROVISIONAL
+            - EXPIRED
+            - MISMATCH
+      required:
+        - snapshotId
+        - receptionId
+        - state
+        - verifiedMethod
+        - verifiedAt
+        - validFrom
+        - validTo
+        - derivedState
+      additionalProperties: false
+      description: "Recorded eligibility snapshot. PHI-free: identifiers, method, state, and dates only — no insurer or card
+        identifiers."
+    EligibilitySnapshotListResponse:
+      type: object
+      properties:
+        receptionId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        current:
+          type: object
+          properties:
+            state:
+              type: string
+              enum:
+                - UNVERIFIED
+                - VERIFIED_MYNA
+                - VERIFIED_CARD
+                - PROVISIONAL_VISUAL
+                - OFFLINE_PROVISIONAL
+                - EXPIRED
+                - MISMATCH
+            snapshotId:
+              anyOf:
+                - type: string
+                  minLength: 1
+                  maxLength: 128
+                - type: "null"
+            allowsProvisionalCalculation:
+              type: boolean
+            allowsFinalCalculation:
+              type: boolean
+          required:
+            - state
+            - snapshotId
+            - allowsProvisionalCalculation
+            - allowsFinalCalculation
+          additionalProperties: false
+        snapshots:
+          type: array
+          items:
+            type: object
+            properties:
+              snapshotId:
+                type: string
+                minLength: 1
+                maxLength: 128
+              verifiedMethod:
+                type: string
+                enum:
+                  - MYNA_ONLINE
+                  - CARD_ONLINE
+                  - CARD_VISUAL
+                  - NONE
+              state:
+                type: string
+                enum:
+                  - VERIFIED_MYNA
+                  - VERIFIED_CARD
+                  - PROVISIONAL_VISUAL
+                  - OFFLINE_PROVISIONAL
+                  - EXPIRED
+                  - MISMATCH
+              verifiedAt:
+                type: string
+                format: date-time
+                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+              validFrom:
+                type: string
+                format: date
+                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+              validTo:
+                anyOf:
+                  - type: string
+                    format: date
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                  - type: "null"
+            required:
+              - snapshotId
+              - verifiedMethod
+              - state
+              - verifiedAt
+              - validFrom
+              - validTo
+            additionalProperties: false
+      required:
+        - receptionId
+        - current
+        - snapshots
+      additionalProperties: false
+      description: Current reception eligibility (derived at the reception business date) plus append-only snapshot history,
+        newest first. PHI-free identifiers and state only.
     PrescriptionDraftResponse:
       type: object
       properties:

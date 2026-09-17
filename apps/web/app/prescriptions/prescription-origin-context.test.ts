@@ -9,6 +9,13 @@ import {
   isSamePrescriptionReceptionOrigin,
 } from "./prescription-origin-context";
 
+const unverifiedEligibility = {
+  state: "UNVERIFIED" as const,
+  snapshotId: null,
+  allowsProvisionalCalculation: false,
+  allowsFinalCalculation: false,
+};
+
 const ENTRY: ReceptionQueueEntry = {
   receptionId: "reception-test-001",
   patient: {
@@ -23,6 +30,7 @@ const ENTRY: ReceptionQueueEntry = {
   acceptedAt: "2026-08-25T00:15:00.000Z",
   receptionStatus: "WAITING",
   prescriptionIntakeType: "paper",
+  eligibility: unverifiedEligibility,
   version: 1,
 };
 
