@@ -20,6 +20,7 @@ import {
   PostgresOutboxDeliveryRunner,
 } from './db/outbox-delivery-runner.js';
 import { PostgresPatientRepository } from './db/patient-repository.js';
+import { PostgresPatientWriteCommand } from './db/patient-command.js';
 import {
   closeObservedDatabasePool,
   createDbPool,
@@ -154,6 +155,8 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
       eligibilitySnapshotRepository:
         new PostgresEligibilitySnapshotRepository(pool),
       eligibilityRecordCommand: new PostgresEligibilityRecordCommand(pool),
+      // WP-7202: 患者登録・更新と監査を単一トランザクションで原子化する。
+      patientWriteCommand: new PostgresPatientWriteCommand(pool),
       repositoryMode,
       tenantContextMode,
       patientSearchCursorCodec,

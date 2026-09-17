@@ -42,6 +42,7 @@ import {
   SEX_LABELS,
 } from "../status/visual-status-registry";
 import { resolveWebApiUrl } from "../api-transport";
+import { PatientRegistrationForm } from "./patient-registration";
 
 /**
  * 患者検索UI(WP-3003 / WP-3008)。
@@ -791,6 +792,9 @@ export function PatientSearch() {
             />
           )}
         </Panel>
+      </section>
+      <section aria-label="患者登録">
+        <PatientRegistrationForm onRegistered={selectPatient} />
       </section>
     </>
   );

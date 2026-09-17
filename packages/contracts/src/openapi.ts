@@ -20,10 +20,16 @@ import {
   receptionSummaryResponseSchema,
 } from "./operations-status.js";
 import {
+  patientCreateHeadersSchema,
+  patientCreateRequestSchema,
+  patientCreateResponseSchema,
   patientGetParamsSchema,
   patientSearchQuerySchema,
   patientSearchResponseSchema,
-  patientSearchResultSchema,
+  patientUpdateHeadersSchema,
+  patientUpdateRequestSchema,
+  patientUpdateResponseSchema,
+  patientVersionedSummarySchema,
 } from "./patient-search.js";
 import {
   prescriptionDraftParamsSchema,
@@ -144,10 +150,47 @@ const patientGetParamsOpenApiSchema = patientGetParamsSchema.meta({
   description: "Patient get-by-id path parameters",
 });
 
-const patientSummaryOpenApiSchema = patientSearchResultSchema.meta({
-  id: "PatientSummary",
+
+
+const patientVersionedSummaryOpenApiSchema = patientVersionedSummarySchema.meta({
+  id: "PatientVersionedSummary",
   description:
-    "Patient summary projection (same shape as search results). Contains PHI and must not be logged in plaintext.",
+    "Patient summary including the optimistic-concurrency version consumed by PUT If-Match/expectedVersion.",
+});
+
+const patientCreateHeadersOpenApiSchema = patientCreateHeadersSchema.meta({
+  id: "PatientCreateHeaders",
+  description:
+    "Idempotency-Key is required on every patient create request (API-013 opaque key).",
+});
+
+const patientCreateRequestOpenApiSchema = patientCreateRequestSchema.meta({
+  id: "PatientCreateRequest",
+  description:
+    "Patient registration. patientNumber is optional; when omitted the server assigns the next scope-local number.",
+});
+
+const patientCreateResponseOpenApiSchema = patientCreateResponseSchema.meta({
+  id: "PatientCreateResponse",
+  description:
+    "Created or replayed patient with optional duplicate-candidate warnings (capped at 5).",
+});
+
+const patientUpdateHeadersOpenApiSchema = patientUpdateHeadersSchema.meta({
+  id: "PatientUpdateHeaders",
+  description:
+    'If-Match must equal the quoted expectedVersion, for example "2". Required on every update request.',
+});
+
+const patientUpdateRequestOpenApiSchema = patientUpdateRequestSchema.meta({
+  id: "PatientUpdateRequest",
+  description:
+    "Patient update command. expectedVersion is required and at least one mutable identity field must be present. patientNumber is immutable and rejected when present.",
+});
+
+const patientUpdateResponseOpenApiSchema = patientUpdateResponseSchema.meta({
+  id: "PatientUpdateResponse",
+  description: "Updated patient with the incremented version.",
 });
 
 const receptionQueueQueryOpenApiSchema = receptionQueueQuerySchema.meta({
@@ -373,13 +416,63 @@ const openApiDefinition = {
         },
       },
     },
+    "/patients": {
+      post: {
+        operationId: "createPatient",
+        tags: ["patients"],
+        summary: "Register a new patient within the authenticated tenant and pharmacy context",
+        description:
+          "Requires patient:write and patient:read scopes and tenant context (POSSIBLE_DUPLICATE warnings enumerate other patients' PHI, so write alone is insufficient per API-001). Idempotent via the Idempotency-Key header: replaying the same key with the same payload returns the existing patient with 200; a different payload returns 409 PAT-0006. patientNumber may be omitted for server-side assignment. The response contains PHI and must use Cache-Control: no-store.",
+        "x-yrese-ssot": "API-001",
+        "x-yrese-required-scopes": ["patient:write", "patient:read"],
+        requestParams: {
+          header: patientCreateHeadersOpenApiSchema,
+        },
+        requestBody: {
+          required: true,
+          content: {
+            [jsonContentType]: {
+              schema: patientCreateRequestOpenApiSchema,
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Patient created",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: patientCreateResponseOpenApiSchema,
+              },
+            },
+          },
+          "200": {
+            description: "Identical idempotent replay; existing patient returned",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: patientCreateResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse(
+            "Invalid patient create request or Idempotency-Key header (PAT-0007)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: false }),
+          "409": domainErrorResponse(
+            "Patient number conflict (PAT-0003) or idempotency conflict (PAT-0006)",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+    },
     "/patients/{patientId}": {
       get: {
         operationId: "getPatientById",
         tags: ["patients"],
-        summary: "Return one patient summary by ID within the authenticated tenant and pharmacy context",
+        summary: "Return one versioned patient summary by ID within the authenticated tenant and pharmacy context",
         description:
-          "Requires patient:read scope and tenant context. Used to refresh the cross-route patient context (R-PATCTX). The response contains PHI and must use Cache-Control: no-store.",
+          "Requires patient:read scope and tenant context. Used to refresh the cross-route patient context (R-PATCTX) and to obtain the version consumed by PUT. The response contains PHI and must use Cache-Control: no-store.",
         "x-yrese-ssot": "API-001",
         "x-yrese-required-scope": "patient:read",
         requestParams: {
@@ -387,11 +480,11 @@ const openApiDefinition = {
         },
         responses: {
           "200": {
-            description: "Patient summary (same projection as search results)",
+            description: "Versioned patient summary",
             headers: noStoreHeaders,
             content: {
               [jsonContentType]: {
-                schema: patientSummaryOpenApiSchema,
+                schema: patientVersionedSummaryOpenApiSchema,
               },
             },
           },
@@ -399,6 +492,48 @@ const openApiDefinition = {
           "403": forbiddenErrorResponse({ noStore: false }),
           "500": internalErrorResponse({ noStore: true }),
           "404": domainErrorResponse("Patient not found (PAT-0002)"),
+        },
+      },
+      put: {
+        operationId: "updatePatient",
+        tags: ["patients"],
+        summary: "Update mutable patient identity fields with optimistic concurrency",
+        description:
+          "Requires patient:write scope and tenant context. expectedVersion in the body and the quoted If-Match header must both equal the current version. Identity changes are appended to patient identity history. patientNumber is immutable and rejected with 422 PAT-0005. The response contains PHI and must use Cache-Control: no-store.",
+        "x-yrese-ssot": "API-001",
+        "x-yrese-required-scope": "patient:write",
+        requestParams: {
+          path: patientGetParamsOpenApiSchema,
+          header: patientUpdateHeadersOpenApiSchema,
+        },
+        requestBody: {
+          required: true,
+          content: {
+            [jsonContentType]: {
+              schema: patientUpdateRequestOpenApiSchema,
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Patient updated",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: patientUpdateResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse(
+            "Invalid patient update request or If-Match header (PAT-0007)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: false }),
+          "404": domainErrorResponse("Patient not found (PAT-0002)"),
+          "412": domainErrorResponse("Patient version conflict (PAT-0004)"),
+          "422": domainErrorResponse(
+            "Immutable patient field change attempt (PAT-0005)",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
         },
       },
     },

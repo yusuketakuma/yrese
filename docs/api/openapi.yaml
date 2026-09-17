@@ -123,14 +123,82 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FrameworkErrorResponse"
+  /patients:
+    post:
+      operationId: createPatient
+      tags:
+        - patients
+      summary: Register a new patient within the authenticated tenant and pharmacy context
+      description: "Requires patient:write and patient:read scopes and tenant context (POSSIBLE_DUPLICATE warnings enumerate
+        other patients' PHI, so write alone is insufficient per API-001). Idempotent via the Idempotency-Key header:
+        replaying the same key with the same payload returns the existing patient with 200; a different payload returns
+        409 PAT-0006. patientNumber may be omitted for server-side assignment. The response contains PHI and must use
+        Cache-Control: no-store."
+      x-yrese-ssot: API-001
+      x-yrese-required-scopes:
+        - patient:write
+        - patient:read
+      parameters:
+        - in: header
+          name: idempotency-key
+          schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{16,128}$
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatientCreateRequest"
+      responses:
+        "200":
+          description: Identical idempotent replay; existing patient returned
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientCreateResponse"
+        "201":
+          description: Patient created
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientCreateResponse"
+        "400":
+          description: Invalid patient create request or Idempotency-Key header (PAT-0007)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden (AUTH-0003)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Patient number conflict (PAT-0003) or idempotency conflict (PAT-0006)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
   /patients/{patientId}:
     get:
       operationId: getPatientById
       tags:
         - patients
-      summary: Return one patient summary by ID within the authenticated tenant and pharmacy context
-      description: "Requires patient:read scope and tenant context. Used to refresh the cross-route patient context
-        (R-PATCTX). The response contains PHI and must use Cache-Control: no-store."
+      summary: Return one versioned patient summary by ID within the authenticated tenant and pharmacy context
+      description: "Requires patient:read scope and tenant context. Used to refresh the cross-route patient context (R-PATCTX)
+        and to obtain the version consumed by PUT. The response contains PHI and must use Cache-Control: no-store."
       x-yrese-ssot: API-001
       x-yrese-required-scope: patient:read
       parameters:
@@ -143,12 +211,12 @@ paths:
           required: true
       responses:
         "200":
-          description: Patient summary (same projection as search results)
+          description: Versioned patient summary
           headers: *a1
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PatientSummary"
+                $ref: "#/components/schemas/PatientVersionedSummary"
         "400":
           description: Invalid patient ID (PAT-0001)
           content:
@@ -163,6 +231,83 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Patient not found (PAT-0002)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+    put:
+      operationId: updatePatient
+      tags:
+        - patients
+      summary: Update mutable patient identity fields with optimistic concurrency
+      description: "Requires patient:write scope and tenant context. expectedVersion in the body and the quoted If-Match
+        header must both equal the current version. Identity changes are appended to patient identity history.
+        patientNumber is immutable and rejected with 422 PAT-0005. The response contains PHI and must use Cache-Control:
+        no-store."
+      x-yrese-ssot: API-001
+      x-yrese-required-scope: patient:write
+      parameters:
+        - in: path
+          name: patientId
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: true
+        - in: header
+          name: if-match
+          schema:
+            type: string
+            maxLength: 12
+            pattern: ^"[1-9][0-9]*"$
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatientUpdateRequest"
+      responses:
+        "200":
+          description: Patient updated
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientUpdateResponse"
+        "400":
+          description: Invalid patient update request or If-Match header (PAT-0007)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden (AUTH-0003)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Patient not found (PAT-0002)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "412":
+          description: Patient version conflict (PAT-0004)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Immutable patient field change attempt (PAT-0005)
           content:
             application/json:
               schema:
@@ -813,6 +958,66 @@ paths:
                 $ref: "#/components/schemas/FrameworkErrorResponse"
 components:
   schemas:
+    PatientCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        kana:
+          type: string
+          minLength: 1
+          maxLength: 128
+        birthDate:
+          type: string
+          format: date
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        sex:
+          type: string
+          enum:
+            - male
+            - female
+            - unknown
+        patientNumber:
+          type: string
+          minLength: 1
+          maxLength: 64
+      required:
+        - name
+        - kana
+        - birthDate
+        - sex
+      description: Patient registration. patientNumber is optional; when omitted the server assigns the next scope-local number.
+    PatientUpdateRequest:
+      type: object
+      properties:
+        expectedVersion:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        kana:
+          type: string
+          minLength: 1
+          maxLength: 128
+        birthDate:
+          type: string
+          format: date
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        sex:
+          type: string
+          enum:
+            - male
+            - female
+            - unknown
+      required:
+        - expectedVersion
+      description: Patient update command. expectedVersion is required and at least one mutable identity field must be
+        present. patientNumber is immutable and rejected when present.
     ReceptionCreateRequest:
       type: object
       properties:
@@ -1205,7 +1410,126 @@ components:
         - results
       additionalProperties: false
       description: Patient search response. Contains PHI and must not be logged in plaintext.
-    PatientSummary:
+    PatientCreateResponse:
+      type: object
+      properties:
+        patient:
+          type: object
+          properties:
+            patientId:
+              type: string
+              minLength: 1
+              maxLength: 128
+            name:
+              type: string
+              minLength: 1
+            kana:
+              type: string
+              minLength: 1
+            birthDate:
+              type: string
+              format: date
+              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+            sex:
+              type: string
+              enum:
+                - male
+                - female
+                - unknown
+            patientNumber:
+              type: string
+              minLength: 1
+            eligibilityStatus:
+              type: string
+              enum:
+                - VERIFIED
+                - PENDING_REVERIFY
+                - LOCAL_ONLY_UNVERIFIED
+                - NOT_CHECKED
+            eligibilityCheckedAt:
+              type: string
+              format: date-time
+              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+            version:
+              type: integer
+              minimum: 1
+              maximum: 9007199254740991
+          required:
+            - patientId
+            - name
+            - kana
+            - birthDate
+            - sex
+            - patientNumber
+            - eligibilityStatus
+            - version
+          additionalProperties: false
+        warnings:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                const: POSSIBLE_DUPLICATE
+              candidates:
+                maxItems: 5
+                type: array
+                items:
+                  type: object
+                  properties:
+                    patientId:
+                      type: string
+                      minLength: 1
+                      maxLength: 128
+                    name:
+                      type: string
+                      minLength: 1
+                    kana:
+                      type: string
+                      minLength: 1
+                    birthDate:
+                      type: string
+                      format: date
+                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                    sex:
+                      type: string
+                      enum:
+                        - male
+                        - female
+                        - unknown
+                    patientNumber:
+                      type: string
+                      minLength: 1
+                    eligibilityStatus:
+                      type: string
+                      enum:
+                        - VERIFIED
+                        - PENDING_REVERIFY
+                        - LOCAL_ONLY_UNVERIFIED
+                        - NOT_CHECKED
+                    eligibilityCheckedAt:
+                      type: string
+                      format: date-time
+                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+                  required:
+                    - patientId
+                    - name
+                    - kana
+                    - birthDate
+                    - sex
+                    - patientNumber
+                    - eligibilityStatus
+                  additionalProperties: false
+            required:
+              - type
+              - candidates
+            additionalProperties: false
+      required:
+        - patient
+      additionalProperties: false
+      description: Created or replayed patient with optional duplicate-candidate warnings (capped at 5).
+    PatientVersionedSummary:
       type: object
       properties:
         patientId:
@@ -1242,6 +1566,10 @@ components:
           type: string
           format: date-time
           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+        version:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
       required:
         - patientId
         - name
@@ -1250,8 +1578,67 @@ components:
         - sex
         - patientNumber
         - eligibilityStatus
+        - version
       additionalProperties: false
-      description: Patient summary projection (same shape as search results). Contains PHI and must not be logged in plaintext.
+      description: Patient summary including the optimistic-concurrency version consumed by PUT If-Match/expectedVersion.
+    PatientUpdateResponse:
+      type: object
+      properties:
+        patient:
+          type: object
+          properties:
+            patientId:
+              type: string
+              minLength: 1
+              maxLength: 128
+            name:
+              type: string
+              minLength: 1
+            kana:
+              type: string
+              minLength: 1
+            birthDate:
+              type: string
+              format: date
+              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+            sex:
+              type: string
+              enum:
+                - male
+                - female
+                - unknown
+            patientNumber:
+              type: string
+              minLength: 1
+            eligibilityStatus:
+              type: string
+              enum:
+                - VERIFIED
+                - PENDING_REVERIFY
+                - LOCAL_ONLY_UNVERIFIED
+                - NOT_CHECKED
+            eligibilityCheckedAt:
+              type: string
+              format: date-time
+              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+            version:
+              type: integer
+              minimum: 1
+              maximum: 9007199254740991
+          required:
+            - patientId
+            - name
+            - kana
+            - birthDate
+            - sex
+            - patientNumber
+            - eligibilityStatus
+            - version
+          additionalProperties: false
+      required:
+        - patient
+      additionalProperties: false
+      description: Updated patient with the incremented version.
     ReceptionQueueResponse:
       type: object
       properties:

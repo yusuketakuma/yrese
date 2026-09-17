@@ -9,6 +9,7 @@ import {
   PATIENT_SEARCH_CURSOR_MAX_LENGTH,
   PATIENT_SEARCH_DEFAULT_LIMIT,
   type PatientSearchResult,
+  type PatientVersionedSummary,
 } from '@yrese/contracts';
 import { patientId, pharmacyId, receptionId, tenantId, userId } from '@yrese/shared-kernel';
 
@@ -470,7 +471,13 @@ describe('buildServer', () => {
       throw new Error('repository must not run without an authenticated tenant context');
     });
     const server = buildDefaultTestServer({
-      patientRepository: { search: patientSearch, findById: patientFindById },
+      patientRepository: {
+        search: patientSearch,
+        findById: patientFindById,
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error('unexpected patient create'); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error('unexpected patient update'); }),
+      },
       receptionRepository: { list: receptionList, create: receptionCreate, transition: vi.fn<ReceptionRepository['transition']>() },
     });
     const attackerHeaders = {
@@ -806,6 +813,9 @@ describe('buildServer', () => {
         patientRepository: {
           search,
           findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
       });
 
@@ -839,6 +849,9 @@ describe('buildServer', () => {
       patientRepository: {
         search,
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
     });
 
@@ -870,6 +883,9 @@ describe('buildServer', () => {
       patientRepository: {
         search,
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
     });
 
@@ -916,6 +932,9 @@ describe('buildServer', () => {
         patientRepository: {
           search,
           findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
       });
 
@@ -956,6 +975,9 @@ describe('buildServer', () => {
       patientRepository: {
         search,
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
     });
 
@@ -1010,6 +1032,9 @@ describe('buildServer', () => {
         patientRepository: {
           search,
           findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
       });
 
@@ -1087,6 +1112,9 @@ describe('buildServer', () => {
       patientRepository: {
         search,
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
     });
 
@@ -1164,6 +1192,9 @@ describe('buildServer', () => {
         patientRepository: {
           search,
           findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
       });
 
@@ -1235,6 +1266,9 @@ describe('buildServer', () => {
         patientRepository: {
           search,
           findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
       });
 
@@ -1304,6 +1338,9 @@ describe('buildServer', () => {
             nextCursor: { offset: 1 },
           })),
           findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
       });
 
@@ -1356,6 +1393,9 @@ describe('buildServer', () => {
           nextCursor: { offset: 1 },
         })),
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
     });
 
@@ -1419,6 +1459,9 @@ describe('buildServer', () => {
         patientRepository: {
           search,
           findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
       });
 
@@ -1477,6 +1520,9 @@ describe('buildServer', () => {
       patientRepository: {
         search: vi.fn<PatientRepository['search']>(async () => page as never),
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
       patientSearchCursorCodec: { encode, decode: vi.fn(() => undefined) },
     });
@@ -1506,6 +1552,9 @@ describe('buildServer', () => {
       patientRepository: {
         search: vi.fn<PatientRepository['search']>(async () => ({ results }) as never),
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
     });
 
@@ -1532,6 +1581,9 @@ describe('buildServer', () => {
       patientRepository: {
         search: vi.fn<PatientRepository['search']>(async () => ({ results }) as never),
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
     });
 
@@ -1567,6 +1619,9 @@ describe('buildServer', () => {
       patientRepository: {
         search: vi.fn<PatientRepository['search']>(async () => page as never),
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
       patientSearchCursorCodec: { encode, decode: vi.fn(() => undefined) },
     });
@@ -1603,6 +1658,9 @@ describe('buildServer', () => {
       patientRepository: {
         search: vi.fn<PatientRepository['search']>(async () => ({ results }) as never),
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
     });
 
@@ -1645,6 +1703,9 @@ describe('buildServer', () => {
       patientRepository: {
         search: vi.fn<PatientRepository['search']>(() => fulfilledPage as never),
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
     });
 
@@ -1682,6 +1743,9 @@ describe('buildServer', () => {
         patientRepository: {
           search: vi.fn<PatientRepository['search']>(async () => ({ results: [patient] }) as never),
           findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
       });
 
@@ -1740,6 +1804,9 @@ describe('buildServer', () => {
       patientRepository: {
         search: vi.fn<PatientRepository['search']>(() => Promise.resolve(page as never)),
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
     });
 
@@ -1803,6 +1870,9 @@ describe('buildServer', () => {
       patientRepository: {
         search: vi.fn<PatientRepository['search']>(() => Promise.resolve(page as never)),
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
       patientSearchCursorCodec: { encode, decode: vi.fn(() => undefined) },
     });
@@ -1857,6 +1927,9 @@ describe('buildServer', () => {
       patientRepository: {
         search: vi.fn<PatientRepository['search']>(async () => page as never),
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
       patientSearchCursorCodec: { encode, decode: vi.fn(() => undefined) },
     });
@@ -1897,6 +1970,9 @@ describe('buildServer', () => {
       patientRepository: {
         search: vi.fn<PatientRepository['search']>(async () => ({ results: [first, invalid] }) as never),
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
       patientSearchCursorCodec: { encode, decode: vi.fn(() => undefined) },
     });
@@ -1945,6 +2021,9 @@ describe('buildServer', () => {
         patientRepository: {
           search: vi.fn<PatientRepository['search']>(async () => page as never),
           findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
         patientSearchCursorCodec: { encode, decode: vi.fn(() => undefined) },
       });
@@ -2014,6 +2093,9 @@ describe('buildServer', () => {
           nextCursor: cursor,
         }) as never),
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
       patientSearchCursorCodec: { encode, decode: vi.fn(() => undefined) },
     });
@@ -2097,6 +2179,9 @@ describe('buildServer', () => {
         patientRepository: {
           search,
           findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
         patientSearchCursorCodec: {
           encode,
@@ -2178,6 +2263,9 @@ describe('buildServer', () => {
             nextCursor: { offset: 2 },
           })),
           findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
         patientSearchCursorCodec: {
           encode,
@@ -2249,6 +2337,9 @@ describe('buildServer', () => {
         patientRepository: {
           search,
           findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
         patientSearchCursorCodec: { encode, decode },
       });
@@ -2313,6 +2404,9 @@ describe('buildServer', () => {
           nextCursor: { offset: 3 },
         })),
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
       patientSearchCursorCodec: {
         encode,
@@ -2360,6 +2454,9 @@ describe('buildServer', () => {
       patientRepository: {
         search: vi.fn(async () => ({ results })),
         findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
     });
 
@@ -4386,15 +4483,18 @@ describe('buildServer', () => {
       const propertyRead = vi.fn(() => {
         throw new Error(rawSentinel);
       });
-      const findByIdCalls = vi.fn<PatientRepository['findById']>();
-      const findById: PatientRepository['findById'] = (scope) => {
-        findByIdCalls(scope);
+      const findVersionedByIdCalls = vi.fn<PatientRepository['findVersionedById']>();
+      const findVersionedById: PatientRepository['findVersionedById'] = (scope) => {
+        findVersionedByIdCalls(scope);
         throw createRejection(rawSentinel, propertyRead);
       };
       const server = buildDevTestServer({
         patientRepository: {
           search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
-          findById,
+          findById: vi.fn<PatientRepository['findById']>(async () => undefined),
+          findVersionedById,
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error('unexpected patient create'); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error('unexpected patient update'); }),
         },
       });
 
@@ -4407,7 +4507,7 @@ describe('buildServer', () => {
 
       expect(response.statusCode).toBe(500);
       expect(response.headers['cache-control']).toBe('no-store');
-      expect(findByIdCalls).toHaveBeenCalledExactlyOnceWith({
+      expect(findVersionedByIdCalls).toHaveBeenCalledExactlyOnceWith({
         tenantId: tenantId('tenant-001'),
         pharmacyId: pharmacyId('pharmacy-001'),
         patientId: patientId(requestedPatientId),
@@ -4458,6 +4558,9 @@ describe('buildServer', () => {
         patientRepository: {
           search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
           findById: vi.fn<PatientRepository['findById']>(async () => patient as never),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
@@ -4510,12 +4613,16 @@ describe('buildServer', () => {
         sex: 'unknown',
         patientNumber: 'GET-4201',
         eligibilityStatus: 'NOT_CHECKED',
+        version: 1,
       };
       Object.defineProperty(patient, field, { enumerable: true, get: getterRead });
       const server = buildDevTestServer({
         patientRepository: {
           search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
           findById: vi.fn<PatientRepository['findById']>(async () => patient as never),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => patient as never),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
       });
 
@@ -4563,6 +4670,7 @@ describe('buildServer', () => {
         patientNumber: 'DESC-4201',
         eligibilityStatus: 'NOT_CHECKED' as const,
         eligibilityCheckedAt: '2026-07-09T08:59:00.000Z',
+        version: 1,
       };
       const patient = new Proxy(patientTarget, {
         get(_target, property) {
@@ -4601,6 +4709,9 @@ describe('buildServer', () => {
         patientRepository: {
           search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
           findById: vi.fn<PatientRepository['findById']>(() => Promise.resolve(patient)),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(() => Promise.resolve(patient)),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
@@ -4631,6 +4742,7 @@ describe('buildServer', () => {
           ? {
               patientId: requestedPatientId,
               eligibilityCheckedAt: '2026-07-09T08:59:00.000Z',
+              version: 1,
             }
           : {
               patient: {
@@ -4639,13 +4751,15 @@ describe('buildServer', () => {
               },
             },
       );
-      expect(descriptorRead).toHaveBeenCalledTimes(8);
+      // GET は version 付き要約を snapshot するため descriptor 読取りが 1 件多い。
+      expect(descriptorRead).toHaveBeenCalledTimes(method === 'GET' ? 9 : 8);
       expect(thenRead).toHaveBeenCalledOnce();
       expect(directRead).not.toHaveBeenCalled();
       expect(response.body).not.toContain(rawSecondThenSentinel);
       if (method === 'POST') {
         expect(create).toHaveBeenCalledOnce();
-        expect(create.mock.calls[0]?.[0].patient).toEqual(patientTarget);
+        const { version: _descriptorOnlyVersion, ...expectedPatientSnapshot } = patientTarget;
+        expect(create.mock.calls[0]?.[0].patient).toEqual(expectedPatientSnapshot);
         expect(Object.is(create.mock.calls[0]?.[0].patient, patient)).toBe(false);
       } else {
         expect(create).not.toHaveBeenCalled();
@@ -4670,6 +4784,7 @@ describe('buildServer', () => {
           sex: 'unknown' as const,
           patientNumber: 'REVOKED-PATIENT-SECRET-4205',
           eligibilityStatus: 'NOT_CHECKED' as const,
+          version: 1,
         },
         {
           get(_target, property) {
@@ -4682,8 +4797,8 @@ describe('buildServer', () => {
           getOwnPropertyDescriptor: directRead,
         },
       );
-      const fulfilledPatient = new Promise<PatientSearchResult>((resolve) => {
-        resolve(patient);
+      const fulfilledPatient = new Promise<PatientVersionedSummary>((resolve) => {
+        resolve(patient as PatientVersionedSummary);
         revoke();
       });
       const create = vi.fn<ReceptionRepository['create']>();
@@ -4692,6 +4807,9 @@ describe('buildServer', () => {
         patientRepository: {
           search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
           findById: vi.fn<PatientRepository['findById']>(() => fulfilledPatient),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(() => fulfilledPatient),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
@@ -4755,6 +4873,7 @@ describe('buildServer', () => {
       sex: 'unknown' as const,
       patientNumber: 'SNAP-4201',
       eligibilityStatus: 'NOT_CHECKED' as const,
+      version: 1,
     };
     const patient = new Proxy(patientTarget, {
       get(_target, property) {
@@ -4774,6 +4893,9 @@ describe('buildServer', () => {
       patientRepository: {
         search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
         findById: vi.fn<PatientRepository['findById']>(() => Promise.resolve(patient)),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(() => Promise.resolve(patient)),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
     });
 
@@ -4811,6 +4933,9 @@ describe('buildServer', () => {
       patientRepository: {
         search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
         findById: vi.fn<PatientRepository['findById']>(async () => patient as never),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
@@ -4851,6 +4976,9 @@ describe('buildServer', () => {
       patientRepository: {
         search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
         findById,
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error('unexpected patient create'); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error('unexpected patient update'); }),
       },
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
@@ -4900,6 +5028,9 @@ describe('buildServer', () => {
           patientNumber: 'SYN-MISMATCH-999',
           eligibilityStatus: 'NOT_CHECKED',
         })),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error('unexpected patient create'); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error('unexpected patient update'); }),
       },
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
@@ -4955,6 +5086,9 @@ describe('buildServer', () => {
       patientRepository: {
         search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
         findById: vi.fn<PatientRepository['findById']>(async () => sensitivePatient),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
@@ -5317,6 +5451,9 @@ describe('buildServer', () => {
         patientRepository: {
           search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
           findById: vi.fn<PatientRepository['findById']>(async () => lookupPatient),
+          findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+          create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+          update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
         },
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
@@ -5385,6 +5522,9 @@ describe('buildServer', () => {
       patientRepository: {
         search: vi.fn<PatientRepository['search']>(async () => ({ results: [] })),
         findById: vi.fn<PatientRepository['findById']>(async () => lookupPatient),
+        findVersionedById: vi.fn<PatientRepository['findVersionedById']>(async () => undefined),
+        create: vi.fn<PatientRepository['create']>(async () => { throw new Error("unexpected patient create"); }),
+        update: vi.fn<PatientRepository['update']>(async () => { throw new Error("unexpected patient update"); }),
       },
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),

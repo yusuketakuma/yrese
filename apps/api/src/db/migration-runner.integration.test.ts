@@ -64,6 +64,7 @@ describePostgres('PostgreSQL migration runner integration (set TEST_DATABASE_URL
         '000012',
         '000013',
         '000014',
+        '000015',
         '000017',
       ]);
 
@@ -89,6 +90,7 @@ describePostgres('PostgreSQL migration runner integration (set TEST_DATABASE_URL
         { version: '000012', applied_by: 'vitest' },
         { version: '000013', applied_by: 'vitest' },
         { version: '000014', applied_by: 'vitest' },
+        { version: '000015', applied_by: 'vitest' },
         { version: '000017', applied_by: 'vitest' },
       ]);
     });

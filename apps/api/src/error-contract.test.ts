@@ -145,6 +145,15 @@ describe('normalized 500 surface (WP-9008 conformance)', () => {
     findById: async () => {
       throw new Error(rawSentinel);
     },
+    findVersionedById: async () => {
+      throw new Error(rawSentinel);
+    },
+    create: async () => {
+      throw new Error(rawSentinel);
+    },
+    update: async () => {
+      throw new Error(rawSentinel);
+    },
   };
   const failingReceptionRepository: Pick<ReceptionRepository, 'list'> = {
     list: async () => {

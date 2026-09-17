@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import type { PatientSearchResult } from '@yrese/contracts';
+import type { PatientVersionedSummary } from '@yrese/contracts';
 
 import { InMemoryAuditRepository, type AuditRepository } from './audit-repository.js';
 
@@ -44,11 +44,12 @@ describe('GET /patients/:patientId (R-PATCTX 再取得契約)', () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.headers['cache-control']).toBe('no-store');
-    const body = response.json() as PatientSearchResult;
+    const body = response.json() as PatientVersionedSummary;
     expect(body.patientId).toBe('patient-syn-001');
     expect(body.patientNumber).toBe('SYN-001');
     expect(body.eligibilityStatus).toBe('VERIFIED');
-    // 検索結果と同一射影(契約フィールドのみ)
+    // 検索結果射影 + version(PUT の CAS 入力。契約フィールドのみ)
+    expect(body.version).toBe(1);
     expect(Object.keys(body).sort()).toEqual(
       [
         'birthDate',
@@ -59,6 +60,7 @@ describe('GET /patients/:patientId (R-PATCTX 再取得契約)', () => {
         'patientId',
         'patientNumber',
         'sex',
+        'version',
       ].sort(),
     );
   });

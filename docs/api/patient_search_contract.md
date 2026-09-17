@@ -12,7 +12,7 @@ reviewers:
   - privacy_compliance_reviewer
   - medical_safety_reviewer
   - human_pharmacist_product_authority
-version: 0.3.0
+version: 0.3.1
 created_at: 2026-07-09
 updated_at: 2026-09-17
 approved_at: 2026-09-17
@@ -35,6 +35,7 @@ related_tests:
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.3.1 2026-09-17 WP-7202 実装着手時の契約ギャップ解消と additive 補記: (a) write 系 route の 400(ボディ検証失敗・Idempotency-Key/If-Match ヘッダ欠落・異形)に対応するコードが未定義だったため `PAT-0007`(invalid patient write request)を登録し §4 へ反映、検索 400 は従来どおり `PAT-0001` (b) GET /patients/:patientId の 200 body に `version` を additive 追加 — PUT CAS 収束 loop が要求する取得経路の明記漏れを訂正(独立 review finding)"
   - "0.3.0 2026-09-17 WP-7202 PROPOSED: 患者登録・更新(`POST /patients`・`PUT /patients/{patientId}`)を追加し C-028(BLOCKED_PATIENT_CREATE_UNIQUENESS)の起案を固定。patientNumber は省略時サーバー採番・指定時一意性検査、identity field 変更は append-only history 記録、同姓同名・同生年月日の重複候補は非ブロッキング warning として応答。既存 read 契約の wire・認可・blocker は不変。review と human approval まで実装根拠にしない"
   - "0.3.0 2026-09-17 独立 review(Devin in-session、Oracle 不使用)訂正: (a) POST /patients は warnings の candidates が他患者 PHI を返すため `patient:read` 併須へ、候補列挙に `patient.searched` 監査を追加 (b) phone/note は永続列・wire 露出・DOM-002 §2 属性定義がなく write-only PHI となるため除外 (c) Idempotency-Key を API-013 の `[A-Za-z0-9_-]{16,128}` 規則へ揃え、冪等記録の永続化(migration 000015 内の UNIQUE + fingerprint 保持)を明記 (d) 新規患者の eligibilityStatus 初期値 NOT_CHECKED を明記 (e) PUT は If-Match CAS による冪等性を明記"
   - "0.3.0 2026-09-17 finalization: 独立 review 反映済み本文のまま direct human approval(SSOT batch 一括 APPROVE)により PROPOSED→APPROVED。承認範囲は SSOT 改版のみで、migration 000015 適用・実装完了・production action を含まない。登録済み blocker(URL PHI・scale bound)は据え置き"
@@ -92,7 +93,9 @@ cursorを変更せず、PostgreSQLの過去historyを本projectionまたはFHIR 
 
 - 認可、trusted tenantId + pharmacyId、`Cache-Control: no-store`はsearchと同一。
 - 200 bodyは§3の**単一 `PatientSearchResult`そのもの**であり、wrapperやFHIR
-  resourceへのredirect/shape変更をしない。
+  resourceへのredirect/shape変更をしない。**0.3.1 で `version: integer >= 1` を
+  additive に追加** — PUT の CAS 収束 loop(412 → GET で現行 version 取得)が
+  要求する唯一の取得経路であり、破壊的変更ではない。
 - invalid path idは400 `PAT-0001`。unknownまたはcross-tenant/pharmacyは同じ
   404 `PAT-0002`で存在を漏らさない。
 - Patient cutover前後を通じて本routeを維持し、`/fhir/R4/Patient/{id}`へ
@@ -110,7 +113,7 @@ initially disabled 規律が引き続き正本であり、本 endpoint はその
   GET/POST /reception と同じ「応答に PHI を含む route は read scope 併須」の規則を適用する
   — 0.3.0 独立 review 訂正。write のみの actor へ他患者の列挙結果を返さない)
 - ヘッダ: **`Idempotency-Key` 必須**。形式・検証は API-013 の規則に従う
-  (opaque、`[A-Za-z0-9_-]{16,128}`、非適合は 400。key を log・metric label・
+  (opaque、`[A-Za-z0-9_-]{16,128}`、非適合は **400 `PAT-0007`**。key を log・metric label・
   raw error に出さない)。一意性境界は (tenantId, pharmacyId, idempotencyKey)。
   同一 key + 同一 payload の再送 → 既存 patient を 200 で返す。
   同一 key + 異なる payload → **409 `PAT-0006`**(idempotency conflict)。
@@ -148,7 +151,8 @@ initially disabled 規律が引き続き正本であり、本 endpoint はその
 
 - 認可: `patient:write` scope 必須。
 - ヘッダ: **`If-Match: "<version>"` 必須** + ボディ `expectedVersion` 必須。
-  不一致は **412 `PAT-0004`**(version conflict)。version は更新ごとに単調増加。
+  ヘッダ欠落・異形・body との不一致は **400 `PAT-0007`**、形式が正しく現在 version と
+  一致しない場合のみ **412 `PAT-0004`**(version conflict)。version は更新ごとに単調増加。
   冪等性は If-Match CAS が担い Idempotency-Key は要求しない(API-013 の update 規則。
   応答喪失後の再送は 412 で検出可能であり、GET で現在値を確認して収束する)。
 - ボディ: `{ expectedVersion: integer, name?, kana?, birthDate?, sex? }`
@@ -204,6 +208,7 @@ PatientSearchResult = {
 - 400: **クエリ検証失敗の全ケース**(q 欠落/空白のみ/長さ超過、limit 範囲外、cursor 不正形式・境界不一致)→ `PAT-0001`(invalid patient search query)。`PAT-0001` は実装前に error_code_registry(MOD-006)と shared-kernel シードへ登録する。
 - 403: scope不足(AUTH-0003、既存)
 - 404: unknown/cross-tenant の patientId → `PAT-0002`(GET と同一の非露出規則)
+- 400(0.3.1): POST/PUT write 系のボディ検証失敗・`Idempotency-Key`/`If-Match` ヘッダ欠落・異形 → `PAT-0007`(invalid patient write request)。検索クエリの 400 は従来どおり `PAT-0001`
 - 409(0.3.0): patientNumber 重複 → `PAT-0003`。idempotencyKey + 異なる payload → `PAT-0006`(いずれも MOD-006 へ登録提案)
 - 412(0.3.0): PUT の If-Match/expectedVersion 不一致 → `PAT-0004`(MOD-006 へ登録提案)
 - 422(0.3.0): `patientNumber` その他不変 field の変更試行 → `PAT-0005`(MOD-006 へ登録提案)

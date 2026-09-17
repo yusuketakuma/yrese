@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.64
+version: 0.4.65
 created_at: 2026-07-09
 updated_at: 2026-09-17
 approved_at: 2026-09-08
@@ -159,6 +159,7 @@ related_prs:
   - PR #6
 evidence_ids: []
 change_log:
+  - "0.4.65 2026-09-17 WP-7202 bounded amendments: API-001 0.3.1(write 400 コード `PAT-0007` の契約ギャップ解消)、MOD-006 0.1.5(PAT-0007 登録)、UIX-001 0.2.1(§12.3 matrix へ SCR-002-C/U 追加 — pre-review packet D-4 の human approval に基づく)。総文書数 187 不変、status 集計不変(APPROVED 160 / PROPOSED 4 / SUPERSEDED 23)。実装完了・production action を含まない。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.64 2026-09-17 finalization: 独立 review(Devin in-session 一次資料突合、Oracle 不使用)の finding を PROPOSED 本文へ反映済みの上で direct human approval(SSOT batch 一括 APPROVE)により 7 文書を PROPOSED→APPROVED(API-001 0.3.0、API-006 0.3.0、API-019 0.1.0、API-020 0.1.0、DOM-002 0.1.4、MOD-006 0.1.3、MOD-008 0.2.7)。総文書数 187 不変。status 集計は APPROVED 153→160、PROPOSED 11→4、SUPERSEDED 23 不変(合計187)。承認範囲は SSOT 改版のみで、実装完了・migration 000014〜000016 適用・外部接続・production action・登録済み blocker の解除を含まない。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.63 2026-09-17 Plans.md §18 SSOT 起案 batch(WP-7201〜7205/7302): API-019(eligibility_snapshot_contract)・API-020(coverage_contract)を PROPOSED で新規登録、API-001・API-006・DOM-002・MOD-006・MOD-008 を改版提案のため APPROVED→PROPOSED へ降格。総文書数 185→187、docs/api 18→20。status 集計は APPROVED 158→153、PROPOSED 4→11、SUPERSEDED 23 不変(合計187)。全件 PROPOSED であり実装根拠にしない。登録済み blocker は据え置き。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.62 2026-09-08 user-approved Codex cleanup finalization: AGT-018 v0.2.0 / PRC-003 v0.3.0 / PRC-005 v0.3.0 to APPROVED after frozen independent review FINDINGS_NONE; inventory unchanged"

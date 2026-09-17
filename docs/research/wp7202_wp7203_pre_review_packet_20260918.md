@@ -115,6 +115,16 @@ human authority の承認は別 context review を代替しない。
 本記録をもって PRC-003 DoR #10 の R3 事前 review record が成立。review gate(PRC-005 §2 R3)
 の独立 checker による frozen-diff review は landing 前に別途実施する。
 
+### 6.1 WP-7202 review gate 実施結果(2026-09-18)
+
+- 実施形態: D-5 承認構成どおり、変更に関与しない別 context の read-only review(実装・レビューとも
+  Devin のみ、Oracle 不使用 — ユーザ方針)。
+- 初回(v1 frozen diff): HIGH 1(自動採番の integer overflow)/ MEDIUM 2(OpenAPI・UIX-001 の
+  `patient:read` 併須記載漏れ)/ LOW 6(scope key 衝突・history rollback・不変 field 網羅・
+  GET version 記載・PUT 監査巻戻しテスト・dead schema)。全件修正。
+- 再審(v2 frozen diff sha256 `45636e1c…`): **FINDINGS_NONE**。
+- WP-7203 は本 packet 時点で未着手 — 実装時に同 gate を別途実施する。
+
 ## 7. 本 packet が権限を与えないもの
 
 - migration 000015/000016 の**環境適用**(production/staging 含む一切)→ 別承認

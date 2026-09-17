@@ -188,6 +188,46 @@ export const KERNEL_ERROR_CODES = [
     requiresHumanReview: false,
     description: "eligibility transition not allowed",
   },
+  {
+    code: "PAT-0003",
+    domain: "PATIENT",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "patient number conflict",
+  },
+  {
+    code: "PAT-0004",
+    domain: "PATIENT",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "patient version conflict",
+  },
+  {
+    code: "PAT-0005",
+    domain: "PATIENT",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "immutable patient field change",
+  },
+  {
+    code: "PAT-0006",
+    domain: "PATIENT",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "patient idempotency conflict",
+  },
+  {
+    code: "PAT-0007",
+    domain: "PATIENT",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "invalid patient write request",
+  },
 ] as const satisfies readonly ErrorCodeDef[];
 
 export const AUTH_PERMISSION_DENIED_ERROR_CODE = KERNEL_ERROR_CODES[0].code;
@@ -208,6 +248,11 @@ export const INSURANCE_ELIGIBILITY_SNAPSHOT_CONFLICT_ERROR_CODE =
   KERNEL_ERROR_CODES[12].code;
 export const INSURANCE_ELIGIBILITY_TRANSITION_ERROR_CODE =
   KERNEL_ERROR_CODES[13].code;
+export const PATIENT_NUMBER_CONFLICT_ERROR_CODE = KERNEL_ERROR_CODES[14].code;
+export const PATIENT_VERSION_CONFLICT_ERROR_CODE = KERNEL_ERROR_CODES[15].code;
+export const PATIENT_IMMUTABLE_FIELD_ERROR_CODE = KERNEL_ERROR_CODES[16].code;
+export const PATIENT_IDEMPOTENCY_CONFLICT_ERROR_CODE = KERNEL_ERROR_CODES[17].code;
+export const PATIENT_WRITE_INVALID_REQUEST_ERROR_CODE = KERNEL_ERROR_CODES[18].code;
 
 export function createKernelErrorCodeRegistry(): ErrorCodeRegistry {
   const registry = new ErrorCodeRegistry();

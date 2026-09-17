@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { patientId, pharmacyId, tenantId } from '@yrese/shared-kernel';
 
 import { InMemoryPatientRepository } from './patient-repository.js';
@@ -27,6 +27,7 @@ function syntheticRecord(
     sex: 'unknown' as const,
     patientNumber,
     eligibilityStatus: 'NOT_CHECKED' as const,
+    version: 1,
   };
 }
 
@@ -337,5 +338,265 @@ describe('InMemoryPatientRepository command authority', () => {
     await expect(repository.search(mutableSearch)).resolves.toMatchObject({
       results: [{ patientId: 'patient-a' }],
     });
+  });
+});
+
+describe('InMemoryPatientRepository write paths (WP-7202)', () => {
+  const writeScope = {
+    tenantId: tenantId('tenant-write-001'),
+    pharmacyId: pharmacyId('pharmacy-write-001'),
+  } as const;
+  const fingerprint = 'a'.repeat(64);
+  const key = 'write-key-0000000001';
+  const baseCreateInput = {
+    ...writeScope,
+    patientId: patientId('patient-new-001'),
+    attributes: {
+      name: '登録 太郎',
+      kana: 'トウロクタロウ',
+      birthDate: '1985-05-05',
+      sex: 'male' as const,
+    },
+    idempotencyKey: key,
+    requestFingerprint: fingerprint,
+    actorId: 'actor-write-001' as never,
+    recordedAt: '2026-09-18T00:00:00.000Z',
+  };
+
+  it('creates a patient with server-allocated patientNumber, version 1, NOT_CHECKED', async () => {
+    const repository = new InMemoryPatientRepository([]);
+    const result = await repository.create(baseCreateInput);
+
+    expect(result).toMatchObject({
+      kind: 'created',
+      patient: {
+        patientId: 'patient-new-001',
+        patientNumber: 'P-000001',
+        eligibilityStatus: 'NOT_CHECKED',
+        version: 1,
+      },
+      duplicateCandidates: [],
+    });
+  });
+
+  it('allocates the next P-###### suffix above the scope maximum', async () => {
+    const repository = new InMemoryPatientRepository([
+      { ...syntheticRecord('patient-old', 'P-000009'), ...writeScope },
+      // 別 scope と非 P- 番号は採番へ影響しない(Postgres MAX 方式との parity)。
+      { ...syntheticRecord('patient-other', 'P-999999'), tenantId: tenantId('tenant-other') },
+      { ...syntheticRecord('patient-custom', 'SYN-777'), ...writeScope },
+    ]);
+    const result = await repository.create(baseCreateInput);
+    expect(result).toMatchObject({
+      kind: 'created',
+      patient: { patientNumber: 'P-000010' },
+    });
+  });
+
+  it('rejects an explicit duplicate patientNumber in scope', async () => {
+    const repository = new InMemoryPatientRepository([
+      { ...syntheticRecord('patient-dup', 'K-001'), ...writeScope },
+    ]);
+    const result = await repository.create({
+      ...baseCreateInput,
+      attributes: { ...baseCreateInput.attributes, patientNumber: 'K-001' },
+    });
+    expect(result).toEqual({ kind: 'patient_number_conflict' });
+    // 同一番号でも別 scope は許可される。
+    const other = await repository.create({
+      ...baseCreateInput,
+      tenantId: tenantId('tenant-write-002'),
+      attributes: { ...baseCreateInput.attributes, patientNumber: 'K-001' },
+    });
+    expect(other.kind).toBe('created');
+  });
+
+  it('replays an identical idempotency key as existing and conflicts on different payload', async () => {
+    const repository = new InMemoryPatientRepository([]);
+    const created = await repository.create(baseCreateInput);
+    expect(created.kind).toBe('created');
+
+    const replay = await repository.create({
+      ...baseCreateInput,
+      patientId: patientId('patient-should-not-be-minted'),
+    });
+    expect(replay).toEqual({
+      kind: 'existing',
+      patient: expect.objectContaining({ patientId: 'patient-new-001' }),
+    });
+
+    // 異なる payload は異なる fingerprint を伴う(fingerprint は route が
+    // 正規化 request から算出する)。
+    const conflict = await repository.create({
+      ...baseCreateInput,
+      attributes: { ...baseCreateInput.attributes, name: '別名 次郎' },
+      requestFingerprint: 'c'.repeat(64),
+    });
+    expect(conflict).toEqual({ kind: 'idempotency_conflict' });
+  });
+
+  it('returns up to 5 duplicate candidates by name or birthDate in deterministic order', async () => {
+    const repository = new InMemoryPatientRepository(
+      Array.from({ length: 7 }, (_, i) => ({
+        ...syntheticRecord(`patient-cand-${i}`, `C-${String(i).padStart(3, '0')}`),
+        ...writeScope,
+        birthDate: '1985-05-05',
+        name: `候補${i}`,
+      })),
+    );
+    const result = await repository.create(baseCreateInput);
+    expect(result.kind).toBe('created');
+    if (result.kind !== 'created') return;
+    expect(result.duplicateCandidates).toHaveLength(5);
+    // patient_number 昇順(code point)で確定的。
+    expect(result.duplicateCandidates.map((c) => c.patientNumber)).toEqual([
+      'C-000',
+      'C-001',
+      'C-002',
+      'C-003',
+      'C-004',
+    ]);
+  });
+
+  it('updates identity fields, increments version, and appends identity history', async () => {
+    const repository = new InMemoryPatientRepository([]);
+    const created = await repository.create(baseCreateInput);
+    if (created.kind !== 'created') throw new Error('expected created');
+
+    const updated = await repository.update({
+      ...writeScope,
+      patientId: patientId('patient-new-001'),
+      expectedVersion: 1,
+      attributes: { name: '登録 花子', birthDate: '1985-05-05' },
+      actorId: 'actor-write-002' as never,
+      recordedAt: '2026-09-18T01:00:00.000Z',
+    });
+    expect(updated).toMatchObject({
+      kind: 'updated',
+      patient: { name: '登録 花子', version: 2, patientNumber: 'P-000001' },
+    });
+
+    const history = repository.listIdentityHistory();
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({
+      patientId: 'patient-new-001',
+      version: 1,
+      name: '登録 太郎',
+      supersededBy: 'actor-write-002',
+    });
+
+    // 同一値の再送は identity 変更なし → history 追加なし・version は増加。
+    const noChange = await repository.update({
+      ...writeScope,
+      patientId: patientId('patient-new-001'),
+      expectedVersion: 2,
+      attributes: { name: '登録 花子' },
+      actorId: 'actor-write-002' as never,
+      recordedAt: '2026-09-18T01:01:00.000Z',
+    });
+    expect(noChange).toMatchObject({ kind: 'updated', patient: { version: 3 } });
+    expect(repository.listIdentityHistory()).toHaveLength(1);
+  });
+
+  it('rejects stale expectedVersion and unknown patient without mutation', async () => {
+    const repository = new InMemoryPatientRepository([]);
+    await repository.create(baseCreateInput);
+
+    const stale = await repository.update({
+      ...writeScope,
+      patientId: patientId('patient-new-001'),
+      expectedVersion: 99,
+      attributes: { name: 'x' },
+      actorId: 'a' as never,
+      recordedAt: '2026-09-18T02:00:00.000Z',
+    });
+    expect(stale).toEqual({ kind: 'version_conflict', currentVersion: 1 });
+
+    const missing = await repository.update({
+      ...writeScope,
+      patientId: patientId('patient-missing'),
+      expectedVersion: 1,
+      attributes: { name: 'x' },
+      actorId: 'a' as never,
+      recordedAt: '2026-09-18T02:00:00.000Z',
+    });
+    expect(missing).toEqual({ kind: 'not_found' });
+    // 別 tenant の同名 patientId も not_found(cross-scope 非開示)。
+    const crossScope = await repository.update({
+      tenantId: tenantId('tenant-other'),
+      pharmacyId: writeScope.pharmacyId,
+      patientId: patientId('patient-new-001'),
+      expectedVersion: 1,
+      attributes: { name: 'x' },
+      actorId: 'a' as never,
+      recordedAt: '2026-09-18T02:00:00.000Z',
+    });
+    expect(crossScope).toEqual({ kind: 'not_found' });
+  });
+
+  it('rolls back a created patient and its idempotency record on audit failure', async () => {
+    const repository = new InMemoryPatientRepository([]);
+    const created = await repository.create(baseCreateInput);
+    if (created.kind !== 'created') throw new Error('expected created');
+
+    repository.rollbackCreated(created.undo);
+
+    await expect(
+      repository.findVersionedById({ ...writeScope, patientId: patientId('patient-new-001') }),
+    ).resolves.toBeUndefined();
+    // idempotency 記録も除去され、同じ key で別 payload が再作成できる。
+    const retry = await repository.create({
+      ...baseCreateInput,
+      patientId: patientId('patient-retry-001'),
+      requestFingerprint: 'b'.repeat(64),
+    });
+    expect(retry.kind).toBe('created');
+  });
+
+  it('rolls back an update and pops the appended identity history', async () => {
+    const repository = new InMemoryPatientRepository([]);
+    await repository.create(baseCreateInput);
+    const updated = await repository.update({
+      ...writeScope,
+      patientId: patientId('patient-new-001'),
+      expectedVersion: 1,
+      attributes: { kana: 'ヘンコウカナ' },
+      actorId: 'a' as never,
+      recordedAt: '2026-09-18T03:00:00.000Z',
+    });
+    if (updated.kind !== 'updated') throw new Error('expected updated');
+    expect(repository.listIdentityHistory()).toHaveLength(1);
+
+    repository.rollbackUpdate(updated.undo);
+
+    const restored = await repository.findVersionedById({
+      ...writeScope,
+      patientId: patientId('patient-new-001'),
+    });
+    expect(restored).toMatchObject({ kana: 'トウロクタロウ', version: 1 });
+    expect(repository.listIdentityHistory()).toHaveLength(0);
+  });
+
+  it('rejects hostile create/update inputs before scanning records', async () => {
+    const recordsRead = vi.fn(() => {
+      throw new Error('patient records must remain unread');
+    });
+    const hostileRecords = new Proxy([] as never[], {
+      get(_t, p) {
+        if (p === Symbol.iterator || p === 'length' || p === 'slice') {
+          return recordsRead();
+        }
+        return undefined;
+      },
+    });
+    const repository = new InMemoryPatientRepository(hostileRecords as never);
+
+    await expect(
+      repository.create({ ...baseCreateInput, attributes: { get name() { throw new Error('x'); } } as never }),
+    ).rejects.toThrow(patientRepositoryCommandSnapshotInvariantErrorMessage);
+    await expect(
+      repository.update({ ...writeScope, patientId: patientId('p'), expectedVersion: 1, attributes: null as never, actorId: 'a' as never, recordedAt: '2026-01-01T00:00:00.000Z' }),
+    ).rejects.toThrow(patientRepositoryCommandSnapshotInvariantErrorMessage);
+    expect(recordsRead).not.toHaveBeenCalled();
   });
 });

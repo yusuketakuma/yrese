@@ -8,7 +8,7 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.4
+version: 0.1.5
 created_at: 2026-07-09
 updated_at: 2026-09-17
 approved_at: 2026-09-17
@@ -45,6 +45,7 @@ open_questions:
   - エラーコードとUI表示文言(次に何をすべきか)の対応表の管理場所(UIX-001 と連動)
 blockers: []
 change_log:
+  - "0.1.5 (2026-09-17): WP-7202 実装着手時の契約ギャップ解消 — write 系 route の 400(ボディ検証失敗・Idempotency-Key/If-Match ヘッダ欠落・異形)に対応するコードが未登録だったため `PAT-0007` を追加。RCV-0006(0.1.4)と同型の実装期ギャップ訂正"
   - "0.1.3 (2026-09-17): §18 SSOT 起案 batch。WP-7201 / API-006 0.3.0 起案に伴い RCV-0004(不許可遷移 409)/ RCV-0005(受付 version conflict 409)、WP-7204 / API-019 起案に伴い INS-0007〜0010(資格確認 snapshot route の 400/404/409/422)、WP-7203 / API-020 起案に伴い INS-0001〜0006(coverage route の 400/404/409 群)、WP-7202 / API-001 0.3.0 起案に伴い PAT-0003(patientNumber 重複 409)/ PAT-0004(version conflict 412)/ PAT-0005(不変 field 変更 422)/ PAT-0006(idempotency conflict 409)を追加提案。併せて shared-kernel に実装済みで台帳未登録だった PAT-0002 の drift を追記登録。review と human approval まで PROPOSED、実装根拠にしない"
   - "0.1.3 (2026-09-17) finalization: direct human approval(SSOT batch 一括 APPROVE)により PROPOSED→APPROVED。承認範囲はエラーコード台帳の登録のみで、実装完了・production action を含まない"
   - "0.1.4 (2026-09-17): WP-7201 実装着手時の契約ギャップ解消 — transitions の受付不存在 404 に対応するコードが未登録だったため `RCV-0006` を追加。direct human approval(RCV-0006 追加の選択)により APPROVED を維持したまま登録"
@@ -79,10 +80,11 @@ change_log:
 | AUTH-0003 | AUTH | ERROR | false | false | 権限不足・コンテキスト不在(403)。deny-by-default の一律応答 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / apps/api errorResponseSchema) |
 | PAT-0001 | PATIENT | ERROR | false | false | 患者検索クエリ不正(400)。q/limit/cursor の契約違反や cursor 境界不一致 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-001 patient search) |
 | PAT-0002 | PATIENT | ERROR | false | false | 対象患者が当該テナント・薬局内に存在しない(404)。テナント越え探索は禁止 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-001 patient get。0.1.3 で台帳 drift を追記登録) |
-| PAT-0003 | PATIENT | ERROR | false | false | 患者番号重複(409)。(tenant, pharmacy, patientNumber) 一意性違反 | APPROVED(API-001 0.3.0 / WP-7202。未実装) |
-| PAT-0004 | PATIENT | ERROR | false | false | 患者 version conflict(412)。PUT の If-Match/expectedVersion と現在 version の不一致 | APPROVED(API-001 0.3.0 / WP-7202。未実装) |
-| PAT-0005 | PATIENT | ERROR | false | false | 不変 field(patientNumber 等)の変更試行(422)。訂正は identity history / merge 経路 | APPROVED(API-001 0.3.0 / WP-7202。未実装) |
-| PAT-0006 | PATIENT | ERROR | false | false | idempotencyKey conflict(同一 key + 異なる patient payload)(409) | APPROVED(API-001 0.3.0 / WP-7202。未実装) |
+| PAT-0003 | PATIENT | ERROR | false | false | 患者番号重複(409)。(tenant, pharmacy, patientNumber) 一意性違反 | 実装済み(API-001 0.3.x / WP-7202) |
+| PAT-0004 | PATIENT | ERROR | false | false | 患者 version conflict(412)。PUT の If-Match/expectedVersion と現在 version の不一致 | 実装済み(API-001 0.3.x / WP-7202) |
+| PAT-0005 | PATIENT | ERROR | false | false | 不変 field(patientNumber 等)の変更試行(422)。訂正は identity history / merge 経路 | 実装済み(API-001 0.3.x / WP-7202) |
+| PAT-0006 | PATIENT | ERROR | false | false | idempotencyKey conflict(同一 key + 異なる patient payload)(409) | 実装済み(API-001 0.3.x / WP-7202) |
+| PAT-0007 | PATIENT | ERROR | false | false | 患者 write request 不正(400)。POST/PUT ボディ検証失敗、Idempotency-Key / If-Match ヘッダ欠落・異形・body 不一致。検索クエリ 400 は PAT-0001 | 実装済み(API-001 0.3.1 / WP-7202) |
 | RCV-0001 | RECEPTION | ERROR | false | false | 受付キューリクエスト不正(400)。date 欠落/形式不正/非実在暦日、patientId 不正、idempotencyKey 欠落/形式不正 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-006 reception queue) |
 | RCV-0002 | RECEPTION | ERROR | false | false | 当該テナント・薬局内で受付対象 patientId が存在しない(404)。テナント越え探索は禁止 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-006 reception queue) |
 | RCV-0003 | RECEPTION | ERROR | false | false | idempotencyKey conflict(同一 key + 異なる patientId)(409)。誤患者の受付エントリを返さず fail-closed | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-006 reception queue) |

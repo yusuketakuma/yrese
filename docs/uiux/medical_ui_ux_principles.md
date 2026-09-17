@@ -20,9 +20,9 @@ reviewers:
   - claim_clerk_workflow_reviewer
   - human_pharmacist_workflow_authority
   - human_product_authority
-version: 0.2.0
+version: 0.2.1
 created_at: 2026-07-09
-updated_at: 2026-08-26
+updated_at: 2026-09-17
 approved_at: 2026-08-26
 approved_by: direct_user_instruction (limited WP-5104 Candidate A final SSOT approval, 2026-08-26); required independent and domain reviews PASS
 effective_from: 2026-08-26
@@ -92,6 +92,7 @@ related_prs:
   - Draft PR #5
 evidence_ids: []
 change_log:
+  - 0.2.1 2026-09-17 WP-7202 bounded amendment: §12.3 operation matrixへSCR-002-C(患者新規登録)/SCR-002-U(identity更新)を追加。WP-7202/WP-7203 pre-review packet D-4のhuman approvalに基づく範囲限定変更
   - 0.2.0 2026-08-26 Candidate A: UIX-002〜007とcomponent-system規律をUIX-001へ集約し、限定human approvalとrequired review後にAPPROVED化。未決blockerは維持
   - 0.1.2 2026-07-11 Visual Status Registry実装対応を追加。旧APPROVED版
   - 0.1.1 2026-07-09 警告重要度へERRORを追加。旧APPROVED版
@@ -505,7 +506,7 @@ U4=患者取り違え/薬剤師確認/外部未確認/請求確定。scopeは`@y
 ### 12.3 operation authorization matrix
 
 scope組合せはすべて`allOf`であり、`,`や表示上のrole名から`anyOf`を推測しない。SCR-001-Q/Cと
-SCR-002-L/Dだけがcurrent API/OpenAPIへ接続済みで、SCR-018/022/029は候補mappingである。候補はcanonical API/OpenAPI
+SCR-002-L/D/C/Uがcurrent API/OpenAPIへ接続済みで、SCR-018/022/029は候補mappingである。候補はcanonical API/OpenAPI
 operation registryへ登録し、UIXとの一致をcontract testで固定するまで実装authorityにしない。
 表にないoperationと【要確認】operationも、該当SSOT/API registryが承認されるまで実装・有効化しない。
 
@@ -515,6 +516,8 @@ operation registryへ登録し、UIXとの一致をcontract testで固定する�
 | SCR-001-C | 受付作成 | `reception:write` + `patient:read` | current API/OpenAPI | allOf / trusted tenant+pharmacy | 片方不足403、scope外患者/tenant/pharmacyは存在非開示404、side effect 0 |
 | SCR-002-L | 患者検索/list | `patient:read` | current API/OpenAPI | single / trusted tenant+pharmacy | context/scope不足403、server-side絞込み、該当なし200 empty、PHI/存在情報leak 0 |
 | SCR-002-D | 患者exact選択/detail | `patient:read` | current API/OpenAPI | single / trusted tenant+pharmacy | scope不足403、scope外patient selectorは存在非開示404 |
+| SCR-002-C | 患者新規登録 | `patient:write` + `patient:read` | current API/OpenAPI | allOf / trusted tenant+pharmacy | 片方不足403、Idempotency-Key再送は同一患者200/別payload 409、patientNumber重複409、監査失敗はside effect 0 |
+| SCR-002-U | 患者identity更新 | `patient:write` | current API/OpenAPI | single / trusted tenant+pharmacy+CAS(expectedVersion+If-Match一致) | scope不足403、scope外patientは存在非開示404、stale version 412、patientNumber変更試行422、監査失敗はside effect 0 |
 | SCR-018-L | 帳票履歴list | `report:read` | candidate / API未登録 | single / trusted tenant+pharmacy | scope不足403、server-side絞込み、該当なし200 empty |
 | SCR-018-D | 帳票job exact status/failure detail | `report:read` | candidate / API未登録 | single / trusted tenant+pharmacy | scope不足403、scope外recordは存在非開示404 |
 | SCR-018-O | 帳票初回出力 | `report:write` | candidate / API未登録 | single / trusted tenant+pharmacy | scope不足403、scope外recordは存在非開示404、side effect 0 |

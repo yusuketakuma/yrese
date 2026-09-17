@@ -7,8 +7,10 @@ import {
   patientSearchQuerySchema,
   patientSearchResponseSchema,
   patientSearchResultSchema,
+  patientVersionedSummarySchema,
   type PatientSearchResponse,
   type PatientSearchResult,
+  type PatientVersionedSummary,
 } from '@yrese/contracts';
 import {
   PATIENT_NOT_FOUND_ERROR_CODE,
@@ -366,7 +368,7 @@ const callback: FastifyPluginCallback<PatientRoutesOptions> = (server, options, 
       onRequest: setSensitiveResponseNoStore,
       preHandler: requirePermission(permissionScope('patient', 'read')),
     },
-    async (request, reply): Promise<PatientSearchResult | void> => {
+    async (request, reply): Promise<PatientVersionedSummary | void> => {
       const tenantContext = requireTenantContext(request);
 
       const params = patientGetParamsSchema.safeParse(request.params);
@@ -375,9 +377,11 @@ const callback: FastifyPluginCallback<PatientRoutesOptions> = (server, options, 
       }
 
       const parsedPatientId = patientId(params.data.patientId);
-      let patient: PatientSearchResult | undefined;
+      // WP-7202: GET 詳細は version 付き要約を返す(PUT の CAS 入力の
+      // 唯一の読取り経路)。検索投影への additive 拡張。
+      let patient: PatientVersionedSummary | undefined;
       try {
-        patient = await options.patientRepository.findById({
+        patient = await options.patientRepository.findVersionedById({
           tenantId: tenantContext.tenantId,
           pharmacyId: tenantContext.pharmacyId,
           patientId: parsedPatientId,
@@ -396,15 +400,28 @@ const callback: FastifyPluginCallback<PatientRoutesOptions> = (server, options, 
         throw new Error(receptionPatientIdentityMismatchErrorMessage);
       }
 
-      const patientSnapshot = snapshotPatientSearchResult(
-        patient,
-        patientIdentity,
-        receptionPatientSchemaInvariantErrorMessage,
-      );
-      const responseSnapshot = parsePatientSearchResultSnapshot(
-        patientSnapshot,
-        receptionPatientSchemaInvariantErrorMessage,
-      );
+      const patientSnapshot = Object.freeze({
+        ...snapshotPatientSearchResult(
+          patient,
+          patientIdentity,
+          receptionPatientSchemaInvariantErrorMessage,
+        ),
+        version: readRequiredOwnEnumerableDataProperty(
+          patient,
+          'version',
+          receptionPatientSchemaInvariantErrorMessage,
+        ),
+      });
+      let responseSnapshot: PatientVersionedSummary;
+      try {
+        const parsed = patientVersionedSummarySchema.safeParse(patientSnapshot);
+        if (!parsed.success) {
+          throw new Error(receptionPatientSchemaInvariantErrorMessage);
+        }
+        responseSnapshot = parsed.data;
+      } catch {
+        throw new Error(receptionPatientSchemaInvariantErrorMessage);
+      }
 
       // WP-4162: 単一患者の全属性開示は要配慮情報アクセスであり、durable な
       // patient.viewed(MOD-008 既登録)なしに PHI を返さない。targetRef は

@@ -35,6 +35,11 @@ import {
   type PatientRepository,
 } from './patient-repository.js';
 import {
+  composeDefaultPatientWriteCommand,
+  type PatientWriteCommand,
+} from './patient-command.js';
+import { patientWriteRoutes } from './patient-write-routes.js';
+import {
   InMemoryReceptionRepository,
   type ReceptionRepository,
 } from './reception-repository.js';
@@ -163,6 +168,12 @@ export interface BuildServerOptions {
    * (Postgres 構成は main.ts が PostgresEligibilityRecordCommand を注入する)。
    */
   readonly eligibilityRecordCommand?: EligibilityRecordCommand;
+  /**
+   * WP-7202: 患者登録・更新コマンド境界。未指定なら patientRepository /
+   * auditRepository を合成した in-memory unit of work を使う
+   * (Postgres 構成は main.ts が PostgresPatientWriteCommand を注入する)。
+   */
+  readonly patientWriteCommand?: PatientWriteCommand;
   readonly receptionOutbox?: InMemoryReceptionOutbox;
   readonly now?: () => Date;
   readonly repositoryMode?: ApiRepositoryMode;
@@ -189,7 +200,8 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     (options.receptionCreateCommand === undefined ||
       options.receptionTransitionCommand === undefined ||
       options.eligibilitySnapshotRepository === undefined ||
-      options.eligibilityRecordCommand === undefined)
+      options.eligibilityRecordCommand === undefined ||
+      options.patientWriteCommand === undefined)
   ) {
     throw new Error(postgresCompositionConfigurationErrorMessage);
   }
@@ -231,6 +243,12 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     options.receptionTransitionCommand ??
     composeDefaultReceptionTransitionCommand({
       receptionRepository,
+      auditRepository,
+    });
+  const patientWriteCommand =
+    options.patientWriteCommand ??
+    composeDefaultPatientWriteCommand({
+      patientRepository,
       auditRepository,
     });
   const now = options.now ?? (() => new Date());
@@ -298,6 +316,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     eligibilityRecordCommand,
     eligibilitySnapshotRepository,
     auditRepository,
+    now,
+  });
+
+  server.register(patientWriteRoutes, {
+    patientWriteCommand,
     now,
   });
 
