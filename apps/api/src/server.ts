@@ -40,6 +40,15 @@ import {
 } from './patient-command.js';
 import { patientWriteRoutes } from './patient-write-routes.js';
 import {
+  InMemoryCoverageRepository,
+  type CoverageRepository,
+} from './coverage-repository.js';
+import {
+  composeDefaultCoverageRecordCommand,
+  type CoverageRecordCommand,
+} from './coverage-command.js';
+import { coverageRoutes } from './coverage-routes.js';
+import {
   InMemoryReceptionRepository,
   type ReceptionRepository,
 } from './reception-repository.js';
@@ -174,6 +183,13 @@ export interface BuildServerOptions {
    * (Postgres 構成は main.ts が PostgresPatientWriteCommand を注入する)。
    */
   readonly patientWriteCommand?: PatientWriteCommand;
+  /**
+   * WP-7203: coverage 永続境界。in-memory 既定では patientRepository 由来の
+   * 患者存在照会を共有する(Postgres 構成は main.ts が
+   * PostgresCoverageRepository / PostgresCoverageRecordCommand を注入する)。
+   */
+  readonly coverageRepository?: CoverageRepository;
+  readonly coverageRecordCommand?: CoverageRecordCommand;
   readonly receptionOutbox?: InMemoryReceptionOutbox;
   readonly now?: () => Date;
   readonly repositoryMode?: ApiRepositoryMode;
@@ -201,7 +217,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       options.receptionTransitionCommand === undefined ||
       options.eligibilitySnapshotRepository === undefined ||
       options.eligibilityRecordCommand === undefined ||
-      options.patientWriteCommand === undefined)
+      options.patientWriteCommand === undefined ||
+      options.coverageRepository === undefined ||
+      options.coverageRecordCommand === undefined)
   ) {
     throw new Error(postgresCompositionConfigurationErrorMessage);
   }
@@ -249,6 +267,19 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     options.patientWriteCommand ??
     composeDefaultPatientWriteCommand({
       patientRepository,
+      auditRepository,
+    });
+  // WP-7203: 患者存在照会は patientRepository へ委譲する(injected repo を含む)。
+  const coverageRepository =
+    options.coverageRepository ??
+    new InMemoryCoverageRepository({
+      patientExists: async (scope) =>
+        (await patientRepository.findById(scope)) !== undefined,
+    });
+  const coverageRecordCommand =
+    options.coverageRecordCommand ??
+    composeDefaultCoverageRecordCommand({
+      coverageRepository,
       auditRepository,
     });
   const now = options.now ?? (() => new Date());
@@ -321,6 +352,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   server.register(patientWriteRoutes, {
     patientWriteCommand,
+    now,
+  });
+
+  server.register(coverageRoutes, {
+    coverageRepository,
+    coverageRecordCommand,
+    auditRepository,
     now,
   });
 

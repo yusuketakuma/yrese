@@ -11,6 +11,14 @@ import {
   eligibilitySnapshotRecordRequestSchema,
   eligibilitySnapshotRecordResponseSchema,
 } from "./eligibility-snapshot.js";
+import {
+  coverageListQuerySchema,
+  coverageListResponseSchema,
+  coverageParamsSchema,
+  coverageRecordHeadersSchema,
+  coverageRecordRequestSchema,
+  coverageRecordResponseSchema,
+} from "./coverage.js";
 import { errorResponseSchema, frameworkErrorResponseSchema } from "./error.js";
 import { healthResponseSchema } from "./health.js";
 import {
@@ -262,6 +270,41 @@ const eligibilitySnapshotListResponseOpenApiSchema =
     description:
       "Current reception eligibility (derived at the reception business date) plus append-only snapshot history, newest first. PHI-free identifiers and state only.",
   });
+
+const coverageParamsOpenApiSchema = coverageParamsSchema.meta({
+  id: "CoverageParams",
+  description: "Coverage path parameters scoped by patient ID.",
+});
+
+const coverageListQueryOpenApiSchema = coverageListQuerySchema.meta({
+  id: "CoverageListQuery",
+  description:
+    "Coverage list query. asOf is required (YYYY-MM-DD real calendar date) — the server never resolves an implicit 'today' (MOD-011).",
+});
+
+const coverageRecordRequestOpenApiSchema = coverageRecordRequestSchema.meta({
+  id: "CoverageRecordRequest",
+  description:
+    "Append-only coverage registration (API-020). kind=insurance-card or public-expense records a new row; kind=supersede records a corrected row linked to targetId. UPDATE/DELETE do not exist — correction is supersede only. copayRatio and priority are recorded input values, never calculated (CAL-R-024 remains BLOCKED).",
+});
+
+const coverageRecordResponseOpenApiSchema = coverageRecordResponseSchema.meta({
+  id: "CoverageRecordResponse",
+  description:
+    "Recorded coverage row. Contains coverage identifiers (insurer/insured numbers or payer/recipient numbers) — PHI; no-store only.",
+});
+
+const coverageListResponseOpenApiSchema = coverageListResponseSchema.meta({
+  id: "CoverageListResponse",
+  description:
+    "Coverage rows date-valid at asOf, including superseded rows carrying the supersededBy marker. Contains coverage identifiers — PHI; no-store only.",
+});
+
+const coverageRecordHeadersOpenApiSchema = coverageRecordHeadersSchema.meta({
+  id: "CoverageRecordHeaders",
+  description:
+    "Required headers: Idempotency-Key (opaque, [A-Za-z0-9_-]{16,128}).",
+});
 
 const prescriptionDraftParamsOpenApiSchema = prescriptionDraftParamsSchema.meta({
   id: "PrescriptionDraftParams",
@@ -532,6 +575,92 @@ const openApiDefinition = {
           "412": domainErrorResponse("Patient version conflict (PAT-0004)"),
           "422": domainErrorResponse(
             "Immutable patient field change attempt (PAT-0005)",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+    },
+    "/patients/{patientId}/coverage": {
+      get: {
+        operationId: "listPatientCoverage",
+        tags: ["patients", "coverage"],
+        summary: "List coverage rows date-valid at an explicit asOf date (API-020)",
+        description:
+          "Requires patient:read, insurance:read, and public-expense:read scopes (the response carries both insurance and public-expense rows). asOf is mandatory — the server never resolves an implicit 'today' (MOD-011). Superseded rows are returned with the supersededBy marker; full history without asOf is not offered. Emits insurance.viewed audit before the response. The response contains coverage identifiers (PHI) and must use Cache-Control: no-store.",
+        "x-yrese-ssot": "API-020",
+        "x-yrese-required-scopes": [
+          "patient:read",
+          "insurance:read",
+          "public-expense:read",
+        ],
+        requestParams: {
+          path: coverageParamsOpenApiSchema,
+          query: coverageListQueryOpenApiSchema,
+        },
+        responses: {
+          "200": {
+            description: "Coverage rows valid at asOf",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: coverageListResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse(
+            "Invalid coverage list request (missing/invalid asOf — INS-0001)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: false }),
+          "404": domainErrorResponse("Patient not found (INS-0002)"),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+      post: {
+        operationId: "recordPatientCoverage",
+        tags: ["patients", "coverage"],
+        summary: "Append a coverage row or a superseding correction (API-020)",
+        description:
+          "Requires patient:read plus a kind-specific write scope: insurance:write for kind=insurance-card, public-expense:write for kind=public-expense, and the targetKind's write scope for kind=supersede. Idempotent via the Idempotency-Key header (API-013): same key + same payload returns the existing row with 200; a different payload returns 409 INS-0006. Overlapping insurance-card periods return 409 INS-0003, duplicate public-expense priority with overlapping period returns 409 INS-0004, and a missing or already-superseded target returns 409 INS-0005. Emits insurance.updated audit before the response.",
+        "x-yrese-ssot": "API-020",
+        "x-yrese-required-scope": "patient:read + kind-scoped write",
+        requestParams: {
+          path: coverageParamsOpenApiSchema,
+          header: coverageRecordHeadersOpenApiSchema,
+        },
+        requestBody: {
+          required: true,
+          content: {
+            [jsonContentType]: {
+              schema: coverageRecordRequestOpenApiSchema,
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Coverage row recorded",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: coverageRecordResponseOpenApiSchema,
+              },
+            },
+          },
+          "200": {
+            description: "Identical idempotent replay; existing row returned",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: coverageRecordResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse(
+            "Invalid coverage request or Idempotency-Key header (INS-0001)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: false }),
+          "404": domainErrorResponse("Patient not found (INS-0002)"),
+          "409": domainErrorResponse(
+            "Period overlap (INS-0003), priority conflict (INS-0004), supersede target invalid (INS-0005), or idempotency conflict (INS-0006)",
           ),
           "500": internalErrorResponse({ noStore: true }),
         },

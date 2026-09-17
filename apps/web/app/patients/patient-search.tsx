@@ -42,6 +42,7 @@ import {
   SEX_LABELS,
 } from "../status/visual-status-registry";
 import { resolveWebApiUrl } from "../api-transport";
+import { PatientCoveragePanel } from "./patient-coverage";
 import { PatientRegistrationForm } from "./patient-registration";
 
 /**
@@ -793,6 +794,11 @@ export function PatientSearch() {
           )}
         </Panel>
       </section>
+      {selected !== null && (
+        <section aria-label="保険・公費">
+          <PatientCoveragePanel patient={selected} />
+        </section>
+      )}
       <section aria-label="患者登録">
         <PatientRegistrationForm onRegistered={selectPatient} />
       </section>

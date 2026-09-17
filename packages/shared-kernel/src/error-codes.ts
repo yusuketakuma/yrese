@@ -157,6 +157,54 @@ export const KERNEL_ERROR_CODES = [
     description: "reception not found",
   },
   {
+    code: "INS-0001",
+    domain: "INSURANCE",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "invalid coverage request",
+  },
+  {
+    code: "INS-0002",
+    domain: "INSURANCE",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "patient not found for coverage",
+  },
+  {
+    code: "INS-0003",
+    domain: "INSURANCE",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "insurance card period overlap",
+  },
+  {
+    code: "INS-0004",
+    domain: "INSURANCE",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "public expense priority conflict",
+  },
+  {
+    code: "INS-0005",
+    domain: "INSURANCE",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "coverage supersede target invalid",
+  },
+  {
+    code: "INS-0006",
+    domain: "INSURANCE",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "coverage idempotency conflict",
+  },
+  {
     code: "INS-0007",
     domain: "INSURANCE",
     severity: "ERROR",
@@ -240,19 +288,26 @@ export const PATIENT_NOT_FOUND_ERROR_CODE = KERNEL_ERROR_CODES[6].code;
 export const RECEPTION_INVALID_TRANSITION_ERROR_CODE = KERNEL_ERROR_CODES[7].code;
 export const RECEPTION_VERSION_CONFLICT_ERROR_CODE = KERNEL_ERROR_CODES[8].code;
 export const RECEPTION_NOT_FOUND_ERROR_CODE = KERNEL_ERROR_CODES[9].code;
+export const COVERAGE_INVALID_REQUEST_ERROR_CODE = KERNEL_ERROR_CODES[10].code;
+export const COVERAGE_PATIENT_NOT_FOUND_ERROR_CODE = KERNEL_ERROR_CODES[11].code;
+export const COVERAGE_PERIOD_OVERLAP_ERROR_CODE = KERNEL_ERROR_CODES[12].code;
+export const COVERAGE_PRIORITY_CONFLICT_ERROR_CODE = KERNEL_ERROR_CODES[13].code;
+export const COVERAGE_SUPERSEDE_CONFLICT_ERROR_CODE = KERNEL_ERROR_CODES[14].code;
+export const COVERAGE_IDEMPOTENCY_CONFLICT_ERROR_CODE =
+  KERNEL_ERROR_CODES[15].code;
 export const INSURANCE_ELIGIBILITY_INVALID_REQUEST_ERROR_CODE =
-  KERNEL_ERROR_CODES[10].code;
+  KERNEL_ERROR_CODES[16].code;
 export const INSURANCE_ELIGIBILITY_RECEPTION_NOT_FOUND_ERROR_CODE =
-  KERNEL_ERROR_CODES[11].code;
+  KERNEL_ERROR_CODES[17].code;
 export const INSURANCE_ELIGIBILITY_SNAPSHOT_CONFLICT_ERROR_CODE =
-  KERNEL_ERROR_CODES[12].code;
+  KERNEL_ERROR_CODES[18].code;
 export const INSURANCE_ELIGIBILITY_TRANSITION_ERROR_CODE =
-  KERNEL_ERROR_CODES[13].code;
-export const PATIENT_NUMBER_CONFLICT_ERROR_CODE = KERNEL_ERROR_CODES[14].code;
-export const PATIENT_VERSION_CONFLICT_ERROR_CODE = KERNEL_ERROR_CODES[15].code;
-export const PATIENT_IMMUTABLE_FIELD_ERROR_CODE = KERNEL_ERROR_CODES[16].code;
-export const PATIENT_IDEMPOTENCY_CONFLICT_ERROR_CODE = KERNEL_ERROR_CODES[17].code;
-export const PATIENT_WRITE_INVALID_REQUEST_ERROR_CODE = KERNEL_ERROR_CODES[18].code;
+  KERNEL_ERROR_CODES[19].code;
+export const PATIENT_NUMBER_CONFLICT_ERROR_CODE = KERNEL_ERROR_CODES[20].code;
+export const PATIENT_VERSION_CONFLICT_ERROR_CODE = KERNEL_ERROR_CODES[21].code;
+export const PATIENT_IMMUTABLE_FIELD_ERROR_CODE = KERNEL_ERROR_CODES[22].code;
+export const PATIENT_IDEMPOTENCY_CONFLICT_ERROR_CODE = KERNEL_ERROR_CODES[23].code;
+export const PATIENT_WRITE_INVALID_REQUEST_ERROR_CODE = KERNEL_ERROR_CODES[24].code;
 
 export function createKernelErrorCodeRegistry(): ErrorCodeRegistry {
   const registry = new ErrorCodeRegistry();

@@ -20,9 +20,9 @@ reviewers:
   - claim_clerk_workflow_reviewer
   - human_pharmacist_workflow_authority
   - human_product_authority
-version: 0.2.1
+version: 0.2.2
 created_at: 2026-07-09
-updated_at: 2026-09-17
+updated_at: 2026-09-18
 approved_at: 2026-08-26
 approved_by: direct_user_instruction (limited WP-5104 Candidate A final SSOT approval, 2026-08-26); required independent and domain reviews PASS
 effective_from: 2026-08-26
@@ -92,6 +92,7 @@ related_prs:
   - Draft PR #5
 evidence_ids: []
 change_log:
+  - 0.2.2 2026-09-18 WP-7203 bounded amendment: §12.3 operation matrixへSCR-007-R(coverage参照)/SCR-007-C(coverage記録・訂正)を追加。WP-7202/WP-7203 pre-review packet D-4のhuman approvalに基づく範囲限定変更
   - 0.2.1 2026-09-17 WP-7202 bounded amendment: §12.3 operation matrixへSCR-002-C(患者新規登録)/SCR-002-U(identity更新)を追加。WP-7202/WP-7203 pre-review packet D-4のhuman approvalに基づく範囲限定変更
   - 0.2.0 2026-08-26 Candidate A: UIX-002〜007とcomponent-system規律をUIX-001へ集約し、限定human approvalとrequired review後にAPPROVED化。未決blockerは維持
   - 0.1.2 2026-07-11 Visual Status Registry実装対応を追加。旧APPROVED版
@@ -506,7 +507,7 @@ U4=患者取り違え/薬剤師確認/外部未確認/請求確定。scopeは`@y
 ### 12.3 operation authorization matrix
 
 scope組合せはすべて`allOf`であり、`,`や表示上のrole名から`anyOf`を推測しない。SCR-001-Q/Cと
-SCR-002-L/D/C/Uがcurrent API/OpenAPIへ接続済みで、SCR-018/022/029は候補mappingである。候補はcanonical API/OpenAPI
+SCR-002-L/D/C/UとSCR-007-R/Cがcurrent API/OpenAPIへ接続済みで、SCR-018/022/029は候補mappingである。候補はcanonical API/OpenAPI
 operation registryへ登録し、UIXとの一致をcontract testで固定するまで実装authorityにしない。
 表にないoperationと【要確認】operationも、該当SSOT/API registryが承認されるまで実装・有効化しない。
 
@@ -518,6 +519,8 @@ operation registryへ登録し、UIXとの一致をcontract testで固定する�
 | SCR-002-D | 患者exact選択/detail | `patient:read` | current API/OpenAPI | single / trusted tenant+pharmacy | scope不足403、scope外patient selectorは存在非開示404 |
 | SCR-002-C | 患者新規登録 | `patient:write` + `patient:read` | current API/OpenAPI | allOf / trusted tenant+pharmacy | 片方不足403、Idempotency-Key再送は同一患者200/別payload 409、patientNumber重複409、監査失敗はside effect 0 |
 | SCR-002-U | 患者identity更新 | `patient:write` | current API/OpenAPI | single / trusted tenant+pharmacy+CAS(expectedVersion+If-Match一致) | scope不足403、scope外patientは存在非開示404、stale version 412、patientNumber変更試行422、監査失敗はside effect 0 |
+| SCR-007-R | 保険・公費coverage参照 | `patient:read` + `insurance:read` + `public-expense:read` | current API/OpenAPI | allOf / trusted tenant+pharmacy+明示asOf | いずれか不足403、scope外patientは存在非開示404、asOf必須・不正400、supersededByはマーカー表示 |
+| SCR-007-C | 保険・公費coverage記録(登録/訂正) | `patient:read` + `insurance:write` または `public-expense:write`(kind別、supersedeは対象kindのwrite) | current API/OpenAPI | allOf / trusted tenant+pharmacy+Idempotency-Key | 片方不足403、scope外patientは存在非開示404、期間重複409、priority重複409、supersede対象不存在/訂正済み409、再送同一200/別payload409、監査失敗はside effect 0 |
 | SCR-018-L | 帳票履歴list | `report:read` | candidate / API未登録 | single / trusted tenant+pharmacy | scope不足403、server-side絞込み、該当なし200 empty |
 | SCR-018-D | 帳票job exact status/failure detail | `report:read` | candidate / API未登録 | single / trusted tenant+pharmacy | scope不足403、scope外recordは存在非開示404 |
 | SCR-018-O | 帳票初回出力 | `report:write` | candidate / API未登録 | single / trusted tenant+pharmacy | scope不足403、scope外recordは存在非開示404、side effect 0 |
@@ -671,7 +674,7 @@ repository内で検証できるplacementだけを下表に固定する。14号�
 | SCR-001 | ReceptionQueueRail | §12のID/U2/scope、empty≠UNAVAILABLE | explicit sourceあり。privacy/flow gate前は既存surface維持 |
 | SCR-002 | ReceptionQueueRailの検索/選択 + 選択後の中央patient context | §12のID/U4/`patient:read`、患者再確認、PHI最小化 | explicit sourceあり。medical/privacy/accessibility gate前は既存surface維持 |
 | SCR-013 | AlertRail。未解決BLOCKER/CRITICALはmain DOMにも個別表示 | §12のID/U4/source scope、§5 severity | explicit sourceあり。medical/accessibility gate前は既存surface維持 |
-| SCR-003, SCR-004, SCR-005, SCR-006, SCR-007, SCR-008, SCR-009, SCR-010, SCR-011, SCR-012, SCR-014, SCR-015, SCR-016, SCR-017, SCR-018, SCR-019, SCR-020, SCR-021, SCR-022, SCR-023, SCR-024, SCR-025, SCR-026, SCR-027, SCR-029 | UNMAPPED。§12の既存screen/surfaceを維持 | 各ID/U/scope/状態/患者文脈/安全情報を変更しない | repository-verifiable mapping + product/flow/relevant human gate + PRC-007まで移動・吸収禁止 |
+| SCR-003, SCR-004, SCR-005, SCR-006, SCR-008, SCR-009, SCR-010, SCR-011, SCR-012, SCR-014, SCR-015, SCR-016, SCR-017, SCR-018, SCR-019, SCR-020, SCR-021, SCR-022, SCR-023, SCR-024, SCR-025, SCR-026, SCR-027, SCR-029 | UNMAPPED。§12の既存screen/surfaceを維持 | 各ID/U/scope/状態/患者文脈/安全情報を変更しない | repository-verifiable mapping + product/flow/relevant human gate + PRC-007まで移動・吸収禁止 |
 | SCR-028 | placementなし(RETIRED) | ID再利用禁止、監査API境界だけ維持 | 別名復活禁止 |
 
 mapping変更は本節と§12を同一PRC-007 batchで改版する。全active IDのboard/rail/workflow row/drawer、

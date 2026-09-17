@@ -195,6 +195,7 @@ describe('loadMigrationFiles', () => {
           '000013_create_prescription_drafts.sql',
           '000014_add_reception_transition_columns.sql',
           '000015_patient_write_and_identity_history.sql',
+          '000016_coverage_tables.sql',
           '000017_add_prescription_draft_source_metadata.sql',
         ]);
       } finally {

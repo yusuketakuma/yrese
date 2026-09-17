@@ -32,6 +32,8 @@ import {
   PostgresReceptionCreateCommand,
   PostgresReceptionTransitionCommand,
 } from './db/reception-command.js';
+import { PostgresCoverageRecordCommand } from './db/coverage-command.js';
+import { PostgresCoverageRepository } from './db/coverage-repository.js';
 import { PostgresEligibilityRecordCommand } from './db/eligibility-snapshot-command.js';
 import { PostgresEligibilitySnapshotRepository } from './db/eligibility-snapshot-repository.js';
 import { PostgresReceptionRepository } from './db/reception-repository.js';
@@ -157,6 +159,9 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
       eligibilityRecordCommand: new PostgresEligibilityRecordCommand(pool),
       // WP-7202: 患者登録・更新と監査を単一トランザクションで原子化する。
       patientWriteCommand: new PostgresPatientWriteCommand(pool),
+      // WP-7203: coverage 記録・監査を単一トランザクションで原子化する。
+      coverageRepository: new PostgresCoverageRepository(pool),
+      coverageRecordCommand: new PostgresCoverageRecordCommand(pool),
       repositoryMode,
       tenantContextMode,
       patientSearchCursorCodec,
