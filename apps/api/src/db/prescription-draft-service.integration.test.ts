@@ -11,6 +11,7 @@ import {
   userId,
 } from "@yrese/shared-kernel";
 
+import { PostgresActorQualificationRepository } from "./actor-qualification-repository.js";
 import { buildAuditScopeAdvisoryLockKey } from "./audit-repository.js";
 import { applyPendingMigrations } from "./migration-runner.js";
 import { loadMigrationFiles } from "./migrations.js";
@@ -1249,6 +1250,778 @@ describePostgres(
             },
           },
         });
+      });
+    });
+  },
+);
+
+const LIFECYCLE_SCOPE = {
+  tenantId: tenantId("tenant-lifecycle-db"),
+  pharmacyId: pharmacyId("pharmacy-lifecycle-db"),
+  actorId: userId("actor-lifecycle-db"),
+  receptionId: receptionId("reception-lifecycle-db"),
+  patientId: patientId("patient-lifecycle-db"),
+  businessDate: "2026-08-25",
+  wallClock: "2026-08-25T02:00:00.000Z",
+} as const;
+
+const LIFECYCLE_PRESCRIPTION_ID = "prescription-lifecycle-db-001";
+
+function lifecycleSaveInput(
+  overrides?: {
+    readonly unresolvedMedication?: boolean;
+    readonly dropMetadata?: boolean;
+    readonly flags?: (
+      | "PACKAGING"
+      | "HOME_CARE"
+      | "NARCOTIC"
+      | "PSYCHOTROPIC"
+      | "LEFTOVER_ADJUSTMENT"
+    )[];
+  },
+) {
+  const medication = overrides?.unresolvedMedication === true
+    ? { kind: "unresolved" as const, text: "未解決薬剤" }
+    : {
+        kind: "resolved" as const,
+        masterVersionId: "00000000-0000-4000-8000-0000000000c1",
+        medicationItemId: "00000000-0000-4000-8000-0000000000d1",
+      };
+  return {
+    ...LIFECYCLE_SCOPE,
+    expectedVersion: 0,
+    draft: {
+      prescriptionType: "OUTPATIENT" as const,
+      sourceMetadata: overrides?.dropMetadata === true
+        ? null
+        : {
+            medicalInstitution: { code: "1234567", name: "合成病院" },
+            prescriberName: "合成 医師",
+            issueDate: "2026-08-20",
+            validUntil: "2026-08-24",
+            refill: null,
+            splitDispensing: null,
+          },
+      rpGroups: [
+        {
+          rpGroupId: "00000000-0000-4000-8000-0000000000a1",
+          sequence: 1,
+          dosageForm: "ORAL" as const,
+          usage: { kind: "unresolved" as const, text: "1日1回 朝食後" },
+          daysOrCount: 7,
+          items: [
+            {
+              rpItemId: "00000000-0000-4000-8000-0000000000b1",
+              sequence: 1,
+              medication,
+              doseOnce: null,
+              dosePerDay: null,
+              doseTotal: "7錠",
+              unit: null,
+              genericNamePrescription: false,
+              genericSubstitutionPermitted: null,
+            },
+          ],
+        },
+      ],
+      prescriptionDate: "2026-08-25",
+      defaultDays: 7,
+      flags: overrides?.flags ?? [],
+      note: "",
+      rows: [],
+    },
+  };
+}
+
+async function seedQualification(
+  pool: Pool,
+  input: {
+    readonly tenantId: string;
+    readonly pharmacyId: string;
+    readonly actorId: string;
+    readonly status: "ACTIVE" | "REVOKED";
+  },
+): Promise<void> {
+  await pool.query(
+    `INSERT INTO actor_qualifications (
+       tenant_id, pharmacy_id, qualification_id, actor_id,
+       qualification_kind, license_ref, status,
+       verified_by, verified_at, created_at
+     ) VALUES (
+       $1, $2, $3, $4,
+       'PHARMACIST_LICENSE', NULL, $5,
+       'verifier-lifecycle-db', '2026-08-24T00:00:00.000Z'::timestamptz,
+       '2026-08-24T00:00:00.000Z'::timestamptz
+     )`,
+    [
+      input.tenantId,
+      input.pharmacyId,
+      `qualification-${input.actorId}-${input.status}`,
+      input.actorId,
+      input.status,
+    ],
+  );
+}
+
+function lifecycleCommand(idempotencyKey: string) {
+  return {
+    tenantId: LIFECYCLE_SCOPE.tenantId,
+    pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+    actorId: LIFECYCLE_SCOPE.actorId,
+    prescriptionId: prescriptionId(LIFECYCLE_PRESCRIPTION_ID),
+    idempotencyKey,
+    wallClock: LIFECYCLE_SCOPE.wallClock,
+  };
+}
+
+describePostgres(
+  "PostgresPrescriptionDraftService lifecycle (WP-7402)",
+  () => {
+    async function seedAndSave(
+      pool: Pool,
+      overrides?: Parameters<typeof lifecycleSaveInput>[0],
+    ): Promise<PostgresPrescriptionDraftService> {
+      await seedReception(pool, {
+        tenantId: LIFECYCLE_SCOPE.tenantId,
+        pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+        patientId: LIFECYCLE_SCOPE.patientId,
+        receptionId: LIFECYCLE_SCOPE.receptionId,
+        patientNumber: "LIFECYCLE-DB-001",
+        idempotencyKey: "lifecycle-db-idempotency-001",
+      });
+      const service = new PostgresPrescriptionDraftService(
+        pool,
+        () => prescriptionId(LIFECYCLE_PRESCRIPTION_ID),
+        {
+          qualificationRepository:
+            new PostgresActorQualificationRepository(pool),
+          nextOutboxEventId: () => "outbox-lifecycle-db-001",
+        },
+      );
+      const saved = await service.save(lifecycleSaveInput(overrides));
+      expect(saved).toMatchObject({ kind: "saved" });
+      return service;
+    }
+
+    it("confirms and finalizes with version snapshot, audit, and outbox in one transaction", async () => {
+      await withMigratedSchema(async (pool) => {
+        await seedQualification(pool, {
+          tenantId: LIFECYCLE_SCOPE.tenantId,
+          pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+          actorId: LIFECYCLE_SCOPE.actorId,
+          status: "ACTIVE",
+        });
+        const service = await seedAndSave(pool);
+
+        const confirmed = await service.confirm(
+          lifecycleCommand("confirm-key-lifecycle-01"),
+        );
+        expect(confirmed).toMatchObject({
+          kind: "transitioned",
+          replayed: false,
+          view: {
+            status: "PHARMACIST_CONFIRMED",
+            confirmedBy: "actor-lifecycle-db",
+            prescriptionVersion: null,
+          },
+        });
+
+        const finalized = await service.finalize(
+          lifecycleCommand("finalize-key-lifecycle-1"),
+        );
+        expect(finalized).toMatchObject({
+          kind: "transitioned",
+          replayed: false,
+          view: {
+            status: "PRESCRIPTION_FINALIZED",
+            finalizedBy: "actor-lifecycle-db",
+            prescriptionVersion: 1,
+          },
+        });
+
+        const versionRows = await pool.query<{
+          readonly version: number;
+          readonly content_hash: string;
+          readonly finalized_by: string;
+        }>(
+          `SELECT version, content_hash, finalized_by
+             FROM prescription_versions
+            WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3`,
+          [
+            LIFECYCLE_SCOPE.tenantId,
+            LIFECYCLE_SCOPE.pharmacyId,
+            LIFECYCLE_PRESCRIPTION_ID,
+          ],
+        );
+        expect(versionRows.rows).toHaveLength(1);
+        expect(versionRows.rows[0]?.version).toBe(1);
+        expect(versionRows.rows[0]?.finalized_by).toBe("actor-lifecycle-db");
+
+        const draftRows = await pool.query<{ readonly content_hash: string }>(
+          `SELECT content_hash FROM prescription_drafts
+            WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3`,
+          [
+            LIFECYCLE_SCOPE.tenantId,
+            LIFECYCLE_SCOPE.pharmacyId,
+            LIFECYCLE_PRESCRIPTION_ID,
+          ],
+        );
+        expect(versionRows.rows[0]?.content_hash).toBe(
+          draftRows.rows[0]?.content_hash,
+        );
+
+        const auditRows = await pool.query<{
+          readonly audit_event_type: string;
+        }>(
+          `SELECT event_body->>'auditEventType' AS audit_event_type
+             FROM audit_events
+            WHERE tenant_id = $1 AND pharmacy_id = $2
+            ORDER BY sequence_number ASC`,
+          [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+        );
+        expect(
+          auditRows.rows.map((row) => row.audit_event_type),
+        ).toEqual([
+          "prescription.created",
+          "prescription.confirmed",
+          "prescription.finalized",
+        ]);
+
+        const outboxRows = await pool.query<{
+          readonly event_type: string;
+          readonly aggregate_type: string;
+          readonly payload: { readonly prescriptionId?: string; readonly version?: number };
+          readonly audit_event_id: string;
+        }>(
+          `SELECT event_type, aggregate_type, payload, audit_event_id
+             FROM outbox_events
+            WHERE tenant_id = $1 AND pharmacy_id = $2`,
+          [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+        );
+        expect(outboxRows.rows).toHaveLength(1);
+        expect(outboxRows.rows[0]?.event_type).toBe("prescription.finalized");
+        expect(outboxRows.rows[0]?.aggregate_type).toBe("prescription");
+        expect(outboxRows.rows[0]?.payload).toEqual({
+          prescriptionId: LIFECYCLE_PRESCRIPTION_ID,
+          version: 1,
+        });
+
+        // F-15: 監査 envelope 項目 + outbox.audit_event_id ↔ audit_events 連結。
+        const envelopeRows = await pool.query<{
+          readonly event_id: string;
+          readonly audit_event_type: string;
+          readonly idempotency_key: string;
+          readonly correlation_id: string;
+          readonly payload_hash: string;
+          readonly schema_version: string;
+          readonly prev_hash: string;
+        }>(
+          `SELECT
+             event_id,
+             event_body->>'auditEventType' AS audit_event_type,
+             event_body->>'idempotencyKey' AS idempotency_key,
+             event_body->>'correlationId' AS correlation_id,
+             event_body->>'payloadHash' AS payload_hash,
+             event_body->>'schemaVersion' AS schema_version,
+             prev_hash
+             FROM audit_events
+            WHERE tenant_id = $1 AND pharmacy_id = $2
+            ORDER BY sequence_number ASC`,
+          [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+        );
+        expect(envelopeRows.rows).toHaveLength(3);
+        for (const row of envelopeRows.rows) {
+          expect(row.idempotency_key).toMatch(/^.+:1$/u);
+          expect(row.correlation_id).toBe(row.event_id);
+          expect(row.payload_hash).toMatch(/^[0-9a-f]{64}$/u);
+          expect(row.schema_version).toBe("1");
+          expect(row.prev_hash).toMatch(/^[0-9a-f]{64}$/u);
+        }
+        // hash chain: 各イベントの prevHash が直前 entryHash を指す。
+        const chainRows = await pool.query<{ readonly entry_hash: string }>(
+          `SELECT entry_hash
+             FROM audit_events
+            WHERE tenant_id = $1 AND pharmacy_id = $2
+            ORDER BY sequence_number ASC`,
+          [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+        );
+        expect(envelopeRows.rows[1]?.prev_hash).toBe(
+          chainRows.rows[0]?.entry_hash,
+        );
+        expect(envelopeRows.rows[2]?.prev_hash).toBe(
+          chainRows.rows[1]?.entry_hash,
+        );
+        // outbox の audit_event_id は finalized 監査イベントを指す。
+        expect(outboxRows.rows[0]?.audit_event_id).toBe(
+          envelopeRows.rows[2]?.event_id,
+        );
+      });
+    });
+
+    it("denies unqualified actors and records the denial audit in the same transaction", async () => {
+      await withMigratedSchema(async (pool) => {
+        const service = await seedAndSave(pool);
+        const result = await service.confirm(
+          lifecycleCommand("denied-key-lifecycle-01"),
+        );
+        expect(result).toEqual({ kind: "unqualified" });
+        const auditRows = await pool.query<{
+          readonly audit_event_type: string;
+          readonly outcome: string;
+        }>(
+          `SELECT
+             event_body->>'auditEventType' AS audit_event_type,
+             event_body->>'outcome' AS outcome
+             FROM audit_events
+            WHERE tenant_id = $1 AND pharmacy_id = $2
+            ORDER BY sequence_number ASC`,
+          [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+        );
+        expect(
+          auditRows.rows.map((row) => row.audit_event_type),
+        ).toEqual(["prescription.created", "prescription.confirm.denied"]);
+        expect(auditRows.rows[1]?.outcome).toBe("denied");
+      });
+    });
+
+    it("replays the same idempotency key and rejects a different key", async () => {
+      await withMigratedSchema(async (pool) => {
+        await seedQualification(pool, {
+          tenantId: LIFECYCLE_SCOPE.tenantId,
+          pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+          actorId: LIFECYCLE_SCOPE.actorId,
+          status: "ACTIVE",
+        });
+        const service = await seedAndSave(pool);
+        const first = await service.confirm(
+          lifecycleCommand("confirm-key-lifecycle-01"),
+        );
+        const replay = await service.confirm(
+          lifecycleCommand("confirm-key-lifecycle-01"),
+        );
+        expect(first).toMatchObject({ kind: "transitioned", replayed: false });
+        expect(replay).toMatchObject({ kind: "transitioned", replayed: true });
+        await expect(
+          service.confirm(lifecycleCommand("confirm-key-lifecycle-02")),
+        ).resolves.toEqual({ kind: "invalid_transition" });
+      });
+    });
+
+    it("replays the same key even after the reception leaves IN_PROGRESS", async () => {
+      await withMigratedSchema(async (pool) => {
+        await seedQualification(pool, {
+          tenantId: LIFECYCLE_SCOPE.tenantId,
+          pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+          actorId: LIFECYCLE_SCOPE.actorId,
+          status: "ACTIVE",
+        });
+        const service = await seedAndSave(pool);
+        await service.confirm(lifecycleCommand("confirm-key-lifecycle-01"));
+
+        // 受付は独立 state machine で COMPLETED へ進み得る。
+        await pool.query(
+          `UPDATE reception_entries
+              SET reception_status = 'COMPLETED'
+            WHERE tenant_id = $1 AND pharmacy_id = $2 AND reception_id = $3`,
+          [
+            LIFECYCLE_SCOPE.tenantId,
+            LIFECYCLE_SCOPE.pharmacyId,
+            LIFECYCLE_SCOPE.receptionId,
+          ],
+        );
+
+        // 同一 key の retry は受付状態に依らず stored view を返す(遷移済み
+        // 操作の冪等 replay を受付 409 で潰さない)。
+        const replay = await service.confirm(
+          lifecycleCommand("confirm-key-lifecycle-01"),
+        );
+        expect(replay).toMatchObject({ kind: "transitioned", replayed: true });
+        // 別 key は遷移 conflict(受付状態ではなく lifecycle 遷移の拒否)。
+        await expect(
+          service.confirm(lifecycleCommand("confirm-key-lifecycle-99")),
+        ).resolves.toEqual({ kind: "invalid_transition" });
+      });
+    });
+
+    it("rejects confirm for unresolved items, incomplete metadata, and non-IN_PROGRESS receptions", async () => {
+      await withMigratedSchema(async (pool) => {
+        await seedQualification(pool, {
+          tenantId: LIFECYCLE_SCOPE.tenantId,
+          pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+          actorId: LIFECYCLE_SCOPE.actorId,
+          status: "ACTIVE",
+        });
+        const service = await seedAndSave(pool, {
+          unresolvedMedication: true,
+        });
+        await expect(
+          service.confirm(lifecycleCommand("unresolved-key-0000001")),
+        ).resolves.toEqual({ kind: "unresolved_items" });
+      });
+      await withMigratedSchema(async (pool) => {
+        await seedQualification(pool, {
+          tenantId: LIFECYCLE_SCOPE.tenantId,
+          pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+          actorId: LIFECYCLE_SCOPE.actorId,
+          status: "ACTIVE",
+        });
+        const service = await seedAndSave(pool, { dropMetadata: true });
+        await expect(
+          service.confirm(lifecycleCommand("metadata-key-00000001")),
+        ).resolves.toEqual({ kind: "metadata_incomplete" });
+      });
+      await withMigratedSchema(async (pool) => {
+        await seedQualification(pool, {
+          tenantId: LIFECYCLE_SCOPE.tenantId,
+          pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+          actorId: LIFECYCLE_SCOPE.actorId,
+          status: "ACTIVE",
+        });
+        await seedReception(pool, {
+          tenantId: LIFECYCLE_SCOPE.tenantId,
+          pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+          patientId: LIFECYCLE_SCOPE.patientId,
+          receptionId: LIFECYCLE_SCOPE.receptionId,
+          patientNumber: "LIFECYCLE-DB-001",
+          idempotencyKey: "lifecycle-db-idempotency-001",
+          receptionStatus: "COMPLETED",
+        });
+        const service = new PostgresPrescriptionDraftService(
+          pool,
+          () => prescriptionId(LIFECYCLE_PRESCRIPTION_ID),
+          {
+            qualificationRepository:
+              new PostgresActorQualificationRepository(pool),
+          },
+        );
+        // COMPLETED 受付は save も不可 — draft を直接 seed する。
+        await pool.query(
+          `INSERT INTO prescription_drafts (
+             tenant_id, pharmacy_id, prescription_id, reception_id, patient_id,
+             business_date, version, prescription_type, prescription_date,
+             default_days, note, medical_institution_code,
+             medical_institution_name, prescriber_name, issue_date,
+             valid_until, refill_total, refill_remaining, split_dispensing,
+             rp_groups, content_hash, created_at, updated_at,
+             created_by, updated_by
+           ) VALUES (
+             $1, $2, $3, $4, $5,
+             $6::date, 1, 'OUTPATIENT', '2026-08-25'::date,
+             7, '', '1234567',
+             '合成病院', '合成 医師', '2026-08-20'::date,
+             '2026-08-24'::date, NULL, NULL, NULL,
+             '[]'::jsonb, repeat('0', 64), '2026-08-25T01:00:00.000Z'::timestamptz,
+             '2026-08-25T01:00:00.000Z'::timestamptz,
+             'actor-lifecycle-db', 'actor-lifecycle-db'
+           )`,
+          [
+            LIFECYCLE_SCOPE.tenantId,
+            LIFECYCLE_SCOPE.pharmacyId,
+            LIFECYCLE_PRESCRIPTION_ID,
+            LIFECYCLE_SCOPE.receptionId,
+            LIFECYCLE_SCOPE.patientId,
+            LIFECYCLE_SCOPE.businessDate,
+          ],
+        );
+        await expect(
+          service.confirm(lifecycleCommand("reception-key-00000001")),
+        ).resolves.toEqual({ kind: "reception_not_in_progress" });
+      });
+    });
+
+    it("blocks draft writes after confirmation and enforces append-only versions", async () => {
+      await withMigratedSchema(async (pool) => {
+        await seedQualification(pool, {
+          tenantId: LIFECYCLE_SCOPE.tenantId,
+          pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+          actorId: LIFECYCLE_SCOPE.actorId,
+          status: "ACTIVE",
+        });
+        const service = await seedAndSave(pool, { flags: ["NARCOTIC"] });
+        await service.confirm(lifecycleCommand("confirm-key-lifecycle-01"));
+        await service.finalize(lifecycleCommand("finalize-key-lifecycle-1"));
+
+        // サービス層: locked。
+        await expect(
+          service.save({
+            ...lifecycleSaveInput(),
+            expectedVersion: 1,
+          }),
+        ).resolves.toEqual({ kind: "locked" });
+
+        // DB 層: trigger が content 改変を拒否。
+        await expect(
+          pool.query(
+            `UPDATE prescription_drafts SET note = '確定後の改訂'
+              WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3`,
+            [
+              LIFECYCLE_SCOPE.tenantId,
+              LIFECYCLE_SCOPE.pharmacyId,
+              LIFECYCLE_PRESCRIPTION_ID,
+            ],
+          ),
+        ).rejects.toThrow(/immutable after pharmacist confirmation/u);
+
+        // 逆行遷移も trigger が拒否。
+        await expect(
+          pool.query(
+            `UPDATE prescription_drafts SET status = 'PHARMACIST_CONFIRMED'
+              WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3`,
+            [
+              LIFECYCLE_SCOPE.tenantId,
+              LIFECYCLE_SCOPE.pharmacyId,
+              LIFECYCLE_PRESCRIPTION_ID,
+            ],
+          ),
+        ).rejects.toThrow(/invalid prescription lifecycle transition/u);
+
+        // prescription_versions は append-only。
+        await expect(
+          pool.query(
+            `UPDATE prescription_versions SET content_hash = 'x'
+              WHERE tenant_id = $1 AND pharmacy_id = $2`,
+            [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+          ),
+        ).rejects.toThrow(/append-only/u);
+        await expect(
+          pool.query(
+            `DELETE FROM prescription_versions
+              WHERE tenant_id = $1 AND pharmacy_id = $2`,
+            [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+          ),
+        ).rejects.toThrow(/append-only/u);
+
+        // F-7: identity 付け替えは trigger が拒否。
+        await expect(
+          pool.query(
+            `UPDATE prescription_drafts SET patient_id = 'patient-other'
+              WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3`,
+            [
+              LIFECYCLE_SCOPE.tenantId,
+              LIFECYCLE_SCOPE.pharmacyId,
+              LIFECYCLE_PRESCRIPTION_ID,
+            ],
+          ),
+        ).rejects.toThrow(/identity is immutable/u);
+
+        // F-7: 確定記録の書き換えも trigger が拒否。
+        await expect(
+          pool.query(
+            `UPDATE prescription_drafts SET finalized_by = 'actor-other'
+              WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3`,
+            [
+              LIFECYCLE_SCOPE.tenantId,
+              LIFECYCLE_SCOPE.pharmacyId,
+              LIFECYCLE_PRESCRIPTION_ID,
+            ],
+          ),
+        ).rejects.toThrow(/finalization record is immutable/u);
+
+        // F-14: 確定済み draft の行削除は拒否。
+        await expect(
+          pool.query(
+            `DELETE FROM prescription_drafts
+              WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3`,
+            [
+              LIFECYCLE_SCOPE.tenantId,
+              LIFECYCLE_SCOPE.pharmacyId,
+              LIFECYCLE_PRESCRIPTION_ID,
+            ],
+          ),
+        ).rejects.toThrow(/cannot be deleted/u);
+
+        // F-14: child table は post-confirm で全 DML 拒否(draft_rows は
+        // 000019 時点で INSERT 自体が常時拒否のため、行を持てる flags で
+        // DELETE ガードを実検証する)。
+        await expect(
+          pool.query(
+            `DELETE FROM prescription_draft_flags
+              WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3`,
+            [
+              LIFECYCLE_SCOPE.tenantId,
+              LIFECYCLE_SCOPE.pharmacyId,
+              LIFECYCLE_PRESCRIPTION_ID,
+            ],
+          ),
+        ).rejects.toThrow(/cannot be modified after pharmacist confirmation/u);
+      });
+    });
+
+    it("treats REVOKED evidence as unqualified and audits finalize.denied", async () => {
+      await withMigratedSchema(async (pool) => {
+        await seedQualification(pool, {
+          tenantId: LIFECYCLE_SCOPE.tenantId,
+          pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+          actorId: LIFECYCLE_SCOPE.actorId,
+          status: "REVOKED",
+        });
+        const service = await seedAndSave(pool);
+        await expect(
+          service.confirm(lifecycleCommand("revoked-key-00000001")),
+        ).resolves.toEqual({ kind: "unqualified" });
+        await expect(
+          service.finalize(lifecycleCommand("revoked-fin-00000001")),
+        ).resolves.toEqual({ kind: "unqualified" });
+        const auditRows = await pool.query<{
+          readonly audit_event_type: string;
+        }>(
+          `SELECT event_body->>'auditEventType' AS audit_event_type
+             FROM audit_events
+            WHERE tenant_id = $1 AND pharmacy_id = $2
+            ORDER BY sequence_number ASC`,
+          [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+        );
+        expect(auditRows.rows.map((row) => row.audit_event_type)).toEqual([
+          "prescription.created",
+          "prescription.confirm.denied",
+          "prescription.finalize.denied",
+        ]);
+      });
+    });
+
+    it("uses recorded_seq as the deterministic latest tiebreak", async () => {
+      await withMigratedSchema(async (pool) => {
+        // 同一 created_at で ACTIVE → REVOKED を連続 insert。latest は
+        // recorded_seq 大きい方(REVOKED)= unqualified。
+        for (const status of ["ACTIVE", "REVOKED"] as const) {
+          await pool.query(
+            `INSERT INTO actor_qualifications (
+               tenant_id, pharmacy_id, qualification_id, actor_id,
+               qualification_kind, license_ref, status,
+               verified_by, verified_at, created_at
+             ) VALUES ($1, $2, $3, $4, 'PHARMACIST_LICENSE', NULL, $5,
+               'verifier', '2026-08-24T00:00:00.000Z'::timestamptz,
+               '2026-08-24T00:00:00.000Z'::timestamptz)`,
+            [
+              LIFECYCLE_SCOPE.tenantId,
+              LIFECYCLE_SCOPE.pharmacyId,
+              `qual-tie-${status}`,
+              LIFECYCLE_SCOPE.actorId,
+              status,
+            ],
+          );
+        }
+        const repo = new PostgresActorQualificationRepository(pool);
+        await expect(
+          repo.hasActiveQualification({
+            tenantId: LIFECYCLE_SCOPE.tenantId,
+            pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+            actorId: LIFECYCLE_SCOPE.actorId,
+            kind: "PHARMACIST_LICENSE",
+          }),
+        ).resolves.toBe(false);
+      });
+    });
+
+    it("rolls back the whole transaction when the outbox insert fails", async () => {
+      await withMigratedSchema(async (pool) => {
+        await seedQualification(pool, {
+          tenantId: LIFECYCLE_SCOPE.tenantId,
+          pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+          actorId: LIFECYCLE_SCOPE.actorId,
+          status: "ACTIVE",
+        });
+        const service = await seedAndSave(pool);
+        await service.confirm(lifecycleCommand("confirm-key-lifecycle-01"));
+
+        const failingService = new PostgresPrescriptionDraftService(
+          pool,
+          () => prescriptionId(LIFECYCLE_PRESCRIPTION_ID),
+          {
+            qualificationRepository:
+              new PostgresActorQualificationRepository(pool),
+            nextOutboxEventId: () => {
+              throw new Error("injected outbox id failure");
+            },
+          },
+        );
+        await expect(
+          failingService.finalize(lifecycleCommand("finalize-key-fail-001")),
+        ).rejects.toThrow("injected outbox id failure");
+
+        // 状態は PHARMACIST_CONFIRMED のまま、evidence は残らない。
+        const draftRows = await pool.query<{ readonly status: string | null }>(
+          `SELECT status FROM prescription_drafts
+            WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3`,
+          [
+            LIFECYCLE_SCOPE.tenantId,
+            LIFECYCLE_SCOPE.pharmacyId,
+            LIFECYCLE_PRESCRIPTION_ID,
+          ],
+        );
+        expect(draftRows.rows[0]?.status).toBe("PHARMACIST_CONFIRMED");
+
+        const auditRows = await pool.query<{
+          readonly audit_event_type: string;
+        }>(
+          `SELECT event_body->>'auditEventType' AS audit_event_type
+             FROM audit_events
+            WHERE tenant_id = $1 AND pharmacy_id = $2
+            ORDER BY sequence_number ASC`,
+          [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+        );
+        expect(auditRows.rows.map((row) => row.audit_event_type)).toEqual([
+          "prescription.created",
+          "prescription.confirmed",
+        ]);
+
+        const versionRows = await pool.query(
+          `SELECT 1 FROM prescription_versions
+            WHERE tenant_id = $1 AND pharmacy_id = $2`,
+          [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+        );
+        expect(versionRows.rows).toHaveLength(0);
+
+        const outboxRows = await pool.query(
+          `SELECT 1 FROM outbox_events
+            WHERE tenant_id = $1 AND pharmacy_id = $2`,
+          [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+        );
+        expect(outboxRows.rows).toHaveLength(0);
+
+        // finalize key も記録されず、別 key で正規に再試行できる。
+        const retried = await service.finalize(
+          lifecycleCommand("finalize-key-retry-01"),
+        );
+        expect(retried).toMatchObject({ kind: "transitioned", replayed: false });
+      });
+    });
+
+    it("serializes concurrent save and confirm without deadlock", async () => {
+      await withMigratedSchema(async (pool) => {
+        await seedQualification(pool, {
+          tenantId: LIFECYCLE_SCOPE.tenantId,
+          pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+          actorId: LIFECYCLE_SCOPE.actorId,
+          status: "ACTIVE",
+        });
+        const service = await seedAndSave(pool);
+
+        // save は reception → draft、confirm も reception → draft の順に
+        // lock するため並行実行しても deadlock にならず直列化される。
+        const [saveResult, confirmResult] = await Promise.all([
+          service.save({ ...lifecycleSaveInput(), expectedVersion: 1 }),
+          service.confirm(lifecycleCommand("confirm-key-concurrent")),
+        ]);
+
+        // 直列化結果は2通りのみ: save 先着 → confirm 成功、または
+        // confirm 先着 → save は locked。部分状態の混在は許されない。
+        if (saveResult.kind === "saved") {
+          expect(confirmResult).toMatchObject({ kind: "transitioned" });
+        } else {
+          expect(saveResult).toEqual({ kind: "locked" });
+          expect(confirmResult).toMatchObject({ kind: "transitioned" });
+        }
+        const draftRows = await pool.query<{ readonly status: string | null }>(
+          `SELECT status FROM prescription_drafts
+            WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3`,
+          [
+            LIFECYCLE_SCOPE.tenantId,
+            LIFECYCLE_SCOPE.pharmacyId,
+            LIFECYCLE_PRESCRIPTION_ID,
+          ],
+        );
+        expect(draftRows.rows[0]?.status).toBe("PHARMACIST_CONFIRMED");
       });
     });
   },

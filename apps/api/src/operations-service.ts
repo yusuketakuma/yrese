@@ -17,6 +17,7 @@ import {
   type TenantId,
 } from "@yrese/shared-kernel";
 
+import type { InMemoryPrescriptionFinalizedOutbox } from "./prescription-draft-service.js";
 import type { InMemoryReceptionOutbox } from "./reception-command.js";
 import type { ReceptionRepository } from "./reception-repository.js";
 import { compareTextByCodePoints } from "./text-order.js";
@@ -201,13 +202,16 @@ export function persistentStoreNotConfiguredMigrationState(): MigrationStateResp
 export class InMemoryOperationsReadService implements OperationsReadService {
   private readonly outbox: InMemoryReceptionOutbox;
   private readonly receptionRepository: ReceptionRepository;
+  private readonly prescriptionOutbox: InMemoryPrescriptionFinalizedOutbox | undefined;
 
   constructor(
     outbox: InMemoryReceptionOutbox,
     receptionRepository: ReceptionRepository,
+    prescriptionOutbox?: InMemoryPrescriptionFinalizedOutbox,
   ) {
     this.outbox = outbox;
     this.receptionRepository = receptionRepository;
+    this.prescriptionOutbox = prescriptionOutbox;
   }
 
   async outboxSummary(scope: OperationsScope): Promise<OutboxSummaryResponse> {
@@ -229,6 +233,22 @@ export class InMemoryOperationsReadService implements OperationsReadService {
         }
       } else {
         bucket.delivered += 1;
+      }
+      tallies.set(intent.eventType, bucket);
+    }
+    // WP-7402: prescription.finalized intent は配送 worker 不在のため
+    // 構造的に全件 pending(InMemoryReceptionOutbox と同じ実測規則)。
+    for (const intent of this.prescriptionOutbox?.list(
+      scope.tenantId,
+      scope.pharmacyId,
+    ) ?? []) {
+      const bucket: OutboxTallyBucket = tallies.get(intent.eventType) ?? {
+        pending: 0,
+        delivered: 0,
+      };
+      bucket.pending += 1;
+      if (bucket.oldest === undefined || intent.createdAt < bucket.oldest) {
+        bucket.oldest = intent.createdAt;
       }
       tallies.set(intent.eventType, bucket);
     }

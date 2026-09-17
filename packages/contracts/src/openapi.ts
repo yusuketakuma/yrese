@@ -53,6 +53,11 @@ import {
   prescriptionDraftUpdateHeadersSchema,
 } from "./prescription-draft.js";
 import {
+  prescriptionLifecycleHeadersSchema,
+  prescriptionLifecycleParamsSchema,
+  prescriptionLifecycleViewSchema,
+} from "./prescription-lifecycle.js";
+import {
   receptionCreateRequestSchema,
   receptionQueueQuerySchema,
   receptionQueueEntrySchema,
@@ -341,6 +346,24 @@ const prescriptionDraftResponseOpenApiSchema = prescriptionDraftResponseSchema.m
     "Server-saved prescription draft with optimistic-concurrency version and actor metadata. Contains clinical PHI.",
 });
 
+const prescriptionLifecycleParamsOpenApiSchema =
+  prescriptionLifecycleParamsSchema.meta({
+    id: "PrescriptionLifecycleParams",
+    description:
+      "Target prescription path parameter for confirm/finalize commands.",
+  });
+const prescriptionLifecycleHeadersOpenApiSchema =
+  prescriptionLifecycleHeadersSchema.meta({
+    id: "PrescriptionLifecycleHeaders",
+    description:
+      "Required Idempotency-Key header for lifecycle command replay handling.",
+  });
+const prescriptionLifecycleViewOpenApiSchema =
+  prescriptionLifecycleViewSchema.meta({
+    id: "PrescriptionLifecycleView",
+    description:
+      "Lifecycle state after a confirm/finalize transition (no clinical content beyond identifiers and status).",
+  });
 const prescriptionDraftSaveResponseOpenApiSchema =
   prescriptionDraftSaveResponseSchema.meta({
     id: "PrescriptionDraftSaveResponse",
@@ -1064,6 +1087,80 @@ const openApiDefinition = {
           ),
           "409": frameworkFailureResponse(
             "Prescription draft version conflict",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+    },
+    "/prescriptions/{prescriptionId}/confirm": {
+      post: {
+        operationId: "confirmPrescription",
+        tags: ["prescriptions"],
+        summary: "Record pharmacist confirmation for a prescription draft",
+        description:
+          "WP-7402 (DOM-004, SEC-010). Requires prescription:confirm scope and an active pharmacist qualification evidence record. Fails closed: unresolved medication codes (RX-0001), incomplete source metadata (RX-0003), reception not IN_PROGRESS (RX-0004), and any reverse transition (RX-0002) are rejected. Idempotency-Key is required; replaying the same key returns the stored view. Every status uses Cache-Control: no-store.",
+        "x-yrese-ssot": "DOM-004",
+        "x-yrese-required-scopes": ["prescription:confirm"],
+        requestParams: {
+          path: prescriptionLifecycleParamsOpenApiSchema,
+          header: prescriptionLifecycleHeadersOpenApiSchema,
+        },
+        responses: {
+          "200": {
+            description: "Prescription confirmed (or replayed idempotent view)",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: prescriptionLifecycleViewOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse(
+            "Invalid lifecycle command request (RX-0005)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: true }),
+          "404": domainErrorResponse(
+            "Prescription not found in scope (RX-0006)",
+          ),
+          "409": domainErrorResponse(
+            "Transition guard failed (RX-0001/RX-0002/RX-0003/RX-0004)",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+    },
+    "/prescriptions/{prescriptionId}/finalize": {
+      post: {
+        operationId: "finalizePrescription",
+        tags: ["prescriptions"],
+        summary: "Finalize a pharmacist-confirmed prescription into an immutable version",
+        description:
+          "WP-7402 (DOM-004, SEC-010). Requires prescription:confirm scope and an active pharmacist qualification. Only PHARMACIST_CONFIRMED prescriptions finalize; the status update, immutable prescription_versions snapshot, audit event, and outbox intent commit in one transaction. Idempotency-Key is required. Every status uses Cache-Control: no-store.",
+        "x-yrese-ssot": "DOM-004",
+        "x-yrese-required-scopes": ["prescription:confirm"],
+        requestParams: {
+          path: prescriptionLifecycleParamsOpenApiSchema,
+          header: prescriptionLifecycleHeadersOpenApiSchema,
+        },
+        responses: {
+          "200": {
+            description: "Prescription finalized (or replayed idempotent view)",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: prescriptionLifecycleViewOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse(
+            "Invalid lifecycle command request (RX-0005)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: true }),
+          "404": domainErrorResponse(
+            "Prescription not found in scope (RX-0006)",
+          ),
+          "409": domainErrorResponse(
+            "Transition guard failed (RX-0001/RX-0002/RX-0003/RX-0004)",
           ),
           "500": internalErrorResponse({ noStore: true }),
         },

@@ -38,8 +38,14 @@ function fixedFailure(
   statusCode: 400 | 404 | 409,
   error: "Bad Request" | "Not Found" | "Conflict",
   message: string,
+  code?: string,
 ) {
-  return frameworkErrorResponseSchema.parse({ statusCode, error, message });
+  return frameworkErrorResponseSchema.parse({
+    statusCode,
+    error,
+    message,
+    ...(code === undefined ? {} : { code }),
+  });
 }
 
 // Static failure bodies validate once at module load; request paths send fresh clones.
@@ -57,6 +63,12 @@ const conflictResponseTemplate = fixedFailure(
   409,
   "Conflict",
   "Prescription draft version conflict",
+);
+const prescriptionDraftLockedResponseTemplate = fixedFailure(
+  409,
+  "Conflict",
+  "Prescription draft is confirmed or finalized",
+  "RX-0002",
 );
 
 function invalidRequest(reply: FastifyReply) {
@@ -180,6 +192,12 @@ const callback: FastifyPluginCallback<PrescriptionDraftRoutesOptions> = (
 
       if (result.kind === "not_found") return notFound(reply);
       if (result.kind === "conflict") return conflict(reply);
+      // DOM-004 §1: 確認・確定後の draft write 拒否(WP-7402)。
+      if (result.kind === "locked") {
+        return reply.code(409).send({
+          ...prescriptionDraftLockedResponseTemplate,
+        });
+      }
       return reply
         .code(result.draft.saveDisposition === "created" ? 201 : 200)
         .send(result.draft);

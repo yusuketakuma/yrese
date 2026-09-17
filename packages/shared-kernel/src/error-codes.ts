@@ -309,6 +309,50 @@ export const KERNEL_ERROR_CODES = [
     description:
       "prescription draft contains UNRESOLVED_TEXT medication rows and cannot proceed to pharmacist confirmation",
   },
+  {
+    code: "RX-0002",
+    domain: "PRESCRIPTION",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description:
+      "prescription lifecycle transition is not allowed for the current status",
+  },
+  {
+    code: "RX-0003",
+    domain: "PRESCRIPTION",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description:
+      "required source prescription metadata is incomplete for confirmation or finalization",
+  },
+  {
+    code: "RX-0004",
+    domain: "PRESCRIPTION",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description:
+      "reception is not IN_PROGRESS for pharmacist confirmation",
+  },
+  {
+    code: "RX-0005",
+    domain: "PRESCRIPTION",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "invalid prescription lifecycle command request",
+  },
+  {
+    code: "RX-0006",
+    domain: "PRESCRIPTION",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description:
+      "prescription does not exist in the tenant or pharmacy scope",
+  },
 ] as const satisfies readonly ErrorCodeDef[];
 
 export const AUTH_PERMISSION_DENIED_ERROR_CODE = KERNEL_ERROR_CODES[0].code;
@@ -347,6 +391,15 @@ export const MASTER_INVALID_QUERY_ERROR_CODE = KERNEL_ERROR_CODES[26].code;
 export const MASTER_VERSION_NOT_FOUND_ERROR_CODE = KERNEL_ERROR_CODES[27].code;
 export const PRESCRIPTION_CODE_MAPPING_REVIEW_REQUIRED_ERROR_CODE =
   KERNEL_ERROR_CODES[28].code;
+export const PRESCRIPTION_INVALID_TRANSITION_ERROR_CODE =
+  KERNEL_ERROR_CODES[29].code;
+export const PRESCRIPTION_METADATA_INCOMPLETE_ERROR_CODE =
+  KERNEL_ERROR_CODES[30].code;
+export const PRESCRIPTION_RECEPTION_NOT_IN_PROGRESS_ERROR_CODE =
+  KERNEL_ERROR_CODES[31].code;
+export const PRESCRIPTION_LIFECYCLE_INVALID_REQUEST_ERROR_CODE =
+  KERNEL_ERROR_CODES[32].code;
+export const PRESCRIPTION_NOT_FOUND_ERROR_CODE = KERNEL_ERROR_CODES[33].code;
 
 export function createKernelErrorCodeRegistry(): ErrorCodeRegistry {
   const registry = new ErrorCodeRegistry();

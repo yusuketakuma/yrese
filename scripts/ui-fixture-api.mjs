@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 
 const HOST = "127.0.0.1";
@@ -96,11 +97,11 @@ function currentOutboxSummary() {
 const migrationState = {
   available: true,
   result: "up_to_date",
-  appliedCount: 13,
-  availableCount: 13,
+  appliedCount: 21,
+  availableCount: 21,
   pendingVersions: [],
-  latestAppliedVersion: "000013",
-  latestAppliedName: "create_prescription_drafts",
+  latestAppliedVersion: "000021",
+  latestAppliedName: "prescription_lifecycle_hardening",
 };
 
 function countByStatus(entries, pick, order) {
@@ -189,9 +190,12 @@ function makeDraftResponse({
   version,
   draft,
   createdAt,
+  lifecycle,
 }) {
   return {
-    prescriptionId: `prescription-${receptionId}`,
+    // businessDate を含め、同一 reception の日付違い draft で ID が
+    // 衝突しないようにする。
+    prescriptionId: `prescription-${receptionId}-${businessDate}`,
     receptionId,
     patientId,
     businessDate,
@@ -201,8 +205,79 @@ function makeDraftResponse({
     updatedAt: draftTimestamp(version),
     createdBy: "actor-e2e",
     updatedBy: "actor-e2e",
+    status: lifecycle?.status ?? null,
+    confirmedBy: lifecycle?.confirmedBy ?? null,
+    confirmedAt: lifecycle?.confirmedAt ?? null,
+    finalizedBy: lifecycle?.finalizedBy ?? null,
+    finalizedAt: lifecycle?.finalizedAt ?? null,
+    prescriptionVersion: lifecycle?.prescriptionVersion ?? null,
   };
 }
+
+function findDraftByPrescriptionId(prescriptionId) {
+  for (const record of prescriptionDrafts.values()) {
+    if (record.prescriptionId === prescriptionId) return record;
+  }
+  return null;
+}
+
+// 実装の guard は薬剤 item のみを数える(未解決用法は制度上許容、
+// countUnresolvedPrescriptionItems と同じ基準)。
+function fixtureDraftHasUnresolvedItems(draft) {
+  for (const group of draft?.rpGroups ?? []) {
+    for (const item of group?.items ?? []) {
+      if (item?.medication?.kind === "unresolved") return true;
+    }
+  }
+  return false;
+}
+
+function fixtureMetadataComplete(draft) {
+  const source = draft?.sourceMetadata;
+  return (
+    draft?.prescriptionType !== undefined &&
+    draft?.prescriptionType !== "UNSPECIFIED" &&
+    typeof draft?.prescriptionDate === "string" &&
+    Number.isInteger(draft?.defaultDays) &&
+    source !== null &&
+    typeof source === "object" &&
+    typeof source?.medicalInstitution?.name === "string" &&
+    typeof source?.prescriberName === "string" &&
+    typeof source?.issueDate === "string" &&
+    typeof source?.validUntil === "string"
+  );
+}
+
+// lifecycle endpoint のエラー応答は errorResponseSchema({errorCode, message})
+// 形状。locked PUT の framework 形状(code)とは別系統。
+function lifecycleConflict(request, response, errorCode, message) {
+  sendJson(request, response, 409, { errorCode, message });
+}
+
+function fixtureContentHash(draft) {
+  return createHash("sha256").update(JSON.stringify(draft)).digest("hex");
+}
+
+// POST /prescriptions/{id}/{confirm,finalize} の 200 応答は
+// prescriptionLifecycleViewSchema 形状(draft response ではない)。
+function fixtureLifecycleView(record) {
+  return {
+    prescriptionId: record.prescriptionId,
+    receptionId: record.receptionId,
+    patientId: record.patientId,
+    prescriptionType: record.draft?.prescriptionType ?? "UNSPECIFIED",
+    status: record.status,
+    draftVersion: record.version,
+    prescriptionVersion: record.prescriptionVersion,
+    contentHash: fixtureContentHash(record.draft),
+    confirmedBy: record.confirmedBy,
+    confirmedAt: record.confirmedAt,
+    finalizedBy: record.finalizedBy,
+    finalizedAt: record.finalizedAt,
+  };
+}
+
+const LIFECYCLE_KEY_PATTERN = /^[A-Za-z0-9_-]{16,128}$/u;
 
 const server = createServer(async (request, response) => {
   const method = request.method ?? "GET";
@@ -382,6 +457,141 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  const lifecycleMatch = /^\/prescriptions\/([^/]+)\/(confirm|finalize)$/u.exec(
+    url.pathname,
+  );
+  if (lifecycleMatch !== null && method === "POST") {
+    const [, prescriptionId, action] = lifecycleMatch;
+    const idempotencyKey = request.headers["idempotency-key"];
+    if (
+      typeof idempotencyKey !== "string" ||
+      !LIFECYCLE_KEY_PATTERN.test(idempotencyKey)
+    ) {
+      sendJson(request, response, 400, {
+        errorCode: "RX-0005",
+        message: "Invalid prescription lifecycle request",
+      });
+      return;
+    }
+    const record = findDraftByPrescriptionId(prescriptionId);
+    if (record === null) {
+      sendJson(request, response, 404, {
+        errorCode: "RX-0006",
+        message: "Prescription not found",
+      });
+      return;
+    }
+    if (action === "confirm") {
+      if (record.status === "PHARMACIST_CONFIRMED") {
+        if (record.confirmIdempotencyKey === idempotencyKey) {
+          sendJson(request, response, 200, fixtureLifecycleView(record));
+          return;
+        }
+        lifecycleConflict(
+          request,
+          response,
+          "RX-0002",
+          "Prescription lifecycle transition is not allowed",
+        );
+        return;
+      }
+      if (record.status !== null) {
+        lifecycleConflict(
+          request,
+          response,
+          "RX-0002",
+          "Prescription lifecycle transition is not allowed",
+        );
+        return;
+      }
+      const reception = matchingReception(
+        record.receptionId,
+        record.businessDate,
+      );
+      if (reception?.receptionStatus !== "IN_PROGRESS") {
+        lifecycleConflict(
+          request,
+          response,
+          "RX-0004",
+          "Reception is not IN_PROGRESS for pharmacist confirmation",
+        );
+        return;
+      }
+      if (fixtureDraftHasUnresolvedItems(record.draft)) {
+        lifecycleConflict(
+          request,
+          response,
+          "RX-0001",
+          "Prescription contains unresolved medication items",
+        );
+        return;
+      }
+      if (!fixtureMetadataComplete(record.draft)) {
+        lifecycleConflict(
+          request,
+          response,
+          "RX-0003",
+          "Prescription source metadata is incomplete",
+        );
+        return;
+      }
+      record.status = "PHARMACIST_CONFIRMED";
+      record.confirmedBy = "actor-e2e";
+      record.confirmedAt = draftTimestamp(record.version + 90);
+      record.confirmIdempotencyKey = idempotencyKey;
+      sendJson(request, response, 200, fixtureLifecycleView(record));
+      return;
+    }
+    if (record.status === "PRESCRIPTION_FINALIZED") {
+      if (record.finalizeIdempotencyKey === idempotencyKey) {
+        sendJson(request, response, 200, fixtureLifecycleView(record));
+        return;
+      }
+      lifecycleConflict(
+        request,
+        response,
+        "RX-0002",
+        "Prescription lifecycle transition is not allowed",
+      );
+      return;
+    }
+    if (record.status !== "PHARMACIST_CONFIRMED") {
+      lifecycleConflict(
+        request,
+        response,
+        "RX-0002",
+        "Prescription lifecycle transition is not allowed",
+      );
+      return;
+    }
+    // finalize 時点でも確定対象を再検証する(実装との parity)。
+    if (fixtureDraftHasUnresolvedItems(record.draft)) {
+      lifecycleConflict(
+        request,
+        response,
+        "RX-0001",
+        "Prescription contains unresolved medication items",
+      );
+      return;
+    }
+    if (!fixtureMetadataComplete(record.draft)) {
+      lifecycleConflict(
+        request,
+        response,
+        "RX-0003",
+        "Prescription source metadata is incomplete",
+      );
+      return;
+    }
+    record.status = "PRESCRIPTION_FINALIZED";
+    record.finalizedBy = "actor-e2e";
+    record.finalizedAt = draftTimestamp(record.version + 95);
+    record.prescriptionVersion = 1;
+    record.finalizeIdempotencyKey = idempotencyKey;
+    sendJson(request, response, 200, fixtureLifecycleView(record));
+    return;
+  }
+
   const receptionId = prescriptionDraftPath(url.pathname);
   if (receptionId !== null && method === "GET") {
     const businessDate = url.searchParams.get("date");
@@ -414,7 +624,13 @@ const server = createServer(async (request, response) => {
       response.end();
       return;
     }
-    sendJson(request, response, 200, record);
+    // 内部保持の冪等 key は wire 応答に含めない(実 API も公開しない)。
+    const {
+      confirmIdempotencyKey: _confirmKey,
+      finalizeIdempotencyKey: _finalizeKey,
+      ...publicRecord
+    } = record;
+    sendJson(request, response, 200, publicRecord);
     return;
   }
 
@@ -502,6 +718,15 @@ const server = createServer(async (request, response) => {
       return;
     }
 
+    if (existing.status !== null) {
+      sendJson(request, response, 409, {
+        statusCode: 409,
+        error: "Conflict",
+        code: "RX-0002",
+        message: "Prescription draft is confirmed or finalized",
+      });
+      return;
+    }
     const existingContent = JSON.stringify(existing.draft);
     if (expectedVersion !== existing.version) {
       sendJson(request, response, 409, {

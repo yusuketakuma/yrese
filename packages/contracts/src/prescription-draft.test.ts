@@ -379,6 +379,12 @@ describe("prescription draft contracts", () => {
         updatedAt: "2026-08-25T00:00:00.000Z",
         createdBy: "actor-test-001",
         updatedBy: "actor-test-001",
+        status: null,
+        confirmedBy: null,
+        confirmedAt: null,
+        finalizedBy: null,
+        finalizedAt: null,
+        prescriptionVersion: null,
       }),
     ).toMatchObject({
       prescriptionId: "prescription-test-001",

@@ -34,6 +34,47 @@ describe('projectOutboxEventToPartnerEvent', () => {
     expect(JSON.stringify(projected)).not.toContain('patient-syn-004');
   });
 
+  it('projects prescription.finalized with the version from the internal payload', () => {
+    const finalized: OutboxPendingEvent = Object.freeze({
+      ...row,
+      outboxEventId: 'outbox-rx-1',
+      eventType: 'prescription.finalized',
+      aggregateType: 'prescription',
+      aggregateId: 'prescription-000001',
+      payload: { prescriptionId: 'prescription-000001', version: 1 },
+    });
+    const projected = projectOutboxEventToPartnerEvent(finalized);
+    expect(projected).toEqual({
+      eventId: 'outbox-rx-1',
+      eventType: 'prescription.finalized',
+      schemaVersion: 1,
+      occurredAt: '2026-08-23T00:00:00.000Z',
+      auditEventId: 'audit-0001',
+      aggregate: { type: 'prescription', id: 'prescription-000001' },
+      version: 1,
+    });
+  });
+
+  it('fails closed when prescription.finalized payload lacks a valid version', () => {
+    for (const payload of [
+      { prescriptionId: 'prescription-000001' },
+      { version: 'one' },
+      { version: 0 },
+      null,
+      'x',
+    ]) {
+      expect(() =>
+        projectOutboxEventToPartnerEvent({
+          ...row,
+          eventType: 'prescription.finalized',
+          aggregateType: 'prescription',
+          aggregateId: 'prescription-000001',
+          payload,
+        }),
+      ).toThrow(PartnerEventProjectionError);
+    }
+  });
+
   it('fails closed for an event type that is not in the catalog', () => {
     expect(() =>
       projectOutboxEventToPartnerEvent({ ...row, eventType: 'reception.deleted' }),

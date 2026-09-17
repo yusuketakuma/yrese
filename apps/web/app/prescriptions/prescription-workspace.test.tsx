@@ -1,6 +1,6 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { PatientContextProvider } from "../components/patient-context";
 import type { PrescriptionDraftResponse } from "@yrese/contracts";
@@ -11,6 +11,7 @@ import {
   defaultValidUntil,
   isPrescriptionSourceExpired,
   PrescriptionDraftChangeSummary,
+  PrescriptionLifecycleDialog,
   PrescriptionWorkspace,
   prescriptionDraftUnresolvedDisplay,
   resolveDraftLoadOutcome,
@@ -103,11 +104,71 @@ describe("PrescriptionWorkspace (connected draft UI / patient safety)", () => {
     expect(html).toContain("SaMD該当性判定と人間レビューが未了");
     expect(html).toContain("RB-008 BLOCKED_REGULATORY_REVIEW");
     expect(html).toContain("診療報酬・薬価ロジックの法令レビュー未了");
-    expect(html).toContain("薬剤師確認 (SCR-014, dispensing:confirm)");
-    expect(html).toContain("API operation");
+    expect(html).toContain("prescription:confirm");
     expect(html).toContain(
       "保存済みの内容は「薬剤師確認前」であり、調剤・交付の根拠になりません",
     );
+  });
+
+  it("renders the lifecycle section as unconfirmed draft with a disabled confirm action", () => {
+    const html = renderToStaticMarkup(
+      <SelectedPatientWorkspaceView patient={SELECTED_PATIENT} />,
+    );
+    expect(html).toContain("薬剤師確認・処方確定");
+    expect(html).toContain('data-lifecycle-status="DRAFT"');
+    expect(html).toContain("下書き(未確認)");
+    expect(html).toContain("薬剤師確認へ進む");
+    // 受付未連携・未保存のため確認は disabled。
+    expect(html).toMatch(/薬剤師確認へ進む[^]*?disabled|disabled[^]*?薬剤師確認へ進む/u);
+  });
+
+  it("re-displays the patient and executing actor in the confirm dialog", () => {
+    const html = renderToStaticMarkup(
+      <PrescriptionLifecycleDialog
+        target="confirm"
+        patientLabel={`${SELECTED_PATIENT.name}（${SELECTED_PATIENT.kana}）`}
+      />,
+    );
+    expect(html).toContain('role="dialog"');
+    expect(html).toContain('aria-modal="true"');
+    expect(html).toContain("薬剤師確認を記録しますか");
+    expect(html).toContain(
+      `対象患者: ${SELECTED_PATIENT.name}（${SELECTED_PATIENT.kana}）`,
+    );
+    expect(html).toContain("確認済みとして記録");
+    expect(html).toContain("監査証跡に残り、取り消せません");
+    // NODE_ENV=test では認証コンテキスト表記(dev スタブ名は出さない)。
+    expect(html).toContain("実行 actor: 認証コンテキストの操作者として記録");
+    expect(html).not.toContain("u-dev");
+  });
+
+  it("re-displays the patient and executing actor in the finalize dialog", () => {
+    const html = renderToStaticMarkup(
+      <PrescriptionLifecycleDialog
+        target="finalize"
+        patientLabel={`${SELECTED_PATIENT.name}（${SELECTED_PATIENT.kana}）`}
+      />,
+    );
+    expect(html).toContain('role="dialog"');
+    expect(html).toContain("処方を確定しますか");
+    expect(html).toContain("不変の版(v1)");
+    expect(html).toContain("確定する");
+    expect(html).toContain("実行 actor:");
+  });
+
+  it("names the development stub actor inside the dialog under NODE_ENV=development", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    try {
+      const html = renderToStaticMarkup(
+        <PrescriptionLifecycleDialog
+          target="confirm"
+          patientLabel="合成 患者（ゴウセイ カンジャ）"
+        />,
+      );
+      expect(html).toContain("実行 actor: u-dev（開発スタブ）");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("declares that no clinical judgement ran, rather than reporting a judgement result", () => {
@@ -140,7 +201,7 @@ describe("PrescriptionWorkspace (connected draft UI / patient safety)", () => {
     expect(html).toContain("サーバー下書き版");
     expect(html).toContain("未作成");
     expect(html).toContain("薬剤師確認");
-    expect(html).toContain("未実施（実行不可）");
+    expect(html).toContain("下書き(未確認)");
     expect(html).not.toContain("サーバー保存済み");
   });
 
@@ -223,6 +284,12 @@ const SERVER_DRAFT_RESPONSE: PrescriptionDraftResponse = {
   updatedAt: "2026-08-26T02:00:00.000Z",
   createdBy: "actor-test-001",
   updatedBy: "actor-test-002",
+  status: null,
+  confirmedBy: null,
+  confirmedAt: null,
+  finalizedBy: null,
+  finalizedAt: null,
+  prescriptionVersion: null,
 };
 
 describe("connected draft state machine (WP-5101 review HIGH-1/HIGH-2)", () => {

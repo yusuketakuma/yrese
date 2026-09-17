@@ -1,5 +1,6 @@
 import {
   prescriptionDraftEffectiveRpGroups,
+  prescriptionLifecycleViewSchema,
   prescriptionDraftFlagSchema,
   prescriptionDraftResponseSchema,
   prescriptionDraftSaveRequestSchema,
@@ -14,6 +15,7 @@ import {
   type PrescriptionRpMedicationRef,
   type PrescriptionRpUsageRef,
 } from "@yrese/contracts";
+import type { PrescriptionLifecycleView } from "@yrese/contracts";
 import { permissionScope } from "@yrese/shared-kernel";
 
 import { resolveWebApiUrl } from "../api-transport";
@@ -80,6 +82,8 @@ export class PrescriptionDraftApiError extends Error {
     readonly kind: PrescriptionDraftApiErrorKind,
     message: string,
     readonly status?: number,
+    /** wire errorCode(RX-xxxx 等)。表示用の分岐のみに使い、本文は露出しない。 */
+    readonly errorCode?: string,
   ) {
     super(message);
     this.name = "PrescriptionDraftApiError";
@@ -690,7 +694,10 @@ function assertDraftResponseContext(
   }
 }
 
-function classifyFailure(status: number): PrescriptionDraftApiError {
+function classifyFailure(
+  status: number,
+  code?: string,
+): PrescriptionDraftApiError {
   if (status === 400) {
     return new PrescriptionDraftApiError(
       "INVALID_REQUEST",
@@ -713,6 +720,14 @@ function classifyFailure(status: number): PrescriptionDraftApiError {
     );
   }
   if (status === 409) {
+    // RX-0002: 薬剤師確認・確定済みの draft は lifecycle 上ロック済み。
+    if (code === "RX-0002") {
+      return new PrescriptionDraftApiError(
+        "CONFLICT",
+        "薬剤師確認・確定済みのため、この下書きは編集できません。",
+        status,
+      );
+    }
     return new PrescriptionDraftApiError(
       "CONFLICT",
       "別の端末または画面で下書きが更新されています。",
@@ -821,7 +836,24 @@ export async function savePrescriptionDraft(
     );
   }
 
-  if (!response.ok) throw classifyFailure(response.status);
+  if (!response.ok) {
+    // 409 locked 応答は framework shape の `code` を読み分ける。
+    let code: string | undefined;
+    try {
+      const body: unknown = await response.clone().json();
+      if (
+        typeof body === "object" &&
+        body !== null &&
+        "code" in body &&
+        typeof (body as { code: unknown }).code === "string"
+      ) {
+        code = (body as { code: string }).code;
+      }
+    } catch {
+      // 応答本文が読めなくても status だけで分類する。
+    }
+    throw classifyFailure(response.status, code);
+  }
 
   let parsed: PrescriptionDraftSaveResponse;
   try {
@@ -836,4 +868,150 @@ export async function savePrescriptionDraft(
   }
   assertDraftResponseContext(parsed, context);
   return parsed;
+}
+
+export type PrescriptionLifecycleTransition = "confirm" | "finalize";
+
+function lifecycleErrorMessage(
+  status: number,
+  errorCode: string | undefined,
+): { kind: PrescriptionDraftApiErrorKind; message: string } {
+  if (status === 400) {
+    return {
+      kind: "INVALID_REQUEST",
+      message: "確認・確定の要求形式を検証できませんでした。",
+    };
+  }
+  if (status === 403) {
+    return {
+      kind: "PERMISSION_DENIED",
+      message:
+        "確認・確定の権限または有効な薬剤師資格がありません。付与状況を管理者へ確認してください。",
+    };
+  }
+  if (status === 404) {
+    return {
+      kind: "NOT_FOUND",
+      message: "対象の処方をこの薬局・業務範囲で確認できませんでした。",
+    };
+  }
+  if (status === 409) {
+    switch (errorCode) {
+      case "RX-0001":
+        return {
+          kind: "CONFLICT",
+          message:
+            "マスターコード未解決の薬剤があるため確認へ進めません。コード対応を完了してください。",
+        };
+      case "RX-0002":
+        return {
+          kind: "CONFLICT",
+          message:
+            "現在の処方状態ではこの操作を実行できません。画面を再読込して状態を確認してください。",
+        };
+      case "RX-0003":
+        return {
+          kind: "CONFLICT",
+          message:
+            "処方箋原本情報(発行日・有効期限・医師名・医療機関)が不足しています。",
+        };
+      case "RX-0004":
+        return {
+          kind: "CONFLICT",
+          message:
+            "対象受付が調剤中ではないため確認できません。受付状態を確認してください。",
+        };
+      default:
+        return {
+          kind: "CONFLICT",
+          message: "現在の処方状態ではこの操作を実行できません。",
+        };
+    }
+  }
+  return {
+    kind: "UNAVAILABLE",
+    message: "確認・確定APIを利用できません。",
+  };
+}
+
+async function readErrorCode(response: Response): Promise<string | undefined> {
+  try {
+    const body: unknown = await response.json();
+    if (
+      typeof body === "object" &&
+      body !== null &&
+      "errorCode" in body &&
+      typeof (body as { errorCode: unknown }).errorCode === "string"
+    ) {
+      return (body as { errorCode: string }).errorCode;
+    }
+  } catch {
+    // 応答本文が読めなくても status だけで分類する。
+  }
+  return undefined;
+}
+
+/**
+ * WP-7402: confirm/finalize command。Idempotency-Key は呼び出し側が
+ * 同一操作の再試行で再利用できるよう1回だけ採番して渡す。応答 view は
+ * schema parse してから返す(信頼境界)。
+ */
+export async function transitionPrescriptionLifecycle(
+  prescriptionId: string,
+  transition: PrescriptionLifecycleTransition,
+  idempotencyKey: string,
+  fetchImpl: typeof fetch = fetch,
+  signal?: AbortSignal,
+  timeoutMs: number = PRESCRIPTION_DRAFT_TIMEOUT_MS,
+): Promise<PrescriptionLifecycleView> {
+  const requestSignal = draftRequestSignal(signal, timeoutMs);
+  let response: Response;
+  try {
+    response = await fetchImpl(
+      resolveWebApiUrl(
+        `/prescriptions/${encodeURIComponent(prescriptionId)}/${transition}`,
+      ),
+      {
+        method: "POST",
+        headers: {
+          ...devTenantHeaders([permissionScope("prescription", "confirm")]),
+          "idempotency-key": idempotencyKey,
+        },
+        cache: "no-store",
+        signal: requestSignal,
+      },
+    );
+  } catch (error) {
+    if (signal?.aborted === true) throw error;
+    if (requestSignal.aborted) throw draftTimeoutError();
+    throw new PrescriptionDraftApiError(
+      "UNAVAILABLE",
+      "確認・確定APIへ接続できませんでした。",
+    );
+  }
+
+  if (!response.ok) {
+    const errorCode = await readErrorCode(response);
+    const { kind, message } = lifecycleErrorMessage(
+      response.status,
+      errorCode,
+    );
+    throw new PrescriptionDraftApiError(
+      kind,
+      message,
+      response.status,
+      errorCode,
+    );
+  }
+
+  try {
+    return prescriptionLifecycleViewSchema.parse(await response.json());
+  } catch (error) {
+    if (signal?.aborted === true) throw error;
+    if (requestSignal.aborted) throw draftTimeoutError();
+    throw new PrescriptionDraftApiError(
+      "INVALID_RESPONSE",
+      "確認・確定APIの応答形式を検証できませんでした。",
+    );
+  }
 }

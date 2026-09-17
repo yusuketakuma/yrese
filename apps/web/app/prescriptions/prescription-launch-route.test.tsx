@@ -160,6 +160,12 @@ const SAVED_DRAFT: PrescriptionDraftResponse = {
   updatedAt: "2026-08-25T00:45:00.000Z",
   createdBy: "actor-a",
   updatedBy: "actor-a",
+  status: null,
+  confirmedBy: null,
+  confirmedAt: null,
+  finalizedBy: null,
+  finalizedAt: null,
+  prescriptionVersion: null,
 };
 
 describe("resolveLaunchOutcome", () => {

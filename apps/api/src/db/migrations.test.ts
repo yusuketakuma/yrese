@@ -199,6 +199,8 @@ describe('loadMigrationFiles', () => {
           '000017_add_prescription_draft_source_metadata.sql',
           '000018_master_foundation_tables.sql',
           '000019_prescription_draft_rp_groups.sql',
+          '000020_prescription_lifecycle.sql',
+          '000021_prescription_lifecycle_hardening.sql',
         ]);
       } finally {
         process.chdir(originalCwd);

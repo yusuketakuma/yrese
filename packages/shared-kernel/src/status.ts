@@ -103,3 +103,43 @@ export function isClaimable(statuses: readonly string[]): boolean {
     (CLAIMABLE_SAFE_STATUSES as readonly string[]).includes(s),
   );
 }
+
+/**
+ * 処方ライフサイクル状態(MOD-005 §2.3 / DOM-004 §1)。
+ *
+ * 実装済みの遷移先のみを登録する(未実装状態の先行登録禁止)。
+ * draft は status NULL(ライフサイクル未開始)で表し、本 enum に含めない。
+ * 受付副状態機械(RECEPTION_STATUSES)とは独立の主線状態である。
+ */
+export const PRESCRIPTION_STATUSES = [
+  "PHARMACIST_CONFIRMED",
+  "PRESCRIPTION_FINALIZED",
+] as const;
+export type PrescriptionStatus = (typeof PRESCRIPTION_STATUSES)[number];
+
+export function isPrescriptionStatus(value: string): value is PrescriptionStatus {
+  return (PRESCRIPTION_STATUSES as readonly string[]).includes(value);
+}
+
+/**
+ * 処方ライフサイクルの許可遷移表。from の null は draft(未確認)を表す。
+ *
+ * 正本は DOM-004 §1: draft → PHARMACIST_CONFIRMED(薬剤師の明示操作)→
+ * PRESCRIPTION_FINALIZED(訂正は新版のみ)。逆行・スキップ・終端超過は禁止。
+ */
+export const PRESCRIPTION_TRANSITIONS = [
+  { from: null, to: "PHARMACIST_CONFIRMED" },
+  { from: "PHARMACIST_CONFIRMED", to: "PRESCRIPTION_FINALIZED" },
+] as const satisfies readonly {
+  from: PrescriptionStatus | null;
+  to: PrescriptionStatus;
+}[];
+
+export function isPrescriptionTransitionAllowed(
+  from: PrescriptionStatus | null,
+  to: PrescriptionStatus,
+): boolean {
+  return PRESCRIPTION_TRANSITIONS.some(
+    (transition) => transition.from === from && transition.to === to,
+  );
+}

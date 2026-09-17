@@ -574,12 +574,12 @@ describePostgres('PostgresReceptionCreateCommand (WP-4050 atomic boundary)', () 
           [scope.tenantId, scope.pharmacyId, aggregateId, auditEventId],
         );
 
-      // 監査行なし → FK 違反。受付なし → FK 違反。どちらも dangling intent を作れない。
+      // 監査行なし → FK 違反。受付なし → aggregate guard 違反。どちらも dangling intent を作れない。
       await expect(insertIntent(legacy.provenance.receptionId, 'no-such-audit-event')).rejects.toThrow(
         /outbox_events_audit_event_fk/,
       );
       await expect(insertIntent('no-such-reception', 'no-such-audit-event')).rejects.toThrow(
-        /outbox_events_(reception|audit_event)_fk/,
+        /outbox_events aggregate does not exist: reception/,
       );
       // 境界導入前の受付は intent も監査も無いまま legacy_orphan として分類される。
       const result = await buildCommand(pool).execute(

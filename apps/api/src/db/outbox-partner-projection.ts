@@ -22,6 +22,29 @@ export class PartnerEventProjectionError extends Error {
   }
 }
 
+/**
+ * `prescription.finalized` の内部 payload 契約(WP-7402)。確定版だけを転記し、
+ * 識別子以外の内部 payload key は公開 event に載せない。payload が欠損・
+ * 不正なら投影失敗(fail-closed)とする。
+ */
+function projectPayloadFields(event: OutboxPendingEvent): Record<string, number> {
+  if (event.eventType !== 'prescription.finalized') {
+    return {};
+  }
+  const payload = event.payload;
+  const version =
+    typeof payload === 'object' && payload !== null && !Array.isArray(payload)
+      ? (payload as Record<string, unknown>).version
+      : undefined;
+  if (typeof version !== 'number' || !Number.isInteger(version) || version < 1) {
+    throw new PartnerEventProjectionError(
+      event.outboxEventId,
+      new Error('prescription.finalized payload lacks integer version'),
+    );
+  }
+  return { version };
+}
+
 export function projectOutboxEventToPartnerEvent(event: OutboxPendingEvent): PartnerEvent {
   const candidate = {
     eventId: event.outboxEventId,
@@ -30,6 +53,7 @@ export function projectOutboxEventToPartnerEvent(event: OutboxPendingEvent): Par
     occurredAt: event.createdAt,
     auditEventId: event.auditEventId,
     aggregate: { type: event.aggregateType, id: event.aggregateId },
+    ...projectPayloadFields(event),
   };
   const parsed = partnerEventSchema.safeParse(candidate);
   if (!parsed.success) {

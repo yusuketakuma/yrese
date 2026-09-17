@@ -13,12 +13,12 @@ reviewers:
   - privacy_compliance_reviewer
   - medical_safety_reviewer
   - human_review_required
-version: 0.2.1
+version: 0.2.3
 created_at: 2026-07-09
-updated_at: 2026-08-23
-approved_at: 2026-08-23
-approved_by: "direct human authority 2026-08-23 (「全てを許可する。実行」); independent review: api-contract lane + security-privacy lane REQUEST_CHANGES -> all findings closed (28dae05, f07e76e); closure checker PASS"
-effective_from: 2026-08-23
+updated_at: 2026-09-19
+approved_at: 2026-09-19
+approved_by: "direct human authority 2026-09-19 (残タスク一括許可; WP-7402 packet 承認); prior: direct human authority 2026-08-23 (「全てを許可する。実行」); independent review: api-contract lane + security-privacy lane REQUEST_CHANGES -> all findings closed (28dae05, f07e76e); closure checker PASS"
+effective_from: 2026-09-19
 effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §32(同期設計の必須項目), §0.0.3.3
@@ -54,6 +54,7 @@ open_questions:
 blockers:
   - WP-4050 R3 specialist review and human approval required before APPROVED
 change_log:
+  - "0.2.2 2026-09-19 WP-7402 bounded amendment: §6 `prescription.finalized` Outbox intent profile(event body・canonical hash profile・同一tx完全状態)を追加。packet 決定は direct user instruction(残タスク一括許可)により承認済み。外部配送・production action は含まない"
   - "2026-08-23 WP-6001/WP-6101/WP-6202/WP-6203/WP-6302 finalization: 独立 review 2 lane の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手は各 WP の gate に従い、外部接続・conformance 主張は含まない"
   - "0.2.1 2026-08-23 WP-6004: §4.3 を実装済み outbox_events(単一 table + sequence_number + FK)と整合させ、2 table 構造を将来の delivery state 追加として位置づけ。envelope semantics 不変。PROPOSED 維持"
   - "0.2.0 2026-07-29 PROPOSED: WP-4050向けreception.created Outbox intent profile、immutable intent/mutable delivery分離、atomic completeness、legacy orphan fail-closed規則を追加"
@@ -119,7 +120,7 @@ Outbox intentの`event_body`は、同じcommandで`audit_events`へ追加する
 | `aggregateId` / `targetRef.id` | 作成済み`receptionId` |
 | `actorId` | 認可済みtenant contextから1回だけsnapshotしたactor |
 | `wallClock` | command開始時に1回だけsnapshotしたISO instant |
-| `idempotencyKey` | `reception.created:<receptionId>` |
+| `idempotencyKey` | `<eventId>:1`(実装規則: `buildChainedAuditEvent` が eventId に連番 suffix を付与。eventId 自体が一意のため二重適用防止として機能する) |
 | `eventId` / `correlationId` | 同一の新規eventId。`causationId`は未指定 |
 | `schemaVersion` | `1` |
 | `phiClassification` | `none` |
@@ -172,6 +173,9 @@ fail-closedに隔離する。
 
 受付作成commandの完全状態は、同一tenant/pharmacy/receptionIdに対して次が
 exactly oneずつ存在し、auditとOutboxが同一eventIdを持つ状態だけである。
+「同一eventId」は§4.3の単一 table 構造でいえば outbox intent の
+`audit_event_id` FK が監査 event の `eventId`を指すことを意味し、
+intent の body は参照先 `audit_events.event_body` と共有される。
 
 1. `reception_entries`の業務fact
 2. `audit_events`の`reception.created` event
@@ -200,3 +204,61 @@ wallClock、eventIdを推測して埋めない。`reconciliation_required`とし
 
 Outbox intentの永続化は配送成功を意味しない。WP-4050は`sent`、
 `acknowledged`、外部consumer適用、RECOVERY_SYNC完了をclaimしない。
+
+## 6. `prescription.finalized` Outbox intent profile (WP-7402)
+
+### 6.1 event body
+
+Outbox intentの`event_body`は、finalize commandで`audit_events`へ追加する
+`prescription.finalized` `AuditEvent`と**同一eventId・同一immutable body**を持つ。
+
+| field | value |
+|---|---|
+| `auditEventType` | `prescription.finalized` |
+| `aggregateType` / `targetRef.kind` | `prescription` |
+| `aggregateId` / `targetRef.id` | 確定した`prescriptionId` |
+| `actorId` | 認可済みtenant contextから1回だけsnapshotした確定者actor |
+| `wallClock` | command開始時に1回だけsnapshotしたISO instant |
+| `idempotencyKey` | `<eventId>:1`(§4.1 と同一の実装規則) |
+| `eventId` / `correlationId` | 同一の新規eventId。`causationId`はconfirm監査eventIdを指定してよい |
+| `schemaVersion` | `1` |
+| `phiClassification` | `none` |
+| `encryptionStatus` | `plaintext_forbidden` |
+| `syncStatus` / `retryCount` | `pending` / `0` |
+| `outcome` | `success` |
+
+patientId、患者属性、処方本文(rpGroups・用法・用量・薬剤名)、client supplied
+idempotencyKeyをevent bodyへ含めない。prescription versionは
+`AuditTargetRef`が`{kind,id}`のみを持つため event body には載せず、
+outbox intent の`payload`列(`{prescriptionId, version}`)に保持する。
+content hash・免許情報はevent bodyに載せない(監査台帳 MOD-008 の
+payload 規律と同一)。
+
+### 6.2 canonical profile とpayload hash
+
+schemaVersion `1`の`payloadHash` preimageはUTF-8で次の4値をNUL (`U+0000`)
+区切りで連結したbyte列とする。
+
+```text
+prescription.finalized \0 prescription \0 <prescriptionId> \0 success
+```
+
+SHA-256 lowercase hexを`payloadHash`とし、`buildChainedAuditEvent`の計算と
+一致させる。`prescription.finalized`と`prescription.confirm.denied`等の
+別event typeは別canonical profileであり、本profileに混在しない。
+
+確定操作の完全状態は同一tenant/pharmacy/prescriptionIdに対して次がexactly
+oneずつ存在し、auditとOutboxが同一eventIdを持つ状態だけである。
+実装構造は§4.3の単一 table 規則と同一: outbox intent は自身の
+`outbox_event_id`を持ち、`audit_event_id` FK が監査 event の
+`eventId`を保持する。intent の body は参照先 `audit_events.event_body`
+と共有し、`payload`列は識別子+versionのみを運ぶ。
+
+1. `prescription_drafts.status = PRESCRIPTION_FINALIZED`のfact
+2. `prescription_versions`のversion=1 immutable snapshot
+3. `audit_events`の`prescription.finalized` event
+4. `outbox_events`の同一event
+
+finalize commandは1つの`PoolClient`と1つのtransactionでstatus更新、
+snapshot insert、audit append、Outbox insertを行う。どのinsert、validation、
+commit前処理が失敗しても全体をrollbackする。

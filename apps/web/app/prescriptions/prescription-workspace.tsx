@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import { ClinicalAlert } from "../components/clinical-alert";
+import { ConfirmationDialog } from "../components/confirmation-dialog";
 import { DomainStatusBadge } from "../components/domain-status-badge";
 import { EmptyState } from "../components/empty-state";
 import { ErrorNotice } from "../components/error-notice";
@@ -53,6 +54,8 @@ import {
   savePrescriptionDraft,
   sortDraftFlagsCanonically,
   toPrescriptionDraftContent,
+  transitionPrescriptionLifecycle,
+  type PrescriptionLifecycleTransition,
 } from "./prescription-draft-persistence";
 import {
   PRESCRIPTION_DRAFT_RP_DOSE_MAX_LENGTH,
@@ -60,11 +63,14 @@ import {
   prescriptionDraftUnresolvedCounts,
   type PrescriptionDraftResponse,
   type PrescriptionDraftSaveResponse,
+  type PrescriptionLifecycleView,
+  type PrescriptionStatusWire,
 } from "@yrese/contracts";
 import {
   MasterCodePicker,
   type MasterCodeSelection,
 } from "../masters/master-code-picker";
+import { DEV_STUB_ACTOR_ID } from "../dev-tenant";
 import { resolveMasterItemLabels } from "../masters/master-lookup";
 import { useOptionalPrescriptionOrigin } from "./prescription-origin-context";
 import {
@@ -95,6 +101,94 @@ type DraftSaveState =
 type PrescriptionDraftChangeKind =
   | "server-changed-while-away"
   | "save-conflict";
+
+/** WP-7402: サーバー応答から復元するライフサイクル表示状態。 */
+interface LifecycleDisplayState {
+  readonly prescriptionId: string | null;
+  readonly status: PrescriptionStatusWire | null;
+  readonly confirmedBy: string | null;
+  readonly confirmedAt: string | null;
+  readonly finalizedBy: string | null;
+  readonly finalizedAt: string | null;
+  readonly prescriptionVersion: number | null;
+}
+
+const EMPTY_LIFECYCLE: LifecycleDisplayState = {
+  prescriptionId: null,
+  status: null,
+  confirmedBy: null,
+  confirmedAt: null,
+  finalizedBy: null,
+  finalizedAt: null,
+  prescriptionVersion: null,
+};
+
+function lifecycleFromDraftResponse(
+  response: PrescriptionDraftResponse,
+): LifecycleDisplayState {
+  return {
+    prescriptionId: response.prescriptionId,
+    status: response.status,
+    confirmedBy: response.confirmedBy,
+    confirmedAt: response.confirmedAt,
+    finalizedBy: response.finalizedBy,
+    finalizedAt: response.finalizedAt,
+    prescriptionVersion: response.prescriptionVersion,
+  };
+}
+
+function lifecycleFromView(
+  view: PrescriptionLifecycleView,
+): LifecycleDisplayState {
+  return {
+    prescriptionId: view.prescriptionId,
+    status: view.status,
+    confirmedBy: view.confirmedBy,
+    confirmedAt: view.confirmedAt,
+    finalizedBy: view.finalizedBy,
+    finalizedAt: view.finalizedAt,
+    prescriptionVersion: view.prescriptionVersion,
+  };
+}
+
+type LifecycleActionState =
+  | { readonly kind: "idle" }
+  | { readonly kind: "review"; readonly target: PrescriptionLifecycleTransition }
+  | {
+      readonly kind: "submitting";
+      readonly target: PrescriptionLifecycleTransition;
+    }
+  | {
+      readonly kind: "error";
+      readonly target: PrescriptionLifecycleTransition;
+      readonly error: PrescriptionDraftApiError;
+    };
+
+/**
+ * DOM-002 §4.2a の確認 guard と同じ必須項目。表示用の事前確認であり、
+ * 正本 guard は常に API 側(失敗しても安全側へ倒れる)。
+ */
+function isSourceMetadataInputComplete(
+  snapshot: PrescriptionDraftSnapshot,
+): boolean {
+  return (
+    snapshot.prescriptionType.trim().length > 0 &&
+    snapshot.prescriptionDate.trim().length > 0 &&
+    snapshot.defaultDays.trim().length > 0 &&
+    snapshot.institutionName.trim().length > 0 &&
+    snapshot.prescriberName.trim().length > 0 &&
+    snapshot.issueDate.trim().length > 0 &&
+    snapshot.validUntil.trim().length > 0
+  );
+}
+
+function lifecycleStatusLabel(
+  status: PrescriptionStatusWire | null,
+): string {
+  if (status === "PHARMACIST_CONFIRMED") return "薬剤師確認済み";
+  if (status === "PRESCRIPTION_FINALIZED") return "処方確定済み";
+  return "下書き(未確認)";
+}
 
 function arraysEqual<T>(left: readonly T[], right: readonly T[]): boolean {
   return (
@@ -350,6 +444,45 @@ function saveErrorNextAction(error: PrescriptionDraftApiError): string {
     return "受付と患者の関連が変わった可能性があります。受付画面から再度開始してください。";
   }
   return "入力内容はこのタブに保持されています。同期状態を確認してから再度保存してください。";
+}
+
+/**
+ * 薬剤師確認・処方確定の二段階確認ダイアログ(UIX-001 P-11)。
+ * 対象患者の再提示と実行 actor の明示を必須とし、操作は監査証跡に残り
+ * 取り消せないことを確認文に含める。
+ */
+export function PrescriptionLifecycleDialog(props: {
+  readonly target: "confirm" | "finalize";
+  readonly patientLabel: string;
+  readonly onConfirm?: () => void;
+  readonly onCancel?: () => void;
+}) {
+  const isConfirm = props.target === "confirm";
+  return (
+    <ConfirmationDialog
+      open
+      title={isConfirm ? "薬剤師確認を記録しますか" : "処方を確定しますか"}
+      patientLabel={props.patientLabel}
+      message={
+        isConfirm
+          ? "薬剤師として、表示された処方内容・原本情報・コード解決状態を確認したうえで確認済みとして記録します。この操作は監査証跡に残り、取り消せません。確認後は下書きを編集できなくなります。"
+          : "確定するとこの処方は不変の版(v1)として固定され、以後いかなる編集もできません。確定内容は監査証跡に残り、取り消せません。"
+      }
+      confirmLabel={isConfirm ? "確認済みとして記録" : "確定する"}
+      {...(props.onConfirm !== undefined
+        ? { onConfirm: props.onConfirm }
+        : {})}
+      {...(props.onCancel !== undefined
+        ? { onCancel: props.onCancel }
+        : {})}
+    >
+      <p className="rail-muted">
+        {process.env.NODE_ENV === "development"
+          ? `実行 actor: ${DEV_STUB_ACTOR_ID}（開発スタブ）`
+          : "実行 actor: 認証コンテキストの操作者として記録"}
+      </p>
+    </ConfirmationDialog>
+  );
 }
 
 export function PrescriptionWorkspace() {
@@ -614,6 +747,13 @@ export function SelectedPatientWorkspaceView({
   const [pendingRemovalRowId, setPendingRemovalRowId] = useState<number | null>(
     null,
   );
+  const [lifecycle, setLifecycle] =
+    useState<LifecycleDisplayState>(EMPTY_LIFECYCLE);
+  const [lifecycleAction, setLifecycleAction] = useState<LifecycleActionState>({
+    kind: "idle",
+  });
+  // 同一操作の再試行で再利用する冪等キー。成功・対象変更で採番し直す。
+  const idempotencyKeyRef = useRef<string | null>(null);
   const draftRequestRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -641,6 +781,8 @@ export function SelectedPatientWorkspaceView({
       setBaseline(createBlankPrescriptionDraft());
       setServerVersion(0);
       setServerUpdatedAt(null);
+      setLifecycle(EMPTY_LIFECYCLE);
+      setLifecycleAction({ kind: "idle" });
       return;
     }
 
@@ -675,6 +817,11 @@ export function SelectedPatientWorkspaceView({
         setBaseline(hydrated);
         setServerVersion(outcome.serverVersion);
         setServerUpdatedAt(outcome.serverUpdatedAt);
+        setLifecycle(
+          response === null
+            ? EMPTY_LIFECYCLE
+            : lifecycleFromDraftResponse(response),
+        );
         setServerChangedWhileAway(outcome.serverChangedWhileAway);
         setDivergenceChoiceRequested(false);
         if (outcome.adoptServerDraft) {
@@ -835,6 +982,7 @@ export function SelectedPatientWorkspaceView({
       setBaseline(savedDraft);
       setServerVersion(response.version);
       setServerUpdatedAt(response.updatedAt);
+      setLifecycle(lifecycleFromDraftResponse(response));
       setServerChangedWhileAway(false);
       setDivergenceChoiceRequested(false);
       setRestoredNoticeVisible(false);
@@ -879,6 +1027,9 @@ export function SelectedPatientWorkspaceView({
       setBaseline(hydrated);
       setServerVersion(outcome.serverVersion);
       setServerUpdatedAt(outcome.serverUpdatedAt);
+      setLifecycle(
+        response === null ? EMPTY_LIFECYCLE : lifecycleFromDraftResponse(response),
+      );
       setServerChangedWhileAway(outcome.serverChangedWhileAway);
       setDivergenceChoiceRequested(false);
       if (outcome.adoptServerDraft) setDraft(hydrated);
@@ -903,14 +1054,90 @@ export function SelectedPatientWorkspaceView({
     }
   }
 
+  const sourceMetadataComplete = useMemo(
+    () => isSourceMetadataInputComplete(draft),
+    [draft],
+  );
+
+  const unresolvedMedicationItems =
+    unresolvedCounts?.unresolvedMedicationItems ?? null;
+  const confirmBlockedReasons: string[] = [];
+  if (lifecycle.status !== null) confirmBlockedReasons.push("確認済みです");
+  if (lifecycle.prescriptionId === null || serverVersion === 0) {
+    confirmBlockedReasons.push("サーバー保存版がありません");
+  }
+  if (dirty) confirmBlockedReasons.push("未保存の変更があります");
+  if (unresolvedMedicationItems === null) {
+    confirmBlockedReasons.push("未解決件数を確認できません");
+  } else if (unresolvedMedicationItems > 0) {
+    confirmBlockedReasons.push(
+      `コード未解決の薬剤が ${unresolvedMedicationItems} 件あります`,
+    );
+  }
+  if (!sourceMetadataComplete) {
+    confirmBlockedReasons.push("処方箋原本情報が不足しています");
+  }
+  const confirmReady = confirmBlockedReasons.length === 0;
+  const finalizeReady = lifecycle.status === "PHARMACIST_CONFIRMED";
+
+  async function runLifecycleTransition(
+    target: PrescriptionLifecycleTransition,
+  ) {
+    if (lifecycle.prescriptionId === null) return;
+    if (idempotencyKeyRef.current === null) {
+      idempotencyKeyRef.current = crypto.randomUUID();
+    }
+    const key = idempotencyKeyRef.current;
+    const controller = new AbortController();
+    draftRequestRef.current?.abort();
+    draftRequestRef.current = controller;
+    setLifecycleAction({ kind: "submitting", target });
+    try {
+      const view = await transitionPrescriptionLifecycle(
+        lifecycle.prescriptionId,
+        target,
+        key,
+        fetch,
+        controller.signal,
+      );
+      if (controller.signal.aborted || draftRequestRef.current !== controller) {
+        return;
+      }
+      setLifecycle(lifecycleFromView(view));
+      setLifecycleAction({ kind: "idle" });
+      idempotencyKeyRef.current = null;
+    } catch (error) {
+      if (controller.signal.aborted || draftRequestRef.current !== controller) {
+        return;
+      }
+      setLifecycleAction({
+        kind: "error",
+        target,
+        error:
+          error instanceof PrescriptionDraftApiError
+            ? error
+            : new PrescriptionDraftApiError(
+                "UNAVAILABLE",
+                "確認・確定APIを利用できません。",
+              ),
+      });
+    } finally {
+      if (draftRequestRef.current === controller) draftRequestRef.current = null;
+    }
+  }
+
   const nonEmptyRows = draft.rows.filter((row) => !isDraftRowEmpty(row)).length;
   const pendingRemovalIndex = draft.rows.findIndex(
     (row) => row.id === pendingRemovalRowId,
   );
   const pendingRemovalRow =
     pendingRemovalIndex >= 0 ? draft.rows[pendingRemovalIndex] : undefined;
+  // DOM-004 §1: 確認・確定後は draft write が拒否されるため編集面も lock。
   const editorLocked =
-    loadState.kind === "loading" || saveState.kind === "saving";
+    loadState.kind === "loading" ||
+    saveState.kind === "saving" ||
+    lifecycle.status !== null ||
+    lifecycleAction.kind === "submitting";
 
   if (linkedOrigin !== null && loadState.kind === "loading") {
     return (
@@ -991,7 +1218,7 @@ export function SelectedPatientWorkspaceView({
         meta={<StatusPill tone={headerTone}>{headerLabel}</StatusPill>}
       />
       <PrototypeBanner tone="warning">
-        処方下書きの読込・保存・版競合検知は実APIへ接続しています。過去処方と薬剤マスター照合は患者固有APIが未接続、相互作用・禁忌・重複・用量判定は RB-007 BLOCKED_PMDA_SAMD_REVIEW、算定・点数・薬価は RB-008 BLOCKED_REGULATORY_REVIEW、薬剤師確認と処方確定は SCR-014 の API operation 未登録により、いずれも停止しています。未接続を成功・正常として表示しません。
+        処方下書きの読込・保存・版競合検知と薬剤師確認・処方確定は実APIへ接続しています。過去処方と薬剤マスター照合は患者固有APIが未接続、相互作用・禁忌・重複・用量判定は RB-007 BLOCKED_PMDA_SAMD_REVIEW、算定・点数・薬価は RB-008 BLOCKED_REGULATORY_REVIEW により停止しています。未接続を成功・正常として表示しません。
       </PrototypeBanner>
 
       {linkedOrigin === null ? (
@@ -1773,6 +2000,122 @@ export function SelectedPatientWorkspaceView({
               算定プレビュー
             </PrototypeAction>
           </div>
+
+          <section
+            className="prescription-lifecycle"
+            aria-label="薬剤師確認と処方確定"
+            data-lifecycle-status={lifecycle.status ?? "DRAFT"}
+          >
+            <h4>薬剤師確認・処方確定</h4>
+            <KeyValueList
+              items={[
+                {
+                  label: "現在の状態",
+                  value: lifecycleStatusLabel(lifecycle.status),
+                },
+                {
+                  label: "コード未解決の薬剤",
+                  value:
+                    unresolvedMedicationItems === null
+                      ? "確認不能"
+                      : unresolvedMedicationItems === 0
+                        ? "なし"
+                        : `${unresolvedMedicationItems}件`,
+                },
+                {
+                  label: "未保存の変更",
+                  value: dirty ? "あり(差分未解決)" : "なし",
+                },
+                {
+                  label: "処方箋原本情報",
+                  value: sourceMetadataComplete ? "完備" : "不足",
+                },
+                {
+                  label: "薬剤師確認者",
+                  value:
+                    lifecycle.confirmedBy === null
+                      ? "—"
+                      : `${lifecycle.confirmedBy}（${lifecycle.confirmedAt ?? ""}）`,
+                },
+                {
+                  label: "確定版",
+                  value:
+                    lifecycle.prescriptionVersion === null
+                      ? "—"
+                      : `v${lifecycle.prescriptionVersion}（${lifecycle.finalizedAt ?? ""}）`,
+                },
+              ]}
+            />
+
+            {lifecycle.status === null ? (
+              <div className="operator-inline-actions">
+                <button
+                  type="button"
+                  className="operator-button"
+                  data-kind="primary"
+                  disabled={!confirmReady || editorLocked}
+                  title={
+                    confirmReady
+                      ? "薬剤師として処方内容を確認し、確認済みとして記録します"
+                      : confirmBlockedReasons.join("・")
+                  }
+                  onClick={() =>
+                    setLifecycleAction({ kind: "review", target: "confirm" })
+                  }
+                >
+                  薬剤師確認へ進む
+                </button>
+              </div>
+            ) : null}
+
+            {lifecycle.status === "PHARMACIST_CONFIRMED" ? (
+              <div className="operator-inline-actions">
+                <button
+                  type="button"
+                  className="operator-button"
+                  data-kind="primary"
+                  disabled={!finalizeReady || lifecycleAction.kind === "submitting"}
+                  title="確定すると不変の版(v1)として固定され、以後この下書きは編集できません"
+                  onClick={() =>
+                    setLifecycleAction({ kind: "review", target: "finalize" })
+                  }
+                >
+                  処方を確定する
+                </button>
+              </div>
+            ) : null}
+
+            {lifecycleAction.kind === "review" ? (
+              <PrescriptionLifecycleDialog
+                target={lifecycleAction.target}
+                patientLabel={`${patient.name}（${patient.kana}）`}
+                onConfirm={() =>
+                  void runLifecycleTransition(lifecycleAction.target)
+                }
+                onCancel={() => setLifecycleAction({ kind: "idle" })}
+              />
+            ) : null}
+
+            {lifecycleAction.kind === "submitting" ? (
+              <p className="rail-muted" role="status">
+                {lifecycleAction.target === "confirm"
+                  ? "薬剤師確認を記録しています…"
+                  : "処方を確定しています…"}
+              </p>
+            ) : null}
+
+            {lifecycleAction.kind === "error" ? (
+              <ErrorNotice
+                severity="ERROR"
+                message={lifecycleAction.error.message}
+                nextAction={
+                  lifecycleAction.error.kind === "PERMISSION_DENIED"
+                    ? "管理者に prescription:confirm スコープと薬剤師資格の付与状況を確認してください。"
+                    : "状態を再読込してから再度お試しください。解消しない場合はシステム管理者へ連絡してください。"
+                }
+              />
+            ) : null}
+          </section>
         </Panel>
 
         <aside
@@ -1836,15 +2179,18 @@ export function SelectedPatientWorkspaceView({
                         ? "なし"
                         : `${unresolvedCounts.unresolvedMedicationItems}件（確認不可）`,
                 },
-                { label: "薬剤師確認", value: "未実施（実行不可）" },
+                {
+                  label: "薬剤師確認",
+                  value: lifecycleStatusLabel(lifecycle.status),
+                },
               ]}
             />
             <p className="rail-muted">
               下書き保存は薬剤師確認・処方確定を意味しません。保存済みの内容は「薬剤師確認前」であり、調剤・交付の根拠になりません。
             </p>
             <p className="rail-muted">
-              薬剤師確認 (SCR-014, dispensing:confirm) は API operation
-              が未登録のため実行できません。
+              薬剤師確認・処方確定は有効な薬剤師資格と prescription:confirm
+              スコープを持つ利用者のみ実行できます。確定後の処方は不変の版として固定されます。
             </p>
           </RailCard>
           <RailCard title="検査値" tone="warning">

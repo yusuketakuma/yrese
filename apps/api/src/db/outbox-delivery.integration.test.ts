@@ -587,11 +587,11 @@ describePostgres("PostgresOutboxDeliveryWorker (PostgreSQL)", () => {
         pool.query(
           `INSERT INTO outbox_events (tenant_id, pharmacy_id, outbox_event_id, event_type,
              aggregate_type, aggregate_id, audit_event_id, payload, created_at)
-           SELECT tenant_id, pharmacy_id, 'ob-x2', 'prescription.created', 'prescription',
+           SELECT tenant_id, pharmacy_id, 'ob-x2', 'patient.created', 'patient',
                   aggregate_id, audit_event_id, payload, created_at
              FROM outbox_events WHERE outbox_event_id = 'ob-x1'`,
         ),
-      ).rejects.toThrow(/outbox_events_aggregate_type_reception/);
+      ).rejects.toThrow(/outbox_events_aggregate_type_allowed|aggregate type not allowed/);
     });
   });
 });

@@ -27,6 +27,7 @@ import {
   observeDatabasePoolBackgroundErrors,
   snapshotDatabasePool,
 } from './db/pool.js';
+import { PostgresActorQualificationRepository } from './db/actor-qualification-repository.js';
 import { PostgresPrescriptionDraftService } from './db/prescription-draft-service.js';
 import {
   PostgresReceptionCreateCommand,
@@ -48,7 +49,14 @@ import {
   patientSearchCursorHmacKeyByteLength,
 } from './patient-search-cursor.js';
 import { prescriptionDraftRoutes } from './prescription-draft-routes.js';
-import { InMemoryPrescriptionDraftService } from './prescription-draft-service.js';
+import { prescriptionLifecycleRoutes } from './prescription-lifecycle-routes.js';
+import {
+  InMemoryPrescriptionDraftService,
+  InMemoryPrescriptionFinalizedOutbox,
+  type PrescriptionLifecycleDeps,
+} from './prescription-draft-service.js';
+import { pharmacyId, tenantId, userId } from '@yrese/shared-kernel';
+import { InMemoryActorQualificationRepository } from './actor-qualification-repository.js';
 import { InMemoryReceptionOutbox } from './reception-command.js';
 import { InMemoryReceptionRepository } from './reception-repository.js';
 import {
@@ -134,14 +142,57 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
       tenantContextMode,
       patientSearchCursorCodec,
     });
+    // WP-7402: in-memory dev の薬剤師 evidence seed。env 未指定なら
+    // qualificationRepository は空で confirm/finalize は fail-closed(SEC-010)。
+    const actorQualificationRepository = new InMemoryActorQualificationRepository();
+    const prescriptionFinalizedOutbox = new InMemoryPrescriptionFinalizedOutbox();
+    const lifecycleDeps: PrescriptionLifecycleDeps = {
+      qualificationRepository: actorQualificationRepository,
+      // WP-7402 F-5: dev finalize は outbox intent まで揃えて
+      // §6.2 の 4 要素(状態・監査・version・intent)を完結させる。
+      finalizedOutbox: prescriptionFinalizedOutbox,
+    };
+    // grant は "tenantId:pharmacyId:actorId" のカンマ区切り(開発時のみ)。
+    for (const grant of (process.env.YRESE_DEV_PHARMACIST_GRANTS ?? '')
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0)) {
+      const [tenant, pharmacy, actor, extra] = grant.split(':');
+      if (
+        tenant === undefined ||
+        pharmacy === undefined ||
+        actor === undefined ||
+        extra !== undefined
+      ) {
+        throw new Error(
+          'YRESE_DEV_PHARMACIST_GRANTS entries must be tenantId:pharmacyId:actorId',
+        );
+      }
+      actorQualificationRepository.grant({
+        tenantId: tenantId(tenant),
+        pharmacyId: pharmacyId(pharmacy),
+        actorId: userId(actor),
+        kind: 'PHARMACIST_LICENSE',
+      });
+    }
+    const prescriptionDraftService = new InMemoryPrescriptionDraftService(
+      receptionRepository,
+      auditRepository,
+      undefined,
+      lifecycleDeps,
+    );
     server.register(prescriptionDraftRoutes, {
-      service: new InMemoryPrescriptionDraftService(
-        receptionRepository,
-        auditRepository,
-      ),
+      service: prescriptionDraftService,
+    });
+    server.register(prescriptionLifecycleRoutes, {
+      service: prescriptionDraftService,
     });
     server.register(operationsRoutes, {
-      service: new InMemoryOperationsReadService(receptionOutbox, receptionRepository),
+      service: new InMemoryOperationsReadService(
+        receptionOutbox,
+        receptionRepository,
+        prescriptionFinalizedOutbox,
+      ),
     });
     return Object.freeze({ server });
   }
@@ -186,8 +237,19 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
       tenantContextMode,
       patientSearchCursorCodec,
     });
+    const prescriptionDraftService = new PostgresPrescriptionDraftService(
+      pool,
+      undefined,
+      {
+        // WP-7402: 資格 read ガード(SEC-010)。付与/取消の管理経路は後続 WP。
+        qualificationRepository: new PostgresActorQualificationRepository(pool),
+      },
+    );
     server.register(prescriptionDraftRoutes, {
-      service: new PostgresPrescriptionDraftService(pool),
+      service: prescriptionDraftService,
+    });
+    server.register(prescriptionLifecycleRoutes, {
+      service: prescriptionDraftService,
     });
     server.register(operationsRoutes, {
       service: new PostgresOperationsReadService({ pool, migrations }),

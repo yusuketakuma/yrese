@@ -8,12 +8,12 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.2.7
+version: 0.2.8
 created_at: 2026-07-09
-updated_at: 2026-09-17
-approved_at: 2026-09-17
-approved_by: "direct human authority 2026-09-17 (SSOT batch 一括 APPROVE); independent review: Devin in-session primary-source cross-check (Oracle 不使用), findings closed in PROPOSED revisions"
-effective_from: 2026-09-17
+updated_at: 2026-09-19
+approved_at: 2026-09-19
+approved_by: "direct human authority 2026-09-19 (残タスク一括許可; WP-7402 packet 承認); prior: direct human authority 2026-09-17 (SSOT batch 一括 APPROVE)"
+effective_from: 2026-09-19
 effective_to: null
 source_refs:
   - 構築プロンプト v0.2.0 §0.0.3.3, §34
@@ -41,6 +41,7 @@ evidence_ids: []
 open_questions:
   - 保存期間(REG-003 の法定根拠確定待ち — SEC-007 と同期)
 change_log:
+  - "0.2.8 (2026-09-19): WP-7402 packet(決定済み、direct user instruction 残タスク一括許可)に基づき `prescription.confirmed` / `prescription.finalized` / `prescription.confirm.denied` / `prescription.finalize.denied` を登録。deny 系は SEC-010 §4 の outcome=denied 規律。実装・production action は含まない"
   - "0.2.7 (2026-09-17): WP-7201 / API-006 0.3.0 起案に伴い受付遷移の監査種別 `reception.started` / `reception.completed` を追加提案。targetRef は reception のみ、businessReason 必須集合への追加なし(取消は既存 `reception.cancelled` が担う)。review と human approval まで PROPOSED、実装根拠にしない"
   - "0.2.7 (2026-09-17) finalization: direct human approval(SSOT batch 一括 APPROVE)により PROPOSED→APPROVED。承認範囲は監査種別台帳の登録のみで、実装完了・production action を含まない"
   - "0.2.6 (2026-08-26): WP-5101のsuccessful server-saved prescription draft PHI readへ`prescription.draft.viewed`を登録。targetはprescription IDのみ、clinical content/query PHIは禁止、audit永続化をresponseより先に完了する"
@@ -83,6 +84,9 @@ audit repositoryへ配線済みである。レジストリ全種別の業務配�
 | insurance.viewed / insurance.updated | 保険・公費情報 | ○ | public-expense を含む【要確認 — 分離要否】 |
 | prescription.created / prescription.updated | 処方入力 | ○ | |
 | prescription.draft.viewed | server-saved処方draft閲覧(要配慮情報アクセス) | ○ | successful read(200)だけを記録。targetRefはprescription IDのみ。処方本文・患者識別子・queryを監査payloadへ入れず、audit commit前にresponseを返さない |
+| prescription.confirmed | 薬剤師確認(draft→PHARMACIST_CONFIRMED) | ○ | SEC-010 の資格ゲート通過による成功のみ。payloadはprescription ID+actorIdのみ。WP-7402 |
+| prescription.finalized | 処方確定(PHARMACIST_CONFIRMED→PRESCRIPTION_FINALIZED) | ○ | `prescription_versions` immutable snapshot(version=1)と同一tx。payloadはprescription ID+version+actorId。WP-7402 |
+| prescription.confirm.denied / prescription.finalize.denied | 確認・確定操作の拒否(非資格・scope不足・ガード不一致) | ○ | outcome=denied(SEC-010 §4)。理由内訳・免許情報・処方本文はpayloadへ入れない。targetRefはprescription ID+actorId。WP-7402 |
 | dispensing.confirmed | 薬剤師確認 | ○ | actor は薬剤師(人間責任の明示) |
 | inquiry.recorded | 疑義照会記録 | ○ | |
 | calculation.finalized / calculation.recalculated | 算定確定・再計算 | ○ | trace 参照(calculation_trace 保存とセット) |

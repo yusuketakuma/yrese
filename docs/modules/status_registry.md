@@ -8,14 +8,15 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.6
+version: 0.1.7
 created_at: 2026-07-09
-updated_at: 2026-08-23
-approved_at: 2026-08-24
-approved_by: "direct human authority 2026-08-23 (「全てを許可する。実行」) applied to the 2026-08-24 review batch; independent reviews (WP-6006 data-integrity/security lane, WP-6303/6304 + MOD-008 privacy/medical-safety lane) REQUEST_CHANGES -> findings closed (66e4058, b073f2a, 7f7df40); closure checker PASS for the SSOT batch with condition M5 resolved in 7f7df40"
-effective_from: 2026-08-23
+updated_at: 2026-09-19
+approved_at: 2026-09-19
+approved_by: "direct human authority 2026-09-19 (残タスク一括許可; WP-7402 packet 承認); prior: direct human authority 2026-08-23 (「全てを許可する。実行」) applied to the 2026-08-24 review batch; independent reviews (WP-6006 data-integrity/security lane, WP-6303/6304 + MOD-008 privacy/medical-safety lane) REQUEST_CHANGES -> findings closed (66e4058, b073f2a, 7f7df40); closure checker PASS for the SSOT batch with condition M5 resolved in 7f7df40"
+effective_from: 2026-09-19
 effective_to: null
 change_log:
+  - "0.1.7 2026-09-19 WP-7402 bounded amendment: §2.3 に処方ライフサイクル実装済み状態(PHARMACIST_CONFIRMED / PRESCRIPTION_FINALIZED)を DOM-004 §0 の着地時登録規則に従い登録。packet 決定は direct user instruction(残タスク一括許可)により承認済み。未実装状態の先行登録なし。実装・production action は含まない"
   - "2026-08-24 finalization: 独立 review の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手・外部接続・conformance 主張は含まない"
   - "0.1.6 2026-08-24 WP-6303/6304 review A-8/B-6: §2.2 に受付資格確認状態 7 種と確認方式 4 種を登録、BLOCKED_AUDIT_EVENT_REGISTRY_AMENDMENT の文言を APPROVED 版基準に精緻化。review と human approval まで PROPOSED"
   - "2026-08-23 WP-6001/WP-6101/WP-6202/WP-6203/WP-6302 finalization: 独立 review 2 lane の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手は各 WP の gate に従い、外部接続・conformance 主張は含まない"
@@ -98,6 +99,22 @@ MYNA_ONLINE / CARD_ONLINE / CARD_VISUAL / NONE
 - 遷移表は ADP-004 §3 と一致させる。EXPIRED / MISMATCH は受付単位の終端で、復帰は新規受付または evidence を伴う人間 gate
 - 確認方式と記録状態の整合(目視 → PROVISIONAL_VISUAL、NONE → OFFLINE_PROVISIONAL 等)は code と DB CHECK の双方で強制する
 - 値の正本は `@yrese/shared-kernel` の `RECEPTION_ELIGIBILITY_STATES` / `ELIGIBILITY_VERIFICATION_METHODS`(`check:boundaries` の重複定数検査対象)
+
+## 2.3 処方ライフサイクル状態(PRESCRIPTION_STATUSES — 実装済み 2 種、DOM-004 §1)
+
+PHARMACIST_CONFIRMED / PRESCRIPTION_FINALIZED
+
+- DOM-004 §1 の処方ライフサイクルのうち WP-7402 で実装する遷移先のみを登録
+  (§0 の着地時登録規則 — 未実装状態の先行登録をしない)。RECEIVED_PROVISIONAL /
+  IMPORTED_PROVISIONAL は draft の status NULL(ライフサイクル未開始)で表し、
+  DISPENSING_RECORDED 以降は WP-7404 以降で登録する
+- 遷移は draft status NULL → PHARMACIST_CONFIRMED(confirm command)→
+  PRESCRIPTION_FINALIZED(finalize command)の単方向のみ。逆行なし(DOM-004 §1)
+- PRESCRIPTION_FINALIZED 到達時に `prescription_versions` へ version=1 の
+  immutable snapshot を同一 tx で記録し、以後の draft write を拒否する
+- confirm/finalize の actor は `prescription:confirm` scope + ACTIVE 薬剤師資格
+  evidence(SEC-010)を実行時点で満たすこと
+- 値の正本は `@yrese/shared-kernel` の `PRESCRIPTION_STATUSES`
 
 ## 3. BLOCKER 種別(BLOCKER_TYPES — 38種)
 

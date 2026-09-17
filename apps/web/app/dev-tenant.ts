@@ -16,6 +16,9 @@ export const PATIENT_SEARCH_DEV_SCOPES = [
   permissionScope("patient", "read"),
 ] as const satisfies readonly PermissionScope[];
 
+/** development モードで送信される stub actor ID(x-dev-actor と一致)。 */
+export const DEV_STUB_ACTOR_ID = "u-dev";
+
 export function devTenantHeaders(
   scopes: readonly PermissionScope[] = PATIENT_SEARCH_DEV_SCOPES,
   nodeEnv: string | undefined = process.env.NODE_ENV,

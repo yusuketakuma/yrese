@@ -98,6 +98,12 @@ const SAVED_DRAFT: PrescriptionDraftResponse = {
   updatedAt: "2026-08-25T01:00:00.000Z",
   createdBy: "actor-syn-001",
   updatedBy: "actor-syn-001",
+  status: null,
+  confirmedBy: null,
+  confirmedAt: null,
+  finalizedBy: null,
+  finalizedAt: null,
+  prescriptionVersion: null,
 };
 
 function response(body: unknown, status = 200): Response {

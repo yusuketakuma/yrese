@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { PRESCRIPTION_STATUSES } from "@yrese/shared-kernel";
+
 import {
   actorIdWireSchema,
   patientIdWireSchema,
@@ -476,6 +478,11 @@ export type PrescriptionDraftSaveRequest = z.infer<
   typeof prescriptionDraftSaveRequestSchema
 >;
 
+export const prescriptionStatusWireSchema = z.enum(PRESCRIPTION_STATUSES);
+export type PrescriptionStatusWire = z.infer<
+  typeof prescriptionStatusWireSchema
+>;
+
 export const prescriptionDraftResponseSchema = z.object({
   prescriptionId: prescriptionIdWireSchema,
   receptionId: receptionIdWireSchema,
@@ -491,6 +498,21 @@ export const prescriptionDraftResponseSchema = z.object({
   updatedAt: z.iso.datetime(),
   createdBy: actorIdWireSchema,
   updatedBy: actorIdWireSchema,
+  /**
+   * ライフサイクル(MOD-005 §2.3)。null = draft(未確認)。confirmed/finalized
+   * 系は遷移後にのみ値を持ち、prescriptionVersion は確定 snapshot 版。
+   */
+  status: prescriptionStatusWireSchema.nullable(),
+  confirmedBy: actorIdWireSchema.nullable(),
+  confirmedAt: z.iso.datetime().nullable(),
+  finalizedBy: actorIdWireSchema.nullable(),
+  finalizedAt: z.iso.datetime().nullable(),
+  prescriptionVersion: z
+    .number()
+    .int()
+    .min(1)
+    .max(PRESCRIPTION_DRAFT_MAX_VERSION)
+    .nullable(),
 });
 
 export type PrescriptionDraftResponse = z.infer<

@@ -10,6 +10,7 @@ import {
   prescriptionDraftSnapshotsEqual,
   savePrescriptionDraft,
   toPrescriptionDraftContent,
+  transitionPrescriptionLifecycle,
 } from "./prescription-draft-persistence";
 import { createBlankPrescriptionDraft } from "./prescription-draft";
 
@@ -78,6 +79,12 @@ const serverDraft: PrescriptionDraftResponse = {
   updatedAt: "2026-08-25T01:00:00.000Z",
   createdBy: "actor-test-001",
   updatedBy: "actor-test-002",
+  status: null,
+  confirmedBy: null,
+  confirmedAt: null,
+  finalizedBy: null,
+  finalizedAt: null,
+  prescriptionVersion: null,
 };
 
 function response(body: unknown, status = 200): Response {
@@ -474,6 +481,105 @@ describe("prescription draft web persistence", () => {
           expectedVersion: 2,
           snapshot: fromPrescriptionDraftResponse(serverDraft),
         },
+        fetchImpl,
+      ),
+    ).rejects.toMatchObject({ kind: "INVALID_RESPONSE" });
+  });
+});
+
+describe("transitionPrescriptionLifecycle (WP-7402)", () => {
+  const LIFECYCLE_VIEW = {
+    prescriptionId: "prescription-test-001",
+    receptionId: "reception-test-001",
+    patientId: "patient-test-001",
+    prescriptionType: "OUTPATIENT",
+    status: "PHARMACIST_CONFIRMED",
+    draftVersion: 2,
+    prescriptionVersion: null,
+    contentHash: "a".repeat(64),
+    confirmedBy: "actor-test-001",
+    confirmedAt: "2026-08-25T00:00:00.000Z",
+    finalizedBy: null,
+    finalizedAt: null,
+  } as const;
+
+  it("posts the transition with an Idempotency-Key and parses the view", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const calls: { url: string; init: RequestInit | undefined }[] = [];
+    const fetchImpl: typeof fetch = async (url, init) => {
+      calls.push({ url: String(url), init });
+      return response(LIFECYCLE_VIEW);
+    };
+    const view = await transitionPrescriptionLifecycle(
+      "prescription-test-001",
+      "confirm",
+      "idem-key-000000000001",
+      fetchImpl,
+    );
+    expect(view.status).toBe("PHARMACIST_CONFIRMED");
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.url).toContain(
+      "/prescriptions/prescription-test-001/confirm",
+    );
+    expect(calls[0]?.init?.method).toBe("POST");
+    const headers = calls[0]?.init?.headers as Record<string, string>;
+    expect(headers["idempotency-key"]).toBe("idem-key-000000000001");
+  });
+
+  it("maps 409 errorCodes to safe non-PHI messages", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    for (const [errorCode, fragment] of [
+      ["RX-0001", "マスターコード未解決"],
+      ["RX-0002", "現在の処方状態"],
+      ["RX-0003", "原本情報"],
+      ["RX-0004", "調剤中ではない"],
+    ] as const) {
+      const fetchImpl: typeof fetch = async () =>
+        response({ errorCode, message: "raw" }, 409);
+      await expect(
+        transitionPrescriptionLifecycle(
+          "prescription-test-001",
+          "confirm",
+          "idem-key-000000000001",
+          fetchImpl,
+        ),
+      ).rejects.toMatchObject({
+        kind: "CONFLICT",
+        errorCode,
+        message: expect.stringContaining(fragment),
+      });
+    }
+  });
+
+  it("maps 403 to a permission error without leaking qualification details", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const fetchImpl: typeof fetch = async () =>
+      response({ errorCode: "AUTH-0001", message: "Forbidden" }, 403);
+    await expect(
+      transitionPrescriptionLifecycle(
+        "prescription-test-001",
+        "finalize",
+        "idem-key-000000000002",
+        fetchImpl,
+      ),
+    ).rejects.toMatchObject({
+      kind: "PERMISSION_DENIED",
+      message: expect.stringContaining("薬剤師資格"),
+    });
+  });
+
+  it("rejects a malformed success response as INVALID_RESPONSE", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE", "");
+    const fetchImpl: typeof fetch = async () => response({ broken: true });
+    await expect(
+      transitionPrescriptionLifecycle(
+        "prescription-test-001",
+        "confirm",
+        "idem-key-000000000001",
         fetchImpl,
       ),
     ).rejects.toMatchObject({ kind: "INVALID_RESPONSE" });

@@ -6,19 +6,25 @@ import {
   deriveRpGroupsFromLegacyRows,
   prescriptionDraftResponseSchema,
   prescriptionDraftSaveResponseSchema,
+  prescriptionLifecycleViewSchema,
   type PrescriptionDraftContent,
   type PrescriptionDraftResponse,
+  type PrescriptionLifecycleView,
 } from "@yrese/contracts";
 import {
   prescriptionId,
+  receptionId,
   type PrescriptionId,
 } from "@yrese/shared-kernel";
 
 import { appendAuditEventWithinTransaction } from "./audit-repository.js";
+import type { PostgresActorQualificationRepository } from "./actor-qualification-repository.js";
 import { runInPooledTransaction } from "./pool.js";
 import { snapshotDatabaseInstant } from "../instant.js";
 import {
   comparePrescriptionDraftFlags,
+  countUnresolvedPrescriptionItems,
+  isPrescriptionSourceMetadataComplete,
   normalizePrescriptionDraftContentForStorage,
   prescriptionDraftContentHashCandidates,
   type PrescriptionDraftLookupInput,
@@ -26,6 +32,8 @@ import {
   type PrescriptionDraftSaveInput,
   type PrescriptionDraftSaveResult,
   type PrescriptionDraftService,
+  type PrescriptionLifecycleCommandInput,
+  type PrescriptionLifecycleCommandResult,
 } from "../prescription-draft-service.js";
 
 interface MetadataRow {
@@ -48,6 +56,13 @@ interface MetadataRow {
   readonly split_dispensing: string | null;
   readonly rp_groups: unknown;
   readonly content_hash: string;
+  readonly status: string | null;
+  readonly confirmed_by: string | null;
+  readonly confirmed_at: Date | string | null;
+  readonly finalized_by: string | null;
+  readonly finalized_at: Date | string | null;
+  readonly confirm_idempotency_key: string | null;
+  readonly finalize_idempotency_key: string | null;
   readonly created_at: Date | string;
   readonly updated_at: Date | string;
   readonly created_by: string;
@@ -98,6 +113,13 @@ async function selectMetadata(
        split_dispensing,
        rp_groups,
        content_hash,
+       status,
+       confirmed_by,
+       confirmed_at,
+       finalized_by,
+       finalized_at,
+       confirm_idempotency_key,
+       finalize_idempotency_key,
        created_at,
        updated_at,
        created_by,
@@ -251,6 +273,12 @@ async function readDraft(
       days: draftRow.days,
       quantityText: draftRow.quantity_text,
     }));
+    const versionResult = await client.query<{ readonly max: number | null }>(
+      `SELECT MAX(version) AS max
+         FROM prescription_versions
+        WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3`,
+      [input.tenantId, input.pharmacyId, row.prescription_id],
+    );
     const response = prescriptionDraftResponseSchema.parse({
       prescriptionId: row.prescription_id,
       receptionId: row.reception_id,
@@ -279,6 +307,24 @@ async function readDraft(
       ),
       createdBy: row.created_by,
       updatedBy: row.updated_by,
+      status: row.status,
+      confirmedBy: row.confirmed_by,
+      confirmedAt:
+        row.confirmed_at === null
+          ? null
+          : snapshotDatabaseInstant(
+              row.confirmed_at,
+              prescriptionDraftDatabaseInvariantErrorMessage,
+            ),
+      finalizedBy: row.finalized_by,
+      finalizedAt:
+        row.finalized_at === null
+          ? null
+          : snapshotDatabaseInstant(
+              row.finalized_at,
+              prescriptionDraftDatabaseInvariantErrorMessage,
+            ),
+      prescriptionVersion: versionResult.rows[0]?.max ?? null,
     });
     if (!storedHashMatches(row, response.draft)) {
       throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
@@ -320,6 +366,12 @@ export async function replaceChildren(
   }
 }
 
+export interface PostgresPrescriptionLifecycleDeps {
+  /** 未注入なら confirm/finalize は常に unqualified(fail-closed)。 */
+  readonly qualificationRepository?: PostgresActorQualificationRepository;
+  readonly nextOutboxEventId?: () => string;
+}
+
 export class PostgresPrescriptionDraftService
   implements PrescriptionDraftService
 {
@@ -327,7 +379,428 @@ export class PostgresPrescriptionDraftService
     private readonly pool: Pool,
     private readonly nextPrescriptionId: () => PrescriptionId = () =>
       prescriptionId(`prescription-${randomUUID()}`),
+    private readonly lifecycleDeps: PostgresPrescriptionLifecycleDeps = {},
   ) {}
+
+  private async selectLifecycleRow(
+    client: PoolClient,
+    input: PrescriptionLifecycleCommandInput,
+    forUpdate = true,
+  ): Promise<MetadataRow | undefined> {
+    const result = await client.query<MetadataRow>(
+      `SELECT
+         prescription_id,
+         reception_id,
+         patient_id,
+         business_date::text AS business_date,
+         version,
+         prescription_type,
+         prescription_date::text AS prescription_date,
+         default_days,
+         note,
+         medical_institution_code,
+         medical_institution_name,
+         prescriber_name,
+         issue_date::text AS issue_date,
+         valid_until::text AS valid_until,
+         refill_total,
+         refill_remaining,
+         split_dispensing,
+         rp_groups,
+         content_hash,
+         status,
+         confirmed_by,
+         confirmed_at,
+         finalized_by,
+         finalized_at,
+         confirm_idempotency_key,
+         finalize_idempotency_key,
+         created_at,
+         updated_at,
+         created_by,
+         updated_by
+       FROM prescription_drafts
+       WHERE tenant_id = $1
+         AND pharmacy_id = $2
+         AND prescription_id = $3
+       ${forUpdate ? "FOR UPDATE" : ""}`,
+      [input.tenantId, input.pharmacyId, input.prescriptionId],
+    );
+    if (result.rows.length > 1) {
+      throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+    }
+    return result.rows[0];
+  }
+
+  private lifecycleViewFromRow(
+    row: MetadataRow,
+    prescriptionVersion: number | null,
+  ): PrescriptionLifecycleView {
+    if (
+      row.status === null ||
+      row.confirmed_by === null ||
+      row.confirmed_at === null
+    ) {
+      throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+    }
+    return prescriptionLifecycleViewSchema.parse({
+      prescriptionId: row.prescription_id,
+      receptionId: row.reception_id,
+      patientId: row.patient_id,
+      prescriptionType: row.prescription_type,
+      status: row.status,
+      draftVersion: row.version,
+      prescriptionVersion,
+      contentHash: row.content_hash,
+      confirmedBy: row.confirmed_by,
+      confirmedAt: snapshotDatabaseInstant(
+        row.confirmed_at,
+        prescriptionDraftDatabaseInvariantErrorMessage,
+      ),
+      finalizedBy: row.finalized_by,
+      finalizedAt:
+        row.finalized_at === null
+          ? null
+          : snapshotDatabaseInstant(
+              row.finalized_at,
+              prescriptionDraftDatabaseInvariantErrorMessage,
+            ),
+    });
+  }
+
+  private async checkQualificationOrDeny(
+    client: PoolClient,
+    input: PrescriptionLifecycleCommandInput,
+    denyEventType: "prescription.confirm.denied" | "prescription.finalize.denied",
+  ): Promise<boolean> {
+    const qualified =
+      (await this.lifecycleDeps.qualificationRepository?.hasActiveQualificationWithinTransaction(
+        client,
+        {
+          tenantId: input.tenantId,
+          pharmacyId: input.pharmacyId,
+          actorId: input.actorId,
+          kind: "PHARMACIST_LICENSE",
+        },
+      )) === true;
+    if (qualified) return true;
+    // SEC-010 §4: deny と監査は同一 tx。targetRef は prescription ID のみで、
+    // 理由内訳・免許情報は payload に入れない。
+    await appendAuditEventWithinTransaction(
+      client,
+      { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+      {
+        actorId: input.actorId,
+        auditEventType: denyEventType,
+        targetRef: { kind: "prescription", id: input.prescriptionId },
+        outcome: "denied",
+        wallClock: input.wallClock,
+      },
+    );
+    return false;
+  }
+
+  /**
+   * F-3/F-12 (R3 review): confirm は資格 → 受付 → draft の順でロックする
+   * (finalize は draft 単一ロックのみで受付は掴まない)。save は
+   * reception FOR NO KEY UPDATE → draft FOR UPDATE の順なので、confirm も
+   * 受付を先に掴み逆行 deadlock を避ける。資格チェックを存在確認より先に
+   * 行い、非資格 actor に scope 内存在を漏らさない(deny 監査は対象行の
+   * 有無に関わらず同一 tx で残る)。
+   */
+  private async lockReceptionForLifecycle(
+    client: PoolClient,
+    input: PrescriptionLifecycleCommandInput,
+    row: MetadataRow,
+  ): Promise<string | undefined> {
+    const reception = await client.query<{
+      readonly reception_status: string;
+    }>(
+      `SELECT reception_status
+         FROM reception_entries
+        WHERE tenant_id = $1
+          AND pharmacy_id = $2
+          AND reception_id = $3
+          AND business_date = $4::date
+        FOR NO KEY UPDATE`,
+      [
+        input.tenantId,
+        input.pharmacyId,
+        row.reception_id,
+        row.business_date,
+      ],
+    );
+    return reception.rows[0]?.reception_status;
+  }
+
+  async confirm(
+    input: PrescriptionLifecycleCommandInput,
+  ): Promise<PrescriptionLifecycleCommandResult> {
+    return runInPooledTransaction(this.pool, async (client) => {
+      if (
+        !(await this.checkQualificationOrDeny(
+          client,
+          input,
+          "prescription.confirm.denied",
+        ))
+      ) {
+        await client.query("COMMIT");
+        return { kind: "unqualified" };
+      }
+
+      // ロック対象(reception)を知るため無ロックで読み、直後に正順ロックする。
+      const probe = await this.selectLifecycleRow(client, input, false);
+      if (probe === undefined) {
+        await client.query("ROLLBACK");
+        return { kind: "not_found" };
+      }
+
+      // DOM-004 §2: confirm は受付 IN_PROGRESS のみ。lock 順は save と
+      // 同じ reception→draft だが、status/replay 判定は draft lock 後に
+      // 行う(packet guard 順: 遷移/replay → 受付状態 → 未解決 → metadata)。
+      const receptionStatus = await this.lockReceptionForLifecycle(
+        client,
+        input,
+        probe,
+      );
+
+      const row = await this.selectLifecycleRow(client, input);
+      if (row === undefined) {
+        await client.query("ROLLBACK");
+        return { kind: "not_found" };
+      }
+
+      if (row.status === "PHARMACIST_CONFIRMED") {
+        if (row.confirm_idempotency_key === input.idempotencyKey) {
+          const view = this.lifecycleViewFromRow(row, null);
+          await client.query("COMMIT");
+          return { kind: "transitioned", view, replayed: true };
+        }
+        await client.query("ROLLBACK");
+        return { kind: "invalid_transition" };
+      }
+      if (row.status !== null) {
+        await client.query("ROLLBACK");
+        return { kind: "invalid_transition" };
+      }
+      if (receptionStatus !== "IN_PROGRESS") {
+        await client.query("ROLLBACK");
+        return { kind: "reception_not_in_progress" };
+      }
+
+      const draft = await readDraft(client, {
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+        actorId: input.actorId,
+        receptionId: receptionId(row.reception_id),
+        businessDate: row.business_date,
+        wallClock: input.wallClock,
+      });
+      if (draft === undefined) {
+        throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+      }
+      if (countUnresolvedPrescriptionItems(draft.draft) > 0) {
+        await client.query("ROLLBACK");
+        return { kind: "unresolved_items" };
+      }
+      if (!isPrescriptionSourceMetadataComplete(draft.draft)) {
+        await client.query("ROLLBACK");
+        return { kind: "metadata_incomplete" };
+      }
+
+      await client.query(
+        `UPDATE prescription_drafts
+            SET status = 'PHARMACIST_CONFIRMED',
+                confirmed_by = $4,
+                confirmed_at = $5::timestamptz,
+                confirm_idempotency_key = $6,
+                updated_at = GREATEST(updated_at, $5::timestamptz),
+                updated_by = $4
+          WHERE tenant_id = $1
+            AND pharmacy_id = $2
+            AND prescription_id = $3`,
+        [
+          input.tenantId,
+          input.pharmacyId,
+          input.prescriptionId,
+          input.actorId,
+          input.wallClock,
+          input.idempotencyKey,
+        ],
+      );
+      await appendAuditEventWithinTransaction(
+        client,
+        { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+        {
+          actorId: input.actorId,
+          auditEventType: "prescription.confirmed",
+          targetRef: { kind: "prescription", id: input.prescriptionId },
+          outcome: "success",
+          wallClock: input.wallClock,
+        },
+      );
+      const updated = await this.selectLifecycleRow(client, input);
+      if (updated === undefined) {
+        throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+      }
+      const view = this.lifecycleViewFromRow(updated, null);
+      await client.query("COMMIT");
+      return { kind: "transitioned", view, replayed: false };
+    });
+  }
+
+  async finalize(
+    input: PrescriptionLifecycleCommandInput,
+  ): Promise<PrescriptionLifecycleCommandResult> {
+    return runInPooledTransaction(this.pool, async (client) => {
+      if (
+        !(await this.checkQualificationOrDeny(
+          client,
+          input,
+          "prescription.finalize.denied",
+        ))
+      ) {
+        await client.query("COMMIT");
+        return { kind: "unqualified" };
+      }
+
+      const row = await this.selectLifecycleRow(client, input);
+      if (row === undefined) {
+        await client.query("ROLLBACK");
+        return { kind: "not_found" };
+      }
+
+      if (row.status === "PRESCRIPTION_FINALIZED") {
+        if (row.finalize_idempotency_key === input.idempotencyKey) {
+          const versionResult = await client.query<{
+            readonly version: number;
+          }>(
+            `SELECT version
+               FROM prescription_versions
+              WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3
+              ORDER BY version DESC
+              LIMIT 1`,
+            [input.tenantId, input.pharmacyId, input.prescriptionId],
+          );
+          const view = this.lifecycleViewFromRow(
+            row,
+            versionResult.rows[0]?.version ?? null,
+          );
+          await client.query("COMMIT");
+          return { kind: "transitioned", view, replayed: true };
+        }
+        await client.query("ROLLBACK");
+        return { kind: "invalid_transition" };
+      }
+      if (row.status !== "PHARMACIST_CONFIRMED") {
+        await client.query("ROLLBACK");
+        return { kind: "invalid_transition" };
+      }
+
+      // 確定対象の再検証(trigger が内容不変を保証するが fail-closed で再評価)。
+      const draft = await readDraft(client, {
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+        actorId: input.actorId,
+        receptionId: receptionId(row.reception_id),
+        businessDate: row.business_date,
+        wallClock: input.wallClock,
+      });
+      if (draft === undefined) {
+        throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+      }
+      if (countUnresolvedPrescriptionItems(draft.draft) > 0) {
+        await client.query("ROLLBACK");
+        return { kind: "unresolved_items" };
+      }
+      if (!isPrescriptionSourceMetadataComplete(draft.draft)) {
+        await client.query("ROLLBACK");
+        return { kind: "metadata_incomplete" };
+      }
+
+      // version=1 immutable snapshot。content_hash は draft の確定対象 hash と
+      // 一致(再計算せず永続値を採用 — readDraft で hash 照合済み)。
+      await client.query(
+        `INSERT INTO prescription_versions (
+           tenant_id, pharmacy_id, prescription_id, version,
+           content, content_hash,
+           confirmed_by, confirmed_at, finalized_by, finalized_at, created_at
+         ) VALUES (
+           $1, $2, $3, 1,
+           $4::jsonb, $5,
+           $6, $7::timestamptz, $8, $9::timestamptz, $9
+         )`,
+        [
+          input.tenantId,
+          input.pharmacyId,
+          input.prescriptionId,
+          JSON.stringify(draft.draft),
+          row.content_hash,
+          row.confirmed_by,
+          row.confirmed_at,
+          input.actorId,
+          input.wallClock,
+        ],
+      );
+      await client.query(
+        `UPDATE prescription_drafts
+            SET status = 'PRESCRIPTION_FINALIZED',
+                finalized_by = $4,
+                finalized_at = $5::timestamptz,
+                finalize_idempotency_key = $6,
+                updated_at = GREATEST(updated_at, $5::timestamptz),
+                updated_by = $4
+          WHERE tenant_id = $1
+            AND pharmacy_id = $2
+            AND prescription_id = $3`,
+        [
+          input.tenantId,
+          input.pharmacyId,
+          input.prescriptionId,
+          input.actorId,
+          input.wallClock,
+          input.idempotencyKey,
+        ],
+      );
+      const auditEvent = await appendAuditEventWithinTransaction(
+        client,
+        { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+        {
+          actorId: input.actorId,
+          auditEventType: "prescription.finalized",
+          targetRef: { kind: "prescription", id: input.prescriptionId },
+          outcome: "success",
+          wallClock: input.wallClock,
+        },
+      );
+      // MOD-009 §6: outbox intent は監査と同一 eventId 系・同一 tx。
+      // payload は識別子+版のみ(patient_ref・本文禁止)。
+      await client.query(
+        `INSERT INTO outbox_events (
+           tenant_id, pharmacy_id, outbox_event_id, event_type,
+           aggregate_type, aggregate_id, audit_event_id, payload, created_at
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)`,
+        [
+          input.tenantId,
+          input.pharmacyId,
+          this.lifecycleDeps.nextOutboxEventId?.() ?? randomUUID(),
+          "prescription.finalized",
+          "prescription",
+          input.prescriptionId,
+          auditEvent.eventId,
+          JSON.stringify({ prescriptionId: input.prescriptionId, version: 1 }),
+          input.wallClock,
+        ],
+      );
+      const updated = await this.selectLifecycleRow(client, input);
+      if (updated === undefined) {
+        throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+      }
+      const view = this.lifecycleViewFromRow(updated, 1);
+      await client.query("COMMIT");
+      return { kind: "transitioned", view, replayed: false };
+    });
+  }
 
   async get(
     input: PrescriptionDraftLookupInput,
@@ -463,6 +936,13 @@ export class PostgresPrescriptionDraftService
       const existingResponse = await readDraft(client, input, existing);
       if (existingResponse === undefined) {
         throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+      }
+
+      // DOM-004 §1: 確認・確定後の content 改変は trigger でも拒否されるが、
+      // route が 409 を返せるよう tx 内で先に明示判定する。
+      if (existing.status !== null) {
+        await client.query("ROLLBACK");
+        return { kind: "locked" };
       }
 
       if (input.expectedVersion !== existing.version) {
