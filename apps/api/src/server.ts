@@ -26,7 +26,9 @@ import { InMemoryAuditRepository, type AuditRepository } from './audit-repositor
 import {
   InMemoryReceptionOutbox,
   composeDefaultReceptionCreateCommand,
+  composeDefaultReceptionTransitionCommand,
   type ReceptionCreateCommand,
+  type ReceptionTransitionCommand,
 } from './reception-command.js';
 import {
   InMemoryPatientRepository,
@@ -38,6 +40,7 @@ import {
 } from './reception-repository.js';
 import { receptionCreateRoutes } from './reception-create-routes.js';
 import { receptionQueueRoutes } from './reception-queue-routes.js';
+import { receptionTransitionRoutes } from './reception-transition-routes.js';
 import { snapshotWallClock } from './route-invariants.js';
 
 export {
@@ -102,6 +105,20 @@ export {
   receptionQueueSchemaInvariantErrorMessage,
 } from './reception-queue-routes.js';
 
+export {
+  receptionInvalidTransitionErrorCode,
+  receptionNotFoundErrorCode,
+  receptionTransitionAuditInvariantErrorMessage,
+  receptionTransitionClockInvariantErrorMessage,
+  receptionTransitionClockReadErrorMessage,
+  receptionTransitionInvalidRequestErrorCode,
+  receptionTransitionRepositoryErrorMessage,
+  receptionTransitionResultInvariantErrorMessage,
+  receptionTransitionResultKindInvariantErrorMessage,
+  receptionTransitionSchemaInvariantErrorMessage,
+  receptionVersionConflictErrorCode,
+} from './reception-transition-routes.js';
+
 export type { HealthResponse } from '@yrese/contracts';
 
 export const apiVersion = '0.0.1';
@@ -118,6 +135,12 @@ export interface BuildServerOptions {
    * PostgresReceptionCreateCommand を注入する)。
    */
   readonly receptionCreateCommand?: ReceptionCreateCommand;
+  /**
+   * WP-7201: 受付遷移コマンド境界。未指定なら receptionRepository /
+   * auditRepository を合成した in-memory unit of work を使う
+   * (Postgres 構成は main.ts が PostgresReceptionTransitionCommand を注入する)。
+   */
+  readonly receptionTransitionCommand?: ReceptionTransitionCommand;
   readonly receptionOutbox?: InMemoryReceptionOutbox;
   readonly now?: () => Date;
   readonly repositoryMode?: ApiRepositoryMode;
@@ -141,7 +164,8 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   // (main.ts)は PostgresReceptionCreateCommand を注入する。
   if (
     options.repositoryMode === 'postgres' &&
-    options.receptionCreateCommand === undefined
+    (options.receptionCreateCommand === undefined ||
+      options.receptionTransitionCommand === undefined)
   ) {
     throw new Error(postgresCompositionConfigurationErrorMessage);
   }
@@ -156,6 +180,12 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       receptionRepository,
       auditRepository,
       outbox: receptionOutbox,
+    });
+  const receptionTransitionCommand =
+    options.receptionTransitionCommand ??
+    composeDefaultReceptionTransitionCommand({
+      receptionRepository,
+      auditRepository,
     });
   const now = options.now ?? (() => new Date());
   const server = Fastify({
@@ -210,6 +240,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   server.register(receptionCreateRoutes, {
     patientRepository,
     receptionCreateCommand,
+    now,
+  });
+
+  server.register(receptionTransitionRoutes, {
+    receptionTransitionCommand,
     now,
   });
 

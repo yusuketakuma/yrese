@@ -47,6 +47,12 @@ export function assertRecordedAuditMatchesIntent(
     readonly targetRef: { readonly kind: string; readonly id: string };
     readonly outcome: string;
     readonly wallClock: string;
+    /**
+     * MOD-008 構造化理由コード(cancellation 系のみ)。指定時は記録イベントの
+     * businessReason.code と完全一致を要求し、未指定時は従来どおり
+     * businessReason 非含有を要求する。
+     */
+    readonly businessReasonCode?: string;
   },
   invariantErrorMessage: string,
 ): void {
@@ -56,6 +62,12 @@ export function assertRecordedAuditMatchesIntent(
   } catch {
     throw new Error(invariantErrorMessage);
   }
+
+  const businessReasonMatches =
+    expected.businessReasonCode === undefined
+      ? event.businessReason === undefined
+      : event.businessReason !== undefined &&
+        event.businessReason.code === expected.businessReasonCode;
 
   if (
     event.tenantId !== expected.tenantId ||
@@ -69,7 +81,7 @@ export function assertRecordedAuditMatchesIntent(
     event.aggregateType !== expected.targetRef.kind ||
     event.aggregateId !== expected.targetRef.id ||
     event.reasonCode !== undefined ||
-    event.businessReason !== undefined
+    !businessReasonMatches
   ) {
     throw new Error(invariantErrorMessage);
   }

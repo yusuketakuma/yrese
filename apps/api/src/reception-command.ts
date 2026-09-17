@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
-import type { ReceptionQueueEntry } from '@yrese/contracts';
+import type {
+  ReceptionQueueEntry,
+  ReceptionTransitionTarget,
+} from '@yrese/contracts';
 import type { AuditEvent } from '@yrese/audit';
 import type {
   PatientId,
@@ -17,6 +20,8 @@ import {
   type ReceptionCreateProvenance,
   type ReceptionCreateResult,
   type ReceptionRepository,
+  type ReceptionTransitionInput,
+  type ReceptionTransitionResult,
 } from './reception-repository.js';
 
 /**
@@ -359,6 +364,195 @@ export function composeDefaultReceptionCreateCommand(options: {
       ? {
           compensateCreated: (provenance: ReceptionCreateProvenance) =>
             receptionRepository.rollbackCreated(provenance),
+        }
+      : {}),
+  });
+}
+
+/**
+ * WP-7201: 受付状態遷移のコマンド境界(unit of work)。
+ *
+ * 「成功した遷移は、正確に1件の durable な遷移監査イベント
+ * (reception.started / reception.completed / reception.cancelled)なしには
+ * durable であってはならない」を境界の不変条件とする。二相構成と補償の規律は
+ * create 経路と同じ(Postgres は execute 内の単一トランザクションで原子化し、
+ * in-memory は evidence 失敗時に遷移を巻き戻す)。
+ *
+ * transitions には outbox intent を置かない — outbox は外部配送契約であり、
+ * queue 副状態機械の遷移は外部送信対象イベントを持たない(API-006 §2.3 は
+ * 監査のみを要求する)。
+ */
+
+export type ReceptionTransitionAuditEventType =
+  | 'reception.started'
+  | 'reception.completed'
+  | 'reception.cancelled';
+
+/** 遷移先 → 監査イベント種別の唯一の写像(API-006 §2.3 / MOD-008)。 */
+export function receptionTransitionAuditEventType(
+  to: ReceptionTransitionTarget,
+): ReceptionTransitionAuditEventType {
+  switch (to) {
+    case 'IN_PROGRESS':
+      return 'reception.started';
+    case 'COMPLETED':
+      return 'reception.completed';
+    case 'CANCELLED':
+      return 'reception.cancelled';
+  }
+}
+
+export interface ReceptionTransitionCommandInput extends ReceptionTransitionInput {
+  readonly actorId: UserId;
+  /**
+   * 監査 wallClock 供給者。transitioned 経路でだけ、正確に1回読まれる
+   * (not_found / transition_not_allowed / version_conflict で時計を読まない)。
+   * create 経路の auditWallClock と同じ規律。
+   */
+  readonly auditWallClock: () => string;
+}
+
+/** transitioned 結果に監査証跡を添付した形(Postgres 原子経路の返り値)。 */
+export type ReceptionTransitionCommandResult = Extract<
+  ReceptionTransitionResult,
+  { readonly kind: 'transitioned' }
+> & { readonly auditEvent: AuditEvent };
+
+/** execute が返しうる形: リポジトリ素通し形、または evidence 添付済み形。 */
+export type ReceptionTransitionExecuteResult =
+  | ReceptionTransitionResult
+  | ReceptionTransitionCommandResult;
+
+export interface EnsureTransitionEvidenceInput {
+  /** execute が返した結果オブジェクト(Postgres 実装が添付 evidence を読む)。 */
+  readonly result: unknown;
+  /** HTTP 層で検証済みの遷移 provenance(識別子のみ、PHI 非含有)。 */
+  readonly provenance: {
+    readonly tenantId: TenantId;
+    readonly pharmacyId: PharmacyId;
+    readonly receptionId: ReceptionId;
+  };
+  readonly auditEventType: ReceptionTransitionAuditEventType;
+  /** CANCELLED 遷移の構造化理由コード(MOD-008)。その他の遷移では省略。 */
+  readonly businessReason?: { readonly code: string };
+  readonly actorId: UserId;
+  readonly wallClock: string;
+}
+
+export interface ReceptionTransitionCommand {
+  /**
+   * リポジトリ結果(または evidence 添付済み結果)の promise をそのまま返す。
+   * 実装は結果値へ一切触れてはならず、async ラッパで再同化してもならない
+   * (create 経路と同じ HTTP 層の単一 await・単一読取り規律を保存する)。
+   */
+  execute(
+    input: ReceptionTransitionCommandInput,
+  ): Promise<ReceptionTransitionExecuteResult>;
+  /**
+   * transitioned 結果の監査 evidence を確定し、監査結果の promise を
+   * **加工せずに**返す。監査追記失敗は raw のまま reject させ、呼び出し側が
+   * rollbackTransitionEvidence で巻き戻す。
+   */
+  ensureTransitionEvidence(
+    input: EnsureTransitionEvidenceInput,
+  ): Promise<unknown>;
+  /** 監査追記失敗後の巻き戻し(in-memory のみ遷移を復元)。
+   *  undo は repository が発行した opaque な補償証跡で、実装側が再検証する。 */
+  rollbackTransitionEvidence(undo: unknown): Promise<void>;
+}
+
+export interface ComposedReceptionTransitionCommandOptions {
+  readonly receptionRepository: ReceptionRepository;
+  readonly auditRepository: AuditRepository;
+  /**
+   * 遷移済み受付の補償(in-memory unit of work 用)。Postgres 実装は
+   * トランザクションで巻き戻すため使わない。未指定なら補償は行われない
+   * (注入モックのような無状態リポジトリ向け)。
+   */
+  readonly compensateTransition?: (
+    undo: unknown,
+  ) => void | Promise<void>;
+}
+
+export class ComposedReceptionTransitionCommand
+  implements ReceptionTransitionCommand
+{
+  private readonly receptionRepository: ReceptionRepository;
+  private readonly auditRepository: AuditRepository;
+  private readonly compensateTransition:
+    | ((undo: unknown) => void | Promise<void>)
+    | undefined;
+
+  constructor(options: ComposedReceptionTransitionCommandOptions) {
+    this.receptionRepository = options.receptionRepository;
+    this.auditRepository = options.auditRepository;
+    this.compensateTransition = options.compensateTransition;
+  }
+
+  execute(
+    input: ReceptionTransitionCommandInput,
+  ): Promise<ReceptionTransitionExecuteResult> {
+    // リポジトリ入力は repository フィールドへ絞る(actorId / auditWallClock を
+    // 渡さない)。非 async・素通し: 返り値の promise/値に一切触れない。
+    return this.receptionRepository.transition({
+      tenantId: input.tenantId,
+      pharmacyId: input.pharmacyId,
+      receptionId: input.receptionId,
+      to: input.to,
+      expectedVersion: input.expectedVersion,
+      ...(input.businessReason === undefined
+        ? {}
+        : { businessReason: input.businessReason }),
+      statusChangedAt: input.statusChangedAt,
+    });
+  }
+
+  ensureTransitionEvidence(
+    input: EnsureTransitionEvidenceInput,
+  ): Promise<unknown> {
+    const scope = Object.freeze({
+      tenantId: input.provenance.tenantId,
+      pharmacyId: input.provenance.pharmacyId,
+    });
+    // 監査結果の promise を加工せずに返す(失敗時の巻き戻しは呼び出し側)。
+    return this.auditRepository.record(
+      scope,
+      Object.freeze({
+        actorId: input.actorId,
+        auditEventType: input.auditEventType,
+        targetRef: Object.freeze({
+          kind: receptionCommandAggregateType,
+          id: input.provenance.receptionId,
+        }),
+        outcome: 'success' as const,
+        wallClock: input.wallClock,
+        ...(input.businessReason === undefined
+          ? {}
+          : { businessReason: input.businessReason }),
+      }),
+    );
+  }
+
+  async rollbackTransitionEvidence(undo: unknown): Promise<void> {
+    await this.compensateTransition?.(undo);
+  }
+}
+
+/**
+ * buildServer の既定合成: 既定の InMemoryReceptionRepository を使う場合だけ
+ * 補償を結線する(注入リポジトリには勝手な補償をしない)。
+ */
+export function composeDefaultReceptionTransitionCommand(options: {
+  readonly receptionRepository: ReceptionRepository;
+  readonly auditRepository: AuditRepository;
+}): ComposedReceptionTransitionCommand {
+  const { receptionRepository } = options;
+  return new ComposedReceptionTransitionCommand({
+    ...options,
+    ...(receptionRepository instanceof InMemoryReceptionRepository
+      ? {
+          compensateTransition: (undo: unknown) =>
+            receptionRepository.rollbackTransition(undo),
         }
       : {}),
   });

@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   AUDIT_GENESIS_PREV_HASH,
   createAuditEvent,
+  type AuditBusinessReason,
   type AuditEvent,
   type AuditOutcome,
 } from '@yrese/audit';
@@ -36,6 +37,11 @@ export interface RecordAuditInput {
   readonly outcome: AuditOutcome;
   /** ISO 8601。時刻の注入はサーバの now() に従う(テスト決定性)。 */
   readonly wallClock: string;
+  /**
+   * MOD-008 構造化理由コード。cancellation 系イベント(reception.cancelled 等)
+   * では必須、それ以外では省略。自由記述は監査層が拒否する。
+   */
+  readonly businessReason?: AuditBusinessReason;
 }
 
 export interface AuditRepository {
@@ -86,6 +92,9 @@ export function buildChainedAuditEvent(
     auditEventType: input.auditEventType,
     targetRef: input.targetRef,
     outcome: input.outcome,
+    ...(input.businessReason === undefined
+      ? {}
+      : { businessReason: input.businessReason }),
     prevHash: previousEntryHash ?? AUDIT_GENESIS_PREV_HASH,
   });
 }

@@ -6,16 +6,27 @@ import {
   type PatientSearchResult,
   type ReceptionQueueEntry,
 } from '@yrese/contracts';
-import { patientId, pharmacyId, receptionId, tenantId } from '@yrese/shared-kernel';
+import {
+  isReceptionStatus,
+  isReceptionTransitionAllowed,
+  patientId,
+  pharmacyId,
+  receptionId,
+  tenantId,
+} from '@yrese/shared-kernel';
 
 import {
   businessDateFromAcceptedAt,
   snapshotReceptionIdempotencyKey,
   snapshotReceptionListCommand,
+  snapshotReceptionTransitionCommand,
   type ReceptionCreateInput,
   type ReceptionCreateResult,
   type ReceptionListInput,
   type ReceptionRepository,
+  type ReceptionTransitionInput,
+  type ReceptionTransitionResult,
+  type ReceptionTransitionUndo,
 } from '../reception-repository.js';
 import { snapshotDatabaseInstant, snapshotDateInstant } from '../instant.js';
 import { createOwnDataPropertyReader } from '../own-data-property.js';
@@ -35,6 +46,7 @@ interface ReceptionEntryRow {
   readonly reception_id: string;
   readonly accepted_at: Date | string;
   readonly reception_status: string;
+  readonly version: number;
   readonly patient_id: string;
   readonly name: string;
   readonly kana: string;
@@ -81,6 +93,8 @@ export const databaseReceptionCreatedPatientSnapshotInvariantErrorMessage =
   'Reception database returned a mismatched created patient snapshot';
 export const databaseReceptionCommandSnapshotInvariantErrorMessage =
   'Reception create command snapshot is invalid';
+export const databaseReceptionTransitionInvariantErrorMessage =
+  'Reception database returned an invalid transition result';
 
 function snapshotCreatePatient(patient: unknown): PatientSearchResult {
   const readOwnPatientProperty = createOwnDataPropertyReader(
@@ -164,6 +178,11 @@ function rowToEntry(row: ReceptionEntryRow): ReceptionQueueEntry {
   if (typeof receptionStatus !== 'string') {
     throw new Error(databaseReceptionRowInvariantErrorMessage);
   }
+  const version = readDatabaseRowOwnDataProperty(
+    row,
+    'version',
+    databaseReceptionRowInvariantErrorMessage,
+  );
   try {
     return receptionQueueEntrySchema.parse({
       receptionId: receptionIdValue,
@@ -171,6 +190,7 @@ function rowToEntry(row: ReceptionEntryRow): ReceptionQueueEntry {
       acceptedAt,
       receptionStatus,
       prescriptionIntakeType: 'paper',
+      version,
     });
   } catch {
     throw new Error(databaseReceptionRowInvariantErrorMessage);
@@ -220,6 +240,7 @@ async function selectByIdempotencyKey(
        r.reception_id,
        r.accepted_at,
        r.reception_status,
+       r.version,
        p.patient_id,
        p.name,
        p.kana,
@@ -348,6 +369,7 @@ export async function runReceptionCreateWithinTransaction(
        reception_id,
        accepted_at,
        reception_status,
+       version,
        $4::text AS patient_id,
        $8::text AS name,
        $9::text AS kana,
@@ -452,6 +474,166 @@ export async function runReceptionCreateWithinTransaction(
   };
 }
 
+interface ReceptionTransitionRow {
+  readonly reception_status: string;
+  readonly version: number;
+  readonly status_changed_at: Date | string | null;
+  readonly cancel_reason: string | null;
+}
+
+function readTransitionRowStatus(row: ReceptionTransitionRow) {
+  const value = readDatabaseRowOwnDataProperty(
+    row,
+    'reception_status',
+    databaseReceptionTransitionInvariantErrorMessage,
+  );
+  if (typeof value !== 'string' || !isReceptionStatus(value)) {
+    throw new Error(databaseReceptionTransitionInvariantErrorMessage);
+  }
+  return value;
+}
+
+function readTransitionRowVersion(row: ReceptionTransitionRow): number {
+  const value = readDatabaseRowOwnDataProperty(
+    row,
+    'version',
+    databaseReceptionTransitionInvariantErrorMessage,
+  );
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1) {
+    throw new Error(databaseReceptionTransitionInvariantErrorMessage);
+  }
+  return value;
+}
+
+/**
+ * WP-7201: 呼び出し側が所有するトランザクション内で受付遷移を実行する
+ * (BEGIN/COMMIT/ROLLBACK は呼び出し側の責務)。
+ * SELECT ... FOR UPDATE で対象行をスコープ内に固定し、DOM-004 §2 遷移表 →
+ * expectedVersion CAS の順で検査してから単調増加 version で書き換える。
+ * 不許可遷移は version より先に拒否する(API-006 §2.3 の 409 区別の正本順序)。
+ */
+export async function runReceptionTransitionWithinTransaction(
+  client: PoolClient,
+  input: ReceptionTransitionInput,
+): Promise<ReceptionTransitionResult> {
+  const command = snapshotReceptionTransitionCommand(input);
+
+  const locked = await client.query<ReceptionTransitionRow>(
+    `SELECT reception_status, version, status_changed_at, cancel_reason
+       FROM reception_entries
+      WHERE tenant_id = $1 AND pharmacy_id = $2 AND reception_id = $3
+      FOR UPDATE`,
+    [command.tenantId, command.pharmacyId, command.receptionId],
+  );
+  const lockedRows = snapshotDatabaseQueryRows<ReceptionTransitionRow>(
+    locked,
+    1,
+    databaseReceptionTransitionInvariantErrorMessage,
+  );
+  const lockedRow = lockedRows[0];
+  if (lockedRow === undefined) {
+    return { kind: 'not_found' };
+  }
+
+  const currentStatus = readTransitionRowStatus(lockedRow);
+  const currentVersion = readTransitionRowVersion(lockedRow);
+  if (!isReceptionTransitionAllowed(currentStatus, command.to)) {
+    return {
+      kind: 'transition_not_allowed',
+      currentStatus,
+      currentVersion,
+    };
+  }
+  if (currentVersion !== command.expectedVersion) {
+    return {
+      kind: 'version_conflict',
+      currentStatus,
+      currentVersion,
+    };
+  }
+
+  const priorStatusChangedAtValue = readDatabaseRowOwnDataProperty(
+    lockedRow,
+    'status_changed_at',
+    databaseReceptionTransitionInvariantErrorMessage,
+  );
+  const priorCancelReasonValue = readDatabaseRowOwnDataProperty(
+    lockedRow,
+    'cancel_reason',
+    databaseReceptionTransitionInvariantErrorMessage,
+  );
+  const undo: ReceptionTransitionUndo = {
+    tenantId: command.tenantId,
+    pharmacyId: command.pharmacyId,
+    receptionId: command.receptionId,
+    postStatus: command.to,
+    postVersion: currentVersion + 1,
+    priorStatus: currentStatus,
+    priorVersion: currentVersion,
+    priorStatusChangedAt:
+      priorStatusChangedAtValue === null
+        ? command.statusChangedAt
+        : snapshotDatabaseInstant(
+            priorStatusChangedAtValue,
+            databaseReceptionTimestampInvariantErrorMessage,
+          ),
+    ...(typeof priorCancelReasonValue === 'string'
+      ? { priorCancelReason: priorCancelReasonValue }
+      : {}),
+  };
+
+  const updated = await client.query<ReceptionTransitionRow>(
+    `UPDATE reception_entries
+        SET reception_status = $4,
+            version = version + 1,
+            status_changed_at = $5,
+            cancel_reason = $6
+      WHERE tenant_id = $1 AND pharmacy_id = $2 AND reception_id = $3
+        AND version = $7
+      RETURNING reception_status, version, status_changed_at, cancel_reason`,
+    [
+      command.tenantId,
+      command.pharmacyId,
+      command.receptionId,
+      command.to,
+      command.statusChangedAt,
+      command.to === 'CANCELLED' ? command.businessReason ?? null : null,
+      command.expectedVersion,
+    ],
+  );
+  const updatedRows = snapshotDatabaseQueryRows<ReceptionTransitionRow>(
+    updated,
+    1,
+    databaseReceptionTransitionInvariantErrorMessage,
+  );
+  const updatedRow = updatedRows[0];
+  if (updatedRow === undefined) {
+    throw new Error(databaseReceptionTransitionInvariantErrorMessage);
+  }
+  const newStatus = readTransitionRowStatus(updatedRow);
+  const newVersion = readTransitionRowVersion(updatedRow);
+  if (newStatus !== command.to || newVersion !== command.expectedVersion + 1) {
+    throw new Error(databaseReceptionTransitionInvariantErrorMessage);
+  }
+  const statusChangedAt = snapshotDatabaseInstant(
+    readDatabaseRowOwnDataProperty(
+      updatedRow,
+      'status_changed_at',
+      databaseReceptionTimestampInvariantErrorMessage,
+    ),
+    databaseReceptionTimestampInvariantErrorMessage,
+  );
+
+  return {
+    kind: 'transitioned',
+    receptionId: command.receptionId,
+    receptionStatus: newStatus,
+    version: newVersion,
+    statusChangedAt,
+    undo,
+  };
+}
+
 export class PostgresReceptionRepository implements ReceptionRepository {
   constructor(private readonly pool: Pool) {}
 
@@ -462,6 +644,7 @@ export class PostgresReceptionRepository implements ReceptionRepository {
          r.reception_id,
          r.accepted_at,
          r.reception_status,
+         r.version,
          p.patient_id,
          p.name,
          p.kana,
@@ -497,6 +680,19 @@ export class PostgresReceptionRepository implements ReceptionRepository {
     const snapshot = snapshotPostgresReceptionCreate(input);
     return runInPooledTransaction(this.pool, async (client) => {
       const result = await runReceptionCreateWithinTransaction(client, snapshot);
+      await client.query('COMMIT');
+      return result;
+    });
+  }
+
+  /**
+   * 裸の transition(監査なし)。永続経路の実利用は
+   * PostgresReceptionTransitionCommand が遷移と監査を単一トランザクションで
+   * 束ねるため、こちらは command 外の直接呼び出し向け。
+   */
+  async transition(input: ReceptionTransitionInput): Promise<ReceptionTransitionResult> {
+    return runInPooledTransaction(this.pool, async (client) => {
+      const result = await runReceptionTransitionWithinTransaction(client, input);
       await client.query('COMMIT');
       return result;
     });

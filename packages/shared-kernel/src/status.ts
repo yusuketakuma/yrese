@@ -48,6 +48,29 @@ export function isReceptionStatus(value: string): value is ReceptionStatus {
 }
 
 /**
+ * 受付副状態機械の許可遷移表。
+ *
+ * 正本は DOM-004 §2: WAITING→IN_PROGRESS、IN_PROGRESS→COMPLETED、
+ * 非終端→CANCELLED。COMPLETED / CANCELLED は終端で遷移・逆行ともに禁止。
+ * API-006 §2.3 の transitions endpoint は本表だけを駆動する。
+ */
+export const RECEPTION_TRANSITIONS = [
+  { from: "WAITING", to: "IN_PROGRESS" },
+  { from: "WAITING", to: "CANCELLED" },
+  { from: "IN_PROGRESS", to: "COMPLETED" },
+  { from: "IN_PROGRESS", to: "CANCELLED" },
+] as const satisfies readonly { from: ReceptionStatus; to: ReceptionStatus }[];
+
+export function isReceptionTransitionAllowed(
+  from: ReceptionStatus,
+  to: ReceptionStatus,
+): boolean {
+  return RECEPTION_TRANSITIONS.some(
+    (transition) => transition.from === from && transition.to === to,
+  );
+}
+
+/**
  * 復旧後同期での競合状態。自動補正は禁止(v0.2.0 §16)。
  */
 export const CONFLICT_REQUIRES_HUMAN_REVIEW = "CONFLICT_REQUIRES_HUMAN_REVIEW" as const;

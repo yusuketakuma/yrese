@@ -43,6 +43,7 @@ function queueEntry(
     acceptedAt: "2026-08-25T01:00:00.000Z",
     receptionStatus: "WAITING",
     prescriptionIntakeType: "paper",
+    version: 1,
   };
 }
 

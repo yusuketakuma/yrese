@@ -106,6 +106,7 @@ const storedRow = {
   reception_id: 'reception-stored-001',
   accepted_at: '2026-07-13T00:30:00.000Z',
   reception_status: 'WAITING',
+  version: 1,
   patient_id: patient.patientId,
   name: patient.name,
   kana: patient.kana,
@@ -2288,6 +2289,8 @@ describe('Reception list command authority parity', () => {
       acceptedAt: `${date}T01:00:00.000Z`,
       date,
       receptionStatus: 'WAITING',
+      version: 1,
+      statusChangedAt: `${date}T01:00:00.000Z`,
     });
     const repository = new InMemoryReceptionRepository();
     Object.defineProperty(repository, 'records', {
@@ -2335,6 +2338,8 @@ describe('Reception list command authority parity', () => {
       acceptedAt: '2026-07-13T01:00:00.000Z',
       date: listInput.date,
       receptionStatus: 'WAITING',
+      version: 1,
+      statusChangedAt: '2026-07-13T01:00:00.000Z',
     } as Record<string, unknown>;
     Object.defineProperty(record, 'tenantId', {
       get() {

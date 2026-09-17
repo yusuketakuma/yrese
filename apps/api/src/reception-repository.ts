@@ -2,12 +2,16 @@ import {
   receptionQueueEntrySchema,
   receptionIdempotencyKeySchema,
   patientSearchResultSchema,
+  RECEPTION_BUSINESS_REASON_CODE_PATTERN,
   type PatientSearchResult,
   type ReceptionQueueEntry,
   type ReceptionStatus,
+  type ReceptionTransitionTarget,
 } from '@yrese/contracts';
 import { CalendarDate } from '@yrese/date-time';
 import {
+  isReceptionStatus,
+  isReceptionTransitionAllowed,
   patientId,
   pharmacyId,
   receptionId,
@@ -37,6 +41,10 @@ export const inMemoryReceptionPatientSnapshotInvariantErrorMessage =
   'In-memory reception patient snapshot is invalid';
 export const receptionListCommandSnapshotInvariantErrorMessage =
   'Reception list command snapshot is invalid';
+export const receptionTransitionCommandSnapshotInvariantErrorMessage =
+  'Reception transition command snapshot is invalid';
+export const receptionTransitionUndoInvariantErrorMessage =
+  'Reception transition rollback provenance is inconsistent';
 
 export interface ReceptionListInput {
   readonly tenantId: TenantId;
@@ -111,9 +119,55 @@ export type ReceptionCreateResult =
       readonly provenance: ReceptionCreateProvenance;
     };
 
+/**
+ * WP-7201 / API-006 0.3.x: 受付状態遷移コマンド入力。
+ * statusChangedAt はサーバ時計由来の単一 instant で、status_changed_at 列と
+ * (in-memory 経路の)監査 wallClock に同値を使う。
+ */
+export interface ReceptionTransitionInput {
+  readonly tenantId: TenantId;
+  readonly pharmacyId: PharmacyId;
+  readonly receptionId: ReceptionId;
+  readonly to: ReceptionTransitionTarget;
+  readonly expectedVersion: number;
+  /** CANCELLED のみ必須の構造化理由コード(MOD-008)。その他の遷移では拒否。 */
+  readonly businessReason?: string;
+  readonly statusChangedAt: Date;
+}
+
+/** transitioned 結果に添付する巻き戻し証跡(in-memory 補償専用)。 */
+export interface ReceptionTransitionUndo {
+  readonly tenantId: TenantId;
+  readonly pharmacyId: PharmacyId;
+  readonly receptionId: ReceptionId;
+  readonly postStatus: ReceptionStatus;
+  readonly postVersion: number;
+  readonly priorStatus: ReceptionStatus;
+  readonly priorVersion: number;
+  readonly priorStatusChangedAt: string;
+  readonly priorCancelReason?: string;
+}
+
+export type ReceptionTransitionResult =
+  | {
+      readonly kind: 'transitioned';
+      readonly receptionId: ReceptionId;
+      readonly receptionStatus: ReceptionStatus;
+      readonly version: number;
+      readonly statusChangedAt: string;
+      readonly undo: ReceptionTransitionUndo;
+    }
+  | { readonly kind: 'not_found' }
+  | {
+      readonly kind: 'transition_not_allowed' | 'version_conflict';
+      readonly currentStatus: ReceptionStatus;
+      readonly currentVersion: number;
+    };
+
 export interface ReceptionRepository {
   list(input: ReceptionListInput): Promise<readonly ReceptionQueueEntry[]>;
   create(input: ReceptionCreateInput): Promise<ReceptionCreateResult>;
+  transition(input: ReceptionTransitionInput): Promise<ReceptionTransitionResult>;
 }
 
 interface ReceptionRecord {
@@ -125,6 +179,9 @@ interface ReceptionRecord {
   readonly acceptedAt: string;
   readonly date: string;
   readonly receptionStatus: ReceptionStatus;
+  readonly version: number;
+  readonly statusChangedAt: string;
+  readonly cancelReason?: string;
   readonly idempotencyKey?: string;
 }
 
@@ -177,6 +234,8 @@ const syntheticReceptionRecords = [
     acceptedAt: '2026-07-09T08:30:00.000Z',
     date: '2026-07-09',
     receptionStatus: 'WAITING',
+    version: 1,
+    statusChangedAt: '2026-07-09T08:30:00.000Z',
   },
   {
     tenantId: tenantId('tenant-001'),
@@ -187,6 +246,8 @@ const syntheticReceptionRecords = [
     acceptedAt: '2026-07-09T08:30:00.000Z',
     date: '2026-07-09',
     receptionStatus: 'IN_PROGRESS',
+    version: 2,
+    statusChangedAt: '2026-07-09T08:35:00.000Z',
   },
   {
     tenantId: tenantId('tenant-001'),
@@ -197,6 +258,8 @@ const syntheticReceptionRecords = [
     acceptedAt: '2026-07-09T08:45:00.000Z',
     date: '2026-07-09',
     receptionStatus: 'COMPLETED',
+    version: 2,
+    statusChangedAt: '2026-07-09T09:00:00.000Z',
   },
 ] as const satisfies readonly ReceptionRecord[];
 
@@ -289,6 +352,7 @@ function toEntry(record: ReceptionRecord): ReceptionQueueEntry {
     acceptedAt: record.acceptedAt,
     receptionStatus: record.receptionStatus,
     prescriptionIntakeType: 'paper',
+    version: record.version,
   });
 }
 
@@ -346,6 +410,109 @@ export function businessDateFromAcceptedAt(
   } catch {
     throw new Error(invariantErrorMessage);
   }
+}
+
+function snapshotReceptionTransitionTarget(value: unknown): ReceptionTransitionTarget {
+  switch (value) {
+    case 'IN_PROGRESS':
+    case 'COMPLETED':
+    case 'CANCELLED':
+      return value;
+    default:
+      throw new Error(receptionTransitionCommandSnapshotInvariantErrorMessage);
+  }
+}
+
+function snapshotReceptionTransitionExpectedVersion(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1) {
+    throw new Error(receptionTransitionCommandSnapshotInvariantErrorMessage);
+  }
+  return value;
+}
+
+export interface ReceptionTransitionCommandSnapshot {
+  readonly tenantId: TenantId;
+  readonly pharmacyId: PharmacyId;
+  readonly receptionId: ReceptionId;
+  readonly to: ReceptionTransitionTarget;
+  readonly expectedVersion: number;
+  readonly businessReason?: string;
+  readonly statusChangedAt: string;
+}
+
+/**
+ * transition 入力の検証済みスナップショット(in-memory / Postgres で共用する
+ * 規律: own-property 単一読取り、businessReason は CANCELLED でだけ必須の
+ * 構造化コード — 監査層の MOD-008 規律と同じ形をここでも fail-closed で要求)。
+ */
+export function snapshotReceptionTransitionCommand(
+  input: unknown,
+): ReceptionTransitionCommandSnapshot {
+  const readProperty = createOwnDataPropertyReader(
+    input,
+    receptionTransitionCommandSnapshotInvariantErrorMessage,
+  );
+  const commandTenantId = snapshotRepositoryTenantId(
+    readProperty('tenantId'),
+    receptionTransitionCommandSnapshotInvariantErrorMessage,
+  );
+  const commandPharmacyId = snapshotRepositoryPharmacyId(
+    readProperty('pharmacyId'),
+    receptionTransitionCommandSnapshotInvariantErrorMessage,
+  );
+  const receptionIdValue = readReceptionScopeString(
+    readProperty('receptionId'),
+    receptionTransitionCommandSnapshotInvariantErrorMessage,
+  );
+  let commandReceptionId: ReceptionId;
+  try {
+    commandReceptionId = receptionId(receptionIdValue);
+  } catch {
+    throw new Error(receptionTransitionCommandSnapshotInvariantErrorMessage);
+  }
+  const toProperty = readProperty('to');
+  const to = snapshotReceptionTransitionTarget(
+    toProperty.present ? toProperty.value : undefined,
+  );
+  const expectedVersionProperty = readProperty('expectedVersion');
+  const expectedVersion = snapshotReceptionTransitionExpectedVersion(
+    expectedVersionProperty.present ? expectedVersionProperty.value : undefined,
+  );
+  const businessReasonProperty = readProperty('businessReason');
+  let businessReason: string | undefined;
+  if (businessReasonProperty.present && businessReasonProperty.value !== undefined) {
+    const candidate = businessReasonProperty.value;
+    if (
+      typeof candidate !== 'string' ||
+      !RECEPTION_BUSINESS_REASON_CODE_PATTERN.test(candidate)
+    ) {
+      throw new Error(receptionTransitionCommandSnapshotInvariantErrorMessage);
+    }
+    businessReason = candidate;
+  }
+  if (to === 'CANCELLED' && businessReason === undefined) {
+    throw new Error(receptionTransitionCommandSnapshotInvariantErrorMessage);
+  }
+  if (to !== 'CANCELLED' && businessReason !== undefined) {
+    throw new Error(receptionTransitionCommandSnapshotInvariantErrorMessage);
+  }
+  const statusChangedAtProperty = readProperty('statusChangedAt');
+  if (!statusChangedAtProperty.present) {
+    throw new Error(receptionTransitionCommandSnapshotInvariantErrorMessage);
+  }
+  const statusChangedAt = snapshotDateInstant(
+    statusChangedAtProperty.value,
+    inMemoryReceptionTimestampInvariantErrorMessage,
+  );
+  return Object.freeze({
+    tenantId: commandTenantId,
+    pharmacyId: commandPharmacyId,
+    receptionId: commandReceptionId,
+    to,
+    expectedVersion,
+    ...(businessReason === undefined ? {} : { businessReason }),
+    statusChangedAt,
+  });
 }
 
 export class InMemoryReceptionRepository implements ReceptionRepository {
@@ -458,6 +625,8 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
         inMemoryReceptionTimestampInvariantErrorMessage,
       ),
       receptionStatus: 'WAITING',
+      version: 1,
+      statusChangedAt: acceptedAt,
       idempotencyKey: command.idempotencyKey,
     };
     this.nextSequence += 1;
@@ -471,6 +640,163 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
       entry: toEntry(record),
       provenance: toProvenance(record),
     };
+  }
+
+  /**
+   * WP-7201: DOM-004 §2 の副状態機械を駆動する遷移。スコープ内で受付を解決し、
+   * 遷移表(isReceptionTransitionAllowed)と expectedVersion CAS をこの順で検査して
+   * 原子的に書き換える。不許可遷移は version より先に拒否する(API-006 §2.3)。
+   */
+  async transition(input: ReceptionTransitionInput): Promise<ReceptionTransitionResult> {
+    const command = snapshotReceptionTransitionCommand(input);
+    const index = this.records.findIndex(
+      (record) =>
+        record.tenantId === command.tenantId &&
+        record.pharmacyId === command.pharmacyId &&
+        record.receptionId === command.receptionId,
+    );
+    const record = this.records[index];
+    if (record === undefined) {
+      return { kind: 'not_found' };
+    }
+    if (!isReceptionTransitionAllowed(record.receptionStatus, command.to)) {
+      return {
+        kind: 'transition_not_allowed',
+        currentStatus: record.receptionStatus,
+        currentVersion: record.version,
+      };
+    }
+    if (record.version !== command.expectedVersion) {
+      return {
+        kind: 'version_conflict',
+        currentStatus: record.receptionStatus,
+        currentVersion: record.version,
+      };
+    }
+    const undo: ReceptionTransitionUndo = {
+      tenantId: record.tenantId,
+      pharmacyId: record.pharmacyId,
+      receptionId: record.receptionId,
+      postStatus: command.to,
+      postVersion: record.version + 1,
+      priorStatus: record.receptionStatus,
+      priorVersion: record.version,
+      priorStatusChangedAt: record.statusChangedAt,
+      ...(record.cancelReason === undefined
+        ? {}
+        : { priorCancelReason: record.cancelReason }),
+    };
+    const nextBase = {
+      ...record,
+      receptionStatus: command.to,
+      version: record.version + 1,
+      statusChangedAt: command.statusChangedAt,
+    };
+    const { cancelReason: _discardedCancelReason, ...nextWithoutCancelReason } =
+      nextBase;
+    this.records[index] =
+      command.businessReason === undefined
+        ? nextWithoutCancelReason
+        : { ...nextWithoutCancelReason, cancelReason: command.businessReason };
+    return {
+      kind: 'transitioned',
+      receptionId: record.receptionId,
+      receptionStatus: command.to,
+      version: record.version + 1,
+      statusChangedAt: command.statusChangedAt,
+      undo,
+    };
+  }
+
+  /**
+   * WP-7201: in-memory unit of work の補償専用。直前に transition した受付を、
+   * 監査追記が失敗した同一 unit of work 内でだけ直前状態へ巻き戻す。
+   * undo が現行状態(post-status/version)と一致しない限り復元しない。
+   * (Postgres 実装はトランザクションで巻き戻すため、この補償を持たない。)
+   */
+  rollbackTransition(undo: unknown): void {
+    const readProperty = createOwnDataPropertyReader(
+      undo,
+      receptionTransitionUndoInvariantErrorMessage,
+    );
+    const undoTenantId = snapshotRepositoryTenantId(
+      readProperty('tenantId'),
+      receptionTransitionUndoInvariantErrorMessage,
+    );
+    const undoPharmacyId = snapshotRepositoryPharmacyId(
+      readProperty('pharmacyId'),
+      receptionTransitionUndoInvariantErrorMessage,
+    );
+    const undoReceptionIdValue = readReceptionScopeString(
+      readProperty('receptionId'),
+      receptionTransitionUndoInvariantErrorMessage,
+    );
+    let undoReceptionId: ReceptionId;
+    try {
+      undoReceptionId = receptionId(undoReceptionIdValue);
+    } catch {
+      throw new Error(receptionTransitionUndoInvariantErrorMessage);
+    }
+    const postVersionProperty = readProperty('postVersion');
+    const postVersion = snapshotReceptionTransitionExpectedVersion(
+      postVersionProperty.present ? postVersionProperty.value : undefined,
+    );
+    const postStatusProperty = readProperty('postStatus');
+    const postStatusValue = postStatusProperty.present
+      ? postStatusProperty.value
+      : undefined;
+    if (typeof postStatusValue !== 'string' || !isReceptionStatus(postStatusValue)) {
+      throw new Error(receptionTransitionUndoInvariantErrorMessage);
+    }
+    const priorStatusProperty = readProperty('priorStatus');
+    const priorStatusValue = priorStatusProperty.present
+      ? priorStatusProperty.value
+      : undefined;
+    if (typeof priorStatusValue !== 'string' || !isReceptionStatus(priorStatusValue)) {
+      throw new Error(receptionTransitionUndoInvariantErrorMessage);
+    }
+    const priorVersionProperty = readProperty('priorVersion');
+    const priorVersion = snapshotReceptionTransitionExpectedVersion(
+      priorVersionProperty.present ? priorVersionProperty.value : undefined,
+    );
+    const priorStatusChangedAtProperty = readProperty('priorStatusChangedAt');
+    const priorStatusChangedAtValue = priorStatusChangedAtProperty.present
+      ? priorStatusChangedAtProperty.value
+      : undefined;
+    if (typeof priorStatusChangedAtValue !== 'string') {
+      throw new Error(receptionTransitionUndoInvariantErrorMessage);
+    }
+    const priorCancelReasonProperty = readProperty('priorCancelReason');
+    const priorCancelReasonValue = priorCancelReasonProperty.present
+      ? priorCancelReasonProperty.value
+      : undefined;
+
+    const index = this.records.findIndex(
+      (record) => record.receptionId === undoReceptionId,
+    );
+    const record = this.records[index];
+    if (
+      record === undefined ||
+      record.tenantId !== undoTenantId ||
+      record.pharmacyId !== undoPharmacyId ||
+      record.receptionStatus !== postStatusValue ||
+      record.version !== postVersion ||
+      postVersion !== priorVersion + 1
+    ) {
+      throw new Error(receptionTransitionUndoInvariantErrorMessage);
+    }
+    const restoredBase = {
+      ...record,
+      receptionStatus: priorStatusValue,
+      version: priorVersion,
+      statusChangedAt: priorStatusChangedAtValue,
+    };
+    const { cancelReason: _postCancelReason, ...restoredWithoutCancelReason } =
+      restoredBase;
+    this.records[index] =
+      typeof priorCancelReasonValue === 'string'
+        ? { ...restoredWithoutCancelReason, cancelReason: priorCancelReasonValue }
+        : restoredWithoutCancelReason;
   }
 
   /**

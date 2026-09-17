@@ -32,6 +32,10 @@ import {
   receptionQueueQuerySchema,
   receptionQueueEntrySchema,
   receptionQueueResponseSchema,
+  receptionTransitionHeadersSchema,
+  receptionTransitionParamsSchema,
+  receptionTransitionRequestSchema,
+  receptionTransitionResponseSchema,
 } from "./reception-queue.js";
 import { whoamiResponseSchema } from "./whoami.js";
 
@@ -158,6 +162,29 @@ const receptionQueueResponseOpenApiSchema = receptionQueueResponseSchema.meta({
 const receptionCreateRequestOpenApiSchema = receptionCreateRequestSchema.meta({
   id: "ReceptionCreateRequest",
   description: "Create a reception entry using an opaque idempotency key.",
+});
+
+const receptionTransitionParamsOpenApiSchema = receptionTransitionParamsSchema.meta({
+  id: "ReceptionTransitionParams",
+  description: "Reception transition path parameters",
+});
+
+const receptionTransitionHeadersOpenApiSchema = receptionTransitionHeadersSchema.meta({
+  id: "ReceptionTransitionHeaders",
+  description:
+    'If-Match must equal the quoted expectedVersion, for example "2". Required on every transition request.',
+});
+
+const receptionTransitionRequestOpenApiSchema = receptionTransitionRequestSchema.meta({
+  id: "ReceptionTransitionRequest",
+  description:
+    "Reception status transition command. businessReason is a structured uppercase reason code required only when to=CANCELLED.",
+});
+
+const receptionTransitionResponseOpenApiSchema = receptionTransitionResponseSchema.meta({
+  id: "ReceptionTransitionResponse",
+  description:
+    "Reception transition result. PHI-free: carries reception identity, new status, and version only.",
 });
 
 const prescriptionDraftParamsOpenApiSchema = prescriptionDraftParamsSchema.meta({
@@ -431,6 +458,51 @@ const openApiDefinition = {
             "Patient not found for reception (RCV-0002)",
           ),
           "409": domainErrorResponse("Idempotency conflict (RCV-0003)"),
+        },
+      },
+    },
+    "/reception/{receptionId}/transitions": {
+      post: {
+        operationId: "transitionReception",
+        tags: ["reception"],
+        summary: "Drive the reception queue sub-state machine (DOM-004 §2)",
+        description:
+          "Requires reception:write scope only — the response carries no PatientSummary PHI. Optimistic concurrency via expectedVersion + If-Match; retry convergence is via 409 + GET /reception/queue (no Idempotency-Key). businessReason is a structured uppercase reason code required only when to=CANCELLED.",
+        "x-yrese-ssot": "API-006",
+        "x-yrese-required-scopes": ["reception:write"],
+        requestParams: {
+          path: receptionTransitionParamsOpenApiSchema,
+          header: receptionTransitionHeadersOpenApiSchema,
+        },
+        requestBody: {
+          required: true,
+          content: {
+            [jsonContentType]: {
+              schema: receptionTransitionRequestOpenApiSchema,
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Reception transition applied",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: receptionTransitionResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse(
+            "Invalid transition request — bad body, missing/malformed/mismatched If-Match, or businessReason misuse (RCV-0001)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: true }),
+          "404": domainErrorResponse(
+            "Reception not found within tenant/pharmacy scope (RCV-0006)",
+          ),
+          "409": domainErrorResponse(
+            "Transition not allowed (RCV-0004) or version conflict (RCV-0005)",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
         },
       },
     },

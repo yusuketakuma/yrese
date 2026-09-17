@@ -193,6 +193,7 @@ describe('loadMigrationFiles', () => {
           '000011_harden_eligibility_snapshots.sql',
           '000012_partner_registry_history_and_country.sql',
           '000013_create_prescription_drafts.sql',
+          '000014_add_reception_transition_columns.sql',
         ]);
       } finally {
         process.chdir(originalCwd);

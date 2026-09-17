@@ -13,7 +13,7 @@ owner: fable5
 reviewers:
   - opus4.8
   - codex (backend実装可能性)
-version: 0.3.0
+version: 0.3.1
 created_at: 2026-07-09
 updated_at: 2026-09-17
 source_refs: [UIX-001 §12(SCR-001), UIX-001 §11(業務導線), API-001 v0.2.2(様式先例), API-003(公開API共通土台), DOM-004 §2(受付副状態機械)]
@@ -33,6 +33,7 @@ change_log:
   - "0.3.0 2026-09-17 WP-7201 PROPOSED: 受付状態遷移 endpoint `POST /reception/{receptionId}/transitions` を §2.3 として追加(遷移表の正本は DOM-004 §2、CAS は expectedVersion+If-Match 併用、CANCELLED は businessReason 必須)。エラーへ RCV-0004(不許可遷移 409)/ RCV-0005(version conflict 409)を追加し MOD-006 へ登録提案。監査は MOD-008 へ `reception.started` / `reception.completed` を追加提案(`reception.cancelled` は既存)。既存 GET/POST の wire・認可・冪等規則は不変。review と human approval まで実装根拠にしない"
   - "0.3.0 2026-09-17 独立 review(Devin in-session、Oracle 不使用)訂正: migration 000014(version/status_changed_at/cancel_reason 列)への依存と、Idempotency-Key を要求しない If-Match CAS 冪等性の根拠(API-013 update 規則)を明記"
   - "0.3.0 2026-09-17 finalization: 独立 review 反映済み本文のまま direct human approval(SSOT batch 一括 APPROVE)により PROPOSED→APPROVED。承認範囲は SSOT 改版のみで、migration 000014 適用・実装完了・production action を含まない。API_CONTRACT_BLOCKED は昇格により解除"
+  - "0.3.1 2026-09-17 WP-7201 実装着手時の契約ギャップ解消(direct human approval による APPROVED 維持改版): (a) transitions の受付不存在 404 へ RCV-0006 を割当(MOD-006 0.1.4 に登録) (b) `businessReason` の形式を MOD-008 構造化理由コード `/^[A-Z][A-Z0-9_]{2,63}$/` に確定(自由記述禁止 — wire・cancel_reason 列・監査 businessReason.code に同値) (c) ReceptionQueueEntry に `version: integer >=1` を追加 — expectedVersion CAS は現在 version の取得経路を必要とし、queue 応答が唯一の監視 read であるため(PHI 非含有の additive 変更)"
   - "0.2.3 2026-08-26 WP-5104 reference-only cutover to UIX-001 §§11〜12; API contract semantics unchanged"
   - "body history authority: 本文§8変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W5A metadata-only completion: body/status/version/approval/effective semantics unchanged"
@@ -102,9 +103,10 @@ ReceptionQueueEntry = {
   - `to` は上表の 3 値のみ。`WAITING` への遷移・その他の値は 400(契約 parse 拒否)。
   - `expectedVersion` は 1 以上の整数。**`If-Match: "<expectedVersion>"` ヘッダも併せて必須**とし、
     両者が一致しない場合・If-Match 欠落・形式不正は 400(`RCV-0001`)。
-  - `businessReason` は `to: CANCELLED` のとき**必須**(非空・空白のみ拒否・最大 512 文字。
-    MOD-008 `reception.cancelled` の businessReason 規律)。`to` が CANCELLED 以外で
-    `businessReason` を送った場合は 400(理由なき変更と取消の混同を防ぐ)。
+  - `businessReason` は `to: CANCELLED` のとき**必須**。MOD-008 `reception.cancelled` の
+    businessReason 規律に従い **構造化理由コード**(`/^[A-Z][A-Z0-9_]{2,63}$/`、自由記述禁止)
+    とする(0.3.1 で形式を確定 — wire・`cancel_reason` 列・監査 `businessReason.code` に同値を保存)。
+    `to` が CANCELLED 以外で `businessReason` を送った場合は 400(理由なき変更と取消の混同を防ぐ)。
 - 楽観ロック: 現在 version が `expectedVersion` と一致しない場合は **409 + `RCV-0005`**
   (version conflict)。version は遷移ごとに単調増加する。
   冪等性は If-Match + expectedVersion の CAS が担い `Idempotency-Key` は要求しない
@@ -162,6 +164,7 @@ shared-kernel へ同一バッチで実装済み**(WP-3009-BE/93aefa1。CAL-007 �
 - 400: 検証失敗の全ケース(date 欠落/形式不正/非実在暦日、patientId 不正、idempotencyKey 欠落/形式不正)→ `RCV-0001`(invalid reception request)
 - 403: scope 不足(AUTH-0003、既存)
 - 404: patientId が当該テナントに存在しない → `RCV-0002`(patient not found for reception)。テナント越え探索を許さない(存在有無の応答もテナント内に限定)。
+- 404(0.3.1): transitions の対象 receptionId が当該テナント・薬局内に存在しない → `RCV-0006`(reception not found。非露出規則は RCV-0002 と同型)
 - 409: idempotencyKey conflict(同一 key + 異なる patientId)→ `RCV-0003`(idempotency conflict)
 - 409(0.3.0): 不許可遷移 → `RCV-0004`、version conflict → `RCV-0005`(MOD-006 への登録提案を含む)
 - **エラーコードの体系: domain は `RECEPTION`、code prefix は `RCV`**(「domain RCV」ではない — 現行 shared-kernel の ErrorDomain 体系に従い、MOD-006 に「RECEPTION domain は RCV prefix を使用する」旨を明記して登録済み)。`RCV-0001/0002/0003` は MOD-006 + shared-kernel KERNEL_ERROR_CODES へ登録済み(WP-3009-BE/93aefa1)。WP-4036 以降、registry 未登録 errorCode は契約 parse で fail-closed に落ちる。

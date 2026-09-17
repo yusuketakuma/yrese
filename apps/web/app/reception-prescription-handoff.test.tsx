@@ -29,6 +29,7 @@ function entry(status: ReceptionQueueEntry["receptionStatus"]): ReceptionQueueEn
     acceptedAt: "2026-08-25T00:15:00.000Z",
     receptionStatus: status,
     prescriptionIntakeType: "paper",
+    version: 1,
   };
 }
 

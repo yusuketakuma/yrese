@@ -58,6 +58,7 @@ function entry(over: Partial<ReceptionQueueEntry>): ReceptionQueueEntry {
     acceptedAt: "2026-07-09T00:15:00.000Z",
     receptionStatus: "WAITING",
     prescriptionIntakeType: "paper",
+    version: 1,
     ...over,
   };
 }

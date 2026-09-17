@@ -20,6 +20,11 @@ export interface ConfirmationDialogProps {
   readonly patientLabel?: string;
   readonly confirmLabel?: string;
   readonly cancelLabel?: string;
+  /** 確定ボタン押下時の相互作用。未指定ならボタンは表示のみ(骨格モード)。 */
+  readonly onConfirm?: () => void;
+  readonly onCancel?: () => void;
+  /** メッセージとアクションの間に差し込む追加入力(取消理由選択など)。 */
+  readonly children?: React.ReactNode;
 }
 
 export function ConfirmationDialog(props: ConfirmationDialogProps) {
@@ -40,11 +45,24 @@ export function ConfirmationDialog(props: ConfirmationDialogProps) {
           <p className="confirmation-dialog-patient">対象患者: {props.patientLabel}</p>
         )}
         <p className="confirmation-dialog-message">{props.message}</p>
+        {props.children}
         <div className="confirmation-dialog-actions">
-          <button type="button" className="confirmation-dialog-cancel">
+          <button
+            type="button"
+            className="confirmation-dialog-cancel"
+            {...(props.onCancel !== undefined
+              ? { onClick: props.onCancel }
+              : {})}
+          >
             {props.cancelLabel ?? "キャンセル"}
           </button>
-          <button type="button" className="confirmation-dialog-confirm">
+          <button
+            type="button"
+            className="confirmation-dialog-confirm"
+            {...(props.onConfirm !== undefined
+              ? { onClick: props.onConfirm }
+              : {})}
+          >
             {props.confirmLabel ?? "確定する"}
           </button>
         </div>

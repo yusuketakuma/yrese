@@ -98,6 +98,7 @@ const QUEUE_ENTRY: ReceptionQueueEntry = {
   acceptedAt: "2026-08-25T00:30:00.000Z",
   receptionStatus: "WAITING",
   prescriptionIntakeType: "paper",
+  version: 1,
   patient: {
     patientId: "patient-b",
     name: "検証患者B",

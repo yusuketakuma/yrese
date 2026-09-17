@@ -345,6 +345,9 @@ describe('ComposedReceptionCreateCommand (WP-4050 unit of work)', () => {
           receivedInput = input;
           return hostileResult as never;
         },
+        transition: async () => {
+          throw new Error('transition must not be called by the create command');
+        },
       },
       auditRepository,
     });

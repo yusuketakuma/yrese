@@ -463,7 +463,7 @@ describe('buildServer', () => {
     });
     const server = buildDefaultTestServer({
       patientRepository: { search: patientSearch, findById: patientFindById },
-      receptionRepository: { list: receptionList, create: receptionCreate },
+      receptionRepository: { list: receptionList, create: receptionCreate, transition: vi.fn<ReceptionRepository['transition']>() },
     });
     const attackerHeaders = {
       'x-dev-tenant': 'attacker-selected-tenant',
@@ -2619,7 +2619,7 @@ describe('buildServer', () => {
       });
       const create = vi.fn<ReceptionRepository['create']>();
       const server = buildDevTestServer({
-        receptionRepository: { list, create },
+        receptionRepository: { list, create, transition: vi.fn<ReceptionRepository['transition']>() },
       });
 
       const response = await server.inject({
@@ -2656,6 +2656,7 @@ describe('buildServer', () => {
     const server = buildDevTestServer({
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => entries as never),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create: vi.fn<ReceptionRepository['create']>(),
       },
     });
@@ -2684,6 +2685,7 @@ describe('buildServer', () => {
     const server = buildDevTestServer({
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => entries as never),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create: vi.fn<ReceptionRepository['create']>(),
       },
     });
@@ -2723,6 +2725,7 @@ describe('buildServer', () => {
     const server = buildDevTestServer({
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(() => Promise.resolve(entries as never)),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create: vi.fn<ReceptionRepository['create']>(),
       },
     });
@@ -2763,6 +2766,7 @@ describe('buildServer', () => {
     const server = buildDevTestServer({
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(() => fulfilledEntries as never),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create: vi.fn<ReceptionRepository['create']>(),
       },
     });
@@ -2798,11 +2802,13 @@ describe('buildServer', () => {
       },
       receptionStatus: 'WAITING' as const,
       prescriptionIntakeType: 'paper' as const,
+      version: 1,
     };
     Object.defineProperty(entry, 'acceptedAt', { enumerable: true, get: getterRead });
     const server = buildDevTestServer({
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => [entry] as never),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create: vi.fn<ReceptionRepository['create']>(),
       },
     });
@@ -2849,6 +2855,7 @@ describe('buildServer', () => {
     const server = buildDevTestServer({
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => [entry] as never),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create: vi.fn<ReceptionRepository['create']>(),
       },
     });
@@ -2908,11 +2915,12 @@ describe('buildServer', () => {
       acceptedAt: '2026-07-09T09:00:00.000Z',
       receptionStatus: 'WAITING' as const,
       prescriptionIntakeType: 'paper' as const,
+      version: 1,
     });
     const entries = [entry];
     const list = vi.fn<ReceptionRepository['list']>(async () => entries as never);
     const server = buildDevTestServer({
-      receptionRepository: { list, create: vi.fn<ReceptionRepository['create']>() },
+      receptionRepository: { list, create: vi.fn<ReceptionRepository['create']>(), transition: vi.fn<ReceptionRepository['transition']>() },
     });
 
     const response = await server.inject({
@@ -2941,10 +2949,11 @@ describe('buildServer', () => {
           acceptedAt: '2026-07-09T09:00:00.000Z',
           receptionStatus: 'WAITING',
           prescriptionIntakeType: 'paper',
+          version: 1,
         },
       ],
     });
-    expect(descriptorRead).toHaveBeenCalledTimes(13);
+    expect(descriptorRead).toHaveBeenCalledTimes(14);
     expect(directRead).not.toHaveBeenCalled();
   });
 
@@ -2954,6 +2963,7 @@ describe('buildServer', () => {
       acceptedAt: '2026-07-09T15:00:00.000Z',
       receptionStatus: 'WAITING' as const,
       prescriptionIntakeType: 'paper' as const,
+      version: 1,
       patient: {
         patientId: 'patient-jst-boundary',
         name: '合成 境界患者',
@@ -2966,7 +2976,7 @@ describe('buildServer', () => {
     };
     const list = vi.fn<ReceptionRepository['list']>(async () => [boundaryEntry]);
     const server = buildDevTestServer({
-      receptionRepository: { list, create: vi.fn<ReceptionRepository['create']>() },
+      receptionRepository: { list, create: vi.fn<ReceptionRepository['create']>(), transition: vi.fn<ReceptionRepository['transition']>() },
     });
 
     const response = await server.inject({
@@ -2994,6 +3004,7 @@ describe('buildServer', () => {
         acceptedAt,
         receptionStatus: 'WAITING' as const,
         prescriptionIntakeType: 'paper' as const,
+        version: 1,
         patient: {
           patientId: `patient-canonical-${date}`,
           name: '合成 暦日境界患者',
@@ -3006,7 +3017,7 @@ describe('buildServer', () => {
       };
       const list = vi.fn<ReceptionRepository['list']>(async () => [boundaryEntry]);
       const server = buildDevTestServer({
-        receptionRepository: { list, create: vi.fn<ReceptionRepository['create']>() },
+        receptionRepository: { list, create: vi.fn<ReceptionRepository['create']>(), transition: vi.fn<ReceptionRepository['transition']>() },
       });
 
       const response = await server.inject({
@@ -3032,6 +3043,7 @@ describe('buildServer', () => {
         acceptedAt,
         receptionStatus: 'WAITING' as const,
         prescriptionIntakeType: 'paper' as const,
+        version: 1,
         patient: {
           patientId: 'patient-calendar-sensitive-4232',
           name: '合成 暦日機密患者',
@@ -3044,7 +3056,7 @@ describe('buildServer', () => {
       };
       const list = vi.fn<ReceptionRepository['list']>(async () => [boundaryEntry]);
       const server = buildDevTestServer({
-        receptionRepository: { list, create: vi.fn<ReceptionRepository['create']>() },
+        receptionRepository: { list, create: vi.fn<ReceptionRepository['create']>(), transition: vi.fn<ReceptionRepository['transition']>() },
       });
 
       const response = await server.inject({
@@ -3084,6 +3096,7 @@ describe('buildServer', () => {
       acceptedAt,
       receptionStatus: 'WAITING' as const,
       prescriptionIntakeType: 'paper' as const,
+      version: 1,
       patient: {
         patientId: 'patient-wrong-date-sensitive',
         name: '合成 別日患者',
@@ -3096,7 +3109,7 @@ describe('buildServer', () => {
     };
     const list = vi.fn<ReceptionRepository['list']>(async () => [wrongDateEntry]);
     const server = buildDevTestServer({
-      receptionRepository: { list, create: vi.fn<ReceptionRepository['create']>() },
+      receptionRepository: { list, create: vi.fn<ReceptionRepository['create']>(), transition: vi.fn<ReceptionRepository['transition']>() },
     });
 
     const response = await server.inject({
@@ -3134,6 +3147,7 @@ describe('buildServer', () => {
       acceptedAt: '2026-07-09T00:15:00.000Z',
       receptionStatus: 'WAITING' as const,
       prescriptionIntakeType: 'paper' as const,
+      version: 1,
       patient: {
         patientId: 'patient-valid-sensitive',
         name: '合成 当日患者',
@@ -3157,6 +3171,7 @@ describe('buildServer', () => {
     const server = buildDevTestServer({
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => [valid, wrongDate]),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create: vi.fn<ReceptionRepository['create']>(),
       },
     });
@@ -3194,6 +3209,7 @@ describe('buildServer', () => {
         acceptedAt: '2026-07-09T00:15:00.000Z',
         receptionStatus: 'WAITING' as const,
         prescriptionIntakeType: 'paper' as const,
+        version: 1,
         patient: {
           patientId: 'patient-reception-duplicate-a',
           name: '合成 重複受付A',
@@ -3222,6 +3238,7 @@ describe('buildServer', () => {
       const server = buildDevTestServer({
         receptionRepository: {
           list,
+          transition: vi.fn<ReceptionRepository['transition']>(),
           create: vi.fn<ReceptionRepository['create']>(),
         },
       });
@@ -3270,6 +3287,7 @@ describe('buildServer', () => {
       acceptedAt: '2026-07-09T09:00:00.000Z',
       receptionStatus: 'WAITING' as const,
       prescriptionIntakeType: 'paper' as const,
+      version: 1,
       patient: {
         patientId: 'patient-schema-before-duplicate-a-4202',
         name: '合成 schema優先患者A',
@@ -3292,6 +3310,7 @@ describe('buildServer', () => {
     const server = buildDevTestServer({
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => [valid, invalid] as never),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create: vi.fn<ReceptionRepository['create']>(),
       },
     });
@@ -3442,6 +3461,7 @@ describe('buildServer', () => {
       acceptedAt: acceptedAt.toISOString(),
       receptionStatus: 'WAITING',
       prescriptionIntakeType: 'paper',
+      version: 1,
       patient: {
         patientId: 'patient-syn-004',
       },
@@ -3490,6 +3510,7 @@ describe('buildServer', () => {
         now: () => acceptedAt,
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
+          transition: vi.fn<ReceptionRepository['transition']>(),
           create,
         },
       });
@@ -3585,6 +3606,7 @@ describe('buildServer', () => {
       now: () => acceptedAt,
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create,
       },
       auditRepository: {
@@ -3642,6 +3664,7 @@ describe('buildServer', () => {
             acceptedAt: acceptedAt.toISOString(),
             receptionStatus: 'WAITING' as const,
             prescriptionIntakeType: 'paper' as const,
+            version: 1,
             patient: input.patient,
           },
         },
@@ -3666,6 +3689,7 @@ describe('buildServer', () => {
       now: () => acceptedAt,
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create,
       },
       auditRepository: {
@@ -3705,6 +3729,7 @@ describe('buildServer', () => {
       now: () => acceptedAt,
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create: vi.fn<ReceptionRepository['create']>(async (input) =>
           ({
             kind: 'forged_existing_kind',
@@ -3714,6 +3739,7 @@ describe('buildServer', () => {
               acceptedAt: acceptedAt.toISOString(),
               receptionStatus: 'COMPLETED',
               prescriptionIntakeType: 'paper',
+              version: 1,
               patient: input.patient,
             },
           }) as unknown as ReceptionCreateResult,
@@ -3815,6 +3841,7 @@ describe('buildServer', () => {
       const server = buildDevTestServer({
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
+          transition: vi.fn<ReceptionRepository['transition']>(),
           create: vi.fn<ReceptionRepository['create']>(async () =>
             invalidResult as ReceptionCreateResult,
           ),
@@ -3865,6 +3892,7 @@ describe('buildServer', () => {
     const server = buildDevTestServer({
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create: vi.fn<ReceptionRepository['create']>(() => Promise.resolve(invalidResult as never)),
       },
     });
@@ -3924,6 +3952,7 @@ describe('buildServer', () => {
       now: () => acceptedAt,
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create: vi.fn<ReceptionRepository['create']>(async (input) => {
           target.provenance = receptionProvenance(input, 'reception-kind-snapshot-4198');
           target.entry = {
@@ -3931,6 +3960,7 @@ describe('buildServer', () => {
             acceptedAt: acceptedAt.toISOString(),
             receptionStatus: 'WAITING',
             prescriptionIntakeType: 'paper',
+            version: 1,
             patient: input.patient,
           };
           return result as unknown as ReceptionCreateResult;
@@ -3988,6 +4018,7 @@ describe('buildServer', () => {
         now: () => acceptedAt,
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
+          transition: vi.fn<ReceptionRepository['transition']>(),
           create: vi.fn<ReceptionRepository['create']>(async (input) => {
             const provenance: Record<string, unknown> = {
               ...receptionProvenance(input, 'reception-result-accessor-4199'),
@@ -3998,6 +4029,7 @@ describe('buildServer', () => {
               acceptedAt: acceptedAt.toISOString(),
               receptionStatus: 'WAITING',
               prescriptionIntakeType: 'paper',
+              version: 1,
               patient,
             };
             const result: Record<string, unknown> = { kind: 'created', provenance, entry };
@@ -4067,6 +4099,7 @@ describe('buildServer', () => {
         now: () => acceptedAt,
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
+          transition: vi.fn<ReceptionRepository['transition']>(),
           create: vi.fn<ReceptionRepository['create']>((input) => {
             const provenance: Record<string, unknown> = {
               ...receptionProvenance(input, 'reception-result-descriptor-4199'),
@@ -4077,6 +4110,7 @@ describe('buildServer', () => {
               acceptedAt: acceptedAt.toISOString(),
               receptionStatus: 'WAITING',
               prescriptionIntakeType: 'paper',
+              version: 1,
               patient: layer === 'patient' ? hostileProxy : patient,
             };
             const result: Record<string, unknown> = {
@@ -4152,6 +4186,7 @@ describe('buildServer', () => {
       now: () => acceptedAt,
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create: vi.fn<ReceptionRepository['create']>((input) => {
           const patient = descriptorProxy({ ...input.patient });
           const entry = descriptorProxy({
@@ -4159,6 +4194,7 @@ describe('buildServer', () => {
             acceptedAt: acceptedAt.toISOString(),
             receptionStatus: 'WAITING',
             prescriptionIntakeType: 'paper',
+            version: 1,
             patient,
           });
           const provenance = descriptorProxy(
@@ -4190,7 +4226,7 @@ describe('buildServer', () => {
       receptionId: 'reception-descriptor-graph-4199',
       patient: { eligibilityCheckedAt: '2026-07-09T08:16:15.000Z' },
     });
-    expect(descriptorRead).toHaveBeenCalledTimes(21);
+    expect(descriptorRead).toHaveBeenCalledTimes(22);
     expect(directRead).not.toHaveBeenCalled();
   });
 
@@ -4205,12 +4241,14 @@ describe('buildServer', () => {
       now: () => acceptedAt,
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create: vi.fn<ReceptionRepository['create']>(async (input) => {
           const entryTarget = {
             receptionId: 'reception-entry-snapshot-4199',
             acceptedAt: acceptedAt.toISOString(),
             receptionStatus: 'WAITING' as const,
             prescriptionIntakeType: 'paper' as const,
+            version: 1,
             patient: input.patient,
           };
           const entry = new Proxy(entryTarget, {
@@ -4261,6 +4299,7 @@ describe('buildServer', () => {
     const server = buildDevTestServer({
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create: vi.fn<ReceptionRepository['create']>(async (input) => {
           const result = {
             kind: 'idempotency_conflict' as const,
@@ -4396,6 +4435,7 @@ describe('buildServer', () => {
         },
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
+          transition: vi.fn<ReceptionRepository['transition']>(),
           create,
         },
       });
@@ -4525,6 +4565,7 @@ describe('buildServer', () => {
           acceptedAt: acceptedAt.toISOString(),
           receptionStatus: 'WAITING',
           prescriptionIntakeType: 'paper',
+          version: 1,
           patient: input.patient,
         },
       }));
@@ -4536,6 +4577,7 @@ describe('buildServer', () => {
         },
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
+          transition: vi.fn<ReceptionRepository['transition']>(),
           create,
         },
       });
@@ -4626,6 +4668,7 @@ describe('buildServer', () => {
         },
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
+          transition: vi.fn<ReceptionRepository['transition']>(),
           create,
         },
         auditRepository: {
@@ -4744,6 +4787,7 @@ describe('buildServer', () => {
       },
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create,
       },
     });
@@ -4784,6 +4828,7 @@ describe('buildServer', () => {
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
         create: receptionCreate,
+        transition: vi.fn<ReceptionRepository['transition']>(),
       },
       auditRepository: {
         list: vi.fn<AuditRepository['list']>(async () => []),
@@ -4832,6 +4877,7 @@ describe('buildServer', () => {
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
         create: receptionCreate,
+        transition: vi.fn<ReceptionRepository['transition']>(),
       },
     });
 
@@ -4886,6 +4932,7 @@ describe('buildServer', () => {
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
         create: receptionCreate,
+        transition: vi.fn<ReceptionRepository['transition']>(),
       },
       auditRepository: {
         record: auditRecord,
@@ -4988,6 +5035,7 @@ describe('buildServer', () => {
               acceptedAt: 'invalid-sensitive-instant',
               receptionStatus: 'WAITING',
               prescriptionIntakeType: 'paper',
+              version: 1,
               patient: {
                 patientId: 'patient-syn-004',
                 name: '合成由来不一致患者',
@@ -5006,6 +5054,7 @@ describe('buildServer', () => {
         now: () => acceptedAt,
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
+          transition: vi.fn<ReceptionRepository['transition']>(),
           create,
         },
         auditRepository: {
@@ -5057,6 +5106,7 @@ describe('buildServer', () => {
       const server = buildDevTestServer({
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
+          transition: vi.fn<ReceptionRepository['transition']>(),
           create: vi.fn<ReceptionRepository['create']>(async (input) => ({
             kind: resultKind,
             provenance: receptionProvenance(
@@ -5069,6 +5119,7 @@ describe('buildServer', () => {
               acceptedAt: '2026-07-09T09:00:00.000Z',
               receptionStatus: 'WAITING',
               prescriptionIntakeType: 'paper',
+              version: 1,
               patient: {
                 patientId: mismatchedPatientId,
                 name: mismatchedName,
@@ -5142,12 +5193,14 @@ describe('buildServer', () => {
           acceptedAt: input.acceptedAt.toISOString(),
           receptionStatus: 'WAITING' as const,
           prescriptionIntakeType: 'paper' as const,
+          version: 1,
           patient: { ...input.patient, ...patientMutation },
         },
       }));
       const server = buildDevTestServer({
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
+          transition: vi.fn<ReceptionRepository['transition']>(),
           create,
         },
         auditRepository: {
@@ -5224,6 +5277,7 @@ describe('buildServer', () => {
             acceptedAt: input.acceptedAt.toISOString(),
             receptionStatus: 'WAITING' as const,
             prescriptionIntakeType: 'paper' as const,
+            version: 1,
             patient: returnedPatient as unknown as PatientSearchResult,
           },
         };
@@ -5235,6 +5289,7 @@ describe('buildServer', () => {
         },
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
+          transition: vi.fn<ReceptionRepository['transition']>(),
           create,
         },
         auditRepository: {
@@ -5289,6 +5344,7 @@ describe('buildServer', () => {
           acceptedAt: input.acceptedAt.toISOString(),
           receptionStatus: 'WAITING',
           prescriptionIntakeType: 'paper',
+          version: 1,
           patient: { ...input.patient, name: '合成返却差替4207' },
         },
       };
@@ -5300,6 +5356,7 @@ describe('buildServer', () => {
       },
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create,
       },
       auditRepository: {
@@ -5335,6 +5392,7 @@ describe('buildServer', () => {
     const server = buildDevTestServer({
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create: vi.fn<ReceptionRepository['create']>(async (input) => ({
           kind: 'created',
           provenance: receptionProvenance(input, 'reception-created-precedence-4207'),
@@ -5343,6 +5401,7 @@ describe('buildServer', () => {
             acceptedAt: '2026-07-09T09:00:00.001Z',
             receptionStatus: 'COMPLETED',
             prescriptionIntakeType: 'paper',
+            version: 1,
             patient: { ...input.patient, patientNumber: 'PRECEDENCE-DRIFT-4207' },
           },
         })),
@@ -5380,6 +5439,7 @@ describe('buildServer', () => {
         acceptedAt: 'invalid-sensitive-instant',
         receptionStatus: 'WAITING' as const,
         prescriptionIntakeType: 'paper' as const,
+        version: 1,
         patient: {
           patientId: 'patient-syn-004',
           name: '合成 検証患者',
@@ -5393,6 +5453,7 @@ describe('buildServer', () => {
       const server = buildDevTestServer({
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
+          transition: vi.fn<ReceptionRepository['transition']>(),
           create: vi.fn<ReceptionRepository['create']>(async (input) => ({
             kind: resultKind,
             provenance: receptionProvenance(
@@ -5449,6 +5510,7 @@ describe('buildServer', () => {
       const server = buildDevTestServer({
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
+          transition: vi.fn<ReceptionRepository['transition']>(),
           create: vi.fn<ReceptionRepository['create']>(async (input) => ({
             kind: 'created',
             provenance: receptionProvenance(
@@ -5460,6 +5522,7 @@ describe('buildServer', () => {
               acceptedAt: '2026-07-09T09:00:00.000Z',
               receptionStatus,
               prescriptionIntakeType: 'paper',
+              version: 1,
               patient: input.patient,
             },
           })),
@@ -5512,6 +5575,7 @@ describe('buildServer', () => {
         now: () => serverAcceptedAt,
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
+          transition: vi.fn<ReceptionRepository['transition']>(),
           create: vi.fn<ReceptionRepository['create']>(async (input) => ({
             kind: 'created',
             provenance: receptionProvenance(
@@ -5523,6 +5587,7 @@ describe('buildServer', () => {
               acceptedAt: returnedAcceptedAt,
               receptionStatus: 'WAITING',
               prescriptionIntakeType: 'paper',
+              version: 1,
               patient: input.patient,
             },
           })),
@@ -5581,6 +5646,7 @@ describe('buildServer', () => {
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
           create: receptionCreate,
+          transition: vi.fn<ReceptionRepository['transition']>(),
         },
         auditRepository: {
           record: auditRecord,
@@ -5636,6 +5702,7 @@ describe('buildServer', () => {
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
         create: receptionCreate,
+        transition: vi.fn<ReceptionRepository['transition']>(),
       },
       auditRepository: {
         record: auditRecord,
@@ -5690,6 +5757,7 @@ describe('buildServer', () => {
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
           create: receptionCreate,
+          transition: vi.fn<ReceptionRepository['transition']>(),
         },
         auditRepository: {
           record: auditRecord,
@@ -5755,6 +5823,7 @@ describe('buildServer', () => {
         receptionRepository: {
           list: vi.fn<ReceptionRepository['list']>(async () => []),
           create: receptionCreate,
+          transition: vi.fn<ReceptionRepository['transition']>(),
         },
         auditRepository: {
           record: auditRecord,
@@ -5813,6 +5882,7 @@ describe('buildServer', () => {
           acceptedAt: acceptedAtIso,
           receptionStatus: 'WAITING',
           prescriptionIntakeType: 'paper',
+          version: 1,
           patient: input.patient,
         },
       };
@@ -5826,6 +5896,7 @@ describe('buildServer', () => {
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
         create: receptionCreate,
+        transition: vi.fn<ReceptionRepository['transition']>(),
       },
       auditRepository: {
         record: auditRecord,
@@ -5868,6 +5939,7 @@ describe('buildServer', () => {
         acceptedAt: acceptedAt.toISOString(),
         receptionStatus: 'WAITING',
         prescriptionIntakeType: 'paper',
+        version: 1,
         patient: input.patient,
       },
     }));
@@ -5883,6 +5955,7 @@ describe('buildServer', () => {
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
         create: receptionCreate,
+        transition: vi.fn<ReceptionRepository['transition']>(),
       },
       auditRepository: {
         record: auditRecord,
@@ -6249,6 +6322,7 @@ describe('buildServer', () => {
       now,
       receptionRepository: {
         list: vi.fn<ReceptionRepository['list']>(async () => []),
+        transition: vi.fn<ReceptionRepository['transition']>(),
         create: vi.fn<ReceptionRepository['create']>(async (input) => ({
           kind: 'existing',
           provenance: receptionProvenance(input, 'reception-existing-advanced'),
@@ -6257,6 +6331,7 @@ describe('buildServer', () => {
             acceptedAt: '2026-07-09T09:00:00.000Z',
             receptionStatus: 'IN_PROGRESS',
             prescriptionIntakeType: 'paper',
+            version: 1,
             patient: {
               patientId: 'patient-syn-004',
               name: '合成既存患者',

@@ -295,6 +295,80 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FrameworkErrorResponse"
+  /reception/{receptionId}/transitions:
+    post:
+      operationId: transitionReception
+      tags:
+        - reception
+      summary: Drive the reception queue sub-state machine (DOM-004 §2)
+      description: Requires reception:write scope only — the response carries no PatientSummary PHI. Optimistic concurrency
+        via expectedVersion + If-Match; retry convergence is via 409 + GET /reception/queue (no Idempotency-Key).
+        businessReason is a structured uppercase reason code required only when to=CANCELLED.
+      x-yrese-ssot: API-006
+      x-yrese-required-scopes:
+        - reception:write
+      parameters:
+        - in: path
+          name: receptionId
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: true
+        - in: header
+          name: if-match
+          schema:
+            type: string
+            maxLength: 12
+            pattern: ^"[1-9][0-9]*"$
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceptionTransitionRequest"
+      responses:
+        "200":
+          description: Reception transition applied
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceptionTransitionResponse"
+        "400":
+          description: Invalid transition request — bad body, missing/malformed/mismatched If-Match, or businessReason misuse
+            (RCV-0001)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden (AUTH-0003)
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Reception not found within tenant/pharmacy scope (RCV-0006)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transition not allowed (RCV-0004) or version conflict (RCV-0005)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
   /prescription-drafts/by-reception/{receptionId}:
     get:
       operationId: getPrescriptionDraftByReception
@@ -619,6 +693,28 @@ components:
         - patientId
         - idempotencyKey
       description: Create a reception entry using an opaque idempotency key.
+    ReceptionTransitionRequest:
+      type: object
+      properties:
+        to:
+          type: string
+          enum:
+            - IN_PROGRESS
+            - COMPLETED
+            - CANCELLED
+        expectedVersion:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        businessReason:
+          type: string
+          pattern: ^[A-Z][A-Z0-9_]{2,63}$
+      required:
+        - to
+        - expectedVersion
+      additionalProperties: false
+      description: Reception status transition command. businessReason is a structured uppercase reason code required only
+        when to=CANCELLED.
     PrescriptionDraftSaveRequest:
       type: object
       properties:
@@ -982,12 +1078,17 @@ components:
               prescriptionIntakeType:
                 type: string
                 const: paper
+              version:
+                type: integer
+                minimum: 1
+                maximum: 9007199254740991
             required:
               - receptionId
               - patient
               - acceptedAt
               - receptionStatus
               - prescriptionIntakeType
+              - version
             additionalProperties: false
       required:
         - date
@@ -1061,12 +1162,17 @@ components:
         prescriptionIntakeType:
           type: string
           const: paper
+        version:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
       required:
         - receptionId
         - patient
         - acceptedAt
         - receptionStatus
         - prescriptionIntakeType
+        - version
       additionalProperties: false
       description: Reception queue entry. Contains PatientSummary PHI and must not be logged in plaintext.
     ReceptionCreateBadRequest:
@@ -1105,6 +1211,35 @@ components:
           additionalProperties: false
       description: Validation failure (RCV-0001) or JSON body parse failure (framework shape with code
         FST_ERR_CTP_INVALID_JSON_BODY). Non-JSON content types are coerced through validation and fail as RCV-0001.
+    ReceptionTransitionResponse:
+      type: object
+      properties:
+        receptionId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        receptionStatus:
+          type: string
+          enum:
+            - WAITING
+            - IN_PROGRESS
+            - COMPLETED
+            - CANCELLED
+        version:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        statusChangedAt:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$
+      required:
+        - receptionId
+        - receptionStatus
+        - version
+        - statusChangedAt
+      additionalProperties: false
+      description: "Reception transition result. PHI-free: carries reception identity, new status, and version only."
     PrescriptionDraftResponse:
       type: object
       properties:

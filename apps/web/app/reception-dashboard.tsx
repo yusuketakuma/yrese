@@ -5,16 +5,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   receptionQueueEntrySchema,
   receptionQueueResponseSchema,
+  receptionTransitionResponseSchema,
   type ReceptionQueueEntry,
   type ReceptionQueueResponse,
   type ReceptionStatus,
+  type ReceptionTransitionResponse,
+  type ReceptionTransitionTarget,
 } from "@yrese/contracts";
 import { CalendarDate } from "@yrese/date-time";
 import {
   AUTH_PERMISSION_DENIED_ERROR_CODE,
   RECEPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE,
   RECEPTION_INVALID_REQUEST_ERROR_CODE,
+  RECEPTION_INVALID_TRANSITION_ERROR_CODE,
+  RECEPTION_NOT_FOUND_ERROR_CODE,
   RECEPTION_PATIENT_NOT_FOUND_ERROR_CODE,
+  RECEPTION_VERSION_CONFLICT_ERROR_CODE,
   permissionScope,
   type PermissionScope,
 } from "@yrese/shared-kernel";
@@ -38,6 +44,7 @@ import {
 } from "./components/operator-ui";
 import { devTenantHeaders } from "./dev-tenant";
 import { ReceptionPrescriptionHandoffAction } from "./reception-prescription-handoff";
+import { ReceptionTransitionActions } from "./reception-transition-action";
 
 /**
  * 受付ダッシュボード(WP-3009-UI / SCR-001)。
@@ -69,6 +76,9 @@ const RECEPTION_QUEUE_DEV_SCOPES = [
 const RECEPTION_CREATE_DEV_SCOPES = [
   permissionScope("reception", "write"),
   permissionScope("patient", "read"),
+] as const satisfies readonly PermissionScope[];
+const RECEPTION_TRANSITION_DEV_SCOPES = [
+  permissionScope("reception", "write"),
 ] as const satisfies readonly PermissionScope[];
 
 /** API エラーを「何が起きたか+次のアクション」の対として運ぶ(WP-3007 統一様式) */
@@ -133,21 +143,33 @@ function createTrustedReceptionError(
   return error;
 }
 
-function trustedReceptionErrorNotice(error: unknown): ErrorNoticeProps | undefined {
+export function trustedReceptionErrorNotice(error: unknown): ErrorNoticeProps | undefined {
   return typeof error === "object" && error !== null
     ? trustedReceptionErrorNotices.get(error)
     : undefined;
 }
 
-type ReceptionErrorOperation = "queue" | "create";
+type ReceptionErrorOperation = "queue" | "create" | "transition";
 
 function expectedReceptionErrorCode(
   operation: ReceptionErrorOperation,
   status: number,
-): string | undefined {
+): string | readonly string[] | undefined {
   if (operation === "queue") {
     if (status === 400) return RECEPTION_INVALID_REQUEST_ERROR_CODE;
     if (status === 403) return AUTH_PERMISSION_DENIED_ERROR_CODE;
+    return undefined;
+  }
+  if (operation === "transition") {
+    if (status === 400) return RECEPTION_INVALID_REQUEST_ERROR_CODE;
+    if (status === 403) return AUTH_PERMISSION_DENIED_ERROR_CODE;
+    if (status === 404) return RECEPTION_NOT_FOUND_ERROR_CODE;
+    if (status === 409) {
+      return [
+        RECEPTION_INVALID_TRANSITION_ERROR_CODE,
+        RECEPTION_VERSION_CONFLICT_ERROR_CODE,
+      ];
+    }
     return undefined;
   }
   if (status === 400) return RECEPTION_INVALID_REQUEST_ERROR_CODE;
@@ -169,7 +191,13 @@ async function extractErrorCode(
     // registry 未登録/形式外のコードは表示しない(異常値の verbatim 出力防止)
     const registeredCode = registeredErrorCodeOrUndefined(descriptor.value);
     const expectedCode = expectedReceptionErrorCode(operation, res.status);
-    return registeredCode === expectedCode ? registeredCode : undefined;
+    if (registeredCode === undefined || expectedCode === undefined) {
+      return undefined;
+    }
+    const expectedCodes = Array.isArray(expectedCode)
+      ? expectedCode
+      : [expectedCode];
+    return expectedCodes.includes(registeredCode) ? registeredCode : undefined;
   } catch {
     return undefined;
   }
@@ -354,6 +382,82 @@ export async function createReception(
   return parsed;
 }
 
+/**
+ * 受付状態遷移 POST(API-006 0.3.1)。楽観的同時実行制御は
+ * `If-Match: "{version}"` + body の `expectedVersion` の二重一致。
+ * 409 は「遷移不許可」(RCV-0004)か「版競合」(RCV-0005)のどちらかで、
+ * いずれの場合も一覧を force reload して最新版へ収束させる。
+ * 取消は構造化理由コード(MOD-008)を必須とし、自由記述は送らない。
+ */
+export async function transitionReception(
+  entry: ReceptionQueueEntry,
+  to: ReceptionTransitionTarget,
+  businessReason: string | undefined,
+  fetchImpl: typeof fetch = fetch,
+  signal?: AbortSignal,
+): Promise<ReceptionTransitionResponse> {
+  const url = resolveWebApiUrl(
+    `/reception/${encodeURIComponent(entry.receptionId)}/transitions`,
+  );
+  const res = await fetchImpl(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "if-match": `"${entry.version}"`,
+      ...devTenantHeaders(RECEPTION_TRANSITION_DEV_SCOPES),
+    },
+    cache: "no-store",
+    body: JSON.stringify(
+      businessReason === undefined
+        ? { to, expectedVersion: entry.version }
+        : { to, expectedVersion: entry.version, businessReason },
+    ),
+    ...(signal !== undefined ? { signal } : {}),
+  });
+  if (!res.ok) {
+    const errorCode = await extractErrorCode(res, "transition");
+    if (res.status === 409) {
+      throw createTrustedReceptionError(
+        errorCode === RECEPTION_VERSION_CONFLICT_ERROR_CODE
+          ? "受付の状態が他の操作で更新されました。"
+          : "この受付状態からは指定した操作を実行できません。",
+        "受付一覧を更新して最新の状態を確認してください。",
+        errorCode,
+      );
+    }
+    if (res.status === 404) {
+      throw createTrustedReceptionError(
+        "対象の受付がこの薬局に見つかりません。",
+        "受付一覧を更新して対象の受付を確認してください。",
+        errorCode,
+      );
+    }
+    if (res.status === 403) {
+      throw createTrustedReceptionError(
+        "権限がありません。",
+        "管理者に権限(reception:write)の付与状況を確認してください。",
+        errorCode,
+      );
+    }
+    throw createTrustedReceptionError(
+      `受付の状態変更に失敗しました(HTTP ${res.status})。`,
+      "再試行してください。解消しない場合はシステム管理者へ連絡してください。",
+      errorCode,
+    );
+  }
+  if (res.status !== 200) {
+    throw new Error("Reception transition response used an unsupported success status");
+  }
+  const parsed = receptionTransitionResponseSchema.parse(await res.json());
+  if (parsed.receptionId !== entry.receptionId) {
+    throw new Error("Reception transition response identity mismatch");
+  }
+  if (parsed.receptionStatus !== to) {
+    throw new Error("Reception transition response status mismatch");
+  }
+  return parsed;
+}
+
 const receptionBusinessDateInvariantErrorMessage =
   "Reception business date could not be derived";
 const receptionAcceptedTimeInvariantErrorMessage =
@@ -404,10 +508,13 @@ export function ReceptionQueueTable({
   entries,
   businessDate,
   selectedPatientId,
+  onReceptionChanged,
 }: {
   readonly entries: readonly ReceptionQueueEntry[];
   readonly businessDate?: string;
   readonly selectedPatientId?: string | undefined;
+  /** 遷移確定・409 収束時に呼ばれる一覧再読込フック(WP-7201)。 */
+  readonly onReceptionChanged?: () => void;
 }) {
   return (
     <TableScroll label="受付キュー表。横方向にスクロールできます">
@@ -454,6 +561,12 @@ export function ReceptionQueueTable({
                 <td>{PRESCRIPTION_INTAKE_LABELS[entry.prescriptionIntakeType]}</td>
                 {businessDate !== undefined ? (
                   <td>
+                    {onReceptionChanged !== undefined ? (
+                      <ReceptionTransitionActions
+                        entry={entry}
+                        onChanged={onReceptionChanged}
+                      />
+                    ) : null}
                     <ReceptionPrescriptionHandoffAction
                       entry={entry}
                       businessDate={businessDate}
@@ -915,9 +1028,11 @@ export function subscribeReceptionQueueRefreshOnVisible(
 export function ReceptionQueueView({
   state,
   selectedPatientId,
+  onReceptionChanged,
 }: {
   readonly state: QueueState;
   readonly selectedPatientId?: string | undefined;
+  readonly onReceptionChanged?: () => void;
 }) {
   if (state.kind === "loading") {
     return <LoadingState label="受付一覧を読み込み中…" />;
@@ -950,6 +1065,9 @@ export function ReceptionQueueView({
           entries={state.response.entries}
           businessDate={state.response.date}
           selectedPatientId={selectedPatientId}
+          {...(onReceptionChanged !== undefined
+            ? { onReceptionChanged }
+            : {})}
         />
       </>
     );
@@ -1118,6 +1236,14 @@ export function ReceptionDashboard() {
     setRegisterNotice(null);
   }, [selectedPatient?.patientId]);
 
+  /**
+   * 遷移確定・409 収束後の一覧再読込(WP-7201)。in-flight fetch への join を
+   * 避けるため force を必ず付ける(create と同じ規律)。
+   */
+  const handleReceptionChanged = useCallback(() => {
+    void load(queueTargetTracker.current(), { force: true });
+  }, [load, queueTargetTracker]);
+
   const register = useCallback(async () => {
     const runner = registrationRunner.current;
     if (runner === null || runner.isRunning()) {
@@ -1220,7 +1346,11 @@ export function ReceptionDashboard() {
         </p>
       )}
 
-      <ReceptionQueueView state={queue} selectedPatientId={selectedPatient?.patientId} />
+      <ReceptionQueueView
+        state={queue}
+        selectedPatientId={selectedPatient?.patientId}
+        onReceptionChanged={handleReceptionChanged}
+      />
     </section>
   );
 }

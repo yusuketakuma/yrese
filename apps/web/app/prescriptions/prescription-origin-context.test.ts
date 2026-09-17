@@ -23,6 +23,7 @@ const ENTRY: ReceptionQueueEntry = {
   acceptedAt: "2026-08-25T00:15:00.000Z",
   receptionStatus: "WAITING",
   prescriptionIntakeType: "paper",
+  version: 1,
 };
 
 describe("prescription reception origin", () => {

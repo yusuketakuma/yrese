@@ -12,6 +12,7 @@ import {
   databaseReceptionRowSetInvariantErrorMessage,
   databaseReceptionTimestampInvariantErrorMessage,
   runReceptionCreateWithinTransaction,
+  runReceptionTransitionWithinTransaction,
   snapshotPostgresReceptionCreate,
 } from './reception-repository.js';
 import { snapshotDatabaseInstant } from '../instant.js';
@@ -22,11 +23,16 @@ import {
   ReceptionOutboxAppendError,
   receptionCommandAggregateType,
   receptionCommandAuditEventType,
+  receptionTransitionAuditEventType,
   type EnsureCreatedEvidenceInput,
+  type EnsureTransitionEvidenceInput,
   type ReceptionCreateCommand,
   type ReceptionCreateCommandInput,
   type ReceptionCreateCommandResult,
   type ReceptionExistingClassification,
+  type ReceptionTransitionCommand,
+  type ReceptionTransitionCommandInput,
+  type ReceptionTransitionExecuteResult,
 } from '../reception-command.js';
 
 /**
@@ -280,5 +286,99 @@ export class PostgresReceptionCreateCommand implements ReceptionCreateCommand {
       ],
     );
     return intentExists.rows[0]?.exists === true ? 'existing_complete' : 'legacy_orphan';
+  }
+}
+
+/**
+ * WP-7201: 受付遷移コマンド境界の Postgres 実装。
+ *
+ * 単一トランザクションで SELECT FOR UPDATE → 遷移表・version CAS 検査 →
+ * UPDATE → 監査 hash chain 追記を原子化する。監査追記失敗を含むどの失敗でも
+ * ROLLBACK により遷移だけが durable に残らない。
+ *
+ * ロック順序: reception_entries 行ロック(FOR UPDATE)→ 監査 advisory xact lock。
+ * create 経路は監査 lock を後から取るが reception_entries の行ロックを保持した
+ * まま待つ経路は INSERT DO NOTHING 競合のみ(既存行への FOR UPDATE ではなく
+ * unique index 待ち)で、遷移側は既にコミット済み行のみを対象とするため
+ * 循環待ちは生じない。
+ */
+export class PostgresReceptionTransitionCommand
+  implements ReceptionTransitionCommand
+{
+  constructor(
+    private readonly pool: Pool,
+    private readonly faultInjection: PostgresReceptionCommandFaultInjection = {},
+  ) {}
+
+  async execute(
+    input: ReceptionTransitionCommandInput,
+  ): Promise<ReceptionTransitionExecuteResult> {
+    const scope = { tenantId: input.tenantId, pharmacyId: input.pharmacyId };
+    return runInPooledTransaction(this.pool, async (client) => {
+      const result = await runReceptionTransitionWithinTransaction(client, input);
+
+      if (result.kind !== 'transitioned') {
+        // 書込みなし(FOR UPDATE のロックのみ)。空のまま閉じる。
+        await client.query('ROLLBACK');
+        return result;
+      }
+
+      const wallClock = input.auditWallClock();
+      const auditEventType = receptionTransitionAuditEventType(input.to);
+
+      this.faultInjection.beforeAuditAppend?.();
+      let auditEvent;
+      try {
+        auditEvent = await appendAuditEventWithinTransaction(client, scope, {
+          actorId: input.actorId,
+          auditEventType,
+          targetRef: {
+            kind: receptionCommandAggregateType,
+            id: result.receptionId,
+          },
+          outcome: 'success',
+          wallClock,
+          ...(input.businessReason === undefined
+            ? {}
+            : { businessReason: { code: input.businessReason } }),
+        });
+      } catch (error) {
+        throw new ReceptionAuditAppendError(error);
+      }
+
+      await client.query('COMMIT');
+      return { ...result, auditEvent };
+    });
+  }
+
+  /**
+   * transitioned の evidence は execute のトランザクション内で確定済み。
+   * ここでは結果へ添付された監査イベントを返すだけで、追加の書込みはしない。
+   */
+  async ensureTransitionEvidence(
+    input: EnsureTransitionEvidenceInput,
+  ): Promise<unknown> {
+    const readProperty = createOwnDataPropertyReader(
+      input.result,
+      'Postgres reception transition result is missing attached audit evidence',
+    );
+    const auditEvent = readProperty('auditEvent');
+    if (!auditEvent.present) {
+      throw new ReceptionAuditAppendError(
+        new Error(
+          'Postgres reception transition result is missing attached audit evidence',
+        ),
+      );
+    }
+    return auditEvent.value;
+  }
+
+  /**
+   * Postgres の evidence は execute のトランザクションで確定済みであり、
+   * ここへ来るのは添付 evidence 欠落という自己不変条件違反だけ。
+   * 既に commit 済みのため巻き戻すものはない(fail-visible)。
+   */
+  async rollbackTransitionEvidence(_undo: unknown): Promise<void> {
+    // no-op
   }
 }

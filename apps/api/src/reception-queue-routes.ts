@@ -109,6 +109,11 @@ export function snapshotReceptionEntry(
       'prescriptionIntakeType',
       invariantErrorMessage,
     ),
+    version: readRequiredOwnEnumerableDataProperty(
+      value,
+      'version',
+      invariantErrorMessage,
+    ),
   });
 }
 

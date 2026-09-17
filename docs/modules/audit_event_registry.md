@@ -78,7 +78,7 @@ audit repositoryへ配線済みである。レジストリ全種別の業務配�
 | patient.viewed / patient.created / patient.updated / patient.deleted | 要配慮情報アクセス・CRUD | ○ | viewed は要配慮情報アクセス記録 |
 | patient.searched | 患者検索(要配慮情報の列挙アクセス) | ○ | 1 検索リクエスト=1 イベント。payload は件数等の識別子情報のみ — **検索クエリ文字列・氏名・カナ・生年月日を監査ペイロードへ入れない**(データ最小化。0.2.4) |
 | reception.created / reception.cancelled | 受付キュー登録・取消 | ○ | API-006。cancelled は businessReason 必須(action 規律) |
-| reception.started / reception.completed | 受付状態遷移(WAITING→IN_PROGRESS / IN_PROGRESS→COMPLETED) | ○ | API-006 0.3.0 transitions。targetRef は reception のみ(状態値・理由は payload に入れず `businessReason` は cancelled 側の規律のまま)。1 遷移操作=1 イベント。**PROPOSED(0.2.7、未実装)** |
+| reception.started / reception.completed | 受付状態遷移(WAITING→IN_PROGRESS / IN_PROGRESS→COMPLETED) | ○ | API-006 0.3.x transitions。targetRef は reception のみ(状態値・理由は payload に入れず `businessReason` は cancelled 側の規律のまま)。1 遷移操作=1 イベント。WP-7201 で実装 |
 | reception.queue.viewed | 受付キュー閲覧(要配慮情報の列挙アクセス) | ○ | 1 閲覧リクエスト=1 イベント。payload は業務日付+件数のみ(PHI 非含有。0.2.4) |
 | insurance.viewed / insurance.updated | 保険・公費情報 | ○ | public-expense を含む【要確認 — 分離要否】 |
 | prescription.created / prescription.updated | 処方入力 | ○ | |

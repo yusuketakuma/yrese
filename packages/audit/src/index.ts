@@ -34,6 +34,8 @@ export const AUDIT_EVENT_TYPES = [
   "patient.searched",
   "reception.created",
   "reception.cancelled",
+  "reception.started",
+  "reception.completed",
   "reception.queue.viewed",
   "insurance.viewed",
   "insurance.updated",

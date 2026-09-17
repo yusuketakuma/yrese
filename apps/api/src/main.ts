@@ -27,7 +27,10 @@ import {
   snapshotDatabasePool,
 } from './db/pool.js';
 import { PostgresPrescriptionDraftService } from './db/prescription-draft-service.js';
-import { PostgresReceptionCreateCommand } from './db/reception-command.js';
+import {
+  PostgresReceptionCreateCommand,
+  PostgresReceptionTransitionCommand,
+} from './db/reception-command.js';
 import { PostgresReceptionRepository } from './db/reception-repository.js';
 import { operationsRoutes } from './operations-routes.js';
 import { InMemoryOperationsReadService } from './operations-service.js';
@@ -143,6 +146,8 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
       auditRepository: new PostgresAuditRepository(pool),
       // WP-4050: 受付・監査・outbox を単一トランザクションで原子化する。
       receptionCreateCommand: new PostgresReceptionCreateCommand(pool),
+      // WP-7201: 遷移・監査を単一トランザクションで原子化する。
+      receptionTransitionCommand: new PostgresReceptionTransitionCommand(pool),
       repositoryMode,
       tenantContextMode,
       patientSearchCursorCodec,
