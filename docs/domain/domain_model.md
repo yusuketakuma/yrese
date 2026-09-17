@@ -186,9 +186,9 @@ cutover時点でのみ成立し、**PostgreSQLがwriterでなくなった後の�
   prescription IDだけとし、処方本文・患者識別子・検索条件を監査payloadへ入れない。
 - 本sliceは薬剤師確認、処方確定、確定後訂正/version history、outbox、外部連携を含まない。
 
-### 4.2 Draft の構造化拡張(0.1.4 PROPOSED — WP-7205/WP-7302、bounded approval 範囲拡張)
+### 4.2 Draft の構造化拡張(0.1.4 — WP-7205/WP-7302。bounded approval 範囲拡張は 2026-09-17 一括 APPROVE 済み)
 
-**本節は review と human approval まで実装根拠にしない。** §4.1 の不変条件(authority key・
+**本節は 2026-09-17 の一括 APPROVE で承認済み。実装は WP-7205 / WP-7302 で行う。** §4.1 の不変条件(authority key・
 write guard・version/If-Match・content hash・read audit・非ライフサイクル性)は全て維持する。
 
 **(a) 処方箋原本 metadata(WP-7205)**: draft は以下を保持する。全項目は手入力値であり、

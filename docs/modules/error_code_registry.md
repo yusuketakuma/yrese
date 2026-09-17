@@ -86,8 +86,8 @@ change_log:
 | RCV-0001 | RECEPTION | ERROR | false | false | 受付キューリクエスト不正(400)。date 欠落/形式不正/非実在暦日、patientId 不正、idempotencyKey 欠落/形式不正 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-006 reception queue) |
 | RCV-0002 | RECEPTION | ERROR | false | false | 当該テナント・薬局内で受付対象 patientId が存在しない(404)。テナント越え探索は禁止 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-006 reception queue) |
 | RCV-0003 | RECEPTION | ERROR | false | false | idempotencyKey conflict(同一 key + 異なる patientId)(409)。誤患者の受付エントリを返さず fail-closed | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-006 reception queue) |
-| RCV-0004 | RECEPTION | ERROR | false | false | 不許可の受付状態遷移(409)。逆行・終端(COMPLETED/CANCELLED)後の遷移・遷移表(DOM-004 §2)にない組合せ | PROPOSED(API-006 0.3.0 / WP-7201。未実装) |
-| RCV-0005 | RECEPTION | ERROR | false | false | 受付 version conflict(409)。transitions の expectedVersion / If-Match と現在 version の不一致 | PROPOSED(API-006 0.3.0 / WP-7201。未実装) |
+| RCV-0004 | RECEPTION | ERROR | false | false | 不許可の受付状態遷移(409)。逆行・終端(COMPLETED/CANCELLED)後の遷移・遷移表(DOM-004 §2)にない組合せ | APPROVED(API-006 0.3.x / WP-7201 で実装済み) |
+| RCV-0005 | RECEPTION | ERROR | false | false | 受付 version conflict(409)。transitions の expectedVersion / If-Match と現在 version の不一致 | APPROVED(API-006 0.3.x / WP-7201 で実装済み) |
 | RCV-0006 | RECEPTION | ERROR | false | false | 受付不存在(404)。transitions の対象 receptionId が当該テナント・薬局内に存在しない。テナント越え探索は禁止(RCV-0002 と同規則) | APPROVED(API-006 0.3.1 / WP-7201) |
 | INS-0001 | INSURANCE | ERROR | false | false | coverage request 不正(400)。asOf 欠落/非実在暦日、必須項目欠落、copayRatio 範囲外、Idempotency-Key 不正 | PROPOSED(API-020 / WP-7203。未実装) |
 | INS-0002 | INSURANCE | ERROR | false | false | 対象患者が当該テナント・薬局内に存在しない(404)。非露出規則は PAT-0002 と同型 | PROPOSED(API-020 / WP-7203。未実装) |

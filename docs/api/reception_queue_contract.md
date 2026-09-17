@@ -87,7 +87,7 @@ ReceptionQueueEntry = {
   - 同一 key + **異なる patientId** → **409 + `RCV-0003`**(idempotency conflict)。誤患者のエントリを返さない(fail-closed)。実装は payload(patientId)を key と併せて保存し不一致を検出する。
 - レスポンス(201 / 冪等再送時 200): 登録された ReceptionQueueEntry。
 
-### POST /reception/{receptionId}/transitions (0.3.0 PROPOSED — review/human approval まで実装根拠禁止)
+### POST /reception/{receptionId}/transitions (0.3.x — WP-7201 で実装済み)
 
 受付状態の副状態機械を駆動する唯一の write 経路。許可遷移の**正本は DOM-004 §2**
 (本契約で遷移表を再定義しない):
@@ -190,12 +190,12 @@ shared-kernel へ同一バッチで実装済み**(WP-3009-BE/93aefa1。CAL-007 �
 
 ## 変更履歴
 
-- 0.3.0 (2026-09-17): WP-7201 PROPOSED 起案 — 受付状態遷移 endpoint(§2 transitions)を追加。
+- 0.3.0 (2026-09-17): WP-7201 — 受付状態遷移 endpoint(§2 transitions)を追加。
   遷移表の正本は DOM-004 §2、CAS は expectedVersion + `If-Match` 併用、CANCELLED は
   businessReason 必須(MOD-008 `reception.cancelled` 規律)。エラーへ RCV-0004(不許可遷移)/
-  RCV-0005(version conflict)を追加提案。監査は `reception.started` / `reception.completed` の
-  MOD-008 追加提案と対になる。既存 GET/POST の wire・認可・冪等規則は不変。
-  **PROPOSED のため実装根拠にしない。**
+  RCV-0005(version conflict)、0.3.1 で RCV-0006(受付不存在)を追加。監査は
+  `reception.started` / `reception.completed` の MOD-008 追加と対になる。
+  既存 GET/POST の wire・認可・冪等規則は不変。
 - 0.2.2 (2026-07-09): WP-4046 — `receptionId` / POST `patientId` の wire ID 検証を shared-kernel branded ID factory 由来の共通 refine へ統一。wire 型は string 維持。
 - 0.2.1 (2026-07-09): WP-4049 実装状態 drift 整備。WP-3009-BE/93aefa1 による shared-kernel / contracts / OpenAPI / apps/api の backend 実装完了状態を反映。契約の要求・wire 形状は不変更。
 - 0.2.0 (2026-07-09): codex 実装可能性レビュー(CONTRACT_REVIEW)の指摘5点+安定順序を反映 — GET/POST とも patient:read 併須、idempotencyKey 制約と 409/RCV-0003 の conflict 定義、domain RECEPTION / prefix RCV への訂正、shared-kernel 原子的着地の DoR 精緻化(リソース数14に訂正・ReceptionId factory 追加)、date の実在暦日検証、acceptedAt+receptionId の安定順序。
