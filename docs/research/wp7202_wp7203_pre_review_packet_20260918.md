@@ -2,14 +2,17 @@
 
 ```yaml
 document_kind: human_pre_review_packet
-status: AWAITING_HUMAN_DECISION
+status: DECIDED_ALL_APPROVED
 work_packages: [WP-7202, WP-7203]
 created_at: 2026-09-18
+decided_at: 2026-09-18
+decided_by: "direct human authority「全て承認」(2026-09-18)"
 risk_class: R3 (both)
 prepared_by: devin active_root_writer (maker — 本packetは判断材料であり、makerの自己承認ではない)
 oracle_used: false (user instruction 2026-09-17: oracleは使用しない)
-implementation_authority: 0 (human decision 記録まで実装・stage・landing 禁止)
+implementation_authority: WP-7202/WP-7203 scope approved (migration 適用・production action は引き続き別 gate)
 decisions_required: 5
+decisions_resolved: 5
 ```
 
 ## 1. 目的
@@ -102,11 +105,15 @@ human authority の承認は別 context review を代替しない。
 
 | # | 論点 | 推奨 | 決定 |
 |---|---|---|---|
-| D-1 | WP-7202 scope(§2.2)の承認。C-028 は API-001 0.3.0 で解消済みと確定するか | APPROVE | 未決 |
-| D-2 | C-029 の位置づけ: patientNumber 不変・merge 経路なしのまま cutover blocker として維持するか(Plans.md の【HG】記述の解消) | 維持で APPROVE | 未決 |
-| D-3 | WP-7203 scope(§3.2)の承認。CAL-R-024(算定利用)は範囲外のまま維持するか | APPROVE | 未決 |
-| D-4 | UIX-001 §12.3 operation matrix への追加(SCR-002 患者 create/update、SCR-007 coverage read/write)を各 WP の実装 batch に含めて承認するか。否認なら Web phase を分離して API-only 先行 | 同一 batch で APPROVE | 未決 |
-| D-5 | R3 review gate の checker 構成(§5)の承認 | APPROVE | 未決 |
+| D-1 | WP-7202 scope(§2.2)の承認。C-028 は API-001 0.3.0 で解消済みと確定するか | APPROVE | **APPROVED**(2026-09-18 direct「全て承認」) |
+| D-2 | C-029 の位置づけ: patientNumber 不変・merge 経路なしのまま cutover blocker として維持するか(Plans.md の【HG】記述の解消) | 維持で APPROVE | **APPROVED — 維持**(同上) |
+| D-3 | WP-7203 scope(§3.2)の承認。CAL-R-024(算定利用)は範囲外のまま維持するか | APPROVE | **APPROVED**(同上) |
+| D-4 | UIX-001 §12.3 operation matrix への追加(SCR-002 患者 create/update、SCR-007 coverage read/write)を各 WP の実装 batch に含めて承認するか。否認なら Web phase を分離して API-only 先行 | 同一 batch で APPROVE | **APPROVED — 同一 batch**(同上) |
+| D-5 | R3 review gate の checker 構成(§5)の承認 | APPROVE | **APPROVED**(同上) |
+
+決定記録: 2026-09-18、human authority が「全て承認」により D-1〜D-5 を一括 APPROVE。
+本記録をもって PRC-003 DoR #10 の R3 事前 review record が成立。review gate(PRC-005 §2 R3)
+の独立 checker による frozen-diff review は landing 前に別途実施する。
 
 ## 7. 本 packet が権限を与えないもの
 
