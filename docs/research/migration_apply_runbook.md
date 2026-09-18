@@ -9,7 +9,7 @@ scope: yrese API の PostgreSQL migration(000001 以降の全版)の環境適用
 ## 0. 前提と禁止事項
 
 - migration/DDL/DML 適用、production/staging データ・インフラの変更は
-  **明示 human gate**(AGENTS.md §Risk and Human gates / PRC-005)。
+  **明示 human gate**(`.devin/skills/yrese-boundaries` §Risk・human gates / PRC-005)。
   本 runbook の実行は対象環境ごとの別途承認が必須。
 - 本タスク(WP-7102)では**いかなる環境へも適用しない**。staging/production
   への適用・backfill・deploy は本 runbook 外の人間判断。
