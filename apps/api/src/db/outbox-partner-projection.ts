@@ -23,12 +23,16 @@ export class PartnerEventProjectionError extends Error {
 }
 
 /**
- * `prescription.finalized` の内部 payload 契約(WP-7402)。確定版だけを転記し、
- * 識別子以外の内部 payload key は公開 event に載せない。payload が欠損・
- * 不正なら投影失敗(fail-closed)とする。
+ * `prescription.finalized` / `prescription.amended` の内部 payload 契約
+ * (WP-7402 / WP-7403)。確定版・訂正後の新版だけを転記し、識別子以外の内部
+ * payload key は公開 event に載せない。payload が欠損・不正なら投影失敗
+ * (fail-closed)とする。
  */
 function projectPayloadFields(event: OutboxPendingEvent): Record<string, number> {
-  if (event.eventType !== 'prescription.finalized') {
+  if (
+    event.eventType !== 'prescription.finalized' &&
+    event.eventType !== 'prescription.amended'
+  ) {
     return {};
   }
   const payload = event.payload;
@@ -39,7 +43,7 @@ function projectPayloadFields(event: OutboxPendingEvent): Record<string, number>
   if (typeof version !== 'number' || !Number.isInteger(version) || version < 1) {
     throw new PartnerEventProjectionError(
       event.outboxEventId,
-      new Error('prescription.finalized payload lacks integer version'),
+      new Error(`${event.eventType} payload lacks integer version`),
     );
   }
   return { version };

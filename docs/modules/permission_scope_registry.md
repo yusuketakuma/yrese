@@ -8,9 +8,9 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.1.2
+version: 0.1.3
 created_at: 2026-07-09
-updated_at: 2026-08-26
+updated_at: 2026-09-19
 approved_at: 2026-07-09
 approved_by: human_review (ユーザー承認「人間レビューはOKです」)
 effective_from: null
@@ -42,11 +42,13 @@ related_tests:
 related_prs: []
 evidence_ids: []
 open_questions:
-  - 疑義照会・会計(返金/差額)・RECOVERY_SYNC承認の専用 scope 要否(UIX-001 §12 の指摘 — 画面実装WPの DoR までに確定)
+  - 会計(返金/差額)・RECOVERY_SYNC承認の専用 scope 要否(UIX-001 §12 の指摘 — 画面実装WPの DoR までに確定)
+  - ~~疑義照会の専用 scope 要否~~ → WP-7403 で解消: 疑義照会記録は `prescription:write`(事務記録)、訂正(amend)は `prescription:confirm` + SEC-010 免許 evidence。専用 action は追加せず、ロール→scope 割当は auth 設計SSOT で確定するまで据置
   - ロール→scope の既定割当表(pharmacist/clerk/admin/support)— auth 設計SSOTと同時に確定
   - break-glass アカウントの scope 表現(SEC-005)
 blockers: []
 change_log:
+  - "0.1.3 2026-09-19 WP-7403: open_question『疑義照会専用 scope 要否』を解消 — inquiry=prescription:write、amend=prescription:confirm+SEC-010 免許 evidence、専用 action 不追加。packet 決定は direct user instruction により承認済み"
   - 0.1.2 2026-08-26 WP-5104 reference-only cutover from UIX-007 to UIX-001 §12; permission semantics unchanged
   - "body history authority: 本文の変更履歴をversioned content historyのauthoritative sourceとして維持"
   - "2026-07-11 WP-9002-W3 metadata-only completion: body/status/version/approval/effective semantics unchanged"

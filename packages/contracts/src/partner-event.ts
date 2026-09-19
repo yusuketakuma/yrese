@@ -15,6 +15,7 @@ import {
 export const PARTNER_EVENT_TYPES = [
   "reception.created",
   "prescription.finalized",
+  "prescription.amended",
 ] as const;
 export type PartnerEventType = (typeof PARTNER_EVENT_TYPES)[number];
 
@@ -60,15 +61,30 @@ export const prescriptionFinalizedPartnerEventSchema =
     version: z.number().int().min(1),
   });
 
+export const prescriptionAmendedPartnerEventSchema =
+  partnerEventEnvelopeSchema.extend({
+    eventType: z.literal("prescription.amended"),
+    aggregate: z.object({
+      type: z.literal("prescription"),
+      id: prescriptionIdWireSchema,
+    }),
+    /** 訂正後の新版(prescription_versions.version)。本文・inquiryId は載せない。 */
+    version: z.number().int().min(1),
+  });
+
 export const partnerEventSchema = z.discriminatedUnion("eventType", [
   receptionCreatedPartnerEventSchema,
   prescriptionFinalizedPartnerEventSchema,
+  prescriptionAmendedPartnerEventSchema,
 ]);
 
 export type PartnerEvent = z.infer<typeof partnerEventSchema>;
 export type ReceptionCreatedPartnerEvent = z.infer<typeof receptionCreatedPartnerEventSchema>;
 export type PrescriptionFinalizedPartnerEvent = z.infer<
   typeof prescriptionFinalizedPartnerEventSchema
+>;
+export type PrescriptionAmendedPartnerEvent = z.infer<
+  typeof prescriptionAmendedPartnerEventSchema
 >;
 
 /** 公開 event に含めてはならない key(テストと投影で機械検証する)。 */

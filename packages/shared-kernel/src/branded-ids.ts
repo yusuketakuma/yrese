@@ -17,6 +17,7 @@ export type UserId = Brand<string, "UserId">;
 export type PatientId = Brand<string, "PatientId">;
 export type ReceptionId = Brand<string, "ReceptionId">;
 export type PrescriptionId = Brand<string, "PrescriptionId">;
+export type PrescriptionInquiryId = Brand<string, "PrescriptionInquiryId">;
 export type DispensingId = Brand<string, "DispensingId">;
 export type ClaimId = Brand<string, "ClaimId">;
 export type EventId = Brand<string, "EventId">;
@@ -62,6 +63,9 @@ export const userId = makeIdFactory<"UserId">("UserId");
 export const patientId = makeIdFactory<"PatientId">("PatientId");
 export const receptionId = makeIdFactory<"ReceptionId">("ReceptionId");
 export const prescriptionId = makeIdFactory<"PrescriptionId">("PrescriptionId");
+export const prescriptionInquiryId = makeIdFactory<"PrescriptionInquiryId">(
+  "PrescriptionInquiryId",
+);
 export const dispensingId = makeIdFactory<"DispensingId">("DispensingId");
 export const claimId = makeIdFactory<"ClaimId">("ClaimId");
 export const eventId = makeIdFactory<"EventId">("EventId");

@@ -353,6 +353,41 @@ export const KERNEL_ERROR_CODES = [
     description:
       "prescription does not exist in the tenant or pharmacy scope",
   },
+  {
+    code: "RX-0007",
+    domain: "PRESCRIPTION",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description:
+      "prescription amendment requires a resolved inquiry with result CHANGED on the same prescription",
+  },
+  {
+    code: "RX-0008",
+    domain: "PRESCRIPTION",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "invalid prescription inquiry command request",
+  },
+  {
+    code: "RX-0009",
+    domain: "PRESCRIPTION",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description:
+      "prescription inquiry does not exist in the tenant or pharmacy scope",
+  },
+  {
+    code: "RX-0010",
+    domain: "PRESCRIPTION",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description:
+      "idempotency-key replay with a different payload is rejected",
+  },
 ] as const satisfies readonly ErrorCodeDef[];
 
 export const AUTH_PERMISSION_DENIED_ERROR_CODE = KERNEL_ERROR_CODES[0].code;
@@ -400,6 +435,14 @@ export const PRESCRIPTION_RECEPTION_NOT_IN_PROGRESS_ERROR_CODE =
 export const PRESCRIPTION_LIFECYCLE_INVALID_REQUEST_ERROR_CODE =
   KERNEL_ERROR_CODES[32].code;
 export const PRESCRIPTION_NOT_FOUND_ERROR_CODE = KERNEL_ERROR_CODES[33].code;
+export const PRESCRIPTION_INQUIRY_UNRESOLVED_ERROR_CODE =
+  KERNEL_ERROR_CODES[34].code;
+export const PRESCRIPTION_INQUIRY_INVALID_REQUEST_ERROR_CODE =
+  KERNEL_ERROR_CODES[35].code;
+export const PRESCRIPTION_INQUIRY_NOT_FOUND_ERROR_CODE =
+  KERNEL_ERROR_CODES[36].code;
+export const PRESCRIPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE =
+  KERNEL_ERROR_CODES[37].code;
 
 export function createKernelErrorCodeRegistry(): ErrorCodeRegistry {
   const registry = new ErrorCodeRegistry();

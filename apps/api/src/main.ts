@@ -48,6 +48,7 @@ import {
   createPatientSearchCursorCodec,
   patientSearchCursorHmacKeyByteLength,
 } from './patient-search-cursor.js';
+import { prescriptionAmendmentRoutes } from './prescription-amendment-routes.js';
 import { prescriptionDraftRoutes } from './prescription-draft-routes.js';
 import { prescriptionLifecycleRoutes } from './prescription-lifecycle-routes.js';
 import {
@@ -187,6 +188,9 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
     server.register(prescriptionLifecycleRoutes, {
       service: prescriptionDraftService,
     });
+    server.register(prescriptionAmendmentRoutes, {
+      service: prescriptionDraftService,
+    });
     server.register(operationsRoutes, {
       service: new InMemoryOperationsReadService(
         receptionOutbox,
@@ -249,6 +253,9 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
       service: prescriptionDraftService,
     });
     server.register(prescriptionLifecycleRoutes, {
+      service: prescriptionDraftService,
+    });
+    server.register(prescriptionAmendmentRoutes, {
       service: prescriptionDraftService,
     });
     server.register(operationsRoutes, {

@@ -13,11 +13,11 @@ reviewers:
   - privacy_compliance_reviewer
   - medical_safety_reviewer
   - human_review_required
-version: 0.2.3
+version: 0.2.4
 created_at: 2026-07-09
 updated_at: 2026-09-19
 approved_at: 2026-09-19
-approved_by: "direct human authority 2026-09-19 (残タスク一括許可; WP-7402 packet 承認); prior: direct human authority 2026-08-23 (「全てを許可する。実行」); independent review: api-contract lane + security-privacy lane REQUEST_CHANGES -> all findings closed (28dae05, f07e76e); closure checker PASS"
+approved_by: "direct human authority 2026-09-19 (WP-7403 packet 承認・進行指示); prior: direct human authority 2026-09-19 (残タスク一括許可; WP-7402 packet 承認); prior: direct human authority 2026-08-23 (「全てを許可する。実行」)"
 effective_from: 2026-09-19
 effective_to: null
 source_refs:
@@ -54,6 +54,7 @@ open_questions:
 blockers:
   - WP-4050 R3 specialist review and human approval required before APPROVED
 change_log:
+  - "0.2.4 2026-09-19 WP-7403 bounded amendment: §7 `prescription.amended` Outbox intent profile(§6 と同一 envelope・canonical hash・同一tx完全状態規則、payload `{prescriptionId, version}`)を追加。packet 決定は direct user instruction により承認済み。外部配送・production action は含まない"
   - "0.2.2 2026-09-19 WP-7402 bounded amendment: §6 `prescription.finalized` Outbox intent profile(event body・canonical hash profile・同一tx完全状態)を追加。packet 決定は direct user instruction(残タスク一括許可)により承認済み。外部配送・production action は含まない"
   - "2026-08-23 WP-6001/WP-6101/WP-6202/WP-6203/WP-6302 finalization: 独立 review 2 lane の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手は各 WP の gate に従い、外部接続・conformance 主張は含まない"
   - "0.2.1 2026-08-23 WP-6004: §4.3 を実装済み outbox_events(単一 table + sequence_number + FK)と整合させ、2 table 構造を将来の delivery state 追加として位置づけ。envelope semantics 不変。PROPOSED 維持"
@@ -262,3 +263,43 @@ oneずつ存在し、auditとOutboxが同一eventIdを持つ状態だけであ�
 finalize commandは1つの`PoolClient`と1つのtransactionでstatus更新、
 snapshot insert、audit append、Outbox insertを行う。どのinsert、validation、
 commit前処理が失敗しても全体をrollbackする。
+
+## 7. `prescription.amended` Outbox intent profile (WP-7403)
+
+`prescription.amended`は§6の`prescription.finalized`と同一のenvelope規則・
+canonical hash profile・同一tx完全状態規則を適用する。相違点のみを記す。
+
+| field | value |
+|---|---|
+| `auditEventType` | `prescription.amended` |
+| `aggregateType` / `targetRef.kind` | `prescription` |
+| `aggregateId` / `targetRef.id` | 訂正対象の`prescriptionId` |
+| `actorId` | 認可済みtenant contextからsnapshotした訂正実行者(薬剤師)actor |
+| `idempotencyKey` | `<eventId>:1`(§4.1 と同一の実装規則) |
+| `causationId` | 根拠となったinquiryの`inquiry.answered`監査eventIdを指定してよい |
+| `outcome` | `success` |
+
+canonical profileのpreimageはUTF-8で次をNUL (`U+0000`)区切り連結する。
+
+```text
+prescription.amended \0 prescription \0 <prescriptionId> \0 success
+```
+
+`payload`列は`{prescriptionId, version}`(訂正後の新版番号)を運ぶ。
+inquiryId・処方本文・照会本文・免許情報はevent bodyにもpayloadにも載せない
+(inquiryIdは監査eventの`causationId`相当の相関で追跡する)。
+partner projectionは`prescription.amended`を`prescription.finalized`と同じ
+version転記規則で投影し、下流が最新版を見逃さない。
+
+訂正操作の完全状態は次がexactly oneずつ存在し、auditとOutboxが同一eventIdを
+持つ状態だけである。
+
+1. `prescription_drafts.status = PRESCRIPTION_FINALIZED`維持(訂正は状態を戻さない)
+2. `prescription_versions`のversion=N+1 immutable snapshot
+   (`supersedes_version=N`、`inquiry_id`必須)
+3. `audit_events`の`prescription.amended` event
+4. `outbox_events`の同一event
+
+amend commandは1つの`PoolClient`と1つのtransactionでversion insert、
+audit append、Outbox insertを行う。どのinsert、validation、commit前処理が
+失敗しても全体をrollbackする。外部配送・production actionは本profileに含まない。

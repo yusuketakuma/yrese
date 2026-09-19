@@ -55,6 +55,49 @@ describe('projectOutboxEventToPartnerEvent', () => {
     });
   });
 
+  it('projects prescription.amended with the amended version from the internal payload', () => {
+    const amended: OutboxPendingEvent = Object.freeze({
+      ...row,
+      outboxEventId: 'outbox-rx-2',
+      eventType: 'prescription.amended',
+      aggregateType: 'prescription',
+      aggregateId: 'prescription-000001',
+      payload: { prescriptionId: 'prescription-000001', version: 2 },
+    });
+    const projected = projectOutboxEventToPartnerEvent(amended);
+    expect(projected).toEqual({
+      eventId: 'outbox-rx-2',
+      eventType: 'prescription.amended',
+      schemaVersion: 1,
+      occurredAt: '2026-08-23T00:00:00.000Z',
+      auditEventId: 'audit-0001',
+      aggregate: { type: 'prescription', id: 'prescription-000001' },
+      version: 2,
+    });
+    // inquiryId・本文は公開 event に載せない(MOD-009 §7)。
+    expect(JSON.stringify(projected)).not.toContain('inquiry');
+  });
+
+  it('fails closed when prescription.amended payload lacks a valid version', () => {
+    for (const payload of [
+      { prescriptionId: 'prescription-000001' },
+      { version: 'two' },
+      { version: 0 },
+      null,
+      'x',
+    ]) {
+      expect(() =>
+        projectOutboxEventToPartnerEvent({
+          ...row,
+          eventType: 'prescription.amended',
+          aggregateType: 'prescription',
+          aggregateId: 'prescription-000001',
+          payload,
+        }),
+      ).toThrow(PartnerEventProjectionError);
+    }
+  });
+
   it('fails closed when prescription.finalized payload lacks a valid version', () => {
     for (const payload of [
       { prescriptionId: 'prescription-000001' },

@@ -12,16 +12,23 @@ import {
   type PrescriptionDraftContent,
   type PrescriptionDraftResponse,
   type PrescriptionDraftSaveResponse,
+  type PrescriptionInquiryResult,
+  type PrescriptionInquiryView,
   type PrescriptionLifecycleView,
   type PrescriptionStatusWire,
+  type PrescriptionVersionView,
   type ReceptionQueueEntry,
+  prescriptionInquiryViewSchema,
+  prescriptionVersionViewSchema,
 } from "@yrese/contracts";
 import {
   prescriptionId,
+  prescriptionInquiryId,
   receptionId,
   type PatientId,
   type PharmacyId,
   type PrescriptionId,
+  type PrescriptionInquiryId,
   type ReceptionId,
   type TenantId,
   type UserId,
@@ -102,7 +109,122 @@ export interface PrescriptionDraftService {
   finalize(
     input: PrescriptionLifecycleCommandInput,
   ): Promise<PrescriptionLifecycleCommandResult>;
+  createInquiry(
+    input: PrescriptionInquiryCreateInput,
+  ): Promise<PrescriptionInquiryCreateResult>;
+  answerInquiry(
+    input: PrescriptionInquiryAnswerInput,
+  ): Promise<PrescriptionInquiryAnswerResult>;
+  amend(input: PrescriptionAmendInput): Promise<PrescriptionAmendResult>;
+  listVersions(
+    input: PrescriptionScopedReadInput,
+  ): Promise<PrescriptionVersionListResult>;
+  getVersion(
+    input: PrescriptionVersionReadInput,
+  ): Promise<PrescriptionVersionGetResult>;
+  listInquiries(
+    input: PrescriptionScopedReadInput,
+  ): Promise<PrescriptionInquiryListResult>;
 }
+
+/**
+ * WP-7403: 疑義照会記録の起票入力。対象は prescriptionId 直接参照、
+ * 冪等性は Idempotency-Key(起票は同キー+同内容で replay)。
+ */
+export interface PrescriptionInquiryCreateInput
+  extends PrescriptionLifecycleCommandInput {
+  readonly directedTo: string;
+  readonly content: string;
+}
+
+/** WP-7403: 回答記録は write-once。answered_by/at は server 側で採る。 */
+export interface PrescriptionInquiryAnswerInput
+  extends PrescriptionLifecycleCommandInput {
+  readonly inquiryId: PrescriptionInquiryId;
+  readonly answer: string;
+  readonly result: PrescriptionInquiryResult;
+}
+
+/** WP-7403: 訂正 command。content は確定版と同じ draft スキーマ。 */
+export interface PrescriptionAmendInput
+  extends PrescriptionLifecycleCommandInput {
+  readonly inquiryId: PrescriptionInquiryId;
+  readonly content: PrescriptionDraftContent;
+}
+
+/** versions/inquiries の read 入力(PHI read 監査のため actorId/wallClock を持つ)。 */
+export interface PrescriptionScopedReadInput {
+  readonly tenantId: TenantId;
+  readonly pharmacyId: PharmacyId;
+  readonly actorId: UserId;
+  readonly prescriptionId: PrescriptionId;
+  readonly wallClock: string;
+}
+
+export interface PrescriptionVersionReadInput
+  extends PrescriptionScopedReadInput {
+  readonly version: number;
+}
+
+export type PrescriptionInquiryCreateResult =
+  | {
+      readonly kind: "recorded";
+      readonly inquiry: PrescriptionInquiryView;
+      readonly replayed: boolean;
+    }
+  /** 対象処方が scope 内に存在しない → 404 RX-0006。 */
+  | { readonly kind: "not_found" }
+  /** 同一冪等キーで異なる起票内容 → 409 RX-0010。 */
+  | { readonly kind: "idempotency_conflict" };
+
+export type PrescriptionInquiryAnswerResult =
+  | {
+      readonly kind: "answered";
+      readonly inquiry: PrescriptionInquiryView;
+      readonly replayed: boolean;
+    }
+  | { readonly kind: "not_found" }
+  /** 対象 inquiry が scope 内に存在しない → 404 RX-0009。 */
+  | { readonly kind: "inquiry_not_found" }
+  /** 回答済みへの再回答(別キー・別内容)→ 409 RX-0002。 */
+  | { readonly kind: "invalid_transition" }
+  | { readonly kind: "idempotency_conflict" };
+
+export type PrescriptionAmendResult =
+  | {
+      readonly kind: "amended";
+      readonly version: PrescriptionVersionView;
+      readonly replayed: boolean;
+    }
+  | { readonly kind: "not_found" }
+  | { readonly kind: "unqualified" }
+  /** status ≠ PRESCRIPTION_FINALIZED → 409 RX-0002。 */
+  | { readonly kind: "invalid_transition" }
+  /** inquiry 未指定・OPEN・UNCHANGED・他処方/他 scope → 422 RX-0007。 */
+  | { readonly kind: "inquiry_unresolved" }
+  /** 新版 content に UNRESOLVED_TEXT 品目残存 → 409 RX-0001。 */
+  | { readonly kind: "unresolved_items" }
+  /** 新版 content の原本 metadata 不完全 → 409 RX-0003。 */
+  | { readonly kind: "metadata_incomplete" }
+  | { readonly kind: "idempotency_conflict" };
+
+export type PrescriptionVersionListResult =
+  | {
+      readonly kind: "listed";
+      readonly versions: readonly PrescriptionVersionView[];
+    }
+  | { readonly kind: "not_found" };
+
+export type PrescriptionVersionGetResult =
+  | { readonly kind: "found"; readonly version: PrescriptionVersionView }
+  | { readonly kind: "not_found" };
+
+export type PrescriptionInquiryListResult =
+  | {
+      readonly kind: "listed";
+      readonly inquiries: readonly PrescriptionInquiryView[];
+    }
+  | { readonly kind: "not_found" };
 
 /**
  * 確定対象の原本 metadata 必須項目(WP-7402 packet §5 + 000017 CHECK の
@@ -301,6 +423,42 @@ interface InMemoryPrescriptionDraftRecord {
   readonly tenantId: TenantId;
   readonly pharmacyId: PharmacyId;
   readonly lockKey: string;
+  /** WP-7403: prescription_versions の in-memory 相当(append-only)。 */
+  readonly versions: InMemoryPrescriptionVersionRecord[];
+  /** WP-7403: prescription_inquiries の in-memory 相当。 */
+  readonly inquiries: InMemoryPrescriptionInquiryRecord[];
+}
+
+export interface InMemoryPrescriptionVersionRecord {
+  readonly version: number;
+  readonly content: PrescriptionDraftContent;
+  readonly contentHash: string;
+  readonly supersedesVersion: number | null;
+  readonly inquiryId: PrescriptionInquiryId | null;
+  readonly amendedBy: string | null;
+  readonly amendedAt: string | null;
+  readonly amendIdempotencyKey: string | null;
+  readonly confirmedBy: string;
+  readonly confirmedAt: string;
+  readonly finalizedBy: string;
+  readonly finalizedAt: string;
+  readonly createdAt: string;
+}
+
+export interface InMemoryPrescriptionInquiryRecord {
+  inquiryId: PrescriptionInquiryId;
+  readonly prescriptionId: PrescriptionId;
+  readonly directedTo: string;
+  readonly content: string;
+  answer: string | null;
+  answeredBy: string | null;
+  answeredAt: string | null;
+  result: PrescriptionInquiryResult | null;
+  readonly createdBy: string;
+  readonly createdAt: string;
+  readonly idempotencyKey: string;
+  answerIdempotencyKey: string | null;
+  readonly recordedSeq: number;
 }
 
 function emptyLifecycle(): InMemoryPrescriptionLifecycleState {
@@ -318,7 +476,7 @@ function emptyLifecycle(): InMemoryPrescriptionLifecycleState {
 
 export interface PrescriptionFinalizedOutboxIntent {
   readonly outboxEventId: string;
-  readonly eventType: "prescription.finalized";
+  readonly eventType: "prescription.finalized" | "prescription.amended";
   readonly aggregateType: "prescription";
   readonly aggregateId: string;
   readonly auditEventId: string;
@@ -332,7 +490,8 @@ function outboxScopeKey(tenantId: TenantId, pharmacyId: PharmacyId): string {
 
 /**
  * dev/test 用の in-memory outbox intent(MOD-009 §6)。永続正本は
- * outbox_events。prescription.finalized 専用。
+ * outbox_events。prescription.finalized / prescription.amended のみ。
+ * 一意性は outbox_events の aggregate+eventType+version 相当に揃える。
  */
 export class InMemoryPrescriptionFinalizedOutbox {
   private readonly intents = new Map<
@@ -351,7 +510,8 @@ export class InMemoryPrescriptionFinalizedOutbox {
       scoped.some(
         (existing) =>
           existing.aggregateId === intent.aggregateId &&
-          existing.eventType === intent.eventType,
+          existing.eventType === intent.eventType &&
+          existing.version === intent.version,
       )
     ) {
       throw new Error(
@@ -373,10 +533,12 @@ export class InMemoryPrescriptionFinalizedOutbox {
 }
 
 export interface PrescriptionLifecycleDeps {
-  /** 未注入なら confirm/finalize は常に unqualified(fail-closed)。 */
+  /** 未注入なら confirm/finalize/amend は常に unqualified(fail-closed)。 */
   readonly qualificationRepository?: ActorQualificationRepository;
   readonly finalizedOutbox?: InMemoryPrescriptionFinalizedOutbox;
   readonly nextOutboxEventId?: () => string;
+  /** WP-7403: inquiry ID 生成器。未注入なら UUID 生成。 */
+  readonly nextInquiryId?: () => PrescriptionInquiryId;
 }
 
 export class InMemoryPrescriptionDraftService
@@ -384,6 +546,7 @@ export class InMemoryPrescriptionDraftService
 {
   private readonly records = new Map<string, InMemoryPrescriptionDraftRecord>();
   private readonly locks = new Map<string, Promise<void>>();
+  private inquiryRecordedSeq = 0;
 
   constructor(
     private readonly receptionRepository: ReceptionRepository,
@@ -504,6 +667,8 @@ export class InMemoryPrescriptionDraftService
           tenantId: input.tenantId,
           pharmacyId: input.pharmacyId,
           lockKey: key,
+          versions: [],
+          inquiries: [],
         });
         return {
           kind: "saved",
@@ -627,7 +792,10 @@ export class InMemoryPrescriptionDraftService
    */
   private async checkQualificationOrDeny(
     input: PrescriptionLifecycleCommandInput,
-    denyEventType: "prescription.confirm.denied" | "prescription.finalize.denied",
+    denyEventType:
+      | "prescription.confirm.denied"
+      | "prescription.finalize.denied"
+      | "prescription.amend.denied",
   ): Promise<boolean> {
     const qualified =
       (await this.lifecycleDeps.qualificationRepository?.hasActiveQualification(
@@ -790,6 +958,22 @@ export class InMemoryPrescriptionDraftService
         finalizedAt: input.wallClock,
         prescriptionVersion: 1,
       };
+      // v1 immutable snapshot。確定時点の materialized content を保持する。
+      const versionRecord: InMemoryPrescriptionVersionRecord = {
+        version: 1,
+        content: fresh.response.draft,
+        contentHash: fresh.contentHash,
+        supersedesVersion: null,
+        inquiryId: null,
+        amendedBy: null,
+        amendedAt: null,
+        amendIdempotencyKey: null,
+        confirmedBy: fresh.lifecycle.confirmedBy ?? input.actorId,
+        confirmedAt: fresh.lifecycle.confirmedAt ?? input.wallClock,
+        finalizedBy: input.actorId,
+        finalizedAt: input.wallClock,
+        createdAt: input.wallClock,
+      };
       const auditEvent = await this.auditRepository.record(
         { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
         {
@@ -811,11 +995,380 @@ export class InMemoryPrescriptionDraftService
       });
       Object.assign(fresh.lifecycle, nextLifecycle);
       fresh.response = nextResponse;
+      fresh.versions.push(versionRecord);
       return {
         kind: "transitioned",
         view: this.lifecycleView(fresh),
         replayed: false,
       };
     });
+  }
+
+  private findInquiryRecord(
+    fresh: InMemoryPrescriptionDraftRecord,
+    inquiryId: PrescriptionInquiryId,
+  ): InMemoryPrescriptionInquiryRecord | undefined {
+    return fresh.inquiries.find((entry) => entry.inquiryId === inquiryId);
+  }
+
+  private inquiryView(
+    record: InMemoryPrescriptionInquiryRecord,
+  ): PrescriptionInquiryView {
+    return prescriptionInquiryViewSchema.parse({
+      inquiryId: record.inquiryId,
+      prescriptionId: record.prescriptionId,
+      directedTo: record.directedTo,
+      content: record.content,
+      answer: record.answer,
+      answeredBy: record.answeredBy,
+      answeredAt: record.answeredAt,
+      result: record.result,
+      createdBy: record.createdBy,
+      createdAt: record.createdAt,
+      status: record.answer === null ? "OPEN" : "RESOLVED",
+    });
+  }
+
+  private versionView(
+    record: InMemoryPrescriptionVersionRecord,
+    prescriptionIdValue: PrescriptionId,
+  ): PrescriptionVersionView {
+    return prescriptionVersionViewSchema.parse({
+      prescriptionId: prescriptionIdValue,
+      version: record.version,
+      content: record.content,
+      contentHash: record.contentHash,
+      supersedesVersion: record.supersedesVersion,
+      inquiryId: record.inquiryId,
+      amendedBy: record.amendedBy,
+      amendedAt: record.amendedAt,
+      confirmedBy: record.confirmedBy,
+      confirmedAt: record.confirmedAt,
+      finalizedBy: record.finalizedBy,
+      finalizedAt: record.finalizedAt,
+      createdAt: record.createdAt,
+    });
+  }
+
+  /**
+   * WP-7403: 疑義照会の起票。append-only、同一冪等キー+同一内容は replay、
+   * 同一キー+別内容は RX-0010。監査 payload に本文は含めない(MOD-008)。
+   */
+  async createInquiry(
+    input: PrescriptionInquiryCreateInput,
+  ): Promise<PrescriptionInquiryCreateResult> {
+    const record = this.findRecordByPrescriptionId(input);
+    if (record === undefined) return { kind: "not_found" };
+    return this.withKeyLock(record.lockKey, async () => {
+      const fresh = this.records.get(record.lockKey);
+      if (fresh === undefined) return { kind: "not_found" };
+
+      const prior = fresh.inquiries.find(
+        (entry) => entry.idempotencyKey === input.idempotencyKey,
+      );
+      if (prior !== undefined) {
+        if (
+          prior.directedTo === input.directedTo &&
+          prior.content === input.content
+        ) {
+          return {
+            kind: "recorded",
+            inquiry: this.inquiryView(prior),
+            replayed: true,
+          };
+        }
+        return { kind: "idempotency_conflict" };
+      }
+
+      const inquiry: InMemoryPrescriptionInquiryRecord = {
+        inquiryId:
+          this.lifecycleDeps.nextInquiryId?.() ??
+          prescriptionInquiryId(`inquiry-${randomUUID()}`),
+        prescriptionId: input.prescriptionId,
+        directedTo: input.directedTo,
+        content: input.content,
+        answer: null,
+        answeredBy: null,
+        answeredAt: null,
+        result: null,
+        createdBy: input.actorId,
+        createdAt: input.wallClock,
+        idempotencyKey: input.idempotencyKey,
+        answerIdempotencyKey: null,
+        recordedSeq: ++this.inquiryRecordedSeq,
+      };
+      await this.auditRepository.record(
+        { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+        {
+          actorId: input.actorId,
+          auditEventType: "inquiry.recorded",
+          // MOD-008: payload は inquiry ID + prescription ID + actorId のみ。
+          targetRef: {
+            kind: "prescription_inquiry",
+            id: `${input.prescriptionId}/${inquiry.inquiryId}`,
+          },
+          outcome: "success",
+          wallClock: input.wallClock,
+        },
+      );
+      fresh.inquiries.push(inquiry);
+      return {
+        kind: "recorded",
+        inquiry: this.inquiryView(inquiry),
+        replayed: false,
+      };
+    });
+  }
+
+  /**
+   * WP-7403: 回答の write-once 記録。回答済みへの再回答は
+   * 同一キー+同一内容の replay のみ受理、別キー/別内容は拒否。
+   */
+  async answerInquiry(
+    input: PrescriptionInquiryAnswerInput,
+  ): Promise<PrescriptionInquiryAnswerResult> {
+    const record = this.findRecordByPrescriptionId(input);
+    if (record === undefined) return { kind: "not_found" };
+    return this.withKeyLock(record.lockKey, async () => {
+      const fresh = this.records.get(record.lockKey);
+      if (fresh === undefined) return { kind: "not_found" };
+      const inquiry = this.findInquiryRecord(fresh, input.inquiryId);
+      if (inquiry === undefined) return { kind: "inquiry_not_found" };
+
+      if (inquiry.answer !== null) {
+        if (inquiry.answerIdempotencyKey === input.idempotencyKey) {
+          if (inquiry.answer === input.answer && inquiry.result === input.result) {
+            return {
+              kind: "answered",
+              inquiry: this.inquiryView(inquiry),
+              replayed: true,
+            };
+          }
+          return { kind: "idempotency_conflict" };
+        }
+        return { kind: "invalid_transition" };
+      }
+
+      await this.auditRepository.record(
+        { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+        {
+          actorId: input.actorId,
+          auditEventType: "inquiry.answered",
+          // MOD-008: payload は inquiry ID + result + actorId のみ。
+          // 回答本文は載せない(result は構造化 code で表現)。
+          targetRef: {
+            kind: "prescription_inquiry",
+            id: `${input.prescriptionId}/${input.inquiryId}`,
+          },
+          businessReason: { code: `INQUIRY_RESULT_${input.result}` },
+          outcome: "success",
+          wallClock: input.wallClock,
+        },
+      );
+      inquiry.answer = input.answer;
+      inquiry.answeredBy = input.actorId;
+      inquiry.answeredAt = input.wallClock;
+      inquiry.result = input.result;
+      inquiry.answerIdempotencyKey = input.idempotencyKey;
+      return {
+        kind: "answered",
+        inquiry: this.inquiryView(inquiry),
+        replayed: false,
+      };
+    });
+  }
+
+  /**
+   * WP-7403: 確定処方の訂正。RESOLVED+CHANGED の inquiry を根拠に
+   * version N+1 を append し、status は PRESCRIPTION_FINALIZED のまま。
+   * amend denied 監査は対象の有無に関わらず残す(資格→存在の順)。
+   */
+  async amend(input: PrescriptionAmendInput): Promise<PrescriptionAmendResult> {
+    if (
+      !(await this.checkQualificationOrDeny(input, "prescription.amend.denied"))
+    ) {
+      return { kind: "unqualified" };
+    }
+    const record = this.findRecordByPrescriptionId(input);
+    if (record === undefined) return { kind: "not_found" };
+    return this.withKeyLock(record.lockKey, async () => {
+      const fresh = this.records.get(record.lockKey);
+      if (fresh === undefined) return { kind: "not_found" };
+
+      if (fresh.lifecycle.status !== "PRESCRIPTION_FINALIZED") {
+        return { kind: "invalid_transition" };
+      }
+      const inquiry = this.findInquiryRecord(fresh, input.inquiryId);
+      if (
+        inquiry === undefined ||
+        inquiry.answer === null ||
+        inquiry.result !== "CHANGED"
+      ) {
+        return { kind: "inquiry_unresolved" };
+      }
+      const { normalized, contentHash } =
+        normalizePrescriptionDraftContentForStorage(input.content);
+      if (countUnresolvedPrescriptionItems(normalized) > 0) {
+        return { kind: "unresolved_items" };
+      }
+      if (!isPrescriptionSourceMetadataComplete(normalized)) {
+        return { kind: "metadata_incomplete" };
+      }
+
+      // 冪等 replay は packet §4 guard 6(最後)。command payload は
+      // {inquiryId, content} のため両者の一致を要求する。
+      const prior = fresh.versions.find(
+        (entry) => entry.amendIdempotencyKey === input.idempotencyKey,
+      );
+      if (prior !== undefined) {
+        if (
+          prior.contentHash === contentHash &&
+          prior.inquiryId === input.inquiryId
+        ) {
+          return {
+            kind: "amended",
+            version: this.versionView(prior, input.prescriptionId),
+            replayed: true,
+          };
+        }
+        return { kind: "idempotency_conflict" };
+      }
+
+      const latest = fresh.versions[fresh.versions.length - 1];
+      const nextVersion = (latest?.version ?? 0) + 1;
+      // packet §4: amend は新版の confirm+finalize を兼ねるため、
+      // confirmed/finalized_* にも amend 実行者・時刻を設定する。
+      const versionRecord: InMemoryPrescriptionVersionRecord = {
+        version: nextVersion,
+        content: normalized,
+        contentHash,
+        supersedesVersion: nextVersion - 1,
+        inquiryId: input.inquiryId,
+        amendedBy: input.actorId,
+        amendedAt: input.wallClock,
+        amendIdempotencyKey: input.idempotencyKey,
+        confirmedBy: input.actorId,
+        confirmedAt: input.wallClock,
+        finalizedBy: input.actorId,
+        finalizedAt: input.wallClock,
+        createdAt: input.wallClock,
+      };
+      const auditEvent = await this.auditRepository.record(
+        { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+        {
+          actorId: input.actorId,
+          auditEventType: "prescription.amended",
+          // MOD-008: payload は prescription ID + version + actorId +
+          // inquiryId のみ(識別子のみ、本文は載せない)。
+          targetRef: {
+            kind: "prescription_version",
+            id: `${input.prescriptionId}/${nextVersion}/${input.inquiryId}`,
+          },
+          outcome: "success",
+          wallClock: input.wallClock,
+        },
+      );
+      this.lifecycleDeps.finalizedOutbox?.appendFor(
+        input.tenantId,
+        input.pharmacyId,
+        {
+          outboxEventId:
+            this.lifecycleDeps.nextOutboxEventId?.() ?? randomUUID(),
+          eventType: "prescription.amended",
+          aggregateType: "prescription",
+          aggregateId: input.prescriptionId,
+          auditEventId: auditEvent.eventId,
+          version: nextVersion,
+          createdAt: input.wallClock,
+        },
+      );
+      fresh.versions.push(versionRecord);
+      Object.assign(fresh.lifecycle, { prescriptionVersion: nextVersion });
+      fresh.response = {
+        ...fresh.response,
+        prescriptionVersion: nextVersion,
+      };
+      return {
+        kind: "amended",
+        version: this.versionView(versionRecord, input.prescriptionId),
+        replayed: false,
+      };
+    });
+  }
+
+  private findRecordByPrescriptionScopedRead(
+    input: PrescriptionScopedReadInput,
+  ): InMemoryPrescriptionDraftRecord | undefined {
+    for (const record of this.records.values()) {
+      if (
+        record.tenantId === input.tenantId &&
+        record.pharmacyId === input.pharmacyId &&
+        record.response.prescriptionId === input.prescriptionId
+      ) {
+        return record;
+      }
+    }
+    return undefined;
+  }
+
+  /** PHI read 監査は draft GET と同じ prescription.draft.viewed を使う。 */
+  private async auditPrescriptionRead(
+    input: PrescriptionScopedReadInput,
+  ): Promise<void> {
+    await this.auditRepository.record(
+      { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+      {
+        actorId: input.actorId,
+        auditEventType: "prescription.draft.viewed",
+        targetRef: { kind: "prescription", id: input.prescriptionId },
+        outcome: "success",
+        wallClock: input.wallClock,
+      },
+    );
+  }
+
+  async listVersions(
+    input: PrescriptionScopedReadInput,
+  ): Promise<PrescriptionVersionListResult> {
+    const record = this.findRecordByPrescriptionScopedRead(input);
+    if (record === undefined) return { kind: "not_found" };
+    await this.auditPrescriptionRead(input);
+    return {
+      kind: "listed",
+      versions: record.versions.map((entry) =>
+        this.versionView(entry, input.prescriptionId),
+      ),
+    };
+  }
+
+  async getVersion(
+    input: PrescriptionVersionReadInput,
+  ): Promise<PrescriptionVersionGetResult> {
+    const record = this.findRecordByPrescriptionScopedRead(input);
+    const version = record?.versions.find(
+      (entry) => entry.version === input.version,
+    );
+    if (record === undefined || version === undefined) {
+      return { kind: "not_found" };
+    }
+    await this.auditPrescriptionRead(input);
+    return {
+      kind: "found",
+      version: this.versionView(version, input.prescriptionId),
+    };
+  }
+
+  async listInquiries(
+    input: PrescriptionScopedReadInput,
+  ): Promise<PrescriptionInquiryListResult> {
+    const record = this.findRecordByPrescriptionScopedRead(input);
+    if (record === undefined) return { kind: "not_found" };
+    await this.auditPrescriptionRead(input);
+    return {
+      kind: "listed",
+      inquiries: [...record.inquiries]
+        .sort((a, b) => a.recordedSeq - b.recordedSeq)
+        .map((entry) => this.inquiryView(entry)),
+    };
   }
 }

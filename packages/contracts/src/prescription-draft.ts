@@ -76,7 +76,7 @@ const normalizedDraftText = (maximum: number) =>
  */
 const rpControlCharacterPattern =
   /[\u0000-\u001f\u007f\u0085\u2028\u2029]/;
-const normalizedRpText = (maximum: number) =>
+export const normalizedRpText = (maximum: number) =>
   normalizedDraftText(maximum).refine(
     (value) => !rpControlCharacterPattern.test(value),
     { message: "text must not contain control characters" },

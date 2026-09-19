@@ -6,6 +6,7 @@ import {
   patientId,
   pharmacyId,
   prescriptionId,
+  prescriptionInquiryId,
   receptionId,
   tenantId,
   userId,
@@ -2022,6 +2023,586 @@ describePostgres(
           ],
         );
         expect(draftRows.rows[0]?.status).toBe("PHARMACIST_CONFIRMED");
+      });
+    });
+  },
+);
+
+const AMENDMENT_PRESCRIPTION_ID = LIFECYCLE_PRESCRIPTION_ID;
+
+function amendmentCommand(idempotencyKey: string) {
+  return lifecycleCommand(idempotencyKey);
+}
+
+function amendmentInquiryCommand(
+  idempotencyKey: string,
+  overrides?: { directedTo?: string; content?: string },
+) {
+  return {
+    ...amendmentCommand(idempotencyKey),
+    directedTo: overrides?.directedTo ?? "合成病院 処方医",
+    content: overrides?.content ?? "用量が用法と整合しない疑義",
+  };
+}
+
+function amendmentAnswerCommand(
+  inquiryId: string,
+  idempotencyKey: string,
+  result: "UNCHANGED" | "CHANGED" = "CHANGED",
+) {
+  return {
+    ...amendmentCommand(idempotencyKey),
+    inquiryId: prescriptionInquiryId(inquiryId),
+    answer: "用量を訂正",
+    result,
+  };
+}
+
+function amendmentAmendCommand(
+  inquiryId: string,
+  idempotencyKey: string,
+) {
+  const input = lifecycleSaveInput();
+  return {
+    ...amendmentCommand(idempotencyKey),
+    inquiryId: prescriptionInquiryId(inquiryId),
+    content: { ...input.draft, note: "疑義照会により訂正" },
+  };
+}
+
+const amendmentReadInput = () => ({
+  tenantId: LIFECYCLE_SCOPE.tenantId,
+  pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+  actorId: LIFECYCLE_SCOPE.actorId,
+  prescriptionId: prescriptionId(AMENDMENT_PRESCRIPTION_ID),
+  wallClock: LIFECYCLE_SCOPE.wallClock,
+});
+
+describePostgres(
+  "PostgresPrescriptionDraftService amendment (WP-7403)",
+  () => {
+    let inquirySeq = 0;
+
+    async function seedAndFinalize(
+      pool: Pool,
+      deps?: { readonly failOutboxId?: boolean },
+    ): Promise<PostgresPrescriptionDraftService> {
+      await seedReception(pool, {
+        tenantId: LIFECYCLE_SCOPE.tenantId,
+        pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+        patientId: LIFECYCLE_SCOPE.patientId,
+        receptionId: LIFECYCLE_SCOPE.receptionId,
+        patientNumber: "AMEND-DB-001",
+        idempotencyKey: "amendment-db-idempotency-001",
+      });
+      await seedQualification(pool, {
+        tenantId: LIFECYCLE_SCOPE.tenantId,
+        pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+        actorId: LIFECYCLE_SCOPE.actorId,
+        status: "ACTIVE",
+      });
+      const service = new PostgresPrescriptionDraftService(
+        pool,
+        () => prescriptionId(AMENDMENT_PRESCRIPTION_ID),
+        {
+          qualificationRepository:
+            new PostgresActorQualificationRepository(pool),
+          nextOutboxEventId: deps?.failOutboxId === true
+            ? () => {
+                throw new Error("injected outbox id failure");
+              }
+            : () => `outbox-amendment-db-${++inquirySeq}`,
+          nextInquiryId: () =>
+            prescriptionInquiryId(
+              `inquiry-amendment-db-${(++inquirySeq).toString().padStart(3, "0")}`,
+            ),
+        },
+      );
+      const saved = await service.save(lifecycleSaveInput());
+      expect(saved).toMatchObject({ kind: "saved" });
+      const confirmed = await service.confirm(
+        amendmentCommand("amend-confirm-key-0001"),
+      );
+      expect(confirmed).toMatchObject({ kind: "transitioned" });
+      const finalized = await service.finalize(
+        amendmentCommand("amend-finalize-key-001"),
+      );
+      expect(finalized).toMatchObject({ kind: "transitioned" });
+      return service;
+    }
+
+    async function resolvedChangedInquiry(
+      service: PostgresPrescriptionDraftService,
+    ): Promise<string> {
+      const created = await service.createInquiry(
+        amendmentInquiryCommand("inquiry-key-db-00001"),
+      );
+      if (created.kind !== "recorded") throw new Error("inquiry not recorded");
+      const answered = await service.answerInquiry(
+        amendmentAnswerCommand(created.inquiry.inquiryId, "answer-key-db-0001"),
+      );
+      if (answered.kind !== "answered") throw new Error("inquiry not answered");
+      return answered.inquiry.inquiryId;
+    }
+
+    it("amends to version 2 with lineage, audit, and outbox in one transaction", async () => {
+      await withMigratedSchema(async (pool) => {
+        const service = await seedAndFinalize(pool);
+        const inquiryId = await resolvedChangedInquiry(service);
+
+        const amended = await service.amend(
+          amendmentAmendCommand(inquiryId, "amend-key-db-000001"),
+        );
+        expect(amended).toMatchObject({
+          kind: "amended",
+          replayed: false,
+          version: {
+            version: 2,
+            supersedesVersion: 1,
+            inquiryId,
+            amendedBy: "actor-lifecycle-db",
+          },
+        });
+
+        const versionRows = await pool.query<{
+          readonly version: number;
+          readonly supersedes_version: number | null;
+          readonly inquiry_id: string | null;
+          readonly amended_by: string | null;
+          readonly amend_idempotency_key: string | null;
+        }>(
+          `SELECT version, supersedes_version, inquiry_id, amended_by,
+                  amend_idempotency_key
+             FROM prescription_versions
+            WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3
+            ORDER BY version ASC`,
+          [
+            LIFECYCLE_SCOPE.tenantId,
+            LIFECYCLE_SCOPE.pharmacyId,
+            AMENDMENT_PRESCRIPTION_ID,
+          ],
+        );
+        expect(versionRows.rows).toHaveLength(2);
+        expect(versionRows.rows[0]).toMatchObject({
+          version: 1,
+          supersedes_version: null,
+          inquiry_id: null,
+          amended_by: null,
+        });
+        expect(versionRows.rows[1]).toMatchObject({
+          version: 2,
+          supersedes_version: 1,
+          inquiry_id: inquiryId,
+          amended_by: "actor-lifecycle-db",
+          amend_idempotency_key: "amend-key-db-000001",
+        });
+
+        const auditRows = await pool.query<{ readonly audit_event_type: string }>(
+          `SELECT event_body->>'auditEventType' AS audit_event_type
+             FROM audit_events
+            WHERE tenant_id = $1 AND pharmacy_id = $2
+            ORDER BY sequence_number ASC`,
+          [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+        );
+        expect(auditRows.rows.map((row) => row.audit_event_type)).toEqual([
+          "prescription.created",
+          "prescription.confirmed",
+          "prescription.finalized",
+          "inquiry.recorded",
+          "inquiry.answered",
+          "prescription.amended",
+        ]);
+
+        // outbox: intent_dedup_key により finalized/amended が共存する。
+        const outboxRows = await pool.query<{
+          readonly event_type: string;
+          readonly payload: { readonly version?: number };
+          readonly intent_dedup_key: string | null;
+        }>(
+          `SELECT event_type, payload, intent_dedup_key
+             FROM outbox_events
+            WHERE tenant_id = $1 AND pharmacy_id = $2
+            ORDER BY sequence_number ASC`,
+          [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+        );
+        expect(outboxRows.rows.map((row) => row.event_type)).toEqual([
+          "prescription.finalized",
+          "prescription.amended",
+        ]);
+        expect(outboxRows.rows[1]?.payload).toEqual({
+          prescriptionId: AMENDMENT_PRESCRIPTION_ID,
+          version: 2,
+        });
+
+        // 監査 payload へ本文(directedTo/content/answer)を含まない(MOD-008)。
+        const payloadRows = await pool.query<{ readonly body: string }>(
+          `SELECT event_body::text AS body
+             FROM audit_events
+            WHERE tenant_id = $1 AND pharmacy_id = $2`,
+          [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+        );
+        for (const row of payloadRows.rows) {
+          expect(row.body).not.toContain("疑義");
+          expect(row.body).not.toContain("訂正");
+        }
+
+        // MOD-008: 識別子は監査 payload に必須(inquiryId/result/version)。
+        const detailRows = await pool.query<{
+          readonly audit_event_type: string;
+          readonly target_ref: string;
+          readonly business_reason: string | null;
+        }>(
+          `SELECT
+             event_body->>'auditEventType' AS audit_event_type,
+             event_body#>>'{targetRef,id}' AS target_ref,
+             event_body#>>'{businessReason,code}' AS business_reason
+             FROM audit_events
+            WHERE tenant_id = $1 AND pharmacy_id = $2
+            ORDER BY sequence_number ASC`,
+          [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+        );
+        const recorded = detailRows.rows.find(
+          (row) => row.audit_event_type === "inquiry.recorded",
+        );
+        expect(recorded?.target_ref).toBe(
+          `${AMENDMENT_PRESCRIPTION_ID}/${inquiryId}`,
+        );
+        const answered = detailRows.rows.find(
+          (row) => row.audit_event_type === "inquiry.answered",
+        );
+        expect(answered?.target_ref).toBe(
+          `${AMENDMENT_PRESCRIPTION_ID}/${inquiryId}`,
+        );
+        expect(answered?.business_reason).toBe("INQUIRY_RESULT_CHANGED");
+        const amendedAudit = detailRows.rows.find(
+          (row) => row.audit_event_type === "prescription.amended",
+        );
+        expect(amendedAudit?.target_ref).toBe(
+          `${AMENDMENT_PRESCRIPTION_ID}/2/${inquiryId}`,
+        );
+      });
+    });
+
+    it("records the amend actor/time as the new version's confirm/finalize provenance", async () => {
+      await withMigratedSchema(async (pool) => {
+        const service = await seedAndFinalize(pool);
+        // 第 2 薬剤師 actor を登録し、v1 と異なる実行者で amend する。
+        await seedQualification(pool, {
+          tenantId: LIFECYCLE_SCOPE.tenantId,
+          pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+          actorId: "actor-amender-db",
+          status: "ACTIVE",
+        });
+        const inquiryId = await resolvedChangedInquiry(service);
+
+        const amended = await service.amend({
+          ...amendmentAmendCommand(inquiryId, "amend-key-actor-0001"),
+          actorId: userId("actor-amender-db"),
+          wallClock: "2026-08-26T03:00:00.000Z",
+        });
+        expect(amended).toMatchObject({
+          kind: "amended",
+          version: {
+            version: 2,
+            amendedBy: "actor-amender-db",
+            amendedAt: "2026-08-26T03:00:00.000Z",
+            confirmedBy: "actor-amender-db",
+            confirmedAt: "2026-08-26T03:00:00.000Z",
+            finalizedBy: "actor-amender-db",
+            finalizedAt: "2026-08-26T03:00:00.000Z",
+          },
+        });
+
+        // v1 の provenance は元の finalize 実行者のまま不変。
+        const rows = await pool.query<{
+          readonly version: number;
+          readonly confirmed_by: string;
+          readonly finalized_by: string;
+        }>(
+          `SELECT version, confirmed_by, finalized_by
+             FROM prescription_versions
+            WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3
+            ORDER BY version ASC`,
+          [
+            LIFECYCLE_SCOPE.tenantId,
+            LIFECYCLE_SCOPE.pharmacyId,
+            AMENDMENT_PRESCRIPTION_ID,
+          ],
+        );
+        expect(rows.rows[0]).toMatchObject({
+          version: 1,
+          confirmed_by: "actor-lifecycle-db",
+          finalized_by: "actor-lifecycle-db",
+        });
+      });
+    });
+
+    it("replays amend with the same key and rejects a different payload", async () => {
+      await withMigratedSchema(async (pool) => {
+        const service = await seedAndFinalize(pool);
+        const inquiryId = await resolvedChangedInquiry(service);
+
+        const first = await service.amend(
+          amendmentAmendCommand(inquiryId, "amend-key-db-000001"),
+        );
+        const replay = await service.amend(
+          amendmentAmendCommand(inquiryId, "amend-key-db-000001"),
+        );
+        expect(first).toMatchObject({ kind: "amended", replayed: false });
+        expect(replay).toMatchObject({ kind: "amended", replayed: true });
+
+        const different = await service.amend({
+          ...amendmentAmendCommand(inquiryId, "amend-key-db-000001"),
+          content: {
+            ...lifecycleSaveInput().draft,
+            note: "別内容への訂正",
+          },
+        });
+        expect(different).toEqual({ kind: "idempotency_conflict" });
+
+        // F-1: 同一 key + 同一 content でも inquiryId が異なれば conflict。
+        const second = await service.createInquiry(
+          amendmentInquiryCommand("inquiry-key-db-00002"),
+        );
+        if (second.kind !== "recorded") throw new Error("inquiry not recorded");
+        await service.answerInquiry(
+          amendmentAnswerCommand(second.inquiry.inquiryId, "answer-key-db-0002"),
+        );
+        const rebound = await service.amend(
+          amendmentAmendCommand(second.inquiry.inquiryId, "amend-key-db-000001"),
+        );
+        expect(rebound).toEqual({ kind: "idempotency_conflict" });
+
+        const versionRows = await pool.query(
+          `SELECT 1 FROM prescription_versions
+            WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3`,
+          [
+            LIFECYCLE_SCOPE.tenantId,
+            LIFECYCLE_SCOPE.pharmacyId,
+            AMENDMENT_PRESCRIPTION_ID,
+          ],
+        );
+        expect(versionRows.rows).toHaveLength(2);
+      });
+    });
+
+    it("enforces the write-once answer and append-only inquiry at the database boundary", async () => {
+      await withMigratedSchema(async (pool) => {
+        const service = await seedAndFinalize(pool);
+        const inquiryId = await resolvedChangedInquiry(service);
+
+        // write-once: 直接 UPDATE も trigger が拒否。
+        await expect(
+          pool.query(
+            `UPDATE prescription_inquiries SET answer = '別回答'
+              WHERE tenant_id = $1 AND pharmacy_id = $2 AND inquiry_id = $3`,
+            [
+              LIFECYCLE_SCOPE.tenantId,
+              LIFECYCLE_SCOPE.pharmacyId,
+              inquiryId,
+            ],
+          ),
+        ).rejects.toThrow();
+
+        // append-only: DELETE は trigger が拒否。
+        await expect(
+          pool.query(
+            `DELETE FROM prescription_inquiries
+              WHERE tenant_id = $1 AND pharmacy_id = $2 AND inquiry_id = $3`,
+            [
+              LIFECYCLE_SCOPE.tenantId,
+              LIFECYCLE_SCOPE.pharmacyId,
+              inquiryId,
+            ],
+          ),
+        ).rejects.toThrow();
+
+        // TRUNCATE も拒否(append-only 台帳の一括消去は不可)。
+        await expect(
+          pool.query(`TRUNCATE prescription_inquiries`),
+        ).rejects.toThrow();
+      });
+    });
+
+    it("rejects a version row whose lineage violates the amendment CHECK", async () => {
+      await withMigratedSchema(async (pool) => {
+        const service = await seedAndFinalize(pool);
+        const inquiryId = await resolvedChangedInquiry(service);
+        await service.amend(amendmentAmendCommand(inquiryId, "amend-key-ok-01"));
+
+        // version>1 で lineage 欠落 → CHECK 違反。
+        const draftRows = await pool.query<{ readonly content: unknown }>(
+          `SELECT content FROM prescription_versions
+            WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3
+              AND version = 1`,
+          [
+            LIFECYCLE_SCOPE.tenantId,
+            LIFECYCLE_SCOPE.pharmacyId,
+            AMENDMENT_PRESCRIPTION_ID,
+          ],
+        );
+        await expect(
+          pool.query(
+            `INSERT INTO prescription_versions (
+               tenant_id, pharmacy_id, prescription_id, version, content,
+               content_hash, confirmed_by, confirmed_at,
+               finalized_by, finalized_at, created_at
+             ) VALUES (
+               $1, $2, $3, 3, $4, 'c'.repeat(0) || repeat('c', 64),
+               'actor-x', now(), 'actor-x', now(), now()
+             )`,
+            [
+              LIFECYCLE_SCOPE.tenantId,
+              LIFECYCLE_SCOPE.pharmacyId,
+              AMENDMENT_PRESCRIPTION_ID,
+              JSON.stringify(draftRows.rows[0]?.content ?? {}),
+            ],
+          ),
+        ).rejects.toThrow();
+      });
+    });
+
+    it("rolls back the whole transaction when the amendment outbox insert fails", async () => {
+      await withMigratedSchema(async (pool) => {
+        const service = await seedAndFinalize(pool);
+        const inquiryId = await resolvedChangedInquiry(service);
+        const failing = new PostgresPrescriptionDraftService(
+          pool,
+          () => prescriptionId(AMENDMENT_PRESCRIPTION_ID),
+          {
+            qualificationRepository:
+              new PostgresActorQualificationRepository(pool),
+            nextOutboxEventId: () => {
+              throw new Error("injected outbox id failure");
+            },
+            nextInquiryId: () => prescriptionInquiryId("inquiry-unused"),
+          },
+        );
+        await expect(
+          failing.amend(
+            amendmentAmendCommand(inquiryId, "amend-key-fail-0001"),
+          ),
+        ).rejects.toThrow("injected outbox id failure");
+
+        // version 2・amend 監査・outbox 行は一切残らない。
+        const versionRows = await pool.query(
+          `SELECT 1 FROM prescription_versions
+            WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3`,
+          [
+            LIFECYCLE_SCOPE.tenantId,
+            LIFECYCLE_SCOPE.pharmacyId,
+            AMENDMENT_PRESCRIPTION_ID,
+          ],
+        );
+        expect(versionRows.rows).toHaveLength(1);
+        const auditRows = await pool.query<{ readonly audit_event_type: string }>(
+          `SELECT event_body->>'auditEventType' AS audit_event_type
+             FROM audit_events
+            WHERE tenant_id = $1 AND pharmacy_id = $2
+            ORDER BY sequence_number ASC`,
+          [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+        );
+        expect(auditRows.rows.map((row) => row.audit_event_type)).toEqual([
+          "prescription.created",
+          "prescription.confirmed",
+          "prescription.finalized",
+          "inquiry.recorded",
+          "inquiry.answered",
+        ]);
+        const outboxRows = await pool.query(
+          `SELECT 1 FROM outbox_events
+            WHERE tenant_id = $1 AND pharmacy_id = $2`,
+          [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+        );
+        expect(outboxRows.rows).toHaveLength(1);
+      });
+    });
+
+    it("rejects amend for unresolved inquiries and cross-scope lookups", async () => {
+      await withMigratedSchema(async (pool) => {
+        const service = await seedAndFinalize(pool);
+
+        // inquiry 不存在 → inquiry_unresolved。
+        await expect(
+          service.amend(
+            amendmentAmendCommand("inquiry-missing", "amend-key-db-0001"),
+          ),
+        ).resolves.toEqual({ kind: "inquiry_unresolved" });
+
+        // OPEN inquiry → inquiry_unresolved。
+        const created = await service.createInquiry(
+          amendmentInquiryCommand("inquiry-key-db-00001"),
+        );
+        if (created.kind !== "recorded") throw new Error("inquiry not recorded");
+        await expect(
+          service.amend(
+            amendmentAmendCommand(created.inquiry.inquiryId, "amend-key-db-0002"),
+          ),
+        ).resolves.toEqual({ kind: "inquiry_unresolved" });
+
+        // UNCHANGED → inquiry_unresolved。
+        await service.answerInquiry(
+          amendmentAnswerCommand(
+            created.inquiry.inquiryId,
+            "answer-key-db-0001",
+            "UNCHANGED",
+          ),
+        );
+        await expect(
+          service.amend(
+            amendmentAmendCommand(created.inquiry.inquiryId, "amend-key-db-0003"),
+          ),
+        ).resolves.toEqual({ kind: "inquiry_unresolved" });
+
+        // cross-scope: 他 tenant の read/command は not_found(F-12)。
+        const crossScope = {
+          ...amendmentReadInput(),
+          tenantId: tenantId("tenant-other"),
+        };
+        await expect(service.listVersions(crossScope)).resolves.toEqual({
+          kind: "not_found",
+        });
+        await expect(
+          service.getVersion({ ...crossScope, version: 1 }),
+        ).resolves.toEqual({ kind: "not_found" });
+        await expect(service.listInquiries(crossScope)).resolves.toEqual({
+          kind: "not_found",
+        });
+        await expect(
+          service.createInquiry({
+            ...amendmentInquiryCommand("inquiry-key-cross-1"),
+            tenantId: tenantId("tenant-other"),
+          }),
+        ).resolves.toEqual({ kind: "not_found" });
+      });
+    });
+
+    it("lists versions and inquiries through the scoped reads", async () => {
+      await withMigratedSchema(async (pool) => {
+        const service = await seedAndFinalize(pool);
+        const inquiryId = await resolvedChangedInquiry(service);
+        await service.amend(amendmentAmendCommand(inquiryId, "amend-key-db-0001"));
+
+        const versions = await service.listVersions(amendmentReadInput());
+        expect(versions).toMatchObject({ kind: "listed" });
+        if (versions.kind === "listed") {
+          expect(versions.versions.map((entry) => entry.version)).toEqual([1, 2]);
+        }
+        const single = await service.getVersion({
+          ...amendmentReadInput(),
+          version: 2,
+        });
+        expect(single).toMatchObject({
+          kind: "found",
+          version: { supersedesVersion: 1, inquiryId },
+        });
+
+        const inquiries = await service.listInquiries(amendmentReadInput());
+        expect(inquiries).toMatchObject({ kind: "listed" });
+        if (inquiries.kind === "listed") {
+          expect(inquiries.inquiries).toHaveLength(1);
+          expect(inquiries.inquiries[0]?.status).toBe("RESOLVED");
+        }
       });
     });
   },

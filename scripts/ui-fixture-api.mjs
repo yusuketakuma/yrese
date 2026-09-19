@@ -97,11 +97,11 @@ function currentOutboxSummary() {
 const migrationState = {
   available: true,
   result: "up_to_date",
-  appliedCount: 21,
-  availableCount: 21,
+  appliedCount: 22,
+  availableCount: 22,
   pendingVersions: [],
-  latestAppliedVersion: "000021",
-  latestAppliedName: "prescription_lifecycle_hardening",
+  latestAppliedVersion: "000022",
+  latestAppliedName: "prescription_amendment",
 };
 
 function countByStatus(entries, pick, order) {

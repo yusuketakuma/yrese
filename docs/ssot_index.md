@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.73
+version: 0.4.74
 created_at: 2026-07-09
 updated_at: 2026-09-19
 approved_at: 2026-09-08
@@ -159,6 +159,7 @@ related_prs:
   - PR #6
 evidence_ids: []
 change_log:
+  - "0.4.74 2026-09-19 WP-7403 bounded amendments: MOD-006 0.2.0(RX-0007〜0009 登録)、MOD-008 0.2.9(`prescription.amended`/`prescription.amend.denied`/`inquiry.answered` 登録、`inquiry.recorded` payload 規律明記)、MOD-009 0.2.4(§7 `prescription.amended` intent profile)、API-012 0.1.2(Event Catalog 第3 event `prescription.amended`)、MOD-007 0.1.3(疑義照会 scope open question 解消: inquiry=prescription:write・amend=prescription:confirm+免許)。packet 決定は direct user instruction により承認済み。総文書数 190 不変、status 集計不変(APPROVED 163 / PROPOSED 4 / SUPERSEDED 23)。実装完了・外部配送・production action を含まない。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.73 2026-09-19 WP-7402 R3 review adjudication: MOD-009 0.2.3(§4.1/§6.1 idempotencyKey を実装規則 `<eventId>:1` へ、§4.4/§6.2 「同一eventId」を audit_event_id FK 構造として明確化、§6.1 version の置き場を targetRef→outbox payload へ修正)。文言明確化のみ、規則変更なし。総文書数 190 不変、status 集計不変"
   - "0.4.72 2026-09-19 WP-7402 bounded amendments: MOD-008 0.2.8(監査種別 `prescription.confirmed`/`prescription.finalized`/`prescription.confirm.denied`/`prescription.finalize.denied` 登録)、API-012 0.1.1(Event Catalog へ `prescription.finalized` 第 2 event 登録)、MOD-009 0.2.2(§6 `prescription.finalized` Outbox intent profile 追加)。packet 決定は direct user instruction(残タスク一括許可)により承認済み。総文書数 190 不変、status 集計不変(APPROVED 163 / PROPOSED 4 / SUPERSEDED 23)。実装完了・外部配送・production action を含まない。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.71 2026-09-19 WP-7401 SSOT 起案・確定: SEC-010(pharmacist_qualification_boundary — confirm scope 付与条件・資格 evidence の保持/検証・非資格拒否 403+監査 deny、HPKI/外部照会は RB-003 で境界外)を新規登録。self-review 反映後、direct human approval(残タスク一括許可)により PROPOSED→APPROVED。総文書数 189→190、status 集計は APPROVED 162→163 / PROPOSED 4 不変 / SUPERSEDED 23 不変(合計190)。承認範囲は SSOT 改版のみで、実装完了・migration 適用・外部接続・production action・登録済み blocker の解除を含まない。本索引自体は派生記録であり APPROVED を維持する"

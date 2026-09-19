@@ -371,6 +371,24 @@ describe("prescription draft routes", () => {
       finalize: async () => {
         throw new Error(rawSentinel);
       },
+      createInquiry: async () => {
+        throw new Error(rawSentinel);
+      },
+      answerInquiry: async () => {
+        throw new Error(rawSentinel);
+      },
+      amend: async () => {
+        throw new Error(rawSentinel);
+      },
+      listVersions: async () => {
+        throw new Error(rawSentinel);
+      },
+      getVersion: async () => {
+        throw new Error(rawSentinel);
+      },
+      listInquiries: async () => {
+        throw new Error(rawSentinel);
+      },
     });
 
     const read = await instance.inject({

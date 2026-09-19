@@ -8,11 +8,11 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.2.8
+version: 0.2.9
 created_at: 2026-07-09
 updated_at: 2026-09-19
 approved_at: 2026-09-19
-approved_by: "direct human authority 2026-09-19 (残タスク一括許可; WP-7402 packet 承認); prior: direct human authority 2026-09-17 (SSOT batch 一括 APPROVE)"
+approved_by: "direct human authority 2026-09-19 (WP-7403 packet 承認・進行指示); prior: direct human authority 2026-09-19 (残タスク一括許可; WP-7402 packet 承認); prior: direct human authority 2026-09-17 (SSOT batch 一括 APPROVE)"
 effective_from: 2026-09-19
 effective_to: null
 source_refs:
@@ -41,6 +41,7 @@ evidence_ids: []
 open_questions:
   - 保存期間(REG-003 の法定根拠確定待ち — SEC-007 と同期)
 change_log:
+  - "0.2.9 (2026-09-19): WP-7403 packet(決定済み、direct user instruction)に基づき `prescription.amended` / `prescription.amend.denied` / `inquiry.answered` を登録し、既存 `inquiry.recorded` の payload 規律を明記。deny 系は SEC-010 §4 の outcome=denied 規律。実装・production action は含まない"
   - "0.2.8 (2026-09-19): WP-7402 packet(決定済み、direct user instruction 残タスク一括許可)に基づき `prescription.confirmed` / `prescription.finalized` / `prescription.confirm.denied` / `prescription.finalize.denied` を登録。deny 系は SEC-010 §4 の outcome=denied 規律。実装・production action は含まない"
   - "0.2.7 (2026-09-17): WP-7201 / API-006 0.3.0 起案に伴い受付遷移の監査種別 `reception.started` / `reception.completed` を追加提案。targetRef は reception のみ、businessReason 必須集合への追加なし(取消は既存 `reception.cancelled` が担う)。review と human approval まで PROPOSED、実装根拠にしない"
   - "0.2.7 (2026-09-17) finalization: direct human approval(SSOT batch 一括 APPROVE)により PROPOSED→APPROVED。承認範囲は監査種別台帳の登録のみで、実装完了・production action を含まない"
@@ -88,7 +89,10 @@ audit repositoryへ配線済みである。レジストリ全種別の業務配�
 | prescription.finalized | 処方確定(PHARMACIST_CONFIRMED→PRESCRIPTION_FINALIZED) | ○ | `prescription_versions` immutable snapshot(version=1)と同一tx。payloadはprescription ID+version+actorId。WP-7402 |
 | prescription.confirm.denied / prescription.finalize.denied | 確認・確定操作の拒否(非資格・scope不足・ガード不一致) | ○ | outcome=denied(SEC-010 §4)。理由内訳・免許情報・処方本文はpayloadへ入れない。targetRefはprescription ID+actorId。WP-7402 |
 | dispensing.confirmed | 薬剤師確認 | ○ | actor は薬剤師(人間責任の明示) |
-| inquiry.recorded | 疑義照会記録 | ○ | |
+| inquiry.recorded | 疑義照会記録 | ○ | 起票時に記録。payloadはinquiry ID+prescription ID+actorIdのみ。照会本文・回答本文はpayloadへ入れない。WP-7403 |
+| inquiry.answered | 疑義照会の回答記録(result=UNCHANGED/CHANGED) | ○ | payloadはinquiry ID+result+actorIdのみ。回答本文はpayloadへ入れない。WP-7403 |
+| prescription.amended | 処方訂正版作成(FINALIZED維持・version+1・supersedes参照) | ○ | `prescription_versions` immutable snapshot(version>=2)と同一tx。payloadはprescription ID+version+actorId+inquiryId。WP-7403 |
+| prescription.amend.denied | 訂正操作の拒否(非資格・scope不足・ガード不一致) | ○ | outcome=denied(SEC-010 §4)。理由内訳・免許情報・処方本文はpayloadへ入れない。targetRefはprescription ID+actorId。WP-7403 |
 | calculation.finalized / calculation.recalculated | 算定確定・再計算 | ○ | trace 参照(calculation_trace 保存とセット) |
 | ~~checkout.finalized / checkout.refunded~~ | (SUPERSEDED) | — | §1.1 の会計 taxonomy に置換(0.2.0) |
 | report.printed / report.reprinted | 帳票出力・再出力 | ○ | 出力時点の版・ハッシュは帳票側証跡(§20)と連動 |

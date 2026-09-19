@@ -12,11 +12,11 @@ reviewers:
   - security_critic
   - privacy_compliance_reviewer
   - human_review_required
-version: 0.1.1
+version: 0.1.2
 created_at: 2026-08-23
 updated_at: 2026-09-19
 approved_at: 2026-09-19
-approved_by: "direct human authority 2026-09-19 (残タスク一括許可; WP-7402 packet 承認); prior: direct human authority 2026-08-23 (「全てを許可する。実行」); independent review: api-contract lane + security-privacy lane REQUEST_CHANGES -> all findings closed (28dae05, f07e76e); closure checker PASS"
+approved_by: "direct human authority 2026-09-19 (WP-7403 packet 承認・進行指示); prior: direct human authority 2026-09-19 (残タスク一括許可; WP-7402 packet 承認); prior: direct human authority 2026-08-23 (「全てを許可する。実行」)"
 effective_from: 2026-09-19
 effective_to: null
 source_refs: [構築プロンプト v0.2.0 §11(Integration Hub / Partner API / JAHIS)・§14(API-first)・§18(データ主権), PRD-001 M12, API-002, API-003, API-005]
@@ -27,6 +27,7 @@ related_tests: []
 related_prs: []
 evidence_ids: []
 change_log:
+  - "0.1.2 2026-09-19 WP-7403 bounded amendment: Event Catalog へ `prescription.amended` を第 3 event として登録(MOD-009 §7 intent profile と対)。packet 決定は direct user instruction により承認済み。外部配送 worker の有効化・外部接続は含まない"
   - "0.1.1 2026-09-19 WP-7402 bounded amendment: Event Catalog へ `prescription.finalized` を第 2 event として登録(MOD-009 §5 intent profile と対)。packet 決定は direct user instruction(残タスク一括許可)により承認済み。外部配送 worker の有効化・外部接続は含まない"
   - "2026-08-23 WP-6001/WP-6101/WP-6202/WP-6203/WP-6302 finalization: 独立 review 2 lane の finding 閉鎖と closure checker PASS、direct human approval により PROPOSED→APPROVED。本文 semantics は review 反映後から不変。実装着手は各 WP の gate に従い、外部接続・conformance 主張は含まない"
   - "0.1.0 2026-08-23 WP-6001 初版起案(PROPOSED)。direct user instruction 2026-08-23(情報連携主軸)と Plans.md §16 Track A に基づく。実装根拠にしない"
@@ -44,7 +45,8 @@ blockers:
 | 公開 event | 発生源 | payload(最小) | PHI | 導入 WP |
 |---|---|---|---|---|
 | `reception.created` | WP-4050 command | eventId(=outbox id), occurredAt, auditEventId, aggregate{type:reception,id} — 実装: `packages/contracts/src/partner-event.ts` | none | WP-6003/6004(実装済) |
-| `prescription.finalized` | C-061/063、DOM-004 §1 | eventId(=outbox id), occurredAt, auditEventId, aggregate{type:prescription,id}, version | none | WP-7402(本 WP で実装)。patient_ref・処方本文は載せない |
+| `prescription.finalized` | C-061/063、DOM-004 §1 | eventId(=outbox id), occurredAt, auditEventId, aggregate{type:prescription,id}, version | none | WP-7402(実装済)。patient_ref・処方本文は載せない |
+| `prescription.amended` | C-062、DOM-002 §4(訂正は新版のみ) | eventId(=outbox id), occurredAt, auditEventId, aggregate{type:prescription,id}, version(訂正後の新版) | none | WP-7403(本 WP で実装)。inquiryId・patient_ref・処方本文は載せない |
 | `prescription.draft.created` | C-059 | prescription_id, reception_id, version(経口・外用の bounded scope のみ) | none | Milestone 3 |
 | `dispense.confirmed` | C-061/063 | dispense_id, prescription_id, version, confirmed_at | none | Milestone 3 |
 | `calculation.trace.recorded` | WP-6501 | trace_id, dispense_id, rule_version, master_version | none | Track F |

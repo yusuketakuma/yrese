@@ -58,6 +58,19 @@ import {
   prescriptionLifecycleViewSchema,
 } from "./prescription-lifecycle.js";
 import {
+  prescriptionAmendRequestSchema,
+  prescriptionAmendmentHeadersSchema,
+  prescriptionInquiryAnswerParamsSchema,
+  prescriptionInquiryAnswerRequestSchema,
+  prescriptionInquiryCreateRequestSchema,
+  prescriptionInquiryListResponseSchema,
+  prescriptionInquiryParamsSchema,
+  prescriptionInquiryViewSchema,
+  prescriptionVersionListResponseSchema,
+  prescriptionVersionParamsSchema,
+  prescriptionVersionViewSchema,
+} from "./prescription-amendment.js";
+import {
   receptionCreateRequestSchema,
   receptionQueueQuerySchema,
   receptionQueueEntrySchema,
@@ -369,6 +382,73 @@ const prescriptionDraftSaveResponseOpenApiSchema =
     id: "PrescriptionDraftSaveResponse",
     description:
       "Prescription draft save result, including created/updated/unchanged disposition. Contains clinical PHI.",
+  });
+
+const prescriptionInquiryParamsOpenApiSchema =
+  prescriptionInquiryParamsSchema.meta({
+    id: "PrescriptionInquiryParams",
+    description:
+      "Target prescription path parameter for amendment/inquiry routes.",
+  });
+const prescriptionInquiryAnswerParamsOpenApiSchema =
+  prescriptionInquiryAnswerParamsSchema.meta({
+    id: "PrescriptionInquiryAnswerParams",
+    description:
+      "Prescription and inquiry path parameters for the answer command.",
+  });
+const prescriptionVersionParamsOpenApiSchema =
+  prescriptionVersionParamsSchema.meta({
+    id: "PrescriptionVersionParams",
+    description:
+      "Prescription and immutable version path parameters for version reads.",
+  });
+const prescriptionAmendmentHeadersOpenApiSchema =
+  prescriptionAmendmentHeadersSchema.meta({
+    id: "PrescriptionAmendmentHeaders",
+    description:
+      "Required Idempotency-Key header for amendment/inquiry command replay handling.",
+  });
+const prescriptionInquiryCreateRequestOpenApiSchema =
+  prescriptionInquiryCreateRequestSchema.meta({
+    id: "PrescriptionInquiryCreateRequest",
+    description:
+      "Inquiry record creation (directedTo + content). Contains clinical free text and must not be logged in plaintext.",
+  });
+const prescriptionInquiryAnswerRequestOpenApiSchema =
+  prescriptionInquiryAnswerRequestSchema.meta({
+    id: "PrescriptionInquiryAnswerRequest",
+    description:
+      "Write-once inquiry answer (answer + result UNCHANGED/CHANGED). Contains clinical free text.",
+  });
+const prescriptionAmendRequestOpenApiSchema =
+  prescriptionAmendRequestSchema.meta({
+    id: "PrescriptionAmendRequest",
+    description:
+      "Amendment command: the resolving CHANGED inquiryId plus the new version content (same schema as draft save). Contains clinical PHI.",
+  });
+const prescriptionInquiryViewOpenApiSchema =
+  prescriptionInquiryViewSchema.meta({
+    id: "PrescriptionInquiryView",
+    description:
+      "Recorded inquiry with derived OPEN/RESOLVED status. Contains clinical free text (directedTo/content/answer).",
+  });
+const prescriptionInquiryListResponseOpenApiSchema =
+  prescriptionInquiryListResponseSchema.meta({
+    id: "PrescriptionInquiryListResponse",
+    description:
+      "Inquiry list for one prescription in recorded order. Contains clinical free text.",
+  });
+const prescriptionVersionViewOpenApiSchema =
+  prescriptionVersionViewSchema.meta({
+    id: "PrescriptionVersionView",
+    description:
+      "Immutable prescription version snapshot with amendment lineage (supersedesVersion/inquiryId on version >= 2). Contains clinical PHI.",
+  });
+const prescriptionVersionListResponseOpenApiSchema =
+  prescriptionVersionListResponseSchema.meta({
+    id: "PrescriptionVersionListResponse",
+    description:
+      "Immutable version list for one prescription in version order. Contains clinical PHI.",
   });
 
 const masterQueryOpenApiSchema = masterQuerySchema.meta({
@@ -1161,6 +1241,253 @@ const openApiDefinition = {
           ),
           "409": domainErrorResponse(
             "Transition guard failed (RX-0001/RX-0002/RX-0003/RX-0004)",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+    },
+    "/prescriptions/{prescriptionId}/inquiries": {
+      post: {
+        operationId: "createPrescriptionInquiry",
+        tags: ["prescriptions"],
+        summary: "Record a prescription inquiry (疑点・照会) for a prescription",
+        description:
+          "WP-7403 (DOM-002 §5, MOD-006). Requires prescription:write scope. Records the inquiry target and content; the answer is written once via the answer command. Idempotency-Key is required; replaying the same key with the same payload returns the stored view and a different payload fails with RX-0010. Every status uses Cache-Control: no-store.",
+        "x-yrese-ssot": "DOM-002",
+        "x-yrese-required-scopes": ["prescription:write"],
+        requestParams: {
+          path: prescriptionInquiryParamsOpenApiSchema,
+          header: prescriptionAmendmentHeadersOpenApiSchema,
+        },
+        requestBody: {
+          required: true,
+          content: {
+            [jsonContentType]: {
+              schema: prescriptionInquiryCreateRequestOpenApiSchema,
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Inquiry recorded (or replayed idempotent view)",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: prescriptionInquiryViewOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse(
+            "Invalid inquiry command request (RX-0008)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: true }),
+          "404": domainErrorResponse(
+            "Prescription not found in scope (RX-0006)",
+          ),
+          "409": domainErrorResponse(
+            "Idempotency-Key replay with a different payload (RX-0010)",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+      get: {
+        operationId: "listPrescriptionInquiries",
+        tags: ["prescriptions"],
+        summary: "List recorded inquiries for a prescription",
+        description:
+          "WP-7403 (DOM-002 §5). Requires prescription:read, reception:read, and patient:read. Returns inquiry views in recorded order (OPEN first by entry time, not grouped). Contains clinical free text. Every status uses Cache-Control: no-store.",
+        "x-yrese-ssot": "DOM-002",
+        "x-yrese-required-scopes": [
+          "prescription:read",
+          "reception:read",
+          "patient:read",
+        ],
+        requestParams: {
+          path: prescriptionInquiryParamsOpenApiSchema,
+        },
+        responses: {
+          "200": {
+            description: "Recorded inquiries in recorded order",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: prescriptionInquiryListResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse(
+            "Invalid prescription read request (RX-0005)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: true }),
+          "404": domainErrorResponse(
+            "Prescription not found in scope (RX-0006)",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+    },
+    "/prescriptions/{prescriptionId}/inquiries/{inquiryId}/answer": {
+      post: {
+        operationId: "answerPrescriptionInquiry",
+        tags: ["prescriptions"],
+        summary: "Record the write-once answer and result for an inquiry",
+        description:
+          "WP-7403 (DOM-002 §5, DOM-004 §1). Requires prescription:write scope. The answer is write-once: re-answering with a different key or payload is rejected (RX-0002/RX-0010), and a corrected record requires a new inquiry. result CHANGED is the precondition for the amend command. answeredBy/answeredAt come from trusted context and the server clock. Every status uses Cache-Control: no-store.",
+        "x-yrese-ssot": "DOM-002",
+        "x-yrese-required-scopes": ["prescription:write"],
+        requestParams: {
+          path: prescriptionInquiryAnswerParamsOpenApiSchema,
+          header: prescriptionAmendmentHeadersOpenApiSchema,
+        },
+        requestBody: {
+          required: true,
+          content: {
+            [jsonContentType]: {
+              schema: prescriptionInquiryAnswerRequestOpenApiSchema,
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Inquiry answer recorded (or replayed idempotent view)",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: prescriptionInquiryViewOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse(
+            "Invalid inquiry command request (RX-0008)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: true }),
+          "404": domainErrorResponse(
+            "Prescription or inquiry not found in scope (RX-0006/RX-0009)",
+          ),
+          "409": domainErrorResponse(
+            "Inquiry already answered (RX-0002) or idempotent payload mismatch (RX-0010)",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+    },
+    "/prescriptions/{prescriptionId}/amend": {
+      post: {
+        operationId: "amendPrescription",
+        tags: ["prescriptions"],
+        summary: "Create an amended version of a finalized prescription",
+        description:
+          "WP-7403 (DOM-002 §4/§5, DOM-004 §1, SEC-010). Requires prescription:confirm scope and an active pharmacist qualification evidence record. Only PRESCRIPTION_FINALIZED prescriptions amend; the new version requires a RESOLVED inquiry with result CHANGED on the same prescription (RX-0007 otherwise). The status stays PRESCRIPTION_FINALIZED — the version number carries the amendment. The version insert, audit event, and outbox intent commit in one transaction. Idempotency-Key is required. Every status uses Cache-Control: no-store.",
+        "x-yrese-ssot": "DOM-002",
+        "x-yrese-required-scopes": ["prescription:confirm"],
+        requestParams: {
+          path: prescriptionInquiryParamsOpenApiSchema,
+          header: prescriptionAmendmentHeadersOpenApiSchema,
+        },
+        requestBody: {
+          required: true,
+          content: {
+            [jsonContentType]: {
+              schema: prescriptionAmendRequestOpenApiSchema,
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Amended version created (or replayed idempotent view)",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: prescriptionVersionViewOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse(
+            "Invalid amendment command request (RX-0005)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: true }),
+          "404": domainErrorResponse(
+            "Prescription not found in scope (RX-0006)",
+          ),
+          "409": domainErrorResponse(
+            "Guard failed (RX-0001/RX-0002/RX-0003/RX-0010)",
+          ),
+          "422": domainErrorResponse(
+            "Amendment precondition inquiry missing, open, or not CHANGED (RX-0007)",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+    },
+    "/prescriptions/{prescriptionId}/versions": {
+      get: {
+        operationId: "listPrescriptionVersions",
+        tags: ["prescriptions"],
+        summary: "List immutable prescription versions",
+        description:
+          "WP-7403 (DOM-002 §4). Requires prescription:read, reception:read, and patient:read. Returns the append-only version snapshots in version order; the highest version is the authoritative current content of a finalized prescription. Contains clinical PHI. Every status uses Cache-Control: no-store.",
+        "x-yrese-ssot": "DOM-002",
+        "x-yrese-required-scopes": [
+          "prescription:read",
+          "reception:read",
+          "patient:read",
+        ],
+        requestParams: {
+          path: prescriptionInquiryParamsOpenApiSchema,
+        },
+        responses: {
+          "200": {
+            description: "Immutable versions in version order",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: prescriptionVersionListResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse(
+            "Invalid prescription read request (RX-0005)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: true }),
+          "404": domainErrorResponse(
+            "Prescription not found in scope (RX-0006)",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+    },
+    "/prescriptions/{prescriptionId}/versions/{version}": {
+      get: {
+        operationId: "getPrescriptionVersion",
+        tags: ["prescriptions"],
+        summary: "Read one immutable prescription version",
+        description:
+          "WP-7403 (DOM-002 §4). Requires prescription:read, reception:read, and patient:read. Superseded versions remain readable; an absent version is reported as not found. Contains clinical PHI. Every status uses Cache-Control: no-store.",
+        "x-yrese-ssot": "DOM-002",
+        "x-yrese-required-scopes": [
+          "prescription:read",
+          "reception:read",
+          "patient:read",
+        ],
+        requestParams: {
+          path: prescriptionVersionParamsOpenApiSchema,
+        },
+        responses: {
+          "200": {
+            description: "Immutable version snapshot",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: prescriptionVersionViewOpenApiSchema,
+              },
+            },
+          },
+          "400": domainErrorResponse(
+            "Invalid prescription read request (RX-0005)",
+          ),
+          "403": forbiddenErrorResponse({ noStore: true }),
+          "404": domainErrorResponse(
+            "Prescription or version not found in scope (RX-0006)",
           ),
           "500": internalErrorResponse({ noStore: true }),
         },

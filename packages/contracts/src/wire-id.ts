@@ -2,6 +2,7 @@ import {
   patientId,
   pharmacyId,
   prescriptionId,
+  prescriptionInquiryId,
   receptionId,
   tenantId,
   userId,
@@ -42,4 +43,8 @@ export const receptionIdWireSchema = wireIdSchema("receptionId", receptionId);
 export const prescriptionIdWireSchema = wireIdSchema(
   "prescriptionId",
   prescriptionId,
+);
+export const prescriptionInquiryIdWireSchema = wireIdSchema(
+  "prescriptionInquiryId",
+  prescriptionInquiryId,
 );

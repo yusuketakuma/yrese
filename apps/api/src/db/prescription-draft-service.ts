@@ -6,15 +6,21 @@ import {
   deriveRpGroupsFromLegacyRows,
   prescriptionDraftResponseSchema,
   prescriptionDraftSaveResponseSchema,
+  prescriptionInquiryViewSchema,
   prescriptionLifecycleViewSchema,
+  prescriptionVersionViewSchema,
   type PrescriptionDraftContent,
   type PrescriptionDraftResponse,
+  type PrescriptionInquiryView,
   type PrescriptionLifecycleView,
+  type PrescriptionVersionView,
 } from "@yrese/contracts";
 import {
   prescriptionId,
+  prescriptionInquiryId,
   receptionId,
   type PrescriptionId,
+  type PrescriptionInquiryId,
 } from "@yrese/shared-kernel";
 
 import { appendAuditEventWithinTransaction } from "./audit-repository.js";
@@ -34,6 +40,17 @@ import {
   type PrescriptionDraftService,
   type PrescriptionLifecycleCommandInput,
   type PrescriptionLifecycleCommandResult,
+  type PrescriptionAmendInput,
+  type PrescriptionAmendResult,
+  type PrescriptionInquiryAnswerInput,
+  type PrescriptionInquiryAnswerResult,
+  type PrescriptionInquiryCreateInput,
+  type PrescriptionInquiryCreateResult,
+  type PrescriptionInquiryListResult,
+  type PrescriptionScopedReadInput,
+  type PrescriptionVersionGetResult,
+  type PrescriptionVersionListResult,
+  type PrescriptionVersionReadInput,
 } from "../prescription-draft-service.js";
 
 interface MetadataRow {
@@ -367,10 +384,76 @@ export async function replaceChildren(
 }
 
 export interface PostgresPrescriptionLifecycleDeps {
-  /** 未注入なら confirm/finalize は常に unqualified(fail-closed)。 */
+  /** 未注入なら confirm/finalize/amend は常に unqualified(fail-closed)。 */
   readonly qualificationRepository?: PostgresActorQualificationRepository;
   readonly nextOutboxEventId?: () => string;
+  /** WP-7403: inquiry ID 生成器。未注入なら UUID 生成。 */
+  readonly nextInquiryId?: () => PrescriptionInquiryId;
 }
+
+interface PrescriptionInquiryRow {
+  readonly inquiry_id: string;
+  readonly prescription_id: string;
+  readonly directed_to: string;
+  readonly content: string;
+  readonly answer: string | null;
+  readonly answered_by: string | null;
+  readonly answered_at: Date | string | null;
+  readonly result: string | null;
+  readonly created_by: string;
+  readonly created_at: Date | string;
+  readonly idempotency_key: string;
+  readonly answer_idempotency_key: string | null;
+  readonly recorded_seq: string | number;
+}
+
+interface PrescriptionVersionRow {
+  readonly version: number;
+  readonly content: unknown;
+  readonly content_hash: string;
+  readonly supersedes_version: number | null;
+  readonly inquiry_id: string | null;
+  readonly amended_by: string | null;
+  readonly amended_at: Date | string | null;
+  readonly amend_idempotency_key: string | null;
+  readonly confirmed_by: string;
+  readonly confirmed_at: Date | string;
+  readonly finalized_by: string;
+  readonly finalized_at: Date | string;
+  readonly created_at: Date | string;
+}
+
+const INQUIRY_SELECT_COLUMNS = `
+  inquiry_id,
+  prescription_id,
+  directed_to,
+  content,
+  answer,
+  answered_by,
+  answered_at,
+  result,
+  created_by,
+  created_at,
+  idempotency_key,
+  answer_idempotency_key,
+  recorded_seq
+`;
+
+const VERSION_SELECT_COLUMNS = `
+  version,
+  content,
+  content_hash,
+  supersedes_version,
+  inquiry_id,
+  amended_by,
+  amended_at,
+  amend_idempotency_key,
+  confirmed_by,
+  confirmed_at,
+  finalized_by,
+  finalized_at,
+  created_at
+`;
 
 export class PostgresPrescriptionDraftService
   implements PrescriptionDraftService
@@ -471,7 +554,10 @@ export class PostgresPrescriptionDraftService
   private async checkQualificationOrDeny(
     client: PoolClient,
     input: PrescriptionLifecycleCommandInput,
-    denyEventType: "prescription.confirm.denied" | "prescription.finalize.denied",
+    denyEventType:
+      | "prescription.confirm.denied"
+      | "prescription.finalize.denied"
+      | "prescription.amend.denied",
   ): Promise<boolean> {
     const qualified =
       (await this.lifecycleDeps.qualificationRepository?.hasActiveQualificationWithinTransaction(
@@ -799,6 +885,564 @@ export class PostgresPrescriptionDraftService
       const view = this.lifecycleViewFromRow(updated, 1);
       await client.query("COMMIT");
       return { kind: "transitioned", view, replayed: false };
+    });
+  }
+
+  private inquiryViewFromRow(row: PrescriptionInquiryRow): PrescriptionInquiryView {
+    return prescriptionInquiryViewSchema.parse({
+      inquiryId: row.inquiry_id,
+      prescriptionId: row.prescription_id,
+      directedTo: row.directed_to,
+      content: row.content,
+      answer: row.answer,
+      answeredBy: row.answered_by,
+      answeredAt:
+        row.answered_at === null
+          ? null
+          : snapshotDatabaseInstant(
+              row.answered_at,
+              prescriptionDraftDatabaseInvariantErrorMessage,
+            ),
+      result: row.result,
+      createdBy: row.created_by,
+      createdAt: snapshotDatabaseInstant(
+        row.created_at,
+        prescriptionDraftDatabaseInvariantErrorMessage,
+      ),
+      status: row.answer === null ? "OPEN" : "RESOLVED",
+    });
+  }
+
+  private versionViewFromRow(
+    row: PrescriptionVersionRow,
+    prescriptionIdValue: string,
+  ): PrescriptionVersionView {
+    return prescriptionVersionViewSchema.parse({
+      prescriptionId: prescriptionIdValue,
+      version: row.version,
+      content: row.content,
+      contentHash: row.content_hash,
+      supersedesVersion: row.supersedes_version,
+      inquiryId: row.inquiry_id,
+      amendedBy: row.amended_by,
+      amendedAt:
+        row.amended_at === null
+          ? null
+          : snapshotDatabaseInstant(
+              row.amended_at,
+              prescriptionDraftDatabaseInvariantErrorMessage,
+            ),
+      confirmedBy: row.confirmed_by,
+      confirmedAt: snapshotDatabaseInstant(
+        row.confirmed_at,
+        prescriptionDraftDatabaseInvariantErrorMessage,
+      ),
+      finalizedBy: row.finalized_by,
+      finalizedAt: snapshotDatabaseInstant(
+        row.finalized_at,
+        prescriptionDraftDatabaseInvariantErrorMessage,
+      ),
+      createdAt: snapshotDatabaseInstant(
+        row.created_at,
+        prescriptionDraftDatabaseInvariantErrorMessage,
+      ),
+    });
+  }
+
+  private async selectInquiryRow(
+    client: PoolClient,
+    input: PrescriptionLifecycleCommandInput,
+    inquiryIdValue: PrescriptionInquiryId,
+    forUpdate: boolean,
+  ): Promise<PrescriptionInquiryRow | undefined> {
+    const result = await client.query<PrescriptionInquiryRow>(
+      `SELECT ${INQUIRY_SELECT_COLUMNS}
+         FROM prescription_inquiries
+        WHERE tenant_id = $1
+          AND pharmacy_id = $2
+          AND prescription_id = $3
+          AND inquiry_id = $4
+        ${forUpdate ? "FOR UPDATE" : ""}`,
+      [
+        input.tenantId,
+        input.pharmacyId,
+        input.prescriptionId,
+        inquiryIdValue,
+      ],
+    );
+    if (result.rows.length > 1) {
+      throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+    }
+    return result.rows[0];
+  }
+
+  /**
+   * WP-7403: 疑義照会の起票。draft 行を FOR UPDATE で掴んでから INSERT
+   * するため、同一処方への起票競合は unique index ではなく直列化で解決する。
+   * 監査 payload に本文・宛先は含めない(MOD-008)。
+   */
+  async createInquiry(
+    input: PrescriptionInquiryCreateInput,
+  ): Promise<PrescriptionInquiryCreateResult> {
+    return runInPooledTransaction(this.pool, async (client) => {
+      const row = await this.selectLifecycleRow(client, input);
+      if (row === undefined) {
+        await client.query("ROLLBACK");
+        return { kind: "not_found" };
+      }
+
+      const prior = await client.query<PrescriptionInquiryRow>(
+        `SELECT ${INQUIRY_SELECT_COLUMNS}
+           FROM prescription_inquiries
+          WHERE tenant_id = $1
+            AND pharmacy_id = $2
+            AND prescription_id = $3
+            AND idempotency_key = $4`,
+        [
+          input.tenantId,
+          input.pharmacyId,
+          input.prescriptionId,
+          input.idempotencyKey,
+        ],
+      );
+      const priorRow = prior.rows[0];
+      if (priorRow !== undefined) {
+        if (
+          priorRow.directed_to === input.directedTo &&
+          priorRow.content === input.content
+        ) {
+          const inquiry = this.inquiryViewFromRow(priorRow);
+          await client.query("COMMIT");
+          return { kind: "recorded", inquiry, replayed: true };
+        }
+        await client.query("ROLLBACK");
+        return { kind: "idempotency_conflict" };
+      }
+
+      const inquiryId =
+        this.lifecycleDeps.nextInquiryId?.() ??
+        prescriptionInquiryId(`inquiry-${randomUUID()}`);
+      const inserted = await client.query<PrescriptionInquiryRow>(
+        `INSERT INTO prescription_inquiries (
+           tenant_id, pharmacy_id, inquiry_id, prescription_id,
+           directed_to, content, created_by, created_at, idempotency_key
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::timestamptz, $9)
+         RETURNING ${INQUIRY_SELECT_COLUMNS}`,
+        [
+          input.tenantId,
+          input.pharmacyId,
+          inquiryId,
+          input.prescriptionId,
+          input.directedTo,
+          input.content,
+          input.actorId,
+          input.wallClock,
+          input.idempotencyKey,
+        ],
+      );
+      const insertedRow = inserted.rows[0];
+      if (insertedRow === undefined) {
+        throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+      }
+      await appendAuditEventWithinTransaction(
+        client,
+        { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+        {
+          actorId: input.actorId,
+          auditEventType: "inquiry.recorded",
+          // MOD-008: payload は inquiry ID + prescription ID + actorId のみ。
+          targetRef: {
+            kind: "prescription_inquiry",
+            id: `${input.prescriptionId}/${inquiryId}`,
+          },
+          outcome: "success",
+          wallClock: input.wallClock,
+        },
+      );
+      const inquiry = this.inquiryViewFromRow(insertedRow);
+      await client.query("COMMIT");
+      return { kind: "recorded", inquiry, replayed: false };
+    });
+  }
+
+  /**
+   * WP-7403: 回答の write-once 記録。draft → inquiry の順でロックし、
+   * 回答済みは同一冪等キー+同一内容の replay のみ受理。
+   */
+  async answerInquiry(
+    input: PrescriptionInquiryAnswerInput,
+  ): Promise<PrescriptionInquiryAnswerResult> {
+    return runInPooledTransaction(this.pool, async (client) => {
+      const row = await this.selectLifecycleRow(client, input);
+      if (row === undefined) {
+        await client.query("ROLLBACK");
+        return { kind: "not_found" };
+      }
+      const inquiry = await this.selectInquiryRow(
+        client,
+        input,
+        input.inquiryId,
+        true,
+      );
+      if (inquiry === undefined) {
+        await client.query("ROLLBACK");
+        return { kind: "inquiry_not_found" };
+      }
+
+      if (inquiry.answer !== null) {
+        if (inquiry.answer_idempotency_key === input.idempotencyKey) {
+          if (inquiry.answer === input.answer && inquiry.result === input.result) {
+            const view = this.inquiryViewFromRow(inquiry);
+            await client.query("COMMIT");
+            return { kind: "answered", inquiry: view, replayed: true };
+          }
+          await client.query("ROLLBACK");
+          return { kind: "idempotency_conflict" };
+        }
+        await client.query("ROLLBACK");
+        return { kind: "invalid_transition" };
+      }
+
+      const updated = await client.query<PrescriptionInquiryRow>(
+        `UPDATE prescription_inquiries
+            SET answer = $5,
+                answered_by = $6,
+                answered_at = $7::timestamptz,
+                result = $8,
+                answer_idempotency_key = $9
+          WHERE tenant_id = $1
+            AND pharmacy_id = $2
+            AND prescription_id = $3
+            AND inquiry_id = $4
+          RETURNING ${INQUIRY_SELECT_COLUMNS}`,
+        [
+          input.tenantId,
+          input.pharmacyId,
+          input.prescriptionId,
+          input.inquiryId,
+          input.answer,
+          input.actorId,
+          input.wallClock,
+          input.result,
+          input.idempotencyKey,
+        ],
+      );
+      const updatedRow = updated.rows[0];
+      if (updatedRow === undefined) {
+        throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+      }
+      await appendAuditEventWithinTransaction(
+        client,
+        { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+        {
+          actorId: input.actorId,
+          auditEventType: "inquiry.answered",
+          // MOD-008: payload は inquiry ID + result + actorId のみ。
+          // 回答本文は載せない(result は構造化 code で表現)。
+          targetRef: {
+            kind: "prescription_inquiry",
+            id: `${input.prescriptionId}/${input.inquiryId}`,
+          },
+          businessReason: { code: `INQUIRY_RESULT_${input.result}` },
+          outcome: "success",
+          wallClock: input.wallClock,
+        },
+      );
+      const view = this.inquiryViewFromRow(updatedRow);
+      await client.query("COMMIT");
+      return { kind: "answered", inquiry: view, replayed: false };
+    });
+  }
+
+  /**
+   * WP-7403: 確定処方の訂正。資格 → draft FOR UPDATE → 版 replay →
+   * status → inquiry(同一処方・RESOLVED・CHANGED)→ 内容検証の順。
+   * 新版 + prescription.amended 監査 + outbox intent を同一 tx で commit。
+   */
+  async amend(input: PrescriptionAmendInput): Promise<PrescriptionAmendResult> {
+    return runInPooledTransaction(this.pool, async (client) => {
+      if (
+        !(await this.checkQualificationOrDeny(
+          client,
+          input,
+          "prescription.amend.denied",
+        ))
+      ) {
+        await client.query("COMMIT");
+        return { kind: "unqualified" };
+      }
+
+      const row = await this.selectLifecycleRow(client, input);
+      if (row === undefined) {
+        await client.query("ROLLBACK");
+        return { kind: "not_found" };
+      }
+
+      if (row.status !== "PRESCRIPTION_FINALIZED") {
+        await client.query("ROLLBACK");
+        return { kind: "invalid_transition" };
+      }
+
+      // inquiry は draft lock 内で FOR UPDATE。同一処方所属は複合 FK が
+      // DB 層で保証するが、guard 評価は service でも fail-closed で行う。
+      const inquiry = await this.selectInquiryRow(
+        client,
+        input,
+        input.inquiryId,
+        true,
+      );
+      if (
+        inquiry === undefined ||
+        inquiry.answer === null ||
+        inquiry.result !== "CHANGED"
+      ) {
+        await client.query("ROLLBACK");
+        return { kind: "inquiry_unresolved" };
+      }
+
+      const { normalized, contentHash } =
+        normalizePrescriptionDraftContentForStorage(input.content);
+      if (countUnresolvedPrescriptionItems(normalized) > 0) {
+        await client.query("ROLLBACK");
+        return { kind: "unresolved_items" };
+      }
+      if (!isPrescriptionSourceMetadataComplete(normalized)) {
+        await client.query("ROLLBACK");
+        return { kind: "metadata_incomplete" };
+      }
+
+      // 冪等 replay は packet §4 guard 6(最後)。command payload は
+      // {inquiryId, content} のため両者の一致を要求する。
+      const prior = await client.query<PrescriptionVersionRow>(
+        `SELECT ${VERSION_SELECT_COLUMNS}
+           FROM prescription_versions
+          WHERE tenant_id = $1
+            AND pharmacy_id = $2
+            AND prescription_id = $3
+            AND amend_idempotency_key = $4`,
+        [
+          input.tenantId,
+          input.pharmacyId,
+          input.prescriptionId,
+          input.idempotencyKey,
+        ],
+      );
+      const priorRow = prior.rows[0];
+      if (priorRow !== undefined) {
+        if (
+          priorRow.content_hash === contentHash &&
+          priorRow.inquiry_id === input.inquiryId
+        ) {
+          const version = this.versionViewFromRow(priorRow, input.prescriptionId);
+          await client.query("COMMIT");
+          return { kind: "amended", version, replayed: true };
+        }
+        await client.query("ROLLBACK");
+        return { kind: "idempotency_conflict" };
+      }
+
+      const latest = await client.query<{ readonly version: number }>(
+        `SELECT version
+           FROM prescription_versions
+          WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3
+          ORDER BY version DESC
+          LIMIT 1`,
+        [input.tenantId, input.pharmacyId, input.prescriptionId],
+      );
+      const latestVersion = latest.rows[0];
+      if (latestVersion === undefined) {
+        throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+      }
+      const nextVersion = latestVersion.version + 1;
+
+      // packet §4: amend は新版の confirm+finalize を兼ねるため、
+      // confirmed/finalized_* にも amend 実行者・時刻を設定する。
+      const inserted = await client.query<PrescriptionVersionRow>(
+        `INSERT INTO prescription_versions (
+           tenant_id, pharmacy_id, prescription_id, version,
+           content, content_hash,
+           supersedes_version, inquiry_id, amended_by, amended_at,
+           amend_idempotency_key,
+           confirmed_by, confirmed_at, finalized_by, finalized_at, created_at
+         ) VALUES (
+           $1, $2, $3, $4,
+           $5::jsonb, $6,
+           $7, $8, $9, $10::timestamptz,
+           $11,
+           $9, $10::timestamptz, $9, $10::timestamptz, $10
+         )
+         RETURNING ${VERSION_SELECT_COLUMNS}`,
+        [
+          input.tenantId,
+          input.pharmacyId,
+          input.prescriptionId,
+          nextVersion,
+          JSON.stringify(normalized),
+          contentHash,
+          latestVersion.version,
+          input.inquiryId,
+          input.actorId,
+          input.wallClock,
+          input.idempotencyKey,
+        ],
+      );
+      const insertedRow = inserted.rows[0];
+      if (insertedRow === undefined) {
+        throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+      }
+      const auditEvent = await appendAuditEventWithinTransaction(
+        client,
+        { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+        {
+          actorId: input.actorId,
+          auditEventType: "prescription.amended",
+          // MOD-008: payload は prescription ID + version + actorId +
+          // inquiryId のみ(識別子のみ、本文は載せない)。
+          targetRef: {
+            kind: "prescription_version",
+            id: `${input.prescriptionId}/${nextVersion}/${input.inquiryId}`,
+          },
+          outcome: "success",
+          wallClock: input.wallClock,
+        },
+      );
+      // MOD-009 §6: payload は識別子+版のみ。intent_dedup_key は版単位。
+      await client.query(
+        `INSERT INTO outbox_events (
+           tenant_id, pharmacy_id, outbox_event_id, event_type,
+           aggregate_type, aggregate_id, audit_event_id, payload,
+           intent_dedup_key, created_at
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10)`,
+        [
+          input.tenantId,
+          input.pharmacyId,
+          this.lifecycleDeps.nextOutboxEventId?.() ?? randomUUID(),
+          "prescription.amended",
+          "prescription",
+          input.prescriptionId,
+          auditEvent.eventId,
+          JSON.stringify({
+            prescriptionId: input.prescriptionId,
+            version: nextVersion,
+          }),
+          `v${nextVersion}`,
+          input.wallClock,
+        ],
+      );
+      const version = this.versionViewFromRow(insertedRow, input.prescriptionId);
+      await client.query("COMMIT");
+      return { kind: "amended", version, replayed: false };
+    });
+  }
+
+  /** PHI read 監査は draft GET と同じ prescription.draft.viewed を使う。 */
+  private async auditPrescriptionRead(
+    client: PoolClient,
+    input: PrescriptionScopedReadInput,
+  ): Promise<void> {
+    await appendAuditEventWithinTransaction(
+      client,
+      { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+      {
+        actorId: input.actorId,
+        auditEventType: "prescription.draft.viewed",
+        targetRef: { kind: "prescription", id: input.prescriptionId },
+        outcome: "success",
+        wallClock: input.wallClock,
+      },
+    );
+  }
+
+  private async selectDraftForRead(
+    client: PoolClient,
+    input: PrescriptionScopedReadInput,
+  ): Promise<boolean> {
+    const result = await client.query<{ readonly prescription_id: string }>(
+      `SELECT prescription_id
+         FROM prescription_drafts
+        WHERE tenant_id = $1
+          AND pharmacy_id = $2
+          AND prescription_id = $3`,
+      [input.tenantId, input.pharmacyId, input.prescriptionId],
+    );
+    return result.rows.length === 1;
+  }
+
+  async listVersions(
+    input: PrescriptionScopedReadInput,
+  ): Promise<PrescriptionVersionListResult> {
+    return runInPooledTransaction(this.pool, async (client) => {
+      if (!(await this.selectDraftForRead(client, input))) {
+        await client.query("ROLLBACK");
+        return { kind: "not_found" };
+      }
+      const result = await client.query<PrescriptionVersionRow>(
+        `SELECT ${VERSION_SELECT_COLUMNS}
+           FROM prescription_versions
+          WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3
+          ORDER BY version ASC`,
+        [input.tenantId, input.pharmacyId, input.prescriptionId],
+      );
+      await this.auditPrescriptionRead(client, input);
+      const versions = result.rows.map((row) =>
+        this.versionViewFromRow(row, input.prescriptionId),
+      );
+      await client.query("COMMIT");
+      return { kind: "listed", versions };
+    });
+  }
+
+  async getVersion(
+    input: PrescriptionVersionReadInput,
+  ): Promise<PrescriptionVersionGetResult> {
+    return runInPooledTransaction(this.pool, async (client) => {
+      if (!(await this.selectDraftForRead(client, input))) {
+        await client.query("ROLLBACK");
+        return { kind: "not_found" };
+      }
+      const result = await client.query<PrescriptionVersionRow>(
+        `SELECT ${VERSION_SELECT_COLUMNS}
+           FROM prescription_versions
+          WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3
+            AND version = $4`,
+        [
+          input.tenantId,
+          input.pharmacyId,
+          input.prescriptionId,
+          input.version,
+        ],
+      );
+      const row = result.rows[0];
+      if (row === undefined) {
+        await client.query("ROLLBACK");
+        return { kind: "not_found" };
+      }
+      await this.auditPrescriptionRead(client, input);
+      const version = this.versionViewFromRow(row, input.prescriptionId);
+      await client.query("COMMIT");
+      return { kind: "found", version };
+    });
+  }
+
+  async listInquiries(
+    input: PrescriptionScopedReadInput,
+  ): Promise<PrescriptionInquiryListResult> {
+    return runInPooledTransaction(this.pool, async (client) => {
+      if (!(await this.selectDraftForRead(client, input))) {
+        await client.query("ROLLBACK");
+        return { kind: "not_found" };
+      }
+      const result = await client.query<PrescriptionInquiryRow>(
+        `SELECT ${INQUIRY_SELECT_COLUMNS}
+           FROM prescription_inquiries
+          WHERE tenant_id = $1 AND pharmacy_id = $2 AND prescription_id = $3
+          ORDER BY recorded_seq ASC`,
+        [input.tenantId, input.pharmacyId, input.prescriptionId],
+      );
+      await this.auditPrescriptionRead(client, input);
+      const inquiries = result.rows.map((row) => this.inquiryViewFromRow(row));
+      await client.query("COMMIT");
+      return { kind: "listed", inquiries };
     });
   }
 
