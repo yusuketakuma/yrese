@@ -4,6 +4,7 @@ import type { Pool, PoolClient } from "pg";
 
 import {
   deriveRpGroupsFromLegacyRows,
+  prescriptionDraftContentSchema,
   prescriptionDraftResponseSchema,
   prescriptionDraftSaveResponseSchema,
   prescriptionInquiryViewSchema,
@@ -25,14 +26,21 @@ import {
 
 import { appendAuditEventWithinTransaction } from "./audit-repository.js";
 import type { PostgresActorQualificationRepository } from "./actor-qualification-repository.js";
+import {
+  masterReadRepositoryForClient,
+  type PostgresMasterRepository,
+} from "./master-repository.js";
 import { runInPooledTransaction } from "./pool.js";
 import { snapshotDatabaseInstant } from "../instant.js";
 import {
   comparePrescriptionDraftFlags,
+  copiedContentFromPriorVersion,
   countUnresolvedPrescriptionItems,
   isPrescriptionSourceMetadataComplete,
   normalizePrescriptionDraftContentForStorage,
   prescriptionDraftContentHashCandidates,
+  type PrescriptionDraftFromPriorInput,
+  type PrescriptionDraftFromPriorResult,
   type PrescriptionDraftLookupInput,
   type PrescriptionDraftLookupResult,
   type PrescriptionDraftSaveInput,
@@ -80,6 +88,8 @@ interface MetadataRow {
   readonly finalized_at: Date | string | null;
   readonly confirm_idempotency_key: string | null;
   readonly finalize_idempotency_key: string | null;
+  readonly copied_from_prescription_id: string | null;
+  readonly copied_from_version: number | null;
   readonly created_at: Date | string;
   readonly updated_at: Date | string;
   readonly created_by: string;
@@ -137,6 +147,8 @@ async function selectMetadata(
        finalized_at,
        confirm_idempotency_key,
        finalize_idempotency_key,
+       copied_from_prescription_id,
+       copied_from_version,
        created_at,
        updated_at,
        created_by,
@@ -235,6 +247,30 @@ function storedHashMatches(
   return prescriptionDraftContentHashCandidates(draft).includes(
     row.content_hash,
   );
+}
+
+/**
+ * WP-7304: copied_from_* 列を wire へ戻す。000023 の CHECK が
+ * 「両方 NULL または両方非 NULL」のみ許容するため、片方のみ NULL の
+ * 行は不変条件違反として fail-closed にする。
+ */
+function copiedFromFromRow(row: MetadataRow) {
+  if (
+    row.copied_from_prescription_id === null &&
+    row.copied_from_version === null
+  ) {
+    return null;
+  }
+  if (
+    row.copied_from_prescription_id === null ||
+    row.copied_from_version === null
+  ) {
+    throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+  }
+  return {
+    prescriptionId: row.copied_from_prescription_id,
+    version: row.copied_from_version,
+  };
 }
 
 /**
@@ -342,6 +378,7 @@ async function readDraft(
               prescriptionDraftDatabaseInvariantErrorMessage,
             ),
       prescriptionVersion: versionResult.rows[0]?.max ?? null,
+      copiedFrom: copiedFromFromRow(row),
     });
     if (!storedHashMatches(row, response.draft)) {
       throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
@@ -389,6 +426,11 @@ export interface PostgresPrescriptionLifecycleDeps {
   readonly nextOutboxEventId?: () => string;
   /** WP-7403: inquiry ID 生成器。未注入なら UUID 生成。 */
   readonly nextInquiryId?: () => PrescriptionInquiryId;
+  /**
+   * WP-7304: 前回 Do の master 再解決に必須。未注入なら
+   * createFromPrior は投げる(resolved ref の安全な変換が不能なため)。
+   */
+  readonly masterRepository?: PostgresMasterRepository;
 }
 
 interface PrescriptionInquiryRow {
@@ -498,6 +540,8 @@ export class PostgresPrescriptionDraftService
          finalized_at,
          confirm_idempotency_key,
          finalize_idempotency_key,
+         copied_from_prescription_id,
+         copied_from_version,
          created_at,
          updated_at,
          created_by,
@@ -1682,6 +1726,176 @@ export class PostgresPrescriptionDraftService
         draft: prescriptionDraftSaveResponseSchema.parse({
           ...response,
           saveDisposition: "updated",
+        }),
+      };
+    });
+  }
+
+  /**
+   * WP-7304 / PRD-001 M4: 前回 Do。単一 tx で受付・複製元版を検証し、
+   * 再解決済み content + copied_from_* provenance + 監査(複製元 read +
+   * 新規作成)を INSERT する。master 再解決は同じ tx client に束縛した
+   * read adapter 経由で行い、tx 保持中に pool へ追加借用しない
+   * (pool 上限×並行度による枯渇 stall / YRESE_DB_POOL_MAX=1 での
+   * 常時 timeout を防ぐ)。master は append-only のため tx 内 read で
+   * 一貫性も担保される。
+   */
+  async createFromPrior(
+    input: PrescriptionDraftFromPriorInput,
+  ): Promise<PrescriptionDraftFromPriorResult> {
+    if (this.lifecycleDeps.masterRepository === undefined) {
+      throw new Error(
+        "Master repository is required for from-prior copies",
+      );
+    }
+    return runInPooledTransaction(this.pool, async (client) => {
+      if (
+        (await receptionMatches(client, input, true, input.patientId)) ===
+        undefined
+      ) {
+        await client.query("ROLLBACK");
+        return { kind: "not_found" };
+      }
+      const existing = await selectMetadata(
+        client,
+        input,
+        true,
+        input.patientId,
+      );
+      if (existing !== undefined) {
+        await client.query("ROLLBACK");
+        return { kind: "conflict" };
+      }
+      const sourceResult =
+        input.sourceVersion === undefined
+          ? await client.query<{
+              readonly version: number;
+              readonly content: unknown;
+            }>(
+              `SELECT version, content
+                 FROM prescription_versions
+                WHERE tenant_id = $1
+                  AND pharmacy_id = $2
+                  AND prescription_id = $3
+                ORDER BY version DESC
+                LIMIT 1`,
+              [input.tenantId, input.pharmacyId, input.sourcePrescriptionId],
+            )
+          : await client.query<{
+              readonly version: number;
+              readonly content: unknown;
+            }>(
+              `SELECT version, content
+                 FROM prescription_versions
+                WHERE tenant_id = $1
+                  AND pharmacy_id = $2
+                  AND prescription_id = $3
+                  AND version = $4`,
+              [
+                input.tenantId,
+                input.pharmacyId,
+                input.sourcePrescriptionId,
+                input.sourceVersion,
+              ],
+            );
+      const sourceRow = sourceResult.rows[0];
+      if (sourceRow === undefined) {
+        await client.query("ROLLBACK");
+        return { kind: "not_found" };
+      }
+      const sourceContent = prescriptionDraftContentSchema.parse(
+        sourceRow.content,
+      );
+      const copied = await copiedContentFromPriorVersion(
+        masterReadRepositoryForClient(client),
+        { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+        sourceContent,
+        input.businessDate,
+      );
+      const { normalized, contentHash } =
+        normalizePrescriptionDraftContentForStorage(copied);
+      const id = this.nextPrescriptionId();
+      const sourceMetadata = normalized.sourceMetadata;
+      await client.query(
+        `INSERT INTO prescription_drafts (
+           tenant_id, pharmacy_id, prescription_id, reception_id, patient_id,
+           business_date, version, prescription_type,
+           prescription_date, default_days, note, content_hash,
+           medical_institution_code, medical_institution_name, prescriber_name,
+           issue_date, valid_until, refill_total, refill_remaining,
+           split_dispensing, rp_groups,
+           copied_from_prescription_id, copied_from_version,
+           created_at, updated_at, created_by, updated_by
+         ) VALUES (
+           $1, $2, $3, $4, $5, $6::date, 1, $7,
+           $8::date, $9, $10, $11,
+           $14, $15, $16, $17::date, $18::date, $19, $20, $21, $22::jsonb,
+           $23, $24,
+           $12, $12, $13, $13
+         )`,
+        [
+          input.tenantId,
+          input.pharmacyId,
+          id,
+          input.receptionId,
+          input.patientId,
+          input.businessDate,
+          normalized.prescriptionType,
+          normalized.prescriptionDate,
+          normalized.defaultDays,
+          normalized.note,
+          contentHash,
+          input.wallClock,
+          input.actorId,
+          sourceMetadata?.medicalInstitution.code ?? null,
+          sourceMetadata?.medicalInstitution.name ?? null,
+          sourceMetadata?.prescriberName ?? null,
+          sourceMetadata?.issueDate ?? null,
+          sourceMetadata?.validUntil ?? null,
+          sourceMetadata?.refill?.total ?? null,
+          sourceMetadata?.refill?.remaining ?? null,
+          sourceMetadata?.splitDispensing ?? null,
+          JSON.stringify(normalized.rpGroups),
+          input.sourcePrescriptionId,
+          sourceRow.version,
+        ],
+      );
+      await replaceChildren(client, input, id, normalized);
+      await appendAuditEventWithinTransaction(
+        client,
+        { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+        {
+          actorId: input.actorId,
+          auditEventType: "prescription.draft.viewed",
+          targetRef: {
+            kind: "prescription",
+            id: input.sourcePrescriptionId,
+          },
+          outcome: "success",
+          wallClock: input.wallClock,
+        },
+      );
+      await appendAuditEventWithinTransaction(
+        client,
+        { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+        {
+          actorId: input.actorId,
+          auditEventType: "prescription.created",
+          targetRef: { kind: "prescription", id },
+          outcome: "success",
+          wallClock: input.wallClock,
+        },
+      );
+      const response = await readDraft(client, input);
+      if (response === undefined) {
+        throw new Error(prescriptionDraftDatabaseInvariantErrorMessage);
+      }
+      await client.query("COMMIT");
+      return {
+        kind: "saved",
+        draft: prescriptionDraftSaveResponseSchema.parse({
+          ...response,
+          saveDisposition: "created",
         }),
       };
     });

@@ -290,6 +290,7 @@ const SERVER_DRAFT_RESPONSE: PrescriptionDraftResponse = {
   finalizedBy: null,
   finalizedAt: null,
   prescriptionVersion: null,
+  copiedFrom: null,
 };
 
 describe("connected draft state machine (WP-5101 review HIGH-1/HIGH-2)", () => {

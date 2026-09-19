@@ -478,6 +478,39 @@ export type PrescriptionDraftSaveRequest = z.infer<
   typeof prescriptionDraftSaveRequestSchema
 >;
 
+/**
+ * WP-7304 / PRD-001 M4: 前回 Do — 確定済み処方版からの複製起点。
+ * sourcePrescriptionId は client 明示指定(自動選択しない)。sourceVersion
+ * 省略時は最新版(MAX(version))を複製する。
+ */
+export const prescriptionDraftFromPriorRequestSchema = z
+  .object({
+    patientId: patientIdWireSchema,
+    businessDate: calendarDateWireSchema,
+    sourcePrescriptionId: prescriptionIdWireSchema,
+    sourceVersion: z
+      .number()
+      .int()
+      .min(1)
+      .max(PRESCRIPTION_DRAFT_MAX_VERSION)
+      .optional(),
+  })
+  .strict();
+
+export type PrescriptionDraftFromPriorRequest = z.infer<
+  typeof prescriptionDraftFromPriorRequestSchema
+>;
+
+/** WP-7304: draft の複製元 provenance。通常 save 経路では null。 */
+export const prescriptionCopiedFromSchema = z.object({
+  prescriptionId: prescriptionIdWireSchema,
+  version: z.number().int().min(1).max(PRESCRIPTION_DRAFT_MAX_VERSION),
+});
+
+export type PrescriptionCopiedFrom = z.infer<
+  typeof prescriptionCopiedFromSchema
+>;
+
 export const prescriptionStatusWireSchema = z.enum(PRESCRIPTION_STATUSES);
 export type PrescriptionStatusWire = z.infer<
   typeof prescriptionStatusWireSchema
@@ -513,6 +546,11 @@ export const prescriptionDraftResponseSchema = z.object({
     .min(1)
     .max(PRESCRIPTION_DRAFT_MAX_VERSION)
     .nullable(),
+  /**
+   * WP-7304: 前回 Do の複製元 provenance。通常 save 経路では null。
+   * content 本体・immutable 版 snapshot には含めない(draft 行の属性)。
+   */
+  copiedFrom: prescriptionCopiedFromSchema.nullable(),
 });
 
 export type PrescriptionDraftResponse = z.infer<

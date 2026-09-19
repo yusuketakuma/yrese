@@ -85,6 +85,7 @@ const serverDraft: PrescriptionDraftResponse = {
   finalizedBy: null,
   finalizedAt: null,
   prescriptionVersion: null,
+  copiedFrom: null,
 };
 
 function response(body: unknown, status = 200): Response {

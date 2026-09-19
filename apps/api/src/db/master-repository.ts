@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import {
   medicationItemSchema,
   usageItemSchema,
@@ -10,9 +10,12 @@ import { pharmacyId, tenantId } from '@yrese/shared-kernel';
 
 import {
   snapshotMasterListCommand,
+  type MasterItemLookup,
   type MasterListInput,
   type MasterListResult,
+  type MasterReadRepository,
   type MasterRepository,
+  type MasterScope,
   type MasterVersionSeedInput,
   type MedicationItemSeedInput,
   type UsageItemSeedInput,
@@ -42,6 +45,7 @@ interface MasterVersionRow {
 
 interface MedicationItemRow {
   readonly medication_item_id: string;
+  readonly master_version_id: string;
   readonly local_code: string;
   readonly yj_code: string | null;
   readonly receipt_code: string | null;
@@ -56,6 +60,7 @@ interface MedicationItemRow {
 
 interface UsageItemRow {
   readonly usage_item_id: string;
+  readonly master_version_id: string;
   readonly local_code: string;
   readonly text: string;
   readonly times_per_day: number | null;
@@ -68,13 +73,13 @@ const MASTER_VERSION_SELECT = `SELECT master_version_id, master_kind, version,
        transition_note, distribution_state
   FROM master_versions`;
 
-const MEDICATION_ITEM_SELECT = `SELECT medication_item_id, local_code,
-       yj_code, receipt_code, hot_code, name, unit, price, generic_flag,
-       generic_name_code, control_categories
+const MEDICATION_ITEM_SELECT = `SELECT medication_item_id, master_version_id,
+       local_code, yj_code, receipt_code, hot_code, name, unit, price,
+       generic_flag, generic_name_code, control_categories
   FROM medication_items`;
 
-const USAGE_ITEM_SELECT = `SELECT usage_item_id, local_code, text,
-       times_per_day, meal_timing, jahis_code
+const USAGE_ITEM_SELECT = `SELECT usage_item_id, master_version_id, local_code,
+       text, times_per_day, meal_timing, jahis_code
   FROM usage_items`;
 
 function readRowString(row: object, property: string): string {
@@ -195,6 +200,168 @@ function usageItemRowToWire(row: UsageItemRow): UsageItem {
 }
 
 /**
+ * pool もしくは既存 transaction の client のどちらでも動く最小 query 面。
+ * createFromPrior のように tx client を保持したまま master を読む経路で、
+ * pool への再借用(= client 数 × 並行度で枯渇 stall)を防ぐために使う。
+ */
+interface MasterQueryable {
+  query<Row extends QueryResultRow>(
+    text: string,
+    values: readonly unknown[],
+  ): Promise<QueryResult<Row>>;
+}
+
+/**
+ * 版解決 + 品目 SELECT の read 本体。BEGIN/COMMIT/SET は発行しない:
+ * pool 経路では caller が REPEATABLE READ tx で包み、tx 内経路では
+ * 外側 tx の snapshot に委ねる(master は append-only のため版→品目の
+ * 参照はいずれの isolation でも一貫する)。
+ */
+async function listMastersOn(
+  queryable: MasterQueryable,
+  command: MasterListInput,
+): Promise<MasterListResult> {
+  const versions = await queryable.query<MasterVersionRow>(
+    `${MASTER_VERSION_SELECT}
+     WHERE tenant_id = $1 AND pharmacy_id = $2 AND master_kind = $3
+       AND valid_from <= $4::date
+       AND (valid_to IS NULL OR $4::date < valid_to)
+     ORDER BY valid_from DESC
+     LIMIT 2`,
+    [command.tenantId, command.pharmacyId, command.kind, command.asOf],
+  );
+  const versionRows = snapshotDatabaseQueryRows<MasterVersionRow>(
+    versions,
+    2,
+    databaseMasterRowSetInvariantErrorMessage,
+  );
+  if (versionRows.length === 0) {
+    return { kind: 'no_version' };
+  }
+  // 有効期間の重複は append-only モデルで自然に起きる(旧版の valid_to を
+  // 更新できないため)。解決は valid_from 最大の版で決定的
+  // (in-memory の resolveVersion と同一規則)。
+  const versionRow = versionRows[0];
+  if (versionRow === undefined) {
+    throw new Error(databaseMasterRowSetInvariantErrorMessage);
+  }
+  const version = masterVersionRowToWire(versionRow);
+  const likeQuery =
+    command.q === undefined ? null : escapeLikeLiteral(command.q);
+  if (command.kind === 'medication') {
+    // q: localCode prefix / name substring。COLLATE "C" で code-point 比較
+    // (in-memory の compareTextByCodePoints と parity)。
+    const rows = await queryable.query<MedicationItemRow>(
+      `${MEDICATION_ITEM_SELECT}
+       WHERE tenant_id = $1 AND pharmacy_id = $2 AND master_version_id = $3
+         AND ($4::text IS NULL OR $4 = ''
+              OR local_code LIKE ($4 || '%') COLLATE "C"
+              OR name LIKE ('%' || $4 || '%') COLLATE "C")
+       ORDER BY local_code COLLATE "C" ASC`,
+      [
+        command.tenantId,
+        command.pharmacyId,
+        version.masterVersionId,
+        likeQuery,
+      ],
+    );
+    return {
+      kind: 'listed',
+      masterVersion: version,
+      items: Object.freeze(
+        snapshotUnboundedDatabaseQueryRows<MedicationItemRow>(
+          rows,
+          databaseMasterRowSetInvariantErrorMessage,
+        ).map(medicationItemRowToWire),
+      ),
+    };
+  }
+  const rows = await queryable.query<UsageItemRow>(
+    `${USAGE_ITEM_SELECT}
+     WHERE tenant_id = $1 AND pharmacy_id = $2 AND master_version_id = $3
+       AND ($4::text IS NULL OR $4 = ''
+            OR local_code LIKE ($4 || '%') COLLATE "C"
+            OR text LIKE ('%' || $4 || '%') COLLATE "C")
+     ORDER BY local_code COLLATE "C" ASC`,
+    [command.tenantId, command.pharmacyId, version.masterVersionId, likeQuery],
+  );
+  return {
+    kind: 'listed',
+    masterVersion: version,
+    items: Object.freeze(
+      snapshotUnboundedDatabaseQueryRows<UsageItemRow>(
+        rows,
+        databaseMasterRowSetInvariantErrorMessage,
+      ).map(usageItemRowToWire),
+    ),
+  };
+}
+
+async function findMedicationItemByIdOn(
+  queryable: MasterQueryable,
+  scope: MasterScope,
+  medicationItemId: string,
+): Promise<MasterItemLookup | undefined> {
+  const rows = await queryable.query<MedicationItemRow>(
+    `${MEDICATION_ITEM_SELECT}
+     WHERE tenant_id = $1 AND pharmacy_id = $2 AND medication_item_id = $3`,
+    [scope.tenantId, scope.pharmacyId, medicationItemId],
+  );
+  const row = snapshotDatabaseQueryRows<MedicationItemRow>(
+    rows,
+    1,
+    databaseMasterRowSetInvariantErrorMessage,
+  )[0];
+  if (row === undefined) return undefined;
+  return {
+    masterVersionId: readRowString(row, 'master_version_id'),
+    localCode: readRowString(row, 'local_code'),
+    displayText: readRowString(row, 'name'),
+  };
+}
+
+async function findUsageItemByIdOn(
+  queryable: MasterQueryable,
+  scope: MasterScope,
+  usageItemId: string,
+): Promise<MasterItemLookup | undefined> {
+  const rows = await queryable.query<UsageItemRow>(
+    `${USAGE_ITEM_SELECT}
+     WHERE tenant_id = $1 AND pharmacy_id = $2 AND usage_item_id = $3`,
+    [scope.tenantId, scope.pharmacyId, usageItemId],
+  );
+  const row = snapshotDatabaseQueryRows<UsageItemRow>(
+    rows,
+    1,
+    databaseMasterRowSetInvariantErrorMessage,
+  )[0];
+  if (row === undefined) return undefined;
+  return {
+    masterVersionId: readRowString(row, 'master_version_id'),
+    localCode: readRowString(row, 'local_code'),
+    displayText: readRowString(row, 'text'),
+  };
+}
+
+/**
+ * WP-7304: 既存 transaction client に束縛した master read 面。
+ * tx 保持中に pool へ追加借用しないことで、pool 上限/並行度に依らない
+ * createFromPrior を保証する(YRESE_DB_POOL_MAX=1 でも動作)。
+ */
+export function masterReadRepositoryForClient(
+  client: PoolClient,
+): MasterReadRepository {
+  return {
+    list: (input) =>
+      listMastersOn(client, snapshotMasterListCommand(input)),
+    findMedicationItemById: (scope, medicationItemId) =>
+      findMedicationItemByIdOn(client, scope, medicationItemId),
+    findUsageItemById: (scope, usageItemId) =>
+      findUsageItemByIdOn(client, scope, usageItemId),
+  };
+}
+
+/**
  * WP-7301/WP-7303: master の Postgres リポジトリ。GET は版解決 + 品目 SELECT を
  * 同一 REPEATABLE READ snapshot で読み、並行 seed/版追加によるずれを防ぐ
  * (coverage-repository の viewForPatient と同型)。
@@ -206,89 +373,26 @@ export class PostgresMasterRepository implements MasterRepository {
     const command = snapshotMasterListCommand(input);
     return runInPooledTransaction(this.pool, async (client) => {
       await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
-      const versions = await client.query<MasterVersionRow>(
-        `${MASTER_VERSION_SELECT}
-         WHERE tenant_id = $1 AND pharmacy_id = $2 AND master_kind = $3
-           AND valid_from <= $4::date
-           AND (valid_to IS NULL OR $4::date < valid_to)
-         ORDER BY valid_from DESC
-         LIMIT 2`,
-        [command.tenantId, command.pharmacyId, command.kind, command.asOf],
-      );
-      const versionRows = snapshotDatabaseQueryRows<MasterVersionRow>(
-        versions,
-        2,
-        databaseMasterRowSetInvariantErrorMessage,
-      );
-      if (versionRows.length === 0) {
-        await client.query('COMMIT');
-        return { kind: 'no_version' };
-      }
-      // 有効期間の重複は append-only モデルで自然に起きる(旧版の valid_to を
-      // 更新できないため)。解決は valid_from 最大の版で決定的
-      // (in-memory の resolveVersion と同一規則)。
-      const versionRow = versionRows[0];
-      if (versionRow === undefined) {
-        throw new Error(databaseMasterRowSetInvariantErrorMessage);
-      }
-      const version = masterVersionRowToWire(versionRow);
-      const likeQuery =
-        command.q === undefined ? null : escapeLikeLiteral(command.q);
-      if (command.kind === 'medication') {
-        // q: localCode prefix / name substring。COLLATE "C" で code-point 比較
-        // (in-memory の compareTextByCodePoints と parity)。
-        const rows = await client.query<MedicationItemRow>(
-          `${MEDICATION_ITEM_SELECT}
-           WHERE tenant_id = $1 AND pharmacy_id = $2 AND master_version_id = $3
-             AND ($4::text IS NULL OR $4 = ''
-                  OR local_code LIKE ($4 || '%') COLLATE "C"
-                  OR name LIKE ('%' || $4 || '%') COLLATE "C")
-           ORDER BY local_code COLLATE "C" ASC`,
-          [
-            command.tenantId,
-            command.pharmacyId,
-            version.masterVersionId,
-            likeQuery,
-          ],
-        );
-        await client.query('COMMIT');
-        return {
-          kind: 'listed',
-          masterVersion: version,
-          items: Object.freeze(
-            snapshotUnboundedDatabaseQueryRows<MedicationItemRow>(
-              rows,
-              databaseMasterRowSetInvariantErrorMessage,
-            ).map(medicationItemRowToWire),
-          ),
-        };
-      }
-      const rows = await client.query<UsageItemRow>(
-        `${USAGE_ITEM_SELECT}
-         WHERE tenant_id = $1 AND pharmacy_id = $2 AND master_version_id = $3
-           AND ($4::text IS NULL OR $4 = ''
-                OR local_code LIKE ($4 || '%') COLLATE "C"
-                OR text LIKE ('%' || $4 || '%') COLLATE "C")
-         ORDER BY local_code COLLATE "C" ASC`,
-        [
-          command.tenantId,
-          command.pharmacyId,
-          version.masterVersionId,
-          likeQuery,
-        ],
-      );
+      const result = await listMastersOn(client, command);
       await client.query('COMMIT');
-      return {
-        kind: 'listed',
-        masterVersion: version,
-        items: Object.freeze(
-          snapshotUnboundedDatabaseQueryRows<UsageItemRow>(
-            rows,
-            databaseMasterRowSetInvariantErrorMessage,
-          ).map(usageItemRowToWire),
-        ),
-      };
+      return result;
     });
+  }
+
+  /** WP-7304: medication_item_id → 所属版+localCode+name(前回 Do 再解決用)。 */
+  async findMedicationItemById(
+    scope: MasterScope,
+    medicationItemId: string,
+  ): Promise<MasterItemLookup | undefined> {
+    return findMedicationItemByIdOn(this.pool, scope, medicationItemId);
+  }
+
+  /** WP-7304: usage_item_id → 所属版+localCode+text(前回 Do 再解決用)。 */
+  async findUsageItemById(
+    scope: MasterScope,
+    usageItemId: string,
+  ): Promise<MasterItemLookup | undefined> {
+    return findUsageItemByIdOn(this.pool, scope, usageItemId);
   }
 
   async seedVersion(

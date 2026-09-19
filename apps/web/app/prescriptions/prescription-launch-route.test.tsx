@@ -166,6 +166,7 @@ const SAVED_DRAFT: PrescriptionDraftResponse = {
   finalizedBy: null,
   finalizedAt: null,
   prescriptionVersion: null,
+  copiedFrom: null,
 };
 
 describe("resolveLaunchOutcome", () => {

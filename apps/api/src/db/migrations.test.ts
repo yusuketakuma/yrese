@@ -202,6 +202,7 @@ describe('loadMigrationFiles', () => {
           '000020_prescription_lifecycle.sql',
           '000021_prescription_lifecycle_hardening.sql',
           '000022_prescription_amendment.sql',
+          '000023_prescription_draft_copied_from.sql',
         ]);
       } finally {
         process.chdir(originalCwd);

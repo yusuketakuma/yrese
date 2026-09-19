@@ -6,6 +6,7 @@ import fp from "fastify-plugin";
 
 import {
   frameworkErrorResponseSchema,
+  prescriptionDraftFromPriorRequestSchema,
   prescriptionDraftParamsSchema,
   prescriptionDraftQuerySchema,
   prescriptionDraftSaveRequestSchema,
@@ -13,6 +14,7 @@ import {
 import {
   patientId,
   permissionScope,
+  prescriptionId,
   receptionId,
 } from "@yrese/shared-kernel";
 
@@ -201,6 +203,50 @@ const callback: FastifyPluginCallback<PrescriptionDraftRoutesOptions> = (
       return reply
         .code(result.draft.saveDisposition === "created" ? 201 : 200)
         .send(result.draft);
+    },
+  );
+
+  // WP-7304 / PRD-001 M4: 前回 Do。確定版から editable draft を複製生成する。
+  // find-my-way は `:param:verb` suffix を解釈できないため、custom verb は
+  // static segment `/from-prior` で表す(packet D-1 の経路調整)。
+  server.post(
+    "/prescription-drafts/by-reception/:receptionId/from-prior",
+    {
+      onRequest: setSensitiveResponseNoStore,
+      preHandler: [
+        requirePermission(permissionScope("prescription", "write")),
+        requirePermission(permissionScope("reception", "read")),
+        requirePermission(permissionScope("patient", "read")),
+      ],
+    },
+    async (request, reply) => {
+      const tenantContext = requireTenantContext(request);
+
+      const params = prescriptionDraftParamsSchema.safeParse(request.params);
+      const body = prescriptionDraftFromPriorRequestSchema.safeParse(
+        request.body,
+      );
+      if (!params.success || !body.success) return invalidRequest(reply);
+
+      const result = await callPrescriptionDraftService(() =>
+        options.service.createFromPrior({
+          tenantId: tenantContext.tenantId,
+          pharmacyId: tenantContext.pharmacyId,
+          actorId: tenantContext.actorId,
+          receptionId: receptionId(params.data.receptionId),
+          patientId: patientId(body.data.patientId),
+          businessDate: body.data.businessDate,
+          sourcePrescriptionId: prescriptionId(body.data.sourcePrescriptionId),
+          ...(body.data.sourceVersion === undefined
+            ? {}
+            : { sourceVersion: body.data.sourceVersion }),
+          wallClock: snapshotPrescriptionDraftWallClock(now),
+        }),
+      );
+
+      if (result.kind === "not_found") return notFound(reply);
+      if (result.kind === "conflict") return conflict(reply);
+      return reply.code(201).send(result.draft);
     },
   );
 

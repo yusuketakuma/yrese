@@ -14,6 +14,7 @@ import {
 
 import { PostgresActorQualificationRepository } from "./actor-qualification-repository.js";
 import { buildAuditScopeAdvisoryLockKey } from "./audit-repository.js";
+import { PostgresMasterRepository } from "./master-repository.js";
 import { applyPendingMigrations } from "./migration-runner.js";
 import { loadMigrationFiles } from "./migrations.js";
 import { createDbPool } from "./pool.js";
@@ -2603,6 +2604,357 @@ describePostgres(
           expect(inquiries.inquiries).toHaveLength(1);
           expect(inquiries.inquiries[0]?.status).toBe("RESOLVED");
         }
+      });
+    });
+  },
+);
+
+// ---- WP-7304 / PRD-001 M4: 前回 Do ----
+
+const COPY_MED_VERSION_V1 = "00000000-0000-4000-8000-0000000000c1";
+const COPY_MED_VERSION_V2 = "00000000-0000-4000-8000-0000000000c2";
+const COPY_MED_ITEM_V1 = "00000000-0000-4000-8000-0000000000d1";
+const COPY_MED_ITEM_V2 = "00000000-0000-4000-8000-0000000000d2";
+const COPY_TARGET_RECEPTION = "reception-copy-db";
+const COPY_TARGET_PATIENT = "patient-copy-db";
+
+async function seedCopyMasters(
+  masters: PostgresMasterRepository,
+  opts?: { readonly omitCurrentItem?: boolean },
+) {
+  const scope = {
+    tenantId: LIFECYCLE_SCOPE.tenantId,
+    pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+  };
+  await masters.seedVersion({
+    ...scope,
+    masterVersionId: COPY_MED_VERSION_V1,
+    masterKind: "medication",
+    version: "2026-08-01",
+    validFrom: "2026-08-01",
+    recordedAt: "2026-08-01T00:00:00.000Z",
+  });
+  await masters.seedMedicationItem({
+    ...scope,
+    medicationItemId: COPY_MED_ITEM_V1,
+    masterVersionId: COPY_MED_VERSION_V1,
+    localCode: "MED001",
+    name: "合成薬剤 5mg",
+    unit: "錠",
+    genericFlag: "unclassified",
+  });
+  if (opts?.omitCurrentItem !== true) return;
+  // 現行版(v2)から localCode MED001 を外す → 降格。
+  await masters.seedVersion({
+    ...scope,
+    masterVersionId: COPY_MED_VERSION_V2,
+    masterKind: "medication",
+    version: "2026-08-20",
+    validFrom: "2026-08-20",
+    recordedAt: "2026-08-20T00:00:00.000Z",
+  });
+  await masters.seedMedicationItem({
+    ...scope,
+    medicationItemId: COPY_MED_ITEM_V2,
+    masterVersionId: COPY_MED_VERSION_V2,
+    localCode: "MED999",
+    name: "別品目",
+    unit: "錠",
+    genericFlag: "unclassified",
+  });
+}
+
+describePostgres(
+  "PostgresPrescriptionDraftService from-prior copy (WP-7304)",
+  () => {
+    async function seedSourceAndFinalize(
+      pool: Pool,
+    ): Promise<PostgresPrescriptionDraftService> {
+      await seedReception(pool, {
+        tenantId: LIFECYCLE_SCOPE.tenantId,
+        pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+        patientId: LIFECYCLE_SCOPE.patientId,
+        receptionId: LIFECYCLE_SCOPE.receptionId,
+        patientNumber: "COPY-SRC-001",
+        idempotencyKey: "copy-src-idempotency-001",
+      });
+      await seedReception(pool, {
+        tenantId: LIFECYCLE_SCOPE.tenantId,
+        pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+        patientId: COPY_TARGET_PATIENT,
+        receptionId: COPY_TARGET_RECEPTION,
+        patientNumber: "COPY-DST-001",
+        idempotencyKey: "copy-dst-idempotency-001",
+      });
+      await seedQualification(pool, {
+        tenantId: LIFECYCLE_SCOPE.tenantId,
+        pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+        actorId: LIFECYCLE_SCOPE.actorId,
+        status: "ACTIVE",
+      });
+      let localSeq = 0;
+      const service = new PostgresPrescriptionDraftService(
+        pool,
+        () =>
+          prescriptionId(
+            `prescription-copy-db-${(++localSeq).toString().padStart(3, "0")}`,
+          ),
+        {
+          qualificationRepository:
+            new PostgresActorQualificationRepository(pool),
+          masterRepository: new PostgresMasterRepository(pool),
+        },
+      );
+      const saved = await service.save(lifecycleSaveInput());
+      expect(saved).toMatchObject({ kind: "saved" });
+      const sourceCommand = (idempotencyKey: string) => ({
+        ...lifecycleCommand(idempotencyKey),
+        prescriptionId: prescriptionId("prescription-copy-db-001"),
+      });
+      await service.confirm(sourceCommand("copy-confirm-key-0001"));
+      const finalized = await service.finalize(
+        sourceCommand("copy-finalize-key-001"),
+      );
+      expect(finalized).toMatchObject({ kind: "transitioned" });
+      return service;
+    }
+
+    function copyInput(overrides?: {
+      readonly sourceVersion?: number;
+      readonly sourcePrescriptionId?: string;
+    }) {
+      return {
+        tenantId: LIFECYCLE_SCOPE.tenantId,
+        pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+        actorId: LIFECYCLE_SCOPE.actorId,
+        receptionId: receptionId(COPY_TARGET_RECEPTION),
+        patientId: patientId(COPY_TARGET_PATIENT),
+        businessDate: LIFECYCLE_SCOPE.businessDate,
+        sourcePrescriptionId: prescriptionId(
+          overrides?.sourcePrescriptionId ?? "prescription-copy-db-001",
+        ),
+        wallClock: LIFECYCLE_SCOPE.wallClock,
+        ...(overrides?.sourceVersion === undefined
+          ? {}
+          : { sourceVersion: overrides.sourceVersion }),
+      };
+    }
+
+    it("copies a finalized version with provenance, re-resolution, and atomic audit", async () => {
+      await withMigratedSchema(async (pool) => {
+        const service = await seedSourceAndFinalize(pool);
+        await seedCopyMasters(new PostgresMasterRepository(pool));
+
+        const result = await service.createFromPrior(copyInput());
+        expect(result).toMatchObject({
+          kind: "saved",
+          draft: {
+            saveDisposition: "created",
+            prescriptionId: "prescription-copy-db-002",
+            receptionId: COPY_TARGET_RECEPTION,
+            version: 1,
+            status: null,
+            copiedFrom: {
+              prescriptionId: "prescription-copy-db-001",
+              version: 1,
+            },
+          },
+        });
+        if (result.kind !== "saved") throw new Error("copy failed");
+        // D-3: 原本 metadata・発行日リセット。
+        expect(result.draft.draft.sourceMetadata).toBeNull();
+        expect(result.draft.draft.prescriptionDate).toBeNull();
+        // D-4: 現行版で再解決(同一版なら再検証の上同一 item)。
+        expect(
+          result.draft.draft.rpGroups[0]?.items[0]?.medication,
+        ).toEqual({
+          kind: "resolved",
+          masterVersionId: COPY_MED_VERSION_V1,
+          medicationItemId: COPY_MED_ITEM_V1,
+        });
+
+        // DB 列レベルの provenance 確認。
+        const rows = await pool.query<{
+          readonly copied_from_prescription_id: string;
+          readonly copied_from_version: number;
+        }>(
+          `SELECT copied_from_prescription_id, copied_from_version
+             FROM prescription_drafts
+            WHERE tenant_id = $1 AND pharmacy_id = $2
+              AND prescription_id = $3`,
+          [
+            LIFECYCLE_SCOPE.tenantId,
+            LIFECYCLE_SCOPE.pharmacyId,
+            "prescription-copy-db-002",
+          ],
+        );
+        expect(rows.rows[0]).toEqual({
+          copied_from_prescription_id: "prescription-copy-db-001",
+          copied_from_version: 1,
+        });
+
+        // 監査: viewed(source) + created(new) が同一 tx 順序で揃う。
+        const auditRows = await pool.query<{
+          readonly audit_event_type: string;
+          readonly target_id: string;
+        }>(
+          `SELECT event_body->>'auditEventType' AS audit_event_type,
+                  event_body->'targetRef'->>'id' AS target_id
+             FROM audit_events
+            WHERE tenant_id = $1 AND pharmacy_id = $2
+            ORDER BY sequence_number ASC`,
+          [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+        );
+        expect(
+          auditRows.rows.map((row) => [
+            row.audit_event_type,
+            row.target_id,
+          ]),
+        ).toEqual([
+          ["prescription.created", "prescription-copy-db-001"],
+          ["prescription.confirmed", "prescription-copy-db-001"],
+          ["prescription.finalized", "prescription-copy-db-001"],
+          ["prescription.draft.viewed", "prescription-copy-db-001"],
+          ["prescription.created", "prescription-copy-db-002"],
+        ]);
+
+        // read 経路でも copiedFrom が返る。
+        const read = await service.get({
+          tenantId: LIFECYCLE_SCOPE.tenantId,
+          pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+          actorId: LIFECYCLE_SCOPE.actorId,
+          receptionId: receptionId(COPY_TARGET_RECEPTION),
+          businessDate: LIFECYCLE_SCOPE.businessDate,
+          wallClock: LIFECYCLE_SCOPE.wallClock,
+        });
+        expect(read).toMatchObject({
+          kind: "found",
+          draft: {
+            copiedFrom: {
+              prescriptionId: "prescription-copy-db-001",
+              version: 1,
+            },
+          },
+        });
+      });
+    });
+
+    it("downgrades stale medication references against the current master version", async () => {
+      await withMigratedSchema(async (pool) => {
+        const service = await seedSourceAndFinalize(pool);
+        await seedCopyMasters(new PostgresMasterRepository(pool), {
+          omitCurrentItem: true,
+        });
+
+        const result = await service.createFromPrior(copyInput());
+        if (result.kind !== "saved") throw new Error("copy failed");
+        expect(
+          result.draft.draft.rpGroups[0]?.items[0]?.medication,
+        ).toEqual({ kind: "unresolved", text: "合成薬剤 5mg" });
+      });
+    });
+
+    it("runs the whole copy on the transaction client without borrowing a second pool connection", async () => {
+      // R1 M-1 回帰: tx 保持中に master repo が pool を再借用すると
+      // pool.max=1 で必ず枯渇 timeout になる。client 束縛 adapter 化で
+      // pool.max=1 でも完走することを固定する。
+      await withMigratedSchema(async (pool) => {
+        const service = await seedSourceAndFinalize(pool);
+        await seedCopyMasters(new PostgresMasterRepository(pool));
+
+        const result = await service.createFromPrior(copyInput());
+        expect(result).toMatchObject({
+          kind: "saved",
+          draft: {
+            copiedFrom: {
+              prescriptionId: "prescription-copy-db-001",
+              version: 1,
+            },
+          },
+        });
+      }, 1);
+    });
+
+    it("returns not_found for missing source/version and conflict for an existing target draft", async () => {
+      await withMigratedSchema(async (pool) => {
+        const service = await seedSourceAndFinalize(pool);
+        await seedCopyMasters(new PostgresMasterRepository(pool));
+
+        await expect(
+          service.createFromPrior(
+            copyInput({ sourcePrescriptionId: "prescription-missing" }),
+          ),
+        ).resolves.toEqual({ kind: "not_found" });
+        await expect(
+          service.createFromPrior(copyInput({ sourceVersion: 9 })),
+        ).resolves.toEqual({ kind: "not_found" });
+
+        const first = await service.createFromPrior(copyInput());
+        expect(first).toMatchObject({ kind: "saved" });
+        await expect(
+          service.createFromPrior(copyInput()),
+        ).resolves.toEqual({ kind: "conflict" });
+      });
+    });
+
+    it("enforces the copied_from composite FK and CHECK constraints", async () => {
+      await withMigratedSchema(async (pool) => {
+        const service = await seedSourceAndFinalize(pool);
+        await seedCopyMasters(new PostgresMasterRepository(pool));
+        await service.createFromPrior(copyInput());
+        // reception/patient FK を通すため検証用受付を seed する。
+        await seedReception(pool, {
+          tenantId: LIFECYCLE_SCOPE.tenantId,
+          pharmacyId: LIFECYCLE_SCOPE.pharmacyId,
+          patientId: "patient-fk-test",
+          receptionId: "reception-fk-test",
+          patientNumber: "COPY-FK-001",
+          idempotencyKey: "copy-fk-idempotency-001",
+        });
+
+        // 不存在版への複製元参照は複合 FK で拒否。
+        await expect(
+          pool.query(
+            `INSERT INTO prescription_drafts (
+               tenant_id, pharmacy_id, prescription_id, reception_id,
+               patient_id, business_date, version, prescription_type,
+               note, content_hash, rp_groups,
+               copied_from_prescription_id, copied_from_version,
+               created_at, updated_at, created_by, updated_by
+             ) VALUES (
+               $1, $2, 'prescription-fk-bad-1', 'reception-fk-test',
+               'patient-fk-test', '2026-08-25'::date, 1, 'OUTPATIENT',
+               '', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2', '[]'::jsonb,
+               'prescription-copy-db-001', 9,
+               '2026-08-25T00:00:00.000Z'::timestamptz,
+               '2026-08-25T00:00:00.000Z'::timestamptz,
+               'actor', 'actor'
+             )`,
+            [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+          ),
+        ).rejects.toThrow(/copied_from_version_fk/u);
+
+        // 片方のみ NULL は CHECK で拒否。
+        await expect(
+          pool.query(
+            `INSERT INTO prescription_drafts (
+               tenant_id, pharmacy_id, prescription_id, reception_id,
+               patient_id, business_date, version, prescription_type,
+               note, content_hash, rp_groups,
+               copied_from_prescription_id,
+               created_at, updated_at, created_by, updated_by
+             ) VALUES (
+               $1, $2, 'prescription-fk-bad-2', 'reception-fk-test',
+               'patient-fk-test', '2026-08-25'::date, 1, 'OUTPATIENT',
+               '', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2', '[]'::jsonb,
+               'prescription-copy-db-001',
+               '2026-08-25T00:00:00.000Z'::timestamptz,
+               '2026-08-25T00:00:00.000Z'::timestamptz,
+               'actor', 'actor'
+             )`,
+            [LIFECYCLE_SCOPE.tenantId, LIFECYCLE_SCOPE.pharmacyId],
+          ),
+        ).rejects.toThrow(/copied_from_consistent/u);
       });
     });
   },

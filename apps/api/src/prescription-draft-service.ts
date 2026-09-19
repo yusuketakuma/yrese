@@ -15,6 +15,9 @@ import {
   type PrescriptionInquiryResult,
   type PrescriptionInquiryView,
   type PrescriptionLifecycleView,
+  type PrescriptionRpGroup,
+  type PrescriptionRpMedicationRef,
+  type PrescriptionRpUsageRef,
   type PrescriptionStatusWire,
   type PrescriptionVersionView,
   type ReceptionQueueEntry,
@@ -36,6 +39,10 @@ import {
 
 import type { ActorQualificationRepository } from "./actor-qualification-repository.js";
 import type { AuditRepository } from "./audit-repository.js";
+import type {
+  MasterReadRepository,
+  MasterRepository,
+} from "./master-repository.js";
 import type { ReceptionRepository } from "./reception-repository.js";
 
 export interface PrescriptionDraftLookupInput {
@@ -100,9 +107,30 @@ export type PrescriptionLifecycleCommandResult =
   /** 受付が IN_PROGRESS でない → 409 RX-0004(confirm のみ)。 */
   | { readonly kind: "reception_not_in_progress" };
 
+/**
+ * WP-7304 / PRD-001 M4: 前回 Do — 確定済み処方版からの複製起点。
+ * sourceVersion 省略時は最新版(MAX(version))を複製する。
+ */
+export interface PrescriptionDraftFromPriorInput
+  extends PrescriptionDraftLookupInput {
+  readonly patientId: PatientId;
+  readonly sourcePrescriptionId: PrescriptionId;
+  readonly sourceVersion?: number;
+}
+
+export type PrescriptionDraftFromPriorResult =
+  | { readonly kind: "saved"; readonly draft: PrescriptionDraftSaveResponse }
+  /** 受付なし・非 editable・patient 不一致・複製元/指定版なし → 404。 */
+  | { readonly kind: "not_found" }
+  /** 複製先 reception に draft 既存 → 409。 */
+  | { readonly kind: "conflict" };
+
 export interface PrescriptionDraftService {
   get(input: PrescriptionDraftLookupInput): Promise<PrescriptionDraftLookupResult>;
   save(input: PrescriptionDraftSaveInput): Promise<PrescriptionDraftSaveResult>;
+  createFromPrior(
+    input: PrescriptionDraftFromPriorInput,
+  ): Promise<PrescriptionDraftFromPriorResult>;
   confirm(
     input: PrescriptionLifecycleCommandInput,
   ): Promise<PrescriptionLifecycleCommandResult>;
@@ -405,6 +433,103 @@ async function receptionMatches(
   );
 }
 
+/**
+ * WP-7304 / PRD-001 M4: 前回 Do の複製 content を組み立てる。
+ * - rpGroups の resolved ref を asOf(複製先業務日)の現行 master 版へ
+ *   localCode 一致で再解決し、版なし・品目廃止は旧表示文で
+ *   UNRESOLVED_TEXT へ降格(confirm guard が RX-0001 で止める)。
+ * - sourceMetadata/prescriptionDate は新原本前提で null リセット。
+ * - rows は legacy 経路の読み替えに任せてそのまま引き継ぐ。
+ */
+export async function copiedContentFromPriorVersion(
+  masters: MasterReadRepository,
+  scope: { readonly tenantId: TenantId; readonly pharmacyId: PharmacyId },
+  content: PrescriptionDraftContent,
+  asOf: string,
+): Promise<PrescriptionDraftContent> {
+  const [medicationMaster, usageMaster] = await Promise.all([
+    masters.list({ ...scope, kind: "medication", asOf }),
+    masters.list({ ...scope, kind: "usage", asOf }),
+  ]);
+  const medicationItems =
+    medicationMaster.kind === "listed" ? medicationMaster.items : [];
+  const usageItems = usageMaster.kind === "listed" ? usageMaster.items : [];
+  const medicationVersionId =
+    medicationMaster.kind === "listed"
+      ? medicationMaster.masterVersion.masterVersionId
+      : undefined;
+  const usageVersionId =
+    usageMaster.kind === "listed"
+      ? usageMaster.masterVersion.masterVersionId
+      : undefined;
+
+  const reresolveMedication = async (
+    ref: PrescriptionRpMedicationRef,
+  ): Promise<PrescriptionRpMedicationRef> => {
+    if (ref.kind === "unresolved") return ref;
+    const prior = await masters.findMedicationItemById(
+      scope,
+      ref.medicationItemId,
+    );
+    if (prior === undefined) {
+      // MST-001 append-only 前提の breach。fail-closed。
+      throw new Error("Prior medication reference could not be resolved");
+    }
+    const current = medicationItems.find(
+      (item): item is Extract<typeof item, { medicationItemId: string }> =>
+        "medicationItemId" in item && item.localCode === prior.localCode,
+    );
+    if (medicationVersionId === undefined || current === undefined) {
+      return { kind: "unresolved", text: prior.displayText };
+    }
+    return {
+      kind: "resolved",
+      masterVersionId: medicationVersionId,
+      medicationItemId: current.medicationItemId,
+    };
+  };
+
+  const reresolveUsage = async (
+    ref: PrescriptionRpUsageRef,
+  ): Promise<PrescriptionRpUsageRef> => {
+    if (ref.kind === "unresolved") return ref;
+    const prior = await masters.findUsageItemById(scope, ref.usageItemId);
+    if (prior === undefined) {
+      throw new Error("Prior usage reference could not be resolved");
+    }
+    const current = usageItems.find(
+      (item): item is Extract<typeof item, { usageItemId: string }> =>
+        "usageItemId" in item && item.localCode === prior.localCode,
+    );
+    if (usageVersionId === undefined || current === undefined) {
+      return { kind: "unresolved", text: prior.displayText };
+    }
+    return { kind: "resolved", usageItemId: current.usageItemId };
+  };
+
+  const rpGroups: PrescriptionRpGroup[] = [];
+  for (const group of content.rpGroups) {
+    const items: PrescriptionRpGroup["items"][number][] = [];
+    for (const item of group.items) {
+      items.push({
+        ...item,
+        medication: await reresolveMedication(item.medication),
+      });
+    }
+    rpGroups.push({
+      ...group,
+      usage: await reresolveUsage(group.usage),
+      items,
+    });
+  }
+  return {
+    ...content,
+    prescriptionDate: null,
+    sourceMetadata: null,
+    rpGroups,
+  };
+}
+
 interface InMemoryPrescriptionLifecycleState {
   status: PrescriptionStatusWire | null;
   confirmedBy: string | null;
@@ -539,6 +664,11 @@ export interface PrescriptionLifecycleDeps {
   readonly nextOutboxEventId?: () => string;
   /** WP-7403: inquiry ID 生成器。未注入なら UUID 生成。 */
   readonly nextInquiryId?: () => PrescriptionInquiryId;
+  /**
+   * WP-7304: 前回 Do の master 再解決。未注入なら createFromPrior は
+   * 複製元の resolved ref を安全に変換できないため fail する。
+   */
+  readonly masterRepository?: MasterRepository;
 }
 
 export class InMemoryPrescriptionDraftService
@@ -659,6 +789,7 @@ export class InMemoryPrescriptionDraftService
           finalizedBy: null,
           finalizedAt: null,
           prescriptionVersion: null,
+          copiedFrom: null,
         });
         this.records.set(key, {
           response,
@@ -742,8 +873,125 @@ export class InMemoryPrescriptionDraftService
     });
   }
 
+  /**
+   * WP-7304 / PRD-001 M4: 前回 Do。確定版 content を再解決付きで複製し、
+   * 受付の新規 draft として保存する。複製元の PHI read と新規作成の監査を
+   * 状態適用より先に記録する(WP-7402 と同じ evidence-first 規則)。
+   */
+  async createFromPrior(
+    input: PrescriptionDraftFromPriorInput,
+  ): Promise<PrescriptionDraftFromPriorResult> {
+    const masters = this.lifecycleDeps.masterRepository;
+    if (masters === undefined) {
+      throw new Error("Master repository is required for from-prior copies");
+    }
+    const key = scopeKey(input);
+    return this.withKeyLock(key, async () => {
+      const reception = await receptionMatches(
+        this.receptionRepository,
+        input,
+        true,
+      );
+      if (
+        reception === undefined ||
+        reception.patient.patientId !== input.patientId
+      ) {
+        return { kind: "not_found" };
+      }
+      if (this.records.has(key)) {
+        return { kind: "conflict" };
+      }
+      const source = this.findRecordByPrescriptionId({
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+        prescriptionId: input.sourcePrescriptionId,
+      });
+      const sourceVersion =
+        source === undefined
+          ? undefined
+          : input.sourceVersion === undefined
+            ? source.versions.at(-1)
+            : source.versions.find(
+                (entry) => entry.version === input.sourceVersion,
+              );
+      if (source === undefined || sourceVersion === undefined) {
+        return { kind: "not_found" };
+      }
+      const copied = await copiedContentFromPriorVersion(
+        masters,
+        { tenantId: input.tenantId, pharmacyId: input.pharmacyId },
+        sourceVersion.content,
+        input.businessDate,
+      );
+      const { normalized, contentHash } =
+        normalizePrescriptionDraftContentForStorage(copied);
+      const id = this.nextPrescriptionId();
+      const auditScope = {
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+      };
+      await this.auditRepository.record(auditScope, {
+        actorId: input.actorId,
+        auditEventType: "prescription.draft.viewed",
+        targetRef: { kind: "prescription", id: input.sourcePrescriptionId },
+        outcome: "success",
+        wallClock: input.wallClock,
+      });
+      await this.auditRepository.record(auditScope, {
+        actorId: input.actorId,
+        auditEventType: "prescription.created",
+        targetRef: { kind: "prescription", id },
+        outcome: "success",
+        wallClock: input.wallClock,
+      });
+      const response = prescriptionDraftResponseSchema.parse({
+        prescriptionId: id,
+        receptionId: input.receptionId,
+        patientId: input.patientId,
+        businessDate: input.businessDate,
+        version: 1,
+        draft: normalized,
+        createdAt: input.wallClock,
+        updatedAt: input.wallClock,
+        createdBy: input.actorId,
+        updatedBy: input.actorId,
+        status: null,
+        confirmedBy: null,
+        confirmedAt: null,
+        finalizedBy: null,
+        finalizedAt: null,
+        prescriptionVersion: null,
+        copiedFrom: {
+          prescriptionId: input.sourcePrescriptionId,
+          version: sourceVersion.version,
+        },
+      });
+      this.records.set(key, {
+        response,
+        contentHash,
+        lifecycle: emptyLifecycle(),
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+        lockKey: key,
+        versions: [],
+        inquiries: [],
+      });
+      return {
+        kind: "saved",
+        draft: prescriptionDraftSaveResponseSchema.parse({
+          ...response,
+          saveDisposition: "created",
+        }),
+      };
+    });
+  }
+
   private findRecordByPrescriptionId(
-    input: PrescriptionLifecycleCommandInput,
+    input: {
+      readonly tenantId: TenantId;
+      readonly pharmacyId: PharmacyId;
+      readonly prescriptionId: PrescriptionId;
+    },
   ): InMemoryPrescriptionDraftRecord | undefined {
     for (const record of this.records.values()) {
       if (

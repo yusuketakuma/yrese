@@ -43,4 +43,34 @@ describe("prescription draft OpenAPI projection", () => {
       ),
     ).not.toMatchObject({ required: true });
   });
+
+  it("publishes the WP-7304 from-prior copy path with no-store and scopes", () => {
+    const document = createYreseOpenApiDocument();
+    const path =
+      document.paths?.[
+        "/prescription-drafts/by-reception/{receptionId}/from-prior"
+      ];
+
+    expect(path?.post?.operationId).toBe("createPrescriptionDraftFromPrior");
+    expect(path?.post?.["x-yrese-required-scopes"]).toEqual([
+      "prescription:write",
+      "reception:read",
+      "patient:read",
+    ]);
+    expect(path?.post?.responses?.["201"]?.headers).toHaveProperty(
+      "Cache-Control",
+    );
+    expect(path?.post?.responses?.["404"]?.headers).toHaveProperty(
+      "Cache-Control",
+    );
+    expect(path?.post?.responses?.["409"]?.headers).toHaveProperty(
+      "Cache-Control",
+    );
+    // Idempotency-Key を要求しない(reception 一意で fail-closed)。
+    expect(path?.post?.parameters ?? []).toEqual(
+      expect.not.arrayContaining([
+        expect.objectContaining({ in: "header", name: "idempotency-key" }),
+      ]),
+    );
+  });
 });

@@ -96,8 +96,33 @@ export interface UsageItemSeedInput extends MasterScope {
   readonly jahisCode?: string | null | undefined;
 }
 
-export interface MasterRepository {
+/**
+ * WP-7304: item ID から所属版・localCode・表示文を引く lookup 結果。
+ * 前回 Do の再解決で旧 ref から localCode を復元するために使う
+ * (displayText は降格時の UNRESOLVED_TEXT 文言 = medication.name / usage.text)。
+ */
+export interface MasterItemLookup {
+  readonly masterVersionId: string;
+  readonly localCode: string;
+  readonly displayText: string;
+}
+
+/** WP-7304: 前回 Do 再解決が必要とする read 面。PG では tx client 束縛の実装を渡し、tx 保持中の pool 再借用(枯渇 stall)を防ぐ。 */
+export interface MasterReadRepository {
   list(input: MasterListInput): Promise<MasterListResult>;
+  /** WP-7304: medication_item_id → 所属版+localCode+name。 */
+  findMedicationItemById(
+    scope: MasterScope,
+    medicationItemId: string,
+  ): Promise<MasterItemLookup | undefined>;
+  /** WP-7304: usage_item_id → 所属版+localCode+text。 */
+  findUsageItemById(
+    scope: MasterScope,
+    usageItemId: string,
+  ): Promise<MasterItemLookup | undefined>;
+}
+
+export interface MasterRepository extends MasterReadRepository {
   /** seed 専用 append。同一 (kind, version) 既存時は skip。 */
   seedVersion(input: MasterVersionSeedInput): Promise<'recorded' | 'existing'>;
   /** seed 専用 append。同一 (versionId, localCode) 既存時は skip。 */
@@ -305,6 +330,42 @@ export class InMemoryMasterRepository implements MasterRepository {
       kind: 'listed',
       masterVersion: toWireVersion(version),
       items: Object.freeze(items),
+    };
+  }
+
+  async findMedicationItemById(
+    scope: MasterScope,
+    medicationItemId: string,
+  ): Promise<MasterItemLookup | undefined> {
+    const row = this.medications.find(
+      (entry) =>
+        entry.tenantId === scope.tenantId &&
+        entry.pharmacyId === scope.pharmacyId &&
+        entry.medicationItemId === medicationItemId,
+    );
+    if (row === undefined) return undefined;
+    return {
+      masterVersionId: row.masterVersionId,
+      localCode: row.localCode,
+      displayText: row.name,
+    };
+  }
+
+  async findUsageItemById(
+    scope: MasterScope,
+    usageItemId: string,
+  ): Promise<MasterItemLookup | undefined> {
+    const row = this.usages.find(
+      (entry) =>
+        entry.tenantId === scope.tenantId &&
+        entry.pharmacyId === scope.pharmacyId &&
+        entry.usageItemId === usageItemId,
+    );
+    if (row === undefined) return undefined;
+    return {
+      masterVersionId: row.masterVersionId,
+      localCode: row.localCode,
+      displayText: row.text,
     };
   }
 

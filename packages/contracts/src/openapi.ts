@@ -45,6 +45,7 @@ import {
   patientVersionedSummarySchema,
 } from "./patient-search.js";
 import {
+  prescriptionDraftFromPriorRequestSchema,
   prescriptionDraftParamsSchema,
   prescriptionDraftQuerySchema,
   prescriptionDraftResponseSchema,
@@ -351,6 +352,13 @@ const prescriptionDraftSaveRequestOpenApiSchema =
     id: "PrescriptionDraftSaveRequest",
     description:
       "Versioned prescription draft save request. Contains clinical PHI and must not be logged in plaintext.",
+  });
+
+const prescriptionDraftFromPriorRequestOpenApiSchema =
+  prescriptionDraftFromPriorRequestSchema.meta({
+    id: "PrescriptionDraftFromPriorRequest",
+    description:
+      "WP-7304 (PRD-001 M4) copy-start request. sourcePrescriptionId is required and never auto-selected; sourceVersion defaults to the latest finalized version.",
   });
 
 const prescriptionDraftResponseOpenApiSchema = prescriptionDraftResponseSchema.meta({
@@ -1167,6 +1175,52 @@ const openApiDefinition = {
           ),
           "409": frameworkFailureResponse(
             "Prescription draft version conflict",
+          ),
+          "500": internalErrorResponse({ noStore: true }),
+        },
+      },
+    },
+    "/prescription-drafts/by-reception/{receptionId}/from-prior": {
+      post: {
+        operationId: "createPrescriptionDraftFromPrior",
+        tags: ["prescriptions"],
+        summary: "Create an editable draft copied from a finalized prescription version",
+        description:
+          "WP-7304 (PRD-001 M4). Requires prescription:write, reception:read, and patient:read. The source prescription must be identified explicitly by sourcePrescriptionId (never auto-selected); sourceVersion defaults to the latest finalized version. Master references are re-resolved against current master data and stale items degrade to unresolved text. No Idempotency-Key: the per-reception draft uniqueness makes a retried copy a 409. Every status uses Cache-Control: no-store.",
+        "x-yrese-ssot": "DOM-002",
+        "x-yrese-required-scopes": [
+          "prescription:write",
+          "reception:read",
+          "patient:read",
+        ],
+        requestParams: {
+          path: prescriptionDraftParamsOpenApiSchema,
+        },
+        requestBody: {
+          required: true,
+          content: {
+            [jsonContentType]: {
+              schema: prescriptionDraftFromPriorRequestOpenApiSchema,
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Prescription draft created from a prior finalized version",
+            headers: noStoreHeaders,
+            content: {
+              [jsonContentType]: {
+                schema: prescriptionDraftSaveResponseOpenApiSchema,
+              },
+            },
+          },
+          "400": frameworkFailureResponse("Invalid prescription draft request"),
+          "403": forbiddenErrorResponse({ noStore: true }),
+          "404": frameworkFailureResponse(
+            "Verified reception/patient context or finalized source version not found",
+          ),
+          "409": frameworkFailureResponse(
+            "Prescription draft already exists for this reception",
           ),
           "500": internalErrorResponse({ noStore: true }),
         },

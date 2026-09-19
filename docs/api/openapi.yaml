@@ -1055,6 +1055,79 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FrameworkErrorResponse"
+  /prescription-drafts/by-reception/{receptionId}/from-prior:
+    post:
+      operationId: createPrescriptionDraftFromPrior
+      tags:
+        - prescriptions
+      summary: Create an editable draft copied from a finalized prescription version
+      description: "WP-7304 (PRD-001 M4). Requires prescription:write, reception:read, and patient:read. The source
+        prescription must be identified explicitly by sourcePrescriptionId (never auto-selected); sourceVersion defaults
+        to the latest finalized version. Master references are re-resolved against current master data and stale items
+        degrade to unresolved text. No Idempotency-Key: the per-reception draft uniqueness makes a retried copy a 409.
+        Every status uses Cache-Control: no-store."
+      x-yrese-ssot: DOM-002
+      x-yrese-required-scopes:
+        - prescription:write
+        - reception:read
+        - patient:read
+      parameters:
+        - in: path
+          name: receptionId
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrescriptionDraftFromPriorRequest"
+      responses:
+        "201":
+          description: Prescription draft created from a prior finalized version
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrescriptionDraftSaveResponse"
+        "400":
+          description: Invalid prescription draft request
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+        "403":
+          description: Forbidden (AUTH-0003)
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Verified reception/patient context or finalized source version not found
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+        "409":
+          description: Prescription draft already exists for this reception
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
+        "500":
+          description: Normalized internal error. Constant invariant message; no raw exception detail, no PHI.
+          headers: *a1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FrameworkErrorResponse"
   /prescriptions/{prescriptionId}/confirm:
     post:
       operationId: confirmPrescription
@@ -2420,6 +2493,32 @@ components:
         - expectedVersion
         - draft
       description: Versioned prescription draft save request. Contains clinical PHI and must not be logged in plaintext.
+    PrescriptionDraftFromPriorRequest:
+      type: object
+      properties:
+        patientId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        businessDate:
+          type: string
+          format: date
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        sourcePrescriptionId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        sourceVersion:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+      required:
+        - patientId
+        - businessDate
+        - sourcePrescriptionId
+      additionalProperties: false
+      description: WP-7304 (PRD-001 M4) copy-start request. sourcePrescriptionId is required and never auto-selected;
+        sourceVersion defaults to the latest finalized version.
     PrescriptionInquiryCreateRequest:
       type: object
       properties:
@@ -4423,6 +4522,23 @@ components:
               minimum: 1
               maximum: 2147483647
             - type: "null"
+        copiedFrom:
+          anyOf:
+            - type: object
+              properties:
+                prescriptionId:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                version:
+                  type: integer
+                  minimum: 1
+                  maximum: 2147483647
+              required:
+                - prescriptionId
+                - version
+              additionalProperties: false
+            - type: "null"
       required:
         - prescriptionId
         - receptionId
@@ -4440,6 +4556,7 @@ components:
         - finalizedBy
         - finalizedAt
         - prescriptionVersion
+        - copiedFrom
       additionalProperties: false
       description: Server-saved prescription draft with optimistic-concurrency version and actor metadata. Contains clinical PHI.
     PrescriptionDraftSaveResponse:
@@ -4808,6 +4925,23 @@ components:
               minimum: 1
               maximum: 2147483647
             - type: "null"
+        copiedFrom:
+          anyOf:
+            - type: object
+              properties:
+                prescriptionId:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                version:
+                  type: integer
+                  minimum: 1
+                  maximum: 2147483647
+              required:
+                - prescriptionId
+                - version
+              additionalProperties: false
+            - type: "null"
         saveDisposition:
           type: string
           enum:
@@ -4831,6 +4965,7 @@ components:
         - finalizedBy
         - finalizedAt
         - prescriptionVersion
+        - copiedFrom
         - saveDisposition
       additionalProperties: false
       description: Prescription draft save result, including created/updated/unchanged disposition. Contains clinical PHI.

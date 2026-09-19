@@ -152,6 +152,8 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
       // WP-7402 F-5: dev finalize は outbox intent まで揃えて
       // §6.2 の 4 要素(状態・監査・version・intent)を完結させる。
       finalizedOutbox: prescriptionFinalizedOutbox,
+      // WP-7304: 前回 Do の master 再解決に必須。
+      masterRepository,
     };
     // grant は "tenantId:pharmacyId:actorId" のカンマ区切り(開発時のみ)。
     for (const grant of (process.env.YRESE_DEV_PHARMACIST_GRANTS ?? '')
@@ -247,6 +249,8 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
       {
         // WP-7402: 資格 read ガード(SEC-010)。付与/取消の管理経路は後続 WP。
         qualificationRepository: new PostgresActorQualificationRepository(pool),
+        // WP-7304: 前回 Do の master 再解決に必須。
+        masterRepository: new PostgresMasterRepository(pool),
       },
     );
     server.register(prescriptionDraftRoutes, {

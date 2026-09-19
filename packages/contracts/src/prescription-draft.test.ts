@@ -3,11 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   PRESCRIPTION_DRAFT_MAX_RP_GROUPS,
   PRESCRIPTION_DRAFT_MAX_RP_ITEMS,
+  PRESCRIPTION_DRAFT_MAX_VERSION,
   PRESCRIPTION_DRAFT_NOTE_MAX_LENGTH,
   PRESCRIPTION_DRAFT_RP_TEXT_MAX_LENGTH,
   deriveRpGroupsFromLegacyRows,
   prescriptionDraftContentSchema,
   prescriptionDraftEffectiveRpGroups,
+  prescriptionDraftFromPriorRequestSchema,
   prescriptionDraftHasUnresolvedMedicationItems,
   prescriptionDraftQuerySchema,
   prescriptionDraftResponseSchema,
@@ -385,10 +387,100 @@ describe("prescription draft contracts", () => {
         finalizedBy: null,
         finalizedAt: null,
         prescriptionVersion: null,
+        copiedFrom: null,
       }),
     ).toMatchObject({
       prescriptionId: "prescription-test-001",
       version: 1,
     });
+  });
+
+  // ---- WP-7304 / PRD-001 M4: 前回 Do ----
+
+  it("requires an explicit sourcePrescriptionId and bounds sourceVersion", () => {
+    const base = {
+      patientId: "patient-test-001",
+      businessDate: "2026-08-25",
+      sourcePrescriptionId: "prescription-test-001",
+    };
+    expect(prescriptionDraftFromPriorRequestSchema.parse(base)).toEqual(base);
+    expect(
+      prescriptionDraftFromPriorRequestSchema.parse({
+        ...base,
+        sourceVersion: 3,
+      }),
+    ).toMatchObject({ sourceVersion: 3 });
+
+    // 複製元の自動選択を防ぐため sourcePrescriptionId は必須。
+    expect(() =>
+      prescriptionDraftFromPriorRequestSchema.parse({
+        patientId: "patient-test-001",
+        businessDate: "2026-08-25",
+      }),
+    ).toThrow();
+    for (const sourceVersion of [0, -1, 1.5, PRESCRIPTION_DRAFT_MAX_VERSION + 1]) {
+      expect(() =>
+        prescriptionDraftFromPriorRequestSchema.parse({
+          ...base,
+          sourceVersion,
+        }),
+      ).toThrow();
+    }
+    // strict: 未知キーは拒否。
+    expect(() =>
+      prescriptionDraftFromPriorRequestSchema.parse({
+        ...base,
+        sourcePatientId: "patient-test-002",
+      }),
+    ).toThrow();
+  });
+
+  it("carries copiedFrom provenance as a nullable response field", () => {
+    const base = {
+      prescriptionId: "prescription-test-001",
+      receptionId: "reception-test-001",
+      patientId: "patient-test-001",
+      businessDate: "2026-08-25",
+      version: 1,
+      draft: validDraft,
+      createdAt: "2026-08-25T00:00:00.000Z",
+      updatedAt: "2026-08-25T00:00:00.000Z",
+      createdBy: "actor-test-001",
+      updatedBy: "actor-test-001",
+      status: null,
+      confirmedBy: null,
+      confirmedAt: null,
+      finalizedBy: null,
+      finalizedAt: null,
+      prescriptionVersion: null,
+    };
+    expect(
+      prescriptionDraftResponseSchema.parse({ ...base, copiedFrom: null })
+        .copiedFrom,
+    ).toBeNull();
+    expect(
+      prescriptionDraftResponseSchema.parse({
+        ...base,
+        copiedFrom: { prescriptionId: "prescription-test-000", version: 2 },
+      }).copiedFrom,
+    ).toEqual({ prescriptionId: "prescription-test-000", version: 2 });
+    // copiedFrom は必須(nullable)——省略不可。
+    expect(() => prescriptionDraftResponseSchema.parse(base)).toThrow();
+    // 片方だけ欠けた provenance は拒否。
+    expect(() =>
+      prescriptionDraftResponseSchema.parse({
+        ...base,
+        copiedFrom: { prescriptionId: "prescription-test-000" },
+      }),
+    ).toThrow();
+    expect(() =>
+      prescriptionDraftResponseSchema.parse({
+        ...base,
+        copiedFrom: {
+          prescriptionId: "prescription-test-000",
+          version: 0,
+        },
+      }),
+    ).toThrow();
   });
 });

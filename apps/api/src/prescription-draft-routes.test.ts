@@ -6,15 +6,21 @@ import {
   frameworkErrorResponseSchema,
   prescriptionDraftResponseSchema,
   prescriptionDraftSaveResponseSchema,
+  type PrescriptionDraftContent,
 } from "@yrese/contracts";
 import {
   AUTH_PERMISSION_DENIED_ERROR_CODE,
+  patientId,
   pharmacyId,
   prescriptionId,
+  receptionId,
   tenantId,
+  userId,
 } from "@yrese/shared-kernel";
 
+import { InMemoryActorQualificationRepository } from "./actor-qualification-repository.js";
 import { InMemoryAuditRepository } from "./audit-repository.js";
+import { InMemoryMasterRepository } from "./master-repository.js";
 import {
   createPatientSearchCursorCodec,
   patientSearchCursorHmacKeyByteLength,
@@ -365,6 +371,9 @@ describe("prescription draft routes", () => {
       save: async () => {
         throw new Error(rawSentinel);
       },
+      createFromPrior: async () => {
+        throw new Error(rawSentinel);
+      },
       confirm: async () => {
         throw new Error(rawSentinel);
       },
@@ -539,5 +548,264 @@ describe("prescription draft routes", () => {
     } finally {
       parseSpy.mockRestore();
     }
+  });
+
+  // ---- WP-7304 / PRD-001 M4: 前回 Do route ----
+
+  describe("from-prior copy (WP-7304)", () => {
+    const COPY_MED_VERSION = "00000000-0000-4000-8000-0000000000c1";
+    const COPY_MED_ITEM = "00000000-0000-4000-8000-0000000000d1";
+    const COPY_USAGE_ITEM = "00000000-0000-4000-8000-0000000000e4";
+
+    function copyService() {
+      const receptionRepository = new InMemoryReceptionRepository();
+      const auditRepository = new InMemoryAuditRepository();
+      const qualification = new InMemoryActorQualificationRepository();
+      qualification.grant({
+        tenantId: tenantId("tenant-001"),
+        pharmacyId: pharmacyId("pharmacy-001"),
+        actorId: userId("actor-prescription-001"),
+        kind: "PHARMACIST_LICENSE",
+      });
+      const masters = new InMemoryMasterRepository();
+      let counter = 0;
+      const service = new InMemoryPrescriptionDraftService(
+        receptionRepository,
+        auditRepository,
+        () =>
+          prescriptionId(
+            `prescription-route-copy-${String(++counter).padStart(2, "0")}`,
+          ),
+        { qualificationRepository: qualification, masterRepository: masters },
+      );
+      return { masters, service };
+    }
+
+    async function seedCopyMasters(masters: InMemoryMasterRepository) {
+      const seedScope = {
+        tenantId: tenantId("tenant-001"),
+        pharmacyId: pharmacyId("pharmacy-001"),
+      };
+      await masters.seedVersion({
+        ...seedScope,
+        masterVersionId: COPY_MED_VERSION,
+        masterKind: "medication",
+        version: "2026-07-01",
+        validFrom: "2026-07-01",
+        recordedAt: "2026-07-01T00:00:00.000Z",
+      });
+      await masters.seedMedicationItem({
+        ...seedScope,
+        medicationItemId: COPY_MED_ITEM,
+        masterVersionId: COPY_MED_VERSION,
+        localCode: "MED001",
+        name: "合成薬剤 5mg",
+        unit: "錠",
+        genericFlag: "unclassified",
+      });
+      await masters.seedVersion({
+        ...seedScope,
+        masterVersionId: "00000000-0000-4000-8000-0000000000e3",
+        masterKind: "usage",
+        version: "2026-07-01",
+        validFrom: "2026-07-01",
+        recordedAt: "2026-07-01T00:00:00.000Z",
+      });
+      await masters.seedUsageItem({
+        ...seedScope,
+        usageItemId: COPY_USAGE_ITEM,
+        masterVersionId: "00000000-0000-4000-8000-0000000000e3",
+        localCode: "U001",
+        text: "1日1回 朝食後",
+      });
+    }
+
+    const sourceDraft: PrescriptionDraftContent = {
+      prescriptionType: "OUTPATIENT",
+      sourceMetadata: {
+        medicalInstitution: { code: "1234567", name: "合成病院" },
+        prescriberName: "合成 医師",
+        issueDate: "2026-07-01",
+        validUntil: "2026-07-10",
+        refill: null,
+        splitDispensing: null,
+      },
+      prescriptionDate: "2026-07-09",
+      defaultDays: 7,
+      flags: [],
+      note: "",
+      rows: [],
+      rpGroups: [
+        {
+          rpGroupId: "00000000-0000-4000-8000-0000000000a1",
+          sequence: 1,
+          dosageForm: "ORAL",
+          usage: { kind: "resolved", usageItemId: COPY_USAGE_ITEM },
+          daysOrCount: 7,
+          items: [
+            {
+              rpItemId: "00000000-0000-4000-a000-0000000000a1",
+              sequence: 1,
+              medication: {
+                kind: "resolved",
+                masterVersionId: COPY_MED_VERSION,
+                medicationItemId: COPY_MED_ITEM,
+              },
+              doseOnce: null,
+              dosePerDay: null,
+              doseTotal: "7錠",
+              unit: "錠",
+              genericNamePrescription: false,
+              genericSubstitutionPermitted: null,
+            },
+          ],
+        },
+      ],
+    };
+
+    async function finalizedSource(service: InMemoryPrescriptionDraftService) {
+      const lifecycleScope = {
+        tenantId: tenantId("tenant-001"),
+        pharmacyId: pharmacyId("pharmacy-001"),
+        actorId: userId("actor-prescription-001"),
+        wallClock: "2026-07-09T10:00:00.000Z",
+      };
+      await service.save({
+        ...lifecycleScope,
+        receptionId: receptionId("reception-syn-001"),
+        patientId: patientId("patient-syn-001"),
+        businessDate: "2026-07-09",
+        expectedVersion: 0,
+        draft: sourceDraft,
+      });
+      for (const [method, key] of [
+        ["confirm", "confirm-key-000001"],
+        ["finalize", "finalize-key-00001"],
+      ] as const) {
+        await service[method]({
+          ...lifecycleScope,
+          prescriptionId: prescriptionId("prescription-route-copy-01"),
+          idempotencyKey: key,
+        });
+      }
+    }
+
+    const copyBody = {
+      patientId: "patient-syn-002",
+      businessDate: "2026-07-09",
+      sourcePrescriptionId: "prescription-route-copy-01",
+    } as const;
+
+    it("creates a copied draft with copiedFrom provenance", async () => {
+      const { masters, service } = copyService();
+      await seedCopyMasters(masters);
+      await finalizedSource(service);
+      const instance = server(service);
+
+      const response = await instance.inject({
+        method: "POST",
+        url: "/prescription-drafts/by-reception/reception-syn-002/from-prior",
+        headers: authorizedHeaders,
+        payload: copyBody,
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(response.headers["cache-control"]).toBe("no-store");
+      expect(
+        prescriptionDraftSaveResponseSchema.parse(response.json()),
+      ).toMatchObject({
+        prescriptionId: "prescription-route-copy-02",
+        saveDisposition: "created",
+        copiedFrom: {
+          prescriptionId: "prescription-route-copy-01",
+          version: 1,
+        },
+        draft: { sourceMetadata: null, prescriptionDate: null },
+      });
+    });
+
+    it("maps source/context misses to 404 and existing draft to 409", async () => {
+      const { masters, service } = copyService();
+      await seedCopyMasters(masters);
+      await finalizedSource(service);
+      const instance = server(service);
+
+      const missingSource = await instance.inject({
+        method: "POST",
+        url: "/prescription-drafts/by-reception/reception-syn-002/from-prior",
+        headers: authorizedHeaders,
+        payload: { ...copyBody, sourcePrescriptionId: "prescription-none" },
+      });
+      expect(missingSource.statusCode).toBe(404);
+      const missingVersion = await instance.inject({
+        method: "POST",
+        url: "/prescription-drafts/by-reception/reception-syn-002/from-prior",
+        headers: authorizedHeaders,
+        payload: { ...copyBody, sourceVersion: 9 },
+      });
+      expect(missingVersion.statusCode).toBe(404);
+      const patientMismatch = await instance.inject({
+        method: "POST",
+        url: "/prescription-drafts/by-reception/reception-syn-002/from-prior",
+        headers: authorizedHeaders,
+        payload: { ...copyBody, patientId: "patient-syn-003" },
+      });
+      expect(patientMismatch.statusCode).toBe(404);
+      const conflictResponse = await instance.inject({
+        method: "POST",
+        url: "/prescription-drafts/by-reception/reception-syn-001/from-prior",
+        headers: authorizedHeaders,
+        payload: { ...copyBody, patientId: "patient-syn-001" },
+      });
+      expect(conflictResponse.statusCode).toBe(409);
+      expect(conflictResponse.headers["cache-control"]).toBe("no-store");
+    });
+
+    it("rejects invalid bodies with a fixed PHI-free 400", async () => {
+      const { masters, service } = copyService();
+      await seedCopyMasters(masters);
+      await finalizedSource(service);
+      const instance = server(service);
+
+      for (const payload of [
+        { ...copyBody, sourcePrescriptionId: undefined },
+        { ...copyBody, sourceVersion: 0 },
+        { ...copyBody, extra: "key" },
+        { ...copyBody, businessDate: "2026-02-30" },
+      ]) {
+        const response = await instance.inject({
+          method: "POST",
+          url: "/prescription-drafts/by-reception/reception-syn-002/from-prior",
+          headers: authorizedHeaders,
+          payload,
+        });
+        expect(response.statusCode).toBe(400);
+        expect(response.headers["cache-control"]).toBe("no-store");
+        expect(response.json()).toEqual({
+          statusCode: 400,
+          error: "Bad Request",
+          message: "Invalid prescription draft request",
+        });
+      }
+    });
+
+    it("requires prescription:write plus read scopes", async () => {
+      const { masters, service } = copyService();
+      await seedCopyMasters(masters);
+      await finalizedSource(service);
+      const instance = server(service);
+
+      const response = await instance.inject({
+        method: "POST",
+        url: "/prescription-drafts/by-reception/reception-syn-002/from-prior",
+        headers: {
+          ...authorizedHeaders,
+          "x-dev-scopes": "prescription:read,reception:read,patient:read",
+        },
+        payload: copyBody,
+      });
+      expect(response.statusCode).toBe(403);
+      expect(response.headers["cache-control"]).toBe("no-store");
+    });
   });
 });
