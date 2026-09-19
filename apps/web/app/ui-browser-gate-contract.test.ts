@@ -66,12 +66,16 @@ describe("UI browser validation gate", () => {
     expect(browserCheck).toContain("dialog.dismiss");
     expect(browserCheck).toContain("dialog.accept");
     expect(browserCheck).toContain('forcedColors: "active"');
-    // WP-7104: North Star 部分 journey(検索→受付登録→キュー→引継ぎ→下書き保存)。
+    // WP-7104/WP-7405: North Star 全行程 journey(検索→受付登録→対応開始→
+    // 引継ぎ→master 解決下書き保存→薬剤師確認→確定→調剤記録→outbox evidence)。
     expect(browserCheck).toContain("checkNorthStarJourney");
     expect(browserCheck).toContain(
-      "north-star-patient-reception-draft-journey",
+      "north-star-full-journey-reception-to-dispensing(fixture-dispensing)",
     );
     expect(browserCheck).toContain("この患者を受付登録");
+    expect(browserCheck).toContain("/対応開始: /u");
+    expect(browserCheck).toContain("薬剤師確認へ進む");
+    expect(browserCheck).toContain("処方を確定する");
   });
 
   it("uses synthetic fixture patients and receptions with no production endpoint", () => {

@@ -13,12 +13,19 @@ import {
   receptionQueueResponseSchema,
 } from "@yrese/contracts";
 import {
+  AUTH_PERMISSION_DENIED_ERROR_CODE,
+  PRESCRIPTION_CODE_MAPPING_REVIEW_REQUIRED_ERROR_CODE,
   pharmacyId,
   prescriptionId,
   tenantId,
+  userId,
 } from "@yrese/shared-kernel";
 
+import { InMemoryActorQualificationRepository } from "./actor-qualification-repository.js";
 import { InMemoryAuditRepository } from "./audit-repository.js";
+import { dispensingRoutes } from "./dispensing-routes.js";
+import { InMemoryDispensingService } from "./dispensing-service.js";
+import { InMemoryMasterRepository } from "./master-repository.js";
 import { operationsRoutes } from "./operations-routes.js";
 import {
   createPatientSearchCursorCodec,
@@ -27,7 +34,11 @@ import {
 import { InMemoryOperationsReadService } from "./operations-service.js";
 import { InMemoryPatientRepository } from "./patient-repository.js";
 import { prescriptionDraftRoutes } from "./prescription-draft-routes.js";
-import { InMemoryPrescriptionDraftService } from "./prescription-draft-service.js";
+import {
+  InMemoryPrescriptionDraftService,
+  InMemoryPrescriptionFinalizedOutbox,
+} from "./prescription-draft-service.js";
+import { prescriptionLifecycleRoutes } from "./prescription-lifecycle-routes.js";
 import {
   InMemoryReceptionOutbox,
   composeDefaultReceptionCreateCommand,
@@ -39,7 +50,9 @@ const businessDate = "2026-09-16";
 
 const journeyScopes =
   "tenant:read,patient:read,reception:read,reception:write," +
-  "prescription:read,prescription:write,audit-log:read,sync:read";
+  "prescription:read,prescription:write,prescription:confirm," +
+  "dispensing:write,dispensing:confirm,master:read," +
+  "audit-log:read,sync:read";
 
 const journeyHeaders = {
   "x-dev-tenant": "tenant-001",
@@ -84,17 +97,127 @@ const draftBody = (expectedVersion: number, note: string) => ({
  * 合成患者検索→紙受付→処方下書き→監査/outbox 証跡 を貫通させる。
  * 薬剤師確認・確定・調剤記録・算定は未実装のため対象外(Plans.md §18)。
  */
+// WP-7405: 全行程 journey で使う確定処方の参照先 master seed。
+const JOURNEY_MASTER_MED_VERSION = "00000000-0000-4000-8000-00000000a001";
+const JOURNEY_MASTER_USAGE_VERSION = "00000000-0000-4000-8000-00000000a002";
+const JOURNEY_MEDICATION_ITEM = "00000000-0000-4000-8000-00000000a011";
+const JOURNEY_USAGE_ITEM = "00000000-0000-4000-8000-00000000a021";
+const JOURNEY_RP_GROUP = "00000000-0000-4000-8000-00000000a031";
+const JOURNEY_RP_ITEM = "00000000-0000-4000-8000-00000000a041";
+
+async function seedJourneyMasters(master: InMemoryMasterRepository) {
+  const scope = {
+    tenantId: tenantId("tenant-001"),
+    pharmacyId: pharmacyId("pharmacy-001"),
+  };
+  const recordedAt = "2026-09-16T02:00:00.000Z";
+  await master.seedVersion({
+    ...scope,
+    masterVersionId: JOURNEY_MASTER_MED_VERSION,
+    masterKind: "medication",
+    version: "2026-09",
+    validFrom: "2026-01-01",
+    recordedAt,
+  });
+  await master.seedVersion({
+    ...scope,
+    masterVersionId: JOURNEY_MASTER_USAGE_VERSION,
+    masterKind: "usage",
+    version: "2026-09",
+    validFrom: "2026-01-01",
+    recordedAt,
+  });
+  await master.seedMedicationItem({
+    ...scope,
+    masterVersionId: JOURNEY_MASTER_MED_VERSION,
+    medicationItemId: JOURNEY_MEDICATION_ITEM,
+    localCode: "SYN-JRN-MED",
+    name: "合成薬剤A 5mg",
+    unit: "錠",
+    genericFlag: "originator",
+    genericNameCode: "GN-JRN-001",
+    controlCategories: [],
+  });
+  await master.seedUsageItem({
+    ...scope,
+    masterVersionId: JOURNEY_MASTER_USAGE_VERSION,
+    usageItemId: JOURNEY_USAGE_ITEM,
+    localCode: "SYN-JRN-USG",
+    text: "1日1回 朝食後",
+  });
+}
+
+/** 全 Rp 解決済み + 原本 metadata 充足の confirm 可能 draft。 */
+const structuredDraftBody = (expectedVersion: number) => ({
+  patientId: "patient-syn-001",
+  businessDate,
+  expectedVersion,
+  draft: {
+    prescriptionType: "OUTPATIENT",
+    prescriptionDate: "2026-09-15",
+    defaultDays: 7,
+    flags: [],
+    note: "",
+    rows: [],
+    sourceMetadata: {
+      medicalInstitution: { code: "1234567", name: "合成病院" },
+      prescriberName: "合成 医師",
+      issueDate: "2026-09-15",
+      validUntil: "2026-09-19",
+      refill: null,
+      splitDispensing: null,
+    },
+    rpGroups: [
+      {
+        rpGroupId: JOURNEY_RP_GROUP,
+        sequence: 1,
+        dosageForm: "ORAL",
+        usage: { kind: "resolved", usageItemId: JOURNEY_USAGE_ITEM },
+        daysOrCount: 7,
+        items: [
+          {
+            rpItemId: JOURNEY_RP_ITEM,
+            sequence: 1,
+            medication: {
+              kind: "resolved",
+              masterVersionId: JOURNEY_MASTER_MED_VERSION,
+              medicationItemId: JOURNEY_MEDICATION_ITEM,
+            },
+            doseOnce: null,
+            dosePerDay: null,
+            doseTotal: "7錠",
+            unit: null,
+            genericNamePrescription: false,
+            genericSubstitutionPermitted: null,
+          },
+        ],
+      },
+    ],
+  },
+});
+
 function buildJourneyServer() {
   const patientRepository = new InMemoryPatientRepository();
   const receptionRepository = new InMemoryReceptionRepository();
   const auditRepository = new InMemoryAuditRepository();
   const receptionOutbox = new InMemoryReceptionOutbox();
+  const masterRepository = new InMemoryMasterRepository();
+  const qualificationRepository = new InMemoryActorQualificationRepository();
+  const finalizedOutbox = new InMemoryPrescriptionFinalizedOutbox();
   const now = () => new Date("2026-09-16T02:00:00.000Z");
+  // 全行程の journey actor には薬剤師資格を付与(SEC-010)。
+  qualificationRepository.grant({
+    tenantId: tenantId("tenant-001"),
+    pharmacyId: pharmacyId("pharmacy-001"),
+    actorId: userId("pharmacist-syn-001"),
+    kind: "PHARMACIST_LICENSE",
+  });
   const server = buildServer({
     patientRepository,
     receptionRepository,
     auditRepository,
     receptionOutbox,
+    masterRepository,
     receptionCreateCommand: composeDefaultReceptionCreateCommand({
       receptionRepository,
       auditRepository,
@@ -107,21 +230,47 @@ function buildJourneyServer() {
     ),
     now,
   });
+  const prescriptionDraftService = new InMemoryPrescriptionDraftService(
+    receptionRepository,
+    auditRepository,
+    () => prescriptionId("prescription-journey-001"),
+    {
+      qualificationRepository,
+      finalizedOutbox,
+      masterRepository,
+    },
+  );
   server.register(prescriptionDraftRoutes, {
-    service: new InMemoryPrescriptionDraftService(
-      receptionRepository,
-      auditRepository,
-      () => prescriptionId("prescription-journey-001"),
-    ),
+    service: prescriptionDraftService,
     now,
+  });
+  server.register(prescriptionLifecycleRoutes, {
+    service: prescriptionDraftService,
+    now,
+  });
+  server.register(dispensingRoutes, {
+    service: new InMemoryDispensingService({
+      prescriptionSource: prescriptionDraftService,
+      auditRepository,
+      qualificationRepository,
+      masterRepository,
+      dispensingOutbox: finalizedOutbox,
+    }),
   });
   server.register(operationsRoutes, {
     service: new InMemoryOperationsReadService(
       receptionOutbox,
       receptionRepository,
+      finalizedOutbox,
     ),
   });
-  return { server, receptionOutbox, auditRepository };
+  return {
+    server,
+    receptionOutbox,
+    auditRepository,
+    masterRepository,
+    finalizedOutbox,
+  };
 }
 
 describe("North Star partial journey (WP-7104)", () => {
@@ -405,5 +554,308 @@ describe("North Star partial journey (WP-7104)", () => {
       },
     });
     expect(denied.statusCode).toBe(403);
+  });
+});
+
+/**
+ * WP-7405: North Star 全行程 journey(in_memory)。
+ * 受付 → IN_PROGRESS → 原本 metadata + Rp 構造化(resolved)→ 薬剤師確認 →
+ * 確定 → 調剤記録 create/confirm → audit/outbox evidence を貫通し、
+ * fail-closed 経路(非資格 actor・未解決行・終端受付)を併せて検証する。
+ */
+describe("North Star full journey (WP-7405)", () => {
+  const instances: ReturnType<typeof buildJourneyServer>[] = [];
+
+  afterEach(async () => {
+    await Promise.all(
+      instances.splice(0).map(({ server }) => server.close()),
+    );
+  });
+
+  function server() {
+    const instance = buildJourneyServer();
+    instances.push(instance);
+    return instance;
+  }
+
+  it("reception → structured draft → confirm → finalize → dispensing → evidence", async () => {
+    const { server: instance, masterRepository, finalizedOutbox } = server();
+    await seedJourneyMasters(masterRepository);
+
+    const reception = await instance.inject({
+      method: "POST",
+      url: "/reception",
+      headers: journeyHeaders,
+      payload: {
+        patientId: "patient-syn-001",
+        idempotencyKey: "ns-full-journey-001",
+      },
+    });
+    expect(reception.statusCode).toBe(201);
+    const { receptionId } = receptionQueueEntrySchema.parse(reception.json());
+
+    // 受付 IN_PROGRESS(実 route 経由 — North Star の実経路に乗せる)。
+    const started = await instance.inject({
+      method: "POST",
+      url: `/reception/${receptionId}/transitions`,
+      headers: { ...journeyHeaders, "if-match": '"1"' },
+      payload: { to: "IN_PROGRESS", expectedVersion: 1 },
+    });
+    expect(started.statusCode).toBe(200);
+
+    // master read 経路(実 route)で参照先を確認してから構造化 draft を保存。
+    const masters = await instance.inject({
+      method: "GET",
+      url: `/masters/medications?asOf=${businessDate}&q=SYN-JRN-MED`,
+      headers: journeyHeaders,
+    });
+    expect(masters.statusCode).toBe(200);
+    expect(masters.json().items[0]?.medicationItemId).toBe(
+      JOURNEY_MEDICATION_ITEM,
+    );
+
+    const saved = await instance.inject({
+      method: "PUT",
+      url: `/prescription-drafts/by-reception/${receptionId}`,
+      headers: journeyHeaders,
+      payload: structuredDraftBody(0),
+    });
+    expect(saved.statusCode).toBe(201);
+    const prescriptionIdValue = "prescription-journey-001";
+
+    const confirmed = await instance.inject({
+      method: "POST",
+      url: `/prescriptions/${prescriptionIdValue}/confirm`,
+      headers: {
+        ...journeyHeaders,
+        "idempotency-key": "ns-full-journey-confirm-001",
+      },
+      payload: {},
+    });
+    expect(confirmed.statusCode).toBe(200);
+    expect(confirmed.json().status).toBe("PHARMACIST_CONFIRMED");
+
+    const finalized = await instance.inject({
+      method: "POST",
+      url: `/prescriptions/${prescriptionIdValue}/finalize`,
+      headers: {
+        ...journeyHeaders,
+        "idempotency-key": "ns-full-journey-finalize-01",
+      },
+      payload: {},
+    });
+    expect(finalized.statusCode).toBe(200);
+    expect(finalized.json().status).toBe("PRESCRIPTION_FINALIZED");
+
+    const dispensed = await instance.inject({
+      method: "POST",
+      url: "/dispensings",
+      headers: {
+        ...journeyHeaders,
+        "idempotency-key": "ns-full-journey-disp-0001",
+      },
+      payload: {
+        prescriptionId: prescriptionIdValue,
+        prescriptionVersion: 1,
+        dispensingDate: businessDate,
+        items: [
+          {
+            rpItemId: JOURNEY_RP_ITEM,
+            dispensedMedicationItemId: JOURNEY_MEDICATION_ITEM,
+            dispensedText: null,
+            quantity: "7錠",
+            remainingStockAdjustment: null,
+            note: null,
+          },
+        ],
+      },
+    });
+    expect(dispensed.statusCode).toBe(201);
+    const dispensingIdValue = dispensed.json().dispensingId;
+
+    const dispensingConfirmed = await instance.inject({
+      method: "POST",
+      url: `/dispensings/${dispensingIdValue}/confirm`,
+      headers: {
+        ...journeyHeaders,
+        "idempotency-key": "ns-full-journey-dcfm-0001",
+      },
+      payload: {},
+    });
+    expect(dispensingConfirmed.statusCode).toBe(200);
+    expect(dispensingConfirmed.json().status).toBe("DISPENSING_RECORDED");
+
+    // audit / outbox evidence(種別集合と鎖整合性)。
+    const audit = await instance.inject({
+      method: "GET",
+      url: "/audit/events?limit=200",
+      headers: journeyHeaders,
+    });
+    const auditTypes = auditLogResponseSchema
+      .parse(audit.json())
+      .entries.map((entry) => entry.auditEventType);
+    expect(auditTypes).toEqual(
+      expect.arrayContaining([
+        "reception.created",
+        "reception.started",
+        "prescription.created",
+        "prescription.confirmed",
+        "prescription.finalized",
+        "dispensing.recorded",
+        "dispensing.confirmed",
+      ]),
+    );
+    expect(
+      auditLogResponseSchema.parse(audit.json()).chainVerification.ok,
+    ).toBe(true);
+
+    const outbox = await instance.inject({
+      method: "GET",
+      url: "/operations/outbox-summary",
+      headers: journeyHeaders,
+    });
+    const byEventType = outboxSummaryResponseSchema
+      .parse(outbox.json())
+      .byEventType.map((entry) => entry.eventType);
+    expect(byEventType).toEqual(
+      expect.arrayContaining(["reception.created", "prescription.finalized", "dispense.confirmed"]),
+    );
+    expect(
+      finalizedOutbox
+        .list(tenantId("tenant-001"), pharmacyId("pharmacy-001"))
+        .map((entry) => entry.eventType),
+    ).toEqual(
+      expect.arrayContaining(["prescription.finalized", "dispense.confirmed"]),
+    );
+  });
+
+  it("fail-closed: 非資格 actor は confirm 403 + deny 監査", async () => {
+    const { server: instance, masterRepository, auditRepository } = server();
+    await seedJourneyMasters(masterRepository);
+
+    const reception = await instance.inject({
+      method: "POST",
+      url: "/reception",
+      headers: journeyHeaders,
+      payload: {
+        patientId: "patient-syn-001",
+        idempotencyKey: "ns-full-journey-002",
+      },
+    });
+    const { receptionId } = receptionQueueEntrySchema.parse(reception.json());
+    await instance.inject({
+      method: "POST",
+      url: `/reception/${receptionId}/transitions`,
+      headers: { ...journeyHeaders, "if-match": '"1"' },
+      payload: { to: "IN_PROGRESS", expectedVersion: 1 },
+    });
+    await instance.inject({
+      method: "PUT",
+      url: `/prescription-drafts/by-reception/${receptionId}`,
+      headers: journeyHeaders,
+      payload: structuredDraftBody(0),
+    });
+
+    const unqualified = await instance.inject({
+      method: "POST",
+      url: "/prescriptions/prescription-journey-001/confirm",
+      headers: {
+        ...journeyHeaders,
+        "x-dev-actor": "clerk-syn-001",
+        "idempotency-key": "ns-full-journey-uq-0001",
+      },
+      payload: {},
+    });
+    expect(unqualified.statusCode).toBe(403);
+    expect(unqualified.json().errorCode).toBe(
+      AUTH_PERMISSION_DENIED_ERROR_CODE,
+    );
+    const auditTypes = (
+      await auditRepository.list({
+        tenantId: tenantId("tenant-001"),
+        pharmacyId: pharmacyId("pharmacy-001"),
+      })
+    ).map((entry) => entry.auditEventType);
+    expect(auditTypes).toContain("prescription.confirm.denied");
+  });
+
+  it("fail-closed: 未解決行を残す draft は confirm 409", async () => {
+    const { server: instance } = server();
+
+    const reception = await instance.inject({
+      method: "POST",
+      url: "/reception",
+      headers: journeyHeaders,
+      payload: {
+        patientId: "patient-syn-001",
+        idempotencyKey: "ns-full-journey-003",
+      },
+    });
+    const { receptionId } = receptionQueueEntrySchema.parse(reception.json());
+    await instance.inject({
+      method: "POST",
+      url: `/reception/${receptionId}/transitions`,
+      headers: { ...journeyHeaders, "if-match": '"1"' },
+      payload: { to: "IN_PROGRESS", expectedVersion: 1 },
+    });
+    // legacy rows = UNRESOLVED_TEXT のまま保存 → confirm 不可。
+    const saved = await instance.inject({
+      method: "PUT",
+      url: `/prescription-drafts/by-reception/${receptionId}`,
+      headers: journeyHeaders,
+      payload: draftBody(0, "未解決行を残す"),
+    });
+    expect(saved.statusCode).toBe(201);
+
+    const confirm = await instance.inject({
+      method: "POST",
+      url: "/prescriptions/prescription-journey-001/confirm",
+      headers: {
+        ...journeyHeaders,
+        "idempotency-key": "ns-full-journey-unres-01",
+      },
+      payload: {},
+    });
+    expect(confirm.statusCode).toBe(409);
+    expect(confirm.json().errorCode).toBe(
+      PRESCRIPTION_CODE_MAPPING_REVIEW_REQUIRED_ERROR_CODE,
+    );
+  });
+
+  it("fail-closed: 終端受付(COMPLETED)への draft 保存は 404", async () => {
+    const { server: instance } = server();
+
+    const reception = await instance.inject({
+      method: "POST",
+      url: "/reception",
+      headers: journeyHeaders,
+      payload: {
+        patientId: "patient-syn-001",
+        idempotencyKey: "ns-full-journey-004",
+      },
+    });
+    const { receptionId } = receptionQueueEntrySchema.parse(reception.json());
+    await instance.inject({
+      method: "POST",
+      url: `/reception/${receptionId}/transitions`,
+      headers: { ...journeyHeaders, "if-match": '"1"' },
+      payload: { to: "IN_PROGRESS", expectedVersion: 1 },
+    });
+    const completed = await instance.inject({
+      method: "POST",
+      url: `/reception/${receptionId}/transitions`,
+      headers: { ...journeyHeaders, "if-match": '"2"' },
+      payload: { to: "COMPLETED", expectedVersion: 2 },
+    });
+    expect(completed.statusCode).toBe(200);
+
+    const saved = await instance.inject({
+      method: "PUT",
+      url: `/prescription-drafts/by-reception/${receptionId}`,
+      headers: journeyHeaders,
+      payload: draftBody(0, "終端受付への保存"),
+    });
+    // 非 editable 受付は draft 保存経路で 404(scope 内存在しない扱い)。
+    expect(saved.statusCode).toBe(404);
   });
 });

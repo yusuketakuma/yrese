@@ -12,6 +12,7 @@ import {
   resolveOutboxDeliveryConfiguration,
   resolvePatientSearchCursorHmacKey,
   resolveTenantContextMode,
+  testAuthContextConfigurationErrorMessage,
 } from './config.js';
 
 function makeNonCanonicalBase64Url(value: string): string {
@@ -213,6 +214,109 @@ describe('resolveTenantContextMode', () => {
           ...input,
         }),
       ).toThrowError(new Error(devTenantContextConfigurationErrorMessage));
+    }
+  });
+
+  it('enables test_signed only with opt-in flag, key, and allowed test database', () => {
+    // postgres + yrese_test* + 鍵あり + 非 production → test_signed。
+    expect(
+      resolveTenantContextMode({
+        allowDevTenantStub: undefined,
+        nodeEnv: 'test',
+        repositoryMode: 'postgres',
+        databaseUrl: 'postgres://synthetic.invalid/yrese_test',
+        testAuth: '1',
+        testAuthKey: 'synthetic-key',
+      }),
+    ).toBe('test_signed');
+    // in_memory でも許可(dev_headers と併存 — SEC-009 §4)。
+    expect(
+      resolveTenantContextMode({
+        allowDevTenantStub: undefined,
+        nodeEnv: 'development',
+        repositoryMode: 'in_memory',
+        databaseUrl: undefined,
+        testAuth: '1',
+        testAuthKey: 'synthetic-key',
+      }),
+    ).toBe('test_signed');
+  });
+
+  it('rejects test_signed in production, without key, or on non-test databases', () => {
+    const base = {
+      allowDevTenantStub: undefined,
+      testAuth: '1',
+      testAuthKey: 'synthetic-key',
+    } as const;
+    const unsafe = [
+      // production は flag/key 揃っていても常に拒否。
+      {
+        nodeEnv: 'production',
+        repositoryMode: 'postgres',
+        databaseUrl: 'postgres://synthetic.invalid/yrese_test',
+      },
+      // db 名が allowlist 外(yrese_dev / 接頭辞不一致 / db 名欠落)。
+      {
+        nodeEnv: 'test',
+        repositoryMode: 'postgres',
+        databaseUrl: 'postgres://synthetic.invalid/yrese_dev',
+      },
+      {
+        nodeEnv: 'test',
+        repositoryMode: 'postgres',
+        databaseUrl: 'postgres://synthetic.invalid/prod_yrese_test',
+      },
+      {
+        nodeEnv: 'test',
+        repositoryMode: 'postgres',
+        databaseUrl: 'postgres://synthetic.invalid/',
+      },
+      {
+        nodeEnv: 'test',
+        repositoryMode: 'postgres',
+        databaseUrl: 'not-a-url',
+      },
+    ] as const;
+    for (const input of unsafe) {
+      expect(() =>
+        resolveTenantContextMode({ ...base, ...input }),
+      ).toThrowError(new Error(testAuthContextConfigurationErrorMessage));
+    }
+    // 鍵未設定/空も拒否。
+    for (const testAuthKey of [undefined, '']) {
+      expect(() =>
+        resolveTenantContextMode({
+          ...base,
+          testAuthKey,
+          nodeEnv: 'test',
+          repositoryMode: 'in_memory',
+          databaseUrl: undefined,
+        }),
+      ).toThrowError(new Error(testAuthContextConfigurationErrorMessage));
+    }
+    // flag の異形値は拒否(undefined/'0'/'false' のみ無効として受理)。
+    for (const testAuth of ['TRUE', 'yes', ' 1']) {
+      expect(() =>
+        resolveTenantContextMode({
+          ...base,
+          testAuth,
+          nodeEnv: 'test',
+          repositoryMode: 'in_memory',
+          databaseUrl: undefined,
+        }),
+      ).toThrowError(new Error(testAuthContextConfigurationErrorMessage));
+    }
+    // flag 未指定/'0'/'false' は test_signed を要求しない → 従来分岐。
+    for (const testAuth of [undefined, '0', 'false']) {
+      expect(
+        resolveTenantContextMode({
+          allowDevTenantStub: undefined,
+          nodeEnv: 'production',
+          repositoryMode: 'postgres',
+          databaseUrl: 'postgres://synthetic.invalid/yrese',
+          testAuth,
+        }),
+      ).toBe('disabled');
     }
   });
 });

@@ -97,6 +97,8 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
     nodeEnv: process.env.NODE_ENV,
     repositoryMode,
     databaseUrl,
+    testAuth: process.env.YRESE_TEST_AUTH,
+    testAuthKey: process.env.YRESE_TEST_AUTH_KEY,
   });
   const outboxDelivery = resolveOutboxDeliveryConfiguration({
     enabled: process.env.YRESE_OUTBOX_DELIVERY_ENABLED,
@@ -144,6 +146,7 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
       masterRepository,
       repositoryMode,
       tenantContextMode,
+      tenantContextTestAuthKey: process.env.YRESE_TEST_AUTH_KEY,
       patientSearchCursorCodec,
     });
     // WP-7402: in-memory dev の薬剤師 evidence seed。env 未指定なら
@@ -254,6 +257,7 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
       masterRepository: new PostgresMasterRepository(pool),
       repositoryMode,
       tenantContextMode,
+      tenantContextTestAuthKey: process.env.YRESE_TEST_AUTH_KEY,
       patientSearchCursorCodec,
     });
     const prescriptionDraftService = new PostgresPrescriptionDraftService(

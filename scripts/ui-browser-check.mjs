@@ -225,7 +225,7 @@ async function waitForPersistedDraft(page, version, expectedDrug) {
     )
     .last();
   await workspace.waitFor();
-  const drugInput = workspace.getByLabel("RP1 薬剤名");
+  const drugInput = workspace.getByLabel("RP1 薬剤名(自由記載)");
   await drugInput.waitFor();
   await page.waitForFunction(
     ({ expectedDrugValue, expectedVersion }) => {
@@ -237,7 +237,7 @@ async function waitForPersistedDraft(page, version, expectedDrug) {
           candidate instanceof HTMLElement && candidate.offsetParent !== null,
       );
       const input = visibleWorkspace?.querySelector(
-        'input[aria-label="RP1 薬剤名"]',
+        'input[aria-label="RP1 薬剤名(自由記載)"]',
       );
       return (
         visibleWorkspace instanceof HTMLElement &&
@@ -388,10 +388,10 @@ async function checkReceptionHandoff(page) {
   const saveButton = page.getByRole("button", { name: "処方下書きを保存" });
   await saveButton.waitFor();
   assert(await saveButton.isDisabled(), "prescription persistence: blank draft save was enabled");
-  await page.getByLabel("RP1 薬剤名").fill("E2Eサーバー保存薬10mg");
-  await page.getByLabel("RP1 用法用量").fill("1日1回 朝食後");
-  await page.getByLabel("RP1 日数").fill("7");
-  await page.getByLabel("RP1 数量").fill("7錠");
+  await page.getByLabel("RP1 薬剤名(自由記載)").fill("E2Eサーバー保存薬10mg");
+  await page.getByLabel("RP1 用法(自由記載)").fill("1日1回 朝食後");
+  await page.getByLabel("RP1 日数・回数").fill("7");
+  await page.getByLabel("RP1 総量").fill("7錠");
   await saveButton.click();
   await page.getByText("サーバー保存が完了しました").waitFor();
   await waitForPersistedDraft(page, 1, "E2Eサーバー保存薬10mg");
@@ -476,9 +476,9 @@ async function checkDraftRecoveryAndPatientGuard(page) {
 
   await page.locator('.app-nav-link[href="/prescriptions"]').click();
   await waitForRoute(page, "/prescriptions");
-  const drugInput = page.getByLabel("RP1 薬剤名");
+  const drugInput = page.getByLabel("RP1 薬剤名(自由記載)");
   await drugInput.fill("E2E合成薬10mg");
-  await page.getByLabel("RP1 用法用量").fill("1日1回 朝");
+  await page.getByLabel("RP1 用法(自由記載)").fill("1日1回 朝");
   await page.getByLabel("メモ（薬剤師メモ・特記事項）").fill("E2E下書き");
   await page.getByText("受付未連携・タブ内未保存").waitFor();
 
@@ -502,10 +502,10 @@ async function checkDraftRecoveryAndPatientGuard(page) {
   await page.getByText("未保存下書き 1件").waitFor();
   await page.getByRole("link", { name: "処方下書きへ戻る" }).click();
   await waitForRoute(page, "/prescriptions");
-  const restoredDrugInput = page.getByLabel("RP1 薬剤名");
+  const restoredDrugInput = page.getByLabel("RP1 薬剤名(自由記載)");
   await restoredDrugInput.waitFor();
   await page.waitForFunction(() => {
-    const element = document.querySelector('input[aria-label="RP1 薬剤名"]');
+    const element = document.querySelector('input[aria-label="RP1 薬剤名(自由記載)"]');
     return element instanceof HTMLInputElement && element.value === "E2E合成薬10mg";
   });
   const restoredNoticeVisible = await page
@@ -555,7 +555,7 @@ async function checkDraftRecoveryAndPatientGuard(page) {
   await page.locator('.app-nav-link[href="/prescriptions"]').click();
   await waitForRoute(page, "/prescriptions");
   assert(
-    (await page.getByLabel("RP1 薬剤名").inputValue()) === "",
+    (await page.getByLabel("RP1 薬剤名(自由記載)").inputValue()) === "",
     "patient switch accept: old patient draft leaked into new patient",
   );
 
@@ -603,11 +603,24 @@ async function checkDraftRecoveryAndPatientGuard(page) {
 }
 
 /**
- * WP-7104 layer 2: North Star 部分 journey の browser 層。
- * 患者検索→選択→受付登録(POST /reception)→キュー反映→処方入力へ引き継ぎ→
- * サーバー下書き保存、を実 UI で貫通する。薬剤師確認・確定は未実装のため
- * 対象外。fixture API は冪等キー収容済み(scripts/ui-fixture-api.mjs)。
+ * WP-7104 layer 2 + WP-7405: North Star 全行程 journey の browser 層。
+ * 患者検索→選択→受付登録→対応開始(IN_PROGRESS)→処方入力へ引き継ぎ→
+ * 原本 metadata + master 解決品目で下書き保存→薬剤師確認→確定、を実 UI で
+ * 貫通する。調剤記録は UI 未実装(WP-5113 統合は別 WP)のため fixture API
+ * への直接 fetch で代替し、outbox evidence まで検証する。
+ * fixture API は冪等キー収容済み(scripts/ui-fixture-api.mjs)。
  */
+const FIXTURE_API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:3001";
+
+async function fixtureApi(pathname, init) {
+  const response = await fetch(`${FIXTURE_API_BASE}${pathname}`, {
+    ...init,
+    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+  });
+  return { status: response.status, body: await response.json() };
+}
+
 async function checkNorthStarJourney(page) {
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.goto(`${BASE_URL}/patients`, { waitUntil: "networkidle" });
@@ -627,9 +640,18 @@ async function checkNorthStarJourney(page) {
   await page.getByText(/\d{4}-\d{2}-\d{2} の受付: \d+件/u).waitFor();
   const seededRowCount = await queueRows.count();
   const registration = page.locator('form[aria-label="受付登録"]');
+  const createResponsePromise = page.waitForResponse(
+    (res) =>
+      res.url().endsWith("/reception") &&
+      res.request().method() === "POST" &&
+      res.status() === 201,
+  );
   await registration
     .getByRole("button", { name: "この患者を受付登録" })
     .click();
+  const createdReception = await createResponsePromise.then((res) =>
+    res.json(),
+  );
   await page.getByText(/受付を登録しました/u).waitFor();
   await page.waitForFunction(
     (expectedCount) =>
@@ -639,23 +661,145 @@ async function checkNorthStarJourney(page) {
     seededRowCount + 1,
   );
 
-  const createdRow = queueRows.last();
+  // WP-7405: confirm は IN_PROGRESS 受付が前提 — 実 UI の対応開始で遷移する。
+  // 作成行は acceptedAt ソート位置ではなく受付ID(handoff link の aria-label
+  // 内)で特定する — 種受付の時刻との前後関係で決定的にするため。
+  const createdRow = queueRows.filter({
+    has: page.getByRole("link", {
+      name: new RegExp(`受付ID ${createdReception.receptionId}`),
+    }),
+  });
   await createdRow
-    .getByRole("link", { name: "この受付を処方入力へ引き継ぐ" })
+    .getByRole("button", { name: /対応開始: /u })
+    .click();
+  await page.getByRole("button", { name: "実行する" }).click();
+  await createdRow.getByText("対応中").waitFor();
+
+  await createdRow
+    .getByRole("link", { name: /この受付を処方入力へ引き継ぐ/u })
     .click();
   await page.waitForURL(`${BASE_URL}/prescriptions`);
   await page.getByText("受付との関連を確認しました").waitFor();
 
-  await page.getByLabel("RP1 薬剤名").fill("E2E受付経由薬5mg");
-  await page.getByLabel("RP1 用法用量").fill("1日1回 夕食後");
-  await page.getByLabel("RP1 日数").fill("5");
-  await page.getByLabel("RP1 数量").fill("5錠");
+  // 原本 metadata(confirm には必須要素が必要 — RX-0003 guard)。
+  await page.getByLabel("処方区分").selectOption("外来");
+  await page.getByLabel("処方日").fill("2026-08-20");
+  await page.getByLabel("交付日数").fill("7");
+  await page.getByLabel("医療機関コード").fill("1234567");
+  await page.getByLabel("医療機関名称").fill("E2E合成病院");
+  await page.getByLabel("医師名").fill("E2E 医師");
+  await page.getByLabel("発行日").fill("2026-08-20");
+
+  // 薬剤・用法とも master コードから選択(confirm は未解決品目を拒否)。
+  await page.getByLabel("RP1 薬剤をマスターから選択").check();
+  const medicationPicker = page.locator(
+    '.master-code-picker[data-kind="medication"]',
+  );
+  await medicationPicker.getByLabel("薬剤コード検索").fill("SYN-E2E-MED");
+  await medicationPicker.getByRole("button", { name: "検索" }).click();
+  await medicationPicker
+    .getByRole("button", { name: /SYN-E2E-MED-001/u })
+    .click();
+
+  await page.getByLabel("RP1 用法をコードから選択").check();
+  const usagePicker = page.locator('.master-code-picker[data-kind="usage"]');
+  await usagePicker.getByLabel("用法コード検索").fill("SYN-E2E-USG");
+  await usagePicker.getByRole("button", { name: "検索" }).click();
+  await usagePicker
+    .getByRole("button", { name: /SYN-E2E-USG-001/u })
+    .click();
+
+  await page.getByLabel("RP1 日数・回数").fill("7");
+  await page.getByLabel("RP1 総量").fill("7");
+  await page.getByLabel("RP1 単位").fill("錠");
+
+  const saveResponsePromise = page.waitForResponse(
+    (res) =>
+      res.url().includes("/prescription-drafts/by-reception/") &&
+      res.request().method() === "PUT" &&
+      res.status() === 201,
+  );
   await page.getByRole("button", { name: "処方下書きを保存" }).click();
+  const savedDraft = await saveResponsePromise.then((res) => res.json());
   await page.getByText("サーバー保存が完了しました").waitFor();
-  await waitForPersistedDraft(page, 1, "E2E受付経由薬5mg");
+  await page
+    .locator(
+      'section[aria-label="処方入力"][data-server-draft-version="1"][data-unsaved-draft="false"]',
+    )
+    .last()
+    .waitFor();
+
+  // 薬剤師確認 → 確定(実 UI の lifecycle panel)。
+  await page
+    .getByRole("button", { name: "薬剤師確認へ進む" })
+    .click();
+  await page
+    .getByRole("button", { name: "確認済みとして記録" })
+    .click();
+  await page.getByText("薬剤師確認済み").first().waitFor();
+
+  await page.getByRole("button", { name: "処方を確定する" }).click();
+  await page
+    .getByRole("button", { name: "確定する", exact: true })
+    .click();
+  await page.getByText("処方確定済み").first().waitFor();
+
+  // 調剤記録(UI 未実装のため fixture API fetch で代替 — D-3)。
+  const draft = savedDraft;
+  const rpItemIds = (draft.draft?.rpGroups ?? []).flatMap((group) =>
+    (group?.items ?? []).map((item) => item.rpItemId),
+  );
+  assert(rpItemIds.length > 0, "north-star: draft has no rpGroups items");
+  const dispensedItemId =
+    draft.draft.rpGroups[0].items[0].medication?.medicationItemId;
+  const dispensing = await fixtureApi("/dispensings", {
+    method: "POST",
+    headers: { "idempotency-key": "ns-ui-journey-disp-0001" },
+    body: JSON.stringify({
+      prescriptionId: draft.prescriptionId,
+      prescriptionVersion: 1,
+      dispensingDate: draft.businessDate,
+      items: rpItemIds.map((rpItemId) => ({
+        rpItemId,
+        dispensedMedicationItemId: dispensedItemId,
+        dispensedText: null,
+        quantity: "7錠",
+        remainingStockAdjustment: null,
+        note: null,
+      })),
+    }),
+  });
+  assert(
+    dispensing.status === 201,
+    `north-star: dispensing create failed (${dispensing.status})`,
+  );
+  const dispensingConfirm = await fixtureApi(
+    `/dispensings/${encodeURIComponent(dispensing.body.dispensingId)}/confirm`,
+    {
+      method: "POST",
+      headers: { "idempotency-key": "ns-ui-journey-dcfm-0001" },
+      body: "{}",
+    },
+  );
+  assert(
+    dispensingConfirm.status === 200 &&
+      dispensingConfirm.body.status === "DISPENSING_RECORDED",
+    `north-star: dispensing confirm failed (${dispensingConfirm.status})`,
+  );
+
+  // outbox evidence(fixture 側の pending 集計)。
+  const outbox = await fixtureApi("/operations/outbox-summary");
+  const outboxEventTypes = (outbox.body?.byEventType ?? []).map(
+    (entry) => entry.eventType,
+  );
+  assert(
+    outboxEventTypes.includes("prescription.finalized") &&
+      outboxEventTypes.includes("dispense.confirmed"),
+    `north-star: outbox evidence missing (${outboxEventTypes.join(",")})`,
+  );
 
   findings.interactionChecks.push({
-    name: "north-star-patient-reception-draft-journey",
+    name: "north-star-full-journey-reception-to-dispensing(fixture-dispensing)",
     status: "pass",
   });
   await page.screenshot({

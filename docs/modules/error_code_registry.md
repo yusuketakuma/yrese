@@ -8,11 +8,11 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.2.1
+version: 0.2.2
 created_at: 2026-07-09
 updated_at: 2026-09-19
 approved_at: 2026-09-19
-approved_by: "direct human authority 2026-09-19 (残タスク一括許可; WP-7404 packet 承認); prior: direct human authority 2026-09-19 (WP-7403 packet 承認・進行指示); prior: direct human authority 2026-09-19 (残タスク一括許可; WP-7402 packet 承認); prior: direct human authority 2026-09-17 (SSOT batch 一括 APPROVE)"
+approved_by: "direct human authority 2026-09-19 (残タスク一括許可; WP-7405 packet 承認); prior: direct human authority 2026-09-19 (残タスク一括許可; WP-7404 packet 承認); prior: direct human authority 2026-09-19 (WP-7403 packet 承認・進行指示); prior: direct human authority 2026-09-19 (残タスク一括許可; WP-7402 packet 承認); prior: direct human authority 2026-09-17 (SSOT batch 一括 APPROVE)"
 effective_from: 2026-09-17
 effective_to: null
 source_refs:
@@ -45,6 +45,7 @@ open_questions:
   - エラーコードとUI表示文言(次に何をすべきか)の対応表の管理場所(UIX-001 と連動)
 blockers: []
 change_log:
+  - "0.2.2 (2026-09-19): WP-7405 — SEC-009 §5 bounded amendment に従い `AUTH-0004`(認証失敗・credential 欠落/不正 401、理由内訳非開示)を登録。0001〜0002 は欠番維持。WP-7405 pre-review packet で承認済み"
   - "0.1.6 (2026-09-18): WP-7105 — C-021 queue bound 決定(選択肢 b 防御的 cap、direct human approval)に伴い `RCV-0007`(queue 件数が cap 超過 503 + nextAction)を登録"
   - "0.1.7 (2026-09-18): WP-7301/WP-7303 — MST-003 実装に伴い `MST-0001`(master query 不正 400)を実装済みで登録、`MST-0002`(版参照 404)を予約登録。併せて INS-0001〜0006 の stale『未実装』表記を『実装済み(API-020 / WP-7203)』へ訂正"
   - "0.2.1 (2026-09-19): WP-7404 — dispensing route 用に DSP-0001(疑義照会未解決 409)/ DSP-0002(lifecycle 遷移不可 409)/ DSP-0003(record 不存在 404)/ DSP-0004(後発品変更整合不一致 409)/ DSP-0005(command 不正 400)/ DSP-0006(予約)/ DSP-0007(同一版重複 409)/ DSP-0008(冪等 conflict 409)を登録。WP-7404 pre-review packet で承認済み"
@@ -84,6 +85,7 @@ change_log:
 | code | domain | severity | affectsClaimability | requiresHumanReview | 説明 | 状態 |
 |---|---|---|---|---|---|---|
 | AUTH-0003 | AUTH | ERROR | false | false | 権限不足・コンテキスト不在(403)。deny-by-default の一律応答 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / apps/api errorResponseSchema) |
+| AUTH-0004 | AUTH | ERROR | false | false | 認証失敗・credential 欠落/不正(401)。理由内訳を応答に含めない(SEC-009 §5。0001〜0002 は欠番で再利用しない) | 実装済み(WP-7405 test_signed adapter) |
 | PAT-0001 | PATIENT | ERROR | false | false | 患者検索クエリ不正(400)。q/limit/cursor の契約違反や cursor 境界不一致 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-001 patient search) |
 | PAT-0002 | PATIENT | ERROR | false | false | 対象患者が当該テナント・薬局内に存在しない(404)。テナント越え探索は禁止 | 実装済み(@yrese/shared-kernel KERNEL_ERROR_CODES seed / API-001 patient get。0.1.3 で台帳 drift を追記登録) |
 | PAT-0003 | PATIENT | ERROR | false | false | 患者番号重複(409)。(tenant, pharmacy, patientNumber) 一意性違反 | 実装済み(API-001 0.3.x / WP-7202) |

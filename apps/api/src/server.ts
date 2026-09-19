@@ -204,6 +204,8 @@ export interface BuildServerOptions {
   readonly now?: () => Date;
   readonly repositoryMode?: ApiRepositoryMode;
   readonly tenantContextMode?: TenantContextMode;
+  /** test_signed mode の HMAC 鍵(SEC-009 §4。test/CI 専用)。 */
+  readonly tenantContextTestAuthKey?: string | Buffer | undefined;
   readonly patientSearchCursorCodec?: PatientSearchCursorCodec;
 }
 
@@ -300,7 +302,12 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     logger: false,
   });
 
-  server.register(tenantContextPlugin, { mode: tenantContextMode });
+  server.register(tenantContextPlugin, {
+    mode: tenantContextMode,
+    ...(options.tenantContextTestAuthKey === undefined
+      ? {}
+      : { testAuthKey: options.tenantContextTestAuthKey }),
+  });
 
   server.get('/health', async (): Promise<HealthResponse> => {
     return healthResponseSchema.parse({

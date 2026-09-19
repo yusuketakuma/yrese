@@ -185,12 +185,59 @@ export function resolveApiRepositoryMode(input: {
   throw new Error('DATABASE_URL is required unless YRESE_API_REPOSITORY_MODE=in_memory is explicit');
 }
 
+export const testAuthContextConfigurationErrorMessage =
+  'test-signed tenant context configuration is invalid';
+
+/**
+ * DATABASE_URL の db 名が test allowlist(`yrese_test*`)に一致するか。
+ * URL parse 失敗・db 名欠落は許可しない(fail-closed)。
+ */
+export function isAllowedTestAuthDatabaseName(
+  databaseUrl: string | undefined,
+): boolean {
+  if (databaseUrl === undefined) {
+    return false;
+  }
+  try {
+    const pathname = new URL(databaseUrl).pathname;
+    const name = pathname.replace(/^\/+/, '').split('/')[0];
+    return name !== undefined && /^yrese_test/u.test(name);
+  } catch {
+    return false;
+  }
+}
+
 export function resolveTenantContextMode(input: {
   readonly allowDevTenantStub: string | undefined;
   readonly nodeEnv: string | undefined;
   readonly repositoryMode: ApiRepositoryMode;
   readonly databaseUrl: string | undefined;
+  /** YRESE_TEST_AUTH=1 — test_signed の明示 opt-in(SEC-009 §4 条件4)。 */
+  readonly testAuth?: string | undefined;
+  /** YRESE_TEST_AUTH_KEY — HMAC 鍵。未設定で test_signed 要求は拒否。 */
+  readonly testAuthKey?: string | undefined;
 }): TenantContextMode {
+  // SEC-009 §4: test_signed は flag opt-in + 非 production + 鍵設定 +
+  // postgres の場合は test db 名 allowlist、の全条件を満たす場合のみ。
+  if (input.testAuth === '1' || input.testAuth === 'true') {
+    if (input.nodeEnv === 'production') {
+      throw new Error(testAuthContextConfigurationErrorMessage);
+    }
+    if (input.testAuthKey === undefined || input.testAuthKey.length === 0) {
+      throw new Error(testAuthContextConfigurationErrorMessage);
+    }
+    if (
+      input.repositoryMode === 'postgres' &&
+      !isAllowedTestAuthDatabaseName(input.databaseUrl)
+    ) {
+      throw new Error(testAuthContextConfigurationErrorMessage);
+    }
+    return 'test_signed';
+  }
+  if (input.testAuth !== undefined && input.testAuth !== 'false' && input.testAuth !== '0') {
+    throw new Error(testAuthContextConfigurationErrorMessage);
+  }
+
   if (input.allowDevTenantStub === undefined || input.allowDevTenantStub === 'false') {
     return 'disabled';
   }

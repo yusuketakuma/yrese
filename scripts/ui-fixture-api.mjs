@@ -32,6 +32,59 @@ const patients = [
 
 const prescriptionDrafts = new Map();
 
+// WP-7405: 全行程 journey の master/調剤 fixture(合成値のみ)。
+// UI の master-code-picker が参照する検索 endpoint と、調剤記録
+// create/confirm の最小 parity(WP-7404 冪等・guard 規約に準拠)。
+const fixtureMedicationVersion = {
+  masterVersionId: "00000000-0000-4000-8000-00000000f001",
+  masterKind: "medication",
+  version: "2026-08",
+  validFrom: "2026-01-01",
+  validTo: null,
+  transitionNote: null,
+  distributionState: "synthetic",
+};
+const fixtureUsageVersion = {
+  masterVersionId: "00000000-0000-4000-8000-00000000f002",
+  masterKind: "usage",
+  version: "2026-08",
+  validFrom: "2026-01-01",
+  validTo: null,
+  transitionNote: null,
+  distributionState: "synthetic",
+};
+const fixtureMedicationItems = [
+  {
+    medicationItemId: "00000000-0000-4000-8000-00000000f011",
+    localCode: "SYN-E2E-MED-001",
+    yjCode: null,
+    receiptCode: null,
+    hotCode: null,
+    name: "E2E合成薬 5mg",
+    unit: "錠",
+    price: null,
+    genericFlag: "originator",
+    genericNameCode: "GN-E2E-001",
+    controlCategories: [],
+  },
+];
+const fixtureUsageItems = [
+  {
+    usageItemId: "00000000-0000-4000-8000-00000000f021",
+    localCode: "SYN-E2E-USG-001",
+    text: "1日1回 朝食後",
+    timesPerDay: 1,
+    mealTiming: "after",
+    jahisCode: null,
+  },
+];
+
+const dispensingRecords = new Map();
+const dispensingCreateKeys = new Map();
+// confirm key は scope 全体で一意(別 record への key 再利用は DSP-0008)。
+const dispensingConfirmKeys = new Map();
+let dispensingSequence = 0;
+
 /**
  * UI 経由で登録された受付(冪等キー → entry)。
  * fixture サーバープロセス内だけで有効な揮発状態であり、合成値のみを保持する。
@@ -41,6 +94,19 @@ const prescriptionDrafts = new Map();
  */
 const createdReceptionsByKey = new Map();
 let createdReceptionSequence = 100;
+
+// 受付行の資格導出(API-006 0.3.2)。fixture は全患者 VERIFIED の synthetic
+// 値として固定する — 資格遷移の検証は API 層の責務。
+const fixtureReceptionEligibility = {
+  state: "VERIFIED_CARD",
+  snapshotId: null,
+  allowsProvisionalCalculation: true,
+  allowsFinalCalculation: true,
+};
+
+// WP-7405: 遷移は entry を mutate して version を進める(CAS parity)。
+// seed/作成の両方を同じ store に保持する。
+const receptionStore = new Map();
 
 function receptionEntries(date) {
   const seeds = [
@@ -59,7 +125,17 @@ function receptionEntries(date) {
       prescriptionIntakeType: "paper",
     },
   ];
-  return [...seeds, ...createdReceptionsByKey.values()];
+  return [...seeds, ...createdReceptionsByKey.values()].map((entry) => {
+    const stored = receptionStore.get(entry.receptionId);
+    if (stored !== undefined) return stored;
+    const initialized = {
+      ...entry,
+      version: 1,
+      eligibility: fixtureReceptionEligibility,
+    };
+    receptionStore.set(entry.receptionId, initialized);
+    return initialized;
+  });
 }
 
 // 運用集計フィクスチャ(合成値のみ)。件数・時刻・enum・スキーマ版数だけを返し、
@@ -79,17 +155,42 @@ const ELIGIBILITY_STATUS_ORDER = [
 
 function currentOutboxSummary() {
   const pendingCount = 2 + createdReceptionsByKey.size;
+  const byEventType = [
+    {
+      eventType: "reception.created",
+      pendingCount,
+      deliveredCount: 1,
+    },
+  ];
+  const confirmedDispensings = [...dispensingRecords.values()].filter(
+    (record) => record.status === "DISPENSING_RECORDED",
+  ).length;
+  const finalizedPrescriptions = [...prescriptionDrafts.values()].filter(
+    (record) => record.status === "PRESCRIPTION_FINALIZED",
+  ).length;
+  if (finalizedPrescriptions > 0) {
+    byEventType.push({
+      eventType: "prescription.finalized",
+      pendingCount: finalizedPrescriptions,
+      deliveredCount: 0,
+    });
+  }
+  if (confirmedDispensings > 0) {
+    byEventType.push({
+      eventType: "dispense.confirmed",
+      pendingCount: confirmedDispensings,
+      deliveredCount: 0,
+    });
+  }
+  // outboxSummaryResponseSchema は eventType 昇順(C collation)を要求する。
+  byEventType.sort((left, right) =>
+    left.eventType < right.eventType ? -1 : 1,
+  );
   return {
-    pendingCount,
+    pendingCount: pendingCount + finalizedPrescriptions + confirmedDispensings,
     deliveredCount: 1,
     oldestPendingCreatedAt: "2026-08-25T00:15:00.000Z",
-    byEventType: [
-      {
-        eventType: "reception.created",
-        pendingCount,
-        deliveredCount: 1,
-      },
-    ],
+    byEventType,
     legacyOrphanCount: 0,
   };
 }
@@ -259,6 +360,23 @@ function fixtureContentHash(draft) {
   return createHash("sha256").update(JSON.stringify(draft)).digest("hex");
 }
 
+// 実装(in-memory canonicalJson / PG JSONB `=`)と同じく、key 順に依らない
+// 等価比較のための正規化(JSON オブジェクトの key を再帰的にソート)。
+function canonicalJson(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => canonicalJson(entry)).join(",")}]`;
+  }
+  if (typeof value === "object" && value !== null) {
+    return `{${Object.keys(value)
+      .sort()
+      .map(
+        (key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`,
+      )
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
 // POST /prescriptions/{id}/{confirm,finalize} の 200 応答は
 // prescriptionLifecycleViewSchema 形状(draft response ではない)。
 function fixtureLifecycleView(record) {
@@ -314,8 +432,14 @@ const server = createServer(async (request, response) => {
         "user:admin",
         "patient:read",
         "reception:read",
+        "reception:write",
         "prescription:read",
         "prescription:write",
+        "prescription:confirm",
+        "dispensing:write",
+        "dispensing:confirm",
+        "master:read",
+        "audit-log:read",
         "sync:read",
       ],
     });
@@ -379,6 +503,239 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  // WP-7405: master 検索(master-code-picker 用)。asOf 必須、q は
+  // localCode 前方一致または名称/テキスト部分一致(実 API 規約に揃える)。
+  if (
+    method === "GET" &&
+    (url.pathname === "/masters/medications" ||
+      url.pathname === "/masters/usages")
+  ) {
+    const asOf = url.searchParams.get("asOf");
+    if (asOf === null || !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
+      sendJson(request, response, 400, {
+        errorCode: "MST-0001",
+        message: "asOf is required",
+      });
+      return;
+    }
+    const q = (url.searchParams.get("q") ?? "").trim();
+    const isMedication = url.pathname === "/masters/medications";
+    const source = isMedication ? fixtureMedicationItems : fixtureUsageItems;
+    const items = source.filter((item) => {
+      if (q.length === 0) return true;
+      const text = isMedication ? item.name : item.text;
+      return item.localCode.startsWith(q) || text.includes(q);
+    });
+    sendJson(request, response, 200, {
+      masterVersion: isMedication
+        ? fixtureMedicationVersion
+        : fixtureUsageVersion,
+      items,
+    });
+    return;
+  }
+
+  // WP-7405: 調剤記録 create/confirm(API-021 parity 最小版)。
+  // - POST /dispensings: 確定処方の全 rpItemId を丁度一度ずつ覆う items が必須。
+  //   同 key+同 payload → replay 200、同 key+別 payload → 409 DSP-0008、
+  //   同 (prescription,version) に別 key → 409 DSP-0007。
+  // - POST /dispensings/{id}/confirm: 同 key replay 200、別 key → 409 DSP-0002。
+  if (method === "POST" && url.pathname === "/dispensings") {
+    const idempotencyKey = request.headers["idempotency-key"];
+    if (
+      typeof idempotencyKey !== "string" ||
+      !LIFECYCLE_KEY_PATTERN.test(idempotencyKey)
+    ) {
+      sendJson(request, response, 400, {
+        errorCode: "DSP-0005",
+        message: "Invalid dispensing request",
+      });
+      return;
+    }
+    let body;
+    try {
+      body = await readJsonBody(request);
+    } catch {
+      sendJson(request, response, 400, {
+        errorCode: "DSP-0005",
+        message: "Invalid dispensing request",
+      });
+      return;
+    }
+    // route 層の schema 検証相当(DSP-0005): 形状不正は他 guard より先に 400。
+    const itemsInput = Array.isArray(body?.items) ? body.items : null;
+    const shapeOk =
+      typeof body?.prescriptionId === "string" &&
+      Number.isInteger(body?.prescriptionVersion) &&
+      body.prescriptionVersion >= 1 &&
+      /^\d{4}-\d{2}-\d{2}$/.test(body?.dispensingDate ?? "") &&
+      itemsInput !== null &&
+      itemsInput.every(
+        (item) =>
+          typeof item === "object" &&
+          item !== null &&
+          typeof item.rpItemId === "string" &&
+          (typeof item.dispensedMedicationItemId === "string") !==
+            (typeof item.dispensedText === "string" &&
+              item.dispensedText.trim().length > 0) &&
+          typeof item.quantity === "string" &&
+          item.quantity.trim().length > 0,
+      );
+    if (!shapeOk) {
+      sendJson(request, response, 400, {
+        errorCode: "DSP-0005",
+        message: "Invalid dispensing request",
+      });
+      return;
+    }
+    const requestFingerprint = canonicalJson(body);
+    const replay = dispensingCreateKeys.get(idempotencyKey);
+    if (replay !== undefined) {
+      if (replay.requestFingerprint === requestFingerprint) {
+        sendJson(request, response, 200, {
+          ...replay.record,
+          replayed: true,
+        });
+        return;
+      }
+      sendJson(request, response, 409, {
+        errorCode: "DSP-0008",
+        message: "Dispensing idempotency conflict",
+      });
+      return;
+    }
+    const record0 = findDraftByPrescriptionId(body?.prescriptionId);
+    if (
+      record0 === null ||
+      record0.status !== "PRESCRIPTION_FINALIZED" ||
+      record0.prescriptionVersion !== body?.prescriptionVersion
+    ) {
+      sendJson(request, response, 404, {
+        errorCode: "DSP-0003",
+        message: "Finalized prescription version not found",
+      });
+      return;
+    }
+    // 正本順序: 同一版の重複 guard(already_recorded)は品目検証より先。
+    const duplicate = [...dispensingRecords.values()].find(
+      (existing) =>
+        existing.prescriptionId === body.prescriptionId &&
+        existing.prescriptionVersion === body.prescriptionVersion,
+    );
+    if (duplicate !== undefined) {
+      sendJson(request, response, 409, {
+        errorCode: "DSP-0007",
+        message: "Dispensing record already exists for this version",
+      });
+      return;
+    }
+    const items = itemsInput;
+    const requiredRpItemIds = (record0.draft?.rpGroups ?? []).flatMap(
+      (group) => (group?.items ?? []).map((item) => item?.rpItemId),
+    );
+    const suppliedRpItemIds = items.map((item) => item?.rpItemId);
+    const coverageOk =
+      requiredRpItemIds.length === suppliedRpItemIds.length &&
+      requiredRpItemIds.every((id) => suppliedRpItemIds.includes(id));
+    if (!coverageOk) {
+      sendJson(request, response, 400, {
+        errorCode: "DSP-0005",
+        message: "Dispensing items must cover each prescribed item exactly once",
+      });
+      return;
+    }
+    dispensingSequence += 1;
+    const record = {
+      dispensingId: `dispensing-e2e-${dispensingSequence}`,
+      prescriptionId: body.prescriptionId,
+      prescriptionVersion: body.prescriptionVersion,
+      dispensingDate: body.dispensingDate,
+      items: items.map((item) => ({
+        rpItemId: item.rpItemId,
+        prescribedMedicationItemId:
+          (record0.draft?.rpGroups ?? [])
+            .flatMap((group) => group?.items ?? [])
+            .find((candidate) => candidate?.rpItemId === item.rpItemId)
+            ?.medication?.medicationItemId ?? null,
+        dispensedMedicationItemId: item.dispensedMedicationItemId ?? null,
+        dispensedText:
+          typeof item.dispensedText === "string" &&
+          item.dispensedText.trim().length > 0
+            ? item.dispensedText
+            : null,
+        quantity: item.quantity,
+        remainingStockAdjustment: item.remainingStockAdjustment ?? null,
+        note: item.note ?? null,
+        dispensedBy: "actor-e2e",
+      })),
+      status: null,
+      confirmedBy: null,
+      confirmedAt: null,
+      createdBy: "actor-e2e",
+      createdAt: new Date().toISOString(),
+    };
+    dispensingRecords.set(record.dispensingId, record);
+    dispensingCreateKeys.set(idempotencyKey, {
+      requestFingerprint,
+      record,
+    });
+    sendJson(request, response, 201, { ...record, replayed: false });
+    return;
+  }
+
+  const dispensingConfirmMatch = /^\/dispensings\/([^/]+)\/confirm$/u.exec(
+    url.pathname,
+  );
+  if (dispensingConfirmMatch !== null && method === "POST") {
+    const idempotencyKey = request.headers["idempotency-key"];
+    if (
+      typeof idempotencyKey !== "string" ||
+      !LIFECYCLE_KEY_PATTERN.test(idempotencyKey)
+    ) {
+      sendJson(request, response, 400, {
+        errorCode: "DSP-0005",
+        message: "Invalid dispensing request",
+      });
+      return;
+    }
+    const record = dispensingRecords.get(dispensingConfirmMatch[1]);
+    if (record === undefined) {
+      sendJson(request, response, 404, {
+        errorCode: "DSP-0003",
+        message: "Dispensing record not found",
+      });
+      return;
+    }
+    // API-021 §5: 確認済み record への別 key は冪等衝突ではなく遷移不可
+    // (DSP-0002)を返す — status 判定を key 一意性より先に評価する。
+    if (record.status === "DISPENSING_RECORDED") {
+      if (record.confirmIdempotencyKey === idempotencyKey) {
+        sendJson(request, response, 200, { ...record, replayed: true });
+        return;
+      }
+      sendJson(request, response, 409, {
+        errorCode: "DSP-0002",
+        message: "Dispensing lifecycle transition is not allowed",
+      });
+      return;
+    }
+    const priorKeyUse = dispensingConfirmKeys.get(idempotencyKey);
+    if (priorKeyUse !== undefined && priorKeyUse !== record.dispensingId) {
+      sendJson(request, response, 409, {
+        errorCode: "DSP-0008",
+        message: "Dispensing idempotency conflict",
+      });
+      return;
+    }
+    record.status = "DISPENSING_RECORDED";
+    record.confirmedBy = "actor-e2e";
+    record.confirmedAt = new Date().toISOString();
+    record.confirmIdempotencyKey = idempotencyKey;
+    dispensingConfirmKeys.set(idempotencyKey, record.dispensingId);
+    sendJson(request, response, 200, { ...record, replayed: false });
+    return;
+  }
+
   // POST /reception: 実サーバーと同じ冪等契約。同一 idempotencyKey の再送は
   // 既存 entry を 200 で返し、別 patientId への key 再利用は 409。
   if (method === "POST" && url.pathname === "/reception") {
@@ -434,9 +791,87 @@ const server = createServer(async (request, response) => {
       acceptedAt: new Date().toISOString(),
       receptionStatus: "WAITING",
       prescriptionIntakeType: "paper",
+      version: 1,
+      eligibility: fixtureReceptionEligibility,
     };
     createdReceptionsByKey.set(idempotencyKey, entry);
+    receptionStore.set(entry.receptionId, entry);
     sendJson(request, response, 201, entry);
+    return;
+  }
+
+  // WP-7405: 受付状態遷移(API-006 0.3.1 parity 最小版)。
+  // If-Match + expectedVersion の二重 CAS、CANCELLED は businessReason 必須。
+  const transitionMatch = /^\/reception\/([^/]+)\/transitions$/u.exec(
+    url.pathname,
+  );
+  if (transitionMatch !== null && method === "POST") {
+    const target = decodeURIComponent(transitionMatch[1]);
+    let body;
+    try {
+      body = await readJsonBody(request);
+    } catch {
+      sendJson(request, response, 400, {
+        errorCode: "RCV-0001",
+        message: "Invalid reception transition request",
+      });
+      return;
+    }
+    const ifMatch = request.headers["if-match"];
+    if (
+      typeof body?.to !== "string" ||
+      !["IN_PROGRESS", "COMPLETED", "CANCELLED"].includes(body.to) ||
+      !Number.isInteger(body?.expectedVersion) ||
+      body.expectedVersion < 1 ||
+      typeof ifMatch !== "string" ||
+      ifMatch !== `"${body.expectedVersion}"` ||
+      (body.to === "CANCELLED" &&
+        !/^[A-Z][A-Z0-9_]{2,63}$/.test(body?.businessReason ?? "")) ||
+      (body.to !== "CANCELLED" && body?.businessReason !== undefined)
+    ) {
+      sendJson(request, response, 400, {
+        errorCode: "RCV-0001",
+        message: "Invalid reception transition request",
+      });
+      return;
+    }
+    const entry = receptionStore.get(target);
+    if (entry === undefined) {
+      sendJson(request, response, 404, {
+        errorCode: "RCV-0006",
+        message: "Reception not found",
+      });
+      return;
+    }
+    // 正本順序(API-006 §2.3): 遷移可否を版競合より先に評価する。
+    const allowed = {
+      WAITING: ["IN_PROGRESS", "CANCELLED"],
+      IN_PROGRESS: ["COMPLETED", "CANCELLED"],
+      COMPLETED: [],
+      CANCELLED: [],
+    };
+    if (!allowed[entry.receptionStatus]?.includes(body.to)) {
+      sendJson(request, response, 409, {
+        errorCode: "RCV-0004",
+        message: "Reception transition is not allowed",
+      });
+      return;
+    }
+    if (entry.version !== body.expectedVersion) {
+      sendJson(request, response, 409, {
+        errorCode: "RCV-0005",
+        message: "Reception version conflict",
+      });
+      return;
+    }
+    entry.receptionStatus = body.to;
+    entry.version += 1;
+    sendJson(request, response, 200, {
+      receptionId: entry.receptionId,
+      receptionStatus: entry.receptionStatus,
+      version: entry.version,
+      statusChangedAt: new Date().toISOString(),
+    });
     return;
   }
 
@@ -668,7 +1103,10 @@ const server = createServer(async (request, response) => {
     const reception = matchingReception(receptionId, businessDate);
     if (
       reception === undefined ||
-      reception.patient.patientId !== patientId
+      reception.patient.patientId !== patientId ||
+      // 終端受付は editable でないため実 API 同様 not found 扱い。
+      reception.receptionStatus === "COMPLETED" ||
+      reception.receptionStatus === "CANCELLED"
     ) {
       sendJson(request, response, 404, {
         statusCode: 404,

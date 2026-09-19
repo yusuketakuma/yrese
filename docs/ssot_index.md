@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.75
+version: 0.4.76
 created_at: 2026-07-09
 updated_at: 2026-09-19
 approved_at: 2026-09-08
@@ -159,6 +159,7 @@ related_prs:
   - PR #6
 evidence_ids: []
 change_log:
+  - "0.4.76 2026-09-19 WP-7405 bounded amendment: MOD-006 0.2.2(`AUTH-0004` 認証失敗 401 — SEC-009 §5 理由内訳非開示規律に沿う test_signed adapter 用コード)を登録。packet 決定は direct user instruction(残タスク一括許可)により承認済み。総文書数 191 不変、status 集計不変(APPROVED 164 / PROPOSED 4 / SUPERSEDED 23)。実装完了・外部配送・production action を含まない。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.75 2026-09-19 WP-7404 SSOT 起案・bounded amendments: API-021(dispensing_record_contract — POST /dispensings・confirm・1版1記録・後発品変更整合・SEC-010 confirm gate)を新規登録、MOD-006 0.2.1(DSP-0001〜0008 登録)、MOD-008 0.2.10(`dispensing.recorded`/`dispensing.confirm.denied` 登録・`dispensing.confirmed` payload 規律明記)。packet 決定は direct user instruction(残タスク一括許可)により承認済み。総文書数 190→191、docs/api 20→21、status 集計は APPROVED 163→164 / PROPOSED 4 不変 / SUPERSEDED 23 不変(合計191)。実装完了・外部配送・production action を含まない。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.74 2026-09-19 WP-7403 bounded amendments: MOD-006 0.2.0(RX-0007〜0009 登録)、MOD-008 0.2.9(`prescription.amended`/`prescription.amend.denied`/`inquiry.answered` 登録、`inquiry.recorded` payload 規律明記)、MOD-009 0.2.4(§7 `prescription.amended` intent profile)、API-012 0.1.2(Event Catalog 第3 event `prescription.amended`)、MOD-007 0.1.3(疑義照会 scope open question 解消: inquiry=prescription:write・amend=prescription:confirm+免許)。packet 決定は direct user instruction により承認済み。総文書数 190 不変、status 集計不変(APPROVED 163 / PROPOSED 4 / SUPERSEDED 23)。実装完了・外部配送・production action を含まない。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.73 2026-09-19 WP-7402 R3 review adjudication: MOD-009 0.2.3(§4.1/§6.1 idempotencyKey を実装規則 `<eventId>:1` へ、§4.4/§6.2 「同一eventId」を audit_event_id FK 構造として明確化、§6.1 version の置き場を targetRef→outbox payload へ修正)。文言明確化のみ、規則変更なし。総文書数 190 不変、status 集計不変"
