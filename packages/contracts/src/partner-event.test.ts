@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  dispenseConfirmedPartnerEventSchema,
   PARTNER_EVENT_FORBIDDEN_KEYS,
   partnerEventSchema,
   receptionCreatedPartnerEventSchema,
@@ -37,6 +38,46 @@ describe("partnerEventSchema (Event Catalog v0)", () => {
     const keys = Object.keys(receptionCreatedPartnerEventSchema.shape);
     for (const forbidden of PARTNER_EVENT_FORBIDDEN_KEYS) {
       expect(keys).not.toContain(forbidden);
+    }
+  });
+
+  it("accepts a dispense.confirmed event with identifiers + version only", () => {
+    const event = {
+      eventId: "outbox-disp-001",
+      eventType: "dispense.confirmed" as const,
+      schemaVersion: 1 as const,
+      occurredAt: "2026-08-25T00:00:00.000Z",
+      auditEventId: "audit-disp-001",
+      aggregate: { type: "dispensing" as const, id: "dispensing-0001" },
+      prescriptionId: "prescription-0001",
+      version: 1,
+    };
+    expect(partnerEventSchema.parse(event)).toEqual(event);
+    expect(dispenseConfirmedPartnerEventSchema.parse(event)).toEqual(event);
+  });
+
+  it("rejects dispense.confirmed without prescriptionId or with non-integer version", () => {
+    const base = {
+      eventId: "outbox-disp-002",
+      eventType: "dispense.confirmed" as const,
+      schemaVersion: 1 as const,
+      occurredAt: "2026-08-25T00:00:00.000Z",
+      auditEventId: "audit-disp-002",
+      aggregate: { type: "dispensing" as const, id: "dispensing-0002" },
+      version: 1,
+    };
+    expect(() => partnerEventSchema.parse(base)).toThrow();
+    expect(() =>
+      partnerEventSchema.parse({
+        ...base,
+        prescriptionId: "prescription-0001",
+        version: 0,
+      }),
+    ).toThrow();
+    for (const forbidden of PARTNER_EVENT_FORBIDDEN_KEYS) {
+      expect(
+        Object.keys(dispenseConfirmedPartnerEventSchema.shape),
+      ).not.toContain(forbidden);
     }
   });
 });

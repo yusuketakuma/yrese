@@ -388,6 +388,76 @@ export const KERNEL_ERROR_CODES = [
     description:
       "idempotency-key replay with a different payload is rejected",
   },
+  {
+    code: "DSP-0001",
+    domain: "DISPENSING",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description:
+      "dispensing record cannot be created while a prescription inquiry remains unresolved",
+  },
+  {
+    code: "DSP-0002",
+    domain: "DISPENSING",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description:
+      "dispensing lifecycle transition is not allowed for the current status",
+  },
+  {
+    code: "DSP-0003",
+    domain: "DISPENSING",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description:
+      "dispensing record or finalized prescription version does not exist in the tenant or pharmacy scope",
+  },
+  {
+    code: "DSP-0004",
+    domain: "DISPENSING",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description:
+      "generic substitution is not permitted or the generic name code does not match between the prescribed and dispensed items",
+  },
+  {
+    code: "DSP-0005",
+    domain: "DISPENSING",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "invalid dispensing record command request",
+  },
+  {
+    code: "DSP-0006",
+    domain: "DISPENSING",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description: "dispensing error code reserved",
+  },
+  {
+    code: "DSP-0007",
+    domain: "DISPENSING",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description:
+      "a dispensing record already exists for the prescription version",
+  },
+  {
+    code: "DSP-0008",
+    domain: "DISPENSING",
+    severity: "ERROR",
+    affectsClaimability: false,
+    requiresHumanReview: false,
+    description:
+      "idempotency-key replay with a different payload is rejected",
+  },
 ] as const satisfies readonly ErrorCodeDef[];
 
 export const AUTH_PERMISSION_DENIED_ERROR_CODE = KERNEL_ERROR_CODES[0].code;
@@ -443,6 +513,20 @@ export const PRESCRIPTION_INQUIRY_NOT_FOUND_ERROR_CODE =
   KERNEL_ERROR_CODES[36].code;
 export const PRESCRIPTION_IDEMPOTENCY_CONFLICT_ERROR_CODE =
   KERNEL_ERROR_CODES[37].code;
+export const DISPENSING_INQUIRY_UNRESOLVED_ERROR_CODE =
+  KERNEL_ERROR_CODES[38].code;
+export const DISPENSING_INVALID_TRANSITION_ERROR_CODE =
+  KERNEL_ERROR_CODES[39].code;
+export const DISPENSING_NOT_FOUND_ERROR_CODE = KERNEL_ERROR_CODES[40].code;
+export const DISPENSING_GENERIC_MISMATCH_ERROR_CODE =
+  KERNEL_ERROR_CODES[41].code;
+export const DISPENSING_INVALID_REQUEST_ERROR_CODE =
+  KERNEL_ERROR_CODES[42].code;
+export const DISPENSING_RESERVED_ERROR_CODE = KERNEL_ERROR_CODES[43].code;
+export const DISPENSING_ALREADY_RECORDED_ERROR_CODE =
+  KERNEL_ERROR_CODES[44].code;
+export const DISPENSING_IDEMPOTENCY_CONFLICT_ERROR_CODE =
+  KERNEL_ERROR_CODES[45].code;
 
 export function createKernelErrorCodeRegistry(): ErrorCodeRegistry {
   const registry = new ErrorCodeRegistry();

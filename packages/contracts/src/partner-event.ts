@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  dispensingIdWireSchema,
   prescriptionIdWireSchema,
   receptionIdWireSchema,
 } from "./wire-id.js";
@@ -16,6 +17,7 @@ export const PARTNER_EVENT_TYPES = [
   "reception.created",
   "prescription.finalized",
   "prescription.amended",
+  "dispense.confirmed",
 ] as const;
 export type PartnerEventType = (typeof PARTNER_EVENT_TYPES)[number];
 
@@ -72,10 +74,30 @@ export const prescriptionAmendedPartnerEventSchema =
     version: z.number().int().min(1),
   });
 
+/**
+ * WP-7404 / API-012: `dispense.confirmed`。catalog の最小 payload
+ * (dispense_id, prescription_id, version, confirmed_at)に対応 —
+ * dispense_id は aggregate.id、confirmed_at は occurredAt が担う。
+ * 処方本文・患者識別子は載せない。
+ */
+export const dispenseConfirmedPartnerEventSchema =
+  partnerEventEnvelopeSchema.extend({
+    eventType: z.literal("dispense.confirmed"),
+    aggregate: z.object({
+      type: z.literal("dispensing"),
+      id: dispensingIdWireSchema,
+    }),
+    /** 調剤対象の確定処方。 */
+    prescriptionId: prescriptionIdWireSchema,
+    /** 対象版(prescription_versions.version)。本文は載せない。 */
+    version: z.number().int().min(1),
+  });
+
 export const partnerEventSchema = z.discriminatedUnion("eventType", [
   receptionCreatedPartnerEventSchema,
   prescriptionFinalizedPartnerEventSchema,
   prescriptionAmendedPartnerEventSchema,
+  dispenseConfirmedPartnerEventSchema,
 ]);
 
 export type PartnerEvent = z.infer<typeof partnerEventSchema>;
@@ -85,6 +107,9 @@ export type PrescriptionFinalizedPartnerEvent = z.infer<
 >;
 export type PrescriptionAmendedPartnerEvent = z.infer<
   typeof prescriptionAmendedPartnerEventSchema
+>;
+export type DispenseConfirmedPartnerEvent = z.infer<
+  typeof dispenseConfirmedPartnerEventSchema
 >;
 
 /** 公開 event に含めてはならない key(テストと投影で機械検証する)。 */

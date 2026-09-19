@@ -20,7 +20,7 @@ reviewers:
   - claims_evidence_or_master_data_specialist
   - db_steward
   - claims_evidence_specialist
-version: 0.4.74
+version: 0.4.75
 created_at: 2026-07-09
 updated_at: 2026-09-19
 approved_at: 2026-09-08
@@ -159,6 +159,7 @@ related_prs:
   - PR #6
 evidence_ids: []
 change_log:
+  - "0.4.75 2026-09-19 WP-7404 SSOT 起案・bounded amendments: API-021(dispensing_record_contract — POST /dispensings・confirm・1版1記録・後発品変更整合・SEC-010 confirm gate)を新規登録、MOD-006 0.2.1(DSP-0001〜0008 登録)、MOD-008 0.2.10(`dispensing.recorded`/`dispensing.confirm.denied` 登録・`dispensing.confirmed` payload 規律明記)。packet 決定は direct user instruction(残タスク一括許可)により承認済み。総文書数 190→191、docs/api 20→21、status 集計は APPROVED 163→164 / PROPOSED 4 不変 / SUPERSEDED 23 不変(合計191)。実装完了・外部配送・production action を含まない。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.74 2026-09-19 WP-7403 bounded amendments: MOD-006 0.2.0(RX-0007〜0009 登録)、MOD-008 0.2.9(`prescription.amended`/`prescription.amend.denied`/`inquiry.answered` 登録、`inquiry.recorded` payload 規律明記)、MOD-009 0.2.4(§7 `prescription.amended` intent profile)、API-012 0.1.2(Event Catalog 第3 event `prescription.amended`)、MOD-007 0.1.3(疑義照会 scope open question 解消: inquiry=prescription:write・amend=prescription:confirm+免許)。packet 決定は direct user instruction により承認済み。総文書数 190 不変、status 集計不変(APPROVED 163 / PROPOSED 4 / SUPERSEDED 23)。実装完了・外部配送・production action を含まない。本索引自体は派生記録であり APPROVED を維持する"
   - "0.4.73 2026-09-19 WP-7402 R3 review adjudication: MOD-009 0.2.3(§4.1/§6.1 idempotencyKey を実装規則 `<eventId>:1` へ、§4.4/§6.2 「同一eventId」を audit_event_id FK 構造として明確化、§6.1 version の置き場を targetRef→outbox payload へ修正)。文言明確化のみ、規則変更なし。総文書数 190 不変、status 集計不変"
   - "0.4.72 2026-09-19 WP-7402 bounded amendments: MOD-008 0.2.8(監査種別 `prescription.confirmed`/`prescription.finalized`/`prescription.confirm.denied`/`prescription.finalize.denied` 登録)、API-012 0.1.1(Event Catalog へ `prescription.finalized` 第 2 event 登録)、MOD-009 0.2.2(§6 `prescription.finalized` Outbox intent profile 追加)。packet 決定は direct user instruction(残タスク一括許可)により承認済み。総文書数 190 不変、status 集計不変(APPROVED 163 / PROPOSED 4 / SUPERSEDED 23)。実装完了・外部配送・production action を含まない。本索引自体は派生記録であり APPROVED を維持する"
@@ -272,7 +273,7 @@ WP-9002-W1はHEAD `6198068`の23-field exact-key scanをbaselineとし、173文�
 
 WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbaselineとし、MOD-011とMOD-014の不足8 fieldだけをmetadata-onlyで補完した。final inventoryは173文書 / 不足139 / 充足34である。両文書の本文、version、status、approval、effective semanticsと、本索引の各行(`APPROVED` / `modules/date_time_policy.md`, `APPROVED` / `modules/generated_code_policy.md`)および総文書数173は変更していない。independent_verifier、test_architect、spec_guardian、api_contract_reviewer、data_integrity_auditor、medical_safety_reviewer、privacy_compliance_reviewerのAPPROVEDとfull validation後、IDX-001 v0.4.3をAPPROVEDとしてfinalizeした。W2 human approvalは主張しない。historical 173/142およびW1 173/141/32 recordはprovenanceとして維持する。
 
-総文書数: 190(本索引を除く)
+総文書数: 191(本索引を除く)
 
 ## docs/accounting/ (11件)
 
@@ -322,7 +323,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | AGT-016 | [llm_capability_registry.md](agents/llm_capability_registry.md) | SUPERSEDED |
 | AGT-004 | [sol_ultra_mode_execution_policy.md](agents/sol_ultra_mode_execution_policy.md) | SUPERSEDED |
 
-## docs/api/ (20件)
+## docs/api/ (21件)
 
 | ssot_id | 文書 | status |
 |---|---|---|
@@ -334,6 +335,7 @@ WP-9002-W2はHEAD `73fda4b`のinventory 173文書 / 不足141 / 充足32をbasel
 | API-016 | [data_portability_policy.md](api/data_portability_policy.md) | APPROVED |
 | API-018 | [data_sharing_module_inventory.md](api/data_sharing_module_inventory.md) | APPROVED |
 | API-017 | [data_sharing_policy.md](api/data_sharing_policy.md) | APPROVED |
+| API-021 | [dispensing_record_contract.md](api/dispensing_record_contract.md) | APPROVED |
 | API-019 | [eligibility_snapshot_contract.md](api/eligibility_snapshot_contract.md) | APPROVED |
 | API-008 | [fhir_rest_facade_contract.md](api/fhir_rest_facade_contract.md) | APPROVED |
 | API-013 | [idempotency_policy.md](api/idempotency_policy.md) | APPROVED |

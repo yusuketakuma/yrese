@@ -105,6 +105,8 @@ export interface MasterItemLookup {
   readonly masterVersionId: string;
   readonly localCode: string;
   readonly displayText: string;
+  /** WP-7404: generic 互換判定用(medication のみ、usage は null)。 */
+  readonly genericNameCode: string | null;
 }
 
 /** WP-7304: 前回 Do 再解決が必要とする read 面。PG では tx client 束縛の実装を渡し、tx 保持中の pool 再借用(枯渇 stall)を防ぐ。 */
@@ -348,6 +350,7 @@ export class InMemoryMasterRepository implements MasterRepository {
       masterVersionId: row.masterVersionId,
       localCode: row.localCode,
       displayText: row.name,
+      genericNameCode: row.genericNameCode ?? null,
     };
   }
 
@@ -366,6 +369,7 @@ export class InMemoryMasterRepository implements MasterRepository {
       masterVersionId: row.masterVersionId,
       localCode: row.localCode,
       displayText: row.text,
+      genericNameCode: null,
     };
   }
 

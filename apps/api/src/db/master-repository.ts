@@ -317,6 +317,7 @@ async function findMedicationItemByIdOn(
     masterVersionId: readRowString(row, 'master_version_id'),
     localCode: readRowString(row, 'local_code'),
     displayText: readRowString(row, 'name'),
+    genericNameCode: readRowNullableString(row, 'generic_name_code'),
   };
 }
 
@@ -340,6 +341,7 @@ async function findUsageItemByIdOn(
     masterVersionId: readRowString(row, 'master_version_id'),
     localCode: readRowString(row, 'local_code'),
     displayText: readRowString(row, 'text'),
+    genericNameCode: null,
   };
 }
 

@@ -73,6 +73,7 @@ describePostgres('PostgreSQL migration runner integration (set TEST_DATABASE_URL
         '000021',
         '000022',
         '000023',
+        '000024',
       ]);
 
       const startupCheck = await assertMigrationStateAllowsStartup(pool, migrations);
@@ -106,6 +107,7 @@ describePostgres('PostgreSQL migration runner integration (set TEST_DATABASE_URL
         { version: '000021', applied_by: 'vitest' },
         { version: '000022', applied_by: 'vitest' },
         { version: '000023', applied_by: 'vitest' },
+        { version: '000024', applied_by: 'vitest' },
       ]);
     });
   });

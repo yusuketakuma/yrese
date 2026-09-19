@@ -23,28 +23,42 @@ export class PartnerEventProjectionError extends Error {
 }
 
 /**
- * `prescription.finalized` / `prescription.amended` の内部 payload 契約
- * (WP-7402 / WP-7403)。確定版・訂正後の新版だけを転記し、識別子以外の内部
- * payload key は公開 event に載せない。payload が欠損・不正なら投影失敗
- * (fail-closed)とする。
+ * `prescription.finalized` / `prescription.amended` / `dispense.confirmed`
+ * の内部 payload 契約(WP-7402 / WP-7403 / WP-7404)。確定版・訂正後の新版・
+ * 調剤確定の識別子だけを転記し、それ以外の内部 payload key は公開 event に
+ * 載せない。payload が欠損・不正なら投影失敗(fail-closed)とする。
  */
-function projectPayloadFields(event: OutboxPendingEvent): Record<string, number> {
-  if (
-    event.eventType !== 'prescription.finalized' &&
-    event.eventType !== 'prescription.amended'
-  ) {
+function projectPayloadFields(
+  event: OutboxPendingEvent,
+): { version?: number; prescriptionId?: string } {
+  const projected =
+    event.eventType === 'prescription.finalized' ||
+    event.eventType === 'prescription.amended' ||
+    event.eventType === 'dispense.confirmed';
+  if (!projected) {
     return {};
   }
   const payload = event.payload;
-  const version =
+  const fields =
     typeof payload === 'object' && payload !== null && !Array.isArray(payload)
-      ? (payload as Record<string, unknown>).version
-      : undefined;
+      ? (payload as Record<string, unknown>)
+      : {};
+  const version = fields.version;
   if (typeof version !== 'number' || !Number.isInteger(version) || version < 1) {
     throw new PartnerEventProjectionError(
       event.outboxEventId,
       new Error(`${event.eventType} payload lacks integer version`),
     );
+  }
+  if (event.eventType === 'dispense.confirmed') {
+    const prescriptionId = fields.prescriptionId;
+    if (typeof prescriptionId !== 'string' || prescriptionId.length === 0) {
+      throw new PartnerEventProjectionError(
+        event.outboxEventId,
+        new Error('dispense.confirmed payload lacks prescriptionId'),
+      );
+    }
+    return { version, prescriptionId };
   }
   return { version };
 }

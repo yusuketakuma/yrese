@@ -601,11 +601,16 @@ function emptyLifecycle(): InMemoryPrescriptionLifecycleState {
 
 export interface PrescriptionFinalizedOutboxIntent {
   readonly outboxEventId: string;
-  readonly eventType: "prescription.finalized" | "prescription.amended";
-  readonly aggregateType: "prescription";
+  readonly eventType:
+    | "prescription.finalized"
+    | "prescription.amended"
+    | "dispense.confirmed";
+  readonly aggregateType: "prescription" | "dispensing";
   readonly aggregateId: string;
   readonly auditEventId: string;
   readonly version: number;
+  /** WP-7404 dispense.confirmed のみ(API-012 最小 payload の prescription_id)。 */
+  readonly prescriptionId?: string;
   readonly createdAt: string;
 }
 
@@ -615,8 +620,9 @@ function outboxScopeKey(tenantId: TenantId, pharmacyId: PharmacyId): string {
 
 /**
  * dev/test 用の in-memory outbox intent(MOD-009 §6)。永続正本は
- * outbox_events。prescription.finalized / prescription.amended のみ。
- * 一意性は outbox_events の aggregate+eventType+version 相当に揃える。
+ * outbox_events。prescription.finalized / prescription.amended /
+ * dispense.confirmed(WP-7404)。一意性は outbox_events の
+ * aggregate+eventType+version 相当に揃える。
  */
 export class InMemoryPrescriptionFinalizedOutbox {
   private readonly intents = new Map<
@@ -1618,5 +1624,63 @@ export class InMemoryPrescriptionDraftService
         .sort((a, b) => a.recordedSeq - b.recordedSeq)
         .map((entry) => this.inquiryView(entry)),
     };
+  }
+
+  /**
+   * WP-7404: dispensing guard 用の内部 read(監査を記録しない)。
+   * versions 行は finalize/amend でのみ追加されるため、存在=確定の証明。
+   */
+  findFinalizedVersionContent(
+    scope: { tenantId: TenantId; pharmacyId: PharmacyId },
+    targetPrescriptionId: PrescriptionId,
+    version: number,
+  ):
+    | {
+        readonly version: number;
+        readonly content: PrescriptionDraftContent;
+      }
+    | undefined {
+    const record = this.findRecordByPrescriptionId({
+      tenantId: scope.tenantId,
+      pharmacyId: scope.pharmacyId,
+      prescriptionId: targetPrescriptionId,
+    });
+    const found = record?.versions.find((entry) => entry.version === version);
+    return found === undefined
+      ? undefined
+      : { version: found.version, content: found.content };
+  }
+
+  /** WP-7404: 未回答 inquiry が 1 件でもあれば true(監査を記録しない)。 */
+  hasOpenInquiry(
+    scope: { tenantId: TenantId; pharmacyId: PharmacyId },
+    targetPrescriptionId: PrescriptionId,
+  ): boolean {
+    const record = this.findRecordByPrescriptionId({
+      tenantId: scope.tenantId,
+      pharmacyId: scope.pharmacyId,
+      prescriptionId: targetPrescriptionId,
+    });
+    return record?.inquiries.some((entry) => entry.answer === null) ?? false;
+  }
+
+  /**
+   * WP-7404: 処方の直列化 lock 下で action を実行する。
+   * dispensing create の guard 評価が inquiry 記録と TOCTOU で競合しない
+   * ようにする(PG 側は prescription_drafts FOR UPDATE が等価の役割)。
+   * 処方 record が存在しなければ action を実行せず undefined を返す。
+   */
+  async runWithPrescriptionLock<T>(
+    scope: { tenantId: TenantId; pharmacyId: PharmacyId },
+    targetPrescriptionId: PrescriptionId,
+    action: () => Promise<T>,
+  ): Promise<T | undefined> {
+    const record = this.findRecordByPrescriptionId({
+      tenantId: scope.tenantId,
+      pharmacyId: scope.pharmacyId,
+      prescriptionId: targetPrescriptionId,
+    });
+    if (record === undefined) return undefined;
+    return this.withKeyLock(record.lockKey, action);
   }
 }

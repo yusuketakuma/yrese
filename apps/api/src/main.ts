@@ -28,6 +28,7 @@ import {
   snapshotDatabasePool,
 } from './db/pool.js';
 import { PostgresActorQualificationRepository } from './db/actor-qualification-repository.js';
+import { PostgresDispensingService } from './db/dispensing-service.js';
 import { PostgresPrescriptionDraftService } from './db/prescription-draft-service.js';
 import {
   PostgresReceptionCreateCommand,
@@ -48,6 +49,8 @@ import {
   createPatientSearchCursorCodec,
   patientSearchCursorHmacKeyByteLength,
 } from './patient-search-cursor.js';
+import { dispensingRoutes } from './dispensing-routes.js';
+import { InMemoryDispensingService } from './dispensing-service.js';
 import { prescriptionAmendmentRoutes } from './prescription-amendment-routes.js';
 import { prescriptionDraftRoutes } from './prescription-draft-routes.js';
 import { prescriptionLifecycleRoutes } from './prescription-lifecycle-routes.js';
@@ -193,6 +196,16 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
     server.register(prescriptionAmendmentRoutes, {
       service: prescriptionDraftService,
     });
+    // WP-7404: 調剤記録。create=write scope、confirm=confirm scope+SEC-010。
+    server.register(dispensingRoutes, {
+      service: new InMemoryDispensingService({
+        prescriptionSource: prescriptionDraftService,
+        auditRepository,
+        qualificationRepository: actorQualificationRepository,
+        masterRepository,
+        dispensingOutbox: prescriptionFinalizedOutbox,
+      }),
+    });
     server.register(operationsRoutes, {
       service: new InMemoryOperationsReadService(
         receptionOutbox,
@@ -261,6 +274,12 @@ async function buildServerForEnvironment(): Promise<BuiltServerRuntime> {
     });
     server.register(prescriptionAmendmentRoutes, {
       service: prescriptionDraftService,
+    });
+    // WP-7404: 調剤記録(PG)。全 read/write は単一 tx client 上で行う。
+    server.register(dispensingRoutes, {
+      service: new PostgresDispensingService(pool, {
+        qualificationRepository: new PostgresActorQualificationRepository(pool),
+      }),
     });
     server.register(operationsRoutes, {
       service: new PostgresOperationsReadService({ pool, migrations }),

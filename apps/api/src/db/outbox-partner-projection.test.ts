@@ -98,6 +98,56 @@ describe('projectOutboxEventToPartnerEvent', () => {
     }
   });
 
+  it('projects dispense.confirmed with prescriptionId and version only', () => {
+    const confirmed: OutboxPendingEvent = Object.freeze({
+      ...row,
+      outboxEventId: 'outbox-dsp-1',
+      eventType: 'dispense.confirmed',
+      aggregateType: 'dispensing',
+      aggregateId: 'dispensing-000001',
+      payload: {
+        prescriptionId: 'prescription-000001',
+        version: 2,
+        // 内部 payload の調剤内容・患者識別子は公開 event へ転記しない。
+        note: 'internal only',
+      },
+    });
+    const projected = projectOutboxEventToPartnerEvent(confirmed);
+    expect(projected).toEqual({
+      eventId: 'outbox-dsp-1',
+      eventType: 'dispense.confirmed',
+      schemaVersion: 1,
+      occurredAt: '2026-08-23T00:00:00.000Z',
+      auditEventId: 'audit-0001',
+      aggregate: { type: 'dispensing', id: 'dispensing-000001' },
+      prescriptionId: 'prescription-000001',
+      version: 2,
+    });
+    expect(JSON.stringify(projected)).not.toContain('internal only');
+  });
+
+  it('fails closed when dispense.confirmed payload lacks prescriptionId or version', () => {
+    for (const payload of [
+      { version: 1 },
+      { prescriptionId: 'prescription-000001' },
+      { prescriptionId: 'prescription-000001', version: 'one' },
+      { prescriptionId: '', version: 1 },
+      { prescriptionId: 'prescription-000001', version: 0 },
+      null,
+      'x',
+    ]) {
+      expect(() =>
+        projectOutboxEventToPartnerEvent({
+          ...row,
+          eventType: 'dispense.confirmed',
+          aggregateType: 'dispensing',
+          aggregateId: 'dispensing-000001',
+          payload,
+        }),
+      ).toThrow(PartnerEventProjectionError);
+    }
+  });
+
   it('fails closed when prescription.finalized payload lacks a valid version', () => {
     for (const payload of [
       { prescriptionId: 'prescription-000001' },

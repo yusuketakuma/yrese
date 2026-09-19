@@ -8,11 +8,11 @@ status: APPROVED
 owner: fable5
 reviewers:
   - opus4.8
-version: 0.2.0
+version: 0.2.1
 created_at: 2026-07-09
 updated_at: 2026-09-19
 approved_at: 2026-09-19
-approved_by: "direct human authority 2026-09-19 (WP-7403 packet 承認・進行指示); prior: direct human authority 2026-09-19 (残タスク一括許可; WP-7402 packet 承認); prior: direct human authority 2026-09-17 (SSOT batch 一括 APPROVE)"
+approved_by: "direct human authority 2026-09-19 (残タスク一括許可; WP-7404 packet 承認); prior: direct human authority 2026-09-19 (WP-7403 packet 承認・進行指示); prior: direct human authority 2026-09-19 (残タスク一括許可; WP-7402 packet 承認); prior: direct human authority 2026-09-17 (SSOT batch 一括 APPROVE)"
 effective_from: 2026-09-17
 effective_to: null
 source_refs:
@@ -47,6 +47,7 @@ blockers: []
 change_log:
   - "0.1.6 (2026-09-18): WP-7105 — C-021 queue bound 決定(選択肢 b 防御的 cap、direct human approval)に伴い `RCV-0007`(queue 件数が cap 超過 503 + nextAction)を登録"
   - "0.1.7 (2026-09-18): WP-7301/WP-7303 — MST-003 実装に伴い `MST-0001`(master query 不正 400)を実装済みで登録、`MST-0002`(版参照 404)を予約登録。併せて INS-0001〜0006 の stale『未実装』表記を『実装済み(API-020 / WP-7203)』へ訂正"
+  - "0.2.1 (2026-09-19): WP-7404 — dispensing route 用に DSP-0001(疑義照会未解決 409)/ DSP-0002(lifecycle 遷移不可 409)/ DSP-0003(record 不存在 404)/ DSP-0004(後発品変更整合不一致 409)/ DSP-0005(command 不正 400)/ DSP-0006(予約)/ DSP-0007(同一版重複 409)/ DSP-0008(冪等 conflict 409)を登録。WP-7404 pre-review packet で承認済み"
   - "0.2.0 (2026-09-19): WP-7403 — amend/inquiry route 用に RX-0007(amend 前提 inquiry 未充足・不整合 422)/ RX-0008(inquiry command 不正 400)/ RX-0009(inquiry 不存在 404)/ RX-0010(冪等 conflict 409)を登録。WP-7403 pre-review packet で承認済み"
   - "0.1.9 (2026-09-19): WP-7402 — confirm/finalize route 用に RX-0002(不許可遷移 409)/ RX-0003(原本 metadata 未充足 409)/ RX-0004(受付非 IN_PROGRESS 409)/ RX-0005(command 不正 400)/ RX-0006(処方不存在 404)を登録し、RX-0001 の備考を route 適用へ更新。WP-7402 pre-review packet で承認済み"
   - "0.1.8 (2026-09-19): WP-7302 — DOM-002 §4.2b 解決必須 guard 用に `RX-0001`(UNRESOLVED_TEXT 品目を含む draft の薬剤師確認ブロック、PRESCRIPTION domain 初コード、prefix RX)を登録。WP-7302 pre-review packet D-5 で承認済み"
@@ -119,6 +120,14 @@ change_log:
 | RX-0008 | PRESCRIPTION | ERROR | false | false | 疑義照会 command 不正(400)。directedTo/content/answer/result 欠落・形式不正・Idempotency-Key 不正 | 実装予定(WP-7403) |
 | RX-0009 | PRESCRIPTION | ERROR | false | false | 対象疑義照会が scope 内に存在しない(404)。cross-scope 存在非開示 | 実装予定(WP-7403) |
 | RX-0010 | PRESCRIPTION | ERROR | false | false | 同一 Idempotency-Key で異なる payload の冪等 conflict(409)。amend/inquiry command の再送ペイロード不一致 | 実装予定(WP-7403) |
+| DSP-0001 | DISPENSING | ERROR | false | false | 疑義照会未解決の処方への調剤記録(409)。OPEN inquiry 残存時は調剤開始不可(DOM-004 §1 前提) | 実装予定(WP-7404) |
+| DSP-0002 | DISPENSING | ERROR | false | false | dispensing lifecycle 不許可遷移(409)。確認済み記録への再確認等(DOM-004 §1 単方向) | 実装予定(WP-7404) |
+| DSP-0003 | DISPENSING | ERROR | false | false | 対象調剤記録/確定処方版が scope 内に存在しない(404)。cross-scope 存在非開示 | 実装予定(WP-7404) |
+| DSP-0004 | DISPENSING | ERROR | false | false | 後発品変更の整合不一致(409)。変更可否=非許可または一般名コード不一致 | 実装予定(WP-7404) |
+| DSP-0005 | DISPENSING | ERROR | false | false | 調剤 command 不正(400)。rpItem 過不足・重複・排他違反・Idempotency-Key 不正 | 実装予定(WP-7404) |
+| DSP-0006 | DISPENSING | ERROR | false | false | (予約) | APPROVED(WP-7404 — 予約) |
+| DSP-0007 | DISPENSING | ERROR | false | false | 同一処方版への重複調剤記録(409)。1 版 1 記録、訂正後の再調剤は amend 新版へ | 実装予定(WP-7404) |
+| DSP-0008 | DISPENSING | ERROR | false | false | 同一 Idempotency-Key で異なる payload/confirm key の冪等 conflict(409) | 実装予定(WP-7404) |
 
 (初期セットは `KERNEL_ERROR_CODES` seed として登録済み。今後の拡充は、各ドメイン実装WPの DoR で「使用するエラーコードが本台帳に登録済みであること」を要求することで行う)
 
