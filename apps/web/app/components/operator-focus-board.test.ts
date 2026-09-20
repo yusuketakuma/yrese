@@ -38,6 +38,21 @@ describe("operator focus projections", () => {
     }
   });
 
+  it("does not label already-implemented commands as unimplemented", () => {
+    // WP-7406 V-7: 逆向きの truthfulness — 確認・疑義照会コマンドは実装済みで、
+    // 不足しているのは横断集計 read API だけ。文言がその区別を保持すること。
+    const items = getOperatorFocusGroups("pharmacist").flatMap(
+      (group) => group.items,
+    );
+    const confirmation = items.find((item) => item.id === "confirmation");
+    const inquiry = items.find((item) => item.id === "inquiry");
+
+    expect(confirmation?.detail).toContain("横断集計");
+    expect(confirmation?.detail).toContain("実装済み");
+    expect(confirmation?.detail).not.toContain("dispensing:confirm");
+    expect(inquiry?.detail).toContain("実装済み");
+  });
+
   it("gives a real destination to the only wired focus item", () => {
     const wired = getOperatorFocusGroups("combined")
       .flatMap((group) => group.items)

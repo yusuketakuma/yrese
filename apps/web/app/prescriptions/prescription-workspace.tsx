@@ -2202,7 +2202,7 @@ export function SelectedPatientWorkspaceView({
           <RailCard title="患者固有タスク">
             <StatusPill tone="warning">タスクAPI未接続</StatusPill>
             <p className="rail-muted">
-              疑義照会、薬歴確認、次回フォローはタスクAPI接続後に表示します。件数を推測して表示しません。表示されないことは該当なしを意味しません。
+              処方単位の疑義照会 route は実装済みですが、患者横断のタスク（疑義照会の滞留・薬歴確認・次回フォロー）はタスクAPI接続後に表示します。件数を推測して表示しません。表示されないことは該当なしを意味しません。
             </p>
           </RailCard>
           <RailCard title="エビデンス" tone="warning">

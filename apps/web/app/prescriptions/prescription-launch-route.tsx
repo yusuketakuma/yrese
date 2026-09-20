@@ -169,7 +169,7 @@ export function PrescriptionLaunchGateRail() {
       </RailCard>
       <RailCard title="算定・薬剤師確認" tone="warning">
         <p className="rail-muted">
-          点数・算定条件の算定エンジンは、RB-008（調剤報酬点数表の版確認と算定ルールの承認が未了）により未接続です。薬剤師確認（SCR-014）は未実装で、下書き保存は薬剤師確認・処方確定を意味しません。
+          点数・算定条件の算定エンジンは、RB-008（調剤報酬点数表の版確認と算定ルールの承認が未了）により未接続です。薬剤師確認・処方確定（SCR-014）はワークスペースで実APIへ接続済みですが、下書き保存は薬剤師確認・処方確定を意味しません。
         </p>
       </RailCard>
     </>
@@ -476,7 +476,7 @@ export function PrescriptionLaunchVerifiedView({
 
         <Panel
           title="処方入力へ引き継ぐ"
-          description="引き継ぎ後も、算定（RB-008）・臨床判断支援（RB-007）・薬剤師確認（SCR-014）は実行できません。"
+          description="引き継ぎ後は薬剤師確認・処方確定（SCR-014）をワークスペース上の実APIで実行できます（要資格・受付 IN_PROGRESS・全Rp解決・原本情報充足）。算定（RB-008）・臨床判断支援（RB-007）は引き続き実行できません。"
         >
           <ReceptionPrescriptionHandoffAction
             entry={entry}

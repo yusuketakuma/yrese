@@ -92,10 +92,11 @@ const draftBody = (expectedVersion: number, note: string) => ({
 });
 
 /**
- * North Star 部分旅程 E2E ハーネス(WP-7104 layer 1)。
+ * North Star 旅程 E2E ハーネス(WP-7104 layer 1 → WP-7405 で全行程化)。
  * main.ts の in_memory composition を再現し、inject() で
- * 合成患者検索→紙受付→処方下書き→監査/outbox 証跡 を貫通させる。
- * 薬剤師確認・確定・調剤記録・算定は未実装のため対象外(Plans.md §18)。
+ * 合成患者検索→紙受付→対応開始→処方下書き→薬剤師確認→確定→調剤記録→
+ * 調剤確定→監査/outbox 証跡 を貫通させる。
+ * 算定・請求は未接続のまま対象外(Plans.md §18、RB-008/RB-001)。
  */
 // WP-7405: 全行程 journey で使う確定処方の参照先 master seed。
 const JOURNEY_MASTER_MED_VERSION = "00000000-0000-4000-8000-00000000a001";

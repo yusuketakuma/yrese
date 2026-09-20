@@ -327,6 +327,10 @@ describe("PrescriptionLaunchVerifiedView", () => {
     expect(html).toContain("RB-007");
     expect(html).toContain("RB-008");
     expect(html).toContain("SCR-014");
+    // WP-7406 V-7: 薬剤師確認・確定は WP-7402 で実API接続済み — 「未実装」表示は
+    // stale であり、実装済み機能を未接続と偽らない。
+    expect(html).not.toContain("薬剤師確認（SCR-014）は未実装");
+    expect(html).not.toContain("薬剤師確認（SCR-014）は実行できません");
     expect(html).toContain(
       "アラートが表示されないことは安全確認済みを意味しません",
     );

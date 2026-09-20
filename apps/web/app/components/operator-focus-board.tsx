@@ -69,13 +69,14 @@ const PHARMACIST_GROUP: OperatorFocusGroup = {
       label: "薬剤師確認待ち",
       status: "UNAVAILABLE",
       detail:
-        "薬剤師確認API(SCR-014 dispensing:confirm)が未実装です。空キューではなく導出不能です。",
+        "薬剤師確認待ちを横断集計する一覧APIが未提供です(確認コマンド SCR-014 / POST /prescriptions/:id/confirm は実装済み)。空キューではなく導出不能です。",
     },
     {
       id: "inquiry",
       label: "疑義照会中",
       status: "UNAVAILABLE",
-      detail: "疑義照会API(SCR-015)が未実装です。0件ではなく導出不能です。",
+      detail:
+        "疑義照会の滞留を横断集計するAPIが未提供です(処方単位の照会 route /prescriptions/:id/inquiries は実装済み)。0件ではなく導出不能です。",
     },
     {
       id: "revalidation",

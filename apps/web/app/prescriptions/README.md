@@ -18,9 +18,8 @@ The URL values are selectors only. Queue results and direct verification URLs bo
 
 Durable draft persistence is connected: the workspace loads and saves the server draft through `GET`/`PUT /prescription-drafts/by-reception/:receptionId` with optimistic concurrency (version + `saveDisposition`). A successful save is a draft save only.
 
-Pharmacist confirmation, clinical judgement, calculation and external transmission remain unavailable, and the screen names the gate that stops each one:
+Pharmacist confirmation and finalization are connected (SCR-014, `prescription:confirm` via `POST /prescriptions/:id/{confirm,finalize}`, subject to qualification and lifecycle guards). Clinical judgement, calculation and external transmission remain unavailable, and the screen names the gate that stops each one:
 
-- pharmacist confirmation (SCR-014, `dispensing:confirm`) — no registered API operation;
 - duplicate-therapy and contraindication checking — `RB-007 BLOCKED_PMDA_SAMD_REVIEW`;
 - points, drug prices and calculation — `RB-008 BLOCKED_REGULATORY_REVIEW`;
 - past prescriptions, lab values, patient tasks and evidence — no patient-scoped API.
