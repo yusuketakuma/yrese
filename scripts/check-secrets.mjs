@@ -30,7 +30,12 @@ const ignoredDirs = new Set([
   "out",
 ]);
 const exactTextBasenames = new Set([".npmrc"]);
-const protectedLocalRoots = new Set([".harness-worktrees", "artifacts", "ui-test-tools"]);
+const protectedLocalRoots = new Set([
+  ".codex",
+  ".harness-worktrees",
+  "artifacts",
+  "ui-test-tools",
+]);
 const scopeErrorMessage = "Secret scan could not validate the protected repository scope.";
 class ProtectedScopeError extends Error {
   constructor(offendingPath) {
@@ -69,6 +74,20 @@ const insideGitWorkTree = (() => {
 })();
 
 const skippedExcludedPaths = [];
+
+function isRootGitfile(entryPath, entry) {
+  if (!insideGitWorkTree || !entry.isFile() || entryPath !== path.join(rootDir, ".git")) {
+    return false;
+  }
+  // Linked worktrees/submodules use a gitfile instead of a .git directory.
+  // Let Git validate this exact file; a name or a "gitdir:" prefix alone is
+  // not proof of metadata. Never follow this exception for a symlink/nested file.
+  const probe = spawnSync("git", ["rev-parse", "--resolve-git-dir", entryPath], {
+    cwd: rootDir,
+    stdio: "ignore",
+  });
+  return probe.status === 0;
+}
 
 function isExcludedFromRepositoryContent(entryPath) {
   if (!insideGitWorkTree || entryPath === undefined) {
@@ -276,7 +295,7 @@ async function listFiles(dir) {
       continue;
     }
     if (ignoredDirs.has(entry.name)) {
-      if (!entry.isDirectory()) skipOrFailScope(entryPath);
+      if (!entry.isDirectory() && !isRootGitfile(entryPath, entry)) skipOrFailScope(entryPath);
       continue;
     }
     if (entry.name === "pnpm-lock.yaml" && !entry.isFile()) {

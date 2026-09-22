@@ -2022,6 +2022,45 @@ async function testSecretScanRepositoryContentScope() {
   const externalCredential = ["Synthetic", "Excluded", "Credential", "4321"].join("_");
   await writeText(externalTarget, `api_key='${externalCredential}'\n`);
 
+  // A linked worktree has a regular .git file, not a .git directory. Exercise
+  // Git's real metadata layout while retaining the content and invalid-scope gates.
+  const primaryRoot = await initGitRoot("secrets-worktree-primary");
+  await writeText(path.join(primaryRoot, "README.md"), "clean eligible text\n");
+  const stage = spawnSync("git", ["add", "--", "README.md"], { cwd: primaryRoot });
+  assert(stage.status === 0, "worktree fixture should stage its synthetic README");
+  const commit = spawnSync("git", [
+    "-c", "user.name=Synthetic Fixture", "-c", "user.email=fixture@example.invalid",
+    "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false",
+    "commit", "-qm", "synthetic fixture",
+  ], { cwd: primaryRoot, encoding: "utf8" });
+  assert(commit.status === 0, `worktree fixture commit should succeed: ${outputOf(commit)}`);
+  const linkedRoot = path.join(tempRoot, "secrets-linked-worktree");
+  const linked = spawnSync("git", ["worktree", "add", "--detach", linkedRoot], {
+    cwd: primaryRoot, encoding: "utf8",
+  });
+  assert(linked.status === 0, `linked fixture should exist: ${outputOf(linked)}`);
+  const cleanLinked = runNode("check-secrets.mjs", [], { cwd: linkedRoot });
+  assert(cleanLinked.status === 0, `a valid linked worktree must scan: ${outputOf(cleanLinked)}`);
+  await writeText(path.join(linkedRoot, "fixture.ts"), `api_key='${externalCredential}'\n`);
+  const leakedLinked = runNode("check-secrets.mjs", [], { cwd: linkedRoot });
+  assert(leakedLinked.status === 1, "linked-worktree content must still be scanned");
+  assert(outputOf(leakedLinked).includes("fixture.ts:1: Generic secret assignment"),
+    "linked-worktree findings must identify the content path");
+  assert(!outputOf(leakedLinked).includes(externalCredential), "gitfile support must not expose secrets");
+
+  const invalidGitfileRoot = path.join(tempRoot, "secrets-invalid-gitfile");
+  await writeText(path.join(invalidGitfileRoot, "README.md"), "clean eligible text\n");
+  await writeText(path.join(invalidGitfileRoot, ".git"), "gitdir: missing-metadata\n");
+  const invalidGitfile = runNode("check-secrets.mjs", [], { cwd: invalidGitfileRoot });
+  assert(invalidGitfile.status === 1 && outputOf(invalidGitfile).includes("Scope was broken by: .git"),
+    "an invalid root gitfile must fail closed");
+  const symlinkGitRoot = path.join(tempRoot, "secrets-symlink-git-root");
+  await writeText(path.join(symlinkGitRoot, "README.md"), "clean eligible text\n");
+  await symlink(path.join(primaryRoot, ".git"), path.join(symlinkGitRoot, ".git"));
+  const symlinkGit = runNode("check-secrets.mjs", [], { cwd: symlinkGitRoot });
+  assert(symlinkGit.status === 1 && outputOf(symlinkGit).includes("Scope was broken by: .git"),
+    "a metadata symlink must not acquire the gitfile exception");
+
   const lockfileRoot = await initGitRoot("secrets-content-lockfile");
   await writeText(path.join(lockfileRoot, "README.md"), "clean eligible text\n");
   await writeText(path.join(lockfileRoot, "pnpm-lock.yaml"), `api_key='${externalCredential}'\n`);
@@ -2195,7 +2234,7 @@ async function testSecretScanRepositoryContentScope() {
   const protectedRoot = await initGitRoot("secrets-content-protected");
   const protectedCredential = ["Synthetic", "Protected", "Credential", "4321"].join("_");
   await writeText(path.join(protectedRoot, "README.md"), "clean eligible text\n");
-  for (const protectedRootName of [".harness-worktrees", "artifacts", "ui-test-tools"]) {
+  for (const protectedRootName of [".codex", ".harness-worktrees", "artifacts", "ui-test-tools"]) {
     await writeText(
       path.join(protectedRoot, protectedRootName, "fixture.md"),
       `api_key='${protectedCredential}'\n`,
@@ -2208,8 +2247,8 @@ async function testSecretScanRepositoryContentScope() {
     `known untracked developer-local roots should be skipped: ${protectedOutput}`,
   );
   assert(
-    protectedOutput.includes("Secret scan skipped 3 entries excluded from repository content:") &&
-      [".harness-worktrees", "artifacts", "ui-test-tools"].every((rootName) =>
+    protectedOutput.includes("Secret scan skipped 4 entries excluded from repository content:") &&
+      [".codex", ".harness-worktrees", "artifacts", "ui-test-tools"].every((rootName) =>
         protectedOutput.includes(`- ${rootName}`),
       ),
     "protected root skips must be explicit and complete",
