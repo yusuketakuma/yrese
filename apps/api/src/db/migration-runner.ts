@@ -6,6 +6,7 @@ import {
   type AppliedMigration,
   type MigrationCheckResult,
 } from './migration-state.js';
+import { isUndefinedTableError } from './database-row.js';
 import type { MigrationFile } from './migrations.js';
 
 interface SchemaMigrationRow {
@@ -39,9 +40,6 @@ export class MigrationStateError extends Error {
   }
 }
 
-function isUndefinedTableError(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === '42P01';
-}
 
 function toAppliedMigration(row: SchemaMigrationRow): AppliedMigration {
   return {

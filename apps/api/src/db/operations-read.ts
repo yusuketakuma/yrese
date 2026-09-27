@@ -19,6 +19,10 @@ import {
 } from "../operations-service.js";
 import { snapshotDatabaseInstant } from "../instant.js";
 import {
+  isUndefinedTableError,
+  readDatabaseRowString,
+} from "./database-row.js";
+import {
   readDatabaseRowOwnDataProperty,
   snapshotDatabaseQueryRows,
   snapshotUnboundedDatabaseQueryRows,
@@ -89,17 +93,6 @@ function readInstant(value: unknown): string | undefined {
   return snapshotDatabaseInstant(value, operationsSummaryInvariantErrorMessage);
 }
 
-function readRowString(row: unknown, property: PropertyKey): string {
-  const value = readDatabaseRowOwnDataProperty(
-    row,
-    property,
-    operationsSummaryInvariantErrorMessage,
-  );
-  if (typeof value !== "string") {
-    throw new Error(operationsSummaryInvariantErrorMessage);
-  }
-  return value;
-}
 
 function readRowCount(row: unknown, property: PropertyKey): number {
   return readCount(
@@ -121,14 +114,6 @@ function readRowInstant(row: unknown, property: PropertyKey): string | undefined
   );
 }
 
-function isUndefinedTableError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    error.code === "42P01"
-  );
-}
 
 export class PostgresOperationsReadService implements OperationsReadService {
   private readonly pool: Pool;
@@ -166,7 +151,7 @@ export class PostgresOperationsReadService implements OperationsReadService {
         "oldest_pending_created_at",
       );
       return {
-        eventType: readRowString(row, "event_type"),
+        eventType: readDatabaseRowString(row, "event_type", operationsSummaryInvariantErrorMessage),
         pendingCount: readRowCount(row, "pending_count"),
         deliveredCount: readRowCount(row, "delivered_count"),
         ...(oldestPendingCreatedAt === undefined ? {} : { oldestPendingCreatedAt }),
@@ -209,8 +194,8 @@ export class PostgresOperationsReadService implements OperationsReadService {
     return buildReceptionSummary(
       input.date,
       rows.map((row) => ({
-        receptionStatus: readRowString(row, "reception_status"),
-        eligibilityStatus: readRowString(row, "eligibility_status"),
+        receptionStatus: readDatabaseRowString(row, "reception_status", operationsSummaryInvariantErrorMessage),
+        eligibilityStatus: readDatabaseRowString(row, "eligibility_status", operationsSummaryInvariantErrorMessage),
         count: readRowCount(row, "entry_count"),
       })),
     );
@@ -262,8 +247,8 @@ export class PostgresOperationsReadService implements OperationsReadService {
       return row === undefined
         ? undefined
         : {
-            version: readRowString(row, "version"),
-            name: readRowString(row, "name"),
+            version: readDatabaseRowString(row, "version", operationsSummaryInvariantErrorMessage),
+            name: readDatabaseRowString(row, "name", operationsSummaryInvariantErrorMessage),
           };
     } catch (error) {
       // schema_migrations 未作成は「まだ何も適用されていない」であって障害ではない。

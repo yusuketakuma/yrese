@@ -19,7 +19,9 @@ import {
 } from '../coverage-repository.js';
 import { snapshotDatabaseInstant } from '../instant.js';
 import {
+  readDatabaseRowNullableString,
   readDatabaseRowOwnDataProperty,
+  readDatabaseRowString,
   snapshotDatabaseQueryRows,
   snapshotUnboundedDatabaseQueryRows,
 } from './database-row.js';
@@ -55,32 +57,7 @@ interface PublicExpenseRow {
   readonly recorded_at: Date | string;
 }
 
-function readRowString(
-  row: object,
-  property: string,
-): string {
-  const value = readDatabaseRowOwnDataProperty(
-    row,
-    property,
-    databaseCoverageRowInvariantErrorMessage,
-  );
-  if (typeof value !== 'string') {
-    throw new Error(databaseCoverageRowInvariantErrorMessage);
-  }
-  return value;
-}
 
-function readRowNullableString(row: object, property: string): string | null {
-  const value = readDatabaseRowOwnDataProperty(
-    row,
-    property,
-    databaseCoverageRowInvariantErrorMessage,
-  );
-  if (value !== null && typeof value !== 'string') {
-    throw new Error(databaseCoverageRowInvariantErrorMessage);
-  }
-  return value;
-}
 
 function readCopayRatio(row: InsuranceCardRow): number {
   const value = readDatabaseRowOwnDataProperty(
@@ -110,18 +87,18 @@ function readRecordedAt(row: { readonly recorded_at: Date | string }): string {
 function insuranceCardRowToWire(row: InsuranceCardRow): InsuranceCard {
   try {
     return insuranceCardSchema.parse({
-      insuranceCardId: readRowString(row, 'insurance_card_id'),
-      insurerNumber: readRowString(row, 'insurer_number'),
-      insuredSymbol: readRowString(row, 'insured_symbol'),
-      insuredNumber: readRowString(row, 'insured_number'),
-      ...(readRowNullableString(row, 'branch_number') === null
+      insuranceCardId: readDatabaseRowString(row, 'insurance_card_id', databaseCoverageRowInvariantErrorMessage),
+      insurerNumber: readDatabaseRowString(row, 'insurer_number', databaseCoverageRowInvariantErrorMessage),
+      insuredSymbol: readDatabaseRowString(row, 'insured_symbol', databaseCoverageRowInvariantErrorMessage),
+      insuredNumber: readDatabaseRowString(row, 'insured_number', databaseCoverageRowInvariantErrorMessage),
+      ...(readDatabaseRowNullableString(row, 'branch_number', databaseCoverageRowInvariantErrorMessage) === null
         ? {}
-        : { branchNumber: readRowNullableString(row, 'branch_number') }),
-      relationship: readRowString(row, 'relationship'),
+        : { branchNumber: readDatabaseRowNullableString(row, 'branch_number', databaseCoverageRowInvariantErrorMessage) }),
+      relationship: readDatabaseRowString(row, 'relationship', databaseCoverageRowInvariantErrorMessage),
       copayRatio: readCopayRatio(row),
-      validFrom: readRowString(row, 'valid_from'),
-      validTo: readRowNullableString(row, 'valid_to'),
-      supersededBy: readRowNullableString(row, 'superseded_by'),
+      validFrom: readDatabaseRowString(row, 'valid_from', databaseCoverageRowInvariantErrorMessage),
+      validTo: readDatabaseRowNullableString(row, 'valid_to', databaseCoverageRowInvariantErrorMessage),
+      supersededBy: readDatabaseRowNullableString(row, 'superseded_by', databaseCoverageRowInvariantErrorMessage),
       recordedAt: readRecordedAt(row),
     });
   } catch {
@@ -132,17 +109,17 @@ function insuranceCardRowToWire(row: InsuranceCardRow): InsuranceCard {
 function publicExpenseRowToWire(row: PublicExpenseRow): PublicExpense {
   try {
     return publicExpenseSchema.parse({
-      publicExpenseId: readRowString(row, 'public_expense_id'),
-      payerNumber: readRowString(row, 'payer_number'),
-      recipientNumber: readRowString(row, 'recipient_number'),
+      publicExpenseId: readDatabaseRowString(row, 'public_expense_id', databaseCoverageRowInvariantErrorMessage),
+      payerNumber: readDatabaseRowString(row, 'payer_number', databaseCoverageRowInvariantErrorMessage),
+      recipientNumber: readDatabaseRowString(row, 'recipient_number', databaseCoverageRowInvariantErrorMessage),
       priority: readDatabaseRowOwnDataProperty(
         row,
         'priority',
         databaseCoverageRowInvariantErrorMessage,
       ),
-      validFrom: readRowString(row, 'valid_from'),
-      validTo: readRowNullableString(row, 'valid_to'),
-      supersededBy: readRowNullableString(row, 'superseded_by'),
+      validFrom: readDatabaseRowString(row, 'valid_from', databaseCoverageRowInvariantErrorMessage),
+      validTo: readDatabaseRowNullableString(row, 'valid_to', databaseCoverageRowInvariantErrorMessage),
+      supersededBy: readDatabaseRowNullableString(row, 'superseded_by', databaseCoverageRowInvariantErrorMessage),
       recordedAt: readRecordedAt(row),
     });
   } catch {

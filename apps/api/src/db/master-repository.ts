@@ -22,7 +22,9 @@ import {
 } from '../master-repository.js';
 import { snapshotDatabaseInstant } from '../instant.js';
 import {
+  readDatabaseRowNullableString,
   readDatabaseRowOwnDataProperty,
+  readDatabaseRowString,
   snapshotDatabaseQueryRows,
   snapshotUnboundedDatabaseQueryRows,
 } from './database-row.js';
@@ -82,29 +84,7 @@ const USAGE_ITEM_SELECT = `SELECT usage_item_id, master_version_id, local_code,
        text, times_per_day, meal_timing, jahis_code
   FROM usage_items`;
 
-function readRowString(row: object, property: string): string {
-  const value = readDatabaseRowOwnDataProperty(
-    row,
-    property,
-    databaseMasterRowInvariantErrorMessage,
-  );
-  if (typeof value !== 'string') {
-    throw new Error(databaseMasterRowInvariantErrorMessage);
-  }
-  return value;
-}
 
-function readRowNullableString(row: object, property: string): string | null {
-  const value = readDatabaseRowOwnDataProperty(
-    row,
-    property,
-    databaseMasterRowInvariantErrorMessage,
-  );
-  if (value !== null && typeof value !== 'string') {
-    throw new Error(databaseMasterRowInvariantErrorMessage);
-  }
-  return value;
-}
 
 function readRowNullableNumber(row: object, property: string): number | null {
   const value = readDatabaseRowOwnDataProperty(
@@ -121,21 +101,21 @@ function readRowNullableNumber(row: object, property: string): number | null {
 }
 
 function masterVersionRowToWire(row: MasterVersionRow): MasterVersion {
-  const kind = readRowString(row, 'master_kind');
+  const kind = readDatabaseRowString(row, 'master_kind', databaseMasterRowInvariantErrorMessage);
   if (kind !== 'medication' && kind !== 'usage') {
     throw new Error(databaseMasterRowInvariantErrorMessage);
   }
-  const distributionState = readRowString(row, 'distribution_state');
+  const distributionState = readDatabaseRowString(row, 'distribution_state', databaseMasterRowInvariantErrorMessage);
   if (distributionState !== 'synthetic') {
     throw new Error(databaseMasterRowInvariantErrorMessage);
   }
   return {
-    masterVersionId: readRowString(row, 'master_version_id'),
+    masterVersionId: readDatabaseRowString(row, 'master_version_id', databaseMasterRowInvariantErrorMessage),
     masterKind: kind,
-    version: readRowString(row, 'version'),
-    validFrom: readRowString(row, 'valid_from'),
-    validTo: readRowNullableString(row, 'valid_to'),
-    transitionNote: readRowNullableString(row, 'transition_note'),
+    version: readDatabaseRowString(row, 'version', databaseMasterRowInvariantErrorMessage),
+    validFrom: readDatabaseRowString(row, 'valid_from', databaseMasterRowInvariantErrorMessage),
+    validTo: readDatabaseRowNullableString(row, 'valid_to', databaseMasterRowInvariantErrorMessage),
+    transitionNote: readDatabaseRowNullableString(row, 'transition_note', databaseMasterRowInvariantErrorMessage),
     distributionState,
   };
 }
@@ -165,16 +145,16 @@ function medicationItemRowToWire(row: MedicationItemRow): MedicationItem {
               throw new Error(databaseMasterRowInvariantErrorMessage);
             })();
   return medicationItemSchema.parse({
-    medicationItemId: readRowString(row, 'medication_item_id'),
-    localCode: readRowString(row, 'local_code'),
-    yjCode: readRowNullableString(row, 'yj_code'),
-    receiptCode: readRowNullableString(row, 'receipt_code'),
-    hotCode: readRowNullableString(row, 'hot_code'),
-    name: readRowString(row, 'name'),
-    unit: readRowString(row, 'unit'),
+    medicationItemId: readDatabaseRowString(row, 'medication_item_id', databaseMasterRowInvariantErrorMessage),
+    localCode: readDatabaseRowString(row, 'local_code', databaseMasterRowInvariantErrorMessage),
+    yjCode: readDatabaseRowNullableString(row, 'yj_code', databaseMasterRowInvariantErrorMessage),
+    receiptCode: readDatabaseRowNullableString(row, 'receipt_code', databaseMasterRowInvariantErrorMessage),
+    hotCode: readDatabaseRowNullableString(row, 'hot_code', databaseMasterRowInvariantErrorMessage),
+    name: readDatabaseRowString(row, 'name', databaseMasterRowInvariantErrorMessage),
+    unit: readDatabaseRowString(row, 'unit', databaseMasterRowInvariantErrorMessage),
     price,
-    genericFlag: readRowString(row, 'generic_flag'),
-    genericNameCode: readRowNullableString(row, 'generic_name_code'),
+    genericFlag: readDatabaseRowString(row, 'generic_flag', databaseMasterRowInvariantErrorMessage),
+    genericNameCode: readDatabaseRowNullableString(row, 'generic_name_code', databaseMasterRowInvariantErrorMessage),
     controlCategories: rawCategories,
   });
 }
@@ -190,12 +170,12 @@ function escapeLikeLiteral(value: string): string {
 
 function usageItemRowToWire(row: UsageItemRow): UsageItem {
   return usageItemSchema.parse({
-    usageItemId: readRowString(row, 'usage_item_id'),
-    localCode: readRowString(row, 'local_code'),
-    text: readRowString(row, 'text'),
+    usageItemId: readDatabaseRowString(row, 'usage_item_id', databaseMasterRowInvariantErrorMessage),
+    localCode: readDatabaseRowString(row, 'local_code', databaseMasterRowInvariantErrorMessage),
+    text: readDatabaseRowString(row, 'text', databaseMasterRowInvariantErrorMessage),
     timesPerDay: readRowNullableNumber(row, 'times_per_day'),
-    mealTiming: readRowNullableString(row, 'meal_timing'),
-    jahisCode: readRowNullableString(row, 'jahis_code'),
+    mealTiming: readDatabaseRowNullableString(row, 'meal_timing', databaseMasterRowInvariantErrorMessage),
+    jahisCode: readDatabaseRowNullableString(row, 'jahis_code', databaseMasterRowInvariantErrorMessage),
   });
 }
 
@@ -314,10 +294,10 @@ async function findMedicationItemByIdOn(
   )[0];
   if (row === undefined) return undefined;
   return {
-    masterVersionId: readRowString(row, 'master_version_id'),
-    localCode: readRowString(row, 'local_code'),
-    displayText: readRowString(row, 'name'),
-    genericNameCode: readRowNullableString(row, 'generic_name_code'),
+    masterVersionId: readDatabaseRowString(row, 'master_version_id', databaseMasterRowInvariantErrorMessage),
+    localCode: readDatabaseRowString(row, 'local_code', databaseMasterRowInvariantErrorMessage),
+    displayText: readDatabaseRowString(row, 'name', databaseMasterRowInvariantErrorMessage),
+    genericNameCode: readDatabaseRowNullableString(row, 'generic_name_code', databaseMasterRowInvariantErrorMessage),
   };
 }
 
@@ -338,9 +318,9 @@ async function findUsageItemByIdOn(
   )[0];
   if (row === undefined) return undefined;
   return {
-    masterVersionId: readRowString(row, 'master_version_id'),
-    localCode: readRowString(row, 'local_code'),
-    displayText: readRowString(row, 'text'),
+    masterVersionId: readDatabaseRowString(row, 'master_version_id', databaseMasterRowInvariantErrorMessage),
+    localCode: readDatabaseRowString(row, 'local_code', databaseMasterRowInvariantErrorMessage),
+    displayText: readDatabaseRowString(row, 'text', databaseMasterRowInvariantErrorMessage),
     genericNameCode: null,
   };
 }

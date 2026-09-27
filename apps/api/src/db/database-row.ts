@@ -14,6 +14,39 @@ export function readDatabaseRowOwnDataProperty(
   return result.value;
 }
 
+export function readDatabaseRowString(
+  row: unknown,
+  property: PropertyKey,
+  errorMessage: string,
+): string {
+  const value = readDatabaseRowOwnDataProperty(row, property, errorMessage);
+  if (typeof value !== 'string') {
+    throw new Error(errorMessage);
+  }
+  return value;
+}
+
+export function readDatabaseRowNullableString(
+  row: unknown,
+  property: PropertyKey,
+  errorMessage: string,
+): string | null {
+  const value = readDatabaseRowOwnDataProperty(row, property, errorMessage);
+  if (value !== null && typeof value !== 'string') {
+    throw new Error(errorMessage);
+  }
+  return value;
+}
+
+export function isUndefinedTableError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === '42P01'
+  );
+}
+
 function snapshotDatabaseQueryRowsCore<T>(
   queryResult: unknown,
   maximumRows: number | undefined,
