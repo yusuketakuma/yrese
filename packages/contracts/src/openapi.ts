@@ -2,13 +2,13 @@ import "zod-openapi";
 
 import { createDocument, type ZodOpenApiObject } from "zod-openapi";
 
-import { dispensingPaths } from "./openapi-paths-dispensing.js";
-import { masterPaths } from "./openapi-paths-master.js";
-import { operationsPaths } from "./openapi-paths-operations.js";
-import { patientPaths } from "./openapi-paths-patient.js";
-import { prescriptionPaths } from "./openapi-paths-prescription.js";
-import { receptionPaths } from "./openapi-paths-reception.js";
-import { systemPaths } from "./openapi-paths-system.js";
+import { dispensingPaths } from './openapi/openapi-paths-dispensing.js';
+import { masterPaths } from './openapi/openapi-paths-master.js';
+import { operationsPaths } from './openapi/openapi-paths-operations.js';
+import { patientPaths } from './openapi/openapi-paths-patient.js';
+import { prescriptionPaths } from './openapi/openapi-paths-prescription.js';
+import { receptionPaths } from './openapi/openapi-paths-reception.js';
+import { systemPaths } from './openapi/openapi-paths-system.js';
 
 const openApiDefinition = {
   openapi: "3.1.0",

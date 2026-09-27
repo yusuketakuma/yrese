@@ -6,7 +6,7 @@ import {
 } from "@yrese/shared-kernel";
 import { z } from "zod";
 
-import { actorIdWireSchema, pharmacyIdWireSchema, tenantIdWireSchema } from "./wire-id.js";
+import { actorIdWireSchema, pharmacyIdWireSchema, tenantIdWireSchema } from './wire-id.js';
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

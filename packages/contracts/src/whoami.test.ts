@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { whoamiResponseSchema } from "./whoami.js";
-import { WIRE_ID_MAX_LENGTH } from "./wire-id.js";
+import { whoamiResponseSchema } from './whoami.js';
+import { WIRE_ID_MAX_LENGTH } from './wire-id.js';
 
 describe("whoamiResponseSchema", () => {
   it("accepts valid tenant context responses", () => {

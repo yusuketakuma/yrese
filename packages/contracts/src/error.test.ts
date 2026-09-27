@@ -4,7 +4,7 @@ import {
   PATIENT_SEARCH_INVALID_QUERY_ERROR_CODE,
 } from "@yrese/shared-kernel";
 
-import { errorResponseSchema } from "./error.js";
+import { errorResponseSchema } from './error.js';
 
 describe("errorResponseSchema", () => {
   it("accepts PHI-free error responses", () => {
