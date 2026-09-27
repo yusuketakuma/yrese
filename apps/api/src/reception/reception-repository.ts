@@ -41,18 +41,6 @@ import {
 } from '../repository-command.js';
 import { compareTextByCodePoints } from '../text-order.js';
 
-export const inMemoryReceptionTimestampInvariantErrorMessage =
-  'in-memory reception acceptedAt must be a valid Date';
-export const inMemoryReceptionCommandSnapshotInvariantErrorMessage =
-  'In-memory reception command snapshot is invalid';
-export const inMemoryReceptionPatientSnapshotInvariantErrorMessage =
-  'In-memory reception patient snapshot is invalid';
-export const receptionListCommandSnapshotInvariantErrorMessage =
-  'Reception list command snapshot is invalid';
-export const receptionTransitionCommandSnapshotInvariantErrorMessage =
-  'Reception transition command snapshot is invalid';
-export const receptionTransitionUndoInvariantErrorMessage =
-  'Reception transition rollback provenance is inconsistent';
 
 export interface ReceptionListInput {
   readonly tenantId: TenantId;
@@ -178,106 +166,10 @@ export interface ReceptionRepository {
   transition(input: ReceptionTransitionInput): Promise<ReceptionTransitionResult>;
 }
 
-interface ReceptionRecord {
-  readonly tenantId: TenantId;
-  readonly pharmacyId: PharmacyId;
-  readonly receptionId: ReceptionId;
-  readonly patientId: PatientId;
-  readonly patient: PatientSearchResult;
-  readonly acceptedAt: string;
-  readonly date: string;
-  readonly receptionStatus: ReceptionStatus;
-  readonly version: number;
-  readonly statusChangedAt: string;
-  readonly cancelReason?: string;
-  readonly idempotencyKey?: string;
-  /**
-   * 現在紐づく資格 snapshot(API-019)。未確認は null。
-   * eligibility リポジトリ内部境界(linkEligibilitySnapshot)経由でのみ更新する。
-   */
-  readonly eligibilitySnapshotId: string | null;
-}
 
 interface IdempotencyRecord {
   readonly receptionId: ReceptionId;
 }
-
-export const inMemoryReceptionIdempotencyInvariantErrorMessage =
-  'In-memory reception idempotency index is inconsistent';
-
-const syntheticPatientA = {
-  patientId: patientId('patient-syn-001'),
-  name: '合成患者A',
-  kana: 'ゴウセイカンジャエー',
-  birthDate: '1980-01-01',
-  sex: 'female',
-  patientNumber: 'SYN-001',
-  eligibilityStatus: 'VERIFIED',
-  eligibilityCheckedAt: '2026-07-09T08:16:15.000Z',
-} as const satisfies PatientSearchResult;
-
-const syntheticPatientB = {
-  patientId: patientId('patient-syn-002'),
-  name: '合成患者B',
-  kana: 'ゴウセイカンジャビー',
-  birthDate: '1975-02-02',
-  sex: 'male',
-  patientNumber: 'SYN-002',
-  eligibilityStatus: 'PENDING_REVERIFY',
-  eligibilityCheckedAt: '2026-07-08T08:16:15.000Z',
-} as const satisfies PatientSearchResult;
-
-const syntheticPatientC = {
-  patientId: patientId('patient-syn-003'),
-  name: '合成患者C',
-  kana: 'ゴウセイカンジャシー',
-  birthDate: '1990-03-03',
-  sex: 'unknown',
-  patientNumber: 'SYN-003',
-  eligibilityStatus: 'LOCAL_ONLY_UNVERIFIED',
-} as const satisfies PatientSearchResult;
-
-const syntheticReceptionRecords = [
-  {
-    tenantId: tenantId('tenant-001'),
-    pharmacyId: pharmacyId('pharmacy-001'),
-    receptionId: receptionId('reception-syn-002'),
-    patientId: syntheticPatientB.patientId,
-    patient: syntheticPatientB,
-    acceptedAt: '2026-07-09T08:30:00.000Z',
-    date: '2026-07-09',
-    receptionStatus: 'WAITING',
-    version: 1,
-    statusChangedAt: '2026-07-09T08:30:00.000Z',
-    eligibilitySnapshotId: null,
-  },
-  {
-    tenantId: tenantId('tenant-001'),
-    pharmacyId: pharmacyId('pharmacy-001'),
-    receptionId: receptionId('reception-syn-001'),
-    patientId: syntheticPatientA.patientId,
-    patient: syntheticPatientA,
-    acceptedAt: '2026-07-09T08:30:00.000Z',
-    date: '2026-07-09',
-    receptionStatus: 'IN_PROGRESS',
-    version: 2,
-    statusChangedAt: '2026-07-09T08:35:00.000Z',
-    eligibilitySnapshotId: null,
-  },
-  {
-    tenantId: tenantId('tenant-001'),
-    pharmacyId: pharmacyId('pharmacy-001'),
-    receptionId: receptionId('reception-syn-003'),
-    patientId: syntheticPatientC.patientId,
-    patient: syntheticPatientC,
-    acceptedAt: '2026-07-09T08:45:00.000Z',
-    date: '2026-07-09',
-    receptionStatus: 'COMPLETED',
-    version: 2,
-    statusChangedAt: '2026-07-09T09:00:00.000Z',
-    eligibilitySnapshotId: null,
-  },
-] as const satisfies readonly ReceptionRecord[];
 
 function toIdempotencyKey(input: {
   readonly tenantId: TenantId;
@@ -287,15 +179,6 @@ function toIdempotencyKey(input: {
   return `${input.tenantId}\u001f${input.pharmacyId}\u001f${input.idempotencyKey}`;
 }
 
-function readReceptionScopeString(
-  result: OwnDataPropertyRead,
-  invariantErrorMessage: string,
-): string {
-  if (!result.present || typeof result.value !== 'string') {
-    throw new Error(invariantErrorMessage);
-  }
-  return result.value;
-}
 
 export function snapshotReceptionIdempotencyKey(
   result: OwnDataPropertyRead,
@@ -408,138 +291,35 @@ function sortRecords(left: ReceptionRecord, right: ReceptionRecord): number {
 
 // MOD-011 defines MVP business dates as fixed JST. IANA Asia/Tokyo applies
 // historical local-mean offsets to ancient years, so it is not authoritative here.
-const japanStandardTimeOffsetMilliseconds = 9 * 60 * 60 * 1_000;
 
-export function businessDateFromAcceptedAt(
-  acceptedAt: unknown,
-  invariantErrorMessage: string,
-): string {
-  try {
-    const epochMilliseconds = Date.prototype.getTime.call(acceptedAt);
-    if (!Number.isFinite(epochMilliseconds)) {
-      throw new Error(invariantErrorMessage);
-    }
-    const jstWallClock = new Date(
-      epochMilliseconds + japanStandardTimeOffsetMilliseconds,
-    );
-    const year = Date.prototype.getUTCFullYear.call(jstWallClock);
-    const month = Date.prototype.getUTCMonth.call(jstWallClock) + 1;
-    const day = Date.prototype.getUTCDate.call(jstWallClock);
-    if (![year, month, day].every(Number.isSafeInteger)) {
-      throw new Error(invariantErrorMessage);
-    }
-    return CalendarDate.fromParts({
-      year,
-      month,
-      day,
-    }).toString();
-  } catch {
-    throw new Error(invariantErrorMessage);
-  }
-}
-
-function snapshotReceptionTransitionTarget(value: unknown): ReceptionTransitionTarget {
-  switch (value) {
-    case 'IN_PROGRESS':
-    case 'COMPLETED':
-    case 'CANCELLED':
-      return value;
-    default:
-      throw new Error(receptionTransitionCommandSnapshotInvariantErrorMessage);
-  }
-}
-
-function snapshotReceptionTransitionExpectedVersion(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1) {
-    throw new Error(receptionTransitionCommandSnapshotInvariantErrorMessage);
-  }
-  return value;
-}
-
-export interface ReceptionTransitionCommandSnapshot {
-  readonly tenantId: TenantId;
-  readonly pharmacyId: PharmacyId;
-  readonly receptionId: ReceptionId;
-  readonly to: ReceptionTransitionTarget;
-  readonly expectedVersion: number;
-  readonly businessReason?: string;
-  readonly statusChangedAt: string;
-}
-
-/**
- * transition 入力の検証済みスナップショット(in-memory / Postgres で共用する
- * 規律: own-property 単一読取り、businessReason は CANCELLED でだけ必須の
- * 構造化コード — 監査層の MOD-008 規律と同じ形をここでも fail-closed で要求)。
- */
-export function snapshotReceptionTransitionCommand(
-  input: unknown,
-): ReceptionTransitionCommandSnapshot {
-  const readProperty = createOwnDataPropertyReader(
-    input,
-    receptionTransitionCommandSnapshotInvariantErrorMessage,
-  );
-  const commandTenantId = snapshotRepositoryTenantId(
-    readProperty('tenantId'),
-    receptionTransitionCommandSnapshotInvariantErrorMessage,
-  );
-  const commandPharmacyId = snapshotRepositoryPharmacyId(
-    readProperty('pharmacyId'),
-    receptionTransitionCommandSnapshotInvariantErrorMessage,
-  );
-  const receptionIdValue = readReceptionScopeString(
-    readProperty('receptionId'),
-    receptionTransitionCommandSnapshotInvariantErrorMessage,
-  );
-  let commandReceptionId: ReceptionId;
-  try {
-    commandReceptionId = receptionId(receptionIdValue);
-  } catch {
-    throw new Error(receptionTransitionCommandSnapshotInvariantErrorMessage);
-  }
-  const toProperty = readProperty('to');
-  const to = snapshotReceptionTransitionTarget(
-    toProperty.present ? toProperty.value : undefined,
-  );
-  const expectedVersionProperty = readProperty('expectedVersion');
-  const expectedVersion = snapshotReceptionTransitionExpectedVersion(
-    expectedVersionProperty.present ? expectedVersionProperty.value : undefined,
-  );
-  const businessReasonProperty = readProperty('businessReason');
-  let businessReason: string | undefined;
-  if (businessReasonProperty.present && businessReasonProperty.value !== undefined) {
-    const candidate = businessReasonProperty.value;
-    if (
-      typeof candidate !== 'string' ||
-      !RECEPTION_BUSINESS_REASON_CODE_PATTERN.test(candidate)
-    ) {
-      throw new Error(receptionTransitionCommandSnapshotInvariantErrorMessage);
-    }
-    businessReason = candidate;
-  }
-  if (to === 'CANCELLED' && businessReason === undefined) {
-    throw new Error(receptionTransitionCommandSnapshotInvariantErrorMessage);
-  }
-  if (to !== 'CANCELLED' && businessReason !== undefined) {
-    throw new Error(receptionTransitionCommandSnapshotInvariantErrorMessage);
-  }
-  const statusChangedAtProperty = readProperty('statusChangedAt');
-  if (!statusChangedAtProperty.present) {
-    throw new Error(receptionTransitionCommandSnapshotInvariantErrorMessage);
-  }
-  const statusChangedAt = snapshotDateInstant(
-    statusChangedAtProperty.value,
-    inMemoryReceptionTimestampInvariantErrorMessage,
-  );
-  return Object.freeze({
-    tenantId: commandTenantId,
-    pharmacyId: commandPharmacyId,
-    receptionId: commandReceptionId,
-    to,
-    expectedVersion,
-    ...(businessReason === undefined ? {} : { businessReason }),
-    statusChangedAt,
-  });
-}
+import {
+  inMemoryReceptionCommandSnapshotInvariantErrorMessage,
+  inMemoryReceptionIdempotencyInvariantErrorMessage,
+  inMemoryReceptionPatientSnapshotInvariantErrorMessage,
+  inMemoryReceptionTimestampInvariantErrorMessage,
+  readReceptionScopeString,
+  receptionListCommandSnapshotInvariantErrorMessage,
+  receptionTransitionUndoInvariantErrorMessage,
+  type ReceptionRecord,
+  syntheticReceptionRecords,
+} from './reception-repository-fixtures.js';
+import {
+  businessDateFromAcceptedAt,
+  snapshotReceptionTransitionCommand,
+  snapshotReceptionTransitionExpectedVersion,
+} from './reception-transition-snapshot.js';
+export {
+  businessDateFromAcceptedAt,
+  inMemoryReceptionCommandSnapshotInvariantErrorMessage,
+  inMemoryReceptionIdempotencyInvariantErrorMessage,
+  inMemoryReceptionPatientSnapshotInvariantErrorMessage,
+  inMemoryReceptionTimestampInvariantErrorMessage,
+  receptionListCommandSnapshotInvariantErrorMessage,
+  receptionTransitionUndoInvariantErrorMessage,
+  snapshotReceptionTransitionCommand,
+};
+export { receptionTransitionCommandSnapshotInvariantErrorMessage } from './reception-repository-fixtures.js';
+export type { ReceptionTransitionCommandSnapshot } from './reception-transition-snapshot.js';
 
 export class InMemoryReceptionRepository implements ReceptionRepository {
   private nextSequence: number;
@@ -949,3 +729,4 @@ export class InMemoryReceptionRepository implements ReceptionRepository {
     );
   }
 }
+
