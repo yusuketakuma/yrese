@@ -2,9 +2,9 @@ import { WebhookPartnerSink } from '../partner/webhook-partner-sink.js';
 import type {
   OutboxDeliverySink,
   OutboxPendingEvent,
-} from './outbox-delivery.js';
-import { projectOutboxEventToPartnerEvent } from './outbox-partner-projection.js';
-import type { PostgresPartnerRegistry } from './partner-registry.js';
+} from './outbox/outbox-delivery.js';
+import { projectOutboxEventToPartnerEvent } from './outbox/outbox-partner-projection.js';
+import type { PostgresPartnerRegistry } from './partner/partner-registry.js';
 
 /**
  * Partner Registry で配送先を解決し、HMAC webhook で配送する OutboxDeliverySink(WP-6006)。

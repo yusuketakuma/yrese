@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 
 import type { PartnerEvent } from '@yrese/contracts';
 
-import type { PartnerEventSink } from '../db/outbox-partner-projection.js';
+import type { PartnerEventSink } from '../db/outbox/outbox-partner-projection.js';
 import { assertPublicHttpsEndpoint } from './partner-endpoint-policy.js';
 import { snapshotWallClock } from '../route-invariants.js';
 

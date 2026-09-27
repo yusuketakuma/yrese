@@ -1,0 +1,1695 @@
+import { describe, expect, it, vi } from 'vitest';
+import type { Pool, PoolClient } from 'pg';
+
+import {
+  RECEPTION_IDEMPOTENCY_KEY_MAX_LENGTH,
+  RECEPTION_QUEUE_MAX_ENTRIES,
+  type PatientSearchResult,
+} from '@yrese/contracts';
+import { patientId, pharmacyId, tenantId } from '@yrese/shared-kernel';
+
+import {
+  businessDateFromAcceptedAt,
+  InMemoryReceptionRepository,
+  inMemoryReceptionCommandSnapshotInvariantErrorMessage,
+  inMemoryReceptionIdempotencyInvariantErrorMessage,
+  inMemoryReceptionPatientSnapshotInvariantErrorMessage,
+  inMemoryReceptionTimestampInvariantErrorMessage,
+  receptionListCommandSnapshotInvariantErrorMessage,
+} from '../../reception/reception-repository.js';
+import {
+  PostgresReceptionRepository,
+  databaseReceptionCommandSnapshotInvariantErrorMessage,
+  databaseReceptionCommandProvenanceInvariantErrorMessage,
+  databaseReceptionCreatedAcceptedAtInvariantErrorMessage,
+  databaseReceptionCreatedPatientSnapshotInvariantErrorMessage,
+  databaseReceptionCreatedStatusInvariantErrorMessage,
+  databaseReceptionEntryIdentityInvariantErrorMessage,
+  databaseReceptionProvenanceInvariantErrorMessage,
+  databaseReceptionRowInvariantErrorMessage,
+  databaseReceptionRowSetInvariantErrorMessage,
+  databaseReceptionTimestampInvariantErrorMessage,
+} from './reception-repository.js';
+import {
+  snapshotDatabaseQueryRows,
+  snapshotUnboundedDatabaseQueryRows,
+} from '../database-row.js';
+
+import {
+  patient,
+  input,
+  listInput,
+  invalidReceptionScopeValues,
+  commandWithInvalidAuthority,
+  storedRow,
+  createdRowFromInsertValues,
+  createRepository,
+  createRepositoryWithQueryResults,
+  captureRejection,
+  queryLabels,
+  provenanceColumns,
+  replaceAcceptedAtAuthority,
+} from './reception-repository-test-support.js';
+import type {
+  ReceptionCommandField,
+  InvalidCommandAuthority,
+  Scenario,
+  InvalidAcceptedAtAuthority,
+  ProvenanceColumn,
+} from './reception-repository-test-support.js';
+
+describe('PostgresReceptionRepository client lifecycle', () => {
+  it('commits a created reception and reuses the client', async () => {
+    const { repository, query, release } = createRepository({ scenario: 'created' });
+
+    const result = await repository.create(input);
+    const insertCall = query.mock.calls.find(([sql]) => String(sql).includes('INSERT'));
+    const generatedReceptionId = insertCall?.[1]?.[2];
+
+    expect(result.kind).toBe('created');
+    expect(result).toMatchObject({
+      provenance: {
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+        idempotencyKey: input.idempotencyKey,
+        receptionId: generatedReceptionId,
+        patientId: patient.patientId,
+      },
+      entry: { receptionId: generatedReceptionId },
+    });
+    const insertSql = String(insertCall?.[0]);
+    expect(insertSql).toContain('tenant_id AS stored_tenant_id');
+    expect(insertSql).toContain('pharmacy_id AS stored_pharmacy_id');
+    expect(insertSql).toContain('idempotency_key AS stored_idempotency_key');
+    expect(insertSql).toContain('patient_id AS stored_patient_id');
+    expect(insertSql).not.toMatch(/\$[1247]\s*(?:::text)?\s+AS stored_/);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT', 'SELECT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it.each(['INSERT', 'SELECT'] as const)(
+    'rejects multiple %s rows before projecting row fields',
+    async (callSite) => {
+      let rowReads = 0;
+      const unreadRow = { ...storedRow };
+      Object.defineProperty(unreadRow, 'stored_tenant_id', {
+        get() {
+          rowReads += 1;
+          throw new Error('raw duplicate reception row PHI secret 4226');
+        },
+      });
+      const duplicateResult = { rows: [unreadRow, { ...storedRow }] };
+      const { repository, query, release } = createRepositoryWithQueryResults({
+        insertResult: callSite === 'INSERT' ? duplicateResult : { rows: [] },
+        selectResult: callSite === 'SELECT' ? duplicateResult : undefined,
+      });
+
+      await expect(repository.create(input)).rejects.toEqual(
+        new Error(databaseReceptionRowSetInvariantErrorMessage),
+      );
+      expect(rowReads).toBe(0);
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(callSite === 'SELECT' ? ['SELECT'] : []),
+        'ROLLBACK',
+      ]);
+      expect(queryLabels(query)).not.toContain('COMMIT');
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it.each(['INSERT', 'SELECT'] as const)(
+    'rejects hostile %s row-set authority without invoking its accessor',
+    async (callSite) => {
+      let accessorReads = 0;
+      const hostileResult = {};
+      Object.defineProperty(hostileResult, 'rows', {
+        get() {
+          accessorReads += 1;
+          throw new Error('raw reception query rows PHI secret 4226');
+        },
+      });
+      const { repository, query, release } = createRepositoryWithQueryResults({
+        insertResult: callSite === 'INSERT' ? hostileResult : { rows: [] },
+        selectResult: callSite === 'SELECT' ? hostileResult : undefined,
+      });
+
+      await expect(repository.create(input)).rejects.toEqual(
+        new Error(databaseReceptionRowSetInvariantErrorMessage),
+      );
+      expect(accessorReads).toBe(0);
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(callSite === 'SELECT' ? ['SELECT'] : []),
+        'ROLLBACK',
+      ]);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it.each(['INSERT', 'SELECT'] as const)(
+    'rejects a sparse %s row set as malformed query authority',
+    async (callSite) => {
+      const sparseResult = { rows: Array(1) };
+      const { repository, query, release } = createRepositoryWithQueryResults({
+        insertResult: callSite === 'INSERT' ? sparseResult : { rows: [] },
+        selectResult: callSite === 'SELECT' ? sparseResult : undefined,
+      });
+
+      await expect(repository.create(input)).rejects.toEqual(
+        new Error(databaseReceptionRowSetInvariantErrorMessage),
+      );
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(callSite === 'SELECT' ? ['SELECT'] : []),
+        'ROLLBACK',
+      ]);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it.each(['INSERT', 'SELECT'] as const)(
+    'rejects a dense undefined %s row without treating it as an empty result',
+    async (callSite) => {
+      const undefinedRowResult = { rows: [undefined] };
+      const { repository, query, release } = createRepositoryWithQueryResults({
+        insertResult: callSite === 'INSERT' ? undefinedRowResult : { rows: [] },
+        selectResult: callSite === 'SELECT' ? undefinedRowResult : undefined,
+      });
+
+      await expect(repository.create(input)).rejects.toEqual(
+        new Error(databaseReceptionRowSetInvariantErrorMessage),
+      );
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(callSite === 'SELECT' ? ['SELECT'] : []),
+        'ROLLBACK',
+      ]);
+      expect(queryLabels(query)).not.toContain('COMMIT');
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it('rejects a revoked nested INSERT rows Proxy without invoking row authority', async () => {
+    const revokedRows = Proxy.revocable([storedRow], {});
+    revokedRows.revoke();
+    const { repository, query, release } = createRepositoryWithQueryResults({
+      insertResult: { rows: revokedRows.proxy },
+    });
+
+    await expect(repository.create(input)).rejects.toEqual(
+      new Error(databaseReceptionRowSetInvariantErrorMessage),
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('advances an empty INSERT result to SELECT and preserves empty SELECT semantics', async () => {
+    const { repository, query, release } = createRepositoryWithQueryResults({
+      insertResult: { rows: [] },
+      selectResult: { rows: [] },
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      'idempotency conflict row was not visible after unique constraint conflict',
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('preserves the row-set invariant and destroys the client when rollback fails', async () => {
+    const { repository, query, release } = createRepositoryWithQueryResults({
+      insertResult: { rows: [storedRow, { ...storedRow }] },
+      rollbackError: new Error('synthetic row-set rollback failure'),
+    });
+
+    await expect(repository.create(input)).rejects.toEqual(
+      new Error(databaseReceptionRowSetInvariantErrorMessage),
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[true]]);
+  });
+
+  it.each([
+    ['stored_tenant_id', 'tenant-command-drift-4222'],
+    ['stored_pharmacy_id', 'pharmacy-command-drift-4222'],
+    ['stored_idempotency_key', 'idempotency-command-drift-4222'],
+    ['stored_patient_id', 'patient-command-drift-4222'],
+    ['reception_id', 'reception-command-drift-4222'],
+  ] as const)('rolls back created command provenance drift in %s', async (column, value) => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: { [column]: value },
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      databaseReceptionCommandProvenanceInvariantErrorMessage,
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('prioritizes created patient snapshot binding before status and acceptedAt', async () => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: {
+        name: '合成患者snapshot優先差分',
+        reception_status: 'COMPLETED',
+        accepted_at: '2026-07-13T00:59:59.999Z',
+      },
+    });
+
+    await expect(repository.create(input)).rejects.toEqual(
+      new Error(databaseReceptionCreatedPatientSnapshotInvariantErrorMessage),
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('rolls back a created entry patient identity mismatch before snapshot checks', async () => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: {
+        patient_id: 'patient-entry-drift-4222',
+        name: '合成別患者',
+      },
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      databaseReceptionEntryIdentityInvariantErrorMessage,
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it.each([
+    ['name', '合成患者氏名差分'],
+    ['kana', 'ゴウセイカンジャシメイサブン'],
+    ['birth_date', '1981-02-03'],
+    ['sex', 'female'],
+    ['patient_number', 'SYN-RECEPTION-DRIFT-4222'],
+    ['eligibility_status', 'VERIFIED'],
+  ] as const)('rolls back a created patient snapshot drift in %s', async (column, value) => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: { [column]: value },
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      databaseReceptionCreatedPatientSnapshotInvariantErrorMessage,
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('binds optional eligibility timestamp presence and value for a created patient', async () => {
+    const added = createRepository({
+      scenario: 'created',
+      provenanceOverride: { eligibility_checked_at: '2026-07-13T00:00:00.000Z' },
+    });
+    await expect(added.repository.create(input)).rejects.toThrow(
+      databaseReceptionCreatedPatientSnapshotInvariantErrorMessage,
+    );
+    expect(queryLabels(added.query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+
+    const inputWithEligibility = {
+      ...input,
+      patient: {
+        ...input.patient,
+        eligibilityCheckedAt: '2026-07-13T00:00:00.000Z',
+      },
+    };
+    const removed = createRepository({
+      scenario: 'created',
+      provenanceOverride: { eligibility_checked_at: null },
+    });
+    await expect(removed.repository.create(inputWithEligibility)).rejects.toThrow(
+      databaseReceptionCreatedPatientSnapshotInvariantErrorMessage,
+    );
+
+    const changed = createRepository({
+      scenario: 'created',
+      provenanceOverride: { eligibility_checked_at: '2026-07-13T00:00:00.001Z' },
+    });
+    await expect(changed.repository.create(inputWithEligibility)).rejects.toThrow(
+      databaseReceptionCreatedPatientSnapshotInvariantErrorMessage,
+    );
+
+    const equivalent = createRepository({
+      scenario: 'created',
+      provenanceOverride: { eligibility_checked_at: '2026-07-13T09:00:00+09:00' },
+    });
+    await expect(equivalent.repository.create(inputWithEligibility)).resolves.toMatchObject({
+      kind: 'created',
+      entry: { patient: { eligibilityCheckedAt: '2026-07-13T00:00:00.000Z' } },
+    });
+    expect(queryLabels(equivalent.query)).toEqual(['BEGIN', 'INSERT', 'COMMIT', 'SELECT', 'ROLLBACK']);
+  });
+
+  it('captures the patient command before awaiting a DB connection', async () => {
+    const mutablePatient = { ...input.patient };
+    const query = vi.fn(async (sql: string, values?: readonly unknown[]) => ({
+      rows: sql.trim().startsWith('INSERT') ? [createdRowFromInsertValues(values)] : [],
+    }));
+    const release = vi.fn();
+    const client = { query: query as unknown as PoolClient['query'], release } as unknown as PoolClient;
+    let resolveConnect: ((value: PoolClient) => void) | undefined;
+    const connect = vi.fn(
+      () =>
+        new Promise<PoolClient>((resolve) => {
+          resolveConnect = resolve;
+        }),
+    );
+    const repository = new PostgresReceptionRepository({ connect } as unknown as Pool);
+
+    const resultPromise = repository.create({ ...input, patient: mutablePatient });
+    mutablePatient.name = '接続待機中に変更された患者名';
+    mutablePatient.patientNumber = 'MUTATED-4222';
+    resolveConnect?.(client);
+    const result = await resultPromise;
+
+    const insertValues = query.mock.calls.find(([sql]) => String(sql).trim().startsWith('INSERT'))?.[1];
+    expect(insertValues?.[7]).toBe(patient.name);
+    expect(insertValues?.[11]).toBe(patient.patientNumber);
+    expect(result).toMatchObject({
+      kind: 'created',
+      entry: { patient: { name: patient.name, patientNumber: patient.patientNumber } },
+    });
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT', 'SELECT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('rejects hostile patient command authorities before acquiring a DB connection', async () => {
+    let accessorReads = 0;
+    let proxyTraps = 0;
+    const accessorPatient = { ...input.patient };
+    Object.defineProperty(accessorPatient, 'name', {
+      get() {
+        accessorReads += 1;
+        throw new Error('raw patient command accessor PHI secret 4222');
+      },
+    });
+    const proxiedPatient = new Proxy(
+      { ...input.patient },
+      {
+        get() {
+          proxyTraps += 1;
+          throw new Error('raw patient command Proxy PHI secret 4222');
+        },
+        getOwnPropertyDescriptor() {
+          proxyTraps += 1;
+          throw new Error('raw patient command descriptor PHI secret 4222');
+        },
+      },
+    );
+
+    for (const patientCommand of [accessorPatient, proxiedPatient]) {
+      const { repository, connect, query, release } = createRepository({ scenario: 'created' });
+      await expect(
+        repository.create({ ...input, patient: patientCommand }),
+      ).rejects.toThrow(databaseReceptionCreatedPatientSnapshotInvariantErrorMessage);
+      expect(connect).not.toHaveBeenCalled();
+      expect(query).not.toHaveBeenCalled();
+      expect(release).not.toHaveBeenCalled();
+    }
+    expect(accessorReads).toBe(0);
+    expect(proxyTraps).toBe(0);
+  });
+
+  it.each([
+    'tenantId',
+    'pharmacyId',
+    'idempotencyKey',
+    'patient',
+    'acceptedAt',
+  ] as const)(
+    'requires own data authority for outer command field %s before connecting',
+    async (field) => {
+      let accessorReads = 0;
+      for (const authority of ['missing', 'inherited', 'accessor'] as const) {
+        const { repository, connect, query, release } = createRepository({
+          scenario: 'created',
+        });
+        const command = commandWithInvalidAuthority(field, authority, () => {
+          accessorReads += 1;
+        });
+
+        await expect(repository.create(command)).rejects.toThrow(
+          databaseReceptionCommandSnapshotInvariantErrorMessage,
+        );
+        expect(connect).not.toHaveBeenCalled();
+        expect(query).not.toHaveBeenCalled();
+        expect(release).not.toHaveBeenCalled();
+      }
+      expect(accessorReads).toBe(0);
+    },
+  );
+
+  it('rejects root and revoked command Proxies without traps or DB acquisition', async () => {
+    let proxyTraps = 0;
+    const hostile = new Proxy(
+      { ...input },
+      {
+        get() {
+          proxyTraps += 1;
+          throw new Error('raw reception command Proxy secret 4225');
+        },
+        getOwnPropertyDescriptor() {
+          proxyTraps += 1;
+          throw new Error('raw reception command descriptor secret 4225');
+        },
+      },
+    );
+    const revoked = Proxy.revocable({ ...input }, {});
+    revoked.revoke();
+
+    for (const command of [hostile, revoked.proxy]) {
+      const { repository, connect, query, release } = createRepository({
+        scenario: 'created',
+      });
+      await expect(repository.create(command)).rejects.toThrow(
+        databaseReceptionCommandSnapshotInvariantErrorMessage,
+      );
+      expect(connect).not.toHaveBeenCalled();
+      expect(query).not.toHaveBeenCalled();
+      expect(release).not.toHaveBeenCalled();
+    }
+    expect(proxyTraps).toBe(0);
+  });
+
+  it('accepts non-default own data descriptors for every outer command field', async () => {
+    const command = {} as typeof input;
+    for (const field of Object.keys(input) as ReceptionCommandField[]) {
+      Object.defineProperty(command, field, {
+        value: input[field],
+        enumerable: false,
+        configurable: false,
+        writable: false,
+      });
+    }
+    const { repository, query, release } = createRepository({ scenario: 'created' });
+
+    await expect(repository.create(command)).resolves.toMatchObject({ kind: 'created' });
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT', 'SELECT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it.each([
+    ['tenantId', ['pharmacyId', 'idempotencyKey', 'patient', 'acceptedAt']],
+    ['pharmacyId', ['idempotencyKey', 'patient', 'acceptedAt']],
+    ['idempotencyKey', ['patient', 'acceptedAt']],
+  ] as const)(
+    'stops Postgres command reads at invalid %s before DB acquisition',
+    async (invalidField, unreadFields) => {
+      let laterReads = 0;
+      const command = { ...input } as Record<string, unknown>;
+      Object.defineProperty(command, invalidField, { value: '   ' });
+      for (const field of unreadFields) {
+        Object.defineProperty(command, field, {
+          get() {
+            laterReads += 1;
+            throw new Error('later Postgres command field must remain unread');
+          },
+        });
+      }
+      const { repository, connect, query, release } = createRepository({
+        scenario: 'created',
+      });
+
+      await expect(repository.create(command as typeof input)).rejects.toThrow(
+        databaseReceptionCommandSnapshotInvariantErrorMessage,
+      );
+      expect(laterReads).toBe(0);
+      expect(connect).not.toHaveBeenCalled();
+      expect(query).not.toHaveBeenCalled();
+      expect(release).not.toHaveBeenCalled();
+    },
+  );
+
+  it('validates the complete patient snapshot before reading acceptedAt or connecting', async () => {
+    let acceptedAtReads = 0;
+    const command = { ...input, patient: { ...patient, name: '' } };
+    Object.defineProperty(command, 'acceptedAt', {
+      get() {
+        acceptedAtReads += 1;
+        throw new Error('acceptedAt must remain unread after invalid patient');
+      },
+    });
+    const { repository, connect, query, release } = createRepository({ scenario: 'created' });
+
+    await expect(repository.create(command)).rejects.toThrow(
+      databaseReceptionCreatedPatientSnapshotInvariantErrorMessage,
+    );
+    expect(acceptedAtReads).toBe(0);
+    expect(connect).not.toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalled();
+    expect(release).not.toHaveBeenCalled();
+  });
+
+  it.each(invalidReceptionScopeValues)(
+    'rejects invalid command scope %s=%j before connecting',
+    async (field, value) => {
+      const { repository, connect, query, release } = createRepository({
+        scenario: 'created',
+      });
+
+      await expect(repository.create({ ...input, [field]: value })).rejects.toThrow(
+        databaseReceptionCommandSnapshotInvariantErrorMessage,
+      );
+      expect(connect).not.toHaveBeenCalled();
+      expect(query).not.toHaveBeenCalled();
+      expect(release).not.toHaveBeenCalled();
+    },
+  );
+
+  it('preserves the command provenance invariant when rollback fails', async () => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: { stored_tenant_id: 'tenant-command-rollback-drift-4222' },
+      rollbackError: new Error('synthetic command provenance rollback failure'),
+    });
+
+    await expect(repository.create(input)).rejects.toEqual(
+      new Error(databaseReceptionCommandProvenanceInvariantErrorMessage),
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[true]]);
+  });
+
+  it.each(['IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const)(
+    'rolls back a created reception with schema-valid non-WAITING status %s',
+    async (receptionStatus) => {
+      const { repository, query, release } = createRepository({
+        scenario: 'created',
+        provenanceOverride: { reception_status: receptionStatus },
+      });
+
+      await expect(repository.create(input)).rejects.toThrow(
+        databaseReceptionCreatedStatusInvariantErrorMessage,
+      );
+      expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it.each([
+    '2026-07-13T00:59:59.999Z',
+    '2026-07-13T01:00:00.001Z',
+  ])('rolls back a created reception with mismatched acceptedAt %s', async (acceptedAt) => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: { accepted_at: acceptedAt },
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      databaseReceptionCreatedAcceptedAtInvariantErrorMessage,
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('accepts a canonically equivalent created acceptedAt offset string', async () => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: { accepted_at: '2026-07-13T10:00:00+09:00' },
+    });
+
+    const result = await repository.create(input);
+
+    expect(result).toMatchObject({
+      kind: 'created',
+      entry: { acceptedAt: input.acceptedAt.toISOString(), receptionStatus: 'WAITING' },
+    });
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'COMMIT', 'SELECT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('prioritizes the created status invariant when status and acceptedAt both mismatch', async () => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: {
+        reception_status: 'COMPLETED',
+        accepted_at: '2026-07-13T00:59:59.999Z',
+      },
+    });
+
+    await expect(repository.create(input)).rejects.toEqual(
+      new Error(databaseReceptionCreatedStatusInvariantErrorMessage),
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('destroys the client after a created semantic rollback failure without masking the invariant', async () => {
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: { reception_status: 'IN_PROGRESS' },
+      rollbackError: new Error('synthetic created semantic rollback failure'),
+    });
+
+    await expect(repository.create(input)).rejects.toEqual(
+      new Error(databaseReceptionCreatedStatusInvariantErrorMessage),
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[true]]);
+  });
+
+  it('commits and returns the stored reception for a same-patient replay', async () => {
+    const { repository, query, release } = createRepository({ scenario: 'existing' });
+
+    const result = await repository.create(input);
+
+    expect(result).toMatchObject({
+      kind: 'existing',
+      entry: { receptionId: 'reception-stored-001', acceptedAt: storedRow.accepted_at },
+      provenance: {
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+        idempotencyKey: input.idempotencyKey,
+        receptionId: storedRow.reception_id,
+        patientId: patient.patientId,
+      },
+    });
+    const selectSql = String(
+      query.mock.calls.find(([sql]) => String(sql).trim().startsWith('SELECT'))?.[0],
+    );
+    expect(selectSql).toContain('r.tenant_id AS stored_tenant_id');
+    expect(selectSql).toContain('r.pharmacy_id AS stored_pharmacy_id');
+    expect(selectSql).toContain('r.idempotency_key AS stored_idempotency_key');
+    expect(selectSql).toContain('r.patient_id AS stored_patient_id');
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT', 'SELECT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it.each(['IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const)(
+    'allows an existing reception with historical acceptedAt and advanced status %s',
+    async (receptionStatus) => {
+      const { repository, query, release } = createRepository({
+        scenario: 'existing',
+        provenanceOverride: { reception_status: receptionStatus },
+      });
+
+      const result = await repository.create(input);
+
+      expect(result).toMatchObject({
+        kind: 'existing',
+        entry: {
+          acceptedAt: storedRow.accepted_at,
+          receptionStatus,
+        },
+      });
+      expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT', 'SELECT', 'ROLLBACK']);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it.each([
+    ['existing', 'stored_tenant_id', 'tenant-existing-drift-4222'],
+    ['existing', 'stored_pharmacy_id', 'pharmacy-existing-drift-4222'],
+    ['existing', 'stored_idempotency_key', 'key-existing-drift-4222'],
+    ['conflict', 'stored_tenant_id', 'tenant-conflict-drift-4222'],
+    ['conflict', 'stored_pharmacy_id', 'pharmacy-conflict-drift-4222'],
+    ['conflict', 'stored_idempotency_key', 'key-conflict-drift-4222'],
+  ] as const)(
+    'rolls back %s command provenance drift in %s',
+    async (scenario, column, value) => {
+      const { repository, query, release } = createRepository({
+        scenario,
+        provenanceOverride: { [column]: value },
+      });
+
+      await expect(repository.create(input)).rejects.toThrow(
+        databaseReceptionCommandProvenanceInvariantErrorMessage,
+      );
+      expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'ROLLBACK']);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it('rolls back an existing entry/provenance patient identity mismatch', async () => {
+    const { repository, query, release } = createRepository({
+      scenario: 'existing',
+      provenanceOverride: { patient_id: 'patient-existing-entry-drift-4222' },
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      databaseReceptionEntryIdentityInvariantErrorMessage,
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('commits a different-patient idempotency conflict without returning an entry', async () => {
+    const { repository, query, release } = createRepository({ scenario: 'conflict' });
+
+    const result = await repository.create(input);
+
+    expect(result).toEqual({
+      kind: 'idempotency_conflict',
+      provenance: {
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+        idempotencyKey: input.idempotencyKey,
+        receptionId: storedRow.reception_id,
+        patientId: 'patient-different',
+      },
+    });
+    expect('entry' in result).toBe(false);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT', 'SELECT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('snapshots the create instant before connection and derives one matching JST business date', async () => {
+    const capturedIso = '2026-07-09T14:59:59.999Z';
+    const acceptedAt = new Date(capturedIso);
+    let ownMethodReads = 0;
+    Object.defineProperty(acceptedAt, 'toISOString', {
+      get() {
+        ownMethodReads += 1;
+        throw new Error('raw create timestamp method secret 4214');
+      },
+    });
+    const operationQuery = vi.fn(async (sql: string, values?: readonly unknown[]) => ({
+      rows: sql.trim().startsWith('INSERT')
+        ? [{ ...createdRowFromInsertValues(values), accepted_at: capturedIso }]
+        : [],
+    }));
+    const operationRelease = vi.fn();
+    const operationClient = {
+      query: operationQuery as unknown as PoolClient['query'],
+      release: operationRelease,
+    } as unknown as PoolClient;
+    let resolveConnect: ((client: PoolClient) => void) | undefined;
+    const connect = vi.fn(
+      () =>
+        new Promise<PoolClient>((resolve) => {
+          resolveConnect = resolve;
+        }),
+    );
+    const repository = new PostgresReceptionRepository({ connect } as unknown as Pool);
+
+    const resultPromise = repository.create({ ...input, acceptedAt });
+    acceptedAt.setTime(new Date('2026-07-09T15:00:00.000Z').getTime());
+    resolveConnect?.(operationClient);
+    const result = await resultPromise;
+
+    expect(result.kind).toBe('created');
+    expect(ownMethodReads).toBe(0);
+    expect(connect).toHaveBeenCalledOnce();
+    const insertCall = operationQuery.mock.calls.find(([sql]) =>
+      String(sql).trim().startsWith('INSERT'),
+    );
+    expect(insertCall?.[1]?.[4]).toBe(capturedIso);
+    expect(insertCall?.[1]?.[5]).toBe('2026-07-09');
+    expect(operationRelease.mock.calls).toEqual([[]]);
+  });
+
+  it.each([
+    ['0001-01-01T00:00:00.000Z', '0001-01-01'],
+    ['0099-12-31T14:59:59.999Z', '0099-12-31'],
+    ['0099-12-31T15:00:00.000Z', '0100-01-01'],
+    ['9999-12-31T14:59:59.999Z', '9999-12-31'],
+  ] as const)(
+    'passes the canonical JST date %s -> %s to the PostgreSQL insert',
+    async (instant, expectedDate) => {
+      const { repository, query } = createRepository({ scenario: 'created' });
+
+      const result = await repository.create({
+        ...input,
+        idempotencyKey: `canonical-date-${instant}`,
+        acceptedAt: new Date(instant),
+      });
+
+      expect(result.kind).toBe('created');
+      const insertCall = query.mock.calls.find(([sql]) =>
+        String(sql).trim().startsWith('INSERT'),
+      );
+      expect(insertCall?.[1]?.[5]).toBe(expectedDate);
+    },
+  );
+
+  it.each([
+    ['local BCE', '0000-01-01T00:00:00.000Z'],
+    ['JST year 10000', '9999-12-31T15:00:00.000Z'],
+  ] as const)(
+    'rejects %s before acquiring a PostgreSQL client',
+    async (_label, instant) => {
+      const connect = vi.fn(async () => {
+        throw new Error('database connection must remain unused');
+      });
+      const repository = new PostgresReceptionRepository({ connect } as unknown as Pool);
+
+      await expect(
+        repository.create({ ...input, acceptedAt: new Date(instant) }),
+      ).rejects.toThrow(databaseReceptionTimestampInvariantErrorMessage);
+      expect(connect).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects invalid create timestamp authorities before acquiring a DB client', async () => {
+    let fakeCoercions = 0;
+    let proxyTraps = 0;
+    const fakeInstant = {
+      toISOString() {
+        fakeCoercions += 1;
+        return input.acceptedAt.toISOString();
+      },
+      [Symbol.toPrimitive]() {
+        fakeCoercions += 1;
+        return input.acceptedAt.toISOString();
+      },
+    };
+    const hostileDateProxy = new Proxy(input.acceptedAt, {
+      get() {
+        proxyTraps += 1;
+        throw new Error('raw create timestamp Proxy secret 4214');
+      },
+      getPrototypeOf() {
+        proxyTraps += 1;
+        throw new Error('raw create timestamp prototype secret 4214');
+      },
+    });
+    const revoked = Proxy.revocable(input.acceptedAt, {});
+    revoked.revoke();
+    const invalidValues: readonly unknown[] = [
+      undefined,
+      null,
+      input.acceptedAt.toISOString(),
+      fakeInstant,
+      Promise.resolve(input.acceptedAt),
+      new Date(Number.NaN),
+      Object.create(Date.prototype),
+      hostileDateProxy,
+      revoked.proxy,
+    ];
+
+    for (const invalidValue of invalidValues) {
+      const { repository, connect, query, release } = createRepository({ scenario: 'created' });
+
+      await expect(
+        repository.create({ ...input, acceptedAt: invalidValue as Date }),
+      ).rejects.toThrow(databaseReceptionTimestampInvariantErrorMessage);
+
+      expect(connect).not.toHaveBeenCalled();
+      expect(query).not.toHaveBeenCalled();
+      expect(release).not.toHaveBeenCalled();
+    }
+
+    expect(fakeCoercions).toBe(0);
+    expect(proxyTraps).toBe(0);
+  });
+
+  it('normalizes genuine Date and primitive string DB timestamps without own method dispatch', async () => {
+    const dateIso = '2026-07-13T00:30:00.000Z';
+    const storedDate = new Date(dateIso);
+    let ownMethodReads = 0;
+    Object.defineProperty(storedDate, 'toISOString', {
+      get() {
+        ownMethodReads += 1;
+        throw new Error('raw stored timestamp method secret 4214');
+      },
+    });
+    const query = vi.fn(async () => ({
+      rows: [
+        { ...storedRow, reception_id: 'reception-date-4214', accepted_at: storedDate },
+        {
+          ...storedRow,
+          reception_id: 'reception-string-4214',
+          accepted_at: '2026-07-13T09:30:00+09:00',
+        },
+      ],
+    }));
+    const repository = new PostgresReceptionRepository({ query } as unknown as Pool);
+
+    const result = await repository.list({
+      tenantId: input.tenantId,
+      pharmacyId: input.pharmacyId,
+      date: '2026-07-13',
+    });
+
+    expect(result.map((entry) => entry.acceptedAt)).toEqual([dateIso, dateIso]);
+    expect(ownMethodReads).toBe(0);
+    expect(query).toHaveBeenCalledOnce();
+  });
+
+  it.each([0, 1, 2] as const)(
+    'rejects a dense undefined list row at index %s with the row-set invariant',
+    async (undefinedIndex) => {
+      const rows: unknown[] = [
+        { ...storedRow, reception_id: 'reception-before-4233' },
+        { ...storedRow, reception_id: 'reception-middle-4233' },
+        { ...storedRow, reception_id: 'reception-after-4233' },
+      ];
+      rows[undefinedIndex] = undefined;
+      const repository = new PostgresReceptionRepository({
+        query: vi.fn(async () => ({ rows })),
+      } as unknown as Pool);
+
+      await expect(repository.list(listInput)).rejects.toEqual(
+        new Error(databaseReceptionRowSetInvariantErrorMessage),
+      );
+    },
+  );
+
+  it('completes the undefined prepass before projecting an earlier row', async () => {
+    let rowFieldReads = 0;
+    const hostileEarlierRow = { ...storedRow };
+    Object.defineProperty(hostileEarlierRow, 'reception_id', {
+      get() {
+        rowFieldReads += 1;
+        throw new Error('earlier reception PHI must remain unread 4233');
+      },
+    });
+    const repository = new PostgresReceptionRepository({
+      query: vi.fn(async () => ({ rows: [hostileEarlierRow, undefined] })),
+    } as unknown as Pool);
+
+    await expect(repository.list(listInput)).rejects.toEqual(
+      new Error(databaseReceptionRowSetInvariantErrorMessage),
+    );
+    expect(rowFieldReads).toBe(0);
+  });
+
+  it.each(['sparse', 'accessor', 'inherited'] as const)(
+    'validates the complete %s list row-set before projecting earlier row fields',
+    async (authority) => {
+      let indexReads = 0;
+      let rowFieldReads = 0;
+      const hostileEarlierRow = { ...storedRow };
+      Object.defineProperty(hostileEarlierRow, 'reception_id', {
+        get() {
+          rowFieldReads += 1;
+          throw new Error('earlier reception PHI must remain unread 4233');
+        },
+      });
+      const rows = [hostileEarlierRow, { ...storedRow }];
+      if (authority === 'sparse') {
+        delete rows[1];
+      } else if (authority === 'accessor') {
+        Object.defineProperty(rows, '1', {
+          get() {
+            indexReads += 1;
+            throw new Error('later raw row index secret 4233');
+          },
+        });
+      } else {
+        delete rows[1];
+        Object.setPrototypeOf(rows, { 1: { ...storedRow } });
+      }
+      const repository = new PostgresReceptionRepository({
+        query: vi.fn(async () => ({ rows })),
+      } as unknown as Pool);
+
+      await expect(repository.list(listInput)).rejects.toEqual(
+        new Error(databaseReceptionRowSetInvariantErrorMessage),
+      );
+      expect(indexReads).toBe(0);
+      expect(rowFieldReads).toBe(0);
+    },
+  );
+
+  it('preserves list SQL, parameter order, physical row order, and cardinality', async () => {
+    const rows = [
+      { ...storedRow, reception_id: 'reception-first-4233' },
+      { ...storedRow, reception_id: 'reception-second-4233' },
+    ];
+    const query = vi.fn(async () => ({ rows }));
+    const repository = new PostgresReceptionRepository({ query } as unknown as Pool);
+
+    await expect(repository.list(listInput)).resolves.toEqual([
+      expect.objectContaining({ receptionId: 'reception-first-4233' }),
+      expect.objectContaining({ receptionId: 'reception-second-4233' }),
+    ]);
+    expect(query).toHaveBeenCalledOnce();
+    const firstCall = query.mock.calls[0] as unknown[] | undefined;
+    const sql = firstCall?.[0];
+    const values = firstCall?.[1];
+    expect(values).toEqual([
+      listInput.tenantId,
+      listInput.pharmacyId,
+      listInput.date,
+      RECEPTION_QUEUE_MAX_ENTRIES + 1,
+    ]);
+    expect(String(sql)).toContain(
+      'WHERE r.tenant_id = $1 AND r.pharmacy_id = $2 AND r.business_date = $3::date',
+    );
+    expect(String(sql)).toContain(
+      'ORDER BY r.accepted_at ASC, r.reception_id COLLATE "C" ASC',
+    );
+    // C-021(選択肢 b): cap+1 件まで読み、route が超過を検出する防御的 LIMIT。
+    expect(String(sql)).toContain('LIMIT $4');
+    expect(String(sql)).not.toMatch(/\bOFFSET\b/i);
+  });
+
+  it('requires own data authority for reception ID and status in list projection', async () => {
+    let accessorReads = 0;
+    for (const column of ['reception_id', 'reception_status'] as const) {
+      for (const authorityKind of ['accessor', 'inherited', 'missing'] as const) {
+        const invalidRow = { ...storedRow } as Record<string, unknown>;
+        if (authorityKind === 'accessor') {
+          Object.defineProperty(invalidRow, column, {
+            get() {
+              accessorReads += 1;
+              throw new Error('raw reception core accessor secret 4220');
+            },
+          });
+        } else {
+          const inheritedValue = invalidRow[column];
+          delete invalidRow[column];
+          if (authorityKind === 'inherited') {
+            Object.setPrototypeOf(invalidRow, { [column]: inheritedValue });
+          }
+        }
+        const query = vi.fn(async () => ({ rows: [storedRow, invalidRow] }));
+        const repository = new PostgresReceptionRepository({ query } as unknown as Pool);
+
+        await expect(
+          repository.list({
+            tenantId: input.tenantId,
+            pharmacyId: input.pharmacyId,
+            date: '2026-07-13',
+          }),
+        ).rejects.toThrow(databaseReceptionRowInvariantErrorMessage);
+        expect(query).toHaveBeenCalledOnce();
+      }
+    }
+    expect(accessorReads).toBe(0);
+  });
+
+  it.each([
+    ['reception_id', ''],
+    ['reception_status', 'NOT-A-STATUS'],
+  ] as const)('normalizes an invalid own-data %s schema value to the fixed row error', async (column, value) => {
+    const query = vi.fn(async () => ({ rows: [{ ...storedRow, [column]: value }] }));
+    const repository = new PostgresReceptionRepository({ query } as unknown as Pool);
+
+    await expect(
+      repository.list({
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+        date: '2026-07-13',
+      }),
+    ).rejects.toEqual(new Error(databaseReceptionRowInvariantErrorMessage));
+  });
+
+  it('accepts non-default own data descriptor flags for reception core columns', async () => {
+    const validRow = { ...storedRow } as Record<string, unknown>;
+    Object.defineProperty(validRow, 'reception_status', {
+      value: storedRow.reception_status,
+      enumerable: false,
+      configurable: false,
+      writable: false,
+    });
+    const repository = new PostgresReceptionRepository({
+      query: vi.fn(async () => ({ rows: [validRow] })),
+    } as unknown as Pool);
+
+    await expect(
+      repository.list({
+        tenantId: input.tenantId,
+        pharmacyId: input.pharmacyId,
+        date: '2026-07-13',
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        receptionId: storedRow.reception_id,
+        receptionStatus: storedRow.reception_status,
+      }),
+    ]);
+  });
+
+  it('rejects hostile and revoked list row Proxies before invoking traps', async () => {
+    let proxyTraps = 0;
+    const hostileRow = new Proxy(
+      { ...storedRow },
+      {
+        get() {
+          proxyTraps += 1;
+          throw new Error('raw reception row get secret 4220');
+        },
+        getOwnPropertyDescriptor() {
+          proxyTraps += 1;
+          throw new Error('raw reception row descriptor secret 4220');
+        },
+      },
+    );
+    const revoked = Proxy.revocable({ ...storedRow }, {});
+    revoked.revoke();
+
+    for (const row of [hostileRow, revoked.proxy]) {
+      const repository = new PostgresReceptionRepository({
+        query: vi.fn(async () => ({ rows: [row] })),
+      } as unknown as Pool);
+      await expect(
+        repository.list({ ...input, date: '2026-07-13' }),
+      ).rejects.toThrow(databaseReceptionRowInvariantErrorMessage);
+    }
+    expect(proxyTraps).toBe(0);
+  });
+
+  it('preserves reception entry field error precedence and leaves later fields unread', async () => {
+    let laterReads = 0;
+    const invalidIdRow = { ...storedRow } as Record<string, unknown>;
+    Object.defineProperty(invalidIdRow, 'reception_id', {
+      get() {
+        laterReads += 1;
+        throw new Error('raw reception ID accessor secret 4220');
+      },
+    });
+    for (const column of ['eligibility_checked_at', 'accepted_at', 'reception_status']) {
+      Object.defineProperty(invalidIdRow, column, {
+        get() {
+          laterReads += 1;
+          throw new Error('later reception entry field must remain unread');
+        },
+      });
+    }
+    const idRepository = new PostgresReceptionRepository({
+      query: vi.fn(async () => ({ rows: [invalidIdRow] })),
+    } as unknown as Pool);
+    await expect(
+      idRepository.list({ ...input, date: '2026-07-13' }),
+    ).rejects.toThrow(databaseReceptionRowInvariantErrorMessage);
+    expect(laterReads).toBe(0);
+
+    const invalidTimestampRow = { ...storedRow } as Record<string, unknown>;
+    Object.defineProperty(invalidTimestampRow, 'accepted_at', {
+      get() {
+        laterReads += 1;
+        throw new Error('raw accepted_at accessor secret 4220');
+      },
+    });
+    Object.defineProperty(invalidTimestampRow, 'reception_status', {
+      get() {
+        laterReads += 1;
+        throw new Error('status must remain unread after accepted_at failure');
+      },
+    });
+    const timestampRepository = new PostgresReceptionRepository({
+      query: vi.fn(async () => ({ rows: [invalidTimestampRow] })),
+    } as unknown as Pool);
+    await expect(
+      timestampRepository.list({ ...input, date: '2026-07-13' }),
+    ).rejects.toThrow(databaseReceptionTimestampInvariantErrorMessage);
+    expect(laterReads).toBe(0);
+  });
+
+  it.each(['accessor', 'inherited', 'missing'] as const)(
+    'rejects a mixed list with a non-own-data accepted_at %s without invoking it',
+    async (authorityKind) => {
+      let accessorReads = 0;
+      const invalidRow = { ...storedRow, reception_id: `reception-${authorityKind}-4217` } as Record<
+        string,
+        unknown
+      >;
+      replaceAcceptedAtAuthority(invalidRow, authorityKind, () => {
+        accessorReads += 1;
+      });
+      const query = vi.fn(async () => ({ rows: [storedRow, invalidRow] }));
+      const repository = new PostgresReceptionRepository({ query } as unknown as Pool);
+
+      await expect(
+        repository.list({
+          tenantId: input.tenantId,
+          pharmacyId: input.pharmacyId,
+          date: '2026-07-13',
+        }),
+      ).rejects.toThrow(databaseReceptionTimestampInvariantErrorMessage);
+
+      expect(accessorReads).toBe(0);
+      expect(query).toHaveBeenCalledOnce();
+    },
+  );
+
+  it('rejects a mixed list when any DB timestamp authority is invalid', async () => {
+    let fakeCoercions = 0;
+    let proxyTraps = 0;
+    const fakeInstant = {
+      [Symbol.toPrimitive]() {
+        fakeCoercions += 1;
+        return storedRow.accepted_at;
+      },
+    };
+    const hostileDateProxy = new Proxy(new Date(storedRow.accepted_at), {
+      get() {
+        proxyTraps += 1;
+        throw new Error('raw stored timestamp Proxy secret 4214');
+      },
+      getPrototypeOf() {
+        proxyTraps += 1;
+        throw new Error('raw stored timestamp prototype secret 4214');
+      },
+    });
+    const revoked = Proxy.revocable(new Date(storedRow.accepted_at), {});
+    revoked.revoke();
+    const invalidValues: readonly unknown[] = [
+      undefined,
+      null,
+      0,
+      false,
+      fakeInstant,
+      new String(storedRow.accepted_at),
+      Promise.resolve(storedRow.accepted_at),
+      'not-an-instant',
+      new Date(Number.NaN),
+      Object.create(Date.prototype),
+      hostileDateProxy,
+      revoked.proxy,
+    ];
+
+    for (const invalidValue of invalidValues) {
+      const query = vi.fn(async () => ({
+        rows: [storedRow, { ...storedRow, reception_id: 'reception-invalid-4214', accepted_at: invalidValue }],
+      }));
+      const repository = new PostgresReceptionRepository({ query } as unknown as Pool);
+
+      await expect(
+        repository.list({
+          tenantId: input.tenantId,
+          pharmacyId: input.pharmacyId,
+          date: '2026-07-13',
+        }),
+      ).rejects.toThrow(databaseReceptionTimestampInvariantErrorMessage);
+      expect(query).toHaveBeenCalledOnce();
+    }
+
+    expect(fakeCoercions).toBe(0);
+    expect(proxyTraps).toBe(0);
+  });
+
+  it.each(['created', 'existing'] as const)(
+    'rolls back a %s result with an invalid DB timestamp before commit',
+    async (scenario) => {
+      const rawTimestamp = { toISOString: () => 'raw timestamp must not run' };
+      const { repository, query, release } = createRepository({
+        scenario,
+        provenanceOverride: { accepted_at: rawTimestamp },
+      });
+
+      await expect(repository.create(input)).rejects.toThrow(
+        databaseReceptionTimestampInvariantErrorMessage,
+      );
+
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(scenario === 'existing' ? ['SELECT'] : []),
+        'ROLLBACK',
+      ]);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it.each([
+    ['created', 'accessor'],
+    ['created', 'inherited'],
+    ['created', 'missing'],
+    ['existing', 'accessor'],
+    ['existing', 'inherited'],
+    ['existing', 'missing'],
+  ] as const)(
+    'rolls back a %s result with a non-own-data accepted_at %s without invoking it',
+    async (scenario, authorityKind) => {
+      let accessorReads = 0;
+      const { repository, query, release } = createRepository({
+        scenario,
+        rowTransform(row) {
+          replaceAcceptedAtAuthority(row, authorityKind, () => {
+            accessorReads += 1;
+          });
+          return row;
+        },
+      });
+
+      await expect(repository.create(input)).rejects.toThrow(
+        databaseReceptionTimestampInvariantErrorMessage,
+      );
+
+      expect(accessorReads).toBe(0);
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(scenario === 'existing' ? ['SELECT'] : []),
+        'ROLLBACK',
+      ]);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it.each([
+    ['created', 'accessor'],
+    ['created', 'inherited'],
+    ['created', 'missing'],
+    ['existing', 'accessor'],
+    ['existing', 'inherited'],
+    ['existing', 'missing'],
+  ] as const)(
+    'rolls back a %s result with a non-own-data reception status %s',
+    async (scenario, authorityKind) => {
+      let statusReads = 0;
+      const { repository, query, release } = createRepository({
+        scenario,
+        rowTransform(row) {
+          if (authorityKind === 'accessor') {
+            Object.defineProperty(row, 'reception_status', {
+              get() {
+                statusReads += 1;
+                throw new Error('raw transaction status accessor secret 4220');
+              },
+            });
+          } else {
+            const inheritedValue = row.reception_status;
+            delete row.reception_status;
+            if (authorityKind === 'inherited') {
+              Object.setPrototypeOf(row, { reception_status: inheritedValue });
+            }
+          }
+          return row;
+        },
+      });
+
+      await expect(repository.create(input)).rejects.toThrow(
+        databaseReceptionRowInvariantErrorMessage,
+      );
+      expect(statusReads).toBe(0);
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(scenario === 'existing' ? ['SELECT'] : []),
+        'ROLLBACK',
+      ]);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it('does not inspect a DB timestamp for a different-patient idempotency conflict', async () => {
+    let timestampTraps = 0;
+    const hostileTimestamp = new Proxy(
+      {},
+      {
+        get() {
+          timestampTraps += 1;
+          throw new Error('raw conflict timestamp secret 4214');
+        },
+      },
+    );
+    const { repository, query, release } = createRepository({
+      scenario: 'conflict',
+      provenanceOverride: { accepted_at: hostileTimestamp },
+    });
+
+    const result = await repository.create(input);
+
+    expect(result.kind).toBe('idempotency_conflict');
+    expect('entry' in result).toBe(false);
+    expect(timestampTraps).toBe(0);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT', 'SELECT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('does not invoke an accepted_at accessor for a different-patient idempotency conflict', async () => {
+    let accessorReads = 0;
+    const { repository, query, release } = createRepository({
+      scenario: 'conflict',
+      rowTransform(row) {
+        Object.defineProperty(row, 'accepted_at', {
+          get() {
+            accessorReads += 1;
+            throw new Error('raw conflict accepted_at accessor secret 4217');
+          },
+        });
+        return row;
+      },
+    });
+
+    const result = await repository.create(input);
+
+    expect(result.kind).toBe('idempotency_conflict');
+    expect('entry' in result).toBe(false);
+    expect(accessorReads).toBe(0);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT', 'SELECT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('does not invoke a reception status accessor for a different-patient conflict', async () => {
+    let statusReads = 0;
+    const { repository, query, release } = createRepository({
+      scenario: 'conflict',
+      rowTransform(row) {
+        Object.defineProperty(row, 'reception_status', {
+          get() {
+            statusReads += 1;
+            throw new Error('conflict status must stay unread');
+          },
+        });
+        return row;
+      },
+    });
+
+    const result = await repository.create(input);
+
+    expect(result.kind).toBe('idempotency_conflict');
+    expect('entry' in result).toBe(false);
+    expect(statusReads).toBe(0);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'COMMIT', 'SELECT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('rejects missing, inherited, and accessor provenance columns without invoking accessors', async () => {
+    let accessorReads = 0;
+    for (const column of provenanceColumns) {
+      for (const authorityKind of ['accessor', 'inherited', 'missing'] as const) {
+        const { repository, query, release } = createRepository({
+          scenario: 'created',
+          rowTransform(row) {
+            if (authorityKind === 'accessor') {
+              Object.defineProperty(row, column, {
+                get() {
+                  accessorReads += 1;
+                  throw new Error('raw provenance accessor secret 4218');
+                },
+              });
+            } else {
+              const inheritedValue = row[column];
+              delete row[column];
+              if (authorityKind === 'inherited') {
+                Object.setPrototypeOf(row, { [column]: inheritedValue });
+              }
+            }
+            return row;
+          },
+        });
+
+        await expect(repository.create(input)).rejects.toThrow(
+          databaseReceptionProvenanceInvariantErrorMessage,
+        );
+        expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+        expect(release.mock.calls).toEqual([[]]);
+      }
+    }
+    expect(accessorReads).toBe(0);
+  });
+
+  it('rejects hostile and revoked provenance row Proxies without invoking traps', async () => {
+    let proxyTraps = 0;
+    const hostileRow = new Proxy(
+      { ...storedRow },
+      {
+        get() {
+          proxyTraps += 1;
+          throw new Error('raw provenance row get secret 4218');
+        },
+        getOwnPropertyDescriptor() {
+          proxyTraps += 1;
+          throw new Error('raw provenance row descriptor secret 4218');
+        },
+      },
+    );
+    const revoked = Proxy.revocable({ ...storedRow }, {});
+    revoked.revoke();
+
+    for (const proxiedRow of [hostileRow, revoked.proxy]) {
+      const { repository, query, release } = createRepository({
+        scenario: 'created',
+        rowTransform: () => proxiedRow,
+      });
+      await expect(repository.create(input)).rejects.toThrow(
+        databaseReceptionProvenanceInvariantErrorMessage,
+      );
+      expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+      expect(release.mock.calls).toEqual([[]]);
+    }
+    expect(proxyTraps).toBe(0);
+  });
+
+  it('uses captured provenance for existing/conflict branching without reading an accessor', async () => {
+    let patientIdReads = 0;
+    const { repository, query, release } = createRepository({
+      scenario: 'conflict',
+      rowTransform(row) {
+        Object.defineProperty(row, 'stored_patient_id', {
+          get() {
+            patientIdReads += 1;
+            return patientIdReads === 1 ? 'patient-different' : patient.patientId;
+          },
+        });
+        return row;
+      },
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      databaseReceptionProvenanceInvariantErrorMessage,
+    );
+    expect(patientIdReads).toBe(0);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'SELECT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it.each(['created', 'existing', 'conflict'] as const)(
+    'accepts non-default own data descriptor flags for a %s result',
+    async (scenario) => {
+      const { repository, query, release } = createRepository({
+        scenario,
+        rowTransform(row) {
+          Object.defineProperty(row, 'stored_tenant_id', {
+            value: input.tenantId,
+            enumerable: false,
+            configurable: false,
+            writable: false,
+          });
+          return row;
+        },
+      });
+
+      const result = await repository.create(input);
+
+      expect(result.kind).toBe(
+        scenario === 'conflict' ? 'idempotency_conflict' : scenario,
+      );
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(scenario === 'created' ? [] : ['SELECT']),
+        'COMMIT',
+        'SELECT',
+        'ROLLBACK',
+      ]);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it('stops after the first invalid provenance field and leaves later projections unread', async () => {
+    let laterReads = 0;
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      rowTransform(row) {
+        Object.defineProperty(row, 'stored_tenant_id', { value: 0 });
+        for (const column of provenanceColumns.slice(1)) {
+          Object.defineProperty(row, column, {
+            get() {
+              laterReads += 1;
+              throw new Error('later provenance field must remain unread');
+            },
+          });
+        }
+        Object.defineProperty(row, 'accepted_at', {
+          get() {
+            laterReads += 1;
+            throw new Error('entry projection must remain unread');
+          },
+        });
+        return row;
+      },
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      databaseReceptionProvenanceInvariantErrorMessage,
+    );
+    expect(laterReads).toBe(0);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('destroys the client after provenance rollback fails without masking the fixed error', async () => {
+    const rollbackError = new Error('synthetic provenance rollback failure');
+    const { repository, query, release } = createRepository({
+      scenario: 'created',
+      provenanceOverride: { stored_tenant_id: undefined },
+      rollbackError,
+    });
+
+    await expect(repository.create(input)).rejects.toThrow(
+      databaseReceptionProvenanceInvariantErrorMessage,
+    );
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[true]]);
+  });
+
+  it.each([
+    ['created', 'stored_tenant_id'],
+    ['created', 'stored_pharmacy_id'],
+    ['created', 'stored_idempotency_key'],
+    ['created', 'reception_id'],
+    ['created', 'stored_patient_id'],
+    ['existing', 'stored_tenant_id'],
+    ['existing', 'stored_pharmacy_id'],
+    ['existing', 'stored_idempotency_key'],
+    ['existing', 'reception_id'],
+    ['existing', 'stored_patient_id'],
+    ['conflict', 'stored_tenant_id'],
+    ['conflict', 'stored_pharmacy_id'],
+    ['conflict', 'stored_idempotency_key'],
+    ['conflict', 'reception_id'],
+    ['conflict', 'stored_patient_id'],
+  ] as const)(
+    'rolls back a %s result with missing stored provenance column %s',
+    async (scenario, missingColumn) => {
+      const { repository, query, release } = createRepository({
+        scenario,
+        provenanceOverride: { [missingColumn]: undefined },
+      });
+
+      await expect(repository.create(input)).rejects.toThrow(
+        databaseReceptionProvenanceInvariantErrorMessage,
+      );
+      expect(queryLabels(query)).toEqual([
+        'BEGIN',
+        'INSERT',
+        ...(scenario === 'created' ? [] : ['SELECT']),
+        'ROLLBACK',
+      ]);
+      expect(release.mock.calls).toEqual([[]]);
+    },
+  );
+
+  it('reuses the client after successful rollback and preserves the original error', async () => {
+    const operationError = new Error('synthetic reception insert failure');
+    const { repository, query, release } = createRepository({
+      scenario: 'operation_failure',
+      operationError,
+    });
+
+    expect(await captureRejection(() => repository.create(input))).toBe(operationError);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[]]);
+  });
+
+  it('destroys the client after rollback fails without masking the original error', async () => {
+    const operationError = new Error('synthetic reception insert failure');
+    const rollbackError = new Error('synthetic reception rollback failure');
+    const { repository, query, release } = createRepository({
+      scenario: 'operation_failure',
+      operationError,
+      rollbackError,
+    });
+
+    expect(await captureRejection(() => repository.create(input))).toBe(operationError);
+    expect(queryLabels(query)).toEqual(['BEGIN', 'INSERT', 'ROLLBACK']);
+    expect(release.mock.calls).toEqual([[true]]);
+  });
+});
+

@@ -6,9 +6,9 @@ import { patientId, pharmacyId, tenantId } from '@yrese/shared-kernel';
 
 import { applyPendingMigrations } from './migration-runner.js';
 import { loadMigrationFiles } from './migrations.js';
-import { PostgresPatientRepository } from './patient-repository.js';
+import { PostgresPatientRepository } from './patient/patient-repository.js';
 import { createDbPool } from './pool.js';
-import { PostgresReceptionRepository } from './reception-repository.js';
+import { PostgresReceptionRepository } from './reception/reception-repository.js';
 import { resolveTestDatabaseUrl } from './test-database-environment.js';
 import type { ReceptionCreateResult } from '../reception/reception-repository.js';
 

@@ -22,7 +22,7 @@ import {
   type EligibilitySnapshotView,
   type ReceptionEligibility,
   type RecordEligibilitySnapshotInput,
-} from '../db/eligibility-snapshot-repository.js';
+} from '../db/eligibility/eligibility-snapshot-repository.js';
 import type { InMemoryReceptionRepository } from '../reception/reception-repository.js';
 
 export {

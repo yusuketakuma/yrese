@@ -10,17 +10,17 @@ import {
   resolvePatientSearchCursorHmacKey,
   resolveTenantContextMode,
 } from './config.js';
-import { PostgresAuditRepository } from './db/audit-repository.js';
+import { PostgresAuditRepository } from './db/audit/audit-repository.js';
 import { assertMigrationStateAllowsStartup } from './db/migration-runner.js';
 import { loadMigrationFiles } from './db/migrations.js';
-import { PostgresOperationsReadService } from './db/operations-read.js';
-import { PostgresOutboxDeliveryWorker } from './db/outbox-delivery.js';
+import { PostgresOperationsReadService } from './db/operations/operations-read.js';
+import { PostgresOutboxDeliveryWorker } from './db/outbox/outbox-delivery.js';
 import {
   createRuntimeEventOutboxDeliverySink,
   PostgresOutboxDeliveryRunner,
-} from './db/outbox-delivery-runner.js';
-import { PostgresPatientRepository } from './db/patient-repository.js';
-import { PostgresPatientWriteCommand } from './db/patient-command.js';
+} from './db/outbox/outbox-delivery-runner.js';
+import { PostgresPatientRepository } from './db/patient/patient-repository.js';
+import { PostgresPatientWriteCommand } from './db/patient/patient-command.js';
 import {
   closeObservedDatabasePool,
   createDbPool,
@@ -28,18 +28,18 @@ import {
   snapshotDatabasePool,
 } from './db/pool.js';
 import { PostgresActorQualificationRepository } from './db/actor-qualification-repository.js';
-import { PostgresDispensingService } from './db/dispensing-service.js';
-import { PostgresPrescriptionDraftService } from './db/prescription-draft-service.js';
+import { PostgresDispensingService } from './db/dispensing/dispensing-service.js';
+import { PostgresPrescriptionDraftService } from './db/prescription/prescription-draft-service.js';
 import {
   PostgresReceptionCreateCommand,
   PostgresReceptionTransitionCommand,
-} from './db/reception-command.js';
-import { PostgresCoverageRecordCommand } from './db/coverage-command.js';
-import { PostgresCoverageRepository } from './db/coverage-repository.js';
-import { PostgresMasterRepository } from './db/master-repository.js';
-import { PostgresEligibilityRecordCommand } from './db/eligibility-snapshot-command.js';
-import { PostgresEligibilitySnapshotRepository } from './db/eligibility-snapshot-repository.js';
-import { PostgresReceptionRepository } from './db/reception-repository.js';
+} from './db/reception/reception-command.js';
+import { PostgresCoverageRecordCommand } from './db/coverage/coverage-command.js';
+import { PostgresCoverageRepository } from './db/coverage/coverage-repository.js';
+import { PostgresMasterRepository } from './db/master/master-repository.js';
+import { PostgresEligibilityRecordCommand } from './db/eligibility/eligibility-snapshot-command.js';
+import { PostgresEligibilitySnapshotRepository } from './db/eligibility/eligibility-snapshot-repository.js';
+import { PostgresReceptionRepository } from './db/reception/reception-repository.js';
 import { operationsRoutes } from './operations/operations-routes.js';
 import { InMemoryOperationsReadService } from './operations/operations-service.js';
 import { InMemoryPatientRepository } from './patient/patient-repository.js';
