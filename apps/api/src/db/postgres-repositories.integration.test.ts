@@ -10,7 +10,7 @@ import { PostgresPatientRepository } from './patient-repository.js';
 import { createDbPool } from './pool.js';
 import { PostgresReceptionRepository } from './reception-repository.js';
 import { resolveTestDatabaseUrl } from './test-database-environment.js';
-import type { ReceptionCreateResult } from '../reception-repository.js';
+import type { ReceptionCreateResult } from '../reception/reception-repository.js';
 
 const testDatabaseUrl = resolveTestDatabaseUrl(process.env);
 

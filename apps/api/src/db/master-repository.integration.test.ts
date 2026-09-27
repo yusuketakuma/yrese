@@ -4,7 +4,7 @@ import type { Pool } from 'pg';
 import { pharmacyId, tenantId } from '@yrese/shared-kernel';
 import type { MedicationItem } from '@yrese/contracts';
 
-import { seedSyntheticMasters } from '../master-seed.js';
+import { seedSyntheticMasters } from '../master/master-seed.js';
 import { PostgresMasterRepository } from './master-repository.js';
 import { applyPendingMigrations } from './migration-runner.js';
 import { loadMigrationFiles } from './migrations.js';

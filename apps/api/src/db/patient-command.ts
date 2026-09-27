@@ -18,7 +18,7 @@ import {
   type PatientUpdateCommandInput,
   type PatientUpdateCommandResult,
   type PatientWriteCommand,
-} from '../patient-command.js';
+} from '../patient/patient-command.js';
 
 /**
  * WP-7202: 患者登録・更新コマンド境界の Postgres 実装。

@@ -13,63 +13,63 @@ import {
   postgresCompositionConfigurationErrorMessage,
   type ApiRepositoryMode,
 } from './config.js';
-import { auditLogRoutes } from './audit-log-routes.js';
-import type { PatientSearchCursorCodec } from './patient-search-cursor.js';
-import { patientRoutes } from './patient-routes.js';
+import { auditLogRoutes } from './audit/audit-log-routes.js';
+import type { PatientSearchCursorCodec } from './patient/patient-search-cursor.js';
+import { patientRoutes } from './patient/patient-routes.js';
 import {
   requirePermission,
   requireTenantContext,
   tenantContextPlugin,
   type TenantContextMode,
 } from './plugins/tenant-context.js';
-import { InMemoryAuditRepository, type AuditRepository } from './audit-repository.js';
+import { InMemoryAuditRepository, type AuditRepository } from './audit/audit-repository.js';
 import {
   InMemoryReceptionOutbox,
   composeDefaultReceptionCreateCommand,
   composeDefaultReceptionTransitionCommand,
   type ReceptionCreateCommand,
   type ReceptionTransitionCommand,
-} from './reception-command.js';
+} from './reception/reception-command.js';
 import {
   InMemoryPatientRepository,
   type PatientRepository,
-} from './patient-repository.js';
+} from './patient/patient-repository.js';
 import {
   composeDefaultPatientWriteCommand,
   type PatientWriteCommand,
-} from './patient-command.js';
-import { patientWriteRoutes } from './patient-write-routes.js';
+} from './patient/patient-command.js';
+import { patientWriteRoutes } from './patient/patient-write-routes.js';
 import {
   InMemoryCoverageRepository,
   type CoverageRepository,
-} from './coverage-repository.js';
+} from './coverage/coverage-repository.js';
 import {
   composeDefaultCoverageRecordCommand,
   type CoverageRecordCommand,
-} from './coverage-command.js';
-import { coverageRoutes } from './coverage-routes.js';
+} from './coverage/coverage-command.js';
+import { coverageRoutes } from './coverage/coverage-routes.js';
 import {
   InMemoryMasterRepository,
   type MasterRepository,
-} from './master-repository.js';
-import { masterRoutes } from './master-routes.js';
+} from './master/master-repository.js';
+import { masterRoutes } from './master/master-routes.js';
 import {
   InMemoryReceptionRepository,
   type ReceptionRepository,
-} from './reception-repository.js';
-import { receptionCreateRoutes } from './reception-create-routes.js';
-import { receptionQueueRoutes } from './reception-queue-routes.js';
+} from './reception/reception-repository.js';
+import { receptionCreateRoutes } from './reception/reception-create-routes.js';
+import { receptionQueueRoutes } from './reception/reception-queue-routes.js';
 import {
   ComposedEligibilityRecordCommand,
   type EligibilityRecordCommand,
-} from './eligibility-snapshot-command.js';
+} from './eligibility/eligibility-snapshot-command.js';
 import {
   EligibilityReceptionNotFoundError,
   InMemoryEligibilitySnapshotRepository,
   type EligibilitySnapshotRepository,
-} from './eligibility-snapshot-repository.js';
-import { eligibilitySnapshotRoutes } from './eligibility-snapshot-routes.js';
-import { receptionTransitionRoutes } from './reception-transition-routes.js';
+} from './eligibility/eligibility-snapshot-repository.js';
+import { eligibilitySnapshotRoutes } from './eligibility/eligibility-snapshot-routes.js';
+import { receptionTransitionRoutes } from './reception/reception-transition-routes.js';
 import { snapshotWallClock } from './route-invariants.js';
 
 export {
@@ -81,7 +81,7 @@ export {
   auditLogViewAuditInvariantErrorMessage,
   auditLogViewClockInvariantErrorMessage,
   auditLogViewClockReadErrorMessage,
-} from './audit-log-routes.js';
+} from './audit/audit-log-routes.js';
 
 export {
   receptionAcceptedAtClockInvariantErrorMessage,
@@ -99,7 +99,7 @@ export {
   receptionResultKindInvariantErrorMessage,
   receptionResultPatientIdentityMismatchErrorMessage,
   receptionResultSchemaInvariantErrorMessage,
-} from './reception-create-routes.js';
+} from './reception/reception-create-routes.js';
 
 export {
   patientLookupRepositoryErrorMessage,
@@ -121,7 +121,7 @@ export {
   patientViewClockReadErrorMessage,
   receptionPatientIdentityMismatchErrorMessage,
   receptionPatientSchemaInvariantErrorMessage,
-} from './patient-routes.js';
+} from './patient/patient-routes.js';
 
 export {
   receptionInvalidRequestErrorCode,
@@ -132,7 +132,7 @@ export {
   receptionQueueDuplicateIdentityInvariantErrorMessage,
   receptionQueueRepositoryErrorMessage,
   receptionQueueSchemaInvariantErrorMessage,
-} from './reception-queue-routes.js';
+} from './reception/reception-queue-routes.js';
 
 export {
   receptionInvalidTransitionErrorCode,
@@ -146,7 +146,7 @@ export {
   receptionTransitionResultKindInvariantErrorMessage,
   receptionTransitionSchemaInvariantErrorMessage,
   receptionVersionConflictErrorCode,
-} from './reception-transition-routes.js';
+} from './reception/reception-transition-routes.js';
 
 export type { HealthResponse } from '@yrese/contracts';
 

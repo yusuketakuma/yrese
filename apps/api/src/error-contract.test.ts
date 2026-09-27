@@ -3,14 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { errorResponseSchema, frameworkErrorResponseSchema } from '@yrese/contracts';
 
-import { type AuditRepository } from './audit-repository.js';
+import { type AuditRepository } from './audit/audit-repository.js';
 import {
   createPatientSearchCursorCodec,
   patientSearchCursorHmacKeyByteLength,
-} from './patient-search-cursor.js';
-import { type PatientRepository } from './patient-repository.js';
-import { invalidReceptionRequestResponse } from './reception-queue-routes.js';
-import { type ReceptionRepository } from './reception-repository.js';
+} from './patient/patient-search-cursor.js';
+import { type PatientRepository } from './patient/patient-repository.js';
+import { invalidReceptionRequestResponse } from './reception/reception-queue-routes.js';
+import { type ReceptionRepository } from './reception/reception-repository.js';
 import {
   auditLogRepositoryReadErrorMessage,
   buildServer,

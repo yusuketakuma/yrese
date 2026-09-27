@@ -19,7 +19,7 @@ import {
   type MasterVersionSeedInput,
   type MedicationItemSeedInput,
   type UsageItemSeedInput,
-} from '../master-repository.js';
+} from '../master/master-repository.js';
 import { snapshotDatabaseInstant } from '../instant.js';
 import {
   readDatabaseRowNullableString,

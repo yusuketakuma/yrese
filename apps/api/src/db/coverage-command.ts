@@ -11,7 +11,7 @@ import {
   type CoverageRecordCommand,
   type CoverageRecordCommandInput,
   type CoverageRecordCommandResult,
-} from '../coverage-command.js';
+} from '../coverage/coverage-command.js';
 
 /**
  * WP-7203: 保険・公費登録コマンド境界の Postgres 実装。

@@ -16,21 +16,21 @@ import {
   type OperationsScope,
   type OutboxEventTypeTally,
   type ReceptionSummaryInput,
-} from "../operations-service.js";
-import { snapshotDatabaseInstant } from "../instant.js";
+} from '../operations/operations-service.js';
+import { snapshotDatabaseInstant } from '../instant.js';
 import {
   isUndefinedTableError,
   readDatabaseRowString,
-} from "./database-row.js";
+} from './database-row.js';
 import {
   readDatabaseRowOwnDataProperty,
   snapshotDatabaseQueryRows,
   snapshotUnboundedDatabaseQueryRows,
-} from "./database-row.js";
-import { checkMigrationState } from "./migration-runner.js";
-import { derivedPendingVersions } from "./migration-state.js";
-import type { MigrationFile } from "./migrations.js";
-import { PostgresReceptionCreateCommand } from "./reception-command.js";
+} from './database-row.js';
+import { checkMigrationState } from './migration-runner.js';
+import { derivedPendingVersions } from './migration-state.js';
+import type { MigrationFile } from './migrations.js';
+import { PostgresReceptionCreateCommand } from './reception-command.js';
 
 /**
  * BE-1 の永続実装。実在するテーブル(`outbox_events`、`reception_entries` +

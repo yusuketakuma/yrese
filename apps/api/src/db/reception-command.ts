@@ -17,7 +17,7 @@ import {
 } from './reception-repository.js';
 import { snapshotDatabaseInstant } from '../instant.js';
 import { createOwnDataPropertyReader } from '../own-data-property.js';
-import type { ReceptionCreateProvenance } from '../reception-repository.js';
+import type { ReceptionCreateProvenance } from '../reception/reception-repository.js';
 import {
   ReceptionAuditAppendError,
   ReceptionOutboxAppendError,
@@ -33,7 +33,7 @@ import {
   type ReceptionTransitionCommand,
   type ReceptionTransitionCommandInput,
   type ReceptionTransitionExecuteResult,
-} from '../reception-command.js';
+} from '../reception/reception-command.js';
 
 /**
  * WP-4050: 受付コマンド境界の Postgres 実装。

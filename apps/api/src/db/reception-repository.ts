@@ -36,7 +36,7 @@ import {
   type ReceptionTransitionInput,
   type ReceptionTransitionResult,
   type ReceptionTransitionUndo,
-} from '../reception-repository.js';
+} from '../reception/reception-repository.js';
 import { snapshotDatabaseInstant, snapshotDateInstant } from '../instant.js';
 import { createOwnDataPropertyReader } from '../own-data-property.js';
 import {

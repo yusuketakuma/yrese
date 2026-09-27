@@ -3,7 +3,7 @@ import type { Pool, PoolClient } from "pg";
 import type {
   ActorQualificationLookup,
   ActorQualificationRepository,
-} from "../actor-qualification-repository.js";
+} from '../actor-qualification-repository.js';
 
 /**
  * SEC-010 §2 の PostgreSQL 実装。actor_qualifications は append-only で、

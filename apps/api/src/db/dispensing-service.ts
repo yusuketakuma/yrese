@@ -19,12 +19,12 @@ import type {
   DispensingCreateInput,
   DispensingCreateResult,
   DispensingService,
-} from "../dispensing-service.js";
-import { appendAuditEventWithinTransaction } from "./audit-repository.js";
-import type { PostgresActorQualificationRepository } from "./actor-qualification-repository.js";
-import { masterReadRepositoryForClient } from "./master-repository.js";
-import { runInPooledTransaction } from "./pool.js";
-import { snapshotDatabaseInstant } from "../instant.js";
+} from '../dispensing/dispensing-service.js';
+import { appendAuditEventWithinTransaction } from './audit-repository.js';
+import type { PostgresActorQualificationRepository } from './actor-qualification-repository.js';
+import { masterReadRepositoryForClient } from './master-repository.js';
+import { runInPooledTransaction } from './pool.js';
+import { snapshotDatabaseInstant } from '../instant.js';
 
 /**
  * WP-7404: dispensing_records / dispensing_items の PostgreSQL 実装。

@@ -16,7 +16,7 @@ import {
   type CoverageViewResult,
   type InsuranceCardRegistrationFields,
   type PublicExpenseRegistrationFields,
-} from '../coverage-repository.js';
+} from '../coverage/coverage-repository.js';
 import { snapshotDatabaseInstant } from '../instant.js';
 import {
   readDatabaseRowNullableString,

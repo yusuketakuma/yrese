@@ -21,30 +21,30 @@ import {
   userId,
 } from "@yrese/shared-kernel";
 
-import { InMemoryActorQualificationRepository } from "./actor-qualification-repository.js";
-import { InMemoryAuditRepository } from "./audit-repository.js";
-import { dispensingRoutes } from "./dispensing-routes.js";
-import { InMemoryDispensingService } from "./dispensing-service.js";
-import { InMemoryMasterRepository } from "./master-repository.js";
-import { operationsRoutes } from "./operations-routes.js";
+import { InMemoryActorQualificationRepository } from './actor-qualification-repository.js';
+import { InMemoryAuditRepository } from './audit/audit-repository.js';
+import { dispensingRoutes } from './dispensing/dispensing-routes.js';
+import { InMemoryDispensingService } from './dispensing/dispensing-service.js';
+import { InMemoryMasterRepository } from './master/master-repository.js';
+import { operationsRoutes } from './operations/operations-routes.js';
 import {
   createPatientSearchCursorCodec,
   patientSearchCursorHmacKeyByteLength,
-} from "./patient-search-cursor.js";
-import { InMemoryOperationsReadService } from "./operations-service.js";
-import { InMemoryPatientRepository } from "./patient-repository.js";
-import { prescriptionDraftRoutes } from "./prescription-draft-routes.js";
+} from './patient/patient-search-cursor.js';
+import { InMemoryOperationsReadService } from './operations/operations-service.js';
+import { InMemoryPatientRepository } from './patient/patient-repository.js';
+import { prescriptionDraftRoutes } from './prescription/prescription-draft-routes.js';
 import {
   InMemoryPrescriptionDraftService,
   InMemoryPrescriptionFinalizedOutbox,
-} from "./prescription-draft-service.js";
-import { prescriptionLifecycleRoutes } from "./prescription-lifecycle-routes.js";
+} from './prescription/prescription-draft-service.js';
+import { prescriptionLifecycleRoutes } from './prescription/prescription-lifecycle-routes.js';
 import {
   InMemoryReceptionOutbox,
   composeDefaultReceptionCreateCommand,
-} from "./reception-command.js";
-import { InMemoryReceptionRepository } from "./reception-repository.js";
-import { buildServer } from "./server.js";
+} from './reception/reception-command.js';
+import { InMemoryReceptionRepository } from './reception/reception-repository.js';
+import { buildServer } from './server.js';
 
 const businessDate = "2026-09-16";
 

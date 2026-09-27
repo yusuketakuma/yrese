@@ -10,7 +10,7 @@ import {
   assertResolvesToPublicAddress,
   defaultAddressLookup,
   type AddressLookup,
-} from '../partner-endpoint-policy.js';
+} from '../partner/partner-endpoint-policy.js';
 
 /**
  * Partner Registry の永続化(WP-6006、SSOT: API-010 / API-011 / API-012、migrations/000008 + 000010)。

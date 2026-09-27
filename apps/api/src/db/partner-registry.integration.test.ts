@@ -3,14 +3,14 @@ import type { Pool } from 'pg';
 
 import { pharmacyId, tenantId, userId } from '@yrese/shared-kernel';
 
-import type { AddressLookup } from '../partner-endpoint-policy.js';
+import type { AddressLookup } from '../partner/partner-endpoint-policy.js';
 import {
   WEBHOOK_EVENT_ID_HEADER,
   WEBHOOK_KEY_ID_HEADER,
   WEBHOOK_SIGNATURE_HEADER,
   WEBHOOK_TIMESTAMP_HEADER,
   verifyWebhookSignature,
-} from '../webhook-partner-sink.js';
+} from '../partner/webhook-partner-sink.js';
 import { appendAuditEventWithinTransaction } from './audit-repository.js';
 import { applyPendingMigrations } from './migration-runner.js';
 import { loadMigrationFiles } from './migrations.js';

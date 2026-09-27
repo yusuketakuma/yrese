@@ -25,37 +25,37 @@ import {
   receptionQueueEntrySchema,
 } from "@yrese/contracts";
 
-import { dispensingRoutes } from "../dispensing-routes.js";
-import { operationsRoutes } from "../operations-routes.js";
+import { dispensingRoutes } from '../dispensing/dispensing-routes.js';
+import { operationsRoutes } from '../operations/operations-routes.js';
 import {
   createPatientSearchCursorCodec,
   patientSearchCursorHmacKeyByteLength,
-} from "../patient-search-cursor.js";
-import { signTestAuthCredential } from "../plugins/tenant-context.js";
-import { prescriptionDraftRoutes } from "../prescription-draft-routes.js";
-import { prescriptionLifecycleRoutes } from "../prescription-lifecycle-routes.js";
-import { buildServer } from "../server.js";
-import { PostgresActorQualificationRepository } from "./actor-qualification-repository.js";
-import { PostgresAuditRepository } from "./audit-repository.js";
-import { PostgresCoverageRecordCommand } from "./coverage-command.js";
-import { PostgresCoverageRepository } from "./coverage-repository.js";
-import { PostgresDispensingService } from "./dispensing-service.js";
-import { PostgresEligibilityRecordCommand } from "./eligibility-snapshot-command.js";
-import { PostgresEligibilitySnapshotRepository } from "./eligibility-snapshot-repository.js";
-import { PostgresMasterRepository } from "./master-repository.js";
-import { applyPendingMigrations } from "./migration-runner.js";
-import { loadMigrationFiles } from "./migrations.js";
-import { PostgresOperationsReadService } from "./operations-read.js";
-import { PostgresPatientRepository } from "./patient-repository.js";
-import { PostgresPatientWriteCommand } from "./patient-command.js";
-import { createDbPool } from "./pool.js";
-import { PostgresPrescriptionDraftService } from "./prescription-draft-service.js";
+} from '../patient/patient-search-cursor.js';
+import { signTestAuthCredential } from '../plugins/tenant-context.js';
+import { prescriptionDraftRoutes } from '../prescription/prescription-draft-routes.js';
+import { prescriptionLifecycleRoutes } from '../prescription/prescription-lifecycle-routes.js';
+import { buildServer } from '../server.js';
+import { PostgresActorQualificationRepository } from './actor-qualification-repository.js';
+import { PostgresAuditRepository } from './audit-repository.js';
+import { PostgresCoverageRecordCommand } from './coverage-command.js';
+import { PostgresCoverageRepository } from './coverage-repository.js';
+import { PostgresDispensingService } from './dispensing-service.js';
+import { PostgresEligibilityRecordCommand } from './eligibility-snapshot-command.js';
+import { PostgresEligibilitySnapshotRepository } from './eligibility-snapshot-repository.js';
+import { PostgresMasterRepository } from './master-repository.js';
+import { applyPendingMigrations } from './migration-runner.js';
+import { loadMigrationFiles } from './migrations.js';
+import { PostgresOperationsReadService } from './operations-read.js';
+import { PostgresPatientRepository } from './patient-repository.js';
+import { PostgresPatientWriteCommand } from './patient-command.js';
+import { createDbPool } from './pool.js';
+import { PostgresPrescriptionDraftService } from './prescription-draft-service.js';
 import {
   PostgresReceptionCreateCommand,
   PostgresReceptionTransitionCommand,
-} from "./reception-command.js";
-import { PostgresReceptionRepository } from "./reception-repository.js";
-import { resolveTestDatabaseUrl } from "./test-database-environment.js";
+} from './reception-command.js';
+import { PostgresReceptionRepository } from './reception-repository.js';
+import { resolveTestDatabaseUrl } from './test-database-environment.js';
 
 const testDatabaseUrl = resolveTestDatabaseUrl(process.env);
 const describePostgres =

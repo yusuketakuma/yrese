@@ -9,7 +9,7 @@ import {
   receptionCommandAuditEventType,
   type ReceptionCreateCommandInput,
   type ReceptionTransitionCommandInput,
-} from '../reception-command.js';
+} from '../reception/reception-command.js';
 import { applyPendingMigrations } from './migration-runner.js';
 import { loadMigrationFiles } from './migrations.js';
 import { createDbPool } from './pool.js';

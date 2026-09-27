@@ -23,7 +23,7 @@ import {
   type PatientSearchPage,
   type PatientUpdateInput,
   type PatientUpdateResult,
-} from '../patient-repository.js';
+} from '../patient/patient-repository.js';
 import { snapshotDatabaseInstant } from '../instant.js';
 import {
   readDatabaseRowOwnDataProperty,

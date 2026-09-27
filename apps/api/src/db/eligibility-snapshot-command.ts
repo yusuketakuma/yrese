@@ -12,7 +12,7 @@ import {
   type EligibilityRecordCommandInput,
   type EligibilityRecordCommandResult,
   type EnsureEligibilityRecordEvidenceInput,
-} from '../eligibility-snapshot-command.js';
+} from '../eligibility/eligibility-snapshot-command.js';
 
 export interface PostgresEligibilityCommandFaultInjection {
   /** テスト専用の故障注入点(監査追記直前)。本番構成では未指定。 */

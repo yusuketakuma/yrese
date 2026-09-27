@@ -1,5 +1,5 @@
 import { parseDatabaseUrl } from '../config.js';
-import { seedSyntheticMasters } from '../master-seed.js';
+import { seedSyntheticMasters } from '../master/master-seed.js';
 import { PostgresMasterRepository } from './master-repository.js';
 import { createDbPool } from './pool.js';
 

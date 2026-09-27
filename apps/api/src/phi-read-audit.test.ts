@@ -1,11 +1,11 @@
 import { randomBytes } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 
-import { InMemoryAuditRepository, type AuditRepository } from './audit-repository.js';
+import { InMemoryAuditRepository, type AuditRepository } from './audit/audit-repository.js';
 import {
   createPatientSearchCursorCodec,
   patientSearchCursorHmacKeyByteLength,
-} from './patient-search-cursor.js';
+} from './patient/patient-search-cursor.js';
 import {
   buildServer,
   patientSearchAuditInvariantErrorMessage,

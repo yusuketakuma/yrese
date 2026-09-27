@@ -12,23 +12,23 @@ import {
   userId,
 } from "@yrese/shared-kernel";
 
-import { PostgresActorQualificationRepository } from "./actor-qualification-repository.js";
-import { buildAuditScopeAdvisoryLockKey } from "./audit-repository.js";
-import { PostgresMasterRepository } from "./master-repository.js";
-import { applyPendingMigrations } from "./migration-runner.js";
-import { loadMigrationFiles } from "./migrations.js";
-import { createDbPool } from "./pool.js";
+import { PostgresActorQualificationRepository } from './actor-qualification-repository.js';
+import { buildAuditScopeAdvisoryLockKey } from './audit-repository.js';
+import { PostgresMasterRepository } from './master-repository.js';
+import { applyPendingMigrations } from './migration-runner.js';
+import { loadMigrationFiles } from './migrations.js';
+import { createDbPool } from './pool.js';
 import {
   normalizePrescriptionDraftContent,
   prescriptionDraftContentHashCandidates,
   prescriptionDraftContentHashWithoutSourceMetadata,
-} from "../prescription-draft-service.js";
+} from '../prescription/prescription-draft-service.js';
 import {
   PostgresPrescriptionDraftService,
   prescriptionDraftDatabaseInvariantErrorMessage,
   replaceChildren,
-} from "./prescription-draft-service.js";
-import { resolveTestDatabaseUrl } from "./test-database-environment.js";
+} from './prescription-draft-service.js';
+import { resolveTestDatabaseUrl } from './test-database-environment.js';
 
 const testDatabaseUrl = resolveTestDatabaseUrl(process.env);
 const describePostgres =

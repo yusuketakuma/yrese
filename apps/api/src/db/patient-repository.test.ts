@@ -12,7 +12,7 @@ import {
 import {
   patientRepositoryCommandSnapshotInvariantErrorMessage,
   patientRepositoryPaginationInvariantErrorMessage,
-} from '../patient-repository.js';
+} from '../patient/patient-repository.js';
 import { PostgresReceptionRepository } from './reception-repository.js';
 
 const scope = {

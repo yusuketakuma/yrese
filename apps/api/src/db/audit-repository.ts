@@ -6,7 +6,7 @@ import {
   type AuditRepository,
   type AuditScope,
   type RecordAuditInput,
-} from '../audit-repository.js';
+} from '../audit/audit-repository.js';
 import {
   readDatabaseRowOwnDataProperty,
   snapshotUnboundedDatabaseQueryRows,

@@ -1,4 +1,4 @@
-import { WebhookPartnerSink } from '../webhook-partner-sink.js';
+import { WebhookPartnerSink } from '../partner/webhook-partner-sink.js';
 import type {
   OutboxDeliverySink,
   OutboxPendingEvent,

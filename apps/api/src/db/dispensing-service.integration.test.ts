@@ -11,15 +11,15 @@ import {
   userId,
 } from "@yrese/shared-kernel";
 
-import { PostgresActorQualificationRepository } from "./actor-qualification-repository.js";
-import { PostgresDispensingService } from "./dispensing-service.js";
-import { PostgresMasterRepository } from "./master-repository.js";
-import { applyPendingMigrations } from "./migration-runner.js";
-import { loadMigrationFiles } from "./migrations.js";
-import { createDbPool } from "./pool.js";
-import { PostgresPrescriptionDraftService } from "./prescription-draft-service.js";
-import { resolveTestDatabaseUrl } from "./test-database-environment.js";
-import type { DispensingCreateInput } from "../dispensing-service.js";
+import { PostgresActorQualificationRepository } from './actor-qualification-repository.js';
+import { PostgresDispensingService } from './dispensing-service.js';
+import { PostgresMasterRepository } from './master-repository.js';
+import { applyPendingMigrations } from './migration-runner.js';
+import { loadMigrationFiles } from './migrations.js';
+import { createDbPool } from './pool.js';
+import { PostgresPrescriptionDraftService } from './prescription-draft-service.js';
+import { resolveTestDatabaseUrl } from './test-database-environment.js';
+import type { DispensingCreateInput } from '../dispensing/dispensing-service.js';
 
 const testDatabaseUrl = resolveTestDatabaseUrl(process.env);
 const describePostgres =

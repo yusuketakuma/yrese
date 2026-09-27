@@ -11,8 +11,8 @@ import { patientId, receptionId } from '@yrese/shared-kernel';
 import {
   createPatientSearchCursorCodec,
   patientSearchCursorHmacKeyByteLength,
-} from './patient-search-cursor.js';
-import { type ReceptionCreateInput } from './reception-repository.js';
+} from './patient/patient-search-cursor.js';
+import { type ReceptionCreateInput } from './reception/reception-repository.js';
 import { buildServer, type BuildServerOptions } from './server.js';
 
 export function receptionProvenance(

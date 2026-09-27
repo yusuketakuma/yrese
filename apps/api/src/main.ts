@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import { InMemoryAuditRepository } from './audit-repository.js';
+import { InMemoryAuditRepository } from './audit/audit-repository.js';
 import {
   parseApiPort,
   parseDatabaseUrl,
@@ -40,29 +40,29 @@ import { PostgresMasterRepository } from './db/master-repository.js';
 import { PostgresEligibilityRecordCommand } from './db/eligibility-snapshot-command.js';
 import { PostgresEligibilitySnapshotRepository } from './db/eligibility-snapshot-repository.js';
 import { PostgresReceptionRepository } from './db/reception-repository.js';
-import { operationsRoutes } from './operations-routes.js';
-import { InMemoryOperationsReadService } from './operations-service.js';
-import { InMemoryPatientRepository } from './patient-repository.js';
-import { InMemoryMasterRepository } from './master-repository.js';
-import { seedSyntheticMasters } from './master-seed.js';
+import { operationsRoutes } from './operations/operations-routes.js';
+import { InMemoryOperationsReadService } from './operations/operations-service.js';
+import { InMemoryPatientRepository } from './patient/patient-repository.js';
+import { InMemoryMasterRepository } from './master/master-repository.js';
+import { seedSyntheticMasters } from './master/master-seed.js';
 import {
   createPatientSearchCursorCodec,
   patientSearchCursorHmacKeyByteLength,
-} from './patient-search-cursor.js';
-import { dispensingRoutes } from './dispensing-routes.js';
-import { InMemoryDispensingService } from './dispensing-service.js';
-import { prescriptionAmendmentRoutes } from './prescription-amendment-routes.js';
-import { prescriptionDraftRoutes } from './prescription-draft-routes.js';
-import { prescriptionLifecycleRoutes } from './prescription-lifecycle-routes.js';
+} from './patient/patient-search-cursor.js';
+import { dispensingRoutes } from './dispensing/dispensing-routes.js';
+import { InMemoryDispensingService } from './dispensing/dispensing-service.js';
+import { prescriptionAmendmentRoutes } from './prescription/prescription-amendment-routes.js';
+import { prescriptionDraftRoutes } from './prescription/prescription-draft-routes.js';
+import { prescriptionLifecycleRoutes } from './prescription/prescription-lifecycle-routes.js';
 import {
   InMemoryPrescriptionDraftService,
   InMemoryPrescriptionFinalizedOutbox,
   type PrescriptionLifecycleDeps,
-} from './prescription-draft-service.js';
+} from './prescription/prescription-draft-service.js';
 import { pharmacyId, tenantId, userId } from '@yrese/shared-kernel';
 import { InMemoryActorQualificationRepository } from './actor-qualification-repository.js';
-import { InMemoryReceptionOutbox } from './reception-command.js';
-import { InMemoryReceptionRepository } from './reception-repository.js';
+import { InMemoryReceptionOutbox } from './reception/reception-command.js';
+import { InMemoryReceptionRepository } from './reception/reception-repository.js';
 import {
   createJsonRuntimeOperationalEventSink,
   type DatabasePoolSnapshot,

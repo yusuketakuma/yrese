@@ -12,7 +12,7 @@ import { applyPendingMigrations } from './migration-runner.js';
 import { loadMigrationFiles } from './migrations.js';
 import { createDbPool } from './pool.js';
 import { resolveTestDatabaseUrl } from './test-database-environment.js';
-import type { AuditScope, RecordAuditInput } from '../audit-repository.js';
+import type { AuditScope, RecordAuditInput } from '../audit/audit-repository.js';
 
 const testDatabaseUrl = resolveTestDatabaseUrl(process.env);
 

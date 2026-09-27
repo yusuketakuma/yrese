@@ -7,12 +7,12 @@ import {
   type PrescriptionDraftResponse,
 } from "@yrese/contracts";
 
-import { snapshotDatabaseInstant } from "../instant.js";
+import { snapshotDatabaseInstant } from '../instant.js';
 import {
   comparePrescriptionDraftFlags,
   prescriptionDraftContentHashCandidates,
   type PrescriptionDraftLookupInput,
-} from "../prescription-draft-service.js";
+} from '../prescription/prescription-draft-service.js';
 
 export interface MetadataRow {
   readonly prescription_id: string;

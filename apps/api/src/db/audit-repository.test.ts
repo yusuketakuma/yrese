@@ -4,7 +4,7 @@ import type { Pool, PoolClient } from 'pg';
 import { verifyAuditHashChain } from '@yrese/audit';
 import { pharmacyId, tenantId, userId } from '@yrese/shared-kernel';
 
-import { buildChainedAuditEvent } from '../audit-repository.js';
+import { buildChainedAuditEvent } from '../audit/audit-repository.js';
 import {
   buildAuditScopeAdvisoryLockKey,
   PostgresAuditRepository,

@@ -23,15 +23,15 @@ import {
   createPatientSearchCursorCodec,
   patientSearchCursorHmacKeyByteLength,
   type PatientSearchCursorCodec,
-} from './patient-search-cursor.js';
-import type { PatientRepository } from './patient-repository.js';
+} from './patient/patient-search-cursor.js';
+import type { PatientRepository } from './patient/patient-repository.js';
 import {
   InMemoryReceptionRepository,
   type ReceptionCreateInput,
   type ReceptionCreateResult,
   type ReceptionRepository,
-} from './reception-repository.js';
-import { InMemoryAuditRepository, type AuditRepository } from './audit-repository.js';
+} from './reception/reception-repository.js';
+import { InMemoryAuditRepository, type AuditRepository } from './audit/audit-repository.js';
 import {
   apiVersion,
   buildServer,

@@ -24,14 +24,14 @@ import {
   type PrescriptionInquiryId,
 } from "@yrese/shared-kernel";
 
-import { appendAuditEventWithinTransaction } from "./audit-repository.js";
-import type { PostgresActorQualificationRepository } from "./actor-qualification-repository.js";
+import { appendAuditEventWithinTransaction } from './audit-repository.js';
+import type { PostgresActorQualificationRepository } from './actor-qualification-repository.js';
 import {
   masterReadRepositoryForClient,
   type PostgresMasterRepository,
-} from "./master-repository.js";
-import { runInPooledTransaction } from "./pool.js";
-import { snapshotDatabaseInstant } from "../instant.js";
+} from './master-repository.js';
+import { runInPooledTransaction } from './pool.js';
+import { snapshotDatabaseInstant } from '../instant.js';
 import {
   comparePrescriptionDraftFlags,
   copiedContentFromPriorVersion,
@@ -59,7 +59,7 @@ import {
   type PrescriptionVersionGetResult,
   type PrescriptionVersionListResult,
   type PrescriptionVersionReadInput,
-} from "../prescription-draft-service.js";
+} from '../prescription/prescription-draft-service.js';
 
 import {
   prescriptionDraftDatabaseInvariantErrorMessage,

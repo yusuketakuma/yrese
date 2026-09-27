@@ -3,7 +3,7 @@ import type { Pool } from 'pg';
 
 import { patientId, pharmacyId, tenantId, userId } from '@yrese/shared-kernel';
 
-import { patientCreateRequestFingerprint } from '../patient-command.js';
+import { patientCreateRequestFingerprint } from '../patient/patient-command.js';
 import { PostgresPatientWriteCommand } from './patient-command.js';
 import { PostgresPatientRepository } from './patient-repository.js';
 import { applyPendingMigrations } from './migration-runner.js';

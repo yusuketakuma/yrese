@@ -16,7 +16,7 @@ import {
   inMemoryReceptionPatientSnapshotInvariantErrorMessage,
   inMemoryReceptionTimestampInvariantErrorMessage,
   receptionListCommandSnapshotInvariantErrorMessage,
-} from '../reception-repository.js';
+} from '../reception/reception-repository.js';
 import {
   PostgresReceptionRepository,
   databaseReceptionCommandSnapshotInvariantErrorMessage,

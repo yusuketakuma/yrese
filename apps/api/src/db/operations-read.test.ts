@@ -3,12 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 
 import { pharmacyId, tenantId } from "@yrese/shared-kernel";
 
-import { operationsSummaryInvariantErrorMessage } from "../operations-service.js";
+import { operationsSummaryInvariantErrorMessage } from '../operations/operations-service.js';
 import {
   PostgresOperationsReadService,
   type ReceptionLegacyOrphanSource,
-} from "./operations-read.js";
-import type { MigrationFile } from "./migrations.js";
+} from './operations-read.js';
+import type { MigrationFile } from './migrations.js';
 
 const scope = {
   tenantId: tenantId("tenant-operations-read-test"),
