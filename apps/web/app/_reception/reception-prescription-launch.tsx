@@ -5,16 +5,16 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import type { ReceptionQueueEntry } from "@yrese/contracts";
 
-import { DomainStatusBadge } from "./components/domain-status-badge";
-import { ErrorNotice, type ErrorNoticeProps } from "./components/error-notice";
-import { useOptionalPatientContext } from "./components/patient-context";
-import { TableScroll } from "./components/operator-ui";
+import { DomainStatusBadge } from '../components/domain-status-badge';
+import { ErrorNotice, type ErrorNoticeProps } from '../components/error-notice';
+import { useOptionalPatientContext } from '../components/patient/patient-context';
+import { TableScroll } from '../components/operator/operator-ui';
 import {
   ReceptionError,
   fetchReceptionQueue,
   todayAsIsoDate,
-} from "./reception-dashboard";
-import { ReceptionPrescriptionHandoffAction } from "./reception-prescription-handoff";
+} from './reception-dashboard';
+import { ReceptionPrescriptionHandoffAction } from './reception-prescription-handoff';
 
 type LaunchSearchState =
   | { readonly status: "idle" }

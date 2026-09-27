@@ -8,7 +8,7 @@ import {
   MasterAuthorityView,
   loadMasterAuthorityState,
   type MasterAuthorityState,
-} from "./master-authority";
+} from './master-authority';
 
 (globalThis as { React?: typeof React }).React = React;
 

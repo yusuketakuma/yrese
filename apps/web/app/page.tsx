@@ -1,5 +1,5 @@
-import { OperatorFocusBoard } from "./components/operator-focus-board";
-import { PatientContextRail } from "./components/patient-context-rail";
+import { OperatorFocusBoard } from './components/operator/operator-focus-board';
+import { PatientContextRail } from './components/patient/patient-context-rail';
 import {
   OperatorPage,
   Panel,
@@ -8,9 +8,9 @@ import {
   RailCard,
   ScreenHeader,
   StatusPill,
-} from "./components/operator-ui";
-import { ReceptionDashboard } from "./reception-dashboard";
-import { ReceptionPrescriptionLaunch } from "./reception-prescription-launch";
+} from './components/operator/operator-ui';
+import { ReceptionDashboard } from './_reception/reception-dashboard';
+import { ReceptionPrescriptionLaunch } from './_reception/reception-prescription-launch';
 
 /**
  * 取込導線カード(SCR-001)。

@@ -12,8 +12,8 @@ import {
 
 import type { ReceptionQueueEntry } from "@yrese/contracts";
 
-import { useOptionalPatientContext } from "../components/patient-context";
-import type { UnsavedWorkRecord } from "../components/unsaved-work";
+import { useOptionalPatientContext } from '../components/patient/patient-context';
+import type { UnsavedWorkRecord } from '../components/unsaved-work';
 
 /**
  * A tab-local pointer to the validated reception that initiated prescription entry.

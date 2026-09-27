@@ -6,7 +6,7 @@ import {
   MasterLookupError,
   searchMasterMedications,
   searchMasterUsages,
-} from "./master-lookup";
+} from './master-lookup';
 
 export interface MasterCodeSelection {
   /** 用法コード選択時は null(usage 参照は版 ID を持たない)。 */

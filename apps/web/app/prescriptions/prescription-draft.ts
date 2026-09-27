@@ -2,7 +2,7 @@ import {
   type DraftRow,
   createBlankDraftRows,
   isDraftRowEmpty,
-} from "./prescription-replacement";
+} from './prescription-replacement';
 
 export const PRESCRIPTION_OPTIONS = [
   "一包化",

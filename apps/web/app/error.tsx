@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-import { ErrorNotice } from "./components/error-notice";
+import { ErrorNotice } from './components/error-notice';
 
 /**
  * 業務画面共通のエラー境界(WP-3007 / SCR-013)。

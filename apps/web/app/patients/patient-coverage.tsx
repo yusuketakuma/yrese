@@ -21,14 +21,14 @@ import {
   permissionScope,
 } from "@yrese/shared-kernel";
 
-import { devTenantHeaders } from "../dev-tenant";
-import { resolveWebApiUrl } from "../api-transport";
-import { registeredErrorCodeOrUndefined } from "../components/error-code";
-import type { PatientContextData } from "../components/patient-context";
-import { EmptyState } from "../components/empty-state";
-import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
-import { LoadingState } from "../components/loading-state";
-import { Panel, TableScroll } from "../components/operator-ui";
+import { devTenantHeaders } from '../dev-tenant';
+import { resolveWebApiUrl } from '../api-transport';
+import { registeredErrorCodeOrUndefined } from '../components/error-code';
+import type { PatientContextData } from '../components/patient/patient-context';
+import { EmptyState } from '../components/empty-state';
+import { ErrorNotice, type ErrorNoticeProps } from '../components/error-notice';
+import { LoadingState } from '../components/loading-state';
+import { Panel, TableScroll } from '../components/operator/operator-ui';
 
 /**
  * 保険・公費パネル(SCR-007 / WP-7203 / API-020)。

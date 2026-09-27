@@ -1,5 +1,5 @@
-import { PrescriptionReceptionBoundary } from "./prescription-reception-boundary";
-import { PrescriptionWorkspace } from "./prescription-workspace";
+import { PrescriptionReceptionBoundary } from './prescription-reception-boundary';
+import { PrescriptionWorkspace } from './prescription-workspace';
 
 /**
  * 処方入力画面(SCR-004 処方入力ワークスペース / connected draft slice)。

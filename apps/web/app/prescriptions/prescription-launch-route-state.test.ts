@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { validateReceptionLaunchEntry } from "./prescription-launch-context";
+import { validateReceptionLaunchEntry } from './prescription-launch-context';
 
 describe("prescription launch explicit states", () => {
   it("returns a named ready state for an exact match", () => {

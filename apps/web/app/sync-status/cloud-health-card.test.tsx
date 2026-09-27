@@ -8,7 +8,7 @@ import {
   cloudHealthMetric,
   resolveCloudHealthState,
   type CloudHealthState,
-} from "./cloud-health-card";
+} from './cloud-health-card';
 
 (globalThis as { React?: typeof React }).React = React;
 

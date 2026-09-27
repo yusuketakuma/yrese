@@ -1,7 +1,7 @@
 import type { SessionStatus } from "@yrese/shared-kernel";
 import { requiresReauth } from "@yrese/shared-kernel";
 
-import { SESSION_PRESENTATION } from "../status/visual-status-registry";
+import { SESSION_PRESENTATION } from '../status/visual-status-registry';
 
 /**
  * 認証・セッション表示群(R-AUTH)。

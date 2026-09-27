@@ -1,4 +1,4 @@
-import { ReadOnlyIndicator } from "../components/audit-metadata";
+import { ReadOnlyIndicator } from '../components/audit-metadata';
 import {
   MetricCard,
   MetricGrid,
@@ -10,12 +10,12 @@ import {
   ScreenHeader,
   StatusPill,
   TableScroll,
-} from "../components/operator-ui";
+} from '../components/operator/operator-ui';
 import {
   ClaimFinalizationModeMatrix,
   ClosingExecutionAuthority,
   ClosingReceptionSummary,
-} from "./closing-authority";
+} from './closing-authority';
 
 /**
  * SCR-020 月次締め・返戻管理。

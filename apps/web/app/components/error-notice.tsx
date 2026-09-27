@@ -1,7 +1,7 @@
 import type { ErrorSeverity } from "@yrese/shared-kernel";
 
-import { SEVERITY_PRESENTATION } from "../status/visual-status-registry";
-import { SeverityList } from "./severity-list";
+import { SEVERITY_PRESENTATION } from '../status/visual-status-registry';
+import { SeverityList } from './severity-list';
 
 /**
  * 画面共通のエラー表示領域(WP-3007 / SCR-013)。

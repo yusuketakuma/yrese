@@ -11,7 +11,7 @@ import {
   finalizeScopeState,
   type ReceptionSummaryViewState,
   type SessionState,
-} from "./closing-authority";
+} from './closing-authority';
 
 (globalThis as { React?: typeof React }).React = React;
 

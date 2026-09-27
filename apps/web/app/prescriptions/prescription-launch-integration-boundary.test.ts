@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parsePrescriptionLaunchContext } from "./prescription-launch-context";
+import { parsePrescriptionLaunchContext } from './prescription-launch-context';
 
 describe("prescription launch bounded scope", () => {
   it("does not derive medication, calculation, or confirmation state from URL input", () => {

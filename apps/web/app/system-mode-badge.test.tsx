@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { SystemModeBadge } from "./system-mode-badge";
+import { SystemModeBadge } from './system-mode-badge';
 
 (globalThis as { React?: typeof React }).React = React;
 

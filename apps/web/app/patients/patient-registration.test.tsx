@@ -7,7 +7,7 @@ import type { PatientCreateResponse } from "@yrese/contracts";
 import {
   createPatient,
   PatientRegistrationForm,
-} from "./patient-registration";
+} from './patient-registration';
 
 (globalThis as { React?: typeof React }).React = React;
 

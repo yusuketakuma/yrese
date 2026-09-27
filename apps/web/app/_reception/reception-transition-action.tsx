@@ -8,12 +8,12 @@ import {
   type ReceptionTransitionTarget,
 } from "@yrese/contracts";
 
-import { ConfirmationDialog } from "./components/confirmation-dialog";
-import { ErrorNotice, type ErrorNoticeProps } from "./components/error-notice";
+import { ConfirmationDialog } from '../components/confirmation-dialog';
+import { ErrorNotice, type ErrorNoticeProps } from '../components/error-notice';
 import {
   transitionReception,
   trustedReceptionErrorNotice,
-} from "./reception-dashboard";
+} from './reception-dashboard';
 
 /**
  * 受付キュー行の状態遷移操作(WP-7201 / API-006 0.3.1)。

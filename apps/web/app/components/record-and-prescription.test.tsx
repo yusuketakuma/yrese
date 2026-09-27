@@ -2,8 +2,8 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { PrescriptionChangeIndicator } from "./prescription-change-indicator";
-import { RecordStateBadge } from "./record-state-badge";
+import { PrescriptionChangeIndicator } from './prescription-change-indicator';
+import { RecordStateBadge } from './record-state-badge';
 
 (globalThis as { React?: typeof React }).React = React;
 

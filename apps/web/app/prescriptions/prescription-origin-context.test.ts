@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import type { ReceptionQueueEntry } from "@yrese/contracts";
 
-import type { UnsavedWorkRecord } from "../components/unsaved-work";
+import type { UnsavedWorkRecord } from '../components/unsaved-work';
 import {
   conflictingPrescriptionDrafts,
   createPrescriptionReceptionOrigin,
   isSamePrescriptionReceptionOrigin,
-} from "./prescription-origin-context";
+} from './prescription-origin-context';
 
 const unverifiedEligibility = {
   state: "UNVERIFIED" as const,

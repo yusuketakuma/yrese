@@ -1,4 +1,4 @@
-import { LoadingState } from "./components/loading-state";
+import { LoadingState } from './components/loading-state';
 
 /**
  * 全ルート共通の読込中表示(App Router loading.tsx / 監査 S-01)。

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parsePrescriptionLaunchContext } from "./prescription-launch-context";
+import { parsePrescriptionLaunchContext } from './prescription-launch-context';
 
 describe("prescription launch context data minimization", () => {
   it("returns only reception and business-date identifiers", () => {

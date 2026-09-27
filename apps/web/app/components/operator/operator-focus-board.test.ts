@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getOperatorFocusGroups } from "./operator-focus-board";
+import { getOperatorFocusGroups } from './operator-focus-board';
 
 describe("operator focus projections", () => {
   it("shows both operational perspectives in the combined projection", () => {

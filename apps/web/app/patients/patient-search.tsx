@@ -9,32 +9,32 @@ import {
 } from "@yrese/contracts";
 import { patientId } from "@yrese/shared-kernel";
 
-import { EmptyState } from "../components/empty-state";
-import { LoadingState } from "../components/loading-state";
+import { EmptyState } from '../components/empty-state';
+import { LoadingState } from '../components/loading-state';
 import {
   MetricCard,
   MetricGrid,
   Panel,
   TableScroll,
-} from "../components/operator-ui";
-import { ErrorNotice } from "../components/error-notice";
+} from '../components/operator/operator-ui';
+import { ErrorNotice } from '../components/error-notice';
 import {
   type PatientContextData,
   toPatientContextData,
   useOptionalPatientContext,
-} from "../components/patient-context";
+} from '../components/patient/patient-context';
 import {
   ELIGIBILITY_LABELS,
   PatientHeader,
   computeAgeYears,
-} from "../components/patient-header";
-import { SeverityList } from "../components/severity-list";
+} from '../components/patient/patient-header';
+import { SeverityList } from '../components/severity-list';
 import {
   ELIGIBILITY_PRESENTATION,
   SEX_LABELS,
-} from "../status/visual-status-registry";
-import { PatientCoveragePanel } from "./patient-coverage";
-import { PatientRegistrationForm } from "./patient-registration";
+} from '../status/visual-status-registry';
+import { PatientCoveragePanel } from './patient-coverage';
+import { PatientRegistrationForm } from './patient-registration';
 import {
   createSearchRunner,
   duplicateKanaSet,
@@ -45,9 +45,9 @@ import {
   type SearchAppendState,
   type SearchPage,
   type SearchState,
-} from "./patient-search-data";
+} from './patient-search-data';
 
-export * from "./patient-search-data";
+export * from './patient-search-data';
 
 /**
  * 患者検索UI(WP-3003 / WP-3008)。
@@ -62,7 +62,7 @@ export * from "./patient-search-data";
 
 
 // 正本は patient-context.tsx(再取得経路と共用)。既存 import 互換のため再エクスポート。
-export { toPatientContextData } from "../components/patient-context";
+export { toPatientContextData } from '../components/patient/patient-context';
 
 export function PatientSearchResults({
   results,

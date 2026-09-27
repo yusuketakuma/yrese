@@ -10,8 +10,8 @@ import {
   ScreenHeader,
   StatusPill,
   TableScroll,
-} from "../components/operator-ui";
-import { ReceptionIntegrityBoard } from "./reception-integrity-board";
+} from '../components/operator/operator-ui';
+import { ReceptionIntegrityBoard } from './reception-integrity-board';
 
 /**
  * 請求前点検(SCR-019)。

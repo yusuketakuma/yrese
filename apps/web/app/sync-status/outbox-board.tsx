@@ -8,10 +8,10 @@ import {
   fetchOutboxSummary,
   toOperationsNotice,
   type OperationsRequestOptions,
-} from "../api/operations-client";
-import { EmptyState } from "../components/empty-state";
-import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
-import { LoadingState } from "../components/loading-state";
+} from '../api/operations-client';
+import { EmptyState } from '../components/empty-state';
+import { ErrorNotice, type ErrorNoticeProps } from '../components/error-notice';
+import { LoadingState } from '../components/loading-state';
 import {
   KeyValueList,
   MetricCard,
@@ -19,8 +19,8 @@ import {
   Panel,
   TableScroll,
   type OperatorTone,
-} from "../components/operator-ui";
-import { checkedAtLabel } from "./cloud-health-card";
+} from '../components/operator/operator-ui';
+import { checkedAtLabel } from './cloud-health-card';
 
 /**
  * outbox 配送状況ボード(SCR-025 実データ配線)。

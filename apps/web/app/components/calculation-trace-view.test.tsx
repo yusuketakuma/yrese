@@ -3,7 +3,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { CalculationTraceView } from "./calculation-trace-view";
+import { CalculationTraceView } from './calculation-trace-view';
 
 (globalThis as { React?: typeof React }).React = React;
 

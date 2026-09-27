@@ -35,8 +35,8 @@ import {
   submitReceptionRegistration,
   type QueueState,
   todayAsIsoDate,
-} from "./reception-dashboard";
-import ReceptionPage from "./page";
+} from './reception-dashboard';
+import ReceptionPage from '../page';
 
 
 export const unverifiedEligibility = {

@@ -1,8 +1,8 @@
 import type { SyncStatus, SystemMode } from "@yrese/shared-kernel";
 import { canConfirmExternal, requiresHumanAttention } from "@yrese/shared-kernel";
 
-import { DomainStatusBadge } from "./domain-status-badge";
-import { SYSTEM_MODE_PRESENTATION } from "../status/visual-status-registry";
+import { DomainStatusBadge } from './domain-status-badge';
+import { SYSTEM_MODE_PRESENTATION } from '../status/visual-status-registry';
 
 /**
  * 同期・オフライン表示群(R-OFFLINE)。

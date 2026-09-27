@@ -4,7 +4,7 @@ import {
   ApiTransportConfigurationError,
   resolveWebApiBase,
   resolveWebApiUrl,
-} from "./api-transport";
+} from './api-transport';
 
 describe("web API transport (WP-4067)", () => {
   it.each([

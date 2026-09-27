@@ -15,7 +15,7 @@ import {
   outboxCountDisplay,
   outboxDwellDisplay,
   type OutboxBoardState,
-} from "./outbox-board";
+} from './outbox-board';
 
 (globalThis as { React?: typeof React }).React = React;
 

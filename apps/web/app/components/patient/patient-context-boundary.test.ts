@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isPatientContextVisiblePath } from "./patient-context-route-policy";
+import { isPatientContextVisiblePath } from './patient-context-route-policy';
 
 describe("patient context route boundary", () => {
   it.each([

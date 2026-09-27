@@ -12,7 +12,7 @@ import {
   fetchAdminIdentity,
   hasRequiredAdminScopes,
   loadAdminDashboardSnapshot,
-} from "./admin-data";
+} from './admin-data';
 
 afterEach(() => {
   vi.unstubAllEnvs();

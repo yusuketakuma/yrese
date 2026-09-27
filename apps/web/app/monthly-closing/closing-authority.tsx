@@ -13,28 +13,28 @@ import {
 import {
   fetchReceptionSummary,
   toOperationsNotice,
-} from "../api/operations-client";
+} from '../api/operations-client';
 import {
   fetchSessionScopes,
   scopeAbsenceIsMeasurable,
   sessionHasScopes,
   toSessionNotice,
   type SessionScopes,
-} from "../api/session-client";
+} from '../api/session-client';
 import {
   PermissionState,
   ReadOnlyIndicator,
-} from "../components/audit-metadata";
-import { DomainStatusBadge } from "../components/domain-status-badge";
-import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
-import { LoadingState } from "../components/loading-state";
+} from '../components/audit-metadata';
+import { DomainStatusBadge } from '../components/domain-status-badge';
+import { ErrorNotice, type ErrorNoticeProps } from '../components/error-notice';
+import { LoadingState } from '../components/loading-state';
 import {
   InlineNotice,
   KeyValueList,
   StatusPill,
   TableScroll,
-} from "../components/operator-ui";
-import { todayAsIsoDate } from "../reception-dashboard";
+} from '../components/operator/operator-ui';
+import { todayAsIsoDate } from '../_reception/reception-dashboard';
 
 /**
  * SCR-020 月次締め・返戻管理のうち、**実データで言えることだけ**を描く部品群。

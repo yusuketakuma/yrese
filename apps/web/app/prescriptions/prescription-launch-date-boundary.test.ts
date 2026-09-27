@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parsePrescriptionLaunchContext } from "./prescription-launch-context";
+import { parsePrescriptionLaunchContext } from './prescription-launch-context';
 
 describe("prescription launch business date", () => {
   it.each(["2026/08/25", "2026-8-25", "", "20260825"])(

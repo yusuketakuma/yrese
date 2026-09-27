@@ -6,18 +6,18 @@ import {
 } from "@yrese/contracts";
 import { type EligibilityStatus } from "@yrese/shared-kernel";
 
-import { DomainStatusBadge } from "./components/domain-status-badge";
-import { EmptyState } from "./components/empty-state";
-import { ErrorNotice, type ErrorNoticeProps } from "./components/error-notice";
-import { LoadingState } from "./components/loading-state";
+import { DomainStatusBadge } from '../components/domain-status-badge';
+import { EmptyState } from '../components/empty-state';
+import { ErrorNotice, type ErrorNoticeProps } from '../components/error-notice';
+import { LoadingState } from '../components/loading-state';
 import {
   MetricCard,
   MetricGrid,
   StatusPill,
   TableScroll,
-} from "./components/operator-ui";
-import { ReceptionPrescriptionHandoffAction } from "./reception-prescription-handoff";
-import { ReceptionTransitionActions } from "./reception-transition-action";
+} from '../components/operator/operator-ui';
+import { ReceptionPrescriptionHandoffAction } from './reception-prescription-handoff';
+import { ReceptionTransitionActions } from './reception-transition-action';
 import {
   PRESCRIPTION_INTAKE_LABELS,
   RECEPTION_STATUS_LABELS,
@@ -26,8 +26,8 @@ import {
   queueResponseDateMismatchNotice,
   queuePermissionDeniedFailures,
   trustedReceptionErrorNotice,
-} from "./reception-api";
-import { formatAcceptedTime } from "./reception-time";
+} from './reception-api';
+import { formatAcceptedTime } from './reception-time';
 
 export function ReceptionQueueTable({
   entries,

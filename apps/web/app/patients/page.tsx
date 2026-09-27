@@ -1,11 +1,11 @@
-import { PatientContextRail } from "../components/patient-context-rail";
+import { PatientContextRail } from '../components/patient/patient-context-rail';
 import {
   OperatorPage,
   RailCard,
   ScreenHeader,
   StatusPill,
-} from "../components/operator-ui";
-import { PatientSearch } from "./patient-search";
+} from '../components/operator/operator-ui';
+import { PatientSearch } from './patient-search';
 
 export default function PatientsPage() {
   return (

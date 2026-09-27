@@ -1,7 +1,7 @@
 import type { RecordLifecycleStatus } from "@yrese/shared-kernel";
 import { isFinalizedRecord } from "@yrese/shared-kernel";
 
-import { DomainStatusBadge } from "./domain-status-badge";
+import { DomainStatusBadge } from './domain-status-badge';
 
 /**
  * 記録状態バッジ(記録ライフサイクル R-RECLIFE)。

@@ -9,8 +9,8 @@ import {
   ScreenHeader,
   StatusPill,
   TableScroll,
-} from "../components/operator-ui";
-import { MasterAuthorityCard } from "./master-authority";
+} from '../components/operator/operator-ui';
+import { MasterAuthorityCard } from './master-authority';
 
 /**
  * SCR-023 マスター管理。

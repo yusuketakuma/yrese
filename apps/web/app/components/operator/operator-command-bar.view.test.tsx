@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
 
-import { OperatorCommandBar, OPERATOR_QUICK_LINKS } from "./operator-command-bar";
+import { OperatorCommandBar, OPERATOR_QUICK_LINKS } from './operator-command-bar';
 
 (globalThis as { React?: typeof React }).React = React;
 

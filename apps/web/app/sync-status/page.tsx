@@ -8,10 +8,10 @@ import {
   ScreenHeader,
   StatusPill,
   TableScroll,
-} from "../components/operator-ui";
-import { CloudHealthCard } from "./cloud-health-card";
-import { ModeOverviewTable } from "./mode-overview";
-import { OutboxBoard } from "./outbox-board";
+} from '../components/operator/operator-ui';
+import { CloudHealthCard } from './cloud-health-card';
+import { ModeOverviewTable } from './mode-overview';
+import { OutboxBoard } from './outbox-board';
 
 /**
  * 同期状態・外部連携(SCR-025)。

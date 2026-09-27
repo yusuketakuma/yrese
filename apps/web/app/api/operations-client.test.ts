@@ -15,7 +15,7 @@ import {
   fetchOutboxSummary,
   fetchReceptionSummary,
   toOperationsNotice,
-} from "./operations-client";
+} from './operations-client';
 
 afterEach(() => {
   vi.unstubAllEnvs();

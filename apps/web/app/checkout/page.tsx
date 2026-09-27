@@ -1,4 +1,4 @@
-import { PatientContextRail } from "../components/patient-context-rail";
+import { PatientContextRail } from '../components/patient/patient-context-rail';
 import {
   KeyValueList,
   MetricCard,
@@ -11,8 +11,8 @@ import {
   ScreenHeader,
   StatusPill,
   TableScroll,
-} from "../components/operator-ui";
-import { CheckoutReceptionContext } from "./checkout-context";
+} from '../components/operator/operator-ui';
+import { CheckoutReceptionContext } from './checkout-context';
 
 /** 支払方法。会計確定APIが未登録のため、いずれも実行不能な宣言としてのみ描画する。 */
 const PAYMENT_METHODS = ["現金", "クレジット", "QR決済", "売掛"] as const;

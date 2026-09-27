@@ -3,8 +3,8 @@ import type {
   ReceptionQueueResponse,
 } from "@yrese/contracts";
 
-import { fetchReceptionQueue } from "../reception-dashboard";
-import type { PrescriptionReceptionOrigin } from "./prescription-origin-context";
+import { fetchReceptionQueue } from '../_reception/reception-dashboard';
+import type { PrescriptionReceptionOrigin } from './prescription-origin-context';
 
 export type PrescriptionReceptionErrorKind =
   | "NOT_FOUND"

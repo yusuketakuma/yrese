@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { FILE_UPLOAD_STATUSES, FileUploadStatusIndicator } from "./file-upload-status";
+import { FILE_UPLOAD_STATUSES, FileUploadStatusIndicator } from './file-upload-status';
 
 (globalThis as { React?: typeof React }).React = React;
 

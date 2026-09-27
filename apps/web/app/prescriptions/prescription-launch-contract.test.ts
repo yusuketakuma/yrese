@@ -6,7 +6,7 @@ const pageSource = readFileSync(
   "utf8",
 );
 const launchSource = readFileSync(
-  new URL("../reception-prescription-launch.tsx", import.meta.url),
+  new URL("../_reception/reception-prescription-launch.tsx", import.meta.url),
   "utf8",
 );
 const routeSource = readFileSync(

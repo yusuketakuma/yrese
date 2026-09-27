@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { validateReceptionLaunchEntry } from "./prescription-launch-context";
+import { validateReceptionLaunchEntry } from './prescription-launch-context';
 
 describe("prescription launch tenant scope", () => {
   it("cannot authorize a reception absent from the authenticated queue", () => {

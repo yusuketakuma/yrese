@@ -7,7 +7,7 @@ import {
   OfflineBanner,
   SyncIndicator,
   SystemHealthBanner,
-} from "./sync-indicator";
+} from './sync-indicator';
 
 (globalThis as { React?: typeof React }).React = React;
 

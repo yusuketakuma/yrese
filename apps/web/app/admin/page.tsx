@@ -1,4 +1,4 @@
-import { AdminDashboard } from "./admin-dashboard";
+import { AdminDashboard } from './admin-dashboard';
 
 /**
  * SCR-029 管理設定ダッシュボード。

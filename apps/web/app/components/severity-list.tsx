@@ -4,7 +4,7 @@ import {
   SEVERITY_LABELS,
   SEVERITY_ORDER,
   SEVERITY_PRESENTATION,
-} from "../status/visual-status-registry";
+} from '../status/visual-status-registry';
 
 /**
  * 重要度別メッセージリスト(WP-3006 / UIX-001 §5)。

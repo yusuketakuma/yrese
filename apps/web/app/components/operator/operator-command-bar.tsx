@@ -14,12 +14,12 @@ import {
 import {
   resolveOperatorIntent,
   shouldFocusOperatorCommand,
-} from "./operator-command-policy";
+} from './operator-command-policy';
 
 export {
   resolveOperatorIntent,
   shouldFocusOperatorCommand,
-} from "./operator-command-policy";
+} from './operator-command-policy';
 
 export interface OperatorQuickLink {
   readonly label: string;

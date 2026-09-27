@@ -7,7 +7,7 @@ import {
   createUnsavedWorkStore,
   patientContextChangeNeedsConfirmation,
   shouldBlockBeforeUnload,
-} from "./unsaved-work";
+} from './unsaved-work';
 
 (globalThis as { React?: typeof React }).React = React;
 

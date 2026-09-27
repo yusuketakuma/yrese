@@ -6,7 +6,7 @@ import {
   LoginForm,
   SessionExpiryWarning,
   computeSessionStatus,
-} from "./auth-session";
+} from './auth-session';
 
 (globalThis as { React?: typeof React }).React = React;
 

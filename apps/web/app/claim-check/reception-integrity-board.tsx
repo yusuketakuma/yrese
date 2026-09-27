@@ -7,13 +7,13 @@ import type { ReceptionSummaryResponse } from "@yrese/contracts";
 import {
   fetchReceptionSummary,
   toOperationsNotice,
-} from "../api/operations-client";
-import { DomainStatusBadge } from "../components/domain-status-badge";
-import { EmptyState } from "../components/empty-state";
-import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
-import { LoadingState } from "../components/loading-state";
-import { TableScroll } from "../components/operator-ui";
-import { formatAcceptedTime, todayAsIsoDate } from "../reception-dashboard";
+} from '../api/operations-client';
+import { DomainStatusBadge } from '../components/domain-status-badge';
+import { EmptyState } from '../components/empty-state';
+import { ErrorNotice, type ErrorNoticeProps } from '../components/error-notice';
+import { LoadingState } from '../components/loading-state';
+import { TableScroll } from '../components/operator/operator-ui';
+import { formatAcceptedTime, todayAsIsoDate } from '../_reception/reception-dashboard';
 
 /**
  * 請求前点検(SCR-019)内の「保存済み受付・資格確認の実件数」パネル。

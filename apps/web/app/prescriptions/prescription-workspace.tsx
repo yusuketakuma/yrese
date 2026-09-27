@@ -9,15 +9,15 @@ import {
   useState,
 } from "react";
 
-import { ClinicalAlert } from "../components/clinical-alert";
-import { DomainStatusBadge } from "../components/domain-status-badge";
-import { EmptyState } from "../components/empty-state";
-import { ErrorNotice } from "../components/error-notice";
-import { LoadingState } from "../components/loading-state";
+import { ClinicalAlert } from '../components/clinical-alert';
+import { DomainStatusBadge } from '../components/domain-status-badge';
+import { EmptyState } from '../components/empty-state';
+import { ErrorNotice } from '../components/error-notice';
+import { LoadingState } from '../components/loading-state';
 import {
   type PatientContextData,
   useOptionalPatientContext,
-} from "../components/patient-context";
+} from '../components/patient/patient-context';
 import {
   InlineNotice,
   KeyValueList,
@@ -28,9 +28,9 @@ import {
   ScreenHeader,
   StatusPill,
   TableScroll,
-} from "../components/operator-ui";
-import { SeverityList } from "../components/severity-list";
-import { useOptionalUnsavedWork } from "../components/unsaved-work";
+} from '../components/operator/operator-ui';
+import { SeverityList } from '../components/severity-list';
+import { useOptionalUnsavedWork } from '../components/unsaved-work';
 
 import {
   PRESCRIPTION_OPTIONS,
@@ -40,7 +40,7 @@ import {
   createBlankPrescriptionDraft,
   isPrescriptionDraftDirty,
   prescriptionDraftWorkId,
-} from "./prescription-draft";
+} from './prescription-draft';
 import {
   FLAG_FROM_WIRE,
   PrescriptionDraftApiError,
@@ -55,7 +55,7 @@ import {
   toPrescriptionDraftContent,
   transitionPrescriptionLifecycle,
   type PrescriptionLifecycleTransition,
-} from "./prescription-draft-persistence";
+} from './prescription-draft-persistence';
 import {
   PRESCRIPTION_DRAFT_RP_DOSE_MAX_LENGTH,
   PRESCRIPTION_DRAFT_RP_TEXT_MAX_LENGTH,
@@ -68,16 +68,16 @@ import {
 import {
   MasterCodePicker,
   type MasterCodeSelection,
-} from "../masters/master-code-picker";
-import { resolveMasterItemLabels } from "../masters/master-lookup";
-import { useOptionalPrescriptionOrigin } from "./prescription-origin-context";
-import { PrescriptionDraftChangeSummary, PrescriptionLifecycleDialog } from "./prescription-lifecycle-dialog";
+} from '../masters/master-code-picker';
+import { resolveMasterItemLabels } from '../masters/master-lookup';
+import { useOptionalPrescriptionOrigin } from './prescription-origin-context';
+import { PrescriptionDraftChangeSummary, PrescriptionLifecycleDialog } from './prescription-lifecycle-dialog';
 import {
   type DraftRow,
   createBlankDraftRow,
   isDraftRowEmpty,
   removeDraftRow,
-} from "./prescription-replacement";
+} from './prescription-replacement';
 import {
   EMPTY_LIFECYCLE,
   applyDraftRowPatch,
@@ -105,12 +105,12 @@ import {
   type LifecycleActionState,
   type LifecycleDisplayState,
   type PrescriptionDraftChangeKind,
-} from "./prescription-workspace-state";
+} from './prescription-workspace-state';
 
 export {
   PrescriptionDraftChangeSummary,
   PrescriptionLifecycleDialog,
-} from "./prescription-lifecycle-dialog";
+} from './prescription-lifecycle-dialog';
 export {
   applyDraftRowPatch,
   canSavePrescriptionDraft,
@@ -122,7 +122,7 @@ export {
   resolveSaveStateAfterEdit,
   serverDraftDivergenceCopy,
   summarizePrescriptionDraftChanges,
-} from "./prescription-workspace-state";
+} from './prescription-workspace-state';
 
 export function PrescriptionWorkspace() {
   const context = useOptionalPatientContext();

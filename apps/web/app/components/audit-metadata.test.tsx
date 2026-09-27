@@ -7,7 +7,7 @@ import {
   PermissionState,
   ReadOnlyIndicator,
   VersionHistoryIndicator,
-} from "./audit-metadata";
+} from './audit-metadata';
 
 (globalThis as { React?: typeof React }).React = React;
 

@@ -2,13 +2,13 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import AdminPage from "./admin/page";
-import CheckoutPage from "./checkout/page";
-import ClaimCheckPage from "./claim-check/page";
-import MastersPage from "./masters/page";
-import MonthlyClosingPage from "./monthly-closing/page";
-import PatientsPage from "./patients/page";
-import ReceptionPage from "./page";
+import AdminPage from './admin/page';
+import CheckoutPage from './checkout/page';
+import ClaimCheckPage from './claim-check/page';
+import MastersPage from './masters/page';
+import MonthlyClosingPage from './monthly-closing/page';
+import PatientsPage from './patients/page';
+import ReceptionPage from './page';
 
 (globalThis as { React?: typeof React }).React = React;
 

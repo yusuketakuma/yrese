@@ -1,7 +1,7 @@
 import type { PrescriptionChangeType } from "@yrese/shared-kernel";
 import { isPrescriptionChanged } from "@yrese/shared-kernel";
 
-import { DomainStatusBadge } from "./domain-status-badge";
+import { DomainStatusBadge } from './domain-status-badge';
 
 /**
  * 処方変化インジケータ(前回処方からの差分 — H-06/H-07 増減量・中止の見落とし対策)。

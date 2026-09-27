@@ -1,7 +1,7 @@
 "use client";
 
-import { useOptionalOperatorPreferences, type OperatorView } from "./operator-preferences";
-import { Panel, StatusPill, TableScroll } from "./operator-ui";
+import { useOptionalOperatorPreferences, type OperatorView } from './operator-preferences';
+import { Panel, StatusPill, TableScroll } from './operator-ui';
 
 export interface OperatorFocusItem {
   readonly id: string;

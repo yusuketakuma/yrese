@@ -6,7 +6,7 @@ import {
   OPERATOR_VIEWS,
   OperatorPreferencesProvider,
   useOptionalOperatorPreferences,
-} from "./operator-preferences";
+} from './operator-preferences';
 
 (globalThis as { React?: typeof React }).React = React;
 

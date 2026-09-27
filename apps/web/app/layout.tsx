@@ -2,17 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { OperatorCommandBar } from "./components/operator-command-bar";
-import { PatientContextBoundary } from "./components/patient-context-boundary";
-import { PatientContextProvider } from "./components/patient-context";
-import { OperatorPreferencesProvider } from "./components/operator-preferences";
+import { OperatorCommandBar } from './components/operator/operator-command-bar';
+import { PatientContextBoundary } from './components/patient/patient-context-boundary';
+import { PatientContextProvider } from './components/patient/patient-context';
+import { OperatorPreferencesProvider } from './components/operator/operator-preferences';
 import {
   UnsavedWorkProvider,
   UnsavedWorkStatus,
-} from "./components/unsaved-work";
-import { BusinessNav } from "./nav";
-import { PrescriptionOriginProvider } from "./prescriptions/prescription-origin-context";
-import { SystemModeBadge } from "./system-mode-badge";
+} from './components/unsaved-work';
+import { BusinessNav } from './nav';
+import { PrescriptionOriginProvider } from './prescriptions/prescription-origin-context';
+import { SystemModeBadge } from './system-mode-badge';
 import "./globals.css";
 import "./operator-first.css";
 

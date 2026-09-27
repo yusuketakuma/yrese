@@ -11,9 +11,9 @@ import {
   ELIGIBILITY_LABELS,
   PatientHeader,
   computeAgeYears,
-} from "../components/patient-header";
-import { PATIENT_SEARCH_DEV_SCOPES, devTenantHeaders } from "../dev-tenant";
-import { SEX_LABELS } from "../status/visual-status-registry";
+} from '../components/patient/patient-header';
+import { PATIENT_SEARCH_DEV_SCOPES, devTenantHeaders } from '../dev-tenant';
+import { SEX_LABELS } from '../status/visual-status-registry';
 import { patientId } from "@yrese/shared-kernel";
 import {
   createSearchRunner,
@@ -26,7 +26,7 @@ import {
   toPatientContextData,
   type SearchPage,
   type SearchState,
-} from "./patient-search";
+} from './patient-search';
 
 (globalThis as { React?: typeof React }).React = React;
 

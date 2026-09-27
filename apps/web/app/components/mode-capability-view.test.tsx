@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { ModeCapabilityView } from "./mode-capability-view";
+import { ModeCapabilityView } from './mode-capability-view';
 
 (globalThis as { React?: typeof React }).React = React;
 

@@ -10,7 +10,7 @@ import {
   PrototypeBanner,
   StatusPill,
   TableScroll,
-} from "./operator-ui";
+} from './operator-ui';
 
 (globalThis as { React?: typeof React }).React = React;
 

@@ -6,7 +6,7 @@ import {
   ClinicalAlert,
   ClinicalAlertSummary,
   highestUnacknowledgedSeverity,
-} from "./clinical-alert";
+} from './clinical-alert';
 
 (globalThis as { React?: typeof React }).React = React;
 

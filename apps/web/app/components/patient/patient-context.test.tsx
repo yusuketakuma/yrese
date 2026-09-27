@@ -12,7 +12,7 @@ import {
   fetchPatientById,
   toPatientContextData,
   type PatientContextData,
-} from "./patient-context";
+} from './patient-context';
 
 (globalThis as { React?: typeof React }).React = React;
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { validateReceptionLaunchEntry } from "./prescription-launch-context";
+import { validateReceptionLaunchEntry } from './prescription-launch-context';
 
 describe("prescription launch authorization evidence", () => {
   it("requires an entry from the authenticated queue", () => {

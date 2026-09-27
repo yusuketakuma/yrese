@@ -9,11 +9,11 @@ import {
   patientId,
 } from "@yrese/shared-kernel";
 
-import { resolveWebApiUrl } from "../api-transport";
-import { registeredErrorCodeOrUndefined } from "../components/error-code";
-import { type ErrorNoticeProps } from "../components/error-notice";
-import { type PatientContextData } from "../components/patient-context";
-import { devTenantHeaders } from "../dev-tenant";
+import { resolveWebApiUrl } from '../api-transport';
+import { registeredErrorCodeOrUndefined } from '../components/error-code';
+import { type ErrorNoticeProps } from '../components/error-notice';
+import { type PatientContextData } from '../components/patient/patient-context';
+import { devTenantHeaders } from '../dev-tenant';
 
 export const patientSearchPageLimitErrorMessage =
   "Patient search response exceeded the requested page limit";
@@ -368,7 +368,7 @@ export function createSearchRunner(
 }
 
 // 正本は patient-context.tsx(再取得経路と共用)。既存 import 互換のため再エクスポート。
-export { toPatientContextData } from "../components/patient-context";
+export { toPatientContextData } from '../components/patient/patient-context';
 
 /** カナ完全一致で複数存在する患者のカナ集合(UIX-001 P-09 同姓同名警告) */
 export function duplicateKanaSet(

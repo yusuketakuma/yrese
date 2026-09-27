@@ -4,7 +4,7 @@ import type {
   PermissionResource,
 } from "@yrese/shared-kernel";
 
-import type { OperatorTone } from "../components/operator-ui";
+import type { OperatorTone } from '../components/operator/operator-ui';
 
 export type AdminTab =
   | "overview"

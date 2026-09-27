@@ -4,12 +4,12 @@ import type {
   ErrorSeverity,
 } from "@yrese/shared-kernel";
 
-import { DomainStatusBadge } from "./domain-status-badge";
+import { DomainStatusBadge } from './domain-status-badge';
 import {
   CLINICAL_ALERT_TYPE_IDENTITY,
   SEVERITY_ORDER,
   SEVERITY_PRESENTATION,
-} from "../status/visual-status-registry";
+} from '../status/visual-status-registry';
 
 /**
  * 臨床アラート(調剤時の患者安全チェック — H-08 重大警告見落とし対策)。

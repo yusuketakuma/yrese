@@ -9,14 +9,14 @@ import {
   type PermissionScope,
 } from "@yrese/shared-kernel";
 
-import { fetchMigrationState, toOperationsNotice } from "../api/operations-client";
+import { fetchMigrationState, toOperationsNotice } from '../api/operations-client';
 import {
   fetchSessionScopes,
   SessionApiError,
   sessionHasScopes,
-} from "../api/session-client";
-import { resolveWebApiUrl } from "../api-transport";
-import type { ErrorNoticeProps } from "../components/error-notice";
+} from '../api/session-client';
+import { resolveWebApiUrl } from '../api-transport';
+import type { ErrorNoticeProps } from '../components/error-notice';
 
 export const ADMIN_DASHBOARD_REQUIRED_SCOPES = [
   permissionScope("user", "admin"),

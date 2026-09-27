@@ -2,9 +2,9 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import CheckoutPage from "./checkout/page";
-import ClaimCheckPage from "./claim-check/page";
-import { SelectedPatientWorkspaceView } from "./prescriptions/prescription-workspace";
+import CheckoutPage from './checkout/page';
+import ClaimCheckPage from './claim-check/page';
+import { SelectedPatientWorkspaceView } from './prescriptions/prescription-workspace';
 
 (globalThis as { React?: typeof React }).React = React;
 

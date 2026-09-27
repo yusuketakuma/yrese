@@ -17,14 +17,14 @@ import {
   permissionScope,
 } from "@yrese/shared-kernel";
 
-import { devTenantHeaders } from "../dev-tenant";
+import { devTenantHeaders } from '../dev-tenant';
 
-import { registeredErrorCodeOrUndefined } from "../components/error-code";
-import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
-import { Panel, TableScroll } from "../components/operator-ui";
-import { SeverityList } from "../components/severity-list";
-import { SEX_LABELS } from "../status/visual-status-registry";
-import { resolveWebApiUrl } from "../api-transport";
+import { registeredErrorCodeOrUndefined } from '../components/error-code';
+import { ErrorNotice, type ErrorNoticeProps } from '../components/error-notice';
+import { Panel, TableScroll } from '../components/operator/operator-ui';
+import { SeverityList } from '../components/severity-list';
+import { SEX_LABELS } from '../status/visual-status-registry';
+import { resolveWebApiUrl } from '../api-transport';
 
 /**
  * 患者新規登録フォーム(SCR-002-C / WP-7202 / API-001 0.3.x)。

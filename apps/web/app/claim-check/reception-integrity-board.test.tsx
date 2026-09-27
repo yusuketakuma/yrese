@@ -12,7 +12,7 @@ import {
   nextReceptionIntegrityRequest,
   retainedSnapshot,
   type ReceptionIntegrityState,
-} from "./reception-integrity-board";
+} from './reception-integrity-board';
 
 const SUMMARY: ReceptionSummaryResponse = {
   date: "2026-07-09",

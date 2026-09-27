@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { ErrorNotice } from "./components/error-notice";
+import { ErrorNotice } from './components/error-notice';
 
 /**
  * 全ルート共通の 404 表示(App Router not-found.tsx / 監査 S-01・P-19)。

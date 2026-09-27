@@ -16,11 +16,11 @@ import {
   SYSTEM_MODES,
 } from "@yrese/shared-kernel";
 
-import { DomainStatusBadge } from "../components/domain-status-badge";
-import { ELIGIBILITY_LABELS } from "../components/patient-header";
-import { RECEPTION_STATUS_LABELS } from "../reception-dashboard";
-import { MODE_LABELS } from "../system-mode-badge";
-import * as visualStatusRegistry from "./visual-status-registry";
+import { DomainStatusBadge } from '../components/domain-status-badge';
+import { ELIGIBILITY_LABELS } from '../components/patient/patient-header';
+import { RECEPTION_STATUS_LABELS } from '../_reception/reception-dashboard';
+import { MODE_LABELS } from '../system-mode-badge';
+import * as visualStatusRegistry from './visual-status-registry';
 import {
   CLINICAL_ALERT_ACK_PRESENTATION,
   CLINICAL_ALERT_TYPE_IDENTITY,
@@ -36,7 +36,7 @@ import {
   SYNC_PRESENTATION,
   SYSTEM_MODE_PRESENTATION,
   type StatusPresentation,
-} from "./visual-status-registry";
+} from './visual-status-registry';
 
 (globalThis as { React?: typeof React }).React = React;
 

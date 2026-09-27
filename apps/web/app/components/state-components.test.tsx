@@ -2,11 +2,11 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { BlockerBanner } from "./blocker-banner";
-import { EmptyState } from "./empty-state";
-import { LoadingState } from "./loading-state";
-import { SeverityList } from "./severity-list";
-import { StatusBadge } from "./status-badge";
+import { BlockerBanner } from './blocker-banner';
+import { EmptyState } from './empty-state';
+import { LoadingState } from './loading-state';
+import { SeverityList } from './severity-list';
+import { StatusBadge } from './status-badge';
 
 (globalThis as { React?: typeof React }).React = React;
 

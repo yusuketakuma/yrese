@@ -8,18 +8,18 @@ vi.mock("next/navigation", () => ({
   usePathname: () => navigation.pathname,
 }));
 
-import AdminPage from "./admin/page";
-import CheckoutPage from "./checkout/page";
-import ClaimCheckPage from "./claim-check/page";
-import RootLayout from "./layout";
-import MastersPage from "./masters/page";
-import MonthlyClosingPage from "./monthly-closing/page";
-import { BusinessNav, NAV_GROUPS, NAV_ITEMS } from "./nav";
-import ReceptionPage from "./page";
-import PatientsPage from "./patients/page";
-import PrescriptionsPage from "./prescriptions/page";
-import SyncStatusPage from "./sync-status/page";
-import { SystemModeBadge } from "./system-mode-badge";
+import AdminPage from './admin/page';
+import CheckoutPage from './checkout/page';
+import ClaimCheckPage from './claim-check/page';
+import RootLayout from './layout';
+import MastersPage from './masters/page';
+import MonthlyClosingPage from './monthly-closing/page';
+import { BusinessNav, NAV_GROUPS, NAV_ITEMS } from './nav';
+import ReceptionPage from './page';
+import PatientsPage from './patients/page';
+import PrescriptionsPage from './prescriptions/page';
+import SyncStatusPage from './sync-status/page';
+import { SystemModeBadge } from './system-mode-badge';
 
 (globalThis as { React?: typeof React }).React = React;
 

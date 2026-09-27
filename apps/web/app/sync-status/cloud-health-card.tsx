@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 
 import type { HealthResponse } from "@yrese/contracts";
 
-import { fetchAdminHealth } from "../admin/admin-data";
-import { MetricCard, type OperatorTone } from "../components/operator-ui";
+import { fetchAdminHealth } from '../admin/admin-data';
+import { MetricCard, type OperatorTone } from '../components/operator/operator-ui';
 
 /**
  * クラウドAPI稼働確認カード(WP-5101)。

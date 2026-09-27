@@ -12,8 +12,8 @@ import {
 import {
   ReceptionTransitionActions,
   RECEPTION_CANCEL_REASON_OPTIONS,
-} from "./reception-transition-action";
-import { ReceptionError, transitionReception } from "./reception-dashboard";
+} from './reception-transition-action';
+import { ReceptionError, transitionReception } from './reception-dashboard';
 
 const unverifiedEligibility = {
   state: "UNVERIFIED" as const,

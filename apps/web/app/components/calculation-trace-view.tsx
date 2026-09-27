@@ -5,7 +5,7 @@ import type {
   EvidenceRefWire,
 } from "@yrese/contracts";
 
-import { SeverityList, type SeverityItem } from "./severity-list";
+import { SeverityList, type SeverityItem } from './severity-list';
 
 /**
  * calculation_trace ビューア基盤(SCR-012 / WP-3011a / QUA-007 L2 初UI)。

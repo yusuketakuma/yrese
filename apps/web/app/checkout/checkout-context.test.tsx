@@ -14,10 +14,10 @@ import {
   describeDraftSummary,
   loadCheckoutReceptions,
   toDraftSummary,
-} from "./checkout-context";
-import { PatientContextProvider } from "../components/patient-context";
-import { UnsavedWorkProvider } from "../components/unsaved-work";
-import { PrescriptionOriginProvider } from "../prescriptions/prescription-origin-context";
+} from './checkout-context';
+import { PatientContextProvider } from '../components/patient/patient-context';
+import { UnsavedWorkProvider } from '../components/unsaved-work';
+import { PrescriptionOriginProvider } from '../prescriptions/prescription-origin-context';
 
 const unverifiedEligibility = {
   state: "UNVERIFIED" as const,

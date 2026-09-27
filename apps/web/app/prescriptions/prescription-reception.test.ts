@@ -5,12 +5,12 @@ import type {
   ReceptionQueueResponse,
 } from "@yrese/contracts";
 
-import type { PrescriptionReceptionOrigin } from "./prescription-origin-context";
+import type { PrescriptionReceptionOrigin } from './prescription-origin-context';
 import {
   PrescriptionReceptionError,
   loadPrescriptionReceptionOrigin,
   verifyPrescriptionReceptionOrigin,
-} from "./prescription-reception";
+} from './prescription-reception';
 
 const unverifiedEligibility = {
   state: "UNVERIFIED" as const,

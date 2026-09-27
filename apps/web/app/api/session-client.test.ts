@@ -9,7 +9,7 @@ import {
   scopeAbsenceIsMeasurable,
   sessionHasScopes,
   toSessionNotice,
-} from "./session-client";
+} from './session-client';
 
 afterEach(() => {
   vi.unstubAllEnvs();

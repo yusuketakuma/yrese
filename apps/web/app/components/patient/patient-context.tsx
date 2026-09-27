@@ -24,11 +24,11 @@ import {
   permissionScope,
 } from "@yrese/shared-kernel";
 
-import { resolveWebApiUrl } from "../api-transport";
-import { devTenantHeaders } from "../dev-tenant";
-import { DomainStatusBadge } from "./domain-status-badge";
-import { PatientHeader, computeAgeYears } from "./patient-header";
-import { useOptionalUnsavedWork } from "./unsaved-work";
+import { resolveWebApiUrl } from '../../api-transport';
+import { devTenantHeaders } from '../../dev-tenant';
+import { DomainStatusBadge } from '../domain-status-badge';
+import { PatientHeader, computeAgeYears } from './patient-header';
+import { useOptionalUnsavedWork } from '../unsaved-work';
 
 const invalidPatientNotFoundResponseErrorMessage =
   "Patient refresh not-found response invalid";

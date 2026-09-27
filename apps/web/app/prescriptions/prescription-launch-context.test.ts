@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   parsePrescriptionLaunchContext,
   validateReceptionLaunchEntry,
-} from "./prescription-launch-context";
+} from './prescription-launch-context';
 
 describe("parsePrescriptionLaunchContext", () => {
   it("accepts one reception and business date without carrying patient identity", () => {

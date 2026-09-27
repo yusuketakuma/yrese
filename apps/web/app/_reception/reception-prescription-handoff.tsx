@@ -8,16 +8,16 @@ import type { ReceptionQueueEntry } from "@yrese/contracts";
 import {
   toPatientContextData,
   useOptionalPatientContext,
-} from "./components/patient-context";
-import { PrototypeAction } from "./components/operator-ui";
-import { useOptionalUnsavedWork } from "./components/unsaved-work";
+} from '../components/patient/patient-context';
+import { PrototypeAction } from '../components/operator/operator-ui';
+import { useOptionalUnsavedWork } from '../components/unsaved-work';
 import {
   PRESCRIPTION_ORIGIN_CHANGE_MESSAGE,
   conflictingPrescriptionDrafts,
   createPrescriptionReceptionOrigin,
   useOptionalPrescriptionOrigin,
-} from "./prescriptions/prescription-origin-context";
-import { isReceptionOpenForPrescriptionEntry } from "./prescriptions/prescription-reception";
+} from '../prescriptions/prescription-origin-context';
+import { isReceptionOpenForPrescriptionEntry } from '../prescriptions/prescription-reception';
 
 export const canOpenPrescriptionFromReception =
   isReceptionOpenForPrescriptionEntry;

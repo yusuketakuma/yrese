@@ -9,16 +9,16 @@ import {
   type PermissionScope,
 } from "@yrese/shared-kernel";
 
-import { EmptyState } from "../components/empty-state";
-import { ErrorNotice } from "../components/error-notice";
+import { EmptyState } from '../components/empty-state';
+import { ErrorNotice } from '../components/error-notice';
 import {
   KeyValueList,
   Panel,
   PrototypeAction,
   StatusPill,
   TableScroll,
-} from "../components/operator-ui";
-import { type AdminDashboardSnapshot } from "./admin-data";
+} from '../components/operator/operator-ui';
+import { type AdminDashboardSnapshot } from './admin-data';
 import {
   ACTION_LABELS,
   AUTHORITY_GATE_NOTE,
@@ -26,7 +26,7 @@ import {
   RESOURCE_LABELS,
   formatInstant,
   type BrowserPreferenceSnapshot,
-} from "./admin-meta";
+} from './admin-meta';
 
 export function UnavailablePanel({
   title,

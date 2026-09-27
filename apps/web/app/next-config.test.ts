@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import nextConfig from "../next.config";
+import nextConfig from '../next.config';
 
 afterEach(() => {
   vi.unstubAllEnvs();

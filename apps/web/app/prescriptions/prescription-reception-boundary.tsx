@@ -5,25 +5,25 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import type { ReceptionQueueEntry } from "@yrese/contracts";
 
-import { DomainStatusBadge } from "../components/domain-status-badge";
-import { ErrorNotice } from "../components/error-notice";
-import { LoadingState } from "../components/loading-state";
+import { DomainStatusBadge } from '../components/domain-status-badge';
+import { ErrorNotice } from '../components/error-notice';
+import { LoadingState } from '../components/loading-state';
 import {
   InlineNotice,
   ScreenHeader,
   StatusPill,
-} from "../components/operator-ui";
-import { useOptionalPatientContext } from "../components/patient-context";
-import { useOptionalUnsavedWork } from "../components/unsaved-work";
-import { formatAcceptedTime } from "../reception-dashboard";
+} from '../components/operator/operator-ui';
+import { useOptionalPatientContext } from '../components/patient/patient-context';
+import { useOptionalUnsavedWork } from '../components/unsaved-work';
+import { formatAcceptedTime } from '../_reception/reception-dashboard';
 import {
   type PrescriptionReceptionOrigin,
   useOptionalPrescriptionOrigin,
-} from "./prescription-origin-context";
+} from './prescription-origin-context';
 import {
   PrescriptionReceptionError,
   loadPrescriptionReceptionOrigin,
-} from "./prescription-reception";
+} from './prescription-reception';
 
 type VerificationState =
   | { readonly kind: "idle" }

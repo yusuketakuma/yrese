@@ -5,7 +5,7 @@ import {
   createBlankDraftRows,
   isDraftRowEmpty,
   removeDraftRow,
-} from "./prescription-replacement";
+} from './prescription-replacement';
 
 describe("prescription draft row policy", () => {
   it("starts from exactly one blank row", () => {

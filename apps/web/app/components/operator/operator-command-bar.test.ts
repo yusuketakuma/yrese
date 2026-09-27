@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   resolveOperatorIntent,
   shouldFocusOperatorCommand,
-} from "./operator-command-policy";
+} from './operator-command-policy';
 
 describe("operator command policy", () => {
   it("maps explicit bounded requests to existing workspaces", () => {

@@ -13,9 +13,9 @@ import {
   type PermissionScope,
 } from "@yrese/shared-kernel";
 
-import { EmptyState } from "../components/empty-state";
-import { ErrorNotice } from "../components/error-notice";
-import { LoadingState } from "../components/loading-state";
+import { EmptyState } from '../components/empty-state';
+import { ErrorNotice } from '../components/error-notice';
+import { LoadingState } from '../components/loading-state';
 import {
   InlineNotice,
   KeyValueList,
@@ -30,14 +30,14 @@ import {
   StatusPill,
   TableScroll,
   type OperatorTone,
-} from "../components/operator-ui";
+} from '../components/operator/operator-ui';
 import {
   AdminDataError,
   type AdminDashboardSnapshot,
   countAdminScopes,
   hasRequiredAdminScopes,
   loadAdminDashboardSnapshot,
-} from "./admin-data";
+} from './admin-data';
 import {
   ADMIN_SCREEN_TITLE,
   TAB_ITEMS,
@@ -45,7 +45,7 @@ import {
   formatInstant,
   type AdminTab,
   type BrowserPreferenceSnapshot,
-} from "./admin-meta";
+} from './admin-meta';
 import {
   AccessOverview,
   AccessibilityPanel,
@@ -55,7 +55,7 @@ import {
   NotificationSettings,
   PermissionMatrix,
   UnavailablePanel,
-} from "./admin-panels";
+} from './admin-panels';
 
 /** Component boundary fallback: loader internals must never strand the screen in pending. */
 export async function loadAdminDashboardSafely(

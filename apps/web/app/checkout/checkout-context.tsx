@@ -9,20 +9,20 @@ import {
   type ReceptionQueueEntry,
 } from "@yrese/contracts";
 
-import { DomainStatusBadge } from "../components/domain-status-badge";
-import { EmptyState } from "../components/empty-state";
-import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
-import { LoadingState } from "../components/loading-state";
-import { Panel, StatusPill, TableScroll } from "../components/operator-ui";
-import { useOptionalPatientContext } from "../components/patient-context";
-import { loadPrescriptionDraft } from "../prescriptions/prescription-draft-persistence";
+import { DomainStatusBadge } from '../components/domain-status-badge';
+import { EmptyState } from '../components/empty-state';
+import { ErrorNotice, type ErrorNoticeProps } from '../components/error-notice';
+import { LoadingState } from '../components/loading-state';
+import { Panel, StatusPill, TableScroll } from '../components/operator/operator-ui';
+import { useOptionalPatientContext } from '../components/patient/patient-context';
+import { loadPrescriptionDraft } from '../prescriptions/prescription-draft-persistence';
 import {
   ReceptionError,
   fetchReceptionQueue,
   formatAcceptedTime,
   todayAsIsoDate,
-} from "../reception-dashboard";
-import { ReceptionPrescriptionHandoffAction } from "../reception-prescription-handoff";
+} from '../_reception/reception-dashboard';
+import { ReceptionPrescriptionHandoffAction } from '../_reception/reception-prescription-handoff';
 
 /**
  * 会計画面(SCR-016)の実接続部。

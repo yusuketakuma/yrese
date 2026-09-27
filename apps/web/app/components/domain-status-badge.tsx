@@ -1,4 +1,4 @@
-import { resolveStatus, type StatusQuery } from "../status/visual-status-registry";
+import { resolveStatus, type StatusQuery } from '../status/visual-status-registry';
 
 /**
  * ドメイン状態バッジ(Visual Status Registry 駆動)。

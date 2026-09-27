@@ -11,16 +11,16 @@ import {
 } from "@yrese/contracts";
 import { patientId } from "@yrese/shared-kernel";
 
-import { DomainStatusBadge } from "../components/domain-status-badge";
-import { EmptyState } from "../components/empty-state";
-import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
-import { LoadingState } from "../components/loading-state";
+import { DomainStatusBadge } from '../components/domain-status-badge';
+import { EmptyState } from '../components/empty-state';
+import { ErrorNotice, type ErrorNoticeProps } from '../components/error-notice';
+import { LoadingState } from '../components/loading-state';
 import {
   useOptionalPatientContext,
   type PatientContextData,
-} from "../components/patient-context";
-import { PatientHeader, computeAgeYears } from "../components/patient-header";
-import { SeverityList } from "../components/severity-list";
+} from '../components/patient/patient-context';
+import { PatientHeader, computeAgeYears } from '../components/patient/patient-header';
+import { SeverityList } from '../components/severity-list';
 import {
   InlineNotice,
   KeyValueList,
@@ -29,19 +29,19 @@ import {
   RailCard,
   ScreenHeader,
   StatusPill,
-} from "../components/operator-ui";
+} from '../components/operator/operator-ui';
 import {
   ReceptionError,
   fetchReceptionQueue,
   formatAcceptedTime,
   receptionEligibilityToPatientStatus,
-} from "../reception-dashboard";
-import { ReceptionPrescriptionHandoffAction } from "../reception-prescription-handoff";
-import { loadPrescriptionDraft } from "./prescription-draft-persistence";
+} from '../_reception/reception-dashboard';
+import { ReceptionPrescriptionHandoffAction } from '../_reception/reception-prescription-handoff';
+import { loadPrescriptionDraft } from './prescription-draft-persistence';
 import {
   type PrescriptionLaunchContext,
   validateReceptionLaunchEntry,
-} from "./prescription-launch-context";
+} from './prescription-launch-context';
 
 /** 画面見出し。/prescriptions の凍結見出しとは別 route であり、名称を共有しない。 */
 const SCREEN_TITLE = "受付スコープ処方入力";

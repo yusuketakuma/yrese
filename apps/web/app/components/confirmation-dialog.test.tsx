@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { ConfirmationDialog, DestructiveActionDialog } from "./confirmation-dialog";
+import { ConfirmationDialog, DestructiveActionDialog } from './confirmation-dialog';
 
 (globalThis as { React?: typeof React }).React = React;
 

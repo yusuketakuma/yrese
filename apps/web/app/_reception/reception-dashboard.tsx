@@ -6,23 +6,23 @@ import {
   type ReceptionQueueEntry,
 } from "@yrese/contracts";
 
-import { ErrorNotice, type ErrorNoticeProps } from "./components/error-notice";
+import { ErrorNotice, type ErrorNoticeProps } from '../components/error-notice';
 import {
   type PatientContextData,
   useOptionalPatientContext,
-} from "./components/patient-context";
+} from '../components/patient/patient-context';
 import {
   RECEPTION_STATUS_LABELS,
   fetchReceptionQueue,
   genericRegistrationErrorNotice,
   trustedReceptionErrorNotice,
-} from "./reception-api";
+} from './reception-api';
 import {
   ReceptionQueueMetricsView,
   ReceptionQueueView,
   createReceptionQueueRunner,
   type QueueState,
-} from "./reception-queue";
+} from './reception-queue';
 import {
   ReceptionRegistrationForm,
   createReceptionDashboardLifecycle,
@@ -32,13 +32,13 @@ import {
   registrationPatientChangeNotice,
   submitReceptionRegistration,
   subscribeReceptionQueueRefreshOnVisible,
-} from "./reception-registration";
-import { parseDateParam, todayAsIsoDate } from "./reception-time";
+} from './reception-registration';
+import { parseDateParam, todayAsIsoDate } from './reception-time';
 
-export * from "./reception-api";
-export * from "./reception-time";
-export * from "./reception-queue";
-export * from "./reception-registration";
+export * from './reception-api';
+export * from './reception-time';
+export * from './reception-queue';
+export * from './reception-registration';
 
 /**
  * 受付ダッシュボード(WP-3009-UI / SCR-001)。

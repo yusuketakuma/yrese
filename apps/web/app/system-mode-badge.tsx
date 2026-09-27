@@ -3,7 +3,7 @@ import type { SystemMode } from "@yrese/shared-kernel";
 import {
   SYSTEM_MODE_LABELS,
   SYSTEM_MODE_PRESENTATION,
-} from "./status/visual-status-registry";
+} from './status/visual-status-registry';
 
 export const MODE_LABELS: Record<SystemMode, string> = SYSTEM_MODE_LABELS;
 

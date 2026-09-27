@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 
-import { useOptionalPatientContext } from "./patient-context";
-import { ELIGIBILITY_LABELS, computeAgeYears } from "./patient-header";
-import { KeyValueList, RailCard, StatusPill } from "./operator-ui";
-import { SEX_LABELS } from "../status/visual-status-registry";
+import { useOptionalPatientContext } from './patient-context';
+import { ELIGIBILITY_LABELS, computeAgeYears } from './patient-header';
+import { KeyValueList, RailCard, StatusPill } from '../operator/operator-ui';
+import { SEX_LABELS } from '../../status/visual-status-registry';
 
 export function PatientContextRail() {
   const context = useOptionalPatientContext();

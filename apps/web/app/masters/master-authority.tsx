@@ -14,11 +14,11 @@ import {
   toSessionNotice,
   type SessionRequestOptions,
   type SessionScopes,
-} from "../api/session-client";
-import { EmptyState } from "../components/empty-state";
-import { ErrorNotice, type ErrorNoticeProps } from "../components/error-notice";
-import { LoadingState } from "../components/loading-state";
-import { KeyValueList, Panel, StatusPill } from "../components/operator-ui";
+} from '../api/session-client';
+import { EmptyState } from '../components/empty-state';
+import { ErrorNotice, type ErrorNoticeProps } from '../components/error-notice';
+import { LoadingState } from '../components/loading-state';
+import { KeyValueList, Panel, StatusPill } from '../components/operator/operator-ui';
 
 /**
  * SCR-023 のうち、実際に取得できる唯一の事実を表示する区画。

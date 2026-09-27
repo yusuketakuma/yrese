@@ -4,13 +4,13 @@ import { describe, expect, it } from "vitest";
 
 import type { ReceptionQueueEntry } from "@yrese/contracts";
 
-import { PatientContextProvider } from "./components/patient-context";
-import { UnsavedWorkProvider } from "./components/unsaved-work";
-import { PrescriptionOriginProvider } from "./prescriptions/prescription-origin-context";
+import { PatientContextProvider } from '../components/patient/patient-context';
+import { UnsavedWorkProvider } from '../components/unsaved-work';
+import { PrescriptionOriginProvider } from '../prescriptions/prescription-origin-context';
 import {
   ReceptionPrescriptionHandoffAction,
   canOpenPrescriptionFromReception,
-} from "./reception-prescription-handoff";
+} from './reception-prescription-handoff';
 
 const unverifiedEligibility = {
   state: "UNVERIFIED" as const,

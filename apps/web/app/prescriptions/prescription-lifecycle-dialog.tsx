@@ -1,14 +1,14 @@
 "use client";
 
-import { ConfirmationDialog } from "../components/confirmation-dialog";
-import { DEV_STUB_ACTOR_ID } from "../dev-tenant";
+import { ConfirmationDialog } from '../components/confirmation-dialog';
+import { DEV_STUB_ACTOR_ID } from '../dev-tenant';
 
-import type { PrescriptionDraftSnapshot } from "./prescription-draft";
+import type { PrescriptionDraftSnapshot } from './prescription-draft';
 import {
   type PrescriptionDraftChangeKind,
   serverDraftDivergenceCopy,
   summarizePrescriptionDraftChanges,
-} from "./prescription-workspace-state";
+} from './prescription-workspace-state';
 
 export function PrescriptionDraftChangeSummary({
   kind,

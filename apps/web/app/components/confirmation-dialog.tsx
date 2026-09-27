@@ -1,6 +1,6 @@
 import type { ErrorSeverity } from "@yrese/shared-kernel";
 
-import { SEVERITY_PRESENTATION } from "../status/visual-status-registry";
+import { SEVERITY_PRESENTATION } from '../status/visual-status-registry';
 
 /**
  * 確認ダイアログ群(UIX-001 P-11 破壊的・確定・承認操作の二段階確認)。

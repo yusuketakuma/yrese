@@ -11,8 +11,8 @@ import {
   savePrescriptionDraft,
   toPrescriptionDraftContent,
   transitionPrescriptionLifecycle,
-} from "./prescription-draft-persistence";
-import { createBlankPrescriptionDraft } from "./prescription-draft";
+} from './prescription-draft-persistence';
+import { createBlankPrescriptionDraft } from './prescription-draft';
 
 /** 自由記載の実入力行を1件持つ draft(全空 draft は保存対象外)。 */
 function draftWithTextRow() {

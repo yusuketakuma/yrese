@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { SYSTEM_MODES } from "@yrese/shared-kernel";
 
-import { ModeOverviewTable } from "./mode-overview";
+import { ModeOverviewTable } from './mode-overview';
 
 (globalThis as { React?: typeof React }).React = React;
 

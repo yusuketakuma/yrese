@@ -6,8 +6,8 @@ import {
   type SystemMode,
 } from "@yrese/shared-kernel";
 
-import { PROVISIONAL_STATUS_LABELS } from "../status/visual-status-registry";
-import { MODE_LABELS } from "../system-mode-badge";
+import { PROVISIONAL_STATUS_LABELS } from '../status/visual-status-registry';
+import { MODE_LABELS } from '../system-mode-badge';
 
 /**
  * SCR-026 LOCAL_ONLY / 障害時モードの操作可否表示基盤(WP-3010a / ARC-001 §5)。

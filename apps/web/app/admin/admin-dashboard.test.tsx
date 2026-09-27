@@ -7,11 +7,11 @@ import type { PermissionScope } from "@yrese/shared-kernel";
 import type {
   AdminDashboardSnapshot,
   AdminMigrationSection,
-} from "./admin-data";
+} from './admin-data';
 import {
   AdminDashboardView,
   loadAdminDashboardSafely,
-} from "./admin-dashboard";
+} from './admin-dashboard';
 
 (globalThis as { React?: typeof React }).React = React;
 

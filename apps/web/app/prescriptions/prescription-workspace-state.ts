@@ -22,19 +22,19 @@ import {
   toPrescriptionDraftContent,
   transitionPrescriptionLifecycle,
   type PrescriptionLifecycleTransition,
-} from "./prescription-draft-persistence";
+} from './prescription-draft-persistence';
 import {
   type PrescriptionDraftSnapshot,
   type PrescriptionOption,
   createBlankPrescriptionDraft,
-} from "./prescription-draft";
+} from './prescription-draft';
 import {
   type DraftRow,
   createBlankDraftRow,
   isDraftRowEmpty,
   removeDraftRow,
-} from "./prescription-replacement";
-import { resolveMasterItemLabels } from "../masters/master-lookup";
+} from './prescription-replacement';
+import { resolveMasterItemLabels } from '../masters/master-lookup';
 
 export type DraftLoadState =
   | { readonly kind: "unlinked" }

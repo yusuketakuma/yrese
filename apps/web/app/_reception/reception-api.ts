@@ -21,12 +21,12 @@ import {
   type PermissionScope,
 } from "@yrese/shared-kernel";
 
-import { resolveWebApiUrl } from "./api-transport";
-import { registeredErrorCodeOrUndefined } from "./components/error-code";
-import { type ErrorNoticeProps } from "./components/error-notice";
-import { devTenantHeaders } from "./dev-tenant";
-import { RECEPTION_STATUS_LABELS as RECEPTION_STATUS_LABELS_SSOT } from "./status/visual-status-registry";
-import { todayAsIsoDate } from "./reception-time";
+import { resolveWebApiUrl } from '../api-transport';
+import { registeredErrorCodeOrUndefined } from '../components/error-code';
+import { type ErrorNoticeProps } from '../components/error-notice';
+import { devTenantHeaders } from '../dev-tenant';
+import { RECEPTION_STATUS_LABELS as RECEPTION_STATUS_LABELS_SSOT } from '../status/visual-status-registry';
+import { todayAsIsoDate } from './reception-time';
 
 export const RECEPTION_STATUS_LABELS: Record<ReceptionStatus, string> =
   RECEPTION_STATUS_LABELS_SSOT;

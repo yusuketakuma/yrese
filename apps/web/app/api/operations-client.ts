@@ -12,9 +12,9 @@ import {
   type PermissionScope,
 } from "@yrese/shared-kernel";
 
-import { resolveWebApiUrl } from "../api-transport";
-import type { ErrorNoticeProps } from "../components/error-notice";
-import { devTenantHeaders } from "../dev-tenant";
+import { resolveWebApiUrl } from '../api-transport';
+import type { ErrorNoticeProps } from '../components/error-notice';
+import { devTenantHeaders } from '../dev-tenant';
 
 /**
  * 運用集計API(件数・時刻・enum・スキーマ版数のみ)のWebクライアント。

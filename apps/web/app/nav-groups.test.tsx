@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { BusinessNavView, NAV_GROUPS, NAV_ITEMS } from "./nav";
+import { BusinessNavView, NAV_GROUPS, NAV_ITEMS } from './nav';
 
 (globalThis as { React?: typeof React }).React = React;
 

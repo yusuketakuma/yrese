@@ -9,7 +9,7 @@ import {
   fetchCoverage,
   PatientCoveragePanel,
   recordCoverage,
-} from "./patient-coverage";
+} from './patient-coverage';
 
 (globalThis as { React?: typeof React }).React = React;
 

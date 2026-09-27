@@ -6,8 +6,8 @@ import {
   type SystemMode,
 } from "@yrese/shared-kernel";
 
-import { DomainStatusBadge } from "../components/domain-status-badge";
-import { TableScroll } from "../components/operator-ui";
+import { DomainStatusBadge } from '../components/domain-status-badge';
+import { TableScroll } from '../components/operator/operator-ui';
 
 /**
  * システムモード別 可否早見表(SCR-027 同期状態画面の基盤 / UIX-001 P-19 非常時の見読性)。

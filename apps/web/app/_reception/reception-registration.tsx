@@ -2,12 +2,12 @@
 
 import { type ReceptionQueueEntry } from "@yrese/contracts";
 
-import { type ErrorNoticeProps } from "./components/error-notice";
-import { type PatientContextData } from "./components/patient-context";
+import { type ErrorNoticeProps } from '../components/error-notice';
+import { type PatientContextData } from '../components/patient/patient-context';
 import {
   createReception,
   isSettledReceptionCreateFailure,
-} from "./reception-api";
+} from './reception-api';
 
 export function createReceptionDashboardLifecycle() {
   let mounted = false;

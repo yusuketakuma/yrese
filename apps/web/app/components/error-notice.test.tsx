@@ -2,9 +2,9 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import RouteError from "../error";
-import { registeredErrorCodeOrUndefined } from "./error-code";
-import { ErrorNotice } from "./error-notice";
+import RouteError from '../error';
+import { registeredErrorCodeOrUndefined } from './error-code';
+import { ErrorNotice } from './error-notice';
 
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react")>();

@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { PatientContextProvider } from "../components/patient-context";
+import { PatientContextProvider } from '../components/patient/patient-context';
 import type { PrescriptionDraftResponse } from "@yrese/contracts";
 
 import {
@@ -20,17 +20,17 @@ import {
   serverDraftDivergenceCopy,
   SelectedPatientWorkspaceView,
   summarizePrescriptionDraftChanges,
-} from "./prescription-workspace";
+} from './prescription-workspace';
 import {
   createBlankDraftRow,
   createBlankDraftRows,
-} from "./prescription-replacement";
-import { createBlankPrescriptionDraft } from "./prescription-draft";
+} from './prescription-replacement';
+import { createBlankPrescriptionDraft } from './prescription-draft';
 import {
   fromPrescriptionDraftResponse,
   PrescriptionDraftApiError,
   prescriptionDraftSnapshotsEqual,
-} from "./prescription-draft-persistence";
+} from './prescription-draft-persistence';
 
 (globalThis as { React?: typeof React }).React = React;
 

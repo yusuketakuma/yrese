@@ -5,7 +5,7 @@ import {
   ELIGIBILITY_PRESENTATION,
   ELIGIBILITY_STATUS_LABELS,
   SEX_LABELS,
-} from "../status/visual-status-registry";
+} from '../../status/visual-status-registry';
 
 /**
  * 患者ヘッダー(患者取り違え防止表示)。

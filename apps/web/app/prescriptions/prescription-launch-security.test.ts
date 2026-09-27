@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { validateReceptionLaunchEntry } from "./prescription-launch-context";
+import { validateReceptionLaunchEntry } from './prescription-launch-context';
 
 describe("prescription launch security boundary", () => {
   it("does not authorize a selected patient when the tenant-scoped queue says another patient", () => {
