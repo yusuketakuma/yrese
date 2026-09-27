@@ -19,8 +19,8 @@ const patientContext = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('../components/patient/patient-context', async () => {
-  const actual = await vi.importActual<object>('../components/patient/patient-context');
+vi.mock('../../components/patient/patient-context', async () => {
+  const actual = await vi.importActual<object>('../../components/patient/patient-context');
   return {
     ...actual,
     useOptionalPatientContext: () => ({ patient: patientContext.patient }),
@@ -32,7 +32,7 @@ import {
   PrescriptionLaunchVerifiedView,
   resolveLaunchOutcome,
 } from './prescription-launch-route';
-import { ReceptionError } from '../_reception/reception-dashboard';
+import { ReceptionError } from '../../_reception/reception-dashboard';
 
 const unverifiedEligibility = {
   state: "UNVERIFIED" as const,

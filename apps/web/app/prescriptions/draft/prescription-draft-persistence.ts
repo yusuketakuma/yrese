@@ -9,8 +9,8 @@ import {
 } from "@yrese/contracts";
 import { permissionScope } from "@yrese/shared-kernel";
 
-import { resolveWebApiUrl } from '../api-transport';
-import { devTenantHeaders } from '../dev-tenant';
+import { resolveWebApiUrl } from '../../api-transport';
+import { devTenantHeaders } from '../../dev-tenant';
 import {
   type PrescriptionDraftSnapshot,
 } from './prescription-draft';

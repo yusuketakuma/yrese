@@ -22,12 +22,12 @@ import {
   toPrescriptionDraftContent,
   transitionPrescriptionLifecycle,
   type PrescriptionLifecycleTransition,
-} from './prescription-draft-persistence';
+} from './draft/prescription-draft-persistence';
 import {
   type PrescriptionDraftSnapshot,
   type PrescriptionOption,
   createBlankPrescriptionDraft,
-} from './prescription-draft';
+} from './draft/prescription-draft';
 import {
   type DraftRow,
   createBlankDraftRow,

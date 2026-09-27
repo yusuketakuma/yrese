@@ -4,19 +4,19 @@ import { describe, expect, it } from "vitest";
 import { KERNEL_ERROR_CODES } from "@yrese/shared-kernel";
 
 const workflow = readFileSync(
-  new URL("../../../.github/workflows/ui-browser.yml", import.meta.url),
+  new URL('../../../.github/workflows/ui-browser.yml', import.meta.url),
   "utf8",
 );
 const ciWorkflow = readFileSync(
-  new URL("../../../.github/workflows/ci.yml", import.meta.url),
+  new URL('../../../.github/workflows/ci.yml', import.meta.url),
   "utf8",
 );
 const browserCheck = readFileSync(
-  new URL("../../../scripts/ui-browser-check.mjs", import.meta.url),
+  new URL('../../../scripts/ui-browser-check.mjs', import.meta.url),
   "utf8",
 );
 const fixtureApi = readFileSync(
-  new URL("../../../scripts/ui-fixture-api.mjs", import.meta.url),
+  new URL('../../../scripts/ui-fixture-api.mjs', import.meta.url),
   "utf8",
 );
 

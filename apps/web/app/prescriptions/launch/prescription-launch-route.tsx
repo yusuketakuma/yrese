@@ -11,16 +11,16 @@ import {
 } from "@yrese/contracts";
 import { patientId } from "@yrese/shared-kernel";
 
-import { DomainStatusBadge } from '../components/domain-status-badge';
-import { EmptyState } from '../components/empty-state';
-import { ErrorNotice, type ErrorNoticeProps } from '../components/error-notice';
-import { LoadingState } from '../components/loading-state';
+import { DomainStatusBadge } from '../../components/domain-status-badge';
+import { EmptyState } from '../../components/empty-state';
+import { ErrorNotice, type ErrorNoticeProps } from '../../components/error-notice';
+import { LoadingState } from '../../components/loading-state';
 import {
   useOptionalPatientContext,
   type PatientContextData,
-} from '../components/patient/patient-context';
-import { PatientHeader, computeAgeYears } from '../components/patient/patient-header';
-import { SeverityList } from '../components/severity-list';
+} from '../../components/patient/patient-context';
+import { PatientHeader, computeAgeYears } from '../../components/patient/patient-header';
+import { SeverityList } from '../../components/severity-list';
 import {
   InlineNotice,
   KeyValueList,
@@ -29,15 +29,15 @@ import {
   RailCard,
   ScreenHeader,
   StatusPill,
-} from '../components/operator/operator-ui';
+} from '../../components/operator/operator-ui';
 import {
   ReceptionError,
   fetchReceptionQueue,
   formatAcceptedTime,
   receptionEligibilityToPatientStatus,
-} from '../_reception/reception-dashboard';
-import { ReceptionPrescriptionHandoffAction } from '../_reception/reception-prescription-handoff';
-import { loadPrescriptionDraft } from './prescription-draft-persistence';
+} from '../../_reception/reception-dashboard';
+import { ReceptionPrescriptionHandoffAction } from '../../_reception/reception-prescription-handoff';
+import { loadPrescriptionDraft } from '../draft/prescription-draft-persistence';
 import {
   type PrescriptionLaunchContext,
   validateReceptionLaunchEntry,

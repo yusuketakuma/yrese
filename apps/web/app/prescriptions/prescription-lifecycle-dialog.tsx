@@ -3,7 +3,7 @@
 import { ConfirmationDialog } from '../components/confirmation-dialog';
 import { DEV_STUB_ACTOR_ID } from '../dev-tenant';
 
-import type { PrescriptionDraftSnapshot } from './prescription-draft';
+import type { PrescriptionDraftSnapshot } from './draft/prescription-draft';
 import {
   type PrescriptionDraftChangeKind,
   serverDraftDivergenceCopy,

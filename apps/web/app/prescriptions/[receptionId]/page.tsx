@@ -10,11 +10,11 @@ import {
 import {
   parsePrescriptionLaunchContext,
   type PrescriptionLaunchSearchParam,
-} from '../prescription-launch-context';
+} from '../launch/prescription-launch-context';
 import {
   PrescriptionLaunchGateRail,
   PrescriptionLaunchRoute,
-} from '../prescription-launch-route';
+} from '../launch/prescription-launch-route';
 
 type PrescriptionRouteSearchParams = {
   readonly date?: PrescriptionLaunchSearchParam;

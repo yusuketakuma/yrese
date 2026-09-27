@@ -40,7 +40,7 @@ import {
   createBlankPrescriptionDraft,
   isPrescriptionDraftDirty,
   prescriptionDraftWorkId,
-} from './prescription-draft';
+} from './draft/prescription-draft';
 import {
   FLAG_FROM_WIRE,
   PrescriptionDraftApiError,
@@ -55,7 +55,7 @@ import {
   toPrescriptionDraftContent,
   transitionPrescriptionLifecycle,
   type PrescriptionLifecycleTransition,
-} from './prescription-draft-persistence';
+} from './draft/prescription-draft-persistence';
 import {
   PRESCRIPTION_DRAFT_RP_DOSE_MAX_LENGTH,
   PRESCRIPTION_DRAFT_RP_TEXT_MAX_LENGTH,

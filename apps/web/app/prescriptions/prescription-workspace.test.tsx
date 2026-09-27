@@ -25,12 +25,12 @@ import {
   createBlankDraftRow,
   createBlankDraftRows,
 } from './prescription-replacement';
-import { createBlankPrescriptionDraft } from './prescription-draft';
+import { createBlankPrescriptionDraft } from './draft/prescription-draft';
 import {
   fromPrescriptionDraftResponse,
   PrescriptionDraftApiError,
   prescriptionDraftSnapshotsEqual,
-} from './prescription-draft-persistence';
+} from './draft/prescription-draft-persistence';
 
 (globalThis as { React?: typeof React }).React = React;
 

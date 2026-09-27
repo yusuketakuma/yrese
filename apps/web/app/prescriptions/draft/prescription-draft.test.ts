@@ -6,7 +6,7 @@ import {
   isPrescriptionDraftDirty,
   prescriptionDraftWorkId,
 } from './prescription-draft';
-import { createBlankDraftRow } from './prescription-replacement';
+import { createBlankDraftRow } from '../prescription-replacement';
 
 describe("prescription draft tab-memory policy", () => {
   it("starts clean and uses a stable patient-scoped internal key", () => {

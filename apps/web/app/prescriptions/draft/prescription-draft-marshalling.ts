@@ -16,7 +16,7 @@ import {
   type PrescriptionDraftSnapshot,
   type PrescriptionOption,
 } from './prescription-draft';
-import { isDraftRowEmpty, type DraftRow } from './prescription-replacement';
+import { isDraftRowEmpty, type DraftRow } from '../prescription-replacement';
 
 const TYPE_TO_WIRE: Record<string, PrescriptionDraftType> = {
   "": "UNSPECIFIED",

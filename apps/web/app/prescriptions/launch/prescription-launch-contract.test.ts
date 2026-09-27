@@ -2,31 +2,31 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const pageSource = readFileSync(
-  new URL("./[receptionId]/page.tsx", import.meta.url),
+  new URL('../[receptionId]/page.tsx', import.meta.url),
   "utf8",
 );
 const launchSource = readFileSync(
-  new URL("../_reception/reception-prescription-launch.tsx", import.meta.url),
+  new URL('../../_reception/reception-prescription-launch.tsx', import.meta.url),
   "utf8",
 );
 const routeSource = readFileSync(
-  new URL("./prescription-launch-route.tsx", import.meta.url),
+  new URL('./prescription-launch-route.tsx', import.meta.url),
   "utf8",
 );
 const checkoutSource = readFileSync(
-  new URL("../checkout/checkout-context.tsx", import.meta.url),
+  new URL('../../checkout/checkout-context.tsx', import.meta.url),
   "utf8",
 );
 const patientSearchSource = readFileSync(
-  new URL("../patients/patient-search.tsx", import.meta.url),
+  new URL('../../patients/patient-search.tsx', import.meta.url),
   "utf8",
 );
 const receptionBoundarySource = readFileSync(
-  new URL("./prescription-reception-boundary.tsx", import.meta.url),
+  new URL('../prescription-reception-boundary.tsx', import.meta.url),
   "utf8",
 );
 const workspaceSource = readFileSync(
-  new URL("./prescription-workspace.tsx", import.meta.url),
+  new URL('../prescription-workspace.tsx', import.meta.url),
   "utf8",
 );
 

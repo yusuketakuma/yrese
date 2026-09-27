@@ -15,7 +15,7 @@ import { ErrorNotice, type ErrorNoticeProps } from '../components/error-notice';
 import { LoadingState } from '../components/loading-state';
 import { Panel, StatusPill, TableScroll } from '../components/operator/operator-ui';
 import { useOptionalPatientContext } from '../components/patient/patient-context';
-import { loadPrescriptionDraft } from '../prescriptions/prescription-draft-persistence';
+import { loadPrescriptionDraft } from '../prescriptions/draft/prescription-draft-persistence';
 import {
   ReceptionError,
   fetchReceptionQueue,
