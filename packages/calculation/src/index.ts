@@ -71,8 +71,9 @@ export function calculate(request: CalculationRequest, ruleSet: CalculationRuleS
     }
   };
 
+  const dispensingCalendarDate = request.dispensing.dispensingDate.toCalendarDate();
+
   for (const rule of ruleSet.rules) {
-    const dispensingCalendarDate = request.dispensing.dispensingDate.toCalendarDate();
 
     // 適用期間の宣言不正(終了日が開始日より前)はルール定義エラーとして即時停止
     if (rule.effectiveTo !== undefined && rule.effectiveTo.compare(rule.effectiveFrom) < 0) {
@@ -162,9 +163,12 @@ export function calculate(request: CalculationRequest, ruleSet: CalculationRuleS
       const { groupId, blocksGroupIdPrefixes } = result.exclusivityGroup;
       assertNonEmptyString(groupId, "exclusivityGroup.groupId");
       const blockedBySeenPrefix = seenExclusivityGroupPrefixes.find((prefix) => groupId.startsWith(prefix));
-      const blocksSeenGroup = (blocksGroupIdPrefixes ?? []).find((prefix) =>
-        [...seenExclusivityGroups].some((seen) => seen.startsWith(prefix)),
-      );
+      const blocksSeenGroup = (blocksGroupIdPrefixes ?? []).find((prefix) => {
+        for (const seen of seenExclusivityGroups) {
+          if (seen.startsWith(prefix)) return true;
+        }
+        return false;
+      });
       if (seenExclusivityGroups.has(groupId) || blockedBySeenPrefix !== undefined || blocksSeenGroup !== undefined) {
         blockers.push(createExclusivityBlocker(groupId));
         steps.push(exclusivityBlockedStep(rule, groupId));
