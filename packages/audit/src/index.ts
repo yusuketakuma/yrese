@@ -510,7 +510,10 @@ export function verifyAuditHashChain(events: readonly AuditEvent[]): AuditHashCh
           ok: false,
           checkedCount,
           breakIndex: index,
-          eventId: strictEvent.eventId,
+          // 破損行の eventId は非 string もあり得るため、echo は string のみに限定する。
+          ...(typeof strictEvent.eventId === "string"
+            ? { eventId: strictEvent.eventId }
+            : {}),
           reason: "prev_hash_mismatch",
           expectedPrevHash,
           actualPrevHash: strictEvent.prevHash,
@@ -526,7 +529,9 @@ export function verifyAuditHashChain(events: readonly AuditEvent[]): AuditHashCh
           ok: false,
           checkedCount,
           breakIndex: index,
-          eventId: strictEvent.eventId,
+          ...(typeof strictEvent.eventId === "string"
+            ? { eventId: strictEvent.eventId }
+            : {}),
           reason: "entry_hash_mismatch",
           expectedEntryHash,
           actualEntryHash: strictEvent.entryHash,

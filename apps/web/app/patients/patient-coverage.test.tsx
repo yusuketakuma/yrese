@@ -221,6 +221,33 @@ describe("createCoverageController (SCR-007)", () => {
     expect(submits.filter((state) => state.kind === "error")).toHaveLength(2);
   });
 
+  it("retains the idempotency key after an unsettled 5xx failure", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const postedKeys: string[] = [];
+    const fetchImpl = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        postedKeys.push(
+          (init.headers as Record<string, string>)["idempotency-key"] ?? "",
+        );
+        return jsonResponse(500, {});
+      }
+      return jsonResponse(200, listResponse);
+    }) as typeof fetch;
+    const { controller, submits } = makeController(fetchImpl);
+
+    controller.submit(validRecordRequest);
+    await flush();
+    controller.submit(validRecordRequest);
+    await flush();
+
+    // 5xx は結果不明(記録済みかもしれない)のため同一キーで再試行する。
+    expect(postedKeys).toEqual([
+      "web-coverage-test-1",
+      "web-coverage-test-1",
+    ]);
+    expect(submits.filter((state) => state.kind === "error")).toHaveLength(2);
+  });
+
   it("issues a new key after a settled 4xx and after a recorded success", async () => {
     vi.stubEnv("NODE_ENV", "development");
     const postedKeys: string[] = [];

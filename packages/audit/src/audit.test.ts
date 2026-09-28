@@ -784,4 +784,33 @@ describe("verifyAuditHashChain totality over corrupt persisted roots (WP-4236)",
       reason: "hash_format_invalid",
     });
   });
+
+  it("reports a sparse-array hole as a break instead of silently skipping it", () => {
+    const sparse = new Array<AuditEvent>(2);
+    sparse[1] = createAuditEvent(baseAuditEvent());
+
+    expect(verifyAuditHashChain(sparse)).toEqual({
+      ok: false,
+      checkedCount: 0,
+      breakIndex: 0,
+      reason: "hash_format_invalid",
+    });
+  });
+
+  it("does not echo a non-string eventId from a corrupt row", () => {
+    const valid = createAuditEvent(baseAuditEvent());
+    const corrupt = {
+      ...valid,
+      eventId: 42,
+      prevHash: "f".repeat(64),
+    } as unknown as AuditEvent;
+
+    const result = verifyAuditHashChain([corrupt]);
+    expect(result).toMatchObject({
+      ok: false,
+      breakIndex: 0,
+      reason: "prev_hash_mismatch",
+    });
+    expect("eventId" in result).toBe(false);
+  });
 });
