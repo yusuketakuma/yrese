@@ -754,4 +754,34 @@ describe("verifyAuditHashChain totality over corrupt persisted roots (WP-4236)",
       (result as { reason: string }).reason,
     );
   });
+
+  it("reports an event carrying an unknown extra field as a structural break", () => {
+    // canonicalize は既知 field のみ読むため、shape 厳格化がないと
+    // 余分な field を持つ行が「verify clean / hydrate 拒否」の不整合になる。
+    const valid = createAuditEvent(baseAuditEvent());
+    const withExtra = { ...valid, injectedField: "smuggled" } as unknown as AuditEvent;
+
+    expect(verifyAuditHashChain([withExtra])).toEqual({
+      ok: false,
+      checkedCount: 0,
+      breakIndex: 0,
+      reason: "hash_format_invalid",
+      eventId: valid.eventId,
+    });
+  });
+
+  it("reports a present-but-undefined optional field as a structural break", () => {
+    const valid = createAuditEvent(baseAuditEvent());
+    const withUndefinedOptional = {
+      ...valid,
+      deviceId: undefined,
+    } as unknown as AuditEvent;
+
+    expect(verifyAuditHashChain([withUndefinedOptional])).toMatchObject({
+      ok: false,
+      checkedCount: 0,
+      breakIndex: 0,
+      reason: "hash_format_invalid",
+    });
+  });
 });

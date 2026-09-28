@@ -26,6 +26,7 @@ export const dispensingPaths = {
           header: prescriptionLifecycleHeadersOpenApiSchema,
         },
         requestBody: {
+          required: true,
           content: {
             [jsonContentType]: {
               schema: dispensingCreateRequestOpenApiSchema,
@@ -79,6 +80,7 @@ export const dispensingPaths = {
           header: prescriptionLifecycleHeadersOpenApiSchema,
         },
         requestBody: {
+          required: true,
           content: {
             [jsonContentType]: {
               schema: dispensingConfirmRequestOpenApiSchema,

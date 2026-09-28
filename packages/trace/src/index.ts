@@ -207,6 +207,20 @@ function freezeArray<T>(values: readonly T[]): readonly T[] {
   return Object.freeze([...values]);
 }
 
+/**
+ * wire contract(calculation-trace.ts)の `z.array(z.string())` と同じ
+ * 要素型制約を runtime 構築側にも適用する。
+ */
+function freezeStringArray(values: readonly unknown[], label: string): readonly string[] {
+  assertDenseArray(values);
+  for (const value of values) {
+    if (typeof value !== "string") {
+      throw new RangeError(`${label} elements must be strings`);
+    }
+  }
+  return Object.freeze([...values] as string[]);
+}
+
 function freezeEvidenceRef(ref: EvidenceRef): EvidenceRef {
   if ("url" in ref) {
     throw new RangeError("EvidenceRef must not include url; URLs live in source_registry");
@@ -364,11 +378,15 @@ function freezeStep(step: CalculationTraceStep): CalculationTraceStep {
   assertDenseArray(sourceEvidenceRefs);
   const evidenceRefs = freezeArray(sourceEvidenceRefs.map(freezeEvidenceRef));
   const affectsClaim = step.affectsClaim;
+  if (typeof affectsClaim !== "boolean") {
+    throw new RangeError("CalculationTraceStep affectsClaim must be a boolean");
+  }
   if (affectsClaim && evidenceRefs.length === 0) {
     throw new RangeError("Claim-affecting calculation steps require at least one evidenceRef");
   }
-  const inputRefs = freezeArray(step.inputRefs);
+  const inputRefs = freezeStringArray(step.inputRefs, "CalculationTraceStep inputRefs");
   const output = step.output;
+  assertNonEmptyString(output, "CalculationTraceStep output");
   const sourceIntermediateValues = step.intermediateValues;
   const intermediateValues =
     sourceIntermediateValues === undefined ? undefined : freezeIntermediateValues(sourceIntermediateValues);
@@ -429,8 +447,8 @@ export function createCalculationTrace(input: CreateCalculationTraceInput): Calc
     masterVersion,
     calculationRuleVersion,
     steps,
-    warnings: freezeArray(input.warnings ?? []),
-    blockers: freezeArray(input.blockers ?? []),
+    warnings: freezeStringArray(input.warnings ?? [], "CalculationTrace warnings"),
+    blockers: freezeStringArray(input.blockers ?? [], "CalculationTrace blockers"),
     evidenceIds: collectCalculationTraceEvidenceIds(steps),
   });
 }

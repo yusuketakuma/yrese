@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   coverageListResponseSchema,
@@ -23,6 +23,7 @@ import {
 
 import { devTenantHeaders } from '../dev-tenant';
 import { resolveWebApiUrl } from '../api-transport';
+import { todayAsIsoDate } from '../_reception/reception-time';
 import { registeredErrorCodeOrUndefined } from '../components/error-code';
 import type { PatientContextData } from '../components/patient/patient-context';
 import { EmptyState } from '../components/empty-state';
@@ -144,6 +145,7 @@ export async function fetchCoverage(
   targetPatientId: string,
   asOf: string,
   fetchImpl: typeof fetch = fetch,
+  signal?: AbortSignal,
 ): Promise<CoverageListResponse> {
   const url = resolveWebApiUrl(
     `/patients/${encodeURIComponent(targetPatientId)}/coverage?asOf=${encodeURIComponent(asOf)}`,
@@ -151,10 +153,14 @@ export async function fetchCoverage(
   const res = await fetchImpl(url, {
     headers: devTenantHeaders(COVERAGE_READ_SCOPES),
     cache: "no-store",
+    ...(signal === undefined ? {} : { signal }),
   });
   if (!res.ok) {
     const errorCode = await extractCoverageErrorCode(res);
-    throw new CoverageRequestError(coverageErrorNotice(res.status, errorCode));
+    throw new CoverageRequestError(
+      coverageErrorNotice(res.status, errorCode),
+      res.status,
+    );
   }
   return coverageListResponseSchema.parse(await res.json());
 }
@@ -164,6 +170,7 @@ export async function recordCoverage(
   request: CoverageRecordRequest,
   idempotencyKey: string,
   fetchImpl: typeof fetch = fetch,
+  signal?: AbortSignal,
 ): Promise<{ readonly status: number; readonly body: unknown }> {
   const url = resolveWebApiUrl(
     `/patients/${encodeURIComponent(targetPatientId)}/coverage`,
@@ -176,19 +183,40 @@ export async function recordCoverage(
       ...devTenantHeaders(COVERAGE_WRITE_SCOPES),
     },
     body: JSON.stringify(request),
+    ...(signal === undefined ? {} : { signal }),
   });
-  if (!res.ok && res.status !== 200) {
+  if (!res.ok) {
     const errorCode = await extractCoverageErrorCode(res);
-    throw new CoverageRequestError(coverageErrorNotice(res.status, errorCode));
+    throw new CoverageRequestError(
+      coverageErrorNotice(res.status, errorCode),
+      res.status,
+    );
   }
   return { status: res.status, body: await res.json() };
 }
 
 export class CoverageRequestError extends Error {
-  constructor(readonly notice: ErrorNoticeProps) {
+  constructor(
+    readonly notice: ErrorNoticeProps,
+    readonly status?: number,
+  ) {
     super(notice.message);
     this.name = "CoverageRequestError";
   }
+}
+
+/**
+ * サーバーが確定的に拒否した応答(記録なし)は「結果確定」として冪等キーを
+ * 退役できる。応答なし・ネットワーク失敗・5xx・応答形式違反は結果不明であり、
+ * キーを保持して再試行がサーバー側の同一記録へ収束するようにする
+ * (reception-registration の keyStore 規約と同じ)。
+ */
+function isSettledCoverageFailure(error: unknown): boolean {
+  return (
+    error instanceof CoverageRequestError &&
+    error.status !== undefined &&
+    error.status < 500
+  );
 }
 
 const RELATIONSHIP_LABELS: Readonly<Record<InsuranceCard["relationship"], string>> = {
@@ -211,8 +239,116 @@ type FormMode =
       targetId: string;
     };
 
-function todayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10);
+/** 保険・公費の読取・記録の応答待ち上限(reception 系と同じ既存上限)。 */
+const COVERAGE_REQUEST_TIMEOUT_MS = 30_000;
+
+export type CoverageSubmitState =
+  | { readonly kind: "idle" }
+  | { readonly kind: "submitting" }
+  | { readonly kind: "error"; readonly notice: ErrorNoticeProps };
+
+/**
+ * PatientCoveragePanel の非 React 状態機械。
+ * createSearchRunner と同じく fetch 差込み・emit 経由にして、reload の
+ * stale 応答抑止・冪等キー寿命・二重送信防止を component なしで検証する。
+ */
+export function createCoverageController(options: {
+  readonly patientId: string;
+  readonly emitView: (view: CoverageViewState) => void;
+  readonly emitSubmit: (state: CoverageSubmitState) => void;
+  readonly getAsOf: () => string;
+  readonly onRecorded?: () => void;
+  readonly timeoutMs?: number;
+  readonly fetchImpl?: typeof fetch;
+  readonly makeIdempotencyKey?: () => string;
+}) {
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const timeoutMs = options.timeoutMs ?? COVERAGE_REQUEST_TIMEOUT_MS;
+  const makeIdempotencyKey =
+    options.makeIdempotencyKey ?? (() => `web-coverage-${crypto.randomUUID()}`);
+
+  // 連続 reload の stale 応答が新しい基準日の表示を上書きしないよう、
+  // 世代番号 + AbortController で直近の要求だけを有効化する。
+  let generation = 0;
+  let loadAbort: AbortController | null = null;
+  // emit(setState 相当)は同 tick 内の再呼出を即座に反映しないため、
+  // 同期再入防止は通常変数で行う。
+  let submitting = false;
+  // 未解決の登録意図を表す冪等キー。内容が変われば別の意図(別キー)であり、
+  // 結果確定(成功/4xx)まで同じ内容の再試行は同じキーを再利用する
+  // (reception-registration の keyStore 規約と同じ)。
+  let submission: { content: string; key: string } | null = null;
+
+  const reload = (nextAsOf: string) => {
+    loadAbort?.abort();
+    const controller = new AbortController();
+    loadAbort = controller;
+    generation += 1;
+    const current = generation;
+    options.emitView({ kind: "loading" });
+    void fetchCoverage(
+      options.patientId,
+      nextAsOf,
+      fetchImpl,
+      AbortSignal.any([controller.signal, AbortSignal.timeout(timeoutMs)]),
+    )
+      .then((data) => {
+        if (current === generation) {
+          options.emitView({ kind: "loaded", data });
+        }
+      })
+      .catch((error: unknown) => {
+        if (current !== generation) return;
+        options.emitView({
+          kind: "error",
+          notice:
+            error instanceof CoverageRequestError ? error.notice : genericNotice,
+        });
+      });
+  };
+
+  const submit = (request: CoverageRecordRequest) => {
+    if (submitting) return;
+    submitting = true;
+    const content = JSON.stringify(request);
+    if (submission?.content !== content) {
+      submission = { content, key: makeIdempotencyKey() };
+    }
+    const { key } = submission;
+    options.emitSubmit({ kind: "submitting" });
+    void recordCoverage(
+      options.patientId,
+      request,
+      key,
+      fetchImpl,
+      AbortSignal.timeout(timeoutMs),
+    )
+      .then(() => {
+        submission = null;
+        submitting = false;
+        options.emitSubmit({ kind: "idle" });
+        options.onRecorded?.();
+        reload(options.getAsOf());
+      })
+      .catch((error: unknown) => {
+        if (isSettledCoverageFailure(error)) {
+          submission = null;
+        }
+        submitting = false;
+        options.emitSubmit({
+          kind: "error",
+          notice:
+            error instanceof CoverageRequestError ? error.notice : genericNotice,
+        });
+      });
+  };
+
+  const dispose = () => {
+    loadAbort?.abort();
+    generation += 1;
+  };
+
+  return { reload, submit, dispose };
 }
 
 export function PatientCoveragePanel({
@@ -220,46 +356,26 @@ export function PatientCoveragePanel({
 }: {
   readonly patient: PatientContextData;
 }) {
-  const [asOf, setAsOf] = useState(todayIsoDate());
+  const [asOf, setAsOf] = useState(todayAsIsoDate());
   const [view, setView] = useState<CoverageViewState>({ kind: "idle" });
   const [formMode, setFormMode] = useState<FormMode>({ kind: "insurance-card" });
-  const [submitState, setSubmitState] = useState<
-    { kind: "idle" } | { kind: "submitting" } | { kind: "error"; notice: ErrorNoticeProps }
-  >({ kind: "idle" });
+  const [submitState, setSubmitState] = useState<CoverageSubmitState>({ kind: "idle" });
 
-  const reload = (nextAsOf: string) => {
-    setView({ kind: "loading" });
-    void fetchCoverage(patient.patientId, nextAsOf)
-      .then((data) => setView({ kind: "loaded", data }))
-      .catch((error: unknown) =>
-        setView({
-          kind: "error",
-          notice:
-            error instanceof CoverageRequestError ? error.notice : genericNotice,
-        }),
-      );
-  };
+  const asOfRef = useRef(asOf);
+  asOfRef.current = asOf;
+  const controllerRef = useRef<ReturnType<typeof createCoverageController> | null>(null);
+  if (controllerRef.current === null) {
+    controllerRef.current = createCoverageController({
+      patientId: patient.patientId,
+      emitView: setView,
+      emitSubmit: setSubmitState,
+      getAsOf: () => asOfRef.current,
+      onRecorded: () => setFormMode({ kind: "insurance-card" }),
+    });
+  }
+  useEffect(() => () => controllerRef.current?.dispose(), []);
 
-  const submit = (request: CoverageRecordRequest) => {
-    setSubmitState({ kind: "submitting" });
-    void recordCoverage(
-      patient.patientId,
-      request,
-      `web-coverage-${crypto.randomUUID()}`,
-    )
-      .then(() => {
-        setSubmitState({ kind: "idle" });
-        setFormMode({ kind: "insurance-card" });
-        reload(asOf);
-      })
-      .catch((error: unknown) =>
-        setSubmitState({
-          kind: "error",
-          notice:
-            error instanceof CoverageRequestError ? error.notice : genericNotice,
-        }),
-      );
-  };
+  const { reload, submit } = controllerRef.current;
 
   const cards: readonly InsuranceCard[] =
     view.kind === "loaded" ? view.data.insuranceCards : [];
@@ -434,6 +550,7 @@ function CoverageRecordForm({
   readonly onSubmit: (request: CoverageRecordRequest) => void;
 }) {
   const [fields, setFields] = useState<Record<string, string>>({});
+  const [validationNotice, setValidationNotice] = useState<ErrorNoticeProps | null>(null);
 
   const field = (name: string) => fields[name] ?? "";
   const setField = (name: string, value: string) =>
@@ -477,11 +594,18 @@ function CoverageRecordForm({
         e.preventDefault();
         const request = buildRequest();
         if (request === undefined) {
+          setValidationNotice({
+            message: "資格情報の入力内容が不正です。",
+            nextAction:
+              "必須項目と日付(YYYY-MM-DD)・数値欄の入力を確認してください。",
+          });
           return;
         }
+        setValidationNotice(null);
         onSubmit(request);
       }}
     >
+      {validationNotice !== null && <ErrorNotice {...validationNotice} />}
       <fieldset>
         <legend>
           {isSupersede ? "資格情報の訂正(新しい行で置き換え)" : "資格情報の登録"}

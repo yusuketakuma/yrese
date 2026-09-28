@@ -41,7 +41,8 @@ paths:
       summary: Return the authenticated tenant context
       description: Requires tenant:read scope. Returns the current tenant, pharmacy, actor, and granted scopes.
       x-yrese-ssot: API-002
-      x-yrese-required-scope: tenant:read
+      x-yrese-required-scopes:
+        - tenant:read
       responses:
         "200":
           description: Current tenant context
@@ -69,7 +70,8 @@ paths:
       summary: Search patients within the authenticated tenant and pharmacy context
       description: "Requires patient:read scope and tenant context. The response contains PHI and must use Cache-Control: no-store."
       x-yrese-ssot: API-001
-      x-yrese-required-scope: patient:read
+      x-yrese-required-scopes:
+        - patient:read
       parameters:
         - in: query
           name: q
@@ -200,7 +202,8 @@ paths:
       description: "Requires patient:read scope and tenant context. Used to refresh the cross-route patient context (R-PATCTX)
         and to obtain the version consumed by PUT. The response contains PHI and must use Cache-Control: no-store."
       x-yrese-ssot: API-001
-      x-yrese-required-scope: patient:read
+      x-yrese-required-scopes:
+        - patient:read
       parameters:
         - in: path
           name: patientId
@@ -252,7 +255,8 @@ paths:
         patientNumber is immutable and rejected with 422 PAT-0005. The response contains PHI and must use Cache-Control:
         no-store."
       x-yrese-ssot: API-001
-      x-yrese-required-scope: patient:write
+      x-yrese-required-scopes:
+        - patient:write
       parameters:
         - in: path
           name: patientId
@@ -397,7 +401,8 @@ paths:
         priority with overlapping period returns 409 INS-0004, and a missing or already-superseded target returns 409
         INS-0005. Emits insurance.updated audit before the response."
       x-yrese-ssot: API-020
-      x-yrese-required-scope: patient:read + kind-scoped write
+      x-yrese-required-scopes:
+        - patient:read
       parameters:
         - in: path
           name: patientId
@@ -1692,6 +1697,7 @@ paths:
             pattern: ^[A-Za-z0-9_-]{16,128}$
           required: true
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -1773,6 +1779,7 @@ paths:
             pattern: ^[A-Za-z0-9_-]{16,128}$
           required: true
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -1830,7 +1837,8 @@ paths:
         is omitted where it is not derived rather than reported as zero, and the orphan reception IDs themselves are
         never returned."
       x-yrese-ssot: MOD-009
-      x-yrese-required-scope: sync:read
+      x-yrese-required-scopes:
+        - sync:read
       responses:
         "200":
           description: Outbox counters grouped by event type in eventType asc order
@@ -1862,7 +1870,8 @@ paths:
         status is reported as a measured zero rather than being dropped. The response is PHI-free and declares no
         Cache-Control: no-store."
       x-yrese-ssot: API-006
-      x-yrese-required-scope: reception:read
+      x-yrese-required-scopes:
+        - reception:read
       parameters:
         - in: query
           name: date
@@ -1910,7 +1919,8 @@ paths:
         store is configured the response is the explicit `available: false` branch rather than a fabricated up-to-date
         state."
       x-yrese-ssot: DB-002
-      x-yrese-required-scope: tenant:admin
+      x-yrese-required-scopes:
+        - tenant:admin
       responses:
         "200":
           description: Migration reconciliation state, or the explicit not-configured branch
@@ -1939,7 +1949,8 @@ paths:
       description: "Requires audit-log:read scope. Returns a display projection (IDs only, no PHI names) ordered by wallClock
         desc, plus a hash chain verification over all stored events. Must use Cache-Control: no-store."
       x-yrese-ssot: SCR-028
-      x-yrese-required-scope: audit-log:read
+      x-yrese-required-scopes:
+        - audit-log:read
       parameters:
         - in: query
           name: limit

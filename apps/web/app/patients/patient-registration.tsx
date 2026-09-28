@@ -187,7 +187,12 @@ export function PatientRegistrationForm({
     setSubmitting(true);
     setErrorNotice(null);
     try {
-      const response = await createPatient(parsed.data, key);
+      const response = await createPatient(
+        parsed.data,
+        key,
+        fetch,
+        AbortSignal.timeout(30_000),
+      );
       setWarnings(response.warnings);
       setDraft(emptyDraft);
       keyRef.current = null;

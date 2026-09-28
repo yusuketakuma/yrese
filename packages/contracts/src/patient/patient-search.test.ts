@@ -164,9 +164,16 @@ describe("patientCreateRequestSchema (WP-7202 / API-001 0.3.0)", () => {
     [{ ...validCreate, birthDate: "1980-4-12" }, "non-ISO date"],
     [{ ...validCreate, sex: "other" }, "sex enum"],
     [{ ...validCreate, name: "" }, "empty name"],
+    [{ ...validCreate, name: "   " }, "whitespace-only name"],
+    [{ ...validCreate, name: "試験\n花子" }, "name with newline"],
+    [{ ...validCreate, kana: "シケンハナコ\u0000" }, "kana with NUL"],
+    [{ ...validCreate, kana: "　" }, "ideographic-space-only kana"],
     [{ ...validCreate, name: "x".repeat(129) }, "name over max"],
     [{ ...validCreate, kana: "x".repeat(129) }, "kana over max"],
     [{ ...validCreate, patientNumber: "" }, "empty patientNumber"],
+    [{ ...validCreate, patientNumber: "   " }, "whitespace-only patientNumber"],
+    [{ ...validCreate, patientNumber: "K-10\u00000" }, "patientNumber with NUL"],
+    [{ ...validCreate, patientNumber: "K-100\u2028" }, "patientNumber with line separator"],
     [{ ...validCreate, patientNumber: "x".repeat(65) }, "patientNumber over max"],
     [{ ...validCreate, phone: "090-0000-0000" }, "unspecified field tolerated at schema level"],
   ])("rejects or tolerates case %#", (value) => {
@@ -197,6 +204,8 @@ describe("patientUpdateRequestSchema", () => {
     [{ expectedVersion: 1.5, name: "x" }, "version must be int"],
     [{ expectedVersion: 1, birthDate: "2026-02-30" }, "non-existent calendar date"],
     [{ expectedVersion: 1, sex: "other" }, "sex enum"],
+    [{ expectedVersion: 1, name: "\t" }, "whitespace-only name"],
+    [{ expectedVersion: 1, kana: "シケン\u007f" }, "kana with DEL"],
   ])("rejects %#", (value) => {
     expect(() => patientUpdateRequestSchema.parse(value)).toThrow();
   });

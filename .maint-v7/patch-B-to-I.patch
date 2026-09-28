@@ -1,0 +1,262 @@
+diff --git a/apps/api/src/partner/partner-endpoint-policy.test.ts b/apps/api/src/partner/partner-endpoint-policy.test.ts
+index ac81220..bb779bb 100644
+--- a/apps/api/src/partner/partner-endpoint-policy.test.ts
++++ b/apps/api/src/partner/partner-endpoint-policy.test.ts
+@@ -40,6 +40,29 @@ describe('assertPublicHttpsEndpoint', () => {
+     ['https://db.local./yrese', 'not public'],
+     ['https://[::ffff:127.0.0.1]/yrese', 'private ipv6'],
+     ['https://[::ffff:7f00:1]/yrese', 'private ipv6'],
++    // fe80::/10 link-local の全範囲(fe80–febf)。prefix 文字列比較は fe90/febf を取り逃す。
++    ['https://[fe80::1]/yrese', 'private ipv6'],
++    ['https://[fe90::1]/yrese', 'private ipv6'],
++    ['https://[febf::ffff]/yrese', 'private ipv6'],
++    // site-local(廃止)・ULA・multicast。
++    ['https://[fec0::1]/yrese', 'private ipv6'],
++    ['https://[fc00::1]/yrese', 'private ipv6'],
++    ['https://[ff02::1]/yrese', 'private ipv6'],
++    // loopback / unspecified の非圧縮・別表記。
++    ['https://[0:0:0:0:0:0:0:1]/yrese', 'private ipv6'],
++    ['https://[0:0:0:0:0:0:0:0]/yrese', 'private ipv6'],
++    // IPv4-compatible(::/96)埋め込みの private IPv4。
++    ['https://[::127.0.0.1]/yrese', 'private ipv6'],
++    ['https://[::7f00:1]/yrese', 'private ipv6'],
++    // IPv4-translated(::ffff:0:0/96)埋め込みの private IPv4。
++    ['https://[::ffff:0:127.0.0.1]/yrese', 'private ipv6'],
++    ['https://[::ffff:0:7f00:1]/yrese', 'private ipv6'],
++    // NAT64 / Teredo / 6to4 / 文書用・discard 等特殊用途。
++    ['https://[64:ff9b::7f00:1]/yrese', 'private ipv6'],
++    ['https://[2001::7f00:1]/yrese', 'private ipv6'],
++    ['https://[2002:7f00:1::]/yrese', 'private ipv6'],
++    ['https://[3fff::1]/yrese', 'private ipv6'],
++    ['https://[100::]/yrese', 'private ipv6'],
+   ])('rejects %s (%s)', (url, reason) => {
+     expect(() => assertPublicHttpsEndpoint(new URL(url))).toThrow(
+       PartnerEndpointPolicyError,
+@@ -51,6 +74,23 @@ describe('assertPublicHttpsEndpoint', () => {
+     }
+   });
+ 
++  it('still accepts public IPv6 resolved addresses', async () => {
++    // 誤検知抑止: assertPublicHttpsEndpoint は IP リテラルを一律拒否する設計
++    // のため、public IPv6 の受理は DNS 解決後の assertResolvesToPublicAddress
++    // 層で検証する。判定が「全 v6 = private」の過剰拒否に倒れないことを固定する。
++    await expect(
++      assertResolvesToPublicAddress(new URL('https://hooks.partner.example/yrese'), async () => [
++        { address: '2606:4700:4700::1111', family: 6 },
++      ]),
++    ).resolves.toBeUndefined();
++    // mapped/public 埋め込みは public 扱い。
++    await expect(
++      assertResolvesToPublicAddress(new URL('https://hooks.partner.example/yrese'), async () => [
++        { address: '::ffff:8.8.8.8', family: 6 },
++      ]),
++    ).resolves.toBeUndefined();
++  });
++
+   it('requires every resolved address to be public (DNS re-resolution)', async () => {
+     const url = new URL('https://hooks.partner.example/yrese');
+     await expect(
+@@ -69,6 +109,11 @@ describe('assertPublicHttpsEndpoint', () => {
+         { address: '::ffff:169.254.169.254', family: 6 },
+       ]),
+     ).rejects.toThrow(/private address/);
++    await expect(
++      assertResolvesToPublicAddress(url, async () => [
++        { address: '::ffff:0:169.254.169.254', family: 6 },
++      ]),
++    ).rejects.toThrow(/private address/);
+     await expect(
+       assertResolvesToPublicAddress(url, async () => []),
+     ).rejects.toThrow(/does not resolve/);
+diff --git a/apps/api/src/partner/partner-endpoint-policy.ts b/apps/api/src/partner/partner-endpoint-policy.ts
+index 4774f95..f50934c 100644
+--- a/apps/api/src/partner/partner-endpoint-policy.ts
++++ b/apps/api/src/partner/partner-endpoint-policy.ts
+@@ -46,24 +46,106 @@ export function isPrivateIpv4(host: string): boolean {
+   );
+ }
+ 
++/**
++ * IPv6 リテラルを 8 個の 16bit hextet に展開する。`::` 圧縮と末尾の
++ * IPv4 埋め込み(dotted)を受理する。解釈不能な形式は undefined を返し、
++ * 呼び出し側は非公開扱い(fail-closed)に倒す。
++ */
++function parseIpv6Hextets(host: string): readonly number[] | undefined {
++  if (host.includes('%')) return undefined; // zone id は許容しない
++  const halves = host.split('::');
++  if (halves.length > 2) return undefined;
++
++  const parseHalf = (text: string): number[] | undefined => {
++    if (text === '') return [];
++    const groups = text.split(':');
++    const out: number[] = [];
++    for (let i = 0; i < groups.length; i += 1) {
++      const group = groups[i]!;
++      if (group === '') return undefined;
++      if (group.includes('.')) {
++        // 埋め込み IPv4 は末尾グループのみ許容(2 hextet 分)。
++        if (i !== groups.length - 1) return undefined;
++        const octets = group.split('.').map(Number);
++        if (
++          octets.length !== 4 ||
++          octets.some((o) => !Number.isInteger(o) || o < 0 || o > 255)
++        ) {
++          return undefined;
++        }
++        out.push((octets[0]! << 8) | octets[1]!, (octets[2]! << 8) | octets[3]!);
++      } else {
++        if (!/^[0-9a-f]{1,4}$/i.test(group)) return undefined;
++        out.push(Number.parseInt(group, 16));
++      }
++    }
++    return out;
++  };
++
++  const head = parseHalf(halves[0] ?? '');
++  if (head === undefined) return undefined;
++  if (halves.length === 1) {
++    return head.length === 8 ? head : undefined;
++  }
++  const tail = parseHalf(halves[1] ?? '');
++  if (tail === undefined) return undefined;
++  const missing = 8 - head.length - tail.length;
++  if (missing < 1) return undefined; // '::' は少なくとも 1 hextet を圧縮する
++  return [...head, ...new Array<number>(missing).fill(0), ...tail];
++}
++
++function embeddedIpv4(hextetHi: number, hextetLo: number): string {
++  return `${hextetHi >> 8}.${hextetHi & 0xff}.${hextetLo >> 8}.${hextetLo & 0xff}`;
++}
++
++/**
++ * 非公開・非到達または特殊用途の IPv6 を拒否する(IANA special registry +
++ * API-010 §2「public 宛先のみ」)。文字列 prefix 比較は圧縮・16 進表記の
++ * 揺れを取り逃すため、hextet 展開後に数値範囲で判定する。
++ */
+ export function isPrivateIpv6(host: string): boolean {
+-  const h = host.toLowerCase();
+-  if (h.startsWith('::ffff:')) {
+-    // IPv4-mapped: 埋め込み IPv4 の判定へ委ねる(dotted / hex 両表記)。
+-    const tail = h.slice(7);
+-    if (isIP(tail) === 4) return isPrivateIpv4(tail);
++  const hextets = parseIpv6Hextets(host.toLowerCase());
++  if (hextets === undefined) return true;
++  const [h0, h1, h2, h3, h4, h5, h6, h7] = hextets as [
++    number, number, number, number, number, number, number, number,
++  ];
++
++  // ::/128 unspecified・::1/128 loopback(圧縮・非圧縮の全表記)。
++  if (hextets.every((h) => h === 0)) return true;
++  if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0 && h6 === 0 && h7 === 1) {
+     return true;
+   }
+-  return (
+-    h === '::1' ||
+-    h === '::' ||
+-    h.startsWith('fc') ||
+-    h.startsWith('fd') ||
+-    h.startsWith('fe80') ||
+-    h.startsWith('fec0') ||
+-    h.startsWith('2001:db8') ||
+-    h.startsWith('64:ff9b')
+-  );
++  // ::ffff:a.b.c.d IPv4-mapped → 埋め込み IPv4 判定へ委譲。
++  if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0xffff) {
++    return isPrivateIpv4(embeddedIpv4(h6, h7));
++  }
++  // ::ffff:0:a.b.c.d IPv4-translated(RFC 6052) → 埋め込み IPv4 判定へ委譲。
++  if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0xffff && h5 === 0) {
++    return isPrivateIpv4(embeddedIpv4(h6, h7));
++  }
++  // ::/96 IPv4-compatible(廃止済み) → 埋め込み IPv4 判定へ委譲。
++  if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0) {
++    return isPrivateIpv4(embeddedIpv4(h6, h7));
++  }
++  // fe80::/10 link-local と fec0::/10 site-local(廃止済み)。
++  if (h0 >= 0xfe80 && h0 <= 0xfeff) return true;
++  // fc00::/7 unique-local。
++  if ((h0 & 0xfe00) === 0xfc00) return true;
++  // ff00::/8 multicast。
++  if ((h0 & 0xff00) === 0xff00) return true;
++  // 64:ff9b::/96 NAT64 と 64:ff9b:1::/48 local-use(h0=0x0064, h1=0xff9b)。
++  if (h0 === 0x0064 && h1 === 0xff9b) return true;
++  // 2001::/23 IETF 特殊用途(Teredo/benchmarking/ORCHID 等)と 2001:db8::/32 文書用。
++  if (h0 === 0x2001 && (h1 <= 0x01ff || h1 === 0x0db8)) return true;
++  // 2002::/16 6to4(廃止済み、IPv4 を埋め込む)。
++  if (h0 === 0x2002) return true;
++  // 3fff::/20 文書用。
++  if (h0 === 0x3fff && h1 <= 0x0fff) return true;
++  // 5f00::/16 SRv6 local-use。
++  if (h0 === 0x5f00) return true;
++  // 100::/64 discard-only。
++  if (h0 === 0x0100 && h1 === 0 && h2 === 0 && h3 === 0) return true;
++  return false;
+ }
+ 
+ export function isPrivateAddress(address: string): boolean {
+diff --git a/apps/api/src/partner/webhook-partner-sink.test.ts b/apps/api/src/partner/webhook-partner-sink.test.ts
+index ac48f6b..1b22b2b 100644
+--- a/apps/api/src/partner/webhook-partner-sink.test.ts
++++ b/apps/api/src/partner/webhook-partner-sink.test.ts
+@@ -125,6 +125,28 @@ describe('WebhookPartnerSink', () => {
+     expect(spoofToISOString).not.toHaveBeenCalled();
+   });
+ 
++  it('releases the response body on both success and non-2xx', async () => {
++    // Undici の資源管理契約: 応答 body を consume/cancel しないと接続資源が
++    // 回収されない。injected stream の cancel 呼出で解放を直接観測する。
++    for (const status of [204, 500]) {
++      const cancel = vi.fn(async () => {});
++      const response = { status, body: { cancel } } as unknown as Response;
++      const fetchImpl = vi.fn<typeof fetch>(async () => response);
++      const outcome = await sinkWith(fetchImpl)
++        .publish(event)
++        .then(() => 'ok')
++        .catch((error: unknown) => error);
++
++      expect(cancel).toHaveBeenCalledTimes(1);
++      if (status < 300) {
++        expect(outcome).toBe('ok');
++      } else {
++        expect(outcome).toBeInstanceOf(WebhookDeliveryError);
++        expect((outcome as WebhookDeliveryError).reason).toBe('non_2xx');
++      }
++    }
++  });
++
+   it('treats non-2xx, network errors, and timeouts as delivery failures without leaking the secret', async () => {
+     const non2xx = vi.fn<typeof fetch>(async () => new Response('nope', { status: 500 }));
+     await expect(sinkWith(non2xx).publish(event)).rejects.toMatchObject({
+diff --git a/apps/api/src/partner/webhook-partner-sink.ts b/apps/api/src/partner/webhook-partner-sink.ts
+index b2fc5e3..5b36a9f 100644
+--- a/apps/api/src/partner/webhook-partner-sink.ts
++++ b/apps/api/src/partner/webhook-partner-sink.ts
+@@ -46,6 +46,20 @@ export class WebhookDeliveryError extends Error {
+   }
+ }
+ 
++/**
++ * 応答 body を破棄して接続資源を解放する(Undici は body 未消費の応答を
++ * 回収できない)。2xx でも body は読まない — 配送判定に必要なのは status のみ。
++ * cancel は読み取り量に非依存で bounded。解放失敗は配送結果を変えない
++ * (status 行は既に到達しており、受信側は要求を受理している)。
++ */
++async function discardResponseBody(response: Response): Promise<void> {
++  try {
++    await response.body?.cancel();
++  } catch {
++    // Release failure must not change the delivery outcome.
++  }
++}
++
+ export function signWebhookPayload(secret: string, timestamp: string, body: string): string {
+   const digest = createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex');
+   return `${WEBHOOK_SIGNATURE_VERSION}=${digest}`;
+@@ -119,6 +133,7 @@ export class WebhookPartnerSink implements PartnerEventSink {
+       clearTimeout(timer);
+       signal?.removeEventListener('abort', abortFromCaller);
+     }
++    await discardResponseBody(response);
+     if (response.status < 200 || response.status >= 300) {
+       throw new WebhookDeliveryError(event.eventId, 'non_2xx', response.status);
+     }

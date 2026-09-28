@@ -46,24 +46,106 @@ export function isPrivateIpv4(host: string): boolean {
   );
 }
 
+/**
+ * IPv6 リテラルを 8 個の 16bit hextet に展開する。`::` 圧縮と末尾の
+ * IPv4 埋め込み(dotted)を受理する。解釈不能な形式は undefined を返し、
+ * 呼び出し側は非公開扱い(fail-closed)に倒す。
+ */
+function parseIpv6Hextets(host: string): readonly number[] | undefined {
+  if (host.includes('%')) return undefined; // zone id は許容しない
+  const halves = host.split('::');
+  if (halves.length > 2) return undefined;
+
+  const parseHalf = (text: string): number[] | undefined => {
+    if (text === '') return [];
+    const groups = text.split(':');
+    const out: number[] = [];
+    for (let i = 0; i < groups.length; i += 1) {
+      const group = groups[i]!;
+      if (group === '') return undefined;
+      if (group.includes('.')) {
+        // 埋め込み IPv4 は末尾グループのみ許容(2 hextet 分)。
+        if (i !== groups.length - 1) return undefined;
+        const octets = group.split('.').map(Number);
+        if (
+          octets.length !== 4 ||
+          octets.some((o) => !Number.isInteger(o) || o < 0 || o > 255)
+        ) {
+          return undefined;
+        }
+        out.push((octets[0]! << 8) | octets[1]!, (octets[2]! << 8) | octets[3]!);
+      } else {
+        if (!/^[0-9a-f]{1,4}$/i.test(group)) return undefined;
+        out.push(Number.parseInt(group, 16));
+      }
+    }
+    return out;
+  };
+
+  const head = parseHalf(halves[0] ?? '');
+  if (head === undefined) return undefined;
+  if (halves.length === 1) {
+    return head.length === 8 ? head : undefined;
+  }
+  const tail = parseHalf(halves[1] ?? '');
+  if (tail === undefined) return undefined;
+  const missing = 8 - head.length - tail.length;
+  if (missing < 1) return undefined; // '::' は少なくとも 1 hextet を圧縮する
+  return [...head, ...new Array<number>(missing).fill(0), ...tail];
+}
+
+function embeddedIpv4(hextetHi: number, hextetLo: number): string {
+  return `${hextetHi >> 8}.${hextetHi & 0xff}.${hextetLo >> 8}.${hextetLo & 0xff}`;
+}
+
+/**
+ * 非公開・非到達または特殊用途の IPv6 を拒否する(IANA special registry +
+ * API-010 §2「public 宛先のみ」)。文字列 prefix 比較は圧縮・16 進表記の
+ * 揺れを取り逃すため、hextet 展開後に数値範囲で判定する。
+ */
 export function isPrivateIpv6(host: string): boolean {
-  const h = host.toLowerCase();
-  if (h.startsWith('::ffff:')) {
-    // IPv4-mapped: 埋め込み IPv4 の判定へ委ねる(dotted / hex 両表記)。
-    const tail = h.slice(7);
-    if (isIP(tail) === 4) return isPrivateIpv4(tail);
+  const hextets = parseIpv6Hextets(host.toLowerCase());
+  if (hextets === undefined) return true;
+  const [h0, h1, h2, h3, h4, h5, h6, h7] = hextets as [
+    number, number, number, number, number, number, number, number,
+  ];
+
+  // ::/128 unspecified・::1/128 loopback(圧縮・非圧縮の全表記)。
+  if (hextets.every((h) => h === 0)) return true;
+  if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0 && h6 === 0 && h7 === 1) {
     return true;
   }
-  return (
-    h === '::1' ||
-    h === '::' ||
-    h.startsWith('fc') ||
-    h.startsWith('fd') ||
-    h.startsWith('fe80') ||
-    h.startsWith('fec0') ||
-    h.startsWith('2001:db8') ||
-    h.startsWith('64:ff9b')
-  );
+  // ::ffff:a.b.c.d IPv4-mapped → 埋め込み IPv4 判定へ委譲。
+  if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0xffff) {
+    return isPrivateIpv4(embeddedIpv4(h6, h7));
+  }
+  // ::ffff:0:a.b.c.d IPv4-translated(RFC 6052) → 埋め込み IPv4 判定へ委譲。
+  if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0xffff && h5 === 0) {
+    return isPrivateIpv4(embeddedIpv4(h6, h7));
+  }
+  // ::/96 IPv4-compatible(廃止済み) → 埋め込み IPv4 判定へ委譲。
+  if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0) {
+    return isPrivateIpv4(embeddedIpv4(h6, h7));
+  }
+  // fe80::/10 link-local と fec0::/10 site-local(廃止済み)。
+  if (h0 >= 0xfe80 && h0 <= 0xfeff) return true;
+  // fc00::/7 unique-local。
+  if ((h0 & 0xfe00) === 0xfc00) return true;
+  // ff00::/8 multicast。
+  if ((h0 & 0xff00) === 0xff00) return true;
+  // 64:ff9b::/96 NAT64 と 64:ff9b:1::/48 local-use(h0=0x0064, h1=0xff9b)。
+  if (h0 === 0x0064 && h1 === 0xff9b) return true;
+  // 2001::/23 IETF 特殊用途(Teredo/benchmarking/ORCHID 等)と 2001:db8::/32 文書用。
+  if (h0 === 0x2001 && (h1 <= 0x01ff || h1 === 0x0db8)) return true;
+  // 2002::/16 6to4(廃止済み、IPv4 を埋め込む)。
+  if (h0 === 0x2002) return true;
+  // 3fff::/20 文書用。
+  if (h0 === 0x3fff && h1 <= 0x0fff) return true;
+  // 5f00::/16 SRv6 local-use。
+  if (h0 === 0x5f00) return true;
+  // 100::/64 discard-only。
+  if (h0 === 0x0100 && h1 === 0 && h2 === 0 && h3 === 0) return true;
+  return false;
 }
 
 export function isPrivateAddress(address: string): boolean {

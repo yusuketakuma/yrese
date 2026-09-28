@@ -32,7 +32,7 @@ export const systemPaths = {
         summary: "Return the authenticated tenant context",
         description: "Requires tenant:read scope. Returns the current tenant, pharmacy, actor, and granted scopes.",
         "x-yrese-ssot": "API-002",
-        "x-yrese-required-scope": "tenant:read",
+        "x-yrese-required-scopes": ["tenant:read"],
         responses: {
           "200": {
             description: "Current tenant context",

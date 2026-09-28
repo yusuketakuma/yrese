@@ -31,7 +31,7 @@ export const patientPaths = {
         description:
           "Requires patient:read scope and tenant context. The response contains PHI and must use Cache-Control: no-store.",
         "x-yrese-ssot": "API-001",
-        "x-yrese-required-scope": "patient:read",
+        "x-yrese-required-scopes": ["patient:read"],
         requestParams: {
           query: patientSearchQueryOpenApiSchema,
         },
@@ -111,7 +111,7 @@ export const patientPaths = {
         description:
           "Requires patient:read scope and tenant context. Used to refresh the cross-route patient context (R-PATCTX) and to obtain the version consumed by PUT. The response contains PHI and must use Cache-Control: no-store.",
         "x-yrese-ssot": "API-001",
-        "x-yrese-required-scope": "patient:read",
+        "x-yrese-required-scopes": ["patient:read"],
         requestParams: {
           path: patientGetParamsOpenApiSchema,
         },
@@ -138,7 +138,7 @@ export const patientPaths = {
         description:
           "Requires patient:write scope and tenant context. expectedVersion in the body and the quoted If-Match header must both equal the current version. Identity changes are appended to patient identity history. patientNumber is immutable and rejected with 422 PAT-0005. The response contains PHI and must use Cache-Control: no-store.",
         "x-yrese-ssot": "API-001",
-        "x-yrese-required-scope": "patient:write",
+        "x-yrese-required-scopes": ["patient:write"],
         requestParams: {
           path: patientGetParamsOpenApiSchema,
           header: patientUpdateHeadersOpenApiSchema,
@@ -216,7 +216,7 @@ export const patientPaths = {
         description:
           "Requires patient:read plus a kind-specific write scope: insurance:write for kind=insurance-card, public-expense:write for kind=public-expense, and the targetKind's write scope for kind=supersede. Idempotent via the Idempotency-Key header (API-013): same key + same payload returns the existing row with 200; a different payload returns 409 INS-0006. Overlapping insurance-card periods return 409 INS-0003, duplicate public-expense priority with overlapping period returns 409 INS-0004, and a missing or already-superseded target returns 409 INS-0005. Emits insurance.updated audit before the response.",
         "x-yrese-ssot": "API-020",
-        "x-yrese-required-scope": "patient:read + kind-scoped write",
+        "x-yrese-required-scopes": ["patient:read"],
         requestParams: {
           path: coverageParamsOpenApiSchema,
           header: coverageRecordHeadersOpenApiSchema,

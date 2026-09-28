@@ -74,18 +74,41 @@ const patientBirthDateWireSchema = z.iso.date().refine(isRealIsoCalendarDate, {
   message: "date must be a real calendar date",
 });
 
+/**
+ * 患者記録は改行・区切り・帳票・CSV 出力へ乗る text field のため、
+ * prescription-draft.ts の text 規則と同じ制御文字集合を拒否する。
+ * `\u0000` は Zod を通過しても Postgres text 列が拒否するため境界で fail-closed。
+ */
+const patientWriteControlCharacterPattern =
+  /[\u0000-\u001f\u007f\u0085\u2028\u2029]/;
+
+function isNonBlankPatientTextWithoutControlCharacters(value: string): boolean {
+  return (
+    value.trim().length > 0 && !patientWriteControlCharacterPattern.test(value)
+  );
+}
+
 const patientWriteNameSchema = z
   .string()
   .min(1)
-  .max(PATIENT_WRITE_NAME_MAX_LENGTH);
+  .max(PATIENT_WRITE_NAME_MAX_LENGTH)
+  .refine(isNonBlankPatientTextWithoutControlCharacters, {
+    message: "name must be non-blank text without control characters",
+  });
 const patientWriteKanaSchema = z
   .string()
   .min(1)
-  .max(PATIENT_WRITE_KANA_MAX_LENGTH);
+  .max(PATIENT_WRITE_KANA_MAX_LENGTH)
+  .refine(isNonBlankPatientTextWithoutControlCharacters, {
+    message: "kana must be non-blank text without control characters",
+  });
 const patientWriteNumberSchema = z
   .string()
   .min(1)
-  .max(PATIENT_WRITE_PATIENT_NUMBER_MAX_LENGTH);
+  .max(PATIENT_WRITE_PATIENT_NUMBER_MAX_LENGTH)
+  .refine(isNonBlankPatientTextWithoutControlCharacters, {
+    message: "patientNumber must be non-blank text without control characters",
+  });
 const patientWriteSexSchema = z.enum(["male", "female", "unknown"]);
 
 export const patientCreateRequestSchema = z.object({

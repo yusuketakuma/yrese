@@ -435,7 +435,7 @@ export function PatientSearch() {
       </section>
       {selected !== null && (
         <section aria-label="保険・公費">
-          <PatientCoveragePanel patient={selected} />
+          <PatientCoveragePanel key={selected.patientId} patient={selected} />
         </section>
       )}
       <section aria-label="患者登録">
