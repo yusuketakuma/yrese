@@ -82,3 +82,17 @@
 | money round() upscale 分岐のみ非正規化 | packages/money/src/index.ts | .normalize() 追加 | 新規 test +全緑 |
 
 検証(修復後): contracts 265 / trace / audit 208 / calculation 121 / api 1256 pass・149 skip / web 813 pass / typecheck・lint・build・test:scripts・check:* 全緑・openapi drift 0。dist から test-support emit 0 を clean rebuild で実証。
+
+## Round 3 — 独立レビュー結果と閉塞
+
+- frozen packet: base fb601d1 → 5b69830 (diff sha256 7e8a307d…f84ba65bdc)
+- reviewer: 独立 fresh-context subagent(実装非担当) → **APPROVE-WITH-NOTES**
+  - 12 確認対象すべて CONFIRMED-CLEAN、回帰 0、非 vacuous テスト確認
+  - low/info 観察 N1(eventId echo 型)・N2(sparse hole 直撃 test 無)・N6(5xx キー保持未直撃)を修復
+- delta commit b3e6e39 → 同一 reviewer 再レビュー → **APPROVE**
+- 検証再実行: audit 210 pass / web coverage 10 pass / typecheck・build 緑
+
+## 未実行 gate(環境由来)
+
+- PG 統合 149 test: TEST_DATABASE_URL/Docker 不在 → ローカル skip(CI ci.yml postgres:18.4 service で実行される経路は存在)
+- browser/Playwright: repo に設定なし(該当非存在)
