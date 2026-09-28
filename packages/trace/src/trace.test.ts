@@ -490,6 +490,60 @@ describe("createCalculationTrace", () => {
     ).toThrow(new RangeError("Trace arrays must be an array"));
   });
 
+  it("rejects non-string inputRef elements like the wire contract", () => {
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary,
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [
+          claimStep({
+            inputRefs: ["prescription-001", 42] as unknown as CalculationTraceStep["inputRefs"],
+          }),
+        ],
+      }),
+    ).toThrow(new RangeError("CalculationTraceStep inputRefs elements must be strings"));
+  });
+
+  it("rejects non-boolean affectsClaim and empty output like the wire contract", () => {
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary,
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [
+          claimStep({
+            affectsClaim: "yes" as unknown as boolean,
+          }),
+        ],
+      }),
+    ).toThrow(new RangeError("CalculationTraceStep affectsClaim must be a boolean"));
+
+    expect(() =>
+      createCalculationTrace({
+        inputsSummary,
+        masterVersion: "2026.04",
+        calculationRuleVersion: "draft-001",
+        steps: [claimStep({ output: "" })],
+      }),
+    ).toThrow(new RangeError("CalculationTraceStep output must be a non-empty string"));
+  });
+
+  it.each(["warnings", "blockers"] as const)(
+    "rejects non-string %s elements like the wire contract",
+    (field) => {
+      expect(() =>
+        createCalculationTrace({
+          inputsSummary,
+          masterVersion: "2026.04",
+          calculationRuleVersion: "draft-001",
+          steps: [claimStep()],
+          [field]: ["ok", { hostile: true }] as unknown as string[],
+        }),
+      ).toThrow(/elements must be strings/);
+    },
+  );
+
   it("rejects unsupported input id and date kinds", () => {
     expect(() =>
       createCalculationTrace({

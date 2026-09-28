@@ -125,6 +125,28 @@ describe('WebhookPartnerSink', () => {
     expect(spoofToISOString).not.toHaveBeenCalled();
   });
 
+  it('releases the response body on both success and non-2xx', async () => {
+    // Undici の資源管理契約: 応答 body を consume/cancel しないと接続資源が
+    // 回収されない。injected stream の cancel 呼出で解放を直接観測する。
+    for (const status of [204, 500]) {
+      const cancel = vi.fn(async () => {});
+      const response = { status, body: { cancel } } as unknown as Response;
+      const fetchImpl = vi.fn<typeof fetch>(async () => response);
+      const outcome = await sinkWith(fetchImpl)
+        .publish(event)
+        .then(() => 'ok')
+        .catch((error: unknown) => error);
+
+      expect(cancel).toHaveBeenCalledTimes(1);
+      if (status < 300) {
+        expect(outcome).toBe('ok');
+      } else {
+        expect(outcome).toBeInstanceOf(WebhookDeliveryError);
+        expect((outcome as WebhookDeliveryError).reason).toBe('non_2xx');
+      }
+    }
+  });
+
   it('treats non-2xx, network errors, and timeouts as delivery failures without leaking the secret', async () => {
     const non2xx = vi.fn<typeof fetch>(async () => new Response('nope', { status: 500 }));
     await expect(sinkWith(non2xx).publish(event)).rejects.toMatchObject({

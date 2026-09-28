@@ -46,6 +46,20 @@ export class WebhookDeliveryError extends Error {
   }
 }
 
+/**
+ * 応答 body を破棄して接続資源を解放する(Undici は body 未消費の応答を
+ * 回収できない)。2xx でも body は読まない — 配送判定に必要なのは status のみ。
+ * cancel は読み取り量に非依存で bounded。解放失敗は配送結果を変えない
+ * (status 行は既に到達しており、受信側は要求を受理している)。
+ */
+async function discardResponseBody(response: Response): Promise<void> {
+  try {
+    await response.body?.cancel();
+  } catch {
+    // Release failure must not change the delivery outcome.
+  }
+}
+
 export function signWebhookPayload(secret: string, timestamp: string, body: string): string {
   const digest = createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex');
   return `${WEBHOOK_SIGNATURE_VERSION}=${digest}`;
@@ -119,6 +133,7 @@ export class WebhookPartnerSink implements PartnerEventSink {
       clearTimeout(timer);
       signal?.removeEventListener('abort', abortFromCaller);
     }
+    await discardResponseBody(response);
     if (response.status < 200 || response.status >= 300) {
       throw new WebhookDeliveryError(event.eventId, 'non_2xx', response.status);
     }

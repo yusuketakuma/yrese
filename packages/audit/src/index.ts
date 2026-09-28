@@ -483,7 +483,9 @@ export function verifyAuditHashChain(events: readonly AuditEvent[]): AuditHashCh
   for (let index = 0; index < events.length; index += 1) {
     const event = events[index];
     if (event === undefined) {
-      continue;
+      // sparse array の hole は「存在しない行」の silent skip になるため
+      // fail-visible の構造破断として報告する。
+      return hashFormatFailure(events, index, checkedCount);
     }
 
     // WP-4236: object 以外の root(JSON null / scalar / array)はプロパティへ
@@ -496,39 +498,48 @@ export function verifyAuditHashChain(events: readonly AuditEvent[]): AuditHashCh
     // accessor / Proxy / 変異する nested graph による throw は、例外の伝播では
     // なく構造的 hash_format_invalid 破断として報告する。
     try {
-      assertSha256Hex(event.prevHash, "prevHash");
-      assertSha256Hex(event.entryHash, "entryHash");
+      // canonicalize は既知 field のみ読むため、未知 field を持つイベントは
+      // ここで shape を厳格化しない限り「verify clean だが hydrate 拒否」に
+      // なる。読取境界(hydrateAuditEvent)と同じ exact shape を要求する。
+      const strictEvent = copyExactAuditEventShape(event);
+      assertSha256Hex(strictEvent.prevHash, "prevHash");
+      assertSha256Hex(strictEvent.entryHash, "entryHash");
 
-      if (event.prevHash !== expectedPrevHash) {
+      if (strictEvent.prevHash !== expectedPrevHash) {
         return Object.freeze({
           ok: false,
           checkedCount,
           breakIndex: index,
-          eventId: event.eventId,
+          // 破損行の eventId は非 string もあり得るため、echo は string のみに限定する。
+          ...(typeof strictEvent.eventId === "string"
+            ? { eventId: strictEvent.eventId }
+            : {}),
           reason: "prev_hash_mismatch",
           expectedPrevHash,
-          actualPrevHash: event.prevHash,
+          actualPrevHash: strictEvent.prevHash,
         });
       }
 
       const expectedEntryHash = computeAuditEntryHash({
-        prevHash: event.prevHash,
-        canonicalJson: canonicalizeAuditEventPayload(event),
+        prevHash: strictEvent.prevHash,
+        canonicalJson: canonicalizeAuditEventPayload(strictEvent),
       });
-      if (event.entryHash !== expectedEntryHash) {
+      if (strictEvent.entryHash !== expectedEntryHash) {
         return Object.freeze({
           ok: false,
           checkedCount,
           breakIndex: index,
-          eventId: event.eventId,
+          ...(typeof strictEvent.eventId === "string"
+            ? { eventId: strictEvent.eventId }
+            : {}),
           reason: "entry_hash_mismatch",
           expectedEntryHash,
-          actualEntryHash: event.entryHash,
+          actualEntryHash: strictEvent.entryHash,
         });
       }
 
       checkedCount += 1;
-      expectedPrevHash = event.entryHash;
+      expectedPrevHash = strictEvent.entryHash;
     } catch {
       return hashFormatFailure(events, index, checkedCount);
     }

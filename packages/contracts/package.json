@@ -8,12 +8,12 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./calculation-trace": "./src/calculation-trace.ts",
+    "./calculation-trace": "./src/calculation/calculation-trace.ts",
     "./error": "./src/error.ts",
     "./health": "./src/health.ts",
     "./openapi": "./src/openapi.ts",
-    "./patient-search": "./src/patient-search.ts",
-    "./reception-queue": "./src/reception-queue.ts",
+    "./patient-search": "./src/patient/patient-search.ts",
+    "./reception-queue": "./src/reception/reception-queue.ts",
     "./whoami": "./src/whoami.ts"
   },
   "scripts": {
@@ -24,11 +24,11 @@
   "dependencies": {
     "@yrese/shared-kernel": "workspace:*",
     "@yrese/trace": "workspace:*",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "zod-openapi": "^6.0.2"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
-    "vitest": "^5.0.2",
-    "zod-openapi": "^6.0.2"
+    "vitest": "^5.0.2"
   }
 }

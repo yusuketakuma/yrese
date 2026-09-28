@@ -1,0 +1,2111 @@
+diff --git a/.maint-v7/ledger.md b/.maint-v7/ledger.md
+new file mode 100644
+index 0000000..de6580a
+--- /dev/null
++++ b/.maint-v7/ledger.md
+@@ -0,0 +1,84 @@
++# maint-v7 台帳 (2026-09-28)
++
++- B = fb601d1 (devin/maint-v7-20260928, = main HEAD)
++- 前回未commit成果(既存差分, partner IPv6 rewrite + webhook body release + tests)を検証済み・translated range 追加
++- inventory: tracked 789 = src 346 / test 192 / docs 251 / migrations 24 / scripts 13 / CI 3
++- main checkout は codex_root WP-7600 所有(触らない)。wp-7500 worktree も別lane
++- I = B + uncommitted diff (`.maint-v7/patch-B-to-I.patch`, 262行, partner 4ファイルのみ)
++
++## Coverage 状態
++
++| module | 範囲 | status | evidence |
++|---|---|---|---|
++| partner/endpoint-policy | src+test | REVIEWED+FIXED | IPv6 translated `::ffff:0:0/96` 追加、DNS層回帰テスト、47 PASS |
++| api infra (server/config/pool/tx/migrate) | 全 src | REVIEWED | fail-closed dev stub 境界、checksum forward-only |
++| audit (in-mem+pg+routes+dynamodb codec) | 全 src | REVIEWED | hash chain per-scope advisory lock、raw fail-visible |
++| patient (in-mem+pg+cmd+routes+cursor) | 全 src | REVIEWED | ILIKE parity = boundary note 下記参照 |
++| reception (repo/cmd/routes/queue+pg) | 全 src | REVIEWED | 遷移表→CAS 順序、idempotency provenance、legacy_orphan 分類 |
++| prescription (draft/lifecycle/amend/inquiry+pg) | 全 src | REVIEWED | lock 内再検査、version append-only、qualification guard |
++| dispensing (service/routes+pg) | 全 src | REVIEWED | confirm 資格→行lock→audit/outbox 原子化 |
++| coverage / eligibility (cmd/repo+pg) | 全 src | REVIEWED | snapshot 原子的保存、method-state 整合 |
++| operations read | src | REVIEWED | 集計のみ・PHI 非含有・fail-safe migration state |
++| master (repo+seed+pg) | 全 src | REVIEWED | synthetic 冪等 seed、write 経路は module のみ |
++| api test suite | 75 files | REVIEWED | 1256 pass、149 skip=PG 統合(TEST_DATABASE_URL 未提供=CI のみ)、zero-expect 0 件 |
++| web transport/client/launch/draft | 精読 | REVIEWED | echo照合・error whitelist・dev stub 非本番送信・storage XSS sink なし |
++| web 残 component/page | subagent e1e3efc6 | 監査中 | 809 test PASS・zero-expect 0 件・storage/cookie/innerHTML 0 |
++| packages 8 | subagent e26d383c | 監査中 | 814 test PASS |
++| scripts 13 | clean/secrets/boundary 精読+全実行 | REVIEWED | symlink fail-closed、secret-scan skip 可視化 |
++| .github/workflows 3 | 全文 | REVIEWED | SHA pin・最小権限・postgres service・evidence upload |
++| migrations 24 | 全文+runner | REVIEWED | forward-only・NOT VALID legacy・複合FK・CHECK |
++| docs 251 | check:ssot-index 機械検証 | REVIEWED | 191 doc index 整合・openapi drift 0 |
++
++## Boundary notes (確定 defect ではない残差)
++
++1. **patient search ILIKE parity**: in-mem は `trim+toLocaleLowerCase('ja-JP')`→includes、
++   PG は `ILIKE '%q%'`(q は schema で trim 済み、%_\\ escape 済み)。
++   ドメイン入力(和名/カナ/英数 patient_number)では一致。異種 Unicode fold
++   (ß/İ 等)のみ残差。DDL 固定不可(DB collation 依存)のため観測のみ。
++2. **DNS rebinding 窓**: partner registry は配送毎に再解決するが
++   resolve→connect の race は残存(前回 ponytail 記録済み・維持)。
++3. **api dist 非実行**: workspace pkg が `.ts` を export するため
++   `node dist/server.js` は contracts 解決失敗。実行入口は `tsx src/main.ts`
++   であり dist は typecheck 成果物。CI も同構造で green。deploy 未整備は
++   既知設計(human gate)であり本監査で変更しない。
++4. **PG 統合 test 149 skip**: ローカルに TEST_DATABASE_URL/Docker なし。
++   CI(ci.yml postgres:18.4 service)で実行される経路は存在するが、
++   本環境での実測値は未取得 → 残項目として報告。
++
++## 検証記録 (worktree, Node 26.6.0 / pnpm 11.18.0)
++
++| cmd | exit |
++|---|---|
++| pnpm --filter @yrese/api test | 0 (1256 pass / 149 skip) |
++| pnpm --filter @yrese/web test | 0 (809 pass) |
++| pnpm -r test (全 workspace) | 0 (2879 pass) |
++| pnpm -r typecheck | 0 |
++| pnpm -r lint | 0 |
++| pnpm -r build | 0 (api dist・web .next 生成) |
++| pnpm test:scripts | 0 |
++| check:boundaries / calculation-purity / secrets / ssot-index / openapi / sbom / deps | 全 0 |
++| api dist 隔離 import (leaf 3 module, /tmp 外側 node_modules なし) | OK |
++| PG integration / browser playwright | 未実行(環境) |
++
++## Round 2 修復(確定 finding → 実装済み)
++
++| finding | 対象 | 修復 | 検証 |
++|---|---|---|---|
++| coverage panel 既定日が UTC 前日化 | apps/web patient-coverage.tsx | todayAsIsoDate(JST固定) へ | render test で JST 日付 assert |
++| fetchCoverage/recordCoverage に timeout/abort 無し・stale 応答 | 同上 | signal 引数 + 30s timeout、世代+AbortController guard、dispose で unmount abort | controller test: stale 抑止・signal.aborted |
++| 患者切替で coverage panel の state 残存 | patient-search.tsx:438 | key={selected.patientId} で remount | 型/レンダー test 緑 |
++| 冪等キー毎回再生成・再入 guard 無し | patient-coverage.tsx | submission store(content-keyed)+submitting flag+settled(4xx)退役、createCoverageController 抽出 | test: retry 同 key・4xx/成功後新 key・double submit 1 POST |
++| buildRequest schema 失敗が silent | 同上 | 固定文言 ErrorNotice(patient-registration 規約) | render/typecheck |
++| `!res.ok && res.status !== 200` dead cond | 同上 | `!res.ok` のみ | test 緑 |
++| createPatient に signal 未接続 | patient-registration.tsx | AbortSignal.timeout(30s) 配線 | web test 緑 |
++| contracts export map 3件 stale | packages/contracts/package.json | calculation-trace/patient-search/reception-queue の実在 path へ | typecheck/build 緑 |
++| zod-openapi が devDeps(runtime import あり) | 同上 | dependencies へ移動(lockfile 更新) | install/build 緑 |
++| test-support が dist へ emit | 全 9 tsconfig.build.json | `src/**/*test-support.ts` exclude(patient-repository-support.ts は本番 import のため除外対象外) | clean build で 0 emit 確認 |
++| rules.ts に未使用複製 createFixedPointsRule+imports | packages/calculation/src/rules.ts | barrel のみへ縮退 | calculation test 121 緑 |
++| patient write schema が空白/制御文字を受理 | patient-search.ts | non-blank + 制御文字拒否(prescription-draft 同規則) | 新規拒否 test 追加 |
++| OpenAPI `x-yrese-required-scope` 単複混在・dispensing body required 欠落 | openapi-paths-* | 複数形配列へ統一(条件 write scope は description が正本)、dispensing POST/confirm に required:true | openapi regen + drift PASS |
++| trace 構築側が affectsClaim 型/output 必須/配列要素型を未検証 | packages/trace/src/index.ts | freezeStringArray + boolean/non-empty assert(wire contract と parity) | 新規 test 3件 |
++| audit verify が未知 field/sparse hole を受理 | packages/audit/src/index.ts | copyExactAuditEventShape で strict 化+hole は破断 | 新規 test 2件+既存 totality 緑 |
++| money round() upscale 分岐のみ非正規化 | packages/money/src/index.ts | .normalize() 追加 | 新規 test +全緑 |
++
++検証(修復後): contracts 265 / trace / audit 208 / calculation 121 / api 1256 pass・149 skip / web 813 pass / typecheck・lint・build・test:scripts・check:* 全緑・openapi drift 0。dist から test-support emit 0 を clean rebuild で実証。
+diff --git a/.maint-v7/packet-paths.txt b/.maint-v7/packet-paths.txt
+new file mode 100644
+index 0000000..c3a64ae
+--- /dev/null
++++ b/.maint-v7/packet-paths.txt
+@@ -0,0 +1,35 @@
++.maint-v7/ledger.md
++.maint-v7/patch-B-to-I.patch
++apps/api/src/partner/partner-endpoint-policy.test.ts
++apps/api/src/partner/partner-endpoint-policy.ts
++apps/api/src/partner/webhook-partner-sink.test.ts
++apps/api/src/partner/webhook-partner-sink.ts
++apps/api/tsconfig.build.json
++apps/web/app/patients/patient-coverage.test.tsx
++apps/web/app/patients/patient-coverage.tsx
++apps/web/app/patients/patient-registration.tsx
++apps/web/app/patients/patient-search.tsx
++docs/api/openapi.yaml
++packages/audit/src/audit.test.ts
++packages/audit/src/index.ts
++packages/audit/tsconfig.build.json
++packages/calculation/src/rules.ts
++packages/calculation/tsconfig.build.json
++packages/contracts/package.json
++packages/contracts/src/openapi/openapi-paths-dispensing.ts
++packages/contracts/src/openapi/openapi-paths-operations.ts
++packages/contracts/src/openapi/openapi-paths-patient.ts
++packages/contracts/src/openapi/openapi-paths-system.ts
++packages/contracts/src/patient/patient-search.test.ts
++packages/contracts/src/patient/patient-search.ts
++packages/contracts/tsconfig.build.json
++packages/date-time/tsconfig.build.json
++packages/events/tsconfig.build.json
++packages/money/src/index.ts
++packages/money/src/money.test.ts
++packages/money/tsconfig.build.json
++packages/shared-kernel/tsconfig.build.json
++packages/trace/src/index.ts
++packages/trace/src/trace.test.ts
++packages/trace/tsconfig.build.json
++pnpm-lock.yaml
+diff --git a/.maint-v7/patch-B-to-I.patch b/.maint-v7/patch-B-to-I.patch
+new file mode 100644
+index 0000000..0e59d9f
+--- /dev/null
++++ b/.maint-v7/patch-B-to-I.patch
+@@ -0,0 +1,262 @@
++diff --git a/apps/api/src/partner/partner-endpoint-policy.test.ts b/apps/api/src/partner/partner-endpoint-policy.test.ts
++index ac81220..bb779bb 100644
++--- a/apps/api/src/partner/partner-endpoint-policy.test.ts
+++++ b/apps/api/src/partner/partner-endpoint-policy.test.ts
++@@ -40,6 +40,29 @@ describe('assertPublicHttpsEndpoint', () => {
++     ['https://db.local./yrese', 'not public'],
++     ['https://[::ffff:127.0.0.1]/yrese', 'private ipv6'],
++     ['https://[::ffff:7f00:1]/yrese', 'private ipv6'],
+++    // fe80::/10 link-local の全範囲(fe80–febf)。prefix 文字列比較は fe90/febf を取り逃す。
+++    ['https://[fe80::1]/yrese', 'private ipv6'],
+++    ['https://[fe90::1]/yrese', 'private ipv6'],
+++    ['https://[febf::ffff]/yrese', 'private ipv6'],
+++    // site-local(廃止)・ULA・multicast。
+++    ['https://[fec0::1]/yrese', 'private ipv6'],
+++    ['https://[fc00::1]/yrese', 'private ipv6'],
+++    ['https://[ff02::1]/yrese', 'private ipv6'],
+++    // loopback / unspecified の非圧縮・別表記。
+++    ['https://[0:0:0:0:0:0:0:1]/yrese', 'private ipv6'],
+++    ['https://[0:0:0:0:0:0:0:0]/yrese', 'private ipv6'],
+++    // IPv4-compatible(::/96)埋め込みの private IPv4。
+++    ['https://[::127.0.0.1]/yrese', 'private ipv6'],
+++    ['https://[::7f00:1]/yrese', 'private ipv6'],
+++    // IPv4-translated(::ffff:0:0/96)埋め込みの private IPv4。
+++    ['https://[::ffff:0:127.0.0.1]/yrese', 'private ipv6'],
+++    ['https://[::ffff:0:7f00:1]/yrese', 'private ipv6'],
+++    // NAT64 / Teredo / 6to4 / 文書用・discard 等特殊用途。
+++    ['https://[64:ff9b::7f00:1]/yrese', 'private ipv6'],
+++    ['https://[2001::7f00:1]/yrese', 'private ipv6'],
+++    ['https://[2002:7f00:1::]/yrese', 'private ipv6'],
+++    ['https://[3fff::1]/yrese', 'private ipv6'],
+++    ['https://[100::]/yrese', 'private ipv6'],
++   ])('rejects %s (%s)', (url, reason) => {
++     expect(() => assertPublicHttpsEndpoint(new URL(url))).toThrow(
++       PartnerEndpointPolicyError,
++@@ -51,6 +74,23 @@ describe('assertPublicHttpsEndpoint', () => {
++     }
++   });
++ 
+++  it('still accepts public IPv6 resolved addresses', async () => {
+++    // 誤検知抑止: assertPublicHttpsEndpoint は IP リテラルを一律拒否する設計
+++    // のため、public IPv6 の受理は DNS 解決後の assertResolvesToPublicAddress
+++    // 層で検証する。判定が「全 v6 = private」の過剰拒否に倒れないことを固定する。
+++    await expect(
+++      assertResolvesToPublicAddress(new URL('https://hooks.partner.example/yrese'), async () => [
+++        { address: '2606:4700:4700::1111', family: 6 },
+++      ]),
+++    ).resolves.toBeUndefined();
+++    // mapped/public 埋め込みは public 扱い。
+++    await expect(
+++      assertResolvesToPublicAddress(new URL('https://hooks.partner.example/yrese'), async () => [
+++        { address: '::ffff:8.8.8.8', family: 6 },
+++      ]),
+++    ).resolves.toBeUndefined();
+++  });
+++
++   it('requires every resolved address to be public (DNS re-resolution)', async () => {
++     const url = new URL('https://hooks.partner.example/yrese');
++     await expect(
++@@ -69,6 +109,11 @@ describe('assertPublicHttpsEndpoint', () => {
++         { address: '::ffff:169.254.169.254', family: 6 },
++       ]),
++     ).rejects.toThrow(/private address/);
+++    await expect(
+++      assertResolvesToPublicAddress(url, async () => [
+++        { address: '::ffff:0:169.254.169.254', family: 6 },
+++      ]),
+++    ).rejects.toThrow(/private address/);
++     await expect(
++       assertResolvesToPublicAddress(url, async () => []),
++     ).rejects.toThrow(/does not resolve/);
++diff --git a/apps/api/src/partner/partner-endpoint-policy.ts b/apps/api/src/partner/partner-endpoint-policy.ts
++index 4774f95..f50934c 100644
++--- a/apps/api/src/partner/partner-endpoint-policy.ts
+++++ b/apps/api/src/partner/partner-endpoint-policy.ts
++@@ -46,24 +46,106 @@ export function isPrivateIpv4(host: string): boolean {
++   );
++ }
++ 
+++/**
+++ * IPv6 リテラルを 8 個の 16bit hextet に展開する。`::` 圧縮と末尾の
+++ * IPv4 埋め込み(dotted)を受理する。解釈不能な形式は undefined を返し、
+++ * 呼び出し側は非公開扱い(fail-closed)に倒す。
+++ */
+++function parseIpv6Hextets(host: string): readonly number[] | undefined {
+++  if (host.includes('%')) return undefined; // zone id は許容しない
+++  const halves = host.split('::');
+++  if (halves.length > 2) return undefined;
+++
+++  const parseHalf = (text: string): number[] | undefined => {
+++    if (text === '') return [];
+++    const groups = text.split(':');
+++    const out: number[] = [];
+++    for (let i = 0; i < groups.length; i += 1) {
+++      const group = groups[i]!;
+++      if (group === '') return undefined;
+++      if (group.includes('.')) {
+++        // 埋め込み IPv4 は末尾グループのみ許容(2 hextet 分)。
+++        if (i !== groups.length - 1) return undefined;
+++        const octets = group.split('.').map(Number);
+++        if (
+++          octets.length !== 4 ||
+++          octets.some((o) => !Number.isInteger(o) || o < 0 || o > 255)
+++        ) {
+++          return undefined;
+++        }
+++        out.push((octets[0]! << 8) | octets[1]!, (octets[2]! << 8) | octets[3]!);
+++      } else {
+++        if (!/^[0-9a-f]{1,4}$/i.test(group)) return undefined;
+++        out.push(Number.parseInt(group, 16));
+++      }
+++    }
+++    return out;
+++  };
+++
+++  const head = parseHalf(halves[0] ?? '');
+++  if (head === undefined) return undefined;
+++  if (halves.length === 1) {
+++    return head.length === 8 ? head : undefined;
+++  }
+++  const tail = parseHalf(halves[1] ?? '');
+++  if (tail === undefined) return undefined;
+++  const missing = 8 - head.length - tail.length;
+++  if (missing < 1) return undefined; // '::' は少なくとも 1 hextet を圧縮する
+++  return [...head, ...new Array<number>(missing).fill(0), ...tail];
+++}
+++
+++function embeddedIpv4(hextetHi: number, hextetLo: number): string {
+++  return `${hextetHi >> 8}.${hextetHi & 0xff}.${hextetLo >> 8}.${hextetLo & 0xff}`;
+++}
+++
+++/**
+++ * 非公開・非到達または特殊用途の IPv6 を拒否する(IANA special registry +
+++ * API-010 §2「public 宛先のみ」)。文字列 prefix 比較は圧縮・16 進表記の
+++ * 揺れを取り逃すため、hextet 展開後に数値範囲で判定する。
+++ */
++ export function isPrivateIpv6(host: string): boolean {
++-  const h = host.toLowerCase();
++-  if (h.startsWith('::ffff:')) {
++-    // IPv4-mapped: 埋め込み IPv4 の判定へ委ねる(dotted / hex 両表記)。
++-    const tail = h.slice(7);
++-    if (isIP(tail) === 4) return isPrivateIpv4(tail);
+++  const hextets = parseIpv6Hextets(host.toLowerCase());
+++  if (hextets === undefined) return true;
+++  const [h0, h1, h2, h3, h4, h5, h6, h7] = hextets as [
+++    number, number, number, number, number, number, number, number,
+++  ];
+++
+++  // ::/128 unspecified・::1/128 loopback(圧縮・非圧縮の全表記)。
+++  if (hextets.every((h) => h === 0)) return true;
+++  if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0 && h6 === 0 && h7 === 1) {
++     return true;
++   }
++-  return (
++-    h === '::1' ||
++-    h === '::' ||
++-    h.startsWith('fc') ||
++-    h.startsWith('fd') ||
++-    h.startsWith('fe80') ||
++-    h.startsWith('fec0') ||
++-    h.startsWith('2001:db8') ||
++-    h.startsWith('64:ff9b')
++-  );
+++  // ::ffff:a.b.c.d IPv4-mapped → 埋め込み IPv4 判定へ委譲。
+++  if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0xffff) {
+++    return isPrivateIpv4(embeddedIpv4(h6, h7));
+++  }
+++  // ::ffff:0:a.b.c.d IPv4-translated(RFC 6052) → 埋め込み IPv4 判定へ委譲。
+++  if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0xffff && h5 === 0) {
+++    return isPrivateIpv4(embeddedIpv4(h6, h7));
+++  }
+++  // ::/96 IPv4-compatible(廃止済み) → 埋め込み IPv4 判定へ委譲。
+++  if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0) {
+++    return isPrivateIpv4(embeddedIpv4(h6, h7));
+++  }
+++  // fe80::/10 link-local と fec0::/10 site-local(廃止済み)。
+++  if (h0 >= 0xfe80 && h0 <= 0xfeff) return true;
+++  // fc00::/7 unique-local。
+++  if ((h0 & 0xfe00) === 0xfc00) return true;
+++  // ff00::/8 multicast。
+++  if ((h0 & 0xff00) === 0xff00) return true;
+++  // 64:ff9b::/96 NAT64 と 64:ff9b:1::/48 local-use(h0=0x0064, h1=0xff9b)。
+++  if (h0 === 0x0064 && h1 === 0xff9b) return true;
+++  // 2001::/23 IETF 特殊用途(Teredo/benchmarking/ORCHID 等)と 2001:db8::/32 文書用。
+++  if (h0 === 0x2001 && (h1 <= 0x01ff || h1 === 0x0db8)) return true;
+++  // 2002::/16 6to4(廃止済み、IPv4 を埋め込む)。
+++  if (h0 === 0x2002) return true;
+++  // 3fff::/20 文書用。
+++  if (h0 === 0x3fff && h1 <= 0x0fff) return true;
+++  // 5f00::/16 SRv6 local-use。
+++  if (h0 === 0x5f00) return true;
+++  // 100::/64 discard-only。
+++  if (h0 === 0x0100 && h1 === 0 && h2 === 0 && h3 === 0) return true;
+++  return false;
++ }
++ 
++ export function isPrivateAddress(address: string): boolean {
++diff --git a/apps/api/src/partner/webhook-partner-sink.test.ts b/apps/api/src/partner/webhook-partner-sink.test.ts
++index ac48f6b..1b22b2b 100644
++--- a/apps/api/src/partner/webhook-partner-sink.test.ts
+++++ b/apps/api/src/partner/webhook-partner-sink.test.ts
++@@ -125,6 +125,28 @@ describe('WebhookPartnerSink', () => {
++     expect(spoofToISOString).not.toHaveBeenCalled();
++   });
++ 
+++  it('releases the response body on both success and non-2xx', async () => {
+++    // Undici の資源管理契約: 応答 body を consume/cancel しないと接続資源が
+++    // 回収されない。injected stream の cancel 呼出で解放を直接観測する。
+++    for (const status of [204, 500]) {
+++      const cancel = vi.fn(async () => {});
+++      const response = { status, body: { cancel } } as unknown as Response;
+++      const fetchImpl = vi.fn<typeof fetch>(async () => response);
+++      const outcome = await sinkWith(fetchImpl)
+++        .publish(event)
+++        .then(() => 'ok')
+++        .catch((error: unknown) => error);
+++
+++      expect(cancel).toHaveBeenCalledTimes(1);
+++      if (status < 300) {
+++        expect(outcome).toBe('ok');
+++      } else {
+++        expect(outcome).toBeInstanceOf(WebhookDeliveryError);
+++        expect((outcome as WebhookDeliveryError).reason).toBe('non_2xx');
+++      }
+++    }
+++  });
+++
++   it('treats non-2xx, network errors, and timeouts as delivery failures without leaking the secret', async () => {
++     const non2xx = vi.fn<typeof fetch>(async () => new Response('nope', { status: 500 }));
++     await expect(sinkWith(non2xx).publish(event)).rejects.toMatchObject({
++diff --git a/apps/api/src/partner/webhook-partner-sink.ts b/apps/api/src/partner/webhook-partner-sink.ts
++index b2fc5e3..5b36a9f 100644
++--- a/apps/api/src/partner/webhook-partner-sink.ts
+++++ b/apps/api/src/partner/webhook-partner-sink.ts
++@@ -46,6 +46,20 @@ export class WebhookDeliveryError extends Error {
++   }
++ }
++ 
+++/**
+++ * 応答 body を破棄して接続資源を解放する(Undici は body 未消費の応答を
+++ * 回収できない)。2xx でも body は読まない — 配送判定に必要なのは status のみ。
+++ * cancel は読み取り量に非依存で bounded。解放失敗は配送結果を変えない
+++ * (status 行は既に到達しており、受信側は要求を受理している)。
+++ */
+++async function discardResponseBody(response: Response): Promise<void> {
+++  try {
+++    await response.body?.cancel();
+++  } catch {
+++    // Release failure must not change the delivery outcome.
+++  }
+++}
+++
++ export function signWebhookPayload(secret: string, timestamp: string, body: string): string {
++   const digest = createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex');
++   return `${WEBHOOK_SIGNATURE_VERSION}=${digest}`;
++@@ -119,6 +133,7 @@ export class WebhookPartnerSink implements PartnerEventSink {
++       clearTimeout(timer);
++       signal?.removeEventListener('abort', abortFromCaller);
++     }
+++    await discardResponseBody(response);
++     if (response.status < 200 || response.status >= 300) {
++       throw new WebhookDeliveryError(event.eventId, 'non_2xx', response.status);
++     }
+diff --git a/.maint-v7/review-packet.md b/.maint-v7/review-packet.md
+new file mode 100644
+index 0000000..9d90621
+--- /dev/null
++++ b/.maint-v7/review-packet.md
+@@ -0,0 +1,15 @@
++# Frozen review packet (maint-v7 round-2)
++
++- base SHA: `fb601d1` (devin/maint-v7-20260928, = main HEAD)
++- candidate SHA: `5b69830`
++- diff: `git diff fb601d1..5b69830`, sha256 `7e8a307d03a7dc2909f3b1a668e043363ceab3ff96ffb8142a7254f84ba65bdc`
++- changed paths: `.maint-v7/packet-paths.txt` (35 files)
++- acceptance: 確定 finding のみ修復。挙動保持リファクタ(createCoverageController 抽出)と
++  fail-closed 強化(制御文字/exact shape)を区別して見る。弱体化・検証削除・
++  PHI/secret・規約逸脱・破壊的変更があれば報告。
++- writer による検証結果(2026-09-28, Node 26.6.0 / pnpm 11.18.0):
++  typecheck/lint 全緑、contracts 265 / audit 208 / calculation 121 / money /
++  trace / api 1256(PG統合 149 skip=TEST_DATABASE_URL 未提供)/ web 813 PASS、
++  test:scripts PASS、build 全緑、clean rebuild で dist に *test-support* 0 件、
++  check:openapi/secrets/deps/sbom/boundaries/calculation-purity/ssot-index 全 PASS。
++- 未実行ゲート: PG 統合(Docker/pg_isready なし)、browser/Playwright(未整備)。
+diff --git a/apps/api/src/partner/partner-endpoint-policy.test.ts b/apps/api/src/partner/partner-endpoint-policy.test.ts
+index ac81220..bb779bb 100644
+--- a/apps/api/src/partner/partner-endpoint-policy.test.ts
++++ b/apps/api/src/partner/partner-endpoint-policy.test.ts
+@@ -40,6 +40,29 @@ describe('assertPublicHttpsEndpoint', () => {
+     ['https://db.local./yrese', 'not public'],
+     ['https://[::ffff:127.0.0.1]/yrese', 'private ipv6'],
+     ['https://[::ffff:7f00:1]/yrese', 'private ipv6'],
++    // fe80::/10 link-local の全範囲(fe80–febf)。prefix 文字列比較は fe90/febf を取り逃す。
++    ['https://[fe80::1]/yrese', 'private ipv6'],
++    ['https://[fe90::1]/yrese', 'private ipv6'],
++    ['https://[febf::ffff]/yrese', 'private ipv6'],
++    // site-local(廃止)・ULA・multicast。
++    ['https://[fec0::1]/yrese', 'private ipv6'],
++    ['https://[fc00::1]/yrese', 'private ipv6'],
++    ['https://[ff02::1]/yrese', 'private ipv6'],
++    // loopback / unspecified の非圧縮・別表記。
++    ['https://[0:0:0:0:0:0:0:1]/yrese', 'private ipv6'],
++    ['https://[0:0:0:0:0:0:0:0]/yrese', 'private ipv6'],
++    // IPv4-compatible(::/96)埋め込みの private IPv4。
++    ['https://[::127.0.0.1]/yrese', 'private ipv6'],
++    ['https://[::7f00:1]/yrese', 'private ipv6'],
++    // IPv4-translated(::ffff:0:0/96)埋め込みの private IPv4。
++    ['https://[::ffff:0:127.0.0.1]/yrese', 'private ipv6'],
++    ['https://[::ffff:0:7f00:1]/yrese', 'private ipv6'],
++    // NAT64 / Teredo / 6to4 / 文書用・discard 等特殊用途。
++    ['https://[64:ff9b::7f00:1]/yrese', 'private ipv6'],
++    ['https://[2001::7f00:1]/yrese', 'private ipv6'],
++    ['https://[2002:7f00:1::]/yrese', 'private ipv6'],
++    ['https://[3fff::1]/yrese', 'private ipv6'],
++    ['https://[100::]/yrese', 'private ipv6'],
+   ])('rejects %s (%s)', (url, reason) => {
+     expect(() => assertPublicHttpsEndpoint(new URL(url))).toThrow(
+       PartnerEndpointPolicyError,
+@@ -51,6 +74,23 @@ describe('assertPublicHttpsEndpoint', () => {
+     }
+   });
+ 
++  it('still accepts public IPv6 resolved addresses', async () => {
++    // 誤検知抑止: assertPublicHttpsEndpoint は IP リテラルを一律拒否する設計
++    // のため、public IPv6 の受理は DNS 解決後の assertResolvesToPublicAddress
++    // 層で検証する。判定が「全 v6 = private」の過剰拒否に倒れないことを固定する。
++    await expect(
++      assertResolvesToPublicAddress(new URL('https://hooks.partner.example/yrese'), async () => [
++        { address: '2606:4700:4700::1111', family: 6 },
++      ]),
++    ).resolves.toBeUndefined();
++    // mapped/public 埋め込みは public 扱い。
++    await expect(
++      assertResolvesToPublicAddress(new URL('https://hooks.partner.example/yrese'), async () => [
++        { address: '::ffff:8.8.8.8', family: 6 },
++      ]),
++    ).resolves.toBeUndefined();
++  });
++
+   it('requires every resolved address to be public (DNS re-resolution)', async () => {
+     const url = new URL('https://hooks.partner.example/yrese');
+     await expect(
+@@ -69,6 +109,11 @@ describe('assertPublicHttpsEndpoint', () => {
+         { address: '::ffff:169.254.169.254', family: 6 },
+       ]),
+     ).rejects.toThrow(/private address/);
++    await expect(
++      assertResolvesToPublicAddress(url, async () => [
++        { address: '::ffff:0:169.254.169.254', family: 6 },
++      ]),
++    ).rejects.toThrow(/private address/);
+     await expect(
+       assertResolvesToPublicAddress(url, async () => []),
+     ).rejects.toThrow(/does not resolve/);
+diff --git a/apps/api/src/partner/partner-endpoint-policy.ts b/apps/api/src/partner/partner-endpoint-policy.ts
+index 4774f95..f50934c 100644
+--- a/apps/api/src/partner/partner-endpoint-policy.ts
++++ b/apps/api/src/partner/partner-endpoint-policy.ts
+@@ -46,24 +46,106 @@ export function isPrivateIpv4(host: string): boolean {
+   );
+ }
+ 
++/**
++ * IPv6 リテラルを 8 個の 16bit hextet に展開する。`::` 圧縮と末尾の
++ * IPv4 埋め込み(dotted)を受理する。解釈不能な形式は undefined を返し、
++ * 呼び出し側は非公開扱い(fail-closed)に倒す。
++ */
++function parseIpv6Hextets(host: string): readonly number[] | undefined {
++  if (host.includes('%')) return undefined; // zone id は許容しない
++  const halves = host.split('::');
++  if (halves.length > 2) return undefined;
++
++  const parseHalf = (text: string): number[] | undefined => {
++    if (text === '') return [];
++    const groups = text.split(':');
++    const out: number[] = [];
++    for (let i = 0; i < groups.length; i += 1) {
++      const group = groups[i]!;
++      if (group === '') return undefined;
++      if (group.includes('.')) {
++        // 埋め込み IPv4 は末尾グループのみ許容(2 hextet 分)。
++        if (i !== groups.length - 1) return undefined;
++        const octets = group.split('.').map(Number);
++        if (
++          octets.length !== 4 ||
++          octets.some((o) => !Number.isInteger(o) || o < 0 || o > 255)
++        ) {
++          return undefined;
++        }
++        out.push((octets[0]! << 8) | octets[1]!, (octets[2]! << 8) | octets[3]!);
++      } else {
++        if (!/^[0-9a-f]{1,4}$/i.test(group)) return undefined;
++        out.push(Number.parseInt(group, 16));
++      }
++    }
++    return out;
++  };
++
++  const head = parseHalf(halves[0] ?? '');
++  if (head === undefined) return undefined;
++  if (halves.length === 1) {
++    return head.length === 8 ? head : undefined;
++  }
++  const tail = parseHalf(halves[1] ?? '');
++  if (tail === undefined) return undefined;
++  const missing = 8 - head.length - tail.length;
++  if (missing < 1) return undefined; // '::' は少なくとも 1 hextet を圧縮する
++  return [...head, ...new Array<number>(missing).fill(0), ...tail];
++}
++
++function embeddedIpv4(hextetHi: number, hextetLo: number): string {
++  return `${hextetHi >> 8}.${hextetHi & 0xff}.${hextetLo >> 8}.${hextetLo & 0xff}`;
++}
++
++/**
++ * 非公開・非到達または特殊用途の IPv6 を拒否する(IANA special registry +
++ * API-010 §2「public 宛先のみ」)。文字列 prefix 比較は圧縮・16 進表記の
++ * 揺れを取り逃すため、hextet 展開後に数値範囲で判定する。
++ */
+ export function isPrivateIpv6(host: string): boolean {
+-  const h = host.toLowerCase();
+-  if (h.startsWith('::ffff:')) {
+-    // IPv4-mapped: 埋め込み IPv4 の判定へ委ねる(dotted / hex 両表記)。
+-    const tail = h.slice(7);
+-    if (isIP(tail) === 4) return isPrivateIpv4(tail);
++  const hextets = parseIpv6Hextets(host.toLowerCase());
++  if (hextets === undefined) return true;
++  const [h0, h1, h2, h3, h4, h5, h6, h7] = hextets as [
++    number, number, number, number, number, number, number, number,
++  ];
++
++  // ::/128 unspecified・::1/128 loopback(圧縮・非圧縮の全表記)。
++  if (hextets.every((h) => h === 0)) return true;
++  if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0 && h6 === 0 && h7 === 1) {
+     return true;
+   }
+-  return (
+-    h === '::1' ||
+-    h === '::' ||
+-    h.startsWith('fc') ||
+-    h.startsWith('fd') ||
+-    h.startsWith('fe80') ||
+-    h.startsWith('fec0') ||
+-    h.startsWith('2001:db8') ||
+-    h.startsWith('64:ff9b')
+-  );
++  // ::ffff:a.b.c.d IPv4-mapped → 埋め込み IPv4 判定へ委譲。
++  if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0xffff) {
++    return isPrivateIpv4(embeddedIpv4(h6, h7));
++  }
++  // ::ffff:0:a.b.c.d IPv4-translated(RFC 6052) → 埋め込み IPv4 判定へ委譲。
++  if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0xffff && h5 === 0) {
++    return isPrivateIpv4(embeddedIpv4(h6, h7));
++  }
++  // ::/96 IPv4-compatible(廃止済み) → 埋め込み IPv4 判定へ委譲。
++  if (h0 === 0 && h1 === 0 && h2 === 0 && h3 === 0 && h4 === 0 && h5 === 0) {
++    return isPrivateIpv4(embeddedIpv4(h6, h7));
++  }
++  // fe80::/10 link-local と fec0::/10 site-local(廃止済み)。
++  if (h0 >= 0xfe80 && h0 <= 0xfeff) return true;
++  // fc00::/7 unique-local。
++  if ((h0 & 0xfe00) === 0xfc00) return true;
++  // ff00::/8 multicast。
++  if ((h0 & 0xff00) === 0xff00) return true;
++  // 64:ff9b::/96 NAT64 と 64:ff9b:1::/48 local-use(h0=0x0064, h1=0xff9b)。
++  if (h0 === 0x0064 && h1 === 0xff9b) return true;
++  // 2001::/23 IETF 特殊用途(Teredo/benchmarking/ORCHID 等)と 2001:db8::/32 文書用。
++  if (h0 === 0x2001 && (h1 <= 0x01ff || h1 === 0x0db8)) return true;
++  // 2002::/16 6to4(廃止済み、IPv4 を埋め込む)。
++  if (h0 === 0x2002) return true;
++  // 3fff::/20 文書用。
++  if (h0 === 0x3fff && h1 <= 0x0fff) return true;
++  // 5f00::/16 SRv6 local-use。
++  if (h0 === 0x5f00) return true;
++  // 100::/64 discard-only。
++  if (h0 === 0x0100 && h1 === 0 && h2 === 0 && h3 === 0) return true;
++  return false;
+ }
+ 
+ export function isPrivateAddress(address: string): boolean {
+diff --git a/apps/api/src/partner/webhook-partner-sink.test.ts b/apps/api/src/partner/webhook-partner-sink.test.ts
+index ac48f6b..1b22b2b 100644
+--- a/apps/api/src/partner/webhook-partner-sink.test.ts
++++ b/apps/api/src/partner/webhook-partner-sink.test.ts
+@@ -125,6 +125,28 @@ describe('WebhookPartnerSink', () => {
+     expect(spoofToISOString).not.toHaveBeenCalled();
+   });
+ 
++  it('releases the response body on both success and non-2xx', async () => {
++    // Undici の資源管理契約: 応答 body を consume/cancel しないと接続資源が
++    // 回収されない。injected stream の cancel 呼出で解放を直接観測する。
++    for (const status of [204, 500]) {
++      const cancel = vi.fn(async () => {});
++      const response = { status, body: { cancel } } as unknown as Response;
++      const fetchImpl = vi.fn<typeof fetch>(async () => response);
++      const outcome = await sinkWith(fetchImpl)
++        .publish(event)
++        .then(() => 'ok')
++        .catch((error: unknown) => error);
++
++      expect(cancel).toHaveBeenCalledTimes(1);
++      if (status < 300) {
++        expect(outcome).toBe('ok');
++      } else {
++        expect(outcome).toBeInstanceOf(WebhookDeliveryError);
++        expect((outcome as WebhookDeliveryError).reason).toBe('non_2xx');
++      }
++    }
++  });
++
+   it('treats non-2xx, network errors, and timeouts as delivery failures without leaking the secret', async () => {
+     const non2xx = vi.fn<typeof fetch>(async () => new Response('nope', { status: 500 }));
+     await expect(sinkWith(non2xx).publish(event)).rejects.toMatchObject({
+diff --git a/apps/api/src/partner/webhook-partner-sink.ts b/apps/api/src/partner/webhook-partner-sink.ts
+index b2fc5e3..5b36a9f 100644
+--- a/apps/api/src/partner/webhook-partner-sink.ts
++++ b/apps/api/src/partner/webhook-partner-sink.ts
+@@ -46,6 +46,20 @@ export class WebhookDeliveryError extends Error {
+   }
+ }
+ 
++/**
++ * 応答 body を破棄して接続資源を解放する(Undici は body 未消費の応答を
++ * 回収できない)。2xx でも body は読まない — 配送判定に必要なのは status のみ。
++ * cancel は読み取り量に非依存で bounded。解放失敗は配送結果を変えない
++ * (status 行は既に到達しており、受信側は要求を受理している)。
++ */
++async function discardResponseBody(response: Response): Promise<void> {
++  try {
++    await response.body?.cancel();
++  } catch {
++    // Release failure must not change the delivery outcome.
++  }
++}
++
+ export function signWebhookPayload(secret: string, timestamp: string, body: string): string {
+   const digest = createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex');
+   return `${WEBHOOK_SIGNATURE_VERSION}=${digest}`;
+@@ -119,6 +133,7 @@ export class WebhookPartnerSink implements PartnerEventSink {
+       clearTimeout(timer);
+       signal?.removeEventListener('abort', abortFromCaller);
+     }
++    await discardResponseBody(response);
+     if (response.status < 200 || response.status >= 300) {
+       throw new WebhookDeliveryError(event.eventId, 'non_2xx', response.status);
+     }
+diff --git a/apps/api/tsconfig.build.json b/apps/api/tsconfig.build.json
+index 0a11719..8761ffc 100644
+--- a/apps/api/tsconfig.build.json
++++ b/apps/api/tsconfig.build.json
+@@ -1,4 +1,4 @@
+ {
+   "extends": "./tsconfig.json",
+-  "exclude": ["src/**/*.test.ts"]
++  "exclude": ["src/**/*.test.ts", "src/**/*test-support.ts"]
+ }
+diff --git a/apps/web/app/patients/patient-coverage.test.tsx b/apps/web/app/patients/patient-coverage.test.tsx
+index c9b555d..8b0212f 100644
+--- a/apps/web/app/patients/patient-coverage.test.tsx
++++ b/apps/web/app/patients/patient-coverage.test.tsx
+@@ -6,6 +6,7 @@ import type { CoverageListResponse } from "@yrese/contracts";
+ 
+ import {
+   CoverageRequestError,
++  createCoverageController,
+   fetchCoverage,
+   PatientCoveragePanel,
+   recordCoverage,
+@@ -137,9 +138,183 @@ describe("fetchCoverage transport (SCR-007)", () => {
+   });
+ });
+ 
++describe("createCoverageController (SCR-007)", () => {
++  const validRecordRequest = {
++    kind: "insurance-card",
++    insurerNumber: "SYN12345",
++    insuredSymbol: "G-001",
++    insuredNumber: "0001",
++    relationship: "self",
++    copayRatio: 0.3,
++    validFrom: "2026-04-01",
++  } as const;
++
++  function flush(): Promise<void> {
++    return new Promise((resolve) => setTimeout(resolve, 0));
++  }
++
++  function makeController(fetchImpl: typeof fetch) {
++    const views: { kind: string; data?: CoverageListResponse }[] = [];
++    const submits: { kind: string }[] = [];
++    let keyCount = 0;
++    const controller = createCoverageController({
++      patientId: "patient-cov-001",
++      emitView: (view) => views.push(view),
++      emitSubmit: (state) => submits.push(state),
++      getAsOf: () => "2026-09-18",
++      fetchImpl,
++      makeIdempotencyKey: () => `web-coverage-test-${(keyCount += 1)}`,
++    });
++    return { controller, views, submits };
++  }
++
++  it("suppresses a stale reload response and aborts the superseded request", async () => {
++    vi.stubEnv("NODE_ENV", "development");
++    const signals: AbortSignal[] = [];
++    let resolveFirst!: (response: Response) => void;
++    const fetchImpl = (async (url: RequestInfo | URL, init?: RequestInit) => {
++      signals.push(init!.signal!);
++      if (String(url).includes("asOf=2026-09-17")) {
++        return new Promise<Response>((resolve) => {
++          resolveFirst = resolve;
++        });
++      }
++      return jsonResponse(200, { ...listResponse, asOf: "2026-09-18" });
++    }) as typeof fetch;
++    const { controller, views } = makeController(fetchImpl);
++
++    controller.reload("2026-09-17");
++    controller.reload("2026-09-18");
++    await flush();
++    resolveFirst(jsonResponse(200, { ...listResponse, asOf: "2026-09-17" }));
++    await flush();
++
++    expect(signals[0]!.aborted).toBe(true);
++    const loaded = views.filter((view) => view.kind === "loaded");
++    expect(loaded).toHaveLength(1);
++    expect(loaded[0]!.data?.asOf).toBe("2026-09-18");
++  });
++
++  it("reuses the idempotency key while a submission outcome is unknown", async () => {
++    vi.stubEnv("NODE_ENV", "development");
++    const postedKeys: string[] = [];
++    const fetchImpl = (async (_url: RequestInfo | URL, init?: RequestInit) => {
++      if (init?.method === "POST") {
++        postedKeys.push(
++          (init.headers as Record<string, string>)["idempotency-key"] ?? "",
++        );
++        throw new TypeError("response lost");
++      }
++      return jsonResponse(200, listResponse);
++    }) as typeof fetch;
++    const { controller, submits } = makeController(fetchImpl);
++
++    controller.submit(validRecordRequest);
++    await flush();
++    controller.submit(validRecordRequest);
++    await flush();
++
++    expect(postedKeys).toEqual([
++      "web-coverage-test-1",
++      "web-coverage-test-1",
++    ]);
++    expect(submits.filter((state) => state.kind === "error")).toHaveLength(2);
++  });
++
++  it("retains the idempotency key after an unsettled 5xx failure", async () => {
++    vi.stubEnv("NODE_ENV", "development");
++    const postedKeys: string[] = [];
++    const fetchImpl = (async (_url: RequestInfo | URL, init?: RequestInit) => {
++      if (init?.method === "POST") {
++        postedKeys.push(
++          (init.headers as Record<string, string>)["idempotency-key"] ?? "",
++        );
++        return jsonResponse(500, {});
++      }
++      return jsonResponse(200, listResponse);
++    }) as typeof fetch;
++    const { controller, submits } = makeController(fetchImpl);
++
++    controller.submit(validRecordRequest);
++    await flush();
++    controller.submit(validRecordRequest);
++    await flush();
++
++    // 5xx は結果不明(記録済みかもしれない)のため同一キーで再試行する。
++    expect(postedKeys).toEqual([
++      "web-coverage-test-1",
++      "web-coverage-test-1",
++    ]);
++    expect(submits.filter((state) => state.kind === "error")).toHaveLength(2);
++  });
++
++  it("issues a new key after a settled 4xx and after a recorded success", async () => {
++    vi.stubEnv("NODE_ENV", "development");
++    const postedKeys: string[] = [];
++    let rejectNext = true;
++    const fetchImpl = (async (_url: RequestInfo | URL, init?: RequestInit) => {
++      if (init?.method === "POST") {
++        postedKeys.push(
++          (init.headers as Record<string, string>)["idempotency-key"] ?? "",
++        );
++        if (rejectNext) {
++          rejectNext = false;
++          return jsonResponse(409, { errorCode: "INS-0003" });
++        }
++        return jsonResponse(201, listResponse.insuranceCards[0]);
++      }
++      return jsonResponse(200, listResponse);
++    }) as typeof fetch;
++    const { controller } = makeController(fetchImpl);
++
++    controller.submit(validRecordRequest);
++    await flush();
++    controller.submit(validRecordRequest);
++    await flush();
++    controller.submit(validRecordRequest);
++    await flush();
++
++    expect(postedKeys).toEqual([
++      "web-coverage-test-1",
++      "web-coverage-test-2",
++      "web-coverage-test-3",
++    ]);
++  });
++
++  it("coalesces a synchronous double submit into one POST", async () => {
++    vi.stubEnv("NODE_ENV", "development");
++    let postCount = 0;
++    let resolvePost!: (response: Response) => void;
++    const fetchImpl = (async (_url: RequestInfo | URL, init?: RequestInit) => {
++      if (init?.method === "POST") {
++        postCount += 1;
++        return new Promise<Response>((resolve) => {
++          resolvePost = resolve;
++        });
++      }
++      return jsonResponse(200, listResponse);
++    }) as typeof fetch;
++    const { controller, submits } = makeController(fetchImpl);
++
++    controller.submit(validRecordRequest);
++    controller.submit(validRecordRequest);
++    resolvePost(jsonResponse(201, listResponse.insuranceCards[0]));
++    await flush();
++
++    expect(postCount).toBe(1);
++    expect(submits.at(-1)?.kind).toBe("idle");
++  });
++});
++
+ describe("PatientCoveragePanel render (SCR-007)", () => {
+   it("renders as-of input, recorded-input honesty notice, and registration form", () => {
+     const html = renderToStaticMarkup(<PatientCoveragePanel patient={patient} />);
++    // 既定基準日は JST 業務日(todayAsIsoDate)。UTC date 直取りでは
++    // JST 午前 0〜9 時に前日を表示してしまう。
++    const jstToday = new Date(Date.now() + 9 * 60 * 60 * 1000)
++      .toISOString()
++      .slice(0, 10);
++    expect(html).toContain(`value="${jstToday}"`);
+     expect(html).toContain("保険・公費");
+     expect(html).toContain("基準日");
+     expect(html).toContain("asOf");
+diff --git a/apps/web/app/patients/patient-coverage.tsx b/apps/web/app/patients/patient-coverage.tsx
+index 5605e08..99693ca 100644
+--- a/apps/web/app/patients/patient-coverage.tsx
++++ b/apps/web/app/patients/patient-coverage.tsx
+@@ -1,6 +1,6 @@
+ "use client";
+ 
+-import { useState } from "react";
++import { useEffect, useRef, useState } from "react";
+ 
+ import {
+   coverageListResponseSchema,
+@@ -23,6 +23,7 @@ import {
+ 
+ import { devTenantHeaders } from '../dev-tenant';
+ import { resolveWebApiUrl } from '../api-transport';
++import { todayAsIsoDate } from '../_reception/reception-time';
+ import { registeredErrorCodeOrUndefined } from '../components/error-code';
+ import type { PatientContextData } from '../components/patient/patient-context';
+ import { EmptyState } from '../components/empty-state';
+@@ -144,6 +145,7 @@ export async function fetchCoverage(
+   targetPatientId: string,
+   asOf: string,
+   fetchImpl: typeof fetch = fetch,
++  signal?: AbortSignal,
+ ): Promise<CoverageListResponse> {
+   const url = resolveWebApiUrl(
+     `/patients/${encodeURIComponent(targetPatientId)}/coverage?asOf=${encodeURIComponent(asOf)}`,
+@@ -151,10 +153,14 @@ export async function fetchCoverage(
+   const res = await fetchImpl(url, {
+     headers: devTenantHeaders(COVERAGE_READ_SCOPES),
+     cache: "no-store",
++    ...(signal === undefined ? {} : { signal }),
+   });
+   if (!res.ok) {
+     const errorCode = await extractCoverageErrorCode(res);
+-    throw new CoverageRequestError(coverageErrorNotice(res.status, errorCode));
++    throw new CoverageRequestError(
++      coverageErrorNotice(res.status, errorCode),
++      res.status,
++    );
+   }
+   return coverageListResponseSchema.parse(await res.json());
+ }
+@@ -164,6 +170,7 @@ export async function recordCoverage(
+   request: CoverageRecordRequest,
+   idempotencyKey: string,
+   fetchImpl: typeof fetch = fetch,
++  signal?: AbortSignal,
+ ): Promise<{ readonly status: number; readonly body: unknown }> {
+   const url = resolveWebApiUrl(
+     `/patients/${encodeURIComponent(targetPatientId)}/coverage`,
+@@ -176,21 +183,42 @@ export async function recordCoverage(
+       ...devTenantHeaders(COVERAGE_WRITE_SCOPES),
+     },
+     body: JSON.stringify(request),
++    ...(signal === undefined ? {} : { signal }),
+   });
+-  if (!res.ok && res.status !== 200) {
++  if (!res.ok) {
+     const errorCode = await extractCoverageErrorCode(res);
+-    throw new CoverageRequestError(coverageErrorNotice(res.status, errorCode));
++    throw new CoverageRequestError(
++      coverageErrorNotice(res.status, errorCode),
++      res.status,
++    );
+   }
+   return { status: res.status, body: await res.json() };
+ }
+ 
+ export class CoverageRequestError extends Error {
+-  constructor(readonly notice: ErrorNoticeProps) {
++  constructor(
++    readonly notice: ErrorNoticeProps,
++    readonly status?: number,
++  ) {
+     super(notice.message);
+     this.name = "CoverageRequestError";
+   }
+ }
+ 
++/**
++ * サーバーが確定的に拒否した応答(記録なし)は「結果確定」として冪等キーを
++ * 退役できる。応答なし・ネットワーク失敗・5xx・応答形式違反は結果不明であり、
++ * キーを保持して再試行がサーバー側の同一記録へ収束するようにする
++ * (reception-registration の keyStore 規約と同じ)。
++ */
++function isSettledCoverageFailure(error: unknown): boolean {
++  return (
++    error instanceof CoverageRequestError &&
++    error.status !== undefined &&
++    error.status < 500
++  );
++}
++
+ const RELATIONSHIP_LABELS: Readonly<Record<InsuranceCard["relationship"], string>> = {
+   self: "本人",
+   family: "家族",
+@@ -211,56 +239,144 @@ type FormMode =
+       targetId: string;
+     };
+ 
+-function todayIsoDate(): string {
+-  return new Date().toISOString().slice(0, 10);
+-}
++/** 保険・公費の読取・記録の応答待ち上限(reception 系と同じ既存上限)。 */
++const COVERAGE_REQUEST_TIMEOUT_MS = 30_000;
+ 
+-export function PatientCoveragePanel({
+-  patient,
+-}: {
+-  readonly patient: PatientContextData;
++export type CoverageSubmitState =
++  | { readonly kind: "idle" }
++  | { readonly kind: "submitting" }
++  | { readonly kind: "error"; readonly notice: ErrorNoticeProps };
++
++/**
++ * PatientCoveragePanel の非 React 状態機械。
++ * createSearchRunner と同じく fetch 差込み・emit 経由にして、reload の
++ * stale 応答抑止・冪等キー寿命・二重送信防止を component なしで検証する。
++ */
++export function createCoverageController(options: {
++  readonly patientId: string;
++  readonly emitView: (view: CoverageViewState) => void;
++  readonly emitSubmit: (state: CoverageSubmitState) => void;
++  readonly getAsOf: () => string;
++  readonly onRecorded?: () => void;
++  readonly timeoutMs?: number;
++  readonly fetchImpl?: typeof fetch;
++  readonly makeIdempotencyKey?: () => string;
+ }) {
+-  const [asOf, setAsOf] = useState(todayIsoDate());
+-  const [view, setView] = useState<CoverageViewState>({ kind: "idle" });
+-  const [formMode, setFormMode] = useState<FormMode>({ kind: "insurance-card" });
+-  const [submitState, setSubmitState] = useState<
+-    { kind: "idle" } | { kind: "submitting" } | { kind: "error"; notice: ErrorNoticeProps }
+-  >({ kind: "idle" });
++  const fetchImpl = options.fetchImpl ?? fetch;
++  const timeoutMs = options.timeoutMs ?? COVERAGE_REQUEST_TIMEOUT_MS;
++  const makeIdempotencyKey =
++    options.makeIdempotencyKey ?? (() => `web-coverage-${crypto.randomUUID()}`);
++
++  // 連続 reload の stale 応答が新しい基準日の表示を上書きしないよう、
++  // 世代番号 + AbortController で直近の要求だけを有効化する。
++  let generation = 0;
++  let loadAbort: AbortController | null = null;
++  // emit(setState 相当)は同 tick 内の再呼出を即座に反映しないため、
++  // 同期再入防止は通常変数で行う。
++  let submitting = false;
++  // 未解決の登録意図を表す冪等キー。内容が変われば別の意図(別キー)であり、
++  // 結果確定(成功/4xx)まで同じ内容の再試行は同じキーを再利用する
++  // (reception-registration の keyStore 規約と同じ)。
++  let submission: { content: string; key: string } | null = null;
+ 
+   const reload = (nextAsOf: string) => {
+-    setView({ kind: "loading" });
+-    void fetchCoverage(patient.patientId, nextAsOf)
+-      .then((data) => setView({ kind: "loaded", data }))
+-      .catch((error: unknown) =>
+-        setView({
++    loadAbort?.abort();
++    const controller = new AbortController();
++    loadAbort = controller;
++    generation += 1;
++    const current = generation;
++    options.emitView({ kind: "loading" });
++    void fetchCoverage(
++      options.patientId,
++      nextAsOf,
++      fetchImpl,
++      AbortSignal.any([controller.signal, AbortSignal.timeout(timeoutMs)]),
++    )
++      .then((data) => {
++        if (current === generation) {
++          options.emitView({ kind: "loaded", data });
++        }
++      })
++      .catch((error: unknown) => {
++        if (current !== generation) return;
++        options.emitView({
+           kind: "error",
+           notice:
+             error instanceof CoverageRequestError ? error.notice : genericNotice,
+-        }),
+-      );
++        });
++      });
+   };
+ 
+   const submit = (request: CoverageRecordRequest) => {
+-    setSubmitState({ kind: "submitting" });
++    if (submitting) return;
++    submitting = true;
++    const content = JSON.stringify(request);
++    if (submission?.content !== content) {
++      submission = { content, key: makeIdempotencyKey() };
++    }
++    const { key } = submission;
++    options.emitSubmit({ kind: "submitting" });
+     void recordCoverage(
+-      patient.patientId,
++      options.patientId,
+       request,
+-      `web-coverage-${crypto.randomUUID()}`,
++      key,
++      fetchImpl,
++      AbortSignal.timeout(timeoutMs),
+     )
+       .then(() => {
+-        setSubmitState({ kind: "idle" });
+-        setFormMode({ kind: "insurance-card" });
+-        reload(asOf);
++        submission = null;
++        submitting = false;
++        options.emitSubmit({ kind: "idle" });
++        options.onRecorded?.();
++        reload(options.getAsOf());
+       })
+-      .catch((error: unknown) =>
+-        setSubmitState({
++      .catch((error: unknown) => {
++        if (isSettledCoverageFailure(error)) {
++          submission = null;
++        }
++        submitting = false;
++        options.emitSubmit({
+           kind: "error",
+           notice:
+             error instanceof CoverageRequestError ? error.notice : genericNotice,
+-        }),
+-      );
++        });
++      });
++  };
++
++  const dispose = () => {
++    loadAbort?.abort();
++    generation += 1;
+   };
+ 
++  return { reload, submit, dispose };
++}
++
++export function PatientCoveragePanel({
++  patient,
++}: {
++  readonly patient: PatientContextData;
++}) {
++  const [asOf, setAsOf] = useState(todayAsIsoDate());
++  const [view, setView] = useState<CoverageViewState>({ kind: "idle" });
++  const [formMode, setFormMode] = useState<FormMode>({ kind: "insurance-card" });
++  const [submitState, setSubmitState] = useState<CoverageSubmitState>({ kind: "idle" });
++
++  const asOfRef = useRef(asOf);
++  asOfRef.current = asOf;
++  const controllerRef = useRef<ReturnType<typeof createCoverageController> | null>(null);
++  if (controllerRef.current === null) {
++    controllerRef.current = createCoverageController({
++      patientId: patient.patientId,
++      emitView: setView,
++      emitSubmit: setSubmitState,
++      getAsOf: () => asOfRef.current,
++      onRecorded: () => setFormMode({ kind: "insurance-card" }),
++    });
++  }
++  useEffect(() => () => controllerRef.current?.dispose(), []);
++
++  const { reload, submit } = controllerRef.current;
++
+   const cards: readonly InsuranceCard[] =
+     view.kind === "loaded" ? view.data.insuranceCards : [];
+   const expenses: readonly PublicExpense[] =
+@@ -434,6 +550,7 @@ function CoverageRecordForm({
+   readonly onSubmit: (request: CoverageRecordRequest) => void;
+ }) {
+   const [fields, setFields] = useState<Record<string, string>>({});
++  const [validationNotice, setValidationNotice] = useState<ErrorNoticeProps | null>(null);
+ 
+   const field = (name: string) => fields[name] ?? "";
+   const setField = (name: string, value: string) =>
+@@ -477,11 +594,18 @@ function CoverageRecordForm({
+         e.preventDefault();
+         const request = buildRequest();
+         if (request === undefined) {
++          setValidationNotice({
++            message: "資格情報の入力内容が不正です。",
++            nextAction:
++              "必須項目と日付(YYYY-MM-DD)・数値欄の入力を確認してください。",
++          });
+           return;
+         }
++        setValidationNotice(null);
+         onSubmit(request);
+       }}
+     >
++      {validationNotice !== null && <ErrorNotice {...validationNotice} />}
+       <fieldset>
+         <legend>
+           {isSupersede ? "資格情報の訂正(新しい行で置き換え)" : "資格情報の登録"}
+diff --git a/apps/web/app/patients/patient-registration.tsx b/apps/web/app/patients/patient-registration.tsx
+index 760e3ba..953c32d 100644
+--- a/apps/web/app/patients/patient-registration.tsx
++++ b/apps/web/app/patients/patient-registration.tsx
+@@ -187,7 +187,12 @@ export function PatientRegistrationForm({
+     setSubmitting(true);
+     setErrorNotice(null);
+     try {
+-      const response = await createPatient(parsed.data, key);
++      const response = await createPatient(
++        parsed.data,
++        key,
++        fetch,
++        AbortSignal.timeout(30_000),
++      );
+       setWarnings(response.warnings);
+       setDraft(emptyDraft);
+       keyRef.current = null;
+diff --git a/apps/web/app/patients/patient-search.tsx b/apps/web/app/patients/patient-search.tsx
+index 91c1869..ded0200 100644
+--- a/apps/web/app/patients/patient-search.tsx
++++ b/apps/web/app/patients/patient-search.tsx
+@@ -435,7 +435,7 @@ export function PatientSearch() {
+       </section>
+       {selected !== null && (
+         <section aria-label="保険・公費">
+-          <PatientCoveragePanel patient={selected} />
++          <PatientCoveragePanel key={selected.patientId} patient={selected} />
+         </section>
+       )}
+       <section aria-label="患者登録">
+diff --git a/docs/api/openapi.yaml b/docs/api/openapi.yaml
+index 2d93967..b9838f1 100644
+--- a/docs/api/openapi.yaml
++++ b/docs/api/openapi.yaml
+@@ -41,7 +41,8 @@ paths:
+       summary: Return the authenticated tenant context
+       description: Requires tenant:read scope. Returns the current tenant, pharmacy, actor, and granted scopes.
+       x-yrese-ssot: API-002
+-      x-yrese-required-scope: tenant:read
++      x-yrese-required-scopes:
++        - tenant:read
+       responses:
+         "200":
+           description: Current tenant context
+@@ -69,7 +70,8 @@ paths:
+       summary: Search patients within the authenticated tenant and pharmacy context
+       description: "Requires patient:read scope and tenant context. The response contains PHI and must use Cache-Control: no-store."
+       x-yrese-ssot: API-001
+-      x-yrese-required-scope: patient:read
++      x-yrese-required-scopes:
++        - patient:read
+       parameters:
+         - in: query
+           name: q
+@@ -200,7 +202,8 @@ paths:
+       description: "Requires patient:read scope and tenant context. Used to refresh the cross-route patient context (R-PATCTX)
+         and to obtain the version consumed by PUT. The response contains PHI and must use Cache-Control: no-store."
+       x-yrese-ssot: API-001
+-      x-yrese-required-scope: patient:read
++      x-yrese-required-scopes:
++        - patient:read
+       parameters:
+         - in: path
+           name: patientId
+@@ -252,7 +255,8 @@ paths:
+         patientNumber is immutable and rejected with 422 PAT-0005. The response contains PHI and must use Cache-Control:
+         no-store."
+       x-yrese-ssot: API-001
+-      x-yrese-required-scope: patient:write
++      x-yrese-required-scopes:
++        - patient:write
+       parameters:
+         - in: path
+           name: patientId
+@@ -397,7 +401,8 @@ paths:
+         priority with overlapping period returns 409 INS-0004, and a missing or already-superseded target returns 409
+         INS-0005. Emits insurance.updated audit before the response."
+       x-yrese-ssot: API-020
+-      x-yrese-required-scope: patient:read + kind-scoped write
++      x-yrese-required-scopes:
++        - patient:read
+       parameters:
+         - in: path
+           name: patientId
+@@ -1692,6 +1697,7 @@ paths:
+             pattern: ^[A-Za-z0-9_-]{16,128}$
+           required: true
+       requestBody:
++        required: true
+         content:
+           application/json:
+             schema:
+@@ -1773,6 +1779,7 @@ paths:
+             pattern: ^[A-Za-z0-9_-]{16,128}$
+           required: true
+       requestBody:
++        required: true
+         content:
+           application/json:
+             schema:
+@@ -1830,7 +1837,8 @@ paths:
+         is omitted where it is not derived rather than reported as zero, and the orphan reception IDs themselves are
+         never returned."
+       x-yrese-ssot: MOD-009
+-      x-yrese-required-scope: sync:read
++      x-yrese-required-scopes:
++        - sync:read
+       responses:
+         "200":
+           description: Outbox counters grouped by event type in eventType asc order
+@@ -1862,7 +1870,8 @@ paths:
+         status is reported as a measured zero rather than being dropped. The response is PHI-free and declares no
+         Cache-Control: no-store."
+       x-yrese-ssot: API-006
+-      x-yrese-required-scope: reception:read
++      x-yrese-required-scopes:
++        - reception:read
+       parameters:
+         - in: query
+           name: date
+@@ -1910,7 +1919,8 @@ paths:
+         store is configured the response is the explicit `available: false` branch rather than a fabricated up-to-date
+         state."
+       x-yrese-ssot: DB-002
+-      x-yrese-required-scope: tenant:admin
++      x-yrese-required-scopes:
++        - tenant:admin
+       responses:
+         "200":
+           description: Migration reconciliation state, or the explicit not-configured branch
+@@ -1939,7 +1949,8 @@ paths:
+       description: "Requires audit-log:read scope. Returns a display projection (IDs only, no PHI names) ordered by wallClock
+         desc, plus a hash chain verification over all stored events. Must use Cache-Control: no-store."
+       x-yrese-ssot: SCR-028
+-      x-yrese-required-scope: audit-log:read
++      x-yrese-required-scopes:
++        - audit-log:read
+       parameters:
+         - in: query
+           name: limit
+diff --git a/packages/audit/src/audit.test.ts b/packages/audit/src/audit.test.ts
+index 4db020b..fcc44af 100644
+--- a/packages/audit/src/audit.test.ts
++++ b/packages/audit/src/audit.test.ts
+@@ -754,4 +754,63 @@ describe("verifyAuditHashChain totality over corrupt persisted roots (WP-4236)",
+       (result as { reason: string }).reason,
+     );
+   });
++
++  it("reports an event carrying an unknown extra field as a structural break", () => {
++    // canonicalize は既知 field のみ読むため、shape 厳格化がないと
++    // 余分な field を持つ行が「verify clean / hydrate 拒否」の不整合になる。
++    const valid = createAuditEvent(baseAuditEvent());
++    const withExtra = { ...valid, injectedField: "smuggled" } as unknown as AuditEvent;
++
++    expect(verifyAuditHashChain([withExtra])).toEqual({
++      ok: false,
++      checkedCount: 0,
++      breakIndex: 0,
++      reason: "hash_format_invalid",
++      eventId: valid.eventId,
++    });
++  });
++
++  it("reports a present-but-undefined optional field as a structural break", () => {
++    const valid = createAuditEvent(baseAuditEvent());
++    const withUndefinedOptional = {
++      ...valid,
++      deviceId: undefined,
++    } as unknown as AuditEvent;
++
++    expect(verifyAuditHashChain([withUndefinedOptional])).toMatchObject({
++      ok: false,
++      checkedCount: 0,
++      breakIndex: 0,
++      reason: "hash_format_invalid",
++    });
++  });
++
++  it("reports a sparse-array hole as a break instead of silently skipping it", () => {
++    const sparse = new Array<AuditEvent>(2);
++    sparse[1] = createAuditEvent(baseAuditEvent());
++
++    expect(verifyAuditHashChain(sparse)).toEqual({
++      ok: false,
++      checkedCount: 0,
++      breakIndex: 0,
++      reason: "hash_format_invalid",
++    });
++  });
++
++  it("does not echo a non-string eventId from a corrupt row", () => {
++    const valid = createAuditEvent(baseAuditEvent());
++    const corrupt = {
++      ...valid,
++      eventId: 42,
++      prevHash: "f".repeat(64),
++    } as unknown as AuditEvent;
++
++    const result = verifyAuditHashChain([corrupt]);
++    expect(result).toMatchObject({
++      ok: false,
++      breakIndex: 0,
++      reason: "prev_hash_mismatch",
++    });
++    expect("eventId" in result).toBe(false);
++  });
+ });
+diff --git a/packages/audit/src/index.ts b/packages/audit/src/index.ts
+index 3ad98e5..03caf6b 100644
+--- a/packages/audit/src/index.ts
++++ b/packages/audit/src/index.ts
+@@ -483,7 +483,9 @@ export function verifyAuditHashChain(events: readonly AuditEvent[]): AuditHashCh
+   for (let index = 0; index < events.length; index += 1) {
+     const event = events[index];
+     if (event === undefined) {
+-      continue;
++      // sparse array の hole は「存在しない行」の silent skip になるため
++      // fail-visible の構造破断として報告する。
++      return hashFormatFailure(events, index, checkedCount);
+     }
+ 
+     // WP-4236: object 以外の root(JSON null / scalar / array)はプロパティへ
+@@ -496,39 +498,48 @@ export function verifyAuditHashChain(events: readonly AuditEvent[]): AuditHashCh
+     // accessor / Proxy / 変異する nested graph による throw は、例外の伝播では
+     // なく構造的 hash_format_invalid 破断として報告する。
+     try {
+-      assertSha256Hex(event.prevHash, "prevHash");
+-      assertSha256Hex(event.entryHash, "entryHash");
+-
+-      if (event.prevHash !== expectedPrevHash) {
++      // canonicalize は既知 field のみ読むため、未知 field を持つイベントは
++      // ここで shape を厳格化しない限り「verify clean だが hydrate 拒否」に
++      // なる。読取境界(hydrateAuditEvent)と同じ exact shape を要求する。
++      const strictEvent = copyExactAuditEventShape(event);
++      assertSha256Hex(strictEvent.prevHash, "prevHash");
++      assertSha256Hex(strictEvent.entryHash, "entryHash");
++
++      if (strictEvent.prevHash !== expectedPrevHash) {
+         return Object.freeze({
+           ok: false,
+           checkedCount,
+           breakIndex: index,
+-          eventId: event.eventId,
++          // 破損行の eventId は非 string もあり得るため、echo は string のみに限定する。
++          ...(typeof strictEvent.eventId === "string"
++            ? { eventId: strictEvent.eventId }
++            : {}),
+           reason: "prev_hash_mismatch",
+           expectedPrevHash,
+-          actualPrevHash: event.prevHash,
++          actualPrevHash: strictEvent.prevHash,
+         });
+       }
+ 
+       const expectedEntryHash = computeAuditEntryHash({
+-        prevHash: event.prevHash,
+-        canonicalJson: canonicalizeAuditEventPayload(event),
++        prevHash: strictEvent.prevHash,
++        canonicalJson: canonicalizeAuditEventPayload(strictEvent),
+       });
+-      if (event.entryHash !== expectedEntryHash) {
++      if (strictEvent.entryHash !== expectedEntryHash) {
+         return Object.freeze({
+           ok: false,
+           checkedCount,
+           breakIndex: index,
+-          eventId: event.eventId,
++          ...(typeof strictEvent.eventId === "string"
++            ? { eventId: strictEvent.eventId }
++            : {}),
+           reason: "entry_hash_mismatch",
+           expectedEntryHash,
+-          actualEntryHash: event.entryHash,
++          actualEntryHash: strictEvent.entryHash,
+         });
+       }
+ 
+       checkedCount += 1;
+-      expectedPrevHash = event.entryHash;
++      expectedPrevHash = strictEvent.entryHash;
+     } catch {
+       return hashFormatFailure(events, index, checkedCount);
+     }
+diff --git a/packages/audit/tsconfig.build.json b/packages/audit/tsconfig.build.json
+index 0a11719..8761ffc 100644
+--- a/packages/audit/tsconfig.build.json
++++ b/packages/audit/tsconfig.build.json
+@@ -1,4 +1,4 @@
+ {
+   "extends": "./tsconfig.json",
+-  "exclude": ["src/**/*.test.ts"]
++  "exclude": ["src/**/*.test.ts", "src/**/*test-support.ts"]
+ }
+diff --git a/packages/calculation/src/rules.ts b/packages/calculation/src/rules.ts
+index 2ec0dee..811a298 100644
+--- a/packages/calculation/src/rules.ts
++++ b/packages/calculation/src/rules.ts
+@@ -1,96 +1,3 @@
+-import { evidenceId } from "@yrese/shared-kernel";
+-import { CalendarDate } from "@yrese/date-time";
+-import { Points, type ScaledDecimal } from "@yrese/money";
+-import type { EvidenceRef } from "@yrese/trace";
+-
+-import {
+-  applyPointsMultiplier,
+-  basicFeeCompositionOrderWarning,
+-  composeDispensingBasicFeePoints,
+-  decoctionPreparationFeePoints,
+-  drugFeeProvisionalRoundingWarning,
+-  drugPriceToPoints,
+-  materialFeeProvisionalWarning,
+-  materialPriceToPoints,
+-  onePackagingSupportFeePoints,
+-  type PointsRatio,
+-  selfPreparationAdditionPoints,
+-  type SelfPreparationKind,
+-  weighingMixingAdditionPoints,
+-  type WeighingMixingKind,
+-} from "./formulas.js";
+-import {
+-  assertNonEmptyString,
+-  assertPositiveSafeInteger,
+-  calculationEvidenceRef,
+-  freezeArray,
+-  ruleEffectiveFrom,
+-} from "./engine.js";
+-import type {
+-  CalculationExclusivityGroup,
+-  CalculationRule,
+-  StepResult,
+-} from "./types.js";
+-
+-
+-function createFixedPointsRule(input: {
+-  readonly ruleId: string;
+-  readonly evidenceRef: EvidenceRef;
+-  readonly itemPoints: Points;
+-  readonly applicationKey: string;
+-  readonly description: string;
+-  readonly output: string;
+-  readonly maxApplications?: number;
+-  readonly effectiveTo?: CalendarDate;
+-  readonly exclusivityGroup?: CalculationExclusivityGroup;
+-}): CalculationRule {
+-  const {
+-    ruleId,
+-    evidenceRef,
+-    itemPoints,
+-    applicationKey,
+-    description,
+-    output,
+-    maxApplications,
+-    effectiveTo,
+-    exclusivityGroup,
+-  } = input;
+-  assertNonEmptyString(applicationKey, "applicationKey");
+-  if (maxApplications !== undefined) {
+-    assertPositiveSafeInteger(maxApplications, "maxApplications");
+-  }
+-  const frozenExclusivityGroup =
+-    exclusivityGroup === undefined
+-      ? undefined
+-      : Object.freeze({
+-          groupId: exclusivityGroup.groupId,
+-          evidenceRef: exclusivityGroup.evidenceRef,
+-          ...(exclusivityGroup.blocksGroupIdPrefixes !== undefined
+-            ? { blocksGroupIdPrefixes: freezeArray(exclusivityGroup.blocksGroupIdPrefixes) }
+-            : {}),
+-        });
+-
+-  return Object.freeze({
+-    ruleId,
+-    evidenceRefs: freezeArray([evidenceRef]),
+-    effectiveFrom: ruleEffectiveFrom,
+-    ...(effectiveTo !== undefined ? { effectiveTo } : {}),
+-    apply: () =>
+-      Object.freeze({
+-        status: "ITEM_CALCULATED",
+-        description,
+-        affectsClaim: true,
+-        inputRefs: [],
+-        output,
+-        itemPoints,
+-        applicationKey,
+-        ...(maxApplications !== undefined ? { maxApplications } : {}),
+-        ...(frozenExclusivityGroup !== undefined ? { exclusivityGroup: frozenExclusivityGroup } : {}),
+-      }),
+-  });
+-}
+-
+-
+ export {
+   dispensingBasicFee1Rule,
+   createOralMedicinePreparationFeeRule,
+diff --git a/packages/calculation/tsconfig.build.json b/packages/calculation/tsconfig.build.json
+index 0a11719..8761ffc 100644
+--- a/packages/calculation/tsconfig.build.json
++++ b/packages/calculation/tsconfig.build.json
+@@ -1,4 +1,4 @@
+ {
+   "extends": "./tsconfig.json",
+-  "exclude": ["src/**/*.test.ts"]
++  "exclude": ["src/**/*.test.ts", "src/**/*test-support.ts"]
+ }
+diff --git a/packages/contracts/package.json b/packages/contracts/package.json
+index dff71e1..bde4496 100644
+--- a/packages/contracts/package.json
++++ b/packages/contracts/package.json
+@@ -8,12 +8,12 @@
+   "types": "./src/index.ts",
+   "exports": {
+     ".": "./src/index.ts",
+-    "./calculation-trace": "./src/calculation-trace.ts",
++    "./calculation-trace": "./src/calculation/calculation-trace.ts",
+     "./error": "./src/error.ts",
+     "./health": "./src/health.ts",
+     "./openapi": "./src/openapi.ts",
+-    "./patient-search": "./src/patient-search.ts",
+-    "./reception-queue": "./src/reception-queue.ts",
++    "./patient-search": "./src/patient/patient-search.ts",
++    "./reception-queue": "./src/reception/reception-queue.ts",
+     "./whoami": "./src/whoami.ts"
+   },
+   "scripts": {
+@@ -24,11 +24,11 @@
+   "dependencies": {
+     "@yrese/shared-kernel": "workspace:*",
+     "@yrese/trace": "workspace:*",
+-    "zod": "^4.6.5"
++    "zod": "^4.6.5",
++    "zod-openapi": "^6.0.2"
+   },
+   "devDependencies": {
+     "typescript": "^7.0.2",
+-    "vitest": "^5.0.2",
+-    "zod-openapi": "^6.0.2"
++    "vitest": "^5.0.2"
+   }
+ }
+diff --git a/packages/contracts/src/openapi/openapi-paths-dispensing.ts b/packages/contracts/src/openapi/openapi-paths-dispensing.ts
+index 01c42aa..dd6d978 100644
+--- a/packages/contracts/src/openapi/openapi-paths-dispensing.ts
++++ b/packages/contracts/src/openapi/openapi-paths-dispensing.ts
+@@ -26,6 +26,7 @@ export const dispensingPaths = {
+           header: prescriptionLifecycleHeadersOpenApiSchema,
+         },
+         requestBody: {
++          required: true,
+           content: {
+             [jsonContentType]: {
+               schema: dispensingCreateRequestOpenApiSchema,
+@@ -79,6 +80,7 @@ export const dispensingPaths = {
+           header: prescriptionLifecycleHeadersOpenApiSchema,
+         },
+         requestBody: {
++          required: true,
+           content: {
+             [jsonContentType]: {
+               schema: dispensingConfirmRequestOpenApiSchema,
+diff --git a/packages/contracts/src/openapi/openapi-paths-operations.ts b/packages/contracts/src/openapi/openapi-paths-operations.ts
+index 5ba4362..084589b 100644
+--- a/packages/contracts/src/openapi/openapi-paths-operations.ts
++++ b/packages/contracts/src/openapi/openapi-paths-operations.ts
+@@ -21,7 +21,7 @@ export const operationsPaths = {
+         description:
+           "Requires sync:read scope. Returns counts and instants derived from persisted outbox intents (migrations/000005 + 000007 `outbox_events`; the in-memory mode reads the in-process intent store). No delivery worker runs in this slice, so intents observed as pending are genuinely pending. The response is PHI-free — counts, event-type labels, and one instant only — so it declares no Cache-Control: no-store. `legacyOrphanCount` is omitted where it is not derived rather than reported as zero, and the orphan reception IDs themselves are never returned.",
+         "x-yrese-ssot": "MOD-009",
+-        "x-yrese-required-scope": "sync:read",
++        "x-yrese-required-scopes": ["sync:read"],
+         responses: {
+           "200": {
+             description: "Outbox counters grouped by event type in eventType asc order",
+@@ -44,7 +44,7 @@ export const operationsPaths = {
+         description:
+           "Requires reception:read only. patient:read is deliberately not required: the service folds the reception list into counts before the route sees it, so no patient identity crosses the route boundary and a batch screen does not need a patient scope. Both count arrays list every enum member in declaration order, so an absent status is reported as a measured zero rather than being dropped. The response is PHI-free and declares no Cache-Control: no-store.",
+         "x-yrese-ssot": "API-006",
+-        "x-yrese-required-scope": "reception:read",
++        "x-yrese-required-scopes": ["reception:read"],
+         requestParams: {
+           query: receptionSummaryQueryOpenApiSchema,
+         },
+@@ -73,7 +73,7 @@ export const operationsPaths = {
+         description:
+           "Requires tenant:admin scope. Reuses the same reconciliation the db:check CLI and the startup gate use (checkMigrationState over migrations/000001 `schema_migrations`). Returns the reconciliation result, applied/available counts, the derived pending versions, and the latest applied version and name. `pendingVersions` is omitted where the reconciliation stopped before it could be derived rather than reported as zero. Never returns DATABASE_URL, a connection string, a host name, or a checksum value. When no persistent store is configured the response is the explicit `available: false` branch rather than a fabricated up-to-date state.",
+         "x-yrese-ssot": "DB-002",
+-        "x-yrese-required-scope": "tenant:admin",
++        "x-yrese-required-scopes": ["tenant:admin"],
+         responses: {
+           "200": {
+             description:
+@@ -97,7 +97,7 @@ export const operationsPaths = {
+         description:
+           "Requires audit-log:read scope. Returns a display projection (IDs only, no PHI names) ordered by wallClock desc, plus a hash chain verification over all stored events. Must use Cache-Control: no-store.",
+         "x-yrese-ssot": "SCR-028",
+-        "x-yrese-required-scope": "audit-log:read",
++        "x-yrese-required-scopes": ["audit-log:read"],
+         requestParams: {
+           query: auditLogQueryOpenApiSchema,
+         },
+diff --git a/packages/contracts/src/openapi/openapi-paths-patient.ts b/packages/contracts/src/openapi/openapi-paths-patient.ts
+index f7b965b..576e6eb 100644
+--- a/packages/contracts/src/openapi/openapi-paths-patient.ts
++++ b/packages/contracts/src/openapi/openapi-paths-patient.ts
+@@ -31,7 +31,7 @@ export const patientPaths = {
+         description:
+           "Requires patient:read scope and tenant context. The response contains PHI and must use Cache-Control: no-store.",
+         "x-yrese-ssot": "API-001",
+-        "x-yrese-required-scope": "patient:read",
++        "x-yrese-required-scopes": ["patient:read"],
+         requestParams: {
+           query: patientSearchQueryOpenApiSchema,
+         },
+@@ -111,7 +111,7 @@ export const patientPaths = {
+         description:
+           "Requires patient:read scope and tenant context. Used to refresh the cross-route patient context (R-PATCTX) and to obtain the version consumed by PUT. The response contains PHI and must use Cache-Control: no-store.",
+         "x-yrese-ssot": "API-001",
+-        "x-yrese-required-scope": "patient:read",
++        "x-yrese-required-scopes": ["patient:read"],
+         requestParams: {
+           path: patientGetParamsOpenApiSchema,
+         },
+@@ -138,7 +138,7 @@ export const patientPaths = {
+         description:
+           "Requires patient:write scope and tenant context. expectedVersion in the body and the quoted If-Match header must both equal the current version. Identity changes are appended to patient identity history. patientNumber is immutable and rejected with 422 PAT-0005. The response contains PHI and must use Cache-Control: no-store.",
+         "x-yrese-ssot": "API-001",
+-        "x-yrese-required-scope": "patient:write",
++        "x-yrese-required-scopes": ["patient:write"],
+         requestParams: {
+           path: patientGetParamsOpenApiSchema,
+           header: patientUpdateHeadersOpenApiSchema,
+@@ -216,7 +216,7 @@ export const patientPaths = {
+         description:
+           "Requires patient:read plus a kind-specific write scope: insurance:write for kind=insurance-card, public-expense:write for kind=public-expense, and the targetKind's write scope for kind=supersede. Idempotent via the Idempotency-Key header (API-013): same key + same payload returns the existing row with 200; a different payload returns 409 INS-0006. Overlapping insurance-card periods return 409 INS-0003, duplicate public-expense priority with overlapping period returns 409 INS-0004, and a missing or already-superseded target returns 409 INS-0005. Emits insurance.updated audit before the response.",
+         "x-yrese-ssot": "API-020",
+-        "x-yrese-required-scope": "patient:read + kind-scoped write",
++        "x-yrese-required-scopes": ["patient:read"],
+         requestParams: {
+           path: coverageParamsOpenApiSchema,
+           header: coverageRecordHeadersOpenApiSchema,
+diff --git a/packages/contracts/src/openapi/openapi-paths-system.ts b/packages/contracts/src/openapi/openapi-paths-system.ts
+index 77b02d9..2b4604b 100644
+--- a/packages/contracts/src/openapi/openapi-paths-system.ts
++++ b/packages/contracts/src/openapi/openapi-paths-system.ts
+@@ -32,7 +32,7 @@ export const systemPaths = {
+         summary: "Return the authenticated tenant context",
+         description: "Requires tenant:read scope. Returns the current tenant, pharmacy, actor, and granted scopes.",
+         "x-yrese-ssot": "API-002",
+-        "x-yrese-required-scope": "tenant:read",
++        "x-yrese-required-scopes": ["tenant:read"],
+         responses: {
+           "200": {
+             description: "Current tenant context",
+diff --git a/packages/contracts/src/patient/patient-search.test.ts b/packages/contracts/src/patient/patient-search.test.ts
+index d9c3aa7..bfb8a5f 100644
+--- a/packages/contracts/src/patient/patient-search.test.ts
++++ b/packages/contracts/src/patient/patient-search.test.ts
+@@ -164,9 +164,16 @@ describe("patientCreateRequestSchema (WP-7202 / API-001 0.3.0)", () => {
+     [{ ...validCreate, birthDate: "1980-4-12" }, "non-ISO date"],
+     [{ ...validCreate, sex: "other" }, "sex enum"],
+     [{ ...validCreate, name: "" }, "empty name"],
++    [{ ...validCreate, name: "   " }, "whitespace-only name"],
++    [{ ...validCreate, name: "試験\n花子" }, "name with newline"],
++    [{ ...validCreate, kana: "シケンハナコ\u0000" }, "kana with NUL"],
++    [{ ...validCreate, kana: "　" }, "ideographic-space-only kana"],
+     [{ ...validCreate, name: "x".repeat(129) }, "name over max"],
+     [{ ...validCreate, kana: "x".repeat(129) }, "kana over max"],
+     [{ ...validCreate, patientNumber: "" }, "empty patientNumber"],
++    [{ ...validCreate, patientNumber: "   " }, "whitespace-only patientNumber"],
++    [{ ...validCreate, patientNumber: "K-10\u00000" }, "patientNumber with NUL"],
++    [{ ...validCreate, patientNumber: "K-100\u2028" }, "patientNumber with line separator"],
+     [{ ...validCreate, patientNumber: "x".repeat(65) }, "patientNumber over max"],
+     [{ ...validCreate, phone: "090-0000-0000" }, "unspecified field tolerated at schema level"],
+   ])("rejects or tolerates case %#", (value) => {
+@@ -197,6 +204,8 @@ describe("patientUpdateRequestSchema", () => {
+     [{ expectedVersion: 1.5, name: "x" }, "version must be int"],
+     [{ expectedVersion: 1, birthDate: "2026-02-30" }, "non-existent calendar date"],
+     [{ expectedVersion: 1, sex: "other" }, "sex enum"],
++    [{ expectedVersion: 1, name: "\t" }, "whitespace-only name"],
++    [{ expectedVersion: 1, kana: "シケン\u007f" }, "kana with DEL"],
+   ])("rejects %#", (value) => {
+     expect(() => patientUpdateRequestSchema.parse(value)).toThrow();
+   });
+diff --git a/packages/contracts/src/patient/patient-search.ts b/packages/contracts/src/patient/patient-search.ts
+index a5a7c70..54abd26 100644
+--- a/packages/contracts/src/patient/patient-search.ts
++++ b/packages/contracts/src/patient/patient-search.ts
+@@ -74,18 +74,41 @@ const patientBirthDateWireSchema = z.iso.date().refine(isRealIsoCalendarDate, {
+   message: "date must be a real calendar date",
+ });
+ 
++/**
++ * 患者記録は改行・区切り・帳票・CSV 出力へ乗る text field のため、
++ * prescription-draft.ts の text 規則と同じ制御文字集合を拒否する。
++ * `\u0000` は Zod を通過しても Postgres text 列が拒否するため境界で fail-closed。
++ */
++const patientWriteControlCharacterPattern =
++  /[\u0000-\u001f\u007f\u0085\u2028\u2029]/;
++
++function isNonBlankPatientTextWithoutControlCharacters(value: string): boolean {
++  return (
++    value.trim().length > 0 && !patientWriteControlCharacterPattern.test(value)
++  );
++}
++
+ const patientWriteNameSchema = z
+   .string()
+   .min(1)
+-  .max(PATIENT_WRITE_NAME_MAX_LENGTH);
++  .max(PATIENT_WRITE_NAME_MAX_LENGTH)
++  .refine(isNonBlankPatientTextWithoutControlCharacters, {
++    message: "name must be non-blank text without control characters",
++  });
+ const patientWriteKanaSchema = z
+   .string()
+   .min(1)
+-  .max(PATIENT_WRITE_KANA_MAX_LENGTH);
++  .max(PATIENT_WRITE_KANA_MAX_LENGTH)
++  .refine(isNonBlankPatientTextWithoutControlCharacters, {
++    message: "kana must be non-blank text without control characters",
++  });
+ const patientWriteNumberSchema = z
+   .string()
+   .min(1)
+-  .max(PATIENT_WRITE_PATIENT_NUMBER_MAX_LENGTH);
++  .max(PATIENT_WRITE_PATIENT_NUMBER_MAX_LENGTH)
++  .refine(isNonBlankPatientTextWithoutControlCharacters, {
++    message: "patientNumber must be non-blank text without control characters",
++  });
+ const patientWriteSexSchema = z.enum(["male", "female", "unknown"]);
+ 
+ export const patientCreateRequestSchema = z.object({
+diff --git a/packages/contracts/tsconfig.build.json b/packages/contracts/tsconfig.build.json
+index 0a11719..8761ffc 100644
+--- a/packages/contracts/tsconfig.build.json
++++ b/packages/contracts/tsconfig.build.json
+@@ -1,4 +1,4 @@
+ {
+   "extends": "./tsconfig.json",
+-  "exclude": ["src/**/*.test.ts"]
++  "exclude": ["src/**/*.test.ts", "src/**/*test-support.ts"]
+ }
+diff --git a/packages/date-time/tsconfig.build.json b/packages/date-time/tsconfig.build.json
+index 0a11719..8761ffc 100644
+--- a/packages/date-time/tsconfig.build.json
++++ b/packages/date-time/tsconfig.build.json
+@@ -1,4 +1,4 @@
+ {
+   "extends": "./tsconfig.json",
+-  "exclude": ["src/**/*.test.ts"]
++  "exclude": ["src/**/*.test.ts", "src/**/*test-support.ts"]
+ }
+diff --git a/packages/events/tsconfig.build.json b/packages/events/tsconfig.build.json
+index 0a11719..8761ffc 100644
+--- a/packages/events/tsconfig.build.json
++++ b/packages/events/tsconfig.build.json
+@@ -1,4 +1,4 @@
+ {
+   "extends": "./tsconfig.json",
+-  "exclude": ["src/**/*.test.ts"]
++  "exclude": ["src/**/*.test.ts", "src/**/*test-support.ts"]
+ }
+diff --git a/packages/money/src/index.ts b/packages/money/src/index.ts
+index e2fef65..6ab1596 100644
+--- a/packages/money/src/index.ts
++++ b/packages/money/src/index.ts
+@@ -213,7 +213,10 @@ export class ScaledDecimal {
+     assertRoundingMode(options.mode);
+ 
+     if (options.scale >= this.scale) {
+-      return new ScaledDecimal(this.coefficient * pow10(options.scale - this.scale), options.scale);
++      return new ScaledDecimal(
++        this.coefficient * pow10(options.scale - this.scale),
++        options.scale,
++      ).normalize();
+     }
+ 
+     const divisor = pow10(this.scale - options.scale);
+diff --git a/packages/money/src/money.test.ts b/packages/money/src/money.test.ts
+index a0eb5a1..d406223 100644
+--- a/packages/money/src/money.test.ts
++++ b/packages/money/src/money.test.ts
+@@ -70,6 +70,13 @@ describe("ScaledDecimal", () => {
+     );
+   });
+ 
++  it("keeps the normalized representation when rounding to a larger scale", () => {
++    const value = ScaledDecimal.fromString("12.3");
++
++    expect(value.round({ scale: 4, mode: "half_up" }).toString()).toBe("12.3");
++    expect(value.round({ scale: 4, mode: "half_up" }).scale).toBe(1);
++  });
++
+   it("rejects unregistered or missing rounding modes", () => {
+     const value = ScaledDecimal.fromString("12.345");
+ 
+diff --git a/packages/money/tsconfig.build.json b/packages/money/tsconfig.build.json
+index 0a11719..8761ffc 100644
+--- a/packages/money/tsconfig.build.json
++++ b/packages/money/tsconfig.build.json
+@@ -1,4 +1,4 @@
+ {
+   "extends": "./tsconfig.json",
+-  "exclude": ["src/**/*.test.ts"]
++  "exclude": ["src/**/*.test.ts", "src/**/*test-support.ts"]
+ }
+diff --git a/packages/shared-kernel/tsconfig.build.json b/packages/shared-kernel/tsconfig.build.json
+index 0a11719..8761ffc 100644
+--- a/packages/shared-kernel/tsconfig.build.json
++++ b/packages/shared-kernel/tsconfig.build.json
+@@ -1,4 +1,4 @@
+ {
+   "extends": "./tsconfig.json",
+-  "exclude": ["src/**/*.test.ts"]
++  "exclude": ["src/**/*.test.ts", "src/**/*test-support.ts"]
+ }
+diff --git a/packages/trace/src/index.ts b/packages/trace/src/index.ts
+index af84765..12d525f 100644
+--- a/packages/trace/src/index.ts
++++ b/packages/trace/src/index.ts
+@@ -207,6 +207,20 @@ function freezeArray<T>(values: readonly T[]): readonly T[] {
+   return Object.freeze([...values]);
+ }
+ 
++/**
++ * wire contract(calculation-trace.ts)の `z.array(z.string())` と同じ
++ * 要素型制約を runtime 構築側にも適用する。
++ */
++function freezeStringArray(values: readonly unknown[], label: string): readonly string[] {
++  assertDenseArray(values);
++  for (const value of values) {
++    if (typeof value !== "string") {
++      throw new RangeError(`${label} elements must be strings`);
++    }
++  }
++  return Object.freeze([...values] as string[]);
++}
++
+ function freezeEvidenceRef(ref: EvidenceRef): EvidenceRef {
+   if ("url" in ref) {
+     throw new RangeError("EvidenceRef must not include url; URLs live in source_registry");
+@@ -364,11 +378,15 @@ function freezeStep(step: CalculationTraceStep): CalculationTraceStep {
+   assertDenseArray(sourceEvidenceRefs);
+   const evidenceRefs = freezeArray(sourceEvidenceRefs.map(freezeEvidenceRef));
+   const affectsClaim = step.affectsClaim;
++  if (typeof affectsClaim !== "boolean") {
++    throw new RangeError("CalculationTraceStep affectsClaim must be a boolean");
++  }
+   if (affectsClaim && evidenceRefs.length === 0) {
+     throw new RangeError("Claim-affecting calculation steps require at least one evidenceRef");
+   }
+-  const inputRefs = freezeArray(step.inputRefs);
++  const inputRefs = freezeStringArray(step.inputRefs, "CalculationTraceStep inputRefs");
+   const output = step.output;
++  assertNonEmptyString(output, "CalculationTraceStep output");
+   const sourceIntermediateValues = step.intermediateValues;
+   const intermediateValues =
+     sourceIntermediateValues === undefined ? undefined : freezeIntermediateValues(sourceIntermediateValues);
+@@ -429,8 +447,8 @@ export function createCalculationTrace(input: CreateCalculationTraceInput): Calc
+     masterVersion,
+     calculationRuleVersion,
+     steps,
+-    warnings: freezeArray(input.warnings ?? []),
+-    blockers: freezeArray(input.blockers ?? []),
++    warnings: freezeStringArray(input.warnings ?? [], "CalculationTrace warnings"),
++    blockers: freezeStringArray(input.blockers ?? [], "CalculationTrace blockers"),
+     evidenceIds: collectCalculationTraceEvidenceIds(steps),
+   });
+ }
+diff --git a/packages/trace/src/trace.test.ts b/packages/trace/src/trace.test.ts
+index 780a9a1..c15a110 100644
+--- a/packages/trace/src/trace.test.ts
++++ b/packages/trace/src/trace.test.ts
+@@ -490,6 +490,60 @@ describe("createCalculationTrace", () => {
+     ).toThrow(new RangeError("Trace arrays must be an array"));
+   });
+ 
++  it("rejects non-string inputRef elements like the wire contract", () => {
++    expect(() =>
++      createCalculationTrace({
++        inputsSummary,
++        masterVersion: "2026.04",
++        calculationRuleVersion: "draft-001",
++        steps: [
++          claimStep({
++            inputRefs: ["prescription-001", 42] as unknown as CalculationTraceStep["inputRefs"],
++          }),
++        ],
++      }),
++    ).toThrow(new RangeError("CalculationTraceStep inputRefs elements must be strings"));
++  });
++
++  it("rejects non-boolean affectsClaim and empty output like the wire contract", () => {
++    expect(() =>
++      createCalculationTrace({
++        inputsSummary,
++        masterVersion: "2026.04",
++        calculationRuleVersion: "draft-001",
++        steps: [
++          claimStep({
++            affectsClaim: "yes" as unknown as boolean,
++          }),
++        ],
++      }),
++    ).toThrow(new RangeError("CalculationTraceStep affectsClaim must be a boolean"));
++
++    expect(() =>
++      createCalculationTrace({
++        inputsSummary,
++        masterVersion: "2026.04",
++        calculationRuleVersion: "draft-001",
++        steps: [claimStep({ output: "" })],
++      }),
++    ).toThrow(new RangeError("CalculationTraceStep output must be a non-empty string"));
++  });
++
++  it.each(["warnings", "blockers"] as const)(
++    "rejects non-string %s elements like the wire contract",
++    (field) => {
++      expect(() =>
++        createCalculationTrace({
++          inputsSummary,
++          masterVersion: "2026.04",
++          calculationRuleVersion: "draft-001",
++          steps: [claimStep()],
++          [field]: ["ok", { hostile: true }] as unknown as string[],
++        }),
++      ).toThrow(/elements must be strings/);
++    },
++  );
++
+   it("rejects unsupported input id and date kinds", () => {
+     expect(() =>
+       createCalculationTrace({
+diff --git a/packages/trace/tsconfig.build.json b/packages/trace/tsconfig.build.json
+index 0a11719..8761ffc 100644
+--- a/packages/trace/tsconfig.build.json
++++ b/packages/trace/tsconfig.build.json
+@@ -1,4 +1,4 @@
+ {
+   "extends": "./tsconfig.json",
+-  "exclude": ["src/**/*.test.ts"]
++  "exclude": ["src/**/*.test.ts", "src/**/*test-support.ts"]
+ }
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index e885956..ca59b34 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -161,6 +161,9 @@ importers:
+       zod:
+         specifier: ^4.6.5
+         version: 4.6.5
++      zod-openapi:
++        specifier: ^6.0.2
++        version: 6.0.2(zod@4.6.5)
+     devDependencies:
+       typescript:
+         specifier: ^7.0.2
+@@ -168,9 +171,6 @@ importers:
+       vitest:
+         specifier: ^5.0.2
+         version: 5.0.2(@types/node@26.6.3)(vite@7.3.6(@types/node@26.6.3)(tsx@4.23.15)(yaml@2.9.1))
+-      zod-openapi:
+-        specifier: ^6.0.2
+-        version: 6.0.2(zod@4.6.5)
+ 
+   packages/date-time:
+     devDependencies:
+@@ -1138,10 +1138,6 @@ packages:
+   picocolors@1.1.1:
+     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
+ 
+-  picomatch@4.0.5:
+-    resolution: {integrity: sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A==}
+-    engines: {node: '>=12'}
+-
+   picomatch@4.0.7:
+     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
+     engines: {node: '>=12'}
+@@ -1978,9 +1974,9 @@ snapshots:
+     dependencies:
+       reusify: 1.1.0
+ 
+-  fdir@6.5.0(picomatch@4.0.5):
++  fdir@6.5.0(picomatch@4.0.7):
+     optionalDependencies:
+-      picomatch: 4.0.5
++      picomatch: 4.0.7
+ 
+   find-my-way@9.9.0:
+     dependencies:
+@@ -2077,8 +2073,6 @@ snapshots:
+ 
+   picocolors@1.1.1: {}
+ 
+-  picomatch@4.0.5: {}
+-
+   picomatch@4.0.7: {}
+ 
+   pino-abstract-transport@3.0.0:
+@@ -2246,8 +2240,8 @@ snapshots:
+ 
+   tinyglobby@0.2.17:
+     dependencies:
+-      fdir: 6.5.0(picomatch@4.0.5)
+-      picomatch: 4.0.5
++      fdir: 6.5.0(picomatch@4.0.7)
++      picomatch: 4.0.7
+ 
+   toad-cache@3.7.4: {}
+ 
+@@ -2289,8 +2283,8 @@ snapshots:
+   vite@7.3.6(@types/node@26.6.3)(tsx@4.23.15)(yaml@2.9.1):
+     dependencies:
+       esbuild: 0.28.2
+-      fdir: 6.5.0(picomatch@4.0.5)
+-      picomatch: 4.0.5
++      fdir: 6.5.0(picomatch@4.0.7)
++      picomatch: 4.0.7
+       postcss: 8.5.23
+       rollup: 4.62.2
+       tinyglobby: 0.2.17

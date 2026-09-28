@@ -70,6 +70,13 @@ describe("ScaledDecimal", () => {
     );
   });
 
+  it("keeps the normalized representation when rounding to a larger scale", () => {
+    const value = ScaledDecimal.fromString("12.3");
+
+    expect(value.round({ scale: 4, mode: "half_up" }).toString()).toBe("12.3");
+    expect(value.round({ scale: 4, mode: "half_up" }).scale).toBe(1);
+  });
+
   it("rejects unregistered or missing rounding modes", () => {
     const value = ScaledDecimal.fromString("12.345");
 

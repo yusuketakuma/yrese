@@ -21,7 +21,7 @@ export const operationsPaths = {
         description:
           "Requires sync:read scope. Returns counts and instants derived from persisted outbox intents (migrations/000005 + 000007 `outbox_events`; the in-memory mode reads the in-process intent store). No delivery worker runs in this slice, so intents observed as pending are genuinely pending. The response is PHI-free — counts, event-type labels, and one instant only — so it declares no Cache-Control: no-store. `legacyOrphanCount` is omitted where it is not derived rather than reported as zero, and the orphan reception IDs themselves are never returned.",
         "x-yrese-ssot": "MOD-009",
-        "x-yrese-required-scope": "sync:read",
+        "x-yrese-required-scopes": ["sync:read"],
         responses: {
           "200": {
             description: "Outbox counters grouped by event type in eventType asc order",
@@ -44,7 +44,7 @@ export const operationsPaths = {
         description:
           "Requires reception:read only. patient:read is deliberately not required: the service folds the reception list into counts before the route sees it, so no patient identity crosses the route boundary and a batch screen does not need a patient scope. Both count arrays list every enum member in declaration order, so an absent status is reported as a measured zero rather than being dropped. The response is PHI-free and declares no Cache-Control: no-store.",
         "x-yrese-ssot": "API-006",
-        "x-yrese-required-scope": "reception:read",
+        "x-yrese-required-scopes": ["reception:read"],
         requestParams: {
           query: receptionSummaryQueryOpenApiSchema,
         },
@@ -73,7 +73,7 @@ export const operationsPaths = {
         description:
           "Requires tenant:admin scope. Reuses the same reconciliation the db:check CLI and the startup gate use (checkMigrationState over migrations/000001 `schema_migrations`). Returns the reconciliation result, applied/available counts, the derived pending versions, and the latest applied version and name. `pendingVersions` is omitted where the reconciliation stopped before it could be derived rather than reported as zero. Never returns DATABASE_URL, a connection string, a host name, or a checksum value. When no persistent store is configured the response is the explicit `available: false` branch rather than a fabricated up-to-date state.",
         "x-yrese-ssot": "DB-002",
-        "x-yrese-required-scope": "tenant:admin",
+        "x-yrese-required-scopes": ["tenant:admin"],
         responses: {
           "200": {
             description:
@@ -97,7 +97,7 @@ export const operationsPaths = {
         description:
           "Requires audit-log:read scope. Returns a display projection (IDs only, no PHI names) ordered by wallClock desc, plus a hash chain verification over all stored events. Must use Cache-Control: no-store.",
         "x-yrese-ssot": "SCR-028",
-        "x-yrese-required-scope": "audit-log:read",
+        "x-yrese-required-scopes": ["audit-log:read"],
         requestParams: {
           query: auditLogQueryOpenApiSchema,
         },

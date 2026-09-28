@@ -213,7 +213,10 @@ export class ScaledDecimal {
     assertRoundingMode(options.mode);
 
     if (options.scale >= this.scale) {
-      return new ScaledDecimal(this.coefficient * pow10(options.scale - this.scale), options.scale);
+      return new ScaledDecimal(
+        this.coefficient * pow10(options.scale - this.scale),
+        options.scale,
+      ).normalize();
     }
 
     const divisor = pow10(this.scale - options.scale);
