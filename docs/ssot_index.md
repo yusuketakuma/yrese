@@ -1,3 +1,16 @@
+---
+type: concept
+title: ssot_index — SSOT文書索引
+content_flag:
+  reason: markup_heavy
+  detail: >-
+    PAGE_OVERSIZE_WARN: body 75861 bytes exceeds 50000 byte warn threshold;
+    PAGE_MARKUP_HEAVY: markup ratio 0.88 exceeds 0.85 (flag, not hide)
+  assessed_at: '2026-09-22T06:46:21.232Z'
+  markup_ratio: 0.8757807425173637
+  bytes: 75861
+---
+
 # ssot_index — SSOT文書索引
 
 ```yaml

@@ -1,3 +1,17 @@
+---
+type: concept
+title: FROZEN — GIT_HISTORY_ONLY
+content_flag:
+  reason: oversized
+  detail: 'PAGE_OVERSIZED: body 591278 bytes exceeds 500000 byte block threshold'
+  assessed_at: '2026-09-22T06:46:44.996Z'
+  bytes: 591278
+embed_skip:
+  reason: oversized
+  bytes: 591278
+  assessed_at: '2026-09-22T06:46:44.996Z'
+---
+
 # FROZEN — GIT_HISTORY_ONLY
 
 This legacy evidence ledger is no longer an active validation or work-selection
